@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://genui.dev/gup/0.1/patch.schema.json",
+  "title": "GUP patch message",
+  "description": "State deltas emitted by the kernel to a renderer. Renderers apply patches; they never patch the store directly.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["gup", "type", "payload"],
+  "properties": {
+    "gup": { "const": "0.1" },
+    "type": { "const": "patch" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rev", "ops"],
+      "properties": {
+        "rev": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Monotonic revision for ordering and optimistic concurrency."
+        },
+        "ops": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/op" }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "nsPath": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)*$"
+    },
+    "op": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "path"],
+      "properties": {
+        "op": { "enum": ["set", "merge", "remove"] },
+        "path": { "$ref": "#/definitions/nsPath" },
+        "value": {}
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "op": { "enum": ["set", "merge"] } } },
+          "then": { "required": ["value"] }
+        }
+      ]
+    }
+  }
+}

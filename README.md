@@ -38,6 +38,8 @@ genui-platform/
     01-vision.md                ← the problem, the pivot, what we're building
     02-architecture.md          ← kernel/provider model, object model, invariants, pipeline
     03-protocol.md              ← the GenUI Protocol (GUP): the five wire messages
+    04-reference-profile.md     ← live-cards: the first reference profile (3-repo mapping)
+    not-yet-decided.md          ← parked open decisions
     discussion-log.md           ← chronological record of the whole design conversation
     decisions/
       README.md                 ← ADR index
@@ -45,8 +47,9 @@ genui-platform/
       ADR-0002-interaction-as-edge.md
       ADR-0003-stateless-events-with-reducer.md
       ADR-0004-protocol-over-sdk.md
-      ADR-0005-kernel-placement.md   (open / proposed)
-  schemas/                      ← (planned) normative GUP JSON Schemas + conformance fixtures
+      ADR-0005-kernel-placement.md
+      ADR-0006-render-adapter-infra-agnostic.md
+  schemas/                      ← normative GUP JSON Schemas + golden conformance fixture
 ```
 
 ## Core idea in one diagram

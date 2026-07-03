@@ -1,0 +1,68 @@
+{
+  "gup": "0.1",
+  "type": "document",
+  "payload": {
+    "manifest": "live-cards/1.0",
+    "root": {
+      "capability": "board",
+      "id": "board-1",
+      "props": { "title": "Sales" },
+      "edges": {
+        "children": [
+          {
+            "capability": "metric",
+            "id": "metric-total",
+            "props": { "label": "Total" },
+            "edges": {
+              "read": { "value": "computed_values.total" }
+            }
+          },
+          {
+            "capability": "table",
+            "id": "table-orders",
+            "props": { "columns": ["id", "amount"] },
+            "edges": {
+              "read": { "rows": "fetched_sources.orders" },
+              "on": {
+                "rowSelect": [
+                  { "do": "assign", "target": "card_data.selected", "args": { "from": "$event.id" } }
+                ]
+              }
+            }
+          },
+          {
+            "capability": "actions",
+            "id": "btn-approve",
+            "props": { "label": "Approve" },
+            "edges": {
+              "gate": "card_data.selected != null",
+              "on": {
+                "tap": [
+                  { "do": "assign", "target": "card_data.status", "args": { "value": "approved" } },
+                  { "do": "invoke", "args": { "tool": "approveOrder" }, "guard": "requires.role = 'lead'" }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    "machines": [
+      {
+        "id": "approval",
+        "context": "computed_values.approval",
+        "initial": "draft",
+        "states": {
+          "draft": { "on": { "submit": "pending" } },
+          "pending": {
+            "on": {
+              "approve": { "target": "done", "guard": "requires.role = 'lead'" },
+              "reject": "draft"
+            }
+          },
+          "done": { "type": "final" }
+        }
+      }
+    ]
+  }
+}

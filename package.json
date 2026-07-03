@@ -1,0 +1,13 @@
+{
+  "name": "genui-platform-schemas",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Normative GenUI Protocol (GUP) wire schemas and conformance fixtures.",
+  "scripts": {
+    "conformance": "node schemas/validate.mjs"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1"
+  }
+}

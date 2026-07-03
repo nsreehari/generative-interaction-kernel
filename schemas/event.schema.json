@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://genui.dev/gup/0.1/event.schema.json",
+  "title": "GUP event message",
+  "description": "An interaction emitted by a renderer to the kernel. Events are the only thing that cross back from a renderer.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["gup", "type", "payload"],
+  "properties": {
+    "gup": { "const": "0.1" },
+    "type": { "const": "event" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["node", "name"],
+      "properties": {
+        "node": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_-]*$",
+          "description": "Id of the node that emitted the event."
+        },
+        "name": {
+          "type": "string",
+          "description": "Event name; must be one of the emitting capability's declared events."
+        },
+        "payload": {
+          "type": "object",
+          "description": "Event-specific data."
+        }
+      }
+    }
+  }
+}

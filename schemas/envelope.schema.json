@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://genui.dev/gup/0.1/envelope.schema.json",
+  "title": "GUP message envelope",
+  "description": "Any GUP message: exactly one of the five message types. Requires the five message schemas to be loaded (resolved by $id).",
+  "oneOf": [
+    { "$ref": "https://genui.dev/gup/0.1/manifest.schema.json" },
+    { "$ref": "https://genui.dev/gup/0.1/document.schema.json" },
+    { "$ref": "https://genui.dev/gup/0.1/patch.schema.json" },
+    { "$ref": "https://genui.dev/gup/0.1/event.schema.json" },
+    { "$ref": "https://genui.dev/gup/0.1/trace.schema.json" }
+  ]
+}

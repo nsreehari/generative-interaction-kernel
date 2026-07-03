@@ -1,0 +1,9 @@
+{
+  "gup": "0.1",
+  "type": "event",
+  "payload": {
+    "node": "table-orders",
+    "name": "rowSelect",
+    "payload": { "id": "order-42" }
+  }
+}

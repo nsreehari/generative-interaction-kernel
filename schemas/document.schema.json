@@ -1,0 +1,153 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://genui.dev/gup/0.1/document.schema.json",
+  "title": "GUP document message",
+  "description": "A portable UI-intent artifact: a tree of Nodes plus optional Machines. Valid only against a declared manifest version.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["gup", "type", "payload"],
+  "properties": {
+    "gup": { "const": "0.1" },
+    "type": { "const": "document" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root"],
+      "properties": {
+        "manifest": {
+          "type": "string",
+          "description": "Manifest version this document targets."
+        },
+        "root": { "$ref": "#/definitions/node" },
+        "machines": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/machine" }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_-]*$"
+    },
+    "nsPath": {
+      "type": "string",
+      "description": "A dotted namespace path, e.g. card_data.selected.",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)*$"
+    },
+    "expr": {
+      "type": "string",
+      "description": "An opaque expression in the manifest-declared dialect."
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["do"],
+      "properties": {
+        "do": {
+          "type": "string",
+          "description": "A built-in family (assign|derive|invoke|emit|navigate|confirm) or a manifest-declared custom action."
+        },
+        "target": { "$ref": "#/definitions/nsPath" },
+        "args": { "type": "object" },
+        "guard": { "$ref": "#/definitions/expr" },
+        "event": { "$ref": "#/definitions/identifier" }
+      }
+    },
+    "edges": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "read": {
+          "type": "object",
+          "description": "prop -> namespace path (data in).",
+          "additionalProperties": { "$ref": "#/definitions/nsPath" }
+        },
+        "gate": { "$ref": "#/definitions/expr" },
+        "write": {
+          "type": "object",
+          "description": "event -> { to: namespace path } (data out).",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["to"],
+            "properties": { "to": { "$ref": "#/definitions/nsPath" } }
+          }
+        },
+        "on": {
+          "type": "object",
+          "description": "event -> ordered list of actions (behavior).",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/action" }
+          }
+        },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/node" }
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capability", "id"],
+      "properties": {
+        "capability": { "$ref": "#/definitions/identifier" },
+        "id": { "$ref": "#/definitions/identifier" },
+        "props": { "type": "object" },
+        "edges": { "$ref": "#/definitions/edges" }
+      }
+    },
+    "transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target"],
+      "properties": {
+        "target": { "$ref": "#/definitions/identifier" },
+        "guard": { "$ref": "#/definitions/expr" },
+        "actions": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/action" }
+        }
+      }
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "on": {
+          "type": "object",
+          "description": "event -> target state name (shorthand) or a full transition.",
+          "additionalProperties": {
+            "oneOf": [
+              { "$ref": "#/definitions/identifier" },
+              { "$ref": "#/definitions/transition" }
+            ]
+          }
+        },
+        "entry": { "type": "array", "items": { "$ref": "#/definitions/action" } },
+        "exit": { "type": "array", "items": { "$ref": "#/definitions/action" } },
+        "type": { "enum": ["final"] }
+      }
+    },
+    "machine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "context", "initial", "states"],
+      "properties": {
+        "id": { "$ref": "#/definitions/identifier" },
+        "context": {
+          "$ref": "#/definitions/nsPath",
+          "description": "Namespace path where the machine's current state is stored."
+        },
+        "initial": { "$ref": "#/definitions/identifier" },
+        "states": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/state" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "gup": "0.1",
+  "type": "patch",
+  "payload": {
+    "rev": 1,
+    "ops": [
+      { "op": "set", "path": "card_data.selected", "value": "order-42" }
+    ]
+  }
+}

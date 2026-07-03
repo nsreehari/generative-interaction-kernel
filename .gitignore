@@ -12,3 +12,6 @@ build/
 # Local env
 .env
 .env.local
+
+# Node lockfile kept for reproducible conformance runs
+!package-lock.json

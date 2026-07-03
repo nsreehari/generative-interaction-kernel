@@ -1,0 +1,37 @@
+{
+  "gup": "0.1",
+  "type": "manifest",
+  "payload": {
+    "version": "live-cards/1.0",
+    "expression": "jsonata",
+    "namespaces": ["card_data", "requires", "fetched_sources", "computed_values"],
+    "actions": ["assign", "derive", "invoke", "emit", "navigate", "confirm"],
+    "capabilities": {
+      "board": {
+        "propsSchema": { "type": "object", "properties": { "title": { "type": "string" } } },
+        "slots": ["children"]
+      },
+      "metric": {
+        "propsSchema": {
+          "type": "object",
+          "required": ["label"],
+          "properties": { "label": { "type": "string" }, "value": { "type": ["number", "string"] } }
+        }
+      },
+      "table": {
+        "propsSchema": {
+          "type": "object",
+          "properties": { "columns": { "type": "array", "items": { "type": "string" } } }
+        },
+        "emits": ["rowSelect"]
+      },
+      "actions": {
+        "propsSchema": {
+          "type": "object",
+          "properties": { "label": { "type": "string" } }
+        },
+        "emits": ["tap"]
+      }
+    }
+  }
+}
