@@ -25,8 +25,8 @@ defined; the normative schemas and reference implementation are not yet built.
 
 - Not a standardization of any one existing DSL, registry, or app. Prior systems that inspired
   this (a schema-driven card DSL, a component registry, an interpreter, a validation engine, an
-  MCP orchestration layer) are treated as a **reference profile** — one instantiation of the
-  platform — not the platform itself.
+  MCP orchestration layer) are treated as a **profile** — one instantiation of the platform, with
+  live-cards as the **first profile to onboard** — not the platform itself.
 - Not a UI framework. The platform is framework-agnostic; a framework binding is a *provider*.
 
 ## Repository map
@@ -38,7 +38,7 @@ genui-platform/
     01-vision.md                ← the problem, the pivot, what we're building
     02-architecture.md          ← kernel/provider model, object model, invariants, pipeline
     03-protocol.md              ← the GenUI Protocol (GUP): the five wire messages
-    04-reference-profile.md     ← live-cards: the first reference profile (3-repo mapping)
+    04-first-onboarding-profile.md ← live-cards: the first profile to onboard (3-repo mapping)
     not-yet-decided.md          ← parked open decisions
     discussion-log.md           ← chronological record of the whole design conversation
     decisions/

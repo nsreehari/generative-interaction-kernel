@@ -18,7 +18,7 @@ Everything domain-specific — which capabilities exist, what each spec means, w
 lives in, which expression language, which framework renders, which model authors — is supplied by
 **providers**. A concrete platform = kernel + one implementation of each provider.
 
-The existing DSL/registry/app is reframed as **one reference profile**, not the platform.
+The existing DSL/registry/app is reframed as **one profile (one instantiation)**, not the platform.
 
 ## Alternatives considered
 
@@ -31,7 +31,8 @@ value is precisely in fixing the grammar and freeing the vocabulary.
 
 ### B. Standardize the existing DSL/app as the deliverable
 **Rejected because:** it standardizes one implementation rather than exposing a reusable contract.
-The existing system is retained as a reference profile that proves the pattern for one vocabulary.
+The existing system is retained as a profile (one instantiation, and the first to onboard) that
+proves the pattern for one vocabulary.
 
 ## Consequences
 

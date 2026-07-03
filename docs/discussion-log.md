@@ -48,7 +48,8 @@ The user then reframed decisively:
 > I specify 'this is my DSL, this is my registry, etc.', and *that platform* is what I'm looking
 > for."
 
-**Decision:** build a generic platform; the existing DSL/registry/app is **one reference profile**,
+**Decision:** build a generic platform; the existing DSL/registry/app is **one profile (the first to
+onboard)**,
 not the target. → [ADR-0001](decisions/ADR-0001-closed-grammar-kernel.md).
 
 ## 4. Kernel boundary — closed grammar vs pluggable grammar
@@ -147,11 +148,13 @@ Raised: *why should rendering be concerned with storage/transport semantics?* **
 transport live behind the kernel as providers. Embedded co-location is a deployment fact, not an API
 coupling. → [ADR-0006](decisions/ADR-0006-render-adapter-infra-agnostic.md).
 
-## 13. Reference profile selected + first build artifact
+## 13. First onboarding profile selected + first build artifact
 
 The **live-cards** profile (yaml-flow + demo-boards-ns-code + demo-boards-frontend) was selected as
-the first reference profile and mapped onto every provider seam
-([04-reference-profile.md](04-reference-profile.md)). Remaining open decisions were parked in
+the **first profile to onboard** — a pragmatic pilot adopter, not a canonical reference — and mapped
+onto every provider seam ([04-first-onboarding-profile.md](04-first-onboarding-profile.md)), with a
+fit assessment (maps cleanly / needs adapter / genuine gap or residue) and the rule that the kernel
+is not bent to fit the profile. Remaining open decisions were parked in
 [not-yet-decided.md](not-yet-decided.md). The **first build artifact** was produced: the five
 normative GUP draft-07 schemas + envelope, and a golden conformance fixture drawn from live-cards,
 verified by a runner (`schemas/validate.mjs`) — all checks pass.
@@ -162,7 +165,7 @@ verified by a runner (`schemas/validate.mjs`) — all checks pass.
 
 | Alternative | Set aside because |
 |---|---|
-| Standardize the existing DSL/app as the goal | Standardizes one instance; the value is a reusable contract. Kept as a reference profile. |
+| Standardize the existing DSL/app as the goal | Standardizes one instance; the value is a reusable contract. Kept as a profile (one instantiation, the first to onboard). |
 | Pluggable/consumer-defined grammar | Nothing left to standardize; loses interpreter, validator, tool-generator. |
 | Separate meta-kernel for interactions | Duplicates interpretation/validation/tracing and splits the graph; the real meta level is the Manifest. |
 | Stateful sagas as a kernel primitive | Breaks the pure-reducer law; harder validation + agent-authoring; durability belongs in a provider. |

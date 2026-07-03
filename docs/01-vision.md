@@ -32,7 +32,7 @@ evolved through several reframings:
 4. Begin standardizing that system's DSL (its JSON Schema).
 5. **Pivot (decisive):** the goal is **not** to standardize the existing DSL/code. The goal is a
    **platform** where the DSL, the registry, and the rest are *declarative inputs*. The existing
-   system becomes **one reference profile**, not the target.
+   system becomes **one profile (the first to onboard)**, not the target.
 6. Zoom out fully: design the platform layer as **domain- and framework-neutral**.
 
 The existing system is valuable precisely because it *proves the pattern for one vocabulary* —

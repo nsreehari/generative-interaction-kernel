@@ -3,9 +3,9 @@
 Open decisions parked here so they are not forgotten. Each will graduate to an ADR when resolved.
 Resolved items are removed from this list and recorded in [decisions/](decisions/README.md).
 
-> Resolved since the last replay: **reference profile** → live-cards
-> ([04-reference-profile.md](04-reference-profile.md)); **kernel placement** → hybrid, primarily
-> embedded ([ADR-0005](decisions/ADR-0005-kernel-placement.md)).
+> Resolved since the last replay: **first onboarding profile** → live-cards
+> ([04-first-onboarding-profile.md](04-first-onboarding-profile.md)); **kernel placement** → hybrid,
+> primarily embedded ([ADR-0005](decisions/ADR-0005-kernel-placement.md)).
 
 ## Open
 
@@ -31,7 +31,7 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
 6. **Custom action registration.** The mechanism by which a provider adds actions beyond the six
    closed families, and how those custom actions are declared in the manifest and validated.
 
-7. **Transport bindings.** The concrete transports for the reference profile (SSE exists today;
+7. **Transport bindings.** The concrete transports for the first onboarding profile (SSE exists today;
    WebSocket / stdio / in-proc for embedded). Decide the reference set.
 
 8. **ObservabilitySink format & targets.** The `trace` message shape exists; the sink targets
@@ -45,3 +45,7 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
 
 11. **Conformance suite scope.** What the conformance suite must cover beyond the single golden
     fixture (edge cases, negative cases, reducer equivalence across kernels).
+
+12. **Canonical reference profile.** Whether to author a clean, minimal exemplar profile that
+    *defines* the platform's ideal shape, distinct from the first onboarding profile (live-cards,
+    which is a pragmatic pilot adopter, not a pristine reference).
