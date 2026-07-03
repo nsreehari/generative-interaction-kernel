@@ -37,6 +37,8 @@ interface DispatchCtx {
   expr: ExpressionProvider;
   data: Record<string, Json>;
   bindings: Record<string, unknown>;
+  emitted: GupEvent[];
+  currentEvent: GupEvent;
 }
 
 async function resolveValue(args: Record<string, Json> | undefined, c: DispatchCtx): Promise<Json> {
@@ -65,6 +67,13 @@ async function dispatchAction(a: Action, c: DispatchCtx): Promise<void> {
       break;
     }
     case "emit": {
+      if (a.event) {
+        c.emitted.push({
+          node: c.currentEvent.node,
+          name: a.event,
+          payload: (a.args?.payload as Record<string, Json> | undefined) ?? c.currentEvent.payload,
+        });
+      }
       c.traces.push({ event: "action", detail: { do: "emit", event: a.event } });
       break;
     }
@@ -121,17 +130,31 @@ export async function reduce(
     expr,
     data: store.snapshot(),
     bindings: { event: event.payload ?? {} },
+    emitted: [],
+    currentEvent: event,
   };
 
-  const node = findNode(doc.root, event.node);
-  const actions = node?.edges?.on?.[event.name] ?? [];
-  for (const a of actions) {
-    if (a.guard && !truthy(await expr.eval(a.guard, c.data, c.bindings))) continue;
-    await dispatchAction(a, c);
-  }
+  const queue: GupEvent[] = [event];
+  while (queue.length > 0) {
+    const current = queue.shift() as GupEvent;
+    c.currentEvent = current;
+    c.bindings = { event: current.payload ?? {} };
 
-  for (const m of doc.machines ?? []) {
-    await reduceMachine(m, store, event, c);
+    const node = findNode(doc.root, current.node);
+    const actions = node?.edges?.on?.[current.name] ?? [];
+    for (const a of actions) {
+      if (a.guard && !truthy(await expr.eval(a.guard, c.data, c.bindings))) continue;
+      await dispatchAction(a, c);
+    }
+
+    for (const m of doc.machines ?? []) {
+      await reduceMachine(m, store, current, c);
+    }
+
+    if (c.emitted.length > 0) {
+      queue.push(...c.emitted);
+      c.emitted.length = 0;
+    }
   }
 
   return { ops: c.ops, traces: c.traces };

@@ -94,3 +94,42 @@ test("validate-before-commit: a malformed document is rejected", () => {
   const bad = { gup: "0.1", type: "document", payload: { root: { id: "x" } } };
   assert.throws(() => new Kernel(manifest, bad as any), /Invalid GUP document/);
 });
+
+test("emit: an emitted event is reduced and can drive a machine transition", async () => {
+  const emitDoc = {
+    gup: "0.1",
+    type: "document",
+    payload: {
+      root: {
+        capability: "board",
+        id: "board-1",
+        edges: {
+          on: {
+            tap: [{ do: "emit", event: "submit" }],
+          },
+        },
+      },
+      machines: [
+        {
+          id: "approval",
+          context: "computed_values.approval",
+          initial: "draft",
+          states: {
+            draft: { on: { submit: "pending" } },
+            pending: {},
+          },
+        },
+      ],
+    },
+  };
+
+  const k = new Kernel(manifest, emitDoc as any);
+  k.init();
+
+  const patch = await k.dispatch({ node: "board-1", name: "tap" });
+
+  assert.deepEqual(patch.ops, [
+    { op: "set", path: "computed_values.approval.state", value: "pending" },
+  ]);
+  assert.deepEqual((k.state() as any).computed_values.approval, { state: "pending" });
+});
