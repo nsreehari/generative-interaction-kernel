@@ -21,8 +21,10 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
    open whether it is an independent spec-conformant reimplementation (verified by the same
    fixture) or a shared portable core compiled to both targets.
 
-3. **First renderer.** Which `RenderAdapter` to build first for the live-cards profile — React
-   (matches the existing frontend) or WinUI/Reactor — to demonstrate the protocol end to end.
+3. **Second render adapter.** React is the first render adapter
+   ([ADR-0008](decisions/ADR-0008-first-render-adapter-react.md)). Still open: the WinUI/Reactor
+   adapter, which also requires the second (C#) kernel core (item 2), and how render equivalence
+   across adapters is verified.
 
 4. **Manifest generation flow.** How a profile *publishes* its `manifest` — derived automatically
    from the DSL schema + registry, hand-authored, or a hybrid. Determines whether the manifest is a

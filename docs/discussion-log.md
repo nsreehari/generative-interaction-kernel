@@ -178,7 +178,19 @@ build) is a profile deployment concern. The kernel instead depends on patched `j
 async Orchestrator seam. The golden reduction contract and behavioral cases (gate visibility,
 guard-skipped invoke, machine transition, rev sequencing, traces, malformed-document rejection) all
 pass, alongside typecheck and schema conformance.
+## 15. Phase 2 — first React render adapter (end-to-end loop)
 
+The protocol was driven as a **live UI**: a first `RenderAdapter` in `adapters/react/`
+([ADR-0008](decisions/ADR-0008-first-render-adapter-react.md)). A `ComponentRegistry` maps
+capability → React component with a graceful fallback; a pure `renderNode` turns a `ResolvedNode`
+tree into elements (invisible nodes render nothing, read-bound values arrive as props); a
+framework-agnostic `GenUIController` runs the async `init → resolve → dispatch → re-resolve` loop; a
+thin `useGenUI`/`GenUIRoot` binding wires it into React. Default live-cards components
+(`board`/`metric`/`table`/`actions`) emit `rowSelect`/`tap`. Verified headlessly (no browser):
+static-markup render of the seeded fixture, the gated `Approve` button appearing only after a row is
+selected, component handlers calling `emit` with the right name/payload, and the fallback view for a
+missing component — renderers never touch the store, only emit events. This resolved open item #3
+(first renderer = React).
 ---
 
 ## Index of alternatives explicitly set aside

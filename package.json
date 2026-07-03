@@ -7,15 +7,20 @@
   "scripts": {
     "conformance": "node schemas/validate.mjs",
     "test:kernel": "node --import tsx --test kernel/test/**/*.test.ts",
-    "typecheck": "tsc -p kernel/tsconfig.json --noEmit",
-    "test": "npm run conformance && npm run typecheck && npm run test:kernel"
+    "test:react": "node --import tsx --test adapters/react/test/**/*.test.tsx",
+    "typecheck": "tsc -p kernel/tsconfig.json --noEmit && tsc -p adapters/react/tsconfig.json --noEmit",
+    "test": "npm run conformance && npm run typecheck && npm run test:kernel && npm run test:react"
   },
   "dependencies": {
     "ajv": "^8.17.1",
-    "jsonata": "^2.2.1"
+    "jsonata": "^2.2.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3"
   }

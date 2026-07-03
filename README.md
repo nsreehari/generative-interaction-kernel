@@ -11,8 +11,8 @@ domain- and framework-specific to pluggable providers.
 ## Status
 
 Early implementation. The architecture and the wire protocol (**GenUI Protocol / GUP**) are
-defined; the normative schemas + golden conformance fixture and a **reference kernel** (Phase 1)
-are built and green.
+defined; the normative schemas + golden conformance fixture, a **reference kernel** (Phase 1), and a
+first **React render adapter** (Phase 2) are built and green.
 
 | Decision | Outcome |
 |---|---|
@@ -22,6 +22,7 @@ are built and green.
 | State | **Stateless events** by default; sequencing via a pure reducer + state-as-data |
 | Delivery | **Protocol + kernel** (portable artifacts), not an in-process SDK |
 | Reference kernel | **TypeScript/JS first**, JSONata as the default `ExpressionProvider` |
+| First render adapter | **React** (`adapters/react/`), infra-agnostic per ADR-0006 |
 
 ## What this is not
 
@@ -52,11 +53,17 @@ genui-platform/
       ADR-0005-kernel-placement.md
       ADR-0006-render-adapter-infra-agnostic.md
       ADR-0007-reference-kernel-implementation.md
+      ADR-0008-first-render-adapter-react.md
   schemas/                      ← normative GUP JSON Schemas + golden conformance fixture
   kernel/                       ← Phase 1 reference kernel (TypeScript)
     src/                        ← types, providers, interpreter, reducer, kernel
     test/                       ← golden fixture executed through the kernel
     tsconfig.json
+  adapters/
+    react/                      ← Phase 2 React render adapter
+      src/                      ← registry, renderer, controller, live-cards components, hook
+      test/                     ← tree render, gate flip, event wiring, fallback
+      tsconfig.json
 ```
 
 ## Core idea in one diagram

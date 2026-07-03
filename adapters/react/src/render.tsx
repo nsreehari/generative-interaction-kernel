@@ -1,0 +1,30 @@
+// Pure renderer: a ResolvedNode tree -> React elements.
+// Honors `visible` (invisible nodes render nothing) and `fallback` (kernel-unknown
+// capability, or a capability with no registered component, uses the fallback view).
+
+import { createElement, type ReactNode } from "react";
+import type { ResolvedNode } from "../../../kernel/src/types";
+import type { ComponentRegistry } from "./registry";
+
+export type EmitFn = (
+  nodeId: string,
+  name: string,
+  payload?: Record<string, unknown>
+) => void;
+
+export function renderNode(
+  node: ResolvedNode,
+  registry: ComponentRegistry,
+  emit: EmitFn
+): ReactNode {
+  if (!node.visible) return null;
+
+  const View =
+    (node.fallback ? undefined : registry.get(node.capability)) ?? registry.fallback;
+
+  const children = node.children.map((child) => renderNode(child, registry, emit));
+  const boundEmit = (name: string, payload?: Record<string, unknown>) =>
+    emit(node.id, name, payload);
+
+  return createElement(View, { key: node.id, node, emit: boundEmit, children });
+}

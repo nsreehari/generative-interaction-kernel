@@ -142,3 +142,12 @@ kernel interprets a `document` (`gate → capability → props → children`), a
 an `event` (`assign`/`derive`/`emit` plus declared machine transitions), enforces
 validate-before-commit, and emits a `patch` byte-for-byte equal to the fixture's expected patch.
 `invoke`/`navigate`/`confirm` are traced and deferred to the Orchestrator seam (Phase 3).
+
+## Reference render adapter (React)
+
+A first `RenderAdapter` (`adapters/react/`; see
+[ADR-0008](decisions/ADR-0008-first-render-adapter-react.md)) closes the loop end to end: it renders
+the resolved `document` tree to React elements (honoring `gate` visibility, read-bound props, and a
+graceful fallback for unknown capabilities), and emits `event`s back through a controller that
+dispatches to the kernel and re-resolves. Renderers never patch the store — they only emit events —
+upholding the protocol invariant.

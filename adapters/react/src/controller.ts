@@ -1,0 +1,56 @@
+// Framework-agnostic controller that runs the kernel's async loop:
+// init -> resolve -> (on event) dispatch -> re-resolve -> notify.
+// The React binding is a thin layer over this; the loop itself is testable headlessly.
+
+import type { Kernel } from "../../../kernel/src/kernel";
+import type { Patch, ResolvedNode } from "../../../kernel/src/types";
+
+export type TreeListener = (tree: ResolvedNode) => void;
+
+export class GenUIController {
+  private tree: ResolvedNode | null = null;
+  private lastPatch: Patch | null = null;
+  private readonly listeners = new Set<TreeListener>();
+
+  constructor(private readonly kernel: Kernel) {}
+
+  /** Seed machine state and produce the first resolved tree. */
+  async start(): Promise<ResolvedNode> {
+    this.kernel.init();
+    return this.refresh();
+  }
+
+  getTree(): ResolvedNode | null {
+    return this.tree;
+  }
+
+  getLastPatch(): Patch | null {
+    return this.lastPatch;
+  }
+
+  subscribe(listener: TreeListener): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  /** Dispatch a behavior event, then re-resolve and notify subscribers. */
+  async emit(
+    node: string,
+    name: string,
+    payload?: Record<string, unknown>
+  ): Promise<ResolvedNode> {
+    this.lastPatch = await this.kernel.dispatch({
+      node,
+      name,
+      payload: payload as Record<string, never> | undefined,
+    });
+    return this.refresh();
+  }
+
+  private async refresh(): Promise<ResolvedNode> {
+    const tree = await this.kernel.resolve();
+    this.tree = tree;
+    for (const listener of this.listeners) listener(tree);
+    return tree;
+  }
+}
