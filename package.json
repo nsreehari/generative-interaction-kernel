@@ -1,13 +1,22 @@
 {
-  "name": "genui-platform-schemas",
+  "name": "genui-platform",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Normative GenUI Protocol (GUP) wire schemas and conformance fixtures.",
+  "description": "GenUI Platform: GUP wire schemas, conformance fixtures, and the reference kernel.",
   "scripts": {
-    "conformance": "node schemas/validate.mjs"
+    "conformance": "node schemas/validate.mjs",
+    "test:kernel": "node --import tsx --test kernel/test/**/*.test.ts",
+    "typecheck": "tsc -p kernel/tsconfig.json --noEmit",
+    "test": "npm run conformance && npm run typecheck && npm run test:kernel"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "jsonata": "^2.2.1"
   },
   "devDependencies": {
-    "ajv": "^8.17.1"
+    "@types/node": "^20.14.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
   }
 }

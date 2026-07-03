@@ -131,5 +131,14 @@ sequenceDiagram
 
 Pin the five messages as **normative, versioned JSON Schemas** plus a **golden conformance
 fixture** (one manifest, one document, one event, the expected patch). Every kernel, renderer, and
-orchestrator is then written *against* those schemas and verified by the fixture. Not yet built;
-tracked in the repo `schemas/` directory.
+orchestrator is then written *against* those schemas and verified by the fixture. Built and green in
+the repo `schemas/` directory.
+
+## Reference kernel (executable)
+
+The golden fixture is not only schema-valid — it is **executed** by a reference kernel
+(`kernel/`, TypeScript; see [ADR-0007](decisions/ADR-0007-reference-kernel-implementation.md)). The
+kernel interprets a `document` (`gate → capability → props → children`), applies the pure reducer to
+an `event` (`assign`/`derive`/`emit` plus declared machine transitions), enforces
+validate-before-commit, and emits a `patch` byte-for-byte equal to the fixture's expected patch.
+`invoke`/`navigate`/`confirm` are traced and deferred to the Orchestrator seam (Phase 3).

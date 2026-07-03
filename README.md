@@ -10,8 +10,9 @@ domain- and framework-specific to pluggable providers.
 
 ## Status
 
-Early design. The architecture and the wire protocol (**GenUI Protocol / GUP**) have been
-defined; the normative schemas and reference implementation are not yet built.
+Early implementation. The architecture and the wire protocol (**GenUI Protocol / GUP**) are
+defined; the normative schemas + golden conformance fixture and a **reference kernel** (Phase 1)
+are built and green.
 
 | Decision | Outcome |
 |---|---|
@@ -20,6 +21,7 @@ defined; the normative schemas and reference implementation are not yet built.
 | Interactions | A first-class **behavior edge**, not a second kernel |
 | State | **Stateless events** by default; sequencing via a pure reducer + state-as-data |
 | Delivery | **Protocol + kernel** (portable artifacts), not an in-process SDK |
+| Reference kernel | **TypeScript/JS first**, JSONata as the default `ExpressionProvider` |
 
 ## What this is not
 
@@ -49,7 +51,12 @@ genui-platform/
       ADR-0004-protocol-over-sdk.md
       ADR-0005-kernel-placement.md
       ADR-0006-render-adapter-infra-agnostic.md
+      ADR-0007-reference-kernel-implementation.md
   schemas/                      ← normative GUP JSON Schemas + golden conformance fixture
+  kernel/                       ← Phase 1 reference kernel (TypeScript)
+    src/                        ← types, providers, interpreter, reducer, kernel
+    test/                       ← golden fixture executed through the kernel
+    tsconfig.json
 ```
 
 ## Core idea in one diagram

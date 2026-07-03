@@ -159,6 +159,26 @@ is not bent to fit the profile. Remaining open decisions were parked in
 normative GUP draft-07 schemas + envelope, and a golden conformance fixture drawn from live-cards,
 verified by a runner (`schemas/validate.mjs`) — all checks pass.
 
+## 14. Phase 1 — the reference kernel (executable protocol)
+
+The protocol was made **executable**: a small, pure TypeScript kernel (`kernel/`) that interprets a
+`document` and reduces `event`s to `patch`es, verified by running the golden fixture (not just
+validating it). Scope: interpreter (`gate → capability → props(read) → children`); pure reducer
+(`assign`, `derive`, `emit`; declared machines via `reduce(state, event) → state`;
+`invoke`/`navigate`/`confirm` traced and deferred to Phase 3); in-memory `StateModel`, a
+`JsonataExpressionProvider`, and a manifest-derived `CapabilityRegistry`; validate-before-commit via
+Ajv; an observability sink. Two decisions were recorded in
+[ADR-0007](decisions/ADR-0007-reference-kernel-implementation.md): **TypeScript/JS first** (matches
+the React renderer target and embedded placement) and **JSONata as the default `ExpressionProvider`**.
+During implementation, a security review rejected reusing the live-cards profile's vendored
+`jsonata-sync.cjs`: it is a profile-owned artifact (inverts the kernel→profile dependency), it is
+JSONata v1.x inside a **critical** prototype-pollution advisory, and its only rationale (a sync UMD
+build) is a profile deployment concern. The kernel instead depends on patched `jsonata@^2.2.1`
+(0 vulnerabilities); its async `evaluate` makes the kernel eval path async, which aligns with the
+async Orchestrator seam. The golden reduction contract and behavioral cases (gate visibility,
+guard-skipped invoke, machine transition, rev sequencing, traces, malformed-document rejection) all
+pass, alongside typecheck and schema conformance.
+
 ---
 
 ## Index of alternatives explicitly set aside
@@ -173,3 +193,4 @@ verified by a runner (`schemas/validate.mjs`) — all checks pass.
 | In-process SDK delivery | Language-bound; can't drive multiple frameworks or an out-of-process orchestrator. |
 | Kernel-side `await` for async | Forces the kernel to own time; async is modeled as machine states instead. |
 | Renderer reads/writes the store or owns transport | Bypasses the reducer, breaks validate-before-commit, and couples UI to infrastructure. |
+| Vendoring the profile's sync JSONata build into the kernel | Inverts the kernel→profile dependency; ships a v1.x build inside a critical prototype-pollution advisory; sync was only a profile deployment concern. |

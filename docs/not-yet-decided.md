@@ -5,18 +5,21 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
 
 > Resolved since the last replay: **first onboarding profile** → live-cards
 > ([04-first-onboarding-profile.md](04-first-onboarding-profile.md)); **kernel placement** → hybrid,
-> primarily embedded ([ADR-0005](decisions/ADR-0005-kernel-placement.md)).
+> primarily embedded ([ADR-0005](decisions/ADR-0005-kernel-placement.md)); **reference kernel
+> implementation** → TypeScript/JS first, JSONata (v2, patched) as the default `ExpressionProvider`
+> ([ADR-0007](decisions/ADR-0007-reference-kernel-implementation.md)).
 
 ## Open
 
-1. **Expression dialect.** The `ExpressionProvider` language is pluggable, but the reference kernel
-   needs a default. Candidate: **JSONata** (used by the live-cards profile). Decide whether JSONata
-   is the reference default and whether a smaller safe subset is mandated for agent-authored guards.
+1. **Safe expression subset.** JSONata is the reference default `ExpressionProvider`
+   ([ADR-0007](decisions/ADR-0007-reference-kernel-implementation.md)). Still open: whether a
+   smaller, sandboxed subset is *mandated* for agent-authored guards/gates (e.g. no function
+   definitions, no `$eval`) versus relying on the provider seam per profile.
 
-2. **Reference kernel core: language & runtime.** Embedded placement means the core runs per
-   renderer runtime (JS **and** C#). Decide the first target (likely JS/React) and whether the two
-   cores share one portable implementation (e.g. a single core compiled to multiple targets) or are
-   independent spec-conformant reimplementations verified by the conformance fixture.
+2. **Second kernel core (C#).** The TypeScript/JS core exists (Phase 1) and is verified by the
+   golden fixture. Embedded placement still implies a second core for the C#/WinUI renderer runtime;
+   open whether it is an independent spec-conformant reimplementation (verified by the same
+   fixture) or a shared portable core compiled to both targets.
 
 3. **First renderer.** Which `RenderAdapter` to build first for the live-cards profile — React
    (matches the existing frontend) or WinUI/Reactor — to demonstrate the protocol end to end.
@@ -43,8 +46,10 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
 10. **Progressive / streaming document assembly.** Whether v0.1 supports partial documents
     materializing as they are produced by an agent, and how that is expressed on the wire.
 
-11. **Conformance suite scope.** What the conformance suite must cover beyond the single golden
-    fixture (edge cases, negative cases, reducer equivalence across kernels).
+11. **Conformance suite scope.** The Phase 1 kernel added executable cases beyond the single golden
+    fixture (gate visibility, guard-skipped invoke, machine transition, rev sequencing, trace
+    observability, validate-before-commit rejection). Still open: the full required matrix
+    (edge/negative cases) and **reducer equivalence across kernels** (JS vs a future C# core).
 
 12. **Canonical reference profile.** Whether to author a clean, minimal exemplar profile that
     *defines* the platform's ideal shape, distinct from the first onboarding profile (live-cards,

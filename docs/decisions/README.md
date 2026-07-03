@@ -11,6 +11,7 @@ rejected options were set aside, and the consequences.
 | [0004](ADR-0004-protocol-over-sdk.md) | Deliver as a protocol + kernel, not an in-process SDK | Accepted |
 | [0005](ADR-0005-kernel-placement.md) | Kernel placement: hybrid, primarily embedded | Accepted |
 | [0006](ADR-0006-render-adapter-infra-agnostic.md) | Render adapter is storage/transport/persistence agnostic | Accepted |
+| [0007](ADR-0007-reference-kernel-implementation.md) | Reference kernel implementation — TypeScript first, JSONata default | Accepted |
 
 ## Format
 
