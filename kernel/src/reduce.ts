@@ -8,6 +8,7 @@ import type {
   GupEvent,
   Json,
   Machine,
+  OrchestratorEffect,
   PatchOp,
   TraceEvent,
 } from "./types";
@@ -16,6 +17,7 @@ import type { ExpressionProvider, StateModel } from "./providers";
 export interface ReduceResult {
   ops: PatchOp[];
   traces: TraceEvent[];
+  effects: OrchestratorEffect[];
 }
 
 function truthy(v: Json): boolean {
@@ -34,11 +36,12 @@ function findNode(node: DocNode, id: string): DocNode | undefined {
 interface DispatchCtx {
   ops: PatchOp[];
   traces: TraceEvent[];
+  effects: OrchestratorEffect[];
   expr: ExpressionProvider;
   data: Record<string, Json>;
   bindings: Record<string, unknown>;
-  emitted: GupEvent[];
   currentEvent: GupEvent;
+  emitted: GupEvent[];
 }
 
 async function resolveValue(args: Record<string, Json> | undefined, c: DispatchCtx): Promise<Json> {
@@ -77,10 +80,36 @@ async function dispatchAction(a: Action, c: DispatchCtx): Promise<void> {
       c.traces.push({ event: "action", detail: { do: "emit", event: a.event } });
       break;
     }
-    case "invoke":
-    case "navigate":
+    case "invoke": {
+      c.effects.push({
+        kind: "invoke",
+        node: c.currentEvent.node,
+        tool: typeof a.args?.tool === "string" ? a.args.tool : undefined,
+        args: a.args ?? {},
+        payload: c.currentEvent.payload,
+      });
+      c.traces.push({ event: "effect", detail: { do: "invoke", tool: a.args?.tool } });
+      break;
+    }
+    case "navigate": {
+      c.effects.push({
+        kind: "navigate",
+        node: c.currentEvent.node,
+        to: a.args?.to ?? null,
+        args: a.args ?? {},
+        payload: c.currentEvent.payload,
+      });
+      c.traces.push({ event: "effect", detail: { do: "navigate", to: a.args?.to } });
+      break;
+    }
     case "confirm": {
-      c.traces.push({ event: "action", detail: { do: a.do, deferred: true } });
+      c.effects.push({
+        kind: "confirm",
+        node: c.currentEvent.node,
+        args: a.args ?? {},
+        payload: c.currentEvent.payload,
+      });
+      c.traces.push({ event: "effect", detail: { do: "confirm" } });
       break;
     }
     default: {
@@ -127,11 +156,12 @@ export async function reduce(
   const c: DispatchCtx = {
     ops: [],
     traces: [],
+    effects: [],
     expr,
     data: store.snapshot(),
     bindings: { event: event.payload ?? {} },
-    emitted: [],
     currentEvent: event,
+    emitted: [],
   };
 
   const queue: GupEvent[] = [event];
@@ -157,5 +187,5 @@ export async function reduce(
     }
   }
 
-  return { ops: c.ops, traces: c.traces };
+  return { ops: c.ops, traces: c.traces, effects: c.effects };
 }

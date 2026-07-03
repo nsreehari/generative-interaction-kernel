@@ -7,7 +7,10 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
 > ([04-first-onboarding-profile.md](04-first-onboarding-profile.md)); **kernel placement** → hybrid,
 > primarily embedded ([ADR-0005](decisions/ADR-0005-kernel-placement.md)); **reference kernel
 > implementation** → TypeScript/JS first, JSONata (v2, patched) as the default `ExpressionProvider`
-> ([ADR-0007](decisions/ADR-0007-reference-kernel-implementation.md)).
+> ([ADR-0007](decisions/ADR-0007-reference-kernel-implementation.md)); **effect execution &
+> async data** → `invoke`/`confirm`/`navigate` run as post-reduction effects via an Orchestrator
+> provider, async data modeled as machine states
+> ([ADR-0009](decisions/ADR-0009-orchestrator-effects.md)).
 
 ## Open
 
@@ -42,11 +45,15 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
 8. **ObservabilitySink format & targets.** The `trace` message shape exists; the sink targets
    (console, OpenTelemetry, ETW, file) and required trace points are not yet fixed.
 
-9. **Human-in-the-loop `confirm` UX contract.** How the `confirm` action surfaces to the user and
-   how approval/denial flows back as an event.
+9. **Human-in-the-loop `confirm` UX contract.** The `confirm` action now runs as an Orchestrator
+   effect: the Orchestrator surfaces the prompt and returns the approval/denial as a follow-up event
+   ([ADR-0009](decisions/ADR-0009-orchestrator-effects.md)). Still open: a *standard* prompt payload
+   shape, cancellation/timeout, and how denial vs. approval are conventionally named on the wire.
 
 10. **Progressive / streaming document assembly.** Whether v0.1 supports partial documents
-    materializing as they are produced by an agent, and how that is expressed on the wire.
+    materializing as they are produced by an agent, and how that is expressed on the wire. (Orchestrator
+    results already stream follow-up patches within a dispatch, but agent-side streaming of the initial
+    `document` is separate.)
 
 11. **Conformance suite scope.** The Phase 1 kernel added executable cases beyond the single golden
     fixture (gate visibility, guard-skipped invoke, machine transition, rev sequencing, trace

@@ -11,8 +11,9 @@ domain- and framework-specific to pluggable providers.
 ## Status
 
 Early implementation. The architecture and the wire protocol (**GenUI Protocol / GUP**) are
-defined; the normative schemas + golden conformance fixture, a **reference kernel** (Phase 1), and a
-first **React render adapter** (Phase 2) are built and green.
+defined; the normative schemas + golden conformance fixture, a **reference kernel** (Phase 1), a
+first **React render adapter** (Phase 2), and the **Orchestrator seam** for effectful actions
+(Phase 3) are built and green.
 
 | Decision | Outcome |
 |---|---|
@@ -23,6 +24,7 @@ first **React render adapter** (Phase 2) are built and green.
 | Delivery | **Protocol + kernel** (portable artifacts), not an in-process SDK |
 | Reference kernel | **TypeScript/JS first**, JSONata as the default `ExpressionProvider` |
 | First render adapter | **React** (`adapters/react/`), infra-agnostic per ADR-0006 |
+| Effectful actions | **Orchestrator seam**: `invoke`/`confirm`/`navigate` as post-reduction effects; async data as machine states |
 
 ## What this is not
 
@@ -54,10 +56,11 @@ genui-platform/
       ADR-0006-render-adapter-infra-agnostic.md
       ADR-0007-reference-kernel-implementation.md
       ADR-0008-first-render-adapter-react.md
+      ADR-0009-orchestrator-effects.md
   schemas/                      ← normative GUP JSON Schemas + golden conformance fixture
   kernel/                       ← Phase 1 reference kernel (TypeScript)
     src/                        ← types, providers, interpreter, reducer, kernel
-    test/                       ← golden fixture executed through the kernel
+    test/                       ← golden fixture + orchestrator effects executed through the kernel
     tsconfig.json
   adapters/
     react/                      ← Phase 2 React render adapter

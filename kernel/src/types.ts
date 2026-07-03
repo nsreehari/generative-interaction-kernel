@@ -80,6 +80,25 @@ export interface CapabilityDescriptor {
   slots?: string[];
 }
 
+// An external effect requested by the reducer (invoke/navigate/confirm). The kernel
+// hands these to the Orchestrator provider AFTER the pure reduction settles; the
+// reducer itself never performs them, preserving the pure-reducer law.
+export interface OrchestratorEffect {
+  kind: "invoke" | "confirm" | "navigate";
+  node: string;
+  tool?: string;
+  to?: Json;
+  args: Record<string, Json>;
+  payload?: Record<string, Json>;
+}
+
+// What the Orchestrator returns: direct store deltas and/or follow-up events
+// (e.g. a resolved async result driving a machine transition).
+export interface OrchestratorResult {
+  ops?: PatchOp[];
+  events?: GupEvent[];
+}
+
 export interface ManifestPayload {
   version: string;
   expression?: string;
@@ -89,7 +108,7 @@ export interface ManifestPayload {
 }
 
 export interface TraceEvent {
-  event: "resolve" | "fallback" | "action" | "transition" | "validate";
+  event: "resolve" | "fallback" | "action" | "transition" | "validate" | "effect";
   node?: string;
   detail?: Record<string, unknown>;
   ts?: number;

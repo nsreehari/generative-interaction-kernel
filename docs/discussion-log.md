@@ -191,6 +191,23 @@ static-markup render of the seeded fixture, the gated `Approve` button appearing
 selected, component handlers calling `emit` with the right name/payload, and the fallback view for a
 missing component — renderers never touch the store, only emit events. This resolved open item #3
 (first renderer = React).
+
+## 16. Phase 3 — Orchestrator seam (invoke/confirm/navigate + async data)
+
+The three effectful actions were made real without breaking reducer purity
+([ADR-0009](decisions/ADR-0009-orchestrator-effects.md)). The pure reducer now emits, alongside
+`ops`/`traces`, a list of **`OrchestratorEffect`s** (it still performs nothing). After reduction the
+kernel hands each effect to an **Orchestrator** provider (`invoke`/`confirm`/`navigate`), which owns
+time and I/O and returns store `ops` and/or follow-up `event`s; the kernel applies them and
+**recursively settles** follow-ups — **one dispatch = one rev**, a depth bound guarding runaway
+chains. **Async data is modeled as machine states** (`idle → loading → ready`): the triggering event
+moves the machine to `loading`, the Orchestrator's `resolved` event moves it to `ready`. `emit` stays
+internal to the reducer queue; only these three cross the boundary. The default `NullOrchestrator`
+traces unhandled effects and changes nothing. Verified by four new kernel tests: an async fetch
+settling as a store delta + `idle→loading→ready` in one dispatch; a HITL `confirm` returning the
+human's follow-up event that assigns status; a `navigate` reaching routing without touching the store;
+and an unhandled invoke being safe. This resolved the "where does awaiting live" question and narrowed
+open items #9 (confirm UX) and #10 (streaming).
 ---
 
 ## Index of alternatives explicitly set aside

@@ -141,7 +141,8 @@ The golden fixture is not only schema-valid — it is **executed** by a referenc
 kernel interprets a `document` (`gate → capability → props → children`), applies the pure reducer to
 an `event` (`assign`/`derive`/`emit` plus declared machine transitions), enforces
 validate-before-commit, and emits a `patch` byte-for-byte equal to the fixture's expected patch.
-`invoke`/`navigate`/`confirm` are traced and deferred to the Orchestrator seam (Phase 3).
+`invoke`/`navigate`/`confirm` are surfaced as **effects** the kernel runs against the Orchestrator
+provider after reduction (see below).
 
 ## Reference render adapter (React)
 
@@ -151,3 +152,15 @@ the resolved `document` tree to React elements (honoring `gate` visibility, read
 graceful fallback for unknown capabilities), and emits `event`s back through a controller that
 dispatches to the kernel and re-resolves. Renderers never patch the store — they only emit events —
 upholding the protocol invariant.
+
+## Reference Orchestrator (effects)
+
+`invoke`/`confirm`/`navigate` are effectful, so the pure reducer only *records* them; the kernel
+runs them against an **Orchestrator** provider after reduction (see
+[ADR-0009](decisions/ADR-0009-orchestrator-effects.md)). The Orchestrator owns time and I/O and
+returns store `ops` and/or follow-up `event`s, which the kernel applies and **settles within the same
+dispatch** — one `event` in, one `rev` out, regardless of fan-out. **Async data is modeled as machine
+states** (`idle → loading → ready`): the triggering event moves the machine to `loading`; the
+Orchestrator's follow-up event moves it to `ready`. The default `NullOrchestrator` performs nothing,
+so a document referencing tools runs harmlessly before wiring exists. `emit` stays internal to the
+reducer's queue; only `invoke`/`confirm`/`navigate` cross the Orchestrator boundary.

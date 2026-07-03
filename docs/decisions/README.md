@@ -13,6 +13,7 @@ rejected options were set aside, and the consequences.
 | [0006](ADR-0006-render-adapter-infra-agnostic.md) | Render adapter is storage/transport/persistence agnostic | Accepted |
 | [0007](ADR-0007-reference-kernel-implementation.md) | Reference kernel implementation — TypeScript first, JSONata default | Accepted |
 | [0008](ADR-0008-first-render-adapter-react.md) | First render adapter — React | Accepted |
+| [0009](ADR-0009-orchestrator-effects.md) | Orchestrator — invoke/confirm/navigate as post-reduction effects | Accepted |
 
 ## Format
 

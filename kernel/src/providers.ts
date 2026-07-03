@@ -7,6 +7,8 @@ import type {
   PatchOp,
   ManifestPayload,
   CapabilityDescriptor,
+  OrchestratorEffect,
+  OrchestratorResult,
 } from "./types";
 
 // ---- path helpers on a namespaced snapshot -------------------------------
@@ -138,3 +140,18 @@ export class ManifestRegistry implements CapabilityRegistry {
     return this.caps[type];
   }
 }
+
+// ---- Orchestrator --------------------------------------------------------
+// The seam where a document's invoke/confirm/navigate actions reach out to do
+// real work. It owns time and side effects (tool calls, HITL approval, routing);
+// the kernel and reducer stay pure. Any method may be omitted; unhandled effects
+// are traced and produce no store change.
+
+export interface Orchestrator {
+  invoke?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>;
+  confirm?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>;
+  navigate?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>;
+}
+
+/** Default no-op orchestrator: effects are traced but perform nothing. */
+export class NullOrchestrator implements Orchestrator {}
