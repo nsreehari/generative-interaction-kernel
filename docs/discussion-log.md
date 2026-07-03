@@ -127,8 +127,25 @@ are valid only against a declared manifest; transport- and placement-agnostic). 
 ## 10. This repository
 
 Created to capture the design and drive the first concrete artifact (normative GUP schemas + a
-conformance fixture). Open decision: kernel placement (server-side vs embedded) —
-[ADR-0005](decisions/ADR-0005-kernel-placement.md).
+conformance fixture).
+
+## 11. Kernel placement — resolved
+
+**Options:** (A) server-side kernel with thin renderers; (B) embedded kernel per renderer runtime.
+
+**Chosen: hybrid, primarily embedded.** Because the users are **both agents and humans** and agents
+*generate* the UX by streaming documents, materialization and reduction must happen next to the
+human for interaction to feel live; a server kernel is retained only as an optional authority /
+reconciliation point for consequential actions and shared state. Accepted tradeoff: the (small,
+pure) kernel core must run in each renderer runtime. Security note: embedded reduce is a latency
+optimization, not a trust boundary. → [ADR-0005](decisions/ADR-0005-kernel-placement.md).
+
+## 12. Render purity — storage/transport are not the renderer's concern
+
+Raised: *why should rendering be concerned with storage/transport semantics?* **It should not.** The
+`RenderAdapter` contract is strictly *resolved nodes + patches → events*; persistence, storage, and
+transport live behind the kernel as providers. Embedded co-location is a deployment fact, not an API
+coupling. → [ADR-0006](decisions/ADR-0006-render-adapter-infra-agnostic.md).
 
 ---
 
@@ -143,3 +160,4 @@ conformance fixture). Open decision: kernel placement (server-side vs embedded) 
 | Renderer patches the store directly | Breaks validate-before-commit and the pure-reducer law. |
 | In-process SDK delivery | Language-bound; can't drive multiple frameworks or an out-of-process orchestrator. |
 | Kernel-side `await` for async | Forces the kernel to own time; async is modeled as machine states instead. |
+| Renderer reads/writes the store or owns transport | Bypasses the reducer, breaks validate-before-commit, and couples UI to infrastructure. |

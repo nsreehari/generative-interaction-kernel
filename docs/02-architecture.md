@@ -103,6 +103,10 @@ kernel** — it is the **Manifest**. Interaction *shape* stays in the kernel; in
 4. **Deterministic resolution order** — `gate → capability → props → read → children → render`.
 5. **Graceful fallback** — an unknown capability resolves to a safe placeholder, never a crash.
 6. **Unified graph** — data edges and behavior edges resolve against the same Store.
+7. **Render purity** — the `RenderAdapter` consumes only *resolved nodes + patches* and emits only
+   *events*; it has no knowledge of storage, persistence, or transport. Those are kernel-side
+   providers. Co-location of an embedded kernel with a renderer is a deployment fact, not an API
+   coupling. (See [ADR-0006](decisions/ADR-0006-render-adapter-infra-agnostic.md).)
 
 ## Runtime pipeline
 
