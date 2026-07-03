@@ -164,3 +164,15 @@ states** (`idle → loading → ready`): the triggering event moves the machine 
 Orchestrator's follow-up event moves it to `ready`. The default `NullOrchestrator` performs nothing,
 so a document referencing tools runs harmlessly before wiring exists. `emit` stays internal to the
 reducer's queue; only `invoke`/`confirm`/`navigate` cross the Orchestrator boundary.
+
+## Reference transport (the wire, exercised)
+
+A `TransportProvider` seam (`kernel/transport.ts`; see
+[ADR-0010](decisions/ADR-0010-transport-seam.md)) carries the five messages as **GUP envelopes**
+across a boundary — `send(message)` / `subscribe(listener)`, nothing kernel-specific. A
+`KernelTransportHost` binds a kernel to a transport: on `start()` it publishes `manifest → document →`
+init `patch`, then for each inbound `event` it dispatches and sends back the resulting `patch`
+(inbound dispatch is serialized so `rev` stays monotonic; non-`event` messages are ignored). A
+reference `createInMemoryTransportPair()` exercises the full *serialize → deliver → deserialize* loop
+headlessly, proving ADR-0004 (protocol, not SDK) without a network. Concrete network bindings
+(SSE/WebSocket/stdio) reuse this exact seam.

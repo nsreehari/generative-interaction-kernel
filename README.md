@@ -12,8 +12,8 @@ domain- and framework-specific to pluggable providers.
 
 Early implementation. The architecture and the wire protocol (**GenUI Protocol / GUP**) are
 defined; the normative schemas + golden conformance fixture, a **reference kernel** (Phase 1), a
-first **React render adapter** (Phase 2), and the **Orchestrator seam** for effectful actions
-(Phase 3) are built and green.
+first **React render adapter** (Phase 2), the **Orchestrator seam** for effectful actions
+(Phase 3), and a **transport seam** carrying GUP across a boundary (Phase 4) are built and green.
 
 | Decision | Outcome |
 |---|---|
@@ -25,6 +25,7 @@ first **React render adapter** (Phase 2), and the **Orchestrator seam** for effe
 | Reference kernel | **TypeScript/JS first**, JSONata as the default `ExpressionProvider` |
 | First render adapter | **React** (`adapters/react/`), infra-agnostic per ADR-0006 |
 | Effectful actions | **Orchestrator seam**: `invoke`/`confirm`/`navigate` as post-reduction effects; async data as machine states |
+| Transport | **Transport seam**: GUP envelopes over `TransportProvider`; in-memory reference pair + `KernelTransportHost` |
 
 ## What this is not
 
@@ -57,10 +58,11 @@ genui-platform/
       ADR-0007-reference-kernel-implementation.md
       ADR-0008-first-render-adapter-react.md
       ADR-0009-orchestrator-effects.md
+      ADR-0010-transport-seam.md
   schemas/                      ← normative GUP JSON Schemas + golden conformance fixture
   kernel/                       ← Phase 1 reference kernel (TypeScript)
-    src/                        ← types, providers, interpreter, reducer, kernel
-    test/                       ← golden fixture + orchestrator effects executed through the kernel
+    src/                        ← types, providers, interpreter, reducer, kernel, transport
+    test/                       ← golden fixture + orchestrator effects + transport round-trip
     tsconfig.json
   adapters/
     react/                      ← Phase 2 React render adapter

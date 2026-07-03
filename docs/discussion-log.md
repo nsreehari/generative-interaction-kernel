@@ -208,6 +208,21 @@ settling as a store delta + `idle→loading→ready` in one dispatch; a HITL `co
 human's follow-up event that assigns status; a `navigate` reaching routing without touching the store;
 and an unhandled invoke being safe. This resolved the "where does awaiting live" question and narrowed
 open items #9 (confirm UX) and #10 (streaming).
+
+## 17. Phase 4 — transport seam (GUP across a boundary)
+
+The "protocol, not SDK" bet ([ADR-0004](decisions/ADR-0004-protocol-over-sdk.md)) was finally
+exercised across a boundary ([ADR-0010](decisions/ADR-0010-transport-seam.md)). A minimal duplex
+`TransportProvider` (`send`/`subscribe`) moves whole **GUP envelopes**; the five messages got concrete
+types (`GupMessage`) and an `envelope(type, payload)` helper so both ends share one serialized shape.
+A `KernelTransportHost` binds a kernel to a transport: on `start()` it publishes `manifest → document
+→` init `patch`, then dispatches each inbound `event` and sends the resulting `patch` back — inbound
+dispatch **serialized through a promise queue** for monotonic `rev`, non-`event` messages ignored (no
+echo loop). A reference `createInMemoryTransportPair()` runs the full serialize→deliver→deserialize
+loop headlessly. Two tests: a round-trip (`rowSelect` → `card_data.selected` patch at rev 1) and
+post-`stop()` inertness. The renderer stays a pure event-emitter/patch-consumer — it never sees the
+kernel, only the transport. This narrowed open item #7 (transport bindings: in-memory reference done;
+SSE/WebSocket/stdio + reconnection/replay still open).
 ---
 
 ## Index of alternatives explicitly set aside

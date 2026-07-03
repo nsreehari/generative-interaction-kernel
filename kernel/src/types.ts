@@ -116,6 +116,52 @@ export interface TraceEvent {
 
 export type TraceSink = (t: TraceEvent) => void;
 
+export const GUP_VERSION = "0.1";
+
+export interface ManifestMessage {
+  gup: typeof GUP_VERSION;
+  type: "manifest";
+  payload: ManifestPayload;
+}
+
+export interface DocumentMessage {
+  gup: typeof GUP_VERSION;
+  type: "document";
+  payload: DocumentPayload;
+}
+
+export interface PatchMessage {
+  gup: typeof GUP_VERSION;
+  type: "patch";
+  payload: Patch;
+}
+
+export interface EventMessage {
+  gup: typeof GUP_VERSION;
+  type: "event";
+  payload: GupEvent;
+}
+
+export interface TraceMessage {
+  gup: typeof GUP_VERSION;
+  type: "trace";
+  payload: TraceEvent;
+}
+
+export type GupMessage =
+  | ManifestMessage
+  | DocumentMessage
+  | PatchMessage
+  | EventMessage
+  | TraceMessage;
+
+export function envelope<TType extends GupMessage["type"], TPayload>(
+  type: TType,
+  payload: TPayload
+): { gup: typeof GUP_VERSION; type: TType; payload: TPayload } {
+  return { gup: GUP_VERSION, type, payload };
+}
+
 export interface ResolvedNode {
   capability: string;
   id: string;

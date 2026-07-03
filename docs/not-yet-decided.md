@@ -39,8 +39,11 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
 6. **Custom action registration.** The mechanism by which a provider adds actions beyond the six
    closed families, and how those custom actions are declared in the manifest and validated.
 
-7. **Transport bindings.** The concrete transports for the first onboarding profile (SSE exists today;
-   WebSocket / stdio / in-proc for embedded). Decide the reference set.
+7. **Transport bindings.** A `TransportProvider` seam plus an in-memory reference pair and
+   `KernelTransportHost` now carry GUP envelopes across a boundary
+   ([ADR-0010](decisions/ADR-0010-transport-seam.md)). Still open: the concrete *network* transports
+   for the first onboarding profile (SSE exists in the profile today; WebSocket / stdio / in-proc for
+   embedded), plus reconnection/replay from a known `rev`.
 
 8. **ObservabilitySink format & targets.** The `trace` message shape exists; the sink targets
    (console, OpenTelemetry, ETW, file) and required trace points are not yet fixed.
