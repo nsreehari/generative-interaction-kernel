@@ -18,6 +18,7 @@ rejected options were set aside, and the consequences.
 | [0011](ADR-0011-client-runtime.md) | Client runtime — interpret + state replica on the renderer side | Accepted |
 | [0012](ADR-0012-reconnection.md) | Reconnection — broker host with a patch log, resume or full resync | Accepted |
 | [0013](ADR-0013-agent-authoring.md) | Agent-authoring path — typed builders, validate-before-commit, lint over throw | Accepted |
+| [0014](ADR-0014-http-sse-transport.md) | Concrete transport binding — HTTP + SSE, kept out of the portable core | Accepted |
 
 ## Format
 

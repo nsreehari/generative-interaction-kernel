@@ -43,9 +43,11 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
    `KernelTransportHost` now carry GUP envelopes across a boundary
    ([ADR-0010](decisions/ADR-0010-transport-seam.md)); the host is a broker with a patch log that
    supports reconnection via incremental replay or full resync
-   ([ADR-0012](decisions/ADR-0012-reconnection.md)). Still open: the concrete *network* transports
-   for the first onboarding profile (SSE exists in the profile today; WebSocket / stdio / in-proc for
-   embedded), conveying `fromRev` over that transport, and log persistence across host restarts.
+   ([ADR-0012](decisions/ADR-0012-reconnection.md)); and a concrete **HTTP/SSE** binding
+   (`transports/http-sse/`) carries the full protocol over a real socket, conveying `fromRev` as a
+   query param ([ADR-0014](decisions/ADR-0014-http-sse-transport.md)). Still open: additional network
+   bindings (WebSocket / stdio / in-proc for embedded), auth on the endpoints, and session/log
+   persistence across host restarts.
 
 8. **ObservabilitySink format & targets.** The `trace` message shape exists; the sink targets
    (console, OpenTelemetry, ETW, file) and required trace points are not yet fixed.

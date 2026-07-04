@@ -276,6 +276,22 @@ validates, is flagged, and renders as a fallback node without crashing; a malfor
 undeclared events/namespaces surface as warnings.
 ---
 
+## 21. Phase 8 — concrete HTTP/SSE transport binding
+
+Open item #7 still had no *real network* transport. Added `transports/http-sse/`
+([ADR-0014](decisions/ADR-0014-http-sse-transport.md)) as a separate package (not in the kernel core,
+so `node:http` never leaks into a browser client). The direction split fits SSE: host → client streams
+over `GET /gup/stream` (SSE), the single client → host message (`event`) is a `POST /gup/event`.
+Sessions correlate via an `X-GUP-Session` response header the client echoes on POSTs — no new GUP
+message. `fromRev` rides the query string (`?fromRev=N`), mapping straight onto the broker's resume
+path. The SSE framing codec (`encodeSseFrame`/`SseFrameParser`) is socket-free and unit-tested
+(byte-split frames, ignored heartbeat comments). Crucially `GenUIClient`/`KernelTransportHost` are used
+**unchanged** — only new `TransportProvider`s — which is the payoff of the seam. Verified over a real
+loopback socket: a client onboards + round-trips an event across HTTP/SSE, and a `?fromRev=1` stream
+replays only the missing patch (no manifest/document re-onboard). Narrowed #7 (concrete SSE + `fromRev`
+over the wire done; WebSocket/stdio, endpoint auth, and session/log persistence still open).
+---
+
 ## Index of alternatives explicitly set aside
 
 | Alternative | Set aside because |
@@ -295,3 +311,5 @@ undeclared events/namespaces surface as warnings.
 | Always full-resync on reconnect (no patch log) | Correct but wasteful for large state / frequent reconnects; a bounded patch log makes incremental replay the common path and full resync the graceful fallback. |
 | Rejecting unknown capabilities as hard errors at author time | They are safe at runtime via graceful fallback and support forward-compatibility (targeting a capability a renderer hasn't shipped); they are lint warnings, not errors. |
 | Folding reference checks into schema validation | The schema is vocabulary-agnostic by design; reference correctness is manifest-relative and advisory, so it is a separate non-throwing lint. |
+| Putting the HTTP/SSE binding in the kernel core | Would pull `node:http` into the portable core and break a browser bundle of the kernel index; infra lives in `transports/http-sse/` with its own tsconfig. |
+| Bidirectional over the SSE stream | SSE is one-directional by design; a `POST` endpoint for the single client→host message (`event`) is simpler and idiomatic. |

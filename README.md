@@ -31,6 +31,7 @@ log that resumes a returning client or full-resyncs a late one (Phase 6) — are
 | Client runtime | **`GenUIClient`**: interpret + state replica on the renderer side; renders from wire messages, emits events back |
 | Reconnection | **Broker host + patch log**: broadcast to many connections; resume via incremental replay or full resync; idempotent client `rebind` |
 | Agent authoring | **Typed builders** over the closed grammar; `authorDocument` = validate-before-commit; `lintManifestReferences` = non-throwing warnings (unknown capabilities render as fallback) |
+| Network transport | **HTTP/SSE binding** (`transports/http-sse/`): SSE for host→client, POST for client→host, session via header, `?fromRev=N` resume; kept out of the portable core |
 
 ## What this is not
 
@@ -67,6 +68,7 @@ genui-platform/
       ADR-0011-client-runtime.md
       ADR-0012-reconnection.md
       ADR-0013-agent-authoring.md
+      ADR-0014-http-sse-transport.md
   schemas/                      ← normative GUP JSON Schemas + golden conformance fixture
   kernel/                       ← Phase 1 reference kernel (TypeScript)
     src/                        ← types, providers, interpreter, reducer, kernel, transport, client
@@ -76,6 +78,11 @@ genui-platform/
     react/                      ← Phase 2 React render adapter
       src/                      ← registry, renderer, controller, live-cards components, source-agnostic hook
       test/                     ← tree render, gate flip, event wiring, fallback, render-over-the-wire
+      tsconfig.json
+  transports/
+    http-sse/                   ← Phase 8 HTTP/SSE transport binding (kept out of the portable core)
+      src/                      ← SSE codec, server (stream + POST), client TransportProvider
+      test/                     ← codec chunking + end-to-end over a loopback socket + fromRev resume
       tsconfig.json
 ```
 

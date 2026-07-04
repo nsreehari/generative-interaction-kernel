@@ -209,3 +209,14 @@ references that are valid in shape but not backed by the manifest (unknown capab
 event, undeclared namespace). Unknown capabilities are intentionally *not* fatal — the interpreter
 resolves them to a fallback node, so forward-referencing a capability a given renderer hasn't shipped
 degrades gracefully instead of crashing.
+
+## Reference network transport (HTTP + SSE)
+
+The first *concrete* transport binding lives in `transports/http-sse/` (see
+[ADR-0014](decisions/ADR-0014-http-sse-transport.md)), deliberately outside the portable kernel core.
+SSE carries host → client messages (`manifest`/`document`/`patch`/`trace`) over `GET {path}/stream`;
+the single client → host message (`event`) is an ordinary `POST {path}/event`. The stream returns a
+session id in the `X-GUP-Session` header which the client echoes on its POSTs for correlation — no new
+GUP message. Reconnection rides the query string: `GET {path}/stream?fromRev=N` maps onto the broker's
+resume path for an incremental replay. `GenUIClient` and `KernelTransportHost` are used unchanged —
+only new `TransportProvider` implementations — which is the point of the seam.
