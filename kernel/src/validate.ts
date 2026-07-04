@@ -2,11 +2,7 @@
 // against the normative GUP document schema.
 
 import Ajv, { type ValidateFunction } from "ajv";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-
-const schemaUrl = new URL("../../schemas/document.schema.json", import.meta.url);
-const documentSchema = JSON.parse(readFileSync(fileURLToPath(schemaUrl), "utf8"));
+import documentSchema from "../../schemas/document.schema.json" with { type: "json" };
 
 const ajv = new Ajv({ allErrors: true, strict: false });
 const validateFn: ValidateFunction = ajv.compile(documentSchema);

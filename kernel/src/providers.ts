@@ -1,7 +1,10 @@
 // Provider contracts and in-memory reference implementations.
 // These are the pluggable seams; the kernel depends only on the interfaces.
 
-import { createRequire } from "module";
+// Vendored JSONata (canonical v2.2.1) — a UMD copy default-imported so it loads under both
+// Node (tsx) and the browser (Vite), with no external npm dependency and no Node `require`.
+// @ts-ignore -- vendored CommonJS bundle ships no type declarations.
+import jsonataFactory from "./vendor/jsonata.cjs";
 import type {
   Json,
   PatchOp,
@@ -11,14 +14,12 @@ import type {
   OrchestratorResult,
 } from "./types";
 
-// Vendored JSONata (canonical v2.2.1) — an owned in-repo copy, no external npm dependency.
 // See ./vendor/README.md. Exposes jsonata(expr) -> { evaluate(input, bindings?) => Promise }.
 // This is the same canonical source the C# port follows, so both kernels share one reference.
-const _require = createRequire(import.meta.url);
 interface Compiled {
   evaluate(input: unknown, bindings?: Record<string, unknown>): Promise<unknown>;
 }
-const jsonata = _require("./vendor/jsonata.cjs") as (expr: string) => Compiled;
+const jsonata = jsonataFactory as unknown as (expr: string) => Compiled;
 
 // ---- path helpers on a namespaced snapshot -------------------------------
 

@@ -4,14 +4,11 @@
 // at this boundary rather than at render time.
 
 import Ajv, { type ValidateFunction } from "ajv";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import type { PresentationSpec } from "./presentation";
-
-const schemaUrl = new URL("../../schemas/presentation.schema.json", import.meta.url);
+import presentationSchemaJson from "../../schemas/presentation.schema.json" with { type: "json" };
 
 /** The normative JSON Schema (draft-07) for the Presentation DSL. */
-export const presentationSchema = JSON.parse(readFileSync(fileURLToPath(schemaUrl), "utf8"));
+export const presentationSchema = presentationSchemaJson;
 
 const ajv = new Ajv({ allErrors: true, strict: false });
 const validateFn: ValidateFunction = ajv.compile(presentationSchema);
