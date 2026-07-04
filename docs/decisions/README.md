@@ -20,6 +20,9 @@ rejected options were set aside, and the consequences.
 | [0013](ADR-0013-agent-authoring.md) | Agent-authoring path — typed builders, validate-before-commit, lint over throw | Accepted |
 | [0014](ADR-0014-http-sse-transport.md) | Concrete transport binding — HTTP + SSE, kept out of the portable core | Accepted |
 | [0015](ADR-0015-conformance-matrix.md) | Behavioral conformance matrix — portable JSON cases + per-kernel runner | Accepted |
+| [0016](ADR-0016-layered-dsl-stack.md) | Layered DSL stack — one kernel, lowering compilers above it | Accepted |
+| [0017](ADR-0017-platform-boundary.md) | Platform boundary — the platform owns Interaction, Presentation, Runtime | Accepted |
+| [0018](ADR-0018-interaction-presentation-split.md) | Interaction / Presentation split — with a context-aware presentation compiler | Accepted |
 
 ## Format
 

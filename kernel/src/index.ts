@@ -7,3 +7,4 @@ export * from "./kernel";
 export * from "./transport";
 export * from "./client";
 export * from "./authoring";
+export * from "./lower";

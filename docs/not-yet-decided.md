@@ -74,4 +74,27 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
 
 12. **Canonical reference profile.** Whether to author a clean, minimal exemplar profile that
     *defines* the platform's ideal shape, distinct from the first onboarding profile (live-cards,
-    which is a pragmatic pilot adopter, not a pristine reference).
+    which is a pragmatic pilot adopter, not a pristine reference). Note: a **profile** is now defined
+    as a *Domain DSL + its lowering to the kernel* ([ADR-0016](decisions/ADR-0016-layered-dsl-stack.md)).
+
+13. **Interaction taxonomy (Layer 3).** The platform-owned interaction vocabulary
+    ([ADR-0018](decisions/ADR-0018-interaction-presentation-split.md)) is specified in
+    `interaction/src/interaction.ts`: all 12 kinds, each with its `Facet[]` (`{ name, role,
+    required }`, `role` = a semantic display role, `required` = never dropped on constrained
+    surfaces). Still open: whether these facet sets are *authoritative*, how facets/roles are
+    versioned, and how a domain extends the taxonomy without forking it — this taxonomy is "the moat"
+    ([ADR-0017](decisions/ADR-0017-platform-boundary.md)) so its shape needs deliberate design.
+
+14. **Presentation compiler + context taxonomy (Layer 3→4).** The compiler
+    (`defaultPresentationCompiler`) now reads a real **PresentationContext** taxonomy (surface,
+    device, space, attention, expertise) and picks from a catalog of named **layout templates**
+    (`layoutTemplates`: stack / narrative / comparison / workspace / dashboard / wizard), preserving
+    required facets under a template's `maxRegions` cap. Still open: whether these are the *right*
+    context axes and templates, how a profile supplies a richer compiler, and how expertise / device
+    / data-shape actually influence density and disclosure (the reference compiler ignores them).
+
+15. **Mandatory vs. optional layers.** ADR-0016 allows a profile to skip layers (e.g. go straight
+    `Domain -> UI`) and ADR-0018 adds the Interaction/Presentation layers above. Still open: whether
+    any layer is ever *required*, how a partial pipeline is declared, and per-layer typed builders /
+    validation (each stage is pure and testable, but only the terminal UI-DSL document is
+    schema-validated today).

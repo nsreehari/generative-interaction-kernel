@@ -309,6 +309,121 @@ malformed rejection, graceful fallback — all green. Narrowed #11 (matrix + run
 + the actual second-kernel runner still open).
 ---
 
+## 23. Layered DSL stack — one kernel, lowering compilers above it
+
+The user widened the frame: a real platform serves many domains, and the tempting move is one UI
+DSL per domain. That fragments (every domain team becomes a UI expert; you rebuild React/XAML with
+extra steps). The cleaner shape is **layers of abstraction**, not many DSLs: `Task → Domain →
+Interaction → UI (kernel doc) → Renderer`.
+
+**Key questions raised, and the answers recorded:**
+- *Does this change the platform we've built?* **No — it extends it upward.** The kernel's closed
+  grammar was already the bottom **UI DSL**. The new layers sit *above* it.
+- *Do higher layers need their own kernel/grammar?* **No.** Each layer is a **lowering stage** — a
+  pure transform that compiles the layer above into the layer below, ending at one kernel document.
+  This is ADR-0002's logic ("interaction is an edge, not a second kernel") applied to layers.
+- *Can agents author at any layer?* **Yes, but they should emit at the highest layer they can.**
+  A Task/Domain document keeps the LLM away from raw UI and lets the lowering enforce house style /
+  accessibility / theming. Lower authoring stays safe — every layer ends at the same validated
+  document.
+- *Is the kernel composable for every layer?* **All layers terminate at the same kernel document;
+  the kernel is not re-run per layer.** Lowering is compile-time (once, top-to-bottom); the kernel
+  is run-time over the single document that comes out.
+
+**Decision** ([ADR-0016](decisions/ADR-0016-layered-dsl-stack.md)): keep one kernel and one grammar;
+every layer above is a pure `Stage<In, Out>` composing into a pipeline whose terminal output is a
+kernel `DocumentPayload`. A **profile is redefined** as *a Domain DSL + its lowering to the kernel*
+(live-cards becomes a board Domain DSL + one lowering stage). Ownership rule: **domains own
+semantics · the platform owns interaction patterns · renderers own visual implementation.** Layers
+are optional (a profile may go straight `Domain → UI`).
+
+Made real in code: `kernel/src/lower.ts` adds `Stage`, a type-aligned `pipeline(a).to(b)`, and
+`lowerToDocument()` — which reuses the exact validate-before-commit gate from Phase 7, so a bug in a
+higher-layer compiler is caught at the kernel boundary, not at render time. Verified headless
+(`kernel/test/lower.test.ts`): the live-cards board recast as a Domain DSL (no kernel capabilities,
+no layout primitives) lowers to a valid, kernel-interpretable document (metric reads its declared
+source; the Approve gate lowers from `enabledWhen` and opens on selection); a `Task → Domain → UI`
+pipeline stays type-aligned; and a lowering that emits a malformed document is rejected at the
+boundary. No new grammar, no new wire message — the stack is entirely compile-time above an
+unchanged kernel and protocol. Opened items #13 (Interaction DSL pattern library) and #14 (mandatory
+vs. optional layers).
+---
+
+## 24. Platform boundary — who owns which layer (the charter)
+
+The user reframed the platform's role: in 2015 a UI platform owned rendering/layout/state/styling/
+navigation/accessibility — the UI DSL and its runtime. For an AI-native platform that is only
+~30–40% of the story, because agents and users no longer reason in components. A **five-layer
+ownership charter** was fixed ([ADR-0017](decisions/ADR-0017-platform-boundary.md)): **Intent**
+(agent platform/app — *not* UI), **Domain semantics** (business domains — *shared*: they own
+meaning, the platform owns only how a domain DSL plugs in via a translation contract), and
+**Interaction / Presentation / Runtime** (the **UI platform**). The consequence is that the
+platform's public surface starts at the **Interaction Model, not the UI DSL** — components become an
+implementation detail, "as invisible as assembly language." And the durable value — **the moat — is
+the interaction taxonomy + the interaction/presentation compiler**, not the renderer.
+
+## 25. Interaction Model / Presentation Model split + the presentation compiler
+
+The user split what ADR-0016 had treated as one "Interaction → UI" step into **two layers with a
+context-aware compiler between them** ([ADR-0018](decisions/ADR-0018-interaction-presentation-split.md)):
+**Layer 3 — Interaction Model** (a domain-neutral *human goal pattern*: investigate/compare/review/
+approve/…, each made of **facets** the platform already knows — investigate = context/evidence/
+timeline/relationships/actions) and **Layer 4 — Presentation Model** (`{ layout, regions }` — how the
+experience is materialized *right now*). The **Presentation Compiler** (`interaction + context →
+presentation`) is the seam: *same interaction, different presentation by surface* — desktop→workspace,
+mobile→stack, copilot→narrative. This matches how AI reasons: a user says "help me understand why this
+alert fired," the AI emits `{ interaction: investigate, object: alert }` at Layer 3, and the platform
+generates the rest.
+
+Made real as a new package `interaction/` (owns L3–L4, sits above the kernel to keep the boundary
+honest): `interaction.ts` (the taxonomy + default facets), `presentation.ts` (the presentation model +
+`defaultPresentationCompiler`), `lowering.ts` (Presentation → kernel document via a profile-supplied
+**region binding** — the translation contract; unbound facets fall back gracefully so a profile can
+target facets it hasn't implemented yet), and `compileInteraction()` as the one-call upper pipeline.
+Verified headless (5 tests): the same `investigate` interaction compiles to different presentations by
+context; a `review` interaction lowers to a valid, kernel-interpretable document (the summary facet
+reads its data via the live-cards binding, the detail facet's select writes `card_data.selected`);
+`investigate`'s unbound facets resolve as graceful fallbacks while its `actions` facet resolves
+concretely; and a full `Domain → Interaction → Presentation → UI` pipe composes through the kernel's
+`pipeline`/`lowerToDocument` seam. No new grammar, no new wire message — the whole upper half stays
+compile-time above an unchanged kernel and protocol. Seeded open items #13 (interaction taxonomy),
+#14 (presentation compiler + context taxonomy), #15 (mandatory vs. optional layers).
+---
+
+## 26. Fleshing out the taxonomy + presentation context + layout templates ("do both")
+
+The user asked to nail down **both** halves the split had only sketched: the **interaction facets per
+kind** (Layer 3) and the **presentation context taxonomy + a catalog of named layout templates**
+(Layer 4).
+
+Layer 3 — a facet is no longer a bare string. `Facet = { name, role, required }` where `role: FacetRole`
+is a semantic display role (`summary | collection | detail | timeline | graph | narrative | metrics |
+status | form | actions | comparison | recommendation`) — still not a component — and `required` marks
+the facets an interaction cannot be itself without. All 12 kinds are now fully specified.
+`resolveFacets` (explicit `capabilities` override, unknown names → required `detail`), `facetsOf`,
+`requiredFacets`, and `facetsFor` (names) accompany the table.
+
+Layer 4 — `PresentationContext` grows real axes: `surface` (desktop/web/mobile/copilot/teams), `device`
+(pointer/touch/voice), `space` (compact/regular/expanded), `attention` (focused/glanceable), `expertise`
+(novice/intermediate/expert). A `layoutTemplates` catalog holds `LayoutTemplate = { name, arrangement,
+maxRegions? }` over arrangements `stack | narrative | split | grid | dashboard | wizard`. The compiler
+now `selectTemplate`s from the interaction first (compare→comparison, monitor→dashboard,
+create/configure→wizard) then the context (glanceable→narrative, compact→stack, else the generic
+`workspace` grid, named `${interaction}_workspace`).
+
+The two halves interlock: a capped template (e.g. `narrative`, cap 3) sheds only *optional* facets — the
+region trim keeps every required facet even when they exceed the cap (investigate keeps its 4 required
+facets under a cap of 3, dropping only the optional `relationships`). Facet roles also drive binding:
+`PresentationBinding` gains `roleCapability` (bind once per role) with `regionCapability` as a
+per-region override; resolution is `regionCapability[region] → roleCapability[role] → region name`
+(fallback). The live-cards binding switched to role-based and leaves `graph`/`form` unmapped on purpose,
+so `investigate`'s `graph`-role facet renders as a graceful fallback while its `actions`-role facet
+resolves. Verified headless — interaction tests grew from 5 → 7 (taxonomy roles/required + explicit
+override; context-driven templates; a capped template never dropping a required facet; role binding with
+fallback), full suite green (33 kernel + 5 react + 7 interaction + 3 sse, conformance + typecheck clean).
+Kernel grammar and wire protocol untouched. Narrowed open items #13 and #14.
+---
+
 ## Index of alternatives explicitly set aside
 
 | Alternative | Set aside because |
@@ -332,5 +447,11 @@ malformed rejection, graceful fallback — all green. Narrowed #11 (matrix + run
 | Bidirectional over the SSE stream | SSE is one-directional by design; a `POST` endpoint for the single client→host message (`event`) is simpler and idiomatic. |
 | Behavioral conformance as inline TS tests only | Language-bound; a second kernel can't reuse them, defeating reducer-equivalence. Cases are language-neutral JSON with a per-kernel runner. |
 | Asserting traces/effects in conformance cases | Trace/effect shapes are internal and may differ between kernels; patches + resolved props are the portable contract. |
-| Behavioral conformance as inline TS tests only | Language-bound; a second kernel can't reuse them, defeating reducer-equivalence. Cases are language-neutral JSON with a per-kernel runner. |
-| Asserting traces/effects in conformance cases | Trace/effect shapes are internal and may differ between kernels; patches + resolved props are the portable contract. |
+| One UI DSL per domain, each with its own renderer | Fragments (N DSLs → N renderers); forces every domain team to learn UI primitives; loses a single conformance target. One UI DSL + many domain lowerings instead. |
+| A separate kernel/grammar per layer | Duplicates interpretation/validation/tracing per layer and breaks the single-document invariant; layers are lowering stages that terminate at one kernel document. |
+| Exposing the UI DSL directly to domain teams/agents | The UI DSL leaks upward and domain code fills with `grid`/`flex`/`column` — reinventing React/XAML; the UI DSL stays internal, reached only through lowerings. |
+| UI platform owning Intent and/or Domain semantics | Couples the platform to specific goals/business objects and breaks domain-neutrality; the platform defines *how* domains plug in (a translation contract), not *what* they mean. |
+| Keeping the platform boundary at the UI DSL (components public) | Makes every domain team a UI expert and mismatches how AI reasons ("compare these," not "render a table"); the public surface is the Interaction Model, one layer up. |
+| A single Interaction → UI lowering (no Presentation split) | Fuses "what experience" with "how it appears," leaving context-adaptation nowhere clean and preventing one interaction taxonomy from serving many presentations — the presentation compiler (the moat) wouldn't exist. |
+| Putting presentation context inside the Interaction Model | Re-couples the domain-neutral goal to a surface/device, defeating "same interaction, many presentations"; context belongs to the compiler. |
+| Hard-coding a layout per interaction (no compiler) | Every interaction would render identically everywhere; adaptivity — the AI-native point — is lost. The compiler is a replaceable seam a profile can enrich. |

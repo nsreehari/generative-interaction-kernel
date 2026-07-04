@@ -36,13 +36,17 @@ conformance matrix** of portable JSON cases with a per-kernel runner (Phase 9) �
 | Agent authoring | **Typed builders** over the closed grammar; `authorDocument` = validate-before-commit; `lintManifestReferences` = non-throwing warnings (unknown capabilities render as fallback) |
 | Network transport | **HTTP/SSE binding** (`transports/http-sse/`): SSE for host→client, POST for client→host, session via header, `?fromRev=N` resume; kept out of the portable core |
 | Conformance | **Behavioral matrix** (`conformance/cases/*.case.json`): language-neutral document + seed + event steps → exact patches/resolves; per-kernel runner → reducer equivalence |
+| Layered DSL | **One kernel, lowering compilers above it**: Task → Domain → Interaction → UI (kernel doc) as pure `Stage`s; a **profile = a Domain DSL + its lowering**; layers optional; `lowerToDocument` reuses validate-before-commit |
+| Platform boundary | **Platform owns Interaction (L3) + Presentation (L4) + Runtime (L5)**; Intent (agents) and Domain semantics (app teams) sit outside and plug in via a translation contract; the UI DSL is an internal target; the **moat = interaction taxonomy + presentation compiler** |
+| Interaction / Presentation | **Two owned layers + a context-aware compiler** (`interaction/`): Interaction Model (goal patterns + facet taxonomy) → `PresentationCompiler(spec, context)` → Presentation Model (layout + regions) → kernel doc; *same interaction, different presentation by surface* |
 
 ## What this is not
 
 - Not a standardization of any one existing DSL, registry, or app. Prior systems that inspired
   this (a schema-driven card DSL, a component registry, an interpreter, a validation engine, an
-  MCP orchestration layer) are treated as a **profile** — one instantiation of the platform, with
-  live-cards as the **first profile to onboard** — not the platform itself.
+  MCP orchestration layer) are treated as a **profile** — a **Domain DSL plus its lowering to the
+  kernel** (ADR-0016) — one instantiation of the platform, with live-cards as the **first profile
+  to onboard** — not the platform itself.
 - Not a UI framework. The platform is framework-agnostic; a framework binding is a *provider*.
 
 ## Repository map
@@ -74,18 +78,25 @@ genui-platform/
       ADR-0013-agent-authoring.md
       ADR-0014-http-sse-transport.md
       ADR-0015-conformance-matrix.md
+      ADR-0016-layered-dsl-stack.md
+      ADR-0017-platform-boundary.md
+      ADR-0018-interaction-presentation-split.md
   schemas/                      ← normative GUP JSON Schemas + golden conformance fixture
   conformance/                  ← Phase 9 behavioral matrix (language-neutral, per-kernel)
     conformance-case.schema.json  ← draft-07 schema for a case file
     cases/                      ← *.case.json: document + seed + event steps → expected patches/resolves
   kernel/                       ← Phase 1 reference kernel (TypeScript)
-    src/                        ← types, providers, interpreter, reducer, kernel, transport, client
-    test/                       ← golden fixture + orchestrator effects + transport + client round-trip + resync + authoring + conformance
+    src/                        ← types, providers, interpreter, reducer, kernel, transport, client, lowering
+    test/                       ← golden fixture + orchestrator effects + transport + client round-trip + resync + authoring + conformance + lowering
     tsconfig.json
   adapters/
     react/                      ← Phase 2 React render adapter
       src/                      ← registry, renderer, controller, live-cards components, source-agnostic hook
       test/                     ← tree render, gate flip, event wiring, fallback, render-over-the-wire
+      tsconfig.json
+  interaction/                  ← Interaction (L3) + Presentation (L4) layers (ADR-0017/0018)
+      src/                      ← interaction taxonomy, presentation compiler, presentation→UI lowering
+      test/                     ← context-varied presentation, review interpret, fallback facets, full pipe
       tsconfig.json
   transports/
     http-sse/                   ← Phase 8 HTTP/SSE transport binding (kept out of the portable core)
