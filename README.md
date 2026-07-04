@@ -13,8 +13,9 @@ domain- and framework-specific to pluggable providers.
 Early implementation. The architecture and the wire protocol (**GenUI Protocol / GUP**) are
 defined; the normative schemas + golden conformance fixture, a **reference kernel** (Phase 1), a
 first **React render adapter** (Phase 2), the **Orchestrator seam** for effectful actions
-(Phase 3), a **transport seam** carrying GUP across a boundary (Phase 4), and a **client runtime**
-that renders purely from wire messages (Phase 5) are built and green.
+(Phase 3), a **transport seam** carrying GUP across a boundary (Phase 4), a **client runtime**
+that renders purely from wire messages (Phase 5), and **reconnection** — a broker host with a patch
+log that resumes a returning client or full-resyncs a late one (Phase 6) — are built and green.
 
 | Decision | Outcome |
 |---|---|
@@ -28,6 +29,7 @@ that renders purely from wire messages (Phase 5) are built and green.
 | Effectful actions | **Orchestrator seam**: `invoke`/`confirm`/`navigate` as post-reduction effects; async data as machine states |
 | Transport | **Transport seam**: GUP envelopes over `TransportProvider`; in-memory reference pair + `KernelTransportHost` |
 | Client runtime | **`GenUIClient`**: interpret + state replica on the renderer side; renders from wire messages, emits events back |
+| Reconnection | **Broker host + patch log**: broadcast to many connections; resume via incremental replay or full resync; idempotent client `rebind` |
 
 ## What this is not
 
@@ -62,10 +64,11 @@ genui-platform/
       ADR-0009-orchestrator-effects.md
       ADR-0010-transport-seam.md
       ADR-0011-client-runtime.md
+      ADR-0012-reconnection.md
   schemas/                      ← normative GUP JSON Schemas + golden conformance fixture
   kernel/                       ← Phase 1 reference kernel (TypeScript)
     src/                        ← types, providers, interpreter, reducer, kernel, transport, client
-    test/                       ← golden fixture + orchestrator effects + transport + client round-trip
+    test/                       ← golden fixture + orchestrator effects + transport + client round-trip + resync
     tsconfig.json
   adapters/
     react/                      ← Phase 2 React render adapter

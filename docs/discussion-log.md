@@ -244,6 +244,23 @@ driven by the in-process controller or the transport-backed client — verified 
 wire test.
 ---
 
+## 19. Phase 6 — reconnection (broker host, patch log, resume or full resync)
+
+The transport assumed one stable link; real renderers drop and rejoin. `KernelTransportHost` became a
+**broker** ([ADR-0012](decisions/ADR-0012-reconnection.md)): it attaches many connections, broadcasts
+each dispatch patch to all, and keeps a bounded **patch log** (baseline + deltas). `attach(transport,
+fromRev?)` is resume-aware — if `fromRev` is still in the log it replays *only* the missing deltas
+(client keeps its replica), otherwise it full-resyncs (`manifest → document →` full snapshot at current
+rev). A new `Kernel.snapshotPatch()` gives the current full state *without* re-seeding machine states
+(so mid-session onboarding never clobbers live state, unlike `baseline()`/`init()`). `GenUIClient`
+gained `rebind(transport)` (reconnect keeping the replica) and idempotent patch application (ignore
+rev ≤ current; a `manifest` resets rev so full resync always applies). Reconnection added **no new GUP
+message** — it is transport/host orchestration below the closed five. Verified headless: two clients
+share a kernel; one drops, misses a rev, reconnects and catches up via a single replayed patch; a late
+joiner full-syncs and sees the gate already open. Narrowed open item #7 (reconnection/replay done;
+network bindings + `fromRev` transport + log persistence still open).
+---
+
 ## Index of alternatives explicitly set aside
 
 | Alternative | Set aside because |
@@ -259,3 +276,5 @@ wire test.
 | Vendoring the profile's sync JSONata build into the kernel | Inverts the kernel→profile dependency; ships a v1.x build inside a critical prototype-pollution advisory; sync was only a profile deployment concern. |
 | Sending resolved trees over the wire (instead of document + patch) | Adds a message outside the five-message protocol and ships recomputed props on every change; the client resolves locally from document + patch instead. |
 | Client running the reducer too (symmetric kernels) | Duplicating writes invites divergence and breaks single-authority/validate-before-commit; only reads (interpret) are duplicated. |
+| A `hello`/`resume` GUP message for reconnection | Opens the closed five-message protocol for a connection-lifecycle concern; the client conveys its `rev` through the transport and the host onboards below GUP. |
+| Always full-resync on reconnect (no patch log) | Correct but wasteful for large state / frequent reconnects; a bounded patch log makes incremental replay the common path and full resync the graceful fallback. |

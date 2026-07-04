@@ -6,6 +6,7 @@ import {
   type Enveloped,
   type GupMessage,
   type ManifestPayload,
+  type Patch,
 } from "./types";
 
 export type TransportListener = (message: GupMessage) => void | Promise<void>;
@@ -41,27 +42,90 @@ export function createInMemoryTransportPair(): [TransportProvider, TransportProv
   return [left, right];
 }
 
+/**
+ * Binds a kernel to one or more transport connections (a broker). It onboards each
+ * connection — `manifest`/`document`/full-snapshot `patch` for a fresh client, or an
+ * incremental replay of missing patches for a client resuming from a known `rev` —
+ * dispatches inbound `event`s serially (monotonic `rev`), and broadcasts each patch to
+ * every connection. Reconnection is a transport concern handled here, below the closed
+ * five-message GUP protocol.
+ */
 export class KernelTransportHost {
-  private unsubscribe?: () => void;
+  private readonly connections = new Set<TransportProvider>();
+  private readonly unsubscribers = new Map<TransportProvider, () => void>();
+  private readonly log: Patch[] = [];
+  private readonly maxLog = 256;
+  private baselined = false;
   private dispatchQueue = Promise.resolve();
 
   constructor(
     private readonly manifest: Enveloped<ManifestPayload>,
     private readonly document: Enveloped<DocumentPayload>,
     private readonly kernel: Kernel,
-    private readonly transport: TransportProvider
+    private readonly defaultTransport?: TransportProvider
   ) {}
 
+  /** Convenience: attach the transport passed to the constructor. */
   async start(): Promise<void> {
-    this.unsubscribe ??= this.transport.subscribe((message) => this.onMessage(message));
-    await this.transport.send(envelope("manifest", unwrap(this.manifest)));
-    await this.transport.send(envelope("document", unwrap(this.document)));
-    await this.transport.send(envelope("patch", this.kernel.baseline()));
+    if (this.defaultTransport) await this.attach(this.defaultTransport);
   }
 
+  /**
+   * Register a connection and onboard it. Pass `fromRev` to resume: if the host still
+   * holds the patches after that rev, only those deltas are replayed; otherwise the
+   * client is re-onboarded in full.
+   */
+  async attach(transport: TransportProvider, fromRev?: number): Promise<() => void> {
+    this.ensureBaseline();
+    this.connections.add(transport);
+    const unsubscribe = transport.subscribe((message) => this.onMessage(message));
+    this.unsubscribers.set(transport, unsubscribe);
+    await this.onboard(transport, fromRev);
+    return () => this.detach(transport);
+  }
+
+  detach(transport: TransportProvider): void {
+    this.unsubscribers.get(transport)?.();
+    this.unsubscribers.delete(transport);
+    this.connections.delete(transport);
+  }
+
+  /** Detach every connection. */
   stop(): void {
-    this.unsubscribe?.();
-    this.unsubscribe = undefined;
+    for (const transport of [...this.connections]) this.detach(transport);
+  }
+
+  private ensureBaseline(): void {
+    if (this.baselined) return;
+    this.log.push(this.kernel.baseline());
+    this.baselined = true;
+  }
+
+  private async onboard(transport: TransportProvider, fromRev?: number): Promise<void> {
+    const oldest = this.log[0].rev;
+    const current = this.log[this.log.length - 1].rev;
+
+    if (fromRev !== undefined && fromRev >= oldest && fromRev <= current) {
+      // Resume: the client already has manifest/document and state up to fromRev.
+      for (const patch of this.log) {
+        if (patch.rev > fromRev) await transport.send(envelope("patch", patch));
+      }
+      return;
+    }
+
+    // Full onboarding: vocabulary, structure, then the complete current state.
+    await transport.send(envelope("manifest", unwrap(this.manifest)));
+    await transport.send(envelope("document", unwrap(this.document)));
+    await transport.send(envelope("patch", this.kernel.snapshotPatch()));
+  }
+
+  private appendLog(patch: Patch): void {
+    this.log.push(patch);
+    if (this.log.length > this.maxLog) this.log.shift();
+  }
+
+  private async broadcast(message: GupMessage): Promise<void> {
+    for (const transport of this.connections) await transport.send(message);
   }
 
   private onMessage(message: GupMessage): Promise<void> {
@@ -69,7 +133,8 @@ export class KernelTransportHost {
 
     this.dispatchQueue = this.dispatchQueue.then(async () => {
       const patch = await this.kernel.dispatch(message.payload);
-      await this.transport.send(envelope("patch", patch));
+      this.appendLog(patch);
+      await this.broadcast(envelope("patch", patch));
     });
 
     return this.dispatchQueue;

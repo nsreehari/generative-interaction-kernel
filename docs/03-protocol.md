@@ -188,3 +188,11 @@ read/write split is explicit: the **authoritative reducer stays on the host**, w
 state replica live on the client** (reads are pure and safe to duplicate; writes are not). Initial
 sync uses `Kernel.baseline()` — a rev-0 patch carrying the *full* state snapshot — so a fresh client
 reconstructs a complete replica from one patch, then stays current via incremental patches.
+
+Reconnection is handled beneath the five messages (see
+[ADR-0012](decisions/ADR-0012-reconnection.md)): the host is a **broker** that broadcasts each patch
+to every attached connection and keeps a bounded **patch log**. A client attaches with an optional
+`fromRev`; if the host still holds the patches after it, only those deltas are **replayed** (the
+client keeps its replica), otherwise the client is **full-resynced** (`manifest → document →`
+full-snapshot patch at the current rev). No new GUP message is introduced — the client conveys its
+`rev` through the transport, and patch application is idempotent.

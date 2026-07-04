@@ -83,6 +83,15 @@ export class Kernel {
    */
   baseline(): Patch {
     this.init();
+    return this.snapshotPatch();
+  }
+
+  /**
+   * The full current state as a patch at the *current* rev, without re-seeding machine
+   * states. Used to re-onboard a client mid-session (reconnect / late join) without
+   * clobbering live machine state the way {@link init} would.
+   */
+  snapshotPatch(): Patch {
     const snapshot = this.store.snapshot();
     const ops = Object.entries(snapshot).map(([namespace, value]) => ({
       op: "set" as const,

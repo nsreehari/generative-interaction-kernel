@@ -32,7 +32,7 @@ export class GenUIClient {
   private unsubscribe?: () => void;
 
   constructor(
-    private readonly transport: TransportProvider,
+    private transport: TransportProvider,
     opts: GenUIClientOptions = {}
   ) {
     this.expr = opts.expression ?? new JsonataExpressionProvider();
@@ -45,6 +45,16 @@ export class GenUIClient {
   stop(): void {
     this.unsubscribe?.();
     this.unsubscribe = undefined;
+  }
+
+  /**
+   * Re-point the client at a new transport (reconnect), keeping the current replica so
+   * the host can resume it from {@link getRev} with an incremental patch replay.
+   */
+  rebind(transport: TransportProvider): void {
+    this.stop();
+    this.transport = transport;
+    this.start();
   }
 
   /** The current resolved tree a renderer should paint (null before the first document). */
@@ -69,8 +79,11 @@ export class GenUIClient {
   private async onMessage(message: GupMessage): Promise<void> {
     switch (message.type) {
       case "manifest": {
+        // A manifest (re)establishes vocabulary and a fresh replica: reset rev so the
+        // full-snapshot patch that follows always applies, even on a full resync.
         this.registry = ManifestRegistry.fromManifest(message.payload);
         this.store = new InMemoryStateModel(message.payload.namespaces ?? []);
+        this.rev = -1;
         return;
       }
       case "document": {
@@ -79,6 +92,9 @@ export class GenUIClient {
         return;
       }
       case "patch": {
+        // Idempotent: ignore patches already applied (duplicate replay). rev 0 is the
+        // baseline and always applies to a fresh replica.
+        if (message.payload.rev !== 0 && message.payload.rev <= this.rev) return;
         this.store?.apply(message.payload.ops);
         this.rev = message.payload.rev;
         await this.reresolve();
