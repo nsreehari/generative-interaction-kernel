@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace GenUI.Jsonata;
 
@@ -195,7 +196,45 @@ public static class Functions
         string str = (string)arg!;
         object? token = a[1];
         if (token is string ts) return str.IndexOf(ts, StringComparison.Ordinal) != -1;
+        if (J.IsFunction(token))
+        {
+            var matches = InvokeMatcher(f, token, str);
+            return !J.IsUndef(matches);
+        }
         throw new JsonataException("T0410") { Value = token };
+    }
+
+    public static object? Match(Focus f, object?[] a)
+    {
+        var arg = Arg(a, 0);
+        if (J.IsUndef(arg)) return Undef;
+        string str = (string)arg!;
+        object? regex = a[1];
+        double? limit = null;
+        if (a.Length > 2 && !J.IsUndef(a[2]))
+        {
+            limit = ToNum(a[2]);
+            if (limit < 0) throw new JsonataException("D3040") { Value = limit };
+        }
+
+        var result = f.NewSequence();
+        if (limit is null || limit > 0)
+        {
+            int count = 0;
+            var matches = InvokeMatcher(f, regex, str);
+            while (matches is Dictionary<string, object?> md && (limit is null || count < limit))
+            {
+                result.Add(new Dictionary<string, object?>
+                {
+                    ["match"] = md["match"],
+                    ["index"] = md["start"],
+                    ["groups"] = md["groups"],
+                });
+                matches = InvokeNext(f, md["next"]);
+                count++;
+            }
+        }
+        return result;
     }
 
     public static object? Replace(Focus f, object?[] a)
@@ -228,6 +267,34 @@ public static class Functions
             result.Append(str, position, str.Length - position);
             return result.ToString();
         }
+
+        if (J.IsFunction(pattern))
+        {
+            if (limit is < 0) throw new JsonataException("D3011") { Value = limit };
+            if (limit is 0) return str;
+
+            var result = new StringBuilder();
+            int position = 0, count = 0;
+            var matches = InvokeMatcher(f, pattern, str);
+            if (J.IsUndef(matches)) return str;
+            while (matches is Dictionary<string, object?> md && (limit is null || count < limit))
+            {
+                int start = (int)(double)md["start"]!;
+                string matchStr = (string)md["match"]!;
+                result.Append(str, position, start - position);
+                object? replacedWith = replacement is string rstr
+                    ? ExpandReplacement(rstr, md)
+                    : f.Engine.Apply(replacement, new object?[] { md }, f.Input, f.Environment);
+                if (replacedWith is not string rw) throw new JsonataException("D3012") { Value = replacedWith };
+                result.Append(rw);
+                position = start + matchStr.Length;
+                count++;
+                matches = InvokeNext(f, md["next"]);
+            }
+            result.Append(str, position, str.Length - position);
+            return result.ToString();
+        }
+
         throw new JsonataException("T0410") { Value = pattern };
     }
 
@@ -261,7 +328,149 @@ public static class Functions
             }
             return result;
         }
+
+        if (J.IsFunction(separator))
+        {
+            int count = 0;
+            var matches = InvokeMatcher(f, separator, str);
+            if (J.IsUndef(matches)) { result.Add(str); return result; }
+            int start = 0;
+            while (matches is Dictionary<string, object?> md && (limit is null || count < limit))
+            {
+                int mstart = (int)(double)md["start"]!;
+                result.Add(str.Substring(start, mstart - start));
+                start = (int)(double)md["end"]!;
+                matches = InvokeNext(f, md["next"]);
+                count++;
+            }
+            if (limit is null || count < limit) result.Add(str.Substring(start));
+            return result;
+        }
+
         throw new JsonataException("T0410") { Value = separator };
+    }
+
+    /// <summary>
+    /// Builds the matcher closure for a regex literal, mirroring the canonical <c>evaluateRegex</c>.
+    /// The returned native function accepts <c>(str[, fromIndex])</c> and returns a match record
+    /// <c>{match,start,end,groups,next}</c> (or undefined when no match), where <c>next</c> is itself
+    /// a native function that advances to the following match (throwing D1004 on zero-width loops).
+    /// </summary>
+    public static NativeFunction MakeRegexMatcher(Regex re, int position)
+    {
+        Func<string, int, object?> closure = null!;
+        closure = (str, fromIndex) =>
+        {
+            int start = fromIndex < 0 ? 0 : fromIndex;
+            if (start > str.Length) return Undef;
+            var m = re.Match(str, start);
+            if (!m.Success) return Undef;
+
+            var groups = new JArr();
+            for (int i = 1; i < m.Groups.Count; i++)
+            {
+                var g = m.Groups[i];
+                groups.Add(g.Success ? g.Value : Undef);
+            }
+            int end = m.Index + m.Value.Length;
+            var record = new Dictionary<string, object?>
+            {
+                ["match"] = m.Value,
+                ["start"] = (double)m.Index,
+                ["end"] = (double)end,
+                ["groups"] = groups,
+            };
+            record["next"] = new NativeFunction("", 0, (_, _) =>
+            {
+                if (end >= str.Length) return Undef;
+                var next = closure(str, end);
+                if (next is Dictionary<string, object?> nd && (string)nd["match"]! == string.Empty)
+                    throw new JsonataException("D1004") { Value = re.ToString() };
+                return next;
+            });
+            return record;
+        };
+        return new NativeFunction("", 1, (_, args) =>
+        {
+            string s = (string)args[0]!;
+            int fromIndex = args.Length > 1 && args[1] is double d ? (int)d : 0;
+            return closure(s, fromIndex);
+        });
+    }
+
+    private static object? InvokeMatcher(Focus f, object? matcher, string str)
+    {
+        var result = f.Engine.Apply(matcher, new object?[] { str }, f.Input, f.Environment);
+        if (!J.IsUndef(result) && result is not Dictionary<string, object?>)
+            throw new JsonataException("T1010");
+        return result;
+    }
+
+    private static object? InvokeNext(Focus f, object? nextFn)
+    {
+        return f.Engine.Apply(nextFn, Array.Empty<object?>(), f.Input, f.Environment);
+    }
+
+    /// <summary>
+    /// Expands a string replacement against a match record, honoring <c>$0</c> (whole match),
+    /// <c>$n</c> (capture group n), and <c>$$</c> (literal <c>$</c>) — a faithful port of the
+    /// canonical <c>replace</c> replacer.
+    /// </summary>
+    private static string ExpandReplacement(string replacement, Dictionary<string, object?> md)
+    {
+        var groups = (JArr)md["groups"]!;
+        var substitute = new StringBuilder();
+        int position = 0;
+        int index = replacement.IndexOf('$', position);
+        while (index != -1 && position < replacement.Length)
+        {
+            substitute.Append(replacement, position, index - position);
+            position = index + 1;
+            char dollarVal = position < replacement.Length ? replacement[position] : '\0';
+            if (dollarVal == '$')
+            {
+                substitute.Append('$');
+                position++;
+            }
+            else if (dollarVal == '0')
+            {
+                substitute.Append((string)md["match"]!);
+                position++;
+            }
+            else
+            {
+                int maxDigits = groups.Count == 0
+                    ? 1
+                    : (int)Math.Floor(Math.Log(groups.Count) * 0.4342944819032518) + 1;
+                int grpIndex = ParseLeadingInt(replacement, position, maxDigits);
+                if (maxDigits > 1 && grpIndex > groups.Count)
+                    grpIndex = ParseLeadingInt(replacement, position, maxDigits - 1);
+                if (grpIndex != int.MinValue)
+                {
+                    if (groups.Count > 0)
+                    {
+                        var submatch = grpIndex - 1 >= 0 && grpIndex - 1 < groups.Count ? groups[grpIndex - 1] : Undef;
+                        if (!J.IsUndef(submatch)) substitute.Append((string)submatch!);
+                    }
+                    position += grpIndex.ToString(CultureInfo.InvariantCulture).Length;
+                }
+                else
+                {
+                    substitute.Append('$');
+                }
+            }
+            index = replacement.IndexOf('$', position);
+        }
+        substitute.Append(replacement, position, replacement.Length - position);
+        return substitute.ToString();
+    }
+
+    private static int ParseLeadingInt(string s, int start, int maxDigits)
+    {
+        int end = start;
+        while (end < s.Length && end - start < maxDigits && s[end] >= '0' && s[end] <= '9') end++;
+        if (end == start) return int.MinValue;
+        return int.Parse(s.AsSpan(start, end - start), NumberStyles.Integer, CultureInfo.InvariantCulture);
     }
 
     public static object? Join(Focus f, object?[] a)
@@ -283,9 +492,13 @@ public static class Functions
         if (arg is bool b) return b ? 1.0 : 0.0;
         if (arg is string s)
         {
-            if (double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
+            if (Regex.IsMatch(s, "^-?[0-9]+(\\.[0-9]+)?([Ee][-+]?[0-9]+)?$")
+                && double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
                 && !double.IsInfinity(parsed))
                 return parsed;
+            if (Regex.IsMatch(s, "^0[xX][0-9A-Fa-f]+$")) return (double)Convert.ToInt64(s.Substring(2), 16);
+            if (Regex.IsMatch(s, "^0[oO][0-7]+$")) return (double)Convert.ToInt64(s.Substring(2), 8);
+            if (Regex.IsMatch(s, "^0[bB][01]+$")) return (double)Convert.ToInt64(s.Substring(2), 2);
         }
         throw new JsonataException("D3030") { Value = arg };
     }
@@ -584,6 +797,281 @@ public static class Functions
         return new JArr(Msort(new List<object?>(arr)));
     }
 
+    // ---- extended library (single/sift/zip/spread/merge/each/error/assert/clone,
+    //      encoding, radix, non-deterministic, and ISO date/time) ----------------
+
+    public static object? Single(Focus f, object?[] a)
+    {
+        var arg = Arg(a, 0);
+        if (J.IsUndef(arg)) return Undef;
+        var arr = AsArray(arg);
+        object? func = a.Length > 1 && !J.IsUndef(a[1]) ? a[1] : null;
+        bool found = false;
+        object? result = Undef;
+        for (int i = 0; i < arr.Count; i++)
+        {
+            bool positive = true;
+            if (func != null)
+            {
+                var res = f.Engine.Apply(func, HofArgs(func, arr[i], i, arr), f.Input, f.Environment);
+                positive = Boolize(res);
+            }
+            if (positive)
+            {
+                if (!found) { result = arr[i]; found = true; }
+                else throw new JsonataException("D3138");
+            }
+        }
+        if (!found) throw new JsonataException("D3139");
+        return result;
+    }
+
+    public static object? Sift(Focus f, object?[] a)
+    {
+        var arg = Arg(a, 0);
+        if (arg is not Dictionary<string, object?> obj) return Undef;
+        object? func = a[1];
+        var result = new Dictionary<string, object?>();
+        foreach (var kv in obj)
+        {
+            var res = f.Engine.Apply(func, HofArgsKV(func, kv.Value, kv.Key, obj), f.Input, f.Environment);
+            if (Boolize(res)) result[kv.Key] = kv.Value;
+        }
+        return result.Count == 0 ? Undef : result;
+    }
+
+    public static object? Each(Focus f, object?[] a)
+    {
+        var arg = Arg(a, 0);
+        if (arg is not Dictionary<string, object?> obj) return Undef;
+        object? func = a[1];
+        var result = f.NewSequence();
+        foreach (var kv in obj)
+        {
+            var val = f.Engine.Apply(func, HofArgsKV(func, kv.Value, kv.Key, obj), f.Input, f.Environment);
+            if (!J.IsUndef(val)) result.Add(val);
+        }
+        return result;
+    }
+
+    public static object? Zip(Focus f, object?[] a)
+    {
+        int length = a.Length == 0 ? 0 : int.MaxValue;
+        foreach (var x in a) length = Math.Min(length, x is JArr ja ? ja.Count : 0);
+        var result = new JArr();
+        for (int i = 0; i < length; i++)
+        {
+            var tuple = new JArr();
+            foreach (var x in a) tuple.Add(x is JArr ja ? ja[i] : x);
+            result.Add(tuple);
+        }
+        return result;
+    }
+
+    public static object? Spread(Focus f, object?[] a) => SpreadValue(f, Arg(a, 0));
+
+    private static object? SpreadValue(Focus f, object? arg)
+    {
+        if (arg is JArr arr)
+        {
+            object? acc = f.NewSequence();
+            foreach (var item in arr) acc = AppendValue(f, acc, SpreadValue(f, item));
+            return acc;
+        }
+        if (arg is Dictionary<string, object?> obj && !J.IsLambda(arg))
+        {
+            var result = f.NewSequence();
+            foreach (var kv in obj)
+                result.Add(new Dictionary<string, object?> { [kv.Key] = kv.Value });
+            return result;
+        }
+        return arg;
+    }
+
+    public static object? Merge(Focus f, object?[] a)
+    {
+        var arg = Arg(a, 0);
+        if (J.IsUndef(arg)) return Undef;
+        var arr = AsArray(arg);
+        var result = new Dictionary<string, object?>();
+        foreach (var item in arr)
+            if (item is Dictionary<string, object?> obj)
+                foreach (var kv in obj) result[kv.Key] = kv.Value;
+        return result;
+    }
+
+    public static object? Error(Focus f, object?[] a)
+    {
+        var msg = Arg(a, 0);
+        throw new JsonataException("D3137") { Value = J.IsUndef(msg) ? "$error() function evaluated" : msg };
+    }
+
+    public static object? Assert(Focus f, object?[] a)
+    {
+        var cond = Arg(a, 0);
+        if (!Boolize(cond))
+            throw new JsonataException("D3141") { Value = a.Length > 1 && !J.IsUndef(a[1]) ? a[1] : "$assert() statement failed" };
+        return Undef;
+    }
+
+    public static object? Clone(Focus f, object?[] a)
+    {
+        var arg = Arg(a, 0);
+        if (J.IsUndef(arg)) return Undef;
+        using var doc = System.Text.Json.JsonDocument.Parse(Json.Stringify(arg, 0));
+        return Json.FromElement(doc.RootElement);
+    }
+
+    public static object? Eval(Focus f, object?[] a)
+    {
+        var arg = Arg(a, 0);
+        if (J.IsUndef(arg)) return Undef;
+        object? input = f.Input;
+        if (a.Length > 1 && !J.IsUndef(a[1]))
+        {
+            input = a[1];
+            if (input is JArr ja && !ja.Sequence)
+                input = new JArr(ja) { Sequence = true, OuterWrapper = true };
+        }
+        Ast ast;
+        try { ast = Parser.Parse((string)arg!); }
+        catch (Exception err) { throw new JsonataException("D3120") { Value = err.Message }; }
+        try { return f.Engine.Evaluate(ast, input, f.Environment); }
+        catch (JsonataException) { throw; }
+        catch (Exception err) { throw new JsonataException("D3121") { Value = err.Message }; }
+    }
+
+    // ---- encoding ------------------------------------------------------------
+
+    public static object? Base64Encode(Focus f, object?[] a)
+    {
+        var arg = Arg(a, 0);
+        if (J.IsUndef(arg)) return Undef;
+        return Convert.ToBase64String(Encoding.Latin1.GetBytes((string)arg!));
+    }
+
+    public static object? Base64Decode(Focus f, object?[] a)
+    {
+        var arg = Arg(a, 0);
+        if (J.IsUndef(arg)) return Undef;
+        return Encoding.Latin1.GetString(Convert.FromBase64String((string)arg!));
+    }
+
+    // JS encodeURIComponent / encodeURI unreserved character sets.
+    private const string UriComponentSafe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!~*'()";
+    private const string UriReserved = ";,/?:@&=+$#";
+
+    public static object? EncodeUrlComponent(Focus f, object?[] a)
+    {
+        var arg = Arg(a, 0);
+        if (J.IsUndef(arg)) return Undef;
+        return PercentEncode((string)arg!, UriComponentSafe);
+    }
+
+    public static object? EncodeUrl(Focus f, object?[] a)
+    {
+        var arg = Arg(a, 0);
+        if (J.IsUndef(arg)) return Undef;
+        return PercentEncode((string)arg!, UriComponentSafe + UriReserved);
+    }
+
+    public static object? DecodeUrlComponent(Focus f, object?[] a)
+    {
+        var arg = Arg(a, 0);
+        if (J.IsUndef(arg)) return Undef;
+        return PercentDecode((string)arg!, null);
+    }
+
+    public static object? DecodeUrl(Focus f, object?[] a)
+    {
+        var arg = Arg(a, 0);
+        if (J.IsUndef(arg)) return Undef;
+        // decodeURI leaves escape sequences of reserved characters intact
+        return PercentDecode((string)arg!, UriReserved);
+    }
+
+    // ---- radix ---------------------------------------------------------------
+
+    public static object? FormatBase(Focus f, object?[] a)
+    {
+        var arg = Arg(a, 0);
+        if (J.IsUndef(arg)) return Undef;
+        long value = (long)Math.Round(ToNum(arg), MidpointRounding.ToEven);
+        int radix = a.Length > 1 && !J.IsUndef(a[1]) ? (int)Math.Round(ToNum(a[1]), MidpointRounding.ToEven) : 10;
+        if (radix < 2 || radix > 36) throw new JsonataException("D3100") { Value = (double)radix };
+        return NumberToRadix(value, radix);
+    }
+
+    // ---- non-deterministic ---------------------------------------------------
+
+    private static readonly Random Rng = new();
+
+    public static object? Random(Focus f, object?[] a) => Rng.NextDouble();
+
+    public static object? Shuffle(Focus f, object?[] a)
+    {
+        var arg = Arg(a, 0);
+        if (J.IsUndef(arg)) return Undef;
+        var arr = AsArray(arg);
+        if (arr.Count <= 1) return arr;
+        var result = new object?[arr.Count];
+        for (int i = 0; i < arr.Count; i++)
+        {
+            int j = Rng.Next(i + 1);
+            if (i != j) result[i] = result[j];
+            result[j] = arr[i];
+        }
+        return new JArr(result);
+    }
+
+    // ---- date / time (ISO 8601 default; picture strings out of scope) --------
+
+    public static object? Now(Focus f, object?[] a)
+    {
+        if (a.Length > 0 && !J.IsUndef(a[0]))
+            throw new JsonataException("U1202") { Value = "$now picture/timezone formatting is not supported by the platform JSONata engine" };
+        return FromMillisValue(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+    }
+
+    public static object? Millis(Focus f, object?[] a) => (double)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+    public static object? FromMillis(Focus f, object?[] a)
+    {
+        var arg = Arg(a, 0);
+        if (J.IsUndef(arg)) return Undef;
+        if (a.Length > 1 && !J.IsUndef(a[1]))
+            throw new JsonataException("U1202") { Value = "$fromMillis picture/timezone formatting is not supported by the platform JSONata engine" };
+        return FromMillisValue((long)ToNum(arg));
+    }
+
+    public static object? ToMillis(Focus f, object?[] a)
+    {
+        var arg = Arg(a, 0);
+        if (J.IsUndef(arg)) return Undef;
+        if (a.Length > 1 && !J.IsUndef(a[1]))
+            throw new JsonataException("U1202") { Value = "$toMillis picture-string parsing is not supported by the platform JSONata engine" };
+        var dto = DateTimeOffset.Parse((string)arg!, CultureInfo.InvariantCulture,
+            DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal);
+        return (double)dto.ToUnixTimeMilliseconds();
+    }
+
+    private static string FromMillisValue(long millis) =>
+        DateTimeOffset.FromUnixTimeMilliseconds(millis).UtcDateTime
+            .ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture);
+
+    // ---- explicitly-scoped-out (see ADR-0027) --------------------------------
+    // The XPath 3.1 F&O locale-formatting layer is deliberately not ported for the platform-internal
+    // engine. These stubs fail loudly so a caller learns it is an intentional scope decision rather
+    // than a silent wrong answer.
+
+    public static object? FormatNumber(Focus f, object?[] a) =>
+        throw new JsonataException("U1203") { Value = "$formatNumber (XPath picture-string formatting) is not supported by the platform JSONata engine" };
+
+    public static object? FormatInteger(Focus f, object?[] a) =>
+        throw new JsonataException("U1203") { Value = "$formatInteger (XPath integer formatting) is not supported by the platform JSONata engine" };
+
+    public static object? ParseInteger(Focus f, object?[] a) =>
+        throw new JsonataException("U1203") { Value = "$parseInteger (XPath integer parsing) is not supported by the platform JSONata engine" };
+
     // ---- helpers -------------------------------------------------------------
 
     private static object?[] HofArgs(object? func, object? value, int index, JArr arr)
@@ -593,6 +1081,77 @@ public static class Functions
         if (arity >= 2) args.Add((double)index);
         if (arity >= 3) args.Add(arr);
         return args.ToArray();
+    }
+
+    private static object?[] HofArgsKV(object? func, object? value, string key, Dictionary<string, object?> obj)
+    {
+        int arity = J.FunctionArity(func);
+        var args = new List<object?> { value };
+        if (arity >= 2) args.Add(key);
+        if (arity >= 3) args.Add(obj);
+        return args.ToArray();
+    }
+
+    private static string PercentEncode(string str, string safe)
+    {
+        var sb = new StringBuilder();
+        Span<byte> buf = stackalloc byte[4];
+        foreach (var rune in str.EnumerateRunes())
+        {
+            if (rune.Value < 128 && safe.IndexOf((char)rune.Value) >= 0)
+            {
+                sb.Append((char)rune.Value);
+            }
+            else
+            {
+                int n = rune.EncodeToUtf8(buf);
+                for (int i = 0; i < n; i++) sb.Append('%').Append(buf[i].ToString("X2"));
+            }
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>Percent-decode UTF-8. When <paramref name="keepReserved"/> is set (decodeURI), an
+    /// escape whose decoded value is a reserved character is left intact.</summary>
+    private static string PercentDecode(string str, string? keepReserved)
+    {
+        var sb = new StringBuilder();
+        for (int i = 0; i < str.Length;)
+        {
+            if (str[i] == '%' && i + 2 < str.Length)
+            {
+                // collect a run of %XX bytes
+                var bytes = new List<byte>();
+                int j = i;
+                while (j + 2 < str.Length && str[j] == '%')
+                {
+                    bytes.Add(Convert.ToByte(str.Substring(j + 1, 2), 16));
+                    j += 3;
+                }
+                string decoded = Encoding.UTF8.GetString(bytes.ToArray());
+                if (keepReserved != null && decoded.Length == 1 && keepReserved.IndexOf(decoded[0]) >= 0)
+                    sb.Append(str, i, j - i); // keep the original escape(s)
+                else
+                    sb.Append(decoded);
+                i = j;
+            }
+            else
+            {
+                sb.Append(str[i++]);
+            }
+        }
+        return sb.ToString();
+    }
+
+    private static string NumberToRadix(long value, int radix)
+    {
+        if (value == 0) return "0";
+        bool neg = value < 0;
+        ulong v = neg ? (ulong)(-value) : (ulong)value;
+        const string digits = "0123456789abcdefghijklmnopqrstuvwxyz";
+        var sb = new StringBuilder();
+        while (v > 0) { sb.Insert(0, digits[(int)(v % (ulong)radix)]); v /= (ulong)radix; }
+        return neg ? "-" + sb : sb.ToString();
     }
 
     private static object? Num1(object?[] a, Func<double, double> op)

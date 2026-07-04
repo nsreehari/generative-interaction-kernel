@@ -3,8 +3,9 @@ namespace GenUI.Jsonata;
 /// <summary>
 /// Synchronous port of the canonical JSONata evaluator (jsonata.js). The reference implementation is
 /// async (Promise/generator based) to support external async functions; this port evaluates eagerly,
-/// which is sufficient for the platform's pure-expression workloads. Tuple-stream focus/index
-/// bindings, transforms, and partial application are not part of the supported surface.
+/// which is sufficient for the platform's pure-expression workloads. Transforms and partial
+/// application are supported; tuple-stream focus/index (@ / #) bindings are deliberately out of scope
+/// (see ADR-0027) and fail loudly.
 /// </summary>
 public sealed class Evaluator
 {
@@ -30,6 +31,7 @@ public sealed class Evaluator
             "string" or "number" or "value" => expr.Value,
             "wildcard" => EvaluateWildcard(expr, input, environment),
             "descendant" => EvaluateDescendants(expr, input, environment),
+            "regex" => Functions.MakeRegexMatcher((System.Text.RegularExpressions.Regex)expr.Value!, expr.Position),
             "condition" => EvaluateCondition(expr, input, environment),
             "block" => EvaluateBlock(expr, input, environment),
             "bind" => EvaluateBindExpression(expr, input, environment),
@@ -37,6 +39,8 @@ public sealed class Evaluator
             "variable" => EvaluateVariable(expr, input, environment),
             "lambda" => EvaluateLambda(expr, input, environment),
             "apply" => EvaluateApplyExpression(expr, input, environment),
+            "transform" => EvaluateTransform(expr, input, environment),
+            "partial" => EvaluatePartialApplication(expr, input, environment),
             _ => J.Undefined,
         };
 
@@ -114,6 +118,12 @@ public sealed class Evaluator
 
     private JArr EvaluateStep(Ast expr, JArr input, JEnvironment environment, bool lastStep)
     {
+        // Tuple-stream binding (the @ context and # index operators) is deliberately out of scope for
+        // the platform-internal engine (see ADR-0027). Fail loudly rather than silently mis-evaluate.
+        if (expr.Tuple || expr.Focus != null || expr.Index != null)
+            throw new JsonataException("U1201", expr.Position,
+                "tuple-stream binding (@ / #) is not supported by the platform JSONata engine");
+
         if (expr.Type == "sort")
         {
             return EvaluateSortExpression(expr, input, environment);
@@ -560,6 +570,123 @@ public sealed class Evaluator
             return Apply(chain, new[] { lhs, func }, null, environment);
         }
         return Apply(func, new[] { lhs }, null, environment);
+    }
+
+    private object? EvaluateTransform(Ast expr, object? input, JEnvironment environment)
+    {
+        // A transform (~> | pattern | update, delete |) evaluates to a function that clones its
+        // argument and applies the update/delete against the matched locations. Faithful port of
+        // the canonical evaluateTransformExpression.
+        return new NativeFunction("", 1, (f, args) =>
+        {
+            var obj = args.Length > 0 ? args[0] : J.Undefined;
+            if (J.IsUndef(obj)) return J.Undefined;
+
+            var cloneFn = environment.Lookup("clone");
+            if (!J.IsFunction(cloneFn)) throw new JsonataException("T2013", expr.Position);
+            var result = Apply(cloneFn, new object?[] { obj }, null, environment);
+
+            var matches = Evaluate(expr.Pattern!, result, environment);
+            if (!J.IsUndef(matches))
+            {
+                var matchList = matches is JArr ma ? ma : new JArr { matches };
+                foreach (var match in matchList)
+                {
+                    var update = Evaluate(expr.Update!, match, environment);
+                    if (!J.IsUndef(update))
+                    {
+                        if (update is not Dictionary<string, object?> upd)
+                            throw new JsonataException("T2011", expr.Update!.Position) { Value = update };
+                        if (match is Dictionary<string, object?> matchObj)
+                            foreach (var kv in upd) matchObj[kv.Key] = kv.Value;
+                    }
+
+                    if (expr.Delete != null)
+                    {
+                        var deletions = Evaluate(expr.Delete, match, environment);
+                        if (!J.IsUndef(deletions))
+                        {
+                            var delList = deletions is JArr da ? da : new JArr { deletions };
+                            if (!J.IsArrayOfStrings(delList))
+                                throw new JsonataException("T2012", expr.Delete.Position) { Value = deletions };
+                            if (match is Dictionary<string, object?> matchObj2)
+                                foreach (var d in delList) matchObj2.Remove((string)d!);
+                        }
+                    }
+                }
+            }
+
+            return result;
+        });
+    }
+
+    private object? EvaluatePartialApplication(Ast expr, object? input, JEnvironment environment)
+    {
+        // Placeholder ('?') arguments are carried through as their AST node; supplied arguments are
+        // evaluated eagerly. Faithful port of the canonical evaluatePartialApplication.
+        var evaluatedArgs = new List<object?>();
+        foreach (var arg in expr.Arguments!)
+        {
+            if (arg.Type == "operator" && Equals(arg.Value, "?"))
+                evaluatedArgs.Add(arg);
+            else
+                evaluatedArgs.Add(Evaluate(arg, input, environment));
+        }
+
+        var proc = Evaluate(expr.Procedure!, input, environment);
+        if (J.IsUndef(proc) && expr.Procedure!.Type == "path"
+            && environment.IsBound((string)expr.Procedure.Steps![0].Value!))
+        {
+            throw new JsonataException("T1007", expr.Position, (string)expr.Procedure.Steps![0].Value!);
+        }
+
+        return proc switch
+        {
+            Lambda lam => PartialApplyProcedure(lam, evaluatedArgs, environment),
+            NativeFunction nf => PartialApplyNativeFunction(nf, evaluatedArgs),
+            _ => throw new JsonataException("T1008", expr.Position),
+        };
+    }
+
+    private static Lambda PartialApplyProcedure(Lambda proc, List<object?> args, JEnvironment environment)
+    {
+        var env = new JEnvironment(proc.Environment ?? environment);
+        var unbound = new List<Ast>();
+        for (int i = 0; i < proc.Arguments.Count; i++)
+        {
+            var arg = i < args.Count ? args[i] : J.Undefined;
+            if (arg is Ast argAst && argAst.Type == "operator" && Equals(argAst.Value, "?"))
+                unbound.Add(proc.Arguments[i]);
+            else
+                env.Bind((string)proc.Arguments[i].Value!, arg);
+        }
+        return new Lambda
+        {
+            Input = proc.Input,
+            Environment = env,
+            Arguments = unbound,
+            Body = proc.Body,
+        };
+    }
+
+    private static NativeFunction PartialApplyNativeFunction(NativeFunction native, List<object?> args)
+    {
+        // Record the placeholder positions; the returned function fills them, in order, from the
+        // arguments supplied when it is later invoked.
+        var slots = new List<int>();
+        for (int i = 0; i < args.Count; i++)
+            if (args[i] is Ast aa && aa.Type == "operator" && Equals(aa.Value, "?"))
+                slots.Add(i);
+
+        var bound = args.ToArray();
+        return new NativeFunction(native.Name, slots.Count, (f, callArgs) =>
+        {
+            var full = new object?[bound.Length];
+            Array.Copy(bound, full, bound.Length);
+            for (int k = 0; k < slots.Count && k < callArgs.Length; k++)
+                full[slots[k]] = callArgs[k];
+            return native.Impl(f, full);
+        });
     }
 
     private object? EvaluateFunction(Ast expr, object? input, JEnvironment environment, bool hasApplyContext, object? applyContext)

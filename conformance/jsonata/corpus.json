@@ -641,6 +641,454 @@
         "b",
         "c"
       ]
+    },
+    {
+      "name": "single-predicate",
+      "expr": "$single([1,2,3], function($v){$v=2})",
+      "expected": 2
+    },
+    {
+      "name": "sift-object",
+      "expr": "$sift({\"a\":1,\"b\":2,\"c\":3}, function($v){$v>1})",
+      "expected": {
+        "b": 2,
+        "c": 3
+      }
+    },
+    {
+      "name": "each-object",
+      "expr": "$each({\"a\":1,\"b\":2}, function($v,$k){$k & \"=\" & $string($v)})",
+      "expected": [
+        "a=1",
+        "b=2"
+      ]
+    },
+    {
+      "name": "zip-two",
+      "expr": "$zip([1,2,3],[4,5,6])",
+      "expected": [
+        [
+          1,
+          4
+        ],
+        [
+          2,
+          5
+        ],
+        [
+          3,
+          6
+        ]
+      ]
+    },
+    {
+      "name": "zip-ragged",
+      "expr": "$zip([1,2,3],[4,5],[7,8,9])",
+      "expected": [
+        [
+          1,
+          4,
+          7
+        ],
+        [
+          2,
+          5,
+          8
+        ]
+      ]
+    },
+    {
+      "name": "spread-object",
+      "expr": "$spread({\"a\":1,\"b\":2})",
+      "expected": [
+        {
+          "a": 1
+        },
+        {
+          "b": 2
+        }
+      ]
+    },
+    {
+      "name": "merge-array",
+      "expr": "$merge([{\"a\":1},{\"b\":2}])",
+      "expected": {
+        "a": 1,
+        "b": 2
+      }
+    },
+    {
+      "name": "clone-nested",
+      "expr": "$clone({\"a\":[1,2],\"b\":{\"c\":3}})",
+      "expected": {
+        "a": [
+          1,
+          2
+        ],
+        "b": {
+          "c": 3
+        }
+      }
+    },
+    {
+      "name": "assert-true",
+      "expr": "$assert(true, \"ok\")",
+      "expected": null
+    },
+    {
+      "name": "base64-encode",
+      "expr": "$base64encode(\"hello\")",
+      "expected": "aGVsbG8="
+    },
+    {
+      "name": "base64-decode",
+      "expr": "$base64decode(\"aGVsbG8=\")",
+      "expected": "hello"
+    },
+    {
+      "name": "base64-roundtrip",
+      "expr": "$base64decode($base64encode(\"Hello, World!\"))",
+      "expected": "Hello, World!"
+    },
+    {
+      "name": "encode-url-component",
+      "expr": "$encodeUrlComponent(\"?x=test&y=1\")",
+      "expected": "%3Fx%3Dtest%26y%3D1"
+    },
+    {
+      "name": "encode-url",
+      "expr": "$encodeUrl(\"https://ex.com/a b?c=d\")",
+      "expected": "https://ex.com/a%20b?c=d"
+    },
+    {
+      "name": "decode-url-component",
+      "expr": "$decodeUrlComponent(\"%3Fx%3Dtest\")",
+      "expected": "?x=test"
+    },
+    {
+      "name": "decode-url",
+      "expr": "$decodeUrl(\"https://ex.com/a%20b?c=d\")",
+      "expected": "https://ex.com/a b?c=d"
+    },
+    {
+      "name": "url-roundtrip",
+      "expr": "$decodeUrlComponent($encodeUrlComponent(\"a b&c=d\"))",
+      "expected": "a b&c=d"
+    },
+    {
+      "name": "format-base-2",
+      "expr": "$formatBase(255, 2)",
+      "expected": "11111111"
+    },
+    {
+      "name": "format-base-16",
+      "expr": "$formatBase(255, 16)",
+      "expected": "ff"
+    },
+    {
+      "name": "format-base-default",
+      "expr": "$formatBase(100)",
+      "expected": "100"
+    },
+    {
+      "name": "number-hex",
+      "expr": "$number(\"0xff\")",
+      "expected": 255
+    },
+    {
+      "name": "number-octal",
+      "expr": "$number(\"0o17\")",
+      "expected": 15
+    },
+    {
+      "name": "number-binary",
+      "expr": "$number(\"0b101\")",
+      "expected": 5
+    },
+    {
+      "name": "from-millis-epoch",
+      "expr": "$fromMillis(0)",
+      "expected": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "name": "to-millis-epoch",
+      "expr": "$toMillis(\"1970-01-01T00:00:00.000Z\")",
+      "expected": 0
+    },
+    {
+      "name": "millis-roundtrip",
+      "expr": "$fromMillis($toMillis(\"2020-06-15T12:30:45.123Z\"))",
+      "expected": "2020-06-15T12:30:45.123Z"
+    },
+    {
+      "name": "random-range",
+      "expr": "$random() >= 0 and $random() < 1",
+      "expected": true
+    },
+    {
+      "name": "shuffle-sorted",
+      "expr": "$sort($shuffle([5,3,1,4,2]))",
+      "expected": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "name": "shuffle-count",
+      "expr": "$count($shuffle([1,2,3,4,5]))",
+      "expected": 5
+    },
+    {
+      "name": "now-type",
+      "expr": "$type($now())",
+      "expected": "string"
+    },
+    {
+      "name": "millis-type",
+      "expr": "$type($millis())",
+      "expected": "number"
+    },
+    {
+      "name": "eval-simple",
+      "expr": "$eval(\"1+2\")",
+      "expected": 3
+    },
+    {
+      "name": "eval-with-data",
+      "expr": "$eval(\"a+b\", {\"a\":1,\"b\":2})",
+      "expected": 3
+    },
+    {
+      "name": "match-simple",
+      "expr": "$match(\"ababab\", /a/)",
+      "expected": [
+        {
+          "match": "a",
+          "index": 0,
+          "groups": []
+        },
+        {
+          "match": "a",
+          "index": 2,
+          "groups": []
+        },
+        {
+          "match": "a",
+          "index": 4,
+          "groups": []
+        }
+      ]
+    },
+    {
+      "name": "match-groups",
+      "expr": "$match(\"2020-01-15\", /([0-9]+)-([0-9]+)-([0-9]+)/)",
+      "expected": {
+        "match": "2020-01-15",
+        "index": 0,
+        "groups": [
+          "2020",
+          "01",
+          "15"
+        ]
+      }
+    },
+    {
+      "name": "match-count",
+      "expr": "$count($match(\"hello world hello\", /hello/))",
+      "expected": 2
+    },
+    {
+      "name": "match-limit",
+      "expr": "$match(\"aaa\", /a/, 2)",
+      "expected": [
+        {
+          "match": "a",
+          "index": 0,
+          "groups": []
+        },
+        {
+          "match": "a",
+          "index": 1,
+          "groups": []
+        }
+      ]
+    },
+    {
+      "name": "match-none",
+      "expr": "$match(\"abc\", /xyz/)",
+      "expected": null
+    },
+    {
+      "name": "match-word-boundaries",
+      "expr": "$match(\"the cat sat\", /[a-z]+/).match",
+      "expected": [
+        "the",
+        "cat",
+        "sat"
+      ]
+    },
+    {
+      "name": "contains-regex-true",
+      "expr": "$contains(\"hello\", /ell/)",
+      "expected": true
+    },
+    {
+      "name": "contains-regex-false",
+      "expr": "$contains(\"hello\", /xyz/)",
+      "expected": false
+    },
+    {
+      "name": "replace-regex",
+      "expr": "$replace(\"hello world\", /o/, \"0\")",
+      "expected": "hell0 w0rld"
+    },
+    {
+      "name": "replace-regex-groups",
+      "expr": "$replace(\"2020-01-15\", /([0-9]+)-([0-9]+)-([0-9]+)/, \"$3/$2/$1\")",
+      "expected": "15/01/2020"
+    },
+    {
+      "name": "replace-regex-limit",
+      "expr": "$replace(\"aaa\", /a/, \"b\", 2)",
+      "expected": "bba"
+    },
+    {
+      "name": "replace-regex-whole",
+      "expr": "$replace(\"abcabc\", /b/, \"[$0]\")",
+      "expected": "a[b]ca[b]c"
+    },
+    {
+      "name": "split-regex",
+      "expr": "$split(\"a1b2c3d\", /[0-9]/)",
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    {
+      "name": "split-regex-limit",
+      "expr": "$split(\"a,b,c,d\", /,/, 2)",
+      "expected": [
+        "a",
+        "b"
+      ]
+    },
+    {
+      "name": "regex-apply-match",
+      "expr": "/[0-9]+/(\"abc123def\").match",
+      "expected": "123"
+    },
+    {
+      "name": "regex-apply-start",
+      "expr": "/[0-9]+/(\"abc123def\").start",
+      "expected": 3
+    },
+    {
+      "name": "regex-apply-groups",
+      "expr": "/([a-z])([0-9])/(\"x5\").groups",
+      "expected": [
+        "x",
+        "5"
+      ]
+    },
+    {
+      "name": "transform-update",
+      "expr": "$ ~> |order|{\"total\": qty*price}|",
+      "data": {
+        "order": {
+          "id": "A1",
+          "qty": 2,
+          "price": 10,
+          "secret": "x"
+        }
+      },
+      "expected": {
+        "order": {
+          "id": "A1",
+          "qty": 2,
+          "price": 10,
+          "secret": "x",
+          "total": 20
+        }
+      }
+    },
+    {
+      "name": "transform-delete",
+      "expr": "$ ~> |order|{}, [\"secret\"]|",
+      "data": {
+        "order": {
+          "id": "A1",
+          "qty": 2,
+          "price": 10,
+          "secret": "x"
+        }
+      },
+      "expected": {
+        "order": {
+          "id": "A1",
+          "qty": 2,
+          "price": 10
+        }
+      }
+    },
+    {
+      "name": "transform-update-existing",
+      "expr": "payload ~> |$|{\"n\": n+1}|",
+      "data": {
+        "payload": {
+          "n": 5
+        }
+      },
+      "expected": {
+        "n": 6
+      }
+    },
+    {
+      "name": "transform-array",
+      "expr": "items ~> |$|{\"flag\": true}|",
+      "data": {
+        "items": [
+          {
+            "a": 1
+          },
+          {
+            "a": 2
+          }
+        ]
+      },
+      "expected": [
+        {
+          "a": 1,
+          "flag": true
+        },
+        {
+          "a": 2,
+          "flag": true
+        }
+      ]
+    },
+    {
+      "name": "partial-native",
+      "expr": "($sub := $substring(?, 0, 3); $sub(\"hello world\"))",
+      "data": {},
+      "expected": "hel"
+    },
+    {
+      "name": "partial-lambda",
+      "expr": "($add := function($x,$y){$x+$y}; $add3 := $add(3, ?); $add3(4))",
+      "data": {},
+      "expected": 7
+    },
+    {
+      "name": "partial-native-map",
+      "expr": "($pad := $pad(?, 5); $pad(\"ab\"))",
+      "data": {},
+      "expected": "ab   "
     }
   ]
 }

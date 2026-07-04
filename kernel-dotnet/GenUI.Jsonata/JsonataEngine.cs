@@ -71,6 +71,7 @@ public sealed class JsonataEngine
         Reg("contains", 2, Functions.Contains);
         Reg("replace", 4, Functions.Replace);
         Reg("split", 3, Functions.Split);
+        Reg("match", 3, Functions.Match);
         Reg("join", 2, Functions.Join);
 
         Reg("number", 1, Functions.Number);
@@ -94,6 +95,38 @@ public sealed class JsonataEngine
         Reg("sort", 2, Functions.Sort);
         Reg("distinct", 1, Functions.Distinct);
         Reg("type", 1, Functions.Type);
+
+        Reg("single", 2, Functions.Single);
+        Reg("sift", 2, Functions.Sift);
+        Reg("each", 2, Functions.Each);
+        Reg("zip", 2, Functions.Zip);
+        Reg("spread", 1, Functions.Spread);
+        Reg("merge", 1, Functions.Merge);
+        Reg("error", 1, Functions.Error);
+        Reg("assert", 2, Functions.Assert);
+        Reg("clone", 1, Functions.Clone);
+        Reg("eval", 2, Functions.Eval);
+
+        Reg("base64encode", 1, Functions.Base64Encode);
+        Reg("base64decode", 1, Functions.Base64Decode);
+        Reg("encodeUrlComponent", 1, Functions.EncodeUrlComponent);
+        Reg("encodeUrl", 1, Functions.EncodeUrl);
+        Reg("decodeUrlComponent", 1, Functions.DecodeUrlComponent);
+        Reg("decodeUrl", 1, Functions.DecodeUrl);
+
+        Reg("formatBase", 2, Functions.FormatBase);
+        Reg("random", 0, Functions.Random);
+        Reg("shuffle", 1, Functions.Shuffle);
+        Reg("now", 0, Functions.Now);
+        Reg("millis", 0, Functions.Millis);
+        Reg("fromMillis", 3, Functions.FromMillis);
+        Reg("toMillis", 2, Functions.ToMillis);
+
+        // Explicitly-scoped-out XPath F&O locale layer (see ADR-0027): registered so an accidental
+        // call fails with an actionable message rather than a generic "unknown function".
+        Reg("formatNumber", 3, Functions.FormatNumber);
+        Reg("formatInteger", 2, Functions.FormatInteger);
+        Reg("parseInteger", 2, Functions.ParseInteger);
 
         return frame;
     }

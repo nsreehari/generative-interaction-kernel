@@ -28,12 +28,28 @@ evaluator come online.
 | 2 | Parser (Pratt / TDOP) → AST | **done** — `Parser.cs`, `Parser.ProcessAst.cs`, `Ast.cs` |
 | 3 | Evaluator (path semantics, sequences) | **done** — `Evaluator.cs` |
 | 4 | Core function library (`$sum`, `$map`, string/number/array fns) | **done** — `Functions.cs` |
-| 5 | Date/time + signature validation | not started |
+| 5 | Extended library + regex + language operators | **done** — see below |
 
 The full port is live: `GenUI.Kernel` now uses `JsonataExpressionProvider` (which bridges
 `JsonataEngine` to `IExpressionProvider`), replacing the retired hand-written `MiniJsonataProvider`.
-The engine passes the full 90-case shared conformance corpus
-(`npm run test:dotnet-jsonata-corpus`).
+The engine passes the full shared conformance corpus
+(`npm run test:dotnet-jsonata-corpus`, currently 147 cases).
+
+## Language surface
+
+**Supported** (corpus-gated against the canonical engine): paths/filters/predicates, all operators,
+conditionals, blocks, variable binding, lambdas, higher-order functions, the `~>` apply/chain
+operator, and the full function library — aggregation, string/number/array/object utilities,
+`$map`/`$filter`/`$reduce`/`$sift`/`$single`/`$each`/`$zip`/`$spread`/`$merge`, `$eval`/`$clone`/`$error`/`$assert`,
+Base64 + URL encode/decode, `$formatBase`, `$random`/`$shuffle`, ISO-8601 date/time
+(`$now`/`$millis`/`$fromMillis`/`$toMillis`), the **regex** surface (`/pat/flags` literals as callable
+matchers, `$match`, and regex-accepting `$contains`/`$replace`/`$split`), and the **transform**
+(`~> | pat | update, delete |`) and **partial application** (`$fn(?, x)`) operators.
+
+**Deliberately out of scope** (see [ADR-0027](../../docs/decisions/ADR-0027-own-jsonata-engine.md)) —
+these fail loudly with a `U12xx` error rather than silently mis-evaluating: the XPath F&O locale layer
+(`$formatNumber`, `$formatInteger`, `$parseInteger`), date/time picture strings (the optional
+picture/timezone args to `$now`/`$fromMillis`/`$toMillis`), and tuple-stream binders (`@` / `#`).
 
 ## Fidelity notes
 
@@ -43,8 +59,10 @@ The engine passes the full 90-case shared conformance corpus
 - `String.charAt` out-of-range returns `''` in JS; the port uses `'\0'` as that sentinel (JSONata
   source never contains NUL, and no canonical comparison matches `'\0'`).
 - Regex literals compile to `System.Text.RegularExpressions.Regex` (i/m flags mapped; JSONata's
-  implicit global 'g' is applied at match time). JS↔.NET regex dialect differences are a stage-4
-  concern and are covered by corpus cases when regex functions are ported.
+  implicit global 'g' is applied at match time). A regex literal evaluates to a callable matcher
+  closure — `{match,start,end,groups,next}` — exactly as the canonical `evaluateRegex` does, and the
+  regex-accepting `$match`/`$contains`/`$replace`/`$split` drive it. JS↔.NET regex dialect differences
+  are covered by corpus cases.
 
 ## Build / check
 
