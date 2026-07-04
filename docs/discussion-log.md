@@ -424,6 +424,42 @@ fallback), full suite green (33 kernel + 5 react + 7 interaction + 3 sse, confor
 Kernel grammar and wire protocol untouched. Narrowed open items #13 and #14.
 ---
 
+## 27. Deciding the "cheap cluster" — five parked items closed at once
+
+With the layered stack committed (Phase 10), the user asked which parked items could simply be
+*decided now*, then said "take the whole cheap cluster." Five self-contained, unblocked items were
+resolved together — no second kernel, no taxonomy design, all additive and green.
+
+- **Conformance coverage broadened** (executing ADR-0015, no new ADR): two language-neutral cases —
+  `09` pins `merge` (shallow combine) + `remove` (leaf delete) semantics observably through a read
+  edge, and `10` drives *two* machines through an emit **cascade** (press → `advance` → outer
+  transition emits `inner` → nested transition) inside one dispatch, one rev carrying both state
+  writes in order. HITL `confirm` follow-ups stay in the kernel's unit tests for now (they need a
+  live Orchestrator); scripting canned orchestrator responses into JSON cases is the remaining #11
+  work.
+- **`confirm` contract** ([ADR-0019](decisions/ADR-0019-confirm-contract.md)): a standard prompt
+  payload (`ConfirmPrompt`), an outcome vocabulary (`approved | denied | cancelled | timeout`), and
+  standard follow-up event names (`confirmed` / `dismissed`) so approval and denial route by name.
+  `kernel/src/confirm.ts` + a round-trip test (Orchestrator resolves → follow-up drives a store write
+  in the same dispatch). No new action family, no new wire message.
+- **ObservabilitySink** ([ADR-0020](decisions/ADR-0020-observability-sink.md)): the trace-point set is
+  now a closed, documented contract (`TRACE_POINTS`), with reference `consoleSink` / `bufferSink` /
+  `multiSink` over the existing `TraceSink` type; concrete exporters stay out-of-core. Traces remain
+  *off* the behavioral conformance contract (ADR-0015) — a weaker, observability-only contract.
+- **Optional layers** ([ADR-0021](decisions/ADR-0021-optional-layers.md)): no layer is mandatory; a
+  partial pipeline (e.g. single-stage `Domain → UI`) is valid, and validation happens once at the
+  UI-DSL boundary via `lowerToDocument`, so skipping layers costs no safety. Proven by a new
+  single-stage lowering test.
+- **Streaming deferred** ([ADR-0022](decisions/ADR-0022-defer-streaming.md)): v0.1 ships a *complete*
+  document in one message; incremental agent-side streaming of the initial document is decided-to-
+  defer (partial documents have no defined validity; post-render patches already cover dynamic
+  content). Resolves #10 as *deferred*, not open.
+
+Suite grew to 43 kernel + 5 react + 7 interaction + 3 sse; conformance (now 10 cases) + 4-config
+typecheck clean. Kernel grammar and wire protocol untouched. Resolved not-yet-decided #8, #9, #10,
+#15 (renumbered out); narrowed #11.
+---
+
 ## Index of alternatives explicitly set aside
 
 | Alternative | Set aside because |

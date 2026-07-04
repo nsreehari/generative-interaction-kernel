@@ -39,6 +39,9 @@ conformance matrix** of portable JSON cases with a per-kernel runner (Phase 9) �
 | Layered DSL | **One kernel, lowering compilers above it**: Task → Domain → Interaction → UI (kernel doc) as pure `Stage`s; a **profile = a Domain DSL + its lowering**; layers optional; `lowerToDocument` reuses validate-before-commit |
 | Platform boundary | **Platform owns Interaction (L3) + Presentation (L4) + Runtime (L5)**; Intent (agents) and Domain semantics (app teams) sit outside and plug in via a translation contract; the UI DSL is an internal target; the **moat = interaction taxonomy + presentation compiler** |
 | Interaction / Presentation | **Two owned layers + a context-aware compiler** (`interaction/`): Interaction Model (goal patterns + facet taxonomy) → `PresentationCompiler(spec, context)` → Presentation Model (layout + regions) → kernel doc; *same interaction, different presentation by surface* |
+| HITL confirm | **`confirm` contract** (`kernel/src/confirm.ts`): standard prompt payload, outcome vocabulary (`approved`/`denied`/`cancelled`/`timeout`), and `confirmed`/`dismissed` follow-up event names |
+| Observability | **Fixed trace points** (`TRACE_POINTS`) + reference `console`/`buffer`/`multi` sinks over the `TraceSink` seam; exporters stay out-of-core; traces are *not* on the behavioral conformance contract |
+| Optional layers | **No layer is mandatory**: a partial pipeline (e.g. single-stage `Domain → UI`) is valid; validation happens once at the UI-DSL boundary. **Streaming** of the initial document is deferred beyond v0.1 (complete document per message) |
 
 ## What this is not
 
@@ -81,13 +84,17 @@ genui-platform/
       ADR-0016-layered-dsl-stack.md
       ADR-0017-platform-boundary.md
       ADR-0018-interaction-presentation-split.md
+      ADR-0019-confirm-contract.md
+      ADR-0020-observability-sink.md
+      ADR-0021-optional-layers.md
+      ADR-0022-defer-streaming.md
   schemas/                      ← normative GUP JSON Schemas + golden conformance fixture
   conformance/                  ← Phase 9 behavioral matrix (language-neutral, per-kernel)
     conformance-case.schema.json  ← draft-07 schema for a case file
     cases/                      ← *.case.json: document + seed + event steps → expected patches/resolves
   kernel/                       ← Phase 1 reference kernel (TypeScript)
-    src/                        ← types, providers, interpreter, reducer, kernel, transport, client, lowering
-    test/                       ← golden fixture + orchestrator effects + transport + client round-trip + resync + authoring + conformance + lowering
+    src/                        ← types, providers, interpreter, reducer, kernel, transport, client, lowering, confirm, observability
+    test/                       ← golden fixture + orchestrator effects + transport + client round-trip + resync + authoring + conformance + lowering + confirm + observability
     tsconfig.json
   adapters/
     react/                      ← Phase 2 React render adapter

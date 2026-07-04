@@ -8,3 +8,5 @@ export * from "./transport";
 export * from "./client";
 export * from "./authoring";
 export * from "./lower";
+export * from "./confirm";
+export * from "./observability";

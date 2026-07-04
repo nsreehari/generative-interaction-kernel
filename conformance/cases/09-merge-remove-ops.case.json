@@ -1,0 +1,33 @@
+{
+  "name": "patch ops: merge is a shallow combine, remove deletes a leaf",
+  "description": "Seeds a base object, then a merge op (shallow-combines keys, overwriting on conflict) and a remove op (deletes one leaf). A node reads the resulting object so any conforming kernel's applyOp semantics for merge/remove are observable through the resolved tree.",
+  "manifest": {
+    "gup": "0.1",
+    "type": "manifest",
+    "payload": {
+      "version": "ops-demo/1.0",
+      "expression": "jsonata",
+      "namespaces": ["card_data"],
+      "actions": ["assign", "derive", "invoke", "emit", "navigate", "confirm"],
+      "capabilities": { "panel": {} }
+    }
+  },
+  "document": {
+    "gup": "0.1",
+    "type": "document",
+    "payload": {
+      "manifest": "ops-demo/1.0",
+      "root": {
+        "capability": "panel",
+        "id": "p",
+        "edges": { "read": { "value": "card_data.profile" } }
+      }
+    }
+  },
+  "seed": [
+    { "op": "set", "path": "card_data.profile", "value": { "a": 1, "b": 2 } },
+    { "op": "merge", "path": "card_data.profile", "value": { "b": 3, "c": 4 } },
+    { "op": "remove", "path": "card_data.profile.a" }
+  ],
+  "expectInitialResolve": [{ "id": "p", "props": { "value": { "b": 3, "c": 4 } } }]
+}

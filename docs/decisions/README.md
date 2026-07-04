@@ -23,6 +23,10 @@ rejected options were set aside, and the consequences.
 | [0016](ADR-0016-layered-dsl-stack.md) | Layered DSL stack — one kernel, lowering compilers above it | Accepted |
 | [0017](ADR-0017-platform-boundary.md) | Platform boundary — the platform owns Interaction, Presentation, Runtime | Accepted |
 | [0018](ADR-0018-interaction-presentation-split.md) | Interaction / Presentation split — with a context-aware presentation compiler | Accepted |
+| [0019](ADR-0019-confirm-contract.md) | Human-in-the-loop `confirm` contract — standard prompt, outcomes, event names | Accepted |
+| [0020](ADR-0020-observability-sink.md) | ObservabilitySink — fixed trace points + reference sinks | Accepted |
+| [0021](ADR-0021-optional-layers.md) | Layers are optional; only the terminal UI-DSL document is validated | Accepted |
+| [0022](ADR-0022-defer-streaming.md) | v0.1 ships complete documents; incremental streaming deferred | Accepted |
 
 ## Format
 

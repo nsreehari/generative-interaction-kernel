@@ -10,7 +10,14 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
 > ([ADR-0007](decisions/ADR-0007-reference-kernel-implementation.md)); **effect execution &
 > async data** → `invoke`/`confirm`/`navigate` run as post-reduction effects via an Orchestrator
 > provider, async data modeled as machine states
-> ([ADR-0009](decisions/ADR-0009-orchestrator-effects.md)).
+> ([ADR-0009](decisions/ADR-0009-orchestrator-effects.md)); **`confirm` UX contract** → standard
+> prompt payload, outcome vocabulary, and `confirmed`/`dismissed` follow-up event names
+> ([ADR-0019](decisions/ADR-0019-confirm-contract.md)); **ObservabilitySink** → fixed trace points +
+> reference `console`/`buffer`/`multi` sinks ([ADR-0020](decisions/ADR-0020-observability-sink.md));
+> **optional layers** → no layer is mandatory, validation happens once at the UI-DSL boundary
+> ([ADR-0021](decisions/ADR-0021-optional-layers.md)); **progressive/streaming document assembly** →
+> deferred beyond v0.1 — a complete document per message
+> ([ADR-0022](decisions/ADR-0022-defer-streaming.md)).
 
 ## Open
 
@@ -49,35 +56,21 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
    bindings (WebSocket / stdio / in-proc for embedded), auth on the endpoints, and session/log
    persistence across host restarts.
 
-8. **ObservabilitySink format & targets.** The `trace` message shape exists; the sink targets
-   (console, OpenTelemetry, ETW, file) and required trace points are not yet fixed.
+8. **Conformance suite scope.** A **behavioral matrix** of language-neutral JSON cases
+   (`conformance/cases/`) pins observable kernel behavior — assign/gate/guard/machine/derive/emit
+   fan-out, rev monotonicity, malformed-document rejection, graceful fallback, `merge`/`remove` op
+   semantics, and a two-machine emit **cascade** — structurally gated in `npm run conformance` and
+   executed by a per-kernel runner ([ADR-0015](decisions/ADR-0015-conformance-matrix.md)). Still open:
+   **standing up the second (C#) kernel's runner** to actually assert reducer equivalence, and
+   **scripting an Orchestrator's `confirm` response inside the JSON cases** so HITL follow-ups join the
+   language-neutral matrix (today they are covered by the kernel's orchestrator/confirm unit tests).
 
-9. **Human-in-the-loop `confirm` UX contract.** The `confirm` action now runs as an Orchestrator
-   effect: the Orchestrator surfaces the prompt and returns the approval/denial as a follow-up event
-   ([ADR-0009](decisions/ADR-0009-orchestrator-effects.md)). Still open: a *standard* prompt payload
-   shape, cancellation/timeout, and how denial vs. approval are conventionally named on the wire.
+9. **Canonical reference profile.** Whether to author a clean, minimal exemplar profile that
+   *defines* the platform's ideal shape, distinct from the first onboarding profile (live-cards,
+   which is a pragmatic pilot adopter, not a pristine reference). Note: a **profile** is now defined
+   as a *Domain DSL + its lowering to the kernel* ([ADR-0016](decisions/ADR-0016-layered-dsl-stack.md)).
 
-10. **Progressive / streaming document assembly.** Whether v0.1 supports partial documents
-    materializing as they are produced by an agent, and how that is expressed on the wire. Agents can
-    now author a *complete* document via typed builders with validate-before-commit + reference lint
-    ([ADR-0013](decisions/ADR-0013-agent-authoring.md)); still open is *incremental* agent-side
-    streaming of the initial `document`. (Orchestrator results already stream follow-up patches within
-    a dispatch, but agent-side streaming of the initial `document` is separate.)
-
-11. **Conformance suite scope.** A **behavioral matrix** of language-neutral JSON cases
-    (`conformance/cases/`) now pins observable kernel behavior — assign/gate/guard/machine/derive/emit
-    fan-out, rev monotonicity, malformed-document rejection, graceful fallback — structurally gated in
-    `npm run conformance` and executed by a per-kernel runner
-    ([ADR-0015](decisions/ADR-0015-conformance-matrix.md)). Still open: broader coverage (merge/remove
-    ops, nested machines, multi-step emit chains, HITL confirm follow-ups) and **standing up the second
-    (C#) kernel's runner** to actually assert reducer equivalence.
-
-12. **Canonical reference profile.** Whether to author a clean, minimal exemplar profile that
-    *defines* the platform's ideal shape, distinct from the first onboarding profile (live-cards,
-    which is a pragmatic pilot adopter, not a pristine reference). Note: a **profile** is now defined
-    as a *Domain DSL + its lowering to the kernel* ([ADR-0016](decisions/ADR-0016-layered-dsl-stack.md)).
-
-13. **Interaction taxonomy (Layer 3).** The platform-owned interaction vocabulary
+10. **Interaction taxonomy (Layer 3).** The platform-owned interaction vocabulary
     ([ADR-0018](decisions/ADR-0018-interaction-presentation-split.md)) is specified in
     `interaction/src/interaction.ts`: all 12 kinds, each with its `Facet[]` (`{ name, role,
     required }`, `role` = a semantic display role, `required` = never dropped on constrained
@@ -85,16 +78,10 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
     versioned, and how a domain extends the taxonomy without forking it — this taxonomy is "the moat"
     ([ADR-0017](decisions/ADR-0017-platform-boundary.md)) so its shape needs deliberate design.
 
-14. **Presentation compiler + context taxonomy (Layer 3→4).** The compiler
+11. **Presentation compiler + context taxonomy (Layer 3→4).** The compiler
     (`defaultPresentationCompiler`) now reads a real **PresentationContext** taxonomy (surface,
     device, space, attention, expertise) and picks from a catalog of named **layout templates**
     (`layoutTemplates`: stack / narrative / comparison / workspace / dashboard / wizard), preserving
     required facets under a template's `maxRegions` cap. Still open: whether these are the *right*
     context axes and templates, how a profile supplies a richer compiler, and how expertise / device
     / data-shape actually influence density and disclosure (the reference compiler ignores them).
-
-15. **Mandatory vs. optional layers.** ADR-0016 allows a profile to skip layers (e.g. go straight
-    `Domain -> UI`) and ADR-0018 adds the Interaction/Presentation layers above. Still open: whether
-    any layer is ever *required*, how a partial pipeline is declared, and per-layer typed builders /
-    validation (each stage is pure and testable, but only the terminal UI-DSL document is
-    schema-validated today).

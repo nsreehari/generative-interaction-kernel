@@ -132,6 +132,15 @@ test("pipeline composes stages and stays type-aligned (Task -> Domain -> UI)", (
   assert.equal(message.payload.root.capability, "board");
 });
 
+test("layers are optional: a single-stage Domain -> UI pipeline is valid (ADR-0021)", () => {
+  // No Task/Interaction/Presentation layer: a profile may go straight Domain -> UI. Only the
+  // terminal kernel document is schema-validated, so skipping layers costs no safety.
+  const compiled = pipeline(lowerBoard).build();
+  const message = lowerToDocument(compiled, salesBoard);
+  assert.equal(message.payload.root.capability, "board");
+  assert.equal(message.payload.root.props?.title, "Sales");
+});
+
 test("a lowering that emits a malformed document is rejected at the kernel boundary", () => {
   const brokenStage: Stage<null, DocumentPayload> = () =>
     ({ root: { id: "x" } } as unknown as DocumentPayload); // missing capability

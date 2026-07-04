@@ -1,0 +1,59 @@
+{
+  "name": "cascade: one event drives two machines through an emit chain in a single dispatch",
+  "description": "A press emits `advance`; an outer machine consumes it (idle -> running) and its transition emits `inner`; a second machine consumes `inner` (waiting -> done). All three hops settle inside one dispatch, so one rev carries both machine-state writes in order.",
+  "manifest": {
+    "gup": "0.1",
+    "type": "manifest",
+    "payload": {
+      "version": "cascade-demo/1.0",
+      "expression": "jsonata",
+      "namespaces": ["card_data"],
+      "actions": ["assign", "derive", "invoke", "emit", "navigate", "confirm"],
+      "capabilities": { "control": { "emits": ["press"] } }
+    }
+  },
+  "document": {
+    "gup": "0.1",
+    "type": "document",
+    "payload": {
+      "manifest": "cascade-demo/1.0",
+      "root": {
+        "capability": "control",
+        "id": "c",
+        "edges": { "on": { "press": [{ "do": "emit", "event": "advance" }] } }
+      },
+      "machines": [
+        {
+          "id": "outer",
+          "context": "card_data.outer",
+          "initial": "idle",
+          "states": {
+            "idle": { "on": { "advance": { "target": "running", "actions": [{ "do": "emit", "event": "inner" }] } } },
+            "running": { "type": "final" }
+          }
+        },
+        {
+          "id": "nested",
+          "context": "card_data.nested",
+          "initial": "waiting",
+          "states": {
+            "waiting": { "on": { "inner": "done" } },
+            "done": { "type": "final" }
+          }
+        }
+      ]
+    }
+  },
+  "steps": [
+    {
+      "event": { "node": "c", "name": "press" },
+      "expectPatch": {
+        "rev": 1,
+        "ops": [
+          { "op": "set", "path": "card_data.outer.state", "value": "running" },
+          { "op": "set", "path": "card_data.nested.state", "value": "done" }
+        ]
+      }
+    }
+  ]
+}
