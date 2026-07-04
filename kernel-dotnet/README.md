@@ -19,7 +19,7 @@ kernel-dotnet/
     Json.cs                     ← namespaced store paths, set/merge/remove ops, deep-equal, truthy, unwrap
     Types.cs                    ← PatchOp, Patch, GupEvent, ResolvedNode, Effect, OrchestratorResult
     Providers.cs                ← InMemoryStateModel, ManifestRegistry, IExpressionProvider, IOrchestrator
-    Expression.cs               ← MiniJsonataProvider (the JSONata subset the matrix uses)
+    JsonataProvider.cs          ← JsonataExpressionProvider (adapts the native GenUI.Jsonata engine)
     Interpret.cs                ← Resolve: gate → capability → props(read) → children
     Reduce.cs                   ← the pure reducer: 6 action families, machines, emit cascade
     Validate.cs                 ← validate-before-commit (structural, mirrors document.schema.json)
@@ -38,10 +38,10 @@ npm run test:dotnet
 
 ## Scope & fidelity notes
 
-- **Expression provider.** `MiniJsonataProvider` implements exactly the JSONata forms the matrix
-  exercises (path navigation, `$event`, `*`, `=`, `!=`, literals) with `truthy()`-wrapped results
-  matching jsonata-js as observed through the contract. It is *not* a full JSONata engine; a richer
-  case should swap in a full JSONata port behind `IExpressionProvider`.
+- **Expression provider.** `JsonataExpressionProvider` bridges the native C# JSONata engine
+  (`GenUI.Jsonata`, a synchronous port of canonical JSONata v2.2.1) to the `IExpressionProvider`
+  seam, converting `System.Text.Json.Nodes` in/out of the engine value model and normalizing a
+  JSONata `undefined` result to null. The port passes the full 90-case shared conformance corpus.
 - **Orchestrator seam.** Deferred effects (`invoke`/`confirm`/`navigate`) are collected by the
   reducer and routed through `IOrchestrator` in `Dispatch`, which applies an effect's `ops` and
   recursively settles its follow-up `events` inside the same dispatch (one dispatch = one rev). With

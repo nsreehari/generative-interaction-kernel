@@ -14,9 +14,10 @@
     "test:sse": "node --import tsx --test transports/http-sse/test/**/*.test.ts",
     "test:dotnet": "dotnet run --project kernel-dotnet/GenUI.Conformance",
     "test:dotnet-jsonata": "dotnet run --project kernel-dotnet/GenUI.Jsonata.TokenizerCheck",
+    "test:dotnet-jsonata-corpus": "dotnet run --project kernel-dotnet/GenUI.Jsonata.Conformance",
     "test:dotnet-render": "dotnet run --project adapters/dotnet/GenUI.Render.Check",
     "typecheck": "tsc -p kernel/tsconfig.json --noEmit && tsc -p adapters/react/tsconfig.json --noEmit && tsc -p interaction/tsconfig.json --noEmit && tsc -p transports/http-sse/tsconfig.json --noEmit",
-    "test": "npm run conformance && npm run typecheck && npm run test:jsonata && npm run test:kernel && npm run test:react && npm run test:interaction && npm run test:sse && npm run test:dotnet && npm run test:dotnet-jsonata && npm run test:dotnet-render"
+    "test": "npm run conformance && npm run typecheck && npm run test:jsonata && npm run test:kernel && npm run test:react && npm run test:interaction && npm run test:sse && npm run test:dotnet && npm run test:dotnet-jsonata && npm run test:dotnet-jsonata-corpus && npm run test:dotnet-render"
   },
   "dependencies": {
     "ajv": "^8.17.1",

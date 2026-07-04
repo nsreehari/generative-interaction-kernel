@@ -33,8 +33,9 @@ npm run jsonata:regen    # regenerate expected after adding/editing cases
 
 - **TS engine** — `test:jsonata` confirms the vendored engine reproduces the corpus (regression
   guard on the vendored bundle and on new cases).
-- **C# port** — `kernel-dotnet/GenUI.Jsonata/` consumes this **same** `corpus.json` and must
-  reproduce every `expected`, module by module, until it fully replaces `MiniJsonataProvider`.
+- **C# port** — `kernel-dotnet/GenUI.Jsonata/` consumes this **same** `corpus.json` and reproduces
+  every `expected` (90/90). It now backs the kernel via `JsonataExpressionProvider`, having replaced
+  the retired `MiniJsonataProvider`.
 
 When adding language coverage, add cases here first, run `jsonata:regen`, and both kernels are then
 held to the new behavior.

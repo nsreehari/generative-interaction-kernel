@@ -31,7 +31,7 @@ public sealed class Kernel
         _doc = Json.Unwrap(documentMessage);
         _store = store;
         _registry = ManifestRegistry.FromManifest(manifest);
-        _expr = new MiniJsonataProvider();
+        _expr = new JsonataExpressionProvider();
         _orchestrator = orchestrator ?? new NullOrchestrator();
     }
 

@@ -25,13 +25,15 @@ evaluator come online.
 | Stage | Module | Status |
 |-------|--------|--------|
 | 1 | Tokenizer (lexer) | **done** — `Tokenizer.cs`, gated by `GenUI.Jsonata.TokenizerCheck` |
-| 2 | Parser (Pratt / TDOP) → AST | not started |
-| 3 | Evaluator (path semantics, sequences) | not started |
-| 4 | Core function library (`$sum`, `$map`, string/number/array fns) | not started |
+| 2 | Parser (Pratt / TDOP) → AST | **done** — `Parser.cs`, `Parser.ProcessAst.cs`, `Ast.cs` |
+| 3 | Evaluator (path semantics, sequences) | **done** — `Evaluator.cs` |
+| 4 | Core function library (`$sum`, `$map`, string/number/array fns) | **done** — `Functions.cs` |
 | 5 | Date/time + signature validation | not started |
 
-Until stages 2–4 land, the kernel keeps using `MiniJsonataProvider` (the hand-written subset in
-`GenUI.Kernel/Expression.cs`). The full port replaces it only once it reproduces the corpus.
+The full port is live: `GenUI.Kernel` now uses `JsonataExpressionProvider` (which bridges
+`JsonataEngine` to `IExpressionProvider`), replacing the retired hand-written `MiniJsonataProvider`.
+The engine passes the full 90-case shared conformance corpus
+(`npm run test:dotnet-jsonata-corpus`).
 
 ## Fidelity notes
 

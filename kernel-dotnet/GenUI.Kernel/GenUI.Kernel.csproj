@@ -9,4 +9,8 @@
     <!-- Uses only System.Text.Json from the shared framework: no package restore. -->
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../GenUI.Jsonata/GenUI.Jsonata.csproj" />
+  </ItemGroup>
+
 </Project>
