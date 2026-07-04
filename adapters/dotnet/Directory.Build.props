@@ -1,0 +1,4 @@
+<!-- Empty: stops MSBuild from walking further up the tree, so the C# render adapter
+     stays isolated from any repo-root build props (same island discipline as the kernel). -->
+<Project>
+</Project>

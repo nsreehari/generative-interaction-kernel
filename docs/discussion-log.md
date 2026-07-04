@@ -601,6 +601,41 @@ orchestrator (imports non-determinism), and asserting trace/effect records direc
 out-of-core diagnostic seam that may differ across kernels — the contract stays on patches + resolves).
 ---
 
+## 33. A second render adapter: the renderer-agnostic C# core
+
+With a second *kernel* core in C# (§30), open item 2 asked for the second *renderer* that sits on it —
+a WinUI/Reactor adapter. But the C# kernel's defining property is that it is offline, zero-NuGet, and
+OS-neutral (`net10.0`, `System.Text.Json` only), and a real Reactor/WinUI binding needs the Windows App
+SDK, the `Microsoft.UI.Reactor` packages, and a `net10.0-windows` target. Bolting those onto the kernel
+island would make the portable core Windows-only.
+
+The React adapter already shows the escape: its *core* (`render.tsx` + `registry.ts` + `controller.ts`)
+is pure and headless — a `ResolvedNode → view` walk over a capability registry, plus a
+framework-agnostic controller loop — and React elements are only the thin edge. So the second adapter is
+built the same way in C#, generic over the view type:
+
+- **`adapters/dotnet/GenUI.Render`** (its own offline island, references only `GenUI.Kernel`):
+  `Renderer.Render<TView>` is the pure walk, honoring `Visible` (drop invisible children) and
+  `Fallback` (kernel-unknown capability, or a known one with no registered view, uses the fallback) —
+  the identical rule to `render.tsx`. `IComponentRegistry<TView>` is the capability→view vocabulary;
+  `GenUIController` is the `controller.ts` loop (init→resolve, emit→dispatch→re-resolve→notify),
+  synchronous because the C# kernel is.
+- **`GenUI.Render.Check`** is a headless console runner (conformance-runner style, zero test deps) that
+  renders a hand-built document into a serializable `RenderRecord` tree and drives the *whole* loop
+  through the real kernel: render → node-bound emit → dispatch → re-resolve → re-render. It asserts the
+  visibility drop, **both** fallback paths (known-but-unregistered vs. kernel-unknown), node-id capture
+  on the bound emit, and the controller's one-rev patch + refresh. Wired into `npm test` as
+  `test:dotnet-render` (17 checks green).
+
+The concrete Reactor/WinUI binding (`TView = Element`, a capability→factory registry, a host window)
+is now a small, well-scoped edge that lives *outside* the offline island. Item 2 narrows to exactly
+that toolkit edge plus cross-adapter render equivalence; the traversal contract itself is settled
+([ADR-0026](decisions/ADR-0026-second-render-adapter-dotnet.md)). Alternatives set aside: putting WinUI
+directly on the kernel island (would make the core Windows-only), and writing the Reactor binding *as*
+the adapter (would entangle the reusable walk with a toolkit — the reusable seam is the core, the
+toolkit is the edge).
+---
+
 ## Index of alternatives explicitly set aside
 
 | Alternative | Set aside because |

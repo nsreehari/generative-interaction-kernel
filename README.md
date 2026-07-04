@@ -45,6 +45,7 @@ conformance matrix** of portable JSON cases with a per-kernel runner (Phase 9) �
 | Runner contract | **Cross-kernel semantics are pinned in prose** (`conformance/README.md`): envelope-or-bare loading, one dispatch = one patch = one rev (empty patches included), contractual op order, numeric-value number equality, determinism — the rules a second kernel's runner must honor |
 | Second kernel | **An independent C# reimplementation** (`kernel-dotnet/`, `System.Text.Json` only) passes the *same* `conformance/cases/*.json` as the TS reference — identical patches across two languages **is** reducer equivalence, the first proof of protocol-over-SDK |
 | Effect-seam conformance | **Deferred effects are scripted as data**: a case's optional `orchestrator` array supplies deterministic `invoke`/`confirm`/`navigate` responses, so both kernels prove the same settle order (reducer ops → effect ops → follow-up-event ops) at one rev |
+| Second render adapter | **A renderer-agnostic C# adapter core** (`adapters/dotnet/GenUI.Render`, generic over the view type) mirrors the React adapter's walk/registry/controller on the C# kernel — the Reactor/WinUI binding is a thin edge, not part of the portable core (ADR-0026) |
 
 ## What this is not
 
@@ -94,6 +95,7 @@ genui-platform/
       ADR-0023-conformance-runner-portability.md
       ADR-0024-second-kernel-csharp.md
       ADR-0025-orchestrator-scripting-conformance.md
+      ADR-0026-second-render-adapter-dotnet.md
   schemas/                      ← normative GUP JSON Schemas + golden conformance fixture
   conformance/                  ← Phase 9 behavioral matrix (language-neutral, per-kernel)
     README.md                     ← runner contract: semantics every kernel's runner must honor (ADR-0023)
@@ -111,6 +113,9 @@ genui-platform/
       src/                      ← registry, renderer, controller, live-cards components, source-agnostic hook
       test/                     ← tree render, gate flip, event wiring, fallback, render-over-the-wire
       tsconfig.json
+    dotnet/                     ← second render adapter: renderer-agnostic C# core (ADR-0026)
+      GenUI.Render/             ← Render<TView> walk + registry + controller (System.Text.Json only)
+      GenUI.Render.Check/       ← headless checks over the real kernel (npm run test:dotnet-render)
   interaction/                  ← Interaction (L3) + Presentation (L4) layers (ADR-0017/0018)
       src/                      ← interaction taxonomy, presentation compiler, presentation→UI lowering
       test/                     ← context-varied presentation, review interpret, fallback facets, full pipe

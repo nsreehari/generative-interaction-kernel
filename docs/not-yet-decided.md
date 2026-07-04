@@ -27,9 +27,12 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
    definitions, no `$eval`) versus relying on the provider seam per profile.
 
 2. **Second render adapter.** React is the first render adapter
-   ([ADR-0008](decisions/ADR-0008-first-render-adapter-react.md)). The second (C#) kernel core it
-   would sit on now exists ([ADR-0024](decisions/ADR-0024-second-kernel-csharp.md)). Still open: the
-   WinUI/Reactor adapter itself, and how render equivalence across adapters is verified.
+   ([ADR-0008](decisions/ADR-0008-first-render-adapter-react.md)). Its reusable core now has a C#
+   twin: a **renderer-agnostic adapter core** (`adapters/dotnet/GenUI.Render`, generic over the view
+   type) that mirrors `render.tsx`/`registry.ts`/`controller.ts` on the C# kernel
+   ([ADR-0026](decisions/ADR-0026-second-render-adapter-dotnet.md)), proven by a headless check. Still
+   open: the concrete **WinUI/Reactor** toolkit binding (`TView = Element` + a host window, which
+   lives outside the offline island), and how render equivalence *across* adapters is verified.
 
 3. **Manifest generation flow.** How a profile *publishes* its `manifest` — derived automatically
    from the DSL schema + registry, hand-authored, or a hybrid. Determines whether the manifest is a

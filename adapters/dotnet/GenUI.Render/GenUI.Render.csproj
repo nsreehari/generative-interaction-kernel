@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>GenUI.Render</RootNamespace>
+    <!-- Renderer-agnostic: only System.Text.Json + the kernel. A toolkit binding
+         (Reactor/WinUI) plugs in TView from the outside; it never enters this core. -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../kernel-dotnet/GenUI.Kernel/GenUI.Kernel.csproj" />
+  </ItemGroup>
+
+</Project>

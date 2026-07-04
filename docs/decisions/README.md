@@ -30,6 +30,7 @@ rejected options were set aside, and the consequences.
 | [0023](ADR-0023-conformance-runner-portability.md) | Conformance runner contract — pin the language-neutral semantics a second kernel must honor | Accepted |
 | [0024](ADR-0024-second-kernel-csharp.md) | Second kernel — an independent C# reimplementation verified by the conformance matrix | Accepted |
 | [0025](ADR-0025-orchestrator-scripting-conformance.md) | Scripted Orchestrator effects in the conformance matrix — portable effect-seam behavior | Accepted |
+| [0026](ADR-0026-second-render-adapter-dotnet.md) | Second render adapter — a renderer-agnostic C# adapter core (Reactor/WinUI binding is a thin edge) | Accepted |
 
 ## Format
 
