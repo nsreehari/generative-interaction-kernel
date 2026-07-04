@@ -1,0 +1,646 @@
+{
+  "note": "Shared JSONata conformance corpus. `expected` values are GENERATED from the canonical vendored TS engine (kernel/src/vendor/jsonata.cjs) via generate.mjs — never hand-authored. Both the TS engine (check.mjs) and the C# port (GenUI.Jsonata) must reproduce these exactly. Result semantics are provider-normalized: a JSONata `undefined` (no match) is recorded as null, matching how JsonataExpressionProvider consumes results.",
+  "cases": [
+    {
+      "name": "literal-number",
+      "expr": "42",
+      "expected": 42
+    },
+    {
+      "name": "literal-negative",
+      "expr": "-7",
+      "expected": -7
+    },
+    {
+      "name": "literal-float",
+      "expr": "3.14",
+      "expected": 3.14
+    },
+    {
+      "name": "literal-exp",
+      "expr": "1.5e3",
+      "expected": 1500
+    },
+    {
+      "name": "literal-string-single",
+      "expr": "'hello'",
+      "expected": "hello"
+    },
+    {
+      "name": "literal-string-double",
+      "expr": "\"world\"",
+      "expected": "world"
+    },
+    {
+      "name": "literal-true",
+      "expr": "true",
+      "expected": true
+    },
+    {
+      "name": "literal-false",
+      "expr": "false",
+      "expected": false
+    },
+    {
+      "name": "literal-null",
+      "expr": "null",
+      "expected": null
+    },
+    {
+      "name": "arith-add",
+      "expr": "2 + 3",
+      "expected": 5
+    },
+    {
+      "name": "arith-sub",
+      "expr": "10 - 4",
+      "expected": 6
+    },
+    {
+      "name": "arith-mul",
+      "expr": "6 * 7",
+      "expected": 42
+    },
+    {
+      "name": "arith-div",
+      "expr": "20 / 8",
+      "expected": 2.5
+    },
+    {
+      "name": "arith-mod",
+      "expr": "17 % 5",
+      "expected": 2
+    },
+    {
+      "name": "arith-precedence",
+      "expr": "2 + 3 * 4",
+      "expected": 14
+    },
+    {
+      "name": "arith-parens",
+      "expr": "(2 + 3) * 4",
+      "expected": 20
+    },
+    {
+      "name": "arith-unary-neg-expr",
+      "expr": "-(2 + 3)",
+      "expected": -5
+    },
+    {
+      "name": "cmp-eq-true",
+      "expr": "1 = 1",
+      "expected": true
+    },
+    {
+      "name": "cmp-eq-false",
+      "expr": "1 = 2",
+      "expected": false
+    },
+    {
+      "name": "cmp-neq",
+      "expr": "1 != 2",
+      "expected": true
+    },
+    {
+      "name": "cmp-lt",
+      "expr": "3 < 5",
+      "expected": true
+    },
+    {
+      "name": "cmp-lte",
+      "expr": "5 <= 5",
+      "expected": true
+    },
+    {
+      "name": "cmp-gt",
+      "expr": "7 > 2",
+      "expected": true
+    },
+    {
+      "name": "cmp-gte",
+      "expr": "2 >= 3",
+      "expected": false
+    },
+    {
+      "name": "cmp-string-eq",
+      "expr": "'a' = 'a'",
+      "expected": true
+    },
+    {
+      "name": "cmp-in-true",
+      "expr": "2 in [1, 2, 3]",
+      "expected": true
+    },
+    {
+      "name": "cmp-in-false",
+      "expr": "9 in [1, 2, 3]",
+      "expected": false
+    },
+    {
+      "name": "bool-and",
+      "expr": "true and false",
+      "expected": false
+    },
+    {
+      "name": "bool-or",
+      "expr": "true or false",
+      "expected": true
+    },
+    {
+      "name": "bool-and-cmp",
+      "expr": "(3 > 1) and (2 < 4)",
+      "expected": true
+    },
+    {
+      "name": "bool-not-fn",
+      "expr": "$not(true)",
+      "expected": false
+    },
+    {
+      "name": "concat",
+      "expr": "'foo' & 'bar'",
+      "expected": "foobar"
+    },
+    {
+      "name": "concat-number",
+      "expr": "'n=' & 42",
+      "expected": "n=42"
+    },
+    {
+      "name": "ternary-true",
+      "expr": "true ? 'yes' : 'no'",
+      "expected": "yes"
+    },
+    {
+      "name": "ternary-false",
+      "expr": "false ? 'yes' : 'no'",
+      "expected": "no"
+    },
+    {
+      "name": "ternary-cmp",
+      "expr": "5 > 3 ? 'big' : 'small'",
+      "expected": "big"
+    },
+    {
+      "name": "path-simple",
+      "expr": "a",
+      "data": {
+        "a": 1
+      },
+      "expected": 1
+    },
+    {
+      "name": "path-nested",
+      "expr": "a.b.c",
+      "data": {
+        "a": {
+          "b": {
+            "c": 99
+          }
+        }
+      },
+      "expected": 99
+    },
+    {
+      "name": "path-missing",
+      "expr": "a.x",
+      "data": {
+        "a": {
+          "b": 1
+        }
+      },
+      "expected": null
+    },
+    {
+      "name": "path-array-index",
+      "expr": "items[1]",
+      "data": {
+        "items": [
+          10,
+          20,
+          30
+        ]
+      },
+      "expected": 20
+    },
+    {
+      "name": "path-array-map",
+      "expr": "items.value",
+      "data": {
+        "items": [
+          {
+            "value": 1
+          },
+          {
+            "value": 2
+          },
+          {
+            "value": 3
+          }
+        ]
+      },
+      "expected": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "path-wildcard",
+      "expr": "obj.*",
+      "data": {
+        "obj": {
+          "a": 1,
+          "b": 2
+        }
+      },
+      "expected": [
+        1,
+        2
+      ]
+    },
+    {
+      "name": "path-descendant",
+      "expr": "**.name",
+      "data": {
+        "a": {
+          "name": "x"
+        },
+        "b": {
+          "c": {
+            "name": "y"
+          }
+        }
+      },
+      "expected": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "name": "path-filter",
+      "expr": "items[value > 1].value",
+      "data": {
+        "items": [
+          {
+            "value": 1
+          },
+          {
+            "value": 2
+          },
+          {
+            "value": 3
+          }
+        ]
+      },
+      "expected": [
+        2,
+        3
+      ]
+    },
+    {
+      "name": "path-root",
+      "expr": "$.total",
+      "data": {
+        "total": 5
+      },
+      "expected": 5
+    },
+    {
+      "name": "binding-var",
+      "expr": "$x + 1",
+      "data": {},
+      "bindings": {
+        "x": 41
+      },
+      "expected": 42
+    },
+    {
+      "name": "binding-assign",
+      "expr": "($y := 10; $y * 2)",
+      "data": {},
+      "expected": 20
+    },
+    {
+      "name": "obj-construct",
+      "expr": "{ 'k': 1 + 1, 'label': 'ok' }",
+      "expected": {
+        "k": 2,
+        "label": "ok"
+      }
+    },
+    {
+      "name": "obj-from-path",
+      "expr": "{ 'name': a.name, 'n': a.n }",
+      "data": {
+        "a": {
+          "name": "z",
+          "n": 3
+        }
+      },
+      "expected": {
+        "name": "z",
+        "n": 3
+      }
+    },
+    {
+      "name": "array-construct",
+      "expr": "[1, 2, 3]",
+      "expected": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "array-mixed",
+      "expr": "[1, 'two', true]",
+      "expected": [
+        1,
+        "two",
+        true
+      ]
+    },
+    {
+      "name": "fn-sum",
+      "expr": "$sum([1, 2, 3, 4])",
+      "expected": 10
+    },
+    {
+      "name": "fn-sum-path",
+      "expr": "$sum(items.value)",
+      "data": {
+        "items": [
+          {
+            "value": 1
+          },
+          {
+            "value": 2
+          },
+          {
+            "value": 3
+          }
+        ]
+      },
+      "expected": 6
+    },
+    {
+      "name": "fn-count",
+      "expr": "$count([1, 2, 3])",
+      "expected": 3
+    },
+    {
+      "name": "fn-max",
+      "expr": "$max([3, 7, 2])",
+      "expected": 7
+    },
+    {
+      "name": "fn-min",
+      "expr": "$min([3, 7, 2])",
+      "expected": 2
+    },
+    {
+      "name": "fn-average",
+      "expr": "$average([2, 4, 6])",
+      "expected": 4
+    },
+    {
+      "name": "fn-abs",
+      "expr": "$abs(-5)",
+      "expected": 5
+    },
+    {
+      "name": "fn-floor",
+      "expr": "$floor(3.7)",
+      "expected": 3
+    },
+    {
+      "name": "fn-ceil",
+      "expr": "$ceil(3.2)",
+      "expected": 4
+    },
+    {
+      "name": "fn-round",
+      "expr": "$round(3.14159, 2)",
+      "expected": 3.14
+    },
+    {
+      "name": "fn-power",
+      "expr": "$power(2, 10)",
+      "expected": 1024
+    },
+    {
+      "name": "fn-sqrt",
+      "expr": "$sqrt(16)",
+      "expected": 4
+    },
+    {
+      "name": "str-uppercase",
+      "expr": "$uppercase('abc')",
+      "expected": "ABC"
+    },
+    {
+      "name": "str-lowercase",
+      "expr": "$lowercase('ABC')",
+      "expected": "abc"
+    },
+    {
+      "name": "str-length",
+      "expr": "$length('hello')",
+      "expected": 5
+    },
+    {
+      "name": "str-substring",
+      "expr": "$substring('hello', 1, 3)",
+      "expected": "ell"
+    },
+    {
+      "name": "str-substringBefore",
+      "expr": "$substringBefore('a.b.c', '.')",
+      "expected": "a"
+    },
+    {
+      "name": "str-substringAfter",
+      "expr": "$substringAfter('a.b.c', '.')",
+      "expected": "b.c"
+    },
+    {
+      "name": "str-trim",
+      "expr": "$trim('  hi  ')",
+      "expected": "hi"
+    },
+    {
+      "name": "str-split",
+      "expr": "$split('a,b,c', ',')",
+      "expected": [
+        "a",
+        "b",
+        "c"
+      ]
+    },
+    {
+      "name": "str-join",
+      "expr": "$join(['a', 'b', 'c'], '-')",
+      "expected": "a-b-c"
+    },
+    {
+      "name": "str-contains",
+      "expr": "$contains('hello', 'ell')",
+      "expected": true
+    },
+    {
+      "name": "str-replace",
+      "expr": "$replace('a-b-c', '-', '_')",
+      "expected": "a_b_c"
+    },
+    {
+      "name": "str-pad",
+      "expr": "$pad('7', 3, '0')",
+      "expected": "700"
+    },
+    {
+      "name": "str-string-of-number",
+      "expr": "$string(42)",
+      "expected": "42"
+    },
+    {
+      "name": "str-number-of-string",
+      "expr": "$number('3.5')",
+      "expected": 3.5
+    },
+    {
+      "name": "arr-append",
+      "expr": "$append([1, 2], [3, 4])",
+      "expected": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "name": "arr-reverse",
+      "expr": "$reverse([1, 2, 3])",
+      "expected": [
+        3,
+        2,
+        1
+      ]
+    },
+    {
+      "name": "arr-sort",
+      "expr": "$sort([3, 1, 2])",
+      "expected": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "arr-distinct",
+      "expr": "$distinct([1, 1, 2, 3, 3])",
+      "expected": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "arr-keys",
+      "expr": "$keys({ 'a': 1, 'b': 2 })",
+      "expected": [
+        "a",
+        "b"
+      ]
+    },
+    {
+      "name": "arr-exists",
+      "expr": "$exists(a)",
+      "data": {
+        "a": 1
+      },
+      "expected": true
+    },
+    {
+      "name": "arr-exists-missing",
+      "expr": "$exists(z)",
+      "data": {
+        "a": 1
+      },
+      "expected": false
+    },
+    {
+      "name": "arr-map-lambda",
+      "expr": "$map([1, 2, 3], function($v) { $v * 10 })",
+      "expected": [
+        10,
+        20,
+        30
+      ]
+    },
+    {
+      "name": "arr-filter-lambda",
+      "expr": "$filter([1, 2, 3, 4], function($v) { $v > 2 })",
+      "expected": [
+        3,
+        4
+      ]
+    },
+    {
+      "name": "arr-reduce-lambda",
+      "expr": "$reduce([1, 2, 3, 4], function($acc, $v) { $acc + $v }, 0)",
+      "expected": 10
+    },
+    {
+      "name": "lambda-define-call",
+      "expr": "($double := function($n) { $n * 2 }; $double(21))",
+      "expected": 42
+    },
+    {
+      "name": "chain-transform",
+      "expr": "$sum(items[qty > 0].(price * qty))",
+      "data": {
+        "items": [
+          {
+            "price": 2,
+            "qty": 3
+          },
+          {
+            "price": 5,
+            "qty": 0
+          },
+          {
+            "price": 4,
+            "qty": 2
+          }
+        ]
+      },
+      "expected": 14
+    },
+    {
+      "name": "sort-by-key",
+      "expr": "items^(rank).name",
+      "data": {
+        "items": [
+          {
+            "name": "c",
+            "rank": 3
+          },
+          {
+            "name": "a",
+            "rank": 1
+          },
+          {
+            "name": "b",
+            "rank": 2
+          }
+        ]
+      },
+      "expected": [
+        "a",
+        "b",
+        "c"
+      ]
+    }
+  ]
+}
