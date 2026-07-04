@@ -176,3 +176,15 @@ init `patch`, then for each inbound `event` it dispatches and sends back the res
 reference `createInMemoryTransportPair()` exercises the full *serialize → deliver → deserialize* loop
 headlessly, proving ADR-0004 (protocol, not SDK) without a network. Concrete network bindings
 (SSE/WebSocket/stdio) reuse this exact seam.
+
+## Reference client runtime (renders from the wire)
+
+The renderer-side half is a `GenUIClient` (`kernel/client.ts`; see
+[ADR-0011](decisions/ADR-0011-client-runtime.md)) that never sees the kernel. It consumes `manifest`
+(→ builds its registry + an empty replica for the declared namespaces), `document` (→ the tree to
+interpret), and each `patch` (→ applied to the replica), then runs the **pure interpreter**
+(`resolveNode`) locally and notifies subscribers; it emits `event`s back over the transport. The
+read/write split is explicit: the **authoritative reducer stays on the host**, while **interpret + a
+state replica live on the client** (reads are pure and safe to duplicate; writes are not). Initial
+sync uses `Kernel.baseline()` — a rev-0 patch carrying the *full* state snapshot — so a fresh client
+reconstructs a complete replica from one patch, then stays current via incremental patches.

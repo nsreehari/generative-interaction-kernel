@@ -15,6 +15,7 @@ rejected options were set aside, and the consequences.
 | [0008](ADR-0008-first-render-adapter-react.md) | First render adapter — React | Accepted |
 | [0009](ADR-0009-orchestrator-effects.md) | Orchestrator — invoke/confirm/navigate as post-reduction effects | Accepted |
 | [0010](ADR-0010-transport-seam.md) | Transport — GUP over a transport seam | Accepted |
+| [0011](ADR-0011-client-runtime.md) | Client runtime — interpret + state replica on the renderer side | Accepted |
 
 ## Format
 

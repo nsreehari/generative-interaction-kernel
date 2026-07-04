@@ -56,7 +56,7 @@ export class KernelTransportHost {
     this.unsubscribe ??= this.transport.subscribe((message) => this.onMessage(message));
     await this.transport.send(envelope("manifest", unwrap(this.manifest)));
     await this.transport.send(envelope("document", unwrap(this.document)));
-    await this.transport.send(envelope("patch", this.kernel.init()));
+    await this.transport.send(envelope("patch", this.kernel.baseline()));
   }
 
   stop(): void {

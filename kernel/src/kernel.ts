@@ -77,6 +77,22 @@ export class Kernel {
   }
 
   /**
+   * Seed machine states (via {@link init}) and return the *full* current state as a
+   * baseline patch (rev 0). Unlike {@link init}, this carries every namespace, so a
+   * fresh remote client can reconstruct the complete state replica from one patch.
+   */
+  baseline(): Patch {
+    this.init();
+    const snapshot = this.store.snapshot();
+    const ops = Object.entries(snapshot).map(([namespace, value]) => ({
+      op: "set" as const,
+      path: namespace,
+      value: value as Json,
+    }));
+    return { rev: this.rev, ops };
+  }
+
+  /**
    * Reduce an event to a patch, run any resulting orchestrator effects (and the
    * follow-up events they produce), apply everything, and return the settled patch.
    * One dispatch = one rev, regardless of how many effects/events it fans out to.

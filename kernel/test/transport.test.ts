@@ -54,10 +54,22 @@ test("transport host publishes manifest/document/init patch, then returns patche
   );
   assert.equal(messages[2].type, "patch");
   if (messages[2].type === "patch") {
+    // The baseline patch is the full initial state snapshot (rev 0): every namespace,
+    // including seeded data and machine initial states, so a fresh client can replicate it.
     assert.equal(messages[2].payload.rev, 0);
-    assert.deepEqual(messages[2].payload.ops, [
-      { op: "set", path: "computed_values.approval.state", value: "draft" },
-    ]);
+    const baseline = Object.fromEntries(
+      messages[2].payload.ops.map((op) => [op.path, op.value])
+    );
+    assert.deepEqual(baseline["computed_values"], {
+      total: 150,
+      approval: { state: "draft" },
+    });
+    assert.deepEqual(baseline["fetched_sources"], {
+      orders: [
+        { id: "order-42", amount: 100 },
+        { id: "order-7", amount: 50 },
+      ],
+    });
   }
 
   await clientTransport.send({

@@ -223,6 +223,22 @@ loop headlessly. Two tests: a round-trip (`rowSelect` → `card_data.selected` p
 post-`stop()` inertness. The renderer stays a pure event-emitter/patch-consumer — it never sees the
 kernel, only the transport. This narrowed open item #7 (transport bindings: in-memory reference done;
 SSE/WebSocket/stdio + reconnection/replay still open).
+
+## 18. Phase 5 — client runtime (renders purely from the wire)
+
+The transport only mattered if a renderer could run from it, so the client half landed
+([ADR-0011](decisions/ADR-0011-client-runtime.md)). Two questions were forced: *who resolves?* and
+*how does a fresh client get initial state?* Answer: the **authoritative reducer stays on the host;
+interpretation moves to the client**. A `GenUIClient` consumes `manifest` (→ registry + empty
+replica), `document` (→ tree), and each `patch` (→ applied to a **local state replica**), runs the
+**pure interpreter** locally, and emits `event`s back — never touching the kernel. Reads are pure and
+safe to duplicate; writes stay singular/authoritative on the host. Initial state is delivered by a new
+`Kernel.baseline()`: a rev-0 patch carrying the *full* snapshot (every namespace, seeded data +
+machine states), replacing the machine-only `init()` patch on the wire so a fresh client can
+reconstruct a complete replica from one message. Verified headless: a client reconstructs full state
+from the baseline (metric 150, two table rows, Approve hidden), then round-trips a `rowSelect` event
+into a re-render with the gate opening — and stops after `stop()`. This is the read/write split made
+physical: interpret + replica on the client, reducer + authority on the host.
 ---
 
 ## Index of alternatives explicitly set aside
@@ -238,3 +254,5 @@ SSE/WebSocket/stdio + reconnection/replay still open).
 | Kernel-side `await` for async | Forces the kernel to own time; async is modeled as machine states instead. |
 | Renderer reads/writes the store or owns transport | Bypasses the reducer, breaks validate-before-commit, and couples UI to infrastructure. |
 | Vendoring the profile's sync JSONata build into the kernel | Inverts the kernel→profile dependency; ships a v1.x build inside a critical prototype-pollution advisory; sync was only a profile deployment concern. |
+| Sending resolved trees over the wire (instead of document + patch) | Adds a message outside the five-message protocol and ships recomputed props on every change; the client resolves locally from document + patch instead. |
+| Client running the reducer too (symmetric kernels) | Duplicating writes invites divergence and breaks single-authority/validate-before-commit; only reads (interpret) are duplicated. |
