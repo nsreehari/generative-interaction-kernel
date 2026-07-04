@@ -14,8 +14,11 @@ Early implementation. The architecture and the wire protocol (**GenUI Protocol /
 defined; the normative schemas + golden conformance fixture, a **reference kernel** (Phase 1), a
 first **React render adapter** (Phase 2), the **Orchestrator seam** for effectful actions
 (Phase 3), a **transport seam** carrying GUP across a boundary (Phase 4), a **client runtime**
-that renders purely from wire messages (Phase 5), and **reconnection** — a broker host with a patch
-log that resumes a returning client or full-resyncs a late one (Phase 6) — are built and green.
+that renders purely from wire messages (Phase 5), **reconnection** — a broker host with a patch
+log that resumes a returning client or full-resyncs a late one (Phase 6), an **agent-authoring path** —
+typed builders + validate-before-commit + non-throwing reference lint (Phase 7), a concrete **HTTP/SSE
+transport binding** carrying the full protocol over a real socket (Phase 8), and a **behavioral
+conformance matrix** of portable JSON cases with a per-kernel runner (Phase 9) — are built and green.
 
 | Decision | Outcome |
 |---|---|
