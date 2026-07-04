@@ -17,11 +17,22 @@ public sealed class JsonataException : Exception
     /// <summary>Offending token/character, when the canonical error carries one.</summary>
     public string? Token { get; }
 
+    /// <summary>Offending value, when the canonical runtime error carries one.</summary>
+    public object? Value { get; set; }
+
     public JsonataException(string code, int position, string? token = null)
         : base($"{code} (position {position}){(token is null ? "" : $": {token}")}")
     {
         Code = code;
         Position = position;
         Token = token;
+    }
+
+    /// <summary>Runtime error without a source position (thrown during evaluation).</summary>
+    public JsonataException(string code)
+        : base(code)
+    {
+        Code = code;
+        Position = -1;
     }
 }
