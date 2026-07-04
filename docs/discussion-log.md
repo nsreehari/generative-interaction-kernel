@@ -460,6 +460,32 @@ typecheck clean. Kernel grammar and wire protocol untouched. Resolved not-yet-de
 #15 (renumbered out); narrowed #11.
 ---
 
+## 28. Conformance runner contract — de-risking the second kernel
+
+Asked "what's next," the strongest move was the **second (C#) kernel** against the conformance matrix
+(item 2 / item 8) — the first real test of "protocol over SDK" and cross-kernel reducer equivalence,
+since today the matrix only checks the reference kernel against itself. The cheap, sequencing-correct
+first sub-step: **pin the semantics a second runner must honor** before writing it.
+
+An audit of `kernel/test/conformance.test.ts` + the case schema found several rules that are *implicit
+in TypeScript* and would let two "conforming" kernels silently disagree: envelope-or-bare loading;
+**rev increments even on an empty-ops dispatch**; **op emission order is contractual** (order-sensitive
+array equality) yet undocumented; **JSON number equality** (`1` vs `1.0`, `long` vs `double`);
+seed-before-init ordering; `props` partial-match; `fallback` = capability-absent. None are
+JSON-Schema-expressible — they are behavioral — so the artifact is prose.
+
+- **`conformance/README.md`** ([ADR-0023](decisions/ADR-0023-conformance-runner-portability.md)):
+  a normative runner contract — case lifecycle, revision/patch rules (one dispatch = one patch = one
+  rev, empty patches included), op-order, op semantics, value equality (numeric-value number
+  comparison), determinism, and an explicit out-of-scope list (traces, Orchestrator effect scripting,
+  streaming). Documents existing reference-kernel behavior; **no code or grammar change.**
+
+This turns writing the C# runner into a checklist against one document rather than reverse-engineering
+TypeScript, and closes the ambiguities (op order, empty-patch rev, number equality) where two kernels
+would otherwise drift undetected. Still open under #8: the C# runner itself, and scripting an
+Orchestrator's `confirm`/`invoke` response into JSON cases.
+---
+
 ## Index of alternatives explicitly set aside
 
 | Alternative | Set aside because |

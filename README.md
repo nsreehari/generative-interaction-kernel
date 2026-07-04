@@ -88,8 +88,10 @@ genui-platform/
       ADR-0020-observability-sink.md
       ADR-0021-optional-layers.md
       ADR-0022-defer-streaming.md
+      ADR-0023-conformance-runner-portability.md
   schemas/                      ← normative GUP JSON Schemas + golden conformance fixture
   conformance/                  ← Phase 9 behavioral matrix (language-neutral, per-kernel)
+    README.md                     ← runner contract: semantics every kernel's runner must honor (ADR-0023)
     conformance-case.schema.json  ← draft-07 schema for a case file
     cases/                      ← *.case.json: document + seed + event steps → expected patches/resolves
   kernel/                       ← Phase 1 reference kernel (TypeScript)

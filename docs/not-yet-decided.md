@@ -60,7 +60,12 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
    (`conformance/cases/`) pins observable kernel behavior — assign/gate/guard/machine/derive/emit
    fan-out, rev monotonicity, malformed-document rejection, graceful fallback, `merge`/`remove` op
    semantics, and a two-machine emit **cascade** — structurally gated in `npm run conformance` and
-   executed by a per-kernel runner ([ADR-0015](decisions/ADR-0015-conformance-matrix.md)). Still open:
+   executed by a per-kernel runner ([ADR-0015](decisions/ADR-0015-conformance-matrix.md)). The
+   **runner contract** any kernel's runner must honor is now pinned in
+   [conformance/README.md](../conformance/README.md)
+   ([ADR-0023](decisions/ADR-0023-conformance-runner-portability.md)) — envelope-or-bare loading,
+   one-dispatch-one-rev (empty patches included), contractual op order, numeric-value number equality,
+   and determinism. Still open:
    **standing up the second (C#) kernel's runner** to actually assert reducer equivalence, and
    **scripting an Orchestrator's `confirm` response inside the JSON cases** so HITL follow-ups join the
    language-neutral matrix (today they are covered by the kernel's orchestrator/confirm unit tests).
