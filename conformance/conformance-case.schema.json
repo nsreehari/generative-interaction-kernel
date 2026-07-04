@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://genui.dev/gup/0.1/conformance-case.schema.json",
+  "title": "GUP behavioral conformance case",
+  "description": "A language-neutral kernel test: a document + optional seed state, driven by a sequence of events, with the exact patches and resolved-tree assertions any conforming kernel MUST produce. Manifest/document may be inline objects or `*Ref` paths (relative to the case file).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name"],
+  "properties": {
+    "name": { "type": "string" },
+    "description": { "type": "string" },
+    "manifest": { "type": "object", "description": "Inline manifest (enveloped or bare payload)." },
+    "manifestRef": { "type": "string", "description": "Path to a manifest fixture, relative to the case file." },
+    "document": { "type": "object", "description": "Inline document (enveloped or bare payload)." },
+    "documentRef": { "type": "string", "description": "Path to a document fixture, relative to the case file." },
+    "seed": {
+      "type": "array",
+      "description": "Store ops applied before init(), e.g. fetched/computed state.",
+      "items": { "$ref": "#/definitions/op" }
+    },
+    "expectInvalid": {
+      "type": "boolean",
+      "description": "If true, constructing the kernel (validate-before-commit) MUST throw; no steps are run."
+    },
+    "expectInitialResolve": {
+      "type": "array",
+      "description": "Assertions on the resolved tree after init(), before any event.",
+      "items": { "$ref": "#/definitions/resolveExpectation" }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["event"],
+        "properties": {
+          "event": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["node", "name"],
+            "properties": {
+              "node": { "type": "string" },
+              "name": { "type": "string" },
+              "payload": { "type": "object" }
+            }
+          },
+          "expectPatch": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["rev", "ops"],
+            "properties": {
+              "rev": { "type": "integer", "minimum": 0 },
+              "ops": { "type": "array", "items": { "$ref": "#/definitions/op" } }
+            }
+          },
+          "expectResolve": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/resolveExpectation" }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "op": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "path"],
+      "properties": {
+        "op": { "enum": ["set", "merge", "remove"] },
+        "path": { "type": "string" },
+        "value": {}
+      }
+    },
+    "resolveExpectation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string" },
+        "visible": { "type": "boolean" },
+        "fallback": { "type": "boolean" },
+        "capability": { "type": "string" },
+        "props": { "type": "object", "description": "Partial: only listed keys are asserted." }
+      }
+    }
+  }
+}

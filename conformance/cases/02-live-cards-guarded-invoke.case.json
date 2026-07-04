@@ -1,0 +1,12 @@
+{
+  "name": "live-cards: guarded invoke is skipped, and invoke never writes state",
+  "description": "tap runs an unguarded assign plus a guarded invoke. With requires.role unset the guard is false, so only the assign op is produced (rev 1); invoke crosses the Orchestrator seam and never emits a store op.",
+  "manifestRef": "../../schemas/fixtures/live-cards.manifest.json",
+  "documentRef": "../../schemas/fixtures/example.document.json",
+  "steps": [
+    {
+      "event": { "node": "btn-approve", "name": "tap" },
+      "expectPatch": { "rev": 1, "ops": [{ "op": "set", "path": "card_data.status", "value": "approved" }] }
+    }
+  ]
+}

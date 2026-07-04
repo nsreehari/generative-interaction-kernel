@@ -1,0 +1,27 @@
+{
+  "name": "negative: a malformed document is rejected (validate-before-commit)",
+  "description": "An action missing the required `do` field fails structural validation; the kernel MUST refuse to construct.",
+  "manifest": {
+    "gup": "0.1",
+    "type": "manifest",
+    "payload": {
+      "version": "bad-demo/1.0",
+      "expression": "jsonata",
+      "namespaces": ["card_data"],
+      "capabilities": { "control": { "emits": ["tap"] } }
+    }
+  },
+  "document": {
+    "gup": "0.1",
+    "type": "document",
+    "payload": {
+      "manifest": "bad-demo/1.0",
+      "root": {
+        "capability": "control",
+        "id": "c",
+        "edges": { "on": { "tap": [{ "target": "card_data.x" }] } }
+      }
+    }
+  },
+  "expectInvalid": true
+}

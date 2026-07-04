@@ -64,10 +64,13 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
     streaming of the initial `document`. (Orchestrator results already stream follow-up patches within
     a dispatch, but agent-side streaming of the initial `document` is separate.)
 
-11. **Conformance suite scope.** The Phase 1 kernel added executable cases beyond the single golden
-    fixture (gate visibility, guard-skipped invoke, machine transition, rev sequencing, trace
-    observability, validate-before-commit rejection). Still open: the full required matrix
-    (edge/negative cases) and **reducer equivalence across kernels** (JS vs a future C# core).
+11. **Conformance suite scope.** A **behavioral matrix** of language-neutral JSON cases
+    (`conformance/cases/`) now pins observable kernel behavior — assign/gate/guard/machine/derive/emit
+    fan-out, rev monotonicity, malformed-document rejection, graceful fallback — structurally gated in
+    `npm run conformance` and executed by a per-kernel runner
+    ([ADR-0015](decisions/ADR-0015-conformance-matrix.md)). Still open: broader coverage (merge/remove
+    ops, nested machines, multi-step emit chains, HITL confirm follow-ups) and **standing up the second
+    (C#) kernel's runner** to actually assert reducer equivalence.
 
 12. **Canonical reference profile.** Whether to author a clean, minimal exemplar profile that
     *defines* the platform's ideal shape, distinct from the first onboarding profile (live-cards,

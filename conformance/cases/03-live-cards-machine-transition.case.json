@@ -1,0 +1,12 @@
+{
+  "name": "live-cards: machine transition on submit (draft -> pending)",
+  "description": "The approval machine (context computed_values.approval, initial draft) transitions to pending on submit, writing the context's .state (rev 1).",
+  "manifestRef": "../../schemas/fixtures/live-cards.manifest.json",
+  "documentRef": "../../schemas/fixtures/example.document.json",
+  "steps": [
+    {
+      "event": { "node": "btn-approve", "name": "submit" },
+      "expectPatch": { "rev": 1, "ops": [{ "op": "set", "path": "computed_values.approval.state", "value": "pending" }] }
+    }
+  ]
+}

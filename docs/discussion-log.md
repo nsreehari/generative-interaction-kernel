@@ -292,6 +292,23 @@ replays only the missing patch (no manifest/document re-onboard). Narrowed #7 (c
 over the wire done; WebSocket/stdio, endpoint auth, and session/log persistence still open).
 ---
 
+## 22. Phase 9 — behavioral conformance matrix (portable cases + per-kernel runner)
+
+Behavior lived only as inline TS tests — language-bound, so a second kernel couldn't reuse them,
+defeating the reducer-equivalence goal (#11). Made the contract **data**
+([ADR-0015](decisions/ADR-0015-conformance-matrix.md)): `conformance/cases/*.case.json` describe a
+document (inline or `*Ref`) + optional `seed` + optional `expectInitialResolve` + event `steps` with
+the *exact* `expectPatch` and optional `expectResolve`; a draft-07 `conformance-case.schema.json` gates
+their shape. A thin **per-kernel runner** executes them — the reference runner is
+`kernel/test/conformance.test.ts`; a future C# core ships its own over the same files, and identical
+patches = equivalence. The observable contract is deliberately **patches + resolved props**, not
+traces/effects (those are impl detail that may differ between kernels). Two gates by cost: structural
+validation in `npm run conformance` (no TS runtime), behavioral execution in the kernel suite. 8 cases
+cover assign+gate, guarded-invoke-skip, machine transition, rev monotonicity, derive, emit→machine,
+malformed rejection, graceful fallback — all green. Narrowed #11 (matrix + runner done; broader coverage
++ the actual second-kernel runner still open).
+---
+
 ## Index of alternatives explicitly set aside
 
 | Alternative | Set aside because |
@@ -313,3 +330,7 @@ over the wire done; WebSocket/stdio, endpoint auth, and session/log persistence 
 | Folding reference checks into schema validation | The schema is vocabulary-agnostic by design; reference correctness is manifest-relative and advisory, so it is a separate non-throwing lint. |
 | Putting the HTTP/SSE binding in the kernel core | Would pull `node:http` into the portable core and break a browser bundle of the kernel index; infra lives in `transports/http-sse/` with its own tsconfig. |
 | Bidirectional over the SSE stream | SSE is one-directional by design; a `POST` endpoint for the single client→host message (`event`) is simpler and idiomatic. |
+| Behavioral conformance as inline TS tests only | Language-bound; a second kernel can't reuse them, defeating reducer-equivalence. Cases are language-neutral JSON with a per-kernel runner. |
+| Asserting traces/effects in conformance cases | Trace/effect shapes are internal and may differ between kernels; patches + resolved props are the portable contract. |
+| Behavioral conformance as inline TS tests only | Language-bound; a second kernel can't reuse them, defeating reducer-equivalence. Cases are language-neutral JSON with a per-kernel runner. |
+| Asserting traces/effects in conformance cases | Trace/effect shapes are internal and may differ between kernels; patches + resolved props are the portable contract. |

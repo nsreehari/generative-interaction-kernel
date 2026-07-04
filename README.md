@@ -32,6 +32,7 @@ log that resumes a returning client or full-resyncs a late one (Phase 6) — are
 | Reconnection | **Broker host + patch log**: broadcast to many connections; resume via incremental replay or full resync; idempotent client `rebind` |
 | Agent authoring | **Typed builders** over the closed grammar; `authorDocument` = validate-before-commit; `lintManifestReferences` = non-throwing warnings (unknown capabilities render as fallback) |
 | Network transport | **HTTP/SSE binding** (`transports/http-sse/`): SSE for host→client, POST for client→host, session via header, `?fromRev=N` resume; kept out of the portable core |
+| Conformance | **Behavioral matrix** (`conformance/cases/*.case.json`): language-neutral document + seed + event steps → exact patches/resolves; per-kernel runner → reducer equivalence |
 
 ## What this is not
 
@@ -69,10 +70,14 @@ genui-platform/
       ADR-0012-reconnection.md
       ADR-0013-agent-authoring.md
       ADR-0014-http-sse-transport.md
+      ADR-0015-conformance-matrix.md
   schemas/                      ← normative GUP JSON Schemas + golden conformance fixture
+  conformance/                  ← Phase 9 behavioral matrix (language-neutral, per-kernel)
+    conformance-case.schema.json  ← draft-07 schema for a case file
+    cases/                      ← *.case.json: document + seed + event steps → expected patches/resolves
   kernel/                       ← Phase 1 reference kernel (TypeScript)
     src/                        ← types, providers, interpreter, reducer, kernel, transport, client
-    test/                       ← golden fixture + orchestrator effects + transport + client round-trip + resync + authoring
+    test/                       ← golden fixture + orchestrator effects + transport + client round-trip + resync + authoring + conformance
     tsconfig.json
   adapters/
     react/                      ← Phase 2 React render adapter

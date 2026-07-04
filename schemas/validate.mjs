@@ -5,14 +5,12 @@
 // Run: npm install && npm run conformance
 
 import Ajv from "ajv";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const readJson = (p) => JSON.parse(readFileSync(join(here, p), "utf8"));
-
-const schemaFiles = [
+const readJson = (p) => JSON.parse(readFileSync(join(here, p), "utf8"));const schemaFiles = [
   "manifest.schema.json",
   "document.schema.json",
   "patch.schema.json",
@@ -81,6 +79,17 @@ if (contractOk) {
 } else {
   failures++;
   console.log("  FAIL  event does not map to expected patch per the document's behavior edge");
+}
+
+// Behavioral conformance matrix: structural validation of every case file against the
+// case schema. Execution of the cases against the reference kernel lives in
+// kernel/test/conformance.test.ts (needs the TS runtime); here we gate their shape.
+console.log("\nConformance matrix (case shape):");
+const caseSchema = readJson("../conformance/conformance-case.schema.json");
+const vCase = new Ajv({ allErrors: true, strict: false }).compile(caseSchema);
+const casesDir = join(here, "../conformance/cases");
+for (const f of readdirSync(casesDir).filter((n) => n.endsWith(".case.json")).sort()) {
+  check(`case ${f}`, vCase, JSON.parse(readFileSync(join(casesDir, f), "utf8")));
 }
 
 console.log(`\n${failures === 0 ? "OK: all conformance checks passed." : `FAILED: ${failures} check(s).`}`);

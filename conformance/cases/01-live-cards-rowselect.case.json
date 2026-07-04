@@ -1,0 +1,21 @@
+{
+  "name": "live-cards: rowSelect assigns from $event and opens the gate",
+  "description": "The golden interaction. rowSelect writes $event.id into card_data.selected (rev 1); the gated Approve button flips from hidden to visible.",
+  "manifestRef": "../../schemas/fixtures/live-cards.manifest.json",
+  "documentRef": "../../schemas/fixtures/example.document.json",
+  "seed": [
+    { "op": "set", "path": "fetched_sources.orders", "value": [{ "id": "order-42", "amount": 100 }, { "id": "order-7", "amount": 50 }] },
+    { "op": "set", "path": "computed_values.total", "value": 150 }
+  ],
+  "expectInitialResolve": [
+    { "id": "metric-total", "props": { "value": 150 } },
+    { "id": "btn-approve", "visible": false }
+  ],
+  "steps": [
+    {
+      "event": { "node": "table-orders", "name": "rowSelect", "payload": { "id": "order-42" } },
+      "expectPatch": { "rev": 1, "ops": [{ "op": "set", "path": "card_data.selected", "value": "order-42" }] },
+      "expectResolve": [{ "id": "btn-approve", "visible": true }]
+    }
+  ]
+}

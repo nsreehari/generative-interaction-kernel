@@ -1,0 +1,41 @@
+{
+  "name": "emit: an emitted event drives a machine within one dispatch",
+  "description": "A press handler emits `go`; the flow machine consumes it (idle -> active) inside the same dispatch, so one rev carries the machine's state write.",
+  "manifest": {
+    "gup": "0.1",
+    "type": "manifest",
+    "payload": {
+      "version": "emit-demo/1.0",
+      "expression": "jsonata",
+      "namespaces": ["card_data"],
+      "actions": ["assign", "derive", "invoke", "emit", "navigate", "confirm"],
+      "capabilities": { "control": { "emits": ["press"] } }
+    }
+  },
+  "document": {
+    "gup": "0.1",
+    "type": "document",
+    "payload": {
+      "manifest": "emit-demo/1.0",
+      "root": {
+        "capability": "control",
+        "id": "c",
+        "edges": { "on": { "press": [{ "do": "emit", "event": "go" }] } }
+      },
+      "machines": [
+        {
+          "id": "flow",
+          "context": "card_data.flow",
+          "initial": "idle",
+          "states": { "idle": { "on": { "go": "active" } }, "active": { "type": "final" } }
+        }
+      ]
+    }
+  },
+  "steps": [
+    {
+      "event": { "node": "c", "name": "press" },
+      "expectPatch": { "rev": 1, "ops": [{ "op": "set", "path": "card_data.flow.state", "value": "active" }] }
+    }
+  ]
+}

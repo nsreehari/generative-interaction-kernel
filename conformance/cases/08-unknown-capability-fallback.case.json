@@ -1,0 +1,30 @@
+{
+  "name": "graceful fallback: an unknown capability resolves without crashing",
+  "description": "A node whose capability is not in the manifest resolves as a visible fallback node; a declared sibling does not.",
+  "manifest": {
+    "gup": "0.1",
+    "type": "manifest",
+    "payload": {
+      "version": "fallback-demo/1.0",
+      "expression": "jsonata",
+      "namespaces": [],
+      "capabilities": { "board": { "slots": ["children"] } }
+    }
+  },
+  "document": {
+    "gup": "0.1",
+    "type": "document",
+    "payload": {
+      "manifest": "fallback-demo/1.0",
+      "root": {
+        "capability": "board",
+        "id": "b",
+        "edges": { "children": [{ "capability": "mystery-widget", "id": "m", "props": { "label": "?" } }] }
+      }
+    }
+  },
+  "expectInitialResolve": [
+    { "id": "b", "fallback": false },
+    { "id": "m", "fallback": true, "visible": true }
+  ]
+}
