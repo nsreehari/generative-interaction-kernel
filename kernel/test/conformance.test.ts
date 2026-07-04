@@ -16,6 +16,9 @@ import {
   Kernel,
   unwrap,
   type Json,
+  type Orchestrator,
+  type OrchestratorEffect,
+  type OrchestratorResult,
   type PatchOp,
   type ResolvedNode,
 } from "../src/index";
@@ -43,6 +46,11 @@ interface Step {
   expectResolve?: ResolveExpect[];
 }
 
+interface ScriptEntry {
+  on: { kind: "invoke" | "confirm" | "navigate"; node?: string; tool?: string };
+  result: OrchestratorResult;
+}
+
 interface ConformanceCase {
   name: string;
   manifest?: object;
@@ -50,6 +58,7 @@ interface ConformanceCase {
   document?: object;
   documentRef?: string;
   seed?: PatchOp[];
+  orchestrator?: ScriptEntry[];
   expectInvalid?: boolean;
   expectInitialResolve?: ResolveExpect[];
   steps?: Step[];
@@ -57,6 +66,24 @@ interface ConformanceCase {
 
 function loadRef(caseFile: string, ref: string): object {
   return JSON.parse(readFileSync(join(dirname(caseFile), ref), "utf8"));
+}
+
+// A deterministic, canned Orchestrator from a case's `orchestrator` script: each entry
+// matches an effect (kind + optional node/tool) and returns fixed ops/events, settled
+// inside the same dispatch. No clock, no IO — safe for the conformance contract.
+function scriptedOrchestrator(script: ScriptEntry[]): Orchestrator {
+  const match = (kind: ScriptEntry["on"]["kind"], e: OrchestratorEffect) =>
+    script.find(
+      (s) =>
+        s.on.kind === kind &&
+        (s.on.node === undefined || s.on.node === e.node) &&
+        (s.on.tool === undefined || s.on.tool === e.tool)
+    )?.result;
+  return {
+    invoke: async (e) => match("invoke", e),
+    confirm: async (e) => match("confirm", e),
+    navigate: async (e) => match("navigate", e),
+  };
 }
 
 function find(node: ResolvedNode | null, id: string): ResolvedNode | undefined {
@@ -107,7 +134,10 @@ for (const file of files) {
     const store = new InMemoryStateModel(namespaces);
     if (c.seed) store.apply(c.seed);
 
-    const kernel = new Kernel(manifest, document, { state: store });
+    const kernel = new Kernel(manifest, document, {
+      state: store,
+      orchestrator: c.orchestrator ? scriptedOrchestrator(c.orchestrator) : undefined,
+    });
     kernel.init();
 
     if (c.expectInitialResolve) assertResolve(await kernel.resolve(), c.expectInitialResolve);

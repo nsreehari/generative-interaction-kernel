@@ -51,8 +51,9 @@ async function resolveValue(args: Record<string, Json> | undefined, c: DispatchC
   return null;
 }
 
-// The six closed action families. invoke/navigate/confirm are deferred to Phase 3
-// (they cross the Orchestrator/HITL seam) and produce a trace but no store op yet.
+// The six closed action families. assign/derive/emit mutate store/queue directly; invoke/navigate/
+// confirm cross the Orchestrator/HITL seam (ADR-0009) — they push an OrchestratorEffect for the
+// kernel to route after the reduction, rather than writing a store op here.
 async function dispatchAction(a: Action, c: DispatchCtx): Promise<void> {
   switch (a.do) {
     case "assign": {

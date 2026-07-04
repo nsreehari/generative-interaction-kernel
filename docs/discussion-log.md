@@ -543,6 +543,64 @@ targets (would prove "same code twice," not independent implementability) and po
 (language-bound; the JSON matrix is the shared contract).
 ---
 
+## 31. Closing the last Presentation-DSL gaps — accessibility, explainability, explanations facet
+
+A re-audit of the vision doc against the enriched DSL (§29) left four items open. All four are now
+closed — a small increment, interaction-package + one kernel comment only, no grammar/protocol change.
+
+- **Accessibility / density adaptation.** The planner's `PresentationContext` had `device` and
+  `expertise` declared but unused. `disclosureOf` now computes a numeric density level: hierarchy
+  sets the base, a constrained budget (now including `device: voice`) tightens it, an `expert`
+  audience tightens further (denser, deferred), a `novice` audience loosens (guided — more up front).
+  Primary regions stay always-on. So the *same* investigate interaction shows evidence up front for a
+  novice but collapsed for an expert.
+- **Explainability.** `PresentationRegion` gains an optional `rationale` (schema-optional string) the
+  planner fills with a short, inspectable reason per placement. This is the explainable-output the
+  vision asks for and the hook a model-backed planner fills — the reference one emits a *templated*
+  rationale, not a reasoned one.
+- **Explanations facet.** `investigate` gains a distinct required `explanation` facet (role
+  `narrative`) instead of folding "why" into `context`, matching the vision's facet list.
+- **Stale comment.** `kernel/src/reduce.ts` claimed invoke/navigate/confirm were "deferred to
+  Phase 3"; corrected to the ADR-0009 Orchestrator-effect behavior they've had since Phase 3 shipped.
+
+Verified: interaction tests 9 → 10 (a new test asserts device/expertise adapt disclosure and every
+region carries a rationale). Full suite green — 43 kernel + 5 react + 10 interaction + 3 sse, plus the
+C# conformance matrix (10 cases) unaffected. not-yet-decided #14 narrowed; what remains under it is the
+*learned* planner itself.
+---
+
+## 32. Scripting the effect seam into the conformance matrix
+
+Item 7's last thread: the matrix ran with **no Orchestrator**, so deferred effects
+(`invoke`/`confirm`/`navigate`) — and the *settle* mechanics they drive — were asserted only by each
+kernel's own unit tests. Two kernels could pass all cases yet route effects differently and nothing
+would catch it. Worse, the second (C#) kernel *collected* effects but never routed them, because no
+case demanded it.
+
+The fix is data, not a live orchestrator. The case schema gains an optional `orchestrator` array of
+`{ on, result }` entries: `on` matches an effect by `kind` (+ optional `node`/`tool`), `result` is
+`{ ops?, events? }` — the same shape a real Orchestrator returns. Both runners build a
+`ScriptedOrchestrator` from it (pure data — no clock, RNG, or IO) and construct the kernel with it.
+
+- **The C# kernel gained the seam it lacked**: an `IOrchestrator`, an enriched `Effect` (carrying
+  `tool`/`args`/`payload`), and a `Settle` recursion in `Dispatch` that applies an effect's `ops` and
+  recursively settles its follow-up `events` — one dispatch = one rev regardless of fan-out, mirroring
+  `kernel.ts` exactly.
+- **Two new cases, green on both kernels**: `11-orchestrator-invoke-cascade` (press → `invoke`;
+  scripted result returns fetched rows + a `resolved` event driving a machine idle→loading→ready —
+  three ops at one rev, in the contractual order reducer-ops → effect-ops → follow-up-event-ops) and
+  `12-orchestrator-confirm-approved` (a `confirm` whose scripted approval is the dispatch's only write).
+- The runner contract (`conformance/README.md`) moves scripted effects from "out of scope" to a
+  defined, optional facility, and the op-order rule is now demonstrated, not merely described.
+
+This resolves the effect-seam half of item 7 ([ADR-0025](decisions/ADR-0025-orchestrator-scripting-conformance.md));
+combined with the C# runner (item 8, now item's conformance thread), item 7 is fully retired and the
+open list contracts to a contiguous 1–9. Live Orchestrator realism (real tools, timing, retries, HITL
+UI) stays deliberately off the portable contract. Alternatives set aside: modeling a real async
+orchestrator (imports non-determinism), and asserting trace/effect records directly (traces are an
+out-of-core diagnostic seam that may differ across kernels — the contract stays on patches + resolves).
+---
+
 ## Index of alternatives explicitly set aside
 
 | Alternative | Set aside because |

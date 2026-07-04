@@ -17,13 +17,13 @@ It is written against the language-neutral **runner contract**
 kernel-dotnet/
   GenUI.Kernel/               ← the kernel library (System.Text.Json only; no external packages)
     Json.cs                     ← namespaced store paths, set/merge/remove ops, deep-equal, truthy, unwrap
-    Types.cs                    ← PatchOp, Patch, GupEvent, ResolvedNode, Effect
-    Providers.cs                ← InMemoryStateModel, ManifestRegistry, IExpressionProvider
+    Types.cs                    ← PatchOp, Patch, GupEvent, ResolvedNode, Effect, OrchestratorResult
+    Providers.cs                ← InMemoryStateModel, ManifestRegistry, IExpressionProvider, IOrchestrator
     Expression.cs               ← MiniJsonataProvider (the JSONata subset the matrix uses)
     Interpret.cs                ← Resolve: gate → capability → props(read) → children
     Reduce.cs                   ← the pure reducer: 6 action families, machines, emit cascade
     Validate.cs                 ← validate-before-commit (structural, mirrors document.schema.json)
-    Kernel.cs                   ← Init / Dispatch / Resolve; one dispatch = one patch = one rev
+    Kernel.cs                   ← Init / Dispatch (settles effects) / Resolve; one dispatch = one patch = one rev
   GenUI.Conformance/          ← the runner: executes every case, asserts patches + resolved tree
     Program.cs
 ```
@@ -42,7 +42,11 @@ npm run test:dotnet
   exercises (path navigation, `$event`, `*`, `=`, `!=`, literals) with `truthy()`-wrapped results
   matching jsonata-js as observed through the contract. It is *not* a full JSONata engine; a richer
   case should swap in a full JSONata port behind `IExpressionProvider`.
-- **No Orchestrator.** Like the reference conformance path, deferred effects
-  (`invoke`/`confirm`/`navigate`) cross the Orchestrator seam and produce no store op here.
+- **Orchestrator seam.** Deferred effects (`invoke`/`confirm`/`navigate`) are collected by the
+  reducer and routed through `IOrchestrator` in `Dispatch`, which applies an effect's `ops` and
+  recursively settles its follow-up `events` inside the same dispatch (one dispatch = one rev). With
+  no orchestrator the default `NullOrchestrator` leaves effects inert; the conformance runner injects
+  a deterministic scripted orchestrator for cases that declare one
+  ([ADR-0025](../docs/decisions/ADR-0025-orchestrator-scripting-conformance.md)).
 - **Zero NuGet dependencies.** Uses only `System.Text.Json` from the shared framework, so it builds
   and runs offline.

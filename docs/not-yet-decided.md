@@ -28,8 +28,20 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
 
 2. **Second render adapter.** React is the first render adapter
    ([ADR-0008](decisions/ADR-0008-first-render-adapter-react.md)). The second (C#) kernel core it
-   depends on now exists ([ADR-0024](decisions/ADR-0024-second-kernel-csharp.md)). Still open: the
+   would sit on now exists ([ADR-0024](decisions/ADR-0024-second-kernel-csharp.md)). Still open: the
    WinUI/Reactor adapter itself, and how render equivalence across adapters is verified.
+
+3. **Manifest generation flow.** How a profile *publishes* its `manifest` — derived automatically
+   from the DSL schema + registry, hand-authored, or a hybrid. Determines whether the manifest is a
+   build artifact or a source artifact.
+
+4. **Versioning & migration policy.** How `manifest` and `document` versions evolve, how a renderer
+   negotiates the manifest version, and how breaking capability changes are migrated.
+
+5. **Custom action registration.** The mechanism by which a provider adds actions beyond the six
+   closed families, and how those custom actions are declared in the manifest and validated.
+
+6. **Transport bindings.** A `TransportProvider` seam plus an in-memory reference pair and
    `KernelTransportHost` now carry GUP envelopes across a boundary
    ([ADR-0010](decisions/ADR-0010-transport-seam.md)); the host is a broker with a patch log that
    supports reconnection via incremental replay or full resync
@@ -39,26 +51,12 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
    bindings (WebSocket / stdio / in-proc for embedded), auth on the endpoints, and session/log
    persistence across host restarts.
 
-7. **Conformance suite scope.** A **behavioral matrix** of language-neutral JSON cases
-   fan-out, rev monotonicity, malformed-document rejection, graceful fallback, `merge`/`remove` op
-   semantics, and a two-machine emit **cascade** — structurally gated in `npm run conformance` and
-   executed by a per-kernel runner ([ADR-0015](decisions/ADR-0015-conformance-matrix.md)). The
-   **runner contract** any kernel's runner must honor is now pinned in
-   [conformance/README.md](../conformance/README.md)
-   ([ADR-0023](decisions/ADR-0023-conformance-runner-portability.md)) — envelope-or-bare loading,
-   one-dispatch-one-rev (empty patches included), contractual op order, numeric-value number equality,
-   and determinism. A **second, independent C# kernel** (`kernel-dotnet/`) now passes the same
-   matrix — reducer equivalence proven across two languages
-   ([ADR-0024](decisions/ADR-0024-second-kernel-csharp.md)). Still open:
-   **scripting an Orchestrator's `confirm` response inside the JSON cases** so HITL follow-ups join the
-   language-neutral matrix (today they are covered by the kernel's orchestrator/confirm unit tests).
-
-8. **Canonical reference profile.** Whether to author a clean, minimal exemplar profile that
+7. **Canonical reference profile.** Whether to author a clean, minimal exemplar profile that
    *defines* the platform's ideal shape, distinct from the first onboarding profile (live-cards,
    which is a pragmatic pilot adopter, not a pristine reference). Note: a **profile** is now defined
    as a *Domain DSL + its lowering to the kernel* ([ADR-0016](decisions/ADR-0016-layered-dsl-stack.md)).
 
-9. **Interaction taxonomy (Layer 3).** The platform-owned interaction vocabulary
+8. **Interaction taxonomy (Layer 3).** The platform-owned interaction vocabulary
     ([ADR-0018](decisions/ADR-0018-interaction-presentation-split.md)) is specified in
     `interaction/src/interaction.ts`: all 12 kinds, each with its `Facet[]` (`{ name, role,
     required }`, `role` = a semantic display role, `required` = never dropped on constrained
@@ -66,13 +64,14 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
     versioned, and how a domain extends the taxonomy without forking it — this taxonomy is "the moat"
     ([ADR-0017](decisions/ADR-0017-platform-boundary.md)) so its shape needs deliberate design.
 
-10. **Presentation planner + compiler + context taxonomy (Layer 3→4).** The seam is now split: a
+9. **Presentation planner + compiler + context taxonomy (Layer 3→4).** The seam is now split: a
     `PresentationPlanner` (interaction + context → Presentation DSL; `defaultPresentationPlanner`
     is the deterministic reference, and the slot an AI planner fills) and the Presentation
     *Compiler* (`lowerPresentation`: Presentation DSL → UI DSL). The DSL is a first-class,
     schema-validated artifact (`schemas/presentation.schema.json`) whose regions carry `priority`
-    (hierarchy), `disclosure` (progressive disclosure), and an optional `presentation` type hint;
-    the planner reads a real `PresentationContext` and picks from `layoutTemplates`. Still open:
-    the actual **AI planner** (this reference one is rule-based, with no learned attention/
-    explanation model), whether these are the right context axes / templates, and how `expertise`
-    / `device` / data-shape should influence density and disclosure (currently unused).
+    (hierarchy), `disclosure` (progressive disclosure), an optional `presentation` type hint, and an
+    optional `rationale` (explainability). The planner reads a real `PresentationContext` — including
+    `device` and `expertise`, which now drive density/disclosure — and picks from `layoutTemplates`.
+    Still open: the actual **AI planner** (this reference one is rule-based, with no *learned*
+    attention or explanation model — it emits a templated rationale, not a reasoned one), whether
+    these are the right context axes / templates, and how data-shape should influence presentation.

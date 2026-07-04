@@ -69,6 +69,8 @@ export interface PresentationRegion {
   disclosure: RegionDisclosure;
   /** optional concrete presentation-type hint (e.g. "relationship_graph", "timeline"). */
   presentation?: string;
+  /** a short, inspectable reason for this placement — the explainability hook an AI planner fills. */
+  rationale?: string;
 }
 
 /** Layer 4 — the Presentation DSL: a named layout + arrangement + ordered, enriched regions. */
@@ -114,13 +116,14 @@ function layoutName(template: LayoutTemplate, spec: InteractionSpec): string {
   return template.name === "workspace" ? `${spec.interaction}_workspace` : template.name;
 }
 
-/** True when the surface/attention/space budget forces tighter disclosure. */
+/** True when the surface/attention/space/device budget forces tighter disclosure. */
 function isConstrained(ctx: PresentationContext): boolean {
   return (
     ctx.surface === "mobile" ||
     ctx.surface === "copilot" ||
     ctx.space === "compact" ||
-    ctx.attention === "glanceable"
+    ctx.attention === "glanceable" ||
+    ctx.device === "voice"
   );
 }
 
@@ -130,11 +133,41 @@ function priorityOf(facet: Facet, index: number): RegionPriority {
   return facet.required ? "secondary" : "tertiary";
 }
 
-/** Disclosure follows priority, tightening one step on a constrained surface. */
-function disclosureOf(priority: RegionPriority, constrained: boolean): RegionDisclosure {
+/** Disclosure levels ordered from most to least visible. */
+const DISCLOSURE_LEVELS: RegionDisclosure[] = ["always", "collapsed", "on-demand"];
+
+/**
+ * Disclosure follows hierarchy, then adapts to the audience: a tight surface hides more, an expert
+ * tolerates denser/deferred detail, and a novice is guided (more shown up front). A primary region
+ * is always shown regardless. This is the accessibility/density seam (device + expertise).
+ */
+function disclosureOf(priority: RegionPriority, ctx: PresentationContext): RegionDisclosure {
   if (priority === "primary") return "always";
-  if (priority === "secondary") return constrained ? "collapsed" : "always";
-  return constrained ? "on-demand" : "collapsed"; // tertiary
+  let level = priority === "secondary" ? 0 : 1; // base density from hierarchy
+  if (isConstrained(ctx)) level += 1; // a tighter budget hides more
+  if (ctx.expertise === "expert") level += 1; // experts tolerate denser, deferred detail
+  else if (ctx.expertise === "novice") level -= 1; // novices are guided — show more up front
+  level = Math.max(0, Math.min(DISCLOSURE_LEVELS.length - 1, level));
+  return DISCLOSURE_LEVELS[level];
+}
+
+/** A short, inspectable reason for a region's placement (the explainability output of the planner). */
+function rationaleFor(
+  facet: Facet,
+  priority: RegionPriority,
+  disclosure: RegionDisclosure,
+  ctx: PresentationContext
+): string {
+  const rank = priority === "primary" ? "lead facet" : facet.required ? "required facet" : "optional facet";
+  const shown =
+    disclosure === "always"
+      ? "shown up front"
+      : disclosure === "collapsed"
+        ? "collapsed by default"
+        : "revealed on demand";
+  const budget = isConstrained(ctx) ? ` on a constrained ${ctx.surface} surface` : "";
+  const audience = ctx.expertise ? ` for a ${ctx.expertise} audience` : "";
+  return `${rank}, ${shown}${budget}${audience}`;
 }
 
 /** Default concrete presentation-type per role, where one is unambiguous (else the binding decides). */
@@ -170,14 +203,15 @@ export const defaultPresentationPlanner: PresentationPlanner = (spec, ctx) => {
     chosen = [...required, ...optional].slice(0, Math.max(template.maxRegions, required.length));
   }
 
-  const constrained = isConstrained(ctx);
   const regions: PresentationRegion[] = chosen.map((f, i) => {
     const priority = priorityOf(f, i);
+    const disclosure = disclosureOf(priority, ctx);
     const region: PresentationRegion = {
       name: f.name,
       role: f.role,
       priority,
-      disclosure: disclosureOf(priority, constrained),
+      disclosure,
+      rationale: rationaleFor(f, priority, disclosure, ctx),
     };
     const presentation = rolePresentation[f.role];
     if (presentation) region.presentation = presentation;

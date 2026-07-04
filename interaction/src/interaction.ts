@@ -80,6 +80,7 @@ export const interactionTaxonomy: Record<InteractionKind, Facet[]> = {
     { name: "evidence", role: "collection", required: true },
     { name: "timeline", role: "timeline", required: true },
     { name: "relationships", role: "graph", required: false },
+    { name: "explanation", role: "narrative", required: true },
     { name: "actions", role: "actions", required: true },
   ],
   compare: [

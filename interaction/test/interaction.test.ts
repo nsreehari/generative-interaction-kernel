@@ -121,7 +121,7 @@ test("interaction-driven templates: compare→comparison, monitor→dashboard, c
 });
 
 test("a capped template sheds optional facets but never a required one", () => {
-  // investigate has 4 required facets + 1 optional (relationships); narrative caps at 3.
+  // investigate has 5 required facets + 1 optional (relationships); narrative caps at 3.
   const copilot = defaultPresentationPlanner({ interaction: "investigate", subject: "incident" }, { surface: "copilot" });
   const names = copilot.regions.map((r) => r.name);
   const required = requiredFacets("investigate").map((f) => f.name);
@@ -147,6 +147,33 @@ test("a region carries information hierarchy, disclosure, and a presentation-typ
   );
   const tertiary = glance.regions.find((r) => r.priority === "tertiary");
   if (tertiary) assert.equal(tertiary.disclosure, "on-demand", "tertiary defers on a glanceable surface");
+});
+
+test("the planner adapts to accessibility context (device + expertise) and explains itself", () => {
+  const spec: InteractionSpec = { interaction: "investigate", subject: "incident" };
+
+  const expert = defaultPresentationPlanner(spec, { surface: "desktop", expertise: "expert" });
+  const novice = defaultPresentationPlanner(spec, { surface: "desktop", expertise: "novice" });
+
+  // a secondary (required, non-lead) region: novices see it up front, experts tolerate it deferred.
+  const evNovice = novice.regions.find((r) => r.name === "evidence");
+  const evExpert = expert.regions.find((r) => r.name === "evidence");
+  assert.equal(evNovice?.disclosure, "always", "novices are guided: more shown up front");
+  assert.equal(evExpert?.disclosure, "collapsed", "experts tolerate denser, deferred detail");
+
+  // voice is a constrained device even on a desktop surface.
+  const voice = defaultPresentationPlanner(spec, { surface: "desktop", device: "voice" });
+  assert.equal(
+    voice.regions.find((r) => r.name === "evidence")?.disclosure,
+    "collapsed",
+    "a voice device tightens disclosure"
+  );
+
+  // every region carries an inspectable rationale (the explainability output an AI planner fills).
+  for (const r of expert.regions) {
+    assert.ok(r.rationale && r.rationale.length > 0, `region ${r.name} carries a rationale`);
+  }
+  assert.ok(isValidPresentationSpec(expert), "the enriched spec still validates against its schema");
 });
 
 test("the Presentation DSL is a validatable artifact", () => {

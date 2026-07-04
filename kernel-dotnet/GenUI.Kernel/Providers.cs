@@ -34,6 +34,24 @@ public sealed class InMemoryStateModel
     }
 }
 
+/// <summary>The seam where invoke/confirm/navigate actions reach out to do real work
+/// (tool calls, HITL approval, routing). It owns time and side effects; the kernel and
+/// reducer stay pure. Any method may return null to leave the effect unhandled.</summary>
+public interface IOrchestrator
+{
+    OrchestratorResult? Invoke(Effect effect);
+    OrchestratorResult? Confirm(Effect effect);
+    OrchestratorResult? Navigate(Effect effect);
+}
+
+/// <summary>Default no-op orchestrator: effects are collected but perform nothing.</summary>
+public sealed class NullOrchestrator : IOrchestrator
+{
+    public OrchestratorResult? Invoke(Effect effect) => null;
+    public OrchestratorResult? Confirm(Effect effect) => null;
+    public OrchestratorResult? Navigate(Effect effect) => null;
+}
+
 /// <summary>Capability lookup derived from the manifest.</summary>
 public sealed class ManifestRegistry
 {

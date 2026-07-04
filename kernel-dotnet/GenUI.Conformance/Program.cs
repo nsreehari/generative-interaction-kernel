@@ -74,7 +74,8 @@ static void RunCase(string file, string casesDir)
     if (c["seed"] is JsonArray seed)
         store.Apply(seed.Select(ToOp).ToList());
 
-    var kernel = new Kernel(manifest, document, store);
+    var orchestrator = c["orchestrator"] is JsonArray script ? new ScriptedOrchestrator(script) : null;
+    var kernel = new Kernel(manifest, document, store, orchestrator);
     kernel.Init();
 
     if (c["expectInitialResolve"] is JsonArray initial)
@@ -169,3 +170,51 @@ static ResolvedNode? Find(ResolvedNode node, string id)
 }
 
 static string ThisDir([CallerFilePath] string path = "") => Path.GetDirectoryName(path)!;
+
+// A deterministic, canned Orchestrator built from a case's `orchestrator` script: each
+// entry matches an effect (kind + optional node/tool) and returns fixed ops/events,
+// settled inside the same dispatch. No clock, no IO — safe for the conformance contract.
+sealed class ScriptedOrchestrator(JsonArray script) : IOrchestrator
+{
+    public OrchestratorResult? Invoke(Effect effect) => Match("invoke", effect);
+    public OrchestratorResult? Confirm(Effect effect) => Match("confirm", effect);
+    public OrchestratorResult? Navigate(Effect effect) => Match("navigate", effect);
+
+    private OrchestratorResult? Match(string kind, Effect effect)
+    {
+        foreach (var sn in script)
+        {
+            var on = sn!["on"]!.AsObject();
+            if (on["kind"]!.GetValue<string>() != kind) continue;
+            if (on["node"] is JsonNode node && node.GetValue<string>() != effect.Node) continue;
+            if (on["tool"] is JsonNode tool && tool.GetValue<string>() != effect.Tool) continue;
+            return ToResult(sn["result"]!.AsObject());
+        }
+        return null;
+    }
+
+    private static OrchestratorResult ToResult(JsonObject result)
+    {
+        List<PatchOp>? ops = null;
+        if (result["ops"] is JsonArray opsArr)
+            ops = opsArr.Select(n =>
+            {
+                var o = n!.AsObject();
+                var value = o.TryGetPropertyValue("value", out var v) ? v?.DeepClone() : null;
+                return new PatchOp(o["op"]!.GetValue<string>(), o["path"]!.GetValue<string>(), value);
+            }).ToList();
+
+        List<GupEvent>? events = null;
+        if (result["events"] is JsonArray evArr)
+            events = evArr.Select(n =>
+            {
+                var ev = n!.AsObject();
+                return new GupEvent(
+                    ev["node"]!.GetValue<string>(),
+                    ev["name"]!.GetValue<string>(),
+                    ev["payload"]?.DeepClone()?.AsObject());
+            }).ToList();
+
+        return new OrchestratorResult(ops, events);
+    }
+}

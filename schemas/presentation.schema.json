@@ -49,7 +49,8 @@
         },
         "priority": { "enum": ["primary", "secondary", "tertiary"] },
         "disclosure": { "enum": ["always", "collapsed", "on-demand"] },
-        "presentation": { "type": "string", "minLength": 1 }
+        "presentation": { "type": "string", "minLength": 1 },
+        "rationale": { "type": "string", "minLength": 1 }
       }
     }
   }

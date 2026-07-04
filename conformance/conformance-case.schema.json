@@ -18,6 +18,47 @@
       "description": "Store ops applied before init(), e.g. fetched/computed state.",
       "items": { "$ref": "#/definitions/op" }
     },
+    "orchestrator": {
+      "type": "array",
+      "description": "Deterministic, scripted Orchestrator responses. Each entry matches a deferred effect (invoke/confirm/navigate) and returns canned ops and/or follow-up events, settled inside the same dispatch. No clock, RNG, or IO — the runner uses these to exercise the effect seam reproducibly.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["on", "result"],
+        "properties": {
+          "on": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind"],
+            "properties": {
+              "kind": { "enum": ["invoke", "confirm", "navigate"] },
+              "node": { "type": "string", "description": "Match only effects from this node." },
+              "tool": { "type": "string", "description": "Match only invoke effects for this tool." }
+            }
+          },
+          "result": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "ops": { "type": "array", "items": { "$ref": "#/definitions/op" } },
+              "events": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["node", "name"],
+                  "properties": {
+                    "node": { "type": "string" },
+                    "name": { "type": "string" },
+                    "payload": { "type": "object" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "expectInvalid": {
       "type": "boolean",
       "description": "If true, constructing the kernel (validate-before-commit) MUST throw; no steps are run."

@@ -84,11 +84,19 @@ public static class Reducer
                 break;
 
             case "invoke":
+                // Deferred effects cross the Orchestrator seam and never write state directly.
+                effects.Add(new Effect("invoke", current.Node,
+                    Tool: args?["tool"] is JsonNode t && t.GetValueKind() == JsonValueKind.String ? t.GetValue<string>() : null,
+                    Args: args, Payload: current.Payload));
+                break;
+
             case "navigate":
+                effects.Add(new Effect("navigate", current.Node,
+                    Args: args, To: args?["to"], Payload: current.Payload));
+                break;
+
             case "confirm":
-                // Deferred effects: they cross the Orchestrator seam and never write state
-                // directly. With no Orchestrator (the conformance runner) they produce no op.
-                effects.Add(new Effect(kind, current.Node));
+                effects.Add(new Effect("confirm", current.Node, Args: args, Payload: current.Payload));
                 break;
         }
     }

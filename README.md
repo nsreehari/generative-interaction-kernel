@@ -44,6 +44,7 @@ conformance matrix** of portable JSON cases with a per-kernel runner (Phase 9) �
 | Optional layers | **No layer is mandatory**: a partial pipeline (e.g. single-stage `Domain → UI`) is valid; validation happens once at the UI-DSL boundary. **Streaming** of the initial document is deferred beyond v0.1 (complete document per message) |
 | Runner contract | **Cross-kernel semantics are pinned in prose** (`conformance/README.md`): envelope-or-bare loading, one dispatch = one patch = one rev (empty patches included), contractual op order, numeric-value number equality, determinism — the rules a second kernel's runner must honor |
 | Second kernel | **An independent C# reimplementation** (`kernel-dotnet/`, `System.Text.Json` only) passes the *same* `conformance/cases/*.json` as the TS reference — identical patches across two languages **is** reducer equivalence, the first proof of protocol-over-SDK |
+| Effect-seam conformance | **Deferred effects are scripted as data**: a case's optional `orchestrator` array supplies deterministic `invoke`/`confirm`/`navigate` responses, so both kernels prove the same settle order (reducer ops → effect ops → follow-up-event ops) at one rev |
 
 ## What this is not
 
@@ -91,11 +92,13 @@ genui-platform/
       ADR-0021-optional-layers.md
       ADR-0022-defer-streaming.md
       ADR-0023-conformance-runner-portability.md
+      ADR-0024-second-kernel-csharp.md
+      ADR-0025-orchestrator-scripting-conformance.md
   schemas/                      ← normative GUP JSON Schemas + golden conformance fixture
   conformance/                  ← Phase 9 behavioral matrix (language-neutral, per-kernel)
     README.md                     ← runner contract: semantics every kernel's runner must honor (ADR-0023)
     conformance-case.schema.json  ← draft-07 schema for a case file
-    cases/                      ← *.case.json: document + seed + event steps → expected patches/resolves
+    cases/                      ← *.case.json: document + seed + event steps (+ optional scripted orchestrator) → expected patches/resolves
   kernel/                       ← Phase 1 reference kernel (TypeScript)
     src/                        ← types, providers, interpreter, reducer, kernel, transport, client, lowering, confirm, observability
     test/                       ← golden fixture + orchestrator effects + transport + client round-trip + resync + authoring + conformance + lowering + confirm + observability

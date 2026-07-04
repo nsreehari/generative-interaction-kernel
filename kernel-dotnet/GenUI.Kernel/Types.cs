@@ -15,9 +15,21 @@ public sealed record Patch(int Rev, IReadOnlyList<PatchOp> Ops);
 public sealed record GupEvent(string Node, string Name, JsonObject? Payload);
 
 /// <summary>A deferred Orchestrator effect (invoke/confirm/navigate). Collected by the
-/// reducer but only executed when an Orchestrator is present; the conformance runner
-/// uses none, so effects never produce store ops (mirrors the reference kernel).</summary>
-public sealed record Effect(string Kind, string Node);
+/// reducer and executed only when an Orchestrator is present; with none, effects produce
+/// no store ops (mirrors the reference kernel). Carries enough to route/match a response.</summary>
+public sealed record Effect(
+    string Kind,
+    string Node,
+    string? Tool = null,
+    JsonObject? Args = null,
+    JsonNode? To = null,
+    JsonObject? Payload = null);
+
+/// <summary>What an Orchestrator returns for an effect: direct store deltas and/or
+/// follow-up events, both settled inside the SAME dispatch (one dispatch = one rev).</summary>
+public sealed record OrchestratorResult(
+    IReadOnlyList<PatchOp>? Ops = null,
+    IReadOnlyList<GupEvent>? Events = null);
 
 /// <summary>A resolved, renderable node.</summary>
 public sealed class ResolvedNode

@@ -1,0 +1,97 @@
+{
+  "name": "orchestrator: an invoke effect fetches data and drives a machine to ready in one dispatch",
+  "description": "Pressing Load runs an `invoke` effect (tool fetchOrders) and moves the orders machine idle -> loading. The scripted Orchestrator returns the fetched rows plus a `resolved` follow-up event, which advances loading -> ready. All of it settles inside one dispatch, so a single rev carries: the loading write, the fetched-data write, then the ready write, in that contractual order.",
+  "manifest": {
+    "gup": "0.1",
+    "type": "manifest",
+    "payload": {
+      "version": "fetch-demo/1.0",
+      "expression": "jsonata",
+      "namespaces": ["orders", "fetched"],
+      "actions": ["assign", "derive", "invoke", "emit", "navigate", "confirm"],
+      "capabilities": {
+        "board": {},
+        "metric": {},
+        "table": {},
+        "actions": { "emits": ["load"] }
+      }
+    }
+  },
+  "document": {
+    "gup": "0.1",
+    "type": "document",
+    "payload": {
+      "manifest": "fetch-demo/1.0",
+      "root": {
+        "capability": "board",
+        "id": "board",
+        "props": { "title": "Orders" },
+        "edges": {
+          "children": [
+            {
+              "capability": "metric",
+              "id": "status",
+              "props": { "label": "State" },
+              "edges": { "read": { "value": "orders.state" } }
+            },
+            {
+              "capability": "table",
+              "id": "list",
+              "props": { "columns": ["id", "amount"] },
+              "edges": { "read": { "rows": "fetched.orders" } }
+            },
+            {
+              "capability": "actions",
+              "id": "loadBtn",
+              "props": { "label": "Load" },
+              "edges": {
+                "on": { "load": [{ "do": "invoke", "args": { "tool": "fetchOrders" } }] }
+              }
+            }
+          ]
+        }
+      },
+      "machines": [
+        {
+          "id": "orders",
+          "context": "orders",
+          "initial": "idle",
+          "states": {
+            "idle": { "on": { "load": "loading" } },
+            "loading": { "on": { "resolved": "ready" } },
+            "ready": { "type": "final" }
+          }
+        }
+      ]
+    }
+  },
+  "orchestrator": [
+    {
+      "on": { "kind": "invoke", "tool": "fetchOrders" },
+      "result": {
+        "ops": [
+          { "op": "set", "path": "fetched.orders", "value": [{ "id": "order-42", "amount": 100 }] }
+        ],
+        "events": [{ "node": "loadBtn", "name": "resolved" }]
+      }
+    }
+  ],
+  "expectInitialResolve": [{ "id": "status", "props": { "value": "idle" } }],
+  "steps": [
+    {
+      "event": { "node": "loadBtn", "name": "load" },
+      "expectPatch": {
+        "rev": 1,
+        "ops": [
+          { "op": "set", "path": "orders.state", "value": "loading" },
+          { "op": "set", "path": "fetched.orders", "value": [{ "id": "order-42", "amount": 100 }] },
+          { "op": "set", "path": "orders.state", "value": "ready" }
+        ]
+      },
+      "expectResolve": [
+        { "id": "status", "props": { "value": "ready" } },
+        { "id": "list", "props": { "rows": [{ "id": "order-42", "amount": 100 }] } }
+      ]
+    }
+  ]
+}

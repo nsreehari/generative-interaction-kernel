@@ -130,4 +130,23 @@ DSL → UI DSL). These are now named and separated, and the DSL itself is made a
 
 Kernel grammar and the wire protocol remain unchanged.
 
+## Follow-up (2026-07-04): accessibility/density adaptation, explainability, explanations facet
+
+Closing the last gaps between the code and the vision's "adaptive + explainable" claims:
+
+- **Accessibility / density adaptation.** The planner now reads the previously-unused `device` and
+  `expertise` context axes. `device: voice` counts as a constrained surface (linear, minimal), and
+  `disclosureOf` computes a numeric density level from hierarchy that a constrained budget tightens,
+  an `expert` audience tightens further (denser, more deferred detail), and a `novice` audience
+  loosens (guided — more shown up front). A primary region is always shown regardless.
+- **Explainability.** `PresentationRegion` gains an optional `rationale` string, filled by the
+  planner (`rationaleFor`) with a short, inspectable reason for each placement (rank + disclosure +
+  budget + audience). It rides in the schema as an optional field. This is the explainability output
+  the vision asks for and the natural hook a model-backed planner fills.
+- **Explanations facet.** `investigate` gains a distinct required `explanation` facet (role
+  `narrative`) instead of folding "why" into `context` — matching the vision's facet list.
+
+Separately, a stale comment in `kernel/src/reduce.ts` (claiming invoke/navigate/confirm were
+"deferred to Phase 3") was corrected to describe the ADR-0009 Orchestrator-effect behavior. No
+kernel grammar, protocol, or C# conformance change.
 

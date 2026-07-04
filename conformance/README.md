@@ -26,6 +26,8 @@ language. Everything here is normative; the case schema (`conformance-case.schem
 6. **Steps.** For each step, dispatch `event`, then assert `expectPatch` (if present) against the
    returned patch and `expectResolve` (if present) against the freshly resolved tree.
 
+A case MAY also declare an `orchestrator` script (see below) to exercise deferred effects.
+
 ## Revision & patch rules
 
 - **One dispatch = one patch = one rev.** Every `dispatch` returns exactly one patch and increments
@@ -46,6 +48,27 @@ ops in this deterministic order:
 3. Then, recursively, the ops of each follow-up event an effect produced.
 
 Two kernels that produce the same ops in a different order do **not** conform.
+
+## Scripted Orchestrator effects
+
+Deferred effects (`invoke` / `confirm` / `navigate`) cross the Orchestrator seam
+([ADR-0009](../docs/decisions/ADR-0009-orchestrator-effects.md)); the reducer only *requests* them. A
+case MAY exercise this seam by declaring an `orchestrator` array of **deterministic, canned**
+responses — no clock, RNG, or IO, so the case stays reproducible.
+
+Each entry is `{ on, result }`:
+
+- **`on`** matches an effect: `kind` (required) plus optional `node` and `tool` (a `tool` matcher
+  only applies to `invoke`). The runner returns the **first** matching entry's `result`; an effect
+  with no match is unhandled and contributes nothing.
+- **`result`** is `{ ops?, events? }` — the same shape a real Orchestrator returns: direct store
+  `ops` and/or follow-up `events`, both settled **inside the same dispatch**.
+
+A conforming runner routes each collected effect to its match, applies `result.ops`, then recursively
+settles each `result.events` event — exactly the order pinned above (reducer ops, then effect
+`result.ops`, then follow-up-event ops). The whole fan-out is still **one patch at one rev**. The
+Orchestrator itself is not modeled beyond this canned response; the runner supplies no real tools,
+time, or HITL UI — only the scripted result.
 
 ## Op semantics
 
@@ -79,10 +102,8 @@ same patches and the same resolved tree on every run and in every conforming ker
 
 - **Traces / observability.** Trace points are an out-of-core diagnostic seam
   ([ADR-0020](../docs/decisions/ADR-0020-observability-sink.md)); cases assert nothing about them.
-- **Orchestrator effects.** The runner constructs the kernel with **no Orchestrator**, so cases
-  exercise only reducer-observable behavior (patches + resolves). Scripting an Orchestrator's
-  `confirm`/`invoke` response inside a JSON case is future work (see
-  [not-yet-decided](../docs/not-yet-decided.md) item 8); HITL follow-ups are covered today by the
-  kernel's own unit tests.
+- **Live Orchestrator behavior.** A case scripts only **canned** effect responses (above). Real tool
+  execution, timing, retries, and HITL UI are the host Orchestrator's concern and are not modeled;
+  cases assert only the reducer-observable result (patches + resolves) of a scripted response.
 - **Streaming.** v0.1 delivers a complete document per message
   ([ADR-0022](../docs/decisions/ADR-0022-defer-streaming.md)).
