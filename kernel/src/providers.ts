@@ -11,13 +11,14 @@ import type {
   OrchestratorResult,
 } from "./types";
 
-// Vendored JSONata (synchronous build) — an owned in-repo copy, no external npm dependency.
-// See ./vendor/README.md. Exposes jsonata(expr) -> { evaluate(input, bindings?) } (sync).
+// Vendored JSONata (canonical v2.2.1) — an owned in-repo copy, no external npm dependency.
+// See ./vendor/README.md. Exposes jsonata(expr) -> { evaluate(input, bindings?) => Promise }.
+// This is the same canonical source the C# port follows, so both kernels share one reference.
 const _require = createRequire(import.meta.url);
-interface CompiledSync {
-  evaluate(input: unknown, bindings?: Record<string, unknown>): unknown;
+interface Compiled {
+  evaluate(input: unknown, bindings?: Record<string, unknown>): Promise<unknown>;
 }
-const jsonata = _require("./vendor/jsonata-sync.cjs") as (expr: string) => CompiledSync;
+const jsonata = _require("./vendor/jsonata.cjs") as (expr: string) => Compiled;
 
 // ---- path helpers on a namespaced snapshot -------------------------------
 
@@ -79,15 +80,15 @@ export interface ExpressionProvider {
 }
 
 export class JsonataExpressionProvider implements ExpressionProvider {
-  private cache = new Map<string, CompiledSync>();
+  private cache = new Map<string, Compiled>();
 
   async eval(expr: string, data: unknown, bindings: Record<string, unknown> = {}): Promise<Json> {
     const compiled = this.cache.get(expr) ?? this.compile(expr);
-    const res = compiled.evaluate(data, bindings);
+    const res = await compiled.evaluate(data, bindings);
     return res === undefined ? null : (res as Json);
   }
 
-  private compile(expr: string): CompiledSync {
+  private compile(expr: string): Compiled {
     const compiled = jsonata(expr);
     this.cache.set(expr, compiled);
     return compiled;
