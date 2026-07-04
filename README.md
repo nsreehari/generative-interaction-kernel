@@ -30,6 +30,7 @@ log that resumes a returning client or full-resyncs a late one (Phase 6) — are
 | Transport | **Transport seam**: GUP envelopes over `TransportProvider`; in-memory reference pair + `KernelTransportHost` |
 | Client runtime | **`GenUIClient`**: interpret + state replica on the renderer side; renders from wire messages, emits events back |
 | Reconnection | **Broker host + patch log**: broadcast to many connections; resume via incremental replay or full resync; idempotent client `rebind` |
+| Agent authoring | **Typed builders** over the closed grammar; `authorDocument` = validate-before-commit; `lintManifestReferences` = non-throwing warnings (unknown capabilities render as fallback) |
 
 ## What this is not
 
@@ -65,10 +66,11 @@ genui-platform/
       ADR-0010-transport-seam.md
       ADR-0011-client-runtime.md
       ADR-0012-reconnection.md
+      ADR-0013-agent-authoring.md
   schemas/                      ← normative GUP JSON Schemas + golden conformance fixture
   kernel/                       ← Phase 1 reference kernel (TypeScript)
     src/                        ← types, providers, interpreter, reducer, kernel, transport, client
-    test/                       ← golden fixture + orchestrator effects + transport + client round-trip + resync
+    test/                       ← golden fixture + orchestrator effects + transport + client round-trip + resync + authoring
     tsconfig.json
   adapters/
     react/                      ← Phase 2 React render adapter

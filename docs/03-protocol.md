@@ -196,3 +196,16 @@ to every attached connection and keeps a bounded **patch log**. A client attache
 client keeps its replica), otherwise the client is **full-resynced** (`manifest → document →`
 full-snapshot patch at the current rev). No new GUP message is introduced — the client conveys its
 `rev` through the transport, and patch application is idempotent.
+
+## Reference authoring (agents compose documents)
+
+Agents produce documents from manifest vocabulary via typed builders (`kernel/authoring.ts`; see
+[ADR-0013](decisions/ADR-0013-agent-authoring.md)) rather than hand-writing JSON: `node(...)`,
+`document(...)`, and one constructor per action family (`assign`/`derive`/`emit`/`invoke`/`navigate`/
+`confirm`, plus `guarded`). Two safety nets follow, with a deliberate split — **structure throws,
+references lint**: `authorDocument(...)` runs **validate-before-commit** (schema validation; throws on
+a malformed document), while `lintManifestReferences(...)` returns **non-throwing** warnings for
+references that are valid in shape but not backed by the manifest (unknown capability, undeclared
+event, undeclared namespace). Unknown capabilities are intentionally *not* fatal — the interpreter
+resolves them to a fallback node, so forward-referencing a capability a given renderer hasn't shipped
+degrades gracefully instead of crashing.

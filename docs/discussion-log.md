@@ -261,6 +261,21 @@ joiner full-syncs and sees the gate already open. Narrowed open item #7 (reconne
 network bindings + `fromRev` transport + log persistence still open).
 ---
 
+## 20. Phase 7 — agent-authoring path (typed builders, validate-before-commit, lint over throw)
+
+A generic platform's producers are agents emitting GUP documents from manifest vocabulary, not people
+hand-writing JSON. Added `kernel/src/authoring.ts` ([ADR-0013](decisions/ADR-0013-agent-authoring.md)):
+typed constructors for the closed grammar (`node`, `document`, one per action family + `guarded`),
+`authorDocument()` that envelopes + runs structural validate-before-commit (throws on malformed), and
+`lintManifestReferences()` that returns **non-throwing** warnings (unknown capability, undeclared
+event, undeclared namespace). The pivotal call: **structure throws, references lint.** Unknown
+capabilities are safe at runtime via graceful fallback (`fallback = !registry.has(cap)`), so making
+them fatal would break forward-compatibility — they are advisory. Verified headless: an authored
+live-cards document validates, lints clean, and round-trips over the wire; an unknown capability
+validates, is flagged, and renders as a fallback node without crashing; a malformed document throws;
+undeclared events/namespaces surface as warnings.
+---
+
 ## Index of alternatives explicitly set aside
 
 | Alternative | Set aside because |
@@ -278,3 +293,5 @@ network bindings + `fromRev` transport + log persistence still open).
 | Client running the reducer too (symmetric kernels) | Duplicating writes invites divergence and breaks single-authority/validate-before-commit; only reads (interpret) are duplicated. |
 | A `hello`/`resume` GUP message for reconnection | Opens the closed five-message protocol for a connection-lifecycle concern; the client conveys its `rev` through the transport and the host onboards below GUP. |
 | Always full-resync on reconnect (no patch log) | Correct but wasteful for large state / frequent reconnects; a bounded patch log makes incremental replay the common path and full resync the graceful fallback. |
+| Rejecting unknown capabilities as hard errors at author time | They are safe at runtime via graceful fallback and support forward-compatibility (targeting a capability a renderer hasn't shipped); they are lint warnings, not errors. |
+| Folding reference checks into schema validation | The schema is vocabulary-agnostic by design; reference correctness is manifest-relative and advisory, so it is a separate non-throwing lint. |

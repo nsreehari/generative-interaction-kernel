@@ -56,9 +56,11 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
    shape, cancellation/timeout, and how denial vs. approval are conventionally named on the wire.
 
 10. **Progressive / streaming document assembly.** Whether v0.1 supports partial documents
-    materializing as they are produced by an agent, and how that is expressed on the wire. (Orchestrator
-    results already stream follow-up patches within a dispatch, but agent-side streaming of the initial
-    `document` is separate.)
+    materializing as they are produced by an agent, and how that is expressed on the wire. Agents can
+    now author a *complete* document via typed builders with validate-before-commit + reference lint
+    ([ADR-0013](decisions/ADR-0013-agent-authoring.md)); still open is *incremental* agent-side
+    streaming of the initial `document`. (Orchestrator results already stream follow-up patches within
+    a dispatch, but agent-side streaming of the initial `document` is separate.)
 
 11. **Conformance suite scope.** The Phase 1 kernel added executable cases beyond the single golden
     fixture (gate visibility, guard-skipped invoke, machine transition, rev sequencing, trace
