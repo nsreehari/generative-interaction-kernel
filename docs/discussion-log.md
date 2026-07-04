@@ -238,7 +238,10 @@ machine states), replacing the machine-only `init()` patch on the wire so a fres
 reconstruct a complete replica from one message. Verified headless: a client reconstructs full state
 from the baseline (metric 150, two table rows, Approve hidden), then round-trips a `rowSelect` event
 into a re-render with the gate opening — and stops after `stop()`. This is the read/write split made
-physical: interpret + replica on the client, reducer + authority on the host.
+physical: interpret + replica on the client, reducer + authority on the host. The React binding was
+then generalized to a structural `GenUISource`, so the same `GenUIRoot`/`useGenUI` render whether
+driven by the in-process controller or the transport-backed client — verified by a render-over-the-
+wire test.
 ---
 
 ## Index of alternatives explicitly set aside

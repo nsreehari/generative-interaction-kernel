@@ -69,8 +69,8 @@ genui-platform/
     tsconfig.json
   adapters/
     react/                      ← Phase 2 React render adapter
-      src/                      ← registry, renderer, controller, live-cards components, hook
-      test/                     ← tree render, gate flip, event wiring, fallback
+      src/                      ← registry, renderer, controller, live-cards components, source-agnostic hook
+      test/                     ← tree render, gate flip, event wiring, fallback, render-over-the-wire
       tsconfig.json
 ```
 

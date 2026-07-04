@@ -58,5 +58,7 @@ The renderer stays a pure `event`-emitter / `patch`-consumer (ADR-0006): it bind
 - The read/write split is now explicit and enforced by placement: interpret + replica on the client,
   reducer + authority on the host.
 - `baseline()` gives a clean initial-sync contract; incremental `patch`es keep the replica current.
-- Open surface remaining: replica resync/replay from a known `rev` after reconnect, patch coalescing
-  for large state, and a thin React binding over `GenUIClient`.
+- Open surface remaining: replica resync/replay from a known `rev` after reconnect, and patch
+  coalescing for large state. (The thin React binding over `GenUIClient` has since landed — the same
+  `GenUIRoot`/`useGenUI` accept either the in-process controller or the client via a structural
+  `GenUISource`.)
