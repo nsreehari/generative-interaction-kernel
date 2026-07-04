@@ -4,6 +4,10 @@ dist/
 build/
 *.log
 
+# .NET build output (second kernel)
+bin/
+obj/
+
 # Editor / OS
 .DS_Store
 .vscode/

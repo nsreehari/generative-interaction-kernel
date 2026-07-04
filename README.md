@@ -38,10 +38,12 @@ conformance matrix** of portable JSON cases with a per-kernel runner (Phase 9) �
 | Conformance | **Behavioral matrix** (`conformance/cases/*.case.json`): language-neutral document + seed + event steps → exact patches/resolves; per-kernel runner → reducer equivalence |
 | Layered DSL | **One kernel, lowering compilers above it**: Task → Domain → Interaction → UI (kernel doc) as pure `Stage`s; a **profile = a Domain DSL + its lowering**; layers optional; `lowerToDocument` reuses validate-before-commit |
 | Platform boundary | **Platform owns Interaction (L3) + Presentation (L4) + Runtime (L5)**; Intent (agents) and Domain semantics (app teams) sit outside and plug in via a translation contract; the UI DSL is an internal target; the **moat = interaction taxonomy + presentation compiler** |
-| Interaction / Presentation | **Two owned layers + a context-aware compiler** (`interaction/`): Interaction Model (goal patterns + facet taxonomy) → `PresentationCompiler(spec, context)` → Presentation Model (layout + regions) → kernel doc; *same interaction, different presentation by surface* |
+| Interaction / Presentation | **Two owned layers + a planner and a compiler** (`interaction/`): Interaction Model (goal patterns + facet taxonomy) → `PresentationPlanner(spec, context)` → Presentation DSL (layout + enriched regions: priority / disclosure / presentation-type, schema-validated) → `lowerPresentation` compiler → kernel doc; *same interaction, different presentation by surface*. The planner is the slot an AI presentation planner fills |
 | HITL confirm | **`confirm` contract** (`kernel/src/confirm.ts`): standard prompt payload, outcome vocabulary (`approved`/`denied`/`cancelled`/`timeout`), and `confirmed`/`dismissed` follow-up event names |
 | Observability | **Fixed trace points** (`TRACE_POINTS`) + reference `console`/`buffer`/`multi` sinks over the `TraceSink` seam; exporters stay out-of-core; traces are *not* on the behavioral conformance contract |
 | Optional layers | **No layer is mandatory**: a partial pipeline (e.g. single-stage `Domain → UI`) is valid; validation happens once at the UI-DSL boundary. **Streaming** of the initial document is deferred beyond v0.1 (complete document per message) |
+| Runner contract | **Cross-kernel semantics are pinned in prose** (`conformance/README.md`): envelope-or-bare loading, one dispatch = one patch = one rev (empty patches included), contractual op order, numeric-value number equality, determinism — the rules a second kernel's runner must honor |
+| Second kernel | **An independent C# reimplementation** (`kernel-dotnet/`, `System.Text.Json` only) passes the *same* `conformance/cases/*.json` as the TS reference — identical patches across two languages **is** reducer equivalence, the first proof of protocol-over-SDK |
 
 ## What this is not
 
@@ -98,6 +100,9 @@ genui-platform/
     src/                        ← types, providers, interpreter, reducer, kernel, transport, client, lowering, confirm, observability
     test/                       ← golden fixture + orchestrator effects + transport + client round-trip + resync + authoring + conformance + lowering + confirm + observability
     tsconfig.json
+  kernel-dotnet/                ← second kernel: an independent C# reimplementation (ADR-0024)
+    GenUI.Kernel/               ← the kernel library (System.Text.Json only, zero NuGet deps)
+    GenUI.Conformance/          ← C# runner over the same conformance/cases (npm run test:dotnet)
   adapters/
     react/                      ← Phase 2 React render adapter
       src/                      ← registry, renderer, controller, live-cards components, source-agnostic hook

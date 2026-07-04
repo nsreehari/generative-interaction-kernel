@@ -28,6 +28,7 @@ rejected options were set aside, and the consequences.
 | [0021](ADR-0021-optional-layers.md) | Layers are optional; only the terminal UI-DSL document is validated | Accepted |
 | [0022](ADR-0022-defer-streaming.md) | v0.1 ships complete documents; incremental streaming deferred | Accepted |
 | [0023](ADR-0023-conformance-runner-portability.md) | Conformance runner contract — pin the language-neutral semantics a second kernel must honor | Accepted |
+| [0024](ADR-0024-second-kernel-csharp.md) | Second kernel — an independent C# reimplementation verified by the conformance matrix | Accepted |
 
 ## Format
 

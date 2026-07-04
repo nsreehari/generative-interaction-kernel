@@ -11,6 +11,7 @@
 export * from "./interaction";
 export * from "./presentation";
 export * from "./lowering";
+export * from "./schema";
 
 import type { PresentationBinding } from "./lowering";
 

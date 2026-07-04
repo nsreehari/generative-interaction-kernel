@@ -486,6 +486,63 @@ would otherwise drift undetected. Still open under #8: the C# runner itself, and
 Orchestrator's `confirm`/`invoke` response into JSON cases.
 ---
 
+## 29. Enriching the Presentation DSL + naming the Planner / Compiler split
+
+The user shared the platform thesis ("future UI platforms evolve from Component Platforms into
+**Interaction Platforms**"). Mapping it onto the code, layers 3 and 4 already exist — but the vision's
+"Role of AI" distinguishes two stages the first cut had fused: an **AI Presentation Planner**
+(interaction → Presentation DSL) and a **Presentation Compiler** (Presentation DSL → UI DSL), and it
+wants the Presentation DSL to be a *renderer-agnostic, validatable, explainable* artifact carrying
+per-region hierarchy and progressive disclosure. We closed that gap.
+
+- **Planner vs. Compiler named.** The `interaction + context → PresentationSpec` seam is now
+  `PresentationPlanner` (`defaultPresentationPlanner` = the deterministic reference; an AI planner
+  drops into this exact slot with no kernel change). `lowerPresentation` is the Presentation
+  *Compiler*. `compileInteraction(spec, ctx, binding, planner?)` = planner then compiler.
+- **Regions are enriched.** A region went from a bare name to
+  `{ name, role, priority, disclosure, presentation? }`: `priority` (primary/secondary/tertiary) is
+  information hierarchy, `disclosure` (always/collapsed/on-demand) is progressive disclosure, and
+  `presentation?` is a concrete presentation-type hint (graph→`relationship_graph`, etc.). The lead
+  region is primary; other required facets secondary; optional tertiary. Disclosure tightens one step
+  on a constrained surface, so the *same* investigate interaction keeps identical facets on desktop
+  and mobile but folds its secondary/tertiary regions on mobile — attention management and progressive
+  disclosure, not just layout selection. These decisions ride into the UI DSL as node props, so a
+  renderer can honor them.
+- **The DSL is validatable.** `schemas/presentation.schema.json` (draft-07) +
+  `validatePresentationSpec` / `isValidPresentationSpec` make a planner's output structurally
+  checkable — a buggy planner is caught at this boundary, not at render time.
+
+Verified headless: interaction tests 7 → 9 (a region carries priority/disclosure/presentation and
+tightens on a glanceable surface; the Presentation DSL passes/fails its own schema). Full suite green
+(43 kernel + 5 react + 9 interaction + 3 sse, conformance + typecheck clean). Kernel grammar and wire
+protocol untouched; the AI planner itself remains the open item under #14.
+---
+
+## 30. Second kernel — proving protocol-over-SDK with an independent C# core
+
+Following the runner contract (§28), the payoff step: **build the second kernel**. With the semantics
+pinned, a C# reimplementation was a checklist, not archaeology. `kernel-dotnet/` holds `GenUI.Kernel`
+(a dependency-free library — only `System.Text.Json` from the shared framework, so it builds offline)
+and `GenUI.Conformance` (a console runner over the *same* `conformance/cases/*.json`).
+
+- **Faithful to the reference**: namespaced store with `set`/`merge`/`remove` semantics, capability
+  registry, interpreter (`gate → capability → props → children`), the pure reducer (six action
+  families, machines, emit cascade via an in-dispatch queue), structural validate-before-commit, and
+  one dispatch = one patch = one rev. A `MiniJsonataProvider` implements exactly the JSONata subset the
+  matrix uses (path nav, `$event`, `*`, `=`, `!=`, literals), `truthy()`-wrapped, behind an
+  `IExpressionProvider` seam so a full JSONata port can slot in later.
+- **All ten cases pass on the C# kernel.** Identical expected patches across two independent runners
+  *is* reducer equivalence — the first real evidence for "protocol over SDK"
+  ([ADR-0024](decisions/ADR-0024-second-kernel-csharp.md)). Wired as `npm run test:dotnet` and into the
+  aggregate `npm test`, so a divergence between kernels now fails CI.
+
+This resolves item 2 (**independent reimplementation**, not a shared compiled core) and the runner half
+of item 8; open items renumbered to a contiguous 1–10. The C# core is the foundation the WinUI/Reactor
+adapter (item 2, render side) will sit on. Alternatives set aside: a shared core compiled to both
+targets (would prove "same code twice," not independent implementability) and porting the TS unit tests
+(language-bound; the JSON matrix is the shared contract).
+---
+
 ## Index of alternatives explicitly set aside
 
 | Alternative | Set aside because |

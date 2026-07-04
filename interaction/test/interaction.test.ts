@@ -20,14 +20,16 @@ import {
 } from "../../kernel/src/index";
 import {
   compileInteraction,
-  defaultPresentationCompiler,
+  defaultPresentationPlanner,
   facetsFor,
   facetsOf,
   interactionTaxonomy,
+  isValidPresentationSpec,
   layoutTemplates,
   liveCardsBinding,
   lowerPresentation,
   requiredFacets,
+  validatePresentationSpec,
   type InteractionSpec,
   type PresentationContext,
 } from "../src/index";
@@ -74,11 +76,11 @@ test("interaction taxonomy: facets carry a role + required flag; capabilities ov
 test("same interaction, different presentation by context (surface + space + attention)", () => {
   const spec: InteractionSpec = { interaction: "investigate", subject: "incident" };
 
-  const desktop = defaultPresentationCompiler(spec, { surface: "desktop" });
-  const mobile = defaultPresentationCompiler(spec, { surface: "mobile" });
-  const copilot = defaultPresentationCompiler(spec, { surface: "copilot" });
-  const compactDesktop = defaultPresentationCompiler(spec, { surface: "desktop", space: "compact" });
-  const glanceable = defaultPresentationCompiler(spec, { surface: "desktop", attention: "glanceable" });
+  const desktop = defaultPresentationPlanner(spec, { surface: "desktop" });
+  const mobile = defaultPresentationPlanner(spec, { surface: "mobile" });
+  const copilot = defaultPresentationPlanner(spec, { surface: "copilot" });
+  const compactDesktop = defaultPresentationPlanner(spec, { surface: "desktop", space: "compact" });
+  const glanceable = defaultPresentationPlanner(spec, { surface: "desktop", attention: "glanceable" });
 
   assert.equal(desktop.layout, "investigate_workspace");
   assert.equal(desktop.arrangement, "grid");
@@ -87,33 +89,75 @@ test("same interaction, different presentation by context (surface + space + att
   // context refines beyond surface: a compact desktop stacks, a glanceable desktop narrates.
   assert.equal(compactDesktop.layout, "stack");
   assert.equal(glanceable.layout, "narrative");
+
+  // desktop and mobile carry the SAME facets (nothing dropped) but adapt DISCLOSURE by context.
+  assert.deepEqual(
+    desktop.regions.map((r) => r.name),
+    mobile.regions.map((r) => r.name)
+  );
+  const evidenceDesktop = desktop.regions.find((r) => r.name === "evidence");
+  const evidenceMobile = mobile.regions.find((r) => r.name === "evidence");
+  assert.equal(evidenceDesktop?.disclosure, "always", "secondary region shown up front on desktop");
+  assert.equal(evidenceMobile?.disclosure, "collapsed", "same region folds on a constrained surface");
 });
 
 test("interaction-driven templates: compare→comparison, monitor→dashboard, create→wizard", () => {
   assert.equal(
-    defaultPresentationCompiler({ interaction: "compare", subject: "policy" }, { surface: "desktop" }).layout,
+    defaultPresentationPlanner({ interaction: "compare", subject: "policy" }, { surface: "desktop" }).layout,
     "comparison"
   );
   assert.equal(
-    defaultPresentationCompiler({ interaction: "monitor", subject: "fleet" }, { surface: "desktop" }).arrangement,
+    defaultPresentationPlanner({ interaction: "monitor", subject: "fleet" }, { surface: "desktop" }).arrangement,
     "dashboard"
   );
   assert.equal(
-    defaultPresentationCompiler({ interaction: "create", subject: "ticket" }, { surface: "desktop" }).arrangement,
+    defaultPresentationPlanner({ interaction: "create", subject: "ticket" }, { surface: "desktop" }).arrangement,
     "wizard"
   );
   // every chosen layout name resolves to a catalog template or an interaction workspace.
-  const p = defaultPresentationCompiler({ interaction: "review", subject: "x" }, { surface: "desktop" });
+  const p = defaultPresentationPlanner({ interaction: "review", subject: "x" }, { surface: "desktop" });
   assert.equal(p.layout, "review_workspace");
   assert.equal(layoutTemplates.workspace.arrangement, "grid");
 });
 
 test("a capped template sheds optional facets but never a required one", () => {
   // investigate has 4 required facets + 1 optional (relationships); narrative caps at 3.
-  const copilot = defaultPresentationCompiler({ interaction: "investigate", subject: "incident" }, { surface: "copilot" });
+  const copilot = defaultPresentationPlanner({ interaction: "investigate", subject: "incident" }, { surface: "copilot" });
+  const names = copilot.regions.map((r) => r.name);
   const required = requiredFacets("investigate").map((f) => f.name);
-  for (const r of required) assert.ok(copilot.regions.includes(r), `required facet ${r} kept`);
-  assert.ok(!copilot.regions.includes("relationships"), "optional facet dropped under the cap");
+  for (const r of required) assert.ok(names.includes(r), `required facet ${r} kept`);
+  assert.ok(!names.includes("relationships"), "optional facet dropped under the cap");
+});
+
+test("a region carries information hierarchy, disclosure, and a presentation-type hint", () => {
+  const p = defaultPresentationPlanner({ interaction: "investigate", subject: "incident" }, { surface: "desktop" });
+  const lead = p.regions[0];
+  assert.equal(lead.priority, "primary", "the lead region is primary");
+  assert.equal(lead.disclosure, "always", "a primary region is always shown");
+
+  const relationships = p.regions.find((r) => r.name === "relationships");
+  assert.equal(relationships?.priority, "tertiary", "an optional facet is tertiary");
+  assert.equal(relationships?.disclosure, "collapsed", "a tertiary region folds by default on desktop");
+  assert.equal(relationships?.presentation, "relationship_graph", "graph role gets a presentation-type hint");
+
+  // on a constrained surface, tertiary disclosure tightens further.
+  const glance = defaultPresentationPlanner(
+    { interaction: "investigate", subject: "incident" },
+    { surface: "desktop", attention: "glanceable" }
+  );
+  const tertiary = glance.regions.find((r) => r.priority === "tertiary");
+  if (tertiary) assert.equal(tertiary.disclosure, "on-demand", "tertiary defers on a glanceable surface");
+});
+
+test("the Presentation DSL is a validatable artifact", () => {
+  const p = defaultPresentationPlanner({ interaction: "investigate", subject: "incident" }, { surface: "desktop" });
+  assert.doesNotThrow(() => validatePresentationSpec(p), "a planned spec passes its own schema");
+  assert.ok(isValidPresentationSpec(p));
+
+  // a malformed artifact (bad enum) is rejected at this boundary.
+  const bad = { ...p, regions: [{ name: "x", role: "summary", priority: "huge", disclosure: "always" }] };
+  assert.ok(!isValidPresentationSpec(bad));
+  assert.throws(() => validatePresentationSpec(bad));
 });
 
 test("a review interaction lowers to a valid, kernel-interpretable document", async () => {
