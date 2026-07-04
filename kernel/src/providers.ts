@@ -1,7 +1,7 @@
 // Provider contracts and in-memory reference implementations.
 // These are the pluggable seams; the kernel depends only on the interfaces.
 
-import jsonata from "jsonata";
+import { createRequire } from "module";
 import type {
   Json,
   PatchOp,
@@ -10,6 +10,14 @@ import type {
   OrchestratorEffect,
   OrchestratorResult,
 } from "./types";
+
+// Vendored JSONata (synchronous build) — an owned in-repo copy, no external npm dependency.
+// See ./vendor/README.md. Exposes jsonata(expr) -> { evaluate(input, bindings?) } (sync).
+const _require = createRequire(import.meta.url);
+interface CompiledSync {
+  evaluate(input: unknown, bindings?: Record<string, unknown>): unknown;
+}
+const jsonata = _require("./vendor/jsonata-sync.cjs") as (expr: string) => CompiledSync;
 
 // ---- path helpers on a namespaced snapshot -------------------------------
 
@@ -70,21 +78,17 @@ export interface ExpressionProvider {
   eval(expr: string, data: unknown, bindings?: Record<string, unknown>): Promise<Json>;
 }
 
-interface CompiledExpr {
-  evaluate(d: unknown, b?: Record<string, unknown>): Promise<Json>;
-}
-
 export class JsonataExpressionProvider implements ExpressionProvider {
-  private cache = new Map<string, CompiledExpr>();
+  private cache = new Map<string, CompiledSync>();
 
   async eval(expr: string, data: unknown, bindings: Record<string, unknown> = {}): Promise<Json> {
     const compiled = this.cache.get(expr) ?? this.compile(expr);
-    const res = await compiled.evaluate(data, bindings);
+    const res = compiled.evaluate(data, bindings);
     return res === undefined ? null : (res as Json);
   }
 
-  private compile(expr: string): CompiledExpr {
-    const compiled = jsonata(expr) as CompiledExpr;
+  private compile(expr: string): CompiledSync {
+    const compiled = jsonata(expr);
     this.cache.set(expr, compiled);
     return compiled;
   }
