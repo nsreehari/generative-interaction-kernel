@@ -15,6 +15,7 @@ public sealed class Kernel
     private readonly InMemoryStateModel _store;
     private readonly ManifestRegistry _registry;
     private readonly IExpressionProvider _expr;
+    private readonly IExpressionProvider _predicateExpr;
     private readonly IOrchestrator _orchestrator;
     private int _rev;
 
@@ -32,6 +33,8 @@ public sealed class Kernel
         _store = store;
         _registry = ManifestRegistry.FromManifest(manifest);
         _expr = new JsonataExpressionProvider();
+        // Predicate positions (gates + guards) are adversarial: default them to the safe subset.
+        _predicateExpr = new JsonataExpressionProvider(safe: true);
         _orchestrator = orchestrator ?? new NullOrchestrator();
     }
 
@@ -65,7 +68,7 @@ public sealed class Kernel
         if (depth > MaxSettleDepth)
             throw new InvalidOperationException("GenUI kernel: effect/event depth exceeded");
 
-        var (ops, effects) = Reducer.Reduce(_doc, _store, evt, _expr);
+        var (ops, effects) = Reducer.Reduce(_doc, _store, evt, _expr, _predicateExpr);
         _store.Apply(ops);
         acc.AddRange(ops);
 
@@ -89,5 +92,5 @@ public sealed class Kernel
         }
     }
 
-    public ResolvedNode Resolve() => Interpreter.Resolve(_doc["root"]!.AsObject(), _store, _registry, _expr);
+    public ResolvedNode Resolve() => Interpreter.Resolve(_doc["root"]!.AsObject(), _store, _registry, _expr, _predicateExpr);
 }

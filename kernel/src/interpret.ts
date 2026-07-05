@@ -7,6 +7,11 @@ import type { CapabilityRegistry, ExpressionProvider, StateModel } from "./provi
 export interface InterpretContext {
   store: StateModel;
   expr: ExpressionProvider;
+  /**
+   * Provider for *predicate* positions (the visibility gate). Agent-authored and adversarial,
+   * so the platform defaults it to the safe subset. Falls back to {@link expr} when unset.
+   */
+  predicateExpr?: ExpressionProvider;
   registry: CapabilityRegistry;
   sink?: TraceSink;
 }
@@ -20,7 +25,7 @@ export async function resolveNode(node: DocNode, ctx: InterpretContext): Promise
 
   let visible = true;
   if (node.edges?.gate) {
-    visible = truthy(await ctx.expr.eval(node.edges.gate, data));
+    visible = truthy(await (ctx.predicateExpr ?? ctx.expr).eval(node.edges.gate, data));
   }
 
   const props: Record<string, Json> = { ...(node.props ?? {}) };

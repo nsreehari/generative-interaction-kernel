@@ -18,6 +18,7 @@ import type {
 // This is the same canonical source the C# port follows, so both kernels share one reference.
 interface Compiled {
   evaluate(input: unknown, bindings?: Record<string, unknown>): Promise<unknown>;
+  ast(): unknown;
 }
 const jsonata = jsonataFactory as unknown as (expr: string) => Compiled;
 
@@ -80,8 +81,58 @@ export interface ExpressionProvider {
   eval(expr: string, data: unknown, bindings?: Record<string, unknown>): Promise<Json>;
 }
 
+// Constructs with no legitimate place in an agent-authored *predicate* (guard / gate /
+// visibility): dynamic evaluation ($eval), user-defined/recursive functions (lambda), and
+// structural rewrites (transform). They are the code-injection and DoS surface. The *safe*
+// provider rejects them at COMPILE time by walking the parsed AST, so an unsafe predicate
+// never reaches evaluation. Enforcement is a provider capability, not a kernel concern
+// (ADR-0028): the kernel stays expression-language-neutral and only routes positions to
+// provider instances — it never hardcodes what "unsafe" means.
+export class SafeExpressionError extends Error {
+  constructor(
+    readonly construct: string,
+    readonly expression: string
+  ) {
+    super(`Unsafe expression construct "${construct}" is not allowed in a predicate position: ${expression}`);
+    this.name = "SafeExpressionError";
+  }
+}
+
+function denyUnsafe(node: unknown, expr: string, seen: WeakSet<object> = new WeakSet()): void {
+  if (node === null || typeof node !== "object") return;
+  if (seen.has(node)) return; // the optimized AST carries ancestor back-refs — guard cycles.
+  seen.add(node);
+  if (Array.isArray(node)) {
+    for (const item of node) denyUnsafe(item, expr, seen);
+    return;
+  }
+  const n = node as Record<string, unknown>;
+  if (n.type === "lambda") throw new SafeExpressionError("function definition", expr);
+  if (n.type === "transform") throw new SafeExpressionError("transform", expr);
+  if (n.type === "function") {
+    const proc = n.procedure as Record<string, unknown> | undefined;
+    if (proc && proc.type === "variable" && proc.value === "eval") {
+      throw new SafeExpressionError("$eval", expr);
+    }
+  }
+  for (const key of Object.keys(n)) denyUnsafe(n[key], expr, seen);
+}
+
+export interface JsonataProviderOptions {
+  /**
+   * When true, reject `$eval`, function definitions (lambda), and `transform` at compile
+   * time — the safe subset the platform wires into predicate positions by default.
+   */
+  safe?: boolean;
+}
+
 export class JsonataExpressionProvider implements ExpressionProvider {
   private cache = new Map<string, Compiled>();
+  private readonly safe: boolean;
+
+  constructor(opts: JsonataProviderOptions = {}) {
+    this.safe = opts.safe ?? false;
+  }
 
   async eval(expr: string, data: unknown, bindings: Record<string, unknown> = {}): Promise<Json> {
     const compiled = this.cache.get(expr) ?? this.compile(expr);
@@ -91,6 +142,7 @@ export class JsonataExpressionProvider implements ExpressionProvider {
 
   private compile(expr: string): Compiled {
     const compiled = jsonata(expr);
+    if (this.safe) denyUnsafe(compiled.ast(), expr);
     this.cache.set(expr, compiled);
     return compiled;
   }

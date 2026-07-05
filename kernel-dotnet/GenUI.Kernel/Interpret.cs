@@ -7,14 +7,18 @@ namespace GenUI.Kernel;
 
 public static class Interpreter
 {
-    public static ResolvedNode Resolve(JsonObject node, InMemoryStateModel store, ManifestRegistry registry, IExpressionProvider expr)
+    public static ResolvedNode Resolve(JsonObject node, InMemoryStateModel store, ManifestRegistry registry, IExpressionProvider expr,
+        // The visibility gate is an agent-authored predicate; the platform routes it through the
+        // safe subset. Falls back to the full provider when a caller does not distinguish positions.
+        IExpressionProvider? predicateExpr = null)
     {
+        predicateExpr ??= expr;
         var data = store.Snapshot();
         var edges = node["edges"] as JsonObject;
 
         var visible = true;
         if (edges?["gate"] is JsonNode gate)
-            visible = Json.Truthy(expr.Eval(gate.GetValue<string>(), data));
+            visible = Json.Truthy(predicateExpr.Eval(gate.GetValue<string>(), data));
 
         var props = new JsonObject();
         if (node["props"] is JsonObject declared)
@@ -30,7 +34,7 @@ public static class Interpreter
         var children = new List<ResolvedNode>();
         if (edges?["children"] is JsonArray kids)
             foreach (var child in kids)
-                children.Add(Resolve(child!.AsObject(), store, registry, expr));
+                children.Add(Resolve(child!.AsObject(), store, registry, expr, predicateExpr));
 
         return new ResolvedNode
         {

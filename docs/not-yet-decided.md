@@ -17,16 +17,14 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
 > **optional layers** → no layer is mandatory, validation happens once at the UI-DSL boundary
 > ([ADR-0021](decisions/ADR-0021-optional-layers.md)); **progressive/streaming document assembly** →
 > deferred beyond v0.1 — a complete document per message
-> ([ADR-0022](decisions/ADR-0022-defer-streaming.md)).
+> ([ADR-0022](decisions/ADR-0022-defer-streaming.md)); **safe expression subset** → enforcement is a
+> provider capability (compile-time AST rejection of `$eval`/lambda/`transform`), mandated-safe by
+> default for predicate positions (gates + guards) and overridable through the seam
+> ([ADR-0028](decisions/ADR-0028-safe-expression-subset.md)).
 
 ## Open
 
-1. **Safe expression subset.** JSONata is the reference default `ExpressionProvider`
-   ([ADR-0007](decisions/ADR-0007-reference-kernel-implementation.md)). Still open: whether a
-   smaller, sandboxed subset is *mandated* for agent-authored guards/gates (e.g. no function
-   definitions, no `$eval`) versus relying on the provider seam per profile.
-
-2. **Second render adapter.** React is the first render adapter
+1. **Second render adapter.** React is the first render adapter
    ([ADR-0008](decisions/ADR-0008-first-render-adapter-react.md)). Its reusable core now has a C#
    twin: a **renderer-agnostic adapter core** (`adapters/dotnet/GenUI.Render`, generic over the view
    type) that mirrors `render.tsx`/`registry.ts`/`controller.ts` on the C# kernel
@@ -34,17 +32,17 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
    open: the concrete **WinUI/Reactor** toolkit binding (`TView = Element` + a host window, which
    lives outside the offline island), and how render equivalence *across* adapters is verified.
 
-3. **Manifest generation flow.** How a profile *publishes* its `manifest` — derived automatically
+2. **Manifest generation flow.** How a profile *publishes* its `manifest` — derived automatically
    from the DSL schema + registry, hand-authored, or a hybrid. Determines whether the manifest is a
    build artifact or a source artifact.
 
-4. **Versioning & migration policy.** How `manifest` and `document` versions evolve, how a renderer
+3. **Versioning & migration policy.** How `manifest` and `document` versions evolve, how a renderer
    negotiates the manifest version, and how breaking capability changes are migrated.
 
-5. **Custom action registration.** The mechanism by which a provider adds actions beyond the six
+4. **Custom action registration.** The mechanism by which a provider adds actions beyond the six
    closed families, and how those custom actions are declared in the manifest and validated.
 
-6. **Transport bindings.** A `TransportProvider` seam plus an in-memory reference pair and
+5. **Transport bindings.** A `TransportProvider` seam plus an in-memory reference pair and
    `KernelTransportHost` now carry GUP envelopes across a boundary
    ([ADR-0010](decisions/ADR-0010-transport-seam.md)); the host is a broker with a patch log that
    supports reconnection via incremental replay or full resync
@@ -54,12 +52,12 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
    bindings (WebSocket / stdio / in-proc for embedded), auth on the endpoints, and session/log
    persistence across host restarts.
 
-7. **Canonical reference profile.** Whether to author a clean, minimal exemplar profile that
+6. **Canonical reference profile.** Whether to author a clean, minimal exemplar profile that
    *defines* the platform's ideal shape, distinct from the first onboarding profile (live-cards,
    which is a pragmatic pilot adopter, not a pristine reference). Note: a **profile** is now defined
    as a *Domain DSL + its lowering to the kernel* ([ADR-0016](decisions/ADR-0016-layered-dsl-stack.md)).
 
-8. **Interaction taxonomy (Layer 3).** The platform-owned interaction vocabulary
+7. **Interaction taxonomy (Layer 3).** The platform-owned interaction vocabulary
     ([ADR-0018](decisions/ADR-0018-interaction-presentation-split.md)) is specified in
     `interaction/src/interaction.ts`: all 12 kinds, each with its `Facet[]` (`{ name, role,
     required }`, `role` = a semantic display role, `required` = never dropped on constrained
@@ -67,7 +65,7 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
     versioned, and how a domain extends the taxonomy without forking it — this taxonomy is "the moat"
     ([ADR-0017](decisions/ADR-0017-platform-boundary.md)) so its shape needs deliberate design.
 
-9. **Presentation planner + compiler + context taxonomy (Layer 3→4).** The seam is now split: a
+8. **Presentation planner + compiler + context taxonomy (Layer 3→4).** The seam is now split: a
     `PresentationPlanner` (interaction + context → Presentation DSL; `defaultPresentationPlanner`
     is the deterministic reference, and the slot an AI planner fills) and the Presentation
     *Compiler* (`lowerPresentation`: Presentation DSL → UI DSL). The DSL is a first-class,

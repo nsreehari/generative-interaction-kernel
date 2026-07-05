@@ -29,6 +29,12 @@ import {
 
 export interface KernelOptions {
   expression?: ExpressionProvider;
+  /**
+   * Provider for predicate positions (visibility gates, action + machine guards). These are
+   * agent-authored and adversarial, so the kernel defaults this slot to the *safe* subset
+   * ($eval / function definitions / transform rejected at compile time). Override to widen.
+   */
+  predicateExpression?: ExpressionProvider;
   state?: StateModel;
   registry?: CapabilityRegistry;
   orchestrator?: Orchestrator;
@@ -45,6 +51,7 @@ export class Kernel {
   private readonly manifest: ManifestPayload;
   private readonly store: StateModel;
   private readonly expr: ExpressionProvider;
+  private readonly predicateExpr: ExpressionProvider;
   private readonly registry: CapabilityRegistry;
   private readonly orchestrator: Orchestrator;
   private readonly sink?: TraceSink;
@@ -59,6 +66,7 @@ export class Kernel {
     this.manifest = unwrap(manifest);
     this.doc = unwrap(document);
     this.expr = opts.expression ?? new JsonataExpressionProvider();
+    this.predicateExpr = opts.predicateExpression ?? new JsonataExpressionProvider({ safe: true });
     this.registry = opts.registry ?? ManifestRegistry.fromManifest(this.manifest);
     this.store = opts.state ?? new InMemoryStateModel(this.manifest.namespaces ?? []);
     this.orchestrator = opts.orchestrator ?? new NullOrchestrator();
@@ -118,7 +126,7 @@ export class Kernel {
       throw new Error("GenUI kernel: effect/event depth exceeded");
     }
 
-    const { ops, traces, effects } = await reduce(this.doc, this.store, event, this.expr);
+    const { ops, traces, effects } = await reduce(this.doc, this.store, event, this.expr, this.predicateExpr);
     this.store.apply(ops);
     acc.push(...ops);
     for (const t of traces) this.sink?.(t);
@@ -154,6 +162,7 @@ export class Kernel {
     return resolveNode(this.doc.root, {
       store: this.store,
       expr: this.expr,
+      predicateExpr: this.predicateExpr,
       registry: this.registry,
       sink: this.sink,
     });

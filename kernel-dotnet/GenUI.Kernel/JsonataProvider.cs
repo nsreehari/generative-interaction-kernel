@@ -10,14 +10,20 @@ using GenUI.Jsonata;
 
 namespace GenUI.Kernel;
 
-/// <summary>Full JSONata expression provider backed by the native <see cref="JsonataEngine"/> port.</summary>
+/// <summary>JSONata expression provider backed by the native <see cref="JsonataEngine"/> port.
+/// When <c>safe</c> is set it rejects <c>$eval</c>, function definitions (lambda), and
+/// <c>transform</c> at compile time — the subset the platform wires into predicate positions.</summary>
 public sealed class JsonataExpressionProvider : IExpressionProvider
 {
     private readonly ConcurrentDictionary<string, JsonataEngine> _cache = new();
+    private readonly Func<string, JsonataEngine> _compile;
+
+    public JsonataExpressionProvider(bool safe = false) =>
+        _compile = safe ? JsonataEngine.CompileSafe : JsonataEngine.Compile;
 
     public JsonNode? Eval(string expr, JsonObject data, IReadOnlyDictionary<string, JsonNode?>? bindings = null)
     {
-        var engine = _cache.GetOrAdd(expr, JsonataEngine.Compile);
+        var engine = _cache.GetOrAdd(expr, _compile);
 
         Dictionary<string, object?>? boundValues = null;
         if (bindings is { Count: > 0 })
