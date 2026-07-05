@@ -22,6 +22,18 @@ public sealed class JsonataEngine
     /// <summary>Parse and prepare a JSONata expression for evaluation.</summary>
     public static JsonataEngine Compile(string expression) => new(Parser.Parse(expression));
 
+    /// <summary>
+    /// Parse and prepare an expression restricted to the <em>safe predicate subset</em>: rejects
+    /// <c>$eval</c>, function definitions (lambda), and <c>transform</c> at compile time by walking
+    /// the parsed AST. Throws <see cref="SafeExpressionException"/> if an unsafe construct is present.
+    /// </summary>
+    public static JsonataEngine CompileSafe(string expression)
+    {
+        var ast = Parser.Parse(expression);
+        SafeMode.Validate(ast, expression);
+        return new JsonataEngine(ast);
+    }
+
     /// <summary>Evaluate the expression against <paramref name="input"/>, returning a value-model result.</summary>
     public object? Evaluate(object? input, IReadOnlyDictionary<string, object?>? bindings = null)
     {

@@ -11,8 +11,13 @@ namespace GenUI.Kernel;
 public static class Reducer
 {
     public static (List<PatchOp> Ops, List<Effect> Effects) Reduce(
-        JsonObject doc, InMemoryStateModel store, GupEvent evt, IExpressionProvider expr)
+        JsonObject doc, InMemoryStateModel store, GupEvent evt, IExpressionProvider expr,
+        // Predicate positions (action + machine transition guards) are agent-authored and
+        // adversarial; the platform routes them through the safe subset. Falls back to the full
+        // provider when a low-level caller does not distinguish the positions.
+        IExpressionProvider? predicateExpr = null)
     {
+        predicateExpr ??= expr;
         var ops = new List<PatchOp>();
         var effects = new List<Effect>();
         var data = store.Snapshot();
@@ -37,7 +42,7 @@ public static class Reducer
                 foreach (var an in actions)
                 {
                     var a = an!.AsObject();
-                    if (a["guard"] is JsonNode g && !Json.Truthy(expr.Eval(g.GetValue<string>(), data, bindings)))
+                    if (a["guard"] is JsonNode g && !Json.Truthy(predicateExpr.Eval(g.GetValue<string>(), data, bindings)))
                         continue;
                     DispatchAction(a, current, data, bindings, expr, ops, effects, emitted);
                 }
@@ -45,7 +50,7 @@ public static class Reducer
 
             if (machines is not null)
                 foreach (var mn in machines)
-                    ReduceMachine(mn!.AsObject(), store, current, data, bindings, expr, ops, effects, emitted);
+                    ReduceMachine(mn!.AsObject(), store, current, data, bindings, expr, predicateExpr, ops, effects, emitted);
 
             foreach (var e in emitted) queue.Enqueue(e);
         }
@@ -113,7 +118,7 @@ public static class Reducer
 
     private static void ReduceMachine(
         JsonObject m, InMemoryStateModel store, GupEvent evt, JsonObject data,
-        IReadOnlyDictionary<string, JsonNode?> bindings, IExpressionProvider expr,
+        IReadOnlyDictionary<string, JsonNode?> bindings, IExpressionProvider expr, IExpressionProvider predicateExpr,
         List<PatchOp> ops, List<Effect> effects, List<GupEvent> emitted)
     {
         var context = m["context"]!.GetValue<string>();
@@ -142,7 +147,7 @@ public static class Reducer
             actions = t["actions"] as JsonArray;
         }
 
-        if (guard is not null && !Json.Truthy(expr.Eval(guard, data, bindings))) return;
+        if (guard is not null && !Json.Truthy(predicateExpr.Eval(guard, data, bindings))) return;
 
         ops.Add(new PatchOp("set", $"{context}.state", JsonValue.Create(target)));
 

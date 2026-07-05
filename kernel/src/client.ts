@@ -12,6 +12,11 @@ import type { TransportProvider } from "./transport";
 
 export interface GenUIClientOptions {
   expression?: ExpressionProvider;
+  /**
+   * Provider for the visibility gate (a predicate position). Agent-authored and adversarial,
+   * so it defaults to the safe subset; override to widen.
+   */
+  predicateExpression?: ExpressionProvider;
 }
 
 /**
@@ -23,6 +28,7 @@ export interface GenUIClientOptions {
  */
 export class GenUIClient {
   private readonly expr: ExpressionProvider;
+  private readonly predicateExpr: ExpressionProvider;
   private store?: StateModel;
   private registry?: CapabilityRegistry;
   private doc?: DocumentPayload;
@@ -36,6 +42,7 @@ export class GenUIClient {
     opts: GenUIClientOptions = {}
   ) {
     this.expr = opts.expression ?? new JsonataExpressionProvider();
+    this.predicateExpr = opts.predicateExpression ?? new JsonataExpressionProvider({ safe: true });
   }
 
   start(): void {
@@ -111,6 +118,7 @@ export class GenUIClient {
     this.tree = await resolveNode(this.doc.root, {
       store: this.store,
       expr: this.expr,
+      predicateExpr: this.predicateExpr,
       registry: this.registry,
     });
     for (const listener of this.listeners) listener();

@@ -62,6 +62,38 @@ foreach (var c in cases.EnumerateArray())
 
 foreach (var f in failures) Console.WriteLine(f);
 Console.WriteLine($"\nJSONata conformance: {pass} passed, {fail} failed ({pass + fail} total)");
+
+// ---- safe-subset checks (ADR-0028) --------------------------------------------------------
+// These cannot be corpus-gated: the canonical engine returns a value for $eval / lambda /
+// transform, whereas the safe predicate provider must reject them at compile time. Asserted here
+// directly (mirrors kernel/test/safe-expression.test.ts).
+void SafeRejects(string label, string expr)
+{
+    try
+    {
+        JsonataEngine.CompileSafe(expr);
+        fail++;
+        Console.WriteLine($"  FAIL safe-subset {label}: expected rejection of `{expr}`");
+    }
+    catch (SafeExpressionException) { pass++; }
+}
+
+void SafeAllows(string label, string expr)
+{
+    try { JsonataEngine.CompileSafe(expr); pass++; }
+    catch (Exception ex)
+    {
+        fail++;
+        Console.WriteLine($"  FAIL safe-subset {label}: unexpected {ex.GetType().Name} for `{expr}`");
+    }
+}
+
+SafeRejects("$eval", "$eval(\"1+1\")");
+SafeRejects("function definition", "function($x){ $x + 1 }(1)");
+SafeRejects("transform", "payload ~> | $ | { \"seen\": true } |");
+SafeAllows("ordinary predicate", "count > 3 and $exists(user.id)");
+Console.WriteLine($"safe-subset checks: 3 rejections + 1 allow asserted");
+
 return fail == 0 ? 0 : 1;
 
 // Convert engine output to the comparison model: undefined -> null (provider normalization).

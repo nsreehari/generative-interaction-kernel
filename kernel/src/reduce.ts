@@ -38,6 +38,7 @@ interface DispatchCtx {
   traces: TraceEvent[];
   effects: OrchestratorEffect[];
   expr: ExpressionProvider;
+  predicateExpr: ExpressionProvider;
   data: Record<string, Json>;
   bindings: Record<string, unknown>;
   currentEvent: GupEvent;
@@ -134,7 +135,7 @@ function reduceMachine(
   const guard = typeof t === "string" ? undefined : t.guard;
 
   return (async () => {
-    if (guard && !truthy(await c.expr.eval(guard, c.data, c.bindings))) return;
+    if (guard && !truthy(await c.predicateExpr.eval(guard, c.data, c.bindings))) return;
 
     c.traces.push({
       event: "transition",
@@ -152,13 +153,18 @@ export async function reduce(
   doc: DocumentPayload,
   store: StateModel,
   event: GupEvent,
-  expr: ExpressionProvider
+  expr: ExpressionProvider,
+  // Predicate positions (action + machine transition guards) are agent-authored and
+  // adversarial; the platform routes them through the safe subset. Falls back to the full
+  // provider when a low-level caller does not distinguish the positions.
+  predicateExpr: ExpressionProvider = expr
 ): Promise<ReduceResult> {
   const c: DispatchCtx = {
     ops: [],
     traces: [],
     effects: [],
     expr,
+    predicateExpr,
     data: store.snapshot(),
     bindings: { event: event.payload ?? {} },
     currentEvent: event,
@@ -174,7 +180,7 @@ export async function reduce(
     const node = findNode(doc.root, current.node);
     const actions = node?.edges?.on?.[current.name] ?? [];
     for (const a of actions) {
-      if (a.guard && !truthy(await expr.eval(a.guard, c.data, c.bindings))) continue;
+      if (a.guard && !truthy(await predicateExpr.eval(a.guard, c.data, c.bindings))) continue;
       await dispatchAction(a, c);
     }
 
