@@ -33,6 +33,7 @@ rejected options were set aside, and the consequences.
 | [0026](ADR-0026-second-render-adapter-dotnet.md) | Second render adapter — a renderer-agnostic C# adapter core (Reactor/WinUI binding is a thin edge) | Accepted |
 | [0027](ADR-0027-own-jsonata-engine.md) | Own the JSONata engine in both kernels — no third-party dependency, no separate package | Accepted |
 | [0028](ADR-0028-safe-expression-subset.md) | Safe expression subset — a provider capability, mandated-safe by default for predicate positions | Accepted |
+| [0029](ADR-0029-winui-reactor-binding.md) | WinUI/Reactor render binding — the toolkit edge on the C# adapter core, with cross-adapter equivalence anchored by the shared walk | Accepted |
 
 ## Format
 
