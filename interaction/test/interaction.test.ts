@@ -32,6 +32,7 @@ import {
   validatePresentationSpec,
   type InteractionSpec,
   type PresentationContext,
+  type PresentationSpec,
 } from "../src/index";
 
 const fx = (name: string) =>
@@ -259,3 +260,32 @@ test("full pipeline: Domain -> Interaction -> Presentation -> UI composes throug
 
 // lowerPresentation is exercised indirectly via compileInteraction; assert it is exported/usable.
 void lowerPresentation;
+
+test("a region's static `props` flow generically into node props; data binds onto the capability's dataProp", () => {
+  // The static "spec" channel is per-capability and orthogonal to the dynamic data edge: authored
+  // props (columns/sortable for a table) land in node.props; bound data lands on the prop the
+  // manifest says the capability reads (table -> "rows").
+  const p: PresentationSpec = {
+    layout: "stack",
+    arrangement: "stack",
+    source: { interaction: "review", subject: "card_data", data: { detail: "fetched_sources.orders" } },
+    regions: [
+      {
+        name: "detail",
+        role: "detail",
+        priority: "primary",
+        disclosure: "always",
+        props: { columns: ["id", "amount"], sortable: true },
+      },
+    ],
+  };
+
+  const doc = lowerPresentation(liveCardsBinding, manifestPayload.capabilities)(p);
+  const detail = doc.root.edges?.children?.[0];
+
+  assert.equal(detail?.capability, "table", "detail role binds to table");
+  assert.deepEqual(detail?.props?.columns, ["id", "amount"], "authored columns flow to props");
+  assert.equal(detail?.props?.sortable, true, "authored sortable flows to props");
+  assert.equal(detail?.props?.priority, "primary", "platform placement fields survive alongside authored props");
+  assert.deepEqual(detail?.edges?.read, { rows: "fetched_sources.orders" }, "data binds onto the table's dataProp");
+});

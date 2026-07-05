@@ -54,7 +54,12 @@ export function buildSession(
 
   const presentation = defaultPresentationPlanner(spec, ctx);
   // compile through the platform's validate-before-commit boundary (returns a document message).
-  const message = lowerToDocument((s: InteractionSpec) => compileInteraction(s, ctx, binding), spec);
+  // pass the manifest capabilities so each region's data binds onto the prop that capability reads.
+  const capabilities = unwrap(DEMO_MANIFEST).capabilities;
+  const message = lowerToDocument(
+    (s: InteractionSpec) => compileInteraction(s, ctx, binding, defaultPresentationPlanner, capabilities),
+    spec
+  );
   const document = unwrap(message);
 
   const state = seedState(unwrap(DEMO_MANIFEST).namespaces ?? []);

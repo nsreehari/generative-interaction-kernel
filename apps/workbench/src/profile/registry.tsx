@@ -6,6 +6,7 @@
 import React from "react";
 import {
   createRegistry,
+  readProps,
   type CapabilityViewProps,
   type ComponentRegistry,
 } from "../../../../adapters/react/src/index";
@@ -20,7 +21,7 @@ function PanelGroup({ children }: CapabilityViewProps) {
 }
 
 function Panel({ node, children }: CapabilityViewProps) {
-  const title = String(node.props.title ?? "");
+  const title = readProps(node).str("title");
   return (
     <section className="panel-section">
       {title ? <h2>{title}</h2> : null}
@@ -30,11 +31,10 @@ function Panel({ node, children }: CapabilityViewProps) {
 }
 
 function Select({ node, emit }: CapabilityViewProps) {
-  const label = String(node.props.label ?? "");
-  const value = String(node.props.value ?? "");
-  const options: Option[] = Array.isArray(node.props.options)
-    ? (node.props.options as unknown as Option[])
-    : [];
+  const p = readProps(node);
+  const label = p.str("label");
+  const value = p.str("value");
+  const options = p.list<Option>("options");
   return (
     <label>
       {label}
@@ -50,10 +50,11 @@ function Select({ node, emit }: CapabilityViewProps) {
 }
 
 function TextInput({ node, emit }: CapabilityViewProps) {
-  const label = String(node.props.label ?? "");
+  const p = readProps(node);
+  const label = p.str("label");
   // Uncontrolled: keep the caret smooth while still reporting every keystroke into kernel state
   // (nothing else writes this field, so defaultValue is sufficient).
-  const initial = String(node.props.value ?? "");
+  const initial = p.str("value");
   return (
     <label>
       {label}
@@ -69,9 +70,7 @@ interface FacetItem {
 }
 
 function FacetList({ node }: CapabilityViewProps) {
-  const items: FacetItem[] = Array.isArray(node.props.items)
-    ? (node.props.items as unknown as FacetItem[])
-    : [];
+  const items = readProps(node).list<FacetItem>("items");
   return (
     <div className="facet-list">
       <span className="muted">facets</span>
@@ -91,8 +90,9 @@ function FacetList({ node }: CapabilityViewProps) {
 // --- Event bar (Increment C) ------------------------------------------------------
 
 function TextArea({ node, emit }: CapabilityViewProps) {
-  const label = String(node.props.label ?? "");
-  const initial = String(node.props.value ?? "");
+  const p = readProps(node);
+  const label = p.str("label");
+  const initial = p.str("value");
   return (
     <label>
       {label}
@@ -102,8 +102,9 @@ function TextArea({ node, emit }: CapabilityViewProps) {
 }
 
 function Button({ node, emit }: CapabilityViewProps) {
-  const label = String(node.props.label ?? "");
-  const disabled = node.props.disabled === true;
+  const p = readProps(node);
+  const label = p.str("label");
+  const disabled = p.bool("disabled");
   return (
     <button disabled={disabled} onClick={() => emit("press", {})}>
       {label}
@@ -112,18 +113,18 @@ function Button({ node, emit }: CapabilityViewProps) {
 }
 
 function Note({ node }: CapabilityViewProps) {
-  const text = String(node.props.text ?? "");
-  const tone = String(node.props.tone ?? "muted");
+  const p = readProps(node);
+  const text = p.str("text");
+  const tone = p.str("tone", "muted");
   return <p className={tone === "error" ? "error" : "muted"}>{text}</p>;
 }
 
 // --- Inspector (Increment B) ------------------------------------------------------
 
 function TabBar({ node, emit }: CapabilityViewProps) {
-  const active = String(node.props.active ?? "");
-  const options: Option[] = Array.isArray(node.props.options)
-    ? (node.props.options as unknown as Option[])
-    : [];
+  const p = readProps(node);
+  const active = p.str("active");
+  const options = p.list<Option>("options");
   return (
     <nav className="tabs">
       {options.map((o) => (
@@ -149,10 +150,9 @@ interface RegionRow {
 }
 
 function RegionTable({ node }: CapabilityViewProps) {
-  const head = String(node.props.head ?? "");
-  const items: RegionRow[] = Array.isArray(node.props.items)
-    ? (node.props.items as unknown as RegionRow[])
-    : [];
+  const p = readProps(node);
+  const head = p.str("head");
+  const items = p.list<RegionRow>("items");
   return (
     <div className="scroll">
       {head ? <p className="muted">{head}</p> : null}
@@ -187,7 +187,7 @@ function RegionTable({ node }: CapabilityViewProps) {
 }
 
 function CodeBlock({ node }: CapabilityViewProps) {
-  const code = String(node.props.code ?? "");
+  const code = readProps(node).str("code");
   return (
     <div className="scroll">
       <pre>{code}</pre>
@@ -202,10 +202,9 @@ interface TraceRow {
 }
 
 function TraceList({ node }: CapabilityViewProps) {
-  const label = String(node.props.label ?? "");
-  const items: TraceRow[] = Array.isArray(node.props.items)
-    ? (node.props.items as unknown as TraceRow[])
-    : [];
+  const p = readProps(node);
+  const label = p.str("label");
+  const items = p.list<TraceRow>("items");
   return (
     <div className="scroll">
       <p className="muted">{label}</p>

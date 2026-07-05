@@ -23,7 +23,8 @@
           "type": "object",
           "properties": { "columns": { "type": "array", "items": { "type": "string" } } }
         },
-        "emits": ["rowSelect"]
+        "emits": ["rowSelect"],
+        "dataProp": "rows"
       },
       "actions": {
         "propsSchema": {

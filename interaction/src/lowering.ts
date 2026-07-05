@@ -7,6 +7,7 @@
 import {
   assignFrom,
   node,
+  type CapabilityDescriptor,
   type DocNode,
   type DocumentPayload,
   type Json,
@@ -33,8 +34,15 @@ export interface PresentationBinding {
  * The Presentation *Compiler*: lower a Presentation DSL (layout + enriched regions) into a kernel
  * document, using a profile's {@link PresentationBinding}. Each region's hierarchy/disclosure/
  * presentation-type ride through as node props so a renderer can honor them.
+ *
+ * `capabilities` (the manifest's capability descriptors) lets each region's bound data land on the
+ * prop that capability actually reads (`CapabilityDescriptor.dataProp`, e.g. metric -> "value",
+ * table -> "rows"). Omit it and the read edge defaults to the `value` prop.
  */
-export function lowerPresentation(binding: PresentationBinding): Lowering<PresentationSpec> {
+export function lowerPresentation(
+  binding: PresentationBinding,
+  capabilities?: Record<string, CapabilityDescriptor>
+): Lowering<PresentationSpec> {
   return (p: PresentationSpec): DocumentPayload => {
     const src = p.source;
     const data = src.data ?? {};
@@ -45,13 +53,19 @@ export function lowerPresentation(binding: PresentationBinding): Lowering<Presen
         binding.roleCapability?.[region.role] ??
         region.name;
       const props: Record<string, Json> = {
+        // authored static config first; platform-owned placement fields win on any collision.
+        ...(region.props ?? {}),
         label: region.name,
         priority: region.priority,
         disclosure: region.disclosure,
       };
       if (region.presentation) props.presentation = region.presentation;
       const opts: NodeOptions = { props };
-      if (data[region.name]) opts.read = { value: data[region.name] };
+      if (data[region.name]) {
+        // bind onto the prop this capability reads (generic per capability; defaults to "value").
+        const dataProp = capabilities?.[capability]?.dataProp ?? "value";
+        opts.read = { [dataProp]: data[region.name] };
+      }
       const selectEvent = binding.regionSelectEvent?.[region.name];
       if (selectEvent) {
         opts.on = { [selectEvent]: [assignFrom(`${src.subject}.selected`, "$event.id")] };
@@ -76,7 +90,8 @@ export function compileInteraction(
   spec: InteractionSpec,
   ctx: PresentationContext,
   binding: PresentationBinding,
-  planner: PresentationPlanner = defaultPresentationPlanner
+  planner: PresentationPlanner = defaultPresentationPlanner,
+  capabilities?: Record<string, CapabilityDescriptor>
 ): DocumentPayload {
-  return lowerPresentation(binding)(planner(spec, ctx));
+  return lowerPresentation(binding, capabilities)(planner(spec, ctx));
 }

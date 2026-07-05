@@ -78,6 +78,9 @@ export interface CapabilityDescriptor {
   propsSchema?: object;
   emits?: string[];
   slots?: string[];
+  // Which prop receives bound data from a read edge (e.g. metric -> "value", table -> "rows").
+  // The presentation compiler consults this so binding is generic per capability; defaults to "value".
+  dataProp?: string;
 }
 
 // An external effect requested by the reducer (invoke/navigate/confirm). The kernel
