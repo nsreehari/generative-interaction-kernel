@@ -20,10 +20,12 @@ import { buildSession, type Session } from "./session";
 import {
   buildChromeRuntime,
   buildInspectRuntime,
+  editableRegions,
   facetsAsItems,
   inputsSignature,
   inspectSnapshot,
   nodeIdsAsOptions,
+  readEdits,
   readFireRequest,
   readInputs,
 } from "./chrome";
@@ -33,8 +35,8 @@ export function Workbench() {
   const chrome = useMemo(() => buildChromeRuntime(), []);
   const inspect = useMemo(() => buildInspectRuntime(), []);
   const [guest, setGuest] = useState<Session>(() => {
-    const { spec, ctx } = readInputs(chrome.state);
-    return buildSession(spec, ctx, liveCardsBinding);
+    const { spec, ctx, edits } = readInputs(chrome.state);
+    return buildSession(spec, ctx, liveCardsBinding, edits);
   });
 
   // The chrome bridge reads the live guest through a ref (it subscribes to chrome only once).
@@ -51,7 +53,7 @@ export function Workbench() {
       const sig = inputsSignature(inputs);
       if (sig !== lastSig.current) {
         lastSig.current = sig;
-        setGuest(buildSession(inputs.spec, inputs.ctx, liveCardsBinding));
+        setGuest(buildSession(inputs.spec, inputs.ctx, liveCardsBinding, inputs.edits));
         void c.emit("chrome-root", "facetsComputed", { facets: facetsAsItems(inputs.spec) });
       }
       const seq = Number(chrome.state.get("workbench.fireSeq")) || 0;
@@ -85,6 +87,11 @@ export function Workbench() {
       void chrome.controller.emit("chrome-root", "guestChanged", {
         nodeIds: nodeIdsAsOptions(c.getTree()),
       });
+      // Refresh the editing surface with this guest's effective regions (fires on first mount and
+      // on every rebuild, so re-planning after any input/edit re-derives the editable list).
+      void chrome.controller.emit("chrome-root", "regionsComputed", {
+        regions: editableRegions(guest, readEdits(chrome.state)),
+      });
     });
     return unsubscribe;
   }, [guest, inspect, chrome]);
@@ -94,7 +101,7 @@ export function Workbench() {
       <aside className="controls">
         <header className="brand">
           <h1>GenUI Workbench</h1>
-          <span className="muted">declarative chrome · slice 3</span>
+          <span className="muted">declarative chrome · editing surface</span>
         </header>
         <GenUIRoot source={chrome.controller} registry={workbenchRegistry} />
       </aside>

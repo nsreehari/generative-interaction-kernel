@@ -10,6 +10,7 @@
 
 export * from "./interaction";
 export * from "./presentation";
+export * from "./edits";
 export * from "./lowering";
 export * from "./schema";
 

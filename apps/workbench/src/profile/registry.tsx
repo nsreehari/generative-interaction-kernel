@@ -10,6 +10,12 @@ import {
   type CapabilityViewProps,
   type ComponentRegistry,
 } from "../../../../adapters/react/src/index";
+import {
+  emptyEdits,
+  type PresentationEdits,
+  type RegionDisclosure,
+  type RegionPriority,
+} from "../../../../interaction/src/index";
 
 interface Option {
   value: string;
@@ -80,6 +86,113 @@ function FacetList({ node }: CapabilityViewProps) {
             <code>{f.name}</code>
             <span>{f.role}</span>
             <span>{f.required ? "required" : "optional"}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// --- Editing surface (Slice 2) ----------------------------------------------------
+
+interface EditRegionItem {
+  name: string;
+  role: string;
+  required: boolean;
+  enabled: boolean;
+  priority: RegionPriority;
+  disclosure: RegionDisclosure;
+}
+
+const PRIORITY_OPTS: Option[] = [
+  { value: "primary", label: "primary" },
+  { value: "secondary", label: "secondary" },
+  { value: "tertiary", label: "tertiary" },
+];
+const DISCLOSURE_OPTS: Option[] = [
+  { value: "always", label: "always" },
+  { value: "collapsed", label: "collapsed" },
+  { value: "on-demand", label: "on-demand" },
+];
+
+/**
+ * The editing surface: a controlled view over the region list + the current override set. Every
+ * control computes the *next* override set from the current one (preserving only what the user has
+ * deliberately set) and emits it whole as `edit` — the on-handler stores it and the bridge re-plans.
+ */
+function RegionEditor({ node, emit }: CapabilityViewProps) {
+  const p = readProps(node);
+  const items = p.list<EditRegionItem>("items");
+  const edits = p.obj<PresentationEdits>("edits", emptyEdits);
+  const order = items.map((r) => r.name);
+  const push = (next: PresentationEdits) => emit("edit", { edits: next });
+
+  const toggle = (name: string) =>
+    push({
+      ...edits,
+      disabled: edits.disabled.includes(name)
+        ? edits.disabled.filter((n) => n !== name)
+        : [...edits.disabled, name],
+    });
+  const setPriority = (name: string, value: string) =>
+    push({ ...edits, priority: { ...edits.priority, [name]: value as RegionPriority } });
+  const setDisclosure = (name: string, value: string) =>
+    push({ ...edits, disclosure: { ...edits.disclosure, [name]: value as RegionDisclosure } });
+  const move = (name: string, dir: -1 | 1) => {
+    const i = order.indexOf(name);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= order.length) return;
+    const next = [...order];
+    [next[i], next[j]] = [next[j], next[i]];
+    push({ ...edits, order: next });
+  };
+
+  return (
+    <div className="region-editor">
+      <span className="muted">regions</span>
+      <ul>
+        {items.map((r, i) => (
+          <li key={r.name} className={r.enabled ? "" : "off"}>
+            <label className="region-toggle">
+              <input
+                type="checkbox"
+                checked={r.enabled}
+                disabled={r.required}
+                onChange={() => toggle(r.name)}
+              />
+              <code>{r.name}</code>
+              <span className="muted">{r.role}</span>
+            </label>
+            <div className="region-controls">
+              <select
+                value={r.priority}
+                disabled={!r.enabled}
+                onChange={(e) => setPriority(r.name, e.target.value)}
+              >
+                {PRIORITY_OPTS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={r.disclosure}
+                disabled={!r.enabled}
+                onChange={(e) => setDisclosure(r.name, e.target.value)}
+              >
+                {DISCLOSURE_OPTS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <button disabled={i === 0} onClick={() => move(r.name, -1)} aria-label="move up">
+                ↑
+              </button>
+              <button disabled={i === items.length - 1} onClick={() => move(r.name, 1)} aria-label="move down">
+                ↓
+              </button>
+            </div>
           </li>
         ))}
       </ul>
@@ -234,6 +347,7 @@ export const workbenchRegistry: ComponentRegistry = createRegistry(
     select: Select,
     text: TextInput,
     facetList: FacetList,
+    regionEditor: RegionEditor,
     textarea: TextArea,
     button: Button,
     note: Note,

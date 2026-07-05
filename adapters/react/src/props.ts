@@ -16,6 +16,8 @@ export interface PropsReader {
   bool(key: string): boolean;
   /** Array prop as `T[]` (the caller asserts the element shape), or `[]` when not an array. */
   list<T>(key: string): T[];
+  /** Object prop as `T` (the caller asserts the shape), or `fallback` when not a plain object. */
+  obj<T>(key: string, fallback: T): T;
 }
 
 export function readProps(node: ResolvedNode): PropsReader {
@@ -31,6 +33,10 @@ export function readProps(node: ResolvedNode): PropsReader {
     list<T>(key: string): T[] {
       const v = props[key];
       return Array.isArray(v) ? (v as T[]) : [];
+    },
+    obj<T>(key: string, fallback: T): T {
+      const v = props[key];
+      return v !== null && typeof v === "object" && !Array.isArray(v) ? (v as T) : fallback;
     },
   };
 }
