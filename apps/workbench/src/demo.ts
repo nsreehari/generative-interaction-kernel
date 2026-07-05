@@ -32,6 +32,7 @@ export const DEMO_MANIFEST: Enveloped<ManifestPayload> = {
           properties: { columns: { type: "array", items: { type: "string" } } },
         },
         emits: ["rowSelect"],
+        dataProp: "rows",
       },
       actions: {
         propsSchema: { type: "object", properties: { label: { type: "string" } } },

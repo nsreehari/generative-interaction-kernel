@@ -5,6 +5,7 @@
 // — desktop workspace vs mobile stack vs copilot narrative — while never dropping a facet
 // the interaction marks as required.
 
+import type { Json } from "../../kernel/src/index";
 import { resolveFacets, type Facet, type FacetRole, type InteractionSpec } from "./interaction";
 
 /**
@@ -69,6 +70,14 @@ export interface PresentationRegion {
   disclosure: RegionDisclosure;
   /** optional concrete presentation-type hint (e.g. "relationship_graph", "timeline"). */
   presentation?: string;
+  /**
+   * Static, per-capability presentation config (the "spec" channel, orthogonal to the dynamic
+   * `read`/data edge): columns for a table, chartType/series for a chart, thresholds for an alert.
+   * The compiler merges this into the node's `props`, where the capability's `propsSchema` validates
+   * it. A planner (deterministic or AI) is the natural author; omit it and each component derives its
+   * own sensible defaults from the bound data.
+   */
+  props?: Record<string, Json>;
   /** a short, inspectable reason for this placement — the explainability hook an AI planner fills. */
   rationale?: string;
 }

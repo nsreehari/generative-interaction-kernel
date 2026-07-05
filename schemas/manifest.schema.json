@@ -53,6 +53,10 @@
                 "type": "array",
                 "items": { "type": "string" },
                 "description": "Structural slots (child regions) this capability accepts."
+              },
+              "dataProp": {
+                "type": "string",
+                "description": "Which prop receives bound data from a read edge (e.g. metric -> \"value\", table -> \"rows\"). Defaults to \"value\"."
               }
             }
           }
