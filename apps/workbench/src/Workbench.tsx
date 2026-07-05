@@ -18,6 +18,7 @@ import { GenUIRoot, liveCardsRegistry } from "../../../adapters/react/src/index"
 import { liveCardsBinding } from "../../../interaction/src/index";
 import { buildSession, type Session } from "./session";
 import {
+  authoredApplyPayload,
   buildChromeRuntime,
   buildInspectRuntime,
   editableRegions,
@@ -29,6 +30,7 @@ import {
   readFireRequest,
   readInputs,
 } from "./chrome";
+import { parseAuthoredSession } from "./export";
 import { workbenchRegistry } from "./profile/registry";
 
 export function Workbench() {
@@ -44,6 +46,7 @@ export function Workbench() {
   guestRef.current = guest;
   const lastSig = useRef<string>(inputsSignature(readInputs(chrome.state)));
   const lastFireSeq = useRef<number>(Number(chrome.state.get("workbench.fireSeq")) || 0);
+  const lastImportSeq = useRef<number>(Number(chrome.state.get("workbench.importSeq")) || 0);
 
   // Bridge A (chrome -> guest): rebuild the guest when inputs change; forward event-bar fires.
   useEffect(() => {
@@ -65,6 +68,18 @@ export function Workbench() {
         }
         void c.emit("chrome-root", "fireResult", { error: req.error });
       }
+      // Import: on a Load press, parse the pasted artifact and push its axes back into chrome state
+      // (importApply), which trips the signature check above on the next tick and rebuilds the guest.
+      const iseq = Number(chrome.state.get("workbench.importSeq")) || 0;
+      if (iseq !== lastImportSeq.current) {
+        lastImportSeq.current = iseq;
+        const parsed = parseAuthoredSession(String(chrome.state.get("workbench.importText") ?? ""));
+        if (parsed.authored) {
+          void c.emit("chrome-root", "importApply", authoredApplyPayload(parsed.authored));
+        } else {
+          void c.emit("chrome-root", "importResult", { error: parsed.error });
+        }
+      }
     };
     const unsubscribe = c.subscribe(onChange);
     void c.start();
@@ -78,7 +93,7 @@ export function Workbench() {
       void inspect.controller.emit(
         "inspect-root",
         "snapshot",
-        inspectSnapshot(guest, c.getTree(), c.getLastPatch())
+        inspectSnapshot(guest, c.getTree(), c.getLastPatch(), readEdits(chrome.state))
       );
     };
     const unsubscribe = c.subscribe(pushInspect);

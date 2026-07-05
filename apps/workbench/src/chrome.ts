@@ -32,6 +32,7 @@ import {
   type RegionPriority,
 } from "../../../interaction/src/index";
 import { WORKBENCH_MANIFEST } from "./profile/manifest";
+import { exportBundle, type AuthoredSession } from "./export";
 import type { Session } from "./session";
 
 interface Option {
@@ -70,6 +71,21 @@ function chromeRoot(): DocNode {
       ],
       // The bridge reports the outcome of a fired event (parse error or "").
       fireResult: [assignFrom("workbench.eventError", "$event.error")],
+      // Import (Slice 3): the bridge parsed a pasted artifact and pushes its axes back in here,
+      // which re-runs the whole pipeline through the normal state->rebuild path.
+      importApply: [
+        assignFrom("workbench.interaction", "$event.interaction"),
+        assignFrom("workbench.subject", "$event.subject"),
+        assignFrom("workbench.surface", "$event.surface"),
+        assignFrom("workbench.device", "$event.device"),
+        assignFrom("workbench.space", "$event.space"),
+        assignFrom("workbench.attention", "$event.attention"),
+        assignFrom("workbench.expertise", "$event.expertise"),
+        assignFrom("workbench.edits", "$event.edits"),
+        assign("workbench.importError", ""),
+      ],
+      // On a bad paste the bridge reports the parse error instead.
+      importResult: [assignFrom("workbench.importError", "$event.error")],
     },
     children: [
       node("panel", "interaction-panel", {
@@ -140,8 +156,44 @@ function chromeRoot(): DocNode {
           }),
         ],
       }),
+      node("panel", "session-panel", {
+        props: { title: "Session" },
+        children: [
+          // Paste an exported artifact (from the Export tab) and replay it. A press bumps a
+          // sequence the bridge watches; it parses the text and forwards the axes to `importApply`.
+          node("textarea", "import-text", {
+            props: { label: "Authored JSON" },
+            read: { value: "workbench.importText" },
+            on: { input: [assignFrom("workbench.importText", "$event.value")] },
+          }),
+          node("button", "import-load", {
+            props: { label: "Load" },
+            on: { press: [assignFrom("workbench.importSeq", "workbench.importSeq + 1")] },
+          }),
+          node("note", "import-error", {
+            props: { tone: "error" },
+            read: { text: "workbench.importError" },
+            gate: "workbench.importError != ''",
+          }),
+        ],
+      }),
     ],
   });
+}
+
+/** Flatten an imported artifact into the `importApply` event payload (every axis defaulted). */
+export function authoredApplyPayload(a: AuthoredSession): Record<string, unknown> {
+  const ctx = a.context ?? { surface: "desktop" };
+  return {
+    interaction: a.interaction.interaction,
+    subject: a.interaction.subject ?? "",
+    surface: ctx.surface ?? "desktop",
+    device: (ctx as Record<string, unknown>).device ?? "",
+    space: (ctx as Record<string, unknown>).space ?? "",
+    attention: (ctx as Record<string, unknown>).attention ?? "",
+    expertise: (ctx as Record<string, unknown>).expertise ?? "",
+    edits: a.edits,
+  };
 }
 
 /** The facet descriptors the FacetList capability renders, for the current interaction. */
@@ -177,6 +229,10 @@ export function seedChromeState(): InMemoryStateModel {
     { op: "set", path: "workbench.eventPayload", value: '{ "id": "order-42" }' },
     { op: "set", path: "workbench.fireSeq", value: 0 },
     { op: "set", path: "workbench.eventError", value: "" },
+    // Session import (Slice 3).
+    { op: "set", path: "workbench.importText", value: "" },
+    { op: "set", path: "workbench.importSeq", value: 0 },
+    { op: "set", path: "workbench.importError", value: "" },
   ]);
   return state;
 }
@@ -312,6 +368,7 @@ const INSPECT_TABS: Option[] = [
   { value: "document", label: "UI DSL" },
   { value: "tree", label: "Resolved tree" },
   { value: "traces", label: "Traces" },
+  { value: "export", label: "Export" },
 ];
 
 /** The inspector document: a tab bar plus one gated panel per artifact view. */
@@ -329,6 +386,7 @@ function inspectRoot(): DocNode {
         assignFrom("inspect.treeJson", "$event.treeJson"),
         assignFrom("inspect.traces", "$event.traces"),
         assignFrom("inspect.patchLabel", "$event.patchLabel"),
+        assignFrom("inspect.exportJson", "$event.exportJson"),
       ],
     },
     children: [
@@ -351,6 +409,7 @@ function inspectRoot(): DocNode {
           read: { label: "inspect.patchLabel", items: "inspect.traces" },
         })
       ),
+      tabPanel("export", node("codeBlock", "inspect-export", { read: { code: "inspect.exportJson" } })),
     ],
   });
 }
@@ -366,6 +425,7 @@ export function seedInspectState(): InMemoryStateModel {
     { op: "set", path: "inspect.treeJson", value: "" },
     { op: "set", path: "inspect.traces", value: [] },
     { op: "set", path: "inspect.patchLabel", value: "" },
+    { op: "set", path: "inspect.exportJson", value: "" },
   ]);
   return state;
 }
@@ -387,10 +447,13 @@ export function buildInspectRuntime(): InspectRuntime {
 export function inspectSnapshot(
   session: Session,
   tree: ResolvedNode | null,
-  patch: Patch | null
+  patch: Patch | null,
+  edits: PresentationEdits
 ): Record<string, unknown> {
   const p = session.presentation;
+  const bundle = exportBundle(session, edits);
   return {
+    exportJson: JSON.stringify({ authored: bundle.authored, manifest: bundle.manifest }, null, 2),
     presentationHead: `${p.layout} · ${p.arrangement}`,
     regions: p.regions.map((r) => ({
       name: r.name,
