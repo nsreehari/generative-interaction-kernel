@@ -21,9 +21,13 @@ import { GenUIController } from "../../../adapters/react/src/index";
 import {
   compileInteraction,
   defaultPresentationPlanner,
+  applyPresentationEdits,
+  emptyEdits,
   type InteractionSpec,
   type PresentationBinding,
   type PresentationContext,
+  type PresentationEdits,
+  type PresentationPlanner,
   type PresentationSpec,
 } from "../../../interaction/src/index";
 import { DEMO_MANIFEST, demoDataFor, seedState } from "./demo";
@@ -47,17 +51,22 @@ export interface Session {
 export function buildSession(
   base: InteractionSpec,
   ctx: PresentationContext,
-  binding: PresentationBinding
+  binding: PresentationBinding,
+  edits: PresentationEdits = emptyEdits
 ): Session {
   // fill demo data by facet role unless the spec already carries an explicit data map.
   const spec: InteractionSpec = { ...base, data: base.data ?? demoDataFor(base) };
 
-  const presentation = defaultPresentationPlanner(spec, ctx);
+  // the planner seam: the deterministic reference planner, then the authoring session's overrides
+  // on top. Both the presentation artifact and the lowered document flow through this same planner,
+  // so the inspector and the guest agree on the edited presentation.
+  const planner: PresentationPlanner = (s, c) => applyPresentationEdits(defaultPresentationPlanner(s, c), edits);
+  const presentation = planner(spec, ctx);
   // compile through the platform's validate-before-commit boundary (returns a document message).
   // pass the manifest capabilities so each region's data binds onto the prop that capability reads.
   const capabilities = unwrap(DEMO_MANIFEST).capabilities;
   const message = lowerToDocument(
-    (s: InteractionSpec) => compileInteraction(s, ctx, binding, defaultPresentationPlanner, capabilities),
+    (s: InteractionSpec) => compileInteraction(s, ctx, binding, planner, capabilities),
     spec
   );
   const document = unwrap(message);

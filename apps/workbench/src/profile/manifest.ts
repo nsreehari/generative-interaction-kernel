@@ -32,6 +32,9 @@ export const WORKBENCH_MANIFEST: Enveloped<ManifestPayload> = {
       text: { propsSchema: anyProps, emits: ["input"] },
       // A read-only list of the interaction's facets ({ name, role, required }[]).
       facetList: { propsSchema: anyProps },
+      // The editing surface: an editable list of regions. Toggling / re-prioritizing / disclosing /
+      // reordering a region emits `edit` with the full override set ({ edits }).
+      regionEditor: { propsSchema: anyProps, emits: ["edit"] },
       // --- Event bar (Increment C) ---
       // A labelled <textarea> (JSON payload); typing emits `input` with { value }.
       textarea: { propsSchema: anyProps, emits: ["input"] },

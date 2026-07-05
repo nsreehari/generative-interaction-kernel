@@ -23,9 +23,13 @@ import { GenUIController } from "../../../adapters/react/src/index";
 import {
   interactionTaxonomy,
   resolveFacets,
+  emptyEdits,
   type InteractionKind,
   type InteractionSpec,
   type PresentationContext,
+  type PresentationEdits,
+  type RegionDisclosure,
+  type RegionPriority,
 } from "../../../interaction/src/index";
 import { WORKBENCH_MANIFEST } from "./profile/manifest";
 import type { Session } from "./session";
@@ -57,6 +61,8 @@ function chromeRoot(): DocNode {
     on: {
       // The bridge pushes recomputed facets in through this event (see Workbench.tsx).
       facetsComputed: [assignFrom("workbench.facets", "$event.facets")],
+      // The bridge pushes the editable region list (facets + their effective placement) in here.
+      regionsComputed: [assignFrom("workbench.editRegions", "$event.regions")],
       // On a guest rebuild the bridge refreshes the fireable node list and clears the selection.
       guestChanged: [
         assignFrom("workbench.nodeIds", "$event.nodeIds"),
@@ -90,6 +96,17 @@ function chromeRoot(): DocNode {
           axisSelect("space", "Space", ["compact", "regular", "expanded"]),
           axisSelect("attention", "Attention", ["focused", "glanceable"]),
           axisSelect("expertise", "Expertise", ["novice", "intermediate", "expert"]),
+        ],
+      }),
+      node("panel", "regions-panel", {
+        props: { title: "Regions" },
+        children: [
+          // The editing surface: toggling / re-prioritizing / disclosing / reordering a region emits
+          // `edit` with the full override set, which the bridge feeds back into the pipeline.
+          node("regionEditor", "region-editor", {
+            read: { items: "workbench.editRegions", edits: "workbench.edits" },
+            on: { edit: [assignFrom("workbench.edits", "$event.edits")] },
+          }),
         ],
       }),
       node("panel", "event-panel", {
@@ -150,6 +167,9 @@ export function seedChromeState(): InMemoryStateModel {
       path: "workbench.facets",
       value: facetsAsItems({ interaction: DEFAULTS.interaction, subject: DEFAULTS.subject }),
     },
+    // Editing surface (Slice 2): the override set + the derived editable region list.
+    { op: "set", path: "workbench.edits", value: { disabled: [], priority: {}, disclosure: {}, order: [] } },
+    { op: "set", path: "workbench.editRegions", value: [] },
     // Event-bar fields (Increment C).
     { op: "set", path: "workbench.nodeIds", value: [] },
     { op: "set", path: "workbench.eventNode", value: "" },
@@ -174,10 +194,11 @@ export function buildChromeRuntime(): ChromeRuntime {
   return { controller: new GenUIController(kernel), state };
 }
 
-/** Read the current guest inputs (interaction spec + presentation context) out of chrome state. */
+/** Read the current guest inputs (interaction spec + presentation context + edits) out of state. */
 export function readInputs(state: InMemoryStateModel): {
   spec: InteractionSpec;
   ctx: PresentationContext;
+  edits: PresentationEdits;
 } {
   const interaction = (String(state.get("workbench.interaction") || "investigate") as InteractionKind);
   const subject = String(state.get("workbench.subject") ?? "");
@@ -188,12 +209,61 @@ export function readInputs(state: InMemoryStateModel): {
     const v = state.get(`workbench.${axis}`);
     if (v) (ctx as Record<string, unknown>)[axis] = v;
   }
-  return { spec: { interaction, subject }, ctx };
+  return { spec: { interaction, subject }, ctx, edits: readEdits(state) };
+}
+
+/** The authoring session's presentation overrides, read from state (seeded, so always present). */
+export function readEdits(state: InMemoryStateModel): PresentationEdits {
+  const raw = state.get("workbench.edits");
+  return raw ? (raw as unknown as PresentationEdits) : emptyEdits;
 }
 
 /** A stable signature of the guest inputs, so the bridge only rebuilds when they actually change. */
-export function inputsSignature(inputs: { spec: InteractionSpec; ctx: PresentationContext }): string {
+export function inputsSignature(inputs: {
+  spec: InteractionSpec;
+  ctx: PresentationContext;
+  edits: PresentationEdits;
+}): string {
   return JSON.stringify(inputs);
+}
+
+/** One row of the editing surface: a facet plus its current enabled/priority/disclosure placement. */
+export interface EditRegion {
+  name: string;
+  role: string;
+  required: boolean;
+  enabled: boolean;
+  priority: RegionPriority;
+  disclosure: RegionDisclosure;
+}
+
+/**
+ * The editable region list the RegionEditor renders: every facet of the interaction (so hidden ones
+ * can be re-enabled), in the guest's effective order, each carrying its current placement. Regions
+ * present in the guest use the planned+edited placement; hidden ones fall back to any override or the
+ * neutral default. The list order drives the up/down reorder controls.
+ */
+export function editableRegions(session: Session, edits: PresentationEdits): EditRegion[] {
+  const facets = resolveFacets(session.spec);
+  const present = new Map(session.presentation.regions.map((r) => [r.name, r]));
+  const disabled = new Set(edits.disabled);
+  const order = [
+    ...session.presentation.regions.map((r) => r.name),
+    ...facets.map((f) => f.name).filter((n) => !present.has(n)),
+  ];
+  const byName = new Map(facets.map((f) => [f.name, f]));
+  return order.map((name) => {
+    const f = byName.get(name)!;
+    const r = present.get(name);
+    return {
+      name,
+      role: f.role,
+      required: f.required,
+      enabled: !disabled.has(name),
+      priority: r?.priority ?? edits.priority[name] ?? "secondary",
+      disclosure: r?.disclosure ?? edits.disclosure[name] ?? "always",
+    };
+  });
 }
 
 // --- Event bar (Increment C) ------------------------------------------------------
