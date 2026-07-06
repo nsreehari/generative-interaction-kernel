@@ -20,28 +20,77 @@ import {
   loadBundleRuntime,
   overlayRegistry,
   primitiveRegistry,
+  seedState,
 } from "../../../adapters/react/src/index";
-import { liveCardsBinding } from "../../../interaction/src/index";
+import {
+  Kernel,
+  GenUIClient,
+  KernelTransportHost,
+  createInMemoryTransportPair,
+} from "../../../kernel/src/index";
+import {
+  liveCardsBinding,
+  editableRegions,
+  facetsAsItems,
+  parseAuthoredSession,
+} from "../../../interaction/src/index";
 import { buildSession, type Session } from "./session";
 import {
   authoredApplyPayload,
   chromeBundle,
   inspectBundle,
-  editableRegions,
-  facetsAsItems,
   inputsSignature,
   inspectSnapshot,
   nodeIdsAsOptions,
   readEdits,
   readFireRequest,
   readInputs,
+  type StateReader,
 } from "./chrome";
-import { parseAuthoredSession } from "./export";
 import { AGENT_PLAYLIST, isAgentTourComplete, nextAgentIndex } from "./agent";
 import { workbenchComponents } from "./profile/registry";
 
+interface HostedChromeRuntime {
+  source: GenUIClient;
+  agent: GenUIClient;
+  seed: StateReader;
+  start(): Promise<void>;
+  stop(): void;
+}
+
+function createHostedChromeRuntime(): HostedChromeRuntime {
+  const state = seedState(chromeBundle.manifest, chromeBundle.state);
+  const kernel = new Kernel(chromeBundle.manifest, chromeBundle.document, { state });
+  const host = new KernelTransportHost(chromeBundle.manifest, chromeBundle.document, kernel);
+  const [renderHostTransport, renderClientTransport] = createInMemoryTransportPair();
+  const [agentHostTransport, agentClientTransport] = createInMemoryTransportPair();
+  const source = new GenUIClient(renderClientTransport);
+  const agent = new GenUIClient(agentClientTransport);
+  let started = false;
+
+  return {
+    source,
+    agent,
+    seed: state,
+    async start() {
+      if (started) return;
+      started = true;
+      source.start();
+      agent.start();
+      await host.attach(renderHostTransport);
+      await host.attach(agentHostTransport);
+    },
+    stop() {
+      agent.stop();
+      source.stop();
+      host.stop();
+      started = false;
+    },
+  };
+}
+
 export function Workbench() {
-  const chrome = useMemo(() => loadBundleRuntime(chromeBundle), []);
+  const chrome = useMemo(() => createHostedChromeRuntime(), []);
   const inspect = useMemo(() => loadBundleRuntime(inspectBundle), []);
   // The floor primitives plus the workbench's own capability views — the chrome and inspect bundles
   // both render through this overlay (see ADR-0031).
@@ -50,7 +99,7 @@ export function Workbench() {
     []
   );
   const [guest, setGuest] = useState<Session>(() => {
-    const { spec, ctx, edits } = readInputs(chrome.state);
+    const { spec, ctx, edits } = readInputs(chrome.seed);
     return buildSession(spec, ctx, liveCardsBinding, edits);
   });
   // What the agent is doing right now, surfaced over the playground so the cause of the live changes
@@ -63,29 +112,29 @@ export function Workbench() {
   // The chrome bridge reads the live guest through a ref (it subscribes to chrome only once).
   const guestRef = useRef(guest);
   guestRef.current = guest;
-  const lastSig = useRef<string>(inputsSignature(readInputs(chrome.state)));
-  const lastFireSeq = useRef<number>(Number(chrome.state.get("workbench.fireSeq")) || 0);
-  const lastImportSeq = useRef<number>(Number(chrome.state.get("workbench.importSeq")) || 0);
+  const lastSig = useRef<string>(inputsSignature(readInputs(chrome.seed)));
+  const lastFireSeq = useRef<number>(Number(chrome.seed.get("workbench.fireSeq")) || 0);
+  const lastImportSeq = useRef<number>(Number(chrome.seed.get("workbench.importSeq")) || 0);
   // Agent tour state (Slice 4): the running flag + tour index + a step-button sequence guard.
   const agentRunning = useRef<boolean>(false);
-  const agentIndex = useRef<number>(Number(chrome.state.get("workbench.agentStep")) || 0);
-  const lastAgentStepSeq = useRef<number>(Number(chrome.state.get("workbench.agentStepSeq")) || 0);
+  const agentIndex = useRef<number>(Number(chrome.seed.get("workbench.agentStep")) || 0);
+  const lastAgentStepSeq = useRef<number>(Number(chrome.seed.get("workbench.agentStepSeq")) || 0);
 
   // Bridge A (chrome -> guest): rebuild the guest when inputs change; forward event-bar fires.
   useEffect(() => {
-    const c = chrome.controller;
+    const c = chrome.source;
     const onChange = () => {
-      const inputs = readInputs(chrome.state);
+      const inputs = readInputs(c);
       const sig = inputsSignature(inputs);
       if (sig !== lastSig.current) {
         lastSig.current = sig;
         setGuest(buildSession(inputs.spec, inputs.ctx, liveCardsBinding, inputs.edits));
         void c.emit("chrome-root", "facetsComputed", { facets: facetsAsItems(inputs.spec) });
       }
-      const seq = Number(chrome.state.get("workbench.fireSeq")) || 0;
+      const seq = Number(c.get("workbench.fireSeq")) || 0;
       if (seq !== lastFireSeq.current) {
         lastFireSeq.current = seq;
-        const req = readFireRequest(chrome.state, guestRef.current.controller.getTree());
+        const req = readFireRequest(c, guestRef.current.controller.getTree());
         if (!req.error && req.node) {
           void guestRef.current.controller.emit(req.node, req.name, req.payload);
         }
@@ -93,10 +142,10 @@ export function Workbench() {
       }
       // Import: on a Load press, parse the pasted artifact and push its axes back into chrome state
       // (importApply), which trips the signature check above on the next tick and rebuilds the guest.
-      const iseq = Number(chrome.state.get("workbench.importSeq")) || 0;
+      const iseq = Number(c.get("workbench.importSeq")) || 0;
       if (iseq !== lastImportSeq.current) {
         lastImportSeq.current = iseq;
-        const parsed = parseAuthoredSession(String(chrome.state.get("workbench.importText") ?? ""));
+        const parsed = parseAuthoredSession(String(c.get("workbench.importText") ?? ""));
         if (parsed.authored) {
           void c.emit("chrome-root", "importApply", authoredApplyPayload(parsed.authored));
         } else {
@@ -105,8 +154,11 @@ export function Workbench() {
       }
     };
     const unsubscribe = c.subscribe(onChange);
-    void c.start();
-    return unsubscribe;
+    void chrome.start();
+    return () => {
+      unsubscribe();
+      chrome.stop();
+    };
   }, [chrome]);
 
   // Bridge B (guest -> inspect): stream artifacts on every guest render; refresh the node list once.
@@ -116,19 +168,19 @@ export function Workbench() {
       void inspect.controller.emit(
         "inspect-root",
         "snapshot",
-        inspectSnapshot(guest, c.getTree(), c.getLastPatch(), readEdits(chrome.state))
+        inspectSnapshot(guest, c.getTree(), c.getLastPatch(), readEdits(chrome.source))
       );
     };
     const unsubscribe = c.subscribe(pushInspect);
     void c.start().then(() => {
       pushInspect();
-      void chrome.controller.emit("chrome-root", "guestChanged", {
+      void chrome.source.emit("chrome-root", "guestChanged", {
         nodeIds: nodeIdsAsOptions(c.getTree()),
       });
       // Refresh the editing surface with this guest's effective regions (fires on first mount and
       // on every rebuild, so re-planning after any input/edit re-derives the editable list).
-      void chrome.controller.emit("chrome-root", "regionsComputed", {
-        regions: editableRegions(guest, readEdits(chrome.state)),
+      void chrome.source.emit("chrome-root", "regionsComputed", {
+        regions: editableRegions(guest.presentation, readEdits(chrome.source)),
       });
     });
     return unsubscribe;
@@ -140,7 +192,7 @@ export function Workbench() {
   // this loop watches; Step advances one beat on demand. The identical loop could target a
   // GenUIClient over a transport instead of the in-process controller (same `emit` surface).
   useEffect(() => {
-    const c = chrome.controller;
+    const c = chrome.agent;
     // Advance one beat. The tour is bounded: at the last beat `nextAgentIndex` returns null, so we
     // emit `agentDone` (which stops the run and shows a "complete" state) instead of wrapping.
     const advance = () => {
@@ -156,15 +208,15 @@ export function Workbench() {
     };
     const onChange = () => {
       const wasRunning = agentRunning.current;
-      agentRunning.current = Boolean(chrome.state.get("workbench.agentRunning"));
+      agentRunning.current = Boolean(c.get("workbench.agentRunning"));
       const running = agentRunning.current;
       // A fresh Play on a finished tour replays from the top (reset so the next advance yields beat 0).
       if (running && !wasRunning && isAgentTourComplete(agentIndex.current)) {
         agentIndex.current = -1;
       }
-      const label = String(chrome.state.get("workbench.agentLabel") ?? "");
+      const label = String(c.get("workbench.agentLabel") ?? "");
       setAgentView((prev) => (prev.running === running && prev.label === label ? prev : { running, label }));
-      const seq = Number(chrome.state.get("workbench.agentStepSeq")) || 0;
+      const seq = Number(c.get("workbench.agentStepSeq")) || 0;
       if (seq !== lastAgentStepSeq.current) {
         lastAgentStepSeq.current = seq;
         advance();
@@ -187,7 +239,7 @@ export function Workbench() {
           <h1>GenUI Workbench</h1>
           <span className="muted">declarative chrome · agent authoring</span>
         </header>
-        <GenUIRoot source={chrome.controller} registry={workbenchRegistry} />
+        <GenUIRoot source={chrome.source} registry={workbenchRegistry} />
       </aside>
 
       <main className="playground">

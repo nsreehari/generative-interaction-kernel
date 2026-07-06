@@ -129,6 +129,16 @@ function Metric({ node }: CapabilityViewProps) {
   );
 }
 
+// A scrollable, whitespace-preserving monospace block for JSON/code dumps (reads `code`). Distinct
+// from `text` variant=code, which is an inline snippet span.
+function CodeBlock({ node }: CapabilityViewProps) {
+  return (
+    <div className="gx-code">
+      <pre>{readProps(node).str("code")}</pre>
+    </div>
+  );
+}
+
 // --- Data display -------------------------------------------------------------------
 
 function List({ node, emit }: CapabilityViewProps) {
@@ -366,6 +376,7 @@ export const primitiveRegistry: ComponentRegistry = createRegistry(
     note: Note,
     badge: Badge,
     metric: Metric,
+    codeBlock: CodeBlock,
     list: List,
     table: Table,
     field: Field,

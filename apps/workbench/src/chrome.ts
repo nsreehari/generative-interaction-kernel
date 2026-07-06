@@ -10,22 +10,21 @@
 import {
   InMemoryStateModel,
   type Patch,
+  type Json,
   type ResolvedNode,
   type TraceEvent,
 } from "../../../kernel/src/index";
 import { bundleFromJson, type Bundle } from "../../../adapters/react/src/index";
 import {
-  resolveFacets,
   emptyEdits,
+  type AuthoredSession,
   type InteractionKind,
   type InteractionSpec,
   type PresentationContext,
   type PresentationEdits,
-  type RegionDisclosure,
-  type RegionPriority,
 } from "../../../interaction/src/index";
 import { workbenchComponents } from "./profile/registry";
-import { exportBundle, type AuthoredSession } from "./export";
+import { exportBundle } from "./export";
 import type { Session } from "./session";
 import chromeBundleJson from "./chrome.bundle.json";
 import inspectBundleJson from "./inspect.bundle.json";
@@ -37,23 +36,19 @@ interface Option {
 }
 
 /** Flatten an imported artifact into the `importApply` event payload (every axis defaulted). */
-export function authoredApplyPayload(a: AuthoredSession): Record<string, unknown> {
+export function authoredApplyPayload(a: AuthoredSession): Record<string, Json> {
   const ctx = a.context ?? { surface: "desktop" };
+  const axis = (k: string): string => String((ctx as Record<string, unknown>)[k] ?? "");
   return {
     interaction: a.interaction.interaction,
     subject: a.interaction.subject ?? "",
     surface: ctx.surface ?? "desktop",
-    device: (ctx as Record<string, unknown>).device ?? "",
-    space: (ctx as Record<string, unknown>).space ?? "",
-    attention: (ctx as Record<string, unknown>).attention ?? "",
-    expertise: (ctx as Record<string, unknown>).expertise ?? "",
+    device: axis("device"),
+    space: axis("space"),
+    attention: axis("attention"),
+    expertise: axis("expertise"),
     edits: a.edits,
   };
-}
-
-/** The facet descriptors the FacetList capability renders, for the current interaction. */
-export function facetsAsItems(spec: InteractionSpec): { name: string; role: string; required: boolean }[] {
-  return resolveFacets(spec).map((f) => ({ name: f.name, role: f.role, required: f.required }));
 }
 
 /**
@@ -64,8 +59,13 @@ export function facetsAsItems(spec: InteractionSpec): { name: string; role: stri
  */
 export const chromeBundle: Bundle = bundleFromJson(chromeBundleJson, { components: workbenchComponents });
 
+/** The minimal read-only state surface the native bridge helpers need. */
+export interface StateReader {
+  get(path: string): Json | undefined;
+}
+
 /** Read the current guest inputs (interaction spec + presentation context + edits) out of state. */
-export function readInputs(state: InMemoryStateModel): {
+export function readInputs(state: StateReader): {
   spec: InteractionSpec;
   ctx: PresentationContext;
   edits: PresentationEdits;
@@ -83,7 +83,7 @@ export function readInputs(state: InMemoryStateModel): {
 }
 
 /** The authoring session's presentation overrides, read from state (seeded, so always present). */
-export function readEdits(state: InMemoryStateModel): PresentationEdits {
+export function readEdits(state: StateReader): PresentationEdits {
   const raw = state.get("workbench.edits");
   return raw ? (raw as unknown as PresentationEdits) : emptyEdits;
 }
@@ -95,45 +95,6 @@ export function inputsSignature(inputs: {
   edits: PresentationEdits;
 }): string {
   return JSON.stringify(inputs);
-}
-
-/** One row of the editing surface: a facet plus its current enabled/priority/disclosure placement. */
-export interface EditRegion {
-  name: string;
-  role: string;
-  required: boolean;
-  enabled: boolean;
-  priority: RegionPriority;
-  disclosure: RegionDisclosure;
-}
-
-/**
- * The editable region list the RegionEditor renders: every facet of the interaction (so hidden ones
- * can be re-enabled), in the guest's effective order, each carrying its current placement. Regions
- * present in the guest use the planned+edited placement; hidden ones fall back to any override or the
- * neutral default. The list order drives the up/down reorder controls.
- */
-export function editableRegions(session: Session, edits: PresentationEdits): EditRegion[] {
-  const facets = resolveFacets(session.spec);
-  const present = new Map(session.presentation.regions.map((r) => [r.name, r]));
-  const disabled = new Set(edits.disabled);
-  const order = [
-    ...session.presentation.regions.map((r) => r.name),
-    ...facets.map((f) => f.name).filter((n) => !present.has(n)),
-  ];
-  const byName = new Map(facets.map((f) => [f.name, f]));
-  return order.map((name) => {
-    const f = byName.get(name)!;
-    const r = present.get(name);
-    return {
-      name,
-      role: f.role,
-      required: f.required,
-      enabled: !disabled.has(name),
-      priority: r?.priority ?? edits.priority[name] ?? "secondary",
-      disclosure: r?.disclosure ?? edits.disclosure[name] ?? "always",
-    };
-  });
 }
 
 // --- Event bar (Increment C) ------------------------------------------------------
@@ -160,7 +121,7 @@ export interface FireRequest {
 }
 
 /** Read + validate the event-bar fields; falls back to the first node when none is selected. */
-export function readFireRequest(state: InMemoryStateModel, tree: ResolvedNode | null): FireRequest {
+export function readFireRequest(state: StateReader, tree: ResolvedNode | null): FireRequest {
   const target = String(state.get("workbench.eventNode") || collectIds(tree)[0] || "");
   const name = String(state.get("workbench.eventName") ?? "");
   const raw = String(state.get("workbench.eventPayload") ?? "").trim();

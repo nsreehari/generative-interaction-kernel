@@ -74,6 +74,11 @@ export class GenUIClient {
     return this.rev;
   }
 
+  /** Read one value out of the local replica (undefined before onboarding). */
+  get(path: string): Json | undefined {
+    return this.store?.get(path);
+  }
+
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);

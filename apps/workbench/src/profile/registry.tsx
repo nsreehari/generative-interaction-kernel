@@ -286,15 +286,6 @@ function RegionTable({ node }: CapabilityViewProps) {
   );
 }
 
-function CodeBlock({ node }: CapabilityViewProps) {
-  const code = readProps(node).str("code");
-  return (
-    <div className="scroll">
-      <pre>{code}</pre>
-    </div>
-  );
-}
-
 interface TraceRow {
   event: string;
   node: string;
@@ -335,6 +326,5 @@ export const workbenchComponents: Record<string, CapabilityView> = {
   regionEditor: RegionEditor,
   stepList: StepList,
   regionTable: RegionTable,
-  codeBlock: CodeBlock,
   traceList: TraceList,
 };
