@@ -108,9 +108,9 @@ test("event wiring: a component's handler calls emit with the right name/payload
     },
     emit,
     children: null,
-  }) as ReactElement<{ children: ReactElement<{ children: ReactElement<{ onClick: () => void }>[] }> }>;
-  // tbody -> first tr -> onClick
-  const tbody = table.props.children;
+  }) as ReactElement<{ children: ReactElement<{ children: ReactElement<{ onClick: () => void }>[] }>[] }>;
+  // table children are [thead, tbody]; tbody -> first tr -> onClick
+  const tbody = table.props.children[1];
   const firstRow = tbody.props.children[0] as ReactElement<{ onClick: () => void }>;
   firstRow.props.onClick();
 

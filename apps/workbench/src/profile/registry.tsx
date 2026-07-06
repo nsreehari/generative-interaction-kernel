@@ -127,6 +127,13 @@ function RegionEditor({ node, emit }: CapabilityViewProps) {
   const order = items.map((r) => r.name);
   const push = (next: PresentationEdits) => emit("edit", { edits: next });
 
+  // Drag-reorder state. The dragged name lives in a ref so `onDrop` reads it synchronously (a state
+  // value could still be stale in the drop closure if React hasn't re-rendered since dragstart); the
+  // hovered name is state because the drop-target highlight needs a re-render. The authoritative order
+  // is the pushed `edits.order`, so the list re-renders from state after a drop.
+  const dragName = React.useRef<string | null>(null);
+  const [overName, setOverName] = React.useState<string | null>(null);
+
   const toggle = (name: string) =>
     push({
       ...edits,
@@ -138,6 +145,18 @@ function RegionEditor({ node, emit }: CapabilityViewProps) {
     push({ ...edits, priority: { ...edits.priority, [name]: value as RegionPriority } });
   const setDisclosure = (name: string, value: string) =>
     push({ ...edits, disclosure: { ...edits.disclosure, [name]: value as RegionDisclosure } });
+  // Shared reorder primitive: move `dragged` to `target`'s slot. Both the drag handle and the
+  // ↑/↓ buttons funnel through the same `edit` event, so the pipeline sees one reorder shape.
+  const reorder = (dragged: string, target: string) => {
+    if (dragged === target) return;
+    const from = order.indexOf(dragged);
+    const to = order.indexOf(target);
+    if (from < 0 || to < 0) return;
+    const next = [...order];
+    next.splice(from, 1);
+    next.splice(to, 0, dragged);
+    push({ ...edits, order: next });
+  };
   const move = (name: string, dir: -1 | 1) => {
     const i = order.indexOf(name);
     const j = i + dir;
@@ -146,14 +165,46 @@ function RegionEditor({ node, emit }: CapabilityViewProps) {
     [next[i], next[j]] = [next[j], next[i]];
     push({ ...edits, order: next });
   };
+  const endDrag = () => {
+    dragName.current = null;
+    setOverName(null);
+  };
 
   return (
     <div className="region-editor">
       <span className="muted">regions</span>
       <ul>
         {items.map((r, i) => (
-          <li key={r.name} className={r.enabled ? "" : "off"}>
+          <li
+            key={r.name}
+            className={[r.enabled ? "" : "off", overName === r.name && dragName.current !== r.name ? "drop-target" : ""]
+              .filter(Boolean)
+              .join(" ")}
+            onDragOver={(e) => {
+              if (!dragName.current) return;
+              e.preventDefault();
+              if (overName !== r.name) setOverName(r.name);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (dragName.current) reorder(dragName.current, r.name);
+              endDrag();
+            }}
+          >
             <label className="region-toggle">
+              <span
+                className="drag-grip"
+                draggable
+                onDragStart={(e) => {
+                  dragName.current = r.name;
+                  e.dataTransfer.effectAllowed = "move";
+                }}
+                onDragEnd={endDrag}
+                aria-label="drag to reorder"
+                title="Drag to reorder"
+              >
+                ⠿
+              </span>
               <input
                 type="checkbox"
                 checked={r.enabled}
