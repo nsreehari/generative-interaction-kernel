@@ -18,7 +18,7 @@
         "confirm"
       ],
       "capabilities": {
-        "panelGroup": {
+        "wb:panelGroup": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -27,7 +27,7 @@
             "children"
           ]
         },
-        "panel": {
+        "ui:panel": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -36,7 +36,7 @@
             "children"
           ]
         },
-        "select": {
+        "ui:select": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -45,7 +45,7 @@
             "change"
           ]
         },
-        "field": {
+        "ui:field": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -54,13 +54,13 @@
             "input"
           ]
         },
-        "facetList": {
+        "wb:facetList": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           }
         },
-        "regionEditor": {
+        "wb:regionEditor": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -69,7 +69,7 @@
             "edit"
           ]
         },
-        "textarea": {
+        "ui:textarea": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -78,7 +78,7 @@
             "input"
           ]
         },
-        "button": {
+        "ui:button": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -87,19 +87,19 @@
             "press"
           ]
         },
-        "note": {
+        "ui:note": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           }
         },
-        "stepList": {
+        "wb:stepList": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           }
         },
-        "tabBar": {
+        "ui:tabBar": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -108,22 +108,32 @@
             "select"
           ]
         },
-        "table": {
+        "ui:table": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           }
         },
-        "codeBlock": {
+        "ui:codeBlock": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           }
         },
-        "list": {
+        "ui:list": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
+          }
+        }
+      },
+      "externals": {
+        "components": {
+          "ui": {
+            "from": "floor"
+          },
+          "wb": {
+            "from": "self"
           }
         }
       }
@@ -134,7 +144,7 @@
     "type": "document",
     "payload": {
       "root": {
-        "capability": "panelGroup",
+        "capability": "wb:panelGroup",
         "id": "inspect-root",
         "edges": {
           "on": {
@@ -192,7 +202,7 @@
           },
           "children": [
             {
-              "capability": "tabBar",
+              "capability": "ui:tabBar",
               "id": "inspect-tabs",
               "props": {
                 "options": [
@@ -236,13 +246,13 @@
               }
             },
             {
-              "capability": "panelGroup",
+              "capability": "wb:panelGroup",
               "id": "tab-presentation",
               "edges": {
                 "gate": "inspect.activeTab = 'presentation'",
                 "children": [
                   {
-                    "capability": "note",
+                    "capability": "ui:note",
                     "id": "inspect-regions-head",
                     "props": {
                       "tone": "muted"
@@ -254,18 +264,37 @@
                     }
                   },
                   {
-                    "capability": "table",
+                    "capability": "ui:table",
                     "id": "inspect-regions",
                     "props": {
                       "static": true,
-                      "blankText": "\u2014",
+                      "blankText": "—",
                       "columns": [
-                        { "key": "name", "label": "region" },
-                        { "key": "role", "label": "role" },
-                        { "key": "priority", "label": "priority", "classPrefix": "pri-" },
-                        { "key": "disclosure", "label": "disclosure" },
-                        { "key": "presentation", "label": "presentation" },
-                        { "key": "rationale", "label": "rationale" }
+                        {
+                          "key": "name",
+                          "label": "region"
+                        },
+                        {
+                          "key": "role",
+                          "label": "role"
+                        },
+                        {
+                          "key": "priority",
+                          "label": "priority",
+                          "classPrefix": "pri-"
+                        },
+                        {
+                          "key": "disclosure",
+                          "label": "disclosure"
+                        },
+                        {
+                          "key": "presentation",
+                          "label": "presentation"
+                        },
+                        {
+                          "key": "rationale",
+                          "label": "rationale"
+                        }
                       ]
                     },
                     "edges": {
@@ -278,13 +307,13 @@
               }
             },
             {
-              "capability": "panelGroup",
+              "capability": "wb:panelGroup",
               "id": "tab-document",
               "edges": {
                 "gate": "inspect.activeTab = 'document'",
                 "children": [
                   {
-                    "capability": "codeBlock",
+                    "capability": "ui:codeBlock",
                     "id": "inspect-document",
                     "edges": {
                       "read": {
@@ -296,13 +325,13 @@
               }
             },
             {
-              "capability": "panelGroup",
+              "capability": "wb:panelGroup",
               "id": "tab-tree",
               "edges": {
                 "gate": "inspect.activeTab = 'tree'",
                 "children": [
                   {
-                    "capability": "codeBlock",
+                    "capability": "ui:codeBlock",
                     "id": "inspect-tree",
                     "edges": {
                       "read": {
@@ -314,13 +343,13 @@
               }
             },
             {
-              "capability": "panelGroup",
+              "capability": "wb:panelGroup",
               "id": "tab-traces",
               "edges": {
                 "gate": "inspect.activeTab = 'traces'",
                 "children": [
                   {
-                    "capability": "note",
+                    "capability": "ui:note",
                     "id": "inspect-traces-label",
                     "props": {
                       "tone": "muted"
@@ -332,7 +361,7 @@
                     }
                   },
                   {
-                    "capability": "list",
+                    "capability": "ui:list",
                     "id": "inspect-traces",
                     "props": {
                       "static": true,
@@ -340,7 +369,7 @@
                       "badgeKey": "event",
                       "primaryKey": "node",
                       "secondaryKey": "detail",
-                      "emptyText": "no traces yet \u2014 fire an event"
+                      "emptyText": "no traces yet — fire an event"
                     },
                     "edges": {
                       "read": {
@@ -352,13 +381,13 @@
               }
             },
             {
-              "capability": "panelGroup",
+              "capability": "wb:panelGroup",
               "id": "tab-export",
               "edges": {
                 "gate": "inspect.activeTab = 'export'",
                 "children": [
                   {
-                    "capability": "codeBlock",
+                    "capability": "ui:codeBlock",
                     "id": "inspect-export",
                     "edges": {
                       "read": {
