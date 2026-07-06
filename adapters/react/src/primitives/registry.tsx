@@ -4,13 +4,11 @@
 // Each primitive obeys the uniform capability contract ({ node, emit, children }) and reads its
 // configuration + bound data from `node.props` (populated by the document's read edges). Most apps
 // ship NO components and just compose these primitives; a bundle that needs specialized controls
-// layers its own EXTRA capabilities over this floor via `overlayRegistry` (see bundle.components).
+// declares its own components as the `self` provider in its manifest `externals` (see bundle.components).
 
 import React from "react";
 import { unwrap } from "../../../../kernel/src/index";
 import {
-  createRegistry,
-  overlayRegistry,
   buildRegistryFromImports,
   type CapabilityView,
   type CapabilityViewProps,
@@ -378,18 +376,14 @@ function Embed({ node }: CapabilityViewProps) {
     () => (bundle ? loadBundle(bundle) : null),
     [sig] // eslint-disable-line react-hooks/exhaustive-deps
   );
-  // A named app may ship EXTRA capabilities; the nested runtime renders on floor + those extras.
-  // Inline bundles (from JSON state) can only use the floor, so they always render on the base.
+  // Every embedded bundle — a named app or an inline JSON bundle — resolves its `alias:name`
+  // capabilities through its own manifest `externals.components` (the floor via the `floor`
+  // provider, its own components via `self`).
   const registry = React.useMemo(
-    () =>
-      bundle && unwrap(bundle.manifest).externals?.components
-        ? buildBundleRegistry(bundle as Bundle)
-        : appBundle?.components
-          ? overlayRegistry(primitiveRegistry, appBundle.components)
-          : primitiveRegistry,
+    () => (bundle ? buildBundleRegistry(bundle as Bundle) : null),
     [sig] // eslint-disable-line react-hooks/exhaustive-deps
   );
-  if (!controller) return <p className="gx-muted">{p.str("emptyText", "Nothing to preview.")}</p>;
+  if (!controller || !registry) return <p className="gx-muted">{p.str("emptyText", "Nothing to preview.")}</p>;
   return (
     <div className="gx-bundle">
       <GenUIRoot source={controller} registry={registry} />
@@ -401,8 +395,8 @@ function Fallback({ node }: CapabilityViewProps) {
   return <div className="gx-muted">Unsupported primitive: {node.capability}</div>;
 }
 
-/** The floor's raw capability -> component map. Used both to build `primitiveRegistry` and as the
- *  `floor` PROVIDER that a bundle's `imports` binds an alias to (see buildRegistryFromImports). */
+/** The floor's raw capability -> component map: the `floor` PROVIDER that a bundle's `externals`
+ *  binds an alias to (see buildRegistryFromImports). */
 export const FLOOR_COMPONENTS: Record<string, CapabilityView> = {
   screen: Screen,
   row: Row,
@@ -427,9 +421,6 @@ export const FLOOR_COMPONENTS: Record<string, CapabilityView> = {
 
 /** The floor's fallback view (exported so import-driven registries share one graceful fallback). */
 export const floorFallback: CapabilityView = Fallback;
-
-/** The one shared primitive registry every bundle renders from. */
-export const primitiveRegistry: ComponentRegistry = createRegistry(FLOOR_COMPONENTS, Fallback);
 
 /**
  * Build a bundle's render registry from its manifest `externals.components` (the end-state,
