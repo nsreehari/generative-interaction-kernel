@@ -17,6 +17,7 @@ import {
   ActionButton,
   Board,
   FallbackView,
+  Form,
   Table,
   liveCardsRegistry,
 } from "../src/components";
@@ -130,4 +131,26 @@ test("fallback: a capability with no registered component renders the fallback v
 
   assert.match(markup, /data-fallback/);
   assert.match(markup, /Unsupported capability: metric/);
+});
+
+test("new live-cards views render their props (narrative, badge, form)", () => {
+  const view = (capability: string, props: ResolvedNode["props"]) =>
+    markupOf({ capability, id: capability, props, visible: true, fallback: false, children: [] });
+
+  assert.match(view("narrative", { text: "Top region is East" }), /data-cap="narrative"[^>]*>Top region is East/);
+  assert.match(view("narrative", {}), /No narrative yet\./); // empty state
+  assert.match(view("badge", { value: "dominant", tone: "success" }), /data-cap="badge"[^>]*data-tone="success"[^>]*>dominant/);
+  assert.match(view("form", { label: "Note", fields: ["text"] }), /data-cap="form"/);
+  assert.match(view("form", { label: "Note", fields: ["text"] }), /data-field="text"/);
+});
+
+test("form view emits submit through the node-bound emit", () => {
+  const calls: string[] = [];
+  const form = Form({
+    node: { capability: "form", id: "f", props: { label: "Note", fields: ["text"] }, visible: true, fallback: false, children: [] },
+    emit: (name) => calls.push(name),
+    children: null,
+  }) as ReactElement<{ onSubmit: (e: { preventDefault: () => void }) => void }>;
+  form.props.onSubmit({ preventDefault: () => {} });
+  assert.deepEqual(calls, ["submit"]);
 });
