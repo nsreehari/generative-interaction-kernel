@@ -11,6 +11,11 @@ import {
 } from "../../../../adapters/react/src/index";
 import {
   emptyEdits,
+  moveRegion,
+  reorderRegion,
+  setRegionDisclosure,
+  setRegionPriority,
+  toggleRegion,
   type PresentationEdits,
   type RegionDisclosure,
   type RegionPriority,
@@ -66,36 +71,19 @@ function RegionEditor({ node, emit }: CapabilityViewProps) {
   const dragName = React.useRef<string | null>(null);
   const [overName, setOverName] = React.useState<string | null>(null);
 
-  const toggle = (name: string) =>
-    push({
-      ...edits,
-      disabled: edits.disabled.includes(name)
-        ? edits.disabled.filter((n) => n !== name)
-        : [...edits.disabled, name],
-    });
-  const setPriority = (name: string, value: string) =>
-    push({ ...edits, priority: { ...edits.priority, [name]: value as RegionPriority } });
+  const toggle = (name: string) => push(toggleRegion(edits, name));
+  const setPriority = (name: string, value: string) => push(setRegionPriority(edits, name, value as RegionPriority));
   const setDisclosure = (name: string, value: string) =>
-    push({ ...edits, disclosure: { ...edits.disclosure, [name]: value as RegionDisclosure } });
-  // Shared reorder primitive: move `dragged` to `target`'s slot. Both the drag handle and the
-  // ↑/↓ buttons funnel through the same `edit` event, so the pipeline sees one reorder shape.
+    push(setRegionDisclosure(edits, name, value as RegionDisclosure));
+  // Both the drag handle and the ↑/↓ buttons funnel through the shared reorder/move transforms, so
+  // the pipeline sees one reorder shape; skip the emit when the transform is a no-op (same ref).
   const reorder = (dragged: string, target: string) => {
-    if (dragged === target) return;
-    const from = order.indexOf(dragged);
-    const to = order.indexOf(target);
-    if (from < 0 || to < 0) return;
-    const next = [...order];
-    next.splice(from, 1);
-    next.splice(to, 0, dragged);
-    push({ ...edits, order: next });
+    const next = reorderRegion(edits, order, dragged, target);
+    if (next !== edits) push(next);
   };
   const move = (name: string, dir: -1 | 1) => {
-    const i = order.indexOf(name);
-    const j = i + dir;
-    if (i < 0 || j < 0 || j >= order.length) return;
-    const next = [...order];
-    [next[i], next[j]] = [next[j], next[i]];
-    push({ ...edits, order: next });
+    const next = moveRegion(edits, order, name, dir);
+    if (next !== edits) push(next);
   };
   const endDrag = () => {
     dragName.current = null;
