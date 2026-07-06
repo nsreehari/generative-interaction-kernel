@@ -38,6 +38,53 @@ export interface Bundle extends SerializableBundle {
   components?: Record<string, CapabilityView>;
 }
 
+/** The native code a JSON bundle attaches when it loads: named effects and/or extra components. */
+export interface BundleNative {
+  effects?: EffectHandlerMap;
+  components?: Record<string, CapabilityView>;
+}
+
+function isEnvelope(value: unknown, type: "manifest" | "document"): boolean {
+  return (
+    !!value &&
+    typeof value === "object" &&
+    (value as { type?: unknown }).type === type &&
+    "payload" in (value as object)
+  );
+}
+
+/**
+ * The "everything is JSON" entry point: turn a parsed-JSON bundle (an imported `.json` file, a
+ * fetched document, a bundle stored in state) into a runnable `Bundle`, attaching only the native
+ * code it needs (effect handlers and/or extra components). The manifest, document, and seed state
+ * are pure data — adding an app is authoring JSON, not TypeScript.
+ *
+ * This is a system boundary, so the JSON is validated: a malformed bundle throws instead of failing
+ * deep inside the kernel. The returned bundle is ready for `BundleHost` / `loadBundle`.
+ */
+export function bundleFromJson(json: unknown, native: BundleNative = {}): Bundle {
+  if (!json || typeof json !== "object") {
+    throw new Error("bundleFromJson: expected a bundle object");
+  }
+  const b = json as Partial<SerializableBundle>;
+  if (!isEnvelope(b.manifest, "manifest")) {
+    throw new Error("bundleFromJson: missing or invalid `manifest` (expected a GUP manifest message)");
+  }
+  if (!isEnvelope(b.document, "document")) {
+    throw new Error("bundleFromJson: missing or invalid `document` (expected a GUP document message)");
+  }
+  if (b.state != null && (typeof b.state !== "object" || Array.isArray(b.state))) {
+    throw new Error("bundleFromJson: `state` must be an object of namespace -> value");
+  }
+  return {
+    manifest: b.manifest as SerializableBundle["manifest"],
+    document: b.document as SerializableBundle["document"],
+    state: b.state,
+    effects: native.effects,
+    components: native.components,
+  };
+}
+
 /** Build a seeded state model from a manifest's namespaces and a bundle's seed values. */
 export function seedState(
   manifest: Enveloped<ManifestPayload>,

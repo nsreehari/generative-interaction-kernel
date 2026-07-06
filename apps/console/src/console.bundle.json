@@ -1,0 +1,837 @@
+{
+  "manifest": {
+    "gup": "0.1",
+    "type": "manifest",
+    "payload": {
+      "version": "genui-console/1.0",
+      "expression": "jsonata",
+      "namespaces": [
+        "console"
+      ],
+      "actions": [
+        "assign",
+        "assignFrom",
+        "derive",
+        "invoke",
+        "navigate",
+        "confirm",
+        "emit"
+      ],
+      "capabilities": {
+        "screen": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "row": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "col": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "panel": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "text": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "heading": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "note": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "badge": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "metric": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "list": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "select"
+          ]
+        },
+        "table": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "rowSelect"
+          ]
+        },
+        "field": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "input"
+          ]
+        },
+        "textarea": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "input"
+          ]
+        },
+        "select": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "change"
+          ]
+        },
+        "button": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "press"
+          ]
+        },
+        "tabBar": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "select"
+          ]
+        },
+        "chips": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "remove"
+          ]
+        },
+        "embed": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      }
+    }
+  },
+  "document": {
+    "gup": "0.1",
+    "type": "document",
+    "payload": {
+      "root": {
+        "capability": "screen",
+        "id": "console-root",
+        "props": {
+          "title": "GenUI Profile Console",
+          "subtitle": "Author, validate, preview, and promote GenUI profiles"
+        },
+        "edges": {
+          "children": [
+            {
+              "capability": "row",
+              "id": "console-layout",
+              "props": {
+                "variant": "split"
+              },
+              "edges": {
+                "children": [
+                  {
+                    "capability": "panel",
+                    "id": "list-rail",
+                    "props": {
+                      "title": "Profiles",
+                      "variant": "rail"
+                    },
+                    "edges": {
+                      "children": [
+                        {
+                          "capability": "list",
+                          "id": "profile-list",
+                          "props": {
+                            "idKey": "id",
+                            "primaryKey": "name",
+                            "badgeKey": "status",
+                            "valueKey": "version"
+                          },
+                          "edges": {
+                            "read": {
+                              "items": "console.profiles",
+                              "selectedId": "console.selectedId"
+                            },
+                            "on": {
+                              "select": [
+                                {
+                                  "do": "invoke",
+                                  "args": {
+                                    "tool": "loadProfile"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "capability": "panel",
+                          "id": "create-panel",
+                          "props": {
+                            "title": "New profile",
+                            "variant": "inset"
+                          },
+                          "edges": {
+                            "children": [
+                              {
+                                "capability": "field",
+                                "id": "new-name",
+                                "props": {
+                                  "label": "Name",
+                                  "placeholder": "e.g. Support Triage"
+                                },
+                                "edges": {
+                                  "read": {
+                                    "value": "console.newName"
+                                  },
+                                  "on": {
+                                    "input": [
+                                      {
+                                        "do": "assign",
+                                        "target": "console.newName",
+                                        "args": {
+                                          "from": "$event.value"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              {
+                                "capability": "button",
+                                "id": "create-btn",
+                                "props": {
+                                  "label": "Create profile",
+                                  "tone": "primary"
+                                },
+                                "edges": {
+                                  "on": {
+                                    "press": [
+                                      {
+                                        "do": "invoke",
+                                        "args": {
+                                          "tool": "createProfile"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "capability": "panel",
+                    "id": "detail",
+                    "props": {
+                      "title": "Editor",
+                      "variant": "detail"
+                    },
+                    "edges": {
+                      "children": [
+                        {
+                          "capability": "panel",
+                          "id": "empty-state",
+                          "props": {
+                            "variant": "tab"
+                          },
+                          "edges": {
+                            "gate": "console.selectedId = ''",
+                            "children": [
+                              {
+                                "capability": "note",
+                                "id": "empty-hint",
+                                "props": {
+                                  "tone": "muted",
+                                  "value": "Select a profile on the left, or create one — meanwhile, here's a scratch Playground."
+                                }
+                              },
+                              {
+                                "capability": "embed",
+                                "id": "scratch-playground",
+                                "props": {
+                                  "app": "playground",
+                                  "emptyText": "Playground app not registered."
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "capability": "panel",
+                          "id": "detail-body",
+                          "props": {
+                            "variant": "detail-body"
+                          },
+                          "edges": {
+                            "gate": "console.selectedId != ''",
+                            "children": [
+                              {
+                                "capability": "tabBar",
+                                "id": "detail-tabs",
+                                "props": {
+                                  "options": [
+                                    {
+                                      "value": "editor",
+                                      "label": "Editor"
+                                    },
+                                    {
+                                      "value": "validation",
+                                      "label": "Validation"
+                                    },
+                                    {
+                                      "value": "preview",
+                                      "label": "Preview"
+                                    },
+                                    {
+                                      "value": "playground",
+                                      "label": "Playground"
+                                    },
+                                    {
+                                      "value": "versions",
+                                      "label": "Versions"
+                                    }
+                                  ]
+                                },
+                                "edges": {
+                                  "read": {
+                                    "active": "console.tab"
+                                  },
+                                  "on": {
+                                    "select": [
+                                      {
+                                        "do": "assign",
+                                        "target": "console.tab",
+                                        "args": {
+                                          "from": "$event.value"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              {
+                                "capability": "panel",
+                                "id": "editor-tab",
+                                "props": {
+                                  "variant": "tab"
+                                },
+                                "edges": {
+                                  "gate": "console.tab = 'editor'",
+                                  "children": [
+                                    {
+                                      "capability": "field",
+                                      "id": "draft-name",
+                                      "props": {
+                                        "label": "Name"
+                                      },
+                                      "edges": {
+                                        "read": {
+                                          "value": "console.draft.name"
+                                        },
+                                        "on": {
+                                          "input": [
+                                            {
+                                              "do": "assign",
+                                              "target": "console.draft.name",
+                                              "args": {
+                                                "from": "$event.value"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "capability": "textarea",
+                                      "id": "draft-description",
+                                      "props": {
+                                        "label": "Description"
+                                      },
+                                      "edges": {
+                                        "read": {
+                                          "value": "console.draft.description"
+                                        },
+                                        "on": {
+                                          "input": [
+                                            {
+                                              "do": "assign",
+                                              "target": "console.draft.description",
+                                              "args": {
+                                                "from": "$event.value"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "capability": "panel",
+                                      "id": "cap-panel",
+                                      "props": {
+                                        "title": "Capabilities",
+                                        "variant": "inset"
+                                      },
+                                      "edges": {
+                                        "children": [
+                                          {
+                                            "capability": "chips",
+                                            "id": "cap-editor",
+                                            "props": {
+                                              "emptyText": "No capabilities yet."
+                                            },
+                                            "edges": {
+                                              "read": {
+                                                "items": "console.draft.capabilities"
+                                              },
+                                              "on": {
+                                                "remove": [
+                                                  {
+                                                    "do": "invoke",
+                                                    "args": {
+                                                      "tool": "removeCapability"
+                                                    }
+                                                  }
+                                                ]
+                                              }
+                                            }
+                                          },
+                                          {
+                                            "capability": "field",
+                                            "id": "new-cap",
+                                            "props": {
+                                              "label": "Add capability",
+                                              "placeholder": "e.g. ticketList"
+                                            },
+                                            "edges": {
+                                              "read": {
+                                                "value": "console.newCapName"
+                                              },
+                                              "on": {
+                                                "input": [
+                                                  {
+                                                    "do": "assign",
+                                                    "target": "console.newCapName",
+                                                    "args": {
+                                                      "from": "$event.value"
+                                                    }
+                                                  }
+                                                ]
+                                              }
+                                            }
+                                          },
+                                          {
+                                            "capability": "button",
+                                            "id": "add-cap-btn",
+                                            "props": {
+                                              "label": "Add",
+                                              "tone": "default"
+                                            },
+                                            "edges": {
+                                              "on": {
+                                                "press": [
+                                                  {
+                                                    "do": "invoke",
+                                                    "args": {
+                                                      "tool": "addCapability"
+                                                    }
+                                                  }
+                                                ]
+                                              }
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "capability": "panel",
+                                      "id": "editor-actions",
+                                      "props": {
+                                        "variant": "actions"
+                                      },
+                                      "edges": {
+                                        "children": [
+                                          {
+                                            "capability": "button",
+                                            "id": "save-btn",
+                                            "props": {
+                                              "label": "Save draft",
+                                              "tone": "default"
+                                            },
+                                            "edges": {
+                                              "on": {
+                                                "press": [
+                                                  {
+                                                    "do": "invoke",
+                                                    "args": {
+                                                      "tool": "saveDraft"
+                                                    }
+                                                  }
+                                                ]
+                                              }
+                                            }
+                                          },
+                                          {
+                                            "capability": "button",
+                                            "id": "validate-btn",
+                                            "props": {
+                                              "label": "Validate",
+                                              "tone": "default"
+                                            },
+                                            "edges": {
+                                              "on": {
+                                                "press": [
+                                                  {
+                                                    "do": "invoke",
+                                                    "args": {
+                                                      "tool": "validateProfile"
+                                                    }
+                                                  }
+                                                ]
+                                              }
+                                            }
+                                          },
+                                          {
+                                            "capability": "button",
+                                            "id": "promote-btn",
+                                            "props": {
+                                              "label": "Promote to active",
+                                              "tone": "primary"
+                                            },
+                                            "edges": {
+                                              "on": {
+                                                "press": [
+                                                  {
+                                                    "do": "invoke",
+                                                    "args": {
+                                                      "tool": "promoteProfile"
+                                                    }
+                                                  }
+                                                ]
+                                              }
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "capability": "panel",
+                                "id": "validation-tab",
+                                "props": {
+                                  "variant": "tab"
+                                },
+                                "edges": {
+                                  "gate": "console.tab = 'validation'",
+                                  "children": [
+                                    {
+                                      "capability": "panel",
+                                      "id": "validation-status",
+                                      "props": {
+                                        "title": "Status",
+                                        "variant": "inset"
+                                      },
+                                      "edges": {
+                                        "children": [
+                                          {
+                                            "capability": "text",
+                                            "id": "validation-status-text",
+                                            "props": {
+                                              "variant": "code"
+                                            },
+                                            "edges": {
+                                              "read": {
+                                                "value": "console.validation.status"
+                                              }
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "capability": "panel",
+                                      "id": "validation-errors",
+                                      "props": {
+                                        "title": "Errors",
+                                        "variant": "inset"
+                                      },
+                                      "edges": {
+                                        "children": [
+                                          {
+                                            "capability": "list",
+                                            "id": "validation-error-list",
+                                            "props": {
+                                              "emptyText": "No errors."
+                                            },
+                                            "edges": {
+                                              "read": {
+                                                "items": "console.validation.errors"
+                                              }
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "capability": "panel",
+                                      "id": "validation-warnings",
+                                      "props": {
+                                        "title": "Warnings",
+                                        "variant": "inset"
+                                      },
+                                      "edges": {
+                                        "children": [
+                                          {
+                                            "capability": "list",
+                                            "id": "validation-warning-list",
+                                            "props": {
+                                              "emptyText": "No warnings."
+                                            },
+                                            "edges": {
+                                              "read": {
+                                                "items": "console.validation.warnings"
+                                              }
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "capability": "panel",
+                                "id": "preview-tab",
+                                "props": {
+                                  "variant": "tab"
+                                },
+                                "edges": {
+                                  "gate": "console.tab = 'preview'",
+                                  "children": [
+                                    {
+                                      "capability": "embed",
+                                      "id": "preview-mount",
+                                      "props": {
+                                        "emptyText": "Nothing to preview yet."
+                                      },
+                                      "edges": {
+                                        "read": {
+                                          "bundle": "console.previewBundle"
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "capability": "panel",
+                                "id": "playground-tab",
+                                "props": {
+                                  "variant": "tab"
+                                },
+                                "edges": {
+                                  "gate": "console.tab = 'playground'",
+                                  "children": [
+                                    {
+                                      "capability": "embed",
+                                      "id": "playground-mount",
+                                      "props": {
+                                        "emptyText": "Nothing to play with yet."
+                                      },
+                                      "edges": {
+                                        "read": {
+                                          "bundle": "console.playgroundBundle"
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "capability": "panel",
+                                "id": "versions-tab",
+                                "props": {
+                                  "variant": "tab"
+                                },
+                                "edges": {
+                                  "gate": "console.tab = 'versions'",
+                                  "children": [
+                                    {
+                                      "capability": "table",
+                                      "id": "version-list",
+                                      "props": {
+                                        "idKey": "version",
+                                        "emptyText": "No versions captured yet.",
+                                        "columns": [
+                                          {
+                                            "key": "version",
+                                            "label": "Version"
+                                          },
+                                          {
+                                            "key": "status",
+                                            "label": "Status"
+                                          },
+                                          {
+                                            "key": "capabilityCount",
+                                            "label": "Capabilities"
+                                          },
+                                          {
+                                            "key": "capturedAt",
+                                            "label": "Captured"
+                                          }
+                                        ]
+                                      },
+                                      "edges": {
+                                        "read": {
+                                          "rows": "console.versions"
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "capability": "note",
+                          "id": "toast",
+                          "props": {
+                            "tone": "info"
+                          },
+                          "edges": {
+                            "read": {
+                              "value": "console.toast"
+                            },
+                            "gate": "console.toast != ''"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "manifest": "genui-console/1.0"
+    }
+  },
+  "state": {
+    "console": {
+      "profiles": [
+        {
+          "id": "live-cards",
+          "name": "Live Cards",
+          "description": "The first onboarding profile: board / metric / table / actions.",
+          "status": "active",
+          "version": "1.0.0",
+          "capabilities": [
+            "board",
+            "metric",
+            "table",
+            "actions"
+          ],
+          "updatedAt": "2026-07-06 10:42:20"
+        },
+        {
+          "id": "workbench-chrome",
+          "name": "Workbench Chrome",
+          "description": "The workbench's own declarative panels (self-hosting profile).",
+          "status": "draft",
+          "version": "0.3.0",
+          "capabilities": [
+            "panelGroup",
+            "panel",
+            "select",
+            "text",
+            "button"
+          ],
+          "updatedAt": "2026-07-06 10:42:20"
+        }
+      ],
+      "selectedId": "",
+      "draft": {
+        "id": "",
+        "name": "",
+        "description": "",
+        "capabilities": []
+      },
+      "newName": "",
+      "newCapName": "",
+      "tab": "editor",
+      "validation": {
+        "status": "unknown",
+        "errors": [],
+        "warnings": []
+      },
+      "versions": [],
+      "toast": "",
+      "previewBundle": null,
+      "playgroundBundle": null
+    }
+  }
+}
