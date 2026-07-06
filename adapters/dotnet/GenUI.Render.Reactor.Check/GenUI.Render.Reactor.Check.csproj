@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Headless STRUCTURAL check for the Reactor/WinUI binding. Renders the shared ResolvedNode
+    tree through GenUIReactorViews.Registry (TView = Microsoft.UI.Reactor.Core.Element) and walks
+    the resulting Element records into a serializable shape — WITHOUT materializing controls or
+    opening a window. This upgrades cross-adapter equivalence from compile-verified to structural:
+    it proves the Reactor binding produces the expected element tree (container/leaf shape,
+    visibility drop, both fallback paths) and that the node-bound emit round-trips through the real
+    kernel. Reactor Elements are pure declarative records, so the whole walk runs on a plain
+    console with no UI thread. Console-runner style: prints PASS/FAIL, non-zero exit on failure.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>GenUI.Render.Reactor.Check</RootNamespace>
+    <Platforms>x86;x64;ARM64</Platforms>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())</RuntimeIdentifier>
+    <UseWinUI>true</UseWinUI>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WinUISDKReferences>false</WinUISDKReferences>
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <WindowsAppSdkDeploymentManagerInitialize>false</WindowsAppSdkDeploymentManagerInitialize>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.UI.Reactor" Version="0.1.0-preview.11" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1839" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.2.0" />
+  </ItemGroup>
+
+  <!-- The Reactor binding (which brings the renderer-agnostic core + the offline kernel). -->
+  <ItemGroup>
+    <ProjectReference Include="../GenUI.Render.Reactor/GenUI.Render.Reactor.csproj" />
+  </ItemGroup>
+
+</Project>

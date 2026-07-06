@@ -52,11 +52,15 @@ the same tree the same way by definition.
 
 That shared walk is pinned by the offline `GenUI.Render.Check` runner (`test:dotnet-render`), which
 asserts the visibility drop, both fallback paths, node-id capture, and the controller's dispatch →
-refresh on the **real** kernel with `TView = RenderRecord`. The Reactor binding is validated by
-**compiling** against the real `Microsoft.UI.Reactor` surface (the meaningful check for a binding whose
-window cannot be painted in headless CI); its runtime action/read semantics reuse the exact
-assign/read shape the headless check already proves. Pixel-level verification is explicitly out of
-scope — the contract, not the pixels, is what must match across adapters.
+refresh on the **real** kernel with `TView = RenderRecord`. The Reactor binding is validated two ways:
+it **compiles** against the real `Microsoft.UI.Reactor` surface, and — because Reactor `Element`s are
+pure declarative records — a second offline runner, `GenUI.Render.Reactor.Check` (`test:dotnet-render-reactor`),
+renders the same `ResolvedNode` tree through the actual `GenUIReactorViews` registry (`TView = Element`)
+and **walks the resulting element tree structurally** with no UI thread, no window, and no control
+materialization. It asserts the container/leaf shapes, the visibility drop, both fallback paths, and a
+real `ButtonElement.OnClick` emit round-tripping through the kernel. This upgrades the Reactor evidence
+from *compile-verified* to *structural*. Pixel-level verification remains out of scope — the contract,
+not the pixels, is what must match across adapters.
 
 ## Alternatives considered
 
@@ -68,7 +72,8 @@ scope — the contract, not the pixels, is what must match across adapters.
   *because* there is one walk, not two that happen to agree.
 - **Prove equivalence with a UI automation harness comparing React and Reactor output.** Rejected for
   now: a pixel/automation diff is expensive, flaky, and tests the toolkits more than the contract. The
-  contract is guaranteed by the shared traversal and asserted headlessly; that is the durable evidence.
+  contract is guaranteed by the shared traversal and asserted headlessly — including a structural walk of
+  the real Reactor element tree (`test:dotnet-render-reactor`); that is the durable evidence.
 - **Inject the controller into the root via DI instead of a static seam.** Rejected: `ReactorApp.Run<TRoot>`
   owns root construction and takes no state, so a static hand-off is the minimal seam. A DI container
   would be ceremony for a single value.
@@ -79,9 +84,11 @@ scope — the contract, not the pixels, is what must match across adapters.
   closing the toolkit-edge half of ADR-0026's open item.
 - Cross-adapter render equivalence is settled: it is a property of the shared `Renderer.Render` walk
   (asserted offline by `test:dotnet-render`), so a new toolkit binding inherits equivalence for free —
-  it only writes leaf/container factories.
-- The binding is not wired into `npm test`: it targets `net10.0-windows` and opens a window, neither of
-  which runs in the offline/headless suite. Its guarantee is compile-time + the shared headless check,
-  not a CI run of the window.
+  it only writes leaf/container factories. The Reactor binding's own element tree is additionally pinned
+  structurally by `test:dotnet-render-reactor`.
+- The Reactor **structural check** runs headless in `npm test` (Reactor `Element`s are declarative records,
+  so the walk needs no UI thread). The Reactor **window app** is still not wired into `npm test`: it targets
+  `net10.0-windows` and opens a window, so only the structural check — not the painted window — is part of
+  the offline suite.
 - Precedent for the next toolkit (WPF, MAUI, another web renderer): add a project outside the island,
   bind `TView`, write a registry + a host component, and reuse the same walk and equivalence argument.
