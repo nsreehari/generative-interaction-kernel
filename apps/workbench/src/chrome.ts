@@ -109,7 +109,7 @@ function chromeRoot(): DocNode {
             read: { value: "workbench.interaction" },
             on: { change: [assignFrom("workbench.interaction", "$event.value")] },
           }),
-          node("text", "interaction-subject", {
+          node("field", "interaction-subject", {
             props: { label: "Subject" },
             read: { value: "workbench.subject" },
             on: { input: [assignFrom("workbench.subject", "$event.value")] },
@@ -147,7 +147,7 @@ function chromeRoot(): DocNode {
             read: { value: "workbench.eventNode", options: "workbench.nodeIds" },
             on: { change: [assignFrom("workbench.eventNode", "$event.value")] },
           }),
-          node("text", "event-name", {
+          node("field", "event-name", {
             props: { label: "Event" },
             read: { value: "workbench.eventName" },
             on: { input: [assignFrom("workbench.eventName", "$event.value")] },
@@ -164,7 +164,7 @@ function chromeRoot(): DocNode {
           }),
           node("note", "event-error", {
             props: { tone: "error" },
-            read: { text: "workbench.eventError" },
+            read: { value: "workbench.eventError" },
             gate: "workbench.eventError != ''",
           }),
         ],
@@ -187,7 +187,7 @@ function chromeRoot(): DocNode {
             props: { label: "\u2192 Step" },
             on: { press: [assignFrom("workbench.agentStepSeq", "workbench.agentStepSeq + 1")] },
           }),
-          node("note", "agent-label", { read: { text: "workbench.agentLabel" } }),
+          node("note", "agent-label", { read: { value: "workbench.agentLabel" } }),
           // The tour as a numbered plan; the highlighted step is what the playground is showing now.
           node("stepList", "agent-steps", {
             read: {
@@ -214,7 +214,7 @@ function chromeRoot(): DocNode {
           }),
           node("note", "import-error", {
             props: { tone: "error" },
-            read: { text: "workbench.importError" },
+            read: { value: "workbench.importError" },
             gate: "workbench.importError != ''",
           }),
         ],

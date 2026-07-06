@@ -24,12 +24,12 @@ export const WORKBENCH_MANIFEST: Enveloped<ManifestPayload> = {
     capabilities: {
       // A transparent grouping node: renders its children in order (the column body).
       panelGroup: { propsSchema: anyProps, slots: ["children"] },
-      // A titled section (reuses the existing `.panel-section` styling).
+      // A titled section (floor `panel`, styled to match the chrome).
       panel: { propsSchema: anyProps, slots: ["children"] },
       // A labelled <select>; value binds from state, choosing emits `change` with { value }.
       select: { propsSchema: anyProps, emits: ["change"] },
-      // A labelled text <input>; typing emits `input` with { value }.
-      text: { propsSchema: anyProps, emits: ["input"] },
+      // A labelled text <input> (floor `field`); typing emits `input` with { value }.
+      field: { propsSchema: anyProps, emits: ["input"] },
       // A read-only list of the interaction's facets ({ name, role, required }[]).
       facetList: { propsSchema: anyProps },
       // The editing surface: an editable list of regions. Toggling / re-prioritizing / disclosing /

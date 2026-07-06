@@ -25,49 +25,6 @@ function PanelGroup({ children }: CapabilityViewProps) {
   return <>{children}</>;
 }
 
-function Panel({ node, children }: CapabilityViewProps) {
-  const title = readProps(node).str("title");
-  return (
-    <section className="panel-section">
-      {title ? <h2>{title}</h2> : null}
-      {children}
-    </section>
-  );
-}
-
-function Select({ node, emit }: CapabilityViewProps) {
-  const p = readProps(node);
-  const label = p.str("label");
-  const value = p.str("value");
-  const options = p.list<Option>("options");
-  return (
-    <label>
-      {label}
-      <select value={value} onChange={(e) => emit("change", { value: e.target.value })}>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-function TextInput({ node, emit }: CapabilityViewProps) {
-  const p = readProps(node);
-  const label = p.str("label");
-  // Uncontrolled: keep the caret smooth while still reporting every keystroke into kernel state
-  // (nothing else writes this field, so defaultValue is sufficient).
-  const initial = p.str("value");
-  return (
-    <label>
-      {label}
-      <input defaultValue={initial} onChange={(e) => emit("input", { value: e.target.value })} />
-    </label>
-  );
-}
-
 interface FacetItem {
   name: string;
   role: string;
@@ -250,37 +207,7 @@ function RegionEditor({ node, emit }: CapabilityViewProps) {
   );
 }
 
-// --- Event bar (Increment C) ------------------------------------------------------
-
-function TextArea({ node, emit }: CapabilityViewProps) {
-  const p = readProps(node);
-  const label = p.str("label");
-  const initial = p.str("value");
-  return (
-    <label>
-      {label}
-      <textarea rows={2} defaultValue={initial} onChange={(e) => emit("input", { value: e.target.value })} />
-    </label>
-  );
-}
-
-function Button({ node, emit }: CapabilityViewProps) {
-  const p = readProps(node);
-  const label = p.str("label");
-  const disabled = p.bool("disabled");
-  return (
-    <button disabled={disabled} onClick={() => emit("press", {})}>
-      {label}
-    </button>
-  );
-}
-
-function Note({ node }: CapabilityViewProps) {
-  const p = readProps(node);
-  const text = p.str("text");
-  const tone = p.str("tone", "muted");
-  return <p className={tone === "error" ? "error" : "muted"}>{text}</p>;
-}
+// --- Agent tour (Slice 4) ---------------------------------------------------------
 
 interface StepItem {
   index: number;
@@ -312,25 +239,6 @@ function StepList({ node }: CapabilityViewProps) {
 }
 
 // --- Inspector (Increment B) ------------------------------------------------------
-
-function TabBar({ node, emit }: CapabilityViewProps) {
-  const p = readProps(node);
-  const active = p.str("active");
-  const options = p.list<Option>("options");
-  return (
-    <nav className="tabs">
-      {options.map((o) => (
-        <button
-          key={o.value}
-          className={o.value === active ? "active" : ""}
-          onClick={() => emit("select", { value: o.value })}
-        >
-          {o.label}
-        </button>
-      ))}
-    </nav>
-  );
-}
 
 interface RegionRow {
   name: string;
@@ -415,24 +323,17 @@ function TraceList({ node }: CapabilityViewProps) {
 }
 
 /**
- * The workbench chrome profile's EXTRA capability -> component map. These are layered over the shared
- * floor via `overlayRegistry` when the chrome/inspect bundles render (see Workbench.tsx): the custom
- * controls (facetList, regionEditor, regionTable, …) and the workbench's own takes on the shared
- * primitives (panel, select, text, …) win over the floor, which fills in anything not listed here
- * (including the fallback for a genuinely unknown capability).
+ * The workbench chrome profile's EXTRA capability -> component map: ONLY the specialized controls
+ * the shared floor doesn't provide (facetList, regionEditor, regionTable, the agent tour, …). The
+ * generic primitives (panel, select, field, textarea, button, note, tabBar) come from the floor —
+ * this overlay is layered over it via `overlayRegistry` when the chrome/inspect bundles render (see
+ * Workbench.tsx), so anything not listed here (including the fallback) resolves from the floor.
  */
 export const workbenchComponents: Record<string, CapabilityView> = {
   panelGroup: PanelGroup,
-  panel: Panel,
-  select: Select,
-  text: TextInput,
   facetList: FacetList,
   regionEditor: RegionEditor,
-  textarea: TextArea,
-  button: Button,
-  note: Note,
   stepList: StepList,
-  tabBar: TabBar,
   regionTable: RegionTable,
   codeBlock: CodeBlock,
   traceList: TraceList,
