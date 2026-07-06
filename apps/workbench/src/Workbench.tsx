@@ -16,10 +16,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   GenUIRoot,
+  buildBundleRegistry,
   liveCardsRegistry,
   loadBundleRuntime,
-  overlayRegistry,
-  primitiveRegistry,
   seedState,
 } from "../../../adapters/react/src/index";
 import {
@@ -48,7 +47,6 @@ import {
   type StateReader,
 } from "./chrome";
 import { AGENT_PLAYLIST, isAgentTourComplete, nextAgentIndex } from "./agent";
-import { workbenchComponents } from "./profile/registry";
 
 interface HostedChromeRuntime {
   source: GenUIClient;
@@ -92,12 +90,11 @@ function createHostedChromeRuntime(): HostedChromeRuntime {
 export function Workbench() {
   const chrome = useMemo(() => createHostedChromeRuntime(), []);
   const inspect = useMemo(() => loadBundleRuntime(inspectBundle), []);
-  // The floor primitives plus the workbench's own capability views — the chrome and inspect bundles
-  // both render through this overlay (see ADR-0031).
-  const workbenchRegistry = useMemo(
-    () => overlayRegistry(primitiveRegistry, workbenchComponents),
-    []
-  );
+  // The chrome and inspect bundles are self-contained: each resolves every `alias:name` capability
+  // through its own manifest `externals` — floor primitives under `ui`, the workbench's own
+  // panelGroup/regionEditor views (attached as bundle components) under `wb` (from self).
+  const chromeRegistry = useMemo(() => buildBundleRegistry(chromeBundle), []);
+  const inspectRegistry = useMemo(() => buildBundleRegistry(inspectBundle), []);
   const [guest, setGuest] = useState<Session>(() => {
     const { spec, ctx, edits } = readInputs(chrome.seed);
     return buildSession(spec, ctx, liveCardsBinding, edits);
@@ -241,7 +238,7 @@ export function Workbench() {
           <h1>GenUI Workbench</h1>
           <span className="muted">declarative chrome · agent authoring</span>
         </header>
-        <GenUIRoot source={chrome.source} registry={workbenchRegistry} />
+        <GenUIRoot source={chrome.source} registry={chromeRegistry} />
       </aside>
 
       <main className="playground">
@@ -257,7 +254,7 @@ export function Workbench() {
       </main>
 
       <section className="artifacts">
-        <GenUIRoot source={inspect.controller} registry={workbenchRegistry} />
+        <GenUIRoot source={inspect.controller} registry={inspectRegistry} />
       </section>
     </div>
   );
