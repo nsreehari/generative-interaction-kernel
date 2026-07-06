@@ -31,7 +31,7 @@ import {
   readInputs,
 } from "./chrome";
 import { parseAuthoredSession } from "./export";
-import { AGENT_PLAYLIST, nextAgentIndex } from "./agent";
+import { AGENT_PLAYLIST, isAgentTourComplete, nextAgentIndex } from "./agent";
 import { workbenchRegistry } from "./profile/registry";
 
 export function Workbench() {
@@ -129,16 +129,27 @@ export function Workbench() {
   // GenUIClient over a transport instead of the in-process controller (same `emit` surface).
   useEffect(() => {
     const c = chrome.controller;
+    // Advance one beat. The tour is bounded: at the last beat `nextAgentIndex` returns null, so we
+    // emit `agentDone` (which stops the run and shows a "complete" state) instead of wrapping.
     const advance = () => {
       const next = nextAgentIndex(agentIndex.current);
+      if (next === null) {
+        void c.emit("chrome-root", "agentDone", {});
+        return;
+      }
       agentIndex.current = next;
       const step = AGENT_PLAYLIST[next];
       void c.emit("chrome-root", "importApply", authoredApplyPayload(step.authored));
       void c.emit("chrome-root", "agentAdvance", { step: next, label: step.label });
     };
     const onChange = () => {
+      const wasRunning = agentRunning.current;
       agentRunning.current = Boolean(chrome.state.get("workbench.agentRunning"));
       const running = agentRunning.current;
+      // A fresh Play on a finished tour replays from the top (reset so the next advance yields beat 0).
+      if (running && !wasRunning && isAgentTourComplete(agentIndex.current)) {
+        agentIndex.current = -1;
+      }
       const label = String(chrome.state.get("workbench.agentLabel") ?? "");
       setAgentView((prev) => (prev.running === running && prev.label === label ? prev : { running, label }));
       const seq = Number(chrome.state.get("workbench.agentStepSeq")) || 0;

@@ -38,7 +38,7 @@ function authored(
   };
 }
 
-/** A deterministic authoring tour the agent loops through so the demo is legible and repeatable. */
+/** A deterministic authoring tour the agent walks once per run so the demo is legible and repeatable. */
 export const AGENT_PLAYLIST: AgentStep[] = [
   { label: "Investigating an incident", authored: authored("investigate", "incident", "desktop") },
   { label: "Comparing vendor options", authored: authored("compare", "vendors", "desktop") },
@@ -54,7 +54,17 @@ export const AGENT_PLAYLIST: AgentStep[] = [
   },
 ];
 
-/** The next tour index, wrapping at the end so the agent runs indefinitely while playing. */
-export function nextAgentIndex(index: number): number {
-  return (index + 1) % AGENT_PLAYLIST.length;
+/**
+ * The next tour index, or `null` once the last beat has played. The tour is a bounded, one-pass run
+ * (not an endless loop): the caller stops when this returns `null` and lands on a "complete" state.
+ * Passing `-1` yields the first beat, so a finished tour can replay from the top by resetting to -1.
+ */
+export function nextAgentIndex(index: number): number | null {
+  const next = index + 1;
+  return next < AGENT_PLAYLIST.length ? next : null;
+}
+
+/** Whether `index` is the last beat of the tour (used to decide whether a fresh Play should replay). */
+export function isAgentTourComplete(index: number): boolean {
+  return index >= AGENT_PLAYLIST.length - 1;
 }

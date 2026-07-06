@@ -93,6 +93,12 @@ function chromeRoot(): DocNode {
         assignFrom("workbench.agentStep", "$event.step"),
         assignFrom("workbench.agentLabel", "$event.label"),
       ],
+      // The tour is a bounded one-pass run: when the last beat has played the bridge fires `agentDone`,
+      // which halts the run and shows a completion note. Pressing Play again replays from the top.
+      agentDone: [
+        assign("workbench.agentRunning", false),
+        assign("workbench.agentLabel", "Tour complete \u00b7 press Play to replay"),
+      ],
     },
     children: [
       node("panel", "interaction-panel", {
