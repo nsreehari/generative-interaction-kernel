@@ -128,4 +128,29 @@ ingest(document)                               ← TransportProvider
   → every step → ObservabilitySink
 ```
 
+## Application composition — bundles and the generic host
+
+The kernel runs one `document`; an *application* is more than one document, so the React adapter's
+"floor" adds a thin packaging layer **above** the kernel (it changes no kernel grammar, provider, or
+wire message). See [ADR-0030](decisions/ADR-0030-bundle-composition.md) and
+[ADR-0031](decisions/ADR-0031-per-bundle-registries.md).
+
+- **Bundle** — the unit of an app: `{ manifest, document, state?, effects?, components? }`. The
+  JSON-only subset `{ manifest, document, state? }` (a **SerializableBundle**) is movable as data;
+  `effects` (named Orchestrator handlers) and `components` (extra capability views) are the code side.
+- **One host** — `loadBundle` seeds state, builds the effect dispatcher, constructs the kernel, and
+  returns a controller; `BundleHost` renders it on the shared primitive registry. The console,
+  preview, and playground are all just bundles handed to this host.
+- **Composition** — `embed` is a leaf *capability* that mounts a whole bundle as a nested runtime,
+  either **inline** (a SerializableBundle bound from state, for runtime-built surfaces) or as a
+  **named app** (resolved from an `AppRegistry` the host publishes, carrying its native effects).
+  The same bundle runs identically as the outermost mount or as a nested leaf — there is no
+  privileged "app shell."
+- **Per-bundle registries** — a bundle renders on the **shared floor plus its own additive
+  overlay**: `overlayRegistry(floor, bundle.components)`, extras winning on collision, scoped to that
+  bundle (a nested bundle inherits the floor, not the parent's custom vocabulary). This lets a
+  custom-vocabulary app (e.g. the workbench chrome) be hosted anywhere while the floor stays
+  universal. The manifest's `extraCapabilities` and the registry's `components` declare the same
+  extra capability from the schema side and the drawing side.
+
 Continue to [03-protocol.md](03-protocol.md).
