@@ -40,19 +40,26 @@ public static class GenUIReactorViews
         var children = new List<Element>();
         if (Str(p.Node.Props, "title") is { } title)
         {
-            children.Add(TextBlock(title).Bold().FontSize(18));
+            children.Add(TextBlock(title).Bold().FontSize(18).Foreground(GenUITheme.PrimaryText));
         }
 
         children.AddRange(p.Children);
         // The board is the app's main content region: mark it so screen readers can jump to it.
-        return VStack(12, children.ToArray()).Margin(16).Landmark(AutomationLandmarkType.Main);
+        // Fluent surface + stroke so it reads as a themed card and adapts on Light <-> Dark.
+        return VStack(12, children.ToArray())
+            .Padding(16)
+            .Margin(16)
+            .Background(GenUITheme.Surface)
+            .WithBorder(GenUITheme.Stroke)
+            .CornerRadius(8)
+            .Landmark(AutomationLandmarkType.Main);
     }
 
     // Leaf: a labelled value read from the node's props (label required, value optional).
     private static Element Metric(CapabilityViewProps<Element> p) =>
         VStack(2,
-            TextBlock(Str(p.Node.Props, "label") ?? string.Empty).FontSize(12).Opacity(0.7),
-            TextBlock(Str(p.Node.Props, "value") ?? "\u2014").Bold().FontSize(20));
+            TextBlock(Str(p.Node.Props, "label") ?? string.Empty).FontSize(12).Foreground(GenUITheme.MutedText),
+            TextBlock(Str(p.Node.Props, "value") ?? "\u2014").Bold().FontSize(20).Foreground(GenUITheme.PrimaryText));
 
     // Leaf: a button whose tap round-trips through the node-bound emit.
     private static Element Actions(CapabilityViewProps<Element> p)
@@ -73,7 +80,7 @@ public static class GenUIReactorViews
         if (columns.Length > 0)
         {
             rowElements.Add(HStack(12, columns
-                .Select(c => (Element)TextBlock(c).Bold().FontSize(12).Opacity(0.7))
+                .Select(c => (Element)TextBlock(c).Bold().FontSize(12).Foreground(GenUITheme.MutedText))
                 .ToArray()));
         }
 
@@ -82,8 +89,8 @@ public static class GenUIReactorViews
             var row = rows[i] as JsonObject;
             var index = i;
             Element[] cells = columns.Length > 0
-                ? columns.Select(col => (Element)TextBlock(Str(row, col) ?? string.Empty).FontSize(13)).ToArray()
-                : new[] { (Element)TextBlock(row?.ToJsonString() ?? string.Empty).FontSize(13) };
+                ? columns.Select(col => (Element)TextBlock(Str(row, col) ?? string.Empty).FontSize(13).Foreground(GenUITheme.PrimaryText)).ToArray()
+                : new[] { (Element)TextBlock(row?.ToJsonString() ?? string.Empty).FontSize(13).Foreground(GenUITheme.PrimaryText) };
 
             rowElements.Add(Button(
                 HStack(12, cells),
@@ -98,7 +105,7 @@ public static class GenUIReactorViews
     // marker, still carrying any children so a container-shaped fallback keeps its subtree.
     private static Element Fallback(CapabilityViewProps<Element> p)
     {
-        Element marker = TextBlock($"[{p.Node.Capability}]").FontSize(12).Opacity(0.5);
+        Element marker = TextBlock($"[{p.Node.Capability}]").FontSize(12).Foreground(GenUITheme.MutedText);
         return p.Children.Count == 0
             ? marker
             : VStack(8, new[] { marker }.Concat(p.Children).ToArray());
