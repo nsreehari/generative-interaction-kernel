@@ -54,7 +54,7 @@
             "input"
           ]
         },
-        "facetList": {
+        "list": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -394,8 +394,15 @@
                     }
                   },
                   {
-                    "capability": "facetList",
+                    "capability": "list",
                     "id": "interaction-facets",
+                    "props": {
+                      "static": true,
+                      "primaryKey": "name",
+                      "secondaryKey": "role",
+                      "valueKey": "tag",
+                      "emptyText": "No facets."
+                    },
                     "edges": {
                       "read": {
                         "items": "workbench.facets"
@@ -849,13 +856,19 @@
                     }
                   },
                   {
-                    "capability": "stepList",
+                    "capability": "list",
                     "id": "agent-steps",
+                    "props": {
+                      "static": true,
+                      "ordered": true,
+                      "idKey": "index",
+                      "primaryKey": "label",
+                      "emptyText": "No steps."
+                    },
                     "edges": {
                       "read": {
                         "items": "workbench.agentPlan",
-                        "active": "workbench.agentStep",
-                        "running": "workbench.agentRunning"
+                        "selectedId": "workbench.agentStep"
                       }
                     }
                   }
