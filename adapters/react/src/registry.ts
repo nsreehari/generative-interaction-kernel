@@ -27,3 +27,18 @@ export function createRegistry(
     fallback,
   };
 }
+
+/**
+ * Layer a bundle's EXTRA capabilities on top of a frozen base (the shared floor). The floor stays
+ * the single source of the universal vocabulary; a bundle ships only its deltas. Extras win on key
+ * collision (so an app may specialize a floor control), and the base fills in everything else.
+ */
+export function overlayRegistry(
+  base: ComponentRegistry,
+  extra: Record<string, CapabilityView>
+): ComponentRegistry {
+  return {
+    get: (capability) => extra[capability] ?? base.get(capability),
+    fallback: base.fallback,
+  };
+}
