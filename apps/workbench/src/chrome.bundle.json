@@ -404,8 +404,8 @@
                       "emptyText": "No facets."
                     },
                     "edges": {
-                      "read": {
-                        "items": "workbench.facets"
+                      "readExpr": {
+                        "items": "[workbench.facets.{ \"name\": name, \"role\": role, \"tag\": required ? \"required\" : \"optional\" }]"
                       }
                     }
                   }

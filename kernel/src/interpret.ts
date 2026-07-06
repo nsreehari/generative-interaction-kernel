@@ -34,6 +34,14 @@ export async function resolveNode(node: DocNode, ctx: InterpretContext): Promise
       props[prop] = ctx.store.get(path);
     }
   }
+  if (node.edges?.readExpr) {
+    // Value position (shaped read): full provider, like derive / assign-from — NOT the safe
+    // predicate subset the gate uses. Applied after `read`, so an expression may reshape a
+    // plain-read prop of the same name.
+    for (const [prop, expr] of Object.entries(node.edges.readExpr)) {
+      props[prop] = await ctx.expr.eval(expr, data);
+    }
+  }
 
   const fallback = !ctx.registry.has(node.capability);
   ctx.sink?.({
