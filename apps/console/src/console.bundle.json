@@ -18,7 +18,7 @@
         "emit"
       ],
       "capabilities": {
-        "screen": {
+        "ui:screen": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -27,7 +27,7 @@
             "children"
           ]
         },
-        "row": {
+        "ui:row": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -36,7 +36,7 @@
             "children"
           ]
         },
-        "col": {
+        "ui:col": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -45,7 +45,7 @@
             "children"
           ]
         },
-        "panel": {
+        "ui:panel": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -54,37 +54,37 @@
             "children"
           ]
         },
-        "text": {
+        "ui:text": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           }
         },
-        "heading": {
+        "ui:heading": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           }
         },
-        "note": {
+        "ui:note": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           }
         },
-        "badge": {
+        "ui:badge": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           }
         },
-        "metric": {
+        "ui:metric": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           }
         },
-        "list": {
+        "ui:list": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -93,7 +93,7 @@
             "select"
           ]
         },
-        "table": {
+        "ui:table": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -102,7 +102,7 @@
             "rowSelect"
           ]
         },
-        "field": {
+        "ui:field": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -111,7 +111,7 @@
             "input"
           ]
         },
-        "textarea": {
+        "ui:textarea": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -120,7 +120,7 @@
             "input"
           ]
         },
-        "select": {
+        "ui:select": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -129,7 +129,7 @@
             "change"
           ]
         },
-        "button": {
+        "ui:button": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -138,7 +138,7 @@
             "press"
           ]
         },
-        "tabBar": {
+        "ui:tabBar": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -147,7 +147,7 @@
             "select"
           ]
         },
-        "chips": {
+        "ui:chips": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -156,12 +156,28 @@
             "remove"
           ]
         },
-        "embed": {
+        "ui:embed": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           }
         }
+      },
+      "externals": {
+        "components": {
+          "ui": {
+            "from": "floor"
+          }
+        },
+        "effects": [
+          "addCapability",
+          "createProfile",
+          "loadProfile",
+          "promoteProfile",
+          "removeCapability",
+          "saveDraft",
+          "validateProfile"
+        ]
       }
     }
   },
@@ -170,7 +186,7 @@
     "type": "document",
     "payload": {
       "root": {
-        "capability": "screen",
+        "capability": "ui:screen",
         "id": "console-root",
         "props": {
           "title": "GenUI Profile Console",
@@ -179,7 +195,7 @@
         "edges": {
           "children": [
             {
-              "capability": "row",
+              "capability": "ui:row",
               "id": "console-layout",
               "props": {
                 "variant": "split"
@@ -187,7 +203,7 @@
               "edges": {
                 "children": [
                   {
-                    "capability": "panel",
+                    "capability": "ui:panel",
                     "id": "list-rail",
                     "props": {
                       "title": "Profiles",
@@ -196,7 +212,7 @@
                     "edges": {
                       "children": [
                         {
-                          "capability": "list",
+                          "capability": "ui:list",
                           "id": "profile-list",
                           "props": {
                             "idKey": "id",
@@ -222,7 +238,7 @@
                           }
                         },
                         {
-                          "capability": "panel",
+                          "capability": "ui:panel",
                           "id": "create-panel",
                           "props": {
                             "title": "New profile",
@@ -231,7 +247,7 @@
                           "edges": {
                             "children": [
                               {
-                                "capability": "field",
+                                "capability": "ui:field",
                                 "id": "new-name",
                                 "props": {
                                   "label": "Name",
@@ -255,7 +271,7 @@
                                 }
                               },
                               {
-                                "capability": "button",
+                                "capability": "ui:button",
                                 "id": "create-btn",
                                 "props": {
                                   "label": "Create profile",
@@ -281,7 +297,7 @@
                     }
                   },
                   {
-                    "capability": "panel",
+                    "capability": "ui:panel",
                     "id": "detail",
                     "props": {
                       "title": "Editor",
@@ -290,7 +306,7 @@
                     "edges": {
                       "children": [
                         {
-                          "capability": "panel",
+                          "capability": "ui:panel",
                           "id": "empty-state",
                           "props": {
                             "variant": "tab"
@@ -299,7 +315,7 @@
                             "gate": "console.selectedId = ''",
                             "children": [
                               {
-                                "capability": "note",
+                                "capability": "ui:note",
                                 "id": "empty-hint",
                                 "props": {
                                   "tone": "muted",
@@ -307,7 +323,7 @@
                                 }
                               },
                               {
-                                "capability": "embed",
+                                "capability": "ui:embed",
                                 "id": "scratch-playground",
                                 "props": {
                                   "app": "playground",
@@ -318,7 +334,7 @@
                           }
                         },
                         {
-                          "capability": "panel",
+                          "capability": "ui:panel",
                           "id": "detail-body",
                           "props": {
                             "variant": "detail-body"
@@ -327,7 +343,7 @@
                             "gate": "console.selectedId != ''",
                             "children": [
                               {
-                                "capability": "tabBar",
+                                "capability": "ui:tabBar",
                                 "id": "detail-tabs",
                                 "props": {
                                   "options": [
@@ -371,7 +387,7 @@
                                 }
                               },
                               {
-                                "capability": "panel",
+                                "capability": "ui:panel",
                                 "id": "editor-tab",
                                 "props": {
                                   "variant": "tab"
@@ -380,7 +396,7 @@
                                   "gate": "console.tab = 'editor'",
                                   "children": [
                                     {
-                                      "capability": "field",
+                                      "capability": "ui:field",
                                       "id": "draft-name",
                                       "props": {
                                         "label": "Name"
@@ -403,7 +419,7 @@
                                       }
                                     },
                                     {
-                                      "capability": "textarea",
+                                      "capability": "ui:textarea",
                                       "id": "draft-description",
                                       "props": {
                                         "label": "Description"
@@ -426,7 +442,7 @@
                                       }
                                     },
                                     {
-                                      "capability": "panel",
+                                      "capability": "ui:panel",
                                       "id": "cap-panel",
                                       "props": {
                                         "title": "Capabilities",
@@ -435,7 +451,7 @@
                                       "edges": {
                                         "children": [
                                           {
-                                            "capability": "chips",
+                                            "capability": "ui:chips",
                                             "id": "cap-editor",
                                             "props": {
                                               "emptyText": "No capabilities yet."
@@ -457,7 +473,7 @@
                                             }
                                           },
                                           {
-                                            "capability": "field",
+                                            "capability": "ui:field",
                                             "id": "new-cap",
                                             "props": {
                                               "label": "Add capability",
@@ -481,7 +497,7 @@
                                             }
                                           },
                                           {
-                                            "capability": "button",
+                                            "capability": "ui:button",
                                             "id": "add-cap-btn",
                                             "props": {
                                               "label": "Add",
@@ -504,7 +520,7 @@
                                       }
                                     },
                                     {
-                                      "capability": "panel",
+                                      "capability": "ui:panel",
                                       "id": "editor-actions",
                                       "props": {
                                         "variant": "actions"
@@ -512,7 +528,7 @@
                                       "edges": {
                                         "children": [
                                           {
-                                            "capability": "button",
+                                            "capability": "ui:button",
                                             "id": "save-btn",
                                             "props": {
                                               "label": "Save draft",
@@ -532,7 +548,7 @@
                                             }
                                           },
                                           {
-                                            "capability": "button",
+                                            "capability": "ui:button",
                                             "id": "validate-btn",
                                             "props": {
                                               "label": "Validate",
@@ -552,7 +568,7 @@
                                             }
                                           },
                                           {
-                                            "capability": "button",
+                                            "capability": "ui:button",
                                             "id": "promote-btn",
                                             "props": {
                                               "label": "Promote to active",
@@ -578,7 +594,7 @@
                                 }
                               },
                               {
-                                "capability": "panel",
+                                "capability": "ui:panel",
                                 "id": "validation-tab",
                                 "props": {
                                   "variant": "tab"
@@ -587,7 +603,7 @@
                                   "gate": "console.tab = 'validation'",
                                   "children": [
                                     {
-                                      "capability": "panel",
+                                      "capability": "ui:panel",
                                       "id": "validation-status",
                                       "props": {
                                         "title": "Status",
@@ -596,7 +612,7 @@
                                       "edges": {
                                         "children": [
                                           {
-                                            "capability": "text",
+                                            "capability": "ui:text",
                                             "id": "validation-status-text",
                                             "props": {
                                               "variant": "code"
@@ -611,7 +627,7 @@
                                       }
                                     },
                                     {
-                                      "capability": "panel",
+                                      "capability": "ui:panel",
                                       "id": "validation-errors",
                                       "props": {
                                         "title": "Errors",
@@ -620,7 +636,7 @@
                                       "edges": {
                                         "children": [
                                           {
-                                            "capability": "list",
+                                            "capability": "ui:list",
                                             "id": "validation-error-list",
                                             "props": {
                                               "emptyText": "No errors."
@@ -635,7 +651,7 @@
                                       }
                                     },
                                     {
-                                      "capability": "panel",
+                                      "capability": "ui:panel",
                                       "id": "validation-warnings",
                                       "props": {
                                         "title": "Warnings",
@@ -644,7 +660,7 @@
                                       "edges": {
                                         "children": [
                                           {
-                                            "capability": "list",
+                                            "capability": "ui:list",
                                             "id": "validation-warning-list",
                                             "props": {
                                               "emptyText": "No warnings."
@@ -662,7 +678,7 @@
                                 }
                               },
                               {
-                                "capability": "panel",
+                                "capability": "ui:panel",
                                 "id": "preview-tab",
                                 "props": {
                                   "variant": "tab"
@@ -671,7 +687,7 @@
                                   "gate": "console.tab = 'preview'",
                                   "children": [
                                     {
-                                      "capability": "embed",
+                                      "capability": "ui:embed",
                                       "id": "preview-mount",
                                       "props": {
                                         "emptyText": "Nothing to preview yet."
@@ -686,7 +702,7 @@
                                 }
                               },
                               {
-                                "capability": "panel",
+                                "capability": "ui:panel",
                                 "id": "playground-tab",
                                 "props": {
                                   "variant": "tab"
@@ -695,7 +711,7 @@
                                   "gate": "console.tab = 'playground'",
                                   "children": [
                                     {
-                                      "capability": "embed",
+                                      "capability": "ui:embed",
                                       "id": "playground-mount",
                                       "props": {
                                         "emptyText": "Nothing to play with yet."
@@ -710,7 +726,7 @@
                                 }
                               },
                               {
-                                "capability": "panel",
+                                "capability": "ui:panel",
                                 "id": "versions-tab",
                                 "props": {
                                   "variant": "tab"
@@ -719,7 +735,7 @@
                                   "gate": "console.tab = 'versions'",
                                   "children": [
                                     {
-                                      "capability": "table",
+                                      "capability": "ui:table",
                                       "id": "version-list",
                                       "props": {
                                         "idKey": "version",
@@ -756,7 +772,7 @@
                           }
                         },
                         {
-                          "capability": "note",
+                          "capability": "ui:note",
                           "id": "toast",
                           "props": {
                             "tone": "info"

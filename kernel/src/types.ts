@@ -111,12 +111,36 @@ export interface OrchestratorResult {
   events?: GupEvent[];
 }
 
+/**
+ * A component import: binds a local alias to a component provider, so a document can reference a
+ * capability as `alias:name`. Nothing is ambient — even the shared floor must be imported. `use`
+ * optionally restricts (and documents) the borrowed subset; omitted means the whole provider.
+ */
+export interface ComponentImport {
+  from: string; // provider name: "floor" | "self" | another bundle's name
+  use?: string[]; // optional whitelist of capability names borrowed under this alias
+}
+
+/**
+ * The bundle's outward dependency contract: everything it needs from the host to run. Grouping
+ * these in one place makes the "what does this bundle require?" question answerable by reading a
+ * single object (rather than inferring effects from the document tree or hunting for imports).
+ */
+export interface ExternalsSpec {
+  /** Alias -> component provider binding. A capability is referenced as `alias:name`. */
+  components?: Record<string, ComponentImport>;
+  /** Names of effect handlers the host must supply for this bundle's `invoke` actions. */
+  effects?: string[];
+}
+
 export interface ManifestPayload {
   version: string;
   expression?: string;
   namespaces?: string[];
   actions?: string[];
   capabilities: Record<string, CapabilityDescriptor>;
+  /** Outward dependency contract: imported component providers + required external effect handlers. */
+  externals?: ExternalsSpec;
 }
 
 export interface TraceEvent {
