@@ -31,7 +31,7 @@ export class SseClientTransport implements TransportProvider {
   constructor(baseUrl: string, opts: SseClientTransportOptions = {}) {
     this.base = baseUrl.replace(/\/$/, "");
     this.path = opts.path ?? "/gup";
-    this.fetchImpl = opts.fetch ?? fetch;
+    this.fetchImpl = opts.fetch ?? fetch.bind(globalThis);
     this.fromRev = opts.fromRev;
     this.sessionReady = new Promise((resolve) => (this.resolveSession = resolve));
   }
