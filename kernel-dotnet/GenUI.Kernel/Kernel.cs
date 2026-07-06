@@ -52,6 +52,26 @@ public sealed class Kernel
         return new Patch(_rev, ops);
     }
 
+    /// <summary>Seed machine states (via <see cref="Init"/>) and return the FULL current state as a
+    /// baseline patch (rev 0). Unlike <see cref="Init"/>, this carries every namespace, so a fresh
+    /// remote client can reconstruct the complete state replica from one patch.</summary>
+    public Patch Baseline()
+    {
+        Init();
+        return SnapshotPatch();
+    }
+
+    /// <summary>The full current state as a patch at the CURRENT rev, without re-seeding machine
+    /// states. Used to re-onboard a client mid-session (reconnect / late join) without clobbering
+    /// live machine state the way <see cref="Init"/> would.</summary>
+    public Patch SnapshotPatch()
+    {
+        var ops = new List<PatchOp>();
+        foreach (var (ns, value) in _store.Snapshot())
+            ops.Add(new PatchOp("set", ns, value?.DeepClone()));
+        return new Patch(_rev, ops);
+    }
+
     /// <summary>Reduce an event to a patch, run any resulting orchestrator effects (and the
     /// follow-up events they produce), apply everything, and advance the revision by one.
     /// One dispatch = one rev, regardless of how many effects/events it fans out to.</summary>
