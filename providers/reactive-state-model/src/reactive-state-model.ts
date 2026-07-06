@@ -19,6 +19,7 @@
 import { getPath, applyOp, type StateModel, type Json, type PatchOp } from "../../../kernel/src/index";
 import { createReactiveGraph, type ReactiveGraph } from "../../vendor/continuous-event-graph/reactive.js";
 import type { GraphConfig, TaskConfig } from "../../vendor/continuous-event-graph/types.js";
+import { extractDeps } from "./jsonata-deps.js";
 
 /** One derived cell: `target = expr(deps...)`. `expr` is evaluated against a scope of the deps. */
 export interface DeriveEdge {
@@ -39,6 +40,19 @@ export interface ReactiveStateModelOptions {
   onChange?: () => void;
 }
 
+/**
+ * A declarative `computed` map (`cell → expression`) plus the runtime knobs. The dependency set of
+ * each cell is INFERRED from its expression (see `ReactiveStateModel.fromComputed`), so an author
+ * declares only *what* a cell equals, never *when* to recompute it.
+ */
+export interface ComputedOptions {
+  evaluate: Evaluate;
+  initial?: Record<string, Json>;
+  onChange?: () => void;
+  /** Override the dependency extractor (defaults to the JSONata AST walk). */
+  extractDeps?: (expr: string) => string[];
+}
+
 export class ReactiveStateModel implements StateModel {
   private readonly graph: ReactiveGraph;
   private readonly evaluate: Evaluate;
@@ -50,6 +64,22 @@ export class ReactiveStateModel implements StateModel {
   private baseValues: Record<string, Json> = {};
   private derivedValues: Record<string, Json> = {};
   private lastSig = "";
+
+  /**
+   * Build a reactive store from a declarative `computed` map (`{ target: expr }`) — the ADR-0033
+   * amendment's construct for standing derivations. Each cell's dependencies are inferred from its
+   * expression's parse tree (JSONata `path` nodes); a self-reference is dropped. This is the surface
+   * humans and AI agents author against: declare the relationship, not the recompute timing.
+   */
+  static fromComputed(computed: Record<string, string>, opts: ComputedOptions): ReactiveStateModel {
+    const extract = opts.extractDeps ?? extractDeps;
+    const edges: DeriveEdge[] = Object.entries(computed).map(([target, expr]) => ({
+      target,
+      expr,
+      deps: extract(expr).filter((d) => d !== target),
+    }));
+    return new ReactiveStateModel({ edges, evaluate: opts.evaluate, initial: opts.initial, onChange: opts.onChange });
+  }
 
   constructor(opts: ReactiveStateModelOptions) {
     this.evaluate = opts.evaluate;

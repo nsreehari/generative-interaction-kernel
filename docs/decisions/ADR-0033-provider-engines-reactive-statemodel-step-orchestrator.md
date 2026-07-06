@@ -150,3 +150,51 @@ is the same discipline ADR-0027 chose for JSONata.
   a focused test proving that a base-cell `apply` cascades to a derived cell and that an upstream change
   re-derives — the first honest use of a yaml-flow engine inside genui, with zero kernel changes. The
   `StepOrchestrator` adapter is the tracked next step.
+
+## Amendment (2026-07-07): a declarative `computed` construct for standing derivations
+
+Wiring the reactive `StateModel` surfaced a naming/semantics problem in the existing grammar: the
+`derive` **action** (`{do:"derive", target, args:{expr}}`, authored inside an `on` handler) is used
+for two genuinely different concepts:
+
+- **(A) Standing invariants** — `total = a + b`, `fullName = first & " " & last`. These are *continuous
+  relationships* that should hold at all times, independent of which event fired. Living inside an `on`
+  handler is incidental — event-scoping carries no information here; it is migration residue. Their
+  deps are inferable from the expression, and the declarative form is **analyzable** (cycle detection,
+  undefined-cell detection, order-independence) in a way an imperative action sequence is not.
+
+- **(B) Event-bound computed writes** — capturing an event *payload* (`x = event.payload.x`) or an
+  intentional *freeze/snapshot* (on "place order", `checkoutTotal = cart.sum`, which must then stop
+  tracking `cart.sum`). These genuinely need an event; they are a *write triggered by a moment*, not a
+  standing relationship — semantically an `assign`-from-expression, not a derived cell.
+
+**Decision:** introduce a first-class **declarative `computed` construct** — a map of `cell → expression`
+— for concept (A). The `ReactiveStateModel` consumes it (via `ReactiveStateModel.fromComputed`), inferring
+each cell's dependencies from the expression's parse tree (JSONata AST `path` nodes), so authors — and AI
+agents — declare *what* a cell equals, never *when* to recompute it. Concept (B) stays an event-scoped
+`assign`/`derive` action; it is **not** auto-lifted, because that would silently change on-event semantics
+into on-any-dependency-change. The single overloaded `derive` verb was the only reason blanket auto-lifting
+looked unsafe; a distinct construct removes the ambiguity instead of guessing.
+
+**Naming — `computed`, not `derived`.** `computed` is the established term of art (Vue/MobX/Knockout) for
+a value that is a standing function of other state, so both humans and agents read the intent immediately;
+and it deliberately does **not** share a root with the imperative `derive` action, keeping the A/B split
+legible in the grammar (`computed:` = standing cell; `derive`/`assign` = event action). `formulas` (a
+spreadsheet flavor that pairs with the adapter's "cells" language) was the runner-up.
+
+**This stays inside ADR-0001 / ADR-0016.** The *declaration* lives in provider-level configuration (and,
+later, optionally the authored document); the *incremental cascade engine* stays in the provider. The
+kernel remains a pure interpreter that reads a computed cell's value through an ordinary `read` edge and
+never learns *how* it became computed. "Make derivation declarative" and "keep the kernel closed-grammar"
+are therefore not in tension — the provider seam is exactly where a `computed` construct belongs.
+
+**Why AI-authoring is a better fit here.** A declarative `computed` map is checkable output, not trusted
+output: deps are derived mechanically from the expression, cycles and dangling references are detectable,
+and the result is order-independent and idempotent. That removes the "did you re-derive `total` in *every*
+handler that touches `a`?" burden — precisely the class of bug both humans and agents make in the
+imperative form.
+
+*Landed with this amendment:* a JSONata dependency extractor (AST `path`-node walk, mirroring the
+`denyUnsafe` walker in `kernel/src/providers.ts`) and `ReactiveStateModel.fromComputed(computed, …)`,
+with tests. Cycle detection over a `computed` graph is a natural follow-up the declarative form now makes
+possible.
