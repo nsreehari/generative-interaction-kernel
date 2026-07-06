@@ -26,11 +26,11 @@ export interface PlaygroundSpec {
 const PLAYGROUND_VERSION = "genui-playground/1.0";
 
 function previewCard(cap: string): DocNode {
-  return node("panel", `card-${cap}`, {
+  return node("ui:panel", `card-${cap}`, {
     props: { variant: "preview-card" },
     children: [
-      node("text", `cap-${cap}`, { props: { value: cap, variant: "code" } }),
-      node("text", `slot-${cap}`, { props: { value: "rendered region", variant: "caption" } }),
+      node("ui:text", `cap-${cap}`, { props: { value: cap, variant: "code" } }),
+      node("ui:text", `slot-${cap}`, { props: { value: "rendered region", variant: "caption" } }),
     ],
   });
 }
@@ -38,14 +38,14 @@ function previewCard(cap: string): DocNode {
 function interactiveCard(cap: string): DocNode {
   // The card's button selects this capability by assigning a LITERAL value into the nested bundle's
   // own `pg.selected` — a UI-only edit, so it needs no effect handler and stays pure JSON.
-  return node("panel", `card-${cap}`, {
+  return node("ui:panel", `card-${cap}`, {
     props: { variant: "preview-card" },
     children: [
-      node("button", `pick-${cap}`, {
+      node("ui:button", `pick-${cap}`, {
         props: { label: cap, tone: "default" },
         on: { press: [assign("pg.selected", cap)] },
       }),
-      node("text", `slot-${cap}`, { props: { value: "click to select", variant: "caption" } }),
+      node("ui:text", `slot-${cap}`, { props: { value: "click to select", variant: "caption" } }),
     ],
   });
 }
@@ -65,7 +65,7 @@ export function buildPlaygroundBundle(spec: PlaygroundSpec): SerializableBundle 
     caps.length > 0
       ? caps.map((cap) => (interactive ? interactiveCard(cap) : previewCard(cap)))
       : [
-          node("note", "empty", {
+          node("ui:note", "empty", {
             props: {
               value: "No capabilities yet — add some in the Editor tab.",
               tone: "muted",
@@ -78,7 +78,7 @@ export function buildPlaygroundBundle(spec: PlaygroundSpec): SerializableBundle 
     // A footer that reflects the nested bundle's own selection state (value read, not inlined into
     // an expression — safe for any capability string), shown only once something is selected.
     children.push(
-      node("note", "selection", {
+      node("ui:note", "selection", {
         props: { tone: "info" },
         read: { value: "pg.selected" },
         gate: "pg.selected != ''",
@@ -86,7 +86,7 @@ export function buildPlaygroundBundle(spec: PlaygroundSpec): SerializableBundle 
     );
   }
 
-  const root = node("panel", "preview-root", {
+  const root = node("ui:panel", "preview-root", {
     props: { variant: "preview-board", title: spec.name || "Untitled profile" },
     children,
   });
