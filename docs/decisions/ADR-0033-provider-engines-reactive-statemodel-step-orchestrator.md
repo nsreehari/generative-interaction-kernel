@@ -51,6 +51,20 @@ verbatim under a new top-level `providers/` tree, mirroring ADR-0027's vendoring
   base cells and pushes graph events; the engine's dependency cascade recomputes **only** affected
   derived cells. The kernel is untouched — this is a drop-in `store` for `createClient({ store })`.
 
+  - **Run the engine in `dependency-mode`, never `eligibility-mode` — this is a correctness
+    requirement, not a tuning choice.** The reactive engine offers two execution modes.
+    *dependency-mode* ("execute **all** eligible tasks", deterministic forward dataflow) is the only
+    mode compatible with a `StateModel`: derived state has exactly one correct value per input
+    (`total = a + b` is always `a + b`), a single producer per cell (no conflicts to resolve), and must
+    recompute **every** affected dependent. *eligibility-mode* — the exploratory graph — adds goal-directed
+    **selection among competing candidate tasks** (`ConflictStrategy`: priority / cost / resource /
+    round-robin) and can **stop early** on `goal-reached`; applied to derived state it would be
+    non-deterministic, non-confluent, and could leave cells **stale**. The adapter therefore hard-codes
+    `execution_mode: "dependency-mode"` (paired with `refreshStrategy: "data-changed"`, which supplies
+    the incremental "skip dependents whose inputs didn't move" behavior). **eligibility-mode belongs to a
+    different provider** — a future agentic Planner/Source seam that *selects* actions toward a goal —
+    not to the authoritative store. The engine's mode split thus mirrors the provider split.
+
 - **StepMachine → an `Orchestrator` provider.** A `StepOrchestrator` maps a genui `invoke` effect to a
   `StepFlowConfig` run over the vendored `StepMachine` + an in-memory store, giving `invoke` durable,
   branching, retryable, resumable semantics (the ADR-0009 effect seam, made real). *(Adapter is a
