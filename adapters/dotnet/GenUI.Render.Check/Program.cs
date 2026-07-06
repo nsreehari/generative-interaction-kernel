@@ -121,6 +121,54 @@ checker.Assert(refreshCount >= 2, "subscriber re-rendered after the dispatch");
 var echoAfter = Child(ui!, "echo");
 checker.Assert(echoAfter!.Props["text"]?.GetValue<bool>() == true, "echo reflects ui.clicked after the click");
 
+// ---- Bundle loader (mirror of the React floor's bundle.ts) --------------------------------
+// A bundle is { manifest, document, state }. FromJson builds it, LoadBundle seeds the store from
+// the manifest namespaces + seed values and stands up a controller — the same unit the Reactor
+// BundleHost runs. Seeding ui.clicked=true up front proves the read edge observes seeded state.
+const string BundleJson = """
+{
+  "manifest": {
+    "type": "manifest",
+    "payload": { "namespaces": ["ui"], "capabilities": { "board": {}, "label": {} } }
+  },
+  "document": {
+    "type": "document",
+    "payload": {
+      "root": {
+        "capability": "board",
+        "id": "root",
+        "edges": { "children": [
+          { "capability": "label", "id": "echo", "edges": { "read": { "text": "ui.clicked" } } }
+        ] }
+      }
+    }
+  },
+  "state": { "ui": { "clicked": true } }
+}
+""";
+
+var bundle = BundleLoader.FromJson(JsonNode.Parse(BundleJson)!.AsObject());
+var bundleController = BundleLoader.LoadBundle(bundle);
+RenderRecord? bundleUi = null;
+bundleController.Subscribe(tree => bundleUi = Renderer.Render(tree, registry, emit));
+bundleController.Start();
+
+checker.Assert(bundleUi is not null && bundleUi.View == "board", "bundle root renders through the loader");
+var bundleEcho = Child(bundleUi!, "echo");
+checker.Assert(bundleEcho?.Props["text"]?.GetValue<bool>() == true, "bundle seed state is applied before first render");
+
+var missingDocRejected = false;
+try
+{
+    BundleLoader.FromJson(JsonNode.Parse("""{ "manifest": { "type": "manifest", "payload": {} } }""")!.AsObject());
+}
+catch (ArgumentException)
+{
+    missingDocRejected = true;
+}
+
+checker.Assert(missingDocRejected, "bundle without a document is rejected at the boundary");
+
 return checker.Report();
 
 static RenderRecord? Child(RenderRecord parent, string id)
