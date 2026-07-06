@@ -204,24 +204,30 @@ export function lowerLiveCardsBoard(board: LiveCardsBoard): InteractionSpec[] {
 
 /**
  * The live-cards profile's presentation binding: maps facet ROLES to live-cards kernel
- * capabilities (bind once per role, not per facet). Roles with no mapping (`graph`, `form`)
- * fall back to the region name as the capability and render as graceful fallback nodes —
- * the forward-compatible path for facets a profile hasn't implemented yet.
+ * capabilities (bind once per role, not per facet). The one remaining unmapped role (`graph`)
+ * falls back to the region name as the capability and renders as a graceful fallback node —
+ * the forward-compatible path for a facet the profile hasn't implemented yet.
+ *
+ * Text/status/form roles bind to their OWN capabilities (narrative/badge/form) rather than
+ * collapsing onto metric: a prose narrative, a status badge, and a data-entry form are distinct
+ * surfaces in the demo-boards vocabulary, and flattening them to `metric` was lossy. `summary`
+ * stays on `metric` — a review/explore headline is a KPI-style figure.
  */
 export const liveCardsBinding: PresentationBinding = {
   container: "board",
   roleCapability: {
     summary: "metric",
     metrics: "metric",
-    status: "metric",
-    narrative: "metric",
-    recommendation: "metric",
+    status: "badge",
+    narrative: "narrative",
+    recommendation: "narrative",
     collection: "table",
     detail: "table",
     timeline: "table",
     comparison: "table",
+    form: "form",
     actions: "actions",
-    // `graph` and `form` intentionally unmapped -> graceful fallback.
+    // `graph` intentionally unmapped -> graceful fallback (no chart capability yet).
   },
   regionSelectEvent: {
     detail: "rowSelect",
@@ -236,12 +242,16 @@ export const liveCardsBinding: PresentationBinding = {
 };
 
 /** The live-cards capability descriptors the compiler consults for the read-edge prop
- * (metric -> `value`, table -> `rows`), so bound facet data lands on the prop each capability
- * actually reads. */
+ * (metric -> `value`, narrative -> `text`, badge -> `value`, table -> `rows`), so bound facet
+ * data lands on the prop each capability actually reads. `form` is a write surface (no bound
+ * read); it emits `submit`. */
 export const liveCardsCapabilities: Record<string, CapabilityDescriptor> = {
   board: { slots: ["children"] },
   metric: { dataProp: "value" },
+  narrative: { dataProp: "text" },
+  badge: { dataProp: "value" },
   table: { dataProp: "rows", emits: ["rowSelect"] },
+  form: { emits: ["submit"] },
   actions: { emits: ["tap"] },
 };
 

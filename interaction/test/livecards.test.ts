@@ -136,3 +136,61 @@ test("compileLiveCardsBoard runs the whole board through the pipeline", () => {
     assert.ok((document.root.edges?.children?.length ?? 0) > 0, "the board root has region children");
   }
 });
+
+test("text/status/form roles bind to their own capabilities (not collapsed onto metric)", async () => {
+  const ctx: PresentationContext = { surface: "desktop" };
+
+  // monitor: status -> badge (was metric), metrics -> metric.
+  const dominance = cardToInteraction(card("dominance"));
+  const dMsg = lowerToDocument(
+    (s) => compileInteraction(s, ctx, liveCardsBinding, undefined, liveCardsCapabilities),
+    dominance
+  );
+  const dState = new InMemoryStateModel(manifestPayload.namespaces ?? []);
+  dState.apply([
+    { op: "set", path: "computed_values.top_share", value: 0.62 },
+    { op: "set", path: "computed_values.dominance", value: "dominant" },
+  ]);
+  const dk = new Kernel(manifest, dMsg, { state: dState });
+  dk.init();
+  const dResolved = await dk.resolve();
+
+  const status = findResolved(dResolved, "status-region");
+  assert.equal(status?.capability, "badge", "status role binds to the badge capability");
+  assert.equal(status?.fallback, false);
+  assert.equal(status?.props.value, "dominant", "badge reads its facet onto the `value` prop");
+  assert.equal(findResolved(dResolved, "metrics-region")?.capability, "metric", "metrics stays a metric");
+
+  // create: form -> form (was an unmapped graceful fallback).
+  const addNote = cardToInteraction(card("add-note"));
+  const fMsg = lowerToDocument(
+    (s) => compileInteraction(s, ctx, liveCardsBinding, undefined, liveCardsCapabilities),
+    addNote
+  );
+  const fk = new Kernel(manifest, fMsg, { state: new InMemoryStateModel(manifestPayload.namespaces ?? []) });
+  fk.init();
+  const fResolved = await fk.resolve();
+
+  const form = findResolved(fResolved, "form-region");
+  assert.equal(form?.capability, "form", "form role binds to the form capability");
+  assert.equal(form?.fallback, false, "form is no longer a graceful fallback");
+});
+
+test("a card's narrative binds to the narrative capability, reading onto `text`", async () => {
+  const ctx: PresentationContext = { surface: "desktop" };
+  const spec = cardToInteraction(card("regional-sales")); // investigate: context has role narrative
+  const msg = lowerToDocument(
+    (s) => compileInteraction(s, ctx, liveCardsBinding, undefined, liveCardsCapabilities),
+    spec
+  );
+  const state = new InMemoryStateModel(manifestPayload.namespaces ?? []);
+  state.apply([{ op: "set", path: "computed_values.summary", value: "Top region is East" }]);
+  const k = new Kernel(manifest, msg, { state });
+  k.init();
+  const resolved = await k.resolve();
+
+  const context = findResolved(resolved, "context-region");
+  assert.equal(context?.capability, "narrative", "narrative role binds to the narrative capability");
+  assert.equal(context?.fallback, false);
+  assert.equal(context?.props.text, "Top region is East", "narrative reads its facet onto the `text` prop");
+});

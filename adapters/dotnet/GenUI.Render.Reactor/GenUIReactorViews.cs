@@ -29,7 +29,10 @@ public static class GenUIReactorViews
         {
             ["board"] = Board,
             ["metric"] = Metric,
+            ["narrative"] = Narrative,
+            ["badge"] = Badge,
             ["table"] = Table,
+            ["form"] = Form,
             ["actions"] = Actions,
         },
         fallback: Fallback);
@@ -53,6 +56,32 @@ public static class GenUIReactorViews
         VStack(2,
             TextBlock(Str(p.Node.Props, "label") ?? string.Empty).FontSize(12).Opacity(0.7),
             TextBlock(Str(p.Node.Props, "value") ?? "\u2014").Bold().FontSize(20));
+
+    // Leaf: a card's prose narrative/summary/recommendation, bound onto the `text` prop.
+    private static Element Narrative(CapabilityViewProps<Element> p)
+    {
+        string text = Str(p.Node.Props, "text") ?? string.Empty;
+        return TextBlock(text.Length > 0 ? text : "No narrative yet.").FontSize(13);
+    }
+
+    // Leaf: a short status token bound onto `value` (the tone rides through for styling).
+    private static Element Badge(CapabilityViewProps<Element> p) =>
+        TextBlock(Str(p.Node.Props, "value") ?? string.Empty).Bold().FontSize(12);
+
+    // Leaf: a labelled data-entry surface whose save round-trips through the node-bound emit.
+    private static Element Form(CapabilityViewProps<Element> p)
+    {
+        string? label = Str(p.Node.Props, "label");
+        var children = new List<Element>();
+        if (label is { Length: > 0 })
+        {
+            children.Add(TextBlock(label).FontSize(12).Opacity(0.7));
+        }
+
+        children.Add(Button("Save", () => p.Emit("submit"))
+            .AutomationName(label is { Length: > 0 } ? $"{label} save" : "Save"));
+        return VStack(6, children.ToArray());
+    }
 
     // Leaf: a button whose tap round-trips through the node-bound emit.
     private static Element Actions(CapabilityViewProps<Element> p)
