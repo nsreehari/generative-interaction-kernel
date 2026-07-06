@@ -7,7 +7,7 @@
 // still re-derives disclosure for every region the user left alone). This is the "editing = patches
 // on a state model" seam: `applyPresentationEdits` is the pure reducer those patches drive.
 
-import { resolveFacets } from "./interaction";
+import { resolveFacets, type InteractionSpec } from "./interaction";
 import type {
   PresentationSpec,
   PresentationRegion,
@@ -21,7 +21,7 @@ import type {
  * the interaction marks required; `order` lists the region names to lead with (any region not named
  * keeps its planner-relative order behind them).
  */
-export interface PresentationEdits {
+export type PresentationEdits = {
   /** region names the user hid (required facets are ignored — they can't be dropped). */
   disabled: string[];
   /** per-region priority overrides (region name -> priority). */
@@ -30,7 +30,7 @@ export interface PresentationEdits {
   disclosure: Record<string, RegionDisclosure>;
   /** the leading region order the user pinned (unlisted regions follow in planner order). */
   order: string[];
-}
+};
 
 /** The no-op edit set: defer entirely to the planner. */
 export const emptyEdits: PresentationEdits = { disabled: [], priority: {}, disclosure: {}, order: [] };
@@ -62,4 +62,49 @@ export function applyPresentationEdits(spec: PresentationSpec, edits: Presentati
   }
 
   return { ...spec, regions };
+}
+
+/** The facet descriptors an authoring "facet list" surface renders, for the current interaction. */
+export function facetsAsItems(spec: InteractionSpec): { name: string; role: string; required: boolean }[] {
+  return resolveFacets(spec).map((f) => ({ name: f.name, role: f.role, required: f.required }));
+}
+
+/** One row of the editing surface: a facet plus its current enabled/priority/disclosure placement. */
+export type EditRegion = {
+  name: string;
+  role: string;
+  required: boolean;
+  enabled: boolean;
+  priority: RegionPriority;
+  disclosure: RegionDisclosure;
+};
+
+/**
+ * The editable region list an authoring editor renders: every facet of the interaction (so hidden
+ * ones can be re-enabled), in the presentation's effective order, each carrying its current
+ * placement. Regions present in the presentation use its planned+edited placement; hidden ones fall
+ * back to any override or the neutral default. The list order drives up/down reorder controls. Pure:
+ * derived entirely from the presentation (its `source` interaction + regions) and the edits.
+ */
+export function editableRegions(presentation: PresentationSpec, edits: PresentationEdits): EditRegion[] {
+  const facets = resolveFacets(presentation.source);
+  const present = new Map(presentation.regions.map((r) => [r.name, r]));
+  const disabled = new Set(edits.disabled);
+  const order = [
+    ...presentation.regions.map((r) => r.name),
+    ...facets.map((f) => f.name).filter((n) => !present.has(n)),
+  ];
+  const byName = new Map(facets.map((f) => [f.name, f]));
+  return order.map((name) => {
+    const f = byName.get(name)!;
+    const r = present.get(name);
+    return {
+      name,
+      role: f.role,
+      required: f.required,
+      enabled: !disabled.has(name),
+      priority: r?.priority ?? edits.priority[name] ?? "secondary",
+      disclosure: r?.disclosure ?? edits.disclosure[name] ?? "always",
+    };
+  });
 }

@@ -11,6 +11,7 @@
 export * from "./interaction";
 export * from "./presentation";
 export * from "./edits";
+export * from "./authoring";
 export * from "./lowering";
 export * from "./schema";
 // The live-cards Domain profile (L2) — types, archetype classifier, Domain -> Interaction

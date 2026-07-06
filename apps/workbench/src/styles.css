@@ -128,6 +128,7 @@ button:disabled { opacity: .5; cursor: default; }
 .tabs button { padding: 4px 8px; font-size: 11px; }
 .tabs button.active { border-color: var(--accent); color: #fff; }
 .scroll { overflow: auto; flex: 1; }
+.gx-code { overflow: auto; flex: 1; }
 pre { margin: 0; font-family: ui-monospace, monospace; font-size: 11px; white-space: pre-wrap; word-break: break-word; }
 
 table.regions { width: 100%; border-collapse: collapse; font-size: 11px; }

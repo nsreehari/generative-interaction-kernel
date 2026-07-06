@@ -42,6 +42,7 @@ export const PRIMITIVE_CAPABILITIES: Record<string, CapabilityDescriptor> = {
   note: { propsSchema: anyProps }, // value + tone (muted|info|toast|...)
   badge: { propsSchema: anyProps }, // value + tone
   metric: { propsSchema: anyProps }, // label + value
+  codeBlock: { propsSchema: anyProps }, // scrollable monospace block for JSON/code dumps (reads `code`)
 
   // --- Data display (bind data into `items`/`rows`) ---
   list: { propsSchema: anyProps, emits: ["select"] }, // items + field-key spec, emits select {id}
