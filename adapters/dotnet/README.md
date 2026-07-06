@@ -24,6 +24,7 @@ adapters/dotnet/
     GenUIReactorViews.cs            ← ComponentRegistry<Element>: board/metric/table/actions + fallback
     GenUIHostComponent.cs           ← Reactor root: subscribes to GenUIController, re-renders each resolved tree
     ReactorHost.cs / Program.cs      ← ReactorApp.Run<...> host window + a runnable live-cards demo
+  GenUI.Render.Reactor.Check/     ← headless STRUCTURAL walk of the real Element tree (npm run test:dotnet-render-reactor)
 ```
 
 ## Contract (mirrors `adapters/react`)
@@ -51,11 +52,15 @@ the visibility drop, both fallback paths, node-id capture, and the controller's 
 `ComponentRegistry<Element>` (`GenUIReactorViews`), a Reactor root that subscribes to a
 `GenUIController` and re-renders each resolved tree (`GenUIHostComponent`), and a `ReactorHost.Run`
 helper + demo `Program`. It targets `net10.0-windows`, pulls Reactor + Windows App SDK from nuget.org
-(its own `nuget.config`), and is **not** part of the offline suite — its guarantee is compile-time
-plus the shared headless walk. Cross-adapter render equivalence is anchored by that single shared
-`Renderer.Render` walk, not a per-toolkit pixel test. See
+(its own `nuget.config`). The **window app** is not part of the offline suite, but Reactor `Element`s are
+pure declarative records, so a headless STRUCTURAL check — `GenUI.Render.Reactor.Check` — renders the
+shared `ResolvedNode` tree through the real `GenUIReactorViews` registry and walks the resulting element
+tree (container/leaf shape, visibility drop, both fallback paths, a real emit round-trip) with no window.
+That upgrades the Reactor evidence from compile-verified to structural. Cross-adapter render equivalence
+is anchored by the single shared `Renderer.Render` walk, not a per-toolkit pixel test. See
 [ADR-0029](../../docs/decisions/ADR-0029-winui-reactor-binding.md).
 
 ```
-dotnet build adapters/dotnet/GenUI.Render.Reactor    # compiles the binding against real Reactor + WinUI
+dotnet build adapters/dotnet/GenUI.Render.Reactor            # compiles the binding against real Reactor + WinUI
+dotnet run   --project adapters/dotnet/GenUI.Render.Reactor.Check   # or: npm run test:dotnet-render-reactor
 ```
