@@ -90,8 +90,19 @@ button:disabled { opacity: .5; cursor: default; }
 
 /* playground */
 .playground { display: flex; flex-direction: column; min-width: 0; }
-.pg-head { padding: 8px 14px; border-bottom: 1px solid var(--line); color: var(--muted); text-transform: uppercase; font-size: 11px; letter-spacing: .5px; }
+.pg-head { display: flex; align-items: center; gap: 10px; justify-content: space-between; padding: 8px 14px; border-bottom: 1px solid var(--line); color: var(--muted); text-transform: uppercase; font-size: 11px; letter-spacing: .5px; }
+.agent-chip { text-transform: none; letter-spacing: 0; font-size: 11px; color: #fff; background: var(--accent); padding: 2px 9px; border-radius: 10px; white-space: nowrap; }
 .pg-surface { flex: 1; overflow: auto; padding: 20px; background: var(--surface); color: #1a1a1a; }
+
+/* agent tour */
+.step-list { margin-top: 6px; }
+.step-list ol { list-style: none; margin: 4px 0 0; padding: 0; }
+.step-list li { display: flex; align-items: center; gap: 6px; padding: 3px 5px; border-radius: 4px; font-size: 11px; color: var(--muted); }
+.step-list li.active { background: #2b3a2b; color: #fff; }
+.step-n { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: #333; font-size: 10px; flex: none; }
+.step-list li.active .step-n { background: var(--accent); color: #fff; }
+.step-label { flex: 1; }
+.step-now { font-size: 10px; opacity: .9; }
 
 /* artifacts */
 .tabs { display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }

@@ -42,6 +42,8 @@ export const WORKBENCH_MANIFEST: Enveloped<ManifestPayload> = {
       button: { propsSchema: anyProps, emits: ["press"] },
       // A one-line status/error note (shown via a gate).
       note: { propsSchema: anyProps },
+      // The agent tour as a numbered step list; the active step (bound to `active`) is highlighted.
+      stepList: { propsSchema: anyProps },
       // --- Inspector (Increment B) ---
       // A row of tab buttons; selecting one emits `select` with { value }.
       tabBar: { propsSchema: anyProps, emits: ["select"] },

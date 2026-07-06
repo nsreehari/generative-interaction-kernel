@@ -232,6 +232,35 @@ function Note({ node }: CapabilityViewProps) {
   return <p className={tone === "error" ? "error" : "muted"}>{text}</p>;
 }
 
+interface StepItem {
+  index: number;
+  label: string;
+}
+
+/** The agent's authoring tour: a numbered plan with the current step (what the playground shows) marked. */
+function StepList({ node }: CapabilityViewProps) {
+  const p = readProps(node);
+  const items = p.list<StepItem>("items");
+  const active = Number(p.str("active", "0"));
+  const running = p.bool("running");
+  return (
+    <div className="step-list">
+      <span className="muted">tour</span>
+      <ol>
+        {items.map((s) => (
+          <li key={s.index} className={s.index === active ? "active" : ""}>
+            <span className="step-n">{s.index + 1}</span>
+            <span className="step-label">{s.label}</span>
+            {s.index === active ? (
+              <span className="step-now">{running ? "\u25B6 playing" : "\u23F8 here"}</span>
+            ) : null}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 // --- Inspector (Increment B) ------------------------------------------------------
 
 function TabBar({ node, emit }: CapabilityViewProps) {
@@ -351,6 +380,7 @@ export const workbenchRegistry: ComponentRegistry = createRegistry(
     textarea: TextArea,
     button: Button,
     note: Note,
+    stepList: StepList,
     tabBar: TabBar,
     regionTable: RegionTable,
     codeBlock: CodeBlock,
