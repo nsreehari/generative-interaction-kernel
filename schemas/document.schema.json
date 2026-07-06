@@ -64,6 +64,11 @@
           "description": "prop -> namespace path (data in).",
           "additionalProperties": { "$ref": "#/definitions/nsPath" }
         },
+        "readExpr": {
+          "type": "object",
+          "description": "prop -> expression evaluated against state (data in, shaped).",
+          "additionalProperties": { "$ref": "#/definitions/expr" }
+        },
         "gate": { "$ref": "#/definitions/expr" },
         "write": {
           "type": "object",

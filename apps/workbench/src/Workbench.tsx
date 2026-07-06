@@ -130,11 +130,7 @@ export function Workbench() {
         lastSig.current = sig;
         setGuest(buildSession(inputs.spec, inputs.ctx, liveCardsBinding, inputs.edits));
         void c.emit("chrome-root", "facetsComputed", {
-          facets: facetsAsItems(inputs.spec).map((f) => ({
-            name: f.name,
-            role: f.role,
-            tag: f.required ? "required" : "optional",
-          })),
+          facets: facetsAsItems(inputs.spec),
         });
       }
       const seq = Number(c.get("workbench.fireSeq")) || 0;

@@ -35,6 +35,15 @@ export interface Action {
 
 export interface Edges {
   read?: Record<string, string>;
+  /**
+   * prop -> expression (data in, shaped). Like {@link read} but the value is the result of
+   * evaluating the manifest-declared expression against the state snapshot, so an authored
+   * document can project / filter / sort an array into the exact shape a capability wants
+   * (e.g. `workbench.facets.{ "name": name, "tag": required ? "required" : "optional" }`)
+   * instead of a host reshaping it imperatively. A value position, so it runs on the full
+   * provider (like derive / assign-from), not the safe predicate subset.
+   */
+  readExpr?: Record<string, string>;
   gate?: string;
   write?: Record<string, { to: string }>;
   on?: Record<string, Action[]>;
