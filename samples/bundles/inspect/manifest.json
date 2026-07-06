@@ -1,0 +1,130 @@
+{
+  "gup": "0.1",
+  "type": "manifest",
+  "payload": {
+    "version": "workbench-chrome/1.0",
+    "expression": "jsonata",
+    "namespaces": [
+      "workbench",
+      "inspect"
+    ],
+    "actions": [
+      "assign",
+      "derive",
+      "emit",
+      "invoke",
+      "navigate",
+      "confirm"
+    ],
+    "capabilities": {
+      "panelGroup": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "slots": [
+          "children"
+        ]
+      },
+      "panel": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "slots": [
+          "children"
+        ]
+      },
+      "select": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "emits": [
+          "change"
+        ]
+      },
+      "field": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "emits": [
+          "input"
+        ]
+      },
+      "facetList": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "regionEditor": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "emits": [
+          "edit"
+        ]
+      },
+      "textarea": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "emits": [
+          "input"
+        ]
+      },
+      "button": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "emits": [
+          "press"
+        ]
+      },
+      "note": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "stepList": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "tabBar": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "emits": [
+          "select"
+        ]
+      },
+      "table": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "codeBlock": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "list": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}

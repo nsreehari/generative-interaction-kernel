@@ -1,0 +1,54 @@
+{
+  "console": {
+    "profiles": [
+      {
+        "id": "live-cards",
+        "name": "Live Cards",
+        "description": "The first onboarding profile: board / metric / table / actions.",
+        "status": "active",
+        "version": "1.0.0",
+        "capabilities": [
+          "board",
+          "metric",
+          "table",
+          "actions"
+        ],
+        "updatedAt": "2026-07-06 10:42:20"
+      },
+      {
+        "id": "workbench-chrome",
+        "name": "Workbench Chrome",
+        "description": "The workbench's own declarative panels (self-hosting profile).",
+        "status": "draft",
+        "version": "0.3.0",
+        "capabilities": [
+          "panelGroup",
+          "panel",
+          "select",
+          "text",
+          "button"
+        ],
+        "updatedAt": "2026-07-06 10:42:20"
+      }
+    ],
+    "selectedId": "",
+    "draft": {
+      "id": "",
+      "name": "",
+      "description": "",
+      "capabilities": []
+    },
+    "newName": "",
+    "newCapName": "",
+    "tab": "editor",
+    "validation": {
+      "status": "unknown",
+      "errors": [],
+      "warnings": []
+    },
+    "versions": [],
+    "toast": "",
+    "previewBundle": null,
+    "playgroundBundle": null
+  }
+}

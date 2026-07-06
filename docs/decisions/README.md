@@ -36,6 +36,7 @@ rejected options were set aside, and the consequences.
 | [0029](ADR-0029-winui-reactor-binding.md) | WinUI/Reactor render binding — the toolkit edge on the C# adapter core, with cross-adapter equivalence anchored by the shared walk | Accepted |
 | [0030](ADR-0030-bundle-composition.md) | The bundle — one host runs any app; apps compose via an `embed` leaf | Accepted |
 | [0031](ADR-0031-per-bundle-registries.md) | Per-bundle capability registries — shared floor + additive overlay | Accepted |
+| [0032](ADR-0032-framework-keyed-bundles.md) | Framework-keyed bundles — `samples/bundles/` sibling to `samples/apps/`, apps compose them | Proposed |
 
 ## Format
 
