@@ -14,13 +14,19 @@
 // neither is expressible in the kernel's closed action grammar.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { GenUIRoot, liveCardsRegistry } from "../../../adapters/react/src/index";
+import {
+  GenUIRoot,
+  liveCardsRegistry,
+  loadBundleRuntime,
+  overlayRegistry,
+  primitiveRegistry,
+} from "../../../adapters/react/src/index";
 import { liveCardsBinding } from "../../../interaction/src/index";
 import { buildSession, type Session } from "./session";
 import {
   authoredApplyPayload,
-  buildChromeRuntime,
-  buildInspectRuntime,
+  chromeBundle,
+  inspectBundle,
   editableRegions,
   facetsAsItems,
   inputsSignature,
@@ -32,11 +38,17 @@ import {
 } from "./chrome";
 import { parseAuthoredSession } from "./export";
 import { AGENT_PLAYLIST, isAgentTourComplete, nextAgentIndex } from "./agent";
-import { workbenchRegistry } from "./profile/registry";
+import { workbenchComponents } from "./profile/registry";
 
 export function Workbench() {
-  const chrome = useMemo(() => buildChromeRuntime(), []);
-  const inspect = useMemo(() => buildInspectRuntime(), []);
+  const chrome = useMemo(() => loadBundleRuntime(chromeBundle), []);
+  const inspect = useMemo(() => loadBundleRuntime(inspectBundle), []);
+  // The floor primitives plus the workbench's own capability views — the chrome and inspect bundles
+  // both render through this overlay (see ADR-0031).
+  const workbenchRegistry = useMemo(
+    () => overlayRegistry(primitiveRegistry, workbenchComponents),
+    []
+  );
   const [guest, setGuest] = useState<Session>(() => {
     const { spec, ctx, edits } = readInputs(chrome.state);
     return buildSession(spec, ctx, liveCardsBinding, edits);

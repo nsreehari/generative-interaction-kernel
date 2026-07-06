@@ -5,10 +5,9 @@
 
 import React from "react";
 import {
-  createRegistry,
   readProps,
+  type CapabilityView,
   type CapabilityViewProps,
-  type ComponentRegistry,
 } from "../../../../adapters/react/src/index";
 import {
   emptyEdits,
@@ -415,27 +414,26 @@ function TraceList({ node }: CapabilityViewProps) {
   );
 }
 
-function FallbackView({ node }: CapabilityViewProps) {
-  return <div className="muted">Unsupported chrome capability: {node.capability}</div>;
-}
-
-/** The workbench chrome profile's capability -> component map. */
-export const workbenchRegistry: ComponentRegistry = createRegistry(
-  {
-    panelGroup: PanelGroup,
-    panel: Panel,
-    select: Select,
-    text: TextInput,
-    facetList: FacetList,
-    regionEditor: RegionEditor,
-    textarea: TextArea,
-    button: Button,
-    note: Note,
-    stepList: StepList,
-    tabBar: TabBar,
-    regionTable: RegionTable,
-    codeBlock: CodeBlock,
-    traceList: TraceList,
-  },
-  FallbackView
-);
+/**
+ * The workbench chrome profile's EXTRA capability -> component map. These are layered over the shared
+ * floor via `overlayRegistry` when the chrome/inspect bundles render (see Workbench.tsx): the custom
+ * controls (facetList, regionEditor, regionTable, …) and the workbench's own takes on the shared
+ * primitives (panel, select, text, …) win over the floor, which fills in anything not listed here
+ * (including the fallback for a genuinely unknown capability).
+ */
+export const workbenchComponents: Record<string, CapabilityView> = {
+  panelGroup: PanelGroup,
+  panel: Panel,
+  select: Select,
+  text: TextInput,
+  facetList: FacetList,
+  regionEditor: RegionEditor,
+  textarea: TextArea,
+  button: Button,
+  note: Note,
+  stepList: StepList,
+  tabBar: TabBar,
+  regionTable: RegionTable,
+  codeBlock: CodeBlock,
+  traceList: TraceList,
+};

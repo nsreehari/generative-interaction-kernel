@@ -7,19 +7,18 @@
 //   (Workbench.tsx) reads the namespace, re-runs the pure pipeline, and drives the guest.
 
 import {
-  Kernel,
   authorDocument,
-  bufferSink,
   node,
   assign,
   assignFrom,
   InMemoryStateModel,
   type DocNode,
+  type Json,
   type Patch,
   type ResolvedNode,
   type TraceEvent,
 } from "../../../kernel/src/index";
-import { GenUIController } from "../../../adapters/react/src/index";
+import type { Bundle } from "../../../adapters/react/src/index";
 import {
   interactionTaxonomy,
   resolveFacets,
@@ -32,6 +31,7 @@ import {
   type RegionPriority,
 } from "../../../interaction/src/index";
 import { WORKBENCH_MANIFEST } from "./profile/manifest";
+import { workbenchComponents } from "./profile/registry";
 import { exportBundle, type AuthoredSession } from "./export";
 import { AGENT_PLAYLIST } from "./agent";
 import type { Session } from "./session";
@@ -245,62 +245,52 @@ export function facetsAsItems(spec: InteractionSpec): { name: string; role: stri
 
 const DEFAULTS = { interaction: "investigate" as InteractionKind, subject: "incident", surface: "desktop" };
 
-/** Fresh chrome state, seeded so the panels render populated on first paint. */
-export function seedChromeState(): InMemoryStateModel {
-  const state = new InMemoryStateModel(["workbench"]);
-  state.apply([
-    { op: "set", path: "workbench.interaction", value: DEFAULTS.interaction },
-    { op: "set", path: "workbench.subject", value: DEFAULTS.subject },
-    { op: "set", path: "workbench.surface", value: DEFAULTS.surface },
-    { op: "set", path: "workbench.device", value: "" },
-    { op: "set", path: "workbench.space", value: "" },
-    { op: "set", path: "workbench.attention", value: "" },
-    { op: "set", path: "workbench.expertise", value: "" },
-    {
-      op: "set",
-      path: "workbench.facets",
-      value: facetsAsItems({ interaction: DEFAULTS.interaction, subject: DEFAULTS.subject }),
-    },
+/** The chrome namespace's seed, so the panels render populated on first paint. */
+function chromeSeed(): Json {
+  return {
+    interaction: DEFAULTS.interaction,
+    subject: DEFAULTS.subject,
+    surface: DEFAULTS.surface,
+    device: "",
+    space: "",
+    attention: "",
+    expertise: "",
+    facets: facetsAsItems({ interaction: DEFAULTS.interaction, subject: DEFAULTS.subject }) as unknown as Json,
     // Editing surface (Slice 2): the override set + the derived editable region list.
-    { op: "set", path: "workbench.edits", value: { disabled: [], priority: {}, disclosure: {}, order: [] } },
-    { op: "set", path: "workbench.editRegions", value: [] },
+    edits: { disabled: [], priority: {}, disclosure: {}, order: [] },
+    editRegions: [],
     // Event-bar fields (Increment C).
-    { op: "set", path: "workbench.nodeIds", value: [] },
-    { op: "set", path: "workbench.eventNode", value: "" },
-    { op: "set", path: "workbench.eventName", value: "rowSelect" },
-    { op: "set", path: "workbench.eventPayload", value: '{ "id": "order-42" }' },
-    { op: "set", path: "workbench.fireSeq", value: 0 },
-    { op: "set", path: "workbench.eventError", value: "" },
+    nodeIds: [],
+    eventNode: "",
+    eventName: "rowSelect",
+    eventPayload: '{ "id": "order-42" }',
+    fireSeq: 0,
+    eventError: "",
     // Session import (Slice 3).
-    { op: "set", path: "workbench.importText", value: "" },
-    { op: "set", path: "workbench.importSeq", value: 0 },
-    { op: "set", path: "workbench.importError", value: "" },
+    importText: "",
+    importSeq: 0,
+    importError: "",
     // Agent authoring tour (Slice 4).
-    { op: "set", path: "workbench.agentRunning", value: false },
-    { op: "set", path: "workbench.agentStep", value: 0 },
-    { op: "set", path: "workbench.agentStepSeq", value: 0 },
-    { op: "set", path: "workbench.agentLabel", value: "Idle \u2014 press Play to watch the agent author live." },
-    {
-      op: "set",
-      path: "workbench.agentPlan",
-      value: AGENT_PLAYLIST.map((s, i) => ({ index: i, label: s.label })),
-    },
-  ]);
-  return state;
+    agentRunning: false,
+    agentStep: 0,
+    agentStepSeq: 0,
+    agentLabel: "Idle \u2014 press Play to watch the agent author live.",
+    agentPlan: AGENT_PLAYLIST.map((s, i) => ({ index: i, label: s.label })),
+  };
 }
 
-export interface ChromeRuntime {
-  controller: GenUIController;
-  state: InMemoryStateModel;
-}
-
-/** Stand up the declarative chrome runtime (kernel + controller over the seeded state). */
-export function buildChromeRuntime(): ChromeRuntime {
-  const state = seedChromeState();
-  const message = authorDocument(chromeRoot());
-  const kernel = new Kernel(WORKBENCH_MANIFEST, message, { state, sink: bufferSink().sink });
-  return { controller: new GenUIController(kernel), state };
-}
+/**
+ * The chrome BUNDLE: the left control column as a self-contained app — manifest + document + seed
+ * state + its custom capability views. Loaded by the shared floor host (see Workbench.tsx), exactly
+ * like the console; the workbench dogfoods the platform down to its own chrome. The `workbench`->
+ * guest bridge (also in Workbench.tsx) is the native seam that carries fired events across kernels.
+ */
+export const chromeBundle: Bundle = {
+  manifest: WORKBENCH_MANIFEST,
+  document: authorDocument(chromeRoot()),
+  state: { workbench: chromeSeed() },
+  components: workbenchComponents,
+};
 
 /** Read the current guest inputs (interaction spec + presentation context + edits) out of state. */
 export function readInputs(state: InMemoryStateModel): {
@@ -466,34 +456,31 @@ function inspectRoot(): DocNode {
   });
 }
 
-/** Fresh inspector state (empty artifacts; the bridge fills them on the first guest render). */
-export function seedInspectState(): InMemoryStateModel {
-  const state = new InMemoryStateModel(["inspect"]);
-  state.apply([
-    { op: "set", path: "inspect.activeTab", value: "presentation" },
-    { op: "set", path: "inspect.presentationHead", value: "" },
-    { op: "set", path: "inspect.regions", value: [] },
-    { op: "set", path: "inspect.documentJson", value: "" },
-    { op: "set", path: "inspect.treeJson", value: "" },
-    { op: "set", path: "inspect.traces", value: [] },
-    { op: "set", path: "inspect.patchLabel", value: "" },
-    { op: "set", path: "inspect.exportJson", value: "" },
-  ]);
-  return state;
+/** The inspector namespace's seed (empty artifacts; the bridge fills them on the first guest render). */
+function inspectSeed(): Json {
+  return {
+    activeTab: "presentation",
+    presentationHead: "",
+    regions: [],
+    documentJson: "",
+    treeJson: "",
+    traces: [],
+    patchLabel: "",
+    exportJson: "",
+  };
 }
 
-export interface InspectRuntime {
-  controller: GenUIController;
-  state: InMemoryStateModel;
-}
-
-/** Stand up the declarative inspector runtime (right column). */
-export function buildInspectRuntime(): InspectRuntime {
-  const state = seedInspectState();
-  const message = authorDocument(inspectRoot());
-  const kernel = new Kernel(WORKBENCH_MANIFEST, message, { state, sink: bufferSink().sink });
-  return { controller: new GenUIController(kernel), state };
-}
+/**
+ * The inspector BUNDLE: the right artifact column as a self-contained app. Loaded by the shared floor
+ * host like the chrome bundle; the guest->inspect bridge (Workbench.tsx) streams the live guest's
+ * artifacts into its `inspect` state — the second native cross-kernel seam.
+ */
+export const inspectBundle: Bundle = {
+  manifest: WORKBENCH_MANIFEST,
+  document: authorDocument(inspectRoot()),
+  state: { inspect: inspectSeed() },
+  components: workbenchComponents,
+};
 
 /** The `snapshot` payload the bridge feeds the inspector for the current guest state. */
 export function inspectSnapshot(
