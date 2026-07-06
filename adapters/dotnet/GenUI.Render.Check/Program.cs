@@ -169,6 +169,73 @@ catch (ArgumentException)
 
 checker.Assert(missingDocRejected, "bundle without a document is rejected at the boundary");
 
+// ---- Shared-kernel single-owner discipline (the concurrency seam) -------------------------
+// When the in-process renderer AND a transport broker drive ONE kernel, the kernel — a mutable,
+// unlocked, synchronous machine — becomes a concurrency boundary. Handing both the SAME
+// IDispatchScheduler funnels every dispatch (UI-originated on one thread, agent-originated on HTTP
+// threads) through one owner. Here we hammer both drivers in parallel and prove the shared rev
+// counter stays a single, gap-free, monotonic sequence: no torn increment, no lost or duplicated
+// dispatch. (This is the SAFETY property; fanning one dispatch out to BOTH observers is the separate
+// host-session feature — here each driver still only refreshes/broadcasts its own side.)
+{
+    var sharedManifest = JsonNode.Parse(
+        """{"type":"manifest","payload":{"namespaces":["ui"],"capabilities":{"board":{},"button":{}}}}""")!.AsObject();
+    var sharedDocument = JsonNode.Parse(
+        """{"type":"document","payload":{"root":{"capability":"board","id":"root","edges":{"children":[{"capability":"button","id":"go","edges":{"on":{"tap":[{"do":"assign","target":"ui.clicked","args":{"value":true}}]}}}]}}}}""")!.AsObject();
+
+    var sharedKernel = new GenKernel(sharedManifest, sharedDocument, new InMemoryStateModel(new[] { "ui" }));
+
+    // ONE owner shared by both drivers — this is what makes a shared kernel safe.
+    var scheduler = new InlineDispatchScheduler();
+    var sharedController = new GenUIController(sharedKernel, scheduler);
+    var broker = new KernelTransportHost(sharedManifest, sharedDocument, sharedKernel, defaultTransport: null, scheduler: scheduler);
+
+    // Each driver records the rev of every dispatch it observes; both callbacks run under the shared
+    // owner (mutually exclusive), so the plain lists are only ever appended to one at a time.
+    var uiRevs = new List<int>();
+    sharedController.Subscribe(_ =>
+    {
+        if (sharedController.LastPatch is { } patch) uiRevs.Add(patch.Rev);
+    });
+    sharedController.Start(); // seeds + first refresh (LastPatch null here, so not recorded)
+
+    var agentRevs = new List<int>();
+    var (hostSide, clientSide) = InMemoryTransport.CreatePair();
+    clientSide.Subscribe(message =>
+    {
+        if (Gup.TypeOf(message) == "patch" && (message["payload"]?["rev"]?.GetValue<int>() ?? 0) is > 0 and var rev)
+            agentRevs.Add(rev);
+    });
+    broker.Attach(hostSide); // onboards (manifest/document/rev-0 snapshot — the snapshot is skipped above)
+
+    const int uiEmits = 100;
+    const int agentEvents = 100;
+    Exception? failure = null;
+
+    var uiDriver = Task.Run(() => Parallel.For(0, uiEmits, _ =>
+    {
+        try { sharedController.Emit("go", "tap"); }
+        catch (Exception ex) { Interlocked.CompareExchange(ref failure, ex, null); }
+    }));
+    var agentDriver = Task.Run(() => Parallel.For(0, agentEvents, _ =>
+    {
+        try { clientSide.Send(Gup.Message("event", new JsonObject { ["node"] = "go", ["name"] = "tap" })); }
+        catch (Exception ex) { Interlocked.CompareExchange(ref failure, ex, null); }
+    }));
+    Task.WaitAll(uiDriver, agentDriver);
+
+    checker.Assert(failure is null, "shared kernel: concurrent UI + agent dispatch raises no exception");
+    checker.Assert(uiRevs.Count == uiEmits, $"shared kernel: every UI emit refreshed once ({uiRevs.Count}/{uiEmits})");
+    checker.Assert(agentRevs.Count == agentEvents, $"shared kernel: every agent event broadcast once ({agentRevs.Count}/{agentEvents})");
+
+    var union = uiRevs.Concat(agentRevs).OrderBy(r => r).ToArray();
+    var contiguous = union.Length == uiEmits + agentEvents;
+    for (var i = 0; i < union.Length && contiguous; i++)
+        if (union[i] != i + 1) contiguous = false;
+    checker.Assert(contiguous,
+        "shared kernel: dispatches form one gap-free monotonic rev sequence (single owner, no torn/lost/duplicated rev)");
+}
+
 return checker.Report();
 
 static RenderRecord? Child(RenderRecord parent, string id)

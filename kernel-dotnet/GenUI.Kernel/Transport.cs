@@ -114,6 +114,12 @@ public sealed class InMemoryTransport : ITransport
 /// patches for a client resuming from a known rev — dispatches inbound <c>event</c>s serially
 /// (monotonic rev), and broadcasts each patch to every connection. Reconnection is a transport
 /// concern handled here, below the closed five-message GUP protocol. Mirrors KernelTransportHost.
+///
+/// Every kernel access (onboarding baseline/snapshot, inbound dispatch) AND every mutation of the
+/// broker's own connection/log bookkeeping runs through an <see cref="IDispatchScheduler"/> — the
+/// single-owner discipline. On its own the broker defaults to an <see cref="InlineDispatchScheduler"/>
+/// (a lock); when it shares a kernel with the in-process renderer, both are handed the SAME scheduler
+/// (the UI dispatcher thread) so the shared kernel is only ever touched by one owner at a time.
 /// </summary>
 public sealed class KernelTransportHost
 {
@@ -127,19 +133,21 @@ public sealed class KernelTransportHost
     private readonly HashSet<ITransport> _connections = new();
     private readonly Dictionary<ITransport, IDisposable> _unsubscribers = new();
     private readonly List<Patch> _log = new();
-    private readonly object _dispatchGate = new();
+    private readonly IDispatchScheduler _scheduler;
     private bool _baselined;
 
     public KernelTransportHost(
         JsonObject manifest,
         JsonObject document,
         Kernel kernel,
-        ITransport? defaultTransport = null)
+        ITransport? defaultTransport = null,
+        IDispatchScheduler? scheduler = null)
     {
         _manifest = manifest;
         _document = document;
         _kernel = kernel;
         _defaultTransport = defaultTransport;
+        _scheduler = scheduler ?? new InlineDispatchScheduler();
     }
 
     /// <summary>Convenience: attach the transport passed to the constructor.</summary>
@@ -153,34 +161,34 @@ public sealed class KernelTransportHost
     /// client is re-onboarded in full. Returns a handle that detaches the connection.</summary>
     public IDisposable Attach(ITransport transport, int? fromRev = null)
     {
-        // Runs under the same gate as dispatch/broadcast so onboarding a new connection can't race
-        // an in-flight event's AppendLog/Broadcast over the shared _log and _connections. The lock is
-        // reentrant, so a Send that faults mid-broadcast and detaches on this thread is still safe.
-        lock (_dispatchGate)
+        // Runs on the single owner so onboarding a new connection (which reads and appends _log and
+        // touches the kernel via EnsureBaseline/SnapshotPatch) can't race an in-flight event's
+        // dispatch/broadcast. The scheduler is reentrant on its owner, so a Send that faults during
+        // this onboarding and detaches on the same thread is safe.
+        _scheduler.Invoke(() =>
         {
             EnsureBaseline();
             _connections.Add(transport);
             var unsubscribe = transport.Subscribe(OnMessage);
             _unsubscribers[transport] = unsubscribe;
             Onboard(transport, fromRev);
-        }
+        });
         return new Unsubscribe(() => Detach(transport));
     }
 
     public void Detach(ITransport transport)
     {
-        lock (_dispatchGate)
+        _scheduler.Invoke(() =>
         {
             if (_unsubscribers.Remove(transport, out var unsubscribe)) unsubscribe.Dispose();
             _connections.Remove(transport);
-        }
+        });
     }
 
     /// <summary>Detach every connection.</summary>
     public void Stop()
     {
-        ITransport[] snapshot;
-        lock (_dispatchGate) snapshot = _connections.ToArray();
+        var snapshot = _scheduler.Invoke(() => _connections.ToArray());
         foreach (var transport in snapshot) Detach(transport);
     }
 
@@ -224,17 +232,19 @@ public sealed class KernelTransportHost
     }
 
     // Only `event` messages drive the kernel; everything else is ignored (no echo loop). Dispatch is
-    // serialized so revs stay monotonic even when events arrive concurrently from many connections.
+    // serialized on the scheduler's owner so revs stay monotonic even when events arrive concurrently
+    // from many connections — and, when the kernel is shared with the renderer, so dispatch lands on
+    // the same owner (the UI thread) that the renderer refresh runs on.
     private void OnMessage(JsonObject message)
     {
         if (Gup.TypeOf(message) != "event") return;
         if (message["payload"] is not JsonObject payload) return;
 
-        lock (_dispatchGate)
+        _scheduler.Invoke(() =>
         {
             var patch = _kernel.Dispatch(Gup.ParseEvent(payload));
             AppendLog(patch);
             Broadcast(Gup.Message("patch", Gup.PatchPayload(patch)));
-        }
+        });
     }
 }
