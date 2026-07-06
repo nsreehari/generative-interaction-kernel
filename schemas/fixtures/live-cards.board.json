@@ -1,0 +1,54 @@
+{
+  "id": "regional-sales-board",
+  "title": "Regional Sales",
+  "cards": [
+    {
+      "id": "regional-sales",
+      "meta": { "title": "Regional Sales Analysis", "tags": ["sales", "analysis"] },
+      "sources": [
+        { "bindTo": "orders_feed", "outputFile": "orders.json" }
+      ],
+      "compute": [
+        { "bindTo": "region_totals", "expr": "fetched_sources.orders_feed{ region: $sum(amount) }" },
+        { "bindTo": "top_region", "expr": "$sort(computed_values.region_totals, function($a,$b){$b.total > $a.total})[0]" },
+        { "bindTo": "summary", "expr": "'Top region is ' & computed_values.top_region.region" }
+      ],
+      "provides": [
+        { "bindTo": "topRegion", "ref": "computed_values.top_region" }
+      ],
+      "view": {
+        "elements": [
+          { "kind": "narrative", "label": "Analysis", "data": { "bind": "computed_values.summary" } },
+          { "kind": "table", "label": "Regional totals", "data": { "bind": "computed_values.region_totals" }, "spec": { "columns": ["region", "total"] } },
+          { "kind": "actions", "label": "Actions" }
+        ]
+      }
+    },
+    {
+      "id": "dominance",
+      "meta": { "title": "Regional Dominance" },
+      "requires": ["regional-sales"],
+      "compute": [
+        { "bindTo": "top_share", "expr": "requires.topRegion.total / $sum(computed_values.region_totals.total)" },
+        { "bindTo": "dominance", "expr": "computed_values.top_share > 0.5 ? 'dominant' : 'balanced'" }
+      ],
+      "view": {
+        "elements": [
+          { "kind": "metric", "label": "Top region share", "data": { "bind": "computed_values.top_share" } },
+          { "kind": "badge", "label": "Dominance", "data": { "bind": "computed_values.dominance" } },
+          { "kind": "list", "label": "Risk factors", "data": { "bind": "computed_values.risk_factors" } }
+        ]
+      }
+    },
+    {
+      "id": "add-note",
+      "meta": { "title": "Add a Note" },
+      "view": {
+        "elements": [
+          { "kind": "form", "label": "Note", "writeTo": "card_data.note", "spec": { "fields": ["text"] } },
+          { "kind": "actions", "label": "Save" }
+        ]
+      }
+    }
+  ]
+}
