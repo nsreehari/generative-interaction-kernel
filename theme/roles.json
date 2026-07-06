@@ -1,0 +1,16 @@
+{
+  "$comment": "SINGLE SOURCE OF TRUTH for the platform's semantic style roles. Each role maps a platform-neutral intent (surface / text / accent / signal) onto the concrete Fluent design token for every adapter: `web` is the Fluent v9 token name (React resolves it via the exported `tokens` object -> a `var(--...)` CSS variable emitted by FluentProvider) and `winui` is the WinUI Fluent ThemeResource brush key (the Reactor adapter resolves it via Microsoft.UI.Reactor `Theme.Ref`). `cssVar` is the semantic custom property the React stylesheet consumes. Both adapters read THIS file, so the semantic vocabulary and its Fluent binding live in one place and Fluent drives the theme on both platforms (Light <-> Dark) with no hand-maintained per-adapter color mapping.",
+  "roles": {
+    "background":    { "cssVar": "--bg",       "web": "colorNeutralBackground1",         "winui": "SolidBackgroundFillColorBaseBrush" },
+    "surface":       { "cssVar": "--panel",    "web": "colorNeutralBackground2",         "winui": "CardBackgroundFillColorDefaultBrush" },
+    "surfaceRaised": { "cssVar": "--panel-2",  "web": "colorNeutralBackground3",         "winui": "LayerFillColorDefaultBrush" },
+    "field":         { "cssVar": "--field-bg", "web": "colorNeutralBackground1",         "winui": "ControlFillColorDefaultBrush" },
+    "line":          { "cssVar": "--line",     "web": "colorNeutralStroke2",             "winui": "CardStrokeColorDefaultBrush" },
+    "text":          { "cssVar": "--text",     "web": "colorNeutralForeground1",         "winui": "TextFillColorPrimaryBrush" },
+    "muted":         { "cssVar": "--muted",    "web": "colorNeutralForeground3",         "winui": "TextFillColorSecondaryBrush" },
+    "accent":        { "cssVar": "--accent",   "web": "colorBrandForeground1",           "winui": "AccentTextFillColorPrimaryBrush" },
+    "good":          { "cssVar": "--good",     "web": "colorPaletteGreenForeground1",    "winui": "SystemFillColorSuccessBrush" },
+    "warn":          { "cssVar": "--warn",     "web": "colorPaletteDarkOrangeForeground1", "winui": "SystemFillColorCautionBrush" },
+    "bad":           { "cssVar": "--bad",      "web": "colorPaletteRedForeground1",      "winui": "SystemFillColorCriticalBrush" }
+  }
+}

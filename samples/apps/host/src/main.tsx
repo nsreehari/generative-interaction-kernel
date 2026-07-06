@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
-import { FluentProvider, webLightTheme } from "@fluentui/react-components";
+import { FluentProvider, webLightTheme, tokens } from "@fluentui/react-components";
+import { roleVars } from "../../../../adapters/react/src/index";
 import { Host } from "./Host";
 import "./styles.css";
 
@@ -9,10 +10,12 @@ if (!el) throw new Error("missing #root");
 // runtimes (preview/playground) twice. Matches the prior console/workbench hosts.
 //
 // The whole host renders inside a Fluent `FluentProvider`: it supplies a standard theme
-// (`webLightTheme`) as design tokens, and the primitive stylesheet reads those tokens (see the
-// `.gx-host` palette in styles.css). Swap `webLightTheme` for `webDarkTheme` to re-theme everything.
+// (`webLightTheme`) as design tokens. The semantic style ROLES (--panel/--text/--accent/...) are
+// derived from the shared theme/roles.json and bound to Fluent tokens by `roleVars(tokens)` — so
+// Fluent drives the theme instead of a hand-maintained CSS palette. Swap `webLightTheme` for
+// `webDarkTheme` to re-theme everything.
 createRoot(el).render(
-  <FluentProvider theme={webLightTheme} className="gx-host">
+  <FluentProvider theme={webLightTheme} className="gx-host" style={roleVars(tokens)}>
     <Host />
   </FluentProvider>
 );
