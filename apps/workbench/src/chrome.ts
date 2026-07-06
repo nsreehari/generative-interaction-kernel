@@ -33,6 +33,7 @@ import {
 } from "../../../interaction/src/index";
 import { WORKBENCH_MANIFEST } from "./profile/manifest";
 import { exportBundle, type AuthoredSession } from "./export";
+import { AGENT_PLAYLIST } from "./agent";
 import type { Session } from "./session";
 
 interface Option {
@@ -181,6 +182,14 @@ function chromeRoot(): DocNode {
             on: { press: [assignFrom("workbench.agentStepSeq", "workbench.agentStepSeq + 1")] },
           }),
           node("note", "agent-label", { read: { text: "workbench.agentLabel" } }),
+          // The tour as a numbered plan; the highlighted step is what the playground is showing now.
+          node("stepList", "agent-steps", {
+            read: {
+              items: "workbench.agentPlan",
+              active: "workbench.agentStep",
+              running: "workbench.agentRunning",
+            },
+          }),
         ],
       }),
       node("panel", "session-panel", {
@@ -265,6 +274,11 @@ export function seedChromeState(): InMemoryStateModel {
     { op: "set", path: "workbench.agentStep", value: 0 },
     { op: "set", path: "workbench.agentStepSeq", value: 0 },
     { op: "set", path: "workbench.agentLabel", value: "Idle \u2014 press Play to watch the agent author live." },
+    {
+      op: "set",
+      path: "workbench.agentPlan",
+      value: AGENT_PLAYLIST.map((s, i) => ({ index: i, label: s.label })),
+    },
   ]);
   return state;
 }

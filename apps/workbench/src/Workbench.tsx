@@ -41,6 +41,12 @@ export function Workbench() {
     const { spec, ctx, edits } = readInputs(chrome.state);
     return buildSession(spec, ctx, liveCardsBinding, edits);
   });
+  // What the agent is doing right now, surfaced over the playground so the cause of the live changes
+  // is explicit (fed by bridge C from chrome state).
+  const [agentView, setAgentView] = useState<{ running: boolean; label: string }>({
+    running: false,
+    label: "",
+  });
 
   // The chrome bridge reads the live guest through a ref (it subscribes to chrome only once).
   const guestRef = useRef(guest);
@@ -132,6 +138,9 @@ export function Workbench() {
     };
     const onChange = () => {
       agentRunning.current = Boolean(chrome.state.get("workbench.agentRunning"));
+      const running = agentRunning.current;
+      const label = String(chrome.state.get("workbench.agentLabel") ?? "");
+      setAgentView((prev) => (prev.running === running && prev.label === label ? prev : { running, label }));
       const seq = Number(chrome.state.get("workbench.agentStepSeq")) || 0;
       if (seq !== lastAgentStepSeq.current) {
         lastAgentStepSeq.current = seq;
@@ -159,7 +168,12 @@ export function Workbench() {
       </aside>
 
       <main className="playground">
-        <header className="pg-head">Playground</header>
+        <header className="pg-head">
+          <span>Playground</span>
+          {agentView.running && agentView.label ? (
+            <span className="agent-chip">{`\u{1F916} agent authoring \u00b7 ${agentView.label}`}</span>
+          ) : null}
+        </header>
         <div className="pg-surface">
           <GenUIRoot source={guest.controller} registry={liveCardsRegistry} />
         </div>
