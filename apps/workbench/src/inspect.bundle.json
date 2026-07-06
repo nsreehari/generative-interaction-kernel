@@ -108,7 +108,7 @@
             "select"
           ]
         },
-        "regionTable": {
+        "table": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -120,7 +120,7 @@
             "additionalProperties": true
           }
         },
-        "traceList": {
+        "list": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -242,12 +242,35 @@
                 "gate": "inspect.activeTab = 'presentation'",
                 "children": [
                   {
-                    "capability": "regionTable",
-                    "id": "inspect-regions",
+                    "capability": "note",
+                    "id": "inspect-regions-head",
+                    "props": {
+                      "tone": "muted"
+                    },
                     "edges": {
                       "read": {
-                        "head": "inspect.presentationHead",
-                        "items": "inspect.regions"
+                        "value": "inspect.presentationHead"
+                      }
+                    }
+                  },
+                  {
+                    "capability": "table",
+                    "id": "inspect-regions",
+                    "props": {
+                      "static": true,
+                      "blankText": "\u2014",
+                      "columns": [
+                        { "key": "name", "label": "region" },
+                        { "key": "role", "label": "role" },
+                        { "key": "priority", "label": "priority", "classPrefix": "pri-" },
+                        { "key": "disclosure", "label": "disclosure" },
+                        { "key": "presentation", "label": "presentation" },
+                        { "key": "rationale", "label": "rationale" }
+                      ]
+                    },
+                    "edges": {
+                      "read": {
+                        "rows": "inspect.regions"
                       }
                     }
                   }
@@ -297,11 +320,30 @@
                 "gate": "inspect.activeTab = 'traces'",
                 "children": [
                   {
-                    "capability": "traceList",
-                    "id": "inspect-traces",
+                    "capability": "note",
+                    "id": "inspect-traces-label",
+                    "props": {
+                      "tone": "muted"
+                    },
                     "edges": {
                       "read": {
-                        "label": "inspect.patchLabel",
+                        "value": "inspect.patchLabel"
+                      }
+                    }
+                  },
+                  {
+                    "capability": "list",
+                    "id": "inspect-traces",
+                    "props": {
+                      "static": true,
+                      "badgeLeading": true,
+                      "badgeKey": "event",
+                      "primaryKey": "node",
+                      "secondaryKey": "detail",
+                      "emptyText": "no traces yet \u2014 fire an event"
+                    },
+                    "edges": {
+                      "read": {
                         "items": "inspect.traces"
                       }
                     }

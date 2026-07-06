@@ -25,30 +25,6 @@ function PanelGroup({ children }: CapabilityViewProps) {
   return <>{children}</>;
 }
 
-interface FacetItem {
-  name: string;
-  role: string;
-  required: boolean;
-}
-
-function FacetList({ node }: CapabilityViewProps) {
-  const items = readProps(node).list<FacetItem>("items");
-  return (
-    <div className="facet-list">
-      <span className="muted">facets</span>
-      <ul>
-        {items.map((f) => (
-          <li key={f.name}>
-            <code>{f.name}</code>
-            <span>{f.role}</span>
-            <span>{f.required ? "required" : "optional"}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 // --- Editing surface (Slice 2) ----------------------------------------------------
 
 interface EditRegionItem {
@@ -207,124 +183,15 @@ function RegionEditor({ node, emit }: CapabilityViewProps) {
   );
 }
 
-// --- Agent tour (Slice 4) ---------------------------------------------------------
-
-interface StepItem {
-  index: number;
-  label: string;
-}
-
-/** The agent's authoring tour: a numbered plan with the current step (what the playground shows) marked. */
-function StepList({ node }: CapabilityViewProps) {
-  const p = readProps(node);
-  const items = p.list<StepItem>("items");
-  const active = Number(p.str("active", "0"));
-  const running = p.bool("running");
-  return (
-    <div className="step-list">
-      <span className="muted">tour</span>
-      <ol>
-        {items.map((s) => (
-          <li key={s.index} className={s.index === active ? "active" : ""}>
-            <span className="step-n">{s.index + 1}</span>
-            <span className="step-label">{s.label}</span>
-            {s.index === active ? (
-              <span className="step-now">{running ? "\u25B6 playing" : "\u23F8 here"}</span>
-            ) : null}
-          </li>
-        ))}
-      </ol>
-    </div>
-  );
-}
-
-// --- Inspector (Increment B) ------------------------------------------------------
-
-interface RegionRow {
-  name: string;
-  role: string;
-  priority: string;
-  disclosure: string;
-  presentation?: string | null;
-  rationale?: string | null;
-}
-
-function RegionTable({ node }: CapabilityViewProps) {
-  const p = readProps(node);
-  const head = p.str("head");
-  const items = p.list<RegionRow>("items");
-  return (
-    <div className="scroll">
-      {head ? <p className="muted">{head}</p> : null}
-      <table className="regions">
-        <thead>
-          <tr>
-            <th>region</th>
-            <th>role</th>
-            <th>priority</th>
-            <th>disclosure</th>
-            <th>presentation</th>
-            <th>rationale</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((r) => (
-            <tr key={r.name}>
-              <td>
-                <code>{r.name}</code>
-              </td>
-              <td>{r.role}</td>
-              <td className={`pri-${r.priority}`}>{r.priority}</td>
-              <td>{r.disclosure}</td>
-              <td>{r.presentation ?? "—"}</td>
-              <td className="muted">{r.rationale ?? "—"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-interface TraceRow {
-  event: string;
-  node: string;
-  detail: string;
-}
-
-function TraceList({ node }: CapabilityViewProps) {
-  const p = readProps(node);
-  const label = p.str("label");
-  const items = p.list<TraceRow>("items");
-  return (
-    <div className="scroll">
-      <p className="muted">{label}</p>
-      <ul className="traces">
-        {items.length === 0 && <li className="muted">no traces yet — fire an event</li>}
-        {items.map((t, i) => (
-          <li key={i}>
-            <span className={`tag trace-${t.event}`}>{t.event}</span>
-            {t.node ? <code>{t.node}</code> : null}
-            {t.detail ? <span className="muted"> {t.detail}</span> : null}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 /**
  * The workbench chrome profile's EXTRA capability -> component map: ONLY the specialized controls
- * the shared floor doesn't provide (facetList, regionEditor, regionTable, the agent tour, …). The
- * generic primitives (panel, select, field, textarea, button, note, tabBar) come from the floor —
- * this overlay is layered over it via `overlayRegistry` when the chrome/inspect bundles render (see
- * Workbench.tsx), so anything not listed here (including the fallback) resolves from the floor.
+ * the shared floor doesn't provide — the passthrough `panelGroup` and the stateful `regionEditor`.
+ * Everything else (panel, select, field, textarea, button, note, tabBar, and the passive list/table
+ * displays for facets, agent steps, region rows, and traces) comes from the floor via
+ * `overlayRegistry` when the chrome/inspect bundles render (see Workbench.tsx), so anything not
+ * listed here (including the fallback) resolves from the floor.
  */
 export const workbenchComponents: Record<string, CapabilityView> = {
   panelGroup: PanelGroup,
-  facetList: FacetList,
   regionEditor: RegionEditor,
-  stepList: StepList,
-  regionTable: RegionTable,
-  traceList: TraceList,
 };
