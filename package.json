@@ -18,6 +18,8 @@
     "test:dotnet-render": "dotnet run --project adapters/dotnet/GenUI.Render.Check",
     "test:dotnet-render-reactor": "dotnet run --project adapters/dotnet/GenUI.Render.Reactor.Check",
     "dev:workbench": "vite apps/workbench",
+    "dev:workbench-node": "tsx apps/workbench/src/node-host.ts",
+    "dev:workbench-remote": "node apps/workbench/src/dev-remote.mjs",
     "build:workbench": "vite build apps/workbench",
     "dev:host": "vite samples/apps/host",
     "build:host": "vite build samples/apps/host",

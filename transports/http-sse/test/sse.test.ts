@@ -161,3 +161,36 @@ test("fromRev query param drives an incremental resume over SSE (no manifest re-
   driver.stop();
   await close(server);
 });
+
+test("cross-origin browser clients can preflight POST /gup/event and stream with CORS headers", async () => {
+  const host = new KernelTransportHost(manifest, document, makeKernel());
+  const sse = new SseTransportServer(host);
+  const server = createServer(async (req, res) => {
+    if (!(await sse.handle(req, res))) res.writeHead(404).end();
+  });
+  const baseUrl = await listen(server);
+
+  const preflight = await fetch(`${baseUrl}/gup/event`, {
+    method: "OPTIONS",
+    headers: {
+      Origin: "http://127.0.0.1:5175",
+      "Access-Control-Request-Method": "POST",
+      "Access-Control-Request-Headers": "content-type",
+    },
+  });
+
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers.get("access-control-allow-origin"), "http://127.0.0.1:5175");
+  assert.match(preflight.headers.get("access-control-allow-methods") ?? "", /POST/);
+  assert.match(preflight.headers.get("access-control-expose-headers") ?? "", /X-GUP-Session/);
+
+  const stream = await fetch(`${baseUrl}/gup/stream`, {
+    headers: { Origin: "http://127.0.0.1:5175", Accept: "text/event-stream" },
+  });
+  assert.equal(stream.status, 200);
+  assert.equal(stream.headers.get("access-control-allow-origin"), "http://127.0.0.1:5175");
+  assert.match(stream.headers.get("access-control-expose-headers") ?? "", /X-GUP-Session/);
+
+  stream.body?.cancel();
+  await close(server);
+});

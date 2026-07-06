@@ -70,6 +70,11 @@ export class SseTransportServer {
    */
   async handle(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
     const url = new URL(req.url ?? "/", "http://localhost");
+    if (req.method === "OPTIONS" && url.pathname === `${this.path}/event`) {
+      this.writeCorsHeaders(req, res);
+      res.writeHead(204).end();
+      return true;
+    }
     if (req.method === "GET" && url.pathname === `${this.path}/stream`) {
       await this.openStream(req, res, url);
       return true;
@@ -86,6 +91,7 @@ export class SseTransportServer {
     const fromRevRaw = url.searchParams.get("fromRev");
     const fromRev = fromRevRaw !== null && fromRevRaw !== "" ? Number(fromRevRaw) : undefined;
 
+    this.writeCorsHeaders(req, res);
     res.writeHead(200, {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
@@ -118,10 +124,21 @@ export class SseTransportServer {
 
     const body = await readBody(req);
     if (!endpoint) {
+      this.writeCorsHeaders(req, res);
       res.writeHead(404).end();
       return;
     }
     await endpoint.deliver(JSON.parse(body) as GupMessage);
+    this.writeCorsHeaders(req, res);
     res.writeHead(204).end();
+  }
+
+  private writeCorsHeaders(req: IncomingMessage, res: ServerResponse): void {
+    const origin = typeof req.headers.origin === "string" ? req.headers.origin : "*";
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-GUP-Session");
+    res.setHeader("Access-Control-Expose-Headers", "X-GUP-Session");
+    res.setHeader("Vary", "Origin");
   }
 }

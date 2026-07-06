@@ -27,6 +27,7 @@ import {
   KernelTransportHost,
   createInMemoryTransportPair,
 } from "../../../kernel/src/index";
+import { SseClientTransport } from "../../../transports/http-sse/src/client";
 import {
   liveCardsBinding,
   editableRegions,
@@ -46,17 +47,17 @@ import {
   readInputs,
   type StateReader,
 } from "./chrome";
-import { AGENT_PLAYLIST, isAgentTourComplete, nextAgentIndex } from "./agent";
+import { startAgentLoop } from "./agent-loop";
 
 interface HostedChromeRuntime {
   source: GenUIClient;
-  agent: GenUIClient;
   seed: StateReader;
+  agent?: GenUIClient;
   start(): Promise<void>;
   stop(): void;
 }
 
-function createHostedChromeRuntime(): HostedChromeRuntime {
+function createLocalChromeRuntime(): HostedChromeRuntime {
   const state = seedState(chromeBundle.manifest, chromeBundle.state);
   const kernel = new Kernel(chromeBundle.manifest, chromeBundle.document, { state });
   const host = new KernelTransportHost(chromeBundle.manifest, chromeBundle.document, kernel);
@@ -87,8 +88,33 @@ function createHostedChromeRuntime(): HostedChromeRuntime {
   };
 }
 
+function createRemoteChromeRuntime(baseUrl: string): HostedChromeRuntime {
+  const source = new GenUIClient(new SseClientTransport(baseUrl));
+  const seed = seedState(chromeBundle.manifest, chromeBundle.state);
+  let started = false;
+
+  return {
+    source,
+    seed,
+    async start() {
+      if (started) return;
+      started = true;
+      source.start();
+    },
+    stop() {
+      source.stop();
+      started = false;
+    },
+  };
+}
+
+function createChromeRuntime(): HostedChromeRuntime {
+  const remoteBaseUrl = import.meta.env.VITE_GUP_BASE_URL as string | undefined;
+  return remoteBaseUrl ? createRemoteChromeRuntime(remoteBaseUrl) : createLocalChromeRuntime();
+}
+
 export function Workbench() {
-  const chrome = useMemo(() => createHostedChromeRuntime(), []);
+  const chrome = useMemo(() => createChromeRuntime(), []);
   const inspect = useMemo(() => loadBundleRuntime(inspectBundle), []);
   // The chrome and inspect bundles are self-contained: each resolves every `alias:name` capability
   // through its own manifest `externals` — floor primitives under `ui`, the workbench's own
@@ -191,43 +217,20 @@ export function Workbench() {
   // this loop watches; Step advances one beat on demand. The identical loop could target a
   // GenUIClient over a transport instead of the in-process controller (same `emit` surface).
   useEffect(() => {
-    const c = chrome.agent;
-    // Advance one beat. The tour is bounded: at the last beat `nextAgentIndex` returns null, so we
-    // emit `agentDone` (which stops the run and shows a "complete" state) instead of wrapping.
-    const advance = () => {
-      const next = nextAgentIndex(agentIndex.current);
-      if (next === null) {
-        void c.emit("chrome-root", "agentDone", {});
-        return;
-      }
-      agentIndex.current = next;
-      const step = AGENT_PLAYLIST[next];
-      void c.emit("chrome-root", "importApply", authoredApplyPayload(step.authored));
-      void c.emit("chrome-root", "agentAdvance", { step: next, label: step.label });
-    };
+    const stateSource = chrome.agent ?? chrome.source;
     const onChange = () => {
       const wasRunning = agentRunning.current;
-      agentRunning.current = Boolean(c.get("workbench.agentRunning"));
+      agentRunning.current = Boolean(stateSource.get("workbench.agentRunning"));
       const running = agentRunning.current;
-      // A fresh Play on a finished tour replays from the top (reset so the next advance yields beat 0).
-      if (running && !wasRunning && isAgentTourComplete(agentIndex.current)) {
-        agentIndex.current = -1;
-      }
-      const label = String(c.get("workbench.agentLabel") ?? "");
+      const label = String(stateSource.get("workbench.agentLabel") ?? "");
       setAgentView((prev) => (prev.running === running && prev.label === label ? prev : { running, label }));
-      const seq = Number(c.get("workbench.agentStepSeq")) || 0;
-      if (seq !== lastAgentStepSeq.current) {
-        lastAgentStepSeq.current = seq;
-        advance();
-      }
     };
-    const unsubscribe = c.subscribe(onChange);
-    const timer = window.setInterval(() => {
-      if (agentRunning.current) advance();
-    }, 1800);
+    const unsubscribe = stateSource.subscribe(onChange);
+    const stopAgentLoop = chrome.agent ? startAgentLoop(chrome.agent) : undefined;
+    onChange();
     return () => {
       unsubscribe();
-      window.clearInterval(timer);
+      stopAgentLoop?.();
     };
   }, [chrome]);
 
