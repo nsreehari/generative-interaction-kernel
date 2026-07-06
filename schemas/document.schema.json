@@ -31,6 +31,11 @@
       "type": "string",
       "pattern": "^[A-Za-z_][A-Za-z0-9_-]*$"
     },
+    "capabilityRef": {
+      "type": "string",
+      "description": "A capability reference: a bare name, or a namespaced `alias:name` resolved through the manifest's externals.components.",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_-]*(:[A-Za-z_][A-Za-z0-9_-]*)?$"
+    },
     "nsPath": {
       "type": "string",
       "description": "A dotted namespace path, e.g. card_data.selected.",
@@ -99,7 +104,7 @@
       "additionalProperties": false,
       "required": ["capability", "id"],
       "properties": {
-        "capability": { "$ref": "#/definitions/identifier" },
+        "capability": { "$ref": "#/definitions/capabilityRef" },
         "id": { "$ref": "#/definitions/identifier" },
         "props": { "type": "object" },
         "edges": { "$ref": "#/definitions/edges" }

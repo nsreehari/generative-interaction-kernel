@@ -7,11 +7,15 @@
 // layers its own EXTRA capabilities over this floor via `overlayRegistry` (see bundle.components).
 
 import React from "react";
+import { unwrap } from "../../../../kernel/src/index";
 import {
   createRegistry,
   overlayRegistry,
+  buildRegistryFromImports,
+  type CapabilityView,
   type CapabilityViewProps,
   type ComponentRegistry,
+  type ProviderResolver,
 } from "../registry";
 import { readProps } from "../props";
 import { GenUIRoot } from "../useGenUI";
@@ -378,7 +382,11 @@ function Embed({ node }: CapabilityViewProps) {
   // Inline bundles (from JSON state) can only use the floor, so they always render on the base.
   const registry = React.useMemo(
     () =>
-      appBundle?.components ? overlayRegistry(primitiveRegistry, appBundle.components) : primitiveRegistry,
+      bundle && unwrap(bundle.manifest).externals?.components
+        ? buildBundleRegistry(bundle as Bundle)
+        : appBundle?.components
+          ? overlayRegistry(primitiveRegistry, appBundle.components)
+          : primitiveRegistry,
     [sig] // eslint-disable-line react-hooks/exhaustive-deps
   );
   if (!controller) return <p className="gx-muted">{p.str("emptyText", "Nothing to preview.")}</p>;
@@ -393,28 +401,51 @@ function Fallback({ node }: CapabilityViewProps) {
   return <div className="gx-muted">Unsupported primitive: {node.capability}</div>;
 }
 
+/** The floor's raw capability -> component map. Used both to build `primitiveRegistry` and as the
+ *  `floor` PROVIDER that a bundle's `imports` binds an alias to (see buildRegistryFromImports). */
+export const FLOOR_COMPONENTS: Record<string, CapabilityView> = {
+  screen: Screen,
+  row: Row,
+  col: Col,
+  panel: Panel,
+  text: Text,
+  heading: Heading,
+  note: Note,
+  badge: Badge,
+  metric: Metric,
+  codeBlock: CodeBlock,
+  list: List,
+  table: Table,
+  field: Field,
+  textarea: TextArea,
+  select: Select,
+  button: Button,
+  tabBar: TabBar,
+  chips: Chips,
+  embed: Embed,
+};
+
+/** The floor's fallback view (exported so import-driven registries share one graceful fallback). */
+export const floorFallback: CapabilityView = Fallback;
+
 /** The one shared primitive registry every bundle renders from. */
-export const primitiveRegistry: ComponentRegistry = createRegistry(
-  {
-    screen: Screen,
-    row: Row,
-    col: Col,
-    panel: Panel,
-    text: Text,
-    heading: Heading,
-    note: Note,
-    badge: Badge,
-    metric: Metric,
-    codeBlock: CodeBlock,
-    list: List,
-    table: Table,
-    field: Field,
-    textarea: TextArea,
-    select: Select,
-    button: Button,
-    tabBar: TabBar,
-    chips: Chips,
-    embed: Embed,
-  },
-  Fallback
-);
+export const primitiveRegistry: ComponentRegistry = createRegistry(FLOOR_COMPONENTS, Fallback);
+
+/**
+ * Build a bundle's render registry from its manifest `externals.components` (the end-state,
+ * namespaced model): every `alias:name` reference resolves through an explicit import — the floor is
+ * the `floor` provider, the bundle's own components are `self`, and any other provider name is
+ * resolved by an optional `crossProvider` (e.g. an app-registry lookup for borrowing another
+ * bundle's capability). Nothing is ambient: a bundle with no imports renders everything as fallback.
+ */
+export function buildBundleRegistry(
+  bundle: Bundle,
+  crossProvider?: ProviderResolver
+): ComponentRegistry {
+  const resolve: ProviderResolver = (from) => {
+    if (from === "floor") return FLOOR_COMPONENTS;
+    if (from === "self") return bundle.components;
+    return crossProvider?.(from);
+  };
+  return buildRegistryFromImports(unwrap(bundle.manifest).externals?.components, resolve, Fallback);
+}

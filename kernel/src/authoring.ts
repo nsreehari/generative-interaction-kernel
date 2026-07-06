@@ -123,7 +123,7 @@ export function authorDocument(root: DocNode, opts: DocumentOptions = {}): Docum
 // --- Reference linting (non-throwing) ---------------------------------------------
 
 export interface LintWarning {
-  code: "unknown-capability" | "undeclared-event" | "undeclared-namespace";
+  code: "unknown-capability" | "undeclared-event" | "undeclared-namespace" | "undeclared-effect";
   node?: string;
   detail: string;
 }
@@ -146,6 +146,10 @@ export function lintManifestReferences(
 ): LintWarning[] {
   const warnings: LintWarning[] = [];
   const namespaces = new Set(manifest.namespaces ?? []);
+  // Effects are linted only when the bundle opts in by declaring `externals.effects` — the contract
+  // is authoritative once present, but unmigrated bundles (no externals) are left alone.
+  const declaredEffects = manifest.externals?.effects;
+  const effectSet = new Set(declaredEffects ?? []);
 
   const checkNs = (path: string, id: string, where: string): void => {
     const ns = firstSegment(path);
@@ -181,6 +185,16 @@ export function lintManifestReferences(
       }
       for (const a of actions) {
         if (a.target) checkNs(a.target, n.id, `action '${a.do}' target`);
+        if (declaredEffects && a.do === "invoke") {
+          const tool = typeof a.args?.tool === "string" ? a.args.tool : undefined;
+          if (tool && !effectSet.has(tool)) {
+            warnings.push({
+              code: "undeclared-effect",
+              node: n.id,
+              detail: `invokes effect '${tool}' not declared in manifest externals.effects`,
+            });
+          }
+        }
       }
     }
 

@@ -3,10 +3,11 @@
 // playground, preview, and every profile are just bundles handed to this host.
 
 import React from "react";
+import { unwrap } from "../../../../kernel/src/index";
 import { GenUIRoot } from "../useGenUI";
 import { overlayRegistry } from "../registry";
 import { loadBundle, type Bundle } from "./bundle";
-import { primitiveRegistry } from "./registry";
+import { primitiveRegistry, buildBundleRegistry } from "./registry";
 import { AppRegistryProvider, type AppRegistry } from "./apps";
 
 export function BundleHost({
@@ -19,9 +20,16 @@ export function BundleHost({
 }): React.ReactElement {
   // Build the runtime once for the life of the host.
   const controller = React.useMemo(() => loadBundle(bundle), []); // eslint-disable-line react-hooks/exhaustive-deps
-  // The floor primitives, plus this bundle's own extra capabilities (if any).
+  // Namespaced model: resolve every `alias:name` through the manifest `externals.components`.
+  // Bundles that don't yet declare externals fall back to the legacy overlay path (floor + own
+  // components) until migrated.
   const registry = React.useMemo(
-    () => (bundle.components ? overlayRegistry(primitiveRegistry, bundle.components) : primitiveRegistry),
+    () =>
+      unwrap(bundle.manifest).externals?.components
+        ? buildBundleRegistry(bundle)
+        : bundle.components
+          ? overlayRegistry(primitiveRegistry, bundle.components)
+          : primitiveRegistry,
     [] // eslint-disable-line react-hooks/exhaustive-deps
   );
   const tree = <GenUIRoot source={controller} registry={registry} />;

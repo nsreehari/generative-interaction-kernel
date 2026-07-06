@@ -60,6 +60,38 @@
               }
             }
           }
+        },
+        "externals": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The bundle's outward dependency contract: imported component providers and required external effect handlers, grouped so a reader/agent can answer 'what does this bundle need from the host?' from one object.",
+          "properties": {
+            "components": {
+              "type": "object",
+              "description": "Alias -> component provider binding. A capability is referenced as `alias:name` and resolved through this map; nothing (not even the floor) is ambient.",
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["from"],
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "description": "Provider name: 'floor', 'self', or another bundle's name."
+                  },
+                  "use": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Optional whitelist of capability names borrowed under this alias; omitted means the whole provider."
+                  }
+                }
+              }
+            },
+            "effects": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Names of effect handlers the host must supply for this bundle's `invoke` actions."
+            }
+          }
         }
       }
     }
