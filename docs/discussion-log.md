@@ -636,6 +636,83 @@ the adapter (would entangle the reusable walk with a toolkit — the reusable se
 toolkit is the edge).
 ---
 
+## 34. Everything is JSON — the bundle, one host, and per-bundle registries
+
+The user pushed the thesis all the way down: an app should be JSON, any app should be hostable
+anywhere, and adding one should never mean writing a new `.tsx`. The only code left is the kernel +
+runtime, a fixed set of primitive leaf components, and a few named effect handlers. We made that real
+in the React adapter's floor — three moves, no kernel/grammar/protocol change.
+
+- **The bundle + one generic host.** An app is `Bundle = { manifest, document, state?, effects?,
+  components? }`, with the JSON-only subset `SerializableBundle = { manifest, document, state? }`
+  movable as data. `loadBundle` + `BundleHost` run *any* bundle — the console, its live Preview, and
+  the playground are now the same host handed different bundles, not bespoke React apps.
+- **Composition via an `embed` leaf.** The composition capability (renamed from `bundle` → `embed`,
+  a verb in the document) mounts a whole bundle as a nested runtime — **inline** (a
+  SerializableBundle bound from state, e.g. the console's per-profile Preview/Playground rebuilt as
+  JSON from the draft) or as a **named app** resolved from an `AppRegistry` the host publishes
+  (`props.app: "playground"`), so a *known* app carrying native effects can be embedded by reference.
+  The outermost mount and a nested leaf are the same operation — no privileged app shell
+  ([ADR-0030](decisions/ADR-0030-bundle-composition.md)).
+- **Per-bundle registries = floor ⊕ overlay.** The design question was custom pool vs. central floor
+  plus overlay; we took the overlay. A bundle may carry `components`, and the effective registry is
+  `overlayRegistry(primitiveRegistry, bundle.components)` (extras win, floor fills the rest, fallback
+  preserved), applied at both `BundleHost` and the resolved-app `embed`. Scope is per-bundle: a
+  nested bundle inherits the floor, not the parent's custom vocabulary. This keeps the primitive
+  vocabulary universal while letting a custom-vocabulary app be hosted anywhere
+  ([ADR-0031](decisions/ADR-0031-per-bundle-registries.md)).
+
+Verified in the running console (floor host, no `components` overlay): the empty-state standalone
+Playground app renders its four cards and click→selection; the per-profile Playground tab renders as
+an inline parameterized bundle; Preview renders read-only; the surface live-rebuilds as capabilities
+are added — all through the one host, with no "unsupported"/"not registered" errors. A stale-HMR
+`ReferenceError` after the `bundle`→`embed`/`BundleMount`→`Embed` rename cleared with a full page
+reload (not just an HMR refresh).
+
+**Decided, pending implementation:** reshape the workbench's *chrome* and *inspect* columns into two
+bundles (each is already `state + kernel(manifest) + controller`), hosting their custom vocabulary via
+the overlay; the middle *guest* stays a distinct compiler surface (Interaction→Presentation→UI
+output), **not** a bundle, and its three cross-kernel bridges become named effects / thin host wiring —
+running a compiler and forwarding events across kernel boundaries are irreducibly native.
+---
+
+## 35. The workbench, dogfooded — chrome & inspect as two bundles on the floor
+
+The first application of the bundle model (§34, ADR-0030): the workbench had been the last app still
+wiring bespoke React runtimes — `buildChromeRuntime`/`buildInspectRuntime` each hand-built an
+`InMemoryStateModel` + `Kernel(WORKBENCH_MANIFEST)` + `GenUIController` and rendered through a private
+`workbenchRegistry`. They were structurally already bundles minus packaging, so we packaged them.
+
+- **Two bundles.** `chrome.ts` now exports `chromeBundle` and `inspectBundle` as plain `Bundle`
+  data — `{ manifest: WORKBENCH_MANIFEST, document: authorDocument(root), state: { ns: seed },
+  components: workbenchComponents }`. The imperative seed loops became one seed object per namespace;
+  the runtime builders and their `ChromeRuntime`/`InspectRuntime` types are gone.
+- **On the shared floor.** Both load through the floor host and render via
+  `overlayRegistry(primitiveRegistry, workbenchComponents)` (ADR-0031) — the workbench's custom
+  controls (facetList, regionEditor, regionTable, …) and its own takes on the shared primitives win
+  over the floor, which fills the rest. `profile/registry.tsx` now exports the raw
+  `workbenchComponents` map; the bespoke `workbenchRegistry`/`createRegistry` wrapper is retired.
+- **One small floor addition.** `loadBundleRuntime(bundle) → { controller, state }` (with `loadBundle`
+  delegating to it) exposes the state model for the *one* host that must reach into a bundle to bridge
+  it to another — the workbench chrome driving the guest. That reach is the irreducibly native seam.
+- **The guest stays the guest.** The middle column is untouched: still `buildSession` +
+  `liveCardsBinding` rendered on `liveCardsRegistry` — the live Interaction→Presentation→UI compiler
+  surface, deliberately **not** a bundle. Its three bridges (chrome→guest inputs/fires, guest→inspect
+  artifacts, agent→chrome authoring) stay as React host wiring, not named effects: they cross kernel
+  boundaries and run a compiler, which the closed single-kernel action grammar can't express. This is
+  the deliberate end state, not a gap.
+
+Verified: adapters/react typecheck + `build:workbench` clean (129 modules); full suite green (43
+kernel + 5 react + 10 interaction + 3 sse, conformance, JSONata 147, both C# kernels + both render
+adapters). In the browser all three columns render — chrome panels, the compiler board (its
+`relationships` facet still the liveCards fallback, as before), and the inspect region table streamed
+live; the Fire-event node list is populated from the guest tree (the guest→chrome bridge running).
+Adding an app is now, with no exceptions left, a bundle handed to one host. Alternatives set aside:
+rendering the bundles through `BundleHost` (it owns its controller/state internally, so the bridges
+couldn't reach them); and converting the bridges to named effect handlers (they are cross-kernel, not
+single-kernel — host wiring is the honest shape).
+---
+
 ## Index of alternatives explicitly set aside
 
 | Alternative | Set aside because |
@@ -667,3 +744,10 @@ toolkit is the edge).
 | A single Interaction → UI lowering (no Presentation split) | Fuses "what experience" with "how it appears," leaving context-adaptation nowhere clean and preventing one interaction taxonomy from serving many presentations — the presentation compiler (the moat) wouldn't exist. |
 | Putting presentation context inside the Interaction Model | Re-couples the domain-neutral goal to a surface/device, defeating "same interaction, many presentations"; context belongs to the compiler. |
 | Hard-coding a layout per interaction (no compiler) | Every interaction would render identically everywhere; adaptivity — the AI-native point — is lost. The compiler is a replaceable seam a profile can enrich. |
+| Per-app hosts / registries / orchestrators (status quo) | Every app re-implements the same wiring, "adding an app" is code not data, and apps can't compose; a single bundle + one generic host makes an app data. |
+| Embedding apps only by inlining their JSON | A known app's native effect handlers are functions and can't travel through JSON state; the named-app registry embeds by reference while inline embedding stays for the JSON-only case. |
+| A dedicated app-shell component (distinct from the `embed` leaf) | Reintroduces a privileged top level and a second code path; the outermost mount and a nested mount are the same `embed`/`BundleHost` operation. |
+| A fully custom component pool per bundle | Re-registers the primitives, lets the floor drift, and breaks `embed` composition (no common fallback base); the floor stays universal, apps add a small additive overlay. |
+| A parent/fallback registry chain across nested bundles | More machinery than needed and would leak parent vocabulary downward; a flat per-bundle floor ⊕ overlay matches the actual requirement. |
+| Rendering the workbench chrome/inspect through `BundleHost` | The host owns its controller and state internally, so the cross-kernel bridges couldn't reach them; the workbench loads the bundles via `loadBundleRuntime` and does its own thin host wiring. |
+| Converting the workbench's 3 bridges into named effect handlers | They cross kernel boundaries and run a compiler; the single-kernel action/effect grammar can't express that. Host wiring (React effects) is the honest shape for an irreducibly native seam. |
