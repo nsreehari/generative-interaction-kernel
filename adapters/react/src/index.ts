@@ -5,3 +5,4 @@ export * from "./controller";
 export * from "./components";
 export * from "./useGenUI";
 export * from "./primitives";
+export * from "./theme";

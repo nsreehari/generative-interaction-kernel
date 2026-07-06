@@ -35,6 +35,14 @@
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
 
+  <!-- The shared semantic theme roles (single source of truth for both adapters). Embedded so
+       GenUITheme reads the exact same file the React adapter consumes. -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\..\theme\roles.json">
+      <LogicalName>GenUI.Render.Reactor.theme.roles.json</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
   <!-- The renderer-agnostic core (which itself references the offline kernel). -->
   <ItemGroup>
     <ProjectReference Include="../GenUI.Render/GenUI.Render.csproj" />

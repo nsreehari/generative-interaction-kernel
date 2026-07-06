@@ -3,27 +3,19 @@
  *
  * The Fluent `FluentProvider` (main.tsx) emits the standard design tokens onto the
  * `.gx-host` element (colorNeutral*, colorBrand*, spacing*, borderRadius*,
- * strokeWidth*, font*). This first block is the ONE place the app maps those
- * standardized primitives onto its own semantic names, so every primitive style
- * below reads a single consistent scale instead of ad-hoc px/hex.
+ * strokeWidth*, font*).
+ *
+ * The COLOR ROLES (--bg / --panel / --text / --accent / --good / --warn / --bad / ...)
+ * are NOT declared here: they are derived from the shared theme/roles.json and bound to
+ * Fluent tokens at runtime by `roleVars(tokens)` (main.tsx), applied as inline custom
+ * properties on this same `.gx-host` root. That single source drives BOTH adapters
+ * (React here, WinUI/Reactor via `Theme.Ref`), so Fluent — not hand-written CSS — owns the
+ * palette. This block keeps only the spacing/radius/stroke RHYTHM (layout, single-platform).
  *
  * Retheme by swapping the FluentProvider theme (webLight <-> webDark); retune the
- * app's rhythm (spacing/radius/color roles) here in one place.
+ * app's rhythm here, or the semantic color roles in theme/roles.json.
  * ------------------------------------------------------------------------- */
 .gx-host {
-  /* Color roles -> Fluent neutral/brand tokens */
-  --bg: var(--colorNeutralBackground1);
-  --panel: var(--colorNeutralBackground2);
-  --panel-2: var(--colorNeutralBackground3);
-  --field-bg: var(--colorNeutralBackground1);
-  --line: var(--colorNeutralStroke2);
-  --text: var(--colorNeutralForeground1);
-  --muted: var(--colorNeutralForeground3);
-  --accent: var(--colorBrandForeground1);
-  --good: var(--colorPaletteGreenForeground1);
-  --bad: var(--colorPaletteRedForeground1);
-  --warn: var(--colorPaletteDarkOrangeForeground1);
-
   /* Spacing scale -> Fluent spacing tokens */
   --gx-space-xxs: var(--spacingHorizontalXXS); /* 2  */
   --gx-space-xs: var(--spacingHorizontalXS); /* 4  */
