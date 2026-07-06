@@ -108,3 +108,53 @@ export function editableRegions(presentation: PresentationSpec, edits: Presentat
     };
   });
 }
+
+// --- Region edit transforms (the write side) --------------------------------------------
+// Pure prev-edits -> next-edits reducers. The editing UI's controls funnel through these, but so
+// can a NON-UI caller: an agent authoring region overrides programmatically, or a test, mutates a
+// PresentationEdits exactly the way the drag/select surface does — the write-side counterpart of
+// editableRegions above. The order-changing transforms take the current DISPLAY order (derived from
+// the full region list, which can be wider than edits.order) so pinning starts from the real
+// sequence; they return the SAME edits reference on a no-op so a caller can skip a needless re-plan.
+
+/** Toggle a region's hidden state (add to / remove from `disabled`). */
+export function toggleRegion(edits: PresentationEdits, name: string): PresentationEdits {
+  return {
+    ...edits,
+    disabled: edits.disabled.includes(name)
+      ? edits.disabled.filter((n) => n !== name)
+      : [...edits.disabled, name],
+  };
+}
+
+/** Override a region's priority. */
+export function setRegionPriority(edits: PresentationEdits, name: string, value: RegionPriority): PresentationEdits {
+  return { ...edits, priority: { ...edits.priority, [name]: value } };
+}
+
+/** Override a region's disclosure. */
+export function setRegionDisclosure(edits: PresentationEdits, name: string, value: RegionDisclosure): PresentationEdits {
+  return { ...edits, disclosure: { ...edits.disclosure, [name]: value } };
+}
+
+/** Move `dragged` into `target`'s slot within the display order and pin the result. No-op (same ref) if either name is absent or they're equal. */
+export function reorderRegion(edits: PresentationEdits, order: string[], dragged: string, target: string): PresentationEdits {
+  if (dragged === target) return edits;
+  const from = order.indexOf(dragged);
+  const to = order.indexOf(target);
+  if (from < 0 || to < 0) return edits;
+  const next = [...order];
+  next.splice(from, 1);
+  next.splice(to, 0, dragged);
+  return { ...edits, order: next };
+}
+
+/** Nudge a region one slot up (dir -1) or down (dir +1) within the display order and pin the result. No-op (same ref) at the ends. */
+export function moveRegion(edits: PresentationEdits, order: string[], name: string, dir: -1 | 1): PresentationEdits {
+  const i = order.indexOf(name);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= order.length) return edits;
+  const next = [...order];
+  [next[i], next[j]] = [next[j], next[i]];
+  return { ...edits, order: next };
+}
