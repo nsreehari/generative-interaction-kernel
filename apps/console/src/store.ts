@@ -53,56 +53,11 @@ export interface ValidationResult {
 export type ConsoleTab = "editor" | "validation" | "preview" | "versions";
 
 const EMPTY_DRAFT: Draft = { id: "", name: "", description: "", capabilities: [] };
-const EMPTY_VALIDATION: ValidationResult = { status: "unknown", errors: [], warnings: [] };
 
-// ---- Seed data -------------------------------------------------------------------
+// ---- Timestamps -------------------------------------------------------------------
 
 function nowStamp(): string {
   return new Date().toISOString().slice(0, 19).replace("T", " ");
-}
-
-/** A couple of starter profiles so the console shows a populated list on first paint. */
-export function seedProfiles(): Profile[] {
-  const at = nowStamp();
-  return [
-    {
-      id: "live-cards",
-      name: "Live Cards",
-      description: "The first onboarding profile: board / metric / table / actions.",
-      status: "active",
-      version: "1.0.0",
-      capabilities: ["board", "metric", "table", "actions"],
-      updatedAt: at,
-    },
-    {
-      id: "workbench-chrome",
-      name: "Workbench Chrome",
-      description: "The workbench's own declarative panels (self-hosting profile).",
-      status: "draft",
-      version: "0.3.0",
-      capabilities: ["panelGroup", "panel", "select", "text", "button"],
-      updatedAt: at,
-    },
-  ];
-}
-
-/** Fresh, seeded console namespace (plain JSON — this is the bundle's `state.console`). */
-export function seedConsoleData(): Record<string, Json> {
-  return {
-    console: {
-      profiles: seedProfiles(),
-      selectedId: "",
-      draft: EMPTY_DRAFT,
-      newName: "",
-      newCapName: "",
-      tab: "editor",
-      validation: EMPTY_VALIDATION,
-      versions: [],
-      toast: "",
-      previewBundle: null,
-      playgroundBundle: null,
-    } as unknown as Json,
-  };
 }
 
 // ---- Pure validation --------------------------------------------------------------
