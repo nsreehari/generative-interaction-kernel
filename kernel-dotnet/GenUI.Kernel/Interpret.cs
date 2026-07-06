@@ -27,6 +27,12 @@ public static class Interpreter
         if (edges?["read"] is JsonObject read)
             foreach (var kv in read)
                 props[kv.Key] = store.Get(kv.Value!.GetValue<string>());
+        // Value position (shaped read): full provider, like derive / assign-from — NOT the safe
+        // predicate subset the gate uses. Applied after `read`, so an expression may reshape a
+        // plain-read prop of the same name. Mirrors interpret.ts.
+        if (edges?["readExpr"] is JsonObject readExpr)
+            foreach (var kv in readExpr)
+                props[kv.Key] = expr.Eval(kv.Value!.GetValue<string>(), data);
 
         var capability = node["capability"]!.GetValue<string>();
         var fallback = !registry.Has(capability);
