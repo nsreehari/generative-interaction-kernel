@@ -63,15 +63,23 @@ export const PRIMITIVE_CAPABILITIES: Record<string, CapabilityDescriptor> = {
 export interface BundleManifestOptions {
   version: string;
   namespaces?: string[];
-  /** Extra capabilities beyond the shared primitives (rarely needed). */
+  /** Extra capabilities beyond the shared primitives (rarely needed). Keys must be namespaced. */
   extraCapabilities?: Record<string, CapabilityDescriptor>;
 }
 
+/** The alias every bundleManifest imports the shared floor primitives under. */
+export const FLOOR_ALIAS = "ui";
+
 /**
  * Build a manifest for a bundle. Its capabilities are the shared primitives (plus any rare extras),
- * so a bundle only has to declare its state namespaces and a version — never its own vocabulary.
+ * imported under the `ui` alias from the floor provider — so every capability is referenced as
+ * `ui:name` and the bundle declares its outward dependency contract in `externals`. A bundle only
+ * has to declare its state namespaces and a version — never its own vocabulary.
  */
 export function bundleManifest(opts: BundleManifestOptions): Enveloped<ManifestPayload> {
+  const primitives = Object.fromEntries(
+    Object.entries(PRIMITIVE_CAPABILITIES).map(([k, v]) => [`${FLOOR_ALIAS}:${k}`, v])
+  );
   return {
     gup: "0.1",
     type: "manifest",
@@ -80,7 +88,8 @@ export function bundleManifest(opts: BundleManifestOptions): Enveloped<ManifestP
       expression: "jsonata",
       namespaces: opts.namespaces ?? [],
       actions: [...PRIMITIVE_ACTIONS],
-      capabilities: { ...PRIMITIVE_CAPABILITIES, ...(opts.extraCapabilities ?? {}) },
+      capabilities: { ...primitives, ...(opts.extraCapabilities ?? {}) },
+      externals: { components: { [FLOOR_ALIAS]: { from: "floor" } } },
     },
   };
 }
