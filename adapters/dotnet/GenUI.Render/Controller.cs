@@ -16,9 +16,18 @@ public delegate void TreeListener(ResolvedNode tree);
 public sealed class GenUIController
 {
     private readonly GenKernel _kernel;
+    private readonly IDispatchScheduler _scheduler;
     private readonly List<TreeListener> _listeners = new();
 
-    public GenUIController(GenKernel kernel) => _kernel = kernel;
+    /// <summary>Bind a controller to a kernel. Pass a shared <see cref="IDispatchScheduler"/> when the
+    /// same kernel is also driven by a transport broker, so every dispatch — UI-originated or
+    /// agent-originated — lands on one owner. Left null, the controller owns an inline (lock) scheduler,
+    /// which is all a standalone in-process renderer needs.</summary>
+    public GenUIController(GenKernel kernel, IDispatchScheduler? scheduler = null)
+    {
+        _kernel = kernel;
+        _scheduler = scheduler ?? new InlineDispatchScheduler();
+    }
 
     /// <summary>The most recently resolved tree, or null before <see cref="Start"/>.</summary>
     public ResolvedNode? Tree { get; private set; }
@@ -27,11 +36,11 @@ public sealed class GenUIController
     public Patch? LastPatch { get; private set; }
 
     /// <summary>Seed machine state and produce the first resolved tree.</summary>
-    public ResolvedNode Start()
+    public ResolvedNode Start() => _scheduler.Invoke(() =>
     {
         _kernel.Init();
         return Refresh();
-    }
+    });
 
     public IDisposable Subscribe(TreeListener listener)
     {
@@ -40,11 +49,11 @@ public sealed class GenUIController
     }
 
     /// <summary>Dispatch a behavior event, then re-resolve and notify subscribers.</summary>
-    public ResolvedNode Emit(string node, string name, JsonObject? payload = null)
+    public ResolvedNode Emit(string node, string name, JsonObject? payload = null) => _scheduler.Invoke(() =>
     {
         LastPatch = _kernel.Dispatch(new GupEvent(node, name, payload));
         return Refresh();
-    }
+    });
 
     private ResolvedNode Refresh()
     {
