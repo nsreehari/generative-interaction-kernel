@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>GenUI.Transport.HttpSse</RootNamespace>
+    <!-- Concrete HTTP/SSE binding for the transport seam. System.Net.HttpListener + the kernel
+         only (zero NuGet, net10.0). The C# mirror of transports/http-sse: host -> client streams
+         over SSE; client -> host `event`s arrive as POSTs correlated by a session id. -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../kernel-dotnet/GenUI.Kernel/GenUI.Kernel.csproj" />
+  </ItemGroup>
+
+</Project>
