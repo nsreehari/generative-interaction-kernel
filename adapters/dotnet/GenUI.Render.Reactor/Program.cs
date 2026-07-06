@@ -5,11 +5,11 @@ using GenUI.Render;
 namespace GenUI.Render.Reactor.Host;
 
 /// <summary>
-/// Runnable sample host. It authors a small live-cards bundle as JSON, registers it in an
-/// <see cref="AppRegistry"/> under the name <c>"sample"</c>, and runs it through the generic
-/// <see cref="BundleHost"/> — the same bundle/host/app-registry path the React web floor uses
-/// (<c>bundle.ts</c> + <c>host.tsx</c> + <c>apps.tsx</c>). Nothing here hand-wires a kernel; the
-/// sample is just another hosted bundle, so a profile app added later mounts identically.
+/// Runnable shell host. It authors a small live-cards bundle as JSON, registers it as a
+/// <b>Sample</b>, and opens the WinUI/Reactor <see cref="ShellComponent"/> — the .NET peer of the
+/// React web floor's app host (Samples / Apps / Host over <c>bundle.ts</c> + <c>host.tsx</c> +
+/// <c>apps.tsx</c>). Nothing here hand-wires a kernel; the sample is just another hosted bundle, so
+/// a profile app added to the Apps registry later mounts identically.
 /// </summary>
 public static class Program
 {
@@ -18,10 +18,11 @@ public static class Program
     [STAThread]
     public static void Main()
     {
-        AppRegistry apps = new AppRegistry()
+        AppRegistry samples = new AppRegistry()
             .Register(SampleAppName, CreateSampleBundle);
+        AppRegistry apps = new AppRegistry();
 
-        BundleHost.RunApp(apps, SampleAppName, title: "GenUI \u00d7 Reactor", width: 900, height: 640);
+        ShellHost.Run(samples, apps, title: "GenUI \u00d7 Reactor", width: 1100, height: 720);
     }
 
     /// <summary>The sample as a JSON bundle, built through <see cref="BundleLoader.FromJson"/> so it
