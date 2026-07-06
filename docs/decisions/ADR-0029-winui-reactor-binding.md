@@ -98,5 +98,12 @@ not the pixels, is what must match across adapters.
   so the walk needs no UI thread). The Reactor **window app** is still not wired into `npm test`: it targets
   `net10.0-windows` and opens a window, so only the structural check — not the painted window — is part of
   the offline suite.
+- The window app has nonetheless been **run and verified end-to-end on Windows** (manual, out-of-band from
+  the offline suite): `dotnet run --project adapters/dotnet/GenUI.Render.Reactor` launches the unpackaged
+  WinUI window, and a UI Automation walk confirms the real materialized controls (the board title, the
+  metric label + value, and the `Click me` button) and the full interactive round-trip — invoking the
+  button flips the metric's value control from `—` to `true` (emit → kernel dispatch → re-resolve →
+  re-render → control update). This is desktop-session-bound (no headless CI), so it stays a manual
+  confirmation, but it removes any doubt that the binding actually paints and reacts.
 - Precedent for the next toolkit (WPF, MAUI, another web renderer): add a project outside the island,
   bind `TView`, write a registry + a host component, and reuse the same walk and equivalence argument.
