@@ -1,0 +1,11 @@
+[
+  { "op": "set", "path": "computed_values.total", "value": 150 },
+  {
+    "op": "set",
+    "path": "fetched_sources.orders",
+    "value": [
+      { "id": "order-42", "amount": 120 },
+      { "id": "order-43", "amount": 30 }
+    ]
+  }
+]
