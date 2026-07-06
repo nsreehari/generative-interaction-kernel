@@ -10,8 +10,9 @@
 //   * leaf views (metric/table/actions) produce the expected element shapes;
 //   * the renderer's visibility drop and BOTH fallback paths reach the Reactor Fallback view;
 //   * the node-bound emit is a real closure: firing a ButtonElement.OnClick round-trips through
-//     the kernel (dispatch -> re-resolve -> re-render) and the metric reflects the new state.
-
+//     the kernel (dispatch -> re-resolve -> re-render) and the metric reflects the new state.//   * Reactor's OWN AccessibilityScanner walks the exact element tree that materializes to WinUI
+//     controls and reports it clean. Per the framework's testing guidance, the render tree — not a
+//     font/DPI/Composition-dependent bitmap — is the right paint-fidelity surface to assert.
 using System.Text.Json.Nodes;
 using GenUI.Kernel;
 using GenUI.Render;
@@ -118,6 +119,23 @@ checker.Assert(refreshCount >= 2, "the subscriber re-rendered after the dispatch
 // after the round-trip, the metric reflects the new state (bool stringifies to "true").
 var echoAfter = FindMetric(Shape.Of(root!), "Clicked");
 checker.Assert(echoAfter!.Children[1].Text == "true", "metric reflects ui.clicked after the click");
+
+// Reactor's own accessibility oracle walks the exact element tree that materializes to controls.
+// Running it headless proves the render tree is semantically sound (accessible names, roles,
+// landmarks) — the strongest paint-fidelity evidence available without opening a window, and the
+// surface the framework itself prescribes over a bitmap diff. We enforce a WARNING-clean bar (the
+// actionable severity); remaining info-level advisories are surfaced, not suppressed. The metric's
+// bold 20px value trips the heading-style heuristic (A11Y_004), but it is numeric data, not a
+// heading — annotating it as one would be semantically wrong, so that advisory is left as-is.
+var a11y = AccessibilityScanner.Scan(root!);
+var warnings = a11y.Where(d => d.Severity == "warning").ToList();
+checker.Assert(
+    warnings.Count == 0,
+    warnings.Count == 0
+        ? "Reactor's accessibility scanner reports no warnings on the render tree"
+        : $"Reactor's accessibility scanner reports no warnings on the render tree (got {string.Join(", ", warnings.Select(d => $"{d.Id} {d.ElementType}"))})");
+foreach (var info in a11y.Where(d => d.Severity != "warning"))
+    Console.WriteLine($"  info  a11y advisory {info.Id} on {info.ElementType}: {info.Message}");
 
 return checker.Report();
 

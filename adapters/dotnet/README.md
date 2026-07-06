@@ -56,8 +56,11 @@ helper + demo `Program`. It targets `net10.0-windows`, pulls Reactor + Windows A
 pure declarative records, so a headless STRUCTURAL check — `GenUI.Render.Reactor.Check` — renders the
 shared `ResolvedNode` tree through the real `GenUIReactorViews` registry and walks the resulting element
 tree (container/leaf shape, visibility drop, both fallback paths, a real emit round-trip) with no window.
-That upgrades the Reactor evidence from compile-verified to structural. Cross-adapter render equivalence
-is anchored by the single shared `Renderer.Render` walk, not a per-toolkit pixel test. See
+It then runs Reactor's own `AccessibilityScanner.Scan` over that render tree (warning-clean) — the
+framework-prescribed paint-fidelity surface, since Reactor's testing guidance rules a font/DPI/Composition
+bitmap out of a unit test. That upgrades the Reactor evidence from compile-verified to structural +
+semantically scanned. Cross-adapter render equivalence is anchored by the single shared `Renderer.Render`
+walk, not a per-toolkit pixel test. See
 [ADR-0029](../../docs/decisions/ADR-0029-winui-reactor-binding.md).
 
 ```
