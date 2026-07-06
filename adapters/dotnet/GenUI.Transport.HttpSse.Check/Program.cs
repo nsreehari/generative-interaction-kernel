@@ -13,6 +13,7 @@ using GenUI.Transport.HttpSse;
 var checker = new Checker();
 
 Support.InMemoryRoundTrip(checker);
+Support.ConcurrentStress(checker);
 await Support.HttpRoundTrip(checker);
 
 return checker.Report();
@@ -92,6 +93,60 @@ internal static class Support
         broker.Stop();
         clientSide.Send(Gup.Message("event", new JsonObject { ["node"] = "go", ["name"] = "tap" }));
         checker.Check("after Stop() the broker is inert", received.Count == 4);
+    }
+
+    // ── Concurrency: many connections attach and fire events in parallel ──────────────────────
+    // Attaching a connection mutates the broker's shared _connections/_log at the same time an
+    // in-flight event's dispatch appends to _log and broadcasts across _connections. This drives
+    // both paths from many threads at once to prove they're serialized under one gate: no torn
+    // collection state (no thrown exception), each client sees a monotonic rev stream, and every
+    // still-connected client converges on the same final rev.
+    public static void ConcurrentStress(Checker checker)
+    {
+        const int clients = 24;
+        const int eventsPerClient = 25;
+
+        var (manifest, document, kernel) = BuildKernel();
+        var broker = new KernelTransportHost(manifest, document, kernel);
+
+        var revStreams = new List<int>[clients];
+        Exception? failure = null;
+
+        Parallel.For(0, clients, i =>
+        {
+            try
+            {
+                var revs = new List<int>();
+                revStreams[i] = revs;
+
+                var (hostSide, clientSide) = InMemoryTransport.CreatePair();
+                // Broadcasts are globally serialized under the broker's dispatch gate, so this
+                // client's callback never runs concurrently with itself — a plain List is safe.
+                clientSide.Subscribe(msg =>
+                {
+                    if (Gup.TypeOf(msg) == "patch") revs.Add(RevOf(msg));
+                });
+
+                broker.Attach(hostSide);
+                for (var e = 0; e < eventsPerClient; e++)
+                    clientSide.Send(Gup.Message("event", new JsonObject { ["node"] = "go", ["name"] = "tap" }));
+            }
+            catch (Exception ex)
+            {
+                Interlocked.CompareExchange(ref failure, ex, null);
+            }
+        });
+
+        checker.Check("concurrent attach + dispatch raises no exception", failure is null);
+
+        var everyClientGotPatches = revStreams.All(s => s is { Count: > 0 });
+        checker.Check("every concurrent client received at least one patch", everyClientGotPatches);
+
+        var allMonotonic = everyClientGotPatches && revStreams.All(IsNonDecreasing);
+        checker.Check("each client's rev stream is monotonic", allMonotonic);
+
+        var finalRevs = everyClientGotPatches ? revStreams.Select(s => s[^1]).Distinct().ToArray() : Array.Empty<int>();
+        checker.Check("all connected clients converge on the same final rev", finalRevs.Length == 1);
     }
 
     // ── HTTP/SSE: onboard over a real socket, POST an event, receive the patch back ───────────
@@ -179,6 +234,14 @@ internal static class Support
 
     private static int RevOf(JsonObject patchMessage) =>
         patchMessage["payload"]?["rev"]?.GetValue<int>() ?? -1;
+
+    private static bool IsNonDecreasing(List<int> revs)
+    {
+        for (var i = 1; i < revs.Count; i++)
+            if (revs[i] < revs[i - 1])
+                return false;
+        return true;
+    }
 
     private static bool PatchSetsClicked(JsonObject patchMessage)
     {

@@ -153,24 +153,35 @@ public sealed class KernelTransportHost
     /// client is re-onboarded in full. Returns a handle that detaches the connection.</summary>
     public IDisposable Attach(ITransport transport, int? fromRev = null)
     {
-        EnsureBaseline();
-        _connections.Add(transport);
-        var unsubscribe = transport.Subscribe(OnMessage);
-        _unsubscribers[transport] = unsubscribe;
-        Onboard(transport, fromRev);
+        // Runs under the same gate as dispatch/broadcast so onboarding a new connection can't race
+        // an in-flight event's AppendLog/Broadcast over the shared _log and _connections. The lock is
+        // reentrant, so a Send that faults mid-broadcast and detaches on this thread is still safe.
+        lock (_dispatchGate)
+        {
+            EnsureBaseline();
+            _connections.Add(transport);
+            var unsubscribe = transport.Subscribe(OnMessage);
+            _unsubscribers[transport] = unsubscribe;
+            Onboard(transport, fromRev);
+        }
         return new Unsubscribe(() => Detach(transport));
     }
 
     public void Detach(ITransport transport)
     {
-        if (_unsubscribers.Remove(transport, out var unsubscribe)) unsubscribe.Dispose();
-        _connections.Remove(transport);
+        lock (_dispatchGate)
+        {
+            if (_unsubscribers.Remove(transport, out var unsubscribe)) unsubscribe.Dispose();
+            _connections.Remove(transport);
+        }
     }
 
     /// <summary>Detach every connection.</summary>
     public void Stop()
     {
-        foreach (var transport in _connections.ToArray()) Detach(transport);
+        ITransport[] snapshot;
+        lock (_dispatchGate) snapshot = _connections.ToArray();
+        foreach (var transport in snapshot) Detach(transport);
     }
 
     private void EnsureBaseline()
