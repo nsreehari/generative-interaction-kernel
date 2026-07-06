@@ -55,6 +55,13 @@ export function Table({ node, emit }: CapabilityViewProps) {
 
   return (
     <table data-cap="table">
+      <thead>
+        <tr>
+          {columns.map((col) => (
+            <th key={col}>{col}</th>
+          ))}
+        </tr>
+      </thead>
       <tbody>
         {rows.map((row, i) => (
           <tr
