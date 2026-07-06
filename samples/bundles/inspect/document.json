@@ -1,0 +1,264 @@
+{
+  "gup": "0.1",
+  "type": "document",
+  "payload": {
+    "root": {
+      "capability": "panelGroup",
+      "id": "inspect-root",
+      "edges": {
+        "on": {
+          "snapshot": [
+            {
+              "do": "assign",
+              "target": "inspect.presentationHead",
+              "args": {
+                "from": "$event.presentationHead"
+              }
+            },
+            {
+              "do": "assign",
+              "target": "inspect.regions",
+              "args": {
+                "from": "$event.regions"
+              }
+            },
+            {
+              "do": "assign",
+              "target": "inspect.documentJson",
+              "args": {
+                "from": "$event.documentJson"
+              }
+            },
+            {
+              "do": "assign",
+              "target": "inspect.treeJson",
+              "args": {
+                "from": "$event.treeJson"
+              }
+            },
+            {
+              "do": "assign",
+              "target": "inspect.traces",
+              "args": {
+                "from": "$event.traces"
+              }
+            },
+            {
+              "do": "assign",
+              "target": "inspect.patchLabel",
+              "args": {
+                "from": "$event.patchLabel"
+              }
+            },
+            {
+              "do": "assign",
+              "target": "inspect.exportJson",
+              "args": {
+                "from": "$event.exportJson"
+              }
+            }
+          ]
+        },
+        "children": [
+          {
+            "capability": "tabBar",
+            "id": "inspect-tabs",
+            "props": {
+              "options": [
+                {
+                  "value": "presentation",
+                  "label": "Presentation DSL"
+                },
+                {
+                  "value": "document",
+                  "label": "UI DSL"
+                },
+                {
+                  "value": "tree",
+                  "label": "Resolved tree"
+                },
+                {
+                  "value": "traces",
+                  "label": "Traces"
+                },
+                {
+                  "value": "export",
+                  "label": "Export"
+                }
+              ]
+            },
+            "edges": {
+              "read": {
+                "active": "inspect.activeTab"
+              },
+              "on": {
+                "select": [
+                  {
+                    "do": "assign",
+                    "target": "inspect.activeTab",
+                    "args": {
+                      "from": "$event.value"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "capability": "panelGroup",
+            "id": "tab-presentation",
+            "edges": {
+              "gate": "inspect.activeTab = 'presentation'",
+              "children": [
+                {
+                  "capability": "note",
+                  "id": "inspect-regions-head",
+                  "props": {
+                    "tone": "muted"
+                  },
+                  "edges": {
+                    "read": {
+                      "value": "inspect.presentationHead"
+                    }
+                  }
+                },
+                {
+                  "capability": "table",
+                  "id": "inspect-regions",
+                  "props": {
+                    "static": true,
+                    "blankText": "—",
+                    "columns": [
+                      {
+                        "key": "name",
+                        "label": "region"
+                      },
+                      {
+                        "key": "role",
+                        "label": "role"
+                      },
+                      {
+                        "key": "priority",
+                        "label": "priority",
+                        "classPrefix": "pri-"
+                      },
+                      {
+                        "key": "disclosure",
+                        "label": "disclosure"
+                      },
+                      {
+                        "key": "presentation",
+                        "label": "presentation"
+                      },
+                      {
+                        "key": "rationale",
+                        "label": "rationale"
+                      }
+                    ]
+                  },
+                  "edges": {
+                    "read": {
+                      "rows": "inspect.regions"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "capability": "panelGroup",
+            "id": "tab-document",
+            "edges": {
+              "gate": "inspect.activeTab = 'document'",
+              "children": [
+                {
+                  "capability": "codeBlock",
+                  "id": "inspect-document",
+                  "edges": {
+                    "read": {
+                      "code": "inspect.documentJson"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "capability": "panelGroup",
+            "id": "tab-tree",
+            "edges": {
+              "gate": "inspect.activeTab = 'tree'",
+              "children": [
+                {
+                  "capability": "codeBlock",
+                  "id": "inspect-tree",
+                  "edges": {
+                    "read": {
+                      "code": "inspect.treeJson"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "capability": "panelGroup",
+            "id": "tab-traces",
+            "edges": {
+              "gate": "inspect.activeTab = 'traces'",
+              "children": [
+                {
+                  "capability": "note",
+                  "id": "inspect-traces-label",
+                  "props": {
+                    "tone": "muted"
+                  },
+                  "edges": {
+                    "read": {
+                      "value": "inspect.patchLabel"
+                    }
+                  }
+                },
+                {
+                  "capability": "list",
+                  "id": "inspect-traces",
+                  "props": {
+                    "static": true,
+                    "badgeLeading": true,
+                    "badgeKey": "event",
+                    "primaryKey": "node",
+                    "secondaryKey": "detail",
+                    "emptyText": "no traces yet — fire an event"
+                  },
+                  "edges": {
+                    "read": {
+                      "items": "inspect.traces"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "capability": "panelGroup",
+            "id": "tab-export",
+            "edges": {
+              "gate": "inspect.activeTab = 'export'",
+              "children": [
+                {
+                  "capability": "codeBlock",
+                  "id": "inspect-export",
+                  "edges": {
+                    "read": {
+                      "code": "inspect.exportJson"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -19,12 +19,15 @@
     "test:dotnet-render-reactor": "dotnet run --project adapters/dotnet/GenUI.Render.Reactor.Check",
     "dev:workbench": "vite apps/workbench",
     "build:workbench": "vite build apps/workbench",
-    "dev:console": "vite apps/console",
-    "build:console": "vite build apps/console",
-    "typecheck": "tsc -p kernel/tsconfig.json --noEmit && tsc -p adapters/react/tsconfig.json --noEmit && tsc -p interaction/tsconfig.json --noEmit && tsc -p transports/http-sse/tsconfig.json --noEmit && tsc -p apps/console/tsconfig.json --noEmit && tsc -p apps/workbench/tsconfig.json --noEmit",
+    "dev:host": "vite samples/apps/host",
+    "build:host": "vite build samples/apps/host",
+    "dev:console": "npm run dev:host",
+    "build:console": "npm run build:host",
+    "typecheck": "tsc -p kernel/tsconfig.json --noEmit && tsc -p adapters/react/tsconfig.json --noEmit && tsc -p interaction/tsconfig.json --noEmit && tsc -p transports/http-sse/tsconfig.json --noEmit && tsc -p samples/apps/host/tsconfig.json --noEmit && tsc -p apps/workbench/tsconfig.json --noEmit",
     "test": "npm run conformance && npm run typecheck && npm run test:jsonata && npm run test:kernel && npm run test:react && npm run test:interaction && npm run test:sse && npm run test:dotnet && npm run test:dotnet-jsonata && npm run test:dotnet-jsonata-corpus && npm run test:dotnet-render && npm run test:dotnet-render-reactor"
   },
   "dependencies": {
+    "@fluentui/react-components": "^9.74.3",
     "ajv": "^8.17.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

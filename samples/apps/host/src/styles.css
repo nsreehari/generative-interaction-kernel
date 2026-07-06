@@ -1,0 +1,270 @@
+/* ---------------------------------------------------------------------------
+ * App-level SEMANTIC TOKENS.
+ *
+ * The Fluent `FluentProvider` (main.tsx) emits the standard design tokens onto the
+ * `.gx-host` element (colorNeutral*, colorBrand*, spacing*, borderRadius*,
+ * strokeWidth*, font*). This first block is the ONE place the app maps those
+ * standardized primitives onto its own semantic names, so every primitive style
+ * below reads a single consistent scale instead of ad-hoc px/hex.
+ *
+ * Retheme by swapping the FluentProvider theme (webLight <-> webDark); retune the
+ * app's rhythm (spacing/radius/color roles) here in one place.
+ * ------------------------------------------------------------------------- */
+.gx-host {
+  /* Color roles -> Fluent neutral/brand tokens */
+  --bg: var(--colorNeutralBackground1);
+  --panel: var(--colorNeutralBackground2);
+  --panel-2: var(--colorNeutralBackground3);
+  --field-bg: var(--colorNeutralBackground1);
+  --line: var(--colorNeutralStroke2);
+  --text: var(--colorNeutralForeground1);
+  --muted: var(--colorNeutralForeground3);
+  --accent: var(--colorBrandForeground1);
+  --good: var(--colorPaletteGreenForeground1);
+  --bad: var(--colorPaletteRedForeground1);
+  --warn: var(--colorPaletteDarkOrangeForeground1);
+
+  /* Spacing scale -> Fluent spacing tokens */
+  --gx-space-xxs: var(--spacingHorizontalXXS); /* 2  */
+  --gx-space-xs: var(--spacingHorizontalXS); /* 4  */
+  --gx-space-snudge: var(--spacingHorizontalSNudge); /* 6  */
+  --gx-space-s: var(--spacingHorizontalS); /* 8  */
+  --gx-space-mnudge: var(--spacingHorizontalMNudge); /* 10 */
+  --gx-space-m: var(--spacingHorizontalM); /* 12 */
+  --gx-space-l: var(--spacingHorizontalL); /* 16 */
+  --gx-space-xl: var(--spacingHorizontalXL); /* 20 */
+
+  /* Shape -> Fluent radius/stroke tokens */
+  --gx-radius-s: var(--borderRadiusMedium); /* 4 */
+  --gx-radius-m: var(--borderRadiusLarge); /* 6 */
+  --gx-radius-pill: var(--borderRadiusCircular);
+  --gx-stroke: var(--strokeWidthThin); /* 1 */
+
+  height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--fontFamilyBase);
+  font-size: var(--fontSizeBase200);
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+code { font-family: var(--fontFamilyMonospace); }
+.gx-muted { color: var(--muted); }
+
+/* Screen ----------------------------------------------------------------- */
+
+.gx-screen { display: flex; flex-direction: column; height: 100vh; }
+.gx-screen-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gx-space-m);
+  padding: var(--gx-space-m) var(--gx-space-l);
+  border-bottom: var(--gx-stroke) solid var(--line);
+  background: var(--panel);
+}
+.gx-screen-head h1 { font-size: var(--fontSizeBase400); margin: 0; }
+.gx-screen-body { flex: 1; min-height: 0; display: flex; }
+
+/* Rows / cols ------------------------------------------------------------ */
+
+.gx-row { display: flex; gap: var(--gx-space-m); }
+.gx-row-split { flex: 1; min-height: 0; display: grid; grid-template-columns: 320px 1fr; gap: 0; width: 100%; }
+.gx-col { display: flex; flex-direction: column; gap: var(--gx-space-m); }
+
+/* Panels ----------------------------------------------------------------- */
+
+.gx-panel { overflow-y: auto; padding: var(--gx-space-l); }
+.gx-panel-rail { background: var(--panel); border-right: var(--gx-stroke) solid var(--line); }
+.gx-panel-detail { display: flex; flex-direction: column; gap: var(--gx-space-l); }
+.gx-panel-inset,
+.gx-panel-tab,
+.gx-panel-actions {
+  background: var(--panel-2);
+  border: var(--gx-stroke) solid var(--line);
+  border-radius: var(--gx-radius-m);
+  padding: var(--gx-space-m);
+}
+.gx-panel-actions { display: flex; gap: var(--gx-space-s); flex-wrap: wrap; }
+.gx-panel-detail-body { display: flex; flex-direction: column; gap: var(--gx-space-m); }
+.gx-panel-title {
+  font-size: var(--fontSizeBase100);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--muted);
+  margin: 0 0 var(--gx-space-mnudge);
+}
+
+/* Text ------------------------------------------------------------------- */
+
+.gx-text { display: inline-block; }
+.gx-text-title { font-weight: var(--fontWeightSemibold); font-size: var(--fontSizeBase300); }
+.gx-text-subtitle { color: var(--muted); }
+.gx-text-caption { font-size: var(--fontSizeBase100); color: var(--muted); }
+.gx-text-code { font-family: var(--fontFamilyMonospace); color: var(--accent); }
+.gx-text-muted { color: var(--muted); }
+.gx-heading { margin: 0 0 var(--gx-space-s); font-size: var(--fontSizeBase300); }
+
+/* Notes ------------------------------------------------------------------ */
+
+.gx-note { margin: var(--gx-space-xs) 0; }
+.gx-note-muted { color: var(--muted); }
+.gx-note-info {
+  background: var(--panel-2);
+  border: var(--gx-stroke) solid var(--accent);
+  border-radius: var(--gx-radius-m);
+  padding: var(--gx-space-s) var(--gx-space-m);
+  color: var(--text);
+}
+
+/* Badges ----------------------------------------------------------------- */
+
+.gx-badge {
+  display: inline-block;
+  font-size: var(--fontSizeBase100);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  padding: var(--gx-space-xxs) var(--gx-space-snudge);
+  border-radius: var(--gx-radius-pill);
+  border: var(--gx-stroke) solid var(--line);
+  color: var(--muted);
+}
+.gx-badge-draft { color: var(--warn); border-color: var(--warn); }
+.gx-badge-active { color: var(--good); border-color: var(--good); }
+
+/* Metric ----------------------------------------------------------------- */
+
+.gx-metric { display: flex; flex-direction: column; gap: var(--gx-space-xxs); }
+.gx-metric-label { font-size: var(--fontSizeBase100); color: var(--muted); }
+.gx-metric-value { font-size: var(--fontSizeBase500); }
+
+/* List ------------------------------------------------------------------- */
+
+.gx-list { list-style: none; margin: 0; padding: 0; }
+.gx-list-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "primary badge" "value value";
+  gap: var(--gx-space-xxs) var(--gx-space-s);
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: var(--gx-stroke) solid transparent;
+  border-radius: var(--gx-radius-m);
+  padding: var(--gx-space-s) var(--gx-space-mnudge);
+  margin-bottom: var(--gx-space-xs);
+  cursor: pointer;
+  color: var(--text);
+  font: inherit;
+}
+.gx-list-row:hover { background: var(--panel-2); }
+.gx-list-row.selected { border-color: var(--accent); background: var(--panel-2); }
+.gx-list-primary { grid-area: primary; font-weight: var(--fontWeightSemibold); }
+.gx-list-row .gx-badge { grid-area: badge; }
+.gx-list-secondary { grid-area: value; font-size: var(--fontSizeBase100); }
+.gx-list-value { grid-area: value; font-size: var(--fontSizeBase100); }
+
+/* Table ------------------------------------------------------------------ */
+
+.gx-table { width: 100%; border-collapse: collapse; }
+.gx-table th {
+  text-align: left;
+  font-size: var(--fontSizeBase100);
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: var(--gx-stroke) solid var(--line);
+  padding: var(--gx-space-xs) var(--gx-space-s);
+}
+.gx-table td { padding: var(--gx-space-snudge) var(--gx-space-s); border-bottom: var(--gx-stroke) solid var(--line); }
+.gx-table tbody tr { cursor: pointer; }
+.gx-table tbody tr:hover { background: var(--panel-2); }
+
+/* Inputs ----------------------------------------------------------------- */
+
+.gx-field { display: flex; flex-direction: column; gap: var(--gx-space-xs); margin-bottom: var(--gx-space-mnudge); }
+.gx-field-label { font-size: var(--fontSizeBase100); color: var(--muted); }
+.gx-field input, .gx-field textarea {
+  background: var(--field-bg);
+  color: var(--text);
+  border: var(--gx-stroke) solid var(--line);
+  border-radius: var(--gx-radius-s);
+  padding: var(--gx-space-xs) var(--gx-space-snudge);
+  font: inherit;
+}
+.gx-field textarea { resize: vertical; }
+
+.gx-btn {
+  background: var(--colorNeutralBackground3);
+  color: var(--text);
+  border: var(--gx-stroke) solid var(--line);
+  border-radius: var(--gx-radius-s);
+  padding: var(--gx-space-snudge) var(--gx-space-m);
+  cursor: pointer;
+  font: inherit;
+}
+.gx-btn:hover { background: var(--colorNeutralBackground3Hover); }
+.gx-btn:disabled { opacity: .5; cursor: default; }
+.gx-btn-primary { background: var(--colorBrandBackground); color: var(--colorNeutralForegroundOnBrand); border-color: var(--colorBrandBackground); }
+.gx-btn-primary:hover { background: var(--colorBrandBackgroundHover); border-color: var(--colorBrandBackgroundHover); }
+.gx-btn-danger { border-color: var(--bad); color: var(--bad); }
+
+/* Tabs ------------------------------------------------------------------- */
+
+.gx-tabs { display: flex; gap: var(--gx-space-xxs); border-bottom: var(--gx-stroke) solid var(--line); margin-bottom: var(--gx-space-m); }
+.gx-tabs button {
+  background: transparent;
+  border: none;
+  border-bottom: var(--strokeWidthThick) solid transparent;
+  border-radius: 0;
+  padding: var(--gx-space-snudge) var(--gx-space-m);
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+}
+.gx-tabs button:hover { color: var(--text); }
+.gx-tabs button.active { color: var(--text); border-bottom-color: var(--accent); }
+
+/* Chips ------------------------------------------------------------------ */
+
+.gx-chips { list-style: none; display: flex; flex-wrap: wrap; gap: var(--gx-space-snudge); margin: 0 0 var(--gx-space-mnudge); padding: 0; }
+.gx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gx-space-snudge);
+  background: var(--field-bg);
+  border: var(--gx-stroke) solid var(--line);
+  border-radius: var(--gx-radius-pill);
+  padding: var(--gx-space-xxs) var(--gx-space-snudge) var(--gx-space-xxs) var(--gx-space-mnudge);
+}
+.gx-chip code { color: var(--accent); }
+.gx-chip-remove {
+  background: transparent;
+  border: none;
+  padding: 0 var(--gx-space-xs);
+  color: var(--muted);
+  line-height: 1;
+  cursor: pointer;
+}
+.gx-chip-remove:hover { color: var(--bad); }
+
+/* Embedded bundle (Preview) --------------------------------------------- */
+
+.gx-bundle {
+  border: var(--gx-stroke) dashed var(--line);
+  border-radius: var(--gx-radius-m);
+  padding: var(--gx-space-m);
+  background: var(--field-bg);
+}
+.gx-bundle .gx-panel-preview-board { padding: 0; overflow: visible; }
+.gx-bundle .gx-panel-preview-board > .gx-panel-title { color: var(--text); font-size: var(--fontSizeBase200); }
+.gx-bundle .gx-panel-preview-card {
+  border: var(--gx-stroke) solid var(--line);
+  border-radius: var(--gx-radius-m);
+  padding: var(--gx-space-mnudge);
+  margin-bottom: var(--gx-space-mnudge);
+  background: var(--panel-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gx-space-xs);
+  overflow: visible;
+}
