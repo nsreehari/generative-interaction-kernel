@@ -58,8 +58,16 @@ pure declarative records — a second offline runner, `GenUI.Render.Reactor.Chec
 renders the same `ResolvedNode` tree through the actual `GenUIReactorViews` registry (`TView = Element`)
 and **walks the resulting element tree structurally** with no UI thread, no window, and no control
 materialization. It asserts the container/leaf shapes, the visibility drop, both fallback paths, and a
-real `ButtonElement.OnClick` emit round-tripping through the kernel. This upgrades the Reactor evidence
-from *compile-verified* to *structural*. Pixel-level verification remains out of scope — the contract,
+real `ButtonElement.OnClick` emit round-tripping through the kernel. The same runner then runs Reactor's
+own `AccessibilityScanner.Scan` over that render tree — the framework's oracle that walks the exact
+elements which materialize to WinUI controls — and enforces a **warning-clean** bar (info-level
+heuristics, e.g. a bold numeric value read as a heading, are surfaced, not suppressed). This upgrades the
+Reactor evidence from *compile-verified* to *structural + semantically scanned*.
+
+Pixel-level verification remains out of scope — and that is the framework's own guidance, not just ours:
+Reactor's testing docs state a rendered bitmap "depends on font rendering, DPI, and platform Composition
+— none of which belong in a unit test," and prescribe asserting the element tree instead. So the render
+tree, validated headlessly by Reactor's own scanner, is the correct paint-fidelity surface; the contract,
 not the pixels, is what must match across adapters.
 
 ## Alternatives considered

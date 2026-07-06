@@ -6,6 +6,7 @@ using GenUI.Render;
 using Microsoft.UI.Reactor;
 using Microsoft.UI.Reactor.Core;
 using Microsoft.UI.Reactor.Layout;
+using Microsoft.UI.Xaml.Automation.Peers;
 using static Microsoft.UI.Reactor.Factories;
 
 namespace GenUI.Render.Reactor;
@@ -43,7 +44,8 @@ public static class GenUIReactorViews
         }
 
         children.AddRange(p.Children);
-        return VStack(12, children.ToArray()).Margin(16);
+        // The board is the app's main content region: mark it so screen readers can jump to it.
+        return VStack(12, children.ToArray()).Margin(16).Landmark(AutomationLandmarkType.Main);
     }
 
     // Leaf: a labelled value read from the node's props (label required, value optional).
