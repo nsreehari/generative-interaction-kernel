@@ -1,57 +1,68 @@
 using System;
 using System.Text.Json.Nodes;
-using GenUI.Kernel;
-using GenUI.Render.Reactor;
-using GenKernel = GenUI.Kernel.Kernel;
+using GenUI.Render;
 
 namespace GenUI.Render.Reactor.Host;
 
 /// <summary>
-/// Runnable demonstration host: builds a small live-cards document, drives it through the real
-/// kernel, and opens a Reactor/WinUI window over the render binding. The same controller +
-/// registry could be hosted by any WinUI entry point — this Program just supplies the
-/// <c>[STAThread]</c> boot and a sample document so the binding is end-to-end runnable.
+/// Runnable sample host. It authors a small live-cards bundle as JSON, registers it in an
+/// <see cref="AppRegistry"/> under the name <c>"sample"</c>, and runs it through the generic
+/// <see cref="BundleHost"/> — the same bundle/host/app-registry path the React web floor uses
+/// (<c>bundle.ts</c> + <c>host.tsx</c> + <c>apps.tsx</c>). Nothing here hand-wires a kernel; the
+/// sample is just another hosted bundle, so a profile app added later mounts identically.
 /// </summary>
 public static class Program
 {
+    private const string SampleAppName = "sample";
+
     [STAThread]
     public static void Main()
     {
-        JsonObject manifest = JsonNode.Parse(ManifestJson)!.AsObject();
-        JsonObject document = JsonNode.Parse(DocumentJson)!.AsObject();
+        AppRegistry apps = new AppRegistry()
+            .Register(SampleAppName, CreateSampleBundle);
 
-        var store = new InMemoryStateModel(new[] { "ui" });
-        var kernel = new GenKernel(manifest, document, store);
-        var controller = new GenUIController(kernel);
-
-        ReactorHost.Run(controller, title: "GenUI \u00d7 Reactor", width: 900, height: 640);
+        BundleHost.RunApp(apps, SampleAppName, title: "GenUI \u00d7 Reactor", width: 900, height: 640);
     }
 
-    private const string ManifestJson = """
+    /// <summary>The sample as a JSON bundle, built through <see cref="BundleLoader.FromJson"/> so it
+    /// travels the same "everything is JSON" path a real app profile would.</summary>
+    private static Bundle CreateSampleBundle()
     {
-      "namespaces": ["ui"],
-      "capabilities": { "board": {}, "metric": {}, "actions": {} }
+        JsonObject bundleJson = JsonNode.Parse(SampleBundleJson)!.AsObject();
+        return BundleLoader.FromJson(bundleJson);
     }
-    """;
 
-    // A board with a metric that reads ui.clicked and a button that assigns it — the same
-    // proven assign/read shape the headless adapter check exercises, so the demo's runtime
-    // semantics are guaranteed by an offline test even though the window can't be painted here.
-    private const string DocumentJson = """
+    // A board with a metric that reads ui.clicked and a button that assigns it — the same proven
+    // assign/read shape the headless adapter check exercises, so the sample's runtime semantics are
+    // guaranteed by an offline test even though this window can't be painted in the suite.
+    private const string SampleBundleJson = """
     {
-      "root": {
-        "capability": "board",
-        "id": "root",
-        "props": { "title": "GenUI \u00d7 Reactor" },
-        "edges": {
-          "children": [
-            { "capability": "metric",  "id": "status", "props": { "label": "Clicked" },
-              "edges": { "read": { "value": "ui.clicked" } } },
-            { "capability": "actions", "id": "go", "props": { "label": "Click me" },
-              "edges": { "on": { "tap": [ { "do": "assign", "target": "ui.clicked", "args": { "value": true } } ] } } }
-          ]
+      "manifest": {
+        "type": "manifest",
+        "payload": {
+          "namespaces": ["ui"],
+          "capabilities": { "board": {}, "metric": {}, "actions": {} }
         }
-      }
+      },
+      "document": {
+        "type": "document",
+        "payload": {
+          "root": {
+            "capability": "board",
+            "id": "root",
+            "props": { "title": "GenUI \u00d7 Reactor" },
+            "edges": {
+              "children": [
+                { "capability": "metric",  "id": "status", "props": { "label": "Clicked" },
+                  "edges": { "read": { "value": "ui.clicked" } } },
+                { "capability": "actions", "id": "go", "props": { "label": "Click me" },
+                  "edges": { "on": { "tap": [ { "do": "assign", "target": "ui.clicked", "args": { "value": true } } ] } } }
+              ]
+            }
+          }
+        }
+      },
+      "state": { "ui": {} }
     }
     """;
 }
