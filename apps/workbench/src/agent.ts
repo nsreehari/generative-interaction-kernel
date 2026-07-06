@@ -9,8 +9,8 @@
 // pipeline (interaction -> presentation -> UI) re-runs per step and the guest re-renders, with no
 // special-casing anywhere downstream.
 
-import type { InteractionKind, PresentationContext, PresentationEdits } from "../../../interaction/src/index";
 import type { AuthoredSession } from "./export";
+import agentPlaylist from "./agent-playlist.json";
 
 /** The one capability the agent needs: emit a GUP event. GenUIController and GenUIClient both satisfy it. */
 export type AgentPort = (node: string, name: string, payload: Record<string, unknown>) => void | Promise<unknown>;
@@ -21,38 +21,12 @@ export interface AgentStep {
   authored: AuthoredSession;
 }
 
-const NO_EDITS: PresentationEdits = { disabled: [], priority: {}, disclosure: {}, order: [] };
-
-function authored(
-  interaction: InteractionKind,
-  subject: string,
-  surface: PresentationContext["surface"],
-  edits: PresentationEdits = NO_EDITS
-): AuthoredSession {
-  return {
-    gup: "0.1",
-    kind: "authored-session",
-    interaction: { interaction, subject },
-    context: { surface },
-    edits,
-  };
-}
-
-/** A deterministic authoring tour the agent walks once per run so the demo is legible and repeatable. */
-export const AGENT_PLAYLIST: AgentStep[] = [
-  { label: "Investigating an incident", authored: authored("investigate", "incident", "desktop") },
-  { label: "Comparing vendor options", authored: authored("compare", "vendors", "desktop") },
-  { label: "Monitoring the fleet", authored: authored("monitor", "fleet", "desktop") },
-  {
-    label: "Re-authoring the comparison for mobile (pinning the recommendation)",
-    authored: authored("compare", "vendors", "mobile", {
-      disabled: [],
-      priority: { recommendation: "primary" },
-      disclosure: {},
-      order: ["recommendation"],
-    }),
-  },
-];
+/**
+ * A deterministic authoring tour the agent walks once per run so the demo is legible and repeatable.
+ * The tour is DATA — authored in agent-playlist.json, not code — so adding/reordering beats is a JSON
+ * edit. Only the tour-walking logic below stays native.
+ */
+export const AGENT_PLAYLIST: AgentStep[] = agentPlaylist as unknown as AgentStep[];
 
 /**
  * The next tour index, or `null` once the last beat has played. The tour is a bounded, one-pass run

@@ -1,0 +1,86 @@
+[
+  {
+    "label": "Investigating an incident",
+    "authored": {
+      "gup": "0.1",
+      "kind": "authored-session",
+      "interaction": {
+        "interaction": "investigate",
+        "subject": "incident"
+      },
+      "context": {
+        "surface": "desktop"
+      },
+      "edits": {
+        "disabled": [],
+        "priority": {},
+        "disclosure": {},
+        "order": []
+      }
+    }
+  },
+  {
+    "label": "Comparing vendor options",
+    "authored": {
+      "gup": "0.1",
+      "kind": "authored-session",
+      "interaction": {
+        "interaction": "compare",
+        "subject": "vendors"
+      },
+      "context": {
+        "surface": "desktop"
+      },
+      "edits": {
+        "disabled": [],
+        "priority": {},
+        "disclosure": {},
+        "order": []
+      }
+    }
+  },
+  {
+    "label": "Monitoring the fleet",
+    "authored": {
+      "gup": "0.1",
+      "kind": "authored-session",
+      "interaction": {
+        "interaction": "monitor",
+        "subject": "fleet"
+      },
+      "context": {
+        "surface": "desktop"
+      },
+      "edits": {
+        "disabled": [],
+        "priority": {},
+        "disclosure": {},
+        "order": []
+      }
+    }
+  },
+  {
+    "label": "Re-authoring the comparison for mobile (pinning the recommendation)",
+    "authored": {
+      "gup": "0.1",
+      "kind": "authored-session",
+      "interaction": {
+        "interaction": "compare",
+        "subject": "vendors"
+      },
+      "context": {
+        "surface": "mobile"
+      },
+      "edits": {
+        "disabled": [],
+        "priority": {
+          "recommendation": "primary"
+        },
+        "disclosure": {},
+        "order": [
+          "recommendation"
+        ]
+      }
+    }
+  }
+]
