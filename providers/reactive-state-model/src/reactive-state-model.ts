@@ -11,7 +11,10 @@
 // `settle()`, or observe `onChange` to re-interpret when the graph quiesces. This is the defining
 // property recorded in ADR-0033 — correct for a live reactive UI, not "derived within one tick".
 //
-// v1 scope: cells are top-level state keys (flat). Nested/dotted namespaced paths are a follow-up.
+// Cells may be dotted/namespaced paths (`app.count`, `form.email`). A derive `expr` is evaluated
+// against the FULL snapshot — exactly as the kernel's `derive` reducer does (`expr.eval(e, c.data)`)
+// — so JSONata navigates dotted paths natively; `deps` drive only which cells retrigger a recompute.
+// Matching between a mutated op `path` and a derive's `deps`/`target` is by exact token equality.
 
 import { getPath, applyOp, type StateModel, type Json, type PatchOp } from "../../../kernel/src/index";
 import { createReactiveGraph, type ReactiveGraph } from "../../vendor/continuous-event-graph/reactive.js";
@@ -51,20 +54,23 @@ export class ReactiveStateModel implements StateModel {
   constructor(opts: ReactiveStateModelOptions) {
     this.evaluate = opts.evaluate;
     this.onChange = opts.onChange;
-    this.baseValues = { ...(opts.initial ?? {}) };
 
     for (const edge of opts.edges) {
       this.derivedCells.add(edge.target);
       this.edgeByTarget.set(edge.target, edge);
     }
-    // Every dependency that is not itself derived is a base (source) cell; so is any seed key.
+    // Every dependency that is not itself derived is a base (source) cell.
     for (const edge of opts.edges) {
       for (const dep of edge.deps) {
         if (!this.derivedCells.has(dep)) this.baseCells.add(dep);
       }
     }
-    for (const key of Object.keys(this.baseValues)) {
-      if (!this.derivedCells.has(key)) this.baseCells.add(key);
+    // Seed base cells. `initial` keys are cell TOKENS (may be dotted, e.g. "form.email"); nest them
+    // via applyOp so they compose with dotted derive targets and JSONata can navigate the snapshot.
+    for (const [token, value] of Object.entries(opts.initial ?? {})) {
+      if (this.derivedCells.has(token)) continue;
+      applyOp(this.baseValues, { op: "set", path: token, value });
+      this.baseCells.add(token);
     }
 
     const tasks: Record<string, TaskConfig> = {};
@@ -89,21 +95,18 @@ export class ReactiveStateModel implements StateModel {
 
     this.graph = createReactiveGraph(config, {
       handlers: {
-        // Base cell: emit its current value so downstream requires resolve.
+        // Base cell: publish its token so downstream `requires` resolve. The derive handler reads the
+        // full snapshot, so this value is only a liveness signal — dotted-safe via getPath.
         base: async ({ nodeId, callbackToken }) => {
-          this.graph.resolveCallback(callbackToken, { [nodeId]: this.baseValues[nodeId] ?? null });
+          this.graph.resolveCallback(callbackToken, { [nodeId]: getPath(this.baseValues, nodeId) });
           return "task-initiated";
         },
-        // Derived cell: compute from upstream `state`, publish, and cascade downstream.
-        derive: async ({ nodeId, state, callbackToken }) => {
+        // Derived cell: evaluate against the full snapshot (kernel-reducer semantics — dotted paths
+        // navigate natively), publish into derivedValues, and cascade downstream.
+        derive: async ({ nodeId, callbackToken }) => {
           const edge = this.edgeByTarget.get(nodeId)!;
-          const scope: Record<string, unknown> = {};
-          for (const dep of edge.deps) {
-            const upstream = state[dep];
-            scope[dep] = upstream && dep in upstream ? upstream[dep] : this.cellValue(dep);
-          }
-          const value = await this.evaluate(edge.expr, scope);
-          this.derivedValues[nodeId] = value;
+          const value = await this.evaluate(edge.expr, this.snapshot());
+          applyOp(this.derivedValues, { op: "set", path: nodeId, value });
           this.onChange?.();
           this.graph.resolveCallback(callbackToken, { [nodeId]: value });
           return "task-initiated";
@@ -118,7 +121,9 @@ export class ReactiveStateModel implements StateModel {
   // ---- StateModel -------------------------------------------------------
 
   snapshot(): Record<string, Json> {
-    return { ...this.baseValues, ...this.derivedValues };
+    // Derived cells win over base cells; deep-merge so dotted targets (`form.valid`) and dotted base
+    // cells (`form.email`) compose into one object JSONata can navigate uniformly.
+    return deepMerge(this.baseValues, this.derivedValues);
   }
 
   get(path: string): Json {
@@ -156,8 +161,22 @@ export class ReactiveStateModel implements StateModel {
   async dispose(): Promise<void> {
     await this.graph.dispose({ wait: true });
   }
+}
 
-  private cellValue(cell: string): Json {
-    return this.derivedCells.has(cell) ? this.derivedValues[cell] ?? null : this.baseValues[cell] ?? null;
+/** Deep-merge two namespaced snapshots (plain objects); `over` wins on scalar/array conflicts. */
+function deepMerge(base: Record<string, Json>, over: Record<string, Json>): Record<string, Json> {
+  const out: Record<string, Json> = { ...base };
+  for (const [key, val] of Object.entries(over)) {
+    const prev = out[key];
+    if (isPlainObject(prev) && isPlainObject(val)) {
+      out[key] = deepMerge(prev, val);
+    } else {
+      out[key] = val;
+    }
   }
+  return out;
+}
+
+function isPlainObject(v: Json | undefined): v is Record<string, Json> {
+  return v != null && typeof v === "object" && !Array.isArray(v);
 }
