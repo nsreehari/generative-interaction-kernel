@@ -25,6 +25,7 @@ interface Option {
 interface Column {
   key: string;
   label: string;
+  classPrefix?: string;
 }
 
 // Smooth-to-type input that still reflects EXTERNAL writes (e.g. loading a record sets the value).
@@ -151,37 +152,54 @@ function List({ node, emit }: CapabilityViewProps) {
   const valueKey = p.str("valueKey");
   const selectedId = p.str("selectedId");
   const empty = p.str("emptyText", "Nothing here yet.");
+  const isStatic = p.bool("static"); // passive display (no button/select), vs the default picker
+  const ordered = p.bool("ordered"); // <ol> vs <ul>
+  const badgeLeading = p.bool("badgeLeading"); // badge before the primary text
   if (items.length === 0) return <p className="gx-muted">{empty}</p>;
+  const Tag = ordered ? "ol" : "ul";
   return (
-    <ul className="gx-list">
+    <Tag className="gx-list">
       {items.map((raw, i) => {
         const isStr = typeof raw === "string";
         const item = (isStr ? {} : (raw as Record<string, unknown>)) as Record<string, unknown>;
         const id = String(isStr ? (raw as string) : (item[idKey] ?? i));
         const primary = isStr ? (raw as string) : String(item[primaryKey] ?? "");
+        const selected = id === selectedId;
+        const badge =
+          !isStr && badgeKey && item[badgeKey] != null ? (
+            <span className={`gx-badge gx-badge-${String(item[badgeKey])}`}>
+              {String(item[badgeKey])}
+            </span>
+          ) : null;
+        const body = (
+          <>
+            {badgeLeading ? badge : null}
+            <span className="gx-list-primary">{primary}</span>
+            {badgeLeading ? null : badge}
+            {!isStr && secondaryKey && item[secondaryKey] != null ? (
+              <span className="gx-list-secondary gx-muted">{String(item[secondaryKey])}</span>
+            ) : null}
+            {!isStr && valueKey && item[valueKey] != null ? (
+              <span className="gx-list-value gx-muted">{String(item[valueKey])}</span>
+            ) : null}
+          </>
+        );
         return (
-          <li key={id}>
-            <button
-              className={`gx-list-row${id === selectedId ? " selected" : ""}`}
-              onClick={() => emit("select", { id })}
-            >
-              <span className="gx-list-primary">{primary}</span>
-              {!isStr && badgeKey && item[badgeKey] != null ? (
-                <span className={`gx-badge gx-badge-${String(item[badgeKey])}`}>
-                  {String(item[badgeKey])}
-                </span>
-              ) : null}
-              {!isStr && secondaryKey && item[secondaryKey] != null ? (
-                <span className="gx-list-secondary gx-muted">{String(item[secondaryKey])}</span>
-              ) : null}
-              {!isStr && valueKey && item[valueKey] != null ? (
-                <span className="gx-list-value gx-muted">{String(item[valueKey])}</span>
-              ) : null}
-            </button>
+          <li key={id} className={selected && isStatic ? "selected" : undefined}>
+            {isStatic ? (
+              <span className="gx-list-row">{body}</span>
+            ) : (
+              <button
+                className={`gx-list-row${selected ? " selected" : ""}`}
+                onClick={() => emit("select", { id })}
+              >
+                {body}
+              </button>
+            )}
           </li>
         );
       })}
-    </ul>
+    </Tag>
   );
 }
 
@@ -191,6 +209,8 @@ function Table({ node, emit }: CapabilityViewProps) {
   const columns = toColumns(p.list<unknown>("columns"));
   const idKey = p.str("idKey", "id");
   const empty = p.str("emptyText", "No rows.");
+  const isStatic = p.bool("static"); // passive display (no rowSelect), vs the default picker
+  const blank = p.str("blankText", ""); // placeholder for null/empty cells
   if (rows.length === 0) return <p className="gx-muted">{empty}</p>;
   return (
     <table className="gx-table">
@@ -202,16 +222,25 @@ function Table({ node, emit }: CapabilityViewProps) {
         </tr>
       </thead>
       <tbody>
-        {rows.map((row, i) => (
-          <tr
-            key={String(row[idKey] ?? i)}
-            onClick={() => emit("rowSelect", { id: String(row[idKey] ?? i) })}
-          >
-            {columns.map((c) => (
-              <td key={c.key}>{String(row[c.key] ?? "")}</td>
-            ))}
-          </tr>
-        ))}
+        {rows.map((row, i) => {
+          const id = String(row[idKey] ?? i);
+          return (
+            <tr key={id} onClick={isStatic ? undefined : () => emit("rowSelect", { id })}>
+              {columns.map((c) => {
+                const raw = row[c.key];
+                const text = raw == null || raw === "" ? blank : String(raw);
+                return (
+                  <td
+                    key={c.key}
+                    className={c.classPrefix ? `${c.classPrefix}${String(raw ?? "")}` : undefined}
+                  >
+                    {text}
+                  </td>
+                );
+              })}
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );
