@@ -1,0 +1,85 @@
+// The PLATFORM FLOOR, part 1: the fixed, shared primitive capability vocabulary.
+//
+// This is the GenUI equivalent of the demo-boards-frontend's Tier-1 `cardViewEntries`: a single,
+// shared set of leaf capabilities that EVERY app/tool/profile composes from. Apps do not declare
+// their own capabilities — they reuse these. Adding an app is JSON; only adding a *primitive* (a
+// rare, platform-level event) touches this file and the matching component in registry.tsx.
+//
+// Each capability is generic and configured through props (its open "spec" namespace) plus read
+// edges that bind data into named props. `emits` documents the events a primitive raises so
+// documents can wire `on` handlers to them.
+
+import type { CapabilityDescriptor, Enveloped, ManifestPayload } from "../../../../kernel/src/index";
+
+const anyProps = { type: "object", additionalProperties: true } as const;
+
+/** The closed set of standardized action verbs available to any bundle's documents. */
+export const PRIMITIVE_ACTIONS = [
+  "assign",
+  "assignFrom",
+  "derive",
+  "invoke",
+  "navigate",
+  "confirm",
+  "emit",
+] as const;
+
+/**
+ * The shared primitive vocabulary. Kinds are intentionally generic (screen/row/col/panel/text/
+ * list/field/button/...) so the same set renders the console, the playground, preview, and any
+ * domain profile.
+ */
+export const PRIMITIVE_CAPABILITIES: Record<string, CapabilityDescriptor> = {
+  // --- Layout / containers ---
+  screen: { propsSchema: anyProps, slots: ["children"] }, // app shell: title/subtitle band + body
+  row: { propsSchema: anyProps, slots: ["children"] }, // horizontal stack
+  col: { propsSchema: anyProps, slots: ["children"] }, // vertical stack
+  panel: { propsSchema: anyProps, slots: ["children"] }, // titled/variant container
+
+  // --- Text / status ---
+  text: { propsSchema: anyProps }, // value + variant (title|subtitle|body|caption|code|muted)
+  heading: { propsSchema: anyProps }, // value + level
+  note: { propsSchema: anyProps }, // value + tone (muted|info|toast|...)
+  badge: { propsSchema: anyProps }, // value + tone
+  metric: { propsSchema: anyProps }, // label + value
+
+  // --- Data display (bind data into `items`/`rows`) ---
+  list: { propsSchema: anyProps, emits: ["select"] }, // items + field-key spec, emits select {id}
+  table: { propsSchema: anyProps, emits: ["rowSelect"] }, // rows + columns, emits rowSelect {id}
+
+  // --- Inputs (emit interaction; documents route via `on`) ---
+  field: { propsSchema: anyProps, emits: ["input"] }, // label + value + placeholder
+  textarea: { propsSchema: anyProps, emits: ["input"] },
+  select: { propsSchema: anyProps, emits: ["change"] }, // label + value + options
+  button: { propsSchema: anyProps, emits: ["press"] }, // label + tone + disabled
+  tabBar: { propsSchema: anyProps, emits: ["select"] }, // active + options, emits select {value}
+  chips: { propsSchema: anyProps, emits: ["remove"] }, // items + emits remove {value}
+
+  // --- Composition: embed a whole bundle/app as a nested runtime ---
+  embed: { propsSchema: anyProps }, // props.app: registered app by name | props.bundle: inline { manifest, document, state }
+};
+
+export interface BundleManifestOptions {
+  version: string;
+  namespaces?: string[];
+  /** Extra capabilities beyond the shared primitives (rarely needed). */
+  extraCapabilities?: Record<string, CapabilityDescriptor>;
+}
+
+/**
+ * Build a manifest for a bundle. Its capabilities are the shared primitives (plus any rare extras),
+ * so a bundle only has to declare its state namespaces and a version — never its own vocabulary.
+ */
+export function bundleManifest(opts: BundleManifestOptions): Enveloped<ManifestPayload> {
+  return {
+    gup: "0.1",
+    type: "manifest",
+    payload: {
+      version: opts.version,
+      expression: "jsonata",
+      namespaces: opts.namespaces ?? [],
+      actions: [...PRIMITIVE_ACTIONS],
+      capabilities: { ...PRIMITIVE_CAPABILITIES, ...(opts.extraCapabilities ?? {}) },
+    },
+  };
+}
