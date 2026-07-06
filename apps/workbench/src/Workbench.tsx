@@ -31,6 +31,7 @@ import {
   readInputs,
 } from "./chrome";
 import { parseAuthoredSession } from "./export";
+import { AGENT_PLAYLIST, nextAgentIndex } from "./agent";
 import { workbenchRegistry } from "./profile/registry";
 
 export function Workbench() {
@@ -47,6 +48,10 @@ export function Workbench() {
   const lastSig = useRef<string>(inputsSignature(readInputs(chrome.state)));
   const lastFireSeq = useRef<number>(Number(chrome.state.get("workbench.fireSeq")) || 0);
   const lastImportSeq = useRef<number>(Number(chrome.state.get("workbench.importSeq")) || 0);
+  // Agent tour state (Slice 4): the running flag + tour index + a step-button sequence guard.
+  const agentRunning = useRef<boolean>(false);
+  const agentIndex = useRef<number>(Number(chrome.state.get("workbench.agentStep")) || 0);
+  const lastAgentStepSeq = useRef<number>(Number(chrome.state.get("workbench.agentStepSeq")) || 0);
 
   // Bridge A (chrome -> guest): rebuild the guest when inputs change; forward event-bar fires.
   useEffect(() => {
@@ -111,12 +116,44 @@ export function Workbench() {
     return unsubscribe;
   }, [guest, inspect, chrome]);
 
+  // Bridge C (agent -> chrome): the autonomous authoring writer. It is deliberately "just another
+  // client emitting events" — each beat emits the same `importApply` a human import fires, so the
+  // whole pipeline re-runs and the guest re-renders with zero special-casing. Play/Pause flip a flag
+  // this loop watches; Step advances one beat on demand. The identical loop could target a
+  // GenUIClient over a transport instead of the in-process controller (same `emit` surface).
+  useEffect(() => {
+    const c = chrome.controller;
+    const advance = () => {
+      const next = nextAgentIndex(agentIndex.current);
+      agentIndex.current = next;
+      const step = AGENT_PLAYLIST[next];
+      void c.emit("chrome-root", "importApply", authoredApplyPayload(step.authored));
+      void c.emit("chrome-root", "agentAdvance", { step: next, label: step.label });
+    };
+    const onChange = () => {
+      agentRunning.current = Boolean(chrome.state.get("workbench.agentRunning"));
+      const seq = Number(chrome.state.get("workbench.agentStepSeq")) || 0;
+      if (seq !== lastAgentStepSeq.current) {
+        lastAgentStepSeq.current = seq;
+        advance();
+      }
+    };
+    const unsubscribe = c.subscribe(onChange);
+    const timer = window.setInterval(() => {
+      if (agentRunning.current) advance();
+    }, 1800);
+    return () => {
+      unsubscribe();
+      window.clearInterval(timer);
+    };
+  }, [chrome]);
+
   return (
     <div className="workbench">
       <aside className="controls">
         <header className="brand">
           <h1>GenUI Workbench</h1>
-          <span className="muted">declarative chrome · editing surface</span>
+          <span className="muted">declarative chrome · agent authoring</span>
         </header>
         <GenUIRoot source={chrome.controller} registry={workbenchRegistry} />
       </aside>

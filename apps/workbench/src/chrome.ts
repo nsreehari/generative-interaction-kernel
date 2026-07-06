@@ -86,6 +86,12 @@ function chromeRoot(): DocNode {
       ],
       // On a bad paste the bridge reports the parse error instead.
       importResult: [assignFrom("workbench.importError", "$event.error")],
+      // Agent (Slice 4): the bridge advances the authoring tour and reports the live step back here,
+      // so the chrome narrates what the agent is doing while the guest re-renders.
+      agentAdvance: [
+        assignFrom("workbench.agentStep", "$event.step"),
+        assignFrom("workbench.agentLabel", "$event.label"),
+      ],
     },
     children: [
       node("panel", "interaction-panel", {
@@ -154,6 +160,27 @@ function chromeRoot(): DocNode {
             read: { text: "workbench.eventError" },
             gate: "workbench.eventError != ''",
           }),
+        ],
+      }),
+      node("panel", "agent-panel", {
+        props: { title: "Agent" },
+        children: [
+          // The agent is just another client emitting events: Play/Pause flip a flag the bridge's
+          // loop watches; Step advances one beat. The bridge emits the authoring events (importApply)
+          // and narrates via `agentAdvance` -> the label below.
+          node("button", "agent-play", {
+            props: { label: "\u25B6 Play tour" },
+            on: { press: [assign("workbench.agentRunning", true)] },
+          }),
+          node("button", "agent-pause", {
+            props: { label: "\u23F8 Pause" },
+            on: { press: [assign("workbench.agentRunning", false)] },
+          }),
+          node("button", "agent-step", {
+            props: { label: "\u2192 Step" },
+            on: { press: [assignFrom("workbench.agentStepSeq", "workbench.agentStepSeq + 1")] },
+          }),
+          node("note", "agent-label", { read: { text: "workbench.agentLabel" } }),
         ],
       }),
       node("panel", "session-panel", {
@@ -233,6 +260,11 @@ export function seedChromeState(): InMemoryStateModel {
     { op: "set", path: "workbench.importText", value: "" },
     { op: "set", path: "workbench.importSeq", value: 0 },
     { op: "set", path: "workbench.importError", value: "" },
+    // Agent authoring tour (Slice 4).
+    { op: "set", path: "workbench.agentRunning", value: false },
+    { op: "set", path: "workbench.agentStep", value: 0 },
+    { op: "set", path: "workbench.agentStepSeq", value: 0 },
+    { op: "set", path: "workbench.agentLabel", value: "Idle \u2014 press Play to watch the agent author live." },
   ]);
   return state;
 }
