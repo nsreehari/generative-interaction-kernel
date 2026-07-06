@@ -23,12 +23,12 @@ using GenKernel = GenUI.Kernel.Kernel;
 const string ManifestJson = """
 {
   "namespaces": ["ui"],
-  "capabilities": { "board": {}, "metric": {}, "table": {}, "actions": {}, "chart": {} }
+  "capabilities": { "board": {}, "metric": {}, "table": {}, "actions": {}, "badge": {} }
 }
 """;
 
 // board root with: a metric that reads ui.clicked, a static table, an actions button that
-// assigns ui.clicked on tap, a chart (in the manifest but with NO registered Reactor view),
+// assigns ui.clicked on tap, a badge (in the manifest but with NO registered Reactor view),
 // an unknown capability (not in the manifest), and a gated-off metric. Exercises both
 // fallback paths and the visibility drop, and gives the emit round-trip something to change.
 const string DocumentJson = """
@@ -45,7 +45,7 @@ const string DocumentJson = """
           "props": { "columns": ["a", "b"], "rows": [ { "a": "1", "b": "2" } ] } },
         { "capability": "actions", "id": "go", "props": { "label": "Go" },
           "edges": { "on": { "tap": [ { "do": "assign", "target": "ui.clicked", "args": { "value": true } } ] } } },
-        { "capability": "chart",   "id": "c1" },
+        { "capability": "badge",   "id": "b1" },
         { "capability": "mystery", "id": "u1" },
         { "capability": "metric",  "id": "hidden", "props": { "label": "H" }, "edges": { "gate": "false" } }
       ]
@@ -101,7 +101,7 @@ checker.Assert(texts.Contains("a") && texts.Contains("b"), "table renders its co
 checker.Assert(texts.Contains("1") && texts.Contains("2"), "table renders its cell values");
 
 // both fallback paths reach the Reactor Fallback view (a subtle [capability] marker).
-checker.Assert(texts.Contains("[chart]"), "known-but-unregistered capability falls back");
+checker.Assert(texts.Contains("[badge]"), "known-but-unregistered capability falls back");
 checker.Assert(texts.Contains("[mystery]"), "unknown capability falls back");
 
 // the gated metric is absent from the element tree entirely.

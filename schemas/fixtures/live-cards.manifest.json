@@ -18,20 +18,6 @@
           "properties": { "label": { "type": "string" }, "value": { "type": ["number", "string"] } }
         }
       },
-      "narrative": {
-        "propsSchema": {
-          "type": "object",
-          "properties": { "text": { "type": "string" } }
-        },
-        "dataProp": "text"
-      },
-      "badge": {
-        "propsSchema": {
-          "type": "object",
-          "properties": { "value": { "type": "string" }, "tone": { "type": "string" } }
-        },
-        "dataProp": "value"
-      },
       "table": {
         "propsSchema": {
           "type": "object",
@@ -39,16 +25,6 @@
         },
         "emits": ["rowSelect"],
         "dataProp": "rows"
-      },
-      "form": {
-        "propsSchema": {
-          "type": "object",
-          "properties": {
-            "label": { "type": "string" },
-            "fields": { "type": "array", "items": { "type": "string" } }
-          }
-        },
-        "emits": ["submit"]
       },
       "actions": {
         "propsSchema": {

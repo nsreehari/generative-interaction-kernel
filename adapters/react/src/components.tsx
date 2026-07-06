@@ -27,46 +27,6 @@ export function Metric({ node }: CapabilityViewProps) {
   );
 }
 
-// Prose read surface: a card's narrative/summary/recommendation text (bound onto `text`).
-export function Narrative({ node }: CapabilityViewProps) {
-  const text = readProps(node).str("text");
-  return <p data-cap="narrative">{text || "No narrative yet."}</p>;
-}
-
-// Status pill: a short status token (bound onto `value`) with an optional tone.
-export function Badge({ node }: CapabilityViewProps) {
-  const p = readProps(node);
-  const value = p.str("value");
-  const tone = p.str("tone", "secondary");
-  return (
-    <span data-cap="badge" data-tone={tone}>
-      {value}
-    </span>
-  );
-}
-
-// Data-entry surface: a labelled set of fields whose submit round-trips through the node-bound emit.
-export function Form({ node, emit }: CapabilityViewProps) {
-  const p = readProps(node);
-  const label = p.str("label");
-  const fields = p.list<string>("fields");
-  return (
-    <form
-      data-cap="form"
-      onSubmit={(e) => {
-        e.preventDefault();
-        emit("submit");
-      }}
-    >
-      {label ? <label data-form-label>{label}</label> : null}
-      {fields.map((f) => (
-        <input key={f} name={f} data-field={f} />
-      ))}
-      <button type="submit">Save</button>
-    </form>
-  );
-}
-
 interface Row {
   id?: string;
   [k: string]: unknown;
@@ -141,10 +101,7 @@ export const liveCardsRegistry: ComponentRegistry = createRegistry(
   {
     board: Board,
     metric: Metric,
-    narrative: Narrative,
-    badge: Badge,
     table: Table,
-    form: Form,
     actions: ActionButton,
   },
   FallbackView

@@ -14,6 +14,38 @@ export * from "./edits";
 export * from "./authoring";
 export * from "./lowering";
 export * from "./schema";
-// The live-cards Domain profile (L2) — types, archetype classifier, Domain -> Interaction
-// lowering, and this profile's presentation binding + capabilities.
-export * from "./livecards";
+
+import type { PresentationBinding } from "./lowering";
+
+/**
+ * The live-cards profile's presentation binding: maps facet ROLES to live-cards kernel
+ * capabilities (bind once per role, not per facet). Roles with no mapping (`graph`, `form`)
+ * fall back to the region name as the capability and render as graceful fallback nodes —
+ * the forward-compatible path for facets a profile hasn't implemented yet.
+ */
+export const liveCardsBinding: PresentationBinding = {
+  container: "board",
+  roleCapability: {
+    summary: "metric",
+    metrics: "metric",
+    status: "metric",
+    narrative: "metric",
+    recommendation: "metric",
+    collection: "table",
+    detail: "table",
+    timeline: "table",
+    comparison: "table",
+    actions: "actions",
+    // `graph` and `form` intentionally unmapped -> graceful fallback.
+  },
+  regionSelectEvent: {
+    detail: "rowSelect",
+    left: "rowSelect",
+    right: "rowSelect",
+    results: "rowSelect",
+    options: "rowSelect",
+    alerts: "rowSelect",
+    tasks: "rowSelect",
+    thread: "rowSelect",
+  },
+};
