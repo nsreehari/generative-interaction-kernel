@@ -37,6 +37,7 @@ rejected options were set aside, and the consequences.
 | [0030](ADR-0030-bundle-composition.md) | The bundle — one host runs any app; apps compose via an `embed` leaf | Accepted |
 | [0031](ADR-0031-per-bundle-registries.md) | Per-bundle capability registries — shared floor + additive overlay | Accepted |
 | [0032](ADR-0032-framework-keyed-bundles.md) | Framework-keyed bundles — `samples/bundles/` sibling to `samples/apps/`, apps compose them | Proposed |
+| [0033](ADR-0033-provider-engines-reactive-statemodel-step-orchestrator.md) | Provider engines — reactive `StateModel` and StepMachine `Orchestrator`, vendored from proven sources | Proposed |
 
 ## Format
 
