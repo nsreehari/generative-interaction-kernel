@@ -83,6 +83,31 @@ Check("author: valid document commits", authored["ok"]?.GetValue<bool>() == true
 Check("author: returns a wire message", authored["message"] is JsonObject);
 Check("author: invalid document rejected", DocumentAuthoring.AuthorDocument(badDoc)["ok"]?.GetValue<bool>() == false);
 
+// --- ValidateCapability (leaf/definition track) ---------------------------
+var goodCap = Obj("""
+{ "id": "chart", "emits": ["select"], "slots": ["legend"], "dataProp": "series",
+  "propsSchema": { "properties": { "series": {}, "title": {} } } }
+""");
+var goodCapReport = CapabilityAuthoring.ValidateCapability(goodCap);
+Check("capability: well-formed descriptor is ok", goodCapReport["ok"]?.GetValue<bool>() == true);
+Check("capability: well-formed descriptor has no warnings", (goodCapReport["warnings"] as JsonArray)?.Count == 0);
+
+var badCap = Obj("""{ "emits": "nope", "dataProp": "missing", "propsSchema": { "properties": { "x": {} } } }""");
+var badCapReport = CapabilityAuthoring.ValidateCapability(badCap);
+Check("capability: missing id + bad emits -> not ok", badCapReport["ok"]?.GetValue<bool>() == false);
+var capWarnCodes = (badCapReport["warnings"] as JsonArray)!
+    .Select(w => w?["code"]?.GetValue<string>() ?? "").ToHashSet();
+Check("capability: dataProp not in schema warns", capWarnCodes.Contains("dataprop-not-in-schema"));
+
+var registryView = Obj("""{ "bindings": ["text", "button"], "floor": ["text"] }""");
+var shadowCodes = (CapabilityAuthoring.ValidateCapability(Obj("""{ "id": "text" }"""), registryView)["warnings"] as JsonArray)!
+    .Select(w => w?["code"]?.GetValue<string>() ?? "").ToHashSet();
+Check("capability: shadows-floor warns", shadowCodes.Contains("shadows-floor"));
+
+var unboundCodes = (CapabilityAuthoring.ValidateCapability(Obj("""{ "id": "newthing" }"""), registryView)["warnings"] as JsonArray)!
+    .Select(w => w?["code"]?.GetValue<string>() ?? "").ToHashSet();
+Check("capability: missing render binding warns", unboundCodes.Contains("missing-render-binding"));
+
 Console.WriteLine();
 Console.WriteLine(failures == 0 ? "All AgentFace checks passed." : $"{failures} AgentFace check(s) failed.");
 return failures == 0 ? 0 : 1;

@@ -4,3 +4,4 @@
 
 export * from "./catalog";
 export * from "./document";
+export * from "./capability";
