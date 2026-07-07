@@ -7,7 +7,7 @@ namespace GenUI.Kernel;
 
 public static class Interpreter
 {
-    public static ResolvedNode Resolve(JsonObject node, InMemoryStateModel store, ManifestRegistry registry, IExpressionProvider expr,
+    public static ResolvedNode Resolve(JsonObject node, IStateModel store, ManifestRegistry registry, IExpressionProvider expr,
         // The visibility gate is an agent-authored predicate; the platform routes it through the
         // safe subset. Falls back to the full provider when a caller does not distinguish positions.
         IExpressionProvider? predicateExpr = null)

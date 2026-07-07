@@ -40,6 +40,18 @@ public static class Validator
                 foreach (var a in actions) ValidateAction(a as JsonObject, kv.Key);
             }
 
+        if (edges?["react"] is JsonArray react)
+            foreach (var r in react)
+            {
+                if (r is not JsonObject reaction)
+                    throw new ValidationException("Invalid GUP document: edges.react entry must be an object");
+                if (reaction["when"] is not JsonNode w || w.GetValueKind() != System.Text.Json.JsonValueKind.String)
+                    throw new ValidationException("Invalid GUP document: edges.react entry requires 'when' (string)");
+                if (reaction["run"] is not JsonArray runActions)
+                    throw new ValidationException("Invalid GUP document: edges.react entry requires 'run' (array)");
+                foreach (var a in runActions) ValidateAction(a as JsonObject, "react");
+            }
+
         if (edges?["children"] is JsonArray children)
             foreach (var child in children)
                 ValidateNode(child as JsonObject ?? throw new ValidationException("Invalid GUP document: child must be an object"));
