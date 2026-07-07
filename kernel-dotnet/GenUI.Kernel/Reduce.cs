@@ -11,7 +11,7 @@ namespace GenUI.Kernel;
 public static class Reducer
 {
     public static (List<PatchOp> Ops, List<Effect> Effects) Reduce(
-        JsonObject doc, InMemoryStateModel store, GupEvent evt, IExpressionProvider expr,
+        JsonObject doc, IStateModel store, GupEvent evt, IExpressionProvider expr,
         // Predicate positions (action + machine transition guards) are agent-authored and
         // adversarial; the platform routes them through the safe subset. Falls back to the full
         // provider when a low-level caller does not distinguish the positions.
@@ -117,7 +117,7 @@ public static class Reducer
     }
 
     private static void ReduceMachine(
-        JsonObject m, InMemoryStateModel store, GupEvent evt, JsonObject data,
+        JsonObject m, IStateModel store, GupEvent evt, JsonObject data,
         IReadOnlyDictionary<string, JsonNode?> bindings, IExpressionProvider expr, IExpressionProvider predicateExpr,
         List<PatchOp> ops, List<Effect> effects, List<GupEvent> emitted)
     {
@@ -164,5 +164,35 @@ public static class Reducer
                 if (FindNode(child!.AsObject(), id) is { } hit)
                     return hit;
         return null;
+    }
+
+    /// <summary>Run an ordered list of closed-grammar actions owned by a node, against the current
+    /// store snapshot. The shared engine behind a reaction's `run` (ADR-0034): actions dispatch
+    /// exactly as an event handler's would (guards honored, effects collected), but the trigger is a
+    /// state change the kernel detected rather than an inbound event. <paramref name="extraBindings"/>
+    /// is merged into the expression scope (e.g. `$when`). Mirrors reduceActions in reduce.ts.</summary>
+    public static (List<PatchOp> Ops, List<Effect> Effects, List<GupEvent> Emitted) ReduceActions(
+        IStateModel store, string ownerNodeId, JsonArray actions,
+        IExpressionProvider expr, IExpressionProvider predicateExpr,
+        IReadOnlyDictionary<string, JsonNode?>? extraBindings = null)
+    {
+        var ops = new List<PatchOp>();
+        var effects = new List<Effect>();
+        var emitted = new List<GupEvent>();
+        var data = store.Snapshot();
+        var bindings = new Dictionary<string, JsonNode?> { ["event"] = new JsonObject() };
+        if (extraBindings is not null)
+            foreach (var (k, v) in extraBindings) bindings[k] = v;
+
+        var current = new GupEvent(ownerNodeId, "__react__", null);
+        foreach (var an in actions)
+        {
+            var a = an!.AsObject();
+            if (a["guard"] is JsonNode g && !Json.Truthy(predicateExpr.Eval(g.GetValue<string>(), data, bindings)))
+                continue;
+            DispatchAction(a, current, data, bindings, expr, ops, effects, emitted);
+        }
+
+        return (ops, effects, emitted);
     }
 }

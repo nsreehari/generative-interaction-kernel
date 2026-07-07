@@ -1,6 +1,6 @@
 # ADR-0034 — Declarative reactions (`react`) and shared context (`context`), with the intent⇄product boundary kept native
 
-**Status:** Proposed — 2026-07-07
+**Status:** Accepted — 2026-07-07
 
 ## Context
 
@@ -124,7 +124,11 @@ same shared-store idea. One mechanism (context) is clearer than two.
 - **Two closed-grammar additions ⇒ dotnet parity work.** `react` and the `context` scope are GUP
   surface: the document schema, the TypeScript kernel, and the C# `Kernel` must all honor them, verified
   by the conformance matrix (ADR-0023/0024). Sequencing is **common + TypeScript first, validated, then
-  dotnet** — the TS kernel and schema lead; the C# kernel mirrors.
+  dotnet** — the TS kernel and schema lead; the C# kernel mirrors. _Landed:_ both kernels honor `react`
+  and share the change-triggered conformance case `14-react-derive-on-change`. The C# store gains an
+  `IStateModel` seam with a `CompositeStateModel` overlay so `context` routes by path head segment, as
+  in TS; because `context` is inherently multi-kernel it is proven by the per-kernel unit tests rather
+  than the single-kernel conformance harness.
 - **`react` executes kernel-side, change-triggered, depth-bounded.** A limitation: a reaction whose
   `when` depends on a `computed` cell observes it only after the reactive store settles; within a single
   kernel tick a computed dependency may lag by one settle. Reactions over direct state are exact; the

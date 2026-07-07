@@ -12,8 +12,18 @@ public interface IExpressionProvider
     JsonNode? Eval(string expr, JsonObject data, IReadOnlyDictionary<string, JsonNode?>? bindings = null);
 }
 
+/// <summary>The store seam: a namespaced key/value model the reducer reads and the kernel writes.
+/// Kept an interface so a document's local store can be overlaid with shared *context* stores
+/// (see <see cref="CompositeStateModel"/>). Mirrors the StateModel interface in providers.ts.</summary>
+public interface IStateModel
+{
+    JsonObject Snapshot();
+    JsonNode? Get(string path);
+    void Apply(IEnumerable<PatchOp> ops);
+}
+
 /// <summary>Mutable in-memory store keyed by namespace roots.</summary>
-public sealed class InMemoryStateModel
+public sealed class InMemoryStateModel : IStateModel
 {
     private readonly JsonObject _data = new();
 
@@ -31,6 +41,53 @@ public sealed class InMemoryStateModel
     public void Apply(IEnumerable<PatchOp> ops)
     {
         foreach (var op in ops) Json.ApplyOp(_data, op);
+    }
+}
+
+/// <summary>Overlays one or more shared *context* namespaces on top of a document's local store
+/// (ADR-0034). A binding's scope is simply the head segment of its path: if that namespace names a
+/// context, reads and writes route to the shared store; otherwise they stay local. This is what makes
+/// `context` a scope, not a new verb — read/assign/derive are unchanged; only which store their path
+/// resolves against differs. Kernels sharing the same context <see cref="IStateModel"/> instance
+/// thereby read and write one source of truth. Mirrors CompositeStateModel in providers.ts.</summary>
+public sealed class CompositeStateModel : IStateModel
+{
+    private readonly IStateModel _local;
+    // namespace -> the shared store that owns it (the same instance may own several namespaces).
+    private readonly IReadOnlyDictionary<string, IStateModel> _contexts;
+
+    public CompositeStateModel(IStateModel local, IReadOnlyDictionary<string, IStateModel> contexts)
+    {
+        _local = local;
+        _contexts = contexts;
+    }
+
+    private static string HeadSegment(string path)
+    {
+        var dot = path.IndexOf('.');
+        return dot == -1 ? path : path[..dot];
+    }
+
+    private IStateModel StoreFor(string path) =>
+        _contexts.TryGetValue(HeadSegment(path), out var ctx) ? ctx : _local;
+
+    public JsonObject Snapshot()
+    {
+        // A fresh merged object: JsonNodes cannot be reparented, so context/local values are cloned
+        // in. Callers treat the snapshot as read-only (expression input), so cloning is safe.
+        var merged = new JsonObject();
+        foreach (var (ns, value) in _local.Snapshot())
+            merged[ns] = value?.DeepClone();
+        foreach (var (ns, store) in _contexts)
+            merged[ns] = store.Snapshot()[ns]?.DeepClone();
+        return merged;
+    }
+
+    public JsonNode? Get(string path) => StoreFor(path).Get(path);
+
+    public void Apply(IEnumerable<PatchOp> ops)
+    {
+        foreach (var op in ops) StoreFor(op.Path).Apply(new[] { op });
     }
 }
 
