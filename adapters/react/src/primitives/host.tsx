@@ -4,7 +4,7 @@
 
 import React from "react";
 import { GenUIRoot } from "../useGenUI";
-import { loadBundle, type Bundle } from "./bundle";
+import { loadBundle, isCompositionBundle, type Bundle, type CompositionBundle } from "./bundle";
 import { buildBundleRegistry } from "./registry";
 import { AppRegistryProvider, type AppRegistry } from "./apps";
 
@@ -12,8 +12,35 @@ export function BundleHost({
   bundle,
   apps,
 }: {
-  bundle: Bundle;
+  bundle: Bundle | CompositionBundle;
   /** Apps any nested `embed` leaf may mount by name (via `props.app`). */
+  apps?: AppRegistry;
+}): React.ReactElement {
+  // A composition bundle carries its own native layout (it stands up several child runtimes and
+  // bridges them); a leaf bundle is a single document rendered through the shared floor.
+  return isCompositionBundle(bundle) ? (
+    <CompositionBundleHost bundle={bundle} apps={apps} />
+  ) : (
+    <LeafBundleHost bundle={bundle} apps={apps} />
+  );
+}
+
+function CompositionBundleHost({
+  bundle,
+  apps,
+}: {
+  bundle: CompositionBundle;
+  apps?: AppRegistry;
+}): React.ReactElement {
+  const tree = <bundle.Component />;
+  return apps ? <AppRegistryProvider apps={apps}>{tree}</AppRegistryProvider> : tree;
+}
+
+function LeafBundleHost({
+  bundle,
+  apps,
+}: {
+  bundle: Bundle;
   apps?: AppRegistry;
 }): React.ReactElement {
   // Build the runtime once for the life of the host.
