@@ -21,6 +21,7 @@
     "test:dotnet-render-reactor": "dotnet run --project adapters/dotnet/GenUI.Render.Reactor.Check",
     "test:dotnet-transport": "dotnet run --project adapters/dotnet/GenUI.Transport.HttpSse.Check",
     "test:dotnet-agentface": "dotnet run --project agentface/dotnet/GenUI.AgentFace.Check",
+    "test:dotnet-agentface-http": "dotnet run --project agentface/dotnet/GenUI.AgentFace.Http.Check",
     "dev:workbench": "vite apps/workbench",
     "dev:workbench-node": "tsx apps/workbench/src/node-host.ts",
     "dev:workbench-remote": "node apps/workbench/src/dev-remote.mjs",
@@ -30,7 +31,7 @@
     "dev:console": "npm run dev:host",
     "build:console": "npm run build:host",
     "typecheck": "tsc -p kernel/tsconfig.json --noEmit && tsc -p adapters/react/tsconfig.json --noEmit && tsc -p interaction/tsconfig.json --noEmit && tsc -p agentface/ts/tsconfig.json --noEmit && tsc -p transports/http-sse/tsconfig.json --noEmit && tsc -p samples/apps/host/tsconfig.json --noEmit && tsc -p apps/workbench/tsconfig.json --noEmit && tsc -p providers/tsconfig.json --noEmit",
-    "test": "npm run conformance && npm run typecheck && npm run test:jsonata && npm run test:kernel && npm run test:react && npm run test:interaction && npm run test:agentface && npm run test:providers && npm run test:sse && npm run test:dotnet && npm run test:dotnet-jsonata && npm run test:dotnet-jsonata-corpus && npm run test:dotnet-render && npm run test:dotnet-render-reactor && npm run test:dotnet-transport && npm run test:dotnet-agentface"
+    "test": "npm run conformance && npm run typecheck && npm run test:jsonata && npm run test:kernel && npm run test:react && npm run test:interaction && npm run test:agentface && npm run test:providers && npm run test:sse && npm run test:dotnet && npm run test:dotnet-jsonata && npm run test:dotnet-jsonata-corpus && npm run test:dotnet-render && npm run test:dotnet-render-reactor && npm run test:dotnet-transport && npm run test:dotnet-agentface && npm run test:dotnet-agentface-http"
   },
   "dependencies": {
     "@fluentui/react-components": "^9.74.3",

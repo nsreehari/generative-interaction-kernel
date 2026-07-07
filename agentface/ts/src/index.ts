@@ -8,3 +8,4 @@ export * from "./capability";
 export * from "./interaction";
 export * from "./presentation";
 export * from "./intent";
+export * from "./mcp";

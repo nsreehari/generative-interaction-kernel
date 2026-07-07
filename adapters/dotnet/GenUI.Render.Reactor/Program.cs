@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json.Nodes;
+using GenUI.AgentFace.Http;
 using GenUI.Render;
 
 namespace GenUI.Render.Reactor.Host;
@@ -18,11 +19,31 @@ public static class Program
     [STAThread]
     public static void Main()
     {
+        // The AgentFace MCP transport wrapper, started alongside the window (best-effort): the host
+        // exposes the agent-authoring tools over HTTP at /mcp — the .NET peer of the node host's
+        // route. A bind failure (port taken, no urlacl) must never stop the UI from opening.
+        using var mcp = TryStartMcp();
+
         AppRegistry samples = new AppRegistry()
             .Register(SampleAppName, CreateSampleBundle);
         AppRegistry apps = new AppRegistry();
 
         ShellHost.Run(samples, apps, title: "GenUI \u00d7 Reactor", width: 1100, height: 720);
+    }
+
+    private static AgentFaceMcpHttpServer? TryStartMcp()
+    {
+        var prefix = Environment.GetEnvironmentVariable("GENUI_AGENTFACE_MCP_PREFIX") ?? "http://localhost:8788/";
+        try
+        {
+            var server = new AgentFaceMcpHttpServer(prefix);
+            server.Start();
+            return server;
+        }
+        catch (Exception)
+        {
+            return null; // never block the window on a transport bind failure
+        }
     }
 
     /// <summary>The sample as a JSON bundle, built through <see cref="BundleLoader.FromJson"/> so it
