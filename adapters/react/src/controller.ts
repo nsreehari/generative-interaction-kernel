@@ -57,6 +57,15 @@ export class GenUIController {
     return this.refresh();
   }
 
+  /**
+   * Re-resolve and notify subscribers WITHOUT dispatching. Use when state this runtime reads changed
+   * out-of-band — e.g. another runtime wrote a shared context namespace (ADR-0034) this one binds to,
+   * so its rendered tree must catch up even though it dispatched nothing itself.
+   */
+  async resync(): Promise<ResolvedNode> {
+    return this.refresh();
+  }
+
   private async refresh(): Promise<ResolvedNode> {
     if (this.settleStore) await this.settleStore();
     const tree = await this.kernel.resolve();
