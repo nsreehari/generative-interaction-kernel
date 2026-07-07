@@ -1,25 +1,27 @@
 // SharedComposition — the declarative successor to the workbench's native `CompositionBundle.Component`.
 //
-// The three workbench bridges (chrome->guest->inspect) were imperative only because the children were
+// The three workbench bridges (chrome->guest->inspect) were imperative ONLY because the children were
 // SEPARATE kernels: moving a value between two stores is I/O. A SharedComposition supersedes them by
-// holding the shared vars ITSELF — one kernel, one store, the children as regions of that store. Then
-// every value that used to cross a bridge is intra-kernel `assign`/`derive`/`read` (pure), the "shared
-// actions" are ordinary `on` handlers, and the only pieces that genuinely RUN an engine (a compiler, an
-// interpreter) become named `invoke` tools the machine calls — fulfilled by the StepOrchestrator.
+// holding the shared vars ITSELF — one kernel, one store, the children as regions of that store. Once
+// they are regions of one store the "bridge" is not effectful at all: chrome writes `n` upstream, the
+// shared cell `tree` is a pure derivation of `n`, and inspect just reads `tree`. There is no async, no
+// I/O, no tool to run — so there is NO orchestrator here. The projection is a standing JSONata
+// `computed` maintained by the reactive store (it must run AFTER the assign op lands, which a
+// same-handler `derive` cannot — the reducer evaluates against the pre-assign snapshot).
 //
-// The spec splits along the neutral/native seam (ADR-0032):
-//   - NEUTRAL (JSON, authorable):  children, manifest, document, state, and the tools' `flows`
-//     (StepFlowConfig — the declarative *structure* of each tool: steps, transitions, terminals).
-//   - NATIVE (injected code):      each tool's `handlers` (the actual side-effecting step bodies).
-// `loadSharedComposition(json, native)` recombines the two — exactly like `bundleFromJson(json, native)`.
+// Everything a SharedComposition needs is therefore pure data:
+//   { children:[roles], manifest, document, seed?, computed? }   — fully serializable JSON.
+// `invoke`/tools/StepMachine are an ORTHOGONAL capability for the genuinely effectful case (call an
+// LLM, hit an API, run a host compiler) — JSONata can't express those. They are NOT part of this
+// story; a composition that needs them attaches a StepOrchestrator separately.
 //
-// This core is framework-agnostic (kernel + StepOrchestrator only): a React/Reactor host renders each
-// child role as a region over the single returned controller. Keeping it engine-agnostic honors the
-// two-renderer promise (ADR-0029) — the composition is the same document on any renderer.
+// This core is framework-agnostic (kernel + store only): a React/Reactor host renders each child role
+// as a region over the single returned controller, honoring the two-renderer promise (ADR-0029).
 
 import {
   Kernel,
   InMemoryStateModel,
+  JsonataExpressionProvider,
   unwrap,
   type DocumentMessage,
   type Enveloped,
@@ -29,14 +31,9 @@ import {
   type GupEvent,
   type ResolvedNode,
 } from "../../../kernel/src/index";
-import {
-  StepOrchestrator,
-  type FlowRegistry,
-  type FlowRegistration,
-} from "../../step-orchestrator/src/step-orchestrator";
-import type { StepFlowConfig } from "../../vendor/step-machine/index.js";
+import { ReactiveStateModel } from "../../reactive-state-model/src/reactive-state-model";
 
-/** A declarative composition: child roles bound over ONE shared store, driven by an optional machine. */
+/** A declarative composition: child roles bound over ONE shared store, with optional standing derivations. */
 export interface SharedCompositionSpec {
   /** The child roles this composition binds (node ids of the regions it renders over the shared store). */
   children: string[];
@@ -46,8 +43,12 @@ export interface SharedCompositionSpec {
   document: DocumentMessage;
   /** Seed values for the shared namespaces. */
   seed?: Record<string, Json>;
-  /** The state machine: named `invoke` tools (compile, resolve, …) the document drives, run as flows. */
-  machine?: FlowRegistry;
+  /**
+   * Standing JSONata derivations over the shared store: cell -> expression (e.g. `{ tree: "n * 2" }`).
+   * Dependencies are inferred from each expression and the reactive store maintains the cascade — the
+   * pure, no-I/O way one region's value flows from another's. Absent = a plain shared-store binding.
+   */
+  computed?: Record<string, string>;
 }
 
 /** A mounted SharedComposition: the one shared kernel plus the child roles rendered over it. */
@@ -58,28 +59,46 @@ export interface SharedComposition {
   dispatch(event: GupEvent): Promise<Patch>;
   resolve(): Promise<ResolvedNode>;
   state(): Record<string, Json>;
+  /** Await the reactive `computed` cascade to quiesce (no-op when there are no computed cells). */
+  settle(): Promise<void>;
+  /** Release the reactive store's resources (no-op when there are no computed cells). */
+  dispose(): Promise<void>;
 }
 
 /**
- * Stand up a SharedComposition: seed ONE shared store, install the `machine` as the kernel's
- * orchestrator (so `invoke("tool")` runs the matching flow), and expose the shared kernel the child
- * regions render over. This replaces a native composition Component + its cross-kernel bridges with a
- * declared spec; only the machine's `invoke` tools remain irreducibly effectful (they run a program).
+ * Stand up a SharedComposition: build ONE shared store (reactive when `computed` derivations are
+ * declared, plain otherwise), seed it, and expose the shared kernel the child regions render over.
+ * This replaces a native composition Component + its cross-kernel bridges with a spec that is entirely
+ * data — because, collapsed onto one store, the bridges are pure derivations, not effects.
  */
 export function createSharedComposition(spec: SharedCompositionSpec): SharedComposition {
-  const namespaces = unwrap(spec.manifest).namespaces ?? [];
-  const state = new InMemoryStateModel(namespaces);
-  if (spec.seed) {
-    state.apply(
-      Object.entries(spec.seed).map(([ns, value]) => ({ op: "set" as const, path: ns, value }))
-    );
+  const seed = spec.seed ?? {};
+  const hasComputed = spec.computed !== undefined && Object.keys(spec.computed).length > 0;
+
+  let state: InMemoryStateModel | ReactiveStateModel;
+  let settle: () => Promise<void>;
+  let dispose: () => Promise<void>;
+
+  if (hasComputed) {
+    const provider = new JsonataExpressionProvider();
+    const evaluate = (expr: string, scope: Record<string, unknown>) => provider.eval(expr, scope);
+    const store = ReactiveStateModel.fromComputed(spec.computed!, { evaluate, initial: seed });
+    state = store;
+    settle = () => store.settle();
+    dispose = () => store.dispose();
+  } else {
+    const namespaces = unwrap(spec.manifest).namespaces ?? [];
+    const store = new InMemoryStateModel(namespaces);
+    const seedEntries = Object.entries(seed);
+    if (seedEntries.length > 0) {
+      store.apply(seedEntries.map(([path, value]) => ({ op: "set" as const, path, value })));
+    }
+    state = store;
+    settle = async () => {};
+    dispose = async () => {};
   }
-  const orchestrator = spec.machine ? new StepOrchestrator(spec.machine) : undefined;
-  const kernel = new Kernel(
-    spec.manifest,
-    spec.document,
-    orchestrator ? { state, orchestrator } : { state }
-  );
+
+  const kernel = new Kernel(spec.manifest, spec.document, { state });
   return {
     children: [...spec.children],
     kernel,
@@ -87,68 +106,7 @@ export function createSharedComposition(spec: SharedCompositionSpec): SharedComp
     dispatch: (event) => kernel.dispatch(event),
     resolve: () => kernel.resolve(),
     state: () => kernel.state(),
+    settle,
+    dispose,
   };
-}
-
-// --- The neutral/native JSON boundary --------------------------------------------------
-
-/**
- * The JSON-only part of a shared composition — safe to author, store, and ship as data. The manifest,
- * document and state are the usual neutral trio; `flows` adds each tool's declarative STRUCTURE (a
- * `StepFlowConfig`: steps, transitions, terminals). What is NOT here is each step's *body* — that is
- * native effect code (I/O), supplied at load via {@link SharedCompositionNative}.
- */
-export interface SerializableSharedComposition {
-  children: string[];
-  manifest: Enveloped<ManifestPayload>;
-  document: DocumentMessage;
-  state?: Record<string, Json>;
-  /** Per-tool declarative flow structure, keyed by the `tool` name an `invoke` action targets. */
-  flows?: Record<string, StepFlowConfig>;
-}
-
-/** One tool's native side: its step handlers plus optional durability / result shaping (no `flow`). */
-export type ToolImpl = Omit<FlowRegistration, "flow">;
-
-/** The native code a shared composition attaches at load: each tool's handlers (the effect bodies). */
-export interface SharedCompositionNative {
-  /** tool name -> its native implementation (`handlers`, optional `store`/`onResult`). */
-  tools?: Record<string, ToolImpl>;
-}
-
-/**
- * The "everything-is-JSON" entry point: recombine a neutral composition (children/manifest/document/
- * state/flows) with the native step handlers into a runnable SharedComposition. Mirrors
- * `bundleFromJson` — the structure is authored data, only the effect bodies are code.
- *
- * This is a system boundary, so the flows and their handlers must match: a flow with no handlers (or
- * handlers with no flow) throws here rather than failing deep inside a run.
- */
-export function loadSharedComposition(
-  json: SerializableSharedComposition,
-  native: SharedCompositionNative = {}
-): SharedComposition {
-  const flows = json.flows ?? {};
-  const tools = native.tools ?? {};
-  const toolNames = new Set([...Object.keys(flows), ...Object.keys(tools)]);
-
-  let machine: FlowRegistry | undefined;
-  if (toolNames.size > 0) {
-    machine = {};
-    for (const tool of toolNames) {
-      const flow = flows[tool];
-      const impl = tools[tool];
-      if (!flow) throw new Error(`loadSharedComposition: tool "${tool}" has a native impl but no declared flow`);
-      if (!impl) throw new Error(`loadSharedComposition: flow "${tool}" has no native handlers supplied`);
-      machine[tool] = { flow, ...impl };
-    }
-  }
-
-  return createSharedComposition({
-    children: json.children,
-    manifest: json.manifest,
-    document: json.document,
-    seed: json.state,
-    machine,
-  });
 }
