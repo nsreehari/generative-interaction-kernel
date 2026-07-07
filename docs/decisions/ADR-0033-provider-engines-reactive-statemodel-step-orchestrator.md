@@ -67,9 +67,9 @@ verbatim under a new top-level `providers/` tree, mirroring ADR-0027's vendoring
 
 - **StepMachine → an `Orchestrator` provider.** A `StepOrchestrator` maps a genui `invoke` effect to a
   `StepFlowConfig` run over the vendored `StepMachine` + an in-memory store, giving `invoke` durable,
-  branching, retryable, resumable semantics (the ADR-0009 effect seam, made real). *(Adapter is a
-  follow-up to the vendor + the reactive adapter; this ADR records the mapping and lands the vendored
-  engine.)*
+  branching, retryable, resumable semantics (the ADR-0009 effect seam, made real). *(Landed: a tool is
+  a named `StepFlowConfig` + step handlers; `invoke(tool, args)` runs it to completion and maps the
+  terminal result into a follow-up event and/or store ops. Unregistered tools stay unhandled.)*
 
 - **Vendor the proven cores, mirror the source layout, keep the crux byte-identical.** The copied
   subset lives under `providers/vendor/` in a directory structure that mirrors `yaml-flow/src/` for the
@@ -149,7 +149,8 @@ is the same discipline ADR-0027 chose for JSONata.
 - **First adapter + test land now (ADR "A" follow-through).** `ReactiveStateModel` is implemented with
   a focused test proving that a base-cell `apply` cascades to a derived cell and that an upstream change
   re-derives — the first honest use of a yaml-flow engine inside genui, with zero kernel changes. The
-  `StepOrchestrator` adapter is the tracked next step.
+  `StepOrchestrator` adapter has since landed too (branching + retry + an end-to-end `invoke`
+  fulfilment through the real Kernel), so both engines are now live behind their provider seams.
 
 ## Amendment (2026-07-07): a declarative `computed` construct for standing derivations
 

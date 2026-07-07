@@ -11,7 +11,7 @@
     "test:kernel": "node --import tsx --test kernel/test/**/*.test.ts",
     "test:react": "node --import tsx --test adapters/react/test/**/*.test.tsx",
     "test:interaction": "node --import tsx --test interaction/test/**/*.test.ts",
-    "test:providers": "node --import tsx --test providers/reactive-state-model/test/**/*.test.ts",
+    "test:providers": "node --import tsx --test providers/**/test/**/*.test.ts",
     "test:sse": "node --import tsx --test transports/http-sse/test/**/*.test.ts",
     "test:dotnet": "dotnet run --project kernel-dotnet/GenUI.Conformance",
     "test:dotnet-jsonata": "dotnet run --project kernel-dotnet/GenUI.Jsonata.TokenizerCheck",
