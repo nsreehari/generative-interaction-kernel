@@ -1,8 +1,8 @@
-// BridgeComponent proof: the workbench's guest->inspect bridge, re-expressed declaratively.
+// SharedComposition proof: the workbench's guest->inspect bridge, re-expressed declaratively.
 //
 // The native bridge did: subscribe(guest render) -> project(tree) -> emit(inspect). Here there is NO
 // bridge: chrome, guest and inspect are regions of ONE shared store. `chrome` writes the input; the
-// `machine` (a two-step compile->resolve StepFlow, the two engines that must actually run) is invoked;
+// machine (a two-step compile->resolve StepFlow, the two engines that must actually run) is invoked;
 // its result is projected into the shared `tree` cell by a DECLARATIVE `on` handler; and `inspect`
 // simply READS that cell. One kernel, no cross-kernel copy — exactly the superseding component.
 
@@ -18,7 +18,11 @@ import {
   type ManifestPayload,
   type ResolvedNode,
 } from "../../../kernel/src/index";
-import { createBridgeComponent, type BridgeComponentSpec } from "../src/bridge-component";
+import {
+  createSharedComposition,
+  loadSharedComposition,
+  type SharedCompositionSpec,
+} from "../src/shared-composition";
 import type { StepFlowConfig } from "../../vendor/step-machine/index.js";
 
 // The manifest of the SUPERSEDING store: the shared vars (`n`, `tree`) + the region capabilities.
@@ -43,6 +47,9 @@ const manifestMessage = { gup: "0.1", type: "manifest", payload: manifest } as c
 
 // The machine: the two engines that genuinely RUN — `compile` (inputs -> a document) then `resolve`
 // (document -> a rendered value). A single two-step flow; `invoke("build")` runs it to completion.
+// The flow STRUCTURE is neutral data; the step HANDLERS are native code — kept separate so the same
+// pair drives both the assembled `machine` (createSharedComposition) and the neutral/native split
+// (loadSharedComposition) below.
 const buildFlow: StepFlowConfig = {
   settings: { start_step: "compile" },
   steps: {
@@ -51,23 +58,21 @@ const buildFlow: StepFlowConfig = {
   },
   terminal_states: { done: { return_intent: "ok", return_artifacts: ["value"] } },
 };
-const machine = {
-  build: {
-    flow: buildFlow,
-    handlers: {
-      compile: (input: Record<string, unknown>) => ({ result: "ok", data: { docFactor: 2, docN: input.n } }),
-      // resolve sees compile's output (StepMachine threads all produced data) — proving the ORDER.
-      resolve: (input: Record<string, unknown>) => ({
-        result: "ok",
-        data: { value: (input.docN as number) * (input.docFactor as number) },
-      }),
-    },
-    // Default result mapping emits `build:ok` carrying { value }, which the document's `on` handler
-    // (below) assigns into the shared `tree` cell — the projection, now fully declarative.
-  },
+const buildHandlers = {
+  compile: (input: Record<string, unknown>) => ({ result: "ok", data: { docFactor: 2, docN: input.n } }),
+  // resolve sees compile's output (StepMachine threads all produced data) — proving the ORDER.
+  resolve: (input: Record<string, unknown>) => ({
+    result: "ok",
+    data: { value: (input.docN as number) * (input.docFactor as number) },
+  }),
 };
+// Default result mapping emits `build:ok` carrying { value }, which the document's `on` handler
+// (below) assigns into the shared `tree` cell — the projection, now fully declarative.
+const machine = { build: { flow: buildFlow, handlers: buildHandlers } };
 
-function bridgeSpec(): BridgeComponentSpec {
+// The composition document: the three regions + their declarative wiring over the one shared store.
+// Shared by both spec forms below (assembled `machine` vs neutral `flows` + injected `handlers`).
+function bridgeDocument() {
   const root = node("board", "bridge", {
     props: { title: "Bridge" },
     children: [
@@ -93,16 +98,20 @@ function bridgeSpec(): BridgeComponentSpec {
       }),
     ],
   });
+  return authorDocument(root, { manifest: "bridge-demo/1.0" });
+}
+
+function bridgeSpec(): SharedCompositionSpec {
   return {
     children: ["chrome", "inspect"],
     manifest: manifestMessage as never,
-    document: authorDocument(root, { manifest: "bridge-demo/1.0" }) as never,
+    document: bridgeDocument() as never,
     machine,
   };
 }
 
 test("the machine projects into the shared store and the inspect region reads it — no bridge", async () => {
-  const comp = createBridgeComponent(bridgeSpec());
+  const comp = createSharedComposition(bridgeSpec());
   comp.init();
 
   await comp.dispatch({ node: "apply", name: "tap" });
@@ -119,7 +128,7 @@ test("the machine projects into the shared store and the inspect region reads it
 test("children are regions of ONE shared store (seeded), exposed as roles", async () => {
   const spec = bridgeSpec();
   spec.seed = { n: 3, tree: 42 };
-  const comp = createBridgeComponent(spec);
+  const comp = createSharedComposition(spec);
   comp.init();
 
   assert.deepEqual([...comp.children], ["chrome", "inspect"], "child roles are exposed for the host");
@@ -134,12 +143,45 @@ test("a machine-less composition is a plain shared-store binding (no invoke tool
   const spec = bridgeSpec();
   delete spec.machine;
   spec.seed = { n: 7, tree: 99 };
-  const comp = createBridgeComponent(spec);
+  const comp = createSharedComposition(spec);
   comp.init();
 
   const tree = (await comp.resolve()) as ResolvedNode;
   assert.equal(find(tree, "chrome-n")?.props.value, 7, "children still share one store without a machine");
   assert.equal(find(tree, "tree-out")?.props.value, 99);
+});
+
+test("loadSharedComposition recombines neutral JSON `flows` with injected native `handlers`", async () => {
+  // The authored, all-JSON form: children + manifest + document + state + the flow STRUCTURE. No code.
+  const json = {
+    children: ["chrome", "inspect"],
+    manifest: manifestMessage as never,
+    document: bridgeDocument() as never,
+    state: { n: 0, tree: 0 },
+    flows: { build: buildFlow },
+  };
+  // The native side, injected at load: only the step handlers (the effect bodies).
+  const comp = loadSharedComposition(json, { tools: { build: { handlers: buildHandlers } } });
+  comp.init();
+
+  await comp.dispatch({ node: "apply", name: "tap" });
+
+  const tree = (await comp.resolve()) as ResolvedNode;
+  assert.equal(find(tree, "tree-out")?.props.value, 10, "recombined flow ran and projected into the shared cell");
+  assert.equal(find(tree, "chrome-n")?.props.value, 5);
+});
+
+test("loadSharedComposition rejects a flow with no native handlers at the boundary", () => {
+  assert.throws(
+    () =>
+      loadSharedComposition({
+        children: ["chrome"],
+        manifest: manifestMessage as never,
+        document: bridgeDocument() as never,
+        flows: { build: buildFlow },
+      }),
+    /no native handlers supplied/
+  );
 });
 
 function find(n: ResolvedNode | null, id: string): ResolvedNode | undefined {
