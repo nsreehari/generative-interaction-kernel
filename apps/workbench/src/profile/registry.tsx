@@ -174,10 +174,11 @@ function RegionEditor({ node, emit }: CapabilityViewProps) {
 /**
  * The workbench chrome profile's EXTRA capability -> component map: ONLY the specialized controls
  * the shared floor doesn't provide — the passthrough `panelGroup` and the stateful `regionEditor`.
- * Everything else (panel, select, field, textarea, button, note, tabBar, and the passive list/table
- * displays for facets, agent steps, region rows, and traces) comes from the floor via
- * `overlayRegistry` when the chrome/inspect bundles render (see Workbench.tsx), so anything not
- * listed here (including the fallback) resolves from the floor.
+ * These are attached to the chrome/inspect bundles as their `self` provider components; everything
+ * else (panel, select, field, textarea, button, note, tabBar, and the passive list/table displays
+ * for facets, agent steps, region rows, and traces) resolves through the `ui` (floor) provider that
+ * each bundle's manifest `externals.components` declares (see `buildBundleRegistry`). Nothing is
+ * ambient: a reference resolves only through an explicitly imported provider, else the fallback.
  */
 export const workbenchComponents: Record<string, CapabilityView> = {
   panelGroup: PanelGroup,

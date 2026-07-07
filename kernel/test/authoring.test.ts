@@ -41,19 +41,19 @@ const manifestPayload = manifest.payload as ManifestPayload;
 
 // The same live-cards UI as the fixture, but authored by an agent via constructors.
 function authorLiveCards() {
-  const root = node("board", "board-1", {
+  const root = node("ui:board", "board-1", {
     props: { title: "Sales" },
     children: [
-      node("metric", "metric-total", {
+      node("ui:metric", "metric-total", {
         props: { label: "Total" },
         read: { value: "computed_values.total" },
       }),
-      node("table", "table-orders", {
+      node("ui:table", "table-orders", {
         props: { columns: ["id", "amount"] },
         read: { rows: "fetched_sources.orders" },
         on: { rowSelect: [assignFrom("card_data.selected", "$event.id")] },
       }),
-      node("actions", "btn-approve", {
+      node("ui:actions", "btn-approve", {
         props: { label: "Approve" },
         gate: "card_data.selected != null",
         on: {
@@ -118,7 +118,7 @@ test("an agent authors a valid document that passes validation, lints clean, and
 });
 
 test("an unknown capability is structurally valid, is flagged by lint, and renders as fallback (no crash)", async () => {
-  const root = node("board", "board-1", {
+  const root = node("ui:board", "board-1", {
     props: { title: "Experimental" },
     children: [node("mystery-widget", "widget-1", { props: { label: "?" } })],
   });
@@ -144,7 +144,7 @@ test("an unknown capability is structurally valid, is flagged by lint, and rende
 
 test("a structurally malformed document is rejected by validate-before-commit", () => {
   const badAction = { target: "card_data.x" } as unknown as Action; // missing required `do`
-  const root = node("actions", "btn-x", { on: { tap: [badAction] } });
+  const root = node("ui:actions", "btn-x", { on: { tap: [badAction] } });
   assert.throws(
     () => authorDocument(root, { manifest: "live-cards/1.0" }),
     (err: unknown) => err instanceof ValidationError
@@ -152,10 +152,10 @@ test("a structurally malformed document is rejected by validate-before-commit", 
 });
 
 test("lint flags undeclared events and namespaces on an otherwise valid structure", () => {
-  const root = node("board", "board-1", {
+  const root = node("ui:board", "board-1", {
     children: [
-      // `table` declares emits ["rowSelect"], so `hover` is undeclared; `nowhere` is not a namespace.
-      node("table", "t1", {
+      // `ui:table` declares emits ["rowSelect"], so `hover` is undeclared; `nowhere` is not a namespace.
+      node("ui:table", "t1", {
         read: { rows: "nowhere.value" },
         on: { hover: [assign("card_data.x", 1)] },
       }),

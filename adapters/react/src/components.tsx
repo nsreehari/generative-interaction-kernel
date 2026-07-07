@@ -2,7 +2,12 @@
 // These are the profile's vocabulary; the kernel and renderer stay generic.
 
 import React from "react";
-import { createRegistry, type CapabilityViewProps, type ComponentRegistry } from "./registry";
+import {
+  buildRegistryFromImports,
+  type CapabilityViewProps,
+  type ComponentRegistry,
+  type ProviderMap,
+} from "./registry";
 import { readProps } from "./props";
 
 export function Board({ node, children }: CapabilityViewProps) {
@@ -96,13 +101,21 @@ export function FallbackView({ node }: CapabilityViewProps) {
   );
 }
 
-/** The live-cards profile's capability -> component map. */
-export const liveCardsRegistry: ComponentRegistry = createRegistry(
-  {
-    board: Board,
-    metric: Metric,
-    table: Table,
-    actions: ActionButton,
-  },
+/** The live-cards profile's capability components, exposed under the `ui` alias. */
+export const liveCardsComponents: ProviderMap = {
+  board: Board,
+  metric: Metric,
+  table: Table,
+  actions: ActionButton,
+};
+
+/**
+ * The live-cards profile registry: resolves the namespaced `ui:*` capabilities (board/metric/table/
+ * actions) through the profile provider. Nothing is ambient — the `ui` alias is bound explicitly to
+ * this profile's components, mirroring a bundle's `externals.components`.
+ */
+export const liveCardsRegistry: ComponentRegistry = buildRegistryFromImports(
+  { ui: { from: "profile" } },
+  (from) => (from === "profile" ? liveCardsComponents : undefined),
   FallbackView
 );

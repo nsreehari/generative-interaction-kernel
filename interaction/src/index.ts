@@ -24,18 +24,18 @@ import type { PresentationBinding } from "./lowering";
  * the forward-compatible path for facets a profile hasn't implemented yet.
  */
 export const liveCardsBinding: PresentationBinding = {
-  container: "board",
+  container: "ui:board",
   roleCapability: {
-    summary: "metric",
-    metrics: "metric",
-    status: "metric",
-    narrative: "metric",
-    recommendation: "metric",
-    collection: "table",
-    detail: "table",
-    timeline: "table",
-    comparison: "table",
-    actions: "actions",
+    summary: "ui:metric",
+    metrics: "ui:metric",
+    status: "ui:metric",
+    narrative: "ui:metric",
+    recommendation: "ui:metric",
+    collection: "ui:table",
+    detail: "ui:table",
+    timeline: "ui:table",
+    comparison: "ui:table",
+    actions: "ui:actions",
     // `graph` and `form` intentionally unmapped -> graceful fallback.
   },
   regionSelectEvent: {
