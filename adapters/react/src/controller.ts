@@ -12,7 +12,17 @@ export class GenUIController {
   private lastPatch: Patch | null = null;
   private readonly listeners = new Set<TreeListener>();
 
-  constructor(private readonly kernel: Kernel) {}
+  /**
+   * @param kernel the kernel this controller drives.
+   * @param settleStore optional barrier awaited before each re-resolve. A reactive store (e.g. a
+   *   `computed`-backed shared composition) derives its cells asynchronously after an op lands; this
+   *   hook lets the controller wait for that cascade to quiesce so the resolved tree is consistent.
+   *   Plain (synchronous) stores omit it.
+   */
+  constructor(
+    private readonly kernel: Kernel,
+    private readonly settleStore?: () => Promise<void>
+  ) {}
 
   /** Seed machine state and produce the first resolved tree. */
   async start(): Promise<ResolvedNode> {
@@ -48,6 +58,7 @@ export class GenUIController {
   }
 
   private async refresh(): Promise<ResolvedNode> {
+    if (this.settleStore) await this.settleStore();
     const tree = await this.kernel.resolve();
     this.tree = tree;
     for (const listener of this.listeners) listener(tree);
