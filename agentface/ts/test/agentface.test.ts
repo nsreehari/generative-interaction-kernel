@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 
 import { describeCatalog, namespaces, effects } from "../src/catalog";
 import { validateDocument, lint, authorDocument } from "../src/document";
+import { validateCapability } from "../src/capability";
 import type { ManifestPayload } from "../../../kernel/src/index";
 
 const manifest: ManifestPayload = {
@@ -74,4 +75,35 @@ test("author: valid commits, invalid rejected", () => {
   assert.equal(ok.ok, true);
   assert.ok(ok.message);
   assert.equal(authorDocument({ root: { capability: "text" } }).ok, false);
+});
+
+test("capability: well-formed descriptor is ok with no warnings", () => {
+  const report = validateCapability({
+    id: "chart",
+    emits: ["select"],
+    slots: ["legend"],
+    dataProp: "series",
+    propsSchema: { properties: { series: {}, title: {} } },
+  });
+  assert.equal(report.ok, true);
+  assert.equal(report.warnings.length, 0);
+});
+
+test("capability: missing id + bad emits -> not ok, dataProp warns", () => {
+  const report = validateCapability({
+    emits: "nope",
+    dataProp: "missing",
+    propsSchema: { properties: { x: {} } },
+  });
+  assert.equal(report.ok, false);
+  const codes = new Set(report.warnings.map((w) => w.code));
+  assert.ok(codes.has("dataprop-not-in-schema"));
+});
+
+test("capability: registry view surfaces shadow + missing-binding warnings", () => {
+  const view = { bindings: ["text", "button"], floor: ["text"] };
+  const shadow = new Set(validateCapability({ id: "text" }, view).warnings.map((w) => w.code));
+  assert.ok(shadow.has("shadows-floor"));
+  const unbound = new Set(validateCapability({ id: "newthing" }, view).warnings.map((w) => w.code));
+  assert.ok(unbound.has("missing-render-binding"));
 });
