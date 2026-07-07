@@ -18,6 +18,7 @@ import type {
   Json,
   Machine,
   ManifestPayload,
+  Reaction,
 } from "./types";
 import { validateDocumentMessage } from "./validate";
 
@@ -63,6 +64,15 @@ export function guarded(action: Action, guard: string): Action {
   return { ...action, guard };
 }
 
+/**
+ * A declarative reaction: when `when`'s value changes, run `run` (a state-triggered effect — the
+ * standing analogue of an `on` handler). Pure standing derivations stay `computed`; use a reaction for
+ * effectful bodies (`invoke`) or cross-cell writes.
+ */
+export function reaction(when: string, run: Action[]): Reaction {
+  return { when, run };
+}
+
 // --- Node + document constructors -------------------------------------------------
 
 export interface NodeOptions {
@@ -75,6 +85,8 @@ export interface NodeOptions {
   write?: Record<string, string>;
   /** event name -> ordered actions (behavior edge). */
   on?: Record<string, Action[]>;
+  /** standing reactions: state-triggered effects that run when their `when` value changes. */
+  react?: Reaction[];
   children?: DocNode[];
 }
 
@@ -89,6 +101,7 @@ export function node(capability: string, id: string, opts: NodeOptions = {}): Do
     );
   }
   if (opts.on) edges.on = opts.on;
+  if (opts.react) edges.react = opts.react;
   if (opts.children) edges.children = opts.children;
 
   const result: DocNode = { capability, id };
