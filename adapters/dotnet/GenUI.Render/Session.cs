@@ -49,6 +49,13 @@ public sealed class GenUISession : IDisposable
     /// kernel boundaries, mirroring <see cref="BundleRuntime"/>.</summary>
     public InMemoryStateModel State { get; }
 
+    /// <summary>The broker every connection multiplexes through — the renderer and every agent. A
+    /// transport server (HTTP/SSE, stdio) binds to this to onboard remote connections onto the same
+    /// shared kernel; <see cref="Attach"/> is the in-process equivalent. Disposing a server bound to
+    /// this broker stops it (detaching every connection, including the renderer), so give the server
+    /// the session's lifetime.</summary>
+    public KernelTransportHost Broker => _broker;
+
     /// <summary>Stand up a session for a bundle. Pass the UI dispatcher's scheduler (WinUI's
     /// <c>DispatcherQueueDispatchScheduler</c>) so UI-thread emits and background agent events share one
     /// owner; omit it for a headless/inline (lock) owner. Onboarding the renderer produces the first
