@@ -152,6 +152,13 @@ export interface ManifestPayload {
   version: string;
   expression?: string;
   namespaces?: string[];
+  /**
+   * Namespace roots that are *shared context* rather than local state (ADR-0034): a host binds each
+   * to a shared StateModel (a context provider), and read/assign/derive whose path targets one route
+   * to that shared store. Declaring them as data keeps the sharing portable — the adapter realizes it
+   * as a React Context / Reactor `Context`, but the document/manifest stays host-neutral.
+   */
+  contexts?: string[];
   actions?: string[];
   capabilities: Record<string, CapabilityDescriptor>;
   /** Outward dependency contract: imported component providers + required external effect handlers. */
