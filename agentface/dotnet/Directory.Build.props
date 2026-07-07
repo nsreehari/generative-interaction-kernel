@@ -1,0 +1,4 @@
+<!-- Empty: stops MSBuild from walking further up the tree, so the AgentFace island
+     stays isolated from any repo-root build props (mirrors kernel-dotnet). -->
+<Project>
+</Project>
