@@ -124,17 +124,22 @@ public sealed class ShellComponent : Component
         return HStack(0, list, content);
     }
 
-    // Session/transport diagnostics. Endpoints are honest placeholders until GenUI.Host.HttpSse/Mcp land.
+    // Session/transport diagnostics. Both endpoints are best-effort (a bind failure leaves the window
+    // fully functional); the GUP stream tracks whichever bundle is currently running.
     private static Element HostPanel()
     {
         string samples = string.Join(", ", ShellHost.Samples.Names.OrderBy(n => n, StringComparer.Ordinal));
         string apps = string.Join(", ", ShellHost.Apps.Names.OrderBy(n => n, StringComparer.Ordinal));
+        string mcpPrefix = Environment.GetEnvironmentVariable("GENUI_AGENTFACE_MCP_PREFIX") ?? "http://localhost:8788/";
+        string ssePrefix = (Environment.GetEnvironmentVariable("GENUI_GUP_SSE_PREFIX") ?? "http://localhost:8789/").TrimEnd('/');
 
         return VStack(8,
                 TextBlock("Host session").Bold().FontSize(18).Foreground(GenUITheme.PrimaryText),
                 TextBlock($"Samples: {(samples.Length == 0 ? "(none)" : samples)}").Foreground(GenUITheme.PrimaryText),
                 TextBlock($"Apps: {(apps.Length == 0 ? "(none)" : apps)}").Foreground(GenUITheme.PrimaryText),
-                TextBlock("Endpoints: none \u2014 HTTP/SSE and MCP transports are not started yet.")
+                TextBlock($"AgentFace MCP: {mcpPrefix}mcp \u2014 agent-authoring tools").Foreground(GenUITheme.PrimaryText),
+                TextBlock($"GUP stream: {ssePrefix}/gup/stream \u2014 agents drive the running bundle").Foreground(GenUITheme.PrimaryText),
+                TextBlock("Both endpoints are best-effort; a bind failure leaves the window fully functional.")
                     .Foreground(GenUITheme.MutedText))
             .Padding(16)
             .Margin(16)

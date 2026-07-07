@@ -54,4 +54,10 @@
     <ProjectReference Include="../../../agentface/dotnet/GenUI.AgentFace.Http/GenUI.AgentFace.Http.csproj" />
   </ItemGroup>
 
+  <!-- The HTTP/SSE transport server: binds a running bundle's GenUISession broker to a /gup endpoint
+       so remote agents attach to the SAME shared kernel the window renders, over the GUP protocol. -->
+  <ItemGroup>
+    <ProjectReference Include="../GenUI.Transport.HttpSse/GenUI.Transport.HttpSse.csproj" />
+  </ItemGroup>
+
 </Project>
