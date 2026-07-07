@@ -5,5 +5,4 @@ export * from "./bundle";
 export * from "./apps";
 export * from "./registry";
 export * from "./host";
-export * from "./composition";
 export * from "./playground";
