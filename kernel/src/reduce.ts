@@ -196,3 +196,42 @@ export async function reduce(
 
   return { ops: c.ops, traces: c.traces, effects: c.effects };
 }
+
+/** {@link ReduceResult} plus the events a run queued via `emit`, for the caller to settle. */
+export interface ReactionRunResult extends ReduceResult {
+  emitted: GupEvent[];
+}
+
+/**
+ * Run an ordered list of closed-grammar actions owned by a node, against the current store snapshot.
+ * This is the shared engine behind a reaction's `run` (ADR-0034): actions dispatch exactly as an event
+ * handler's would (guards honored, effects collected), but the trigger is a state change the kernel
+ * detected rather than an inbound event. `bindings` is merged into the expression scope (e.g. `$when`).
+ */
+export async function reduceActions(
+  store: StateModel,
+  ownerNodeId: string,
+  actions: Action[],
+  expr: ExpressionProvider,
+  predicateExpr: ExpressionProvider,
+  bindings: Record<string, unknown> = {}
+): Promise<ReactionRunResult> {
+  const c: DispatchCtx = {
+    ops: [],
+    traces: [],
+    effects: [],
+    expr,
+    predicateExpr,
+    data: store.snapshot(),
+    bindings: { event: {}, ...bindings },
+    currentEvent: { node: ownerNodeId, name: "__react__" },
+    emitted: [],
+  };
+
+  for (const a of actions) {
+    if (a.guard && !truthy(await predicateExpr.eval(a.guard, c.data, c.bindings))) continue;
+    await dispatchAction(a, c);
+  }
+
+  return { ops: c.ops, traces: c.traces, effects: c.effects, emitted: c.emitted };
+}

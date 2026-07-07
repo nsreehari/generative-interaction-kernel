@@ -33,6 +33,19 @@ export interface Action {
   event?: string;
 }
 
+/**
+ * A declarative reaction: a standing, state-triggered effect. When {@link when}'s value changes, the
+ * kernel runs {@link run} (the closed-grammar actions) as a synthetic dispatch owned by the node — the
+ * standing analogue of an event handler (`on`). Pure standing derivations stay `computed`; a reaction is
+ * for genuinely effectful bodies (`invoke`) or cross-cell writes.
+ */
+export interface Reaction {
+  /** Expression over state; the reaction fires when its evaluated value changes. */
+  when: string;
+  /** Closed-grammar actions to run on change. */
+  run: Action[];
+}
+
 export interface Edges {
   read?: Record<string, string>;
   /**
@@ -47,6 +60,8 @@ export interface Edges {
   gate?: string;
   write?: Record<string, { to: string }>;
   on?: Record<string, Action[]>;
+  /** Standing reactions: state-triggered effects that run when their `when` value changes. */
+  react?: Reaction[];
   children?: DocNode[];
 }
 

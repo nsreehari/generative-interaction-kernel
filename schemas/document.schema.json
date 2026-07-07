@@ -60,6 +60,19 @@
         "event": { "$ref": "#/definitions/identifier" }
       }
     },
+    "reaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["when", "run"],
+      "description": "A declarative reaction: when the `when` expression's value changes, run the closed-grammar `run` actions (a state-triggered effect; the standing analogue of an event handler).",
+      "properties": {
+        "when": { "$ref": "#/definitions/expr" },
+        "run": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/action" }
+        }
+      }
+    },
     "edges": {
       "type": "object",
       "additionalProperties": false,
@@ -92,6 +105,11 @@
             "type": "array",
             "items": { "$ref": "#/definitions/action" }
           }
+        },
+        "react": {
+          "type": "array",
+          "description": "Standing reactions: state-triggered effects that run when their `when` value changes.",
+          "items": { "$ref": "#/definitions/reaction" }
         },
         "children": {
           "type": "array",
