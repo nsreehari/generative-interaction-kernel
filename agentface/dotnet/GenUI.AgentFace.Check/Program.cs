@@ -108,6 +108,41 @@ var unboundCodes = (CapabilityAuthoring.ValidateCapability(Obj("""{ "id": "newth
     .Select(w => w?["code"]?.GetValue<string>() ?? "").ToHashSet();
 Check("capability: missing render binding warns", unboundCodes.Contains("missing-render-binding"));
 
+// --- MCP tool surface (JSON-RPC dispatcher) --------------------------------
+var toolNames = McpServer.ListTools().Select(t => t?["name"]?.GetValue<string>() ?? "").ToHashSet();
+Check("mcp: exposes catalog/document/capability tools", new[]
+{
+    "describeCatalog", "validateDocument", "lintDocument", "authorDocument", "validateCapability",
+}.All(toolNames.Contains));
+
+var callCat = McpServer.CallTool("describeCatalog", new JsonObject { ["manifest"] = manifest.DeepClone() }) as JsonObject;
+Check("mcp: CallTool dispatches describeCatalog", (callCat?["capabilities"] as JsonArray)?.Count == 2);
+
+var init = McpServer.Handle(Obj("""{ "jsonrpc": "2.0", "id": 1, "method": "initialize" }"""));
+Check("mcp: initialize returns protocolVersion", init?["result"]?["protocolVersion"]?.GetValue<string>() == McpServer.ProtocolVersion);
+
+var listed = McpServer.Handle(Obj("""{ "jsonrpc": "2.0", "id": 2, "method": "tools/list" }"""));
+Check("mcp: tools/list returns tools", (listed?["result"]?["tools"] as JsonArray)?.Count >= 5);
+
+var callReq = new JsonObject
+{
+    ["jsonrpc"] = "2.0",
+    ["id"] = 3,
+    ["method"] = "tools/call",
+    ["params"] = new JsonObject
+    {
+        ["name"] = "validateCapability",
+        ["arguments"] = new JsonObject { ["capability"] = Obj("""{ "id": "chart" }""") },
+    },
+};
+var called = McpServer.Handle(callReq);
+Check("mcp: tools/call returns structuredContent", called?["result"]?["structuredContent"]?["ok"]?.GetValue<bool>() == true);
+Check("mcp: tools/call returns text content", called?["result"]?["content"]?[0]?["type"]?.GetValue<string>() == "text");
+
+var unknown = McpServer.Handle(Obj("""{ "jsonrpc": "2.0", "id": 4, "method": "bogus" }"""));
+Check("mcp: unknown method -> JSON-RPC error", unknown?["error"]?["code"]?.GetValue<int>() == -32601);
+Check("mcp: notification -> no reply", McpServer.Handle(Obj("""{ "jsonrpc": "2.0", "method": "notifications/initialized" }""")) is null);
+
 Console.WriteLine();
 Console.WriteLine(failures == 0 ? "All AgentFace checks passed." : $"{failures} AgentFace check(s) failed.");
 return failures == 0 ? 0 : 1;

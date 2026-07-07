@@ -48,4 +48,10 @@
     <ProjectReference Include="../GenUI.Render/GenUI.Render.csproj" />
   </ItemGroup>
 
+  <!-- The AgentFace MCP transport wrapper (HttpListener over the transport-free McpServer). Lets the
+       host expose the agent-authoring tools over HTTP, the .NET peer of the node host's /mcp route. -->
+  <ItemGroup>
+    <ProjectReference Include="../../../agentface/dotnet/GenUI.AgentFace.Http/GenUI.AgentFace.Http.csproj" />
+  </ItemGroup>
+
 </Project>
