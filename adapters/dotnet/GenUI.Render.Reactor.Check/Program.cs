@@ -23,31 +23,31 @@ using GenKernel = GenUI.Kernel.Kernel;
 const string ManifestJson = """
 {
   "namespaces": ["ui"],
-  "capabilities": { "board": {}, "metric": {}, "table": {}, "actions": {}, "badge": {} }
+  "capabilities": { "ui:board": {}, "ui:metric": {}, "ui:table": {}, "ui:actions": {}, "ui:widget": {} }
 }
 """;
 
 // board root with: a metric that reads ui.clicked, a static table, an actions button that
-// assigns ui.clicked on tap, a badge (in the manifest but with NO registered Reactor view),
+// assigns ui.clicked on tap, a ui:widget (in the manifest but with NO registered Reactor view),
 // an unknown capability (not in the manifest), and a gated-off metric. Exercises both
 // fallback paths and the visibility drop, and gives the emit round-trip something to change.
 const string DocumentJson = """
 {
   "root": {
-    "capability": "board",
+    "capability": "ui:board",
     "id": "root",
     "props": { "title": "Board" },
     "edges": {
       "children": [
-        { "capability": "metric",  "id": "echo", "props": { "label": "Clicked" },
+        { "capability": "ui:metric",  "id": "echo", "props": { "label": "Clicked" },
           "edges": { "read": { "value": "ui.clicked" } } },
-        { "capability": "table",   "id": "t1",
+        { "capability": "ui:table",   "id": "t1",
           "props": { "columns": ["a", "b"], "rows": [ { "a": "1", "b": "2" } ] } },
-        { "capability": "actions", "id": "go", "props": { "label": "Go" },
+        { "capability": "ui:actions", "id": "go", "props": { "label": "Go" },
           "edges": { "on": { "tap": [ { "do": "assign", "target": "ui.clicked", "args": { "value": true } } ] } } },
-        { "capability": "badge",   "id": "b1" },
-        { "capability": "mystery", "id": "u1" },
-        { "capability": "metric",  "id": "hidden", "props": { "label": "H" }, "edges": { "gate": "false" } }
+        { "capability": "ui:widget",  "id": "b1" },
+        { "capability": "ui:mystery", "id": "u1" },
+        { "capability": "ui:metric",  "id": "hidden", "props": { "label": "H" }, "edges": { "gate": "false" } }
       ]
     }
   }
@@ -101,8 +101,8 @@ checker.Assert(texts.Contains("a") && texts.Contains("b"), "table renders its co
 checker.Assert(texts.Contains("1") && texts.Contains("2"), "table renders its cell values");
 
 // both fallback paths reach the Reactor Fallback view (a subtle [capability] marker).
-checker.Assert(texts.Contains("[badge]"), "known-but-unregistered capability falls back");
-checker.Assert(texts.Contains("[mystery]"), "unknown capability falls back");
+checker.Assert(texts.Contains("[ui:widget]"), "known-but-unregistered capability falls back");
+checker.Assert(texts.Contains("[ui:mystery]"), "unknown capability falls back");
 
 // the gated metric is absent from the element tree entirely.
 checker.Assert(!texts.Contains("H"), "gated node produces no element");
@@ -119,6 +119,64 @@ checker.Assert(refreshCount >= 2, "the subscriber re-rendered after the dispatch
 // after the round-trip, the metric reflects the new state (bool stringifies to "true").
 var echoAfter = FindMetric(Shape.Of(root!), "Clicked");
 checker.Assert(echoAfter!.Children[1].Text == "true", "metric reflects ui.clicked after the click");
+
+// ── Leaf parity: the binding maps the full shared floor (the C# peer of FLOOR_COMPONENTS) plus
+// the live-cards profile leaves that share the `ui` alias. Assert every capability resolves to a
+// real view and that an unmapped one still falls back.
+string[] floorKeys =
+{
+    "ui:screen", "ui:row", "ui:col", "ui:panel", "ui:text", "ui:heading", "ui:note", "ui:badge",
+    "ui:metric", "ui:codeBlock", "ui:list", "ui:table", "ui:field", "ui:textarea", "ui:select",
+    "ui:button", "ui:tabBar", "ui:chips", "ui:embed", "ui:board", "ui:actions",
+};
+foreach (var key in floorKeys)
+    checker.Assert(GenUIReactorViews.Registry.Get(key) is not null, $"floor capability {key} maps to a view");
+checker.Assert(GenUIReactorViews.Registry.Get("ui:nope") is null, "an unmapped capability has no view (falls back)");
+
+// Render a representative floor tree and prove none of the new primitives fall back — this drives
+// every added view's code path (layout, text/status, data, inputs) through the real renderer.
+const string FloorManifest = """
+{ "namespaces": ["ui"], "capabilities": {
+  "ui:screen": {}, "ui:panel": {}, "ui:heading": {}, "ui:text": {}, "ui:note": {}, "ui:badge": {},
+  "ui:codeBlock": {}, "ui:metric": {}, "ui:list": {}, "ui:table": {}, "ui:field": {}, "ui:select": {},
+  "ui:button": {}, "ui:tabBar": {}, "ui:chips": {} } }
+""";
+const string FloorDocument = """
+{ "root": { "capability": "ui:screen", "id": "s", "props": { "title": "Floor", "subtitle": "parity" },
+  "edges": { "children": [
+    { "capability": "ui:panel", "id": "pnl", "props": { "title": "P" }, "edges": { "children": [
+      { "capability": "ui:heading",   "id": "h",  "props": { "value": "H", "level": "2" } },
+      { "capability": "ui:text",      "id": "tx", "props": { "value": "body" } },
+      { "capability": "ui:note",      "id": "nt", "props": { "value": "note", "tone": "warn" } },
+      { "capability": "ui:badge",     "id": "bd", "props": { "value": "new" } },
+      { "capability": "ui:codeBlock", "id": "cb", "props": { "code": "x = 1" } },
+      { "capability": "ui:metric",    "id": "mt", "props": { "label": "L", "value": "9" } },
+      { "capability": "ui:list",      "id": "ls", "props": { "items": [ { "id": "a", "label": "A" } ] } },
+      { "capability": "ui:table",     "id": "tb", "props": { "columns": ["k"], "rows": [ { "k": "v" } ] } },
+      { "capability": "ui:field",     "id": "fd", "props": { "label": "F", "value": "" } },
+      { "capability": "ui:select",    "id": "sl", "props": { "options": ["one", "two"], "value": "one" } },
+      { "capability": "ui:button",    "id": "bt", "props": { "label": "Go" } },
+      { "capability": "ui:tabBar",    "id": "tabs", "props": { "active": "one", "options": ["one", "two"] } },
+      { "capability": "ui:chips",     "id": "ch", "props": { "items": ["x", "y"] } }
+    ] } }
+  ] } }
+}
+""";
+
+var floorController = new GenUIController(new GenKernel(
+    JsonNode.Parse(FloorManifest)!.AsObject(),
+    JsonNode.Parse(FloorDocument)!.AsObject(),
+    new InMemoryStateModel(new[] { "ui" })));
+Element? floorRoot = null;
+EmitFn floorEmit = (_, _, _) => { };
+floorController.Subscribe(t => floorRoot = Renderer.Render(t, GenUIReactorViews.Registry, floorEmit));
+floorController.Start();
+
+checker.Assert(floorRoot is not null, "the floor screen renders");
+var floorTexts = Shape.Flatten(Shape.Of(floorRoot!)).Where(s => s.Type == "Text").Select(s => s.Text ?? "").ToList();
+var floorFallbacks = floorTexts.Where(t => t.StartsWith("[ui:", StringComparison.Ordinal)).ToList();
+checker.Assert(floorFallbacks.Count == 0, $"no floor primitive falls back (got {string.Join(", ", floorFallbacks)})");
+checker.Assert(floorTexts.Contains("Floor"), "the floor screen renders its title");
 
 // Reactor's own accessibility oracle walks the exact element tree that materializes to controls.
 // Running it headless proves the render tree is semantically sound (accessible names, roles,

@@ -63,21 +63,21 @@ public static class Program
         "type": "manifest",
         "payload": {
           "namespaces": ["ui"],
-          "capabilities": { "board": {}, "metric": {}, "actions": {} }
+          "capabilities": { "ui:board": {}, "ui:metric": {}, "ui:actions": {} }
         }
       },
       "document": {
         "type": "document",
         "payload": {
           "root": {
-            "capability": "board",
+            "capability": "ui:board",
             "id": "root",
             "props": { "title": "GenUI \u00d7 Reactor" },
             "edges": {
               "children": [
-                { "capability": "metric",  "id": "status", "props": { "label": "Clicked" },
+                { "capability": "ui:metric",  "id": "status", "props": { "label": "Clicked" },
                   "edges": { "read": { "value": "ui.clicked" } } },
-                { "capability": "actions", "id": "go", "props": { "label": "Click me" },
+                { "capability": "ui:actions", "id": "go", "props": { "label": "Click me" },
                   "edges": { "on": { "tap": [ { "do": "assign", "target": "ui.clicked", "args": { "value": true } } ] } } }
               ]
             }
