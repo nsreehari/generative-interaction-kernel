@@ -10,5 +10,5 @@
     "resolveJsonModule": true,
     "types": ["node"]
   },
-  "include": ["vendor", "reactive-state-model", "step-orchestrator", "bridge-component"]
+  "include": ["vendor", "reactive-state-model", "step-orchestrator", "shared-composition"]
 }
