@@ -55,6 +55,13 @@ public sealed class GenUIController
         return Refresh();
     });
 
+    /// <summary>Re-resolve from the current kernel state and notify subscribers WITHOUT dispatching.
+    /// For a shared kernel mutated by another owner on the same scheduler — a transport broker
+    /// delivering an agent event — so the renderer reflects state it did not itself drive. Runs on the
+    /// scheduler like every other kernel access; the scheduler is reentrant, so calling this from
+    /// inside a broker broadcast (already on the owner) resolves inline.</summary>
+    public ResolvedNode Resync() => _scheduler.Invoke(Refresh);
+
     private ResolvedNode Refresh()
     {
         var tree = _kernel.Resolve();
