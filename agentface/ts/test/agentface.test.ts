@@ -8,6 +8,10 @@ import assert from "node:assert/strict";
 import { describeCatalog, namespaces, effects } from "../src/catalog";
 import { validateDocument, lint, authorDocument } from "../src/document";
 import { validateCapability } from "../src/capability";
+import { describeInteractions, validateInteraction } from "../src/interaction";
+import { validatePresentation } from "../src/presentation";
+import { validateIntent, intentToEdits } from "../src/intent";
+import { defaultPresentationPlanner } from "../../../interaction/src/index";
 import type { ManifestPayload } from "../../../kernel/src/index";
 
 const manifest: ManifestPayload = {
@@ -106,4 +110,53 @@ test("capability: registry view surfaces shadow + missing-binding warnings", () 
   assert.ok(shadow.has("shadows-floor"));
   const unbound = new Set(validateCapability({ id: "newthing" }, view).warnings.map((w) => w.code));
   assert.ok(unbound.has("missing-render-binding"));
+});
+
+test("interaction: catalog projects every kind with facets", () => {
+  const kinds = describeInteractions();
+  assert.ok(kinds.length >= 12);
+  const review = kinds.find((k) => k.interaction === "review");
+  assert.ok(review && review.facets.some((f) => f.name === "summary" && f.required));
+});
+
+test("interaction: known ok; unknown kind / missing subject not ok; synthesized facet warns", () => {
+  assert.equal(validateInteraction({ interaction: "review", subject: "pr" }).ok, true);
+  assert.equal(validateInteraction({ interaction: "bogus", subject: "x" }).ok, false);
+  assert.equal(validateInteraction({ interaction: "review" }).ok, false);
+  const codes = new Set(
+    validateInteraction({ interaction: "review", subject: "pr", capabilities: ["summary", "ghost"] }).warnings.map((w) => w.code)
+  );
+  assert.ok(codes.has("synthesized-facet"));
+});
+
+test("presentation: planner output is valid; dropping a required facet fails", () => {
+  const spec = defaultPresentationPlanner({ interaction: "review", subject: "pr" }, { surface: "desktop" });
+  assert.equal(validatePresentation(spec).ok, true);
+
+  const summary = spec.regions.find((r) => r.name === "summary");
+  assert.ok(summary); // summary is a required facet of review
+  const dropped = { ...spec, regions: spec.regions.filter((r) => r.name !== "summary") };
+  const report = validatePresentation(dropped);
+  assert.equal(report.ok, false);
+  assert.ok(report.errors.some((e) => e.detail.includes("summary")));
+});
+
+test("presentation: structurally invalid input fails without throwing", () => {
+  const report = validatePresentation({ layout: "stack" });
+  assert.equal(report.ok, false);
+  assert.ok(report.errors.length >= 1);
+});
+
+test("intent: shape validated; targets checked against interaction; projects to edits", () => {
+  assert.equal(validateIntent({ goal: "triage", priorities: ["summary"] }).ok, true);
+  assert.equal(validateIntent({ priorities: "nope" }).ok, false);
+  const codes = new Set(
+    validateIntent({ priorities: ["ghost"] }, { interaction: "review", subject: "pr" }).warnings.map((w) => w.code)
+  );
+  assert.ok(codes.has("intent-target-unknown"));
+
+  const edits = intentToEdits({ priorities: ["summary", "detail"] });
+  assert.equal(edits.priority.summary, "primary");
+  assert.equal(edits.priority.detail, "secondary");
+  assert.deepEqual(edits.order, ["summary", "detail"]);
 });

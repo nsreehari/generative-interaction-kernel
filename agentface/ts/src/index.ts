@@ -5,3 +5,6 @@
 export * from "./catalog";
 export * from "./document";
 export * from "./capability";
+export * from "./interaction";
+export * from "./presentation";
+export * from "./intent";
