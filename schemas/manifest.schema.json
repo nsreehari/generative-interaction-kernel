@@ -27,6 +27,11 @@
           "items": { "type": "string" },
           "description": "Declared namespace roots available in the Store."
         },
+        "contexts": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Namespace roots that are shared context rather than local state (ADR-0034): a host binds each to a shared StateModel, and read/assign/derive whose path targets one route to that shared store instead of local kernel state."
+        },
         "actions": {
           "type": "array",
           "items": { "type": "string" },

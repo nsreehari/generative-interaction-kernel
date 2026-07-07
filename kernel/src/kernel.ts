@@ -3,6 +3,7 @@
 
 import {
   InMemoryStateModel,
+  CompositeStateModel,
   JsonataExpressionProvider,
   ManifestRegistry,
   NullOrchestrator,
@@ -39,6 +40,13 @@ export interface KernelOptions {
    */
   predicateExpression?: ExpressionProvider;
   state?: StateModel;
+  /**
+   * Shared *context* stores keyed by namespace (ADR-0034). A binding whose path targets one of these
+   * namespaces reads/writes the shared store instead of local kernel state; passing the same store
+   * instance to several kernels is how they share one source of truth. The same instance may back
+   * several namespaces (pass it under each key).
+   */
+  contexts?: Record<string, StateModel>;
   registry?: CapabilityRegistry;
   orchestrator?: Orchestrator;
   sink?: TraceSink;
@@ -80,7 +88,11 @@ export class Kernel {
     this.expr = opts.expression ?? new JsonataExpressionProvider();
     this.predicateExpr = opts.predicateExpression ?? new JsonataExpressionProvider({ safe: true });
     this.registry = opts.registry ?? ManifestRegistry.fromManifest(this.manifest);
-    this.store = opts.state ?? new InMemoryStateModel(this.manifest.namespaces ?? []);
+    const local = opts.state ?? new InMemoryStateModel(this.manifest.namespaces ?? []);
+    this.store =
+      opts.contexts && Object.keys(opts.contexts).length > 0
+        ? new CompositeStateModel(local, opts.contexts)
+        : local;
     this.orchestrator = opts.orchestrator ?? new NullOrchestrator();
     this.sink = opts.sink;
   }

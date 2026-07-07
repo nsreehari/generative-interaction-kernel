@@ -176,6 +176,45 @@ export class InMemoryStateModel implements StateModel {
   }
 }
 
+function headSegment(path: string): string {
+  const dot = path.indexOf(".");
+  return dot === -1 ? path : path.slice(0, dot);
+}
+
+// A StateModel that overlays one or more *context* namespaces — each backed by a shared store —
+// on top of a document's local store (ADR-0034). A binding's scope is simply the head segment of
+// its path: if that namespace names a context, reads and writes route to the shared store;
+// otherwise they stay local. This is what makes `context` a scope, not a new verb — read/assign/
+// derive are unchanged; only which store their path resolves against differs. Multiple kernels
+// that share the same context StateModel instance thereby read and write one source of truth.
+export class CompositeStateModel implements StateModel {
+  constructor(
+    private readonly local: StateModel,
+    // namespace -> the shared store that owns it (the same instance may own several namespaces).
+    private readonly contexts: Record<string, StateModel>
+  ) {}
+
+  private storeFor(path: string): StateModel {
+    return this.contexts[headSegment(path)] ?? this.local;
+  }
+
+  snapshot(): Record<string, Json> {
+    const merged: Record<string, Json> = { ...this.local.snapshot() };
+    for (const [ns, store] of Object.entries(this.contexts)) {
+      merged[ns] = store.snapshot()[ns] ?? null;
+    }
+    return merged;
+  }
+
+  get(path: string): Json {
+    return this.storeFor(path).get(path);
+  }
+
+  apply(ops: PatchOp[]): void {
+    for (const op of ops) this.storeFor(op.path).apply([op]);
+  }
+}
+
 // ---- CapabilityRegistry --------------------------------------------------
 
 export interface CapabilityRegistry {
