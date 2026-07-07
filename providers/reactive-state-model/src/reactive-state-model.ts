@@ -14,7 +14,9 @@
 // Cells may be dotted/namespaced paths (`app.count`, `form.email`). A derive `expr` is evaluated
 // against the FULL snapshot — exactly as the kernel's `derive` reducer does (`expr.eval(e, c.data)`)
 // — so JSONata navigates dotted paths natively; `deps` drive only which cells retrigger a recompute.
-// Matching between a mutated op `path` and a derive's `deps`/`target` is by exact token equality.
+// Matching between a mutated op `path` and a derive's `deps`/`target` is PREFIX-AWARE: writing a
+// parent object (`a`) retriggers a dependent on a child (`a.x`) and vice versa. Cyclic derivations
+// (`a -> b -> a`) are rejected at construction (see `detectCycle`).
 
 import { getPath, applyOp, type StateModel, type Json, type PatchOp } from "../../../kernel/src/index";
 import { createReactiveGraph, type ReactiveGraph } from "../../vendor/continuous-event-graph/reactive.js";
@@ -60,6 +62,8 @@ export class ReactiveStateModel implements StateModel {
   private readonly edgeByTarget = new Map<string, DeriveEdge>();
   private readonly baseCells = new Set<string>();
   private readonly derivedCells = new Set<string>();
+  /** Base-cell tokens that own an actual graph task (frozen at construction). */
+  private readonly graphBaseTokens: ReadonlySet<string>;
 
   private baseValues: Record<string, Json> = {};
   private derivedValues: Record<string, Json> = {};
@@ -85,6 +89,13 @@ export class ReactiveStateModel implements StateModel {
     this.evaluate = opts.evaluate;
     this.onChange = opts.onChange;
 
+    // Guard against cyclic derivations (`a -> b -> a`): in dependency-mode the graph would otherwise
+    // recompute forever. Fail fast at construction with the offending cycle path.
+    const cycle = detectCycle(opts.edges);
+    if (cycle) {
+      throw new Error(`ReactiveStateModel: cyclic computed dependency detected: ${cycle.join(" -> ")}`);
+    }
+
     for (const edge of opts.edges) {
       this.derivedCells.add(edge.target);
       this.edgeByTarget.set(edge.target, edge);
@@ -102,6 +113,8 @@ export class ReactiveStateModel implements StateModel {
       applyOp(this.baseValues, { op: "set", path: token, value });
       this.baseCells.add(token);
     }
+    // Freeze the set of base-cell tokens that will own a graph task; `apply` retriggers against these.
+    this.graphBaseTokens = new Set(this.baseCells);
 
     const tasks: Record<string, TaskConfig> = {};
     for (const cell of this.baseCells) {
@@ -165,15 +178,32 @@ export class ReactiveStateModel implements StateModel {
    * asynchronously — await `settle()` (or observe `onChange`) before reading them back.
    */
   apply(ops: PatchOp[]): void {
-    const touched: string[] = [];
+    const touched = new Set<string>();
     for (const op of ops) {
       const cell = op.path;
       if (this.derivedCells.has(cell)) continue; // derived cells are engine-owned, never written directly
       applyOp(this.baseValues, op);
       this.baseCells.add(cell);
-      touched.push(cell);
+      for (const tok of this.relatedBaseTokens(cell)) touched.add(tok);
     }
-    if (touched.length > 0) this.graph.retriggerAll(touched);
+    if (touched.size > 0) this.graph.retriggerAll([...touched]);
+  }
+
+  /**
+   * Map a mutated op path to the graph base tokens it should retrigger. Beyond exact equality this is
+   * PREFIX-AWARE: writing a parent object (`a`) retriggers dependents on a child cell (`a.x`), and
+   * writing a child (`a.x`) retriggers dependents on the parent (`a`) — because a derive reads the
+   * full snapshot, either write changes the value it observes.
+   */
+  private relatedBaseTokens(cell: string): string[] {
+    const out: string[] = [];
+    for (const tok of this.graphBaseTokens) {
+      if (tok === cell || isPrefixPath(tok, cell) || isPrefixPath(cell, tok)) out.push(tok);
+    }
+    // No graph task owns a related token (e.g. a directly-read-only cell): retrigger the raw token,
+    // which no-ops harmlessly if the graph has no matching task.
+    if (out.length === 0) out.push(cell);
+    return out;
   }
 
   // ---- Reactive extensions (beyond the passive StateModel contract) -----
@@ -209,4 +239,56 @@ function deepMerge(base: Record<string, Json>, over: Record<string, Json>): Reco
 
 function isPlainObject(v: Json | undefined): v is Record<string, Json> {
   return v != null && typeof v === "object" && !Array.isArray(v);
+}
+
+/** True when `parent` is a strict dotted-path ancestor of `child` (`a` of `a.x`, not of `ax`). */
+function isPrefixPath(parent: string, child: string): boolean {
+  return child.startsWith(parent + ".");
+}
+
+/**
+ * Detect a cycle among derived (`computed`) cells. Two derived cells are adjacent when one's `dep`
+ * is prefix-related to the other's `target` (either direction), matching the prefix-aware retrigger
+ * semantics. Returns the cycle path (`["a", "b", "a"]`) or null when the derivation graph is acyclic.
+ */
+function detectCycle(edges: DeriveEdge[]): string[] | null {
+  const derived = new Set(edges.map((e) => e.target));
+  const adj = new Map<string, Set<string>>();
+  for (const e of edges) {
+    const outs = adj.get(e.target) ?? new Set<string>();
+    for (const dep of e.deps) {
+      for (const u of derived) {
+        if (u === dep || isPrefixPath(u, dep) || isPrefixPath(dep, u)) outs.add(u);
+      }
+    }
+    adj.set(e.target, outs);
+  }
+
+  const WHITE = 0, GRAY = 1, BLACK = 2;
+  const color = new Map<string, number>();
+  const stack: string[] = [];
+
+  const visit = (n: string): string[] | null => {
+    color.set(n, GRAY);
+    stack.push(n);
+    for (const m of adj.get(n) ?? []) {
+      const c = color.get(m) ?? WHITE;
+      if (c === GRAY) return stack.slice(stack.indexOf(m)).concat(m);
+      if (c === WHITE) {
+        const found = visit(m);
+        if (found) return found;
+      }
+    }
+    stack.pop();
+    color.set(n, BLACK);
+    return null;
+  };
+
+  for (const t of derived) {
+    if ((color.get(t) ?? WHITE) === WHITE) {
+      const found = visit(t);
+      if (found) return found;
+    }
+  }
+  return null;
 }
