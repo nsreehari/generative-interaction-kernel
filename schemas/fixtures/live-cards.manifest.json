@@ -6,19 +6,24 @@
     "expression": "jsonata",
     "namespaces": ["card_data", "requires", "fetched_sources", "computed_values"],
     "actions": ["assign", "derive", "invoke", "emit", "navigate", "confirm"],
+    "externals": {
+      "components": {
+        "ui": { "from": "profile" }
+      }
+    },
     "capabilities": {
-      "board": {
+      "ui:board": {
         "propsSchema": { "type": "object", "properties": { "title": { "type": "string" } } },
         "slots": ["children"]
       },
-      "metric": {
+      "ui:metric": {
         "propsSchema": {
           "type": "object",
           "required": ["label"],
           "properties": { "label": { "type": "string" }, "value": { "type": ["number", "string"] } }
         }
       },
-      "table": {
+      "ui:table": {
         "propsSchema": {
           "type": "object",
           "properties": { "columns": { "type": "array", "items": { "type": "string" } } }
@@ -26,7 +31,7 @@
         "emits": ["rowSelect"],
         "dataProp": "rows"
       },
-      "actions": {
+      "ui:actions": {
         "propsSchema": {
           "type": "object",
           "properties": { "label": { "type": "string" } }

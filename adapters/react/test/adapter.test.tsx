@@ -12,7 +12,7 @@ import { InMemoryStateModel, Kernel } from "../../../kernel/src/index";
 import type { ResolvedNode } from "../../../kernel/src/types";
 import { GenUIController } from "../src/controller";
 import { renderNode } from "../src/render";
-import { createRegistry } from "../src/registry";
+import { buildRegistryFromImports } from "../src/registry";
 import {
   ActionButton,
   Board,
@@ -125,9 +125,13 @@ test("fallback: a capability with no registered component renders the fallback v
   const tree = await controller.start();
 
   // Registry intentionally missing "metric".
-  const partial = createRegistry({ board: Board, table: Table, actions: ActionButton }, FallbackView);
+  const partial = buildRegistryFromImports(
+    { ui: { from: "profile" } },
+    () => ({ board: Board, table: Table, actions: ActionButton }),
+    FallbackView
+  );
   const markup = markupOf(tree, partial);
 
   assert.match(markup, /data-fallback/);
-  assert.match(markup, /Unsupported capability: metric/);
+  assert.match(markup, /Unsupported capability: ui:metric/);
 });

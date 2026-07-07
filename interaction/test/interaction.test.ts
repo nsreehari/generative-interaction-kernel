@@ -201,7 +201,7 @@ test("a review interaction lowers to a valid, kernel-interpretable document", as
   // validate-before-commit through the kernel seam
   const message = lowerToDocument((s: InteractionSpec) => compileInteraction(s, ctx, liveCardsBinding), spec);
   assert.equal(message.type, "document");
-  assert.equal(message.payload.root.capability, "board");
+  assert.equal(message.payload.root.capability, "ui:board");
 
   const state = new InMemoryStateModel(manifestPayload.namespaces ?? []);
   state.apply([
@@ -213,7 +213,7 @@ test("a review interaction lowers to a valid, kernel-interpretable document", as
 
   const resolved = await k.resolve();
   const summary = findResolved(resolved, "summary-region");
-  assert.equal(summary?.capability, "metric", "summary role bound to metric");
+  assert.equal(summary?.capability, "ui:metric", "summary role bound to metric");
   assert.equal(summary?.props.value, 150, "metric reads its facet's data source");
   assert.equal(summary?.fallback, false);
 
@@ -255,7 +255,7 @@ test("full pipeline: Domain -> Interaction -> Presentation -> UI composes throug
 
   const compiled = pipeline(toInteraction).to(toDocument).build();
   const message = lowerToDocument(compiled, { incidentId: "INC-123", severity: "high" });
-  assert.equal(message.payload.root.capability, "board");
+  assert.equal(message.payload.root.capability, "ui:board");
   assert.equal(message.payload.root.props?.layout, "stack", "mobile context chose the stack layout");
   assert.equal(message.payload.root.props?.arrangement, "stack");
 });
@@ -285,7 +285,7 @@ test("a region's static `props` flow generically into node props; data binds ont
   const doc = lowerPresentation(liveCardsBinding, manifestPayload.capabilities)(p);
   const detail = doc.root.edges?.children?.[0];
 
-  assert.equal(detail?.capability, "table", "detail role binds to table");
+  assert.equal(detail?.capability, "ui:table", "detail role binds to table");
   assert.deepEqual(detail?.props?.columns, ["id", "amount"], "authored columns flow to props");
   assert.equal(detail?.props?.sortable, true, "authored sortable flows to props");
   assert.equal(detail?.props?.priority, "primary", "platform placement fields survive alongside authored props");

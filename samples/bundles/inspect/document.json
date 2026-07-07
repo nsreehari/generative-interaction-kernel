@@ -3,7 +3,7 @@
   "type": "document",
   "payload": {
     "root": {
-      "capability": "panelGroup",
+      "capability": "ui:col",
       "id": "inspect-root",
       "edges": {
         "on": {
@@ -61,7 +61,7 @@
         },
         "children": [
           {
-            "capability": "tabBar",
+            "capability": "ui:tabBar",
             "id": "inspect-tabs",
             "props": {
               "options": [
@@ -105,13 +105,13 @@
             }
           },
           {
-            "capability": "panelGroup",
+            "capability": "ui:col",
             "id": "tab-presentation",
             "edges": {
               "gate": "inspect.activeTab = 'presentation'",
               "children": [
                 {
-                  "capability": "note",
+                  "capability": "ui:note",
                   "id": "inspect-regions-head",
                   "props": {
                     "tone": "muted"
@@ -123,7 +123,7 @@
                   }
                 },
                 {
-                  "capability": "table",
+                  "capability": "ui:table",
                   "id": "inspect-regions",
                   "props": {
                     "static": true,
@@ -166,13 +166,13 @@
             }
           },
           {
-            "capability": "panelGroup",
+            "capability": "ui:col",
             "id": "tab-document",
             "edges": {
               "gate": "inspect.activeTab = 'document'",
               "children": [
                 {
-                  "capability": "codeBlock",
+                  "capability": "ui:codeBlock",
                   "id": "inspect-document",
                   "edges": {
                     "read": {
@@ -184,13 +184,13 @@
             }
           },
           {
-            "capability": "panelGroup",
+            "capability": "ui:col",
             "id": "tab-tree",
             "edges": {
               "gate": "inspect.activeTab = 'tree'",
               "children": [
                 {
-                  "capability": "codeBlock",
+                  "capability": "ui:codeBlock",
                   "id": "inspect-tree",
                   "edges": {
                     "read": {
@@ -202,13 +202,13 @@
             }
           },
           {
-            "capability": "panelGroup",
+            "capability": "ui:col",
             "id": "tab-traces",
             "edges": {
               "gate": "inspect.activeTab = 'traces'",
               "children": [
                 {
-                  "capability": "note",
+                  "capability": "ui:note",
                   "id": "inspect-traces-label",
                   "props": {
                     "tone": "muted"
@@ -220,7 +220,7 @@
                   }
                 },
                 {
-                  "capability": "list",
+                  "capability": "ui:list",
                   "id": "inspect-traces",
                   "props": {
                     "static": true,
@@ -240,13 +240,13 @@
             }
           },
           {
-            "capability": "panelGroup",
+            "capability": "ui:col",
             "id": "tab-export",
             "edges": {
               "gate": "inspect.activeTab = 'export'",
               "children": [
                 {
-                  "capability": "codeBlock",
+                  "capability": "ui:codeBlock",
                   "id": "inspect-export",
                   "edges": {
                     "read": {

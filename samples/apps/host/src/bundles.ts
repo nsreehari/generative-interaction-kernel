@@ -17,6 +17,13 @@ import consoleDocument from "../../../bundles/console/document.json";
 import consoleState from "../../../bundles/console/state.json";
 import { consoleNative, consoleApps } from "../../../bundles/console/native";
 
+// --- inspect ---------------------------------------------------------------------
+// A pure-floor bundle: its manifest imports only the floor (`ui`), its handlers are declarative
+// (assign/gate), so it needs no native module — the JSON trio alone is runnable.
+import inspectManifest from "../../../bundles/inspect/manifest.json";
+import inspectDocument from "../../../bundles/inspect/document.json";
+import inspectState from "../../../bundles/inspect/state.json";
+
 /** The bundle the host mounts when no `?bundle=<id>` is given. */
 export const DEFAULT_BUNDLE = "console";
 
@@ -27,7 +34,7 @@ export interface ResolvedBundle {
 }
 
 /** The bundles this host knows how to mount, by id. */
-export const BUNDLE_IDS = ["console"] as const;
+export const BUNDLE_IDS = ["console", "inspect"] as const;
 
 /** Recombine a bundle's on-disk trio into a runnable `Bundle` and attach its native module. */
 export function resolveBundle(id: string): ResolvedBundle {
@@ -39,6 +46,14 @@ export function resolveBundle(id: string): ResolvedBundle {
           consoleNative
         ),
         apps: consoleApps,
+      };
+    case "inspect":
+      return {
+        bundle: bundleFromJson({
+          manifest: inspectManifest,
+          document: inspectDocument,
+          state: inspectState,
+        }),
       };
     default:
       throw new Error(

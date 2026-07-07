@@ -2,7 +2,7 @@
   "gup": "0.1",
   "type": "manifest",
   "payload": {
-    "version": "workbench-chrome/1.0",
+    "version": "inspect/1.0",
     "expression": "jsonata",
     "namespaces": [
       "workbench",
@@ -16,8 +16,13 @@
       "navigate",
       "confirm"
     ],
+    "externals": {
+      "components": {
+        "ui": { "from": "floor" }
+      }
+    },
     "capabilities": {
-      "panelGroup": {
+      "ui:col": {
         "propsSchema": {
           "type": "object",
           "additionalProperties": true
@@ -26,79 +31,7 @@
           "children"
         ]
       },
-      "panel": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "slots": [
-          "children"
-        ]
-      },
-      "select": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "emits": [
-          "change"
-        ]
-      },
-      "field": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "emits": [
-          "input"
-        ]
-      },
-      "facetList": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        }
-      },
-      "regionEditor": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "emits": [
-          "edit"
-        ]
-      },
-      "textarea": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "emits": [
-          "input"
-        ]
-      },
-      "button": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "emits": [
-          "press"
-        ]
-      },
-      "note": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        }
-      },
-      "stepList": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        }
-      },
-      "tabBar": {
+      "ui:tabBar": {
         "propsSchema": {
           "type": "object",
           "additionalProperties": true
@@ -107,19 +40,25 @@
           "select"
         ]
       },
-      "table": {
+      "ui:note": {
         "propsSchema": {
           "type": "object",
           "additionalProperties": true
         }
       },
-      "codeBlock": {
+      "ui:table": {
         "propsSchema": {
           "type": "object",
           "additionalProperties": true
         }
       },
-      "list": {
+      "ui:codeBlock": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "ui:list": {
         "propsSchema": {
           "type": "object",
           "additionalProperties": true
