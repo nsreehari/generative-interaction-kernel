@@ -18,6 +18,7 @@ import {
   type Json,
   type ManifestPayload,
 } from "../../../../kernel/src/index";
+import type React from "react";
 import { GenUIController } from "../controller";
 import { createEffectDispatcher, type EffectHandlerMap } from "./effects";
 import type { CapabilityView } from "../registry";
@@ -42,6 +43,28 @@ export interface Bundle extends SerializableBundle {
 export interface BundleNative {
   effects?: EffectHandlerMap;
   components?: Record<string, CapabilityView>;
+}
+
+/**
+ * A COMPOSITION bundle: a bundle whose content is not a single document but a native wiring of
+ * several child bundles. Most bundles are leaves (one manifest/document/state); a few — like the
+ * workbench (chrome + inspect around a live guest) — mount multiple runtimes and bridge events
+ * across their kernels. Those cross-kernel seams are irreducibly native (a compiler run + event
+ * forwarding the closed action grammar can't express, per ADR-0030), so a composition carries a
+ * native React `Component` that owns the wiring. `children` records the leaf bundles it is made of,
+ * for discoverability/tooling. The generic host mounts a composition by id exactly like a leaf.
+ */
+export interface CompositionBundle {
+  kind: "composition";
+  /** The leaf bundles this composition is built from, by role (e.g. `{ chrome, inspect }`). */
+  children: Record<string, Bundle>;
+  /** The native layout that stands up the child runtimes and wires the cross-kernel bridges. */
+  Component: React.ComponentType;
+}
+
+/** Narrow a mounted bundle to a composition (vs a single-document leaf bundle). */
+export function isCompositionBundle(b: Bundle | CompositionBundle): b is CompositionBundle {
+  return (b as CompositionBundle).kind === "composition";
 }
 
 function isEnvelope(value: unknown, type: "manifest" | "document"): boolean {
