@@ -133,25 +133,59 @@ export function Workbench() {
     const { spec, ctx, edits } = readInputs(chrome.seed);
     return buildSession(spec, ctx, liveCardsBinding, edits);
   });
-  // What the agent is doing right now, surfaced over the playground so the cause of the live changes
-  // is explicit (fed by bridge C from chrome state).
-  const [agentView, setAgentView] = useState<{ running: boolean; label: string }>({
-    running: false,
-    label: "",
-  });
+  // The three cross-kernel seams the closed grammar can't express are each consolidated into a
+  // named, self-contained native hook (ADR-0034) rather than smeared across this root as ad-hoc
+  // effects + refs: chrome->guest compilation (A), guest->inspect reflection (B), and the external
+  // agent actor (C). They are the platform's small, audited native escape hatch — not app behavior.
+  useCompileBridge(chrome, guest, setGuest);
+  useInspectBridge(chrome, guest, inspect);
+  const agentView = useAgentBridge(chrome);
 
-  // The chrome bridge reads the live guest through a ref (it subscribes to chrome only once).
+  return (
+    <div className="workbench">
+      <aside className="controls">
+        <header className="brand">
+          <h1>GenUI Workbench</h1>
+          <span className="muted">declarative chrome · agent authoring</span>
+        </header>
+        <GenUIRoot source={chrome.source} registry={chromeRegistry} />
+      </aside>
+
+      <main className="playground">
+        <header className="pg-head">
+          <span>Playground</span>
+          {agentView.running && agentView.label ? (
+            <span className="agent-chip">{`\u{1F916} agent authoring \u00b7 ${agentView.label}`}</span>
+          ) : null}
+        </header>
+        <div className="pg-surface">
+          <GenUIRoot source={guest.controller} registry={liveCardsRegistry} />
+        </div>
+      </main>
+
+      <section className="artifacts">
+        <GenUIRoot source={inspect.controller} registry={inspectRegistry} />
+      </section>
+    </div>
+  );
+}
+
+// Bridge A (chrome -> guest): rebuild the guest when chrome inputs change; forward event-bar fires
+// and imports. Cross-kernel by nature (chrome may be a remote runtime), so it subscribes to the
+// chrome client and runs the buildSession compiler natively — the irreducible author-intent ->
+// interpreter-product seam the closed grammar cannot express (ADR-0034).
+function useCompileBridge(
+  chrome: HostedChromeRuntime,
+  guest: Session,
+  setGuest: (session: Session) => void
+): void {
+  // Subscribes to chrome only once, so it reads the live guest through a ref.
   const guestRef = useRef(guest);
   guestRef.current = guest;
   const lastSig = useRef<string>(inputsSignature(readInputs(chrome.seed)));
   const lastFireSeq = useRef<number>(Number(chrome.seed.get("workbench.fireSeq")) || 0);
   const lastImportSeq = useRef<number>(Number(chrome.seed.get("workbench.importSeq")) || 0);
-  // Agent tour state (Slice 4): the running flag + tour index + a step-button sequence guard.
-  const agentRunning = useRef<boolean>(false);
-  const agentIndex = useRef<number>(Number(chrome.seed.get("workbench.agentStep")) || 0);
-  const lastAgentStepSeq = useRef<number>(Number(chrome.seed.get("workbench.agentStepSeq")) || 0);
 
-  // Bridge A (chrome -> guest): rebuild the guest when inputs change; forward event-bar fires.
   useEffect(() => {
     const c = chrome.source;
     const onChange = () => {
@@ -193,8 +227,17 @@ export function Workbench() {
       chrome.stop();
     };
   }, [chrome]);
+}
 
-  // Bridge B (guest -> inspect): stream artifacts on every guest render; refresh the node list once.
+// Bridge B (guest -> inspect): stream the guest's rendered artifacts into the inspect runtime on
+// every guest render, and refresh chrome's node list + editable regions once per rebuild. This is
+// render reflection (reading a runtime's resolved tree / last patch) — a native devtools concern the
+// grammar intentionally keeps off the app surface (ADR-0034).
+function useInspectBridge(
+  chrome: HostedChromeRuntime,
+  guest: Session,
+  inspect: ReturnType<typeof loadBundleRuntime>
+): void {
   useEffect(() => {
     const c = guest.controller;
     const pushInspect = () => {
@@ -218,16 +261,22 @@ export function Workbench() {
     });
     return unsubscribe;
   }, [guest, inspect, chrome]);
+}
 
-  // Bridge C (agent -> chrome): the autonomous authoring writer. It is deliberately "just another
-  // client emitting events" — each beat emits the same `importApply` a human import fires, so the
-  // whole pipeline re-runs and the guest re-renders with zero special-casing. Play/Pause flip a flag
-  // this loop watches; Step advances one beat on demand. The identical loop could target a
-  // GenUIClient over a transport instead of the in-process controller (same `emit` surface).
+// Bridge C (agent -> chrome): the autonomous authoring writer, deliberately "just another client
+// emitting events" — each beat emits the same importApply a human import fires, so the whole pipeline
+// re-runs with zero special-casing. It stays an external actor (ADR-0034), never part of the
+// document; this hook only mirrors its running/label state up for the playground chip.
+function useAgentBridge(chrome: HostedChromeRuntime): { running: boolean; label: string } {
+  const [agentView, setAgentView] = useState<{ running: boolean; label: string }>({
+    running: false,
+    label: "",
+  });
+  const agentRunning = useRef<boolean>(false);
+
   useEffect(() => {
     const stateSource = chrome.agent ?? chrome.source;
     const onChange = () => {
-      const wasRunning = agentRunning.current;
       agentRunning.current = Boolean(stateSource.get("workbench.agentRunning"));
       const running = agentRunning.current;
       const label = String(stateSource.get("workbench.agentLabel") ?? "");
@@ -242,33 +291,7 @@ export function Workbench() {
     };
   }, [chrome]);
 
-  return (
-    <div className="workbench">
-      <aside className="controls">
-        <header className="brand">
-          <h1>GenUI Workbench</h1>
-          <span className="muted">declarative chrome · agent authoring</span>
-        </header>
-        <GenUIRoot source={chrome.source} registry={chromeRegistry} />
-      </aside>
-
-      <main className="playground">
-        <header className="pg-head">
-          <span>Playground</span>
-          {agentView.running && agentView.label ? (
-            <span className="agent-chip">{`\u{1F916} agent authoring \u00b7 ${agentView.label}`}</span>
-          ) : null}
-        </header>
-        <div className="pg-surface">
-          <GenUIRoot source={guest.controller} registry={liveCardsRegistry} />
-        </div>
-      </main>
-
-      <section className="artifacts">
-        <GenUIRoot source={inspect.controller} registry={inspectRegistry} />
-      </section>
-    </div>
-  );
+  return agentView;
 }
 
 // The workbench as a first-class COMPOSITION bundle: the generic `BundleHost` mounts it by id exactly
