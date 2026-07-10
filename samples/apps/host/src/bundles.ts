@@ -1,7 +1,8 @@
 // The BUNDLE RESOLVER: the one place that pairs an on-disk pure-JSON bundle (its manifest/document/
 // state trio) with the small native module it needs (effect handlers + mountable apps). The generic
-// host asks for a bundle by id; this returns a runnable `Bundle` plus its app registry. Adding a
-// bundle to the host is: drop a trio under samples/bundles/<id>/, add a native module, add a case.
+// host asks for a bundle by id; this returns a runnable `Bundle` plus its app registry — or, for the
+// one irreducibly-native composition (the workbench), a native root component to mount directly.
+// Adding a bundle to the host is: drop a trio under samples/bundles/<id>/, add a native module, add a case.
 //
 // Everything the trio contains is portable JSON; the only code is the per-bundle native module.
 
@@ -9,8 +10,8 @@ import {
   bundleFromJson,
   type AppRegistry,
   type Bundle,
-  type CompositionBundle,
 } from "../../../../adapters/react/src/index";
+import type React from "react";
 
 // --- console ---------------------------------------------------------------------
 import consoleManifest from "../../../bundles/console/manifest.json";
@@ -24,19 +25,19 @@ import { consoleNative, consoleApps } from "../../../bundles/console/native";
 // live guest through the `inspectSnapshot` cross-kernel bridge.
 
 // --- workbench -------------------------------------------------------------------
-// A COMPOSITION bundle: it mounts the chrome + inspect leaf bundles and bridges their kernels to a
-// live guest runtime (the two cross-kernel seams the closed action grammar can't express). Being a
-// `CompositionBundle` it is already a runnable `Bundle` — there is no JSON trio to recombine.
-import { workbenchBundle } from "../../../bundles/workbench/Workbench";
+// The workbench is the one irreducibly-native bundle: `WorkbenchRoot` is a React root that mounts the
+// chrome + inspect leaf bundles and bridges their kernels to a live guest runtime (the two cross-kernel
+// seams the closed action grammar can't express). It has no JSON trio — the host mounts it directly.
+import { WorkbenchRoot } from "../../../bundles/workbench/Workbench";
 
 /** The bundle the host mounts when no `?bundle=<id>` is given. */
 export const DEFAULT_BUNDLE = "console";
 
-/** A resolved bundle: the runnable `Bundle` plus the apps its document may mount by name. */
-export interface ResolvedBundle {
-  bundle: Bundle | CompositionBundle;
-  apps?: AppRegistry;
-}
+/** A resolved bundle: a runnable JSON leaf `Bundle` (+ the apps its document may mount by name), or a
+ *  native root component for the one irreducibly-native composition. */
+export type ResolvedBundle =
+  | { bundle: Bundle; apps?: AppRegistry }
+  | { Root: React.ComponentType };
 
 /** The bundles this host knows how to mount, by id. */
 export const BUNDLE_IDS = ["console", "workbench"] as const;
@@ -53,7 +54,7 @@ export function resolveBundle(id: string): ResolvedBundle {
         apps: consoleApps,
       };
     case "workbench":
-      return { bundle: workbenchBundle };
+      return { Root: WorkbenchRoot };
     default:
       throw new Error(
         `resolveBundle: unknown bundle '${id}'. Known: ${BUNDLE_IDS.join(", ")}`
