@@ -2,13 +2,13 @@
 // platform, so it ships its own manifest + seed rather than reaching into the platform's test
 // fixtures. It imports the platform only through the public barrels.
 //
-// The manifest and seed are DATA — authored in demo-manifest.json / demo-seed.json. Only demoDataFor
+// The manifest and seed are DATA — authored in ./manifest.json / ./seed.json. Only demoDataFor
 // (the role->seed-path mapping) stays code.
 
-import { InMemoryStateModel, type Enveloped, type ManifestPayload } from "../../../kernel/src/index";
-import { resolveFacets, type InteractionSpec } from "../../../interaction/src/index";
-import demoManifestJson from "./demo-manifest.json";
-import demoSeedJson from "./demo-seed.json";
+import { InMemoryStateModel, type Enveloped, type ManifestPayload } from "../../../../../kernel/src/index";
+import { resolveFacets, type InteractionSpec } from "../../../../../interaction/src/index";
+import demoManifestJson from "./manifest.json";
+import demoSeedJson from "./seed.json";
 
 /** A minimal live-cards manifest: the capabilities the React adapter's registry renders. */
 export const DEMO_MANIFEST: Enveloped<ManifestPayload> = demoManifestJson as unknown as Enveloped<ManifestPayload>;

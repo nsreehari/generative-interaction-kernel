@@ -1,5 +1,5 @@
 import { AGENT_PLAYLIST, isAgentTourComplete, nextAgentIndex } from "./agent";
-import { authoredApplyPayload } from "./chrome";
+import { authoredApplyPayload } from "./bundles/chrome/chrome";
 
 export interface AgentLoopClient {
   get(path: string): unknown;

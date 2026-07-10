@@ -260,3 +260,74 @@ code { font-family: var(--fontFamilyMonospace); }
   gap: var(--gx-space-xs);
   overflow: visible;
 }
+
+/* Bundle switcher (host chrome overlay) ---------------------------------- */
+
+.gx-switcher {
+  position: fixed;
+  top: var(--gx-space-l);
+  right: var(--gx-space-l);
+  z-index: 9999;
+  font: inherit;
+}
+.gx-switcher-bubble {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--gx-radius-pill);
+  border: var(--gx-stroke) solid color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, color-mix(in srgb, var(--accent) 16%, var(--panel)) 58%, transparent);
+  color: var(--accent);
+  cursor: pointer;
+  box-shadow: var(--shadow8);
+  display: grid;
+  place-items: center;
+  backdrop-filter: blur(10px) saturate(1.3);
+  transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+.gx-switcher-bubble:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, color-mix(in srgb, var(--accent) 24%, var(--panel)) 66%, transparent);
+  transform: translateY(-1px);
+}
+.gx-switcher-bubble svg { width: 20px; height: 20px; display: block; }
+.gx-switcher-panel {
+  min-width: 184px;
+  padding: var(--gx-space-snudge);
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  border: var(--gx-stroke) solid color-mix(in srgb, var(--accent) 28%, var(--line));
+  border-radius: var(--gx-radius-m);
+  box-shadow: var(--shadow16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gx-space-xxs);
+  backdrop-filter: blur(12px) saturate(1.3);
+}
+.gx-switcher-head {
+  font-size: var(--fontSizeBase100);
+  font-weight: var(--fontWeightSemibold);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--muted);
+  padding: var(--gx-space-snudge) var(--gx-space-mnudge) var(--gx-space-xs);
+}
+.gx-switcher-row {
+  display: flex;
+  align-items: center;
+  gap: var(--gx-space-s);
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: var(--gx-stroke) solid transparent;
+  border-radius: var(--gx-radius-s);
+  padding: var(--gx-space-xs) var(--gx-space-mnudge);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.gx-switcher-row:hover { background: var(--panel-2); }
+.gx-switcher-row.selected { border-color: var(--accent); background: var(--panel-2); cursor: default; }
+.gx-switcher-check {
+  width: var(--gx-space-m);
+  color: var(--accent);
+  font-weight: var(--fontWeightSemibold);
+}

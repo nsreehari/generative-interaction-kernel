@@ -1,6 +1,6 @@
 // The chrome runtime helpers. The workbench's own panels + manifest + seed state are DATA — authored
-// in chrome.bundle.json / inspect.bundle.json and loaded by the shared floor host (see Workbench.tsx),
-// exactly like the console. The workbench dogfoods the platform down to its own chrome.
+// in ./bundle.json and loaded by the shared floor host (see Workbench.tsx), exactly like the console.
+// The workbench dogfoods the platform down to its own chrome.
 //
 // What stays code here: the custom capability VIEWS (workbenchComponents) attached to each bundle,
 // and the BRIDGE HELPERS below. The bridge (Workbench.tsx) reads the `workbench` namespace, re-runs
@@ -8,13 +8,10 @@
 // action grammar can't express, so it stays native.
 
 import {
-  InMemoryStateModel,
-  type Patch,
   type Json,
   type ResolvedNode,
-  type TraceEvent,
-} from "../../../kernel/src/index";
-import { bundleFromJson, type Bundle } from "../../../adapters/react/src/index";
+} from "../../../../../kernel/src/index";
+import { bundleFromJson, type Bundle } from "../../../../../adapters/react/src/index";
 import {
   emptyEdits,
   type AuthoredSession,
@@ -22,12 +19,9 @@ import {
   type InteractionSpec,
   type PresentationContext,
   type PresentationEdits,
-} from "../../../interaction/src/index";
-import { workbenchComponents } from "./profile/registry";
-import { exportBundle } from "./export";
-import type { Session } from "./session";
-import chromeBundleJson from "./chrome.bundle.json";
-import inspectBundleJson from "./inspect.bundle.json";
+} from "../../../../../interaction/src/index";
+import { workbenchComponents } from "../shared/registry";
+import chromeBundleJson from "./bundle.json";
 
 interface Option {
   value: string;
@@ -53,7 +47,7 @@ export function authoredApplyPayload(a: AuthoredSession): Record<string, Json> {
 
 /**
  * The chrome BUNDLE: the left control column as a self-contained app — manifest + document + seed
- * state authored in chrome.bundle.json, with its custom capability views attached here. Loaded by the
+ * state authored in ./bundle.json, with its custom capability views attached here. Loaded by the
  * shared floor host (see Workbench.tsx), exactly like the console. The `workbench`->guest bridge (also
  * in Workbench.tsx) is the native seam that carries fired events across kernels.
  */
@@ -134,45 +128,4 @@ export function readFireRequest(state: StateReader, tree: ResolvedNode | null): 
     }
   }
   return { node: target, name, payload, error: "" };
-}
-
-// --- Inspector runtime (Increment B) ----------------------------------------------
-
-/**
- * The inspector BUNDLE: the right artifact column as a self-contained app — authored in
- * inspect.bundle.json, with its custom views attached here. Loaded by the shared floor host like the
- * chrome bundle; the guest->inspect bridge (Workbench.tsx) streams the live guest's artifacts into its
- * `inspect` state — the second native cross-kernel seam.
- */
-export const inspectBundle: Bundle = bundleFromJson(inspectBundleJson, { components: workbenchComponents });
-
-/** The `snapshot` payload the bridge feeds the inspector for the current guest state. */
-export function inspectSnapshot(
-  session: Session,
-  tree: ResolvedNode | null,
-  patch: Patch | null,
-  edits: PresentationEdits
-): Record<string, unknown> {
-  const p = session.presentation;
-  const bundle = exportBundle(session, edits);
-  return {
-    exportJson: JSON.stringify({ authored: bundle.authored, manifest: bundle.manifest }, null, 2),
-    presentationHead: `${p.layout} · ${p.arrangement}`,
-    regions: p.regions.map((r) => ({
-      name: r.name,
-      role: r.role,
-      priority: r.priority,
-      disclosure: r.disclosure,
-      presentation: r.presentation ?? null,
-      rationale: r.rationale ?? null,
-    })),
-    documentJson: JSON.stringify(session.document, null, 2),
-    treeJson: JSON.stringify(tree, null, 2),
-    traces: session.traces.map((t: TraceEvent) => ({
-      event: t.event,
-      node: t.node ?? "",
-      detail: t.detail && Object.keys(t.detail).length > 0 ? JSON.stringify(t.detail) : "",
-    })),
-    patchLabel: `last patch: rev ${patch?.rev ?? "—"} · ${patch?.ops.length ?? 0} op(s)`,
-  };
 }

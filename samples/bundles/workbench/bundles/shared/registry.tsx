@@ -8,7 +8,7 @@ import {
   readProps,
   type CapabilityView,
   type CapabilityViewProps,
-} from "../../../../adapters/react/src/index";
+} from "../../../../../adapters/react/src/index";
 import {
   emptyEdits,
   moveRegion,
@@ -19,7 +19,7 @@ import {
   type PresentationEdits,
   type RegionDisclosure,
   type RegionPriority,
-} from "../../../../interaction/src/index";
+} from "../../../../../interaction/src/index";
 
 interface Option {
   value: string;

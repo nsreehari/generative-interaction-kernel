@@ -30,7 +30,7 @@ import {
   type PresentationPlanner,
   type PresentationSpec,
 } from "../../../interaction/src/index";
-import { DEMO_MANIFEST, demoDataFor, seedState } from "./demo";
+import { DEMO_MANIFEST, demoDataFor, seedState } from "./bundles/demo/demo";
 
 export interface Session {
   /** the interaction being presented (with demo data filled in). */

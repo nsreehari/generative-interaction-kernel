@@ -1,0 +1,27 @@
+{
+  "gup": "0.1",
+  "type": "document",
+  "payload": {
+    "root": {
+      "capability": "host:bundleSwitcher",
+      "id": "bundle-switcher",
+      "props": {},
+      "edges": {
+        "read": {
+          "items": "switcher.items",
+          "current": "switcher.current"
+        },
+        "on": {
+          "select": [
+            {
+              "do": "invoke",
+              "args": {
+                "tool": "switchBundle"
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

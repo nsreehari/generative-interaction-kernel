@@ -20,6 +20,7 @@
 // cross-kernel bridges stay inside this native `Component`, which is exactly what a composition owns
 // (ADR-0030/0032): the irreducible wiring the closed action grammar can't express.
 
+import "./styles.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   GenUIRoot,
@@ -46,15 +47,14 @@ import { buildSession, type Session } from "./session";
 import {
   authoredApplyPayload,
   chromeBundle,
-  inspectBundle,
   inputsSignature,
-  inspectSnapshot,
   nodeIdsAsOptions,
   readEdits,
   readFireRequest,
   readInputs,
   type StateReader,
-} from "./chrome";
+} from "./bundles/chrome/chrome";
+import { inspectBundle, inspectSnapshot } from "./bundles/inspect/inspect";
 import { startAgentLoop } from "./agent-loop";
 
 interface HostedChromeRuntime {

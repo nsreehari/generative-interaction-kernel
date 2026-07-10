@@ -1,0 +1,31 @@
+{
+  "gup": "0.1",
+  "type": "manifest",
+  "payload": {
+    "version": "genui-host-switcher/1.0",
+    "expression": "jsonata",
+    "namespaces": [
+      "switcher"
+    ],
+    "actions": [
+      "assign",
+      "invoke",
+      "emit"
+    ],
+    "externals": {
+      "components": {
+        "host": {
+          "from": "self"
+        }
+      }
+    },
+    "capabilities": {
+      "host:bundleSwitcher": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}
