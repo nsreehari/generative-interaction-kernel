@@ -126,8 +126,9 @@ checker.Assert(echoAfter!.Children[1].Text == "true", "metric reflects ui.clicke
 string[] floorKeys =
 {
     "ui:screen", "ui:row", "ui:col", "ui:panel", "ui:text", "ui:heading", "ui:note", "ui:badge",
-    "ui:metric", "ui:codeBlock", "ui:list", "ui:table", "ui:field", "ui:textarea", "ui:select",
-    "ui:button", "ui:tabBar", "ui:chips", "ui:embed", "ui:board", "ui:actions",
+  "ui:metric", "ui:codeBlock", "ui:chart", "ui:markdown", "ui:markup", "ui:todo", "ui:editableTable", "ui:multiFileUpload", "ui:list", "ui:table", "ui:selection",
+  "ui:field", "ui:textarea", "ui:select", "ui:button", "ui:tabBar", "ui:chips", "ui:searchbox",
+  "ui:query", "ui:embed", "ui:board", "ui:actions",
 };
 foreach (var key in floorKeys)
     checker.Assert(GenUIReactorViews.Registry.Get(key) is not null, $"floor capability {key} maps to a view");
@@ -138,8 +139,9 @@ checker.Assert(GenUIReactorViews.Registry.Get("ui:nope") is null, "an unmapped c
 const string FloorManifest = """
 { "namespaces": ["ui"], "capabilities": {
   "ui:screen": {}, "ui:panel": {}, "ui:heading": {}, "ui:text": {}, "ui:note": {}, "ui:badge": {},
-  "ui:codeBlock": {}, "ui:metric": {}, "ui:list": {}, "ui:table": {}, "ui:field": {}, "ui:select": {},
-  "ui:button": {}, "ui:tabBar": {}, "ui:chips": {} } }
+  "ui:codeBlock": {}, "ui:chart": {}, "ui:markdown": {}, "ui:markup": {}, "ui:todo": {}, "ui:editableTable": {}, "ui:multiFileUpload": {}, "ui:metric": {}, "ui:list": {},
+  "ui:table": {}, "ui:selection": {}, "ui:field": {}, "ui:select": {}, "ui:button": {},
+  "ui:tabBar": {}, "ui:chips": {}, "ui:searchbox": {}, "ui:query": {} } }
 """;
 const string FloorDocument = """
 { "root": { "capability": "ui:screen", "id": "s", "props": { "title": "Floor", "subtitle": "parity" },
@@ -150,14 +152,23 @@ const string FloorDocument = """
       { "capability": "ui:note",      "id": "nt", "props": { "value": "note", "tone": "warn" } },
       { "capability": "ui:badge",     "id": "bd", "props": { "value": "new" } },
       { "capability": "ui:codeBlock", "id": "cb", "props": { "code": "x = 1" } },
+      { "capability": "ui:chart",     "id": "ct", "props": { "chartType": "bar", "columns": ["month", "sales"], "data": [ { "month": "Jan", "sales": 3 }, { "month": "Feb", "sales": 5 } ] } },
+      { "capability": "ui:markdown",  "id": "md", "props": { "value": "# Title\n\nbody" } },
+      { "capability": "ui:markup",    "id": "mk", "props": { "value": "**alias**" } },
+      { "capability": "ui:todo",      "id": "td", "props": { "items": [ { "text": "Ship slice", "done": false } ], "actionLabel": "Add" } },
+      { "capability": "ui:editableTable", "id": "et", "props": { "spec": { "columns": ["name", "amount"] }, "rows": [ { "name": "Budget", "amount": 3 } ] } },
+      { "capability": "ui:multiFileUpload", "id": "mf", "props": { "submitLabel": "Upload", "data": { "files": [ { "name": "brief.txt", "size": 1280 } ], "filegroups": [ { "message": "Context", "file_idxs": [0] } ] } } },
       { "capability": "ui:metric",    "id": "mt", "props": { "label": "L", "value": "9" } },
       { "capability": "ui:list",      "id": "ls", "props": { "items": [ { "id": "a", "label": "A" } ] } },
       { "capability": "ui:table",     "id": "tb", "props": { "columns": ["k"], "rows": [ { "k": "v" } ] } },
+      { "capability": "ui:selection", "id": "sel", "props": { "fields": { "properties": { "status": { "title": "Status", "enum": ["open", "closed"] } } }, "value": "open" } },
       { "capability": "ui:field",     "id": "fd", "props": { "label": "F", "value": "" } },
       { "capability": "ui:select",    "id": "sl", "props": { "options": ["one", "two"], "value": "one" } },
       { "capability": "ui:button",    "id": "bt", "props": { "label": "Go" } },
       { "capability": "ui:tabBar",    "id": "tabs", "props": { "active": "one", "options": ["one", "two"] } },
-      { "capability": "ui:chips",     "id": "ch", "props": { "items": ["x", "y"] } }
+      { "capability": "ui:chips",     "id": "ch", "props": { "items": ["x", "y"] } },
+      { "capability": "ui:searchbox", "id": "sb", "props": { "fields": { "properties": { "q": { "title": "Query" } } }, "value": "term" } },
+      { "capability": "ui:query",     "id": "qy", "props": { "fields": { "properties": { "limit": { "title": "Limit", "type": "number" } } }, "value": "5", "actionLabel": "Run" } }
     ] } }
   ] } }
 }

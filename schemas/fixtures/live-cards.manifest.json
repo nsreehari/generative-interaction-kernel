@@ -23,6 +23,29 @@
           "properties": { "label": { "type": "string" }, "value": { "type": ["number", "string"] } }
         }
       },
+      "ui:chart": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "dataProp": "data"
+      },
+      "ui:markdown": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "dataProp": "value"
+      },
+      "ui:todo": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "emits": ["save"],
+        "dataProp": "items"
+      },
+      "ui:selection": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "emits": ["select"],
+        "dataProp": "options"
+      },
+      "ui:searchbox": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "emits": ["submit"],
+        "dataProp": "value"
+      },
       "ui:table": {
         "propsSchema": {
           "type": "object",

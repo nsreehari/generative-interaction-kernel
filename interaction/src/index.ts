@@ -29,14 +29,22 @@ export const liveCardsBinding: PresentationBinding = {
     summary: "ui:metric",
     metrics: "ui:metric",
     status: "ui:metric",
-    narrative: "ui:metric",
-    recommendation: "ui:metric",
+    narrative: "ui:markdown",
+    recommendation: "ui:markdown",
     collection: "ui:table",
     detail: "ui:table",
     timeline: "ui:table",
     comparison: "ui:table",
     actions: "ui:actions",
-    // `graph` and `form` intentionally unmapped -> graceful fallback.
+    graph: "ui:chart",
+    // `form` intentionally unmapped -> graceful fallback.
+  },
+  regionCapability: {
+    context: "ui:markdown",
+    explanation: "ui:markdown",
+    content: "ui:markdown",
+    relationships: "ui:chart",
+    tasks: "ui:todo",
   },
   regionSelectEvent: {
     detail: "rowSelect",

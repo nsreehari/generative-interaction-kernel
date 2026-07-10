@@ -6,7 +6,7 @@
 // the interaction marks as required.
 
 import type { Json } from "../../kernel/src/index";
-import { resolveFacets, type Facet, type FacetRole, type InteractionSpec } from "./interaction";
+import { resolveFacets, type Facet, type FacetRole, type InteractionFacetView, type InteractionSpec } from "./interaction";
 
 /**
  * Where and how the experience is being surfaced. `surface` is the primary axis; the rest
@@ -70,6 +70,8 @@ export interface PresentationRegion {
   disclosure: RegionDisclosure;
   /** optional concrete presentation-type hint (e.g. "relationship_graph", "timeline"). */
   presentation?: string;
+  /** optional concrete capability override supplied by authored facet views. */
+  capability?: string;
   /**
    * Static, per-capability presentation config (the "spec" channel, orthogonal to the dynamic
    * `read`/data edge): columns for a table, chartType/series for a chart, thresholds for an alert.
@@ -215,14 +217,17 @@ export const defaultPresentationPlanner: PresentationPlanner = (spec, ctx) => {
   const regions: PresentationRegion[] = chosen.map((f, i) => {
     const priority = priorityOf(f, i);
     const disclosure = disclosureOf(priority, ctx);
+    const facetView: InteractionFacetView | undefined = spec.facetViews?.[f.name];
     const region: PresentationRegion = {
       name: f.name,
       role: f.role,
       priority,
       disclosure,
+      capability: facetView?.capability,
+      props: facetView?.props,
       rationale: rationaleFor(f, priority, disclosure, ctx),
     };
-    const presentation = rolePresentation[f.role];
+    const presentation = facetView?.presentation ?? rolePresentation[f.role];
     if (presentation) region.presentation = presentation;
     return region;
   });
