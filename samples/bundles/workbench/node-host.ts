@@ -10,7 +10,7 @@ import { seedState } from "../../../adapters/react/src/index";
 import { SseTransportServer } from "../../../transports/http-sse/src/server";
 import { handleMcpMessage, MCP_PROTOCOL_VERSION } from "../../../agentface/ts/src/index";
 import { startAgentLoop } from "./agent-loop";
-import { chromeBundle } from "./chrome";
+import { chromeBundle } from "./bundles/chrome/chrome";
 
 export interface WorkbenchNodeHostOptions {
   port?: number;

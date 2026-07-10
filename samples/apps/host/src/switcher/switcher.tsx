@@ -1,0 +1,122 @@
+// The bundle switcher, as a BUNDLE — host chrome dogfooding the platform.
+//
+// Rather than a bespoke React widget wired imperatively into the host tree, the switcher is a tiny
+// leaf bundle (this folder's manifest/document + a seeded `switcher` namespace) that the host mounts
+// as an overlay through the SAME `BundleHost` it uses for every app. Its one custom capability,
+// `host:bundleSwitcher`, is a dumb token-styled view: it reads its bound `items`/`current` props and
+// reports a pick through `emit("select", { bundle })`. The kernel routes that to the document's `on`
+// handler — `invoke("switchBundle")` — and the native effect below performs the consequential
+// navigation. No colors are hardcoded: styling is `.gx-switcher*` classes bound to the ambient,
+// host-owned theme roles (theme/roles.json), exactly like the floor.
+
+import React from "react";
+import manifest from "./manifest.json";
+import document from "./document.json";
+import {
+  bundleFromJson,
+  readProps,
+  type Bundle,
+  type CapabilityViewProps,
+  type EffectHandlerMap,
+} from "../../../../../adapters/react/src/index";
+import { BUNDLE_IDS } from "../bundles";
+
+/** A "layers/stack" glyph — bundles are stacked cards; picking one swaps the whole stack. */
+function SwitcherIcon(): React.ReactElement {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M12 2 2 7l10 5 10-5-10-5Z" />
+      <path d="m2 17 10 5 10-5" />
+      <path d="m2 12 10 5 10-5" />
+    </svg>
+  );
+}
+
+/** The `host:bundleSwitcher` view: a collapsed bubble that expands on hover into a bundle list. */
+function BundleSwitcherView({ node, emit }: CapabilityViewProps): React.ReactElement {
+  const p = readProps(node);
+  const items = p.list<string>("items");
+  const current = p.str("current");
+
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <div
+      className="gx-switcher"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      {open ? (
+        <div className="gx-switcher-panel" role="menu" aria-label="Switch bundle">
+          <div className="gx-switcher-head">Bundle</div>
+          {items.map((id) => {
+            const selected = id === current;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="menuitemradio"
+                aria-checked={selected}
+                className={selected ? "gx-switcher-row selected" : "gx-switcher-row"}
+                onClick={() => !selected && emit("select", { bundle: id })}
+              >
+                <span className="gx-switcher-check" aria-hidden="true">
+                  {selected ? "\u2713" : ""}
+                </span>
+                <span>{id}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="gx-switcher-bubble"
+          aria-label={`Current bundle: ${current}. Hover to switch.`}
+          onClick={() => setOpen(true)}
+        >
+          <SwitcherIcon />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** The consequential navigation, behind `invoke("switchBundle")` — never in render. */
+const switcherEffects: EffectHandlerMap = {
+  switchBundle(ctx) {
+    const bundle = String(ctx.payload.bundle ?? "");
+    if (!bundle) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("bundle", bundle);
+    window.location.assign(url.toString());
+  },
+};
+
+/**
+ * Assemble the switcher bundle for the given active id. The bundle's `items`/`current` state is the
+ * only dynamic part (it depends on the host's `BUNDLE_IDS` and which bundle is showing), so it is
+ * seeded here; everything else is the pure JSON trio plus this native module.
+ */
+export function switcherBundle(current: string): Bundle {
+  return bundleFromJson(
+    {
+      manifest,
+      document,
+      state: { switcher: { items: [...BUNDLE_IDS], current } },
+    },
+    {
+      components: { bundleSwitcher: BundleSwitcherView },
+      effects: switcherEffects,
+    }
+  );
+}

@@ -9,7 +9,7 @@ import {
   type AuthoredSession,
   type PresentationEdits,
 } from "../../../interaction/src/index";
-import { DEMO_MANIFEST } from "./demo";
+import { DEMO_MANIFEST } from "./bundles/demo/demo";
 import type { Session } from "./session";
 
 /** An export bundle: the authored artifact + the derived, self-describing compiled output. */

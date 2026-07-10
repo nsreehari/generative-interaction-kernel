@@ -6,9 +6,18 @@
 import React from "react";
 import { BundleHost } from "../../../../adapters/react/src/index";
 import { DEFAULT_BUNDLE, resolveBundle } from "./bundles";
+import { switcherBundle } from "./switcher/switcher";
 
 export function Host(): React.ReactElement {
   const id = new URLSearchParams(window.location.search).get("bundle") ?? DEFAULT_BUNDLE;
   const { bundle, apps } = React.useMemo(() => resolveBundle(id), [id]);
-  return <BundleHost bundle={bundle} apps={apps} />;
+  // The switcher is itself a bundle, mounted through the same host as an overlay — so host chrome
+  // rides the ambient, host-owned theme instead of a hand-styled widget.
+  const switcher = React.useMemo(() => switcherBundle(id), [id]);
+  return (
+    <>
+      <BundleHost bundle={bundle} apps={apps} />
+      <BundleHost bundle={switcher} />
+    </>
+  );
 }

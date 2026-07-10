@@ -165,3 +165,24 @@ workbench to bundles it mounts. Neither is privileged; the host is the only `sam
 cross-kernel seams — its migration (stage 3) is the one destructive step and must be explicitly
 sequenced, not folded into the low-risk stages 1–2. Stages 1–2 (host + console) can proceed
 independently and leave the workbench running unchanged.
+
+## Follow-up (2026-07-11): drop the standalone `inspect` scaffold
+
+The staged migration above completed: `apps/` was retired and the generic host now mounts bundles by
+`?bundle=<id>`. In that end-state the **standalone `samples/bundles/inspect/` scaffold outlived its
+purpose** and has been **removed**.
+
+Rationale — the scaffold was only ever a *proposal shell*. By the time it was floor-wired it rendered a
+coherent inspector surface from pure floor primitives, but with no live guest to inspect it was a
+seeded, static demo with nothing to show; mounting it as a top-level `?bundle=inspect` entry offered
+users a dead-end that merely duplicated, in a lesser form, the inspector that does real work embedded in
+the **workbench composition** (`samples/bundles/workbench/bundles/inspect/`, driven by the guest→inspect
+`inspectSnapshot` bridge, per ADR-0030). The framework-keyed `components/{react,dotnet}` split this ADR
+proposed is moot after ADR-0035 (`master` is TypeScript-only), so preserving the `dotnet` placeholder
+had no forward value either.
+
+**What changed:** deleted `samples/bundles/inspect/` and dropped `inspect` from the host resolver +
+`BUNDLE_IDS` (the bundle switcher now offers `console` + `workbench`). The live inspector is unchanged.
+The framework-keyed *bundle* idea recorded above remains valid as a direction; only this one non-wired
+scaffold instance is retired. (ADR-0035's record of removing `samples/bundles/inspect/components/dotnet`
+stays accurate as history.)
