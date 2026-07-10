@@ -39,6 +39,7 @@ rejected options were set aside, and the consequences.
 | [0032](ADR-0032-framework-keyed-bundles.md) | Framework-keyed bundles — `samples/bundles/` sibling to `samples/apps/`, apps compose them | Proposed |
 | [0033](ADR-0033-provider-engines-reactive-statemodel-step-orchestrator.md) | Provider engines — reactive `StateModel` and StepMachine `Orchestrator`, vendored from proven sources | Proposed |
 | [0034](ADR-0034-declarative-reactions-and-context.md) | Declarative reactions (`react`) and shared context (`context`), with the intent⇄product boundary kept native | Proposed |
+| [0035](ADR-0035-stop-dotnet-port.md) | Stop the C#/.NET port — master becomes TypeScript-only; the port is frozen on the `dotnet-port` branch | Accepted |
 
 ## Format
 
