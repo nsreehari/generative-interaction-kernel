@@ -15,7 +15,8 @@ import type {
 } from "./types";
 
 // See ./vendor/README.md. Exposes jsonata(expr) -> { evaluate(input, bindings?) => Promise }.
-// This is the same canonical source the C# port follows, so both kernels share one reference.
+// This is the canonical JSONata source any future re-implementation is verified against via the
+// language-neutral conformance matrix (ADR-0035: master is TypeScript-only).
 interface Compiled {
   evaluate(input: unknown, bindings?: Record<string, unknown>): Promise<unknown>;
   ast(): unknown;
@@ -239,7 +240,7 @@ export class ManifestRegistry implements CapabilityRegistry {
 }
 
 // ---- Orchestrator --------------------------------------------------------
-// The seam where a document's invoke/confirm/navigate actions reach out to do
+// The seam where a document's invoke/confirm/route actions reach out to do
 // real work. It owns time and side effects (tool calls, HITL approval, routing);
 // the kernel and reducer stay pure. Any method may be omitted; unhandled effects
 // are traced and produce no store change.
@@ -247,7 +248,7 @@ export class ManifestRegistry implements CapabilityRegistry {
 export interface Orchestrator {
   invoke?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>;
   confirm?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>;
-  navigate?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>;
+  route?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>;
 }
 
 /** Default no-op orchestrator: effects are traced but perform nothing. */

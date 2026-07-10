@@ -5,7 +5,7 @@
     "version": "workbench-live-cards/1.0",
     "expression": "jsonata",
     "namespaces": ["card_data", "requires", "fetched_sources", "computed_values"],
-    "actions": ["assign", "derive", "invoke", "emit", "navigate", "confirm"],
+    "actions": ["assign", "derive", "invoke", "emit", "route", "confirm"],
     "externals": {
       "components": {
         "ui": { "from": "profile" }

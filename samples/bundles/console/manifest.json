@@ -12,7 +12,7 @@
       "assignFrom",
       "derive",
       "invoke",
-      "navigate",
+      "route",
       "confirm",
       "emit"
     ],

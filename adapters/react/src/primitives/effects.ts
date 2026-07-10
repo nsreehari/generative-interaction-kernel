@@ -58,5 +58,5 @@ export function createEffectDispatcher(store: StateModel, handlers: EffectHandle
     };
     return handler(ctx);
   };
-  return { invoke: run, confirm: run, navigate: run };
+  return { invoke: run, confirm: run, route: run };
 }

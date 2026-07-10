@@ -25,7 +25,7 @@ interpreter, validator, and tool-generator reusable.
 | **Capability** | a registered type: `{ propsSchema, emits[events], renderAdapter }` |
 | **Edge** (closed set) | `render` · `read` (store→prop) · `write` (→store) · `child` (→node) · `gate` (predicate→node) · `behavior` (event→[action]) |
 | **Store** | addressable namespaces, path-addressed, reactive |
-| **Action** (closed families) | `assign` · `derive` · `invoke` · `emit` · `navigate` · `confirm` |
+| **Action** (closed families) | `assign` · `derive` · `invoke` · `emit` · `route` · `confirm` |
 | **Event** | a named trigger produced by a capability or a machine |
 | **Machine** | `{ contextPath, initial, states }` — reduced by the kernel's pure reducer |
 

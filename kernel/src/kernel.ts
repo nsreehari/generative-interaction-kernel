@@ -168,7 +168,7 @@ export class Kernel {
           ? this.orchestrator.invoke
           : effect.kind === "confirm"
             ? this.orchestrator.confirm
-            : this.orchestrator.navigate;
+            : this.orchestrator.route;
 
       if (!handler) {
         this.sink?.({ event: "effect", node: effect.node, detail: { kind: effect.kind, unhandled: true } });

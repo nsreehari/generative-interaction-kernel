@@ -19,7 +19,7 @@ export const PRIMITIVE_ACTIONS = [
   "assignFrom",
   "derive",
   "invoke",
-  "navigate",
+  "route",
   "confirm",
   "emit",
 ] as const;

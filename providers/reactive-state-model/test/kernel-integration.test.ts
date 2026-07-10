@@ -27,7 +27,7 @@ const manifestPayload: ManifestPayload = {
   version: "reactive-demo/1.0",
   expression: "jsonata",
   namespaces: ["a", "b", "total"],
-  actions: ["assign", "derive", "invoke", "emit", "navigate", "confirm"],
+  actions: ["assign", "derive", "invoke", "emit", "route", "confirm"],
   capabilities: {
     board: { propsSchema: { type: "object", properties: { title: { type: "string" } } }, slots: ["children"] },
     metric: {

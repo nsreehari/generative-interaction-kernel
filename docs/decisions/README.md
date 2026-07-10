@@ -40,6 +40,7 @@ rejected options were set aside, and the consequences.
 | [0033](ADR-0033-provider-engines-reactive-statemodel-step-orchestrator.md) | Provider engines — reactive `StateModel` and StepMachine `Orchestrator`, vendored from proven sources | Proposed |
 | [0034](ADR-0034-declarative-reactions-and-context.md) | Declarative reactions (`react`) and shared context (`context`), with the intent⇄product boundary kept native | Proposed |
 | [0035](ADR-0035-stop-dotnet-port.md) | Stop the C#/.NET port — master becomes TypeScript-only; the port is frozen on the `dotnet-port` branch | Accepted |
+| [0036](ADR-0036-rename-navigate-to-route.md) | Rename the `navigate` action verb to `route` — a medium-neutral name for the closed grammar's flow/destination handoff | Accepted |
 
 ## Format
 

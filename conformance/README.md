@@ -51,7 +51,7 @@ Two kernels that produce the same ops in a different order do **not** conform.
 
 ## Scripted Orchestrator effects
 
-Deferred effects (`invoke` / `confirm` / `navigate`) cross the Orchestrator seam
+Deferred effects (`invoke` / `confirm` / `route`) cross the Orchestrator seam
 ([ADR-0009](../docs/decisions/ADR-0009-orchestrator-effects.md)); the reducer only *requests* them. A
 case MAY exercise this seam by declaring an `orchestrator` array of **deterministic, canned**
 responses — no clock, RNG, or IO, so the case stays reproducible.

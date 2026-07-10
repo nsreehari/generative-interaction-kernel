@@ -107,11 +107,11 @@ export interface CapabilityDescriptor {
   dataProp?: string;
 }
 
-// An external effect requested by the reducer (invoke/navigate/confirm). The kernel
+// An external effect requested by the reducer (invoke/route/confirm). The kernel
 // hands these to the Orchestrator provider AFTER the pure reduction settles; the
 // reducer itself never performs them, preserving the pure-reducer law.
 export interface OrchestratorEffect {
-  kind: "invoke" | "confirm" | "navigate";
+  kind: "invoke" | "confirm" | "route";
   node: string;
   tool?: string;
   to?: Json;

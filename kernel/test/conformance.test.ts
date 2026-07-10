@@ -47,7 +47,7 @@ interface Step {
 }
 
 interface ScriptEntry {
-  on: { kind: "invoke" | "confirm" | "navigate"; node?: string; tool?: string };
+  on: { kind: "invoke" | "confirm" | "route"; node?: string; tool?: string };
   result: OrchestratorResult;
 }
 
@@ -82,7 +82,7 @@ function scriptedOrchestrator(script: ScriptEntry[]): Orchestrator {
   return {
     invoke: async (e) => match("invoke", e),
     confirm: async (e) => match("confirm", e),
-    navigate: async (e) => match("navigate", e),
+    route: async (e) => match("route", e),
   };
 }
 
