@@ -66,7 +66,7 @@ test("the Kernel fulfils an invoke through a flow and applies its result to the 
     version: "invoke-demo/1.0",
     expression: "jsonata",
     namespaces: ["result"],
-    actions: ["assign", "derive", "invoke", "emit", "navigate", "confirm"],
+    actions: ["assign", "derive", "invoke", "emit", "route", "confirm"],
     capabilities: {
       board: { propsSchema: { type: "object", properties: { title: { type: "string" } } }, slots: ["children"] },
       metric: { propsSchema: { type: "object", required: ["label"], properties: { label: { type: "string" }, value: { type: ["number", "string"] } } } },

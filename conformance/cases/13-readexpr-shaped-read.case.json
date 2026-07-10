@@ -8,7 +8,7 @@
       "version": "readexpr-demo/1.0",
       "expression": "jsonata",
       "namespaces": ["card_data"],
-      "actions": ["assign", "derive", "invoke", "emit", "navigate", "confirm"],
+      "actions": ["assign", "derive", "invoke", "emit", "route", "confirm"],
       "capabilities": { "panel": {} }
     }
   },

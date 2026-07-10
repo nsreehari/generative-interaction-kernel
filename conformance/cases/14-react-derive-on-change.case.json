@@ -8,7 +8,7 @@
       "version": "react-demo/1.0",
       "expression": "jsonata",
       "namespaces": ["counter"],
-      "actions": ["assign", "derive", "invoke", "emit", "navigate", "confirm"],
+      "actions": ["assign", "derive", "invoke", "emit", "route", "confirm"],
       "capabilities": { "widget": { "emits": ["bump"] } }
     }
   },

@@ -1,4 +1,4 @@
-// Phase 3 kernel tests: the Orchestrator seam. invoke/confirm/navigate become
+// Phase 3 kernel tests: the Orchestrator seam. invoke/confirm/route become
 // real effects the kernel runs after reduction; their results (store deltas and
 // follow-up events) settle within the same dispatch. Async data is modeled as
 // machine states (idle -> loading -> ready).
@@ -129,10 +129,10 @@ test("confirm: HITL approval returns a follow-up event that assigns status", asy
   ]);
 });
 
-test("navigate: routing effect reaches the orchestrator without touching the store", async () => {
+test("route: routing effect reaches the orchestrator without touching the store", async () => {
   const routes: unknown[] = [];
   const orchestrator: Orchestrator = {
-    async navigate(effect) {
+    async route(effect) {
       routes.push(effect.to);
     },
   };
@@ -145,7 +145,7 @@ test("navigate: routing effect reaches the orchestrator without touching the sto
         capability: "actions",
         id: "btn-open",
         props: { label: "Open" },
-        edges: { on: { tap: [{ do: "navigate", args: { to: "/orders/42" } }] } },
+        edges: { on: { tap: [{ do: "route", args: { to: "/orders/42" } }] } },
       },
     },
   };
@@ -156,7 +156,7 @@ test("navigate: routing effect reaches the orchestrator without touching the sto
   const patch = await kernel.dispatch({ node: "btn-open", name: "tap" });
 
   assert.deepEqual(routes, ["/orders/42"]);
-  assert.deepEqual(patch.ops, [], "navigation produces no store delta");
+  assert.deepEqual(patch.ops, [], "routing produces no store delta");
 });
 
 test("unhandled effect is safe: default NullOrchestrator performs nothing", async () => {

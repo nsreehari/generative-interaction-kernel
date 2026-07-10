@@ -28,7 +28,7 @@ Published once per domain; every other party validates against it.
   "version": "1.0",
   "expression": "<dialect-id>",
   "namespaces": ["<ns>"],
-  "actions": ["assign", "derive", "invoke", "emit", "navigate", "confirm"],
+  "actions": ["assign", "derive", "invoke", "emit", "route", "confirm"],
   "capabilities": {
     "<type>": {
       "propsSchema": { "$comment": "JSON Schema" },
@@ -141,7 +141,7 @@ The golden fixture is not only schema-valid — it is **executed** by a referenc
 kernel interprets a `document` (`gate → capability → props → children`), applies the pure reducer to
 an `event` (`assign`/`derive`/`emit` plus declared machine transitions), enforces
 validate-before-commit, and emits a `patch` byte-for-byte equal to the fixture's expected patch.
-`invoke`/`navigate`/`confirm` are surfaced as **effects** the kernel runs against the Orchestrator
+`invoke`/`route`/`confirm` are surfaced as **effects** the kernel runs against the Orchestrator
 provider after reduction (see below).
 
 ## Reference render adapter (React)
@@ -155,7 +155,7 @@ upholding the protocol invariant.
 
 ## Reference Orchestrator (effects)
 
-`invoke`/`confirm`/`navigate` are effectful, so the pure reducer only *records* them; the kernel
+`invoke`/`confirm`/`route` are effectful, so the pure reducer only *records* them; the kernel
 runs them against an **Orchestrator** provider after reduction (see
 [ADR-0009](decisions/ADR-0009-orchestrator-effects.md)). The Orchestrator owns time and I/O and
 returns store `ops` and/or follow-up `event`s, which the kernel applies and **settles within the same
@@ -163,7 +163,7 @@ dispatch** — one `event` in, one `rev` out, regardless of fan-out. **Async dat
 states** (`idle → loading → ready`): the triggering event moves the machine to `loading`; the
 Orchestrator's follow-up event moves it to `ready`. The default `NullOrchestrator` performs nothing,
 so a document referencing tools runs harmlessly before wiring exists. `emit` stays internal to the
-reducer's queue; only `invoke`/`confirm`/`navigate` cross the Orchestrator boundary.
+reducer's queue; only `invoke`/`confirm`/`route` cross the Orchestrator boundary.
 
 ## Reference transport (the wire, exercised)
 
@@ -201,7 +201,7 @@ full-snapshot patch at the current rev). No new GUP message is introduced — th
 
 Agents produce documents from manifest vocabulary via typed builders (`kernel/authoring.ts`; see
 [ADR-0013](decisions/ADR-0013-agent-authoring.md)) rather than hand-writing JSON: `node(...)`,
-`document(...)`, and one constructor per action family (`assign`/`derive`/`emit`/`invoke`/`navigate`/
+`document(...)`, and one constructor per action family (`assign`/`derive`/`emit`/`invoke`/`route`/
 `confirm`, plus `guarded`). Two safety nets follow, with a deliberate split — **structure throws,
 references lint**: `authorDocument(...)` runs **validate-before-commit** (schema validation; throws on
 a malformed document), while `lintManifestReferences(...)` returns **non-throwing** warnings for

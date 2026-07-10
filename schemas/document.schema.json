@@ -52,7 +52,7 @@
       "properties": {
         "do": {
           "type": "string",
-          "description": "A built-in family (assign|derive|invoke|emit|navigate|confirm) or a manifest-declared custom action."
+          "description": "A built-in family (assign|derive|invoke|emit|route|confirm) or a manifest-declared custom action."
         },
         "target": { "$ref": "#/definitions/nsPath" },
         "args": { "type": "object" },

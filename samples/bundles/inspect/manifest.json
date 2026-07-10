@@ -13,7 +13,7 @@
       "derive",
       "emit",
       "invoke",
-      "navigate",
+      "route",
       "confirm"
     ],
     "externals": {

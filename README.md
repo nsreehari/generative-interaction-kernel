@@ -29,7 +29,7 @@ conformance matrix** of portable JSON cases with a per-kernel runner (Phase 9) �
 | Delivery | **Protocol + kernel** (portable artifacts), not an in-process SDK |
 | Reference kernel | **TypeScript/JS first**, JSONata as the default `ExpressionProvider` |
 | First render adapter | **React** (`adapters/react/`), infra-agnostic per ADR-0006 |
-| Effectful actions | **Orchestrator seam**: `invoke`/`confirm`/`navigate` as post-reduction effects; async data as machine states |
+| Effectful actions | **Orchestrator seam**: `invoke`/`confirm`/`route` as post-reduction effects; async data as machine states |
 | Transport | **Transport seam**: GUP envelopes over `TransportProvider`; in-memory reference pair + `KernelTransportHost` |
 | Client runtime | **`GenUIClient`**: interpret + state replica on the renderer side; renders from wire messages, emits events back |
 | Reconnection | **Broker host + patch log**: broadcast to many connections; resume via incremental replay or full resync; idempotent client `rebind` |
@@ -43,7 +43,7 @@ conformance matrix** of portable JSON cases with a per-kernel runner (Phase 9) �
 | Observability | **Fixed trace points** (`TRACE_POINTS`) + reference `console`/`buffer`/`multi` sinks over the `TraceSink` seam; exporters stay out-of-core; traces are *not* on the behavioral conformance contract |
 | Optional layers | **No layer is mandatory**: a partial pipeline (e.g. single-stage `Domain → UI`) is valid; validation happens once at the UI-DSL boundary. **Streaming** of the initial document is deferred beyond v0.1 (complete document per message) |
 | Runner contract | **Cross-kernel semantics are pinned in prose** (`conformance/README.md`): envelope-or-bare loading, one dispatch = one patch = one rev (empty patches included), contractual op order, numeric-value number equality, determinism — the rules any second kernel's runner must honor |
-| Effect-seam conformance | **Deferred effects are scripted as data**: a case's optional `orchestrator` array supplies deterministic `invoke`/`confirm`/`navigate` responses, so the kernel proves a stable settle order (reducer ops → effect ops → follow-up-event ops) at one rev |
+| Effect-seam conformance | **Deferred effects are scripted as data**: a case's optional `orchestrator` array supplies deterministic `invoke`/`confirm`/`route` responses, so the kernel proves a stable settle order (reducer ops → effect ops → follow-up-event ops) at one rev |
 
 ## What this is not
 

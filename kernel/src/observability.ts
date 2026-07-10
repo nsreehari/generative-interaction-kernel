@@ -9,7 +9,7 @@
 //   - "fallback"   : a node's capability was not in the registry -> graceful fallback (interpret).
 //   - "action"     : a closed-grammar store action ran (assign/derive/emit) (reduce).
 //   - "transition" : a machine changed state (reduce).
-//   - "effect"     : an orchestrator effect was requested (invoke/confirm/navigate), or an
+//   - "effect"     : an orchestrator effect was requested (invoke/confirm/route), or an
 //                    unhandled effect was dropped (reduce/kernel).
 //   - "validate"   : validate-before-commit ran (kernel/authoring boundary).
 // The set is closed and matches `TraceEvent["event"]`; sinks may format but not invent kinds.

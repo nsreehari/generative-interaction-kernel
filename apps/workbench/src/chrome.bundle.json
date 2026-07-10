@@ -14,7 +14,7 @@
         "derive",
         "emit",
         "invoke",
-        "navigate",
+        "route",
         "confirm"
       ],
       "capabilities": {

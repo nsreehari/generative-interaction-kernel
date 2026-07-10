@@ -20,7 +20,7 @@
     },
     "orchestrator": {
       "type": "array",
-      "description": "Deterministic, scripted Orchestrator responses. Each entry matches a deferred effect (invoke/confirm/navigate) and returns canned ops and/or follow-up events, settled inside the same dispatch. No clock, RNG, or IO — the runner uses these to exercise the effect seam reproducibly.",
+      "description": "Deterministic, scripted Orchestrator responses. Each entry matches a deferred effect (invoke/confirm/route) and returns canned ops and/or follow-up events, settled inside the same dispatch. No clock, RNG, or IO — the runner uses these to exercise the effect seam reproducibly.",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -31,7 +31,7 @@
             "additionalProperties": false,
             "required": ["kind"],
             "properties": {
-              "kind": { "enum": ["invoke", "confirm", "navigate"] },
+              "kind": { "enum": ["invoke", "confirm", "route"] },
               "node": { "type": "string", "description": "Match only effects from this node." },
               "tool": { "type": "string", "description": "Match only invoke effects for this tool." }
             }

@@ -49,9 +49,9 @@ export function invoke(tool: string, args?: Record<string, Json>): Action {
   return { do: "invoke", args: { tool, ...(args ?? {}) } };
 }
 
-/** Request navigation (an Orchestrator effect). */
-export function navigate(to: Json, args?: Record<string, Json>): Action {
-  return { do: "navigate", args: { to, ...(args ?? {}) } };
+/** Request a flow/destination handoff — routing (an Orchestrator effect). */
+export function route(to: Json, args?: Record<string, Json>): Action {
+  return { do: "route", args: { to, ...(args ?? {}) } };
 }
 
 /** Request a human-in-the-loop confirmation (an Orchestrator effect). */

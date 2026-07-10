@@ -52,7 +52,7 @@ async function resolveValue(args: Record<string, Json> | undefined, c: DispatchC
   return null;
 }
 
-// The six closed action families. assign/derive/emit mutate store/queue directly; invoke/navigate/
+// The six closed action families. assign/derive/emit mutate store/queue directly; invoke/route/
 // confirm cross the Orchestrator/HITL seam (ADR-0009) — they push an OrchestratorEffect for the
 // kernel to route after the reduction, rather than writing a store op here.
 async function dispatchAction(a: Action, c: DispatchCtx): Promise<void> {
@@ -93,15 +93,15 @@ async function dispatchAction(a: Action, c: DispatchCtx): Promise<void> {
       c.traces.push({ event: "effect", detail: { do: "invoke", tool: a.args?.tool } });
       break;
     }
-    case "navigate": {
+    case "route": {
       c.effects.push({
-        kind: "navigate",
+        kind: "route",
         node: c.currentEvent.node,
         to: a.args?.to ?? null,
         args: a.args ?? {},
         payload: c.currentEvent.payload,
       });
-      c.traces.push({ event: "effect", detail: { do: "navigate", to: a.args?.to } });
+      c.traces.push({ event: "effect", detail: { do: "route", to: a.args?.to } });
       break;
     }
     case "confirm": {
