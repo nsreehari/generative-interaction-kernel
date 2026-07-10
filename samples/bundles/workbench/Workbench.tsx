@@ -13,12 +13,12 @@
 // pipeline is a compiler, and a fired event has to cross from the chrome kernel to the guest kernel —
 // neither is expressible in the kernel's closed action grammar.
 //
-// The whole thing is packaged as a `CompositionBundle` (`workbenchBundle`, exported below) and mounted
-// through the SAME generic `BundleHost` that runs every leaf bundle — so the workbench is no longer a
-// bespoke React root but a first-class composition the platform hosts by id. Its `children` (chrome +
-// inspect) are the declared leaves it is built from; the live guest is compiled at runtime. The
-// cross-kernel bridges stay inside this native `Component`, which is exactly what a composition owns
-// (ADR-0030/0032): the irreducible wiring the closed action grammar can't express.
+// The whole thing is exported as `WorkbenchRoot` — a native React root the generic host mounts by id
+// (see samples/apps/host). The workbench is the platform's one irreducibly-native composition: it
+// stands up the chrome + inspect leaf bundles and compiles a live guest at runtime, and the two
+// cross-kernel bridges stay inside this component (ADR-0030/0032) — the wiring the closed action
+// grammar can't express. There is no generic "composition bundle" type; this native seam is local to
+// the workbench and mounted directly.
 
 import "./styles.css";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -28,7 +28,6 @@ import {
   liveCardsRegistry,
   loadBundleRuntime,
   seedState,
-  type CompositionBundle,
 } from "../../../adapters/react/src/index";
 import {
   Kernel,
@@ -121,7 +120,7 @@ function createChromeRuntime(): HostedChromeRuntime {
   return remoteBaseUrl ? createRemoteChromeRuntime(remoteBaseUrl) : createLocalChromeRuntime();
 }
 
-export function Workbench() {
+export function WorkbenchRoot() {
   const chrome = useMemo(() => createChromeRuntime(), []);
   const inspect = useMemo(() => loadBundleRuntime(inspectBundle), []);
   // The chrome and inspect bundles are self-contained: each resolves every `alias:name` capability
@@ -294,13 +293,3 @@ function useAgentBridge(chrome: HostedChromeRuntime): { running: boolean; label:
   return agentView;
 }
 
-// The workbench as a first-class COMPOSITION bundle: the generic `BundleHost` mounts it by id exactly
-// like a leaf, but its content is a native wiring of child runtimes rather than one document. The
-// declared `children` are the leaf bundles it composes (chrome + inspect); the live guest is compiled
-// at runtime by bridge A, so it is not a static child. `Component` owns the irreducible cross-kernel
-// bridges (ADR-0030/0032).
-export const workbenchBundle: CompositionBundle = {
-  kind: "composition",
-  children: { chrome: chromeBundle, inspect: inspectBundle },
-  Component: Workbench,
-};
