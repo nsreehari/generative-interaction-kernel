@@ -14,6 +14,7 @@ export * from "./edits";
 export * from "./authoring";
 export * from "./lowering";
 export * from "./schema";
+export * from "./planner-model";
 
 import type { PresentationBinding } from "./lowering";
 

@@ -1,0 +1,93 @@
+[
+  {
+    "interaction": { "interaction": "investigate", "subject": "incident" },
+    "context": { "surface": "desktop", "space": "expanded", "attention": "focused" },
+    "plan": {
+      "layout": "investigate_focus",
+      "arrangement": "grid",
+      "regions": [
+        {
+          "name": "explanation",
+          "role": "narrative",
+          "priority": "primary",
+          "disclosure": "always",
+          "presentation": "narrative",
+          "rationale": "model led with the explanation: the analyst's first question is 'what happened and why'"
+        },
+        {
+          "name": "timeline",
+          "role": "timeline",
+          "priority": "secondary",
+          "disclosure": "always",
+          "presentation": "timeline",
+          "rationale": "sequence of events kept visible to support the explanation"
+        },
+        {
+          "name": "evidence",
+          "role": "collection",
+          "priority": "secondary",
+          "disclosure": "collapsed",
+          "rationale": "supporting records folded until the analyst drills in"
+        },
+        {
+          "name": "actions",
+          "role": "actions",
+          "priority": "tertiary",
+          "disclosure": "on-demand",
+          "rationale": "remediation deferred until a conclusion is reached"
+        }
+      ],
+      "source": { "interaction": "investigate", "subject": "incident" }
+    }
+  },
+  {
+    "interaction": { "interaction": "compare", "subject": "pricing-plan" },
+    "context": { "surface": "mobile", "space": "compact", "attention": "focused" },
+    "plan": {
+      "layout": "stack",
+      "arrangement": "stack",
+      "regions": [
+        {
+          "name": "diff",
+          "role": "comparison",
+          "priority": "primary",
+          "disclosure": "always",
+          "presentation": "diff",
+          "rationale": "on a compact surface the model leads with the differences, not the two full plans"
+        },
+        {
+          "name": "left",
+          "role": "detail",
+          "priority": "secondary",
+          "disclosure": "collapsed",
+          "rationale": "the first plan's detail folds under the diff on a narrow screen"
+        },
+        {
+          "name": "right",
+          "role": "detail",
+          "priority": "secondary",
+          "disclosure": "collapsed",
+          "rationale": "the second plan's detail folds symmetrically"
+        }
+      ],
+      "source": { "interaction": "compare", "subject": "pricing-plan" }
+    }
+  },
+  {
+    "interaction": { "interaction": "monitor", "subject": "service-health" },
+    "context": { "surface": "desktop", "space": "regular", "attention": "glanceable" },
+    "plan": {
+      "layout": "dashboard",
+      "arrangement": "carousel",
+      "regions": [
+        {
+          "name": "status",
+          "role": "status",
+          "priority": "primary",
+          "disclosure": "always"
+        }
+      ],
+      "source": { "interaction": "monitor", "subject": "service-health" }
+    }
+  }
+]
