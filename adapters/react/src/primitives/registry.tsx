@@ -3,15 +3,15 @@
 // One registry, shared by every bundle — the GenUI equivalent of the frontend's Tier-1 leaves.
 // Each primitive obeys the uniform capability contract ({ node, emit, children }) and reads its
 // configuration + bound data from `node.props` (populated by the document's read edges). Most apps
-// ship NO components and just compose these primitives; a bundle that needs specialized controls
-// declares its own components as the `self` provider in its manifest `externals` (see bundle.components).
+// ship NO projection views and just compose these primitives; a bundle that needs specialized controls
+// declares its own projection views as the `self` provider in its manifest `externals` (see bundle.projectionViews).
 
 import React from "react";
 import { unwrap } from "../../../../kernel/src/index";
 import {
   buildRegistryFromImports,
-  type CapabilityView,
-  type CapabilityViewProps,
+  type ProjectionView,
+  type ProjectionViewProps,
   type ComponentRegistry,
   type ProviderResolver,
 } from "../registry";
@@ -238,7 +238,7 @@ function renderMarkdownBlocks(value: string): React.ReactNode[] {
   return nodes;
 }
 
-function getSingleFieldConfig(node: CapabilityViewProps["node"]): SingleFieldConfig | null {
+function getSingleFieldConfig(node: ProjectionViewProps["node"]): SingleFieldConfig | null {
   const p = readProps(node);
   const schema = p.obj<SingleFieldSchema>("fields", {});
   const entries = Object.entries(schema.properties ?? {});
@@ -322,7 +322,7 @@ function resolveMultiFileData(raw: unknown): {
 
 // --- Layout -------------------------------------------------------------------------
 
-function Screen({ node, children }: CapabilityViewProps) {
+function Screen({ node, children }: ProjectionViewProps) {
   const p = readProps(node);
   return (
     <div className="gx-screen">
@@ -335,7 +335,7 @@ function Screen({ node, children }: CapabilityViewProps) {
   );
 }
 
-function Row({ node, children }: CapabilityViewProps) {
+function Row({ node, children }: ProjectionViewProps) {
   const p = readProps(node);
   return (
     <div className={`gx-row gx-row-${p.str("variant", "default")}`} data-spacing={p.str("spacing")}>
@@ -344,7 +344,7 @@ function Row({ node, children }: CapabilityViewProps) {
   );
 }
 
-function Col({ node, children }: CapabilityViewProps) {
+function Col({ node, children }: ProjectionViewProps) {
   const p = readProps(node);
   return (
     <div className={`gx-col gx-col-${p.str("variant", "default")}`} data-spacing={p.str("spacing")}>
@@ -353,7 +353,7 @@ function Col({ node, children }: CapabilityViewProps) {
   );
 }
 
-function Panel({ node, children }: CapabilityViewProps) {
+function Panel({ node, children }: ProjectionViewProps) {
   const p = readProps(node);
   const title = p.str("title");
   return (
@@ -366,31 +366,31 @@ function Panel({ node, children }: CapabilityViewProps) {
 
 // --- Text / status ------------------------------------------------------------------
 
-function Text({ node }: CapabilityViewProps) {
+function Text({ node }: ProjectionViewProps) {
   const p = readProps(node);
   return <span className={`gx-text gx-text-${p.str("variant", "body")}`}>{p.str("value")}</span>;
 }
 
-function Heading({ node }: CapabilityViewProps) {
+function Heading({ node }: ProjectionViewProps) {
   const p = readProps(node);
   const level = p.str("level", "2");
   const Tag = (`h${["1", "2", "3", "4"].includes(level) ? level : "2"}`) as "h1" | "h2" | "h3" | "h4";
   return <Tag className="gx-heading">{p.str("value")}</Tag>;
 }
 
-function Note({ node }: CapabilityViewProps) {
+function Note({ node }: ProjectionViewProps) {
   const p = readProps(node);
   return <p className={`gx-note gx-note-${p.str("tone", "muted")}`}>{p.str("value")}</p>;
 }
 
-function Badge({ node }: CapabilityViewProps) {
+function Badge({ node }: ProjectionViewProps) {
   const p = readProps(node);
   const value = p.str("value");
   const tone = p.str("tone", value);
   return <span className={`gx-badge gx-badge-${tone}`}>{value}</span>;
 }
 
-function Metric({ node }: CapabilityViewProps) {
+function Metric({ node }: ProjectionViewProps) {
   const p = readProps(node);
   return (
     <div className="gx-metric">
@@ -402,7 +402,7 @@ function Metric({ node }: CapabilityViewProps) {
 
 // A scrollable, whitespace-preserving monospace block for JSON/code dumps (reads `code`). Distinct
 // from `text` variant=code, which is an inline snippet span.
-function CodeBlock({ node }: CapabilityViewProps) {
+function CodeBlock({ node }: ProjectionViewProps) {
   return (
     <div className="gx-code">
       <pre>{readProps(node).str("code")}</pre>
@@ -410,7 +410,7 @@ function CodeBlock({ node }: CapabilityViewProps) {
   );
 }
 
-function ChartPrimitive({ node }: CapabilityViewProps) {
+function ChartPrimitive({ node }: ProjectionViewProps) {
   const spec = (node.props ?? {}) as Record<string, unknown>;
   const model = normalizeChartData(spec.data, spec);
   if (!model || model.rows.length === 0 || model.seriesKeys.length === 0) {
@@ -585,7 +585,7 @@ function ChartPrimitive({ node }: CapabilityViewProps) {
   );
 }
 
-function Markdown({ node }: CapabilityViewProps) {
+function Markdown({ node }: ProjectionViewProps) {
   const p = readProps(node);
   const value = p.str("value", p.str("text"));
   if (!value) return null;
@@ -598,7 +598,7 @@ function Markdown({ node }: CapabilityViewProps) {
 
 // --- Data display -------------------------------------------------------------------
 
-function List({ node, emit }: CapabilityViewProps) {
+function List({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
   const items = p.list<unknown>("items");
   const idKey = p.str("idKey", "id");
@@ -659,7 +659,7 @@ function List({ node, emit }: CapabilityViewProps) {
   );
 }
 
-function Table({ node, emit }: CapabilityViewProps) {
+function Table({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
   const rows = p.list<Record<string, unknown>>("rows");
   const columns = toColumns(p.list<unknown>("columns"));
@@ -704,7 +704,7 @@ function Table({ node, emit }: CapabilityViewProps) {
 
 // --- Inputs -------------------------------------------------------------------------
 
-function Field({ node, emit }: CapabilityViewProps) {
+function Field({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
   const [value, setValue] = useSyncedValue(p.str("value"));
   return (
@@ -722,7 +722,7 @@ function Field({ node, emit }: CapabilityViewProps) {
   );
 }
 
-function TextArea({ node, emit }: CapabilityViewProps) {
+function TextArea({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
   const [value, setValue] = useSyncedValue(p.str("value"));
   return (
@@ -741,7 +741,7 @@ function TextArea({ node, emit }: CapabilityViewProps) {
   );
 }
 
-function Select({ node, emit }: CapabilityViewProps) {
+function Select({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
   const options = toOptions(p.list<unknown>("options"));
   const value = p.str("value");
@@ -759,7 +759,7 @@ function Select({ node, emit }: CapabilityViewProps) {
   );
 }
 
-function Selection({ node, emit }: CapabilityViewProps) {
+function Selection({ node, emit }: ProjectionViewProps) {
   const field = getSingleFieldConfig(node);
   if (!field) {
     return <p className="gx-muted">No selection configured</p>;
@@ -789,7 +789,7 @@ function Selection({ node, emit }: CapabilityViewProps) {
   );
 }
 
-function Button({ node, emit }: CapabilityViewProps) {
+function Button({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
   return (
     <button
@@ -802,7 +802,7 @@ function Button({ node, emit }: CapabilityViewProps) {
   );
 }
 
-function TabBar({ node, emit }: CapabilityViewProps) {
+function TabBar({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
   const active = p.str("active");
   const options = toOptions(p.list<unknown>("options"));
@@ -821,7 +821,7 @@ function TabBar({ node, emit }: CapabilityViewProps) {
   );
 }
 
-function Searchbox({ node, emit }: CapabilityViewProps) {
+function Searchbox({ node, emit }: ProjectionViewProps) {
   const field = getSingleFieldConfig(node);
   const p = readProps(node);
   const buttonLabel = p.str("actionLabel", "Search");
@@ -865,7 +865,7 @@ function Searchbox({ node, emit }: CapabilityViewProps) {
   );
 }
 
-function Todo({ node, emit }: CapabilityViewProps) {
+function Todo({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
   const sourceItems = (p.list<unknown>("items").length > 0 ? p.list<unknown>("items") : p.list<unknown>("baseItems"))
     .map((item) => {
@@ -945,7 +945,7 @@ function Todo({ node, emit }: CapabilityViewProps) {
   );
 }
 
-function EditableTable({ node, emit }: CapabilityViewProps) {
+function EditableTable({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
   const spec = p.obj<EditableTableSpec>("spec", {});
   const incomingRows = editableRowsFrom(
@@ -1039,7 +1039,7 @@ function EditableTable({ node, emit }: CapabilityViewProps) {
   );
 }
 
-function MultiFileUpload({ node, emit }: CapabilityViewProps) {
+function MultiFileUpload({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
   const fileServices = useGenUIFileServices();
   const source = (node.props as Record<string, unknown>).data ?? {
@@ -1147,7 +1147,7 @@ function MultiFileUpload({ node, emit }: CapabilityViewProps) {
   );
 }
 
-function Chips({ node, emit }: CapabilityViewProps) {
+function Chips({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
   const items = toOptions(p.list<unknown>("items"));
   const empty = p.str("emptyText", "None yet.");
@@ -1172,7 +1172,7 @@ function Chips({ node, emit }: CapabilityViewProps) {
 
 // --- Composition: embed a whole bundle/app -----------------------------------------
 
-function Embed({ node }: CapabilityViewProps) {
+function Embed({ node }: ProjectionViewProps) {
   const p = readProps(node);
   // Two ways to host a whole bundle in a leaf:
   //   props.app     -> a KNOWN app resolved by name from the registry (carries native effects)
@@ -1187,8 +1187,8 @@ function Embed({ node }: CapabilityViewProps) {
     [sig] // eslint-disable-line react-hooks/exhaustive-deps
   );
   // Every embedded bundle — a named app or an inline JSON bundle — resolves its `alias:name`
-  // capabilities through its own manifest `externals.components` (the floor via the `floor`
-  // provider, its own components via `self`).
+  // capabilities through its own manifest `externals.projectionViews` (the floor via the `floor`
+  // provider, its own projection views via `self`).
   const registry = React.useMemo(
     () => (bundle ? buildBundleRegistry(bundle as Bundle) : null),
     [sig] // eslint-disable-line react-hooks/exhaustive-deps
@@ -1201,13 +1201,13 @@ function Embed({ node }: CapabilityViewProps) {
   );
 }
 
-function Fallback({ node }: CapabilityViewProps) {
+function Fallback({ node }: ProjectionViewProps) {
   return <div className="gx-muted">Unsupported primitive: {node.capability}</div>;
 }
 
 /** The floor's raw capability -> component map: the `floor` PROVIDER that a bundle's `externals`
  *  binds an alias to (see buildRegistryFromImports). */
-export const FLOOR_COMPONENTS: Record<string, CapabilityView> = {
+export const FLOOR_COMPONENTS: Record<string, ProjectionView> = {
   screen: Screen,
   row: Row,
   col: Col,
@@ -1239,12 +1239,12 @@ export const FLOOR_COMPONENTS: Record<string, CapabilityView> = {
 };
 
 /** The floor's fallback view (exported so import-driven registries share one graceful fallback). */
-export const floorFallback: CapabilityView = Fallback;
+export const floorFallback: ProjectionView = Fallback;
 
 /**
- * Build a bundle's render registry from its manifest `externals.components` (the end-state,
+ * Build a bundle's render registry from its manifest `externals.projectionViews` (the end-state,
  * namespaced model): every `alias:name` reference resolves through an explicit import — the floor is
- * the `floor` provider, the bundle's own components are `self`, and any other provider name is
+ * the `floor` provider, the bundle's own projection views are `self`, and any other provider name is
  * resolved by an optional `crossProvider` (e.g. an app-registry lookup for borrowing another
  * bundle's capability). Nothing is ambient: a bundle with no imports renders everything as fallback.
  */
@@ -1254,8 +1254,8 @@ export function buildBundleRegistry(
 ): ComponentRegistry {
   const resolve: ProviderResolver = (from) => {
     if (from === "floor") return FLOOR_COMPONENTS;
-    if (from === "self") return bundle.components;
+    if (from === "self") return bundle.projectionViews;
     return crossProvider?.(from);
   };
-  return buildRegistryFromImports(unwrap(bundle.manifest).externals?.components, resolve, Fallback);
+  return buildRegistryFromImports(unwrap(bundle.manifest).externals?.projectionViews, resolve, Fallback);
 }

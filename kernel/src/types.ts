@@ -127,11 +127,11 @@ export interface OrchestratorResult {
 }
 
 /**
- * A component import: binds a local alias to a component provider, so a document can reference a
+ * A projection-view import: binds a local alias to a projection-view provider, so a document can reference a
  * capability as `alias:name`. Nothing is ambient — even the shared floor must be imported. `use`
  * optionally restricts (and documents) the borrowed subset; omitted means the whole provider.
  */
-export interface ComponentImport {
+export interface ProjectionViewImport {
   from: string; // provider name: "floor" | "self" | another bundle's name
   use?: string[]; // optional whitelist of capability names borrowed under this alias
 }
@@ -142,10 +142,10 @@ export interface ComponentImport {
  * single object (rather than inferring effects from the document tree or hunting for imports).
  */
 export interface ExternalsSpec {
-  /** Alias -> component provider binding. A capability is referenced as `alias:name`. */
-  components?: Record<string, ComponentImport>;
+  /** Alias -> projection-view provider binding. A capability is referenced as `alias:name`. */
+  projectionViews?: Record<string, ProjectionViewImport>;
   /** Names of effect handlers the host must supply for this bundle's `invoke` actions. */
-  effects?: string[];
+  effectHandlers?: string[];
 }
 
 export interface ManifestPayload {

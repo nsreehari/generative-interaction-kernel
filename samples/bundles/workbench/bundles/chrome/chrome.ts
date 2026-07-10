@@ -51,7 +51,7 @@ export function authoredApplyPayload(a: AuthoredSession): Record<string, Json> {
  * shared floor host (see Workbench.tsx), exactly like the console. The `workbench`->guest bridge (also
  * in Workbench.tsx) is the native seam that carries fired events across kernels.
  */
-export const chromeBundle: Bundle = bundleFromJson(chromeBundleJson, { components: workbenchComponents });
+export const chromeBundle: Bundle = bundleFromJson(chromeBundleJson, { projectionViews: workbenchComponents });
 
 /** The minimal read-only state surface the native bridge helpers need. */
 export interface StateReader {

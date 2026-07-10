@@ -159,9 +159,9 @@ export function lintManifestReferences(
 ): LintWarning[] {
   const warnings: LintWarning[] = [];
   const namespaces = new Set(manifest.namespaces ?? []);
-  // Effects are linted only when the bundle opts in by declaring `externals.effects` — the contract
+  // Effects are linted only when the bundle opts in by declaring `externals.effectHandlers` — the contract
   // is authoritative once present, but unmigrated bundles (no externals) are left alone.
-  const declaredEffects = manifest.externals?.effects;
+  const declaredEffects = manifest.externals?.effectHandlers;
   const effectSet = new Set(declaredEffects ?? []);
 
   const checkNs = (path: string, id: string, where: string): void => {
@@ -204,7 +204,7 @@ export function lintManifestReferences(
             warnings.push({
               code: "undeclared-effect",
               node: n.id,
-              detail: `invokes effect '${tool}' not declared in manifest externals.effects`,
+              detail: `invokes effect '${tool}' not declared in manifest externals.effectHandlers`,
             });
           }
         }

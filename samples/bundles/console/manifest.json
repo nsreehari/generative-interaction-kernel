@@ -163,12 +163,12 @@
       }
     },
     "externals": {
-      "components": {
+      "projectionViews": {
         "ui": {
           "from": "floor"
         }
       },
-      "effects": [
+      "effectHandlers": [
         "addCapability",
         "createProfile",
         "loadProfile",

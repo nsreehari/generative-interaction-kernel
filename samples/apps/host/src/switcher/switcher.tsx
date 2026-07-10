@@ -16,7 +16,7 @@ import {
   bundleFromJson,
   readProps,
   type Bundle,
-  type CapabilityViewProps,
+  type ProjectionViewProps,
   type EffectHandlerMap,
 } from "../../../../../adapters/react/src/index";
 import { BUNDLE_IDS } from "../bundles";
@@ -42,7 +42,7 @@ function SwitcherIcon(): React.ReactElement {
 }
 
 /** The `host:bundleSwitcher` view: a collapsed bubble that expands on hover into a bundle list. */
-function BundleSwitcherView({ node, emit }: CapabilityViewProps): React.ReactElement {
+function BundleSwitcherView({ node, emit }: ProjectionViewProps): React.ReactElement {
   const p = readProps(node);
   const items = p.list<string>("items");
   const current = p.str("current");
@@ -115,8 +115,8 @@ export function switcherBundle(current: string): Bundle {
       state: { switcher: { items: [...BUNDLE_IDS], current } },
     },
     {
-      components: { bundleSwitcher: BundleSwitcherView },
-      effects: switcherEffects,
+      projectionViews: { bundleSwitcher: BundleSwitcherView },
+      effectHandlers: switcherEffects,
     }
   );
 }

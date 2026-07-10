@@ -4,13 +4,13 @@
 import React from "react";
 import {
   buildRegistryFromImports,
-  type CapabilityViewProps,
+  type ProjectionViewProps,
   type ComponentRegistry,
   type ProviderMap,
 } from "./registry";
 import { readProps } from "./props";
 
-export function Board({ node, children }: CapabilityViewProps) {
+export function Board({ node, children }: ProjectionViewProps) {
   const title = readProps(node).str("title");
   return (
     <section data-cap="board">
@@ -20,7 +20,7 @@ export function Board({ node, children }: CapabilityViewProps) {
   );
 }
 
-export function Metric({ node }: CapabilityViewProps) {
+export function Metric({ node }: ProjectionViewProps) {
   const p = readProps(node);
   const label = p.str("label");
   const value = p.str("value");
@@ -49,7 +49,7 @@ function deriveColumns(rows: Row[]): string[] {
   return [...keys];
 }
 
-export function Table({ node, emit }: CapabilityViewProps) {
+export function Table({ node, emit }: ProjectionViewProps) {
   const rows = readProps(node).list<Row>("rows");
   const authored = readProps(node).list<string>("columns");
   const columns = authored.length ? authored : deriveColumns(rows);
@@ -84,7 +84,7 @@ export function Table({ node, emit }: CapabilityViewProps) {
   );
 }
 
-export function ActionButton({ node, emit }: CapabilityViewProps) {
+export function ActionButton({ node, emit }: ProjectionViewProps) {
   const label = readProps(node).str("label");
   return (
     <button data-cap="actions" type="button" onClick={() => emit("tap")}>
@@ -93,7 +93,7 @@ export function ActionButton({ node, emit }: CapabilityViewProps) {
   );
 }
 
-export function FallbackView({ node }: CapabilityViewProps) {
+export function FallbackView({ node }: ProjectionViewProps) {
   return (
     <div data-fallback data-cap={node.capability}>
       Unsupported capability: {node.capability}
@@ -112,7 +112,7 @@ export const liveCardsComponents: ProviderMap = {
 /**
  * The live-cards profile registry: resolves the namespaced `ui:*` capabilities (board/metric/table/
  * actions) through the profile provider. Nothing is ambient — the `ui` alias is bound explicitly to
- * this profile's components, mirroring a bundle's `externals.components`.
+ * this profile's projection views, mirroring a bundle's `externals.projectionViews`.
  */
 export const liveCardsRegistry: ComponentRegistry = buildRegistryFromImports(
   { ui: { from: "profile" } },

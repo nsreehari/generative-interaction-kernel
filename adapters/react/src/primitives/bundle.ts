@@ -21,7 +21,7 @@ import {
 import type React from "react";
 import { GenUIController } from "../controller";
 import { createEffectDispatcher, type EffectHandlerMap } from "./effects";
-import type { CapabilityView } from "../registry";
+import type { ProjectionView } from "../registry";
 
 /** The JSON-only part of a bundle — safe to store in state and embed via the `embed` primitive. */
 export interface SerializableBundle {
@@ -34,15 +34,15 @@ export interface SerializableBundle {
 /** A full bundle: the JSON parts plus any native code the bundle needs (functions). */
 export interface Bundle extends SerializableBundle {
   /** Named native effect handlers routed by `invoke`. */
-  effects?: EffectHandlerMap;
+  effectHandlers?: EffectHandlerMap;
   /** EXTRA capability -> component, layered over the shared floor when this bundle renders. */
-  components?: Record<string, CapabilityView>;
+  projectionViews?: Record<string, ProjectionView>;
 }
 
 /** The native code a JSON bundle attaches when it loads: named effects and/or extra components. */
 export interface BundleNative {
-  effects?: EffectHandlerMap;
-  components?: Record<string, CapabilityView>;
+  effectHandlers?: EffectHandlerMap;
+  projectionViews?: Record<string, ProjectionView>;
 }
 
 /**
@@ -103,8 +103,8 @@ export function bundleFromJson(json: unknown, native: BundleNative = {}): Bundle
     manifest: b.manifest as SerializableBundle["manifest"],
     document: b.document as SerializableBundle["document"],
     state: b.state,
-    effects: native.effects,
-    components: native.components,
+    effectHandlers: native.effectHandlers,
+    projectionViews: native.projectionViews,
   };
 }
 
@@ -137,7 +137,7 @@ export interface BundleRuntime {
  */
 export function loadBundleRuntime(bundle: Bundle): BundleRuntime {
   const state = seedState(bundle.manifest, bundle.state);
-  const orchestrator = createEffectDispatcher(state, bundle.effects ?? {});
+  const orchestrator = createEffectDispatcher(state, bundle.effectHandlers ?? {});
   const kernel = new Kernel(bundle.manifest, bundle.document, {
     state,
     orchestrator,

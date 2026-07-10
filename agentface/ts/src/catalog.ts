@@ -22,7 +22,7 @@ export function describeCatalog(manifest: unknown): Catalog {
   return {
     capabilities: Object.entries(m.capabilities ?? {}).map(([id, d]) => ({ id, ...d })),
     namespaces: m.namespaces ?? [],
-    effects: m.externals?.effects ?? [],
+    effects: m.externals?.effectHandlers ?? [],
   };
 }
 
@@ -33,5 +33,5 @@ export function namespaces(manifest: unknown): string[] {
 
 /** The external effect handlers (legal `invoke` targets) the host must supply. */
 export function effects(manifest: unknown): string[] {
-  return (unwrap(manifest) as ManifestPayload).externals?.effects ?? [];
+  return (unwrap(manifest) as ManifestPayload).externals?.effectHandlers ?? [];
 }

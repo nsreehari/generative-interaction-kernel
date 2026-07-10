@@ -6,8 +6,8 @@
 import React from "react";
 import {
   readProps,
-  type CapabilityView,
-  type CapabilityViewProps,
+  type ProjectionView,
+  type ProjectionViewProps,
 } from "../../../../../adapters/react/src/index";
 import {
   emptyEdits,
@@ -26,7 +26,7 @@ interface Option {
   label: string;
 }
 
-function PanelGroup({ children }: CapabilityViewProps) {
+function PanelGroup({ children }: ProjectionViewProps) {
   return <>{children}</>;
 }
 
@@ -57,7 +57,7 @@ const DISCLOSURE_OPTS: Option[] = [
  * control computes the *next* override set from the current one (preserving only what the user has
  * deliberately set) and emits it whole as `edit` — the on-handler stores it and the bridge re-plans.
  */
-function RegionEditor({ node, emit }: CapabilityViewProps) {
+function RegionEditor({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
   const items = p.list<EditRegionItem>("items");
   const edits = p.obj<PresentationEdits>("edits", emptyEdits);
@@ -177,10 +177,10 @@ function RegionEditor({ node, emit }: CapabilityViewProps) {
  * These are attached to the chrome/inspect bundles as their `self` provider components; everything
  * else (panel, select, field, textarea, button, note, tabBar, and the passive list/table displays
  * for facets, agent steps, region rows, and traces) resolves through the `ui` (floor) provider that
- * each bundle's manifest `externals.components` declares (see `buildBundleRegistry`). Nothing is
+ * each bundle's manifest `externals.projectionViews` declares (see `buildBundleRegistry`). Nothing is
  * ambient: a reference resolves only through an explicitly imported provider, else the fallback.
  */
-export const workbenchComponents: Record<string, CapabilityView> = {
+export const workbenchComponents: Record<string, ProjectionView> = {
   panelGroup: PanelGroup,
   regionEditor: RegionEditor,
 };
