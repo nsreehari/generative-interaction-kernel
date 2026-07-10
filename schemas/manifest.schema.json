@@ -69,11 +69,11 @@
         "externals": {
           "type": "object",
           "additionalProperties": false,
-          "description": "The bundle's outward dependency contract: imported component providers and required external effect handlers, grouped so a reader/agent can answer 'what does this bundle need from the host?' from one object.",
+          "description": "The bundle's outward dependency contract: imported projection-view providers and required external effect handlers, grouped so a reader/agent can answer 'what does this bundle need from the host?' from one object.",
           "properties": {
-            "components": {
+            "projectionViews": {
               "type": "object",
-              "description": "Alias -> component provider binding. A capability is referenced as `alias:name` and resolved through this map; nothing (not even the floor) is ambient.",
+              "description": "Alias -> projection-view provider binding. A capability is referenced as `alias:name` and resolved through this map; nothing (not even the floor) is ambient.",
               "additionalProperties": {
                 "type": "object",
                 "additionalProperties": false,
@@ -91,7 +91,7 @@
                 }
               }
             },
-            "effects": {
+            "effectHandlers": {
               "type": "array",
               "items": { "type": "string" },
               "description": "Names of effect handlers the host must supply for this bundle's `invoke` actions."

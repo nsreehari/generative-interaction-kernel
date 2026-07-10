@@ -22,7 +22,7 @@ const manifest: ManifestPayload = {
     text: { emits: ["submit"], dataProp: "value" },
     button: { emits: ["click"] },
   },
-  externals: { effects: ["saveItem"] },
+  externals: { effectHandlers: ["saveItem"] },
 };
 
 const cleanDoc = {

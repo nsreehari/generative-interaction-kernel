@@ -5,17 +5,17 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createElement } from "react";
-import type { ComponentImport } from "../../../kernel/src/types";
+import type { ProjectionViewImport } from "../../../kernel/src/types";
 import {
   buildRegistryFromImports,
   splitCapabilityRef,
-  type CapabilityView,
+  type ProjectionView,
   type ProviderMap,
 } from "../src/registry";
 
-const A: CapabilityView = () => createElement("a");
-const B: CapabilityView = () => createElement("b");
-const Fallback: CapabilityView = () => createElement("fallback");
+const A: ProjectionView = () => createElement("a");
+const B: ProjectionView = () => createElement("b");
+const Fallback: ProjectionView = () => createElement("fallback");
 
 const floor: ProviderMap = { list: A, table: A };
 const workbench: ProviderMap = { regionEditor: B };
@@ -30,14 +30,14 @@ test("splitCapabilityRef splits on the first colon and rejects bare / malformed 
 });
 
 test("an imported alias resolves to its provider's component", () => {
-  const imports: Record<string, ComponentImport> = { ui: { from: "floor" } };
+  const imports: Record<string, ProjectionViewImport> = { ui: { from: "floor" } };
   const reg = buildRegistryFromImports(imports, resolve, Fallback);
   assert.equal(reg.get("ui:list"), A);
   assert.equal(reg.get("ui:table"), A);
 });
 
 test("an unimported alias, a bare ref, and an unknown provider all miss (fall back)", () => {
-  const imports: Record<string, ComponentImport> = { ui: { from: "floor" } };
+  const imports: Record<string, ProjectionViewImport> = { ui: { from: "floor" } };
   const reg = buildRegistryFromImports(imports, resolve, Fallback);
   assert.equal(reg.get("wb:regionEditor"), undefined); // alias never imported
   assert.equal(reg.get("list"), undefined); // bare form is gone
@@ -46,7 +46,7 @@ test("an unimported alias, a bare ref, and an unknown provider all miss (fall ba
 });
 
 test("two providers can offer names picked explicitly by alias (cross-provider selection)", () => {
-  const imports: Record<string, ComponentImport> = {
+  const imports: Record<string, ProjectionViewImport> = {
     ui: { from: "floor" },
     wb: { from: "workbench" },
   };
@@ -56,7 +56,7 @@ test("two providers can offer names picked explicitly by alias (cross-provider s
 });
 
 test("a `use` whitelist restricts which names an alias exposes", () => {
-  const imports: Record<string, ComponentImport> = {
+  const imports: Record<string, ProjectionViewImport> = {
     ui: { from: "floor", use: ["list"] }, // table deliberately withheld
   };
   const reg = buildRegistryFromImports(imports, resolve, Fallback);

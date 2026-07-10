@@ -33,7 +33,7 @@
     },
     "capabilityRef": {
       "type": "string",
-      "description": "A capability reference: a bare name, or a namespaced `alias:name` resolved through the manifest's externals.components.",
+      "description": "A capability reference: a bare name, or a namespaced `alias:name` resolved through the manifest's externals.projectionViews.",
       "pattern": "^[A-Za-z_][A-Za-z0-9_-]*(:[A-Za-z_][A-Za-z0-9_-]*)?$"
     },
     "nsPath": {

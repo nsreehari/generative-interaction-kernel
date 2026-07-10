@@ -14,7 +14,7 @@ import {
 import { consoleEffects } from "./store";
 
 /** The console's consequential operations, routed by `invoke("<name>")`. */
-export const consoleNative: BundleNative = { effects: consoleEffects };
+export const consoleNative: BundleNative = { effectHandlers: consoleEffects };
 
 /** Apps the console document may mount by name via an `embed` leaf (`props.app`). */
 export const consoleApps: AppRegistry = { playground: playgroundApp };

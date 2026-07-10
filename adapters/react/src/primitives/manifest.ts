@@ -98,7 +98,7 @@ export function bundleManifest(opts: BundleManifestOptions): Enveloped<ManifestP
       namespaces: opts.namespaces ?? [],
       actions: [...PRIMITIVE_ACTIONS],
       capabilities: { ...primitives, ...(opts.extraCapabilities ?? {}) },
-      externals: { components: { [FLOOR_ALIAS]: { from: "floor" } } },
+      externals: { projectionViews: { [FLOOR_ALIAS]: { from: "floor" } } },
     },
   };
 }

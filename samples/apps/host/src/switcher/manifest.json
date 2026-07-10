@@ -13,7 +13,7 @@
       "emit"
     ],
     "externals": {
-      "components": {
+      "projectionViews": {
         "host": {
           "from": "self"
         }

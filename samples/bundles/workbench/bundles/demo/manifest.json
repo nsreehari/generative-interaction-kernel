@@ -7,7 +7,7 @@
     "namespaces": ["card_data", "requires", "fetched_sources", "computed_values"],
     "actions": ["assign", "derive", "invoke", "emit", "route", "confirm"],
     "externals": {
-      "components": {
+      "projectionViews": {
         "ui": { "from": "profile" }
       }
     },

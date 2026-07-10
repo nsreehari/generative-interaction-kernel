@@ -21,7 +21,7 @@ import inspectBundleJson from "./bundle.json";
  * with its custom views attached here. Loaded by the shared floor host like the chrome bundle; the
  * guest->inspect bridge (Workbench.tsx) streams the live guest's artifacts into its `inspect` state.
  */
-export const inspectBundle: Bundle = bundleFromJson(inspectBundleJson, { components: workbenchComponents });
+export const inspectBundle: Bundle = bundleFromJson(inspectBundleJson, { projectionViews: workbenchComponents });
 
 /** The `snapshot` payload the bridge feeds the inspector for the current guest state. */
 export function inspectSnapshot(

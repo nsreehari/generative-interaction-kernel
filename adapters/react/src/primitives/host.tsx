@@ -54,8 +54,8 @@ function LeafBundleHost({
 }): React.ReactElement {
   // Build the runtime once for the life of the host.
   const controller = React.useMemo(() => loadBundle(bundle), []); // eslint-disable-line react-hooks/exhaustive-deps
-  // Namespaced model: resolve every `alias:name` through the manifest `externals.components` (the
-  // floor is the `floor` provider, the bundle's own components are `self`). Nothing is ambient.
+  // Namespaced model: resolve every `alias:name` through the manifest `externals.projectionViews` (the
+  // floor is the `floor` provider, the bundle's own projection views are `self`). Nothing is ambient.
   const registry = React.useMemo(() => buildBundleRegistry(bundle), []); // eslint-disable-line react-hooks/exhaustive-deps
   const tree = <GenUIRoot source={controller} registry={registry} />;
   const withApps = apps ? <AppRegistryProvider apps={apps}>{tree}</AppRegistryProvider> : tree;

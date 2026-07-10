@@ -128,7 +128,7 @@
         }
       },
       "externals": {
-        "components": {
+        "projectionViews": {
           "ui": {
             "from": "floor"
           },

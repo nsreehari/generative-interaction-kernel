@@ -2,25 +2,25 @@
 // This is the RenderAdapter's vocabulary side: which component draws each capability.
 
 import type { ComponentType, ReactNode } from "react";
-import type { ComponentImport, ResolvedNode } from "../../../kernel/src/types";
+import type { ProjectionViewImport, ResolvedNode } from "../../../kernel/src/types";
 
-export interface CapabilityViewProps {
+export interface ProjectionViewProps {
   node: ResolvedNode;
   /** Emit a behavior event for this node (node id is already bound). */
   emit: (name: string, payload?: Record<string, unknown>) => void;
   children: ReactNode;
 }
 
-export type CapabilityView = ComponentType<CapabilityViewProps>;
+export type ProjectionView = ComponentType<ProjectionViewProps>;
 
 export interface ComponentRegistry {
-  get(capability: string): CapabilityView | undefined;
-  readonly fallback: CapabilityView;
+  get(capability: string): ProjectionView | undefined;
+  readonly fallback: ProjectionView;
 }
 
 export function createRegistry(
-  map: Record<string, CapabilityView>,
-  fallback: CapabilityView
+  map: Record<string, ProjectionView>,
+  fallback: ProjectionView
 ): ComponentRegistry {
   return {
     get: (capability) => map[capability],
@@ -37,7 +37,7 @@ export function createRegistry(
 // another bundle's capability by importing it under an alias.
 
 /** A provider's raw capability -> component map (e.g. the floor's primitives, a bundle's own components). */
-export type ProviderMap = Record<string, CapabilityView>;
+export type ProviderMap = Record<string, ProjectionView>;
 
 /** Resolve a provider name ("floor" | "self" | a bundle name) to its component map. */
 export type ProviderResolver = (from: string) => ProviderMap | undefined;
@@ -51,15 +51,15 @@ export function splitCapabilityRef(ref: string): { alias: string; name: string }
 
 /**
  * Build a registry that resolves namespaced `alias:name` capabilities through a bundle's imported
- * component providers (`externals.components`). A reference resolves only when: the alias is
+ * projection-view providers (`externals.projectionViews`). A reference resolves only when: the alias is
  * imported, the provider is known, the name exists in that provider, and (if the import declares a
  * `use` whitelist) the name is listed. Anything else falls through to `fallback` — an
  * undeclared/mistyped reference degrades gracefully, never crashes.
  */
 export function buildRegistryFromImports(
-  imports: Record<string, ComponentImport> | undefined,
+  imports: Record<string, ProjectionViewImport> | undefined,
   resolveProvider: ProviderResolver,
-  fallback: CapabilityView
+  fallback: ProjectionView
 ): ComponentRegistry {
   const specs = imports ?? {};
   return {
