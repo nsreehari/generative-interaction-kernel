@@ -2,7 +2,7 @@
 // presentation planner is a provider slot, deliberately NOT an authoring tool; AgentFace only
 // VALIDATES the Presentation DSL a planner (deterministic or AI) produced. Structural checks reuse
 // the interaction package's ajv schema; on top sits the hard invariant that a required facet is
-// never dropped. TS-only (no dotnet L4 peer). JSON in, JSON out.
+// never dropped. JSON in, JSON out.
 
 import {
   validatePresentationSpec,

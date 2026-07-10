@@ -1,7 +1,6 @@
 // The interaction track — the PRIMARY authoring altitude (the moat). Discovery + validation of an
 // InteractionSpec (L3): the domain-neutral "human goal pattern" an agent states instead of picking
-// widgets. TS-only, like the interaction package it wraps (there is no dotnet L3/L4 peer — the
-// dotnet side only owns the lowered kernel UI-DSL). JSON in, JSON out.
+// widgets. JSON in, JSON out.
 
 import {
   interactionTaxonomy,

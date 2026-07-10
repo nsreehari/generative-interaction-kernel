@@ -1,8 +1,8 @@
 // The MCP tool surface: one tool per AgentFace method, plus a PURE JSON-RPC dispatcher. This stays
 // transport-free — it turns a JSON-RPC message into a JSON-RPC reply and knows nothing about HTTP,
-// stdio, or SSE. A host (node-host `/mcp`, the WinUI host, or an in-proc caller) is a thin shell
+// stdio, or SSE. A host (node-host `/mcp`, or an in-proc caller) is a thin shell
 // that feeds messages in and writes replies out. Same "library first, wrap later" discipline as the
-// kernel-vs-transport seam. The C# peer is agentface/dotnet GenUI.AgentFace McpServer.
+// kernel-vs-transport seam.
 
 import { describeCatalog, namespaces, effects } from "./catalog";
 import { validateDocument, lint, authorDocument } from "./document";

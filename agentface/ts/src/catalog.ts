@@ -1,7 +1,7 @@
 // Discovery projection: turn a manifest (the profile's declared vocabulary) into a flat
 // catalog an authoring agent can read — capabilities with their schemas/emits, the declared
 // namespaces, and the external effect handlers. Nothing capability-specific is hardcoded; the
-// manifest handed in is the single source of truth. The C# peer is agentface/dotnet Catalog.
+// manifest handed in is the single source of truth.
 
 import { unwrap } from "../../../kernel/src/index";
 import type { CapabilityDescriptor, ManifestPayload } from "../../../kernel/src/index";
