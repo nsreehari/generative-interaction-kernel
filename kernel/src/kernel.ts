@@ -14,7 +14,7 @@ import {
 } from "./providers";
 import { resolveNode } from "./interpret";
 import { reduce, reduceActions } from "./reduce";
-import { validateDocumentMessage } from "./validate";
+import { validateDocumentMessage, validateDocumentProps } from "./validate";
 import {
   unwrap,
   type DocNode,
@@ -85,6 +85,7 @@ export class Kernel {
 
     this.manifest = unwrap(manifest);
     this.doc = unwrap(document);
+    if (opts.validate !== false) validateDocumentProps(this.doc, this.manifest.capabilities);
     this.expr = opts.expression ?? new JsonataExpressionProvider();
     this.predicateExpr = opts.predicateExpression ?? new JsonataExpressionProvider({ safe: true });
     this.registry = opts.registry ?? ManifestRegistry.fromManifest(this.manifest);
