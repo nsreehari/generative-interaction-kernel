@@ -1,4 +1,0 @@
-<!-- Empty: stops MSBuild from walking further up the tree, so this second-kernel
-     project stays isolated from any repo-root build props. -->
-<Project>
-</Project>

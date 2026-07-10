@@ -1,4 +1,4 @@
-// Headless checks for the AgentFace TS surface — the JS peer of GenUI.AgentFace.Check. Runs
+// Headless checks for the AgentFace TS surface. Runs
 // with `node --import tsx --test`. Asserts catalog projection, reference linting, dry-run
 // validation, and the author (commit) path, all JSON-shaped and transport-free.
 

@@ -42,10 +42,8 @@ conformance matrix** of portable JSON cases with a per-kernel runner (Phase 9) �
 | HITL confirm | **`confirm` contract** (`kernel/src/confirm.ts`): standard prompt payload, outcome vocabulary (`approved`/`denied`/`cancelled`/`timeout`), and `confirmed`/`dismissed` follow-up event names |
 | Observability | **Fixed trace points** (`TRACE_POINTS`) + reference `console`/`buffer`/`multi` sinks over the `TraceSink` seam; exporters stay out-of-core; traces are *not* on the behavioral conformance contract |
 | Optional layers | **No layer is mandatory**: a partial pipeline (e.g. single-stage `Domain → UI`) is valid; validation happens once at the UI-DSL boundary. **Streaming** of the initial document is deferred beyond v0.1 (complete document per message) |
-| Runner contract | **Cross-kernel semantics are pinned in prose** (`conformance/README.md`): envelope-or-bare loading, one dispatch = one patch = one rev (empty patches included), contractual op order, numeric-value number equality, determinism — the rules a second kernel's runner must honor |
-| Second kernel | **An independent C# reimplementation** (`kernel-dotnet/`, `System.Text.Json` only) passes the *same* `conformance/cases/*.json` as the TS reference — identical patches across two languages **is** reducer equivalence, the first proof of protocol-over-SDK |
-| Effect-seam conformance | **Deferred effects are scripted as data**: a case's optional `orchestrator` array supplies deterministic `invoke`/`confirm`/`navigate` responses, so both kernels prove the same settle order (reducer ops → effect ops → follow-up-event ops) at one rev |
-| Second render adapter | **A renderer-agnostic C# adapter core** (`adapters/dotnet/GenUI.Render`, generic over the view type) mirrors the React adapter's walk/registry/controller on the C# kernel — the Reactor/WinUI binding is a thin edge, not part of the portable core (ADR-0026) |
+| Runner contract | **Cross-kernel semantics are pinned in prose** (`conformance/README.md`): envelope-or-bare loading, one dispatch = one patch = one rev (empty patches included), contractual op order, numeric-value number equality, determinism — the rules any second kernel's runner must honor |
+| Effect-seam conformance | **Deferred effects are scripted as data**: a case's optional `orchestrator` array supplies deterministic `invoke`/`confirm`/`navigate` responses, so the kernel proves a stable settle order (reducer ops → effect ops → follow-up-event ops) at one rev |
 
 ## What this is not
 
@@ -105,17 +103,11 @@ genui-platform/
     src/                        ← types, providers, interpreter, reducer, kernel, transport, client, lowering, confirm, observability
     test/                       ← golden fixture + orchestrator effects + transport + client round-trip + resync + authoring + conformance + lowering + confirm + observability
     tsconfig.json
-  kernel-dotnet/                ← second kernel: an independent C# reimplementation (ADR-0024)
-    GenUI.Kernel/               ← the kernel library (System.Text.Json only, zero NuGet deps)
-    GenUI.Conformance/          ← C# runner over the same conformance/cases (npm run test:dotnet)
   adapters/
     react/                      ← Phase 2 React render adapter
       src/                      ← registry, renderer, controller, live-cards components, source-agnostic hook
       test/                     ← tree render, gate flip, event wiring, fallback, render-over-the-wire
       tsconfig.json
-    dotnet/                     ← second render adapter: renderer-agnostic C# core (ADR-0026)
-      GenUI.Render/             ← Render<TView> walk + registry + controller (System.Text.Json only)
-      GenUI.Render.Check/       ← headless checks over the real kernel (npm run test:dotnet-render)
   interaction/                  ← Interaction (L3) + Presentation (L4) layers (ADR-0017/0018)
       src/                      ← interaction taxonomy, presentation compiler, presentation→UI lowering
       test/                     ← context-varied presentation, review interpret, fallback facets, full pipe
