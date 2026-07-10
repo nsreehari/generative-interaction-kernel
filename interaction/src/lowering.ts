@@ -49,6 +49,7 @@ export function lowerPresentation(
     const children: DocNode[] = p.regions.map((region) => {
       // resolution order: explicit region override -> role binding -> region name (fallback).
       const capability =
+        region.capability ??
         binding.regionCapability?.[region.name] ??
         binding.roleCapability?.[region.role] ??
         region.name;

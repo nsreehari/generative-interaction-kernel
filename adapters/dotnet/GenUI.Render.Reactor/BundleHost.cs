@@ -21,11 +21,12 @@ public static class BundleHost
         Bundle bundle,
         string title = "GenUI (Reactor)",
         int width = 1024,
-        int height = 768)
+        int height = 768,
+        GenUIFileServices? fileServices = null)
     {
         ArgumentNullException.ThrowIfNull(bundle);
         GenUIController controller = BundleLoader.LoadBundle(bundle);
-        ReactorHost.Run(controller, title, width, height);
+        ReactorHost.Run(controller, title, width, height, fileServices);
     }
 
     /// <summary>Load a named app from a registry and run it. Mounting an app == running its bundle.</summary>

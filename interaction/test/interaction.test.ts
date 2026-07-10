@@ -222,9 +222,21 @@ test("a review interaction lowers to a valid, kernel-interpretable document", as
   assert.equal((k.state() as any).card_data.selected, "order-42");
 });
 
-test("unbound facet roles render as graceful fallbacks (forward-compatible)", async () => {
-  // investigate's `relationships` facet has role `graph`, which live-cards does not bind;
-  // its `actions` facet (role `actions`) is bound. Bound roles resolve; unbound fall back.
+test("specific live-cards regions can target distinct floor leaves above coarse role bindings", async () => {
+  const spec: InteractionSpec = { interaction: "plan", subject: "incident" };
+  const message = lowerToDocument(
+    (s: InteractionSpec) => compileInteraction(s, { surface: "desktop" }, liveCardsBinding),
+    spec
+  );
+  const k = new Kernel(manifest, message, { state: new InMemoryStateModel(manifestPayload.namespaces ?? []) });
+  k.init();
+  const resolved = await k.resolve();
+
+  assert.equal(findResolved(resolved, "tasks-region")?.capability, "ui:todo", "tasks region upgrades collection -> todo");
+  assert.equal(findResolved(resolved, "tasks-region")?.fallback, false, "tasks region resolves through the floor");
+});
+
+test("graph and narrative regions resolve to distinct floor leaves when the binding overrides them", async () => {
   const spec: InteractionSpec = { interaction: "investigate", subject: "incident" };
   const message = lowerToDocument(
     (s: InteractionSpec) => compileInteraction(s, { surface: "desktop" }, liveCardsBinding),
@@ -234,7 +246,24 @@ test("unbound facet roles render as graceful fallbacks (forward-compatible)", as
   k.init();
   const resolved = await k.resolve();
 
-  assert.equal(findResolved(resolved, "relationships-region")?.fallback, true, "unbound `graph` role falls back");
+  assert.equal(findResolved(resolved, "relationships-region")?.capability, "ui:chart", "graph region resolves to chart");
+  assert.equal(findResolved(resolved, "context-region")?.capability, "ui:markdown", "narrative region resolves to markdown");
+  assert.equal(findResolved(resolved, "relationships-region")?.fallback, false, "graph region no longer falls back");
+});
+
+test("unbound facet roles still render as graceful fallbacks (forward-compatible)", async () => {
+  // create/configure's `form` facet remains intentionally unbound until the upper layer can
+  // discriminate richer form surfaces without collapsing them to one leaf too early.
+  const spec: InteractionSpec = { interaction: "create", subject: "ticket" };
+  const message = lowerToDocument(
+    (s: InteractionSpec) => compileInteraction(s, { surface: "desktop" }, liveCardsBinding),
+    spec
+  );
+  const k = new Kernel(manifest, message, { state: new InMemoryStateModel(manifestPayload.namespaces ?? []) });
+  k.init();
+  const resolved = await k.resolve();
+
+  assert.equal(findResolved(resolved, "form-region")?.fallback, true, "unbound `form` role still falls back");
   assert.equal(findResolved(resolved, "actions-region")?.fallback, false, "bound `actions` role resolves");
 });
 
@@ -290,6 +319,67 @@ test("a region's static `props` flow generically into node props; data binds ont
   assert.equal(detail?.props?.sortable, true, "authored sortable flows to props");
   assert.equal(detail?.props?.priority, "primary", "platform placement fields survive alongside authored props");
   assert.deepEqual(detail?.edges?.read, { rows: "fetched_sources.orders" }, "data binds onto the table's dataProp");
+});
+
+test("authored facetViews preserve form spec and concrete capability through planning/lowering", () => {
+  const spec: InteractionSpec = {
+    interaction: "configure",
+    subject: "card_data",
+    data: { settings: "card_data.status" },
+    facetViews: {
+      settings: {
+        capability: "ui:selection",
+        props: {
+          fields: {
+            properties: {
+              status: { title: "Status", enum: ["open", "closed"] },
+            },
+            required: ["status"],
+          },
+        },
+      },
+    },
+  };
+
+  const doc = compileInteraction(spec, { surface: "desktop" }, liveCardsBinding, defaultPresentationPlanner, manifestPayload.capabilities);
+  const settings = doc.root.edges?.children?.find((child) => child.id === "settings-region");
+
+  assert.equal(settings?.capability, "ui:selection", "authored facet view overrides the coarse form binding");
+  assert.deepEqual((settings?.props as Record<string, unknown>)?.fields, {
+    properties: {
+      status: { title: "Status", enum: ["open", "closed"] },
+    },
+    required: ["status"],
+  }, "authored field spec survives into node props");
+  assert.deepEqual(settings?.edges?.read, { options: "card_data.status" }, "selection binds onto its dataProp");
+});
+
+test("authored facetViews can choose committed searchbox over the coarse form role", () => {
+  const spec: InteractionSpec = {
+    interaction: "create",
+    subject: "card_data",
+    data: { form: "card_data.query" },
+    facetViews: {
+      form: {
+        capability: "ui:searchbox",
+        props: {
+          fields: {
+            properties: {
+              q: { title: "Query", type: "string" },
+            },
+          },
+          actionLabel: "Run",
+        },
+      },
+    },
+  };
+
+  const doc = compileInteraction(spec, { surface: "desktop" }, liveCardsBinding, defaultPresentationPlanner, manifestPayload.capabilities);
+  const form = doc.root.edges?.children?.find((child) => child.id === "form-region");
+
+  assert.equal(form?.capability, "ui:searchbox", "authored facet view can select searchbox");
+  assert.equal((form?.props as Record<string, unknown>)?.actionLabel, "Run", "authored props survive into the node");
+  assert.deepEqual(form?.edges?.read, { value: "card_data.query" }, "searchbox binds onto its value prop");
 });
 
 test("presentation edits are sparse overrides on top of the planner (hide, re-rank, disclose, reorder)", () => {

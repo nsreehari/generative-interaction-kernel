@@ -78,6 +78,18 @@ export function validateInteraction(spec: unknown): InteractionReport {
         }
       }
     }
+
+    if (s.facetViews && typeof s.facetViews === "object" && !Array.isArray(s.facetViews)) {
+      const resolved =
+        explicitOk && Array.isArray(s.capabilities)
+          ? new Set(s.capabilities as string[])
+          : facetNames;
+      for (const key of Object.keys(s.facetViews)) {
+        if (!resolved.has(key)) {
+          warn("view-for-unknown-facet", `facetViews entry '${key}' matches no facet of this interaction`, key);
+        }
+      }
+    }
   }
 
   return { ok: errors.length === 0, errors, warnings };

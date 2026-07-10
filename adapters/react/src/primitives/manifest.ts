@@ -43,10 +43,17 @@ export const PRIMITIVE_CAPABILITIES: Record<string, CapabilityDescriptor> = {
   badge: { propsSchema: anyProps }, // value + tone
   metric: { propsSchema: anyProps }, // label + value
   codeBlock: { propsSchema: anyProps }, // scrollable monospace block for JSON/code dumps (reads `code`)
+  chart: { propsSchema: anyProps, dataProp: "data" }, // read-only chart: spec + bound data -> native render
+  markdown: { propsSchema: anyProps, dataProp: "value" }, // markdown text, rendered read-only
+  markup: { propsSchema: anyProps, dataProp: "value" }, // explicit alias of markdown
+  todo: { propsSchema: anyProps, emits: ["save"], dataProp: "items" }, // committed todo list: bound items + save {items}
+  editableTable: { propsSchema: anyProps, emits: ["save"], dataProp: "rows" }, // committed editable grid: spec + bound rows -> save {rows}
+  multiFileUpload: { propsSchema: anyProps, emits: ["submit"], dataProp: "data" }, // grouped files + staged upload composer, submit emits metadata
 
   // --- Data display (bind data into `items`/`rows`) ---
   list: { propsSchema: anyProps, emits: ["select"] }, // items + field-key spec, emits select {id}
   table: { propsSchema: anyProps, emits: ["rowSelect"] }, // rows + columns, emits rowSelect {id}
+  selection: { propsSchema: anyProps, emits: ["select"], dataProp: "options" }, // single-field committed picker
 
   // --- Inputs (emit interaction; documents route via `on`) ---
   field: { propsSchema: anyProps, emits: ["input"] }, // label + value + placeholder
@@ -55,6 +62,8 @@ export const PRIMITIVE_CAPABILITIES: Record<string, CapabilityDescriptor> = {
   button: { propsSchema: anyProps, emits: ["press"] }, // label + tone + disabled
   tabBar: { propsSchema: anyProps, emits: ["select"] }, // active + options, emits select {value}
   chips: { propsSchema: anyProps, emits: ["remove"] }, // items + emits remove {value}
+  searchbox: { propsSchema: anyProps, emits: ["submit"], dataProp: "value" }, // committed single-field search input
+  query: { propsSchema: anyProps, emits: ["submit"], dataProp: "value" }, // explicit alias of searchbox
 
   // --- Composition: embed a whole bundle/app as a nested runtime ---
   embed: { propsSchema: anyProps }, // props.app: registered app by name | props.bundle: inline { manifest, document, state }

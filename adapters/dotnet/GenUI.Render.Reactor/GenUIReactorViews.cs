@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Nodes;
 using GenUI.Render;
+using System.Globalization;
 using Microsoft.UI.Reactor;
 using Microsoft.UI.Reactor.Core;
 using Microsoft.UI.Reactor.Layout;
@@ -44,9 +45,16 @@ public static class GenUIReactorViews
             ["ui:badge"] = Badge,
             ["ui:metric"] = Metric,
             ["ui:codeBlock"] = CodeBlock,
+            ["ui:chart"] = ChartPrimitive,
+            ["ui:markdown"] = MarkdownView,
+            ["ui:markup"] = MarkdownView,
+            ["ui:todo"] = Todo,
+            ["ui:editableTable"] = EditableTable,
+            ["ui:multiFileUpload"] = MultiFileUpload,
             // Data display
             ["ui:list"] = List,
             ["ui:table"] = Table,
+            ["ui:selection"] = Selection,
             // Inputs
             ["ui:field"] = Field,
             ["ui:textarea"] = TextArea,
@@ -54,6 +62,8 @@ public static class GenUIReactorViews
             ["ui:button"] = ButtonView,
             ["ui:tabBar"] = TabBar,
             ["ui:chips"] = Chips,
+            ["ui:searchbox"] = Searchbox,
+            ["ui:query"] = Searchbox,
             // Composition
             ["ui:embed"] = Embed,
             // Live-cards profile leaves that share the `ui` alias.
@@ -244,6 +254,31 @@ public static class GenUIReactorViews
             .WithBorder(GenUITheme.Stroke)
             .CornerRadius(4);
 
+    // A native chart leaf. Mirrors the demo-boards chart contract: config lives in props (`chartType`,
+    // `columns`, `series`, `stacked`, `legend`, `height`, ...) and the dynamic payload rides on `data`.
+    private static Element ChartPrimitive(CapabilityViewProps<Element> p) =>
+        Component<ChartPrimitiveComponent, ChartPrimitiveProps>(new ChartPrimitiveProps(p.Node.Props));
+
+    // A read-only markdown block. `markup` is an explicit alias of the same leaf.
+    private static Element MarkdownView(CapabilityViewProps<Element> p)
+    {
+        string text = StrOr(p.Node.Props, "value", StrOr(p.Node.Props, "text", string.Empty));
+        return string.IsNullOrWhiteSpace(text) ? Empty() : Markdown(text.Trim());
+    }
+
+    // A committed todo list. Bound items may arrive in `items` or `baseItems`; each mutation emits save {items}.
+    private static Element Todo(CapabilityViewProps<Element> p) =>
+        Component<TodoPrimitiveComponent, TodoPrimitiveProps>(new TodoPrimitiveProps(p.Node.Props, p.Emit));
+
+    // A committed editable grid. Bound rows may arrive in `rows` or `baseRows`; save emits save {rows}.
+    private static Element EditableTable(CapabilityViewProps<Element> p) =>
+        Component<EditableTablePrimitiveComponent, EditableTablePrimitiveProps>(new EditableTablePrimitiveProps(p.Node.Props, p.Emit));
+
+    // A grouped file viewer + upload composer. It emits JSON-safe file metadata on submit and,
+    // when the host provides file services, also forwards the real staged files for upload.
+    private static Element MultiFileUpload(CapabilityViewProps<Element> p) =>
+        Component<MultiFileUploadPrimitiveComponent, MultiFileUploadPrimitiveProps>(new MultiFileUploadPrimitiveProps(p.Node.Props, p.Emit));
+
     // --- Shared floor: data display ---------------------------------------------------------
 
     // A list of items. String items render their value; object items read primary/secondary/badge/
@@ -313,6 +348,12 @@ public static class GenUIReactorViews
 
         return VStack(4, rows.ToArray());
     }
+
+    // A committed single-select. It mirrors the demo-boards selection kind's contract:
+    // `fields` declares one property, `options` supplies choices when the field has no enum,
+    // and a change emits select {value}.
+    private static Element Selection(CapabilityViewProps<Element> p) =>
+        Component<SelectionPrimitiveComponent, SelectionPrimitiveProps>(new SelectionPrimitiveProps(p.Node.Props, p.Emit));
 
     // --- Shared floor: inputs ---------------------------------------------------------------
 
@@ -417,6 +458,11 @@ public static class GenUIReactorViews
         return HStack(6, chips);
     }
 
+    // A committed single-field input. It mirrors the demo-boards searchbox kind's contract:
+    // `fields` declares one property, `value` seeds the journal, and submit emits submit {value}.
+    private static Element Searchbox(CapabilityViewProps<Element> p) =>
+        Component<SearchboxPrimitiveComponent, SearchboxPrimitiveProps>(new SearchboxPrimitiveProps(p.Node.Props, p.Emit));
+
     // --- Shared floor: composition ----------------------------------------------------------
 
     // Hosts a whole bundle in a leaf. `props.bundle` is an inline JSON bundle (runtime-built, e.g. a
@@ -452,7 +498,7 @@ public static class GenUIReactorViews
     }
 
     // Reads a prop as a display string: strings pass through; numbers/bools stringify.
-    private static string? Str(JsonObject? props, string key)
+    internal static string? Str(JsonObject? props, string key)
     {
         if (props is null || !props.TryGetPropertyValue(key, out var node) || node is null)
         {
@@ -465,14 +511,14 @@ public static class GenUIReactorViews
     }
 
     // Reads a prop as a display string with a fallback for missing/null values.
-    private static string StrOr(JsonObject? props, string key, string fallback) => Str(props, key) ?? fallback;
+    internal static string StrOr(JsonObject? props, string key, string fallback) => Str(props, key) ?? fallback;
 
     // Reads a single JSON node as a string: string values pass through; scalars stringify.
-    private static string NodeStr(JsonNode? node) =>
+    internal static string NodeStr(JsonNode? node) =>
         node is JsonValue v && v.TryGetValue<string>(out var s) ? s : node?.ToJsonString() ?? string.Empty;
 
     // Reads a prop as a bool: honours JSON booleans and the "true" string.
-    private static bool Bool(JsonObject? props, string key)
+    internal static bool Bool(JsonObject? props, string key)
     {
         if (props is null || !props.TryGetPropertyValue(key, out var node) || node is not JsonValue value)
         {
@@ -488,11 +534,11 @@ public static class GenUIReactorViews
     }
 
     // Reads a prop as an array (empty when missing or not an array).
-    private static JsonArray ListArray(JsonObject? props, string key) =>
+    internal static JsonArray ListArray(JsonObject? props, string key) =>
         props?[key] as JsonArray ?? new JsonArray();
 
     // Reads a prop as an object (null when missing or not an object).
-    private static JsonObject? Obj(JsonObject? props, string key) => props?[key] as JsonObject;
+    internal static JsonObject? Obj(JsonObject? props, string key) => props?[key] as JsonObject;
 
     // Maps a spacing keyword (or numeric string) to a stack gap.
     private static double Spacing(JsonObject? props) => Str(props, "spacing") switch
@@ -515,4 +561,600 @@ public static class GenUIReactorViews
         "muted" => GenUITheme.MutedText,
         _ => GenUITheme.PrimaryText,
     };
+
+    internal sealed record SingleFieldConfig(
+        string FieldKey,
+        JsonObject Prop,
+        string CurrentValue,
+        IReadOnlyList<JsonNode?> Options,
+        bool IsRequired);
+
+    internal static SingleFieldConfig? ReadSingleFieldConfig(JsonObject? props)
+    {
+        JsonObject? schema = Obj(props, "fields");
+        JsonObject? properties = Obj(schema, "properties");
+        if (properties is null || properties.Count != 1)
+        {
+            return null;
+        }
+
+        KeyValuePair<string, JsonNode?> entry = properties.First();
+        JsonObject prop = entry.Value as JsonObject ?? new JsonObject();
+        JsonArray enumOptions = prop["enum"] as JsonArray ?? new JsonArray();
+        JsonArray options = enumOptions.Count > 0 ? enumOptions : ListArray(props, "options");
+        JsonArray required = schema?["required"] as JsonArray ?? new JsonArray();
+
+        return new SingleFieldConfig(
+            entry.Key,
+            prop,
+            StrOr(props, "value", string.Empty),
+            options.ToArray(),
+            required.Any(r => NodeStr(r) == entry.Key));
+    }
+
+    internal static JsonNode CoerceFieldValue(string raw, JsonObject prop)
+    {
+        string type = StrOr(prop, "type", string.Empty);
+        if (type is "number" or "integer")
+        {
+            if (raw.Length == 0)
+            {
+                return JsonValue.Create(string.Empty)!;
+            }
+
+            return double.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsed)
+                ? JsonValue.Create(parsed)!
+                : JsonValue.Create(raw)!;
+        }
+
+        return JsonValue.Create(raw)!;
+    }
+}
+
+public sealed record SelectionPrimitiveProps(JsonObject? Props, EmitBound Emit);
+
+public sealed class SelectionPrimitiveComponent : Component<SelectionPrimitiveProps>
+{
+    public override Element Render()
+    {
+        GenUIReactorViews.SingleFieldConfig? field = GenUIReactorViews.ReadSingleFieldConfig(Props.Props);
+        if (field is null)
+        {
+            return TextBlock("No selection configured").Foreground(GenUITheme.MutedText);
+        }
+
+        string[] labels = field.Options
+            .Select(o => o is JsonObject oo
+                ? GenUIReactorViews.Str(oo, "label") ?? GenUIReactorViews.Str(oo, "title") ?? GenUIReactorViews.Str(oo, "value") ?? GenUIReactorViews.Str(oo, "id") ?? string.Empty
+                : GenUIReactorViews.NodeStr(o))
+            .ToArray();
+        string[] values = field.Options
+            .Select(o => o is JsonObject oo
+                ? GenUIReactorViews.Str(oo, "value") ?? GenUIReactorViews.Str(oo, "id") ?? GenUIReactorViews.Str(oo, "label") ?? string.Empty
+                : GenUIReactorViews.NodeStr(o))
+            .ToArray();
+
+        bool allowEmpty = !field.IsRequired;
+        var items = new List<string>();
+        if (allowEmpty)
+        {
+            items.Add("All");
+        }
+        items.AddRange(labels);
+
+        int index = Array.FindIndex(values, v => v == field.CurrentValue);
+        int selectedIndex = allowEmpty ? (index < 0 ? 0 : index + 1) : Math.Max(index, 0);
+        string title = GenUIReactorViews.Str(field.Prop, "title") ?? field.FieldKey;
+
+        return ComboBox(items.ToArray(), selectedIndex, i =>
+            {
+                int pos = allowEmpty ? i - 1 : i;
+                string next = pos < 0 ? string.Empty : pos < values.Length ? values[pos] : string.Empty;
+                Props.Emit("select", new JsonObject { ["value"] = next });
+            })
+            .AutomationName(title);
+    }
+}
+
+public sealed record SearchboxPrimitiveProps(JsonObject? Props, EmitBound Emit);
+
+public sealed class SearchboxPrimitiveComponent : Component<SearchboxPrimitiveProps>
+{
+    public override Element Render()
+    {
+        GenUIReactorViews.SingleFieldConfig? field = GenUIReactorViews.ReadSingleFieldConfig(Props.Props);
+        string buttonLabel = GenUIReactorViews.StrOr(Props.Props, "actionLabel", "Search");
+        (string journal, Action<string> setJournal) = UseState(field?.CurrentValue ?? string.Empty);
+
+        UseEffect(() =>
+        {
+            setJournal(field?.CurrentValue ?? string.Empty);
+            return () => { };
+        }, field?.CurrentValue ?? string.Empty);
+
+        if (field is null)
+        {
+            return TextBlock("No search field configured").Foreground(GenUITheme.MutedText);
+        }
+
+        string placeholder = GenUIReactorViews.Str(field.Prop, "placeholder")
+            ?? GenUIReactorViews.Str(field.Prop, "title")
+            ?? field.FieldKey;
+        string title = GenUIReactorViews.Str(field.Prop, "title") ?? field.FieldKey;
+
+        return HStack(8,
+            TextBox(journal, setJournal, placeholder, string.Empty)
+                .AutomationName(title)
+                .Flex(grow: 1),
+            Button(buttonLabel, () => Props.Emit("submit", new JsonObject { ["value"] = GenUIReactorViews.CoerceFieldValue(journal, field.Prop) }))
+                .AutomationName(buttonLabel));
+    }
+}
+
+public sealed record TodoPrimitiveProps(JsonObject? Props, EmitBound Emit);
+
+public sealed class TodoPrimitiveComponent : Component<TodoPrimitiveProps>
+{
+    private sealed record TodoItem(string Text, bool Done)
+    {
+        public JsonObject ToJson() => new()
+        {
+            ["text"] = Text,
+            ["done"] = Done,
+        };
+    }
+
+    public override Element Render()
+    {
+        IReadOnlyList<TodoItem> incoming = ReadItems(Props.Props);
+        (IReadOnlyList<TodoItem> items, Action<IReadOnlyList<TodoItem>> setItems) = UseState(incoming);
+        (string draft, Action<string> setDraft) = UseState(string.Empty);
+
+        UseEffect(() =>
+        {
+            setItems(incoming);
+            return () => { };
+        }, Signature(incoming));
+
+        void Save(IReadOnlyList<TodoItem> next)
+        {
+            setItems(next);
+            Props.Emit("save", new JsonObject
+            {
+                ["items"] = new JsonArray(next.Select(item => (JsonNode)item.ToJson()).ToArray()),
+            });
+        }
+
+        var rows = new List<Element>();
+        if (items.Count == 0)
+        {
+            rows.Add(TextBlock("Nothing here yet.").Foreground(GenUITheme.MutedText));
+        }
+        else
+        {
+            for (int index = 0; index < items.Count; index++)
+            {
+                int rowIndex = index;
+                TodoItem item = items[rowIndex];
+                rows.Add(HStack(8,
+                        CheckBox(item.Done, value =>
+                        {
+                            var next = items.ToList();
+                            next[rowIndex] = next[rowIndex] with { Done = value };
+                            Save(next);
+                        }, string.Empty).AutomationName(item.Text.Length > 0 ? item.Text : $"Todo {rowIndex + 1}"),
+                        TextBlock(item.Text)
+                            .Foreground(GenUITheme.PrimaryText)
+                            .Opacity(item.Done ? 0.65 : 1.0)
+                            .Flex(grow: 1),
+                        Button("×", () => Save(items.Where((_, itemIndex) => itemIndex != rowIndex).ToList()))
+                            .AutomationName($"Remove {item.Text}"))
+                    .WithKey($"todo-{rowIndex}"));
+            }
+        }
+
+        string placeholder = GenUIReactorViews.StrOr(Props.Props, "placeholder", "Add item...");
+        string actionLabel = GenUIReactorViews.StrOr(Props.Props, "actionLabel", "+");
+        string composerLabel = GenUIReactorViews.StrOr(Props.Props, "composerLabel", "Add todo item");
+
+        rows.Add(HStack(8,
+            TextBox(draft, setDraft, placeholder, string.Empty)
+                .AutomationName(composerLabel)
+                .Flex(grow: 1),
+            Button(actionLabel, () =>
+            {
+                string text = draft.Trim();
+                if (text.Length == 0)
+                {
+                    return;
+                }
+
+                Save(items.Append(new TodoItem(text, false)).ToList());
+                setDraft(string.Empty);
+            }).AutomationName(actionLabel)));
+
+        return VStack(8, rows.ToArray())
+            .Padding(8)
+            .Background(GenUITheme.Surface)
+            .WithBorder(GenUITheme.Stroke)
+            .CornerRadius(6);
+    }
+
+    private static IReadOnlyList<TodoItem> ReadItems(JsonObject? props)
+    {
+        JsonArray items = GenUIReactorViews.ListArray(props, "items");
+        if (items.Count == 0)
+        {
+            items = GenUIReactorViews.ListArray(props, "baseItems");
+        }
+
+        return items.Select(item => item as JsonObject)
+            .Where(item => item is not null)
+            .Select(item => new TodoItem(
+                GenUIReactorViews.Str(item, "text") ?? string.Empty,
+                GenUIReactorViews.Bool(item, "done")))
+            .ToList();
+    }
+
+    private static string Signature(IReadOnlyList<TodoItem> items) =>
+        string.Join("|", items.Select(item => $"{item.Text}:{item.Done}"));
+}
+
+public sealed record EditableTablePrimitiveProps(JsonObject? Props, EmitBound Emit);
+
+public sealed class EditableTablePrimitiveComponent : Component<EditableTablePrimitiveProps>
+{
+    public override Element Render()
+    {
+        JsonObject spec = GenUIReactorViews.Obj(Props.Props, "spec") ?? new JsonObject();
+        IReadOnlyList<Dictionary<string, JsonNode?>> incomingRows = ReadRows(Props.Props);
+        (IReadOnlyList<Dictionary<string, JsonNode?>> rows, Action<IReadOnlyList<Dictionary<string, JsonNode?>>> setRows) = UseState(incomingRows);
+        (bool dirty, Action<bool> setDirty) = UseState(false);
+
+        UseEffect(() =>
+        {
+            setRows(incomingRows);
+            setDirty(false);
+            return () => { };
+        }, Signature(incomingRows));
+
+        string[] columns = ReadColumns(spec, rows).ToArray();
+        bool canAdd = !spec.TryGetPropertyValue("addRow", out JsonNode? addNode) || addNode is not JsonValue addValue || !addValue.TryGetValue<bool>(out bool addBool) || addBool;
+        bool canDelete = !spec.TryGetPropertyValue("deleteRow", out JsonNode? deleteNode) || deleteNode is not JsonValue deleteValue || !deleteValue.TryGetValue<bool>(out bool deleteBool) || deleteBool;
+        string placeholder = GenUIReactorViews.Str(spec, "placeholder") ?? "No data";
+
+        void UpdateRows(IReadOnlyList<Dictionary<string, JsonNode?>> next)
+        {
+            setRows(next);
+            setDirty(true);
+        }
+
+        if (columns.Length == 0 && !canAdd)
+        {
+            return TextBlock(placeholder).Foreground(GenUITheme.MutedText);
+        }
+
+        var tableRows = new List<Element>();
+        tableRows.Add(HStack(8, columns.Select(column => (Element)TextBlock(column).Bold().FontSize(11).Foreground(GenUITheme.MutedText)).ToArray()));
+
+        if (rows.Count == 0)
+        {
+            tableRows.Add(TextBlock(placeholder).Foreground(GenUITheme.MutedText));
+        }
+        else
+        {
+            for (int rowIndex = 0; rowIndex < rows.Count; rowIndex++)
+            {
+                int capturedRow = rowIndex;
+                Dictionary<string, JsonNode?> row = rows[capturedRow];
+                var cells = new List<Element>();
+                foreach (string column in columns)
+                {
+                    bool isNumber = IsNumericColumn(spec, row, column);
+                    string current = GenUIReactorViews.NodeStr(row.TryGetValue(column, out JsonNode? value) ? value : null);
+                    string capturedColumn = column;
+                    cells.Add(TextBox(current, text =>
+                        {
+                            var next = CloneRows(rows);
+                            next[capturedRow][capturedColumn] = isNumber
+                                ? (text.Length == 0 ? JsonValue.Create(0d) : GenUIReactorViews.CoerceFieldValue(text, new JsonObject { ["type"] = isNumber ? "number" : "string" }))
+                                : JsonValue.Create(text);
+                            UpdateRows(next);
+                        })
+                        .AutomationName($"{capturedColumn} {capturedRow + 1}")
+                        .Flex(grow: 1));
+                }
+
+                if (canDelete)
+                {
+                    cells.Add(Button("×", () => UpdateRows(rows.Where((_, index) => index != capturedRow).Select(CloneRow).ToList()))
+                        .AutomationName($"Remove row {capturedRow + 1}"));
+                }
+
+                tableRows.Add(HStack(8, cells.ToArray()).WithKey($"editable-row-{capturedRow}"));
+            }
+        }
+
+        var actions = new List<Element>();
+        if (canAdd)
+        {
+            actions.Add(Button("+ Add row", () =>
+                {
+                    var next = CloneRows(rows);
+                    var blank = new Dictionary<string, JsonNode?>(StringComparer.Ordinal);
+                    foreach (string column in columns)
+                    {
+                        blank[column] = JsonValue.Create(string.Empty);
+                    }
+
+                    next.Add(blank);
+                    UpdateRows(next);
+                }).AutomationName("Add row"));
+        }
+
+        if (dirty)
+        {
+            actions.Add(Button("Discard", () =>
+                {
+                    setRows(ReadRows(Props.Props));
+                    setDirty(false);
+                }).AutomationName("Discard changes"));
+            actions.Add(Button("Save", () =>
+                {
+                    Props.Emit("save", new JsonObject { ["rows"] = new JsonArray(rows.Select(r => (JsonNode)ToJson(r)).ToArray()) });
+                    setDirty(false);
+                }).AutomationName("Save changes"));
+        }
+
+        return VStack(8,
+                VStack(6, tableRows.ToArray())
+                    .Padding(8)
+                    .Background(GenUITheme.Surface)
+                    .WithBorder(GenUITheme.Stroke)
+                    .CornerRadius(6),
+                actions.Count > 0 ? HStack(6, actions.ToArray()) : Empty())
+            .WithKey("editable-table-root");
+    }
+
+    private static IReadOnlyList<Dictionary<string, JsonNode?>> ReadRows(JsonObject? props)
+    {
+        JsonArray rows = GenUIReactorViews.ListArray(props, "rows");
+        if (rows.Count == 0)
+        {
+            rows = GenUIReactorViews.ListArray(props, "baseRows");
+        }
+
+        return rows.Select(row => row as JsonObject)
+            .Where(row => row is not null)
+            .Select(row => row!.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal))
+            .ToList();
+    }
+
+    private static IReadOnlyList<string> ReadColumns(JsonObject spec, IReadOnlyList<Dictionary<string, JsonNode?>> rows)
+    {
+        JsonArray explicitColumns = GenUIReactorViews.ListArray(spec, "columns");
+        if (explicitColumns.Count > 0)
+        {
+            return explicitColumns.Select(GenUIReactorViews.NodeStr).ToList();
+        }
+
+        JsonObject? schema = spec["schema"] as JsonObject;
+        JsonObject? properties = schema? ["properties"] as JsonObject;
+        if (properties is not null && properties.Count > 0)
+        {
+            return properties.Select(kv => kv.Key).ToList();
+        }
+
+        return rows.Count > 0 ? rows[0].Keys.ToList() : Array.Empty<string>();
+    }
+
+    private static bool IsNumericColumn(JsonObject spec, Dictionary<string, JsonNode?> row, string column)
+    {
+        JsonObject? schema = spec["schema"] as JsonObject;
+        JsonObject? properties = schema?["properties"] as JsonObject;
+        JsonObject? prop = properties?[column] as JsonObject;
+        string type = GenUIReactorViews.Str(prop, "type") ?? string.Empty;
+        if (type is "number" or "integer")
+        {
+            return true;
+        }
+
+        return row.TryGetValue(column, out JsonNode? value) && value is JsonValue json && (json.TryGetValue<double>(out _) || json.TryGetValue<int>(out _) || json.TryGetValue<long>(out _));
+    }
+
+    private static List<Dictionary<string, JsonNode?>> CloneRows(IReadOnlyList<Dictionary<string, JsonNode?>> rows) =>
+        rows.Select(CloneRow).ToList();
+
+    private static Dictionary<string, JsonNode?> CloneRow(Dictionary<string, JsonNode?> row) =>
+        row.ToDictionary(kv => kv.Key, kv => kv.Value?.DeepClone(), StringComparer.Ordinal);
+
+    private static JsonObject ToJson(Dictionary<string, JsonNode?> row)
+    {
+        var result = new JsonObject();
+        foreach (KeyValuePair<string, JsonNode?> entry in row)
+        {
+            result[entry.Key] = entry.Value?.DeepClone();
+        }
+
+        return result;
+    }
+
+    private static string Signature(IReadOnlyList<Dictionary<string, JsonNode?>> rows) =>
+        string.Join("|", rows.Select(row => string.Join(",", row.Select(entry => $"{entry.Key}:{GenUIReactorViews.NodeStr(entry.Value)}"))));
+}
+
+public sealed record MultiFileUploadPrimitiveProps(JsonObject? Props, EmitBound Emit);
+
+public sealed class MultiFileUploadPrimitiveComponent : Component<MultiFileUploadPrimitiveProps>
+{
+    public override Element Render()
+    {
+        JsonNode? rawData = Props.Props? ["data"];
+        JsonArray files = ResolveFiles(rawData, Props.Props);
+        JsonArray groups = ResolveGroups(rawData, Props.Props);
+        GenUIFileServices? fileServices = ReactorHost.CurrentFileServices;
+        (string text, Action<string> setText) = UseState(string.Empty);
+        (IReadOnlyList<GenUIStagedFile> staged, Action<IReadOnlyList<GenUIStagedFile>> setStaged) = UseState<IReadOnlyList<GenUIStagedFile>>(Array.Empty<GenUIStagedFile>());
+
+        async void Attach()
+        {
+            if (fileServices?.PickAttachmentsAsync is null)
+            {
+                return;
+            }
+
+            IReadOnlyList<string> accept = GenUIReactorViews.ListArray(Props.Props, "accept").Select(GenUIReactorViews.NodeStr).ToList();
+            IReadOnlyList<GenUIStagedFile> picked = await fileServices.PickAttachmentsAsync(true, accept);
+            if (picked.Count == 0)
+            {
+                return;
+            }
+
+            var merged = staged.ToList();
+            foreach (GenUIStagedFile file in picked)
+            {
+                if (!merged.Any(existing => existing.Name == file.Name && existing.Size == file.Size))
+                {
+                    merged.Add(file);
+                }
+            }
+
+            setStaged(merged);
+        }
+
+        void Submit()
+        {
+            if (staged.Count == 0)
+            {
+                return;
+            }
+
+            string trimmed = text.Trim();
+            Props.Emit("submit", new JsonObject
+            {
+                ["text"] = trimmed,
+                ["files"] = new JsonArray(staged.Select(file => (JsonNode)file.ToMetadataJson()).ToArray()),
+            });
+
+            if (fileServices?.UploadFilesMultiple is not null)
+            {
+                _ = fileServices.UploadFilesMultiple(staged.Select(file => file.ToData()).ToList(), trimmed);
+            }
+
+            setText(string.Empty);
+            setStaged(Array.Empty<GenUIStagedFile>());
+        }
+
+        var children = new List<Element>();
+        if (groups.Count > 0)
+        {
+            children.Add(VStack(8, groups
+                .Select((groupNode, index) => (Element)RenderGroup(groupNode as JsonObject, index, files))
+                .ToArray()));
+        }
+
+        if (staged.Count > 0)
+        {
+            children.Add(HStack(6, staged.Select((file, index) => (Element)HStack(4,
+                    TextBlock($"{file.Name} ({FormatSize(file.Size)})").Foreground(GenUITheme.PrimaryText),
+                    Button("×", () => setStaged(staged.Where((_, itemIndex) => itemIndex != index).ToList()))
+                        .AutomationName($"Remove {file.Name}"))
+                .WithKey($"staged-{index}")).ToArray()));
+        }
+
+        string placeholder = GenUIReactorViews.StrOr(Props.Props, "placeholder", "Add a message…");
+        string submitLabel = GenUIReactorViews.StrOr(Props.Props, "submitLabel", "Upload");
+        children.Add(HStack(8,
+            Button("Attach files", Attach).AutomationName("Attach files").Set(button => button.IsEnabled = fileServices?.PickAttachmentsAsync is not null),
+            TextBox(text, setText, placeholder, string.Empty).AutomationName(placeholder).Flex(grow: 1),
+            Button(submitLabel, Submit).AutomationName(submitLabel).Set(button => button.IsEnabled = staged.Count > 0)));
+
+        return VStack(12, children.ToArray())
+            .Padding(8)
+            .Background(GenUITheme.Surface)
+            .WithBorder(GenUITheme.Stroke)
+            .CornerRadius(6);
+    }
+
+    private static Element RenderGroup(JsonObject? group, int groupIndex, JsonArray files)
+    {
+        string? message = GenUIReactorViews.Str(group, "message");
+        JsonArray indexes = group?["file_idxs"] as JsonArray ?? new JsonArray();
+        var rows = new List<Element>();
+        if (!string.IsNullOrWhiteSpace(message))
+        {
+            rows.Add(TextBlock(message.Trim()).Foreground(GenUITheme.PrimaryText));
+        }
+
+        rows.Add(HStack(6, indexes
+            .Select(indexNode => indexNode is JsonValue value && value.TryGetValue<int>(out int fileIndex) && fileIndex >= 0 && fileIndex < files.Count
+                ? (Element)TextBlock(FileLabel(files[fileIndex], fileIndex)).Foreground(GenUITheme.MutedText)
+                : Empty())
+            .ToArray()));
+
+        return VStack(6, rows.ToArray()).WithKey($"group-{groupIndex}");
+    }
+
+    private static JsonArray ResolveFiles(JsonNode? rawData, JsonObject? props)
+    {
+        if (rawData is JsonArray bareFiles)
+        {
+            return bareFiles;
+        }
+
+        if (rawData is JsonObject map && map["files"] is JsonArray files)
+        {
+            return files;
+        }
+
+        return GenUIReactorViews.ListArray(props, "files");
+    }
+
+    private static JsonArray ResolveGroups(JsonNode? rawData, JsonObject? props)
+    {
+        if (rawData is JsonObject map && map["filegroups"] is JsonArray groups)
+        {
+            return groups;
+        }
+
+        return GenUIReactorViews.ListArray(props, "filegroups");
+    }
+
+    private static string FileLabel(JsonNode? fileNode, int fallbackIndex)
+    {
+        JsonObject? file = fileNode as JsonObject;
+        string name = GenUIReactorViews.Str(file, "name")
+            ?? GenUIReactorViews.Str(file, "stored_name")
+            ?? $"file {fallbackIndex}";
+        double? size = file?["size"] is JsonValue sizeValue && sizeValue.TryGetValue<double>(out double fileSize) ? fileSize : null;
+        return size is > 0 ? $"{name} ({FormatSize((long)size.Value)})" : name;
+    }
+
+    private static string FormatSize(long size)
+    {
+        if (size <= 0)
+        {
+            return "Unknown size";
+        }
+
+        if (size < 1024)
+        {
+            return $"{size} B";
+        }
+
+        double kb = size / 1024.0;
+        if (kb < 1024)
+        {
+            return $"{Math.Max(1, Math.Round(kb)):0} KB";
+        }
+
+        double mb = kb / 1024.0;
+        if (mb < 1024)
+        {
+            return mb >= 100 ? $"{mb:0} MB" : $"{mb:0.0} MB";
+        }
+
+        double gb = mb / 1024.0;
+        return gb >= 100 ? $"{gb:0} GB" : $"{gb:0.0} GB";
+    }
 }

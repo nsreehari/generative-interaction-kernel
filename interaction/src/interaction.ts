@@ -6,6 +6,8 @@
 // failed" (productivity), "review a candidate" (HR) — the noun changes, the interaction
 // does not. So this layer is domain-neutral and platform-owned.
 //
+import type { Json } from "../../kernel/src/index";
+
 // NOTE on the word "capabilities": at this layer it means experience *facets*
 // (timeline / evidence / actions) an interaction is made of. This is a DIFFERENT concept
 // from a kernel "capability" (a UI component kind like board/metric/table). We keep the
@@ -27,6 +29,15 @@ export type InteractionKind =
   | "decide";
 
 /** A statement of interaction intent — the equivalent of a React component, one level up. */
+export interface InteractionFacetView {
+  /** Optional concrete kernel capability for this facet (e.g. ui:selection, ui:searchbox). */
+  capability?: string;
+  /** Optional static capability props/spec that must survive into node.props. */
+  props?: Record<string, Json>;
+  /** Optional concrete presentation hint (e.g. relationship_graph, timeline). */
+  presentation?: string;
+}
+
 export interface InteractionSpec {
   interaction: InteractionKind;
   /** the domain noun under interaction (e.g. "incident", "candidate", "expense"). */
@@ -37,6 +48,8 @@ export interface InteractionSpec {
   intent?: { goal?: string; [k: string]: unknown };
   /** facet -> namespace path the facet reads its data from (domain/profile supplied). */
   data?: Record<string, string>;
+  /** facet -> authored concrete capability/spec hints preserved into presentation + lowering. */
+  facetViews?: Record<string, InteractionFacetView>;
 }
 
 /**
