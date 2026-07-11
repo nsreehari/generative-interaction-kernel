@@ -18,7 +18,7 @@ import {
 import { readProps } from "../props";
 import { GenUIRoot } from "../useGenUI";
 import { loadBundle, bundleSignature, type Bundle, type SerializableBundle } from "./bundle";
-import { useApp } from "./apps";
+import { useBundleRegistry } from "./bundle-registry";
 import { useGenUIFileServices } from "./fileServices";
 
 interface Option {
@@ -1178,10 +1178,16 @@ function Embed({ node }: ProjectionViewProps) {
   //   props.app     -> a KNOWN app resolved by name from the registry (carries native effects)
   //   props.bundle  -> an INLINE JSON bundle from state (runtime-built, e.g. preview/playground)
   const appName = p.str("app", "");
-  const appBundle = useApp(appName || null);
   const inline = p.obj<SerializableBundle | null>("bundle", null);
-  const bundle: SerializableBundle | Bundle | null = appBundle ?? inline;
+  const registry = useBundleRegistry();
   const sig = appName ? `app:${appName}` : bundleSignature(inline);
+  // Resolve the source bundle once per signature: a registered app by name (bundle-kind), else the
+  // inline JSON bundle from state. Building it inside the memo keeps the factory from re-running.
+  const bundle = React.useMemo<SerializableBundle | Bundle | null>(() => {
+    const entry = appName ? registry?.get(appName) : undefined;
+    return entry?.kind === "bundle" ? entry.make() : inline;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sig]);
   const controller = React.useMemo(
     () => (bundle ? loadBundle(bundle) : null),
     [sig] // eslint-disable-line react-hooks/exhaustive-deps
@@ -1189,14 +1195,17 @@ function Embed({ node }: ProjectionViewProps) {
   // Every embedded bundle — a named app or an inline JSON bundle — resolves its `alias:name`
   // capabilities through its own manifest `externals.projectionViews` (the floor via the `floor`
   // provider, its own projection views via `self`).
-  const registry = React.useMemo(
+  // Every embedded bundle — a named app or an inline JSON bundle — resolves its `alias:name`
+  // capabilities through its own manifest `externals.projectionViews` (the floor via the `floor`
+  // provider, its own projection views via `self`).
+  const renderRegistry = React.useMemo(
     () => (bundle ? buildBundleRegistry(bundle as Bundle) : null),
     [sig] // eslint-disable-line react-hooks/exhaustive-deps
   );
-  if (!controller || !registry) return <p className="gx-muted">{p.str("emptyText", "Nothing to preview.")}</p>;
+  if (!controller || !renderRegistry) return <p className="gx-muted">{p.str("emptyText", "Nothing to preview.")}</p>;
   return (
     <div className="gx-bundle">
-      <GenUIRoot source={controller} registry={registry} />
+      <GenUIRoot source={controller} registry={renderRegistry} />
     </div>
   );
 }

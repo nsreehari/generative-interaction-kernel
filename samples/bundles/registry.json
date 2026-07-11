@@ -1,0 +1,7 @@
+{
+  "default": "console",
+  "bundles": {
+    "console": { "kind": "json" },
+    "workbench": { "kind": "native-root" }
+  }
+}
