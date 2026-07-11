@@ -9,7 +9,9 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { handleMcpMessage, MCP_PROTOCOL_VERSION } from "../../../agentface/ts/src/index";
 
 /** A pure JSON-RPC 2.0 dispatcher: one message in, one reply out (or `undefined` for a notification). */
-export type McpMessageHandler = (message: unknown) => Record<string, unknown> | undefined;
+export type McpMessageHandler = (
+  message: unknown
+) => (Record<string, unknown> | undefined) | Promise<Record<string, unknown> | undefined>;
 
 export interface McpHttpServerOptions {
   /** The path the JSON-RPC route mounts at; defaults to `/mcp`. */
@@ -78,7 +80,7 @@ export class McpHttpServer {
       );
       return true;
     }
-    const reply = this.handler(message);
+    const reply = await this.handler(message);
     if (reply === undefined) {
       res.writeHead(204).end(); // notification — no body
       return true;

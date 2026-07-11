@@ -1,8 +1,8 @@
-// The MCP tool surface: one tool per AgentFace method, plus a PURE JSON-RPC dispatcher. This stays
-// transport-free — it turns a JSON-RPC message into a JSON-RPC reply and knows nothing about HTTP,
-// stdio, or SSE. A host (node-host `/mcp`, or an in-proc caller) is a thin shell
-// that feeds messages in and writes replies out. Same "library first, wrap later" discipline as the
-// kernel-vs-transport seam.
+// AgentFace as an MCP tool catalog: one tool per AgentFace method. These are the agent-safe SUBSET —
+// pure, design-time authoring/validation tools (manifest/document/spec come in as JSON args, so no
+// live kernel is needed). ControlFace's full catalog re-uses this exact list and adds the live
+// runtime tools; AgentFace is that catalog filtered to this allowlist. The JSON-RPC dispatch lives
+// in ./tool-surface — shared by both faces so the projection is literally "filter the tool list".
 
 import { describeCatalog, namespaces, effects } from "./catalog";
 import { validateDocument, lint, authorDocument } from "./document";
@@ -10,17 +10,10 @@ import { validateCapability } from "./capability";
 import { describeInteractions, validateInteraction } from "./interaction";
 import { validatePresentation } from "./presentation";
 import { validateIntent, intentToEdits } from "./intent";
+import { createMcpDispatcher, type McpTool } from "./tool-surface";
 
-/** The advertised protocol version (MCP revision this surface speaks). */
-export const MCP_PROTOCOL_VERSION = "2025-06-18";
-
-/** A single MCP tool: metadata for `tools/list` plus the JSON->JSON handler `tools/call` invokes. */
-export interface AgentFaceTool {
-  name: string;
-  description: string;
-  inputSchema: Record<string, unknown>;
-  handler: (args: Record<string, unknown>) => unknown;
-}
+/** @deprecated Use {@link McpTool}. Retained as an alias for existing imports. */
+export type AgentFaceTool = McpTool;
 
 const obj = (properties: Record<string, unknown>, required: string[] = []): Record<string, unknown> => ({
   type: "object",
@@ -31,7 +24,7 @@ const obj = (properties: Record<string, unknown>, required: string[] = []): Reco
 const any = { type: "object" } as const;
 
 /** One tool per public AgentFace method. Handlers are the JSON-native library functions verbatim. */
-export const agentFaceTools: AgentFaceTool[] = [
+export const agentFaceTools: McpTool[] = [
   {
     name: "describeCatalog",
     description: "Project a manifest into a discovery catalog (capabilities, namespaces, effects).",
@@ -106,79 +99,17 @@ export const agentFaceTools: AgentFaceTool[] = [
   },
 ];
 
-const byName = new Map(agentFaceTools.map((t) => [t.name, t]));
+/** AgentFace dispatcher over the (pure) tool subset. Same machinery ControlFace uses. */
+const dispatcher = createMcpDispatcher(agentFaceTools, { name: "genui-agentface", version: "0.1" });
 
 /** Tool metadata for `tools/list` (drops the handler). */
-export function listTools(): { name: string; description: string; inputSchema: Record<string, unknown> }[] {
-  return agentFaceTools.map(({ name, description, inputSchema }) => ({ name, description, inputSchema }));
-}
-
+export const listTools = dispatcher.listTools;
 /** Invoke one tool by name. Throws {@link McpToolError} for an unknown tool. */
-export function callTool(name: string, args: Record<string, unknown> = {}): unknown {
-  const tool = byName.get(name);
-  if (!tool) throw new McpToolError(`unknown tool: ${name}`);
-  return tool.handler(args ?? {});
-}
-
-export class McpToolError extends Error {}
-
-// --- JSON-RPC 2.0 (the MCP wire contract), pure and transport-free ---------
-
-interface JsonRpcRequest {
-  jsonrpc?: string;
-  id?: string | number | null;
-  method?: string;
-  params?: Record<string, unknown>;
-}
-
-const rpcError = (id: unknown, code: number, message: string) => ({
-  jsonrpc: "2.0",
-  id: id ?? null,
-  error: { code, message },
-});
-const rpcResult = (id: unknown, result: unknown) => ({ jsonrpc: "2.0", id: id ?? null, result });
-
+export const callTool = dispatcher.callTool;
 /**
- * Handle one MCP JSON-RPC message and return the reply object (or `undefined` for a notification —
- * a request with no `id`). Supports `initialize`, `tools/list`, and `tools/call`. Pure: no I/O.
+ * Handle one MCP JSON-RPC message and return the reply (or `undefined` for a notification). AgentFace
+ * tools are all synchronous, so this returns synchronously. Supports `initialize`/`tools/list`/`tools/call`.
  */
-export function handleMcpMessage(message: unknown): Record<string, unknown> | undefined {
-  const req = (message ?? {}) as JsonRpcRequest;
-  const { id, method, params } = req;
-  const isNotification = id === undefined;
-
-  switch (method) {
-    case "initialize":
-      return rpcResult(id, {
-        protocolVersion: MCP_PROTOCOL_VERSION,
-        capabilities: { tools: {} },
-        serverInfo: { name: "genui-agentface", version: "0.1" },
-      });
-    case "notifications/initialized":
-      return undefined; // client notification, no reply
-    case "tools/list":
-      return rpcResult(id, { tools: listTools() });
-    case "tools/call": {
-      const name = params?.name as string | undefined;
-      const args = (params?.arguments as Record<string, unknown>) ?? {};
-      if (!name || !byName.has(name)) {
-        return isNotification ? undefined : rpcError(id, -32602, `unknown tool: ${String(name)}`);
-      }
-      try {
-        const result = callTool(name, args);
-        return rpcResult(id, {
-          content: [{ type: "text", text: JSON.stringify(result) }],
-          structuredContent: result,
-        });
-      } catch (e) {
-        // A tool that throws is reported as a tool result with isError, per MCP.
-        return rpcResult(id, {
-          content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }],
-          isError: true,
-        });
-      }
-    }
-    default:
-      return isNotification ? undefined : rpcError(id, -32601, `method not found: ${String(method)}`);
-  }
-}
+export const handleMcpMessage = dispatcher.handleMcpMessage as (
+  message: unknown
+) => Record<string, unknown> | undefined;

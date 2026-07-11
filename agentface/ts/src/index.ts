@@ -7,4 +7,5 @@ export * from "./capability";
 export * from "./interaction";
 export * from "./presentation";
 export * from "./intent";
+export * from "./tool-surface";
 export * from "./mcp";
