@@ -1,9 +1,13 @@
 // ControlFace: the render/drive + control-plane FACE over a live bundle, and the boundary a render
 // transport (SSE) binds to. Everything behind it — kernel, reducer, interpreter, broker, GUP codec —
-// is internal composition; a transport binds to THIS face, never to the internal broker. It
-// implements the minimal `TransportBroker` contract (so SSE plugs into the face) and exposes the
-// in-process control ops (the UI/API surface). The agent-safe AgentFace projection is carved from
-// this superset — the trust boundary is which face a transport exposes.
+// is internal composition; a transport binds to THIS face, never to the internal broker.
+//
+// Two distinct surfaces live here:
+//   - the JSON tool catalog (see ./tools `controlFaceTools`): getState/getTree/emit/checkpoint/
+//     effectsSince as JSON->JSON ops, dispatched over the same MCP dispatcher AgentFace uses. The
+//     methods below are the impls those tools wrap. AgentFace is this catalog filtered to its allowlist.
+//   - the render STREAM: `attach` is streaming plumbing for SSE (it takes a live transport and returns
+//     a detach handle), NOT a JSON tool. It implements `TransportBroker` so SSE plugs into the face.
 
 import {
   Kernel,
@@ -43,7 +47,10 @@ export class ControlFace implements TransportBroker {
     this.broker = new KernelTransportHost(manifest, document, this.kernel);
   }
 
-  /** Render-transport binding: attach a connection (optional `fromRev` resume), get a detach handle. */
+  /**
+   * Streaming plumbing (NOT a JSON tool): attach a render connection (optional `fromRev` resume) and
+   * get a detach handle. SSE binds through this; the tool catalog is the request/response surface.
+   */
   attach(transport: TransportProvider, fromRev?: number): Promise<() => void> {
     return this.broker.attach(transport, fromRev);
   }

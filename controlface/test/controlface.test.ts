@@ -1,8 +1,9 @@
-// The ControlFace host co-hosts both faces on ONE live kernel: the UI/API render+drive channel
-// (SSE `/gup`) and the agent channel (MCP `/mcp`, the AgentFace projection). This proves a render
-// client and an MCP client talk to the same runtime over one server, and that an in-process
-// controlface `emit()` broadcasts its patch to the connected render client (live drive), not just a
-// silent kernel poke.
+// The ControlFace host co-hosts the faces on ONE live kernel: the UI/API render stream (SSE `/gup`)
+// and two MCP channels over one tool catalog — `/mcp` (the AgentFace subset) and `/mcp-control` (the
+// full control-plane catalog with the live runtime tools). These prove a render client and MCP
+// clients talk to the same runtime over one server, that the AgentFace projection is literally the
+// catalog filtered to an allowlist, and that a control-plane `emit` tool/call drives the kernel and
+// broadcasts its patch to the connected render client (live drive), not just a silent kernel poke.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -16,8 +17,15 @@ import {
   InMemoryStateModel,
   type ResolvedNode,
 } from "../../kernel/src/index";
+import { agentFaceTools } from "../../agentface/ts/src/index";
 import { SseClientTransport } from "../../transports/http-sse/src/index";
-import { ControlfaceHost } from "../src/index";
+import {
+  AGENTFACE_ALLOWLIST,
+  ControlFace,
+  ControlfaceHost,
+  controlFaceTools,
+  runtimeTools,
+} from "../src/index";
 
 const fx = (name: string) =>
   JSON.parse(
@@ -124,4 +132,80 @@ test("controlface read ops observe live state without a transport", async () => 
   assert.equal(computed.total, 150);
   assert.equal(find(await host.getTree(), "metric-total")?.props.value, 150);
   host.stop();
+});
+
+test("AgentFace is the ControlFace catalog filtered to the allowlist (projection is real)", () => {
+  const face = new ControlFace(manifest, document, { state: seededState() });
+  const full = controlFaceTools(face).map((t) => t.name);
+  const agent = agentFaceTools.map((t) => t.name);
+  const runtime = runtimeTools(face).map((t) => t.name);
+
+  // AgentFace names are a strict subset of the full control-plane catalog.
+  for (const name of agent) assert.ok(full.includes(name), `agent tool ${name} missing from catalog`);
+  // The allowlist IS the agent subset; filtering the catalog by it reproduces AgentFace exactly.
+  assert.deepEqual(full.filter((n) => AGENTFACE_ALLOWLIST.has(n)).sort(), [...agent].sort());
+  // The live runtime tools are control-plane-only — never exposed to agents.
+  for (const name of runtime) assert.equal(AGENTFACE_ALLOWLIST.has(name), false, `${name} leaked to agents`);
+  assert.ok(runtime.includes("emit") && runtime.includes("getState"));
+  face.stop();
+});
+
+test("the /mcp agent channel serves the subset; /mcp-control adds the live runtime tools", async () => {
+  const host = new ControlfaceHost(manifest, document, { state: seededState() });
+  const { baseUrl, server } = await mount(host);
+
+  const list = async (path: string): Promise<Set<string>> => {
+    const res = await fetch(`${baseUrl}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+    });
+    const reply = (await res.json()) as { result: { tools: { name: string }[] } };
+    return new Set(reply.result.tools.map((t) => t.name));
+  };
+
+  const agent = await list("/mcp");
+  const control = await list("/mcp-control");
+
+  // Agent channel: authoring tools present, live runtime tools absent.
+  assert.ok(agent.has("describeCatalog"));
+  assert.equal(agent.has("emit"), false);
+  // Control channel: superset — same authoring tools plus the live runtime tools.
+  assert.ok(control.has("describeCatalog") && control.has("emit") && control.has("getState"));
+  for (const name of agent) assert.ok(control.has(name), `control channel missing ${name}`);
+
+  host.stop();
+  await close(server);
+});
+
+test("a control-plane MCP tools/call drives the live kernel and broadcasts to render clients", async () => {
+  const host = new ControlfaceHost(manifest, document, { state: seededState() });
+  const { baseUrl, server } = await mount(host);
+
+  const client = new GenUIClient(new SseClientTransport(baseUrl));
+  client.start();
+  await waitFor(() => find(client.getTree(), "btn-approve") !== undefined);
+  assert.equal(find(client.getTree(), "btn-approve")?.visible, false);
+
+  // Drive via the control-plane MCP `emit` tool (async handler) over the wire.
+  const res = await fetch(`${baseUrl}/mcp-control`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: {
+        name: "emit",
+        arguments: { event: { node: "table-orders", name: "rowSelect", payload: { id: "order-42" } } },
+      },
+    }),
+  });
+  const reply = (await res.json()) as { result: { structuredContent: { rev: number } } };
+  assert.equal(reply.result.structuredContent.rev, 1);
+  await waitFor(() => find(client.getTree(), "btn-approve")?.visible === true);
+
+  client.stop();
+  host.stop();
+  await close(server);
 });
