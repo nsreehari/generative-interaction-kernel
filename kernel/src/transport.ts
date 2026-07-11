@@ -4,6 +4,7 @@ import {
   unwrap,
   type DocumentPayload,
   type Enveloped,
+  type GupEvent,
   type GupMessage,
   type ManifestPayload,
   type Patch,
@@ -128,15 +129,24 @@ export class KernelTransportHost {
     for (const transport of this.connections) await transport.send(message);
   }
 
-  private onMessage(message: GupMessage): Promise<void> {
-    if (message.type !== "event") return Promise.resolve();
-
+  /**
+   * Drive the kernel from in-process (a UI/API caller or a co-located agent) and broadcast the
+   * resulting patch to every connection — the same authoritative path a wired `event` takes.
+   * Serialized behind the shared dispatch queue so in-process and wired events stay monotonic.
+   */
+  dispatch(event: GupEvent): Promise<Patch> {
+    let captured: Patch | undefined;
     this.dispatchQueue = this.dispatchQueue.then(async () => {
-      const patch = await this.kernel.dispatch(message.payload);
+      const patch = await this.kernel.dispatch(event);
       this.appendLog(patch);
       await this.broadcast(envelope("patch", patch));
+      captured = patch;
     });
+    return this.dispatchQueue.then(() => captured!);
+  }
 
-    return this.dispatchQueue;
+  private onMessage(message: GupMessage): Promise<void> {
+    if (message.type !== "event") return Promise.resolve();
+    return this.dispatch(message.payload).then(() => undefined);
   }
 }
