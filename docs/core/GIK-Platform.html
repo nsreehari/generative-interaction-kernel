@@ -348,7 +348,7 @@
 <h3>Unlocking Safe Generation</h3>
 <p>The seductive failure mode of AI-native UI is to treat the model as a direct screen generator: prompt in, XAML or a raw control tree out. This collapses the boundary entirely, leaving the app exposed to hallucinatory generation with no validation surface. This architecture answers a different, enabling question: <em>how do we bring AI into the render loop intelligently and safely?</em></p>
 
-<h2>5. Where This Sits &mdash; Prior Art &amp; Positioning</h2>
+<h2>7. Where This Sits &mdash; Prior Art &amp; Positioning</h2>
 <p>The architecture is not a control library, not server-driven UI, and not direct model generation. Positioned against what a WinUI developer uses today, it is defined precisely by contrast:</p>
 <table>
   <thead>
@@ -393,7 +393,7 @@
 </table>
 <p>The distinguishing move is raising the unit of authorship from <em>control</em> (Fluent), through <em>view</em> (MVVM) and <em>hand-composed component tree</em> (Reactor today), up to <em>interaction intent</em> &mdash; while keeping a closed, verifiable grammar underneath so that generation never escapes into unpredictable outcomes. The UI layer is not the competitor here; it is the projection this evolution drives.</p>
 
-<h2>6. The Experience Stack vs. Kernel Boundary</h2>
+<h2>8. The Experience Stack vs. Kernel Boundary</h2>
 <div class="section-split">
 <figure class="svg-figure split-figure">
 <svg viewBox="0 0 780 680" role="img" aria-label="Experience stack from Intent Graph down to Render Tree, split by the Kernel Boundary">
@@ -463,35 +463,35 @@
 <div class="split-text">
 <p>The complete journey from user intent to execution is a stack of sequential graph representations. The Kernel orchestrates the bottom tiers universally — meaning the pure reducer computes interaction and behavior state regardless of whether the projection is UI or a headless process.</p>
 
-<h3>6.1.1 Intent Graph (Why)</h3>
+<h3>8.1.1 Intent Graph (Why)</h3>
 <p>Captures declarative goals, constraints, and success criteria. It does not describe execution or UI.<br>
 <em>Example:</em> Restore Service &rarr; Minimize Downtime, Preserve Customer Trust.</p>
 
-<h3>6.1.2 Activity Graph (What)</h3>
+<h3>8.1.2 Activity Graph (What)</h3>
 <p>Organizes durable work over time across sessions, participants, and surfaces. Tracks memory, artifacts, and cross-session progress.<br>
 <em>Example:</em> Anomaly Response &rarr; Investigation, Remediation, Monitoring.</p>
 
-<h3>6.1.3 Workflow Graph (How)</h3>
+<h3>8.1.3 Workflow Graph (How)</h3>
 <p>Captures executable processes, sequencing, branching, and state transitions. Managed by workflow engines or agent execution graphs.<br>
 <em>Example:</em> Assign Investigator &rarr; Collect Evidence &rarr; Approve Fix.</p>
 
-<h3>6.2.1 Interaction Graph (Engagement)</h3>
+<h3>8.2.1 Interaction Graph (Engagement)</h3>
 <p>Captures reusable human-agent interaction patterns. This is the entry point for the evolved platform &mdash; the first new tier above Reactor. Describes experience semantics, not control trees.<br>
 <em>Example:</em> Investigate Anomaly &rarr; Compare Logs &rarr; Collaborate with Expert.</p>
 
-<h3>6.2.2 Presentation Graph (Organization)</h3>
+<h3>8.2.2 Presentation Graph (Organization)</h3>
 <p>A surface-agnostic representation of information architecture and attention priority &mdash; the second new tier above Reactor.<br>
 <em>Example:</em> Investigation Workspace &rarr; [Summary Region: High], [Timeline Region: Med].</p>
 
-<h3>6.2.3 Render Tree &mdash; The External Side-Effect</h3>
+<h3>8.2.3 Render Tree &mdash; The External Side-Effect</h3>
 <p>The concrete UI (whether Native or Web) is produced by a rendering adapter. The Kernel walks the resolved node tree and materializes UI controls simply as an external projection of the Kernel's strictly governed mathematical state.</p>
 </div>
 </div>
 
-<h2>7. The Graph Primitive &mdash; Nodes, Edges &amp; the Unified Graph</h2>
+<h2>9. The Graph Primitive &mdash; Nodes, Edges &amp; the Unified Graph</h2>
 <p>Because the platform exists to keep unbounded Generative AI out of the execution loop, it must define a safe intermediate representation. Every layer orchestrated by the Kernel is a graph expressed in a <em>strict, closed grammar</em>. This forces AI agents to select from a finite vocabulary of declared business capabilities rather than hallucinating unstructured code.</p>
 
-<h3>7.1 The Key Insight: Emergent Interaction</h3>
+<h3>9.1 The Key Insight: Emergent Interaction</h3>
 <p>Because the generated graph relies on a shared reactive store, cross-node interaction is <strong>emergent</strong>: one node writes a data path; another node already reads that path; reactive propagation updates the UI automatically. There is no separate &ldquo;event system&rdquo; for an agent to wire up or hallucinate incorrectly.</p>
 <div class="focus-block">
   The Dataflow Graph <em>is</em> the Interaction Graph &mdash; one graph, not two.
@@ -501,7 +501,7 @@
   When the user selects a row in the <strong>evidence table</strong> (Node A), its behavior writes <code>card_data.selected</code>. The <strong>detail panel</strong> (Node B) already reads that path, so it re-resolves to show the selected evidence &mdash; with no explicit wiring between the two nodes. We will follow this generative example through the rest of the paper.
 </div>
 
-<h2>8. A Terminally Validated Pipeline</h2>
+<h2>10. A Terminally Validated Pipeline</h2>
 <p>The entire platform is built as a pipeline of graph transformations from Intent down to Reactor. Each transformation is isolated and stateless.</p>
 <p>Three properties fall out of this discipline, and they are what make the platform safe for ISVs and Agentic Coders to adopt:</p>
 <ul>
@@ -510,17 +510,17 @@
   <li><strong>Terminally validated:</strong> Whatever a pipeline emits must still pass the same platform schema and integrity checks before touching the final Execution Layer (the UI adapter or the API orchestrator). Generation earns no special trust.</li>
 </ul>
 
-<h2>9. Computational Model &amp; Dual-Surface Runtime State</h2>
+<h2>11. Computational Model &amp; Dual-Surface Runtime State</h2>
 <p>For an enterprise building AI experiences, performance and reliability cannot be compromised by LLM generation cadence. The platform runs on a dual-loop state execution model to guarantee fluid local responses, deeply adaptive AI updates, and native readability for background agents. This works because the Kernel owns the state independently from the UI.</p>
 
-<h3>9.1 The Render Loop (Local &amp; Deterministic) &mdash; Human View (UX)</h3>
+<h3>11.1 The Render Loop (Local &amp; Deterministic) &mdash; Human View (UX)</h3>
 <p>Standard interaction actions (typing in a field, toggling an expander) bypass the AI entirely. The Kernel handles them locally through its own pure reducer — zero-latency, fully deterministic, no planner involved. The external rendering layer (like React or Reactor) just syncs the visual surface to this local state.</p>
 
-<h3>9.2 The Semantic Loop (Adaptive &amp; Probabilistic) &mdash; Agent View (AX)</h3>
+<h3>11.2 The Semantic Loop (Adaptive &amp; Probabilistic) &mdash; Agent View (AX)</h3>
 <p>Because the state is held in a pure reducer separated from the visual tree, it acts as a natively <strong>Machine-Readable Shadow Tree</strong>. Autonomous agents do not need to rely on brittle screen-scraping or visual extrapolation. Instead, they interact with a pristine, real-time JSON-like semantic tree &mdash; the <strong>Agent Experience (AX)</strong> layer &mdash; to query elements, read values, and understand application states deterministically.</p>
 <p>When an autonomous backend agent executes a high-level shift in context (e.g., &ldquo;Pivot investigation to historical anomalies&rdquo;), it mutates the semantic graph via the GIK Core. The change triggers the Presentation Planner to re-plan the structure, emitting a new graph which the Kernel predictably reduces, and the UI Adapter reliably reconciles to screen.</p>
 
-<h2>10. The Unification of Input &mdash; Interaction Taxonomy</h2>
+<h2>12. The Unification of Input &mdash; Interaction Taxonomy</h2>
 <p>Instead of exposing atomic primitives like UI buttons or raw API routes to upstream agents, the GIK exposes reusable interaction patterns that apply universally. This taxonomy gives developers, UI elements, and ML agents a single stable semantic target.</p>
 <div class="callout">
   <strong>Standardized Semantic Tool Actions:</strong> The GIK system unifies input at the source. Every interaction registers as a standard system-level semantic action. A human clicking the mouse on an "Approve" button and an autonomous agent submitting an `approve()` API request drop into the exact same Kernel pipeline. They follow the exact same validation edges and write to the exact same State Store.
@@ -577,7 +577,7 @@
   </tbody>
 </table>
 
-<h2>11. Facets &amp; Semantic Roles &mdash; The Missing Bridge</h2>
+<h2>13. Facets &amp; Semantic Roles &mdash; The Missing Bridge</h2>
 <p>How does an abstract interaction like <code>"investigate"</code> become a concrete layout without a magic leap? Through <strong>facets</strong>. Each interaction type declaratively decomposes into named facets, and each facet has a semantic <strong>role</strong> &mdash; not a component. Roles are drawn from a fixed set: <code>summary</code>, <code>collection</code>, <code>detail</code>, <code>timeline</code>, <code>graph</code>, <code>narrative</code>, <code>metrics</code>, <code>status</code>, <code>form</code>, <code>actions</code>, <code>comparison</code>, <code>recommendation</code>.</p>
 <div class="code-block">
 <span class="lang-tag">Interaction &rarr; Facets</span>
@@ -593,12 +593,12 @@
 <p>Facets are the pivot point of the whole architecture. The <strong>interaction</strong> layer decides <em>which facets a goal requires</em> (domain-neutral, stable). The <strong>presentation</strong> layer decides <em>how those facets are arranged</em> for a given surface and context (adaptive). Because the facet set is fixed, the mapping from interaction to presentation is enumerable and testable rather than open-ended generation.</p>
 <div class="example">
   <span class="tag">running example &middot; investigate anomaly</span><br>
-  Our generated <code>investigate</code> intent resolves to six facets: a <strong>narrative</strong> context, an <strong>evidence collection</strong> (the table from Section 7), a <strong>timeline</strong>, an optional <strong>relationship graph</strong>, an <strong>explanation</strong>, and an <strong>actions</strong> facet. Note that not one component has been chosen yet &mdash; only roles.
+  Our generated <code>investigate</code> intent resolves to six facets: a <strong>narrative</strong> context, an <strong>evidence collection</strong> (the table from Section 9), a <strong>timeline</strong>, an optional <strong>relationship graph</strong>, an <strong>explanation</strong>, and an <strong>actions</strong> facet. Note that not one component has been chosen yet &mdash; only roles.
 </div>
 
-<h2>12. Interaction DSL &amp; Context Hydration</h2>
+<h2>14. Interaction DSL &amp; Context Hydration</h2>
 
-<h3>12.1 Interaction DSL (The ISV &amp; Agent Contract)</h3>
+<h3>14.1 Interaction DSL (The ISV &amp; Agent Contract)</h3>
 <p>Agents and application developers declare semantic intent rather than layout mechanics. They pass abstract definitions to the generative platform tier above Reactor:</p>
 <div class="code-block">
 <span class="lang-tag">JSON</span>
@@ -610,8 +610,8 @@
 }</pre>
 </div>
 
-<h3>12.2 Context Hydration (Data-Agnostic Boundary)</h3>
-<p>To maintain strict boundaries, the platform remains data-agnostic. The Interaction DSL includes unique context references (<code>context_refs</code>) pointing upstream. The platform provides a tokenized hydration layer that binds these references, safely mapping complex domain payloads into standard primitive shapes (e.g., mapping an ISV's proprietary data schema into a clean <code>EvidenceRow</code> format). Under the hood, hydration is expressed as <code>read</code>/<code>write</code> edges resolved against a provider-supplied store &mdash; the same unified graph from Section 7, not a separate binding system.</p>
+<h3>14.2 Context Hydration (Data-Agnostic Boundary)</h3>
+<p>To maintain strict boundaries, the platform remains data-agnostic. The Interaction DSL includes unique context references (<code>context_refs</code>) pointing upstream. The platform provides a tokenized hydration layer that binds these references, safely mapping complex domain payloads into standard primitive shapes (e.g., mapping an ISV's proprietary data schema into a clean <code>EvidenceRow</code> format). Under the hood, hydration is expressed as <code>read</code>/<code>write</code> edges resolved against a provider-supplied store &mdash; the same unified graph from Section 9, not a separate binding system.</p>
 <div class="code-block">
 <span class="lang-tag">JSON</span>
 <pre>{
@@ -625,7 +625,7 @@
 }</pre>
 </div>
 
-<h2>13. The Presentation Planner as a Swappable Provider</h2>
+<h2>15. The Presentation Planner as a Swappable Provider</h2>
 <p>The absolute anti-pattern of next-gen AI platforms is treating AI as an uncontrolled, direct application generator. The GIK avoids this by making the layout & action planner a <strong>swappable provider behind a deterministic contract</strong>. The reference planner is fully deterministic &mdash; and, being pure, it is AOT-safe and needs no model loaded in memory. An AI-backed planner is an optional upgrade that must satisfy the identical mathematical contract and pass the identical Kernel validation.</p>
 <div class="focus-block">
   Presentation Structure = Planner( Interaction Intent, Capabilities Matrix, Surface Constraints, Design Tokens )
@@ -639,7 +639,7 @@
   Why &ldquo;provider, not oracle&rdquo; matters: swapping a deterministic planner for an AI planner (or back) changes adaptivity, never correctness. The contract, the capability enum, and the validation gate are identical for both. This is the difference between AI <em>in</em> the loop and AI <em>as</em> the loop.
 </div>
 
-<h2>14. The Compiler &amp; Semantic Telemetry</h2>
+<h2>16. The Compiler &amp; Semantic Telemetry</h2>
 <p>The Presentation Compiler handled by the Kernel determines layout selection and logical routing. The final step is projecting this pure logic to <strong>a UI adapter (React, WinUI, etc.)</strong>, which materializes visual widgets.</p>
 
 <h3>The Three Layers of Telemetry</h3>
@@ -653,10 +653,10 @@
 <div class="callout">
   <strong>Semantic Tracking in Action:</strong> The platform empirically determines that an <code>Investigate</code> interaction mapped to a <code>narrative</code> layout yields a 93% task completion rate, while a <code>dashboard</code> layout yields 61%.
 </div>
-<p>This is the holy grail. This semantic trace feeds directly back into the <strong>semantic loop</strong> (Section 9.2). It allows the Presentation Planner to adapt to human cognitive styles automatically, predicting the most successful layouts natively without the developer ever changing their application code.</p>
+<p>This is the holy grail. This semantic trace feeds directly back into the <strong>semantic loop</strong> (Section 11.2). It allows the Presentation Planner to adapt to human cognitive styles automatically, predicting the most successful layouts natively without the developer ever changing their application code.</p>
 <p>Critically, this tuned interaction&rarr;layout mapping is a <strong>compounding asset</strong>: it improves with every session and cannot be replicated without the usage data. It is the moat that grows while the code stays still.</p>
 
-<h2>15. Governed by Trust &mdash; Accessibility, Data &amp; Privacy</h2>
+<h2>17. Governed by Trust &mdash; Accessibility, Data &amp; Privacy</h2>
 <p>For any regulated or enterprise ISV, governance is not a feature bolted on afterward &mdash; it is the product. Because every surface is generated through the same governed pipeline, these guarantees hold for <em>every</em> layout the platform ever produces:</p>
 <table>
   <thead><tr><th>Guarantee</th><th>How the platform delivers it</th></tr></thead>
@@ -672,7 +672,7 @@
   This is what &ldquo;AI on a leash&rdquo; actually means in practice: the platform generates governed, auditable, accessible UI by construction &mdash; and can hand a reviewer the trace to prove it.
 </div>
 
-<h2>16. Adaptive Surfaces &amp; Execution</h2>
+<h2>18. Adaptive Surfaces &amp; Execution</h2>
 <p>The compilation of the execution state follows a strict, deterministic computational chain:</p>
 <div class="focus-block">
   Interaction Graph &nbsp;&rarr;<sub>planner</sub>&nbsp; Presentation DSL &nbsp;&rarr;<sub>Kernel</sub>&nbsp; Resolved Graph &nbsp;&rarr;<sub>Adapter</sub>&nbsp; Rendered UI or Backend Execution
@@ -687,7 +687,7 @@
   Note the discipline applied here: reach across form factors is an <em>enabler</em>, but not the platform's core identity. The true defensibility is the mathematically governed transformation from AI intent into a declarative native substrate &mdash; shielding the developer from mapping boilerplate and guarding the app from hallucinated layouts.
 </div>
 
-<h2>17. Substrate over Protocol</h2>
+<h2>19. Substrate over Protocol</h2>
 <p>The runtime for this platform is the <strong>GIK generic solver</strong>. The platform uses a clean <strong>internal message contract</strong> to connect generative planners to the execution loop and UI surface adaptors. The value of this strict internal protocol is that it makes AI-to-State transformations fundamentally testable and streamable.</p>
 <table>
   <thead>
@@ -701,13 +701,13 @@
     <tr><td><code>trace</code></td><td>kernel &rarr; sink</td><td>Observability: resolve / fallback / action / transition</td></tr>
   </tbody>
 </table>
-<h3>17.1 Determinism as the Correctness Proof</h3>
+<h3>19.1 Determinism as the Correctness Proof</h3>
 <p>Because behavior is defined by this contract and the pure reducer, correctness is pinned by a <strong>golden-fixture matrix</strong>: cases of the form <em>(document + event) &rarr; expected patch</em>. The Kernel evaluating the state is validated against these fixtures, so its behavior is fully auditable. This is the enterprise trust gate &mdash; a bank or hospital can prove mathematically that a generated logic pathway evaluates deterministically.</p>
 <div class="callout">
   A golden fixture is a document, an event, and the exact patch the kernel must produce. It is the executable definition of &ldquo;the governed surface behaves correctly&rdquo; &mdash; the artifact you hand to a security or compliance reviewer.
 </div>
 
-<h2>18. Worked Example &mdash; Investigate Anomaly, End to End</h2>
+<h2>20. Worked Example &mdash; Investigate Anomaly, End to End</h2>
 <p>Pulling the generative example together, here is the full transformation spine for a single goal, from agent contract to two different rendered surfaces.</p>
 <div class="code-block">
 <span class="lang-tag">1 &middot; Interaction DSL (agent declares intent)</span>
@@ -740,7 +740,7 @@ relationships(graph, optional) &middot; explanation(narrative) &middot; actions(
 </div>
 <p><strong>Same intent, second surface.</strong> On a compact laptop (on-call), the planner emits the identical facets but arranges them as a single-focus, pane-deferred flow: <code>summary</code> and <code>actions</code> in view, <code>evidence</code> and <code>timeline</code> behind panes. The Interaction DSL (step 1) and the facet set (step 2) never change &mdash; only the presentation arrangement and Reactor&rsquo;s materialization differ. That invariance <em>is</em> the platform&rsquo;s value.</p>
 
-<h2>19. Competitive Positioning &mdash; Why This, Why Reactor</h2>
+<h2>21. Competitive Positioning &mdash; Why This, Why Reactor</h2>
 <p>This architecture has to survive the obvious alternatives. Each one fails the AI-developer rush in a specific way.</p>
 <table>
   <thead><tr><th>Alternative</th><th>Where It Breaks</th><th>What This Evolution Does Instead</th></tr></thead>
@@ -752,7 +752,7 @@ relationships(graph, optional) &middot; explanation(narrative) &middot; actions(
   </tbody>
 </table>
 
-<h2>20. Evolutionary Roadmap</h2>
+<h2>22. Evolutionary Roadmap</h2>
 <figure class="svg-figure">
 <svg viewBox="0 0 780 390" role="img" aria-label="Seven-stage evolutionary roadmap from components to upstream context integration, flowing left to right then right to left">
   <defs>
@@ -832,7 +832,7 @@ relationships(graph, optional) &middot; explanation(narrative) &middot; actions(
 <figcaption>Evolutionary roadmap &mdash; from experimental declarative Reactor to a generative native platform</figcaption>
 </figure>
 
-<h2>21. Risks, Gaps &amp; Open Questions</h2>
+<h2>23. Risks, Gaps &amp; Open Questions</h2>
 <ul>
   <li><strong>Planner latency on the UI thread.</strong> Generative planning must stay off Reactor&rsquo;s dispatcher critical path; the deterministic fallback covers timeouts, but budgets and caching for the semantic loop are unproven at console scale.</li>
   <li><strong>AOT / single-file / ARM64.</strong> A dynamic AI planner threatens AOT-safety and packaging; keeping the deterministic planner as default and any model out-of-process is a constraint, not a nicety.</li>
