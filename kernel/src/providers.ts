@@ -249,6 +249,12 @@ export interface Orchestrator {
   invoke?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>;
   confirm?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>;
   route?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>;
+  /**
+   * Reverse a previously-fired effect (rollback compensation). The kernel replays the original
+   * forward effect here; the host maps it to a real inverse (a refund), a no-op, or a refusal.
+   * Owning the inverse is domain knowledge the kernel must not hold, so it lives on this seam.
+   */
+  compensate?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>;
 }
 
 /** Default no-op orchestrator: effects are traced but perform nothing. */

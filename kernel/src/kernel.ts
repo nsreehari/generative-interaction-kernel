@@ -25,6 +25,8 @@ import {
   type ManifestPayload,
   type OrchestratorEffect,
   type Patch,
+  type Checkpoint,
+  type RecordedEffect,
   type PatchOp,
   type Reaction,
   type ResolvedNode,
@@ -61,6 +63,12 @@ function jsonEqual(a: Json, b: Json): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+// Deep-clone pure JSON state so a captured checkpoint is immutable against later store mutations.
+// State is JSON by contract, so a round-trip is sufficient (and env-independent).
+function cloneJson<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
 export class Kernel {
   private rev = 0;
   private readonly doc: DocumentPayload;
@@ -75,6 +83,11 @@ export class Kernel {
   // genuine CHANGE, never on the initial seed. Seeded lazily from the pre-event snapshot (ADR-0034).
   private readonly reactionBaseline = new Map<string, Json>();
   private reactionsSeeded = false;
+  // Effects fired, in issue order (ADR-0009 seam), each tagged with its rev and a monotonic seq. The
+  // kernel owns no wall-clock time, so ordering is rev + seq — never a timestamp. effectsSince()
+  // reports them; the host decides whether to ignore, replay forward, or reverse them.
+  private effectLog: RecordedEffect[] = [];
+  private effectSeq = 0;
 
   constructor(
     manifest: Enveloped<ManifestPayload>,
@@ -142,12 +155,21 @@ export class Kernel {
   async dispatch(event: GupEvent): Promise<Patch> {
     if (!this.reactionsSeeded) await this.seedReactionBaseline();
     const ops: PatchOp[] = [];
-    await this.settle(event, ops, 0);
+    const fired: OrchestratorEffect[] = [];
+    await this.settle(event, ops, 0, fired);
     this.rev += 1;
+    // Journal the effects this dispatch fired, tagged with their rev and a monotonic seq, so the
+    // host can later query them via effectsSince() and choose how — or whether — to apply them.
+    for (const effect of fired) this.effectLog.push({ rev: this.rev, seq: this.effectSeq++, effect });
     return { rev: this.rev, ops };
   }
 
-  private async settle(event: GupEvent, acc: PatchOp[], depth: number): Promise<void> {
+  private async settle(
+    event: GupEvent,
+    acc: PatchOp[],
+    depth: number,
+    journal: OrchestratorEffect[]
+  ): Promise<void> {
     if (depth > MAX_SETTLE_DEPTH) {
       throw new Error("GenUI kernel: effect/event depth exceeded");
     }
@@ -157,12 +179,18 @@ export class Kernel {
     acc.push(...ops);
     for (const t of traces) this.sink?.(t);
 
-    await this.runEffects(effects, acc, depth);
-    await this.runReactions(acc, depth);
+    await this.runEffects(effects, acc, depth, journal);
+    await this.runReactions(acc, depth, journal);
   }
 
-  private async runEffects(effects: OrchestratorEffect[], acc: PatchOp[], depth: number): Promise<void> {
+  private async runEffects(
+    effects: OrchestratorEffect[],
+    acc: PatchOp[],
+    depth: number,
+    journal: OrchestratorEffect[]
+  ): Promise<void> {
     for (const effect of effects) {
+      journal.push(effect);
       const handler =
         effect.kind === "invoke"
           ? this.orchestrator.invoke
@@ -183,7 +211,7 @@ export class Kernel {
         acc.push(...result.ops);
       }
       for (const followUp of result.events ?? []) {
-        await this.settle(followUp, acc, depth + 1);
+        await this.settle(followUp, acc, depth + 1, journal);
       }
     }
   }
@@ -210,7 +238,11 @@ export class Kernel {
 
   // Fire every reaction whose `when` value changed, cascading until the document quiesces. Folds into
   // the same depth guard as effects, so a reaction that flips its own `when` cannot loop unbounded.
-  private async runReactions(acc: PatchOp[], depth: number): Promise<void> {
+  private async runReactions(
+    acc: PatchOp[],
+    depth: number,
+    journal: OrchestratorEffect[]
+  ): Promise<void> {
     if (depth > MAX_SETTLE_DEPTH) {
       throw new Error("GenUI kernel: reaction depth exceeded");
     }
@@ -236,8 +268,8 @@ export class Kernel {
         this.store.apply(r.ops);
         acc.push(...r.ops);
         for (const t of r.traces) this.sink?.(t);
-        await this.runEffects(r.effects, acc, depth + 1);
-        for (const ev of r.emitted) await this.settle(ev, acc, depth + 1);
+        await this.runEffects(r.effects, acc, depth + 1, journal);
+        for (const ev of r.emitted) await this.settle(ev, acc, depth + 1, journal);
       }
     }
   }
@@ -255,5 +287,77 @@ export class Kernel {
 
   state(): Record<string, Json> {
     return this.store.snapshot();
+  }
+
+  /**
+   * Capture an immutable, rev-keyed snapshot of pure state. Deep-cloned because the live
+   * StateModel returns its backing object by reference — a later apply() would otherwise mutate
+   * the checkpoint. Domain- and medium-blind: state is just JSON, so this is a free corollary of
+   * determinism (Principle 8), not new domain machinery.
+   */
+  checkpoint(): Checkpoint {
+    return { rev: this.rev, state: cloneJson(this.store.snapshot()) };
+  }
+
+  /**
+   * Roll pure state to a checkpoint — backward (undo) or forward (redo); restore is just "set state
+   * to this value." Closed and total: state is a JSON record, so this overwrites each namespace with
+   * its checkpoint value, one new rev, replay-safe as a full patch. It touches ONLY state — effects
+   * are reported separately by {@link effectsSince}, so a host with its own rollback substrate (a git
+   * rev, a DB transaction) can use checkpoint/restore alone and ignore effects entirely.
+   */
+  restore(cp: Checkpoint): Patch {
+    const ops: PatchOp[] = Object.entries(cp.state).map(([namespace, value]) => ({
+      op: "set" as const,
+      path: namespace,
+      value: value as Json,
+    }));
+    this.store.apply(ops);
+    this.rev += 1;
+    return { rev: this.rev, ops };
+  }
+
+  /**
+   * The effects journaled after `rev`, in causal order (oldest-first), each tagged with its `rev`
+   * and a monotonic `seq`. The kernel imposes no interpretation: the host may ignore them (its own
+   * substrate handles rollback), replay them forward (redo), or reverse the array and feed it to
+   * {@link compensate} (LIFO undo). Ordering is rev + seq, never a timestamp — the kernel owns no
+   * wall-clock time.
+   */
+  effectsSince(rev: number): RecordedEffect[] {
+    return this.effectLog.filter((e) => e.rev > rev).map((e) => ({ ...e }));
+  }
+
+  /**
+   * Route effects through the Orchestrator's compensate seam, in the order given — the host controls
+   * ordering (pass a reversed array for LIFO undo). The kernel owns no inverse of a fired `charge`;
+   * the host's compensate handler maps each to a real inverse (a refund), a no-op, or a refusal. An
+   * unhandled compensation is traced, never silently pretended-away. Store deltas the host returns
+   * (e.g. a `refunded` flag) fold into one new rev.
+   */
+  async compensate(effects: OrchestratorEffect[]): Promise<Patch> {
+    const ops: PatchOp[] = [];
+    const handler = this.orchestrator.compensate;
+    for (const effect of effects) {
+      if (!handler) {
+        this.sink?.({
+          event: "effect",
+          node: effect.node,
+          detail: { kind: effect.kind, compensate: true, unhandled: true },
+        });
+        continue;
+      }
+      const result = await handler.call(this.orchestrator, effect);
+      if (!result) continue;
+      if (result.ops?.length) {
+        this.store.apply(result.ops);
+        ops.push(...result.ops);
+      }
+      // Follow-up events (e.g. driving a machine to a `refunded` state) settle normally; a
+      // compensation that spawns further effects is out of scope for this sketch (empty journal).
+      for (const followUp of result.events ?? []) await this.settle(followUp, ops, 0, []);
+    }
+    this.rev += 1;
+    return { rev: this.rev, ops };
   }
 }

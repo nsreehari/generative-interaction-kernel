@@ -128,6 +128,81 @@ ingest(document)                               ← TransportProvider
   → every step → ObservabilitySink
 ```
 
+## Kernel public API
+
+The `Kernel` class is the in-process reference implementation of the closed core. Its whole public
+surface is small and pure-ish — every method either seeds, advances, or reads state; none owns time
+or domain knowledge. (This is the in-process API; the language-neutral **wire** contract is the five
+GUP messages in [03-protocol](03-protocol.md).)
+
+| Method | Returns | Purpose |
+|---|---|---|
+| `new Kernel(manifest, document, opts?)` | — | Construct over a manifest + document. Validates document + per-capability props unless `opts.validate === false`. Providers (`expression`, `state`, `contexts`, `registry`, `orchestrator`, `sink`) are injected here. |
+| `init()` | `Patch` | Seed machine initial states. Returns the rev-0 baseline patch (machine ops only). |
+| `baseline()` | `Patch` | `init()` **plus** the full current state as one rev-0 patch — a fresh remote client reconstructs the complete replica from it ([ADR-0011](decisions/ADR-0011-client-runtime.md)). |
+| `snapshotPatch()` | `Patch` | The full current state as a patch at the *current* rev, **without** re-seeding machines — re-onboards a reconnecting client mid-session ([ADR-0012](decisions/ADR-0012-reconnection.md)). |
+| `dispatch(event)` | `Patch` | Reduce one event, run any orchestrator effects and the follow-up events they produce, apply everything, fire reactions. **One dispatch = one rev**, regardless of fan-out ([ADR-0009](decisions/ADR-0009-orchestrator-effects.md)). |
+| `resolve()` | `ResolvedNode` | Resolve the current document into a renderable tree (gate → capability → props → read → children). |
+| `state()` | `Record<string, Json>` | The live state snapshot (by reference — read-only; do not mutate). |
+| `checkpoint()` | `Checkpoint` | Capture an **immutable, rev-keyed** snapshot of pure state for time-travel (see below). |
+| `restore(cp)` | `Patch` | Set state to a checkpoint — backward (undo) or forward (redo). **Pure state only**; effects are reported separately, so a host with its own rollback substrate can ignore them. |
+| `effectsSince(rev)` | `RecordedEffect[]` | The effects journaled after a rev, in **causal order**, each tagged `{ rev, seq }`. The host decides: ignore, replay forward, or reverse for compensation. |
+| `compensate(effects)` | `Patch` | Route the given effects through the Orchestrator's `compensate` seam, **in the order supplied** (pass reversed for LIFO undo). |
+
+### Time-travel — checkpoint, restore, compensate
+
+Because state is pure JSON and the reducer is deterministic (invariant 2), point-in-time capture and
+restore of **state** fall out for free — they add no domain knowledge. Reversing an **effect's**
+real-world consequence does not, so it stays on the Orchestrator seam. The split:
+
+- **Kernel owns pure-state rollback.** It is *closed and total*: state is a `Record<string, Json>`,
+  so a rollback is just overwriting each namespace with its prior value — one new rev, replay-safe as
+  a full patch.
+- **Host owns the inverse of an effect.** The kernel keeps no inverse of a fired `charge`; the
+  host's `Orchestrator.compensate` maps it to a real `refund`, a no-op, or a refusal.
+
+**`Checkpoint` is a value, not a named slot.** `checkpoint()` returns `{ rev, state }` — a deep-cloned,
+immutable value that *the host holds*. The kernel keeps **no checkpoint stack and no registry**
+(consistent with "owns no memory beyond the rev"). Deep-cloning matters: the live `StateModel`
+returns its backing object by reference, so a naive snapshot would be mutated by the next `apply()`.
+
+**The effect journal is a separate, optional query.** `checkpoint`/`restore` move *state* and nothing
+else. Fired effects are reported by `effectsSince(rev)` in **causal order (oldest-first)**, each tagged
+`{ rev, seq }` — the kernel owns no wall-clock time, so ordering is the rev counter plus a monotonic
+issue sequence, **never a timestamp**. The kernel attaches **no meaning**: it hands back facts. A host
+with its own rollback substrate — a git rev, a DB transaction, an event store — uses checkpoint/restore
+alone and ignores the journal entirely.
+
+**Rolling back *n* checkpoints.** Because the host holds the values, keep an array `[cp0, cp1, …]` and
+`restore(cpᵢ)` jumps **directly** to any one — it is *"set state to this value,"* not a one-step pop.
+`effectsSince(cpᵢ.rev)` then returns every effect fired since that point for the host to act on.
+`restore` also works *forward*: to redo, hold the "after" checkpoint and `restore` to it.
+
+**Playing it both ways.**
+
+- **State is bidirectional and free.** `restore(before)` / `restore(after)` ping-pong freely; state
+  returns *exactly* each time — the git-style usage above.
+- **Effects are the host's to direct.** `effectsSince` gives you the raw array; *you* choose the
+  direction and order. Reverse it and feed `compensate(effects)` for LIFO undo (`charge → refund`);
+  replay the original effects forward to redo (re-dispatch the event, or run them forward yourself).
+  Crucially, **effects are not idempotent in the world**: `charge → refund → charge` is three real
+  transactions, not a return to zero. Only *state* round-trips to the same value; each effect flip is
+  a new rev **and** a real-world action, each recorded in the trace stream (the `ObservabilitySink`;
+  see [ADR-0009](decisions/ADR-0009-orchestrator-effects.md)). An unhandled or refused compensation is
+  **traced, never silently pretended-away**.
+
+```ts
+const cp = kernel.checkpoint();                    // hold this value
+await kernel.dispatch(chargeEvent);                // state advances; a `charge` effect fires
+kernel.restore(cp);                                // pure-state rollback — nothing else touched
+const fired = kernel.effectsSince(cp.rev);         // the host inspects what happened, in causal order
+await kernel.compensate(fired.map((e) => e.effect).reverse());  // host chooses LIFO reversal → refund
+```
+
+> Note — retention, direction, and redo are **host policy**, deliberately outside the kernel: how many
+> checkpoints to hold, when to trim the journal, and whether to replay forward or reverse. The kernel
+> reports ordered facts and moves state; it never decides what a fired effect *means*.
+
 ## Application composition — bundles and the generic host
 
 The kernel runs one `document`; an *application* is more than one document, so the React adapter's
