@@ -85,6 +85,31 @@ export function bundleFromJson(json: unknown, native: BundleNative = {}): Bundle
   };
 }
 
+/**
+ * Enforce a bundle's `externals.effectHandlers` contract at mount: every effect-handler name the
+ * manifest declares it needs must be present in the bundle's native `effectHandlers`. This turns the
+ * declared-and-linted contract (authoring emits an `undeclared-effect` warning) into a hard mount-time
+ * gate — a missing handler otherwise silently no-ops the `invoke` deep in the reducer at runtime.
+ *
+ * Scoped to `effectHandlers` only, on purpose: `externals.projectionViews` are provider imports
+ * resolved against the floor/embed registries elsewhere (not against `bundle.projectionViews`), so
+ * checking them here would false-positive on every floor import. Effect handlers do not cross the
+ * `embed` boundary — each nested bundle gets its own dispatcher — so a bundle must itself supply every
+ * effect it declares. Throws (fail-fast at the boundary) rather than warning; a no-op guard means an
+ * undeclared `externals.effectHandlers` bundle is left untouched.
+ */
+export function assertExternalsSatisfied(bundle: Bundle): void {
+  const required = unwrap(bundle.manifest).externals?.effectHandlers;
+  if (!required || required.length === 0) return;
+  const supplied = bundle.effectHandlers ?? {};
+  const missing = required.filter((name) => !(name in supplied));
+  if (missing.length > 0) {
+    throw new Error(
+      `bundle: missing required effect handler(s) declared in manifest externals.effectHandlers: ${missing.join(", ")}`
+    );
+  }
+}
+
 /** Build a seeded state model from a manifest's namespaces and a bundle's seed values. */
 export function seedState(
   manifest: Enveloped<ManifestPayload>,
@@ -113,6 +138,7 @@ export interface BundleRuntime {
  * an irreducibly native seam the closed action grammar can't express.
  */
 export function loadBundleRuntime(bundle: Bundle): BundleRuntime {
+  assertExternalsSatisfied(bundle);
   const state = seedState(bundle.manifest, bundle.state);
   const orchestrator = createEffectDispatcher(state, bundle.effectHandlers ?? {});
   const kernel = new Kernel(bundle.manifest, bundle.document, {
