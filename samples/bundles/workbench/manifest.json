@@ -1,0 +1,185 @@
+{
+  "gup": "0.1",
+  "type": "manifest",
+  "payload": {
+    "version": "workbench/1.0",
+    "expression": "jsonata",
+    "namespaces": [
+      "workbench",
+      "inspect"
+    ],
+    "actions": [
+      "assign",
+      "derive",
+      "emit",
+      "invoke",
+      "route",
+      "confirm"
+    ],
+    "capabilities": {
+      "wb:panelGroup": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "slots": [
+          "children"
+        ]
+      },
+      "ui:panel": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "slots": [
+          "children"
+        ]
+      },
+      "ui:select": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "emits": [
+          "change"
+        ]
+      },
+      "ui:field": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "emits": [
+          "input"
+        ]
+      },
+      "ui:list": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "wb:regionEditor": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "emits": [
+          "edit"
+        ]
+      },
+      "ui:textarea": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "emits": [
+          "input"
+        ]
+      },
+      "ui:button": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "emits": [
+          "press"
+        ]
+      },
+      "ui:note": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "wb:stepList": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "ui:tabBar": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "emits": [
+          "select"
+        ]
+      },
+      "wb:regionTable": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "ui:codeBlock": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "wb:traceList": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "wb:facetList": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "ui:table": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "wb:shell": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "slots": [
+          "children"
+        ]
+      },
+      "wb:controls": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "slots": [
+          "children"
+        ]
+      },
+      "wb:artifacts": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "slots": [
+          "children"
+        ]
+      },
+      "wb:guestSurface": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "externals": {
+      "projectionViews": {
+        "ui": {
+          "from": "floor"
+        },
+        "wb": {
+          "from": "self"
+        }
+      }
+    }
+  }
+}
