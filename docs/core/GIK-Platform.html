@@ -490,6 +490,7 @@
 
 <h2>9. The Graph Primitive &mdash; Nodes, Edges &amp; the Unified Graph</h2>
 <p>Because the platform exists to keep unbounded Generative AI out of the execution loop, it must define a safe intermediate representation. Every layer orchestrated by the Kernel is a graph expressed in a <em>strict, closed grammar</em>. This forces AI agents to select from a finite vocabulary of declared business capabilities rather than hallucinating unstructured code.</p>
+<p>The grammar is closed at two levels. <strong>Capabilities</strong> are the finite set of nodes an author declares in the manifest; <strong>actions</strong> are the fixed six verbs every edge handler is built from &mdash; <code>assign</code> (write a path), <code>derive</code> (compute a path from an expression), <code>emit</code> (raise a declared event), <code>invoke</code> (request an effect handler), <code>route</code> (hand off to a router), and <code>confirm</code> (gate on a human-in-the-loop decision). An action outside this hard-coded set is dropped by the reducer, so neither a human nor an agent can express anything the Authoring plane did not sanction.</p>
 
 <h3>9.1 The Key Insight: Emergent Interaction</h3>
 <p>Because the generated graph relies on a shared reactive store, cross-node interaction is <strong>emergent</strong>: one node writes a data path; another node already reads that path; reactive propagation updates the UI automatically. There is no separate &ldquo;event system&rdquo; for an agent to wire up or hallucinate incorrectly.</p>
@@ -512,6 +513,9 @@
 
 <h2>11. Computational Model &amp; Dual-Surface Runtime State</h2>
 <p>For an enterprise building AI experiences, performance and reliability cannot be compromised by LLM generation cadence. The platform runs on a dual-loop state execution model to guarantee fluid local responses, deeply adaptive AI updates, and native readability for background agents. This works because the Kernel owns the state independently from the UI.</p>
+<div class="callout">
+  <strong>Two planes, not one audience.</strong> The dual surface below is the <em>Runtime</em> plane &mdash; the Human Experience (HX, rendered as UX) and the Agent Experience (AX) acting on shared state at the same time. It sits on top of a separate <em>Authoring</em> plane, where human developers and AI coding agents (DX &amp; ACX) define the manifest&rsquo;s closed vocabulary and author the documents. Authoring fixes the physics; runtime actors &mdash; human or agent &mdash; can only move within it. That split is what lets the same governed surface be safe for an autonomous agent and a person at once.
+</div>
 
 <h3>11.1 The Render Loop (Local &amp; Deterministic) &mdash; Human View (UX)</h3>
 <p>Standard interaction actions (typing in a field, toggling an expander) bypass the AI entirely. The Kernel handles them locally through its own pure reducer — zero-latency, fully deterministic, no planner involved. The external rendering layer (like React or Reactor) just syncs the visual surface to this local state.</p>
@@ -688,16 +692,16 @@
 </div>
 
 <h2>19. Substrate over Protocol</h2>
-<p>The runtime for this platform is the <strong>GIK generic solver</strong>. The platform uses a clean <strong>internal message contract</strong> to connect generative planners to the execution loop and UI surface adaptors. The value of this strict internal protocol is that it makes AI-to-State transformations fundamentally testable and streamable.</p>
+<p>The runtime for this platform is the <strong>GIK generic solver</strong>. The platform uses a clean <strong>internal message contract</strong> to connect generative planners to the execution loop and surface projectors. The value of this strict internal protocol is that it makes AI-to-State transformations fundamentally testable and streamable.</p>
 <table>
   <thead>
     <tr><th>Message</th><th>Direction</th><th>Purpose</th></tr>
   </thead>
   <tbody>
     <tr><td><code>manifest</code></td><td>once</td><td>Publish capability vocabulary + expression dialect</td></tr>
-    <tr><td><code>document</code></td><td>source &rarr; kernel</td><td>Resolved UI-intent tree + machines</td></tr>
-    <tr><td><code>patch</code></td><td>kernel &rarr; Reactor</td><td>State deltas (<code>rev</code>, ordered <code>ops</code>) the reconciler applies</td></tr>
-    <tr><td><code>event</code></td><td>Reactor &rarr; kernel</td><td>User/agent interaction + payload</td></tr>
+    <tr><td><code>document</code></td><td>source &rarr; kernel</td><td>Resolved intent tree + machines</td></tr>
+    <tr><td><code>patch</code></td><td>kernel &rarr; projector</td><td>State deltas (<code>rev</code>, ordered <code>ops</code>) the projector applies (e.g. Reactor&rsquo;s reconciler)</td></tr>
+    <tr><td><code>event</code></td><td>projector &rarr; kernel</td><td>User/agent interaction + payload</td></tr>
     <tr><td><code>trace</code></td><td>kernel &rarr; sink</td><td>Observability: resolve / fallback / action / transition</td></tr>
   </tbody>
 </table>
@@ -843,6 +847,24 @@ relationships(graph, optional) &middot; explanation(narrative) &middot; actions(
   <li><strong>Planner quality.</strong> Proving an AI planner produces <em>better</em> layouts than the deterministic reference &mdash; not merely valid ones &mdash; needs an evaluation method that does not yet exist.</li>
   <li><strong>Organizational.</strong> This is a platform bet that requires a real lighthouse console team. Without one, it becomes architecture theater rather than a shipped product.</li>
 </ul>
+
+<h2>24. The Bundle &mdash; Unit of Packaging &amp; Composition</h2>
+<p>Everything above describes how one governed surface runs. The <strong>bundle</strong> is how a surface is packaged, shipped, and composed with others. A bundle is the message contract at rest: a portable JSON body &mdash; the <code>manifest</code> (capability vocabulary), the <code>document</code> (the tree of capability nodes plus machines), and seed <code>state</code> &mdash; plus one JSON dependency contract, <code>externals</code>, that names everything the bundle needs from its host. Because that contract is a single object, &ldquo;what does this bundle require?&rdquo; is one read, never an inference over the document tree.</p>
+<p>What satisfies the contract is the bundle&rsquo;s only non-JSON part: native edge code the host plugs into two seams.</p>
+<table>
+  <thead><tr><th>Seam</th><th>Role</th><th>Owner</th><th>Shape</th></tr></thead>
+  <tbody>
+    <tr><td><code>effect_handlers</code> (write edge)</td><td>Named functions the effectful verbs route to (chiefly <code>invoke</code>), assembled into the Orchestrator that performs real work after the pure reduction settles.</td><td>Orchestrator</td><td>Universal &mdash; a <code>fetch</code> on a frontend, a payment charge or queue route on a backend.</td></tr>
+    <tr><td><code>projection_views</code> (read edge)</td><td>The per-capability map the Projector uses to materialize the resolved node tree.</td><td>Projector</td><td>Frontend-rich (one view per capability); usually collapsed to a single generic projection on a uniform-output backend, where it is effectively empty.</td></tr>
+  </tbody>
+</table>
+<p>Both seams are additive deltas over a host-provided floor: the base Orchestrator and base Projector are host-level and reused across bundles, so a bundle carries only its own handlers and views. The JSON body itself holds no domain data, credentials, or medium &mdash; those enter only at the edges the host controls.</p>
+<div class="focus-block">
+  A bundle is the noun both planes exchange &mdash; the Authoring plane produces bundles, the Runtime plane mounts them &mdash; and bundles compose: one bundle can <code>embed</code> another, building an interaction surface out of other interaction surfaces, one shared-state runtime each.
+</div>
+<div class="callout">
+  The <code>externals.effectHandlers</code> arm is enforced at mount: a bundle that declares an effect handler its host does not supply is rejected at load, not silently no-op&rsquo;d at runtime. The contract is declared, linted at authoring time, <em>and</em> checked when the bundle is mounted.
+</div>
 
 <h2>Conclusion</h2>
 <p>The <strong>Generative Interaction Kernel (GIK)</strong> offers enterprises a purely deterministic, mathematically safe abstraction over Generative AI outputs and application state. By extracting logic from UI frameworks entirely and placing it into a universal state orchestration engine, developers can guarantee the safety, predictability, and auditability required by high-stakes industries, while projecting into React, WinUI, or headless backends simultaneously.</p>
