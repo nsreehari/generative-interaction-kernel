@@ -15,8 +15,6 @@
     "test:providers": "node --import tsx --test providers/**/test/**/*.test.ts",
     "test:sse": "node --import tsx --test transports/http-sse/test/**/*.test.ts",
     "dev:workbench": "vite samples/apps/host --open /?bundle=workbench",
-    "dev:workbench-node": "tsx samples/bundles/workbench/node-host.ts",
-    "dev:workbench-remote": "node samples/bundles/workbench/dev-remote.mjs",
     "dev:host": "vite samples/apps/host",
     "build:host": "vite build samples/apps/host",
     "dev:backend-host": "tsx samples/backend-host/order-service.ts",

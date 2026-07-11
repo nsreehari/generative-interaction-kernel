@@ -1,0 +1,91 @@
+{
+  "workbench": {
+    "interaction": "investigate",
+    "subject": "incident",
+    "surface": "desktop",
+    "device": "",
+    "space": "",
+    "attention": "",
+    "expertise": "",
+    "facets": [
+      {
+        "name": "context",
+        "role": "narrative",
+        "required": true
+      },
+      {
+        "name": "evidence",
+        "role": "collection",
+        "required": true
+      },
+      {
+        "name": "timeline",
+        "role": "timeline",
+        "required": true
+      },
+      {
+        "name": "relationships",
+        "role": "graph",
+        "required": false
+      },
+      {
+        "name": "explanation",
+        "role": "narrative",
+        "required": true
+      },
+      {
+        "name": "actions",
+        "role": "actions",
+        "required": true
+      }
+    ],
+    "edits": {
+      "disabled": [],
+      "priority": {},
+      "disclosure": {},
+      "order": []
+    },
+    "editRegions": [],
+    "nodeIds": [],
+    "eventNode": "",
+    "eventName": "rowSelect",
+    "eventPayload": "{ \"id\": \"order-42\" }",
+    "fireSeq": 0,
+    "eventError": "",
+    "importText": "",
+    "importSeq": 0,
+    "importError": "",
+    "agentRunning": false,
+    "agentStep": 0,
+    "agentStepSeq": 0,
+    "agentLabel": "Idle — press Play to watch the agent author live.",
+    "agentPlan": [
+      {
+        "index": 0,
+        "label": "Investigating an incident"
+      },
+      {
+        "index": 1,
+        "label": "Comparing vendor options"
+      },
+      {
+        "index": 2,
+        "label": "Monitoring the fleet"
+      },
+      {
+        "index": 3,
+        "label": "Re-authoring the comparison for mobile (pinning the recommendation)"
+      }
+    ]
+  },
+  "inspect": {
+    "activeTab": "presentation",
+    "presentationHead": "",
+    "regions": [],
+    "documentJson": "",
+    "treeJson": "",
+    "traces": [],
+    "patchLabel": "",
+    "exportJson": ""
+  }
+}

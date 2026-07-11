@@ -1,0 +1,1124 @@
+{
+  "gup": "0.1",
+  "type": "document",
+  "payload": {
+    "root": {
+      "capability": "wb:shell",
+      "id": "workbench-root",
+      "edges": {
+        "children": [
+          {
+            "capability": "wb:controls",
+            "id": "controls",
+            "edges": {
+              "children": [
+                {
+                  "capability": "wb:panelGroup",
+                  "id": "chrome-root",
+                  "edges": {
+                    "children": [
+                      {
+                        "capability": "ui:panel",
+                        "id": "interaction-panel",
+                        "props": {
+                          "title": "Interaction"
+                        },
+                        "edges": {
+                          "children": [
+                            {
+                              "capability": "ui:select",
+                              "id": "interaction-kind",
+                              "props": {
+                                "label": "Kind",
+                                "options": [
+                                  {
+                                    "value": "investigate",
+                                    "label": "investigate"
+                                  },
+                                  {
+                                    "value": "compare",
+                                    "label": "compare"
+                                  },
+                                  {
+                                    "value": "review",
+                                    "label": "review"
+                                  },
+                                  {
+                                    "value": "approve",
+                                    "label": "approve"
+                                  },
+                                  {
+                                    "value": "monitor",
+                                    "label": "monitor"
+                                  },
+                                  {
+                                    "value": "explore",
+                                    "label": "explore"
+                                  },
+                                  {
+                                    "value": "create",
+                                    "label": "create"
+                                  },
+                                  {
+                                    "value": "configure",
+                                    "label": "configure"
+                                  },
+                                  {
+                                    "value": "collaborate",
+                                    "label": "collaborate"
+                                  },
+                                  {
+                                    "value": "plan",
+                                    "label": "plan"
+                                  },
+                                  {
+                                    "value": "learn",
+                                    "label": "learn"
+                                  },
+                                  {
+                                    "value": "decide",
+                                    "label": "decide"
+                                  }
+                                ]
+                              },
+                              "edges": {
+                                "read": {
+                                  "value": "workbench.interaction"
+                                },
+                                "on": {
+                                  "change": [
+                                    {
+                                      "do": "assign",
+                                      "target": "workbench.interaction",
+                                      "args": {
+                                        "from": "$event.value"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:field",
+                              "id": "interaction-subject",
+                              "props": {
+                                "label": "Subject"
+                              },
+                              "edges": {
+                                "read": {
+                                  "value": "workbench.subject"
+                                },
+                                "on": {
+                                  "input": [
+                                    {
+                                      "do": "assign",
+                                      "target": "workbench.subject",
+                                      "args": {
+                                        "from": "$event.value"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:list",
+                              "id": "interaction-facets",
+                              "props": {
+                                "static": true,
+                                "primaryKey": "name",
+                                "secondaryKey": "role",
+                                "valueKey": "tag",
+                                "emptyText": "No facets."
+                              },
+                              "edges": {
+                                "readExpr": {
+                                  "items": "[workbench.facets.{ \"name\": name, \"role\": role, \"tag\": required ? \"required\" : \"optional\" }]"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "capability": "ui:panel",
+                        "id": "context-panel",
+                        "props": {
+                          "title": "Context"
+                        },
+                        "edges": {
+                          "children": [
+                            {
+                              "capability": "ui:select",
+                              "id": "ctx-surface",
+                              "props": {
+                                "label": "Surface",
+                                "options": [
+                                  {
+                                    "value": "",
+                                    "label": "(unset)"
+                                  },
+                                  {
+                                    "value": "desktop",
+                                    "label": "desktop"
+                                  },
+                                  {
+                                    "value": "web",
+                                    "label": "web"
+                                  },
+                                  {
+                                    "value": "mobile",
+                                    "label": "mobile"
+                                  },
+                                  {
+                                    "value": "copilot",
+                                    "label": "copilot"
+                                  },
+                                  {
+                                    "value": "teams",
+                                    "label": "teams"
+                                  }
+                                ]
+                              },
+                              "edges": {
+                                "read": {
+                                  "value": "workbench.surface"
+                                },
+                                "on": {
+                                  "change": [
+                                    {
+                                      "do": "assign",
+                                      "target": "workbench.surface",
+                                      "args": {
+                                        "from": "$event.value"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:select",
+                              "id": "ctx-device",
+                              "props": {
+                                "label": "Device",
+                                "options": [
+                                  {
+                                    "value": "",
+                                    "label": "(unset)"
+                                  },
+                                  {
+                                    "value": "pointer",
+                                    "label": "pointer"
+                                  },
+                                  {
+                                    "value": "touch",
+                                    "label": "touch"
+                                  },
+                                  {
+                                    "value": "voice",
+                                    "label": "voice"
+                                  }
+                                ]
+                              },
+                              "edges": {
+                                "read": {
+                                  "value": "workbench.device"
+                                },
+                                "on": {
+                                  "change": [
+                                    {
+                                      "do": "assign",
+                                      "target": "workbench.device",
+                                      "args": {
+                                        "from": "$event.value"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:select",
+                              "id": "ctx-space",
+                              "props": {
+                                "label": "Space",
+                                "options": [
+                                  {
+                                    "value": "",
+                                    "label": "(unset)"
+                                  },
+                                  {
+                                    "value": "compact",
+                                    "label": "compact"
+                                  },
+                                  {
+                                    "value": "regular",
+                                    "label": "regular"
+                                  },
+                                  {
+                                    "value": "expanded",
+                                    "label": "expanded"
+                                  }
+                                ]
+                              },
+                              "edges": {
+                                "read": {
+                                  "value": "workbench.space"
+                                },
+                                "on": {
+                                  "change": [
+                                    {
+                                      "do": "assign",
+                                      "target": "workbench.space",
+                                      "args": {
+                                        "from": "$event.value"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:select",
+                              "id": "ctx-attention",
+                              "props": {
+                                "label": "Attention",
+                                "options": [
+                                  {
+                                    "value": "",
+                                    "label": "(unset)"
+                                  },
+                                  {
+                                    "value": "focused",
+                                    "label": "focused"
+                                  },
+                                  {
+                                    "value": "glanceable",
+                                    "label": "glanceable"
+                                  }
+                                ]
+                              },
+                              "edges": {
+                                "read": {
+                                  "value": "workbench.attention"
+                                },
+                                "on": {
+                                  "change": [
+                                    {
+                                      "do": "assign",
+                                      "target": "workbench.attention",
+                                      "args": {
+                                        "from": "$event.value"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:select",
+                              "id": "ctx-expertise",
+                              "props": {
+                                "label": "Expertise",
+                                "options": [
+                                  {
+                                    "value": "",
+                                    "label": "(unset)"
+                                  },
+                                  {
+                                    "value": "novice",
+                                    "label": "novice"
+                                  },
+                                  {
+                                    "value": "intermediate",
+                                    "label": "intermediate"
+                                  },
+                                  {
+                                    "value": "expert",
+                                    "label": "expert"
+                                  }
+                                ]
+                              },
+                              "edges": {
+                                "read": {
+                                  "value": "workbench.expertise"
+                                },
+                                "on": {
+                                  "change": [
+                                    {
+                                      "do": "assign",
+                                      "target": "workbench.expertise",
+                                      "args": {
+                                        "from": "$event.value"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "capability": "ui:panel",
+                        "id": "regions-panel",
+                        "props": {
+                          "title": "Regions"
+                        },
+                        "edges": {
+                          "children": [
+                            {
+                              "capability": "wb:regionEditor",
+                              "id": "region-editor",
+                              "edges": {
+                                "read": {
+                                  "items": "workbench.editRegions",
+                                  "edits": "workbench.edits"
+                                },
+                                "on": {
+                                  "edit": [
+                                    {
+                                      "do": "assign",
+                                      "target": "workbench.edits",
+                                      "args": {
+                                        "from": "$event.edits"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "capability": "ui:panel",
+                        "id": "event-panel",
+                        "props": {
+                          "title": "Fire event"
+                        },
+                        "edges": {
+                          "children": [
+                            {
+                              "capability": "ui:select",
+                              "id": "event-node",
+                              "props": {
+                                "label": "Node"
+                              },
+                              "edges": {
+                                "read": {
+                                  "value": "workbench.eventNode",
+                                  "options": "workbench.nodeIds"
+                                },
+                                "on": {
+                                  "change": [
+                                    {
+                                      "do": "assign",
+                                      "target": "workbench.eventNode",
+                                      "args": {
+                                        "from": "$event.value"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:field",
+                              "id": "event-name",
+                              "props": {
+                                "label": "Event"
+                              },
+                              "edges": {
+                                "read": {
+                                  "value": "workbench.eventName"
+                                },
+                                "on": {
+                                  "input": [
+                                    {
+                                      "do": "assign",
+                                      "target": "workbench.eventName",
+                                      "args": {
+                                        "from": "$event.value"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:textarea",
+                              "id": "event-payload",
+                              "props": {
+                                "label": "Payload (JSON)"
+                              },
+                              "edges": {
+                                "read": {
+                                  "value": "workbench.eventPayload"
+                                },
+                                "on": {
+                                  "input": [
+                                    {
+                                      "do": "assign",
+                                      "target": "workbench.eventPayload",
+                                      "args": {
+                                        "from": "$event.value"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:button",
+                              "id": "event-fire",
+                              "props": {
+                                "label": "Emit"
+                              },
+                              "edges": {
+                                "on": {
+                                  "press": [
+                                    {
+                                      "do": "assign",
+                                      "target": "workbench.fireSeq",
+                                      "args": {
+                                        "from": "workbench.fireSeq + 1"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:note",
+                              "id": "event-error",
+                              "props": {
+                                "tone": "error"
+                              },
+                              "edges": {
+                                "read": {
+                                  "value": "workbench.eventError"
+                                },
+                                "gate": "workbench.eventError != ''"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "capability": "ui:panel",
+                        "id": "agent-panel",
+                        "props": {
+                          "title": "Agent"
+                        },
+                        "edges": {
+                          "children": [
+                            {
+                              "capability": "ui:button",
+                              "id": "agent-play",
+                              "props": {
+                                "label": "▶ Play tour"
+                              },
+                              "edges": {
+                                "on": {
+                                  "press": [
+                                    {
+                                      "do": "assign",
+                                      "target": "workbench.agentRunning",
+                                      "args": {
+                                        "value": true
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:button",
+                              "id": "agent-pause",
+                              "props": {
+                                "label": "⏸ Pause"
+                              },
+                              "edges": {
+                                "on": {
+                                  "press": [
+                                    {
+                                      "do": "assign",
+                                      "target": "workbench.agentRunning",
+                                      "args": {
+                                        "value": false
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:button",
+                              "id": "agent-step",
+                              "props": {
+                                "label": "→ Step"
+                              },
+                              "edges": {
+                                "on": {
+                                  "press": [
+                                    {
+                                      "do": "assign",
+                                      "target": "workbench.agentStepSeq",
+                                      "args": {
+                                        "from": "workbench.agentStepSeq + 1"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:note",
+                              "id": "agent-label",
+                              "edges": {
+                                "read": {
+                                  "value": "workbench.agentLabel"
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:list",
+                              "id": "agent-steps",
+                              "props": {
+                                "static": true,
+                                "ordered": true,
+                                "idKey": "index",
+                                "primaryKey": "label",
+                                "emptyText": "No steps."
+                              },
+                              "edges": {
+                                "read": {
+                                  "items": "workbench.agentPlan",
+                                  "selectedId": "workbench.agentStep"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "capability": "ui:panel",
+                        "id": "session-panel",
+                        "props": {
+                          "title": "Session"
+                        },
+                        "edges": {
+                          "children": [
+                            {
+                              "capability": "ui:textarea",
+                              "id": "import-text",
+                              "props": {
+                                "label": "Authored JSON"
+                              },
+                              "edges": {
+                                "read": {
+                                  "value": "workbench.importText"
+                                },
+                                "on": {
+                                  "input": [
+                                    {
+                                      "do": "assign",
+                                      "target": "workbench.importText",
+                                      "args": {
+                                        "from": "$event.value"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:button",
+                              "id": "import-load",
+                              "props": {
+                                "label": "Load"
+                              },
+                              "edges": {
+                                "on": {
+                                  "press": [
+                                    {
+                                      "do": "assign",
+                                      "target": "workbench.importSeq",
+                                      "args": {
+                                        "from": "workbench.importSeq + 1"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:note",
+                              "id": "import-error",
+                              "props": {
+                                "tone": "error"
+                              },
+                              "edges": {
+                                "read": {
+                                  "value": "workbench.importError"
+                                },
+                                "gate": "workbench.importError != ''"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "capability": "wb:guestSurface",
+            "id": "guest-root",
+            "edges": {
+              "read": {
+                "interaction": "workbench.interaction",
+                "subject": "workbench.subject",
+                "surface": "workbench.surface",
+                "device": "workbench.device",
+                "space": "workbench.space",
+                "attention": "workbench.attention",
+                "expertise": "workbench.expertise",
+                "edits": "workbench.edits",
+                "fireSeq": "workbench.fireSeq",
+                "eventNode": "workbench.eventNode",
+                "eventName": "workbench.eventName",
+                "eventPayload": "workbench.eventPayload",
+                "importSeq": "workbench.importSeq",
+                "importText": "workbench.importText",
+                "agentRunning": "workbench.agentRunning",
+                "agentStep": "workbench.agentStep",
+                "agentStepSeq": "workbench.agentStepSeq",
+                "agentLabel": "workbench.agentLabel"
+              },
+              "on": {
+                "facetsComputed": [
+                  {
+                    "do": "assign",
+                    "target": "workbench.facets",
+                    "args": {
+                      "from": "$event.facets"
+                    }
+                  }
+                ],
+                "regionsComputed": [
+                  {
+                    "do": "assign",
+                    "target": "workbench.editRegions",
+                    "args": {
+                      "from": "$event.regions"
+                    }
+                  }
+                ],
+                "guestChanged": [
+                  {
+                    "do": "assign",
+                    "target": "workbench.nodeIds",
+                    "args": {
+                      "from": "$event.nodeIds"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "workbench.eventNode",
+                    "args": {
+                      "value": ""
+                    }
+                  }
+                ],
+                "fireResult": [
+                  {
+                    "do": "assign",
+                    "target": "workbench.eventError",
+                    "args": {
+                      "from": "$event.error"
+                    }
+                  }
+                ],
+                "importApply": [
+                  {
+                    "do": "assign",
+                    "target": "workbench.interaction",
+                    "args": {
+                      "from": "$event.interaction"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "workbench.subject",
+                    "args": {
+                      "from": "$event.subject"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "workbench.surface",
+                    "args": {
+                      "from": "$event.surface"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "workbench.device",
+                    "args": {
+                      "from": "$event.device"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "workbench.space",
+                    "args": {
+                      "from": "$event.space"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "workbench.attention",
+                    "args": {
+                      "from": "$event.attention"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "workbench.expertise",
+                    "args": {
+                      "from": "$event.expertise"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "workbench.edits",
+                    "args": {
+                      "from": "$event.edits"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "workbench.importError",
+                    "args": {
+                      "value": ""
+                    }
+                  }
+                ],
+                "importResult": [
+                  {
+                    "do": "assign",
+                    "target": "workbench.importError",
+                    "args": {
+                      "from": "$event.error"
+                    }
+                  }
+                ],
+                "agentAdvance": [
+                  {
+                    "do": "assign",
+                    "target": "workbench.agentStep",
+                    "args": {
+                      "from": "$event.step"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "workbench.agentLabel",
+                    "args": {
+                      "from": "$event.label"
+                    }
+                  }
+                ],
+                "agentDone": [
+                  {
+                    "do": "assign",
+                    "target": "workbench.agentRunning",
+                    "args": {
+                      "value": false
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "workbench.agentLabel",
+                    "args": {
+                      "value": "Tour complete · press Play to replay"
+                    }
+                  }
+                ],
+                "snapshot": [
+                  {
+                    "do": "assign",
+                    "target": "inspect.presentationHead",
+                    "args": {
+                      "from": "$event.presentationHead"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "inspect.regions",
+                    "args": {
+                      "from": "$event.regions"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "inspect.documentJson",
+                    "args": {
+                      "from": "$event.documentJson"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "inspect.treeJson",
+                    "args": {
+                      "from": "$event.treeJson"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "inspect.traces",
+                    "args": {
+                      "from": "$event.traces"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "inspect.patchLabel",
+                    "args": {
+                      "from": "$event.patchLabel"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "inspect.exportJson",
+                    "args": {
+                      "from": "$event.exportJson"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "capability": "wb:artifacts",
+            "id": "artifacts",
+            "edges": {
+              "children": [
+                {
+                  "capability": "wb:panelGroup",
+                  "id": "inspect-root",
+                  "edges": {
+                    "children": [
+                      {
+                        "capability": "ui:tabBar",
+                        "id": "inspect-tabs",
+                        "props": {
+                          "options": [
+                            {
+                              "value": "presentation",
+                              "label": "Presentation DSL"
+                            },
+                            {
+                              "value": "document",
+                              "label": "UI DSL"
+                            },
+                            {
+                              "value": "tree",
+                              "label": "Resolved tree"
+                            },
+                            {
+                              "value": "traces",
+                              "label": "Traces"
+                            },
+                            {
+                              "value": "export",
+                              "label": "Export"
+                            }
+                          ]
+                        },
+                        "edges": {
+                          "read": {
+                            "active": "inspect.activeTab"
+                          },
+                          "on": {
+                            "select": [
+                              {
+                                "do": "assign",
+                                "target": "inspect.activeTab",
+                                "args": {
+                                  "from": "$event.value"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "capability": "wb:panelGroup",
+                        "id": "tab-presentation",
+                        "edges": {
+                          "gate": "inspect.activeTab = 'presentation'",
+                          "children": [
+                            {
+                              "capability": "ui:note",
+                              "id": "inspect-regions-head",
+                              "props": {
+                                "tone": "muted"
+                              },
+                              "edges": {
+                                "read": {
+                                  "value": "inspect.presentationHead"
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:table",
+                              "id": "inspect-regions",
+                              "props": {
+                                "static": true,
+                                "blankText": "—",
+                                "columns": [
+                                  {
+                                    "key": "name",
+                                    "label": "region"
+                                  },
+                                  {
+                                    "key": "role",
+                                    "label": "role"
+                                  },
+                                  {
+                                    "key": "priority",
+                                    "label": "priority",
+                                    "classPrefix": "pri-"
+                                  },
+                                  {
+                                    "key": "disclosure",
+                                    "label": "disclosure"
+                                  },
+                                  {
+                                    "key": "presentation",
+                                    "label": "presentation"
+                                  },
+                                  {
+                                    "key": "rationale",
+                                    "label": "rationale"
+                                  }
+                                ]
+                              },
+                              "edges": {
+                                "read": {
+                                  "rows": "inspect.regions"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "capability": "wb:panelGroup",
+                        "id": "tab-document",
+                        "edges": {
+                          "gate": "inspect.activeTab = 'document'",
+                          "children": [
+                            {
+                              "capability": "ui:codeBlock",
+                              "id": "inspect-document",
+                              "edges": {
+                                "read": {
+                                  "code": "inspect.documentJson"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "capability": "wb:panelGroup",
+                        "id": "tab-tree",
+                        "edges": {
+                          "gate": "inspect.activeTab = 'tree'",
+                          "children": [
+                            {
+                              "capability": "ui:codeBlock",
+                              "id": "inspect-tree",
+                              "edges": {
+                                "read": {
+                                  "code": "inspect.treeJson"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "capability": "wb:panelGroup",
+                        "id": "tab-traces",
+                        "edges": {
+                          "gate": "inspect.activeTab = 'traces'",
+                          "children": [
+                            {
+                              "capability": "ui:note",
+                              "id": "inspect-traces-label",
+                              "props": {
+                                "tone": "muted"
+                              },
+                              "edges": {
+                                "read": {
+                                  "value": "inspect.patchLabel"
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:list",
+                              "id": "inspect-traces",
+                              "props": {
+                                "static": true,
+                                "badgeLeading": true,
+                                "badgeKey": "event",
+                                "primaryKey": "node",
+                                "secondaryKey": "detail",
+                                "emptyText": "no traces yet — fire an event"
+                              },
+                              "edges": {
+                                "read": {
+                                  "items": "inspect.traces"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "capability": "wb:panelGroup",
+                        "id": "tab-export",
+                        "edges": {
+                          "gate": "inspect.activeTab = 'export'",
+                          "children": [
+                            {
+                              "capability": "ui:codeBlock",
+                              "id": "inspect-export",
+                              "edges": {
+                                "read": {
+                                  "code": "inspect.exportJson"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

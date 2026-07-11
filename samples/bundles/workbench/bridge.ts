@@ -1,17 +1,13 @@
-// The chrome runtime helpers. The workbench's own panels + manifest + seed state are DATA — authored
-// in ./bundle.json and loaded by the shared floor host (see Workbench.tsx), exactly like the console.
-// The workbench dogfoods the platform down to its own chrome.
+// Native bridge helpers for the workbench guest surface.
 //
-// What stays code here: the custom capability VIEWS (workbenchComponents) attached to each bundle,
-// and the BRIDGE HELPERS below. The bridge (Workbench.tsx) reads the `workbench` namespace, re-runs
-// the pure pipeline, and drives the guest across the native cross-kernel seam — behaviour the kernel
-// action grammar can't express, so it stays native.
+// The workbench is a normal json bundle; its ONE native concern is the guest surface (the middle
+// column) — the Interaction->Presentation->UI pipeline is a compiler and a fired event has to cross
+// into the live guest kernel, neither of which the closed action grammar can express. These helpers
+// read the guest inputs out of the `workbench` namespace, resolve event-bar fires, flatten imported
+// artifacts, and reflect the guest's artifacts back for the inspector. They are the small, audited
+// native seam the `wb:guestSurface` view uses (ADR-0034) — not app behaviour.
 
-import {
-  type Json,
-  type ResolvedNode,
-} from "../../../../../kernel/src/index";
-import { bundleFromJson, type Bundle } from "../../../../../adapters/react/src/index";
+import { type Json, type Patch, type ResolvedNode, type TraceEvent } from "../../../kernel/src/index";
 import {
   emptyEdits,
   type AuthoredSession,
@@ -19,14 +15,19 @@ import {
   type InteractionSpec,
   type PresentationContext,
   type PresentationEdits,
-} from "../../../../../interaction/src/index";
-import { workbenchComponents } from "../shared/registry";
-import chromeBundleJson from "./bundle.json";
+} from "../../../interaction/src/index";
+import { exportBundle } from "./export";
+import type { Session } from "./session";
 
-interface Option {
+export interface Option {
   value: string;
   label: string;
   [k: string]: string;
+}
+
+/** The minimal read-only state surface the native guest-surface helpers need. */
+export interface StateReader {
+  get(path: string): Json | undefined;
 }
 
 /** Flatten an imported artifact into the `importApply` event payload (every axis defaulted). */
@@ -45,29 +46,16 @@ export function authoredApplyPayload(a: AuthoredSession): Record<string, Json> {
   };
 }
 
-/**
- * The chrome BUNDLE: the left control column as a self-contained app — manifest + document + seed
- * state authored in ./bundle.json, with its custom capability views attached here. Loaded by the
- * shared floor host (see Workbench.tsx), exactly like the console. The `workbench`->guest bridge (also
- * in Workbench.tsx) is the native seam that carries fired events across kernels.
- */
-export const chromeBundle: Bundle = bundleFromJson(chromeBundleJson, { projectionViews: workbenchComponents });
-
-/** The minimal read-only state surface the native bridge helpers need. */
-export interface StateReader {
-  get(path: string): Json | undefined;
-}
-
 /** Read the current guest inputs (interaction spec + presentation context + edits) out of state. */
 export function readInputs(state: StateReader): {
   spec: InteractionSpec;
   ctx: PresentationContext;
   edits: PresentationEdits;
 } {
-  const interaction = (String(state.get("workbench.interaction") || "investigate") as InteractionKind);
+  const interaction = String(state.get("workbench.interaction") || "investigate") as InteractionKind;
   const subject = String(state.get("workbench.subject") ?? "");
   const ctx: PresentationContext = {
-    surface: (String(state.get("workbench.surface") || "desktop") as PresentationContext["surface"]),
+    surface: String(state.get("workbench.surface") || "desktop") as PresentationContext["surface"],
   };
   for (const axis of ["device", "space", "attention", "expertise"] as const) {
     const v = state.get(`workbench.${axis}`);
@@ -82,7 +70,7 @@ export function readEdits(state: StateReader): PresentationEdits {
   return raw ? (raw as unknown as PresentationEdits) : emptyEdits;
 }
 
-/** A stable signature of the guest inputs, so the bridge only rebuilds when they actually change. */
+/** A stable signature of the guest inputs, so the surface only rebuilds when they actually change. */
 export function inputsSignature(inputs: {
   spec: InteractionSpec;
   ctx: PresentationContext;
@@ -90,8 +78,6 @@ export function inputsSignature(inputs: {
 }): string {
   return JSON.stringify(inputs);
 }
-
-// --- Event bar (Increment C) ------------------------------------------------------
 
 /** Every resolved node id, depth-first — the set the event bar can target. */
 function collectIds(tree: ResolvedNode | null): string[] {
@@ -106,7 +92,7 @@ export function nodeIdsAsOptions(tree: ResolvedNode | null): Option[] {
   return collectIds(tree).map((id) => ({ value: id, label: id }));
 }
 
-/** A fired event resolved from chrome state: the target/name/payload plus any parse error. */
+/** A fired event resolved from state: the target/name/payload plus any parse error. */
 export interface FireRequest {
   node: string;
   name: string;
@@ -128,4 +114,35 @@ export function readFireRequest(state: StateReader, tree: ResolvedNode | null): 
     }
   }
   return { node: target, name, payload, error: "" };
+}
+
+/** The `snapshot` payload the surface feeds the inspector for the current guest state. */
+export function inspectSnapshot(
+  session: Session,
+  tree: ResolvedNode | null,
+  patch: Patch | null,
+  edits: PresentationEdits
+): Record<string, unknown> {
+  const p = session.presentation;
+  const bundle = exportBundle(session, edits);
+  return {
+    exportJson: JSON.stringify({ authored: bundle.authored, manifest: bundle.manifest }, null, 2),
+    presentationHead: `${p.layout} · ${p.arrangement}`,
+    regions: p.regions.map((r) => ({
+      name: r.name,
+      role: r.role,
+      priority: r.priority,
+      disclosure: r.disclosure,
+      presentation: r.presentation ?? null,
+      rationale: r.rationale ?? null,
+    })),
+    documentJson: JSON.stringify(session.document, null, 2),
+    treeJson: JSON.stringify(tree, null, 2),
+    traces: session.traces.map((t: TraceEvent) => ({
+      event: t.event,
+      node: t.node ?? "",
+      detail: t.detail && Object.keys(t.detail).length > 0 ? JSON.stringify(t.detail) : "",
+    })),
+    patchLabel: `last patch: rev ${patch?.rev ?? "—"} · ${patch?.ops.length ?? 0} op(s)`,
+  };
 }
