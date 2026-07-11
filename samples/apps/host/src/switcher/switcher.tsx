@@ -19,7 +19,6 @@ import {
   type ProjectionViewProps,
   type EffectHandlerMap,
 } from "../../../../../adapters/react/src/index";
-import { BUNDLE_IDS } from "../bundles";
 
 /** A "layers/stack" glyph — bundles are stacked cards; picking one swaps the whole stack. */
 function SwitcherIcon(): React.ReactElement {
@@ -103,16 +102,16 @@ const switcherEffects: EffectHandlerMap = {
 };
 
 /**
- * Assemble the switcher bundle for the given active id. The bundle's `items`/`current` state is the
- * only dynamic part (it depends on the host's `BUNDLE_IDS` and which bundle is showing), so it is
- * seeded here; everything else is the pure JSON trio plus this native module.
+ * Assemble the switcher bundle for the given item ids and active id. The bundle's `items`/`current`
+ * state is the only dynamic part (the host passes the live, switcher-listable registry ids and which
+ * bundle is showing), so it is seeded here; everything else is the pure JSON trio plus this native module.
  */
-export function switcherBundle(current: string): Bundle {
+export function switcherBundle(items: readonly string[], current: string): Bundle {
   return bundleFromJson(
     {
       manifest,
       document,
-      state: { switcher: { items: [...BUNDLE_IDS], current } },
+      state: { switcher: { items: [...items], current } },
     },
     {
       projectionViews: { bundleSwitcher: BundleSwitcherView },
