@@ -19,6 +19,24 @@ export interface Patch {
   ops: PatchOp[];
 }
 
+/** An immutable, rev-keyed capture of pure state for time-travel (see Kernel.checkpoint). */
+export interface Checkpoint {
+  rev: number;
+  state: Record<string, Json>;
+}
+
+/**
+ * A journaled effect, tagged with the rev it fired at and a monotonic issue sequence. The kernel
+ * owns no wall-clock time (only the rev counter), so ordering is `rev` + `seq`, never a timestamp.
+ * Returned by {@link Kernel.effectsSince} in causal order (oldest-first) for the host to ignore,
+ * replay forward, or reverse for compensation — the kernel imposes no interpretation.
+ */
+export interface RecordedEffect {
+  rev: number;
+  seq: number;
+  effect: OrchestratorEffect;
+}
+
 export interface GupEvent {
   node: string;
   name: string;
