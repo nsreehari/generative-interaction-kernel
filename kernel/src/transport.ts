@@ -17,6 +17,16 @@ export interface TransportProvider {
   subscribe(listener: TransportListener): () => void;
 }
 
+/**
+ * The minimal contract a render transport (e.g. SSE) binds to: attach a connection — optionally
+ * resuming from a known `rev` — and get back a detach handle. Implemented by
+ * {@link KernelTransportHost} directly, and by a face (ControlFace) that composes a broker
+ * internally, so a transport binds to the FACE, never to the internal broker.
+ */
+export interface TransportBroker {
+  attach(transport: TransportProvider, fromRev?: number): Promise<() => void>;
+}
+
 class InMemoryTransportEndpoint implements TransportProvider {
   private readonly listeners = new Set<TransportListener>();
   peer?: InMemoryTransportEndpoint;
@@ -51,7 +61,7 @@ export function createInMemoryTransportPair(): [TransportProvider, TransportProv
  * every connection. Reconnection is a transport concern handled here, below the closed
  * five-message GUP protocol.
  */
-export class KernelTransportHost {
+export class KernelTransportHost implements TransportBroker {
   private readonly connections = new Set<TransportProvider>();
   private readonly unsubscribers = new Map<TransportProvider, () => void>();
   private readonly log: Patch[] = [];

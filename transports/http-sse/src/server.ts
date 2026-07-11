@@ -8,7 +8,7 @@ import { randomUUID } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type {
   GupMessage,
-  KernelTransportHost,
+  TransportBroker,
   TransportListener,
   TransportProvider,
 } from "../../../kernel/src/index";
@@ -57,7 +57,7 @@ export class SseTransportServer {
   private readonly detachers = new Map<string, () => void>();
 
   constructor(
-    private readonly host: KernelTransportHost,
+    private readonly broker: TransportBroker,
     opts: SseTransportServerOptions = {}
   ) {
     this.path = opts.path ?? "/gup";
@@ -101,7 +101,7 @@ export class SseTransportServer {
 
     const endpoint = new SseServerEndpoint(res);
     this.endpoints.set(sessionId, endpoint);
-    const detach = await this.host.attach(
+    const detach = await this.broker.attach(
       endpoint,
       fromRev !== undefined && Number.isFinite(fromRev) ? fromRev : undefined
     );
