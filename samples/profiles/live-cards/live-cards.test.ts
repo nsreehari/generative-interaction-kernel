@@ -1,0 +1,22 @@
+import assert from "node:assert/strict";
+import { test } from "vitest";
+
+import { compileInteraction, type InteractionSpec } from "../../../interaction/src/index";
+import { liveCardsProfile } from "./index";
+
+test("live-cards sample profile resolves the authored layer chain", () => {
+  assert.equal(liveCardsProfile.artifact.payload.id, "live-cards");
+  assert.equal(liveCardsProfile.artifact.payload.kind, "genui-profile");
+  assert.deepEqual(
+    liveCardsProfile.stages.map((stage) => `${stage.fromLayer.kind}->${stage.toLayer.kind}`),
+    ["interaction->presentation", "presentation->runtime-document"]
+  );
+});
+
+test("live-cards sample profile lowers an interaction to a runtime document", () => {
+  const spec: InteractionSpec = { interaction: "review", subject: "portfolio" };
+  const doc = compileInteraction(spec, { surface: "desktop" }, liveCardsProfile);
+
+  assert.equal(doc.root.capability, "ui:board");
+  assert.ok((doc.root.edges?.children?.length ?? 0) > 0, "the lowered board should contain runtime children");
+});

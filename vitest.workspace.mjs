@@ -1,4 +1,21 @@
+import { fileURLToPath } from "node:url";
 import { defineWorkspace } from "vitest/config";
+
+const providerReactiveStateModel = fileURLToPath(
+  new URL("./packages/provider-reactive-state-model/src/index.ts", import.meta.url)
+);
+const providerConsequenceGraph = fileURLToPath(
+  new URL("./packages/provider-consequence-graph/src/index.ts", import.meta.url)
+);
+const providerExploratoryGraph = fileURLToPath(
+  new URL("./packages/provider-exploratory-graph/src/index.ts", import.meta.url)
+);
+const providerStepOrchestrator = fileURLToPath(
+  new URL("./packages/provider-step-orchestrator/src/index.ts", import.meta.url)
+);
+const providerProfileAuthoring = fileURLToPath(
+  new URL("./packages/provider-profile-authoring/src/index.ts", import.meta.url)
+);
 
 export default defineWorkspace([
   {
@@ -44,10 +61,24 @@ export default defineWorkspace([
     },
   },
   {
+    resolve: {
+      alias: {
+        "@gik/provider-reactive-state-model": providerReactiveStateModel,
+        "@gik/provider-consequence-graph": providerConsequenceGraph,
+        "@gik/provider-exploratory-graph": providerExploratoryGraph,
+        "@gik/provider-step-orchestrator": providerStepOrchestrator,
+        "@gik/provider-profile-authoring": providerProfileAuthoring,
+      },
+    },
     test: {
       name: "samples",
       environment: "node",
-      include: ["samples/control-host/**/*.test.ts", "samples/profiles/**/*.test.ts"],
+      include: [
+        "samples/control-host/**/*.test.ts",
+        "samples/profiles/**/*.test.ts",
+        "samples/apps/host/**/*.test.ts",
+        "samples/bundles/**/*.test.ts",
+      ],
     },
   },
   {
