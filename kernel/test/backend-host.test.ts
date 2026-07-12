@@ -9,7 +9,7 @@ import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import { Kernel } from "../src/index";
-import type { GupEvent, Json, Orchestrator, OrchestratorEffect, ResolvedNode } from "../src/index";
+import type { GIKEvent, Json, Orchestrator, OrchestratorEffect, ResolvedNode } from "../src/index";
 
 const manifest = {
   version: "backend-host/1",
@@ -22,7 +22,7 @@ const manifest = {
 };
 
 const document = {
-  gup: "0.1",
+  gik: "0.1",
   type: "document",
   payload: {
     root: {
@@ -90,7 +90,7 @@ test("backend host: invoke/confirm/route cascade settles a full lifecycle in one
     async confirm(effect: OrchestratorEffect) {
       const onConfirm = effect.args.onConfirm;
       return typeof onConfirm === "string"
-        ? { events: [{ node: effect.node, name: onConfirm, payload: effect.payload } as GupEvent] }
+        ? { events: [{ node: effect.node, name: onConfirm, payload: effect.payload } as GIKEvent] }
         : undefined;
     },
     async invoke(effect: OrchestratorEffect) {
@@ -104,7 +104,7 @@ test("backend host: invoke/confirm/route cascade settles a full lifecycle in one
             value: { id: `rcpt_${Math.floor(amount)}`, amount, status: "captured" } as Json,
           },
         ],
-        events: [{ node: effect.node, name: "charged" } as GupEvent],
+        events: [{ node: effect.node, name: "charged" } as GIKEvent],
       };
     },
     async route(effect: OrchestratorEffect) {
@@ -145,7 +145,7 @@ test("backend host: resolve() projects the same medium-neutral tree a UI adapter
     async confirm(effect: OrchestratorEffect) {
       const onConfirm = effect.args.onConfirm;
       return typeof onConfirm === "string"
-        ? { events: [{ node: effect.node, name: onConfirm, payload: effect.payload } as GupEvent] }
+        ? { events: [{ node: effect.node, name: onConfirm, payload: effect.payload } as GIKEvent] }
         : undefined;
     },
     async invoke(effect: OrchestratorEffect) {
@@ -153,7 +153,7 @@ test("backend host: resolve() projects the same medium-neutral tree a UI adapter
       const amount = (effect.payload?.amount as number | undefined) ?? 0;
       return {
         ops: [{ op: "set" as const, path: "payment.receipt", value: { amount, status: "captured" } as Json }],
-        events: [{ node: effect.node, name: "charged" } as GupEvent],
+        events: [{ node: effect.node, name: "charged" } as GIKEvent],
       };
     },
   };

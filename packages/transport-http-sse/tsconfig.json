@@ -1,0 +1,9 @@
+{
+  "extends": "../../transports/http-sse/tsconfig.json",
+  "include": [
+    "src",
+    "../../transports/http-sse/src",
+    "../../kernel/src",
+    "../../schemas/**/*.json"
+  ]
+}

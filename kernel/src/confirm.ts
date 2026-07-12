@@ -6,7 +6,7 @@
 // standard outcome vocabulary, and standard follow-up event names — so a document can wire
 // approval and denial with conventional, portable names instead of ad-hoc strings.
 
-import type { GupEvent, Json, OrchestratorEffect } from "./types";
+import type { GIKEvent, Json, OrchestratorEffect } from "./types";
 
 /**
  * The standardized prompt an Orchestrator renders for a `confirm`. Every field is optional
@@ -60,7 +60,7 @@ export function confirmPrompt(effect: OrchestratorEffect): ConfirmPrompt {
 export function confirmOutcomeEvent(
   effect: OrchestratorEffect,
   outcome: ConfirmOutcome
-): GupEvent {
+): GIKEvent {
   const confirmed = outcome === "approved";
   const payload: Record<string, Json> = {
     ...(effect.payload ?? {}),

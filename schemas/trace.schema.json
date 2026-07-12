@@ -1,13 +1,13 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://genui.dev/gup/0.1/trace.schema.json",
-  "title": "GUP trace message",
+  "$id": "https://genui.dev/gik/0.1/trace.schema.json",
+  "title": "GIK trace message",
   "description": "An observability event emitted by the kernel to an ObservabilitySink.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["gup", "type", "payload"],
+  "required": ["gik", "type", "payload"],
   "properties": {
-    "gup": { "const": "0.1" },
+    "gik": { "const": "0.1" },
     "type": { "const": "trace" },
     "payload": {
       "type": "object",

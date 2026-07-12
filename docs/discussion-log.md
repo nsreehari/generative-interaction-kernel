@@ -117,9 +117,9 @@ lets renderers in different frameworks and an out-of-process orchestrator all co
 orchestrator can't live out-of-process. (A) is "a nice library," (B) is "a platform." →
 [ADR-0004](decisions/ADR-0004-protocol-over-sdk.md).
 
-## 9. The protocol — GUP
+## 9. The protocol — GIK
 
-The GenUI Protocol was defined: one envelope, five messages (`manifest`, `document`, `patch`,
+The GIK Protocol was defined: one envelope, five messages (`manifest`, `document`, `patch`,
 `event`, `trace`), and protocol invariants (renderers consume documents+patches and emit events
 only; renderers never patch the store directly; the store is authoritative kernel-side; documents
 are valid only against a declared manifest; transport- and placement-agnostic). →
@@ -127,7 +127,7 @@ are valid only against a declared manifest; transport- and placement-agnostic). 
 
 ## 10. This repository
 
-Created to capture the design and drive the first concrete artifact (normative GUP schemas + a
+Created to capture the design and drive the first concrete artifact (normative GIK schemas + a
 conformance fixture).
 
 ## 11. Kernel placement — resolved
@@ -156,7 +156,7 @@ onto every provider seam ([04-first-onboarding-profile.md](04-first-onboarding-p
 fit assessment (maps cleanly / needs adapter / genuine gap or residue) and the rule that the kernel
 is not bent to fit the profile. Remaining open decisions were parked in
 [not-yet-decided.md](not-yet-decided.md). The **first build artifact** was produced: the five
-normative GUP draft-07 schemas + envelope, and a golden conformance fixture drawn from live-cards,
+normative GIK draft-07 schemas + envelope, and a golden conformance fixture drawn from live-cards,
 verified by a runner (`schemas/validate.mjs`) — all checks pass.
 
 ## 14. Phase 1 — the reference kernel (executable protocol)
@@ -209,12 +209,12 @@ human's follow-up event that assigns status; a `navigate` reaching routing witho
 and an unhandled invoke being safe. This resolved the "where does awaiting live" question and narrowed
 open items #9 (confirm UX) and #10 (streaming).
 
-## 17. Phase 4 — transport seam (GUP across a boundary)
+## 17. Phase 4 — transport seam (GIK across a boundary)
 
 The "protocol, not SDK" bet ([ADR-0004](decisions/ADR-0004-protocol-over-sdk.md)) was finally
 exercised across a boundary ([ADR-0010](decisions/ADR-0010-transport-seam.md)). A minimal duplex
-`TransportProvider` (`send`/`subscribe`) moves whole **GUP envelopes**; the five messages got concrete
-types (`GupMessage`) and an `envelope(type, payload)` helper so both ends share one serialized shape.
+`TransportProvider` (`send`/`subscribe`) moves whole **GIK envelopes**; the five messages got concrete
+types (`GIKMessage`) and an `envelope(type, payload)` helper so both ends share one serialized shape.
 A `KernelTransportHost` binds a kernel to a transport: on `start()` it publishes `manifest → document
 →` init `patch`, then dispatches each inbound `event` and sends the resulting `patch` back — inbound
 dispatch **serialized through a promise queue** for monotonic `rev`, non-`event` messages ignored (no
@@ -229,7 +229,7 @@ SSE/WebSocket/stdio + reconnection/replay still open).
 The transport only mattered if a renderer could run from it, so the client half landed
 ([ADR-0011](decisions/ADR-0011-client-runtime.md)). Two questions were forced: *who resolves?* and
 *how does a fresh client get initial state?* Answer: the **authoritative reducer stays on the host;
-interpretation moves to the client**. A `GenUIClient` consumes `manifest` (→ registry + empty
+interpretation moves to the client**. A `GIKClient` consumes `manifest` (→ registry + empty
 replica), `document` (→ tree), and each `patch` (→ applied to a **local state replica**), runs the
 **pure interpreter** locally, and emits `event`s back — never touching the kernel. Reads are pure and
 safe to duplicate; writes stay singular/authoritative on the host. Initial state is delivered by a new
@@ -252,9 +252,9 @@ each dispatch patch to all, and keeps a bounded **patch log** (baseline + deltas
 fromRev?)` is resume-aware — if `fromRev` is still in the log it replays *only* the missing deltas
 (client keeps its replica), otherwise it full-resyncs (`manifest → document →` full snapshot at current
 rev). A new `Kernel.snapshotPatch()` gives the current full state *without* re-seeding machine states
-(so mid-session onboarding never clobbers live state, unlike `baseline()`/`init()`). `GenUIClient`
+(so mid-session onboarding never clobbers live state, unlike `baseline()`/`init()`). `GIKClient`
 gained `rebind(transport)` (reconnect keeping the replica) and idempotent patch application (ignore
-rev ≤ current; a `manifest` resets rev so full resync always applies). Reconnection added **no new GUP
+rev ≤ current; a `manifest` resets rev so full resync always applies). Reconnection added **no new GIK
 message** — it is transport/host orchestration below the closed five. Verified headless: two clients
 share a kernel; one drops, misses a rev, reconnects and catches up via a single replayed patch; a late
 joiner full-syncs and sees the gate already open. Narrowed open item #7 (reconnection/replay done;
@@ -263,7 +263,7 @@ network bindings + `fromRev` transport + log persistence still open).
 
 ## 20. Phase 7 — agent-authoring path (typed builders, validate-before-commit, lint over throw)
 
-A generic platform's producers are agents emitting GUP documents from manifest vocabulary, not people
+A generic platform's producers are agents emitting GIK documents from manifest vocabulary, not people
 hand-writing JSON. Added `kernel/src/authoring.ts` ([ADR-0013](decisions/ADR-0013-agent-authoring.md)):
 typed constructors for the closed grammar (`node`, `document`, one per action family + `guarded`),
 `authorDocument()` that envelopes + runs structural validate-before-commit (throws on malformed), and
@@ -281,11 +281,11 @@ undeclared events/namespaces surface as warnings.
 Open item #7 still had no *real network* transport. Added `transports/http-sse/`
 ([ADR-0014](decisions/ADR-0014-http-sse-transport.md)) as a separate package (not in the kernel core,
 so `node:http` never leaks into a browser client). The direction split fits SSE: host → client streams
-over `GET /gup/stream` (SSE), the single client → host message (`event`) is a `POST /gup/event`.
-Sessions correlate via an `X-GUP-Session` response header the client echoes on POSTs — no new GUP
+over `GET /gik/stream` (SSE), the single client → host message (`event`) is a `POST /gik/event`.
+Sessions correlate via an `X-GIK-Session` response header the client echoes on POSTs — no new GIK
 message. `fromRev` rides the query string (`?fromRev=N`), mapping straight onto the broker's resume
 path. The SSE framing codec (`encodeSseFrame`/`SseFrameParser`) is socket-free and unit-tested
-(byte-split frames, ignored heartbeat comments). Crucially `GenUIClient`/`KernelTransportHost` are used
+(byte-split frames, ignored heartbeat comments). Crucially `GIKClient`/`KernelTransportHost` are used
 **unchanged** — only new `TransportProvider`s — which is the payoff of the seam. Verified over a real
 loopback socket: a client onboards + round-trips an event across HTTP/SSE, and a `?fromRev=1` stream
 replays only the missing patch (no manifest/document re-onboard). Narrowed #7 (concrete SSE + `fromRev`
@@ -728,7 +728,7 @@ single-kernel — host wiring is the honest shape).
 | Vendoring the profile's sync JSONata build into the kernel | Inverts the kernel→profile dependency; ships a v1.x build inside a critical prototype-pollution advisory; sync was only a profile deployment concern. |
 | Sending resolved trees over the wire (instead of document + patch) | Adds a message outside the five-message protocol and ships recomputed props on every change; the client resolves locally from document + patch instead. |
 | Client running the reducer too (symmetric kernels) | Duplicating writes invites divergence and breaks single-authority/validate-before-commit; only reads (interpret) are duplicated. |
-| A `hello`/`resume` GUP message for reconnection | Opens the closed five-message protocol for a connection-lifecycle concern; the client conveys its `rev` through the transport and the host onboards below GUP. |
+| A `hello`/`resume` GIK message for reconnection | Opens the closed five-message protocol for a connection-lifecycle concern; the client conveys its `rev` through the transport and the host onboards below GIK. |
 | Always full-resync on reconnect (no patch log) | Correct but wasteful for large state / frequent reconnects; a bounded patch log makes incremental replay the common path and full resync the graceful fallback. |
 | Rejecting unknown capabilities as hard errors at author time | They are safe at runtime via graceful fallback and support forward-compatibility (targeting a capability a renderer hasn't shipped); they are lint warnings, not errors. |
 | Folding reference checks into schema validation | The schema is vocabulary-agnostic by design; reference correctness is manifest-relative and advisory, so it is a separate non-throwing lint. |

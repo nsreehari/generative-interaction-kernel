@@ -5,7 +5,7 @@ import type {
   Action,
   DocNode,
   DocumentPayload,
-  GupEvent,
+  GIKEvent,
   Json,
   Machine,
   OrchestratorEffect,
@@ -41,8 +41,8 @@ interface DispatchCtx {
   predicateExpr: ExpressionProvider;
   data: Record<string, Json>;
   bindings: Record<string, unknown>;
-  currentEvent: GupEvent;
-  emitted: GupEvent[];
+  currentEvent: GIKEvent;
+  emitted: GIKEvent[];
 }
 
 async function resolveValue(args: Record<string, Json> | undefined, c: DispatchCtx): Promise<Json> {
@@ -123,7 +123,7 @@ async function dispatchAction(a: Action, c: DispatchCtx): Promise<void> {
 function reduceMachine(
   m: Machine,
   store: StateModel,
-  event: GupEvent,
+  event: GIKEvent,
   c: DispatchCtx
 ): Promise<void> | void {
   const current = (store.get(`${m.context}.state`) as string | null) ?? m.initial;
@@ -152,7 +152,7 @@ function reduceMachine(
 export async function reduce(
   doc: DocumentPayload,
   store: StateModel,
-  event: GupEvent,
+  event: GIKEvent,
   expr: ExpressionProvider,
   // Predicate positions (action + machine transition guards) are agent-authored and
   // adversarial; the platform routes them through the safe subset. Falls back to the full
@@ -171,9 +171,9 @@ export async function reduce(
     emitted: [],
   };
 
-  const queue: GupEvent[] = [event];
+  const queue: GIKEvent[] = [event];
   while (queue.length > 0) {
-    const current = queue.shift() as GupEvent;
+    const current = queue.shift() as GIKEvent;
     c.currentEvent = current;
     c.bindings = { event: current.payload ?? {} };
 
@@ -199,7 +199,7 @@ export async function reduce(
 
 /** {@link ReduceResult} plus the events a run queued via `emit`, for the caller to settle. */
 export interface ReactionRunResult extends ReduceResult {
-  emitted: GupEvent[];
+  emitted: GIKEvent[];
 }
 
 /**

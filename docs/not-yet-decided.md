@@ -39,7 +39,7 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
    closed families, and how those custom actions are declared in the manifest and validated.
 
 4. **Transport bindings.** A `TransportProvider` seam plus an in-memory reference pair and
-   `KernelTransportHost` now carry GUP envelopes across a boundary
+   `KernelTransportHost` now carry GIK envelopes across a boundary
    ([ADR-0010](decisions/ADR-0010-transport-seam.md)); the host is a broker with a patch log that
    supports reconnection via incremental replay or full resync
    ([ADR-0012](decisions/ADR-0012-reconnection.md)); and a concrete **HTTP/SSE** binding

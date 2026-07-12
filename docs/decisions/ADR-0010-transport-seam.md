@@ -1,4 +1,4 @@
-# ADR-0010: Transport — GUP over a transport seam
+# ADR-0010: Transport — GIK over a transport seam
 
 **Status:** Accepted
 
@@ -6,7 +6,7 @@
 
 [ADR-0004](ADR-0004-protocol-over-sdk.md) committed to delivering a **protocol + kernel**, not an
 in-process SDK — the whole point being that the kernel and a renderer can run in *separate* processes
-and speak GUP over a wire. Through Phase 3 that claim was unproven: the kernel, reducer, orchestrator,
+and speak GIK over a wire. Through Phase 3 that claim was unproven: the kernel, reducer, orchestrator,
 and React adapter all ran in-process, calling each other directly. Nothing ever serialized a
 `manifest`/`document`/`patch` out or accepted an `event` back across a boundary, and open item #7
 (transport bindings) was untouched.
@@ -16,8 +16,8 @@ and React adapter all ran in-process, calling each other directly. Nothing ever 
 Introduce a **`TransportProvider`** seam and a host that drives the kernel over it (`kernel/transport.ts`):
 
 - **`TransportProvider`** is a minimal duplex contract: `send(message)` and `subscribe(listener)`.
-  It moves whole **GUP envelopes** (`{ gup, type, payload }`), nothing kernel-specific.
-- The five wire messages are given concrete types — **`GupMessage`** (manifest/document/patch/event/
+  It moves whole **GIK envelopes** (`{ gik, type, payload }`), nothing kernel-specific.
+- The five wire messages are given concrete types — **`GIKMessage`** (manifest/document/patch/event/
   trace) plus an **`envelope(type, payload)`** helper — so both ends share one serialized shape.
 - **`KernelTransportHost`** binds a kernel to a transport. On `start()` it publishes the opening
   sequence — `manifest`, then `document`, then the init `patch` — and thereafter, for each inbound
@@ -37,7 +37,7 @@ only the transport.
   (protocol, not SDK) unproven and blocks a future out-of-process C#/WinUI renderer that must talk
   over the same wire.
 - **Make the transport kernel-aware (send patches/events as typed calls).** Rejected: it would leak
-  kernel types across the boundary and defeat portability. The transport moves opaque GUP envelopes
+  kernel types across the boundary and defeat portability. The transport moves opaque GIK envelopes
   only.
 - **Ship SSE/WebSocket first.** Deferred: the in-memory pair is the smallest thing that exercises the
   real boundary and stays test-deterministic; concrete network bindings (SSE to match the live-cards
@@ -50,7 +50,7 @@ only the transport.
 
 - The protocol runs across a real boundary: a host publishes `manifest`/`document`/`patch` and a
   client round-trips an `event` to a `patch` — with the kernel and client decoupled by the transport.
-- One serialized `GupMessage` shape is now shared by host and client, so a second (C#) kernel core or
+- One serialized `GIKMessage` shape is now shared by host and client, so a second (C#) kernel core or
   a non-React renderer can interoperate over the same wire.
 - Determinism is preserved end to end: serialized inbound dispatch keeps `rev` monotonic; validate-
   before-commit and the pure-reducer law are untouched (the host still dispatches through the kernel).

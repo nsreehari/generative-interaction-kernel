@@ -2,7 +2,7 @@
   "name": "cascade: one event drives two machines through an emit chain in a single dispatch",
   "description": "A press emits `advance`; an outer machine consumes it (idle -> running) and its transition emits `inner`; a second machine consumes `inner` (waiting -> done). All three hops settle inside one dispatch, so one rev carries both machine-state writes in order.",
   "manifest": {
-    "gup": "0.1",
+    "gik": "0.1",
     "type": "manifest",
     "payload": {
       "version": "cascade-demo/1.0",
@@ -13,7 +13,7 @@
     }
   },
   "document": {
-    "gup": "0.1",
+    "gik": "0.1",
     "type": "document",
     "payload": {
       "manifest": "cascade-demo/1.0",

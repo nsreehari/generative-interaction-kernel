@@ -1,0 +1,9 @@
+{
+  "extends": "../../face/tsconfig.json",
+  "include": [
+    "src",
+    "../../face/src",
+    "../../kernel/src",
+    "../../schemas/**/*.json"
+  ]
+}

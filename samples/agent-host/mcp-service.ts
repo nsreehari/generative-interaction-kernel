@@ -6,7 +6,7 @@
 // only the pure authoring/validation tools. A live host can mount the richer agent projection
 // (adds getState/getTree) by injecting a dispatcher built over a real ControlFace.
 //
-// Run:  npx tsx genui-platform/samples/agent-host/mcp-service.ts
+// Run:  npx tsx generative-interaction-kernel/samples/agent-host/mcp-service.ts
 //   or:  npm run dev:mcp
 //
 // Probe it:

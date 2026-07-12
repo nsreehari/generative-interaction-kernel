@@ -2,7 +2,7 @@
 // operations over a running ControlFace: inspect (getState/getTree), drive (emit), and full
 // time-travel control-plane operations (checkpoint/restore/effectsSince/compensate).
 
-import type { Checkpoint, GupEvent, OrchestratorEffect } from "../../../kernel/src/index";
+import type { Checkpoint, GIKEvent, OrchestratorEffect } from "../../../kernel/src/index";
 import type { McpTool } from "../tool-surface";
 import type { ControlFace } from "./controlface";
 
@@ -32,9 +32,9 @@ export function runtimeTools(face: ControlFace): McpTool[] {
     },
     {
       name: "emit",
-      description: "Drive the kernel with a GUP event and return the resulting patch (also broadcast to render clients).",
+      description: "Drive the kernel with a GIK event and return the resulting patch (also broadcast to render clients).",
       inputSchema: obj({ event: any }, ["event"]),
-      handler: (a) => face.emit(a.event as GupEvent),
+      handler: (a) => face.emit(a.event as GIKEvent),
     },
     {
       name: "checkpoint",

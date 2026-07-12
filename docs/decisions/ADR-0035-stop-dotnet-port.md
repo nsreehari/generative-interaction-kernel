@@ -27,7 +27,7 @@ different UI toolkit. That evidence now exists and is recorded.
 Maintaining two full implementations in lockstep is, going forward, a cost the project no longer wants
 to carry. Every kernel, provider, interaction, presentation, transport, and agentface change has had to
 be mirrored across languages and re-verified in both. The TypeScript reference is the canonical source
-of truth; the shared, language-neutral **conformance matrix, GUP protocol, and JSON schemas** remain the
+of truth; the shared, language-neutral **conformance matrix, GIK protocol, and JSON schemas** remain the
 contract any future re-implementation (in any language) can be built and verified against without the
 port living in-tree.
 
@@ -43,7 +43,7 @@ port living in-tree.
    - `agentface/dotnet/` (GenUI.AgentFace, .Http, and their Checks)
    - `samples/bundles/inspect/components/dotnet`
    - the `test:dotnet*` npm scripts and their inclusion in the aggregate `npm test` / `typecheck`.
-3. The **language-neutral assets stay**: the GUP protocol, the JSON schemas, and the `conformance/`
+3. The **language-neutral assets stay**: the GIK protocol, the JSON schemas, and the `conformance/`
    cases (they serve the TypeScript kernel and remain the portable contract for any future port).
 4. The historical ADRs describing the port (0024, 0025, 0026, 0027, 0029, and any .NET notes in others)
    are **kept as immutable records**; this ADR supersedes their forward-looking intent. The port is

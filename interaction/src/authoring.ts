@@ -10,7 +10,7 @@ import type { PresentationEdits } from "./edits";
 
 /** The portable, re-runnable authored artifact — the minimal input the pipeline replays. */
 export interface AuthoredSession {
-  gup: "0.1";
+  gik: "0.1";
   kind: "authored-session";
   interaction: InteractionSpec;
   context: PresentationContext;
@@ -23,7 +23,7 @@ export function toAuthoredSession(
   context: PresentationContext,
   edits: PresentationEdits
 ): AuthoredSession {
-  return { gup: "0.1", kind: "authored-session", interaction, context, edits };
+  return { gik: "0.1", kind: "authored-session", interaction, context, edits };
 }
 
 /** The result of parsing pasted import text: the authored artifact, or a human-readable error. */
@@ -55,5 +55,5 @@ export function parseAuthoredSession(text: string): ParsedImport {
       : {}) as PresentationEdits["disclosure"],
     order: Array.isArray(e.order) ? (e.order as string[]) : [],
   };
-  return { authored: { gup: "0.1", kind: "authored-session", interaction, context, edits }, error: "" };
+  return { authored: { gik: "0.1", kind: "authored-session", interaction, context, edits }, error: "" };
 }

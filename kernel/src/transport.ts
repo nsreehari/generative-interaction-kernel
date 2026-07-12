@@ -4,16 +4,16 @@ import {
   unwrap,
   type DocumentPayload,
   type Enveloped,
-  type GupEvent,
-  type GupMessage,
+  type GIKEvent,
+  type GIKMessage,
   type ManifestPayload,
   type Patch,
 } from "./types";
 
-export type TransportListener = (message: GupMessage) => void | Promise<void>;
+export type TransportListener = (message: GIKMessage) => void | Promise<void>;
 
 export interface TransportProvider {
-  send(message: GupMessage): void | Promise<void>;
+  send(message: GIKMessage): void | Promise<void>;
   subscribe(listener: TransportListener): () => void;
 }
 
@@ -31,7 +31,7 @@ class InMemoryTransportEndpoint implements TransportProvider {
   private readonly listeners = new Set<TransportListener>();
   peer?: InMemoryTransportEndpoint;
 
-  async send(message: GupMessage): Promise<void> {
+  async send(message: GIKMessage): Promise<void> {
     if (!this.peer) return;
     const deliveries = [...this.peer.listeners].map((listener) =>
       Promise.resolve(listener(message))
@@ -59,7 +59,7 @@ export function createInMemoryTransportPair(): [TransportProvider, TransportProv
  * incremental replay of missing patches for a client resuming from a known `rev` —
  * dispatches inbound `event`s serially (monotonic `rev`), and broadcasts each patch to
  * every connection. Reconnection is a transport concern handled here, below the closed
- * five-message GUP protocol.
+ * five-message GIK protocol.
  */
 export class KernelTransportHost implements TransportBroker {
   private readonly connections = new Set<TransportProvider>();
@@ -135,7 +135,7 @@ export class KernelTransportHost implements TransportBroker {
     if (this.log.length > this.maxLog) this.log.shift();
   }
 
-  private async broadcast(message: GupMessage): Promise<void> {
+  private async broadcast(message: GIKMessage): Promise<void> {
     for (const transport of this.connections) await transport.send(message);
   }
 
@@ -144,7 +144,7 @@ export class KernelTransportHost implements TransportBroker {
    * resulting patch to every connection — the same authoritative path a wired `event` takes.
    * Serialized behind the shared dispatch queue so in-process and wired events stay monotonic.
    */
-  dispatch(event: GupEvent): Promise<Patch> {
+  dispatch(event: GIKEvent): Promise<Patch> {
     let captured: Patch | undefined;
     this.dispatchQueue = this.dispatchQueue.then(async () => {
       const patch = await this.kernel.dispatch(event);
@@ -155,7 +155,7 @@ export class KernelTransportHost implements TransportBroker {
     return this.dispatchQueue.then(() => captured!);
   }
 
-  private onMessage(message: GupMessage): Promise<void> {
+  private onMessage(message: GIKMessage): Promise<void> {
     if (message.type !== "event") return Promise.resolve();
     return this.dispatch(message.payload).then(() => undefined);
   }

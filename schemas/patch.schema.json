@@ -1,13 +1,13 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://genui.dev/gup/0.1/patch.schema.json",
-  "title": "GUP patch message",
+  "$id": "https://genui.dev/gik/0.1/patch.schema.json",
+  "title": "GIK patch message",
   "description": "State deltas emitted by the kernel to a renderer. Renderers apply patches; they never patch the store directly.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["gup", "type", "payload"],
+  "required": ["gik", "type", "payload"],
   "properties": {
-    "gup": { "const": "0.1" },
+    "gik": { "const": "0.1" },
     "type": { "const": "patch" },
     "payload": {
       "type": "object",

@@ -1,4 +1,4 @@
-// Phase 7: the agent-authoring path. Agents don't hand-write JSON — they compose GUP
+// Phase 7: the agent-authoring path. Agents don't hand-write JSON — they compose GIK
 // documents from the manifest's vocabulary using typed constructors for the *closed*
 // grammar, then get two independent safety nets:
 //   1. authorDocument() runs validate-before-commit (structural schema validation) and

@@ -1,0 +1,10 @@
+{
+  "extends": "../../adapters/react/tsconfig.json",
+  "include": [
+    "src",
+    "../../adapters/react/src",
+    "../../kernel/src",
+    "../../providers/**/*.ts",
+    "../../schemas/**/*.json"
+  ]
+}

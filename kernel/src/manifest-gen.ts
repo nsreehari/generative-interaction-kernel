@@ -1,4 +1,4 @@
-// Manifest generation: derive a GUP manifest from an authored document. This is the inverse of the
+// Manifest generation: derive a GIK manifest from an authored document. This is the inverse of the
 // authoring path — given a document composed from the closed grammar (by a planner, a no-code
 // builder, or an agent), walk it and emit the minimal manifest it needs: the capabilities it uses,
 // the namespaces its edges touch, and the action families it invokes. This is what makes an authored

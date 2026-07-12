@@ -2,7 +2,7 @@
   "name": "orchestrator: a confirm effect approved by HITL drives the follow-up write in one dispatch",
   "description": "Pressing Delete emits a `confirm` effect (the reducer itself writes nothing). The scripted Orchestrator approves it by returning a `confirmed` follow-up event, which the same node handles to assign card_data.status. One dispatch, one rev: the reducer's own ops are empty, yet the effect's follow-up produces the single write.",
   "manifest": {
-    "gup": "0.1",
+    "gik": "0.1",
     "type": "manifest",
     "payload": {
       "version": "confirm-demo/1.0",
@@ -13,7 +13,7 @@
     }
   },
   "document": {
-    "gup": "0.1",
+    "gik": "0.1",
     "type": "document",
     "payload": {
       "manifest": "confirm-demo/1.0",

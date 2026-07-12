@@ -12,8 +12,8 @@ language. Everything here is normative; the case schema (`conformance-case.schem
 
 ## Case lifecycle
 
-1. **Load** `manifest`/`document`. Each may be an **enveloped** message (`{ gup, type, payload }`)
-   or a **bare payload**; the runner unwraps to the payload when a `gup` field is present. When
+1. **Load** `manifest`/`document`. Each may be an **enveloped** message (`{ gik, type, payload }`)
+   or a **bare payload**; the runner unwraps to the payload when a `gik` field is present. When
    `manifestRef`/`documentRef` is given instead, resolve it as a path **relative to the case file**.
 2. **Namespaces** come from `manifest.namespaces`; the store is keyed by those namespace roots.
 3. **Seed then init.** Apply the `seed` ops (if any) to the store, *then* seed machine states

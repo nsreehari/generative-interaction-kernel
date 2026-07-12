@@ -91,13 +91,13 @@ test("traces: assign action and machine transition are observable", async () => 
 });
 
 test("validate-before-commit: a malformed document is rejected", () => {
-  const bad = { gup: "0.1", type: "document", payload: { root: { id: "x" } } };
-  assert.throws(() => new Kernel(manifest, bad as any), /Invalid GUP document/);
+  const bad = { gik: "0.1", type: "document", payload: { root: { id: "x" } } };
+  assert.throws(() => new Kernel(manifest, bad as any), /Invalid GIK document/);
 });
 
 test("emit: an emitted event is reduced and can drive a machine transition", async () => {
   const emitDoc = {
-    gup: "0.1",
+    gik: "0.1",
     type: "document",
     payload: {
       root: {

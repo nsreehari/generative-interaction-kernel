@@ -1,4 +1,4 @@
-// GUP conformance runner.
+// GIK conformance runner.
 // Validates every fixture against its message schema and through the envelope (oneOf),
 // then asserts the golden reduction contract (event -> expected patch) as documented data.
 //
@@ -22,7 +22,7 @@ const readJson = (p) => JSON.parse(readFileSync(join(here, p), "utf8"));const sc
 const ajv = new Ajv({ allErrors: true, strict: false });
 for (const f of schemaFiles) ajv.addSchema(readJson(f));
 
-const byId = (name) => `https://genui.dev/gup/0.1/${name}`;
+const byId = (name) => `https://genui.dev/gik/0.1/${name}`;
 
 let failures = 0;
 const check = (label, validate, data) => {

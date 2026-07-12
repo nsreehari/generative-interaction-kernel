@@ -8,12 +8,12 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import {
-  GenUIClient,
+  GIKClient,
   InMemoryStateModel,
   Kernel,
   KernelTransportHost,
   createInMemoryTransportPair,
-  type GupMessage,
+  type GIKMessage,
   type ResolvedNode,
 } from "../src/index";
 
@@ -59,13 +59,13 @@ test("a disconnected client resumes from its rev via incremental replay; a late 
 
   // Client 1 connects.
   const [h1, c1t] = createInMemoryTransportPair();
-  const c1 = new GenUIClient(c1t);
+  const c1 = new GIKClient(c1t);
   c1.start();
   await host.attach(h1);
 
   // Client 2 connects and stays.
   const [h2, c2t] = createInMemoryTransportPair();
-  const c2 = new GenUIClient(c2t);
+  const c2 = new GIKClient(c2t);
   c2.start();
   await host.attach(h2);
 
@@ -86,7 +86,7 @@ test("a disconnected client resumes from its rev via incremental replay; a late 
 
   // Client 1 reconnects on a fresh link and resumes from its last rev.
   const [h3, c3t] = createInMemoryTransportPair();
-  const messagesOnResume: GupMessage[] = [];
+  const messagesOnResume: GIKMessage[] = [];
   c3t.subscribe((m) => {
     messagesOnResume.push(m);
   });
@@ -103,7 +103,7 @@ test("a disconnected client resumes from its rev via incremental replay; a late 
 
   // A brand-new late client full-syncs to current state (Approve visible from rev 1).
   const [h4, c4t] = createInMemoryTransportPair();
-  const late = new GenUIClient(c4t);
+  const late = new GIKClient(c4t);
   late.start();
   await host.attach(h4);
   assert.equal(late.getRev(), 2);

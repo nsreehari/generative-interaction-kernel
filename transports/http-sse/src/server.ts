@@ -1,13 +1,13 @@
 // Server-side HTTP/SSE binding for the transport seam. Host -> client messages stream
 // over an SSE response; client -> host `event`s arrive as POSTs correlated by a session
-// id (returned as the `X-GUP-Session` header on the stream). Each SSE stream is one
+// id (returned as the `X-GIK-Session` header on the stream). Each SSE stream is one
 // connection attached to the KernelTransportHost broker; a reconnecting client passes
 // `?fromRev=N` to resume with an incremental replay instead of a full re-onboard.
 
 import { randomUUID } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type {
-  GupMessage,
+  GIKMessage,
   TransportBroker,
   TransportListener,
   TransportProvider,
@@ -19,7 +19,7 @@ class SseServerEndpoint implements TransportProvider {
 
   constructor(private readonly res: ServerResponse) {}
 
-  send(message: GupMessage): void {
+  send(message: GIKMessage): void {
     this.res.write(encodeSseFrame(message));
   }
 
@@ -31,7 +31,7 @@ class SseServerEndpoint implements TransportProvider {
   }
 
   /** Deliver a client-originated message (a POSTed event) to the host. */
-  deliver(message: GupMessage): void | Promise<void> {
+  deliver(message: GIKMessage): void | Promise<void> {
     return this.listener?.(message);
   }
 }
@@ -47,7 +47,7 @@ function readBody(req: IncomingMessage): Promise<string> {
 }
 
 export interface SseTransportServerOptions {
-  /** Base path the two routes mount under; defaults to `/gup`. */
+  /** Base path the two routes mount under; defaults to `/gik`. */
   path?: string;
 }
 
@@ -60,11 +60,11 @@ export class SseTransportServer {
     private readonly broker: TransportBroker,
     opts: SseTransportServerOptions = {}
   ) {
-    this.path = opts.path ?? "/gup";
+    this.path = opts.path ?? "/gik";
   }
 
   /**
-   * Try to handle a request. Returns true if it matched a GUP route (`GET {path}/stream`
+   * Try to handle a request. Returns true if it matched a GIK route (`GET {path}/stream`
    * or `POST {path}/event`), false otherwise so a host app can fall through to its own
    * routing.
    */
@@ -96,7 +96,7 @@ export class SseTransportServer {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
-      "X-GUP-Session": sessionId,
+      "X-GIK-Session": sessionId,
     });
 
     const endpoint = new SseServerEndpoint(res);
@@ -116,7 +116,7 @@ export class SseTransportServer {
   }
 
   private async receiveEvent(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
-    const headerSession = req.headers["x-gup-session"];
+    const headerSession = req.headers["x-gik-session"];
     const sessionId =
       url.searchParams.get("session") ??
       (typeof headerSession === "string" ? headerSession : undefined);
@@ -128,7 +128,7 @@ export class SseTransportServer {
       res.writeHead(404).end();
       return;
     }
-    await endpoint.deliver(JSON.parse(body) as GupMessage);
+    await endpoint.deliver(JSON.parse(body) as GIKMessage);
     this.writeCorsHeaders(req, res);
     res.writeHead(204).end();
   }
@@ -137,8 +137,8 @@ export class SseTransportServer {
     const origin = typeof req.headers.origin === "string" ? req.headers.origin : "*";
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-GUP-Session");
-    res.setHeader("Access-Control-Expose-Headers", "X-GUP-Session");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-GIK-Session");
+    res.setHeader("Access-Control-Expose-Headers", "X-GIK-Session");
     res.setHeader("Vary", "Origin");
   }
 }

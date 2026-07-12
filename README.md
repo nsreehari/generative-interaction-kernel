@@ -1,4 +1,4 @@
-# GenUI Platform
+# Generative Interaction Kernel
 
 A generic platform layer for **generative, declarative UI** — a kernel that interprets a
 portable UI-intent document into a running, reactive interface, while delegating everything
@@ -15,30 +15,35 @@ One confusion this repo now resolves explicitly: the kernel is not the whole run
 | Layer | What it is | Use it when… |
 |---|---|---|
 | **Kernel / engine** | the embeddable execution core | you want local runtime authority and deterministic execution in-process |
-| **Face** | the callable surface around pure helpers and/or a live kernel | you want a bounded tool/API surface |
-| **Projection** | a filtered policy view of a face | you want an agent-safe subset vs a full control-plane catalog |
+| **Face** | the internal callable surface around pure helpers and/or a live kernel | you are implementing shared projection machinery |
+| **Projection** | the outward policy view over that face | you want an agent-safe subset vs a full control-plane catalog |
 | **Transport** | the wire carrier for a chosen projection | you need HTTP/SSE/MCP/process boundaries |
 
 In this repo, the concrete shape is:
 
 - [kernel](kernel) = the engine
-- [face](face) = the package owning the callable surface
-- [face/src/projections](face/src/projections) = filtered views such as agent/control
-- [transports](transports) = wire bindings that carry a chosen projection
+- [face](face) = the internal shared composition layer behind the public projections
+- [packages/kernel](packages/kernel) = the public `@gik/kernel` package
+- [packages/controlface](packages/controlface) = the public `@gik/controlface` package
+- [packages/agentface](packages/agentface) = the public `@gik/agentface` package
+- [packages/react](packages/react) = the public `@gik/react` package
+- [packages/transport-http-sse](packages/transport-http-sse) = the public `@gik/transport-http-sse` package
+- [packages/transport-mcp-http](packages/transport-mcp-http) = the public `@gik/transport-mcp-http` package
+- [transports](transports) = the internal transport implementations that the public transport packages wrap
 - [samples](samples) = thin outer composition showing how to mount those pieces together
 
 If you are deciding what to consume:
 
 - embed the **kernel** when your product should be the runtime authority;
-- consume a **face projection** when you want a bounded surface over an already-running runtime;
+- consume **controlface** or **agentface** when you want a bounded surface over an already-running runtime;
 - add a **transport** only when that surface must cross a process/network boundary.
 
 ## Status
 
-Early implementation. The architecture and the wire protocol (**GenUI Protocol / GUP**) are
+Early implementation. The architecture and the wire protocol (**GIK Protocol / GIK**) are
 defined; the normative schemas + golden conformance fixture, a **reference kernel** (Phase 1), a
 first **React render adapter** (Phase 2), the **Orchestrator seam** for effectful actions
-(Phase 3), a **transport seam** carrying GUP across a boundary (Phase 4), a **client runtime**
+(Phase 3), a **transport seam** carrying GIK across a boundary (Phase 4), a **client runtime**
 that renders purely from wire messages (Phase 5), **reconnection** — a broker host with a patch
 log that resumes a returning client or full-resyncs a late one (Phase 6), an **agent-authoring path** —
 typed builders + validate-before-commit + non-throwing reference lint (Phase 7), a concrete **HTTP/SSE
@@ -55,8 +60,8 @@ conformance matrix** of portable JSON cases with a per-kernel runner (Phase 9) �
 | Reference kernel | **TypeScript/JS first**, JSONata as the default `ExpressionProvider` |
 | First render adapter | **React** (`adapters/react/`), infra-agnostic per ADR-0006 |
 | Effectful actions | **Orchestrator seam**: `invoke`/`confirm`/`route` as post-reduction effects; async data as machine states |
-| Transport | **Transport seam**: GUP envelopes over `TransportProvider`; in-memory reference pair + `KernelTransportHost` |
-| Client runtime | **`GenUIClient`**: interpret + state replica on the renderer side; renders from wire messages, emits events back |
+| Transport | **Transport seam**: GIK envelopes over `TransportProvider`; in-memory reference pair + `KernelTransportHost` |
+| Client runtime | **`GIKClient`**: interpret + state replica on the renderer side; renders from wire messages, emits events back |
 | Reconnection | **Broker host + patch log**: broadcast to many connections; resume via incremental replay or full resync; idempotent client `rebind` |
 | Agent authoring | **Typed builders** over the closed grammar; `authorDocument` = validate-before-commit; `lintManifestReferences` = non-throwing warnings (unknown capabilities render as fallback) |
 | Network transport | **HTTP/SSE binding** (`transports/http-sse/`): SSE for host→client, POST for client→host, session via header, `?fromRev=N` resume; kept out of the portable core |
@@ -82,12 +87,12 @@ conformance matrix** of portable JSON cases with a per-kernel runner (Phase 9) �
 ## Repository map
 
 ```
-genui-platform/
+generative-interaction-kernel/
   README.md                     ← you are here
   docs/
     01-vision.md                ← the problem, the pivot, what we're building
     02-architecture.md          ← kernel/provider model, object model, invariants, pipeline
-    03-protocol.md              ← the GenUI Protocol (GUP): the five wire messages
+    03-protocol.md              ← the GIK Protocol (GIK): the five wire messages
     04-first-onboarding-profile.md ← live-cards: the first profile to onboard (3-repo mapping)
     not-yet-decided.md          ← parked open decisions
     discussion-log.md           ← chronological record of the whole design conversation
@@ -119,7 +124,7 @@ genui-platform/
       ADR-0024-second-kernel-csharp.md
       ADR-0025-orchestrator-scripting-conformance.md
       ADR-0026-second-render-adapter-dotnet.md
-  schemas/                      ← normative GUP JSON Schemas + golden conformance fixture
+  schemas/                      ← normative GIK JSON Schemas + golden conformance fixture
   conformance/                  ← Phase 9 behavioral matrix (language-neutral, per-kernel)
     README.md                     ← runner contract: semantics every kernel's runner must honor (ADR-0023)
     conformance-case.schema.json  ← draft-07 schema for a case file
@@ -136,6 +141,13 @@ genui-platform/
       tool-surface.ts           ← shared JSON-RPC tool primitive + dispatcher
     test/                       ← pure + live + projection integration tests
     tsconfig.json
+  packages/                     ← public npm/browser package surfaces
+    kernel/                     ← @gik/kernel
+    controlface/                ← @gik/controlface
+    agentface/                  ← @gik/agentface
+    react/                      ← @gik/react
+    transport-http-sse/         ← @gik/transport-http-sse (browser-safe top-level, Node server subpath)
+    transport-mcp-http/         ← @gik/transport-mcp-http
   adapters/
     react/                      ← Phase 2 React render adapter
       src/                      ← registry, renderer, controller, live-cards components, source-agnostic hook

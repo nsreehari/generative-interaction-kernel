@@ -4,7 +4,7 @@
 
 ## Context
 
-The point of a *generic* GenUI platform is that an agent (or any producer) emits GUP documents from a
+The point of a *generic* GenUI platform is that an agent (or any producer) emits GIK documents from a
 manifest's declared vocabulary — it does not hand-write schema-shaped JSON. Everything below the
 authoring layer already exists: a closed grammar ([ADR-0002](ADR-0002-closed-grammar.md)), structural
 validate-before-commit ([ADR-0005](ADR-0005-validation.md)), and graceful runtime fallback for

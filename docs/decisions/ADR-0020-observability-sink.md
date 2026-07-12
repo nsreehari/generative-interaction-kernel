@@ -5,7 +5,7 @@
 ## Context
 
 The kernel already emits a `TraceEvent` to an optional `sink` at various points, and the `trace`
-GUP message exists. But the *set* of trace points was implicit (only what the code happened to
+GIK message exists. But the *set* of trace points was implicit (only what the code happened to
 emit), and there was no reference sink — so a profile couldn't rely on which events fire, and every
 consumer had to hand-roll formatting/collection. To make observability a real seam, the trace-point
 set has to be a stated contract and there needs to be at least one reference target.

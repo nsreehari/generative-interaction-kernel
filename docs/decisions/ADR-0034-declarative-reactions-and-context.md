@@ -121,7 +121,7 @@ same shared-store idea. One mechanism (context) is clearer than two.
 
 ## Consequences
 
-- **Two closed-grammar additions ⇒ dotnet parity work.** `react` and the `context` scope are GUP
+- **Two closed-grammar additions ⇒ dotnet parity work.** `react` and the `context` scope are GIK
   surface: the document schema, the TypeScript kernel, and the C# `Kernel` must all honor them, verified
   by the conformance matrix (ADR-0023/0024). Sequencing is **common + TypeScript first, validated, then
   dotnet** — the TS kernel and schema lead; the C# kernel mirrors. _Landed:_ both kernels honor `react`

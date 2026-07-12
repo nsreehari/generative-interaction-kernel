@@ -2,7 +2,7 @@
   "name": "negative: a malformed document is rejected (validate-before-commit)",
   "description": "An action missing the required `do` field fails structural validation; the kernel MUST refuse to construct.",
   "manifest": {
-    "gup": "0.1",
+    "gik": "0.1",
     "type": "manifest",
     "payload": {
       "version": "bad-demo/1.0",
@@ -12,7 +12,7 @@
     }
   },
   "document": {
-    "gup": "0.1",
+    "gik": "0.1",
     "type": "document",
     "payload": {
       "manifest": "bad-demo/1.0",

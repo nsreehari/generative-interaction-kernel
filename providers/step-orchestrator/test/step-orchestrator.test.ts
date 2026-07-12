@@ -73,7 +73,7 @@ test("the Kernel fulfils an invoke through a flow and applies its result to the 
       actions: { propsSchema: { type: "object", properties: { label: { type: "string" } } }, emits: ["tap"] },
     },
   } as ManifestPayload;
-  const manifestMessage = { gup: "0.1", type: "manifest", payload: manifest } as const;
+  const manifestMessage = { gik: "0.1", type: "manifest", payload: manifest } as const;
 
   const root = node("board", "board-1", {
     props: { title: "Invoke" },

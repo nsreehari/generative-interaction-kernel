@@ -19,7 +19,7 @@ const manifest = {
 // resource machine idle -> loading and (b) invokes a fetch tool. When the tool
 // resolves, it writes the rows and emits "resolved" (loading -> ready).
 const asyncDoc = {
-  gup: "0.1",
+  gik: "0.1",
   type: "document",
   payload: {
     root: {
@@ -100,7 +100,7 @@ test("confirm: HITL approval returns a follow-up event that assigns status", asy
   };
 
   const doc = {
-    gup: "0.1",
+    gik: "0.1",
     type: "document",
     payload: {
       root: {
@@ -138,7 +138,7 @@ test("route: routing effect reaches the orchestrator without touching the store"
   };
 
   const doc = {
-    gup: "0.1",
+    gik: "0.1",
     type: "document",
     payload: {
       root: {
@@ -161,7 +161,7 @@ test("route: routing effect reaches the orchestrator without touching the store"
 
 test("unhandled effect is safe: default NullOrchestrator performs nothing", async () => {
   const doc = {
-    gup: "0.1",
+    gik: "0.1",
     type: "document",
     payload: {
       root: {

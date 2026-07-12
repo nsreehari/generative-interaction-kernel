@@ -1,9 +1,12 @@
 {
-  "name": "genui-platform",
+  "name": "generative-interaction-kernel",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "GenUI Platform: GUP wire schemas, conformance fixtures, and the reference kernel.",
+  "description": "Generative Interaction Kernel workspace: GIK wire schemas, conformance fixtures, and the reference implementation.",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "conformance": "node schemas/validate.mjs",
     "test:jsonata": "node conformance/jsonata/generate.mjs --check",
@@ -25,6 +28,8 @@
     "dev:controlface": "tsx samples/control-host/service.ts",
     "dev:console": "npm run dev:host",
     "build:console": "npm run build:host",
+    "build:public-packages": "npm run build --workspaces --if-present",
+    "build:package:kernel": "npm run build --workspace=@gik/kernel",
     "typecheck": "tsc -p kernel/tsconfig.json --noEmit && tsc -p adapters/react/tsconfig.json --noEmit && tsc -p interaction/tsconfig.json --noEmit && tsc -p face/tsconfig.json --noEmit && tsc -p transports/http-sse/tsconfig.json --noEmit && tsc -p transports/mcp-http/tsconfig.json --noEmit && tsc -p samples/apps/host/tsconfig.json --noEmit && tsc -p samples/backend-host/tsconfig.json --noEmit && tsc -p samples/agent-host/tsconfig.json --noEmit && tsc -p samples/control-host/tsconfig.json --noEmit && tsc -p providers/tsconfig.json --noEmit",
     "test": "npm run conformance && npm run typecheck && npm run test:jsonata && npm run test:vitest"
   },
@@ -39,6 +44,7 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^6.0.3",
+    "tsup": "^8.3.5",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vitest": "^2.1.8",

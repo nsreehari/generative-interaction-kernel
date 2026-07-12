@@ -51,7 +51,7 @@ test("approved -> 'confirmed' event; every other outcome -> 'dismissed'", () => 
 });
 
 const manifest = {
-  gup: "0.1",
+  gik: "0.1",
   type: "manifest",
   payload: {
     version: "confirm-demo/1.0",
@@ -62,7 +62,7 @@ const manifest = {
 };
 
 const document = {
-  gup: "0.1",
+  gik: "0.1",
   type: "document",
   payload: {
     root: node("button", "btn", {

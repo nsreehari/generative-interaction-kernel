@@ -1,0 +1,7 @@
+{
+  "extends": "../../transports/mcp-http/tsconfig.json",
+  "include": [
+    "src",
+    "../../transports/mcp-http/src"
+  ]
+}

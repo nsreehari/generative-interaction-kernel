@@ -1,4 +1,4 @@
-// Phase 8: concrete HTTP/SSE transport. Proves the transport seam carries the whole GUP
+// Phase 8: concrete HTTP/SSE transport. Proves the transport seam carries the whole GIK
 // protocol bidirectionally over a real loopback socket, and that `fromRev` conveyed as a
 // query param drives an incremental resume (no full re-onboard).
 
@@ -10,11 +10,11 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import {
-  GenUIClient,
+  GIKClient,
   InMemoryStateModel,
   Kernel,
   KernelTransportHost,
-  type GupMessage,
+  type GIKMessage,
   type ResolvedNode,
 } from "../../../kernel/src/index";
 import { SseClientTransport, SseFrameParser, SseTransportServer, encodeSseFrame } from "../src/index";
@@ -79,16 +79,16 @@ function close(server: Server): Promise<void> {
 
 test("SseFrameParser reassembles frames split across chunks and ignores comments", () => {
   const parser = new SseFrameParser();
-  const msg: GupMessage = { gup: "0.1", type: "event", payload: { node: "n", name: "tap" } };
+  const msg: GIKMessage = { gik: "0.1", type: "event", payload: { node: "n", name: "tap" } };
   const wire = ":keep-alive\n\n" + encodeSseFrame(msg);
   // Feed the wire one byte at a time; the message should surface exactly once, whole.
-  const out: GupMessage[] = [];
+  const out: GIKMessage[] = [];
   for (const ch of wire) out.push(...parser.push(ch));
   assert.equal(out.length, 1);
   assert.deepEqual(out[0], msg);
 });
 
-test("GenUIClient renders and round-trips an event over a real SSE connection", async () => {
+test("GIKClient renders and round-trips an event over a real SSE connection", async () => {
   const host = new KernelTransportHost(manifest, document, makeKernel());
   const sse = new SseTransportServer(host);
   const server = createServer(async (req, res) => {
@@ -96,7 +96,7 @@ test("GenUIClient renders and round-trips an event over a real SSE connection", 
   });
   const baseUrl = await listen(server);
 
-  const client = new GenUIClient(new SseClientTransport(baseUrl));
+  const client = new GIKClient(new SseClientTransport(baseUrl));
   client.start();
 
   await waitFor(() => find(client.getTree(), "metric-total") !== undefined);
@@ -121,7 +121,7 @@ test("fromRev query param drives an incremental resume over SSE (no manifest re-
   const baseUrl = await listen(server);
 
   // A driving client advances state to rev 1.
-  const driver = new GenUIClient(new SseClientTransport(baseUrl));
+  const driver = new GIKClient(new SseClientTransport(baseUrl));
   driver.start();
   await waitFor(() => driver.getTree() !== null);
   await driver.emit("table-orders", "rowSelect", { id: "order-42" });
@@ -132,9 +132,9 @@ test("fromRev query param drives an incremental resume over SSE (no manifest re-
   await driver.emit("btn-approve", "tap");
   await waitFor(() => driver.getRev() === 2);
 
-  const frames: GupMessage[] = [];
+  const frames: GIKMessage[] = [];
   const controller = new AbortController();
-  const res = await fetch(`${baseUrl}/gup/stream?fromRev=1`, { signal: controller.signal });
+  const res = await fetch(`${baseUrl}/gik/stream?fromRev=1`, { signal: controller.signal });
   const parser = new SseFrameParser();
   const reader = res.body!.getReader();
   const decoder = new TextDecoder();
@@ -162,7 +162,7 @@ test("fromRev query param drives an incremental resume over SSE (no manifest re-
   await close(server);
 });
 
-test("cross-origin browser clients can preflight POST /gup/event and stream with CORS headers", async () => {
+test("cross-origin browser clients can preflight POST /gik/event and stream with CORS headers", async () => {
   const host = new KernelTransportHost(manifest, document, makeKernel());
   const sse = new SseTransportServer(host);
   const server = createServer(async (req, res) => {
@@ -170,7 +170,7 @@ test("cross-origin browser clients can preflight POST /gup/event and stream with
   });
   const baseUrl = await listen(server);
 
-  const preflight = await fetch(`${baseUrl}/gup/event`, {
+  const preflight = await fetch(`${baseUrl}/gik/event`, {
     method: "OPTIONS",
     headers: {
       Origin: "http://127.0.0.1:5175",
@@ -182,14 +182,14 @@ test("cross-origin browser clients can preflight POST /gup/event and stream with
   assert.equal(preflight.status, 204);
   assert.equal(preflight.headers.get("access-control-allow-origin"), "http://127.0.0.1:5175");
   assert.match(preflight.headers.get("access-control-allow-methods") ?? "", /POST/);
-  assert.match(preflight.headers.get("access-control-expose-headers") ?? "", /X-GUP-Session/);
+  assert.match(preflight.headers.get("access-control-expose-headers") ?? "", /X-GIK-Session/);
 
-  const stream = await fetch(`${baseUrl}/gup/stream`, {
+  const stream = await fetch(`${baseUrl}/gik/stream`, {
     headers: { Origin: "http://127.0.0.1:5175", Accept: "text/event-stream" },
   });
   assert.equal(stream.status, 200);
   assert.equal(stream.headers.get("access-control-allow-origin"), "http://127.0.0.1:5175");
-  assert.match(stream.headers.get("access-control-expose-headers") ?? "", /X-GUP-Session/);
+  assert.match(stream.headers.get("access-control-expose-headers") ?? "", /X-GIK-Session/);
 
   stream.body?.cancel();
   await close(server);

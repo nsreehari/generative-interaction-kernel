@@ -1,5 +1,5 @@
 // validate-before-commit: structural validation of a document message
-// against the normative GUP document schema.
+// against the normative GIK document schema.
 
 import Ajv, { type ValidateFunction } from "ajv";
 import documentSchema from "../../schemas/document.schema.json" with { type: "json" };
@@ -20,7 +20,7 @@ export function validateDocumentMessage(message: unknown): void {
     const detail = (validateFn.errors ?? [])
       .map((e) => `${e.instancePath || "/"} ${e.message}`)
       .join("; ");
-    throw new ValidationError(`Invalid GUP document: ${detail}`, validateFn.errors);
+    throw new ValidationError(`Invalid GIK document: ${detail}`, validateFn.errors);
   }
 }
 

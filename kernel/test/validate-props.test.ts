@@ -1,5 +1,5 @@
 // ADR: enforce a capability's declared `propsSchema` at the document boundary. The kernel already
-// runs structural (GUP) validation on construction; this peer check rejects a document whose static
+// runs structural (GIK) validation on construction; this peer check rejects a document whose static
 // node props violate the manifest's per-capability props contract. A prop bound dynamically by a
 // `read`/`readExpr` edge is exempt from `required` (it lands at resolve time, not authoring time).
 

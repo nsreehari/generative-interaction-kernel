@@ -2,7 +2,7 @@
   "name": "react: a standing reaction fires on genuine change, not on seed or unchanged writes",
   "description": "A node declares edges.react = [{ when: 'counter.n', run: [derive counter.doubled = counter.n * 2] }]. The reaction baseline is seeded from the pre-event snapshot, so it does NOT fire on init; it fires only when its `when` value actually changes. Step 1 changes n (0 -> 5) and the reaction fires, so one patch carries both the assign and the derived double. Step 2 writes the SAME n (5): the assign op is still emitted, but the reaction does not fire (when unchanged). Step 3 changes n again (5 -> 7) and the reaction fires once more. Proves reactions are change-triggered, once-per-change, and settle inside the same dispatch/rev.",
   "manifest": {
-    "gup": "0.1",
+    "gik": "0.1",
     "type": "manifest",
     "payload": {
       "version": "react-demo/1.0",
@@ -13,7 +13,7 @@
     }
   },
   "document": {
-    "gup": "0.1",
+    "gik": "0.1",
     "type": "document",
     "payload": {
       "manifest": "react-demo/1.0",

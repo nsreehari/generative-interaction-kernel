@@ -88,7 +88,7 @@ test("a generated manifest can drive the very document it was generated from (ro
   ]);
 
   // constructing + resolving over the generated manifest must not throw.
-  const kernel = new Kernel({ gup: "0.1", type: "manifest", payload: manifest }, message, { state });
+  const kernel = new Kernel({ gik: "0.1", type: "manifest", payload: manifest }, message, { state });
   const tree = (await kernel.resolve()) as ResolvedNode;
   assert.equal(tree.capability, "board");
   assert.equal(tree.children.length, 3, "the document resolves in full under its generated manifest");

@@ -1,6 +1,6 @@
-# GUP Schemas & Conformance Fixture
+# GIK Schemas & Conformance Fixture
 
-Normative wire schemas for the **GenUI Protocol (GUP) v0.1** — the first build artifact. Every
+Normative wire schemas for the **GIK Protocol (GIK) v0.1** — the first build artifact. Every
 kernel, renderer, and orchestrator is written *against* these schemas and verified by the golden
 fixture.
 

@@ -16,7 +16,7 @@ import type {
   Orchestrator,
   OrchestratorEffect,
   OrchestratorResult,
-  GupEvent,
+  GIKEvent,
   Json,
 } from "../../../kernel/src/index";
 import { StepMachine } from "../../vendor/step-machine/index.js";
@@ -68,7 +68,7 @@ export class StepOrchestrator implements Orchestrator {
  * `onResult` can instead (or additionally) return store `ops`.
  */
 function defaultResult(result: StepMachineResult, effect: OrchestratorEffect): OrchestratorResult {
-  const event: GupEvent = {
+  const event: GIKEvent = {
     node: effect.node,
     name: `${effect.tool}:${result.intent ?? result.status}`,
     payload: asJsonObject(result.data),

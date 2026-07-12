@@ -41,7 +41,7 @@ const manifestPayload: ManifestPayload = {
   },
 } as ManifestPayload;
 
-const manifestMessage = { gup: "0.1", type: "manifest", payload: manifestPayload } as const;
+const manifestMessage = { gik: "0.1", type: "manifest", payload: manifestPayload } as const;
 
 // A metric that READS the derived `total`, and a button whose tap ASSIGNS the base cell `a`.
 // Crucially, there is no `derive` action anywhere — the store owns that.

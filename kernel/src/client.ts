@@ -7,10 +7,10 @@ import {
   type ExpressionProvider,
   type StateModel,
 } from "./providers";
-import { envelope, type DocumentPayload, type GupMessage, type Json, type ResolvedNode } from "./types";
+import { envelope, type DocumentPayload, type GIKMessage, type Json, type ResolvedNode } from "./types";
 import type { TransportProvider } from "./transport";
 
-export interface GenUIClientOptions {
+export interface GIKClientOptions {
   expression?: ExpressionProvider;
   /**
    * Provider for the visibility gate (a predicate position). Agent-authored and adversarial,
@@ -26,7 +26,7 @@ export interface GenUIClientOptions {
  * `event`s back. The authoritative reducer stays on the host; only interpretation
  * (read-only) and the replica live here.
  */
-export class GenUIClient {
+export class GIKClient {
   private readonly expr: ExpressionProvider;
   private readonly predicateExpr: ExpressionProvider;
   private store?: StateModel;
@@ -39,7 +39,7 @@ export class GenUIClient {
 
   constructor(
     private transport: TransportProvider,
-    opts: GenUIClientOptions = {}
+    opts: GIKClientOptions = {}
   ) {
     this.expr = opts.expression ?? new JsonataExpressionProvider();
     this.predicateExpr = opts.predicateExpression ?? new JsonataExpressionProvider({ safe: true });
@@ -88,7 +88,7 @@ export class GenUIClient {
     return this.transport.send(envelope("event", { node, name, payload }));
   }
 
-  private async onMessage(message: GupMessage): Promise<void> {
+  private async onMessage(message: GIKMessage): Promise<void> {
     switch (message.type) {
       case "manifest": {
         // A manifest (re)establishes vocabulary and a fresh replica: reset rev so the
