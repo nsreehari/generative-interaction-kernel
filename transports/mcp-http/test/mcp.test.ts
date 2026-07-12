@@ -3,12 +3,12 @@
 // notification (no-id) 204 path, endpoint advertisement, and CORS preflight. The adapter is pure
 // wire glue over a transport-free dispatcher, so this exercises the seam, not the tools themselves.
 
-import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer, type Server } from "node:http";
 import { AddressInfo } from "node:net";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { test } from "vitest";
 
 import { createStatelessAgentFaceDispatcher } from "../../../face/src/index";
 import { McpHttpServer, MCP_PROTOCOL_VERSION } from "../src/index";
