@@ -5,7 +5,7 @@
 // ResolvedNode tree a UI adapter would consume. Companion to
 // samples/backend-host/order-service.ts.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import { Kernel } from "../src/index";

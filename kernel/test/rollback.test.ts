@@ -7,7 +7,7 @@
 //   - Host owns the inverse: orchestrator.compensate maps a fired `charge` to a real `refund`,
 //     a no-op, or a refusal. An unhandled compensation is traced, never silently pretended-away.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import { Kernel } from "../src/index";

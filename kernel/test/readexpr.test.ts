@@ -3,7 +3,7 @@
 // document can project / filter / sort an array into the exact shape a capability wants instead
 // of a host reshaping it imperatively. Plain `read` (path pluck) is unchanged.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import {

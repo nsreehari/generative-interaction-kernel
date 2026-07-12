@@ -4,7 +4,7 @@
 // reference planner; and the cassette key is canonical (insensitive to context property order). No live
 // model is involved — the record/replay cassette stands in, so the plumbing is fully verifiable offline.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

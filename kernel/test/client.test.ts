@@ -2,7 +2,7 @@
 // messages (manifest/document/patch) — no kernel — keeping a local state replica
 // and resolving a renderable tree, and emits events back over the transport.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

@@ -2,7 +2,7 @@
 // protocol bidirectionally over a real loopback socket, and that `fromRev` conveyed as a
 // query param drives an incremental resume (no full re-onboard).
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { createServer, type Server } from "node:http";
 import { AddressInfo } from "node:net";

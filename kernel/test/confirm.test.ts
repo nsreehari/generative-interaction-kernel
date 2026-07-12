@@ -3,7 +3,7 @@
 // an end-to-end round-trip where an Orchestrator resolves a confirmation and the follow-up
 // event drives a store write inside the same dispatch.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import {

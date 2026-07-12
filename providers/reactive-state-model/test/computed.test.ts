@@ -1,7 +1,7 @@
 // The declarative `computed` construct (ADR-0033 amendment): authors declare WHAT a cell equals;
 // dependencies are inferred from the expression, and the reactive store maintains the cascade.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import { JsonataExpressionProvider } from "../../../kernel/src/index";

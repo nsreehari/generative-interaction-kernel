@@ -3,7 +3,7 @@
 // non-throwing lint for suspect references. Unknown capabilities are safe at runtime
 // (graceful fallback), so they lint rather than throw.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

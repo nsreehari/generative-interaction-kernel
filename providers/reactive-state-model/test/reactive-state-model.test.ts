@@ -2,7 +2,7 @@
 // dependency graph, driven through a genui StateModel, with the kernel's own JSONata provider as the
 // derive evaluator. No kernel changes — this is a drop-in `store`.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import { JsonataExpressionProvider } from "../../../kernel/src/index";

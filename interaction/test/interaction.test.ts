@@ -4,7 +4,7 @@
 // document; unbound facets render as graceful fallbacks (forward-compat); and the full
 // Domain -> Interaction -> Presentation -> UI pipeline composes through the kernel seam.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

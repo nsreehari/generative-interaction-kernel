@@ -2,7 +2,7 @@
 // (transport-backed, never sees the kernel) drives GenUIRoot; an event round-trips to
 // a re-render. Proves the binding is source-agnostic (controller vs client).
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

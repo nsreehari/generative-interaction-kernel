@@ -5,7 +5,7 @@
 // corpus-gated against the canonical engine (canonical returns values for them), so the
 // rejection is asserted directly here.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import {
