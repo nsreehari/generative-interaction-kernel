@@ -10,6 +10,8 @@ import type {
   Checkpoint,
   Json,
   Kernel,
+  OrchestratorEffect,
+  Patch,
   RecordedEffect,
   ResolvedNode,
 } from "../../../kernel/src/index";
@@ -29,7 +31,17 @@ export function checkpoint(kernel: Kernel): Checkpoint {
   return kernel.checkpoint();
 }
 
+/** Restore pure state to a prior checkpoint; backward and forward are the same operation. */
+export function restore(kernel: Kernel, cp: Checkpoint): Patch {
+  return kernel.restore(cp);
+}
+
 /** The effects journaled after `rev`, in causal order — the host decides how (or whether) to use them. */
 export function effectsSince(kernel: Kernel, rev: number): RecordedEffect[] {
   return kernel.effectsSince(rev);
+}
+
+/** Route recorded effects through the host's compensation seam, in the order supplied. */
+export function compensate(kernel: Kernel, effects: OrchestratorEffect[]): Promise<Patch> {
+  return kernel.compensate(effects);
 }

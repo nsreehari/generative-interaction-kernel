@@ -131,7 +131,7 @@ genui-platform/
   face/                         ← callable surface above the kernel
     src/
       pure/                     ← pure authoring/validation helpers (no live kernel required)
-      live/                     ← kernel-backed inspect/drive surface
+      live/                     ← kernel-backed inspect/drive/time-travel surface
       projections/              ← filtered policy views: controlface / agentface
       tool-surface.ts           ← shared JSON-RPC tool primitive + dispatcher
     test/                       ← pure + live + projection integration tests
@@ -151,6 +151,16 @@ genui-platform/
       test/                     ← codec chunking + end-to-end over a loopback socket + fromRev resume
       tsconfig.json
 ```
+
+## Testing
+
+The repo's code-owned test suites run under one Vitest workspace defined in
+[vitest.workspace.mjs](vitest.workspace.mjs). The canonical commands are:
+
+- `npm test` — full repo validation: conformance, typecheck, JSONata corpus check, then the Vitest workspace
+- `npm run test:vitest` — all Vitest projects (`kernel`, `react`, `interaction`, `face`, `providers`, `sse`, `mcp`)
+- `npm run test:<project>` — a single Vitest project such as `test:kernel`, `test:face`, or `test:mcp`
+- `npm run test:jsonata` — the JSONata corpus verifier; kept as a plain Node check rather than a Vitest suite
 
 ## Core idea in one diagram
 

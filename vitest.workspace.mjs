@@ -45,6 +45,13 @@ export default defineWorkspace([
   },
   {
     test: {
+      name: "samples",
+      environment: "node",
+      include: ["samples/control-host/**/*.test.ts"],
+    },
+  },
+  {
+    test: {
       name: "mcp",
       environment: "node",
       include: ["transports/mcp-http/test/**/*.test.ts"],

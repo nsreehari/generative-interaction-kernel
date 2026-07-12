@@ -29,7 +29,7 @@ Adopt the following boundary:
 - **`face/` becomes the single package owning the callable surface.** It contains:
   - a **pure face part** — authoring/validation helpers over JSON inputs that do not require a live
     kernel instance;
-  - a **live face part** — inspect/drive tools backed by an embedded `Kernel` instance.
+  - a **live face part** — inspect/drive/time-travel tools backed by an embedded `Kernel` instance.
 - **Projections live under `face/projections/`.** They do not implement separate behavior; they are
   filtered views over the face package:
   - `controlface` projection = full catalog;
