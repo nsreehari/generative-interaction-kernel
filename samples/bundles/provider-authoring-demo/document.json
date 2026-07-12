@@ -1,0 +1,230 @@
+{
+  "gik": "0.1",
+  "type": "document",
+  "payload": {
+    "root": {
+      "capability": "ui:screen",
+      "id": "provider-authoring-root",
+      "props": {
+        "title": "Provider Authoring Demo",
+        "subtitle": "Consequence graph, exploratory graph, and StepOrchestrator shown together as one authoring seam."
+      },
+      "edges": {
+        "children": [
+          {
+            "capability": "ui:row",
+            "id": "provider-authoring-layout",
+            "props": { "variant": "split" },
+            "edges": {
+              "children": [
+                {
+                  "capability": "ui:panel",
+                  "id": "provider-authoring-context",
+                  "props": { "title": "Authoring inputs", "variant": "rail" },
+                  "edges": {
+                    "children": [
+                      {
+                        "capability": "ui:select",
+                        "id": "provider-authoring-mode",
+                        "props": {
+                          "label": "Demo mode",
+                          "options": [
+                            { "value": "graph-driven", "label": "graph-driven" },
+                            { "value": "profile-artifact", "label": "profile-artifact" }
+                          ]
+                        },
+                        "edges": {
+                          "read": { "value": "demo.mode" },
+                          "on": {
+                            "change": [
+                              {
+                                "do": "assign",
+                                "target": "demo.mode",
+                                "args": { "from": "$event.value" }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "capability": "ui:field",
+                        "id": "provider-authoring-objective",
+                        "props": { "label": "Objective" },
+                        "edges": {
+                          "read": { "value": "demo.objective" },
+                          "on": {
+                            "input": [
+                              {
+                                "do": "assign",
+                                "target": "demo.objective",
+                                "args": { "from": "$event.value" }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "capability": "ui:select",
+                        "id": "provider-authoring-surface",
+                        "props": {
+                          "label": "Surface",
+                          "options": [
+                            { "value": "copilot", "label": "copilot" },
+                            { "value": "web", "label": "web" },
+                            { "value": "desktop", "label": "desktop" }
+                          ]
+                        },
+                        "edges": {
+                          "read": { "value": "demo.surface" },
+                          "on": {
+                            "change": [
+                              {
+                                "do": "assign",
+                                "target": "demo.surface",
+                                "args": { "from": "$event.value" }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "capability": "ui:select",
+                        "id": "provider-authoring-change",
+                        "props": {
+                          "label": "Consequence trigger",
+                          "options": [
+                            { "value": "portfolio", "label": "portfolio" },
+                            { "value": "capitalGain", "label": "capitalGain" },
+                            { "value": "marketPrices", "label": "marketPrices" }
+                          ]
+                        },
+                        "edges": {
+                          "read": { "value": "demo.changedSource" },
+                          "on": {
+                            "change": [
+                              {
+                                "do": "assign",
+                                "target": "demo.changedSource",
+                                "args": { "from": "$event.value" }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "capability": "ui:select",
+                        "id": "provider-authoring-stream",
+                        "props": {
+                          "label": "Exploratory choice",
+                          "options": [
+                            { "value": "", "label": "(none yet)" },
+                            { "value": "mpc", "label": "MPC" },
+                            { "value": "bpc", "label": "BPC" },
+                            { "value": "hec", "label": "HEC" }
+                          ]
+                        },
+                        "edges": {
+                          "read": { "value": "demo.stream" },
+                          "on": {
+                            "change": [
+                              {
+                                "do": "assign",
+                                "target": "demo.stream",
+                                "args": { "from": "$event.value" }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "capability": "ui:select",
+                        "id": "provider-authoring-profile-seed",
+                        "props": {
+                          "label": "Profile artifact",
+                          "options": [
+                            { "value": "live-cards", "label": "live-cards" }
+                          ]
+                        },
+                        "edges": {
+                          "gate": "demo.mode = 'profile-artifact'",
+                          "read": { "value": "demo.profileSeed" },
+                          "on": {
+                            "change": [
+                              {
+                                "do": "assign",
+                                "target": "demo.profileSeed",
+                                "args": { "from": "$event.value" }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "capability": "ui:note",
+                        "id": "provider-authoring-note-1",
+                        "props": {
+                          "tone": "muted",
+                          "value": "Consequence graph answers: what recomputes or stays blocked after a change?"
+                        }
+                      },
+                      {
+                        "capability": "ui:note",
+                        "id": "provider-authoring-note-2",
+                        "props": {
+                          "tone": "muted",
+                          "value": "Exploratory graph answers: what future branches become available once a choice is unlocked?"
+                        }
+                      },
+                      {
+                        "capability": "ui:note",
+                        "id": "provider-authoring-note-3",
+                        "props": {
+                          "tone": "muted",
+                          "value": "StepOrchestrator turns those graph signals into a profile-and-recipes authoring plan."
+                        }
+                      },
+                      {
+                        "capability": "ui:note",
+                        "id": "provider-authoring-note-4",
+                        "props": {
+                          "tone": "muted",
+                          "value": "In profile-artifact mode, the same plan starts from the declared live-cards profile and proposes its concrete lowering recipes instead of inventing a new chain."
+                        },
+                        "edges": {
+                          "gate": "demo.mode = 'profile-artifact'"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "capability": "ui:panel",
+                  "id": "provider-authoring-host",
+                  "props": { "title": "Integrated provider output", "variant": "detail" },
+                  "edges": {
+                    "children": [
+                      {
+                        "capability": "demo:providerAuthoringSample",
+                        "id": "provider-authoring-sample",
+                        "edges": {
+                          "read": {
+                            "mode": "demo.mode",
+                            "objective": "demo.objective",
+                            "surface": "demo.surface",
+                            "changedSource": "demo.changedSource",
+                            "stream": "demo.stream",
+                            "profileSeed": "demo.profileSeed"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

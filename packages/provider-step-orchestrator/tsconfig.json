@@ -1,0 +1,9 @@
+{
+  "extends": "../../kernel/tsconfig.json",
+  "include": [
+    "src",
+    "../../providers/step-orchestrator/src",
+    "../../providers/vendor",
+    "../../kernel/src"
+  ]
+}

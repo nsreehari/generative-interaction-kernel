@@ -14,6 +14,7 @@ import {
   type OrchestratorResult,
 } from "../../../kernel/src/index";
 import { StepOrchestrator } from "../src/step-orchestrator";
+import { createPortfolioRefreshRegistry } from "../src/samples";
 import type { StepFlowConfig } from "../../vendor/step-machine/index.js";
 
 test("a flow's branch selects the follow-up event (default result mapping)", async () => {
@@ -108,6 +109,18 @@ test("the Kernel fulfils an invoke through a flow and applies its result to the 
   const tree = (await kernel.resolve()) as ResolvedNode;
   const out = find(tree, "out");
   assert.equal(out?.props.value, 10, "the computed result renders through the read edge");
+});
+
+test("sample portfolio refresh registry produces a current value through the flow", async () => {
+  const orch = new StepOrchestrator(createPortfolioRefreshRegistry());
+  const res = await orch.invoke({
+    kind: "invoke",
+    node: "portfolio-node",
+    tool: "refreshPortfolio",
+    args: { holdings: [{ symbol: "AAPL", quantity: 2 }, { symbol: "MSFT", quantity: 1 }] },
+  });
+  assert.equal(res?.events?.[0].name, "refreshPortfolio:ok");
+  assert.equal(res?.events?.[0].payload?.currentValue, 900);
 });
 
 function find(n: ResolvedNode | null, id: string): ResolvedNode | undefined {
