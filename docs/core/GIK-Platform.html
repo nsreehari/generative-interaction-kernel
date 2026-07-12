@@ -394,6 +394,11 @@
 <p>The distinguishing move is raising the unit of authorship from <em>control</em> (Fluent), through <em>view</em> (MVVM) and <em>hand-composed component tree</em> (Reactor today), up to <em>interaction intent</em> &mdash; while keeping a closed, verifiable grammar underneath so that generation never escapes into unpredictable outcomes. The UI layer is not the competitor here; it is the projection this evolution drives.</p>
 
 <h2>8. The Experience Stack vs. Kernel Boundary</h2>
+<p>The stack below is easiest to reason about if four runtime layers stay distinct: the <strong>Kernel</strong>
+as the embeddable execution engine, the <strong>Face</strong> as the callable surface around it, the
+<strong>Projection</strong> as a policy-shaped filtered view of that face, and the <strong>Transport</strong> as the
+wire carrier for a chosen projection. That separation is what keeps capability policy out of the wire
+protocol and lets one live runtime be exposed differently to operators, agents, and renderers.</p>
 <div class="section-split">
 <figure class="svg-figure split-figure">
 <svg viewBox="0 0 780 680" role="img" aria-label="Experience stack from Intent Graph down to Render Tree, split by the Kernel Boundary">
