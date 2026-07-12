@@ -18,7 +18,7 @@ import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { InMemoryStateModel } from "../../kernel/src/index";
-import { ControlfaceHost } from "../../controlface/src/index";
+import { ControlfaceHost } from "../../face/src/index";
 
 const fx = (name: string) =>
   JSON.parse(

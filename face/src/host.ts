@@ -1,10 +1,10 @@
-// The ControlFace HTTP host: the composition that serves the faces over their transports.
-// SSE (`/gup`) binds to the ControlFace boundary (render stream). Two MCP channels expose the same
-// tool catalog at different trust levels: `/mcp` serves the AgentFace projection (authoring tools +
-// read-only inspect), `/mcp-control` serves the FULL control-plane catalog (adds the live drive/
-// lifecycle tools). One runtime, one catalog, two audiences — the trust boundary is which face each
-// route exposes. The kernel, broker, reducer, and GUP codec are composed INSIDE the ControlFace; no
-// transport reaches past a face into an internal layer.
+// The ControlFace HTTP host: the composition that serves the face package over transports.
+// SSE (`/gup`) binds to the live ControlFace boundary (render stream). Two MCP channels expose two
+// PROJECTIONS of the same underlying tool implementations: `/mcp` serves the agent-safe filtered
+// view (authoring tools + read-only inspect), `/mcp-control` serves the FULL control-plane catalog
+// (adds the live drive/lifecycle tools). One runtime, one tool implementation surface, two views —
+// the trust boundary is which projection each route exposes. The kernel, broker, reducer, and GUP
+// codec are composed INSIDE the ControlFace; no transport reaches past a face into an internal layer.
 //
 // `handle()` returns true when it matched a route so a host app can fall through to its own routing
 // (same contract as SseTransportServer / McpHttpServer).
@@ -25,7 +25,8 @@ import type {
 import { SseTransportServer } from "../../transports/http-sse/src/index";
 import { McpHttpServer, type McpMessageHandler } from "../../transports/mcp-http/src/index";
 import { ControlFace } from "./controlface";
-import { createAgentFaceDispatcher, createControlFaceDispatcher } from "./tools";
+import { createAgentFaceDispatcher } from "./projections/agentface";
+import { createControlFaceDispatcher } from "./projections/controlface";
 
 export interface ControlfaceHostOptions {
   /** Base path for the SSE render/drive channel; defaults to `/gup`. */

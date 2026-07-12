@@ -11,11 +11,10 @@
     "test:kernel": "node --import tsx --test kernel/test/**/*.test.ts",
     "test:react": "node --import tsx --test adapters/react/test/**/*.test.tsx",
     "test:interaction": "node --import tsx --test interaction/test/**/*.test.ts",
-    "test:agentface": "node --import tsx --test agentface/ts/test/**/*.test.ts",
+    "test:face": "node --import tsx --test face/test/**/*.test.ts",
     "test:providers": "node --import tsx --test providers/**/test/**/*.test.ts",
     "test:sse": "node --import tsx --test transports/http-sse/test/**/*.test.ts",
     "test:mcp": "node --import tsx --test transports/mcp-http/test/**/*.test.ts",
-    "test:controlface": "node --import tsx --test controlface/test/**/*.test.ts",
     "dev:workbench": "vite samples/apps/host --open /?bundle=workbench",
     "dev:host": "vite samples/apps/host",
     "build:host": "vite build samples/apps/host",
@@ -24,8 +23,8 @@
     "dev:controlface": "tsx samples/control-host/service.ts",
     "dev:console": "npm run dev:host",
     "build:console": "npm run build:host",
-    "typecheck": "tsc -p kernel/tsconfig.json --noEmit && tsc -p adapters/react/tsconfig.json --noEmit && tsc -p interaction/tsconfig.json --noEmit && tsc -p agentface/ts/tsconfig.json --noEmit && tsc -p transports/http-sse/tsconfig.json --noEmit && tsc -p transports/mcp-http/tsconfig.json --noEmit && tsc -p controlface/tsconfig.json --noEmit && tsc -p samples/apps/host/tsconfig.json --noEmit && tsc -p samples/backend-host/tsconfig.json --noEmit && tsc -p samples/agent-host/tsconfig.json --noEmit && tsc -p samples/control-host/tsconfig.json --noEmit && tsc -p providers/tsconfig.json --noEmit",
-    "test": "npm run conformance && npm run typecheck && npm run test:jsonata && npm run test:kernel && npm run test:react && npm run test:interaction && npm run test:agentface && npm run test:providers && npm run test:sse && npm run test:mcp && npm run test:controlface"
+    "typecheck": "tsc -p kernel/tsconfig.json --noEmit && tsc -p adapters/react/tsconfig.json --noEmit && tsc -p interaction/tsconfig.json --noEmit && tsc -p face/tsconfig.json --noEmit && tsc -p transports/http-sse/tsconfig.json --noEmit && tsc -p transports/mcp-http/tsconfig.json --noEmit && tsc -p samples/apps/host/tsconfig.json --noEmit && tsc -p samples/backend-host/tsconfig.json --noEmit && tsc -p samples/agent-host/tsconfig.json --noEmit && tsc -p samples/control-host/tsconfig.json --noEmit && tsc -p providers/tsconfig.json --noEmit",
+    "test": "npm run conformance && npm run typecheck && npm run test:jsonata && npm run test:kernel && npm run test:react && npm run test:interaction && npm run test:face && npm run test:providers && npm run test:sse && npm run test:mcp"
   },
   "dependencies": {
     "@fluentui/react-components": "^9.74.3",
