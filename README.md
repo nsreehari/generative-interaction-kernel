@@ -8,6 +8,31 @@ domain- and framework-specific to pluggable providers.
 > — which components exist, what data means, which LLM authors it, which framework renders it —
 > is supplied as a **provider**. A concrete platform = **kernel + one implementation of each provider**.
 
+## Runtime layers at a glance
+
+One confusion this repo now resolves explicitly: the kernel is not the whole runtime edge.
+
+| Layer | What it is | Use it when… |
+|---|---|---|
+| **Kernel / engine** | the embeddable execution core | you want local runtime authority and deterministic execution in-process |
+| **Face** | the callable surface around pure helpers and/or a live kernel | you want a bounded tool/API surface |
+| **Projection** | a filtered policy view of a face | you want an agent-safe subset vs a full control-plane catalog |
+| **Transport** | the wire carrier for a chosen projection | you need HTTP/SSE/MCP/process boundaries |
+
+In this repo, the concrete shape is:
+
+- [kernel](kernel) = the engine
+- [face](face) = the package owning the callable surface
+- [face/src/projections](face/src/projections) = filtered views such as agent/control
+- [transports](transports) = wire bindings that carry a chosen projection
+- [samples](samples) = thin outer composition showing how to mount those pieces together
+
+If you are deciding what to consume:
+
+- embed the **kernel** when your product should be the runtime authority;
+- consume a **face projection** when you want a bounded surface over an already-running runtime;
+- add a **transport** only when that surface must cross a process/network boundary.
+
 ## Status
 
 Early implementation. The architecture and the wire protocol (**GenUI Protocol / GUP**) are
@@ -103,6 +128,14 @@ genui-platform/
     src/                        ← types, providers, interpreter, reducer, kernel, transport, client, lowering, confirm, observability
     test/                       ← golden fixture + orchestrator effects + transport + client round-trip + resync + authoring + conformance + lowering + confirm + observability
     tsconfig.json
+  face/                         ← callable surface above the kernel
+    src/
+      pure/                     ← pure authoring/validation helpers (no live kernel required)
+      live/                     ← kernel-backed inspect/drive surface
+      projections/              ← filtered policy views: controlface / agentface
+      tool-surface.ts           ← shared JSON-RPC tool primitive + dispatcher
+    test/                       ← pure + live + projection integration tests
+    tsconfig.json
   adapters/
     react/                      ← Phase 2 React render adapter
       src/                      ← registry, renderer, controller, live-cards components, source-agnostic hook
@@ -149,5 +182,12 @@ flowchart TB
   P7 --> B
   P8 --> O
 ```
+
+Recommended reading path:
+
+1. [docs/01-vision.md](docs/01-vision.md) — why this platform exists
+2. [docs/02-architecture.md](docs/02-architecture.md) — kernel vs face vs projection vs transport
+3. [docs/03-protocol.md](docs/03-protocol.md) — the wire contract
+4. [docs/decisions/ADR-0037-face-projections-and-transport-boundary.md](docs/decisions/ADR-0037-face-projections-and-transport-boundary.md) — the ownership boundary for face/projection/transport
 
 See [docs/01-vision.md](docs/01-vision.md) to start.
