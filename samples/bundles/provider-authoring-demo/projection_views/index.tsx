@@ -55,6 +55,68 @@ function toJsonRecord(value: unknown): Record<string, Json> {
   return JSON.parse(JSON.stringify(value ?? {})) as Record<string, Json>;
 }
 
+export interface ProviderAuthoringPlanInput {
+  mode: string;
+  objective: string;
+  surface: string;
+  changedSource: string;
+  stream: string;
+  profileSeedName: string;
+}
+
+export interface ProviderAuthoringPlanResult {
+  consequenceInspection: ReturnType<typeof inspectConsequenceGraph>;
+  consequenceActivation: ReturnType<typeof activateConsequenceGraph>;
+  exploratoryInspection: ReturnType<typeof inspectExploratoryGraph>;
+  exploratoryFrontier: ReturnType<typeof evaluateExploratoryFrontier>;
+  profileSeed: {
+    profileArtifact: typeof liveCardsProfileArtifact;
+    recipeArtifacts: typeof liveCardsRecipeArtifacts extends readonly (infer T)[] ? T[] : never;
+    summary: ReturnType<typeof summarizeProfileArtifacts>;
+  } | null;
+  args: Record<string, Json>;
+}
+
+export function buildProviderAuthoringPlan(input: ProviderAuthoringPlanInput): ProviderAuthoringPlanResult {
+  const consequenceInspection = inspectConsequenceGraph(portfolioConsequenceSample);
+  const consequenceActivation = activateConsequenceGraph(portfolioConsequenceSample, [input.changedSource]);
+  const exploratoryInspection = inspectExploratoryGraph(educationExploratorySample);
+  const exploratoryFrontier = evaluateExploratoryFrontier(
+    educationExploratorySample,
+    ["tenthComplete"],
+    input.stream ? { choose12th: input.stream } : {}
+  );
+  const profileSeed =
+    input.mode === "profile-artifact" && input.profileSeedName === "live-cards"
+      ? {
+          profileArtifact: liveCardsProfileArtifact,
+          recipeArtifacts: [...liveCardsRecipeArtifacts],
+          summary: summarizeProfileArtifacts(liveCardsProfileArtifact, liveCardsRecipeArtifacts),
+        }
+      : null;
+
+  const args: Record<string, Json> = {
+    objective: input.objective,
+    surface: input.surface,
+    changedSource: input.changedSource,
+    consequence: toJsonRecord(consequenceActivation),
+    exploratory: toJsonRecord(exploratoryFrontier),
+  };
+  if (profileSeed?.profileArtifact) {
+    args.profileArtifact = toJsonRecord(profileSeed.profileArtifact);
+    args.recipeArtifacts = JSON.parse(JSON.stringify(profileSeed.recipeArtifacts)) as Json;
+  }
+
+  return {
+    consequenceInspection,
+    consequenceActivation,
+    exploratoryInspection,
+    exploratoryFrontier,
+    profileSeed,
+    args,
+  };
+}
+
 const ProviderAuthoringSampleView: ProjectionView = ({ node }) => {
   const props = readProps(node);
   const mode = props.str("mode") || "graph-driven";
@@ -64,46 +126,27 @@ const ProviderAuthoringSampleView: ProjectionView = ({ node }) => {
   const stream = props.str("stream") || "";
   const profileSeedName = props.str("profileSeed") || "live-cards";
 
-  const consequenceInspection = React.useMemo(() => inspectConsequenceGraph(portfolioConsequenceSample), []);
-  const consequenceActivation = React.useMemo(
-    () => activateConsequenceGraph(portfolioConsequenceSample, [changedSource]),
-    [changedSource]
+  const planInput = React.useMemo(
+    () => ({ mode, objective, surface, changedSource, stream, profileSeedName }),
+    [changedSource, mode, objective, profileSeedName, stream, surface]
   );
-  const exploratoryInspection = React.useMemo(() => inspectExploratoryGraph(educationExploratorySample), []);
-  const exploratoryFrontier = React.useMemo(
-    () => evaluateExploratoryFrontier(educationExploratorySample, ["tenthComplete"], stream ? { choose12th: stream } : {}),
-    [stream]
-  );
-  const profileSeed = React.useMemo(() => {
-    if (mode !== "profile-artifact" || profileSeedName !== "live-cards") return null;
-    return {
-      profileArtifact: liveCardsProfileArtifact,
-      recipeArtifacts: [...liveCardsRecipeArtifacts],
-      summary: summarizeProfileArtifacts(liveCardsProfileArtifact, liveCardsRecipeArtifacts),
-    };
-  }, [mode, profileSeedName]);
+  const planModel = React.useMemo(() => buildProviderAuthoringPlan(planInput), [planInput]);
+  const consequenceInspection = planModel.consequenceInspection;
+  const consequenceActivation = planModel.consequenceActivation;
+  const exploratoryInspection = planModel.exploratoryInspection;
+  const exploratoryFrontier = planModel.exploratoryFrontier;
+  const profileSeed = planModel.profileSeed;
 
   const [plan, setPlan] = React.useState<Record<string, unknown> | null>(null);
 
   React.useEffect(() => {
     let disposed = false;
-    const args: Record<string, Json> = {
-      objective,
-      surface,
-      changedSource,
-      consequence: toJsonRecord(consequenceActivation),
-      exploratory: toJsonRecord(exploratoryFrontier),
-    };
-    if (profileSeed?.profileArtifact) {
-      args.profileArtifact = toJsonRecord(profileSeed.profileArtifact);
-      args.recipeArtifacts = JSON.parse(JSON.stringify(profileSeed.recipeArtifacts)) as Json;
-    }
     void orchestrator
       .invoke({
         kind: "invoke",
         node: "provider-authoring-sample",
         tool: "authorProfilePlan",
-        args,
+        args: planModel.args,
       })
       .then((result) => {
         if (disposed) return;
@@ -112,7 +155,7 @@ const ProviderAuthoringSampleView: ProjectionView = ({ node }) => {
     return () => {
       disposed = true;
     };
-  }, [changedSource, consequenceActivation, exploratoryFrontier, objective, profileSeed, surface]);
+  }, [planModel]);
 
   return (
     <div style={stackStyle}>
