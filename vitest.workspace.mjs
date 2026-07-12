@@ -4,6 +4,9 @@ import { defineWorkspace } from "vitest/config";
 const providerReactiveStateModel = fileURLToPath(
   new URL("./packages/provider-reactive-state-model/src/index.ts", import.meta.url)
 );
+const profilePackage = fileURLToPath(
+  new URL("./packages/profile/src/index.ts", import.meta.url)
+);
 const providerConsequenceGraph = fileURLToPath(
   new URL("./packages/provider-consequence-graph/src/index.ts", import.meta.url)
 );
@@ -63,6 +66,7 @@ export default defineWorkspace([
   {
     resolve: {
       alias: {
+        "@gik/profile": profilePackage,
         "@gik/provider-reactive-state-model": providerReactiveStateModel,
         "@gik/provider-consequence-graph": providerConsequenceGraph,
         "@gik/provider-exploratory-graph": providerExploratoryGraph,

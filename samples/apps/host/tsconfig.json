@@ -32,6 +32,9 @@
       "@gik/react": [
         "../../../packages/react/src/index.ts"
       ],
+      "@gik/profile": [
+        "../../../packages/profile/src/index.ts"
+      ],
       "@gik/provider-reactive-state-model": [
         "../../../packages/provider-reactive-state-model/src/index.ts"
       ],

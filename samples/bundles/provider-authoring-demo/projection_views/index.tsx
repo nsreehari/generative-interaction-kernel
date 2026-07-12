@@ -1,5 +1,6 @@
 import React from "react";
 import type { Json } from "@gik/kernel";
+import { loadProfile, type LoweringRecipeArtifact, type ProfileArtifact } from "@gik/profile";
 import { readProps, type ProjectionView } from "@gik/react";
 
 import {
@@ -17,7 +18,15 @@ import {
   summarizeProfileArtifacts,
 } from "@gik/provider-profile-authoring";
 import { StepOrchestrator, type FlowRegistry } from "@gik/provider-step-orchestrator";
-import { liveCardsProfileArtifact, liveCardsRecipeArtifacts } from "../../../profiles/live-cards/index";
+import liveCardsProfileJson from "../../../profiles/live-cards/profile.json" with { type: "json" };
+import liveCardsInteractionRecipeJson from "../../../profiles/live-cards/interaction-to-presentation.recipe.json" with { type: "json" };
+import liveCardsRuntimeRecipeJson from "../../../profiles/live-cards/presentation-to-runtime.recipe.json" with { type: "json" };
+
+const liveCardsProfileArtifact = liveCardsProfileJson as ProfileArtifact;
+const liveCardsRecipeArtifacts = [
+  liveCardsInteractionRecipeJson as LoweringRecipeArtifact,
+  liveCardsRuntimeRecipeJson as LoweringRecipeArtifact,
+] as const;
 
 function prettyJson(value: unknown): string {
   return JSON.stringify(value, null, 2);

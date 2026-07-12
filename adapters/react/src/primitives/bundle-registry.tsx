@@ -11,6 +11,7 @@
 // name — it never tears an existing instance down.
 
 import React from "react";
+import type { ProviderResolver } from "../registry";
 import type { Bundle } from "./bundle";
 
 /** Produces a fresh bundle each time it is mounted (native handlers are functions, so a factory —
@@ -81,21 +82,35 @@ export function createBundleRegistry(): BundleRegistry {
 }
 
 const BundleRegistryContext = React.createContext<BundleRegistry | null>(null);
+const ProjectionProviderResolverContext = React.createContext<ProviderResolver | null>(null);
 
 /** Publish the registry that the host switcher and every `embed props.app` resolve against. */
 export function BundleRegistryProvider({
   registry,
+  resolveProvider,
   children,
 }: {
   registry: BundleRegistry;
+  resolveProvider?: ProviderResolver;
   children: React.ReactNode;
 }): React.ReactElement {
-  return <BundleRegistryContext.Provider value={registry}>{children}</BundleRegistryContext.Provider>;
+  return (
+    <BundleRegistryContext.Provider value={registry}>
+      <ProjectionProviderResolverContext.Provider value={resolveProvider ?? null}>
+        {children}
+      </ProjectionProviderResolverContext.Provider>
+    </BundleRegistryContext.Provider>
+  );
 }
 
 /** The ambient registry (null when no provider — e.g. a bare bundle mounted without one). */
 export function useBundleRegistry(): BundleRegistry | null {
   return React.useContext(BundleRegistryContext);
+}
+
+/** An optional host-owned provider resolver for bundle imports beyond `floor` / `self`. */
+export function useProjectionProviderResolver(): ProviderResolver | null {
+  return React.useContext(ProjectionProviderResolverContext);
 }
 
 const EMPTY_IDS: readonly string[] = [];

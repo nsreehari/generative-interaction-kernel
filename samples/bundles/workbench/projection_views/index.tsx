@@ -25,7 +25,6 @@ import {
   facetsAsItems,
   parseAuthoredSession,
 } from "../../../../interaction/src/index";
-import { liveCardsProfile } from "../../../profiles/live-cards";
 import type { Json } from "@gik/kernel";
 import { buildSession, type Session } from "../session";
 import {
@@ -40,6 +39,11 @@ import {
 } from "../bridge";
 import { startAgentLoop, type AgentLoopClient } from "../agent-loop";
 import { workbenchComponents } from "../bundles/shared/registry";
+import { sampleProfiles } from "../../../profiles/registry";
+
+function selectedProfile(profileId: string) {
+  return sampleProfiles[profileId] ?? sampleProfiles["live-cards"];
+}
 
 // --- Layout wrappers --------------------------------------------------------------
 // The three columns of the shell. Pure passthrough containers that carry the classNames styles.css
@@ -87,8 +91,8 @@ function GuestSurface({ node, emit }: ProjectionViewProps) {
   emitRef.current = emit;
 
   const [guest, setGuest] = useState<Session>(() => {
-    const { spec, ctx, edits } = readInputs(state);
-    return buildSession(spec, ctx, liveCardsProfile, edits);
+    const { spec, ctx, edits, profileId } = readInputs(state);
+    return buildSession(spec, ctx, selectedProfile(profileId), edits);
   });
   const guestRef = useRef(guest);
   guestRef.current = guest;
@@ -100,7 +104,7 @@ function GuestSurface({ node, emit }: ProjectionViewProps) {
   useEffect(() => {
     if (sig === lastSig.current) return;
     lastSig.current = sig;
-    setGuest(buildSession(inputs.spec, inputs.ctx, liveCardsProfile, inputs.edits));
+    setGuest(buildSession(inputs.spec, inputs.ctx, selectedProfile(inputs.profileId), inputs.edits));
     emitRef.current("facetsComputed", { facets: facetsAsItems(inputs.spec) });
     // inputs/sig are recomputed each render; sig is the stable dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -126,10 +130,11 @@ function GuestSurface({ node, emit }: ProjectionViewProps) {
     lastImport.current = importSeq;
     const parsed = parseAuthoredSession(p.str("importText"));
     if (parsed.authored) {
+      const profile = selectedProfile(readInputs(state).profileId);
       const mismatch = checkAuthoredProfile(
         parsed.authored,
-        liveCardsProfile.artifact.payload.id,
-        liveCardsProfile.artifact.payload.version
+        profile.artifact.payload.id,
+        profile.artifact.payload.version
       );
       if (mismatch) emitRef.current("importResult", { error: mismatch });
       else emitRef.current("importApply", authoredApplyPayload(parsed.authored));

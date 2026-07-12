@@ -2,9 +2,18 @@ import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import type { Json } from "../../../kernel/src/index";
+import { loadProfile, type LoweringRecipeArtifact, type ProfileArtifact } from "@gik/profile";
 import { StepOrchestrator } from "../../step-orchestrator/src/step-orchestrator";
 import { createProfileAuthoringRegistry, summarizeProfileArtifacts } from "../src/profile-authoring";
-import { liveCardsProfileArtifact, liveCardsRecipeArtifacts } from "../../../samples/profiles/live-cards/index";
+import liveCardsProfileJson from "../../../samples/profiles/live-cards/profile.json" with { type: "json" };
+import liveCardsInteractionRecipeJson from "../../../samples/profiles/live-cards/interaction-to-presentation.recipe.json" with { type: "json" };
+import liveCardsRuntimeRecipeJson from "../../../samples/profiles/live-cards/presentation-to-runtime.recipe.json" with { type: "json" };
+
+const liveCardsProfileArtifact = liveCardsProfileJson as ProfileArtifact;
+const liveCardsRecipeArtifacts = [
+  liveCardsInteractionRecipeJson as LoweringRecipeArtifact,
+  liveCardsRuntimeRecipeJson as LoweringRecipeArtifact,
+] as const;
 
 function asJson(value: unknown): Json {
   return JSON.parse(JSON.stringify(value)) as Json;

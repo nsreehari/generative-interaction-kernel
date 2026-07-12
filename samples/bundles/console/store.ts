@@ -7,320 +7,342 @@
 // reducer ops before effects run) and returns store deltas — the reducer stays pure. Only genuinely
 // effectful/derived logic lives here in code; everything above it is data.
 
-import { type Json } from "@gik/kernel";
+import type { CapabilityDescriptor, Enveloped, Json, ManifestPayload } from "@gik/kernel";
+import { setOp, type EffectContext, type EffectHandlerMap, type SerializableBundle } from "@gik/react";
 import {
-  buildPlaygroundBundle,
-  setOp,
-  type EffectContext,
-  type EffectHandlerMap,
-  type SerializableBundle,
-} from "@gik/react";
+  compileInteraction,
+  lintLoweringRecipeArtifact,
+  lintProfileArtifacts,
+  recipeForKinds,
+  validateLoweringRecipeArtifact,
+  validateProfileArtifact,
+  type InteractionKind,
+  type InteractionSpec,
+  type PresentationContext,
+  type PresentationToRuntimeRecipe,
+} from "../../../interaction/src/index";
+import { sampleProfileCatalog, type SampleProfileEntry } from "../../profiles/registry";
+import { demoDataFor } from "../workbench/bundles/demo/demo";
 
-// ---- Domain types ----------------------------------------------------------------
+export type ConsoleTab = "overview" | "validation" | "preview" | "artifacts";
 
-export type ProfileStatus = "draft" | "active";
-
-export interface Profile {
-  id: string;
-  name: string;
-  description: string;
-  status: ProfileStatus;
-  version: string;
-  capabilities: string[];
-  updatedAt: string;
+interface PreviewInput {
+  interaction: InteractionKind;
+  subject: string;
+  surface: string;
 }
 
-export interface Draft {
-  id: string;
-  name: string;
-  description: string;
-  capabilities: string[];
-}
-
-export interface Version {
-  version: string;
-  status: ProfileStatus;
-  capturedAt: string;
-  capabilityCount: number;
-}
-
-export interface ValidationResult {
+interface ValidationResult {
   status: "unknown" | "ok" | "error";
   errors: string[];
   warnings: string[];
+  errorsText: string;
+  warningsText: string;
 }
 
-export type ConsoleTab = "editor" | "validation" | "preview" | "versions";
+const PREVIEW_CAPABILITIES: Record<string, CapabilityDescriptor> = {
+  "ui:board": {
+    propsSchema: { type: "object", additionalProperties: true },
+    slots: ["children"],
+  },
+  "ui:metric": {
+    propsSchema: { type: "object", additionalProperties: true },
+  },
+  "ui:table": {
+    propsSchema: { type: "object", additionalProperties: true },
+    emits: ["rowSelect"],
+    dataProp: "rows",
+  },
+  "ui:actions": {
+    propsSchema: { type: "object", additionalProperties: true },
+    emits: ["tap"],
+  },
+  "ui:chart": {
+    propsSchema: { type: "object", additionalProperties: true },
+    dataProp: "data",
+  },
+  "ui:markdown": {
+    propsSchema: { type: "object", additionalProperties: true },
+    dataProp: "value",
+  },
+  "ui:markup": {
+    propsSchema: { type: "object", additionalProperties: true },
+    dataProp: "value",
+  },
+  "ui:todo": {
+    propsSchema: { type: "object", additionalProperties: true },
+    emits: ["save"],
+    dataProp: "items",
+  },
+};
 
-const EMPTY_DRAFT: Draft = { id: "", name: "", description: "", capabilities: [] };
+const PROFILE_PREVIEW_MANIFEST: Enveloped<ManifestPayload> = {
+  gik: "0.1",
+  type: "manifest",
+  payload: {
+    version: "genui-profile-preview/1.0",
+    expression: "jsonata",
+    namespaces: ["card_data", "requires", "fetched_sources", "computed_values"],
+    actions: ["assign", "assignFrom", "derive", "invoke", "route", "confirm", "emit"],
+    externals: {
+      projectionViews: {
+        ui: { from: "profile" },
+      },
+    },
+    capabilities: PREVIEW_CAPABILITIES,
+  },
+};
 
-// ---- Timestamps -------------------------------------------------------------------
+const PREVIEW_STATE: Record<string, Json> = {
+  card_data: {},
+  requires: {},
+  fetched_sources: {
+    orders: [
+      { id: "order-42", amount: 120 },
+      { id: "order-43", amount: 30 },
+    ],
+  },
+  computed_values: { total: 150 },
+};
 
-function nowStamp(): string {
-  return new Date().toISOString().slice(0, 19).replace("T", " ");
+const EMPTY_PROFILE = {
+  id: "",
+  kind: "",
+  version: "",
+  sourceKind: "",
+  targetKind: "",
+  layerCount: 0,
+  stageCount: 0,
+  layers: [],
+  stages: [],
+  capabilities: [],
+};
+
+function readStr(ctx: EffectContext, path: string, fallback = ""): string {
+  const value = ctx.get(path);
+  return value == null ? fallback : String(value);
 }
 
-// ---- Pure validation --------------------------------------------------------------
+function readSelectedId(ctx: EffectContext): string {
+  return readStr(ctx, "console.selectedId");
+}
 
-// A capability name must be a lowerCamel / alnum identifier (mirrors how manifest keys look).
-const CAP_NAME = /^[a-zA-Z][a-zA-Z0-9]*$/;
+function readPreviewInput(ctx: EffectContext): PreviewInput {
+  return {
+    interaction: readStr(ctx, "console.previewInteraction", "investigate") as InteractionKind,
+    subject: readStr(ctx, "console.previewSubject", "incident"),
+    surface: readStr(ctx, "console.previewSurface", "desktop"),
+  };
+}
 
-/** Validate a draft profile. Pure: (draft) -> result. Errors block promotion; warnings don't. */
-export function validateDraft(draft: Draft): ValidationResult {
+function catalogRows() {
+  return sampleProfileCatalog.map((entry) => ({
+    id: entry.artifact.payload.id,
+    kind: entry.artifact.payload.kind,
+    version: entry.artifact.payload.version,
+    layers: entry.artifact.payload.layers.length,
+    stages: entry.profile.stages.length,
+  }));
+}
+
+function findEntry(id: string): SampleProfileEntry | undefined {
+  return sampleProfileCatalog.find((entry) => entry.artifact.payload.id === id);
+}
+
+function runtimeRecipeOf(entry: SampleProfileEntry): PresentationToRuntimeRecipe {
+  return recipeForKinds(entry.profile, "presentation", "runtime-document") as PresentationToRuntimeRecipe;
+}
+
+function capabilityRows(entry: SampleProfileEntry) {
+  const recipe = runtimeRecipeOf(entry);
+  const seen = new Set<string>();
+  const values = [
+    recipe.container.capability,
+    ...recipe.rules.map((rule) => rule.emit.capability).filter((value): value is string => !!value),
+    ...(recipe.fallback?.capability ? [recipe.fallback.capability] : []),
+  ].filter((value, index, all) => all.indexOf(value) === index);
+
+  return values.map((capability) => {
+    seen.add(capability);
+    return { id: capability, capability };
+  });
+}
+
+function profileState(entry: SampleProfileEntry) {
+  const artifact = entry.artifact.payload;
+  const firstStage = entry.profile.stages[0];
+  const lastStage = entry.profile.stages[entry.profile.stages.length - 1];
+  return {
+    id: artifact.id,
+    kind: artifact.kind,
+    version: artifact.version,
+    sourceKind: firstStage?.fromLayer.kind ?? "",
+    targetKind: lastStage?.toLayer.kind ?? "",
+    layerCount: artifact.layers.length,
+    stageCount: entry.profile.stages.length,
+    layers: artifact.layers.map((layer) => ({
+      id: layer.id,
+      kind: layer.kind,
+      schema: layer.schema ?? "",
+    })),
+    stages: entry.profile.stages.map((stage) => ({
+      id: stage.ref.id,
+      from: stage.fromLayer.kind,
+      to: stage.toLayer.kind,
+    })),
+    capabilities: capabilityRows(entry),
+  };
+}
+
+function formatJson(value: unknown): string {
+  return JSON.stringify(value, null, 2);
+}
+
+function artifactState(entry: SampleProfileEntry) {
+  return {
+    profileText: formatJson(entry.artifact),
+    recipesText: entry.recipeArtifacts.map((artifact) => formatJson(artifact)).join("\n\n"),
+    resolvedText: formatJson({
+      id: entry.artifact.payload.id,
+      stages: entry.profile.stages.map((stage) => ({
+        recipe: stage.ref.id,
+        fromLayer: stage.fromLayer,
+        toLayer: stage.toLayer,
+      })),
+    }),
+  };
+}
+
+export function validateSampleProfile(entry: SampleProfileEntry): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  if (!draft.name.trim()) errors.push("Profile name is required.");
-  if (draft.capabilities.length === 0) {
-    errors.push("A profile needs at least one capability.");
+  try {
+    validateProfileArtifact(entry.artifact);
+  } catch (error) {
+    errors.push(error instanceof Error ? error.message : String(error));
   }
 
-  const seen = new Set<string>();
-  for (const cap of draft.capabilities) {
-    if (!CAP_NAME.test(cap)) errors.push(`Capability '${cap}' is not a valid identifier.`);
-    if (seen.has(cap)) warnings.push(`Capability '${cap}' is listed more than once.`);
-    seen.add(cap);
+  for (const recipe of entry.recipeArtifacts) {
+    try {
+      validateLoweringRecipeArtifact(recipe);
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : String(error));
+    }
   }
 
-  if (!draft.description.trim()) warnings.push("A description helps others adopt this profile.");
+  warnings.push(...lintProfileArtifacts(entry.artifact, entry.recipeArtifacts).map((warning) => warning.detail));
+  for (const recipe of entry.recipeArtifacts) {
+    warnings.push(
+      ...lintLoweringRecipeArtifact(recipe, PREVIEW_CAPABILITIES).map((warning) => warning.detail)
+    );
+  }
 
-  return { status: errors.length > 0 ? "error" : "ok", errors, warnings };
+  return {
+    status: errors.length > 0 ? "error" : "ok",
+    errors,
+    warnings,
+    errorsText: errors.length > 0 ? errors.join("\n") : "No errors.",
+    warningsText: warnings.length > 0 ? warnings.join("\n") : "No warnings.",
+  };
 }
 
-// ---- Store read helpers -----------------------------------------------------------
-
-function readProfiles(ctx: EffectContext): Profile[] {
-  const v = ctx.get("console.profiles");
-  return Array.isArray(v) ? (v as unknown as Profile[]) : [];
+function previewSpec(input: PreviewInput): InteractionSpec {
+  const base: InteractionSpec = {
+    interaction: input.interaction,
+    subject: input.subject.trim() || "incident",
+  };
+  return { ...base, data: demoDataFor(base) };
 }
 
-function readDraft(ctx: EffectContext): Draft {
-  const v = ctx.get("console.draft");
-  return v && typeof v === "object" && !Array.isArray(v) ? (v as unknown as Draft) : { ...EMPTY_DRAFT };
+export function buildProfilePreviewBundle(
+  entry: SampleProfileEntry,
+  input: PreviewInput
+): SerializableBundle {
+  const spec = previewSpec(input);
+  const ctx: PresentationContext = {
+    surface: (input.surface || "desktop") as PresentationContext["surface"],
+  };
+  const document = compileInteraction(spec, ctx, entry.profile);
+  return {
+    manifest: PROFILE_PREVIEW_MANIFEST,
+    document: { gik: "0.1", type: "document", payload: document },
+    state: PREVIEW_STATE,
+  };
 }
 
-function readStr(ctx: EffectContext, path: string): string {
-  const v = ctx.get(path);
-  return v == null ? "" : String(v);
+function previewState(entry: SampleProfileEntry, input: PreviewInput) {
+  try {
+    return {
+      bundle: buildProfilePreviewBundle(entry, input),
+      error: "",
+    };
+  } catch (error) {
+    return {
+      bundle: null,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
-function draftOf(p: Profile): Draft {
-  return { id: p.id, name: p.name, description: p.description, capabilities: [...p.capabilities] };
-}
-
-function bumpPatch(version: string): string {
-  const parts = version.split(".").map((n) => Number(n) || 0);
-  while (parts.length < 3) parts.push(0);
-  parts[2] += 1;
-  return parts.slice(0, 3).join(".");
-}
-
-function slugify(name: string, taken: Set<string>): string {
-  const base = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "profile";
-  let id = base;
-  let n = 2;
-  while (taken.has(id)) id = `${base}-${n++}`;
-  return id;
-}
-
-// ---- Preview / Playground bundles (composition) -----------------------------------
-
-// The Preview and Playground surfaces are BUNDLES the console embeds via the `bundle` primitive.
-// There is ONE shared builder (`buildPlaygroundBundle` in the floor): Preview is simply its
-// read-only `"preview"` mode, and the Playground tab is its `"interactive"` mode. Both are derived
-// from the same draft, so authoring a capability updates both embedded runtimes live — proving
-// bundle-in-bundle composition and that "Preview is a variant of the Playground".
-export function buildPreviewBundle(draft: Draft): SerializableBundle {
-  return buildPlaygroundBundle({ name: draft.name, capabilities: draft.capabilities, mode: "preview" });
-}
-
-export function buildProfilePlaygroundBundle(draft: Draft): SerializableBundle {
-  return buildPlaygroundBundle({ name: draft.name, capabilities: draft.capabilities, mode: "interactive" });
-}
-
-// The two embedded surfaces rebuilt together whenever the draft changes.
-const surfaceOps = (draft: Draft) => [
-  setOp("console.previewBundle", buildPreviewBundle(draft) as unknown as Json),
-  setOp("console.playgroundBundle", buildProfilePlaygroundBundle(draft) as unknown as Json),
-];
-
-function versionsFor(profile: Profile | undefined): Version[] {
-  if (!profile) return [];
+function selectionOps(entry: SampleProfileEntry, input: PreviewInput, tab: ConsoleTab) {
+  const validation = validateSampleProfile(entry);
+  const preview = previewState(entry, input);
   return [
-    {
-      version: profile.version,
-      status: profile.status,
-      capturedAt: profile.updatedAt,
-      capabilityCount: profile.capabilities.length,
-    },
+    setOp("console.profiles", catalogRows() as unknown as Json),
+    setOp("console.selectedId", entry.artifact.payload.id),
+    setOp("console.profile", profileState(entry) as unknown as Json),
+    setOp("console.validation", validation as unknown as Json),
+    setOp("console.artifacts", artifactState(entry) as unknown as Json),
+    setOp("console.previewBundle", preview.bundle as unknown as Json),
+    setOp("console.previewError", preview.error),
+    setOp("console.tab", tab),
   ];
 }
 
-// ---- Named effect handlers --------------------------------------------------------
-
-// The console's consequential operations. The shared effect dispatcher routes each
-// `invoke("<name>")` from the JSON document to the matching handler; the handler reads the live
-// store and returns store deltas the kernel applies (one dispatch, one rev). No Orchestrator class.
 export const consoleEffects: EffectHandlerMap = {
+  syncCatalog() {
+    return { ops: [setOp("console.profiles", catalogRows() as unknown as Json)] };
+  },
+
   loadProfile(ctx) {
-    const id = String(ctx.payload.id ?? "");
-    const profile = readProfiles(ctx).find((p) => p.id === id);
-    if (!profile) return { ops: [setOp("console.toast", `Profile '${id}' not found.`)] };
-    const draft = draftOf(profile);
-    return {
-      ops: [
-        setOp("console.selectedId", id),
-        setOp("console.draft", draft as unknown as Json),
-        setOp("console.validation", { status: "unknown", errors: [], warnings: [] } as unknown as Json),
-        setOp("console.versions", versionsFor(profile) as unknown as Json),
-        setOp("console.tab", "editor"),
-        setOp("console.newCapName", ""),
-        setOp("console.toast", ""),
-        ...surfaceOps(draft),
-      ],
-    };
-  },
-
-  createProfile(ctx) {
-    const name = readStr(ctx, "console.newName").trim();
-    if (!name) return { ops: [setOp("console.toast", "Enter a name to create a profile.")] };
-    const profiles = readProfiles(ctx);
-    const id = slugify(name, new Set(profiles.map((p) => p.id)));
-    const profile: Profile = {
-      id,
-      name,
-      description: "",
-      status: "draft",
-      version: "0.1.0",
-      capabilities: [],
-      updatedAt: nowStamp(),
-    };
-    const draft = draftOf(profile);
-    return {
-      ops: [
-        setOp("console.profiles", [profile, ...profiles] as unknown as Json),
-        setOp("console.selectedId", id),
-        setOp("console.draft", draft as unknown as Json),
-        setOp("console.validation", { status: "unknown", errors: [], warnings: [] } as unknown as Json),
-        setOp("console.versions", [] as unknown as Json),
-        setOp("console.tab", "editor"),
-        setOp("console.newName", ""),
-        setOp("console.newCapName", ""),
-        setOp("console.toast", `Created '${name}'.`),
-        ...surfaceOps(draft),
-      ],
-    };
-  },
-
-  saveDraft(ctx) {
-    const draft = readDraft(ctx);
-    if (!draft.id) return { ops: [setOp("console.toast", "Select or create a profile first.")] };
-    const next = readProfiles(ctx).map((p) =>
-      p.id === draft.id
-        ? {
-            ...p,
-            name: draft.name,
-            description: draft.description,
-            capabilities: [...draft.capabilities],
-            status: "draft" as ProfileStatus,
-            updatedAt: nowStamp(),
-          }
-        : p
-    );
-    return {
-      ops: [setOp("console.profiles", next as unknown as Json), setOp("console.toast", "Draft saved.")],
-    };
-  },
-
-  addCapability(ctx) {
-    const name = readStr(ctx, "console.newCapName").trim();
-    const draft = readDraft(ctx);
-    if (!draft.id) return { ops: [setOp("console.toast", "Select or create a profile first.")] };
-    if (!name) return { ops: [setOp("console.toast", "Enter a capability name.")] };
-    if (draft.capabilities.includes(name)) {
-      return { ops: [setOp("console.newCapName", ""), setOp("console.toast", `'${name}' already added.`)] };
-    }
-    const nextDraft: Draft = { ...draft, capabilities: [...draft.capabilities, name] };
-    return {
-      ops: [
-        setOp("console.draft", nextDraft as unknown as Json),
-        setOp("console.newCapName", ""),
-        setOp("console.toast", ""),
-        ...surfaceOps(nextDraft),
-      ],
-    };
-  },
-
-  removeCapability(ctx) {
-    const name = String(ctx.payload.value ?? ctx.payload.name ?? "");
-    const draft = readDraft(ctx);
-    const nextDraft: Draft = { ...draft, capabilities: draft.capabilities.filter((c) => c !== name) };
-    return {
-      ops: [setOp("console.draft", nextDraft as unknown as Json), ...surfaceOps(nextDraft)],
-    };
-  },
-
-  validateProfile(ctx) {
-    const result = validateDraft(readDraft(ctx));
-    return {
-      ops: [
-        setOp("console.validation", result as unknown as Json),
-        setOp("console.tab", "validation"),
-        setOp(
-          "console.toast",
-          result.status === "ok" ? "Validation passed." : `Validation found ${result.errors.length} error(s).`
-        ),
-      ],
-    };
-  },
-
-  promoteProfile(ctx) {
-    const draft = readDraft(ctx);
-    if (!draft.id) return { ops: [setOp("console.toast", "Select or create a profile first.")] };
-    // Promotion requires a clean validation — enforced here, not trusted from the UI.
-    const result = validateDraft(draft);
-    if (result.status !== "ok") {
+    const entry = findEntry(String(ctx.payload.id ?? ""));
+    if (!entry) {
       return {
         ops: [
-          setOp("console.validation", result as unknown as Json),
-          setOp("console.tab", "validation"),
-          setOp("console.toast", "Fix validation errors before promoting."),
+          setOp("console.profiles", catalogRows() as unknown as Json),
+          setOp("console.profile", EMPTY_PROFILE as unknown as Json),
+          setOp("console.previewBundle", null as unknown as Json),
+          setOp("console.previewError", `Profile '${String(ctx.payload.id ?? "")}' not found.`),
         ],
       };
     }
-    const profiles = readProfiles(ctx);
-    const current = profiles.find((p) => p.id === draft.id);
-    const nextVersion = bumpPatch(current?.version ?? "0.1.0");
-    const next = profiles.map((p) =>
-      p.id === draft.id
-        ? {
-            ...p,
-            name: draft.name,
-            description: draft.description,
-            capabilities: [...draft.capabilities],
-            status: "active" as ProfileStatus,
-            version: nextVersion,
-            updatedAt: nowStamp(),
-          }
-        : p
-    );
-    const promoted = next.find((p) => p.id === draft.id)!;
-    const versions = [
-      {
-        version: nextVersion,
-        status: "active" as ProfileStatus,
-        capturedAt: nowStamp(),
-        capabilityCount: draft.capabilities.length,
-      },
-      ...versionsFor(current),
-    ];
+    return { ops: selectionOps(entry, readPreviewInput(ctx), "overview") };
+  },
+
+  validateProfile(ctx) {
+    const entry = findEntry(readSelectedId(ctx));
+    if (!entry) return { ops: [] };
+    const validation = validateSampleProfile(entry);
     return {
       ops: [
-        setOp("console.profiles", next as unknown as Json),
-        setOp("console.versions", versions as unknown as Json),
-        setOp("console.draft", draftOf(promoted) as unknown as Json),
-        setOp("console.tab", "versions"),
-        setOp("console.toast", `Promoted to v${nextVersion} (active).`),
+        setOp("console.profiles", catalogRows() as unknown as Json),
+        setOp("console.validation", validation as unknown as Json),
+        setOp("console.tab", "validation"),
+      ],
+    };
+  },
+
+  refreshPreview(ctx) {
+    const entry = findEntry(readSelectedId(ctx));
+    if (!entry) return { ops: [] };
+    const preview = previewState(entry, readPreviewInput(ctx));
+    return {
+      ops: [
+        setOp("console.profiles", catalogRows() as unknown as Json),
+        setOp("console.previewBundle", preview.bundle as unknown as Json),
+        setOp("console.previewError", preview.error),
+        setOp("console.tab", "preview"),
       ],
     };
   },

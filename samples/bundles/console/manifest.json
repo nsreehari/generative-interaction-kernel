@@ -2,181 +2,32 @@
   "gik": "0.1",
   "type": "manifest",
   "payload": {
-    "version": "genui-console/1.0",
+    "version": "genui-console/2.0",
     "expression": "jsonata",
-    "namespaces": [
-      "console"
-    ],
-    "actions": [
-      "assign",
-      "assignFrom",
-      "derive",
-      "invoke",
-      "route",
-      "confirm",
-      "emit"
-    ],
+    "namespaces": ["console"],
+    "actions": ["assign", "assignFrom", "derive", "invoke", "route", "confirm", "emit"],
     "capabilities": {
-      "ui:screen": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "slots": [
-          "children"
-        ]
-      },
-      "ui:row": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "slots": [
-          "children"
-        ]
-      },
-      "ui:col": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "slots": [
-          "children"
-        ]
-      },
-      "ui:panel": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "slots": [
-          "children"
-        ]
-      },
-      "ui:text": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        }
-      },
-      "ui:heading": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        }
-      },
-      "ui:note": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        }
-      },
-      "ui:badge": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        }
-      },
-      "ui:metric": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        }
-      },
-      "ui:list": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "emits": [
-          "select"
-        ]
-      },
-      "ui:table": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "emits": [
-          "rowSelect"
-        ]
-      },
-      "ui:field": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "emits": [
-          "input"
-        ]
-      },
-      "ui:textarea": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "emits": [
-          "input"
-        ]
-      },
-      "ui:select": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "emits": [
-          "change"
-        ]
-      },
-      "ui:button": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "emits": [
-          "press"
-        ]
-      },
-      "ui:tabBar": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "emits": [
-          "select"
-        ]
-      },
-      "ui:chips": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "emits": [
-          "remove"
-        ]
-      },
-      "ui:embed": {
-        "propsSchema": {
-          "type": "object",
-          "additionalProperties": true
-        }
-      }
+      "ui:screen": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"] },
+      "ui:row": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"] },
+      "ui:col": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"] },
+      "ui:panel": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"] },
+      "ui:text": { "propsSchema": { "type": "object", "additionalProperties": true } },
+      "ui:note": { "propsSchema": { "type": "object", "additionalProperties": true } },
+      "ui:metric": { "propsSchema": { "type": "object", "additionalProperties": true } },
+      "ui:list": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["select"] },
+      "ui:table": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["rowSelect"] },
+      "ui:field": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["input"] },
+      "ui:select": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["change"] },
+      "ui:button": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["press"] },
+      "ui:tabBar": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["select"] },
+      "ui:codeBlock": { "propsSchema": { "type": "object", "additionalProperties": true } },
+      "ui:embed": { "propsSchema": { "type": "object", "additionalProperties": true } }
     },
     "externals": {
       "projectionViews": {
-        "ui": {
-          "from": "floor"
-        }
+        "ui": { "from": "floor" }
       },
-      "effectHandlers": [
-        "addCapability",
-        "createProfile",
-        "loadProfile",
-        "promoteProfile",
-        "removeCapability",
-        "saveDraft",
-        "validateProfile"
-      ]
+      "effectHandlers": ["syncCatalog", "loadProfile", "validateProfile", "refreshPreview"]
     }
   }
 }
