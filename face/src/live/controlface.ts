@@ -4,8 +4,9 @@
 //
 // Two distinct surfaces live here:
 //   - the JSON tool catalogs (see ./projections/controlface and ./projections/agentface):
-//     getState/getTree/emit/checkpoint/effectsSince as JSON->JSON ops, dispatched over the same MCP
-//     dispatcher the pure authoring tools use. The methods below are the impls those tools wrap.
+//     getState/getTree/emit/checkpoint/restore/effectsSince/compensate as JSON->JSON ops,
+//     dispatched over the same MCP dispatcher the pure authoring tools use. The methods below are
+//     the impls those tools wrap.
 //     AgentFace is the full catalog filtered to its allowlist.
 //   - the render STREAM: `attach` is streaming plumbing for SSE (it takes a live transport and returns
 //     a detach handle), NOT a JSON tool. It implements `TransportBroker` so SSE plugs into the face.
@@ -19,18 +20,25 @@ import {
   type GupEvent,
   type Json,
   type ManifestPayload,
+  type Orchestrator,
+  type OrchestratorEffect,
   type Patch,
   type RecordedEffect,
   type ResolvedNode,
   type StateModel,
+  type TraceSink,
   type TransportBroker,
   type TransportProvider,
 } from "../../../kernel/src/index";
-import { checkpoint, effectsSince, getState, getTree } from "./ops";
+import { checkpoint, compensate, effectsSince, getState, getTree, restore } from "./ops";
 
 export interface ControlFaceOptions {
   /** Pre-seeded state model for the kernel (namespaces already populated). */
   state?: StateModel;
+  /** Optional host effects/confirmation/router provider, including compensation handlers. */
+  orchestrator?: Orchestrator;
+  /** Optional trace sink for resolve/action/effect events. */
+  sink?: TraceSink;
 }
 
 export class ControlFace implements TransportBroker {
@@ -44,7 +52,11 @@ export class ControlFace implements TransportBroker {
     document: Enveloped<DocumentPayload>,
     opts: ControlFaceOptions = {}
   ) {
-    this.kernel = new Kernel(manifest, document, opts.state ? { state: opts.state } : {});
+    this.kernel = new Kernel(manifest, document, {
+      ...(opts.state ? { state: opts.state } : {}),
+      ...(opts.orchestrator ? { orchestrator: opts.orchestrator } : {}),
+      ...(opts.sink ? { sink: opts.sink } : {}),
+    });
     this.broker = new KernelTransportHost(manifest, document, this.kernel);
   }
 
@@ -73,8 +85,16 @@ export class ControlFace implements TransportBroker {
     return checkpoint(this.kernel);
   }
 
+  restore(cp: Checkpoint): Patch {
+    return restore(this.kernel, cp);
+  }
+
   effectsSince(rev: number): RecordedEffect[] {
     return effectsSince(this.kernel, rev);
+  }
+
+  compensate(effects: OrchestratorEffect[]): Promise<Patch> {
+    return compensate(this.kernel, effects);
   }
 
   /** Detach every connection (the caller owns any server lifecycle). */

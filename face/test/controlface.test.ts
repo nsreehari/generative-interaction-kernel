@@ -16,6 +16,9 @@ import { test } from "vitest";
 import {
   GenUIClient,
   InMemoryStateModel,
+  type Checkpoint,
+  type Orchestrator,
+  type OrchestratorEffect,
   type ResolvedNode,
 } from "../../kernel/src/index";
 import { McpHttpServer } from "../../transports/mcp-http/src/index";
@@ -24,6 +27,7 @@ import { SseTransportServer } from "../../transports/http-sse/src/index";
 import {
   AGENTFACE_ALLOWLIST,
   ControlFace,
+  type ControlFaceOptions,
   agentFaceProjection,
   authoringTools,
   createAgentFaceDispatcher,
@@ -39,6 +43,32 @@ const fx = (name: string) =>
 
 const manifest = fx("live-cards.manifest.json");
 const document = fx("example.document.json");
+
+const rollbackManifest = {
+  version: "rollback-test/1",
+  namespaces: ["card_data", "payments"],
+  capabilities: {},
+};
+
+const rollbackDocument = {
+  gup: "0.1",
+  type: "document",
+  payload: {
+    root: {
+      capability: "actions",
+      id: "btn-charge",
+      props: { label: "Charge" },
+      edges: {
+        on: {
+          tap: [
+            { do: "assign", target: "card_data.status", args: { value: "charged" } },
+            { do: "invoke", args: { tool: "charge", amount: 500 } },
+          ],
+        },
+      },
+    },
+  },
+};
 
 function seededState(): InMemoryStateModel {
   const store = new InMemoryStateModel(manifest.payload.namespaces);
@@ -86,8 +116,13 @@ interface MountedRuntime {
   stop(): void;
 }
 
-function createMountedRuntime(state = seededState()): MountedRuntime {
-  const controlface = new ControlFace(manifest, document, { state });
+function createMountedRuntime(
+  state = seededState(),
+  opts: Omit<ControlFaceOptions, "state"> = {},
+  runtimeManifest: unknown = manifest,
+  runtimeDocument: unknown = document
+): MountedRuntime {
+  const controlface = new ControlFace(runtimeManifest as any, runtimeDocument as any, { state, ...opts });
   const sse = new SseTransportServer(controlface, { path: "/gup" });
   const mcp = new McpHttpServer({
     path: "/mcp",
@@ -187,7 +222,7 @@ test("AgentFace is the ControlFace catalog filtered to the allowlist (projection
   for (const name of authoringTools.map((t) => t.name)) assert.ok(projection.includes(name));
   assert.ok(projection.includes("getState") && projection.includes("getTree"));
   // ...but never the live drive/lifecycle tools — those stay control-plane-only.
-  for (const name of ["emit", "checkpoint", "effectsSince"]) {
+  for (const name of ["emit", "checkpoint", "restore", "effectsSince", "compensate"]) {
     assert.equal(AGENTFACE_ALLOWLIST.has(name), false, `${name} leaked to agents`);
     assert.equal(projection.includes(name), false, `${name} leaked to agents`);
     assert.ok(full.includes(name), `${name} missing from control catalog`);
@@ -218,8 +253,16 @@ test("the /mcp agent channel serves authoring + read-only inspect; /mcp-control 
   assert.ok(agent.has("describeCatalog") && agent.has("getState") && agent.has("getTree"));
   assert.equal(agent.has("emit"), false);
   assert.equal(agent.has("effectsSince"), false);
+  assert.equal(agent.has("restore"), false);
+  assert.equal(agent.has("compensate"), false);
   // Control channel: superset — everything the agent has, plus the live drive/lifecycle tools.
-  assert.ok(control.has("emit") && control.has("checkpoint") && control.has("effectsSince"));
+  assert.ok(
+    control.has("emit") &&
+      control.has("checkpoint") &&
+      control.has("restore") &&
+      control.has("effectsSince") &&
+      control.has("compensate")
+  );
   for (const name of agent) assert.ok(control.has(name), `control channel missing ${name}`);
 
   host.stop();
@@ -277,6 +320,93 @@ test("a control-plane MCP tools/call drives the live kernel and broadcasts to re
   await waitFor(() => find(client.getTree(), "btn-approve")?.visible === true);
 
   client.stop();
+  host.stop();
+  await close(server);
+});
+
+test("controlface exposes full time-travel ops: checkpoint, restore, effectsSince, compensate", async () => {
+  const compensated: OrchestratorEffect[] = [];
+  const orchestrator: Orchestrator = {
+    async invoke(effect) {
+      if (effect.tool !== "charge") return;
+      return { ops: [{ op: "set", path: "payments.receipt", value: "ch_1" }] };
+    },
+    async compensate(effect) {
+      compensated.push(effect);
+      if (effect.tool === "charge") {
+        return { ops: [{ op: "set", path: "payments.refunded", value: true }] };
+      }
+    },
+  };
+
+  const face = new ControlFace(rollbackManifest as any, rollbackDocument as any, {
+    state: new InMemoryStateModel(rollbackManifest.namespaces),
+    orchestrator,
+  });
+
+  const cp = face.checkpoint();
+  const forward = await face.emit({ node: "btn-charge", name: "tap" });
+  assert.equal(forward.rev, 1);
+  assert.equal((face.getState().card_data as { status?: string }).status, "charged");
+
+  const fired = face.effectsSince(cp.rev);
+  assert.equal(fired.length, 1);
+  assert.equal(fired[0].effect.tool, "charge");
+
+  const rollback = face.restore(cp);
+  assert.equal(rollback.rev, 2);
+  assert.deepEqual(face.getState().card_data, {});
+  assert.deepEqual(face.getState().payments, {});
+
+  const compensation = await face.compensate(fired.map((e) => e.effect).reverse());
+  assert.equal(compensation.rev, 3);
+  assert.deepEqual(compensated.map((e) => e.tool), ["charge"]);
+  assert.equal((face.getState().payments as { refunded?: boolean }).refunded, true);
+
+  face.stop();
+});
+
+test("/mcp-control serves restore and compensate as JSON time-travel tools", async () => {
+  const orchestrator: Orchestrator = {
+    async invoke(effect) {
+      if (effect.tool !== "charge") return;
+      return { ops: [{ op: "set", path: "payments.receipt", value: "ch_1" }] };
+    },
+    async compensate(effect) {
+      if (effect.tool === "charge") {
+        return { ops: [{ op: "set", path: "payments.refunded", value: true }] };
+      }
+    },
+  };
+  const host = createMountedRuntime(
+    new InMemoryStateModel(rollbackManifest.namespaces),
+    { orchestrator },
+    rollbackManifest,
+    rollbackDocument
+  );
+  const { baseUrl, server } = await mount(host);
+
+  const call = async (name: string, args: Record<string, unknown>) => {
+    const res = await fetch(`${baseUrl}/mcp-control`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } }),
+    });
+    return (await res.json()) as { result: { structuredContent: unknown } };
+  };
+
+  const before = (await call("checkpoint", {})).result.structuredContent as Checkpoint;
+  await call("emit", { event: { node: "btn-charge", name: "tap" } });
+  const fired = (await call("effectsSince", { rev: before.rev })).result.structuredContent as Array<{ effect: OrchestratorEffect }>;
+
+  const rollback = (await call("restore", { checkpoint: before })).result.structuredContent as { rev: number };
+  assert.equal(rollback.rev, 2);
+
+  const compensation = (await call("compensate", { effects: fired.map((e) => e.effect).reverse() })).result
+    .structuredContent as { rev: number; ops: Array<{ path: string }> };
+  assert.equal(compensation.rev, 3);
+  assert.ok(compensation.ops.some((op) => op.path === "payments.refunded"));
+
   host.stop();
   await close(server);
 });

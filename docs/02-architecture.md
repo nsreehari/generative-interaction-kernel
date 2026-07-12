@@ -99,7 +99,7 @@ The runtime stack has four distinct layers:
 
 | Layer | Owns | Typical examples |
 |---|---|---|
-| **Kernel / engine** | execution semantics | `resolve`, `dispatch`, `checkpoint`, `effectsSince` |
+| **Kernel / engine** | execution semantics | `resolve`, `dispatch`, `checkpoint`, `restore`, `effectsSince`, `compensate` |
 | **Face** | callable capability surface around the kernel and related helpers | `validateDocument`, `getState`, `emit` |
 | **Projection** | a policy-shaped view of a face | full control-plane view vs filtered agent-safe view |
 | **Transport** | how a chosen projection crosses a boundary | MCP over HTTP, SSE render stream |
@@ -113,13 +113,13 @@ that wants local authority over runtime semantics embeds the kernel.
 ### Face
 
 A face is a **tool/API surface built around capabilities**. Some face operations are backed by an
-embedded live kernel (`getState`, `getTree`, `emit`, `checkpoint`, `effectsSince`); others are pure
+embedded live kernel (`getState`, `getTree`, `emit`, `checkpoint`, `restore`, `effectsSince`, `compensate`); others are pure
 library functions over JSON inputs (`describeCatalog`, `validateDocument`, `validatePresentation`).
 
 That makes a pure/live split inside `face/` useful:
 
 - **Pure face part** — authoring/validation tools that need no running kernel.
-- **Live face part** — inspect/drive tools that wrap a running kernel instance.
+- **Live face part** — inspect/drive/time-travel tools that wrap a running kernel instance.
 
 The current package already reflects this split logically: pure tool implementations and runtime
 tool implementations are separate catalogs even though they share one face package.

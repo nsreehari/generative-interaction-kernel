@@ -1,8 +1,8 @@
 // The tool IMPLEMENTATIONS that require a live runtime. These are the read/write control-plane
-// operations over a running ControlFace: inspect (getState/getTree), drive (emit), and lifecycle /
-// rollback-adjacent reads (checkpoint/effectsSince).
+// operations over a running ControlFace: inspect (getState/getTree), drive (emit), and full
+// time-travel control-plane operations (checkpoint/restore/effectsSince/compensate).
 
-import type { GupEvent } from "../../../kernel/src/index";
+import type { Checkpoint, GupEvent, OrchestratorEffect } from "../../../kernel/src/index";
 import type { McpTool } from "../tool-surface";
 import type { ControlFace } from "./controlface";
 
@@ -13,6 +13,8 @@ const obj = (properties: Record<string, unknown>, required: string[] = []): Reco
   additionalProperties: false,
 });
 const any = { type: "object" } as const;
+const checkpointSchema = obj({ rev: { type: "number" }, state: any }, ["rev", "state"]);
+const effectsSchema = { type: "array", items: any } as const;
 
 export function runtimeTools(face: ControlFace): McpTool[] {
   return [
@@ -41,10 +43,22 @@ export function runtimeTools(face: ControlFace): McpTool[] {
       handler: () => face.checkpoint(),
     },
     {
+      name: "restore",
+      description: "Restore pure state to a prior checkpoint (undo or redo) and return the rollback patch.",
+      inputSchema: obj({ checkpoint: checkpointSchema }, ["checkpoint"]),
+      handler: (a) => face.restore(a.checkpoint as Checkpoint),
+    },
+    {
       name: "effectsSince",
       description: "List the recorded external effects since a given revision.",
       inputSchema: obj({ rev: { type: "number" } }, ["rev"]),
       handler: (a) => face.effectsSince(Number(a.rev)),
+    },
+    {
+      name: "compensate",
+      description: "Route effects through the host compensation seam, in the order supplied, and return the compensation patch.",
+      inputSchema: obj({ effects: effectsSchema }, ["effects"]),
+      handler: (a) => face.compensate((a.effects as OrchestratorEffect[]) ?? []),
     },
   ];
 }

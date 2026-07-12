@@ -9,7 +9,7 @@ The Kernel evaluates `(state, event) → state`. It has no concept of screens, H
 ### 1.1 The Runtime Edge Has Layers
 The Kernel is not the whole runtime stack. A useful distinction is:
 *   **Kernel / Engine:** The embeddable execution core. It owns deterministic runtime semantics — resolve, reduce, patch, checkpoint, compensate.
-*   **Face:** A callable capability surface around the Kernel and related pure helpers. A face can contain both pure functions (`validateDocument`) and live runtime operations (`getState`, `emit`).
+*   **Face:** A callable capability surface around the Kernel and related pure helpers. A face can contain both pure functions (`validateDocument`) and live runtime operations (`getState`, `emit`, `checkpoint`, `restore`, `compensate`).
 *   **Face Projection:** A filtered view of a face. `controlface` is the full catalog; `agentface` is an allowlisted subset of that same catalog.
 *   **Transport:** The wire carrier for a chosen face projection. It moves requests, replies, patches, and events; it does not decide capability policy.
 
@@ -31,7 +31,7 @@ Every runtime actor needs authority to act, and open protocols grant it by letti
 Any actor that needs to understand the system reads the same authoritative state graph. There is no privileged human channel and no separate machine channel that can drift apart.
 **The GIK Principle:** The Kernel holds all state in a pure, medium-neutral graph. A human's projected view and an AI Agent's programmatic view resolve from that one graph. The Agent reads the exact structure driving the human's projection, so the Agent Experience (AX) is precise and needs no scraping, inference, or reconstruction of what the human sees.
 
-**Practical corollary:** a face can be split into a **pure part** (authoring/validation helpers over JSON) and a **live part** (inspect/drive tools over a running Kernel). This is usually a better organization than splitting by audience first, because the agent/control distinction is a projection concern, while pure/live is an implementation concern.
+**Practical corollary:** a face can be split into a **pure part** (authoring/validation helpers over JSON) and a **live part** (inspect/drive/time-travel tools over a running Kernel). This is usually a better organization than splitting by audience first, because the agent/control distinction is a projection concern, while pure/live is an implementation concern.
 
 ### 5. The Dataflow Graph is the Interaction Graph
 Traditional systems maintain a separate event/wiring layer that connects one node's output to another's input — a layer an actor must author correctly and an agent can wire wrong.
