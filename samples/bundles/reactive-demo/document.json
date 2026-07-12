@@ -1,0 +1,232 @@
+{
+  "gik": "0.1",
+  "type": "document",
+  "payload": {
+    "root": {
+      "capability": "ui:screen",
+      "id": "reactive-demo-root",
+      "props": {
+        "title": "Reactive StateModel Demo",
+        "subtitle": "A host-mounted sample using the vendored yaml-flow dependency graph through GIK's ReactiveStateModel provider."
+      },
+      "edges": {
+        "children": [
+          {
+            "capability": "ui:row",
+            "id": "reactive-demo-layout",
+            "props": { "variant": "split" },
+            "edges": {
+              "children": [
+                {
+                  "capability": "ui:panel",
+                  "id": "reactive-demo-context",
+                  "props": { "title": "What this demonstrates", "variant": "rail" },
+                  "edges": {
+                    "children": [
+                      {
+                        "capability": "ui:select",
+                        "id": "reactive-sample-select",
+                        "props": {
+                          "label": "Sample",
+                          "options": [
+                            { "value": "profile-form", "label": "profile-form" },
+                            { "value": "capacity-banner", "label": "capacity-banner" }
+                          ]
+                        },
+                        "edges": {
+                          "read": { "value": "demo.sample" },
+                          "on": {
+                            "change": [
+                              {
+                                "do": "assign",
+                                "target": "demo.sample",
+                                "args": { "from": "$event.value" }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "capability": "ui:heading",
+                        "id": "reactive-demo-heading",
+                        "props": { "value": "profile-form sample", "level": "3" }
+                      },
+                      {
+                        "capability": "ui:note",
+                        "id": "reactive-demo-note-1",
+                        "props": {
+                          "value": "Base writes land in a ReactiveStateModel. The vendored dependency graph maintains the standing computed cells and the demo re-renders after settle().",
+                          "tone": "muted"
+                        }
+                      },
+                      {
+                        "capability": "ui:note",
+                        "id": "reactive-demo-note-2",
+                        "props": {
+                          "value": "The right panel is a native self-provided leaf because the interactive store lifecycle is not expressed in the document grammar itself.",
+                          "tone": "muted"
+                        }
+                      },
+                      {
+                        "capability": "ui:panel",
+                        "id": "reactive-form-controls",
+                        "props": { "title": "Form inputs", "variant": "inset" },
+                        "edges": {
+                          "gate": "demo.sample = 'profile-form'",
+                          "children": [
+                            {
+                              "capability": "ui:field",
+                              "id": "reactive-form-first",
+                              "props": { "label": "First name" },
+                              "edges": {
+                                "read": { "value": "demo.formFirst" },
+                                "on": {
+                                  "input": [
+                                    {
+                                      "do": "assign",
+                                      "target": "demo.formFirst",
+                                      "args": { "from": "$event.value" }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:field",
+                              "id": "reactive-form-last",
+                              "props": { "label": "Last name" },
+                              "edges": {
+                                "read": { "value": "demo.formLast" },
+                                "on": {
+                                  "input": [
+                                    {
+                                      "do": "assign",
+                                      "target": "demo.formLast",
+                                      "args": { "from": "$event.value" }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:select",
+                              "id": "reactive-form-consent",
+                              "props": {
+                                "label": "Consent",
+                                "options": [
+                                  { "value": "false", "label": "false" },
+                                  { "value": "true", "label": "true" }
+                                ]
+                              },
+                              "edges": {
+                                "read": { "value": "demo.consent" },
+                                "on": {
+                                  "change": [
+                                    {
+                                      "do": "assign",
+                                      "target": "demo.consent",
+                                      "args": { "from": "$event.value" }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "capability": "ui:panel",
+                        "id": "reactive-metrics-controls",
+                        "props": { "title": "Capacity inputs", "variant": "inset" },
+                        "edges": {
+                          "gate": "demo.sample = 'capacity-banner'",
+                          "children": [
+                            {
+                              "capability": "ui:field",
+                              "id": "reactive-metrics-approved",
+                              "props": { "label": "Approved" },
+                              "edges": {
+                                "read": { "value": "demo.metricsApproved" },
+                                "on": {
+                                  "input": [
+                                    {
+                                      "do": "assign",
+                                      "target": "demo.metricsApproved",
+                                      "args": { "from": "$event.value" }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:field",
+                              "id": "reactive-metrics-pending",
+                              "props": { "label": "Pending" },
+                              "edges": {
+                                "read": { "value": "demo.metricsPending" },
+                                "on": {
+                                  "input": [
+                                    {
+                                      "do": "assign",
+                                      "target": "demo.metricsPending",
+                                      "args": { "from": "$event.value" }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:field",
+                              "id": "reactive-metrics-limit",
+                              "props": { "label": "Limit" },
+                              "edges": {
+                                "read": { "value": "demo.metricsLimit" },
+                                "on": {
+                                  "input": [
+                                    {
+                                      "do": "assign",
+                                      "target": "demo.metricsLimit",
+                                      "args": { "from": "$event.value" }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "capability": "ui:panel",
+                  "id": "reactive-demo-host",
+                  "props": { "title": "Live sample", "variant": "detail" },
+                  "edges": {
+                    "children": [
+                      {
+                        "capability": "demo:reactiveSample",
+                        "id": "reactive-sample",
+                        "edges": {
+                          "read": {
+                            "sample": "demo.sample",
+                            "formFirst": "demo.formFirst",
+                            "formLast": "demo.formLast",
+                            "consent": "demo.consent",
+                            "metricsApproved": "demo.metricsApproved",
+                            "metricsPending": "demo.metricsPending",
+                            "metricsLimit": "demo.metricsLimit"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
