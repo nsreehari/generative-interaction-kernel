@@ -1,0 +1,10 @@
+{
+  "demo": {
+    "mode": "graph-driven",
+    "objective": "Portfolio review authoring",
+    "surface": "copilot",
+    "changedSource": "portfolio",
+    "stream": "mpc",
+    "profileSeed": "live-cards"
+  }
+}

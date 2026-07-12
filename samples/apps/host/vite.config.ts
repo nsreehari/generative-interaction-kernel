@@ -12,6 +12,22 @@ const jsonataCjs = fileURLToPath(
   new URL("../../../kernel/src/vendor/jsonata.cjs", import.meta.url)
 ).replace(/\\/g, "/");
 
+const providerReactiveStateModel = fileURLToPath(
+  new URL("../../../packages/provider-reactive-state-model/src/index.ts", import.meta.url)
+);
+const providerConsequenceGraph = fileURLToPath(
+  new URL("../../../packages/provider-consequence-graph/src/index.ts", import.meta.url)
+);
+const providerExploratoryGraph = fileURLToPath(
+  new URL("../../../packages/provider-exploratory-graph/src/index.ts", import.meta.url)
+);
+const providerStepOrchestrator = fileURLToPath(
+  new URL("../../../packages/provider-step-orchestrator/src/index.ts", import.meta.url)
+);
+const providerProfileAuthoring = fileURLToPath(
+  new URL("../../../packages/provider-profile-authoring/src/index.ts", import.meta.url)
+);
+
 function jsonataUmdInterop(): Plugin {
   return {
     name: "jsonata-umd-esm-interop",
@@ -32,5 +48,14 @@ function jsonataUmdInterop(): Plugin {
 // bundle by id; there is no per-app shell.
 export default defineConfig({
   plugins: [jsonataUmdInterop(), react()],
+  resolve: {
+    alias: {
+      "@gik/provider-reactive-state-model": providerReactiveStateModel,
+      "@gik/provider-consequence-graph": providerConsequenceGraph,
+      "@gik/provider-exploratory-graph": providerExploratoryGraph,
+      "@gik/provider-step-orchestrator": providerStepOrchestrator,
+      "@gik/provider-profile-authoring": providerProfileAuthoring,
+    },
+  },
   server: { port: 5175 },
 });

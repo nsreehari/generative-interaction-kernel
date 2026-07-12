@@ -2,7 +2,12 @@ import React from "react";
 import { JsonataExpressionProvider } from "@gik/kernel";
 import { readProps, type ProjectionView } from "@gik/react";
 
-import { computedGraphToMermaid, ReactiveStateModel, profileFormSample, reactiveComputedSamples } from "@gik/reactive-state-model";
+import {
+  computedGraphToMermaid,
+  ReactiveStateModel,
+  profileFormSample,
+  reactiveComputedSamples,
+} from "@gik/provider-reactive-state-model";
 
 const provider = new JsonataExpressionProvider();
 const evaluate = (expr: string, scope: Record<string, unknown>) => provider.eval(expr, scope);

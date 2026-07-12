@@ -32,6 +32,21 @@
       "@gik/react": [
         "../../../packages/react/src/index.ts"
       ],
+      "@gik/provider-reactive-state-model": [
+        "../../../packages/provider-reactive-state-model/src/index.ts"
+      ],
+      "@gik/provider-consequence-graph": [
+        "../../../packages/provider-consequence-graph/src/index.ts"
+      ],
+      "@gik/provider-exploratory-graph": [
+        "../../../packages/provider-exploratory-graph/src/index.ts"
+      ],
+      "@gik/provider-step-orchestrator": [
+        "../../../packages/provider-step-orchestrator/src/index.ts"
+      ],
+      "@gik/provider-profile-authoring": [
+        "../../../packages/provider-profile-authoring/src/index.ts"
+      ],
       "@gik/reactive-state-model": [
         "../../../packages/reactive-state-model/src/index.ts"
       ],
