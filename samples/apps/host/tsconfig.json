@@ -32,6 +32,9 @@
       "@gik/react": [
         "../../../packages/react/src/index.ts"
       ],
+      "@gik/reactive-state-model": [
+        "../../../packages/reactive-state-model/src/index.ts"
+      ],
       "@gik/transport-http-sse": [
         "../../../packages/transport-http-sse/src/index.ts"
       ],
