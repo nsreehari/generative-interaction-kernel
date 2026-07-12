@@ -4,7 +4,8 @@
   "type": "module",
   "sideEffects": false,
   "files": [
-    "dist"
+    "dist",
+    "docs"
   ],
   "exports": {
     ".": {
@@ -27,6 +28,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsup src/index.ts src/client.ts src/codec.ts src/server.ts --format esm --dts --sourcemap --clean --tsconfig tsconfig.json"
+    "build": "tsup src/index.ts src/client.ts src/codec.ts src/server.ts --format esm --dts --sourcemap --clean --tsconfig tsconfig.json",
+    "prepack": "node ../../scripts/sync-public-docs.mjs packages/transport-http-sse"
   }
 }
