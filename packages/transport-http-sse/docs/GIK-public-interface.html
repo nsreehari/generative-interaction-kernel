@@ -212,16 +212,17 @@ filtered.</div>
 <div class="toc">
 <a href="#surfaces">1 · What you can use</a><br>
 <a href="#pick">2 · Pick your surface</a><br>
-<a href="#fit">3 · How the pieces fit</a><br>
-<a href="#kernel">4 · Embed the kernel</a><br>
-<a href="#controlface-host">5 · Host a live ControlFace</a><br>
-<a href="#projections">6 · Expose outward projections</a><br>
-<a href="#timetravel">7 · Time-travel &amp; rollback</a><br>
-<a href="#providers">8 · Provider seams</a><br>
-<a href="#types">9 · Core data types</a><br>
-<a href="#remote">10 · Stream renders &amp; connect remotely</a><br>
-<a href="#authoring">11 · Authoring helpers</a><br>
-<a href="#wire">12 · Protocol reference</a>
+<a href="#samples">3 · Sample host shapes</a><br>
+<a href="#fit">4 · How the pieces fit</a><br>
+<a href="#kernel">5 · Embed the kernel</a><br>
+<a href="#controlface-host">6 · Host a live ControlFace</a><br>
+<a href="#projections">7 · Expose outward projections</a><br>
+<a href="#timetravel">8 · Time-travel &amp; rollback</a><br>
+<a href="#providers">9 · Provider seams</a><br>
+<a href="#types">10 · Core data types</a><br>
+<a href="#remote">11 · Stream renders &amp; connect remotely</a><br>
+<a href="#authoring">12 · Authoring helpers</a><br>
+<a href="#wire">13 · Protocol reference</a>
 </div>
 
 <h2 id="surfaces">1 · What you can use</h2>
@@ -244,15 +245,34 @@ repo — pick a row by what you are building.</p>
 <h2 id="pick">2 · Pick your surface</h2>
 
 <ul>
-<li>Own the runtime and call it directly, in one process → <strong>embed <code>Kernel</code></strong> (§4).</li>
-<li>Host one runtime and back both tools and a render stream from it → <strong>hold a <code>ControlFace</code></strong> (§5).</li>
-<li>Give an operator or first-party console full remote authority (inspect, drive, time-travel) → mount the <strong><code>controlface</code> projection</strong> over MCP/HTTP (§6).</li>
-<li>Give an agent a bounded, read-oriented remote surface → mount the <strong><code>agentface</code> projection</strong> over MCP/HTTP (§6). Time-travel and <code>emit</code> are intentionally excluded.</li>
-<li>Ship only authoring/validation tools with no running runtime → <strong><code>createStatelessAgentFaceDispatcher</code></strong> (§6).</li>
-<li>Render from another process or machine against a patch stream → <strong><code>SseTransportServer</code> + <code>GIKClient</code></strong> (§10).</li>
+<li>Own the runtime and call it directly, in one process → <strong>embed <code>Kernel</code></strong> (§5).</li>
+<li>Host one runtime and back both tools and a render stream from it → <strong>hold a <code>ControlFace</code></strong> (§6).</li>
+<li>Give an operator or first-party console full remote authority (inspect, drive, time-travel) → mount the <strong><code>controlface</code> projection</strong> over MCP/HTTP (§7).</li>
+<li>Give an agent a bounded, read-oriented remote surface → mount the <strong><code>agentface</code> projection</strong> over MCP/HTTP (§7). Time-travel and <code>emit</code> are intentionally excluded.</li>
+<li>Ship only authoring/validation tools with no running runtime → <strong><code>createStatelessAgentFaceDispatcher</code></strong> (§7).</li>
+<li>Render from another process or machine against a patch stream → <strong><code>SseTransportServer</code> + <code>GIKClient</code></strong> (§11).</li>
 </ul>
 
-<h2 id="fit">3 · How the pieces fit</h2>
+<h2 id="samples">3 · Sample host shapes</h2>
+
+<p>The repo includes several sample hosts because GenUI can be consumed at different layers. They are
+not duplicates of each other; each one demonstrates a different boundary around the platform.</p>
+
+<table class="sig">
+<tr><th>Sample</th><th>File</th><th>What it demonstrates</th><th>Choose it when</th></tr>
+<tr><td><code>apps/host</code></td><td><code>samples/apps/host/</code></td><td>The browser bundle host: mounts JSON bundles, renders them through <code>@gik/react</code>, and lets the bundle switcher move between samples.</td><td>You need a renderer/container for authored bundles in the browser.</td></tr>
+<tr><td><code>agent-host</code></td><td><code>samples/agent-host/mcp-service.ts</code></td><td>A stateless MCP surface over <code>createStatelessAgentFaceDispatcher()</code>. No live kernel, no document, no runtime state.</td><td>You want authoring/validation tools only, exposed to an agent or Copilot over MCP/HTTP.</td></tr>
+<tr><td><code>control-host</code></td><td><code>samples/control-host/service.ts</code></td><td>One live <code>ControlFace</code> exposing three outward surfaces over the same runtime: SSE render stream, agent-safe MCP, and full control-plane MCP.</td><td>You are building the authoritative runtime service that backs renderers, operators, and agents.</td></tr>
+<tr><td><code>backend-host</code></td><td><code>samples/backend-host/order-service.ts</code></td><td>Direct kernel embedding with a backend orchestrator and a non-UI projector. No React, no browser, no outward transport shell required.</td><td>You want the kernel as workflow/business-logic infrastructure inside a service or worker.</td></tr>
+</table>
+
+<div class="callout"><strong>Rule of thumb:</strong> choose <code>apps/host</code> when the question is
+"how do I render bundles?"; choose <code>agent-host</code> when the question is "how do I expose
+authoring tools only?"; choose <code>control-host</code> when the question is "how do I host one live
+runtime for external clients?"; choose <code>backend-host</code> when the question is "how do I embed
+the kernel directly in backend code?"</div>
+
+<h2 id="fit">4 · How the pieces fit</h2>
 
 <p>The important boundary is <strong>internal vs outward</strong>. A <code>ControlFace</code> owns a
 <code>Kernel</code> and a transport broker as <em>private</em> composition — a transport never binds to
@@ -271,7 +291,7 @@ request/response catalog) or the <strong>render stream</strong> (SSE). Capabilit
 <code>createControlFaceDispatcher</code> at <code>/mcp-control</code>, and an <code>SseTransportServer</code>
 at <code>/gik</code> — three outward surfaces over the <em>same</em> live runtime.</p>
 
-<h2 id="kernel">4 · Embed the kernel</h2>
+<h2 id="kernel">5 · Embed the kernel</h2>
 
 <h3>Quick start</h3>
 
@@ -347,7 +367,7 @@ so <code>new Kernel(manifest, document)</code> runs standalone (with a no-op orc
 host exposing <code>ControlFace</code> over MCP or another transport can checkpoint, restore,
 inspect effect history, and compensate without embedding callers directly against <code>Kernel</code>.</p>
 
-<h2 id="controlface-host">5 · Host a live ControlFace</h2>
+<h2 id="controlface-host">6 · Host a live ControlFace</h2>
 
 <p>A <code>ControlFace</code> is the host-side live object that wraps one bundle. You construct it once
 and hold it; it is what projections and the render stream bind to. It is <em>not</em> the outward wire

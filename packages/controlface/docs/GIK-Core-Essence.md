@@ -13,6 +13,8 @@ The Kernel is not the whole runtime stack. A useful distinction is:
 *   **Face Projection:** A filtered view of a face. `controlface` is the full catalog; `agentface` is an allowlisted subset of that same catalog.
 *   **Transport:** The wire carrier for a chosen face projection. It moves requests, replies, patches, and events; it does not decide capability policy.
 
+In the authoring stack above the Kernel, a useful profile model is: **N layers plus N-1 lowering recipes**. Those recipes are declarative artifacts that compile into the Kernel's existing runtime-document language (`props`, `read`, `readExpr`, `on`, `children`) rather than inventing a second binding language.
+
 This layering matters because it answers three common questions precisely:
 *   **Is the Kernel embeddable?** Yes. A live face embeds a Kernel instance and wraps it in tools.
 *   **Is `agentface` a second engine?** No. It is a filtered projection of the same face.
@@ -52,6 +54,8 @@ A generative planner is probabilistic; its output cannot be trusted to touch liv
 ### 9. Stable Semantics, Adaptive Projection
 Adapting an experience to context usually means forking logic, which lets meaning drift as variants multiply.
 **The GIK Principle:** The Kernel separates *what an interaction means* (its stable semantic parts and roles) from *how it is arranged for the moment* (adaptive priority, density, and layout). The meaning stays fixed while the projection reshapes for role, urgency, device, or operational context. Because the semantic set is enumerable, the mapping stays bounded and testable — the system adapts its presentation without ever changing its meaning.
+
+For GenUI profiles, that adaptive projection is best understood as a declared lowering chain: the profile names its layers, and its recipes describe how one layer lowers into the next. The semantics stay stable because the recipes reshape arrangement and materialization, not the underlying interaction meaning.
 
 ### 10. The Dual-Loop SLA (Deterministic Loop vs. Semantic Loop)
 Throughput and responsiveness must never depend on model latency, in any medium.
