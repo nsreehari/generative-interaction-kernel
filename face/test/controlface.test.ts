@@ -6,12 +6,12 @@
 // tool/call drives the kernel and broadcasts its patch to the connected render client (live drive),
 // not just a silent kernel poke.
 
-import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { AddressInfo } from "node:net";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { test } from "vitest";
 
 import {
   GenUIClient,

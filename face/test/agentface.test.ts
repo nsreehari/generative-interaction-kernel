@@ -1,9 +1,9 @@
 // Headless checks for the AgentFace TS surface. Runs
-// with `node --import tsx --test`. Asserts catalog projection, reference linting, dry-run
+// with `vitest run`. Asserts catalog projection, reference linting, dry-run
 // validation, and the author (commit) path, all JSON-shaped and transport-free.
 
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "vitest";
 
 import { describeCatalog, namespaces, effects } from "../src/pure/catalog";
 import { validateDocument, lint, authorDocument } from "../src/pure/document";

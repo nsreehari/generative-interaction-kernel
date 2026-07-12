@@ -11,10 +11,10 @@
     "test:kernel": "node --import tsx --test kernel/test/**/*.test.ts",
     "test:react": "node --import tsx --test adapters/react/test/**/*.test.tsx",
     "test:interaction": "node --import tsx --test interaction/test/**/*.test.ts",
-    "test:face": "node --import tsx --test face/test/**/*.test.ts",
+    "test:face": "vitest run --config vitest.face.config.mjs",
     "test:providers": "node --import tsx --test providers/**/test/**/*.test.ts",
     "test:sse": "node --import tsx --test transports/http-sse/test/**/*.test.ts",
-    "test:mcp": "node --import tsx --test transports/mcp-http/test/**/*.test.ts",
+    "test:mcp": "vitest run --config vitest.mcp.config.mjs",
     "dev:workbench": "vite samples/apps/host --open /?bundle=workbench",
     "dev:host": "vite samples/apps/host",
     "build:host": "vite build samples/apps/host",
@@ -39,6 +39,7 @@
     "@vitejs/plugin-react": "^6.0.3",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
+    "vitest": "^2.1.8",
     "vite": "^8.1.3"
   }
 }
