@@ -68,12 +68,36 @@ export function controlFaceTools(face: ControlFace): McpTool[] {
 }
 
 /**
- * The agent-safe allowlist: the tool names AgentFace exposes. AgentFace === the ControlFace catalog
- * filtered to these names, so this Set is the single source of truth for the projection.
+ * Read-only runtime tools that are safe to hand to agents: they observe live state but never drive
+ * the kernel or touch lifecycle. `emit`/`checkpoint`/`effectsSince` stay control-plane-only.
  */
-export const AGENTFACE_ALLOWLIST: ReadonlySet<string> = new Set(agentFaceTools.map((t) => t.name));
+const AGENT_SAFE_RUNTIME = ["getState", "getTree"] as const;
+
+/**
+ * The agent-safe allowlist: every AgentFace tool name — the pure authoring/validation tools PLUS the
+ * read-only runtime inspect tools. AgentFace === the ControlFace catalog filtered to these names, so
+ * this Set is the single source of truth for the projection (and the trust boundary).
+ */
+export const AGENTFACE_ALLOWLIST: ReadonlySet<string> = new Set<string>([
+  ...agentFaceTools.map((t) => t.name),
+  ...AGENT_SAFE_RUNTIME,
+]);
+
+/**
+ * The agent-safe projection of the full catalog over a live face: the authoring tools plus read-only
+ * runtime inspect (getState/getTree). Needs a face because the inspect tools read the live kernel; a
+ * kernel-free host can only serve the pure `agentFaceTools` subset (see agentface `handleMcpMessage`).
+ */
+export function agentFaceProjection(face: ControlFace): McpTool[] {
+  return controlFaceTools(face).filter((t) => AGENTFACE_ALLOWLIST.has(t.name));
+}
 
 /** Build the JSON-RPC dispatcher for the FULL control-plane catalog over a live face. */
 export function createControlFaceDispatcher(face: ControlFace): McpDispatcher {
   return createMcpDispatcher(controlFaceTools(face), { name: "genui-controlface", version: "0.1" });
+}
+
+/** Build the JSON-RPC dispatcher for the agent-safe projection over a live face (adds read-only inspect). */
+export function createAgentFaceDispatcher(face: ControlFace): McpDispatcher {
+  return createMcpDispatcher(agentFaceProjection(face), { name: "genui-agentface", version: "0.1" });
 }
