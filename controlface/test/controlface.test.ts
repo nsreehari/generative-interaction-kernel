@@ -23,6 +23,7 @@ import {
   AGENTFACE_ALLOWLIST,
   ControlFace,
   ControlfaceHost,
+  agentFaceProjection,
   controlFaceTools,
   runtimeTools,
 } from "../src/index";
@@ -137,20 +138,25 @@ test("controlface read ops observe live state without a transport", async () => 
 test("AgentFace is the ControlFace catalog filtered to the allowlist (projection is real)", () => {
   const face = new ControlFace(manifest, document, { state: seededState() });
   const full = controlFaceTools(face).map((t) => t.name);
-  const agent = agentFaceTools.map((t) => t.name);
-  const runtime = runtimeTools(face).map((t) => t.name);
+  const projection = agentFaceProjection(face).map((t) => t.name);
 
-  // AgentFace names are a strict subset of the full control-plane catalog.
-  for (const name of agent) assert.ok(full.includes(name), `agent tool ${name} missing from catalog`);
-  // The allowlist IS the agent subset; filtering the catalog by it reproduces AgentFace exactly.
-  assert.deepEqual(full.filter((n) => AGENTFACE_ALLOWLIST.has(n)).sort(), [...agent].sort());
-  // The live runtime tools are control-plane-only — never exposed to agents.
-  for (const name of runtime) assert.equal(AGENTFACE_ALLOWLIST.has(name), false, `${name} leaked to agents`);
-  assert.ok(runtime.includes("emit") && runtime.includes("getState"));
+  // The projection is exactly the catalog filtered to the allowlist.
+  assert.deepEqual(projection.sort(), full.filter((n) => AGENTFACE_ALLOWLIST.has(n)).sort());
+  // Agents get the pure authoring tools PLUS read-only inspect (getState/getTree)...
+  for (const name of agentFaceTools.map((t) => t.name)) assert.ok(projection.includes(name));
+  assert.ok(projection.includes("getState") && projection.includes("getTree"));
+  // ...but never the live drive/lifecycle tools — those stay control-plane-only.
+  for (const name of ["emit", "checkpoint", "effectsSince"]) {
+    assert.equal(AGENTFACE_ALLOWLIST.has(name), false, `${name} leaked to agents`);
+    assert.equal(projection.includes(name), false, `${name} leaked to agents`);
+    assert.ok(full.includes(name), `${name} missing from control catalog`);
+  }
+  // Read-only inspect tools ARE runtime tools — present in the catalog and allowlisted.
+  assert.ok(runtimeTools(face).some((t) => t.name === "getState"));
   face.stop();
 });
 
-test("the /mcp agent channel serves the subset; /mcp-control adds the live runtime tools", async () => {
+test("the /mcp agent channel serves authoring + read-only inspect; /mcp-control adds drive/lifecycle", async () => {
   const host = new ControlfaceHost(manifest, document, { state: seededState() });
   const { baseUrl, server } = await mount(host);
 
@@ -167,12 +173,36 @@ test("the /mcp agent channel serves the subset; /mcp-control adds the live runti
   const agent = await list("/mcp");
   const control = await list("/mcp-control");
 
-  // Agent channel: authoring tools present, live runtime tools absent.
-  assert.ok(agent.has("describeCatalog"));
+  // Agent channel: authoring tools + read-only inspect present; drive/lifecycle absent.
+  assert.ok(agent.has("describeCatalog") && agent.has("getState") && agent.has("getTree"));
   assert.equal(agent.has("emit"), false);
-  // Control channel: superset — same authoring tools plus the live runtime tools.
-  assert.ok(control.has("describeCatalog") && control.has("emit") && control.has("getState"));
+  assert.equal(agent.has("effectsSince"), false);
+  // Control channel: superset — everything the agent has, plus the live drive/lifecycle tools.
+  assert.ok(control.has("emit") && control.has("checkpoint") && control.has("effectsSince"));
   for (const name of agent) assert.ok(control.has(name), `control channel missing ${name}`);
+
+  host.stop();
+  await close(server);
+});
+
+test("an agent can read live state over /mcp getState without any drive privilege", async () => {
+  const host = new ControlfaceHost(manifest, document, { state: seededState() });
+  const { baseUrl, server } = await mount(host);
+
+  const res = await fetch(`${baseUrl}/mcp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: { name: "getState", arguments: {} },
+    }),
+  });
+  const reply = (await res.json()) as {
+    result: { structuredContent: { computed_values?: { total?: number } } };
+  };
+  assert.equal(reply.result.structuredContent.computed_values?.total, 150);
 
   host.stop();
   await close(server);
