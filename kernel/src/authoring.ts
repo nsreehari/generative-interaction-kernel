@@ -79,6 +79,8 @@ export interface NodeOptions {
   props?: Record<string, Json>;
   /** field -> source namespace path (read edge). */
   read?: Record<string, string>;
+  /** field -> expression (shaped read edge). */
+  readExpr?: Record<string, string>;
   /** a gate expression; the node is hidden unless it is truthy. */
   gate?: string;
   /** field -> destination namespace path (write edge). */
@@ -94,6 +96,7 @@ export interface NodeOptions {
 export function node(capability: string, id: string, opts: NodeOptions = {}): DocNode {
   const edges: Edges = {};
   if (opts.read) edges.read = opts.read;
+  if (opts.readExpr) edges.readExpr = opts.readExpr;
   if (opts.gate !== undefined) edges.gate = opts.gate;
   if (opts.write) {
     edges.write = Object.fromEntries(

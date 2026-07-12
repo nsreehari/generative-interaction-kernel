@@ -47,7 +47,7 @@ export default defineWorkspace([
     test: {
       name: "samples",
       environment: "node",
-      include: ["samples/control-host/**/*.test.ts"],
+      include: ["samples/control-host/**/*.test.ts", "samples/profiles/**/*.test.ts"],
     },
   },
   {

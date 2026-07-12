@@ -21,7 +21,7 @@ export interface ExportBundle {
 
 /** Build the full export bundle: the authored artifact + the manifest generated from its document. */
 export function exportBundle(session: Session, edits: PresentationEdits): ExportBundle {
-  const authored = toAuthoredSession(session.spec, session.ctx, edits);
+  const authored = toAuthoredSession(session.spec, session.ctx, edits, session.profile);
   const catalog = unwrap(DEMO_MANIFEST).capabilities;
   const manifest = generateManifest(session.document, { version: "authored-live-cards/1.0", catalog });
   return { authored, manifest, document: session.document };

@@ -1,9 +1,9 @@
 // The shared "session artifact" — the spine of the workbench. All three purposes (inspect,
-// no-code build, agent authoring) are just different *writers* of {spec, ctx, binding}; the
+// no-code build, agent authoring) are just different *writers* of {spec, ctx, profile}; the
 // playground is the single *reader*. This module runs the pure pipeline once per change:
 //
-//   spec + ctx  --defaultPresentationPlanner-->  Presentation DSL
-//   spec + ctx + binding  --compileInteraction/lowerToDocument-->  UI DSL document
+//   spec + ctx + interaction->presentation recipe  -->  Presentation DSL
+//   presentation + presentation->runtime recipe    -->  UI DSL document
 //   document  -->  Kernel  -->  GenUIController  -->  (React renders it live)
 //
 // Slice 1 keeps the guest *in-process* (GenUIController); the transport-backed GIKClient seam
@@ -19,15 +19,16 @@ import {
 } from "@gik/kernel";
 import { GenUIController } from "@gik/react";
 import {
-  compileInteraction,
-  defaultPresentationPlanner,
   applyPresentationEdits,
   emptyEdits,
+  lowerPresentation,
+  planPresentationWithRecipe,
+  recipeForKinds,
+  type ResolvedProfile,
+  type ProfileIdentity,
   type InteractionSpec,
-  type PresentationBinding,
   type PresentationContext,
   type PresentationEdits,
-  type PresentationPlanner,
   type PresentationSpec,
 } from "../../../interaction/src/index";
 import { DEMO_MANIFEST, demoDataFor, seedState } from "./bundles/demo/demo";
@@ -45,30 +46,27 @@ export interface Session {
   controller: GenUIController;
   /** live trace buffer (mutated as the guest dispatches events). */
   traces: TraceEvent[];
+  /** identity of the profile this session was built with, for portable authored-session replay. */
+  profile: ProfileIdentity;
 }
 
-/** Run the whole upper pipeline for one {spec, ctx, binding} and stand up a fresh guest runtime. */
+/** Run the whole upper pipeline for one {spec, ctx, profile} and stand up a fresh guest runtime. */
 export function buildSession(
   base: InteractionSpec,
   ctx: PresentationContext,
-  binding: PresentationBinding,
+  profile: ResolvedProfile,
   edits: PresentationEdits = emptyEdits
 ): Session {
   // fill demo data by facet role unless the spec already carries an explicit data map.
   const spec: InteractionSpec = { ...base, data: base.data ?? demoDataFor(base) };
 
-  // the planner seam: the deterministic reference planner, then the authoring session's overrides
-  // on top. Both the presentation artifact and the lowered document flow through this same planner,
-  // so the inspector and the guest agree on the edited presentation.
-  const planner: PresentationPlanner = (s, c) => applyPresentationEdits(defaultPresentationPlanner(s, c), edits);
-  const presentation = planner(spec, ctx);
-  // compile through the platform's validate-before-commit boundary (returns a document message).
-  // pass the manifest capabilities so each region's data binds onto the prop that capability reads.
-  const capabilities = unwrap(DEMO_MANIFEST).capabilities;
-  const message = lowerToDocument(
-    (s: InteractionSpec) => compileInteraction(s, ctx, binding, planner, capabilities),
-    spec
+  const planning = recipeForKinds(profile, "interaction", "presentation");
+  const lowering = recipeForKinds(profile, "presentation", "runtime-document");
+  const presentation = applyPresentationEdits(
+    planPresentationWithRecipe(spec, ctx, planning),
+    edits
   );
+  const message = lowerToDocument(lowerPresentation(lowering), presentation);
   const document = unwrap(message);
 
   const state = seedState(unwrap(DEMO_MANIFEST).namespaces ?? []);
@@ -76,5 +74,13 @@ export function buildSession(
   const kernel = new Kernel(DEMO_MANIFEST, message, { state, sink: buffer.sink });
   const controller = new GenUIController(kernel);
 
-  return { spec, ctx, presentation, document, controller, traces: buffer.events };
+  return {
+    spec,
+    ctx,
+    presentation,
+    document,
+    controller,
+    traces: buffer.events,
+    profile: { id: profile.artifact.payload.id, version: profile.artifact.payload.version },
+  };
 }

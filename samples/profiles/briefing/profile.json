@@ -1,0 +1,26 @@
+{
+  "gik": "0.1",
+  "type": "profile",
+  "payload": {
+    "id": "briefing",
+    "kind": "briefing-profile",
+    "version": "0.1.0",
+    "layers": [
+      { "id": "interaction", "kind": "interaction" },
+      { "id": "presentation", "kind": "presentation" },
+      { "id": "runtime-document", "kind": "runtime-document" }
+    ],
+    "recipes": [
+      {
+        "id": "briefing.interaction-to-presentation",
+        "from": "interaction",
+        "to": "presentation"
+      },
+      {
+        "id": "briefing.presentation-to-runtime",
+        "from": "presentation",
+        "to": "runtime-document"
+      }
+    ]
+  }
+}

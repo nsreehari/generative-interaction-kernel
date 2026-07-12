@@ -35,10 +35,11 @@ Split the platform-owned span into **two layers** with a **context-aware compile
   workspace layout, mobile → a single-column stack, copilot → a narrative subset. This is the
   layer the charter (ADR-0017) calls **the moat**.
 
-Layer 4 then lowers to the kernel's UI document via a profile-supplied **region binding** (a
-translation contract): each region maps to one of the profile's kernel capabilities; regions with
-no mapping fall back to the region name as the capability, which the kernel renders as a graceful
-fallback node — the forward-compatible path for a facet a profile has not implemented yet.
+Layer 4 then lowers to the kernel's UI document via a profile-supplied **lowering recipe**: the
+recipe resolves each region to one of the profile's kernel capabilities and emits the terminal
+runtime-document fields directly (`props`, `read`, `readExpr`, `on`, `children`). Regions with no
+explicit mapping still fall back to the region name as the capability, which the kernel renders as
+a graceful fallback node — the forward-compatible path for a facet a profile has not implemented yet.
 
 Full span: `Domain -> Interaction (L3) -> [compiler + context] -> Presentation (L4) -> UI document`.
 It composes through the kernel's existing `pipeline`/`lowerToDocument` seam (ADR-0016) — no new
@@ -73,7 +74,7 @@ AI-native point) is lost. The compiler is deliberately a replaceable seam a prof
 - The interaction taxonomy is the platform's public vocabulary; the UI DSL stays internal.
 - The presentation compiler is the investment centre ("the moat" from ADR-0017); the reference
   compiler is intentionally simple to keep the seam concrete and testable.
-- Region → capability binding is the profile's translation contract; unbound facets are safe via
+- A declarative lowering recipe is the profile's translation contract; unbound facets are safe via
   graceful fallback, so a profile can target facets it has not yet implemented.
 
 ## Follow-up (2026-07-04): facets, context taxonomy, and layout templates seeded
@@ -99,10 +100,9 @@ The three open items below are now given concrete (still-replaceable) shapes in 
 - **Required facets are structurally protected.** A capped template (e.g. `narrative`,
   `maxRegions: 3`) sheds only *optional* facets; the region trim keeps every required facet even
   when they exceed the cap.
-- **Binding by role.** `PresentationBinding` gains `roleCapability` (bind once per facet *role*),
-  with `regionCapability` as a per-region override. Resolution order is
-  `regionCapability[region] → roleCapability[role] → region name` (fallback). The live-cards
-  binding now binds by role; `graph` and `form` are intentionally unmapped to exercise fallback.
+- **Recipe matching by role.** The lowering recipe may match by facet role and/or concrete region,
+  with resolution still allowing an explicit override first and a region-name fallback last. The
+  live-cards recipe keeps `graph` and `form` intentionally unmapped to exercise fallback.
 
 Kernel grammar and the wire protocol are unchanged — all of the above is compile-time lowering.
 
@@ -115,7 +115,8 @@ DSL → UI DSL). These are now named and separated, and the DSL itself is made a
 - **Planner vs. Compiler.** The `interaction + context → PresentationSpec` seam is renamed
   `PresentationPlanner` (`defaultPresentationPlanner` is the deterministic reference; an AI planner
   drops into this exact slot). `lowerPresentation` is the Presentation *Compiler* (`PresentationSpec
-  → kernel document`). `compileInteraction(spec, ctx, binding, planner?)` runs planner then compiler.
+  → kernel document`). ADR-0038 refines the compiler input from a hard-coded `binding` object to a
+  declarative lowering recipe carried by a profile artifact.
 - **Enriched regions.** A region is no longer a bare name. `PresentationRegion` is
   `{ name, role, priority, disclosure, presentation? }`: `priority`
   (`primary | secondary | tertiary`) is information hierarchy, `disclosure`

@@ -20,11 +20,12 @@ import {
   type ProjectionViewProps,
 } from "@gik/react";
 import {
+  checkAuthoredProfile,
   editableRegions,
   facetsAsItems,
-  liveCardsBinding,
   parseAuthoredSession,
 } from "../../../../interaction/src/index";
+import { liveCardsProfile } from "../../../profiles/live-cards";
 import type { Json } from "@gik/kernel";
 import { buildSession, type Session } from "../session";
 import {
@@ -87,7 +88,7 @@ function GuestSurface({ node, emit }: ProjectionViewProps) {
 
   const [guest, setGuest] = useState<Session>(() => {
     const { spec, ctx, edits } = readInputs(state);
-    return buildSession(spec, ctx, liveCardsBinding, edits);
+    return buildSession(spec, ctx, liveCardsProfile, edits);
   });
   const guestRef = useRef(guest);
   guestRef.current = guest;
@@ -99,7 +100,7 @@ function GuestSurface({ node, emit }: ProjectionViewProps) {
   useEffect(() => {
     if (sig === lastSig.current) return;
     lastSig.current = sig;
-    setGuest(buildSession(inputs.spec, inputs.ctx, liveCardsBinding, inputs.edits));
+    setGuest(buildSession(inputs.spec, inputs.ctx, liveCardsProfile, inputs.edits));
     emitRef.current("facetsComputed", { facets: facetsAsItems(inputs.spec) });
     // inputs/sig are recomputed each render; sig is the stable dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,8 +125,15 @@ function GuestSurface({ node, emit }: ProjectionViewProps) {
     if (importSeq === lastImport.current) return;
     lastImport.current = importSeq;
     const parsed = parseAuthoredSession(p.str("importText"));
-    if (parsed.authored) emitRef.current("importApply", authoredApplyPayload(parsed.authored));
-    else emitRef.current("importResult", { error: parsed.error });
+    if (parsed.authored) {
+      const mismatch = checkAuthoredProfile(
+        parsed.authored,
+        liveCardsProfile.artifact.payload.id,
+        liveCardsProfile.artifact.payload.version
+      );
+      if (mismatch) emitRef.current("importResult", { error: mismatch });
+      else emitRef.current("importApply", authoredApplyPayload(parsed.authored));
+    } else emitRef.current("importResult", { error: parsed.error });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [importSeq]);
 

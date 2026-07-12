@@ -8,6 +8,8 @@
 //
 import type { Json } from "../../kernel/src/index";
 
+import type { Action } from "../../kernel/src/index";
+
 // NOTE on the word "capabilities": at this layer it means experience *facets*
 // (timeline / evidence / actions) an interaction is made of. This is a DIFFERENT concept
 // from a kernel "capability" (a UI component kind like board/metric/table). We keep the
@@ -34,6 +36,12 @@ export interface InteractionFacetView {
   capability?: string;
   /** Optional static capability props/spec that must survive into node.props. */
   props?: Record<string, Json>;
+  /** Optional explicit read edge overrides carried all the way to lowering. */
+  read?: Record<string, string>;
+  /** Optional explicit shaped read overrides carried all the way to lowering. */
+  readExpr?: Record<string, string>;
+  /** Optional explicit runtime event handlers carried all the way to lowering. */
+  on?: Record<string, Action[]>;
   /** Optional concrete presentation hint (e.g. relationship_graph, timeline). */
   presentation?: string;
 }
@@ -54,8 +62,8 @@ export interface InteractionSpec {
 
 /**
  * A facet's semantic display ROLE — what kind of thing it shows, still not a component.
- * A presentation binding maps a role to one of a profile's kernel capabilities, so a
- * profile binds once per role rather than once per facet.
+ * A lowering recipe maps a role or region to one of a profile's kernel capabilities, so a
+ * profile can stay data-driven instead of hard-coding facet-by-facet mappings in TypeScript.
  */
 export type FacetRole =
   | "summary"
@@ -75,7 +83,7 @@ export type FacetRole =
 export interface Facet {
   /** stable facet id; also the presentation region name. */
   name: string;
-  /** semantic role a presentation binding resolves to a capability. */
+  /** semantic role a lowering recipe resolves to a capability. */
   role: FacetRole;
   /** required facets are never dropped on constrained surfaces; optional ones may be shed. */
   required: boolean;

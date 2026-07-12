@@ -19,16 +19,17 @@ import {
   type ResolvedNode,
 } from "../../kernel/src/index";
 import {
+  asTemplateRecord,
+  createPresentationPlanner,
   compileInteraction,
-  defaultPresentationPlanner,
   applyPresentationEdits,
   facetsFor,
   facetsOf,
   interactionTaxonomy,
   isValidPresentationSpec,
-  layoutTemplates,
-  liveCardsBinding,
   lowerPresentation,
+  planPresentationWithRecipe,
+  recipeForKinds,
   requiredFacets,
   validatePresentationSpec,
   type InteractionSpec,
@@ -36,6 +37,7 @@ import {
   type PresentationEdits,
   type PresentationSpec,
 } from "../src/index";
+import { liveCardsProfile } from "./live-cards-fixture";
 
 const fx = (name: string) =>
   JSON.parse(
@@ -47,6 +49,8 @@ const fx = (name: string) =>
 
 const manifest = fx("live-cards.manifest.json");
 const manifestPayload = manifest.payload as ManifestPayload;
+const planner = createPresentationPlanner(recipeForKinds(liveCardsProfile, "interaction", "presentation"));
+const layoutTemplates = asTemplateRecord(recipeForKinds(liveCardsProfile, "interaction", "presentation").templates);
 
 function findResolved(n: ResolvedNode, id: string): ResolvedNode | undefined {
   if (n.id === id) return n;
@@ -79,11 +83,11 @@ test("interaction taxonomy: facets carry a role + required flag; capabilities ov
 test("same interaction, different presentation by context (surface + space + attention)", () => {
   const spec: InteractionSpec = { interaction: "investigate", subject: "incident" };
 
-  const desktop = defaultPresentationPlanner(spec, { surface: "desktop" });
-  const mobile = defaultPresentationPlanner(spec, { surface: "mobile" });
-  const copilot = defaultPresentationPlanner(spec, { surface: "copilot" });
-  const compactDesktop = defaultPresentationPlanner(spec, { surface: "desktop", space: "compact" });
-  const glanceable = defaultPresentationPlanner(spec, { surface: "desktop", attention: "glanceable" });
+  const desktop = planner(spec, { surface: "desktop" });
+  const mobile = planner(spec, { surface: "mobile" });
+  const copilot = planner(spec, { surface: "copilot" });
+  const compactDesktop = planner(spec, { surface: "desktop", space: "compact" });
+  const glanceable = planner(spec, { surface: "desktop", attention: "glanceable" });
 
   assert.equal(desktop.layout, "investigate_workspace");
   assert.equal(desktop.arrangement, "grid");
@@ -106,26 +110,26 @@ test("same interaction, different presentation by context (surface + space + att
 
 test("interaction-driven templates: compare→comparison, monitor→dashboard, create→wizard", () => {
   assert.equal(
-    defaultPresentationPlanner({ interaction: "compare", subject: "policy" }, { surface: "desktop" }).layout,
+    planner({ interaction: "compare", subject: "policy" }, { surface: "desktop" }).layout,
     "comparison"
   );
   assert.equal(
-    defaultPresentationPlanner({ interaction: "monitor", subject: "fleet" }, { surface: "desktop" }).arrangement,
+    planner({ interaction: "monitor", subject: "fleet" }, { surface: "desktop" }).arrangement,
     "dashboard"
   );
   assert.equal(
-    defaultPresentationPlanner({ interaction: "create", subject: "ticket" }, { surface: "desktop" }).arrangement,
+    planner({ interaction: "create", subject: "ticket" }, { surface: "desktop" }).arrangement,
     "wizard"
   );
   // every chosen layout name resolves to a catalog template or an interaction workspace.
-  const p = defaultPresentationPlanner({ interaction: "review", subject: "x" }, { surface: "desktop" });
+  const p = planner({ interaction: "review", subject: "x" }, { surface: "desktop" });
   assert.equal(p.layout, "review_workspace");
   assert.equal(layoutTemplates.workspace.arrangement, "grid");
 });
 
 test("a capped template sheds optional facets but never a required one", () => {
   // investigate has 5 required facets + 1 optional (relationships); narrative caps at 3.
-  const copilot = defaultPresentationPlanner({ interaction: "investigate", subject: "incident" }, { surface: "copilot" });
+  const copilot = planner({ interaction: "investigate", subject: "incident" }, { surface: "copilot" });
   const names = copilot.regions.map((r) => r.name);
   const required = requiredFacets("investigate").map((f) => f.name);
   for (const r of required) assert.ok(names.includes(r), `required facet ${r} kept`);
@@ -133,7 +137,7 @@ test("a capped template sheds optional facets but never a required one", () => {
 });
 
 test("a region carries information hierarchy, disclosure, and a presentation-type hint", () => {
-  const p = defaultPresentationPlanner({ interaction: "investigate", subject: "incident" }, { surface: "desktop" });
+  const p = planner({ interaction: "investigate", subject: "incident" }, { surface: "desktop" });
   const lead = p.regions[0];
   assert.equal(lead.priority, "primary", "the lead region is primary");
   assert.equal(lead.disclosure, "always", "a primary region is always shown");
@@ -144,7 +148,7 @@ test("a region carries information hierarchy, disclosure, and a presentation-typ
   assert.equal(relationships?.presentation, "relationship_graph", "graph role gets a presentation-type hint");
 
   // on a constrained surface, tertiary disclosure tightens further.
-  const glance = defaultPresentationPlanner(
+  const glance = planner(
     { interaction: "investigate", subject: "incident" },
     { surface: "desktop", attention: "glanceable" }
   );
@@ -155,8 +159,8 @@ test("a region carries information hierarchy, disclosure, and a presentation-typ
 test("the planner adapts to accessibility context (device + expertise) and explains itself", () => {
   const spec: InteractionSpec = { interaction: "investigate", subject: "incident" };
 
-  const expert = defaultPresentationPlanner(spec, { surface: "desktop", expertise: "expert" });
-  const novice = defaultPresentationPlanner(spec, { surface: "desktop", expertise: "novice" });
+  const expert = planner(spec, { surface: "desktop", expertise: "expert" });
+  const novice = planner(spec, { surface: "desktop", expertise: "novice" });
 
   // a secondary (required, non-lead) region: novices see it up front, experts tolerate it deferred.
   const evNovice = novice.regions.find((r) => r.name === "evidence");
@@ -165,7 +169,7 @@ test("the planner adapts to accessibility context (device + expertise) and expla
   assert.equal(evExpert?.disclosure, "collapsed", "experts tolerate denser, deferred detail");
 
   // voice is a constrained device even on a desktop surface.
-  const voice = defaultPresentationPlanner(spec, { surface: "desktop", device: "voice" });
+  const voice = planner(spec, { surface: "desktop", device: "voice" });
   assert.equal(
     voice.regions.find((r) => r.name === "evidence")?.disclosure,
     "collapsed",
@@ -180,7 +184,7 @@ test("the planner adapts to accessibility context (device + expertise) and expla
 });
 
 test("the Presentation DSL is a validatable artifact", () => {
-  const p = defaultPresentationPlanner({ interaction: "investigate", subject: "incident" }, { surface: "desktop" });
+  const p = planner({ interaction: "investigate", subject: "incident" }, { surface: "desktop" });
   assert.doesNotThrow(() => validatePresentationSpec(p), "a planned spec passes its own schema");
   assert.ok(isValidPresentationSpec(p));
 
@@ -199,7 +203,7 @@ test("a review interaction lowers to a valid, kernel-interpretable document", as
   const ctx: PresentationContext = { surface: "desktop" };
 
   // validate-before-commit through the kernel seam
-  const message = lowerToDocument((s: InteractionSpec) => compileInteraction(s, ctx, liveCardsBinding), spec);
+  const message = lowerToDocument((s: InteractionSpec) => compileInteraction(s, ctx, liveCardsProfile), spec);
   assert.equal(message.type, "document");
   assert.equal(message.payload.root.capability, "ui:board");
 
@@ -222,10 +226,10 @@ test("a review interaction lowers to a valid, kernel-interpretable document", as
   assert.equal((k.state() as any).card_data.selected, "order-42");
 });
 
-test("specific live-cards regions can target distinct floor leaves above coarse role bindings", async () => {
+test("specific live-cards regions can target distinct floor leaves above coarse role rules", async () => {
   const spec: InteractionSpec = { interaction: "plan", subject: "incident" };
   const message = lowerToDocument(
-    (s: InteractionSpec) => compileInteraction(s, { surface: "desktop" }, liveCardsBinding),
+    (s: InteractionSpec) => compileInteraction(s, { surface: "desktop" }, liveCardsProfile),
     spec
   );
   const k = new Kernel(manifest, message, { state: new InMemoryStateModel(manifestPayload.namespaces ?? []) });
@@ -236,10 +240,10 @@ test("specific live-cards regions can target distinct floor leaves above coarse 
   assert.equal(findResolved(resolved, "tasks-region")?.fallback, false, "tasks region resolves through the floor");
 });
 
-test("graph and narrative regions resolve to distinct floor leaves when the binding overrides them", async () => {
+test("graph and narrative regions resolve to distinct floor leaves when region rules override them", async () => {
   const spec: InteractionSpec = { interaction: "investigate", subject: "incident" };
   const message = lowerToDocument(
-    (s: InteractionSpec) => compileInteraction(s, { surface: "desktop" }, liveCardsBinding),
+    (s: InteractionSpec) => compileInteraction(s, { surface: "desktop" }, liveCardsProfile),
     spec
   );
   const k = new Kernel(manifest, message, { state: new InMemoryStateModel(manifestPayload.namespaces ?? []) });
@@ -256,7 +260,7 @@ test("unbound facet roles still render as graceful fallbacks (forward-compatible
   // discriminate richer form surfaces without collapsing them to one leaf too early.
   const spec: InteractionSpec = { interaction: "create", subject: "ticket" };
   const message = lowerToDocument(
-    (s: InteractionSpec) => compileInteraction(s, { surface: "desktop" }, liveCardsBinding),
+    (s: InteractionSpec) => compileInteraction(s, { surface: "desktop" }, liveCardsProfile),
     spec
   );
   const k = new Kernel(manifest, message, { state: new InMemoryStateModel(manifestPayload.namespaces ?? []) });
@@ -278,9 +282,9 @@ test("full pipeline: Domain -> Interaction -> Presentation -> UI composes throug
     subject: "incident",
     intent: { goal: "identify_root_cause", severity: d.severity, id: d.incidentId },
   });
-  // Interaction -> UI (L3 -> L4 -> UI): compile with a context + profile binding.
+  // Interaction -> UI (L3 -> L4 -> UI): compile with a context + profile.
   const toDocument = (s: InteractionSpec): DocumentPayload =>
-    compileInteraction(s, { surface: "mobile" }, liveCardsBinding);
+    compileInteraction(s, { surface: "mobile" }, liveCardsProfile);
 
   const compiled = pipeline(toInteraction).to(toDocument).build();
   const message = lowerToDocument(compiled, { incidentId: "INC-123", severity: "high" });
@@ -311,7 +315,7 @@ test("a region's static `props` flow generically into node props; data binds ont
     ],
   };
 
-  const doc = lowerPresentation(liveCardsBinding, manifestPayload.capabilities)(p);
+  const doc = lowerPresentation(recipeForKinds(liveCardsProfile, "presentation", "runtime-document"))(p);
   const detail = doc.root.edges?.children?.[0];
 
   assert.equal(detail?.capability, "ui:table", "detail role binds to table");
@@ -329,6 +333,7 @@ test("authored facetViews preserve form spec and concrete capability through pla
     facetViews: {
       settings: {
         capability: "ui:selection",
+        read: { options: "{{region.dataPath}}" },
         props: {
           fields: {
             properties: {
@@ -341,17 +346,17 @@ test("authored facetViews preserve form spec and concrete capability through pla
     },
   };
 
-  const doc = compileInteraction(spec, { surface: "desktop" }, liveCardsBinding, defaultPresentationPlanner, manifestPayload.capabilities);
+  const doc = compileInteraction(spec, { surface: "desktop" }, liveCardsProfile);
   const settings = doc.root.edges?.children?.find((child) => child.id === "settings-region");
 
-  assert.equal(settings?.capability, "ui:selection", "authored facet view overrides the coarse form binding");
+  assert.equal(settings?.capability, "ui:selection", "authored facet view overrides the coarse form rule");
   assert.deepEqual((settings?.props as Record<string, unknown>)?.fields, {
     properties: {
       status: { title: "Status", enum: ["open", "closed"] },
     },
     required: ["status"],
   }, "authored field spec survives into node props");
-  assert.deepEqual(settings?.edges?.read, { options: "card_data.status" }, "selection binds onto its dataProp");
+  assert.deepEqual(settings?.edges?.read, { options: "card_data.status" }, "selection binds through authored read");
 });
 
 test("authored facetViews can choose committed searchbox over the coarse form role", () => {
@@ -362,6 +367,7 @@ test("authored facetViews can choose committed searchbox over the coarse form ro
     facetViews: {
       form: {
         capability: "ui:searchbox",
+        read: { value: "{{region.dataPath}}" },
         props: {
           fields: {
             properties: {
@@ -374,17 +380,17 @@ test("authored facetViews can choose committed searchbox over the coarse form ro
     },
   };
 
-  const doc = compileInteraction(spec, { surface: "desktop" }, liveCardsBinding, defaultPresentationPlanner, manifestPayload.capabilities);
+  const doc = compileInteraction(spec, { surface: "desktop" }, liveCardsProfile);
   const form = doc.root.edges?.children?.find((child) => child.id === "form-region");
 
   assert.equal(form?.capability, "ui:searchbox", "authored facet view can select searchbox");
   assert.equal((form?.props as Record<string, unknown>)?.actionLabel, "Run", "authored props survive into the node");
-  assert.deepEqual(form?.edges?.read, { value: "card_data.query" }, "searchbox binds onto its value prop");
+  assert.deepEqual(form?.edges?.read, { value: "card_data.query" }, "searchbox binds through authored read");
 });
 
 test("presentation edits are sparse overrides on top of the planner (hide, re-rank, disclose, reorder)", () => {
   const spec: InteractionSpec = { interaction: "investigate", subject: "incident" };
-  const planned = defaultPresentationPlanner(spec, { surface: "desktop" });
+  const planned = planner(spec, { surface: "desktop" });
   const names = planned.regions.map((r) => r.name);
 
   // baseline: an empty edit set is a no-op — defer entirely to the planner.

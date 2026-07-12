@@ -8,10 +8,17 @@ import type { InteractionSpec } from "./interaction";
 import type { PresentationContext } from "./presentation";
 import type { PresentationEdits } from "./edits";
 
+/** Identity of the profile an authored session was produced against, so replay is deterministic. */
+export interface ProfileIdentity {
+  id: string;
+  version: string;
+}
+
 /** The portable, re-runnable authored artifact — the minimal input the pipeline replays. */
 export interface AuthoredSession {
   gik: "0.1";
   kind: "authored-session";
+  profile: ProfileIdentity;
   interaction: InteractionSpec;
   context: PresentationContext;
   edits: PresentationEdits;
@@ -21,9 +28,10 @@ export interface AuthoredSession {
 export function toAuthoredSession(
   interaction: InteractionSpec,
   context: PresentationContext,
-  edits: PresentationEdits
+  edits: PresentationEdits,
+  profile: ProfileIdentity
 ): AuthoredSession {
-  return { gik: "0.1", kind: "authored-session", interaction, context, edits };
+  return { gik: "0.1", kind: "authored-session", profile, interaction, context, edits };
 }
 
 /** The result of parsing pasted import text: the authored artifact, or a human-readable error. */
@@ -45,6 +53,10 @@ export function parseAuthoredSession(text: string): ParsedImport {
   if (!interaction || typeof interaction.interaction !== "string") {
     return { error: "missing interaction.interaction (kind)" };
   }
+  const profile = o.profile as ProfileIdentity | undefined;
+  if (!profile || typeof profile.id !== "string" || typeof profile.version !== "string") {
+    return { error: "missing profile.id / profile.version" };
+  }
   const context = (o.context as PresentationContext) ?? { surface: "desktop" };
   const e = (o.edits as Partial<PresentationEdits>) ?? {};
   const edits: PresentationEdits = {
@@ -55,5 +67,16 @@ export function parseAuthoredSession(text: string): ParsedImport {
       : {}) as PresentationEdits["disclosure"],
     order: Array.isArray(e.order) ? (e.order as string[]) : [],
   };
-  return { authored: { gik: "0.1", kind: "authored-session", interaction, context, edits }, error: "" };
+  return { authored: { gik: "0.1", kind: "authored-session", profile, interaction, context, edits }, error: "" };
+}
+
+/** Guard a portable session against the host profile before replay; returns "" when compatible. */
+export function checkAuthoredProfile(session: AuthoredSession, id: string, version: string): string {
+  if (session.profile.id !== id) {
+    return `authored for profile '${session.profile.id}', but this host runs '${id}'`;
+  }
+  if (session.profile.version !== version) {
+    return `authored for '${id}' v${session.profile.version}, but this host runs v${version}`;
+  }
+  return "";
 }

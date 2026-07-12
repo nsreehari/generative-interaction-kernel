@@ -22,6 +22,9 @@ requirement is that a pipeline's terminal output is a kernel `DocumentPayload`. 
   schema check as hand-authored documents (ADR-0013). Intermediate layers are pure `Stage`s — typed
   and unit-testable — but are *not* schema-validated, because they have no fixed schema; only the UI
   DSL does. Skipping layers therefore costs no safety.
+- Declarative profiles may still schema-validate their **profile** and **recipe artifacts** at
+  authoring time, but those checks refine the authoring surface; they do not replace the terminal
+  runtime-document validation gate.
 - Each `.to(...)` keeps the types aligned, so a stage can only attach to one whose output it accepts;
   the compiler enforces a well-formed pipeline regardless of how many layers are present.
 
@@ -41,6 +44,8 @@ requirement is that a pipeline's terminal output is a kernel `DocumentPayload`. 
 - Simple profiles ship with one lowering stage; rich profiles add Interaction/Presentation above it.
 - The single validation gate at the UI-DSL boundary catches a bug in *any* higher-layer compiler at
   the same place a malformed hand-authored document is caught.
+- ADR-0038 refines how a profile declares those layers and stages: via a first-class profile
+  artifact with data-driven lowering recipes.
 - Still open: per-layer typed builders / optional validation for profiles that want stricter
   intermediate contracts, and whether a future policy ever makes a specific layer required for a
   class of profiles.

@@ -38,10 +38,9 @@ that compiles a higher-level DSL down to the layer below, ending at a kernel doc
   is caught at the kernel boundary, not at render time.
 - Layers are **optional**. A simple profile can go straight `Domain -> UI`. A rich one uses all
   four. Nothing forces a Task or Interaction layer to exist.
-- **A profile is redefined** as *a Domain DSL plus its lowering to the kernel*. Live-cards is no
-  longer just "the first profile" — it is a **board Domain DSL + one lowering stage**. The domain
-  author never writes `board`/`metric`/`table` or edges; only the lowering (platform-owned) knows
-  the kernel capabilities.
+- **A profile declares layers and lowering recipes.** In the simplest case that is still a Domain
+  DSL plus one lowering stage; in richer cases it is an ordered artifact describing multiple layers
+  and the recipes between them. See ADR-0038 for the declarative artifact form.
 
 The ownership rule that falls out of this:
 
@@ -85,5 +84,7 @@ guardrail.
   piece that stops every domain re-learning UI primitives. Left open (not-yet-decided #13/#14).
 - Agent-authoring (ADR-0013) is unchanged at the kernel layer and now has room to grow upward:
   typed builders can exist per layer, all ending at the same validated document.
+- ADR-0038 refines the representation of a profile from code-only stage composition to a
+  declarative artifact of layers + data-driven lowering recipes.
 - No new grammar, no new wire message. The layered stack is entirely compile-time above an
   unchanged kernel and protocol.

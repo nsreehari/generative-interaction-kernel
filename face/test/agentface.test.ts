@@ -13,8 +13,11 @@ import { validatePresentation } from "../src/pure/presentation";
 import { validateIntent, intentToEdits } from "../src/pure/intent";
 import { authoringTools } from "../src/pure/authoring-tools";
 import { createStatelessAgentFaceDispatcher } from "../src/projections/agentface";
-import { defaultPresentationPlanner } from "../../interaction/src/index";
+import { createPresentationPlanner, recipeForKinds } from "../../interaction/src/index";
+import { liveCardsProfile } from "./live-cards-fixture";
 import type { ManifestPayload } from "../../kernel/src/index";
+
+const planner = createPresentationPlanner(recipeForKinds(liveCardsProfile, "interaction", "presentation"));
 
 const manifest: ManifestPayload = {
   version: "0.1",
@@ -132,7 +135,7 @@ test("interaction: known ok; unknown kind / missing subject not ok; synthesized 
 });
 
 test("presentation: planner output is valid; dropping a required facet fails", () => {
-  const spec = defaultPresentationPlanner({ interaction: "review", subject: "pr" }, { surface: "desktop" });
+  const spec = planner({ interaction: "review", subject: "pr" }, { surface: "desktop" });
   assert.equal(validatePresentation(spec).ok, true);
 
   const summary = spec.regions.find((r) => r.name === "summary");
