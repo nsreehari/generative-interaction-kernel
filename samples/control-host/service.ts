@@ -32,11 +32,12 @@ import { readFileSync } from "node:fs";
 import { type AddressInfo } from "node:net";
 import { resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ControlFace, createAgentFaceDispatcher, createControlFaceDispatcher } from "../../face/src/index";
-import { InMemoryStateModel } from "../../kernel/src/index";
-import type { Json, Orchestrator, OrchestratorEffect } from "../../kernel/src/index";
-import { SseTransportServer } from "../../transports/http-sse/src/index";
-import { McpHttpServer } from "../../transports/mcp-http/src/index";
+import { ControlFace, createControlFaceDispatcher } from "@gik/controlface";
+import { createAgentFaceDispatcher } from "@gik/agentface";
+import { InMemoryStateModel } from "@gik/kernel";
+import type { Json, Orchestrator, OrchestratorEffect } from "@gik/kernel";
+import { SseTransportServer } from "@gik/transport-http-sse/server";
+import { McpHttpServer } from "@gik/transport-mcp-http";
 
 const fx = (name: string) =>
   JSON.parse(

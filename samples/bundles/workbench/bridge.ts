@@ -7,7 +7,7 @@
 // artifacts, and reflect the guest's artifacts back for the inspector. They are the small, audited
 // native seam the `wb:guestSurface` view uses (ADR-0034) — not app behaviour.
 
-import { type Json, type Patch, type ResolvedNode, type TraceEvent } from "../../../kernel/src/index";
+import { type Json, type Patch, type ResolvedNode, type TraceEvent } from "@gik/kernel";
 import {
   emptyEdits,
   type AuthoredSession,

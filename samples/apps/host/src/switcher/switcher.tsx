@@ -18,7 +18,7 @@ import {
   type Bundle,
   type ProjectionViewProps,
   type EffectHandlerMap,
-} from "../../../../../adapters/react/src/index";
+} from "@gik/react";
 
 /** A "layers/stack" glyph — bundles are stacked cards; picking one swaps the whole stack. */
 function SwitcherIcon(): React.ReactElement {

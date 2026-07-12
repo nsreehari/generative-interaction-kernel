@@ -13,7 +13,7 @@
 //
 // Run:  npx tsx generative-interaction-kernel/samples/backend-host/order-service.ts
 
-import { Kernel } from "../../kernel/src/index";
+import { Kernel } from "@gik/kernel";
 import type {
   GIKEvent,
   Json,
@@ -22,7 +22,7 @@ import type {
   Patch,
   ResolvedNode,
   TraceEvent,
-} from "../../kernel/src/index";
+} from "@gik/kernel";
 
 // --- The capability manifest: pure data, no presentation assumptions ---------
 // `status` declares dataProp so a projector knows which prop carries its bound data.

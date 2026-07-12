@@ -16,8 +16,8 @@ import {
   unwrap,
   type DocumentPayload,
   type TraceEvent,
-} from "../../../kernel/src/index";
-import { GenUIController } from "../../../adapters/react/src/index";
+} from "@gik/kernel";
+import { GenUIController } from "@gik/react";
 import {
   compileInteraction,
   defaultPresentationPlanner,

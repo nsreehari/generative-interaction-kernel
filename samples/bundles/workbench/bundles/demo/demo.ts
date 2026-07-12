@@ -5,7 +5,7 @@
 // The manifest and seed are DATA — authored in ./manifest.json / ./seed.json. Only demoDataFor
 // (the role->seed-path mapping) stays code.
 
-import { InMemoryStateModel, type Enveloped, type ManifestPayload } from "../../../../../kernel/src/index";
+import { InMemoryStateModel, type Enveloped, type ManifestPayload } from "@gik/kernel";
 import { resolveFacets, type InteractionSpec } from "../../../../../interaction/src/index";
 import demoManifestJson from "./manifest.json";
 import demoSeedJson from "./seed.json";

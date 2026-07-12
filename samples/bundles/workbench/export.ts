@@ -3,7 +3,7 @@
 // one); this module only assembles the self-describing EXPORT bundle for the workbench's demo manifest:
 // the authored artifact plus the manifest generated from its compiled document.
 
-import { generateManifest, unwrap, type DocumentPayload, type ManifestPayload } from "../../../kernel/src/index";
+import { generateManifest, unwrap, type DocumentPayload, type ManifestPayload } from "@gik/kernel";
 import {
   toAuthoredSession,
   type AuthoredSession,

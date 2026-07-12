@@ -10,7 +10,7 @@ import {
   BundleRegistryProvider,
   useBundleRegistry,
   useRegistryIds,
-} from "../../../../adapters/react/src/index";
+} from "@gik/react";
 import { createHostRegistry, DEFAULT_BUNDLE } from "./bundles";
 import { switcherBundle } from "./switcher/switcher";
 

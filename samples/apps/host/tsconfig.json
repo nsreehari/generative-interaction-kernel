@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
@@ -10,9 +14,46 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "noEmit": true,
-    "types": ["node", "vite/client"]
+    "types": [
+      "node",
+      "vite/client"
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@gik/kernel": [
+        "../../../packages/kernel/src/index.ts"
+      ],
+      "@gik/controlface": [
+        "../../../packages/controlface/src/index.ts"
+      ],
+      "@gik/agentface": [
+        "../../../packages/agentface/src/index.ts"
+      ],
+      "@gik/react": [
+        "../../../packages/react/src/index.ts"
+      ],
+      "@gik/transport-http-sse": [
+        "../../../packages/transport-http-sse/src/index.ts"
+      ],
+      "@gik/transport-http-sse/server": [
+        "../../../packages/transport-http-sse/src/server.ts"
+      ],
+      "@gik/transport-http-sse/client": [
+        "../../../packages/transport-http-sse/src/client.ts"
+      ],
+      "@gik/transport-http-sse/codec": [
+        "../../../packages/transport-http-sse/src/codec.ts"
+      ],
+      "@gik/transport-mcp-http": [
+        "../../../packages/transport-mcp-http/src/index.ts"
+      ]
+    }
   },
-  "include": ["src", "vite.config.ts", "../../bundles"],
+  "include": [
+    "src",
+    "vite.config.ts",
+    "../../bundles"
+  ],
   "exclude": [
     "../../bundles/workbench/bundles/chrome",
     "../../bundles/workbench/bundles/inspect"
