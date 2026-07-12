@@ -31,6 +31,35 @@
         "emits": ["rowSelect"],
         "dataProp": "rows"
       },
+      "ui:chart": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "dataProp": "data"
+      },
+      "ui:markdown": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "dataProp": "value"
+      },
+      "ui:markup": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "dataProp": "value"
+      },
+      "ui:todo": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "emits": ["save"],
+        "dataProp": "items"
+      },
       "ui:actions": {
         "propsSchema": { "type": "object", "properties": { "label": { "type": "string" } } },
         "emits": ["tap"]
