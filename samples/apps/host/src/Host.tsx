@@ -12,7 +12,7 @@ import {
   useRegistryIds,
 } from "@gik/react";
 import { createHostRegistry, DEFAULT_BUNDLE } from "./bundles";
-import { switcherBundle } from "./switcher/switcher";
+import { switcherBundle } from "../../../bundles/approot/switcher/switcher";
 
 export function Host(): React.ReactElement {
   // One registry for the life of the app; every BundleHost and every `embed props.app` resolves it.
