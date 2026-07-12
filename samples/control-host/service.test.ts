@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import { createControlHost } from "./service";
-import type { Checkpoint, OrchestratorEffect } from "../../kernel/src/index";
+import type { Checkpoint, OrchestratorEffect } from "@gik/kernel";
 
 test("rollback demo mode serves checkpoint -> emit -> effectsSince -> restore -> compensate over /mcp-control", async () => {
   const host = createControlHost({ demo: "rollback", port: 0, hostName: "127.0.0.1" });

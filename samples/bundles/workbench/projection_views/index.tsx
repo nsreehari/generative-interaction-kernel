@@ -18,14 +18,14 @@ import {
   readProps,
   type ProjectionView,
   type ProjectionViewProps,
-} from "../../../../adapters/react/src/index";
+} from "@gik/react";
 import {
   editableRegions,
   facetsAsItems,
   liveCardsBinding,
   parseAuthoredSession,
 } from "../../../../interaction/src/index";
-import type { Json } from "../../../../kernel/src/index";
+import type { Json } from "@gik/kernel";
 import { buildSession, type Session } from "../session";
 import {
   authoredApplyPayload,

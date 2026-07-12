@@ -1,6 +1,6 @@
 import { createRoot } from "react-dom/client";
 import { FluentProvider, webLightTheme, tokens } from "@fluentui/react-components";
-import { roleVars } from "../../../../adapters/react/src/index";
+import { roleVars } from "@gik/react";
 import { Host } from "./Host";
 import "./styles.css";
 

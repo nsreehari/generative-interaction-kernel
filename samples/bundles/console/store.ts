@@ -7,14 +7,14 @@
 // reducer ops before effects run) and returns store deltas — the reducer stays pure. Only genuinely
 // effectful/derived logic lives here in code; everything above it is data.
 
-import { type Json } from "../../../kernel/src/index";
+import { type Json } from "@gik/kernel";
 import {
   buildPlaygroundBundle,
   setOp,
   type EffectContext,
   type EffectHandlerMap,
   type SerializableBundle,
-} from "../../../adapters/react/src/index";
+} from "@gik/react";
 
 // ---- Domain types ----------------------------------------------------------------
 

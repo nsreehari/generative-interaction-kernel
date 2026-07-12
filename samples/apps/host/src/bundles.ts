@@ -25,7 +25,7 @@ import {
   type BundleRegistry,
   type EffectHandlerMap,
   type ProjectionView,
-} from "../../../../adapters/react/src/index";
+} from "@gik/react";
 import type React from "react";
 import registry from "../../../bundles/registry.json";
 

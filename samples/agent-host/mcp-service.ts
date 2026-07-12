@@ -15,8 +15,8 @@
 //        -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 
 import { createServer } from "node:http";
-import { createStatelessAgentFaceDispatcher } from "../../face/src/index";
-import { McpHttpServer } from "../../transports/mcp-http/src/index";
+import { createStatelessAgentFaceDispatcher } from "@gik/agentface";
+import { McpHttpServer } from "@gik/transport-mcp-http";
 
 const port = Number(process.env.GENUI_MCP_PORT || 8787);
 const host = process.env.GENUI_MCP_HOST || "127.0.0.1";

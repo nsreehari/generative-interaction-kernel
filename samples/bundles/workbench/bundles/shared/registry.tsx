@@ -8,7 +8,7 @@ import {
   readProps,
   type ProjectionView,
   type ProjectionViewProps,
-} from "../../../../../adapters/react/src/index";
+} from "@gik/react";
 import {
   emptyEdits,
   moveRegion,
