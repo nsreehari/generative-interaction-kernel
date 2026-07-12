@@ -4,6 +4,10 @@
     "authored": {
       "gik": "0.1",
       "kind": "authored-session",
+      "profile": {
+        "id": "live-cards",
+        "version": "0.1.0"
+      },
       "interaction": {
         "interaction": "investigate",
         "subject": "incident"
@@ -24,6 +28,10 @@
     "authored": {
       "gik": "0.1",
       "kind": "authored-session",
+      "profile": {
+        "id": "live-cards",
+        "version": "0.1.0"
+      },
       "interaction": {
         "interaction": "compare",
         "subject": "vendors"
@@ -44,6 +52,10 @@
     "authored": {
       "gik": "0.1",
       "kind": "authored-session",
+      "profile": {
+        "id": "live-cards",
+        "version": "0.1.0"
+      },
       "interaction": {
         "interaction": "monitor",
         "subject": "fleet"
@@ -64,6 +76,10 @@
     "authored": {
       "gik": "0.1",
       "kind": "authored-session",
+      "profile": {
+        "id": "live-cards",
+        "version": "0.1.0"
+      },
       "interaction": {
         "interaction": "compare",
         "subject": "vendors"

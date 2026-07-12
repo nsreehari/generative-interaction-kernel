@@ -1,0 +1,31 @@
+{
+  "gik": "0.1",
+  "type": "lowering-recipe",
+  "payload": {
+    "id": "briefing.presentation-to-runtime",
+    "from": "presentation",
+    "to": "runtime-document",
+    "container": {
+      "capability": "ui:board",
+      "props": {
+        "title": "{{source.subject}}",
+        "layout": "{{presentation.layout}}"
+      }
+    },
+    "rules": [
+      { "match": { "role": "metrics" }, "emit": { "capability": "ui:metric", "read": { "value": "{{region.dataPath}}" } } },
+      { "match": { "role": "summary" }, "emit": { "capability": "ui:metric", "read": { "value": "{{region.dataPath}}" } } },
+      { "match": { "role": "status" }, "emit": { "capability": "ui:metric", "read": { "value": "{{region.dataPath}}" } } },
+      { "match": { "role": "collection" }, "emit": { "capability": "ui:table", "read": { "rows": "{{region.dataPath}}" } } },
+      { "match": { "role": "detail" }, "emit": { "capability": "ui:table", "read": { "rows": "{{region.dataPath}}" } } },
+      { "match": {}, "emit": { "capability": "ui:markdown", "read": { "value": "{{region.dataPath}}" } } }
+    ],
+    "fallback": {
+      "props": {
+        "label": "{{region.name}}",
+        "priority": "{{region.priority}}",
+        "disclosure": "{{region.disclosure}}"
+      }
+    }
+  }
+}

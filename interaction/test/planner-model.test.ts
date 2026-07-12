@@ -10,9 +10,10 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import {
-  defaultPresentationPlanner,
+  createPresentationPlanner,
   isValidPresentationSpec,
   modelBackedPlanner,
+  recipeForKinds,
   recordKey,
   replayPlannerModel,
   type InteractionSpec,
@@ -20,6 +21,7 @@ import {
   type PlannerFallbackReason,
   type PresentationContext,
 } from "../src/index";
+import { liveCardsProfile } from "./live-cards-fixture";
 
 const cassette: PlannerCassetteEntry[] = JSON.parse(
   readFileSync(fileURLToPath(new URL("./fixtures/planner-cassette.json", import.meta.url)), "utf8")
@@ -28,6 +30,7 @@ const cassette: PlannerCassetteEntry[] = JSON.parse(
 const investigate = cassette[0];
 const compare = cassette[1];
 const invalid = cassette[2]; // arrangement "carousel" — not a valid Presentation DSL arrangement.
+const fallback = createPresentationPlanner(recipeForKinds(liveCardsProfile, "interaction", "presentation"));
 
 test("replay: a recorded plan replays deterministically and is schema-valid", async () => {
   const model = replayPlannerModel(cassette);
@@ -37,7 +40,7 @@ test("replay: a recorded plan replays deterministically and is schema-valid", as
 });
 
 test("model-backed: a valid model plan is accepted unchanged", async () => {
-  const plan = modelBackedPlanner(replayPlannerModel(cassette));
+  const plan = modelBackedPlanner(replayPlannerModel(cassette), { fallback });
   const out = await plan(compare.interaction, compare.context);
   assert.deepEqual(out, compare.plan);
   assert.equal(out.source.interaction, compare.interaction.interaction);
@@ -47,10 +50,11 @@ test("model-backed: a valid model plan is accepted unchanged", async () => {
 test("model-backed: an invalid model plan falls back to the deterministic planner", async () => {
   const reasons: PlannerFallbackReason[] = [];
   const plan = modelBackedPlanner(replayPlannerModel(cassette), {
+    fallback,
     onFallback: (reason) => reasons.push(reason),
   });
   const out = await plan(invalid.interaction, invalid.context);
-  assert.deepEqual(out, defaultPresentationPlanner(invalid.interaction, invalid.context));
+  assert.deepEqual(out, fallback(invalid.interaction, invalid.context));
   assert.deepEqual(reasons, ["invalid-output"]);
   assert.ok(isValidPresentationSpec(out)); // the fallback is always valid
 });
@@ -58,17 +62,18 @@ test("model-backed: an invalid model plan falls back to the deterministic planne
 test("model-backed: an unrecorded input falls back (model miss)", async () => {
   const reasons: PlannerFallbackReason[] = [];
   const plan = modelBackedPlanner(replayPlannerModel(cassette), {
+    fallback,
     onFallback: (reason) => reasons.push(reason),
   });
   const spec: InteractionSpec = { interaction: "review", subject: "pull-request" };
   const ctx: PresentationContext = { surface: "web", space: "regular" };
   const out = await plan(spec, ctx);
-  assert.deepEqual(out, defaultPresentationPlanner(spec, ctx));
+  assert.deepEqual(out, fallback(spec, ctx));
   assert.deepEqual(reasons, ["model-error"]);
 });
 
 test("model-backed: validate=false lets an invalid plan through (the schema gate is what triggers fallback)", async () => {
-  const plan = modelBackedPlanner(replayPlannerModel(cassette), { validate: false });
+  const plan = modelBackedPlanner(replayPlannerModel(cassette), { fallback, validate: false });
   const out = await plan(invalid.interaction, invalid.context);
   assert.deepEqual(out, invalid.plan); // not the fallback — proves validation is the gate
 });

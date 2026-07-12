@@ -42,6 +42,7 @@ rejected options were set aside, and the consequences.
 | [0035](ADR-0035-stop-dotnet-port.md) | Stop the C#/.NET port — master becomes TypeScript-only; the port is frozen on the `dotnet-port` branch | Accepted |
 | [0036](ADR-0036-rename-navigate-to-route.md) | Rename the `navigate` action verb to `route` — a medium-neutral name for the closed grammar's flow/destination handoff | Accepted |
 | [0037](ADR-0037-face-projections-and-transport-boundary.md) | Face package with pure/live strata; projections own policy, transports stay agnostic | Accepted |
+| [0038](ADR-0038-declarative-profiles-and-lowering-recipes.md) | Declarative profiles — layers plus data-driven lowering recipes | Accepted |
 
 ## Format
 

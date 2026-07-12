@@ -1,13 +1,11 @@
 // Model-backed presentation planner (the "AI planner" seam, ADR-0018 Layer 4). The planner slot is
-// a pure typed function (see `PresentationPlanner`); `defaultPresentationPlanner` is the deterministic
-// reference that fills it today. This module adds the *model* seam in front of that slot: a live model
+// a pure typed function (see `PresentationPlanner`). This module adds the *model* seam in front of that slot: a live model
 // (or, offline, a deterministic record/replay stand-in) proposes a Presentation DSL spec, the proposal
 // is validated against the Presentation DSL schema at the boundary, and any error/invalid/absent plan
-// falls back to the deterministic reference planner. The seam is therefore safe to fill with a real
+// falls back to the caller-supplied planner. The seam is therefore safe to fill with a real
 // model without risking render-time surprises — and fully provable offline via a recorded cassette.
 
 import {
-  defaultPresentationPlanner,
   type PresentationContext,
   type PresentationPlanner,
   type PresentationSpec,
@@ -90,8 +88,8 @@ export function replayPlannerModel(entries: readonly PlannerCassetteEntry[]): Pl
 export type PlannerFallbackReason = "model-error" | "invalid-output";
 
 export interface ModelBackedPlannerOptions {
-  /** planner used when the model errors or returns an invalid plan (default: `defaultPresentationPlanner`). */
-  fallback?: PresentationPlanner;
+  /** planner used when the model errors or returns an invalid plan. */
+  fallback: PresentationPlanner;
   /** validate the model's output against the Presentation DSL schema before accepting it (default: true). */
   validate?: boolean;
   /** observe fallbacks (telemetry/tests); called with the reason and the originating inputs. */
@@ -107,9 +105,9 @@ export interface ModelBackedPlannerOptions {
  */
 export function modelBackedPlanner(
   model: PlannerModel,
-  options: ModelBackedPlannerOptions = {}
+  options: ModelBackedPlannerOptions
 ): AsyncPresentationPlanner {
-  const fallback = options.fallback ?? defaultPresentationPlanner;
+  const fallback = options.fallback;
   const validate = options.validate ?? true;
   return async (spec, ctx) => {
     let output: PresentationSpec;

@@ -1,0 +1,34 @@
+{
+  "gik": "0.1",
+  "type": "lowering-recipe",
+  "payload": {
+    "id": "briefing.interaction-to-presentation",
+    "from": "interaction",
+    "to": "presentation",
+    "templates": [
+      { "name": "briefing", "arrangement": "narrative", "maxRegions": 6 }
+    ],
+    "templateRules": [
+      { "match": {}, "emit": { "template": "briefing", "layout": "briefing" } }
+    ],
+    "orderRules": [
+      { "match": { "required": true }, "emit": { "rank": 0 } },
+      { "match": {}, "emit": { "rank": 1 } }
+    ],
+    "priorityRules": [
+      { "match": { "index": 0 }, "emit": { "priority": "primary" } },
+      { "match": { "required": true }, "emit": { "priority": "secondary" } },
+      { "match": {}, "emit": { "priority": "tertiary" } }
+    ],
+    "disclosureRules": [
+      { "match": { "priority": "primary" }, "emit": { "disclosure": "always" } },
+      { "match": {}, "emit": { "disclosure": "collapsed" } }
+    ],
+    "rationaleRules": [
+      { "match": {}, "emit": { "template": "briefing region {{region.role}} ({{region.priority}})" } }
+    ],
+    "cap": {
+      "preserveRequired": true
+    }
+  }
+}

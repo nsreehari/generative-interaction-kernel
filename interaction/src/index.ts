@@ -15,46 +15,4 @@ export * from "./authoring";
 export * from "./lowering";
 export * from "./schema";
 export * from "./planner-model";
-
-import type { PresentationBinding } from "./lowering";
-
-/**
- * The live-cards profile's presentation binding: maps facet ROLES to live-cards kernel
- * capabilities (bind once per role, not per facet). Roles with no mapping (`graph`, `form`)
- * fall back to the region name as the capability and render as graceful fallback nodes —
- * the forward-compatible path for facets a profile hasn't implemented yet.
- */
-export const liveCardsBinding: PresentationBinding = {
-  container: "ui:board",
-  roleCapability: {
-    summary: "ui:metric",
-    metrics: "ui:metric",
-    status: "ui:metric",
-    narrative: "ui:markdown",
-    recommendation: "ui:markdown",
-    collection: "ui:table",
-    detail: "ui:table",
-    timeline: "ui:table",
-    comparison: "ui:table",
-    actions: "ui:actions",
-    graph: "ui:chart",
-    // `form` intentionally unmapped -> graceful fallback.
-  },
-  regionCapability: {
-    context: "ui:markdown",
-    explanation: "ui:markdown",
-    content: "ui:markdown",
-    relationships: "ui:chart",
-    tasks: "ui:todo",
-  },
-  regionSelectEvent: {
-    detail: "rowSelect",
-    left: "rowSelect",
-    right: "rowSelect",
-    results: "rowSelect",
-    options: "rowSelect",
-    alerts: "rowSelect",
-    tasks: "rowSelect",
-    thread: "rowSelect",
-  },
-};
+export * from "./profile";

@@ -55,6 +55,18 @@
           "type": "object",
           "description": "Static per-capability presentation config (the 'spec' channel): columns, chartType, thresholds, etc. Merged into the node's props and validated by the capability's propsSchema."
         },
+        "read": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "readExpr": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "on": {
+          "type": "object",
+          "additionalProperties": true
+        },
         "rationale": { "type": "string", "minLength": 1 }
       }
     }

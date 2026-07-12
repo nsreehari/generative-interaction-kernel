@@ -7,6 +7,11 @@
 
 import type { Json } from "../../kernel/src/index";
 import { resolveFacets, type Facet, type FacetRole, type InteractionFacetView, type InteractionSpec } from "./interaction";
+import type {
+  InteractionToPresentationRecipe,
+  RecipeMatch,
+  TemplateDefinition,
+} from "./profile";
 
 /**
  * Where and how the experience is being surfaced. `surface` is the primary axis; the rest
@@ -38,15 +43,9 @@ export interface LayoutTemplate {
   maxRegions?: number;
 }
 
-/** The catalog of named layout templates the compiler can choose from. */
-export const layoutTemplates: Record<string, LayoutTemplate> = {
-  stack: { name: "stack", arrangement: "stack" },
-  narrative: { name: "narrative", arrangement: "narrative", maxRegions: 3 },
-  comparison: { name: "comparison", arrangement: "split" },
-  workspace: { name: "workspace", arrangement: "grid" },
-  dashboard: { name: "dashboard", arrangement: "dashboard" },
-  wizard: { name: "wizard", arrangement: "wizard" },
-};
+export function asTemplateRecord(templates: readonly TemplateDefinition[]): Record<string, LayoutTemplate> {
+  return Object.fromEntries(templates.map((template) => [template.name, template]));
+}
 
 /** Information hierarchy — how prominent a region is ("what should be prominent"). */
 export type RegionPriority = "primary" | "secondary" | "tertiary";
@@ -62,7 +61,7 @@ export type RegionDisclosure = "always" | "collapsed" | "on-demand";
 export interface PresentationRegion {
   /** region id = the facet name. */
   name: string;
-  /** the facet's semantic role (drives capability binding downstream). */
+  /** the facet's semantic role (drives capability selection downstream). */
   role: FacetRole;
   /** information hierarchy for attention management. */
   priority: RegionPriority;
@@ -72,6 +71,12 @@ export interface PresentationRegion {
   presentation?: string;
   /** optional concrete capability override supplied by authored facet views. */
   capability?: string;
+  /** optional explicit read edge override supplied by authored facet views. */
+  read?: Record<string, string>;
+  /** optional explicit shaped read edge override supplied by authored facet views. */
+  readExpr?: Record<string, string>;
+  /** optional explicit runtime event handlers supplied by authored facet views. */
+  on?: Record<string, import("../../kernel/src/index").Action[]>;
   /**
    * Static, per-capability presentation config (the "spec" channel, orthogonal to the dynamic
    * `read`/data edge): columns for a table, chartType/series for a chart, thresholds for an alert.
@@ -98,144 +103,256 @@ export interface PresentationSpec {
 
 /**
  * The Presentation *Planner* seam: interaction + context -> Presentation DSL. This is the slot an
- * AI presentation planner fills; {@link defaultPresentationPlanner} is the deterministic reference
- * planner. (The Presentation *Compiler* is the next stage down — see `lowerPresentation`.)
+ * AI presentation planner fills. The planner is created explicitly from a profile recipe.
+ * (The Presentation *Compiler* is the next stage down — see `lowerPresentation`.)
  */
 export type PresentationPlanner = (
   spec: InteractionSpec,
   ctx: PresentationContext
 ) => PresentationSpec;
 
-/** Pick a template from the catalog based on the interaction and context. */
-function selectTemplate(spec: InteractionSpec, ctx: PresentationContext): LayoutTemplate {
-  const compact = ctx.surface === "mobile" || ctx.space === "compact";
-  const glanceable = ctx.surface === "copilot" || ctx.attention === "glanceable";
-
-  // interaction-driven templates take precedence over surface heuristics.
-  if (spec.interaction === "compare") return layoutTemplates.comparison;
-  if (spec.interaction === "monitor") return layoutTemplates.dashboard;
-  if (spec.interaction === "create" || spec.interaction === "configure") return layoutTemplates.wizard;
-
-  // then context-driven templates.
-  if (glanceable) return layoutTemplates.narrative;
-  if (compact) return layoutTemplates.stack;
-  return layoutTemplates.workspace;
+function readToken(path: string, tokens: Record<string, unknown>): unknown {
+  return path.split(".").reduce<unknown>((current, segment) => {
+    if (current == null || typeof current !== "object") return undefined;
+    return (current as Record<string, unknown>)[segment];
+  }, tokens);
 }
 
-/** The generic workspace archetype gets an interaction-specific name (investigate_workspace, ...). */
-function layoutName(template: LayoutTemplate, spec: InteractionSpec): string {
-  return template.name === "workspace" ? `${spec.interaction}_workspace` : template.name;
+function renderTemplate(template: string, tokens: Record<string, unknown>): string {
+  return template.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_full, key: string) => {
+    const value = readToken(key.trim(), tokens);
+    return value == null ? "" : String(value);
+  });
+}
+
+function matchesRecipe(match: RecipeMatch, facts: RecipeMatch): boolean {
+  return Object.entries(match).every(([key, value]) => facts[key as keyof RecipeMatch] === value);
+}
+
+function firstMatchingRule<T extends { match: RecipeMatch }>(
+  rules: readonly T[],
+  facts: RecipeMatch
+): T | undefined {
+  return rules.find((rule) => matchesRecipe(rule.match, facts));
+}
+
+/** Pick a template from the recipe based on the interaction and context. */
+function selectTemplate(
+  spec: InteractionSpec,
+  ctx: PresentationContext,
+  recipe: InteractionToPresentationRecipe
+): { template: LayoutTemplate; layout: string } {
+  const templates = asTemplateRecord(recipe.templates);
+  const facts: RecipeMatch = {
+    interaction: spec.interaction,
+    surface: ctx.surface,
+    device: ctx.device,
+    space: ctx.space,
+    attention: ctx.attention,
+    expertise: ctx.expertise,
+    constrained: isConstrained(ctx, recipe),
+  };
+  const match = firstMatchingRule(recipe.templateRules, facts);
+  if (!match) throw new Error(`No template rule matched interaction '${spec.interaction}' in recipe '${recipe.id}'`);
+  const templateName = match.emit.template;
+  const template = templateName ? templates[templateName] : undefined;
+  if (!template) throw new Error(`No template '${templateName ?? "<none>"}' declared in recipe '${recipe.id}'`);
+  return {
+    template,
+    layout: renderTemplate(match.emit.layout, {
+      interaction: spec.interaction,
+      subject: spec.subject,
+      surface: ctx.surface,
+      device: ctx.device,
+      space: ctx.space,
+      attention: ctx.attention,
+      expertise: ctx.expertise,
+    }),
+  };
 }
 
 /** True when the surface/attention/space/device budget forces tighter disclosure. */
-function isConstrained(ctx: PresentationContext): boolean {
-  return (
-    ctx.surface === "mobile" ||
-    ctx.surface === "copilot" ||
-    ctx.space === "compact" ||
-    ctx.attention === "glanceable" ||
-    ctx.device === "voice"
-  );
+function isConstrained(ctx: PresentationContext, recipe: InteractionToPresentationRecipe): boolean {
+  const facts: RecipeMatch = {
+    surface: ctx.surface,
+    device: ctx.device,
+    space: ctx.space,
+    attention: ctx.attention,
+    expertise: ctx.expertise,
+  };
+  return (recipe.constrainedWhen ?? []).some((rule) => matchesRecipe(rule, facts));
 }
 
-/** The lead region is primary; other required facets are secondary; optional ones are tertiary. */
-function priorityOf(facet: Facet, index: number): RegionPriority {
-  if (index === 0) return "primary";
-  return facet.required ? "secondary" : "tertiary";
+function regionFacts(
+  facet: Facet,
+  index: number,
+  spec: InteractionSpec,
+  ctx: PresentationContext,
+  recipe: InteractionToPresentationRecipe,
+  extra: Partial<RecipeMatch> = {}
+): RecipeMatch {
+  return {
+    interaction: spec.interaction,
+    surface: ctx.surface,
+    device: ctx.device,
+    space: ctx.space,
+    attention: ctx.attention,
+    expertise: ctx.expertise,
+    constrained: isConstrained(ctx, recipe),
+    region: facet.name,
+    role: facet.role,
+    required: facet.required,
+    index,
+    ...extra,
+  };
 }
 
-/** Disclosure levels ordered from most to least visible. */
-const DISCLOSURE_LEVELS: RegionDisclosure[] = ["always", "collapsed", "on-demand"];
+function orderRankOf(
+  facet: Facet,
+  index: number,
+  spec: InteractionSpec,
+  ctx: PresentationContext,
+  recipe: InteractionToPresentationRecipe
+): number {
+  const rule = firstMatchingRule(recipe.orderRules, regionFacts(facet, index, spec, ctx, recipe));
+  if (!rule) throw new Error(`No order rule matched region '${facet.name}' in recipe '${recipe.id}'`);
+  return rule.emit.rank;
+}
+
+function priorityOf(
+  facet: Facet,
+  index: number,
+  spec: InteractionSpec,
+  ctx: PresentationContext,
+  recipe: InteractionToPresentationRecipe
+): RegionPriority {
+  const rule = firstMatchingRule(recipe.priorityRules, regionFacts(facet, index, spec, ctx, recipe));
+  if (!rule) throw new Error(`No priority rule matched region '${facet.name}' in recipe '${recipe.id}'`);
+  return rule.emit.priority;
+}
 
 /**
  * Disclosure follows hierarchy, then adapts to the audience: a tight surface hides more, an expert
  * tolerates denser/deferred detail, and a novice is guided (more shown up front). A primary region
  * is always shown regardless. This is the accessibility/density seam (device + expertise).
  */
-function disclosureOf(priority: RegionPriority, ctx: PresentationContext): RegionDisclosure {
-  if (priority === "primary") return "always";
-  let level = priority === "secondary" ? 0 : 1; // base density from hierarchy
-  if (isConstrained(ctx)) level += 1; // a tighter budget hides more
-  if (ctx.expertise === "expert") level += 1; // experts tolerate denser, deferred detail
-  else if (ctx.expertise === "novice") level -= 1; // novices are guided — show more up front
-  level = Math.max(0, Math.min(DISCLOSURE_LEVELS.length - 1, level));
-  return DISCLOSURE_LEVELS[level];
+function disclosureOf(
+  facet: Facet,
+  priority: RegionPriority,
+  index: number,
+  spec: InteractionSpec,
+  ctx: PresentationContext,
+  recipe: InteractionToPresentationRecipe
+): RegionDisclosure {
+  const rule = firstMatchingRule(
+    recipe.disclosureRules,
+    regionFacts(facet, index, spec, ctx, recipe, { priority })
+  );
+  if (!rule) throw new Error(`No disclosure rule matched region '${facet.name}' in recipe '${recipe.id}'`);
+  return rule.emit.disclosure;
 }
 
-/** A short, inspectable reason for a region's placement (the explainability output of the planner). */
 function rationaleFor(
   facet: Facet,
   priority: RegionPriority,
   disclosure: RegionDisclosure,
-  ctx: PresentationContext
-): string {
-  const rank = priority === "primary" ? "lead facet" : facet.required ? "required facet" : "optional facet";
-  const shown =
-    disclosure === "always"
-      ? "shown up front"
-      : disclosure === "collapsed"
-        ? "collapsed by default"
-        : "revealed on demand";
-  const budget = isConstrained(ctx) ? ` on a constrained ${ctx.surface} surface` : "";
-  const audience = ctx.expertise ? ` for a ${ctx.expertise} audience` : "";
-  return `${rank}, ${shown}${budget}${audience}`;
+  index: number,
+  spec: InteractionSpec,
+  ctx: PresentationContext,
+  recipe: InteractionToPresentationRecipe
+): string | undefined {
+  const rule = firstMatchingRule(
+    recipe.rationaleRules ?? [],
+    regionFacts(facet, index, spec, ctx, recipe, { priority, disclosure })
+  );
+  if (!rule) return undefined;
+  return renderTemplate(rule.emit.template, {
+    interaction: spec.interaction,
+    subject: spec.subject,
+    surface: ctx.surface,
+    device: ctx.device,
+    space: ctx.space,
+    attention: ctx.attention,
+    expertise: ctx.expertise,
+    constrained: isConstrained(ctx, recipe),
+    region: {
+      name: facet.name,
+      role: facet.role,
+      required: facet.required,
+      index,
+      priority,
+      disclosure,
+    },
+  });
 }
 
-/** Default concrete presentation-type per role, where one is unambiguous (else the binding decides). */
-const rolePresentation: Partial<Record<FacetRole, string>> = {
-  graph: "relationship_graph",
-  timeline: "timeline",
-  comparison: "diff",
-  metrics: "metric_grid",
-  narrative: "narrative",
-  form: "form",
-};
+function defaultPresentation(
+  facet: Facet,
+  priority: RegionPriority,
+  disclosure: RegionDisclosure,
+  index: number,
+  spec: InteractionSpec,
+  ctx: PresentationContext,
+  recipe: InteractionToPresentationRecipe
+): string | undefined {
+  return firstMatchingRule(
+    recipe.regionRules ?? [],
+    regionFacts(facet, index, spec, ctx, recipe, { priority, disclosure })
+  )?.emit.presentation;
+}
 
-/**
- * The reference planner. Same interaction, context-dependent presentation:
- *   - compare/monitor/create/configure choose an interaction-specific template;
- *   - a glanceable surface (copilot) collapses to a narrative subset;
- *   - a compact surface (mobile) linearizes to a stack;
- *   - otherwise a full workspace grid.
- * On a capped template, optional facets are shed but every required facet is kept. Each surviving
- * facet is placed with a priority (hierarchy), a disclosure decision (which tightens on constrained
- * surfaces), and a presentation-type hint. An AI planner may replace this whole function.
- */
-export const defaultPresentationPlanner: PresentationPlanner = (spec, ctx) => {
-  const template = selectTemplate(spec, ctx);
+export function planPresentationWithRecipe(
+  spec: InteractionSpec,
+  ctx: PresentationContext,
+  recipe: InteractionToPresentationRecipe
+): PresentationSpec {
+  const { template, layout } = selectTemplate(spec, ctx, recipe);
   const facets = resolveFacets(spec);
 
-  // Required facets first (stable within each group), so a cap can only drop optional ones.
-  const ordered = [...facets].sort((a, b) => Number(b.required) - Number(a.required));
+  const ordered = [...facets]
+    .map((facet, index) => ({ facet, index, rank: orderRankOf(facet, index, spec, ctx, recipe) }))
+    .sort((a, b) => a.rank - b.rank || a.index - b.index);
+
   let chosen = ordered;
   if (template.maxRegions != null && ordered.length > template.maxRegions) {
-    const required = ordered.filter((f) => f.required);
-    const optional = ordered.filter((f) => !f.required);
-    chosen = [...required, ...optional].slice(0, Math.max(template.maxRegions, required.length));
+    if (recipe.cap.preserveRequired) {
+      const required = ordered.filter(({ facet }) => facet.required);
+      const optional = ordered.filter(({ facet }) => !facet.required);
+      chosen = [...required, ...optional].slice(0, Math.max(template.maxRegions, required.length));
+    } else {
+      chosen = ordered.slice(0, template.maxRegions);
+    }
   }
 
-  const regions: PresentationRegion[] = chosen.map((f, i) => {
-    const priority = priorityOf(f, i);
-    const disclosure = disclosureOf(priority, ctx);
-    const facetView: InteractionFacetView | undefined = spec.facetViews?.[f.name];
+  const regions: PresentationRegion[] = chosen.map(({ facet, index }, i) => {
+    const priority = priorityOf(facet, i, spec, ctx, recipe);
+    const disclosure = disclosureOf(facet, priority, i, spec, ctx, recipe);
+    const facetView: InteractionFacetView | undefined = spec.facetViews?.[facet.name];
     const region: PresentationRegion = {
-      name: f.name,
-      role: f.role,
+      name: facet.name,
+      role: facet.role,
       priority,
       disclosure,
       capability: facetView?.capability,
       props: facetView?.props,
-      rationale: rationaleFor(f, priority, disclosure, ctx),
+      read: facetView?.read,
+      readExpr: facetView?.readExpr,
+      on: facetView?.on,
+      rationale: rationaleFor(facet, priority, disclosure, i, spec, ctx, recipe),
     };
-    const presentation = facetView?.presentation ?? rolePresentation[f.role];
+    const presentation = facetView?.presentation ?? defaultPresentation(facet, priority, disclosure, i, spec, ctx, recipe);
     if (presentation) region.presentation = presentation;
     return region;
   });
 
   return {
-    layout: layoutName(template, spec),
+    layout,
     arrangement: template.arrangement,
     regions,
     source: spec,
   };
-};
+}
+
+export function createPresentationPlanner(recipe: InteractionToPresentationRecipe): PresentationPlanner {
+  return (spec, ctx) => planPresentationWithRecipe(spec, ctx, recipe);
+}
