@@ -99,6 +99,39 @@
                               }
                             },
                             {
+                              "capability": "ui:select",
+                              "id": "interaction-profile",
+                              "props": {
+                                "label": "Profile",
+                                "options": [
+                                  {
+                                    "value": "live-cards",
+                                    "label": "live-cards"
+                                  },
+                                  {
+                                    "value": "briefing",
+                                    "label": "briefing"
+                                  }
+                                ]
+                              },
+                              "edges": {
+                                "read": {
+                                  "value": "workbench.profile"
+                                },
+                                "on": {
+                                  "change": [
+                                    {
+                                      "do": "assign",
+                                      "target": "workbench.profile",
+                                      "args": {
+                                        "from": "$event.value"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
                               "capability": "ui:field",
                               "id": "interaction-subject",
                               "props": {
@@ -681,6 +714,7 @@
             "id": "guest-root",
             "edges": {
               "read": {
+                "profile": "workbench.profile",
                 "interaction": "workbench.interaction",
                 "subject": "workbench.subject",
                 "surface": "workbench.surface",

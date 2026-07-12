@@ -1,5 +1,6 @@
 {
   "workbench": {
+    "profile": "live-cards",
     "interaction": "investigate",
     "subject": "incident",
     "surface": "desktop",

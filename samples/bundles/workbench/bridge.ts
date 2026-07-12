@@ -51,9 +51,11 @@ export function readInputs(state: StateReader): {
   spec: InteractionSpec;
   ctx: PresentationContext;
   edits: PresentationEdits;
+  profileId: string;
 } {
   const interaction = String(state.get("workbench.interaction") || "investigate") as InteractionKind;
   const subject = String(state.get("workbench.subject") ?? "");
+  const profileId = String(state.get("workbench.profile") || "live-cards");
   const ctx: PresentationContext = {
     surface: String(state.get("workbench.surface") || "desktop") as PresentationContext["surface"],
   };
@@ -61,7 +63,7 @@ export function readInputs(state: StateReader): {
     const v = state.get(`workbench.${axis}`);
     if (v) (ctx as Record<string, unknown>)[axis] = v;
   }
-  return { spec: { interaction, subject }, ctx, edits: readEdits(state) };
+  return { spec: { interaction, subject }, ctx, edits: readEdits(state), profileId };
 }
 
 /** The authoring session's presentation overrides, read from state (seeded, so always present). */
@@ -75,6 +77,7 @@ export function inputsSignature(inputs: {
   spec: InteractionSpec;
   ctx: PresentationContext;
   edits: PresentationEdits;
+  profileId: string;
 }): string {
   return JSON.stringify(inputs);
 }

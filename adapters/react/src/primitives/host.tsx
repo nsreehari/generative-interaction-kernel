@@ -10,6 +10,7 @@ import React from "react";
 import { GenUIRoot } from "../useGenUI";
 import { loadBundle, type Bundle } from "./bundle";
 import { buildBundleRegistry } from "./registry";
+import { useProjectionProviderResolver } from "./bundle-registry";
 import { GenUIFileServicesProvider, type GenUIFileServices } from "./fileServices";
 
 export function BundleHost({
@@ -20,11 +21,15 @@ export function BundleHost({
   /** Optional host-level file helpers consumed by `multiFileUpload` / file-link leaves. */
   fileServices?: GenUIFileServices;
 }): React.ReactElement {
+  const resolveProvider = useProjectionProviderResolver();
   // Build the runtime once for the life of the host.
   const controller = React.useMemo(() => loadBundle(bundle), []); // eslint-disable-line react-hooks/exhaustive-deps
   // Namespaced model: resolve every `alias:name` through the manifest `externals.projectionViews` (the
   // floor is the `floor` provider, the bundle's own projection views are `self`). Nothing is ambient.
-  const registry = React.useMemo(() => buildBundleRegistry(bundle), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const registry = React.useMemo(
+    () => buildBundleRegistry(bundle, resolveProvider ?? undefined),
+    [bundle, resolveProvider]
+  );
   const tree = <GenUIRoot source={controller} registry={registry} />;
   return <GenUIFileServicesProvider services={fileServices}>{tree}</GenUIFileServicesProvider>;
 }

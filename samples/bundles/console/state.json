@@ -1,54 +1,39 @@
 {
   "console": {
     "profiles": [
-      {
-        "id": "live-cards",
-        "name": "Live Cards",
-        "description": "The first onboarding profile: board / metric / table / actions.",
-        "status": "active",
-        "version": "1.0.0",
-        "capabilities": [
-          "board",
-          "metric",
-          "table",
-          "actions"
-        ],
-        "updatedAt": "2026-07-06 10:42:20"
-      },
-      {
-        "id": "workbench-chrome",
-        "name": "Workbench Chrome",
-        "description": "The workbench's own declarative panels (self-hosting profile).",
-        "status": "draft",
-        "version": "0.3.0",
-        "capabilities": [
-          "panelGroup",
-          "panel",
-          "select",
-          "text",
-          "button"
-        ],
-        "updatedAt": "2026-07-06 10:42:20"
-      }
+      { "id": "live-cards", "kind": "genui-profile", "version": "0.1.0", "layers": 3, "stages": 2 },
+      { "id": "briefing", "kind": "briefing-profile", "version": "0.1.0", "layers": 3, "stages": 2 }
     ],
     "selectedId": "",
-    "draft": {
+    "profile": {
       "id": "",
-      "name": "",
-      "description": "",
+      "kind": "",
+      "version": "",
+      "sourceKind": "",
+      "targetKind": "",
+      "layerCount": 0,
+      "stageCount": 0,
+      "layers": [],
+      "stages": [],
       "capabilities": []
     },
-    "newName": "",
-    "newCapName": "",
-    "tab": "editor",
     "validation": {
       "status": "unknown",
       "errors": [],
-      "warnings": []
+      "warnings": [],
+      "errorsText": "Select a profile to validate.",
+      "warningsText": ""
     },
-    "versions": [],
-    "toast": "",
+    "artifacts": {
+      "profileText": "",
+      "recipesText": "",
+      "resolvedText": ""
+    },
+    "tab": "overview",
+    "previewInteraction": "investigate",
+    "previewSubject": "incident",
+    "previewSurface": "desktop",
     "previewBundle": null,
-    "playgroundBundle": null
+    "previewError": ""
   }
 }

@@ -2,7 +2,15 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import { compileInteraction, type InteractionSpec } from "../../../interaction/src/index";
-import { briefingProfile } from "./index";
+import { loadProfile } from "@gik/profile";
+import briefingProfileJson from "./profile.json" with { type: "json" };
+import briefingInteractionRecipeJson from "./interaction-to-presentation.recipe.json" with { type: "json" };
+import briefingRuntimeRecipeJson from "./presentation-to-runtime.recipe.json" with { type: "json" };
+
+const briefingProfile = loadProfile(briefingProfileJson, [
+  briefingInteractionRecipeJson,
+  briefingRuntimeRecipeJson,
+]);
 
 test("briefing sample profile: loadProfile validates + resolves the authored artifacts", () => {
   assert.equal(briefingProfile.artifact.payload.id, "briefing");

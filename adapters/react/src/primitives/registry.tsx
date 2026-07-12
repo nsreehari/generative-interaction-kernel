@@ -18,7 +18,7 @@ import {
 import { readProps } from "../props";
 import { GenUIRoot } from "../useGenUI";
 import { loadBundle, bundleSignature, type Bundle, type SerializableBundle } from "./bundle";
-import { useBundleRegistry } from "./bundle-registry";
+import { useBundleRegistry, useProjectionProviderResolver } from "./bundle-registry";
 import { useGenUIFileServices } from "./fileServices";
 
 interface Option {
@@ -1180,6 +1180,7 @@ function Embed({ node }: ProjectionViewProps) {
   const appName = p.str("app", "");
   const inline = p.obj<SerializableBundle | null>("bundle", null);
   const registry = useBundleRegistry();
+  const resolveProvider = useProjectionProviderResolver();
   const sig = appName ? `app:${appName}` : bundleSignature(inline);
   // Resolve the source bundle once per signature: a registered app by name (bundle-kind), else the
   // inline JSON bundle from state. Building it inside the memo keeps the factory from re-running.
@@ -1199,8 +1200,8 @@ function Embed({ node }: ProjectionViewProps) {
   // capabilities through its own manifest `externals.projectionViews` (the floor via the `floor`
   // provider, its own projection views via `self`).
   const renderRegistry = React.useMemo(
-    () => (bundle ? buildBundleRegistry(bundle as Bundle) : null),
-    [sig] // eslint-disable-line react-hooks/exhaustive-deps
+    () => (bundle ? buildBundleRegistry(bundle as Bundle, resolveProvider ?? undefined) : null),
+    [sig, resolveProvider] // eslint-disable-line react-hooks/exhaustive-deps
   );
   if (!controller || !renderRegistry) return <p className="gx-muted">{p.str("emptyText", "Nothing to preview.")}</p>;
   return (

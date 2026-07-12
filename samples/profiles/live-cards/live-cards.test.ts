@@ -2,7 +2,15 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import { compileInteraction, type InteractionSpec } from "../../../interaction/src/index";
-import { liveCardsProfile } from "./index";
+import { loadProfile } from "@gik/profile";
+import liveCardsProfileJson from "./profile.json" with { type: "json" };
+import liveCardsInteractionRecipeJson from "./interaction-to-presentation.recipe.json" with { type: "json" };
+import liveCardsRuntimeRecipeJson from "./presentation-to-runtime.recipe.json" with { type: "json" };
+
+const liveCardsProfile = loadProfile(liveCardsProfileJson, [
+  liveCardsInteractionRecipeJson,
+  liveCardsRuntimeRecipeJson,
+]);
 
 test("live-cards sample profile resolves the authored layer chain", () => {
   assert.equal(liveCardsProfile.artifact.payload.id, "live-cards");

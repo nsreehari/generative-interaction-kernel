@@ -8,6 +8,7 @@ import React from "react";
 import {
   BundleHost,
   BundleRegistryProvider,
+  sampleProfileComponents,
   useBundleRegistry,
   useRegistryIds,
 } from "@gik/react";
@@ -17,8 +18,12 @@ import { switcherBundle } from "../../../bundles/approot/switcher/switcher";
 export function Host(): React.ReactElement {
   // One registry for the life of the app; every BundleHost and every `embed props.app` resolves it.
   const registry = React.useMemo(() => createHostRegistry(), []);
+  const resolveProvider = React.useCallback(
+    (from: string) => (from === "profile" ? sampleProfileComponents : undefined),
+    []
+  );
   return (
-    <BundleRegistryProvider registry={registry}>
+    <BundleRegistryProvider registry={registry} resolveProvider={resolveProvider}>
       <HostView />
     </BundleRegistryProvider>
   );

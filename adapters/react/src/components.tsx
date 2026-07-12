@@ -9,6 +9,7 @@ import {
   type ProviderMap,
 } from "./registry";
 import { readProps } from "./props";
+import { FLOOR_COMPONENTS } from "./primitives/registry";
 
 export function Board({ node, children }: ProjectionViewProps) {
   const title = readProps(node).str("title");
@@ -101,13 +102,20 @@ export function FallbackView({ node }: ProjectionViewProps) {
   );
 }
 
-/** The live-cards profile's capability components, exposed under the `ui` alias. */
-export const liveCardsComponents: ProviderMap = {
+/** Shared `ui:*` components for the sample-authored profiles rendered by the host. */
+export const sampleProfileComponents: ProviderMap = {
   board: Board,
   metric: Metric,
   table: Table,
+  chart: FLOOR_COMPONENTS.chart,
+  markdown: FLOOR_COMPONENTS.markdown,
+  markup: FLOOR_COMPONENTS.markup,
+  todo: FLOOR_COMPONENTS.todo,
   actions: ActionButton,
 };
+
+/** Back-compat name for the original live-cards provider. */
+export const liveCardsComponents: ProviderMap = sampleProfileComponents;
 
 /**
  * The live-cards profile registry: resolves the namespaced `ui:*` capabilities (board/metric/table/
@@ -116,6 +124,6 @@ export const liveCardsComponents: ProviderMap = {
  */
 export const liveCardsRegistry: ComponentRegistry = buildRegistryFromImports(
   { ui: { from: "profile" } },
-  (from) => (from === "profile" ? liveCardsComponents : undefined),
+  (from) => (from === "profile" ? sampleProfileComponents : undefined),
   FallbackView
 );
