@@ -182,42 +182,97 @@
 <body>
 
 <h1>GIK Public Interface</h1>
-<div class="subtitle">Kernel &amp; Provider API Reference · Package <code>genui-platform/kernel</code></div>
+<div class="subtitle">Consumer Manual · Using GenUI at any layer · Current repo entrypoints: <code>kernel</code> · <code>face</code> · <code>transports</code></div>
 
 <div class="description">
-The <strong>Generative Interaction Kernel (GIK)</strong> is a pure interpreter + pure reducer: it
-holds no domain knowledge, no framework knowledge, and no time beyond a monotonic <code>rev</code>
-counter. This page is the <strong>consumer-facing API</strong> — the classes, provider seams, and data
-types you use to embed the kernel, drive it with events, render its output, and (optionally) run it
-across a transport. Everything below is re-exported from the package barrel:
-<pre><code>import {
-  Kernel, GenUIClient, KernelTransportHost,
-  JsonataExpressionProvider, InMemoryStateModel, ManifestRegistry, NullOrchestrator,
-} from "genui-platform/kernel";</code></pre>
-The language-neutral <em>wire</em> contract (the five GUP messages) lives in
-<a href="../03-protocol.md">03-protocol</a>; the architectural rationale in
-<a href="../02-architecture.md">02-architecture</a>.
+This page is a <strong>practical manual</strong> for consuming GenUI. It answers one question at each
+step: <em>which surface do I use, what do I import, and what do I get back?</em> You can consume GenUI at
+several layers — embed the <strong>kernel</strong> directly for in-process runtime authority, host a live
+<strong>ControlFace</strong> over a bundle, expose that runtime outward through the <strong>controlface</strong>
+or <strong>agentface</strong> tool projections, or connect to it remotely as a render/patch client. In the
+current repo layout, those surfaces are consumed through the source entrypoints shown below, e.g.:
+<pre><code>import { Kernel, GenUIClient, KernelTransportHost, InMemoryStateModel } from "../../kernel/src/index";
+import { ControlFace, createControlFaceDispatcher, createAgentFaceDispatcher } from "../../face/src/index";
+import { SseTransportServer } from "../../transports/http-sse/src/index";
+import { McpHttpServer } from "../../transports/mcp-http/src/index";</code></pre>
+The language-neutral wire contract (the five GUP messages) is summarised in
+<a href="#wire">§12 · Protocol reference</a> at the end of this page, so the manual stays self-contained.
 </div>
 
-<div class="callout"><strong>Which layer do I consume?</strong> The <strong>kernel</strong> is the embeddable
-execution engine. A <strong>face</strong> sits one layer above it and packages pure authoring helpers and/or
-live runtime operations into a callable tool surface. A <strong>projection</strong> is a filtered view of that
-face (for example, a full control-plane catalog vs an agent-safe subset). A <strong>transport</strong> carries a
-chosen projection over HTTP/SSE/MCP. Consume the kernel when you want runtime authority in-process;
-consume a face projection when you want a bounded surface over an already-running runtime.</div>
+<div class="callout"><strong>Which surface do I consume?</strong> The <strong>kernel</strong> is the embeddable
+execution engine. A <strong>ControlFace</strong> is a host-side <em>live object</em> that wraps one kernel
+(plus its transport broker) — you construct and hold it inside a host; it is not itself the outward wire
+surface. The outward callable surfaces are the <strong>projections</strong>: <code>controlface</code> (the full
+inspect/drive/time-travel tool catalog) and <code>agentface</code> (an allowlisted subset). A
+<strong>transport</strong> (MCP over HTTP, or SSE) carries a chosen projection or the render stream; it never
+decides capability policy. So <code>agentface</code> is not a second engine — it is <code>controlface</code>
+filtered.</div>
 
 <div class="toc">
-<a href="#quickstart">1 · Quick start</a><br>
-<a href="#kernel">2 · The Kernel class</a><br>
-<a href="#timetravel">3 · Time-travel: checkpoint / restore</a><br>
-<a href="#providers">4 · Provider seams</a><br>
-<a href="#types">5 · Core data types</a><br>
-<a href="#remote">6 · Remote: transport &amp; client</a><br>
-<a href="#authoring">7 · Authoring helpers</a><br>
-<a href="#wire">8 · Wire protocol</a>
+<a href="#surfaces">1 · What you can use</a><br>
+<a href="#pick">2 · Pick your surface</a><br>
+<a href="#fit">3 · How the pieces fit</a><br>
+<a href="#kernel">4 · Embed the kernel</a><br>
+<a href="#controlface-host">5 · Host a live ControlFace</a><br>
+<a href="#projections">6 · Expose outward projections</a><br>
+<a href="#timetravel">7 · Time-travel &amp; rollback</a><br>
+<a href="#providers">8 · Provider seams</a><br>
+<a href="#types">9 · Core data types</a><br>
+<a href="#remote">10 · Stream renders &amp; connect remotely</a><br>
+<a href="#authoring">11 · Authoring helpers</a><br>
+<a href="#wire">12 · Protocol reference</a>
 </div>
 
-<h2 id="quickstart">1 · Quick start</h2>
+<h2 id="surfaces">1 · What you can use</h2>
+
+<p>These are the concrete, exported surfaces a consumer touches. Everything below is real code in this
+repo — pick a row by what you are building.</p>
+
+<table class="sig">
+<tr><th>Surface</th><th>Import</th><th>Use it when</th></tr>
+<tr><td><code>Kernel</code></td><td><code>kernel/src/index</code></td><td>You own the runtime in-process and want direct <code>resolve</code>/<code>dispatch</code> authority.</td></tr>
+<tr><td><code>ControlFace</code></td><td><code>face/src/index</code></td><td>You are a host: wrap one bundle in a live object that backs both projections and the render stream.</td></tr>
+<tr><td><code>createControlFaceDispatcher</code></td><td><code>face/src/index</code></td><td>You expose the <strong>full</strong> tool catalog (authoring + inspect/drive/time-travel) outward.</td></tr>
+<tr><td><code>createAgentFaceDispatcher</code></td><td><code>face/src/index</code></td><td>You expose the <strong>allowlisted</strong> agent-safe catalog (authoring + <code>getState</code>/<code>getTree</code>).</td></tr>
+<tr><td><code>createStatelessAgentFaceDispatcher</code></td><td><code>face/src/index</code></td><td>You expose <strong>authoring-only</strong> tools with no live runtime attached.</td></tr>
+<tr><td><code>SseTransportServer</code></td><td><code>transports/http-sse/src/index</code></td><td>You stream the render/patch feed to a renderer over SSE.</td></tr>
+<tr><td><code>McpHttpServer</code></td><td><code>transports/mcp-http/src/index</code></td><td>You carry a projection's tool dispatcher over MCP/HTTP.</td></tr>
+<tr><td><code>GenUIClient</code> · <code>KernelTransportHost</code></td><td><code>kernel/src/index</code></td><td>You connect a remote renderer to an authoritative host over the GUP protocol.</td></tr>
+</table>
+
+<h2 id="pick">2 · Pick your surface</h2>
+
+<ul>
+<li>Own the runtime and call it directly, in one process → <strong>embed <code>Kernel</code></strong> (§4).</li>
+<li>Host one runtime and back both tools and a render stream from it → <strong>hold a <code>ControlFace</code></strong> (§5).</li>
+<li>Give an operator or first-party console full remote authority (inspect, drive, time-travel) → mount the <strong><code>controlface</code> projection</strong> over MCP/HTTP (§6).</li>
+<li>Give an agent a bounded, read-oriented remote surface → mount the <strong><code>agentface</code> projection</strong> over MCP/HTTP (§6). Time-travel and <code>emit</code> are intentionally excluded.</li>
+<li>Ship only authoring/validation tools with no running runtime → <strong><code>createStatelessAgentFaceDispatcher</code></strong> (§6).</li>
+<li>Render from another process or machine against a patch stream → <strong><code>SseTransportServer</code> + <code>GenUIClient</code></strong> (§10).</li>
+</ul>
+
+<h2 id="fit">3 · How the pieces fit</h2>
+
+<p>The important boundary is <strong>internal vs outward</strong>. A <code>ControlFace</code> owns a
+<code>Kernel</code> and a transport broker as <em>private</em> composition — a transport never binds to
+that kernel or broker directly. What faces outward is either a <strong>tool projection</strong> (a JSON
+request/response catalog) or the <strong>render stream</strong> (SSE). Capability policy is decided by
+<em>which projection</em> a host mounts, not by the transport.</p>
+
+<pre><code>Kernel            ← execution engine (resolve / dispatch / state / time-travel)
+  └─ ControlFace  ← host-side live object: wraps kernel + broker (private)
+       ├─ controlface projection  ← FULL tool catalog        ──► MCP  (e.g. /mcp-control)
+       ├─ agentface  projection   ← allowlisted tool catalog  ──► MCP  (e.g. /mcp)
+       └─ render stream (attach)  ← patches + tree            ──► SSE  (e.g. /gup)</code></pre>
+
+<p>This mirrors the sample host in <code>samples/control-host/service.ts</code>: it builds one
+<code>ControlFace</code>, then mounts <code>createAgentFaceDispatcher</code> at <code>/mcp</code>,
+<code>createControlFaceDispatcher</code> at <code>/mcp-control</code>, and an <code>SseTransportServer</code>
+at <code>/gup</code> — three outward surfaces over the <em>same</em> live runtime.</p>
+
+<h2 id="kernel">4 · Embed the kernel</h2>
+
+<h3>Quick start</h3>
 
 <p>Construct a kernel over a manifest + document, seed it, then feed it events and read the resolved
 tree. One <code>dispatch</code> is one <code>rev</code>, regardless of how many effects or follow-up
@@ -237,9 +292,9 @@ const state = kernel.state();               // live snapshot (read-only)</code><
 <code>ResolvedNode</code> tree, and <code>dispatch()</code> returns <code>ops</code> a renderer applies
 to its replica. Nothing here knows about React, WinUI, or the DOM.</div>
 
-<h2 id="kernel">2 · The Kernel class</h2>
+<h3>The kernel class</h3>
 
-<h3>Constructor</h3>
+<h4>Constructor</h4>
 <pre><code>new Kernel(
   manifest: Enveloped&lt;ManifestPayload&gt;,
   document: Enveloped&lt;DocumentPayload&gt;,
@@ -255,14 +310,14 @@ so <code>new Kernel(manifest, document)</code> runs standalone (with a no-op orc
 <tr><td>expression</td><td>ExpressionProvider</td><td><code>JsonataExpressionProvider()</code> — evaluates <code>read</code>-exprs, <code>derive</code>, assign-from.</td></tr>
 <tr><td>predicateExpression</td><td>ExpressionProvider</td><td><code>JsonataExpressionProvider({ safe: true })</code> — gates &amp; guards (adversarial position; safe subset).</td></tr>
 <tr><td>state</td><td>StateModel</td><td><code>InMemoryStateModel(namespaces)</code> — the store.</td></tr>
-<tr><td>contexts</td><td>Record&lt;string, StateModel&gt;</td><td>Shared-context stores by namespace (ADR-0034); wraps <code>state</code> in a <code>CompositeStateModel</code>.</td></tr>
+<tr><td>contexts</td><td>Record&lt;string, StateModel&gt;</td><td>Shared-context stores by namespace; wraps <code>state</code> in a <code>CompositeStateModel</code>.</td></tr>
 <tr><td>registry</td><td>CapabilityRegistry</td><td><code>ManifestRegistry.fromManifest(manifest)</code>.</td></tr>
 <tr><td>orchestrator</td><td>Orchestrator</td><td><code>NullOrchestrator</code> — backs <code>invoke</code>/<code>confirm</code>/<code>route</code>/<code>compensate</code>.</td></tr>
 <tr><td>sink</td><td>TraceSink</td><td>—; receives resolve/action/transition/effect/validate traces.</td></tr>
 <tr><td>validate</td><td>boolean</td><td><code>true</code>; <code>false</code> bypasses the schema + props boundary.</td></tr>
 </table>
 
-<h3>Lifecycle &amp; onboarding</h3>
+<h4>Lifecycle &amp; onboarding</h4>
 <table class="sig">
 <tr><th>Method</th><th>Returns</th><th>Purpose</th></tr>
 <tr><td>init()</td><td>Patch</td><td>Seed machine initial states. Returns the rev-0 baseline patch (machine ops only).</td></tr>
@@ -270,7 +325,7 @@ so <code>new Kernel(manifest, document)</code> runs standalone (with a no-op orc
 <tr><td>snapshotPatch()</td><td>Patch</td><td>The full current state at the <em>current</em> rev, <strong>without</strong> re-seeding machines — re-onboards a reconnecting client mid-session.</td></tr>
 </table>
 
-<h3>Drive &amp; read</h3>
+<h4>Drive &amp; read</h4>
 <table class="sig">
 <tr><th>Method</th><th>Returns</th><th>Purpose</th></tr>
 <tr><td>dispatch(event)</td><td>Promise&lt;Patch&gt;</td><td>Reduce one <code>GupEvent</code>, run resulting orchestrator effects and their follow-up events, apply everything, fire reactions. <strong>One dispatch = one rev.</strong></td></tr>
@@ -278,7 +333,7 @@ so <code>new Kernel(manifest, document)</code> runs standalone (with a no-op orc
 <tr><td>state()</td><td>Record&lt;string, Json&gt;</td><td>The live state snapshot (by reference — read-only; do not mutate).</td></tr>
 </table>
 
-<h3>Time-travel</h3>
+<h4>Time-travel</h4>
 <table class="sig">
 <tr><th>Method</th><th>Returns</th><th>Purpose</th></tr>
 <tr><td>checkpoint()</td><td>Checkpoint</td><td>Capture an immutable, rev-keyed snapshot of pure state.</td></tr>
@@ -287,7 +342,66 @@ so <code>new Kernel(manifest, document)</code> runs standalone (with a no-op orc
 <tr><td>compensate(effects)</td><td>Promise&lt;Patch&gt;</td><td>Route effects through the Orchestrator's <code>compensate</code> seam, in the order supplied.</td></tr>
 </table>
 
-<h2 id="timetravel">3 · Time-travel: checkpoint / restore</h2>
+<p>The live face/control-plane surface carries these same runtime operations as callable tools, so a
+host exposing <code>ControlFace</code> over MCP or another transport can checkpoint, restore,
+inspect effect history, and compensate without embedding callers directly against <code>Kernel</code>.</p>
+
+<h2 id="controlface-host">5 · Host a live ControlFace</h2>
+
+<p>A <code>ControlFace</code> is the host-side live object that wraps one bundle. You construct it once
+and hold it; it is what projections and the render stream bind to. It is <em>not</em> the outward wire
+surface itself — see §6 for the tool projections and §10 for the render stream.</p>
+
+<pre><code>const controlface = new ControlFace(manifest, document, {
+  state,          // optional: pre-seeded StateModel (namespaces already populated)
+  orchestrator,   // optional: host effects + compensation (backs invoke/confirm/route/compensate)
+  sink,           // optional: TraceSink for resolve/action/effect traces
+});</code></pre>
+
+<table class="sig">
+<tr><th>Method</th><th>Returns</th><th>Purpose</th></tr>
+<tr><td>attach(transport, fromRev?)</td><td>Promise&lt;() =&gt; void&gt;</td><td>Register a render connection (SSE binds here); returns a detach handle. <strong>Stream plumbing, not a JSON tool.</strong></td></tr>
+<tr><td>emit(event)</td><td>Promise&lt;Patch&gt;</td><td>Drive the kernel with one <code>GupEvent</code> and broadcast the patch to every connected render client.</td></tr>
+<tr><td>getState()</td><td>Record&lt;string, Json&gt;</td><td>Read the live state snapshot.</td></tr>
+<tr><td>getTree()</td><td>Promise&lt;ResolvedNode&gt;</td><td>Read the current resolved render tree.</td></tr>
+<tr><td>checkpoint()</td><td>Checkpoint</td><td>Capture an immutable, rev-keyed state snapshot (see §7).</td></tr>
+<tr><td>restore(cp)</td><td>Patch</td><td>Set state back (or forward) to a checkpoint.</td></tr>
+<tr><td>effectsSince(rev)</td><td>RecordedEffect[]</td><td>The effects journaled after a rev, in causal order.</td></tr>
+<tr><td>compensate(effects)</td><td>Promise&lt;Patch&gt;</td><td>Route effects through the orchestrator's compensate seam.</td></tr>
+<tr><td>stop()</td><td>void</td><td>Detach every connection (the caller owns any server lifecycle).</td></tr>
+</table>
+
+<div class="callout">Everything behind the face — kernel, reducer, interpreter, broker, GUP codec — is
+private composition. A transport binds to the face's projection or its render stream, never to the
+internal kernel or broker.</div>
+
+<h2 id="projections">6 · Expose outward projections</h2>
+
+<p>A projection turns a live <code>ControlFace</code> into a callable JSON tool catalog. This is the
+outward surface you actually mount on a transport. Policy — what a caller may do — lives here, in the
+choice of projection.</p>
+
+<table class="sig">
+<tr><th>Projection factory</th><th>Catalog</th><th>Typical mount</th></tr>
+<tr><td><code>createControlFaceDispatcher(face)</code></td><td>Full: all authoring tools + all runtime tools (<code>getState</code>, <code>getTree</code>, <code>emit</code>, <code>checkpoint</code>, <code>restore</code>, <code>effectsSince</code>, <code>compensate</code>).</td><td>Operator / first-party control plane.</td></tr>
+<tr><td><code>createAgentFaceDispatcher(face)</code></td><td>Allowlisted: authoring tools + <code>getState</code> + <code>getTree</code> only (<code>AGENTFACE_ALLOWLIST</code>). No <code>emit</code>, no time-travel.</td><td>Agent-facing surface.</td></tr>
+<tr><td><code>createStatelessAgentFaceDispatcher()</code></td><td>Authoring tools only — no live runtime attached.</td><td>Validation/authoring service with no running bundle.</td></tr>
+</table>
+
+<p>Mount a dispatcher on a transport by handing it the dispatcher's message handler. From the sample
+host:</p>
+
+<pre><code>const agentMcp   = new McpHttpServer({ path: "/mcp",         handler: createAgentFaceDispatcher(controlface).handleMcpMessage });
+const controlMcp = new McpHttpServer({ path: "/mcp-control", handler: createControlFaceDispatcher(controlface).handleMcpMessage });</code></pre>
+
+<div class="example">
+<span class="tag">agentface is controlface filtered</span>
+<code>agentFaceProjection(face)</code> is literally <code>controlFaceTools(face)</code> filtered by
+<code>AGENTFACE_ALLOWLIST</code>. There is no second engine and no duplicated tool logic — the agent
+surface is the full catalog with the unsafe rows removed.
+</div>
+
+<h2 id="timetravel">7 · Time-travel &amp; rollback</h2>
 
 <p>Because state is pure JSON and the reducer is deterministic, point-in-time capture and restore of
 <strong>state</strong> fall out for free — they add no domain knowledge. Reversing an <strong>effect's</strong>
@@ -324,7 +438,7 @@ pretended-away</strong>. Retention, direction, and redo are host policy — the 
 facts and moves state; it never decides what a fired effect <em>means</em>.
 </div>
 
-<h2 id="providers">4 · Provider seams</h2>
+<h2 id="providers">8 · Provider seams</h2>
 
 <p>These are the pluggable interfaces the kernel depends on. Each has a built-in default, so you
 implement only the ones you need to customize. Providers extend <strong>vocabulary</strong>, never the
@@ -358,7 +472,7 @@ provider, and <strong>predicate</strong> positions (gates, guards — agent-auth
 through a <em>safe</em> provider that rejects <code>$eval</code>, lambdas, and <code>transform</code> at
 compile time (<code>SafeExpressionError</code>). Policy lives in the provider, not the language.</p>
 
-<h2 id="types">5 · Core data types</h2>
+<h2 id="types">9 · Core data types</h2>
 
 <table class="sig">
 <tr><th>Type</th><th>Shape</th></tr>
@@ -385,7 +499,7 @@ compile time (<code>SafeExpressionError</code>). Policy lives in the provider, n
 <tr><td>Enveloped&lt;T&gt;</td><td><code>T | { gup; type; payload: T }</code>; use <code>unwrap()</code> to read either form.</td></tr>
 </table>
 
-<h2 id="remote">6 · Remote: transport &amp; client</h2>
+<h2 id="remote">10 · Stream renders &amp; connect remotely</h2>
 
 <p>The kernel runs authoritatively on a host; a renderer half runs the pure interpreter over a local
 replica and never sees the kernel. Both speak the five-message GUP protocol over any
@@ -402,11 +516,11 @@ replica and never sees the kernel. Both speak the five-message GUP protocol over
 <tr><td>client.getTree()</td><td><code>ResolvedNode | null</code> — the tree to paint (null before the first document).</td></tr>
 <tr><td>client.getRev()</td><td><code>number</code> — last applied rev (-1 before onboarding); pass to <code>host.attach</code> to resume.</td></tr>
 <tr><td>client.get(path)</td><td><code>Json | undefined</code> — read one value from the local replica.</td></tr>
-<tr><td>client.emit(node, name, payload?)</td><td>Send an <code>event</code> back to the host.</td></tr>
+<tr><td>client.emit(node, name, payload?)</td><td>Send an <code>event</code> back to the host over the GUP render/patch channel. For remote inspect/drive/time-travel tools, mount a projection over MCP instead (§6).</td></tr>
 <tr><td>client.subscribe(fn) / start() / stop() / rebind(t)</td><td>Change notifications / lifecycle / reconnect to a new transport.</td></tr>
 </table>
 
-<h2 id="authoring">7 · Authoring helpers</h2>
+<h2 id="authoring">11 · Authoring helpers</h2>
 
 <p>Optional builders for constructing documents in code (an agent typically emits JSON directly).
 Action builders return the closed-grammar <code>Action</code> shapes:</p>
@@ -427,7 +541,7 @@ Action builders return the closed-grammar <code>Action</code> shapes:</p>
 <tr><td>consoleSink / formatTrace</td><td><code>consoleSink(out?): TraceSink</code> · <code>formatTrace(t: TraceEvent): string</code>.</td></tr>
 </table>
 
-<h2 id="wire">8 · Wire protocol</h2>
+<h2 id="wire">12 · Protocol reference</h2>
 
 <p>When host and renderer are separated, they exchange five envelope-wrapped messages —
 <code>{ gup: "0.1", type, payload }</code>:</p>
@@ -442,8 +556,9 @@ Action builders return the closed-grammar <code>Action</code> shapes:</p>
 </table>
 
 <div class="callout">Delivery is <strong>protocol + kernel</strong>, not an in-process SDK: the document
-and deltas are portable, language-neutral artifacts, and every provider is a conformance target. Full
-message schemas are in <a href="../03-protocol.md">03-protocol</a>.</div>
+and deltas are portable, language-neutral artifacts, and every provider is a conformance target. The
+five message types above are the whole <strong>GUP render/patch wire contract</strong>; MCP-mounted
+<code>controlface</code> / <code>agentface</code> tool catalogs are a separate outward surface described in §§5-6.</div>
 
 </body>
 </html>
