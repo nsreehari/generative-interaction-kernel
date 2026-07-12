@@ -1,8 +1,7 @@
-// The MCP-over-HTTP transport adapter: proves the agentface projection is reachable over a real
+// The MCP-over-HTTP transport adapter: proves an injected face/projection is reachable over a real
 // loopback socket as JSON-RPC 2.0 — initialize handshake, tool discovery, a tool call, the
 // notification (no-id) 204 path, endpoint advertisement, and CORS preflight. The adapter is pure
-// wire glue over the transport-free `handleMcpMessage` dispatcher, so this exercises the seam, not
-// the tools themselves.
+// wire glue over a transport-free dispatcher, so this exercises the seam, not the tools themselves.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -11,8 +10,8 @@ import { AddressInfo } from "node:net";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { MCP_PROTOCOL_VERSION } from "../../../agentface/ts/src/index";
-import { McpHttpServer } from "../src/index";
+import { createStatelessAgentFaceDispatcher } from "../../../face/src/index";
+import { McpHttpServer, MCP_PROTOCOL_VERSION } from "../src/index";
 
 const fx = (name: string) =>
   JSON.parse(
@@ -35,7 +34,7 @@ function close(server: Server): Promise<void> {
 }
 
 function mount(): Promise<{ baseUrl: string; server: Server }> {
-  const mcp = new McpHttpServer();
+  const mcp = new McpHttpServer({ handler: createStatelessAgentFaceDispatcher().handleMcpMessage });
   const server = createServer(async (req, res) => {
     if (!(await mcp.handle(req, res))) res.writeHead(404).end();
   });
@@ -54,7 +53,7 @@ test("initialize handshake advertises the protocol version and tools capability"
   const res = await rpc(baseUrl, { jsonrpc: "2.0", id: 1, method: "initialize" });
   assert.equal(res.status, 200);
   const reply = (await res.json()) as { result: { protocolVersion: string; capabilities: unknown } };
-  assert.equal(reply.result.protocolVersion, MCP_PROTOCOL_VERSION);
+  assert.equal(reply.result.protocolVersion, "2025-06-18");
   assert.deepEqual(reply.result.capabilities, { tools: {} });
   await close(server);
 });

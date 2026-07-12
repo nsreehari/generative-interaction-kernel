@@ -3,9 +3,10 @@
 // is internal composition; a transport binds to THIS face, never to the internal broker.
 //
 // Two distinct surfaces live here:
-//   - the JSON tool catalog (see ./tools `controlFaceTools`): getState/getTree/emit/checkpoint/
-//     effectsSince as JSON->JSON ops, dispatched over the same MCP dispatcher AgentFace uses. The
-//     methods below are the impls those tools wrap. AgentFace is this catalog filtered to its allowlist.
+//   - the JSON tool catalogs (see ./projections/controlface and ./projections/agentface):
+//     getState/getTree/emit/checkpoint/effectsSince as JSON->JSON ops, dispatched over the same MCP
+//     dispatcher the pure authoring tools use. The methods below are the impls those tools wrap.
+//     AgentFace is the full catalog filtered to its allowlist.
 //   - the render STREAM: `attach` is streaming plumbing for SSE (it takes a live transport and returns
 //     a detach handle), NOT a JSON tool. It implements `TransportBroker` so SSE plugs into the face.
 

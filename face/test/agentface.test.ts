@@ -11,9 +11,10 @@ import { validateCapability } from "../src/capability";
 import { describeInteractions, validateInteraction } from "../src/interaction";
 import { validatePresentation } from "../src/presentation";
 import { validateIntent, intentToEdits } from "../src/intent";
-import { listTools, callTool, handleMcpMessage } from "../src/mcp";
-import { defaultPresentationPlanner } from "../../../interaction/src/index";
-import type { ManifestPayload } from "../../../kernel/src/index";
+import { authoringTools } from "../src/authoring-tools";
+import { createStatelessAgentFaceDispatcher } from "../src/projections/agentface";
+import { defaultPresentationPlanner } from "../../interaction/src/index";
+import type { ManifestPayload } from "../../kernel/src/index";
 
 const manifest: ManifestPayload = {
   version: "0.1",
@@ -163,7 +164,8 @@ test("intent: shape validated; targets checked against interaction; projects to 
 });
 
 test("mcp: registry exposes one tool per method and dispatches", () => {
-  const tools = listTools();
+  const dispatcher = createStatelessAgentFaceDispatcher();
+  const tools = dispatcher.listTools();
   const names = new Set(tools.map((t) => t.name));
   for (const n of [
     "describeCatalog",
@@ -181,25 +183,27 @@ test("mcp: registry exposes one tool per method and dispatches", () => {
   }
   // every tool advertises an object input schema
   assert.ok(tools.every((t) => (t.inputSchema as { type?: string }).type === "object"));
+  assert.equal(authoringTools.length, tools.length);
 
-  const cat = callTool("describeCatalog", { manifest }) as { capabilities: unknown[] };
+  const cat = dispatcher.callTool("describeCatalog", { manifest }) as { capabilities: unknown[] };
   assert.equal(cat.capabilities.length, 2);
-  assert.throws(() => callTool("nope", {}));
+  assert.throws(() => dispatcher.callTool("nope", {}));
 });
 
 test("mcp: JSON-RPC initialize / tools/list / tools/call round trip", () => {
-  const init = handleMcpMessage({ jsonrpc: "2.0", id: 1, method: "initialize" }) as {
+  const dispatcher = createStatelessAgentFaceDispatcher();
+  const init = dispatcher.handleMcpMessage({ jsonrpc: "2.0", id: 1, method: "initialize" }) as {
     result: { protocolVersion: string; capabilities: { tools: unknown } };
   };
   assert.ok(init.result.protocolVersion);
   assert.ok(init.result.capabilities.tools);
 
-  const list = handleMcpMessage({ jsonrpc: "2.0", id: 2, method: "tools/list" }) as {
+  const list = dispatcher.handleMcpMessage({ jsonrpc: "2.0", id: 2, method: "tools/list" }) as {
     result: { tools: unknown[] };
   };
   assert.ok(list.result.tools.length >= 10);
 
-  const call = handleMcpMessage({
+  const call = dispatcher.handleMcpMessage({
     jsonrpc: "2.0",
     id: 3,
     method: "tools/call",
@@ -209,7 +213,9 @@ test("mcp: JSON-RPC initialize / tools/list / tools/call round trip", () => {
   assert.equal(call.result.content[0].type, "text");
 
   // unknown method -> JSON-RPC error; notification (no id) -> no reply
-  const err = handleMcpMessage({ jsonrpc: "2.0", id: 4, method: "bogus" }) as { error: { code: number } };
+  const err = dispatcher.handleMcpMessage({ jsonrpc: "2.0", id: 4, method: "bogus" }) as {
+    error: { code: number };
+  };
   assert.equal(err.error.code, -32601);
-  assert.equal(handleMcpMessage({ jsonrpc: "2.0", method: "notifications/initialized" }), undefined);
+  assert.equal(dispatcher.handleMcpMessage({ jsonrpc: "2.0", method: "notifications/initialized" }), undefined);
 });

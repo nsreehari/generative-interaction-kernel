@@ -2,8 +2,8 @@
 // validation asks "does this document use capabilities correctly?"; this asks "is this capability
 // definition well-formed?". JSON-shaped, transport-free; the C# peer is CapabilityAuthoring.
 
-import { unwrap } from "../../../kernel/src/index";
-import type { CapabilityDescriptor } from "../../../kernel/src/index";
+import { unwrap } from "../../kernel/src/index";
+import type { CapabilityDescriptor } from "../../kernel/src/index";
 
 export interface CapabilityReport {
   ok: boolean;

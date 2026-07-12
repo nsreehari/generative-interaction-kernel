@@ -1,12 +1,12 @@
-// Server-side HTTP binding for the MCP (agent) transport seam. A single route speaks
-// JSON-RPC 2.0 over an injected, transport-free dispatcher (the agentface projection by
-// default). The adapter is pure wire glue — CORS, method routing, body framing — and knows
-// nothing about which tools the face exposes; swapping the `handler` swaps the face. This is
-// the MCP analogue of `SseTransportServer`: `handle()` returns true when it matched the route
-// so a host app can fall through to its own routing.
+// Server-side HTTP binding for the MCP transport seam. A single route speaks JSON-RPC 2.0 over an
+// INJECTED, transport-free dispatcher. The adapter is pure wire glue — CORS, method routing, body
+// framing — and knows nothing about which face/projection it carries; swapping the `handler` swaps
+// the exposed surface. This is the MCP analogue of `SseTransportServer`: `handle()` returns true
+// when it matched the route so a host app can fall through to its own routing.
 
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { handleMcpMessage, MCP_PROTOCOL_VERSION } from "../../../agentface/ts/src/index";
+
+export const MCP_PROTOCOL_VERSION = "2025-06-18";
 
 /** A pure JSON-RPC 2.0 dispatcher: one message in, one reply out (or `undefined` for a notification). */
 export type McpMessageHandler = (
@@ -16,9 +16,9 @@ export type McpMessageHandler = (
 export interface McpHttpServerOptions {
   /** The path the JSON-RPC route mounts at; defaults to `/mcp`. */
   path?: string;
-  /** The face to expose. Defaults to the agentface projection (`handleMcpMessage`). */
+  /** The face/projection to expose. Required: transports do not own capability policy. */
   handler?: McpMessageHandler;
-  /** The protocol version advertised on `GET {path}`; defaults to the agentface MCP revision. */
+  /** The protocol version advertised on `GET {path}`; defaults to the MCP transport revision. */
   protocolVersion?: string;
 }
 
@@ -39,7 +39,10 @@ export class McpHttpServer {
 
   constructor(opts: McpHttpServerOptions = {}) {
     this.path = opts.path ?? "/mcp";
-    this.handler = opts.handler ?? handleMcpMessage;
+    if (!opts.handler) {
+      throw new Error("McpHttpServer requires an injected handler; transports do not choose a face");
+    }
+    this.handler = opts.handler;
     this.protocolVersion = opts.protocolVersion ?? MCP_PROTOCOL_VERSION;
   }
 

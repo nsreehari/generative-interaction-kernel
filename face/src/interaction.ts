@@ -7,7 +7,7 @@ import {
   resolveFacets,
   type InteractionKind,
   type InteractionSpec,
-} from "../../../interaction/src/index";
+} from "../../interaction/src/index";
 
 export interface InteractionCatalogEntry {
   interaction: InteractionKind;

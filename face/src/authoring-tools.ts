@@ -1,8 +1,6 @@
-// AgentFace as an MCP tool catalog: one tool per AgentFace method. These are the agent-safe SUBSET —
-// pure, design-time authoring/validation tools (manifest/document/spec come in as JSON args, so no
-// live kernel is needed). ControlFace's full catalog re-uses this exact list and adds the live
-// runtime tools; AgentFace is that catalog filtered to this allowlist. The JSON-RPC dispatch lives
-// in ./tool-surface — shared by both faces so the projection is literally "filter the tool list".
+// The transport-free tool IMPLEMENTATIONS that do not need a live runtime. These are the pure
+// authoring/validation tools: manifest/document/spec come in as JSON args and JSON comes back out.
+// Projections decide whether these appear in ControlFace, AgentFace, or some other filtered view.
 
 import { describeCatalog, namespaces, effects } from "./catalog";
 import { validateDocument, lint, authorDocument } from "./document";
@@ -10,10 +8,7 @@ import { validateCapability } from "./capability";
 import { describeInteractions, validateInteraction } from "./interaction";
 import { validatePresentation } from "./presentation";
 import { validateIntent, intentToEdits } from "./intent";
-import { createMcpDispatcher, type McpTool } from "./tool-surface";
-
-/** @deprecated Use {@link McpTool}. Retained as an alias for existing imports. */
-export type AgentFaceTool = McpTool;
+import type { McpTool } from "./tool-surface";
 
 const obj = (properties: Record<string, unknown>, required: string[] = []): Record<string, unknown> => ({
   type: "object",
@@ -23,8 +18,7 @@ const obj = (properties: Record<string, unknown>, required: string[] = []): Reco
 });
 const any = { type: "object" } as const;
 
-/** One tool per public AgentFace method. Handlers are the JSON-native library functions verbatim. */
-export const agentFaceTools: McpTool[] = [
+export const authoringTools: McpTool[] = [
   {
     name: "describeCatalog",
     description: "Project a manifest into a discovery catalog (capabilities, namespaces, effects).",
@@ -98,18 +92,3 @@ export const agentFaceTools: McpTool[] = [
     handler: (a) => intentToEdits(a.intent as never),
   },
 ];
-
-/** AgentFace dispatcher over the (pure) tool subset. Same machinery ControlFace uses. */
-const dispatcher = createMcpDispatcher(agentFaceTools, { name: "genui-agentface", version: "0.1" });
-
-/** Tool metadata for `tools/list` (drops the handler). */
-export const listTools = dispatcher.listTools;
-/** Invoke one tool by name. Throws {@link McpToolError} for an unknown tool. */
-export const callTool = dispatcher.callTool;
-/**
- * Handle one MCP JSON-RPC message and return the reply (or `undefined` for a notification). AgentFace
- * tools are all synchronous, so this returns synchronously. Supports `initialize`/`tools/list`/`tools/call`.
- */
-export const handleMcpMessage = dispatcher.handleMcpMessage as (
-  message: unknown
-) => Record<string, unknown> | undefined;

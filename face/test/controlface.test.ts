@@ -17,13 +17,13 @@ import {
   InMemoryStateModel,
   type ResolvedNode,
 } from "../../kernel/src/index";
-import { agentFaceTools } from "../../agentface/ts/src/index";
 import { SseClientTransport } from "../../transports/http-sse/src/index";
 import {
   AGENTFACE_ALLOWLIST,
   ControlFace,
   ControlfaceHost,
   agentFaceProjection,
+  authoringTools,
   controlFaceTools,
   runtimeTools,
 } from "../src/index";
@@ -143,7 +143,7 @@ test("AgentFace is the ControlFace catalog filtered to the allowlist (projection
   // The projection is exactly the catalog filtered to the allowlist.
   assert.deepEqual(projection.sort(), full.filter((n) => AGENTFACE_ALLOWLIST.has(n)).sort());
   // Agents get the pure authoring tools PLUS read-only inspect (getState/getTree)...
-  for (const name of agentFaceTools.map((t) => t.name)) assert.ok(projection.includes(name));
+  for (const name of authoringTools.map((t) => t.name)) assert.ok(projection.includes(name));
   assert.ok(projection.includes("getState") && projection.includes("getTree"));
   // ...but never the live drive/lifecycle tools — those stay control-plane-only.
   for (const name of ["emit", "checkpoint", "effectsSince"]) {
