@@ -4,7 +4,7 @@
 // superset from which the agent-safe AgentFace projection is carved.
 //
 // Read + snapshot only: driving the kernel (emit) broadcasts a patch to every connection, which
-// is inherently a broker concern — so that lives on the ControlfaceHost, not here.
+// is inherently a broker concern — so that lives in the outer transport composition, not here.
 
 import type {
   Checkpoint,
