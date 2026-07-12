@@ -2,8 +2,8 @@
 // operations over a running ControlFace: inspect (getState/getTree), drive (emit), and lifecycle /
 // rollback-adjacent reads (checkpoint/effectsSince).
 
-import type { GupEvent } from "../../kernel/src/index";
-import type { McpTool } from "./tool-surface";
+import type { GupEvent } from "../../../kernel/src/index";
+import type { McpTool } from "../tool-surface";
 import type { ControlFace } from "./controlface";
 
 const obj = (properties: Record<string, unknown>, required: string[] = []): Record<string, unknown> => ({

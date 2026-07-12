@@ -8,7 +8,7 @@ import {
   resolveFacets,
   type InteractionSpec,
   type PresentationEdits,
-} from "../../interaction/src/index";
+} from "../../../interaction/src/index";
 
 /** The agent's intent context. Priorities lead (most important first); constraints are advisory. */
 export interface IntentSpec {

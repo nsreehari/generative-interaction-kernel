@@ -3,8 +3,8 @@
 // namespaces, and the external effect handlers. Nothing capability-specific is hardcoded; the
 // manifest handed in is the single source of truth.
 
-import { unwrap } from "../../kernel/src/index";
-import type { CapabilityDescriptor, ManifestPayload } from "../../kernel/src/index";
+import { unwrap } from "../../../kernel/src/index";
+import type { CapabilityDescriptor, ManifestPayload } from "../../../kernel/src/index";
 
 export interface CatalogCapability extends CapabilityDescriptor {
   id: string;

@@ -2,9 +2,9 @@
 // implement anything separately; it is just an allowlisted projection of the full catalog.
 
 import { createMcpDispatcher, type McpDispatcher, type McpTool } from "../tool-surface";
-import { authoringTools } from "../authoring-tools";
+import { authoringTools } from "../pure/authoring-tools";
 import { controlFaceTools } from "./controlface";
-import type { ControlFace } from "../controlface";
+import type { ControlFace } from "../live/controlface";
 
 const AGENT_SAFE_RUNTIME = ["getState", "getTree"] as const;
 

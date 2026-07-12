@@ -12,7 +12,7 @@ import type {
   Kernel,
   RecordedEffect,
   ResolvedNode,
-} from "../../kernel/src/index";
+} from "../../../kernel/src/index";
 
 /** The full current state, one JSON record keyed by namespace. */
 export function getState(kernel: Kernel): Record<string, Json> {

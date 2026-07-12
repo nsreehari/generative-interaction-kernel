@@ -11,7 +11,7 @@ import {
   interactionTaxonomy,
   type PresentationSpec,
   type InteractionKind,
-} from "../../interaction/src/index";
+} from "../../../interaction/src/index";
 
 export interface PresentationReport {
   ok: boolean;
