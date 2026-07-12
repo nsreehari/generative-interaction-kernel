@@ -9,6 +9,5 @@ export * from "./authoring-tools";
 export * from "./runtime-tools";
 export * from "./ops";
 export * from "./controlface";
-export * from "./host";
 export * from "./projections/agentface";
 export * from "./projections/controlface";

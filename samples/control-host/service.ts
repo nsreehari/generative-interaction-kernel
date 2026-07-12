@@ -1,9 +1,9 @@
-// A NON-UI launcher for the ControlFace host — live drive + agent surface, co-hosted.
+// A NON-UI launcher for the outer transport composition over a live ControlFace.
 //
-// It binds a bundle to a kernel and mounts BOTH faces on one server: the SSE render/drive
-// channel (`/gup`) for UI/API clients and the agent MCP channel (`/mcp`, the AgentFace
-// projection). A background ticker drives the kernel from the server side via `host.emit()`,
-// so any connected render client sees live patches — proof the control-plane broadcasts.
+// It binds a bundle to a kernel, builds one live ControlFace, then mounts transports around two
+// projections of that same face: SSE `/gup` for the render stream, MCP `/mcp` for the agent-safe
+// projection, and MCP `/mcp-control` for the full control-plane catalog. The sample is intentionally
+// thin: transports carry projections; they do not own capability policy.
 //
 // Run:  npx tsx genui-platform/samples/control-host/service.ts
 //   or:  npm run dev:controlface
@@ -17,8 +17,10 @@
 import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { ControlFace, createAgentFaceDispatcher, createControlFaceDispatcher } from "../../face/src/index";
 import { InMemoryStateModel } from "../../kernel/src/index";
-import { ControlfaceHost } from "../../face/src/index";
+import { SseTransportServer } from "../../transports/http-sse/src/index";
+import { McpHttpServer } from "../../transports/mcp-http/src/index";
 
 const fx = (name: string) =>
   JSON.parse(
@@ -34,13 +36,29 @@ state.apply([
   { op: "set", path: "computed_values.total", value: 150 },
 ]);
 
-const host = new ControlfaceHost(manifest, document, { state });
+const controlface = new ControlFace(manifest, document, { state });
+const sse = new SseTransportServer(controlface, { path: "/gup" });
+const agentMcp = new McpHttpServer({
+  path: "/mcp",
+  handler: createAgentFaceDispatcher(controlface).handleMcpMessage,
+});
+const controlMcp = new McpHttpServer({
+  path: "/mcp-control",
+  handler: createControlFaceDispatcher(controlface).handleMcpMessage,
+});
 
 const port = Number(process.env.GENUI_CONTROLFACE_PORT || 8788);
 const hostName = process.env.GENUI_CONTROLFACE_HOST || "127.0.0.1";
 
 const server = createServer(async (req, res) => {
-  if (await host.handle(req, res)) return;
+  if (await sse.handle(req, res)) return;
+  if (await agentMcp.handle(req, res)) return;
+  if (await controlMcp.handle(req, res)) return;
+  if ((req.url ?? "") === "/healthz") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
   res.writeHead(404).end();
 });
 
@@ -48,13 +66,14 @@ server.listen(port, hostName, () => {
   console.log(`[genui-controlface] listening on http://${hostName}:${port}`);
   console.log(`  render/drive (SSE): GET  http://${hostName}:${port}/gup/stream`);
   console.log(`  agent (MCP):        POST http://${hostName}:${port}/mcp`);
+  console.log(`  control (MCP):      POST http://${hostName}:${port}/mcp-control`);
 });
 
 // Server-side live drive: toggle the approval selection so connected clients see patches flow.
 let selected = false;
 const ticker = setInterval(() => {
   selected = !selected;
-  void host.emit({
+  void controlface.emit({
     node: "table-orders",
     name: "rowSelect",
     payload: selected ? { id: "order-42" } : {},
@@ -63,7 +82,7 @@ const ticker = setInterval(() => {
 
 const shutdown = () => {
   clearInterval(ticker);
-  host.stop();
+  controlface.stop();
   server.close(() => process.exit(0));
 };
 process.once("SIGINT", shutdown);

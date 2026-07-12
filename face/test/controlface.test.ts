@@ -1,13 +1,14 @@
-// The ControlFace host co-hosts the faces on ONE live kernel: the UI/API render stream (SSE `/gup`)
-// and two MCP channels over one tool catalog — `/mcp` (the AgentFace subset) and `/mcp-control` (the
-// full control-plane catalog with the live runtime tools). These prove a render client and MCP
-// clients talk to the same runtime over one server, that the AgentFace projection is literally the
-// catalog filtered to an allowlist, and that a control-plane `emit` tool/call drives the kernel and
-// broadcasts its patch to the connected render client (live drive), not just a silent kernel poke.
+// The outer host composition co-hosts the face projections on ONE live kernel: the UI/API render
+// stream (SSE `/gup`) and two MCP channels over one tool catalog — `/mcp` (the AgentFace subset)
+// and `/mcp-control` (the full control-plane catalog with the live runtime tools). These prove a
+// render client and MCP clients talk to the same runtime over one server, that the AgentFace
+// projection is literally the catalog filtered to an allowlist, and that a control-plane `emit`
+// tool/call drives the kernel and broadcasts its patch to the connected render client (live drive),
+// not just a silent kernel poke.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createServer, type Server } from "node:http";
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { AddressInfo } from "node:net";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -17,13 +18,16 @@ import {
   InMemoryStateModel,
   type ResolvedNode,
 } from "../../kernel/src/index";
+import { McpHttpServer } from "../../transports/mcp-http/src/index";
 import { SseClientTransport } from "../../transports/http-sse/src/index";
+import { SseTransportServer } from "../../transports/http-sse/src/index";
 import {
   AGENTFACE_ALLOWLIST,
   ControlFace,
-  ControlfaceHost,
   agentFaceProjection,
   authoringTools,
+  createAgentFaceDispatcher,
+  createControlFaceDispatcher,
   controlFaceTools,
   runtimeTools,
 } from "../src/index";
@@ -76,7 +80,44 @@ function close(server: Server): Promise<void> {
   return new Promise((resolve) => server.close(() => resolve()));
 }
 
-function mount(host: ControlfaceHost): Promise<{ baseUrl: string; server: Server }> {
+interface MountedRuntime {
+  controlface: ControlFace;
+  handle(req: IncomingMessage, res: ServerResponse): Promise<boolean>;
+  stop(): void;
+}
+
+function createMountedRuntime(state = seededState()): MountedRuntime {
+  const controlface = new ControlFace(manifest, document, { state });
+  const sse = new SseTransportServer(controlface, { path: "/gup" });
+  const mcp = new McpHttpServer({
+    path: "/mcp",
+    handler: createAgentFaceDispatcher(controlface).handleMcpMessage,
+  });
+  const mcpControl = new McpHttpServer({
+    path: "/mcp-control",
+    handler: createControlFaceDispatcher(controlface).handleMcpMessage,
+  });
+
+  return {
+    controlface,
+    async handle(req, res) {
+      if (await sse.handle(req, res)) return true;
+      if (await mcp.handle(req, res)) return true;
+      if (await mcpControl.handle(req, res)) return true;
+      if ((req.url ?? "") === "/healthz") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: true }));
+        return true;
+      }
+      return false;
+    },
+    stop() {
+      controlface.stop();
+    },
+  };
+}
+
+function mount(host: MountedRuntime): Promise<{ baseUrl: string; server: Server }> {
   const server = createServer(async (req, res) => {
     if (!(await host.handle(req, res))) res.writeHead(404).end();
   });
@@ -84,7 +125,7 @@ function mount(host: ControlfaceHost): Promise<{ baseUrl: string; server: Server
 }
 
 test("one host serves an SSE render client and an MCP agent client against the same runtime", async () => {
-  const host = new ControlfaceHost(manifest, document, { state: seededState() });
+  const host = createMountedRuntime();
   const { baseUrl, server } = await mount(host);
 
   // UI/API face: a render client onboards over SSE and sees the live tree.
@@ -108,7 +149,7 @@ test("one host serves an SSE render client and an MCP agent client against the s
 });
 
 test("in-process controlface emit() broadcasts a patch to the connected render client", async () => {
-  const host = new ControlfaceHost(manifest, document, { state: seededState() });
+  const host = createMountedRuntime();
   const { baseUrl, server } = await mount(host);
 
   const client = new GenUIClient(new SseClientTransport(baseUrl));
@@ -117,7 +158,7 @@ test("in-process controlface emit() broadcasts a patch to the connected render c
   assert.equal(find(client.getTree(), "btn-approve")?.visible, false);
 
   // Drive from the server side (UI/API face), not the client — the patch must still reach the client.
-  const patch = await host.emit({ node: "table-orders", name: "rowSelect", payload: { id: "order-42" } });
+  const patch = await host.controlface.emit({ node: "table-orders", name: "rowSelect", payload: { id: "order-42" } });
   assert.equal(patch.rev, 1);
   await waitFor(() => find(client.getTree(), "btn-approve")?.visible === true);
   assert.equal(client.getRev(), 1);
@@ -128,10 +169,10 @@ test("in-process controlface emit() broadcasts a patch to the connected render c
 });
 
 test("controlface read ops observe live state without a transport", async () => {
-  const host = new ControlfaceHost(manifest, document, { state: seededState() });
-  const computed = host.getState().computed_values as { total?: number };
+  const host = createMountedRuntime();
+  const computed = host.controlface.getState().computed_values as { total?: number };
   assert.equal(computed.total, 150);
-  assert.equal(find(await host.getTree(), "metric-total")?.props.value, 150);
+  assert.equal(find(await host.controlface.getTree(), "metric-total")?.props.value, 150);
   host.stop();
 });
 
@@ -157,7 +198,7 @@ test("AgentFace is the ControlFace catalog filtered to the allowlist (projection
 });
 
 test("the /mcp agent channel serves authoring + read-only inspect; /mcp-control adds drive/lifecycle", async () => {
-  const host = new ControlfaceHost(manifest, document, { state: seededState() });
+  const host = createMountedRuntime();
   const { baseUrl, server } = await mount(host);
 
   const list = async (path: string): Promise<Set<string>> => {
@@ -186,7 +227,7 @@ test("the /mcp agent channel serves authoring + read-only inspect; /mcp-control 
 });
 
 test("an agent can read live state over /mcp getState without any drive privilege", async () => {
-  const host = new ControlfaceHost(manifest, document, { state: seededState() });
+  const host = createMountedRuntime();
   const { baseUrl, server } = await mount(host);
 
   const res = await fetch(`${baseUrl}/mcp`, {
@@ -209,7 +250,7 @@ test("an agent can read live state over /mcp getState without any drive privileg
 });
 
 test("a control-plane MCP tools/call drives the live kernel and broadcasts to render clients", async () => {
-  const host = new ControlfaceHost(manifest, document, { state: seededState() });
+  const host = createMountedRuntime();
   const { baseUrl, server } = await mount(host);
 
   const client = new GenUIClient(new SseClientTransport(baseUrl));
