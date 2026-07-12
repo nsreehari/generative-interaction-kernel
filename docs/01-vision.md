@@ -13,6 +13,16 @@ data, which model, which framework) differs.
 Build a **generic platform layer**: a kernel that provides the reusable generative-UI machinery,
 and takes the domain- and framework-specific parts as **declarative, pluggable providers**.
 
+At the runtime edge, that generic platform now has four distinct layers:
+
+- **Kernel / engine** — the embeddable execution core.
+- **Face** — the callable surface around pure helpers and/or a live kernel.
+- **Projection** — a filtered policy-shaped view of that face.
+- **Transport** — the wire carrier for a chosen projection.
+
+This matters because not every product should consume the same layer. Some embed the kernel and own
+runtime execution locally; others talk to a face projection over a transport and remain clients.
+
 A developer instantiates a concrete platform by declaring:
 
 > "This is my DSL (component/spec grammar). This is my registry (component set). This is my data
@@ -50,6 +60,21 @@ those ingredients into contracts** and lets them be supplied, rather than baked 
 | Resolution order + fallback | Orchestrator (LLM / back end) |
 | Tool-shape generation | Transport / storage adapter |
 | Observability fan-out | — |
+
+## The runtime edge after the kernel
+
+The kernel is the base, not the whole stack:
+
+- A **face** packages capabilities into a callable tool/API surface.
+- A **projection** filters that face for a caller class (for example, full control-plane vs agent-safe subset).
+- A **transport** carries that chosen projection across HTTP/SSE/MCP or some other boundary.
+
+So the platform does not stop at "kernel + providers" in practice. A complete host is usually:
+
+`kernel -> face -> projection -> transport`
+
+The distinction is architectural, not cosmetic: capability policy belongs at the projection layer,
+not in the transport.
 
 ## Motivating capability gaps (why a platform, not another app)
 
