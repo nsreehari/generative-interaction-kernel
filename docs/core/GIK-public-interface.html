@@ -199,6 +199,13 @@ The language-neutral <em>wire</em> contract (the five GUP messages) lives in
 <a href="../02-architecture.md">02-architecture</a>.
 </div>
 
+<div class="callout"><strong>Which layer do I consume?</strong> The <strong>kernel</strong> is the embeddable
+execution engine. A <strong>face</strong> sits one layer above it and packages pure authoring helpers and/or
+live runtime operations into a callable tool surface. A <strong>projection</strong> is a filtered view of that
+face (for example, a full control-plane catalog vs an agent-safe subset). A <strong>transport</strong> carries a
+chosen projection over HTTP/SSE/MCP. Consume the kernel when you want runtime authority in-process;
+consume a face projection when you want a bounded surface over an already-running runtime.</div>
+
 <div class="toc">
 <a href="#quickstart">1 · Quick start</a><br>
 <a href="#kernel">2 · The Kernel class</a><br>

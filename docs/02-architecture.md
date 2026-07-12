@@ -92,6 +92,84 @@ kernel** — it is the **Manifest**. Interaction *shape* stays in the kernel; in
 | **TransportProvider** | stream/batch documents + state deltas | ingest and propagate |
 | **ObservabilitySink** | receive trace events | emit resolve/fallback/action/transition traces |
 
+## Kernel, face, projection, transport
+
+One source of confusion was treating all outer layers as if they were the kernel. They are not.
+The runtime stack has four distinct layers:
+
+| Layer | Owns | Typical examples |
+|---|---|---|
+| **Kernel / engine** | execution semantics | `resolve`, `dispatch`, `checkpoint`, `effectsSince` |
+| **Face** | callable capability surface around the kernel and related helpers | `validateDocument`, `getState`, `emit` |
+| **Projection** | a policy-shaped view of a face | full control-plane view vs filtered agent-safe view |
+| **Transport** | how a chosen projection crosses a boundary | MCP over HTTP, SSE render stream |
+
+### Kernel
+
+The kernel is the **embeddable execution core**. It owns the runtime laws: interpreting the closed
+grammar, reducing events, resolving the tree, emitting patches, and journaling effects. A product
+that wants local authority over runtime semantics embeds the kernel.
+
+### Face
+
+A face is a **tool/API surface built around capabilities**. Some face operations are backed by an
+embedded live kernel (`getState`, `getTree`, `emit`, `checkpoint`, `effectsSince`); others are pure
+library functions over JSON inputs (`describeCatalog`, `validateDocument`, `validatePresentation`).
+
+That makes a pure/live split inside `face/` useful:
+
+- **Pure face part** — authoring/validation tools that need no running kernel.
+- **Live face part** — inspect/drive tools that wrap a running kernel instance.
+
+The current package already reflects this split logically: pure tool implementations and runtime
+tool implementations are separate catalogs even though they share one face package.
+
+### Projection
+
+A projection is a **filtered view** of the full face. It implements no separate runtime logic. It
+is policy over the face:
+
+- **ControlFace projection** — full catalog.
+- **AgentFace projection** — allowlisted subset.
+
+So `agentface` is not a second engine and not a sibling runtime. It is `controlface` filtered.
+
+### Transport
+
+A transport carries a chosen projection across a boundary. It does **not** decide what the caller is
+allowed to do. It owns framing, headers, routing, serialization, sockets/HTTP mechanics — nothing
+about capability policy.
+
+- **MCP transport** carries a request/response tool surface.
+- **SSE transport** carries the live render stream and client events.
+
+The transport is therefore downstream of the face boundary, not the owner of it.
+
+### Sample hosts
+
+Samples are the **outer composition** layer. They pick:
+
+1. whether to embed a live kernel,
+2. which face/projection to expose,
+3. which transport to mount it on.
+
+This is why the thin sample host is the right place to say things like "serve the agent-safe MCP
+projection at `/mcp` and the full control projection at `/mcp-control` while the SSE render stream
+is mounted at `/gup`."
+
+### When to consume which layer
+
+| Need | Consume |
+|---|---|
+| You want local runtime authority and deterministic execution in-process | **Kernel** |
+| You want a bounded tool surface over a running runtime | **Face projection** |
+| You need to cross a process/network boundary | **Transport carrying a projection** |
+
+For a product such as `demo-boards-frontend`, "migrate to the GIK kernel" means deciding whether
+the frontend becomes a **runtime authority** (embed the kernel) or merely a **runtime client**
+(consume a face/projection over a transport). That is not a minor import choice; it is an ownership
+choice about where execution semantics live.
+
 ## Kernel invariants
 
 1. **Closed grammar** — only the six edge types and six action families; providers extend
