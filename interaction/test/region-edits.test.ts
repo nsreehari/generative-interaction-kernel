@@ -4,7 +4,7 @@
 // same way the drag/select UI does. Order transforms take the current display order and return the
 // SAME reference on a no-op.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import {

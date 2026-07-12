@@ -4,7 +4,7 @@
 // effect arm only — `externals.projectionViews` are provider imports resolved against the floor/embed
 // registries, not against `bundle.projectionViews`, so they are not checked here.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import { assertExternalsSatisfied, bundleFromJson, loadBundle } from "../src/primitives";

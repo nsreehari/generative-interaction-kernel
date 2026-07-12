@@ -2,7 +2,7 @@
 // A SharedContextStore notifies on write; the host re-`resync()`s the reader so its tree catches up,
 // even though the reader dispatched nothing itself. This is the adapter runtime under a React Context.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import { GenUIController, SharedContextStore } from "../src/index";

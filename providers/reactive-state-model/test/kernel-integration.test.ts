@@ -9,7 +9,7 @@
 // reference them as plain names. Nested/dotted namespaced paths need scope-aliasing and are a
 // separate increment (tracked in ADR-0033 / session notes).
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import {

@@ -2,7 +2,7 @@
 // effect — the kernel runs `run` when `when`'s value changes (never on the initial seed), folding into
 // the same settle/depth machinery as event handlers and orchestrator effects.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import {

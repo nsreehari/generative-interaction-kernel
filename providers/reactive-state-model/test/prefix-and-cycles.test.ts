@@ -4,7 +4,7 @@
 //   a child cell (`a.x`), and writing a child (`a.x`) must retrigger a dependent on the parent (`a`).
 // - A cyclic derivation (`a -> b -> a`) is rejected at construction, before it can spin the graph.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import { JsonataExpressionProvider } from "../../../kernel/src/index";

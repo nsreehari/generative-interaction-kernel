@@ -2,7 +2,7 @@
 // The inverse of authoring — a portability primitive (export a document + its generated manifest and
 // another host can load it). A generated manifest must be able to drive the very document it came from.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import {

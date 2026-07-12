@@ -2,7 +2,7 @@
 // read/assign/derive to that shared store, so independently-mounted kernels share one source of
 // truth. No new action families — only which store a path resolves against changes.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import {

@@ -1,7 +1,7 @@
 // ADR-0020: ObservabilitySink reference sinks + the fixed trace points. Verifies the kernel
 // emits traces at the documented points and that the reference sinks collect/format them.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import {

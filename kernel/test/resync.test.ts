@@ -2,7 +2,7 @@
 // each connection — full snapshot for a fresh/late client, incremental replay for a
 // client resuming from a known rev. A disconnected client catches up on reconnect.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

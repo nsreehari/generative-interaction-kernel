@@ -4,7 +4,7 @@
 // resolved-tree assertions. A future kernel (e.g. a C# core) ships its own runner over the
 // same JSON cases to prove reducer equivalence.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";

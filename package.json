@@ -8,12 +8,12 @@
     "conformance": "node schemas/validate.mjs",
     "test:jsonata": "node conformance/jsonata/generate.mjs --check",
     "jsonata:regen": "node conformance/jsonata/generate.mjs",
-    "test:kernel": "node --import tsx --test kernel/test/**/*.test.ts",
-    "test:react": "node --import tsx --test adapters/react/test/**/*.test.tsx",
-    "test:interaction": "node --import tsx --test interaction/test/**/*.test.ts",
+    "test:kernel": "vitest run --project kernel",
+    "test:react": "vitest run --project react",
+    "test:interaction": "vitest run --project interaction",
     "test:face": "vitest run --project face",
-    "test:providers": "node --import tsx --test providers/**/test/**/*.test.ts",
-    "test:sse": "node --import tsx --test transports/http-sse/test/**/*.test.ts",
+    "test:providers": "vitest run --project providers",
+    "test:sse": "vitest run --project sse",
     "test:mcp": "vitest run --project mcp",
     "test:vitest": "vitest run",
     "dev:workbench": "vite samples/apps/host --open /?bundle=workbench",
@@ -25,7 +25,7 @@
     "dev:console": "npm run dev:host",
     "build:console": "npm run build:host",
     "typecheck": "tsc -p kernel/tsconfig.json --noEmit && tsc -p adapters/react/tsconfig.json --noEmit && tsc -p interaction/tsconfig.json --noEmit && tsc -p face/tsconfig.json --noEmit && tsc -p transports/http-sse/tsconfig.json --noEmit && tsc -p transports/mcp-http/tsconfig.json --noEmit && tsc -p samples/apps/host/tsconfig.json --noEmit && tsc -p samples/backend-host/tsconfig.json --noEmit && tsc -p samples/agent-host/tsconfig.json --noEmit && tsc -p samples/control-host/tsconfig.json --noEmit && tsc -p providers/tsconfig.json --noEmit",
-    "test": "npm run conformance && npm run typecheck && npm run test:jsonata && npm run test:kernel && npm run test:react && npm run test:interaction && npm run test:vitest && npm run test:providers && npm run test:sse"
+    "test": "npm run conformance && npm run typecheck && npm run test:jsonata && npm run test:vitest"
   },
   "dependencies": {
     "@fluentui/react-components": "^9.74.3",

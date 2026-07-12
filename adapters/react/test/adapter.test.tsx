@@ -1,7 +1,7 @@
 // Phase 2 React adapter tests: the resolved tree renders, the fallback path works,
 // events wire back to the controller, and the kernel loop flips a gated node live.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

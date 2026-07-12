@@ -2,7 +2,7 @@
 // a manifest's `imports` — nothing is ambient. These tests pin the resolver's contract: explicit
 // alias binding, provider selection, optional `use` whitelisting, and graceful fallback.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { createElement } from "react";
 import type { ProjectionViewImport } from "../../../kernel/src/types";

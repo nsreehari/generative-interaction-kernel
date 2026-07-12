@@ -3,7 +3,7 @@
 // node props violate the manifest's per-capability props contract. A prop bound dynamically by a
 // `read`/`readExpr` edge is exempt from `required` (it lands at resolve time, not authoring time).
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import { Kernel, authorDocument, node, envelope, ValidationError } from "../src/index";

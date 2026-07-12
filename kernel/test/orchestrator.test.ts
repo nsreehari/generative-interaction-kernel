@@ -3,7 +3,7 @@
 // follow-up events) settle within the same dispatch. Async data is modeled as
 // machine states (idle -> loading -> ready).
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import { Kernel } from "../src/index";

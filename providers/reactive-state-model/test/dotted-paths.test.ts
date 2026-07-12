@@ -2,7 +2,7 @@
 // correctly because the derive expression is evaluated against the FULL snapshot (kernel-reducer
 // semantics), so JSONata navigates dotted paths natively — no scope-aliasing or expr rewriting.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import { JsonataExpressionProvider } from "../../../kernel/src/index";

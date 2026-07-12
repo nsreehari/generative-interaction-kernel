@@ -1,7 +1,7 @@
 // StepOrchestrator (ADR-0033 item 1): the vendored StepMachine fulfilling a document's `invoke`
 // effect — branching, retry, and end-to-end through the real Kernel with zero imperative glue.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import {
