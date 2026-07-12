@@ -8,7 +8,7 @@ import { validateCapability } from "./capability";
 import { describeInteractions, validateInteraction } from "./interaction";
 import { validatePresentation } from "./presentation";
 import { validateIntent, intentToEdits } from "./intent";
-import type { McpTool } from "./tool-surface";
+import type { McpTool } from "../tool-surface";
 
 const obj = (properties: Record<string, unknown>, required: string[] = []): Record<string, unknown> => ({
   type: "object",

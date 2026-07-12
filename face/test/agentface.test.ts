@@ -5,13 +5,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { describeCatalog, namespaces, effects } from "../src/catalog";
-import { validateDocument, lint, authorDocument } from "../src/document";
-import { validateCapability } from "../src/capability";
-import { describeInteractions, validateInteraction } from "../src/interaction";
-import { validatePresentation } from "../src/presentation";
-import { validateIntent, intentToEdits } from "../src/intent";
-import { authoringTools } from "../src/authoring-tools";
+import { describeCatalog, namespaces, effects } from "../src/pure/catalog";
+import { validateDocument, lint, authorDocument } from "../src/pure/document";
+import { validateCapability } from "../src/pure/capability";
+import { describeInteractions, validateInteraction } from "../src/pure/interaction";
+import { validatePresentation } from "../src/pure/presentation";
+import { validateIntent, intentToEdits } from "../src/pure/intent";
+import { authoringTools } from "../src/pure/authoring-tools";
 import { createStatelessAgentFaceDispatcher } from "../src/projections/agentface";
 import { defaultPresentationPlanner } from "../../interaction/src/index";
 import type { ManifestPayload } from "../../kernel/src/index";

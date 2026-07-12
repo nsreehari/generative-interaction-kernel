@@ -25,7 +25,7 @@ import {
   type StateModel,
   type TransportBroker,
   type TransportProvider,
-} from "../../kernel/src/index";
+} from "../../../kernel/src/index";
 import { checkpoint, effectsSince, getState, getTree } from "./ops";
 
 export interface ControlFaceOptions {

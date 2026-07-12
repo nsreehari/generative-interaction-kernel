@@ -10,8 +10,8 @@ import {
   unwrap,
   validateDocumentMessage,
   ValidationError,
-} from "../../kernel/src/index";
-import type { DocumentPayload, LintWarning, ManifestPayload } from "../../kernel/src/index";
+} from "../../../kernel/src/index";
+import type { DocumentPayload, LintWarning, ManifestPayload } from "../../../kernel/src/index";
 
 export interface DocumentReport {
   ok: boolean;
