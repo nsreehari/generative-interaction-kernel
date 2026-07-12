@@ -6,7 +6,7 @@
 //   spec + ctx + binding  --compileInteraction/lowerToDocument-->  UI DSL document
 //   document  -->  Kernel  -->  GenUIController  -->  (React renders it live)
 //
-// Slice 1 keeps the guest *in-process* (GenUIController); the transport-backed GenUIClient seam
+// Slice 1 keeps the guest *in-process* (GenUIController); the transport-backed GIKClient seam
 // is introduced in the agent slice, where out-of-process authoring actually needs it.
 
 import {

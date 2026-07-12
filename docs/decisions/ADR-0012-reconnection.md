@@ -14,7 +14,7 @@ was handled, and open item #7 still listed reconnection/replay.
 ## Decision
 
 Make `KernelTransportHost` a **broker** with a bounded **patch log**, and treat reconnection as a
-transport concern *below* the closed five-message GUP protocol (no new message type):
+transport concern *below* the closed five-message GIK protocol (no new message type):
 
 - The host **attaches** any number of connections and **broadcasts** each dispatch patch to all of
   them. Inbound `event`s are still dispatched serially through one queue, so `rev` stays monotonic and
@@ -28,16 +28,16 @@ transport concern *below* the closed five-message GUP protocol (no new message t
     `manifest → document → snapshotPatch()` (the complete current state at the current rev).
 - `Kernel.snapshotPatch()` returns the full state at the *current* rev **without** re-seeding machine
   states (unlike `baseline()`/`init()`), so mid-session re-onboarding never clobbers live state.
-- The client supports **reconnection**: `GenUIClient.rebind(transport)` re-points it at a new
+- The client supports **reconnection**: `GIKClient.rebind(transport)` re-points it at a new
   transport while keeping its replica (so it can resume). Patch application is **idempotent** (patches
   at or below the current rev are ignored), and a received `manifest` resets the rev so a full resync
   always applies.
 
 ## Alternatives considered
 
-- **Add a `hello`/`resume` GUP message.** Rejected: it would open the closed five-message protocol for
+- **Add a `hello`/`resume` GIK message.** Rejected: it would open the closed five-message protocol for
   a concern that is purely about connection lifecycle. Reconnection is orchestrated by the host/transport
-  layer beneath GUP; the client conveys its `rev` through the transport (e.g. an SSE query param), not
+  layer beneath GIK; the client conveys its `rev` through the transport (e.g. an SSE query param), not
   a document-level message.
 - **Always full-resync on reconnect (no log).** Rejected as the *only* option: correct but wasteful
   for large state and frequent reconnects. The log makes incremental replay the common path and full
@@ -54,7 +54,7 @@ transport concern *below* the closed five-message GUP protocol (no new message t
 - A dropped client reconnects and catches up with a minimal delta replay; a late joiner full-syncs to
   current state — both verified headlessly (resume replays only the missing patch; a late client sees
   the gate already open from an earlier selection).
-- The closed protocol is preserved: reconnection added no GUP message, only host/transport
+- The closed protocol is preserved: reconnection added no GIK message, only host/transport
   orchestration and client-side idempotency.
 - Open surface remaining: log persistence/compaction across host restarts, and conveying `fromRev`
   over a concrete network transport (SSE/WebSocket) — the seam is ready for it.

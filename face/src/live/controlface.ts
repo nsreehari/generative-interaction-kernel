@@ -1,5 +1,5 @@
 // ControlFace: the render/drive + control-plane FACE over a live bundle, and the boundary a render
-// transport (SSE) binds to. Everything behind it — kernel, reducer, interpreter, broker, GUP codec —
+// transport (SSE) binds to. Everything behind it — kernel, reducer, interpreter, broker, GIK codec —
 // is internal composition; a transport binds to THIS face, never to the internal broker.
 //
 // Two distinct surfaces live here:
@@ -17,7 +17,7 @@ import {
   type Checkpoint,
   type DocumentPayload,
   type Enveloped,
-  type GupEvent,
+  type GIKEvent,
   type Json,
   type ManifestPayload,
   type Orchestrator,
@@ -69,7 +69,7 @@ export class ControlFace implements TransportBroker {
   }
 
   /** Drive the kernel and broadcast the patch to every connected render client. */
-  emit(event: GupEvent): Promise<Patch> {
+  emit(event: GIKEvent): Promise<Patch> {
     return this.broker.dispatch(event);
   }
 

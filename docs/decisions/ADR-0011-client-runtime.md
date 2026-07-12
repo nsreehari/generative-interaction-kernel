@@ -22,7 +22,7 @@ Split the runtime cleanly across the wire and add a reference client:
   runs the *pure, read-only* interpreter (`resolveNode`) against a **local state replica**; the host
   owns the reducer and all writes. Reads are safe to duplicate (pure); writes are not, so they stay
   singular and authoritative on the host — preserving validate-before-commit and the pure-reducer law.
-- **`GenUIClient`** (`kernel/client.ts`) consumes `manifest` (→ builds its `CapabilityRegistry` and an
+- **`GIKClient`** (`kernel/client.ts`) consumes `manifest` (→ builds its `CapabilityRegistry` and an
   empty replica for the declared namespaces), `document` (→ the node tree to interpret), and each
   `patch` (→ applied to the replica). After document/patch it re-resolves and notifies subscribers.
   It emits `event`s back over the transport and never references the kernel.
@@ -33,7 +33,7 @@ Split the runtime cleanly across the wire and add a reference client:
   (shared store, no replication needed).
 
 The renderer stays a pure `event`-emitter / `patch`-consumer (ADR-0006): it binds to
-`GenUIClient.getTree()`/`subscribe()`/`emit()` exactly as it binds to the in-process controller.
+`GIKClient.getTree()`/`subscribe()`/`emit()` exactly as it binds to the in-process controller.
 
 ## Alternatives considered
 
@@ -46,19 +46,19 @@ The renderer stays a pure `event`-emitter / `patch`-consumer (ADR-0006): it bind
   to duplicate; writes are not.
 - **Keep the machine-only `init()` patch as the baseline.** Rejected: a remote client would silently
   miss seeded/fetched state. A full-snapshot baseline is the minimum correct initial sync.
-- **Put `GenUIClient` in the React adapter.** Rejected: it has zero framework dependencies (only the
+- **Put `GIKClient` in the React adapter.** Rejected: it has zero framework dependencies (only the
   interpreter + providers + transport). It is the reference *client half of the protocol*; a React
   binding over it is a thin follow-on.
 
 ## Consequences
 
-- The protocol drives a renderer end to end over a boundary: a `GenUIClient` reconstructs full state
+- The protocol drives a renderer end to end over a boundary: a `GIKClient` reconstructs full state
   from the baseline, paints the resolved tree, and round-trips a `rowSelect` event into a re-render
   with the gate opening — all headless, no kernel reference on the client.
 - The read/write split is now explicit and enforced by placement: interpret + replica on the client,
   reducer + authority on the host.
 - `baseline()` gives a clean initial-sync contract; incremental `patch`es keep the replica current.
 - Open surface remaining: replica resync/replay from a known `rev` after reconnect, and patch
-  coalescing for large state. (The thin React binding over `GenUIClient` has since landed — the same
+  coalescing for large state. (The thin React binding over `GIKClient` has since landed — the same
   `GenUIRoot`/`useGenUI` accept either the in-process controller or the client via a structural
   `GenUISource`.)

@@ -90,7 +90,7 @@ export function bundleManifest(opts: BundleManifestOptions): Enveloped<ManifestP
     Object.entries(PRIMITIVE_CAPABILITIES).map(([k, v]) => [`${FLOOR_ALIAS}:${k}`, v])
   );
   return {
-    gup: "0.1",
+    gik: "0.1",
     type: "manifest",
     payload: {
       version: opts.version,

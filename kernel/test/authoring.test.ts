@@ -1,4 +1,4 @@
-// Phase 7: the agent-authoring path. An agent composes a GUP document from manifest
+// Phase 7: the agent-authoring path. An agent composes a GIK document from manifest
 // vocabulary via typed constructors, gets validate-before-commit for structure, and
 // non-throwing lint for suspect references. Unknown capabilities are safe at runtime
 // (graceful fallback), so they lint rather than throw.
@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import {
-  GenUIClient,
+  GIKClient,
   InMemoryStateModel,
   Kernel,
   KernelTransportHost,
@@ -105,7 +105,7 @@ test("an agent authors a valid document that passes validation, lints clean, and
   // The authored document drives the kernel over the wire.
   const host = new KernelTransportHost(manifest, message, makeKernelFor(message));
   const [h, c] = createInMemoryTransportPair();
-  const client = new GenUIClient(c);
+  const client = new GIKClient(c);
   client.start();
   await host.attach(h);
 
@@ -135,7 +135,7 @@ test("an unknown capability is structurally valid, is flagged by lint, and rende
   // At runtime it resolves as a fallback node rather than crashing.
   const host = new KernelTransportHost(manifest, message, makeKernelFor(message));
   const [h, c] = createInMemoryTransportPair();
-  const client = new GenUIClient(c);
+  const client = new GIKClient(c);
   client.start();
   await host.attach(h);
 

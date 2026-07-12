@@ -1,19 +1,19 @@
 // A NON-UI launcher for the outer transport composition over a live ControlFace.
 //
 // It binds a bundle to a kernel, builds one live ControlFace, then mounts transports around two
-// projections of that same face: SSE `/gup` for the render stream, MCP `/mcp` for the agent-safe
+// projections of that same face: SSE `/gik` for the render stream, MCP `/mcp` for the agent-safe
 // projection, and MCP `/mcp-control` for the full control-plane catalog, including time-travel
 // tools (`checkpoint`, `restore`, `effectsSince`, `compensate`). The sample is intentionally thin:
 // transports carry projections; they do not own capability policy.
 //
-// Run:  npx tsx genui-platform/samples/control-host/service.ts
+// Run:  npx tsx generative-interaction-kernel/samples/control-host/service.ts
 //   or:  npm run dev:controlface
 // Time-travel demo: set `GENUI_CONTROLFACE_DEMO=rollback` to mount an effectful runtime whose
 // control-plane can demonstrate `checkpoint` -> `emit` -> `effectsSince` -> `restore` -> `compensate`.
 //
 // Probe it:
 //   curl http://127.0.0.1:8788/healthz
-//   curl -N http://127.0.0.1:8788/gup/stream
+//   curl -N http://127.0.0.1:8788/gik/stream
 //   curl -X POST http://127.0.0.1:8788/mcp -H 'content-type: application/json' \
 //        -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 //   curl -X POST http://127.0.0.1:8788/mcp-control -H 'content-type: application/json' \
@@ -53,7 +53,7 @@ const rollbackManifest = {
 };
 
 const rollbackDocument = {
-  gup: "0.1",
+  gik: "0.1",
   type: "document",
   payload: {
     root: {
@@ -142,7 +142,7 @@ export function createControlHost(options: ControlHostOptions = {}): ControlHost
     state: runtime.state,
     orchestrator: runtime.orchestrator,
   });
-  const sse = new SseTransportServer(controlface, { path: "/gup" });
+  const sse = new SseTransportServer(controlface, { path: "/gik" });
   const agentMcp = new McpHttpServer({
     path: "/mcp",
     handler: createAgentFaceDispatcher(controlface).handleMcpMessage,
@@ -188,7 +188,7 @@ export function createControlHost(options: ControlHostOptions = {}): ControlHost
           const baseUrl = `http://${hostName}:${address.port}`;
           console.log(`[genui-controlface] listening on ${baseUrl}`);
           console.log(`  demo:               ${demo}`);
-          console.log(`  render/drive (SSE): GET  ${baseUrl}/gup/stream`);
+          console.log(`  render/drive (SSE): GET  ${baseUrl}/gik/stream`);
           console.log(`  agent (MCP):        POST ${baseUrl}/mcp`);
           console.log(`  control (MCP):      POST ${baseUrl}/mcp-control`);
           console.log(`    includes: getState, getTree, emit, checkpoint, restore, effectsSince, compensate`);

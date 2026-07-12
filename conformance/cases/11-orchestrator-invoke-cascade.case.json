@@ -2,7 +2,7 @@
   "name": "orchestrator: an invoke effect fetches data and drives a machine to ready in one dispatch",
   "description": "Pressing Load runs an `invoke` effect (tool fetchOrders) and moves the orders machine idle -> loading. The scripted Orchestrator returns the fetched rows plus a `resolved` follow-up event, which advances loading -> ready. All of it settles inside one dispatch, so a single rev carries: the loading write, the fetched-data write, then the ready write, in that contractual order.",
   "manifest": {
-    "gup": "0.1",
+    "gik": "0.1",
     "type": "manifest",
     "payload": {
       "version": "fetch-demo/1.0",
@@ -18,7 +18,7 @@
     }
   },
   "document": {
-    "gup": "0.1",
+    "gik": "0.1",
     "type": "document",
     "payload": {
       "manifest": "fetch-demo/1.0",

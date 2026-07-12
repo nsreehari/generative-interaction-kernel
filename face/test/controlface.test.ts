@@ -1,5 +1,5 @@
 // The outer host composition co-hosts the face projections on ONE live kernel: the UI/API render
-// stream (SSE `/gup`) and two MCP channels over one tool catalog — `/mcp` (the AgentFace subset)
+// stream (SSE `/gik`) and two MCP channels over one tool catalog — `/mcp` (the AgentFace subset)
 // and `/mcp-control` (the full control-plane catalog with the live runtime tools). These prove a
 // render client and MCP clients talk to the same runtime over one server, that the AgentFace
 // projection is literally the catalog filtered to an allowlist, and that a control-plane `emit`
@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import { test } from "vitest";
 
 import {
-  GenUIClient,
+  GIKClient,
   InMemoryStateModel,
   type Checkpoint,
   type Orchestrator,
@@ -51,7 +51,7 @@ const rollbackManifest = {
 };
 
 const rollbackDocument = {
-  gup: "0.1",
+  gik: "0.1",
   type: "document",
   payload: {
     root: {
@@ -123,7 +123,7 @@ function createMountedRuntime(
   runtimeDocument: unknown = document
 ): MountedRuntime {
   const controlface = new ControlFace(runtimeManifest as any, runtimeDocument as any, { state, ...opts });
-  const sse = new SseTransportServer(controlface, { path: "/gup" });
+  const sse = new SseTransportServer(controlface, { path: "/gik" });
   const mcp = new McpHttpServer({
     path: "/mcp",
     handler: createAgentFaceDispatcher(controlface).handleMcpMessage,
@@ -164,7 +164,7 @@ test("one host serves an SSE render client and an MCP agent client against the s
   const { baseUrl, server } = await mount(host);
 
   // UI/API face: a render client onboards over SSE and sees the live tree.
-  const client = new GenUIClient(new SseClientTransport(baseUrl));
+  const client = new GIKClient(new SseClientTransport(baseUrl));
   client.start();
   await waitFor(() => find(client.getTree(), "metric-total") !== undefined);
   assert.equal(find(client.getTree(), "metric-total")?.props.value, 150);
@@ -187,7 +187,7 @@ test("in-process controlface emit() broadcasts a patch to the connected render c
   const host = createMountedRuntime();
   const { baseUrl, server } = await mount(host);
 
-  const client = new GenUIClient(new SseClientTransport(baseUrl));
+  const client = new GIKClient(new SseClientTransport(baseUrl));
   client.start();
   await waitFor(() => find(client.getTree(), "btn-approve") !== undefined);
   assert.equal(find(client.getTree(), "btn-approve")?.visible, false);
@@ -296,7 +296,7 @@ test("a control-plane MCP tools/call drives the live kernel and broadcasts to re
   const host = createMountedRuntime();
   const { baseUrl, server } = await mount(host);
 
-  const client = new GenUIClient(new SseClientTransport(baseUrl));
+  const client = new GIKClient(new SseClientTransport(baseUrl));
   client.start();
   await waitFor(() => find(client.getTree(), "btn-approve") !== undefined);
   assert.equal(find(client.getTree(), "btn-approve")?.visible, false);

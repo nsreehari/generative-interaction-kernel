@@ -155,7 +155,7 @@ Samples are the **outer composition** layer. They pick:
 
 This is why the thin sample host is the right place to say things like "serve the agent-safe MCP
 projection at `/mcp` and the full control projection at `/mcp-control` while the SSE render stream
-is mounted at `/gup`."
+is mounted at `/gik`."
 
 ### When to consume which layer
 
@@ -211,7 +211,7 @@ ingest(document)                               ← TransportProvider
 The `Kernel` class is the in-process reference implementation of the closed core. Its whole public
 surface is small and pure-ish — every method either seeds, advances, or reads state; none owns time
 or domain knowledge. (This is the in-process API; the language-neutral **wire** contract is the five
-GUP messages in [03-protocol](03-protocol.md).)
+GIK messages in [03-protocol](03-protocol.md).)
 
 | Method | Returns | Purpose |
 |---|---|---|

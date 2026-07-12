@@ -1,4 +1,4 @@
-// Phase 5: the client half of the protocol. A GenUIClient runs purely off wire
+// Phase 5: the client half of the protocol. A GIKClient runs purely off wire
 // messages (manifest/document/patch) — no kernel — keeping a local state replica
 // and resolving a renderable tree, and emits events back over the transport.
 
@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import {
-  GenUIClient,
+  GIKClient,
   InMemoryStateModel,
   Kernel,
   KernelTransportHost,
@@ -56,7 +56,7 @@ function find(node: ResolvedNode | null, id: string): ResolvedNode | undefined {
 test("client renders purely from wire messages, then round-trips an event to a re-render", async () => {
   const [hostTransport, clientTransport] = createInMemoryTransportPair();
 
-  const client = new GenUIClient(clientTransport);
+  const client = new GIKClient(clientTransport);
   let renders = 0;
   client.subscribe(() => {
     renders += 1;
@@ -84,7 +84,7 @@ test("client renders purely from wire messages, then round-trips an event to a r
 
 test("client stops re-rendering after stop()", async () => {
   const [hostTransport, clientTransport] = createInMemoryTransportPair();
-  const client = new GenUIClient(clientTransport);
+  const client = new GIKClient(clientTransport);
   client.start();
 
   const host = new KernelTransportHost(manifest, document, makeKernel(), hostTransport);

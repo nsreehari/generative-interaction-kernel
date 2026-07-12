@@ -1,4 +1,4 @@
-// Core GUP types used by the reference kernel.
+// Core GIK types used by the reference kernel.
 
 export type Json =
   | null
@@ -37,7 +37,7 @@ export interface RecordedEffect {
   effect: OrchestratorEffect;
 }
 
-export interface GupEvent {
+export interface GIKEvent {
   node: string;
   name: string;
   payload?: Record<string, Json>;
@@ -141,7 +141,7 @@ export interface OrchestratorEffect {
 // (e.g. a resolved async result driving a machine transition).
 export interface OrchestratorResult {
   ops?: PatchOp[];
-  events?: GupEvent[];
+  events?: GIKEvent[];
 }
 
 /**
@@ -192,50 +192,50 @@ export interface TraceEvent {
 
 export type TraceSink = (t: TraceEvent) => void;
 
-export const GUP_VERSION = "0.1";
+export const GIK_VERSION = "0.1";
 
 export interface ManifestMessage {
-  gup: typeof GUP_VERSION;
+  gik: typeof GIK_VERSION;
   type: "manifest";
   payload: ManifestPayload;
 }
 
 export interface DocumentMessage {
-  gup: typeof GUP_VERSION;
+  gik: typeof GIK_VERSION;
   type: "document";
   payload: DocumentPayload;
 }
 
 export interface PatchMessage {
-  gup: typeof GUP_VERSION;
+  gik: typeof GIK_VERSION;
   type: "patch";
   payload: Patch;
 }
 
 export interface EventMessage {
-  gup: typeof GUP_VERSION;
+  gik: typeof GIK_VERSION;
   type: "event";
-  payload: GupEvent;
+  payload: GIKEvent;
 }
 
 export interface TraceMessage {
-  gup: typeof GUP_VERSION;
+  gik: typeof GIK_VERSION;
   type: "trace";
   payload: TraceEvent;
 }
 
-export type GupMessage =
+export type GIKMessage =
   | ManifestMessage
   | DocumentMessage
   | PatchMessage
   | EventMessage
   | TraceMessage;
 
-export function envelope<TType extends GupMessage["type"], TPayload>(
+export function envelope<TType extends GIKMessage["type"], TPayload>(
   type: TType,
   payload: TPayload
-): { gup: typeof GUP_VERSION; type: TType; payload: TPayload } {
-  return { gup: GUP_VERSION, type, payload };
+): { gik: typeof GIK_VERSION; type: TType; payload: TPayload } {
+  return { gik: GIK_VERSION, type, payload };
 }
 
 export interface ResolvedNode {
@@ -247,8 +247,8 @@ export interface ResolvedNode {
   children: ResolvedNode[];
 }
 
-// A GUP envelope { gup, type, payload } or a bare payload.
-export type Enveloped<T> = T | { gup: string; type: string; payload: T };
+// A GIK envelope { gik, type, payload } or a bare payload.
+export type Enveloped<T> = T | { gik: string; type: string; payload: T };
 
 export function unwrap<T>(m: Enveloped<T>): T {
   return m && typeof m === "object" && "payload" in (m as object)

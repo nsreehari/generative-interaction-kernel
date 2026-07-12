@@ -1,17 +1,17 @@
-# 03 — GenUI Protocol (GUP)
+# 03 — GIK Protocol (GIK)
 
 Because delivery is **protocol + kernel** (not an in-process SDK — see
 [ADR-0004](decisions/ADR-0004-protocol-over-sdk.md)), the Document and the state deltas are
 **portable, language-neutral artifacts**. Every provider becomes a *conformance target*.
 
-Working name: **GenUI Protocol (GUP)**. Draft version `0.1`.
+Working name: **GIK Protocol (GIK)**. Draft version `0.1`.
 
 ## Envelope
 
 Every message:
 
 ```json
-{ "gup": "0.1", "type": "...", "payload": { } }
+{ "gik": "0.1", "type": "...", "payload": { } }
 ```
 
 Transport-agnostic — it rides WebSocket, SSE, stdio, or in-proc. Transport is the
@@ -168,7 +168,7 @@ reducer's queue; only `invoke`/`confirm`/`route` cross the Orchestrator boundary
 ## Reference transport (the wire, exercised)
 
 A `TransportProvider` seam (`kernel/transport.ts`; see
-[ADR-0010](decisions/ADR-0010-transport-seam.md)) carries the five messages as **GUP envelopes**
+[ADR-0010](decisions/ADR-0010-transport-seam.md)) carries the five messages as **GIK envelopes**
 across a boundary — `send(message)` / `subscribe(listener)`, nothing kernel-specific. A
 `KernelTransportHost` binds a kernel to a transport: on `start()` it publishes `manifest → document →`
 init `patch`, then for each inbound `event` it dispatches and sends back the resulting `patch`
@@ -179,7 +179,7 @@ headlessly, proving ADR-0004 (protocol, not SDK) without a network. Concrete net
 
 ## Reference client runtime (renders from the wire)
 
-The renderer-side half is a `GenUIClient` (`kernel/client.ts`; see
+The renderer-side half is a `GIKClient` (`kernel/client.ts`; see
 [ADR-0011](decisions/ADR-0011-client-runtime.md)) that never sees the kernel. It consumes `manifest`
 (→ builds its registry + an empty replica for the declared namespaces), `document` (→ the tree to
 interpret), and each `patch` (→ applied to the replica), then runs the **pure interpreter**
@@ -194,7 +194,7 @@ Reconnection is handled beneath the five messages (see
 to every attached connection and keeps a bounded **patch log**. A client attaches with an optional
 `fromRev`; if the host still holds the patches after it, only those deltas are **replayed** (the
 client keeps its replica), otherwise the client is **full-resynced** (`manifest → document →`
-full-snapshot patch at the current rev). No new GUP message is introduced — the client conveys its
+full-snapshot patch at the current rev). No new GIK message is introduced — the client conveys its
 `rev` through the transport, and patch application is idempotent.
 
 ## Reference authoring (agents compose documents)
@@ -216,7 +216,7 @@ The first *concrete* transport binding lives in `transports/http-sse/` (see
 [ADR-0014](decisions/ADR-0014-http-sse-transport.md)), deliberately outside the portable kernel core.
 SSE carries host → client messages (`manifest`/`document`/`patch`/`trace`) over `GET {path}/stream`;
 the single client → host message (`event`) is an ordinary `POST {path}/event`. The stream returns a
-session id in the `X-GUP-Session` header which the client echoes on its POSTs for correlation — no new
-GUP message. Reconnection rides the query string: `GET {path}/stream?fromRev=N` maps onto the broker's
-resume path for an incremental replay. `GenUIClient` and `KernelTransportHost` are used unchanged —
+session id in the `X-GIK-Session` header which the client echoes on its POSTs for correlation — no new
+GIK message. Reconnection rides the query string: `GET {path}/stream?fromRev=N` maps onto the broker's
+resume path for an incremental replay. `GIKClient` and `KernelTransportHost` are used unchanged —
 only new `TransportProvider` implementations — which is the point of the seam.

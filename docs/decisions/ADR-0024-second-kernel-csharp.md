@@ -5,7 +5,7 @@
 ## Context
 
 The platform's premise is "protocol over SDK" ([ADR-0004](ADR-0004-protocol-over-sdk.md)): the
-behavioral contract lives in the GUP protocol plus a **language-neutral conformance matrix**
+behavioral contract lives in the GIK protocol plus a **language-neutral conformance matrix**
 ([ADR-0015](ADR-0015-conformance-matrix.md)), not in any one implementation. Until now there was a
 single kernel (TypeScript), so the matrix only checked the reference against itself — the premise was
 **unproven**, and embedded placement ([ADR-0005](ADR-0005-kernel-placement.md)) for a C#/WinUI renderer

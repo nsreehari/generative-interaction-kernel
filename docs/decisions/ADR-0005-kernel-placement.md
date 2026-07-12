@@ -4,7 +4,7 @@
 
 ## Context
 
-The GenUI Protocol ([ADR-0004](ADR-0004-protocol-over-sdk.md)) is **placement-agnostic**: the same
+The GIK Protocol ([ADR-0004](ADR-0004-protocol-over-sdk.md)) is **placement-agnostic**: the same
 five messages work regardless of where the kernel runs. But the reference implementation must
 assume a default, because placement affects the transport binding (not the message schemas).
 
@@ -49,7 +49,7 @@ re-validated by the authoritative (server) kernel; an embedded client's reduce i
 
 ## Consequences
 
-- The five GUP message schemas are unaffected by this choice.
+- The five GIK message schemas are unaffected by this choice.
 - The `TransportProvider` binding (in-proc for local reduce; network to reach the remote `Source`
   and `Orchestrator`) is what changes.
 - The kernel core is kept small and portable so it can run per renderer runtime.

@@ -20,7 +20,7 @@ import {
   type DocNode,
   type DocumentPayload,
   type Enveloped,
-  type GupEvent,
+  type GIKEvent,
   type Json,
   type ManifestPayload,
   type OrchestratorEffect,
@@ -152,7 +152,7 @@ export class Kernel {
    * follow-up events they produce), apply everything, and return the settled patch.
    * One dispatch = one rev, regardless of how many effects/events it fans out to.
    */
-  async dispatch(event: GupEvent): Promise<Patch> {
+  async dispatch(event: GIKEvent): Promise<Patch> {
     if (!this.reactionsSeeded) await this.seedReactionBaseline();
     const ops: PatchOp[] = [];
     const fired: OrchestratorEffect[] = [];
@@ -165,7 +165,7 @@ export class Kernel {
   }
 
   private async settle(
-    event: GupEvent,
+    event: GIKEvent,
     acc: PatchOp[],
     depth: number,
     journal: OrchestratorEffect[]

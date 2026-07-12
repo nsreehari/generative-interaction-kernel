@@ -2,7 +2,7 @@
   {
     "label": "Investigating an incident",
     "authored": {
-      "gup": "0.1",
+      "gik": "0.1",
       "kind": "authored-session",
       "interaction": {
         "interaction": "investigate",
@@ -22,7 +22,7 @@
   {
     "label": "Comparing vendor options",
     "authored": {
-      "gup": "0.1",
+      "gik": "0.1",
       "kind": "authored-session",
       "interaction": {
         "interaction": "compare",
@@ -42,7 +42,7 @@
   {
     "label": "Monitoring the fleet",
     "authored": {
-      "gup": "0.1",
+      "gik": "0.1",
       "kind": "authored-session",
       "interaction": {
         "interaction": "monitor",
@@ -62,7 +62,7 @@
   {
     "label": "Re-authoring the comparison for mobile (pinning the recommendation)",
     "authored": {
-      "gup": "0.1",
+      "gik": "0.1",
       "kind": "authored-session",
       "interaction": {
         "interaction": "compare",

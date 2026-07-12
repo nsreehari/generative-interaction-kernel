@@ -12,7 +12,7 @@ export interface AgentLoopOptions {
 }
 
 /**
- * Run the bounded authoring tour against any client that can read chrome state and emit GUP events.
+ * Run the bounded authoring tour against any client that can read chrome state and emit GIK events.
  * This is the same loop whether the agent is co-located with the browser or running inside a Node host.
  */
 export function startAgentLoop(client: AgentLoopClient, opts: AgentLoopOptions = {}): () => void {

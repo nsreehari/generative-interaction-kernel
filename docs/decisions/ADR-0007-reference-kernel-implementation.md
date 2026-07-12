@@ -4,8 +4,8 @@
 
 ## Context
 
-The protocol (GUP) and its normative schemas + golden conformance fixture existed, but the fixture
-was only validated structurally and reduced by an ad-hoc runner. To make GUP *executable* and to
+The protocol (GIK) and its normative schemas + golden conformance fixture existed, but the fixture
+was only validated structurally and reduced by an ad-hoc runner. To make GIK *executable* and to
 prove the closed grammar and the pure-reducer law actually run, a reference kernel was needed.
 
 Two choices had to be made:
@@ -47,7 +47,7 @@ Two choices had to be made:
 
 ## Consequences
 
-- GUP is now executable: `Kernel(manifest, document).init()/dispatch(event)/resolve()` yields
+- GIK is now executable: `Kernel(manifest, document).init()/dispatch(event)/resolve()` yields
   patches and a resolved tree, with validate-before-commit and an observability sink.
 - The kernel dispatch/resolve API is **async** (a consequence of the patched JSONata major).
 - A second (C#) core remains required for the embedded WinUI runtime and must reduce identically —

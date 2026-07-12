@@ -68,10 +68,10 @@ export function bundleFromJson(json: unknown, native: BundleNative = {}): Bundle
   }
   const b = json as Partial<SerializableBundle>;
   if (!isEnvelope(b.manifest, "manifest")) {
-    throw new Error("bundleFromJson: missing or invalid `manifest` (expected a GUP manifest message)");
+    throw new Error("bundleFromJson: missing or invalid `manifest` (expected a GIK manifest message)");
   }
   if (!isEnvelope(b.document, "document")) {
-    throw new Error("bundleFromJson: missing or invalid `document` (expected a GUP document message)");
+    throw new Error("bundleFromJson: missing or invalid `document` (expected a GIK document message)");
   }
   if (b.state != null && (typeof b.state !== "object" || Array.isArray(b.state))) {
     throw new Error("bundleFromJson: `state` must be an object of namespace -> value");

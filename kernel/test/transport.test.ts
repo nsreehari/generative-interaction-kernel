@@ -8,7 +8,7 @@ import {
   InMemoryStateModel,
   Kernel,
   KernelTransportHost,
-  type GupMessage,
+  type GIKMessage,
 } from "../src/index";
 
 const fx = (name: string) =>
@@ -40,7 +40,7 @@ function makeKernel(): Kernel {
 
 test("transport host publishes manifest/document/init patch, then returns patches for inbound events", async () => {
   const [hostTransport, clientTransport] = createInMemoryTransportPair();
-  const messages: GupMessage[] = [];
+  const messages: GIKMessage[] = [];
   clientTransport.subscribe((message) => {
     messages.push(message);
   });
@@ -73,7 +73,7 @@ test("transport host publishes manifest/document/init patch, then returns patche
   }
 
   await clientTransport.send({
-    gup: "0.1",
+    gik: "0.1",
     type: "event",
     payload: { node: "table-orders", name: "rowSelect", payload: { id: "order-42" } },
   });
@@ -89,7 +89,7 @@ test("transport host publishes manifest/document/init patch, then returns patche
 
 test("transport host stops consuming inbound events after stop()", async () => {
   const [hostTransport, clientTransport] = createInMemoryTransportPair();
-  const messages: GupMessage[] = [];
+  const messages: GIKMessage[] = [];
   clientTransport.subscribe((message) => {
     messages.push(message);
   });
@@ -99,7 +99,7 @@ test("transport host stops consuming inbound events after stop()", async () => {
   host.stop();
 
   await clientTransport.send({
-    gup: "0.1",
+    gik: "0.1",
     type: "event",
     payload: { node: "table-orders", name: "rowSelect", payload: { id: "order-42" } },
   });

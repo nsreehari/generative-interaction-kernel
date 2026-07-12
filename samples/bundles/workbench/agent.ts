@@ -1,7 +1,7 @@
 // Slice 4 — the agent writer. The workbench's third purpose: an agent keeps authoring and the user
 // watches it happen live in the playground. Crucially, the agent is NOT a privileged path — it is
-// "just another client emitting events" (the GUP thesis). It depends only on an `AgentPort` (the
-// `emit(node, name, payload)` surface that BOTH GenUIController in-process and GenUIClient over a
+// "just another client emitting events" (the GIK thesis). It depends only on an `AgentPort` (the
+// `emit(node, name, payload)` surface that BOTH GenUIController in-process and GIKClient over a
 // transport implement), so the very same agent can drive the chrome locally or across an SSE wire.
 //
 // This agent authors by replaying a curated tour of authored sessions (the Slice 3 artifact) through
@@ -12,7 +12,7 @@
 import type { AuthoredSession } from "../../../interaction/src/index";
 import agentPlaylist from "./agent-playlist.json";
 
-/** The one capability the agent needs: emit a GUP event. GenUIController and GenUIClient both satisfy it. */
+/** The one capability the agent needs: emit a GIK event. GenUIController and GIKClient both satisfy it. */
 export type AgentPort = (node: string, name: string, payload: Record<string, unknown>) => void | Promise<unknown>;
 
 /** One beat of the agent's authoring tour: a narration line plus the artifact it authors. */

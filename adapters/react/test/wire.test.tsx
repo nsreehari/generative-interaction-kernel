@@ -1,4 +1,4 @@
-// Phase 5 binding test: the same React components render over the wire. A GenUIClient
+// Phase 5 binding test: the same React components render over the wire. A GIKClient
 // (transport-backed, never sees the kernel) drives GenUIRoot; an event round-trips to
 // a re-render. Proves the binding is source-agnostic (controller vs client).
 
@@ -10,7 +10,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import {
-  GenUIClient,
+  GIKClient,
   InMemoryStateModel,
   Kernel,
   KernelTransportHost,
@@ -46,9 +46,9 @@ function makeKernel(): Kernel {
   return new Kernel(manifest, document, { state: store });
 }
 
-test("React components render over the wire via GenUIClient, and an event re-renders", async () => {
+test("React components render over the wire via GIKClient, and an event re-renders", async () => {
   const [hostTransport, clientTransport] = createInMemoryTransportPair();
-  const client = new GenUIClient(clientTransport);
+  const client = new GIKClient(clientTransport);
   client.start();
 
   const host = new KernelTransportHost(manifest, document, makeKernel(), hostTransport);

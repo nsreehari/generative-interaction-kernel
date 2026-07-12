@@ -1,5 +1,5 @@
 // React binding: subscribes to any GenUI source (the in-process GenUIController or
-// the transport-backed GenUIClient) and renders its resolved tree.
+// the transport-backed GIKClient) and renders its resolved tree.
 
 import { useEffect, useState, type ReactNode } from "react";
 import type { ResolvedNode } from "../../../kernel/src/types";
@@ -8,7 +8,7 @@ import type { ComponentRegistry } from "./registry";
 
 /**
  * The minimal surface the React binding needs. Both `GenUIController` (in-process)
- * and `GenUIClient` (over a transport) satisfy this structurally, so the same
+ * and `GIKClient` (over a transport) satisfy this structurally, so the same
  * components render whether the kernel is local or across the wire.
  */
 export interface GenUISource {

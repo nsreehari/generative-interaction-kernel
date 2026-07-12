@@ -11,7 +11,7 @@ whether the same document can drive multiple frameworks and an out-of-process or
 ## Decision
 
 Deliver as a **protocol + kernel**. The Document format and the state-delta format are a
-**language-neutral wire contract** (the GenUI Protocol / GUP — see
+**language-neutral wire contract** (the GIK Protocol / GIK — see
 [docs/03-protocol.md](../03-protocol.md)). The kernel has a reference implementation, but any
 conforming runtime — a renderer in any framework, a server-side validator, an out-of-process
 orchestrator — can speak the protocol.

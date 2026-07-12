@@ -2,7 +2,7 @@
   "name": "readExpr: a shaped read projects and filters an array through the manifest dialect",
   "description": "Seeds an array of rows, then a node whose `readExpr` edges evaluate JSONata expressions against the state snapshot (a value position, like derive/assign-from) to project every row's label and to filter to the done ones. Any conforming kernel MUST expose the shaped results through the resolved tree — proving the readExpr edge is interpreted identically across kernels. The projections are bracket-wrapped ([...]) so the JSONata result is a materialized plain array rather than a singleton/sequence.",
   "manifest": {
-    "gup": "0.1",
+    "gik": "0.1",
     "type": "manifest",
     "payload": {
       "version": "readexpr-demo/1.0",
@@ -13,7 +13,7 @@
     }
   },
   "document": {
-    "gup": "0.1",
+    "gik": "0.1",
     "type": "document",
     "payload": {
       "manifest": "readexpr-demo/1.0",

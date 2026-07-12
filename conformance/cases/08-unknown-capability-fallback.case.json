@@ -2,7 +2,7 @@
   "name": "graceful fallback: an unknown capability resolves without crashing",
   "description": "A node whose capability is not in the manifest resolves as a visible fallback node; a declared sibling does not.",
   "manifest": {
-    "gup": "0.1",
+    "gik": "0.1",
     "type": "manifest",
     "payload": {
       "version": "fallback-demo/1.0",
@@ -12,7 +12,7 @@
     }
   },
   "document": {
-    "gup": "0.1",
+    "gik": "0.1",
     "type": "document",
     "payload": {
       "manifest": "fallback-demo/1.0",

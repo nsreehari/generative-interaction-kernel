@@ -11,11 +11,11 @@
 //      ResolvedNode tree into a server-side text view (it could just as well be a
 //      JSON API body, a webhook payload, or a log line).
 //
-// Run:  npx tsx genui-platform/samples/backend-host/order-service.ts
+// Run:  npx tsx generative-interaction-kernel/samples/backend-host/order-service.ts
 
 import { Kernel } from "../../kernel/src/index";
 import type {
-  GupEvent,
+  GIKEvent,
   Json,
   Orchestrator,
   OrchestratorEffect,
@@ -40,7 +40,7 @@ const manifest = {
 // A lifecycle machine plus a controller node whose closed-grammar handlers reach
 // backend services via the Orchestrator seam. Nothing here is a widget.
 const document = {
-  gup: "0.1",
+  gik: "0.1",
   type: "document",
   payload: {
     root: {
@@ -109,7 +109,7 @@ const orchestrator: Orchestrator = {
     const onConfirm = effect.args.onConfirm;
     // Forward the originating payload so downstream effects (the charge) keep the amount.
     return typeof onConfirm === "string"
-      ? { events: [{ node: effect.node, name: onConfirm, payload: effect.payload } as GupEvent] }
+      ? { events: [{ node: effect.node, name: onConfirm, payload: effect.payload } as GIKEvent] }
       : undefined;
   },
 
@@ -121,7 +121,7 @@ const orchestrator: Orchestrator = {
     // The gateway settled: write the receipt and emit the follow-up lifecycle event.
     return {
       ops: [{ op: "set" as const, path: "payment.receipt", value: receipt as Json }],
-      events: [{ node: effect.node, name: "charged" } as GupEvent],
+      events: [{ node: effect.node, name: "charged" } as GIKEvent],
     };
   },
 
@@ -158,7 +158,7 @@ async function main(): Promise<void> {
   console.log("initial lifecycle:", (kernel.state() as any).order.lifecycle.state, "\n");
 
   // Inbound events, as if pulled off an HTTP handler or a message queue.
-  const inbound: GupEvent[] = [
+  const inbound: GIKEvent[] = [
     { node: "controller", name: "submit", payload: { orderId: "ord-42", amount: 129.5 } },
   ];
 

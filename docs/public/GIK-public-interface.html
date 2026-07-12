@@ -182,20 +182,21 @@
 <body>
 
 <h1>GIK Public Interface</h1>
-<div class="subtitle">Consumer Manual · Using GenUI at any layer · Current repo entrypoints: <code>kernel</code> · <code>face</code> · <code>transports</code></div>
+<div class="subtitle">Consumer Manual · Public packages: <code>@gik/kernel</code> · <code>@gik/controlface</code> · <code>@gik/agentface</code> · <code>@gik/react</code> · <code>@gik/transport-*</code></div>
 
 <div class="description">
 This page is a <strong>practical manual</strong> for consuming GenUI. It answers one question at each
 step: <em>which surface do I use, what do I import, and what do I get back?</em> You can consume GenUI at
 several layers — embed the <strong>kernel</strong> directly for in-process runtime authority, host a live
 <strong>ControlFace</strong> over a bundle, expose that runtime outward through the <strong>controlface</strong>
-or <strong>agentface</strong> tool projections, or connect to it remotely as a render/patch client. In the
-current repo layout, those surfaces are consumed through the source entrypoints shown below, e.g.:
-<pre><code>import { Kernel, GenUIClient, KernelTransportHost, InMemoryStateModel } from "../../kernel/src/index";
-import { ControlFace, createControlFaceDispatcher, createAgentFaceDispatcher } from "../../face/src/index";
-import { SseTransportServer } from "../../transports/http-sse/src/index";
-import { McpHttpServer } from "../../transports/mcp-http/src/index";</code></pre>
-The language-neutral wire contract (the five GUP messages) is summarised in
+or <strong>agentface</strong> tool projections, or connect to it remotely as a render/patch client. The
+public package surface is:
+<pre><code>import { Kernel, GIKClient, KernelTransportHost, InMemoryStateModel } from "@gik/kernel";
+import { ControlFace, createControlFaceDispatcher } from "@gik/controlface";
+import { createAgentFaceDispatcher, createStatelessAgentFaceDispatcher } from "@gik/agentface";
+import { SseTransportServer } from "@gik/transport-http-sse/server";
+import { McpHttpServer } from "@gik/transport-mcp-http";</code></pre>
+The language-neutral wire contract (the five GIK messages) is summarised in
 <a href="#wire">§12 · Protocol reference</a> at the end of this page, so the manual stays self-contained.
 </div>
 
@@ -230,14 +231,14 @@ repo — pick a row by what you are building.</p>
 
 <table class="sig">
 <tr><th>Surface</th><th>Import</th><th>Use it when</th></tr>
-<tr><td><code>Kernel</code></td><td><code>kernel/src/index</code></td><td>You own the runtime in-process and want direct <code>resolve</code>/<code>dispatch</code> authority.</td></tr>
-<tr><td><code>ControlFace</code></td><td><code>face/src/index</code></td><td>You are a host: wrap one bundle in a live object that backs both projections and the render stream.</td></tr>
-<tr><td><code>createControlFaceDispatcher</code></td><td><code>face/src/index</code></td><td>You expose the <strong>full</strong> tool catalog (authoring + inspect/drive/time-travel) outward.</td></tr>
-<tr><td><code>createAgentFaceDispatcher</code></td><td><code>face/src/index</code></td><td>You expose the <strong>allowlisted</strong> agent-safe catalog (authoring + <code>getState</code>/<code>getTree</code>).</td></tr>
-<tr><td><code>createStatelessAgentFaceDispatcher</code></td><td><code>face/src/index</code></td><td>You expose <strong>authoring-only</strong> tools with no live runtime attached.</td></tr>
-<tr><td><code>SseTransportServer</code></td><td><code>transports/http-sse/src/index</code></td><td>You stream the render/patch feed to a renderer over SSE.</td></tr>
-<tr><td><code>McpHttpServer</code></td><td><code>transports/mcp-http/src/index</code></td><td>You carry a projection's tool dispatcher over MCP/HTTP.</td></tr>
-<tr><td><code>GenUIClient</code> · <code>KernelTransportHost</code></td><td><code>kernel/src/index</code></td><td>You connect a remote renderer to an authoritative host over the GUP protocol.</td></tr>
+<tr><td><code>Kernel</code></td><td><code>@gik/kernel</code></td><td>You own the runtime in-process and want direct <code>resolve</code>/<code>dispatch</code> authority.</td></tr>
+<tr><td><code>ControlFace</code></td><td><code>@gik/controlface</code></td><td>You are a host: wrap one bundle in a live object that backs both projections and the render stream.</td></tr>
+<tr><td><code>createControlFaceDispatcher</code></td><td><code>@gik/controlface</code></td><td>You expose the <strong>full</strong> tool catalog (authoring + inspect/drive/time-travel) outward.</td></tr>
+<tr><td><code>createAgentFaceDispatcher</code></td><td><code>@gik/agentface</code></td><td>You expose the <strong>allowlisted</strong> agent-safe catalog (authoring + <code>getState</code>/<code>getTree</code>).</td></tr>
+<tr><td><code>createStatelessAgentFaceDispatcher</code></td><td><code>@gik/agentface</code></td><td>You expose <strong>authoring-only</strong> tools with no live runtime attached.</td></tr>
+<tr><td><code>SseTransportServer</code></td><td><code>@gik/transport-http-sse/server</code></td><td>You stream the render/patch feed to a renderer over SSE.</td></tr>
+<tr><td><code>McpHttpServer</code></td><td><code>@gik/transport-mcp-http</code></td><td>You carry a projection's tool dispatcher over MCP/HTTP.</td></tr>
+<tr><td><code>GIKClient</code> · <code>KernelTransportHost</code></td><td><code>@gik/kernel</code></td><td>You connect a remote renderer to an authoritative host over the GIK protocol.</td></tr>
 </table>
 
 <h2 id="pick">2 · Pick your surface</h2>
@@ -248,7 +249,7 @@ repo — pick a row by what you are building.</p>
 <li>Give an operator or first-party console full remote authority (inspect, drive, time-travel) → mount the <strong><code>controlface</code> projection</strong> over MCP/HTTP (§6).</li>
 <li>Give an agent a bounded, read-oriented remote surface → mount the <strong><code>agentface</code> projection</strong> over MCP/HTTP (§6). Time-travel and <code>emit</code> are intentionally excluded.</li>
 <li>Ship only authoring/validation tools with no running runtime → <strong><code>createStatelessAgentFaceDispatcher</code></strong> (§6).</li>
-<li>Render from another process or machine against a patch stream → <strong><code>SseTransportServer</code> + <code>GenUIClient</code></strong> (§10).</li>
+<li>Render from another process or machine against a patch stream → <strong><code>SseTransportServer</code> + <code>GIKClient</code></strong> (§10).</li>
 </ul>
 
 <h2 id="fit">3 · How the pieces fit</h2>
@@ -263,12 +264,12 @@ request/response catalog) or the <strong>render stream</strong> (SSE). Capabilit
   └─ ControlFace  ← host-side live object: wraps kernel + broker (private)
        ├─ controlface projection  ← FULL tool catalog        ──► MCP  (e.g. /mcp-control)
        ├─ agentface  projection   ← allowlisted tool catalog  ──► MCP  (e.g. /mcp)
-       └─ render stream (attach)  ← patches + tree            ──► SSE  (e.g. /gup)</code></pre>
+       └─ render stream (attach)  ← patches + tree            ──► SSE  (e.g. /gik)</code></pre>
 
 <p>This mirrors the sample host in <code>samples/control-host/service.ts</code>: it builds one
 <code>ControlFace</code>, then mounts <code>createAgentFaceDispatcher</code> at <code>/mcp</code>,
 <code>createControlFaceDispatcher</code> at <code>/mcp-control</code>, and an <code>SseTransportServer</code>
-at <code>/gup</code> — three outward surfaces over the <em>same</em> live runtime.</p>
+at <code>/gik</code> — three outward surfaces over the <em>same</em> live runtime.</p>
 
 <h2 id="kernel">4 · Embed the kernel</h2>
 
@@ -328,7 +329,7 @@ so <code>new Kernel(manifest, document)</code> runs standalone (with a no-op orc
 <h4>Drive &amp; read</h4>
 <table class="sig">
 <tr><th>Method</th><th>Returns</th><th>Purpose</th></tr>
-<tr><td>dispatch(event)</td><td>Promise&lt;Patch&gt;</td><td>Reduce one <code>GupEvent</code>, run resulting orchestrator effects and their follow-up events, apply everything, fire reactions. <strong>One dispatch = one rev.</strong></td></tr>
+<tr><td>dispatch(event)</td><td>Promise&lt;Patch&gt;</td><td>Reduce one <code>GIKEvent</code>, run resulting orchestrator effects and their follow-up events, apply everything, fire reactions. <strong>One dispatch = one rev.</strong></td></tr>
 <tr><td>resolve()</td><td>Promise&lt;ResolvedNode&gt;</td><td>Resolve the document into a renderable tree (gate → capability → props → read → children).</td></tr>
 <tr><td>state()</td><td>Record&lt;string, Json&gt;</td><td>The live state snapshot (by reference — read-only; do not mutate).</td></tr>
 </table>
@@ -361,7 +362,7 @@ surface itself — see §6 for the tool projections and §10 for the render stre
 <table class="sig">
 <tr><th>Method</th><th>Returns</th><th>Purpose</th></tr>
 <tr><td>attach(transport, fromRev?)</td><td>Promise&lt;() =&gt; void&gt;</td><td>Register a render connection (SSE binds here); returns a detach handle. <strong>Stream plumbing, not a JSON tool.</strong></td></tr>
-<tr><td>emit(event)</td><td>Promise&lt;Patch&gt;</td><td>Drive the kernel with one <code>GupEvent</code> and broadcast the patch to every connected render client.</td></tr>
+<tr><td>emit(event)</td><td>Promise&lt;Patch&gt;</td><td>Drive the kernel with one <code>GIKEvent</code> and broadcast the patch to every connected render client.</td></tr>
 <tr><td>getState()</td><td>Record&lt;string, Json&gt;</td><td>Read the live state snapshot.</td></tr>
 <tr><td>getTree()</td><td>Promise&lt;ResolvedNode&gt;</td><td>Read the current resolved render tree.</td></tr>
 <tr><td>checkpoint()</td><td>Checkpoint</td><td>Capture an immutable, rev-keyed state snapshot (see §7).</td></tr>
@@ -371,7 +372,7 @@ surface itself — see §6 for the tool projections and §10 for the render stre
 <tr><td>stop()</td><td>void</td><td>Detach every connection (the caller owns any server lifecycle).</td></tr>
 </table>
 
-<div class="callout">Everything behind the face — kernel, reducer, interpreter, broker, GUP codec — is
+<div class="callout">Everything behind the face — kernel, reducer, interpreter, broker, GIK codec — is
 private composition. A transport binds to the face's projection or its render stream, never to the
 internal kernel or broker.</div>
 
@@ -478,11 +479,11 @@ compile time (<code>SafeExpressionError</code>). Policy lives in the provider, n
 <tr><th>Type</th><th>Shape</th></tr>
 <tr><td>Patch</td><td><code>{ rev: number; ops: PatchOp[] }</code></td></tr>
 <tr><td>PatchOp</td><td><code>{ op: "set" | "merge" | "remove"; path: string; value?: Json }</code></td></tr>
-<tr><td>GupEvent</td><td><code>{ node: string; name: string; payload?: Record&lt;string,Json&gt; }</code></td></tr>
+<tr><td>GIKEvent</td><td><code>{ node: string; name: string; payload?: Record&lt;string,Json&gt; }</code></td></tr>
 <tr><td>Checkpoint</td><td><code>{ rev: number; state: Record&lt;string,Json&gt; }</code> — immutable, rev-keyed state capture.</td></tr>
 <tr><td>RecordedEffect</td><td><code>{ rev: number; seq: number; effect: OrchestratorEffect }</code> — a journaled effect (ordering is rev + seq, never a timestamp).</td></tr>
 <tr><td>OrchestratorEffect</td><td><code>{ kind: "invoke" | "confirm" | "route"; node: string; tool?: string; to?: Json; args: Record&lt;string,Json&gt;; payload?: Record&lt;string,Json&gt; }</code></td></tr>
-<tr><td>OrchestratorResult</td><td><code>{ ops?: PatchOp[]; events?: GupEvent[] }</code></td></tr>
+<tr><td>OrchestratorResult</td><td><code>{ ops?: PatchOp[]; events?: GIKEvent[] }</code></td></tr>
 <tr><td>TraceEvent</td><td><code>{ event: "resolve"|"fallback"|"action"|"transition"|"validate"|"effect"; node?: string; detail?: Record&lt;string,unknown&gt;; ts?: number }</code></td></tr>
 <tr><td>ResolvedNode</td><td>The framework-neutral render tree produced by <code>resolve()</code> (capability + resolved props + children + gate).</td></tr>
 <tr><td>Json</td><td><code>null | boolean | number | string | Json[] | { [k:string]: Json }</code> — all state is pure JSON.</td></tr>
@@ -496,27 +497,27 @@ compile time (<code>SafeExpressionError</code>). Policy lives in the provider, n
 <tr><td>Edges</td><td><code>read</code> · <code>readExpr</code> · <code>gate</code> · <code>write</code> · <code>on</code> (event→Action[]) · <code>react</code> (Reaction[]) · <code>children</code></td></tr>
 <tr><td>Action</td><td><code>{ do: "assign"|"derive"|"invoke"|"emit"|"route"|"confirm"; target?; args?; guard?; event? }</code></td></tr>
 <tr><td>Machine</td><td><code>{ id; context; initial; states }</code> — reduced by the kernel's pure reducer.</td></tr>
-<tr><td>Enveloped&lt;T&gt;</td><td><code>T | { gup; type; payload: T }</code>; use <code>unwrap()</code> to read either form.</td></tr>
+<tr><td>Enveloped&lt;T&gt;</td><td><code>T | { gik; type; payload: T }</code>; use <code>unwrap()</code> to read either form.</td></tr>
 </table>
 
 <h2 id="remote">10 · Stream renders &amp; connect remotely</h2>
 
 <p>The kernel runs authoritatively on a host; a renderer half runs the pure interpreter over a local
-replica and never sees the kernel. Both speak the five-message GUP protocol over any
+replica and never sees the kernel. Both speak the five-message GIK protocol over any
 <code>TransportProvider</code>.</p>
 
 <table class="sig">
 <tr><th>API</th><th>Signature · purpose</th></tr>
-<tr><td>TransportProvider</td><td><code>send(message: GupMessage): void|Promise&lt;void&gt;</code> · <code>subscribe(listener): () =&gt; void</code></td></tr>
+<tr><td>TransportProvider</td><td><code>send(message: GIKMessage): void|Promise&lt;void&gt;</code> · <code>subscribe(listener): () =&gt; void</code></td></tr>
 <tr><td>createInMemoryTransportPair()</td><td><code>[TransportProvider, TransportProvider]</code> — a wired host/client pair for tests &amp; in-proc.</td></tr>
 <tr><td>KernelTransportHost</td><td><code>new (manifest, document, kernel, defaultTransport?)</code> — a broker: onboards each connection, dispatches inbound events serially, broadcasts every patch.</td></tr>
 <tr><td>host.attach(t, fromRev?)</td><td><code>Promise&lt;() =&gt; void&gt;</code> — register + onboard; pass <code>fromRev</code> to resume via incremental replay.</td></tr>
 <tr><td>host.start() / stop() / detach(t)</td><td>Attach the default transport / detach all / drop one connection.</td></tr>
-<tr><td>GenUIClient</td><td><code>new (transport, opts?)</code> — renderer-side replica + pure interpreter.</td></tr>
+<tr><td>GIKClient</td><td><code>new (transport, opts?)</code> — renderer-side replica + pure interpreter.</td></tr>
 <tr><td>client.getTree()</td><td><code>ResolvedNode | null</code> — the tree to paint (null before the first document).</td></tr>
 <tr><td>client.getRev()</td><td><code>number</code> — last applied rev (-1 before onboarding); pass to <code>host.attach</code> to resume.</td></tr>
 <tr><td>client.get(path)</td><td><code>Json | undefined</code> — read one value from the local replica.</td></tr>
-<tr><td>client.emit(node, name, payload?)</td><td>Send an <code>event</code> back to the host over the GUP render/patch channel. For remote inspect/drive/time-travel tools, mount a projection over MCP instead (§6).</td></tr>
+<tr><td>client.emit(node, name, payload?)</td><td>Send an <code>event</code> back to the host over the GIK render/patch channel. For remote inspect/drive/time-travel tools, mount a projection over MCP instead (§6).</td></tr>
 <tr><td>client.subscribe(fn) / start() / stop() / rebind(t)</td><td>Change notifications / lifecycle / reconnect to a new transport.</td></tr>
 </table>
 
@@ -544,7 +545,7 @@ Action builders return the closed-grammar <code>Action</code> shapes:</p>
 <h2 id="wire">12 · Protocol reference</h2>
 
 <p>When host and renderer are separated, they exchange five envelope-wrapped messages —
-<code>{ gup: "0.1", type, payload }</code>:</p>
+<code>{ gik: "0.1", type, payload }</code>:</p>
 
 <table class="sig">
 <tr><th>Message</th><th>Direction</th><th>Payload</th></tr>
@@ -557,7 +558,7 @@ Action builders return the closed-grammar <code>Action</code> shapes:</p>
 
 <div class="callout">Delivery is <strong>protocol + kernel</strong>, not an in-process SDK: the document
 and deltas are portable, language-neutral artifacts, and every provider is a conformance target. The
-five message types above are the whole <strong>GUP render/patch wire contract</strong>; MCP-mounted
+five message types above are the whole <strong>GIK render/patch wire contract</strong>; MCP-mounted
 <code>controlface</code> / <code>agentface</code> tool catalogs are a separate outward surface described in §§5-6.</div>
 
 </body>

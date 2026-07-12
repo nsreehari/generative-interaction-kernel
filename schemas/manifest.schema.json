@@ -1,13 +1,13 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://genui.dev/gup/0.1/manifest.schema.json",
-  "title": "GUP manifest message",
+  "$id": "https://genui.dev/gik/0.1/manifest.schema.json",
+  "title": "GIK manifest message",
   "description": "Publishes the capability vocabulary a domain speaks. Every other party (validator, renderer, orchestrator) validates against it.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["gup", "type", "payload"],
+  "required": ["gik", "type", "payload"],
   "properties": {
-    "gup": { "const": "0.1" },
+    "gik": { "const": "0.1" },
     "type": { "const": "manifest" },
     "payload": {
       "type": "object",

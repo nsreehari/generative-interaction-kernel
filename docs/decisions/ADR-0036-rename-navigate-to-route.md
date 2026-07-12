@@ -26,7 +26,7 @@ Two facts made this the right moment to fix it:
 1. The .NET port was removed and `master` is TypeScript-only
    ([ADR-0035](ADR-0035-stop-dotnet-port.md)), so the blast radius is TypeScript + JSON schemas +
    docs, verifiable in one `npm test` — not a cross-language protocol migration.
-2. The wire protocol is pre-1.0 (`GUP_VERSION = "0.1"`), so a closed-grammar vocabulary change is
+2. The wire protocol is pre-1.0 (`GIK_VERSION = "0.1"`), so a closed-grammar vocabulary change is
    still cheap; every additional bundle that hard-codes `"navigate"` only raises the future cost.
 
 ## Decision

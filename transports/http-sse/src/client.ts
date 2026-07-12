@@ -1,9 +1,9 @@
-// Client-side HTTP/SSE transport. Implements the transport seam so a GenUIClient can run
+// Client-side HTTP/SSE transport. Implements the transport seam so a GIKClient can run
 // over the network unchanged: `subscribe` opens the SSE stream (host -> client), `send`
 // POSTs an event (client -> host) correlated by the session id the stream returned.
 
 import type {
-  GupMessage,
+  GIKMessage,
   TransportListener,
   TransportProvider,
 } from "../../../kernel/src/index";
@@ -14,7 +14,7 @@ export interface SseClientTransportOptions {
   fromRev?: number;
   /** Injectable fetch (defaults to the global). */
   fetch?: typeof fetch;
-  /** Base path the server mounts under; defaults to `/gup`. */
+  /** Base path the server mounts under; defaults to `/gik`. */
   path?: string;
 }
 
@@ -30,7 +30,7 @@ export class SseClientTransport implements TransportProvider {
 
   constructor(baseUrl: string, opts: SseClientTransportOptions = {}) {
     this.base = baseUrl.replace(/\/$/, "");
-    this.path = opts.path ?? "/gup";
+    this.path = opts.path ?? "/gik";
     this.fetchImpl = opts.fetch ?? fetch.bind(globalThis);
     this.fromRev = opts.fromRev;
     this.sessionReady = new Promise((resolve) => (this.resolveSession = resolve));
@@ -42,7 +42,7 @@ export class SseClientTransport implements TransportProvider {
     return () => this.controller?.abort();
   }
 
-  async send(message: GupMessage): Promise<void> {
+  async send(message: GIKMessage): Promise<void> {
     // Wait until the stream has established a session before routing events back.
     const session = await this.sessionReady;
     await this.fetchImpl(`${this.base}${this.path}/event?session=${session}`, {
@@ -59,7 +59,7 @@ export class SseClientTransport implements TransportProvider {
       signal,
     });
 
-    const session = res.headers.get("x-gup-session");
+    const session = res.headers.get("x-gik-session");
     if (session) this.resolveSession(session);
     if (!res.body) return;
 
