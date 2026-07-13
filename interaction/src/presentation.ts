@@ -43,7 +43,7 @@ export interface LayoutTemplate {
   maxRegions?: number;
 }
 
-export function asTemplateRecord(templates: readonly TemplateDefinition[]): Record<string, LayoutTemplate> {
+function asTemplateRecord(templates: readonly TemplateDefinition[]): Record<string, LayoutTemplate> {
   return Object.fromEntries(templates.map((template) => [template.name, template]));
 }
 
@@ -100,16 +100,6 @@ export interface PresentationSpec {
   /** the interaction this presentation materializes (kept for data + downstream lowering). */
   source: InteractionSpec;
 }
-
-/**
- * The Presentation *Planner* seam: interaction + context -> Presentation DSL. This is the slot an
- * AI presentation planner fills. The planner is created explicitly from a profile recipe.
- * (The Presentation *Compiler* is the next stage down — see `lowerPresentation`.)
- */
-export type PresentationPlanner = (
-  spec: InteractionSpec,
-  ctx: PresentationContext
-) => PresentationSpec;
 
 function readToken(path: string, tokens: Record<string, unknown>): unknown {
   return path.split(".").reduce<unknown>((current, segment) => {
@@ -351,8 +341,4 @@ export function planPresentationWithRecipe(
     regions,
     source: spec,
   };
-}
-
-export function createPresentationPlanner(recipe: InteractionToPresentationRecipe): PresentationPlanner {
-  return (spec, ctx) => planPresentationWithRecipe(spec, ctx, recipe);
 }

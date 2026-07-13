@@ -19,8 +19,6 @@ import {
   type ResolvedNode,
 } from "../../kernel/src/index";
 import {
-  asTemplateRecord,
-  createPresentationPlanner,
   compileInteraction,
   applyPresentationEdits,
   facetsFor,
@@ -49,8 +47,10 @@ const fx = (name: string) =>
 
 const manifest = fx("live-cards.manifest.json");
 const manifestPayload = manifest.payload as ManifestPayload;
-const planner = createPresentationPlanner(recipeForKinds(liveCardsProfile, "interaction", "presentation"));
-const layoutTemplates = asTemplateRecord(recipeForKinds(liveCardsProfile, "interaction", "presentation").templates);
+const liveCardsIToP = recipeForKinds(liveCardsProfile, "interaction", "presentation");
+const planner = (spec: InteractionSpec, ctx: PresentationContext): PresentationSpec =>
+  planPresentationWithRecipe(spec, ctx, liveCardsIToP);
+const layoutTemplates = Object.fromEntries(liveCardsIToP.templates.map((t) => [t.name, t]));
 
 function findResolved(n: ResolvedNode, id: string): ResolvedNode | undefined {
   if (n.id === id) return n;

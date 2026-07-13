@@ -171,7 +171,7 @@ export function lowerPresentation(
  * with additional layers works as long as an executor exists for every adjacent kind pair. Compose
  * with `lowerToDocument` to also get validate-before-commit.
  */
-type StageValue = InteractionSpec | PresentationSpec | DocumentPayload;
+export type StageValue = InteractionSpec | PresentationSpec | DocumentPayload;
 
 const STAGE_EXECUTORS: Record<
   string,
@@ -183,11 +183,28 @@ const STAGE_EXECUTORS: Record<
     lowerPresentation(recipe as PresentationToRuntimeRecipe)(input as PresentationSpec),
 };
 
-export function runProfile(
+/** One stage of a profile run: what entered the layer transition and what came out. */
+export interface ProfileStageTrace {
+  fromLayerId: string;
+  toLayerId: string;
+  fromKind: string;
+  toKind: string;
+  input: StageValue;
+  output: StageValue;
+}
+
+/**
+ * Run the profile and capture every stage's input and output. Same execution path as
+ * {@link compileInteraction} (each stage goes through the executor registered for its layer-kind
+ * transition), but returns the per-stage trace so tooling can show what any layer lowers into —
+ * generically, without hardcoding a specific layer kind.
+ */
+export function traceProfile(
   profile: ResolvedProfile,
   spec: InteractionSpec,
   ctx: PresentationContext
-): DocumentPayload {
+): ProfileStageTrace[] {
+  const trace: ProfileStageTrace[] = [];
   let value: StageValue = spec;
   for (const stage of profile.stages) {
     const key = `${stage.fromLayer.kind}->${stage.toLayer.kind}`;
@@ -195,9 +212,18 @@ export function runProfile(
     if (!execute) {
       throw new Error(`Profile '${profile.artifact.payload.id}' has no executor for stage '${key}'`);
     }
-    value = execute(stage.recipe, value, ctx);
+    const output = execute(stage.recipe, value, ctx);
+    trace.push({
+      fromLayerId: stage.fromLayer.id,
+      toLayerId: stage.toLayer.id,
+      fromKind: stage.fromLayer.kind,
+      toKind: stage.toLayer.kind,
+      input: value,
+      output,
+    });
+    value = output;
   }
-  return value as DocumentPayload;
+  return trace;
 }
 
 export function compileInteraction(
@@ -205,5 +231,7 @@ export function compileInteraction(
   ctx: PresentationContext,
   profile: ResolvedProfile
 ): DocumentPayload {
-  return runProfile(profile, spec, ctx);
+  const trace = traceProfile(profile, spec, ctx);
+  const last = trace[trace.length - 1];
+  return (last ? last.output : spec) as DocumentPayload;
 }
