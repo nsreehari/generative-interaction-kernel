@@ -28,8 +28,11 @@ jobs:
         with:
           node-version: '20'
 
+      # npm install (not ci): the rolldown/vite wasm optional-binding tree resolves to
+      # slightly different nested native-dep versions across platforms, which makes strict
+      # `npm ci` fail on Linux against a lock generated elsewhere. install reconciles in-runner.
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Build host (samples/apps/host)
         run: npm run build:host
