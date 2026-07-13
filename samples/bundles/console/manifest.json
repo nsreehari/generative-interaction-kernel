@@ -13,8 +13,10 @@
       "ui:panel": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"] },
       "ui:text": { "propsSchema": { "type": "object", "additionalProperties": true } },
       "ui:note": { "propsSchema": { "type": "object", "additionalProperties": true } },
+      "ui:narrative": { "propsSchema": { "type": "object", "additionalProperties": true } },
       "ui:metric": { "propsSchema": { "type": "object", "additionalProperties": true } },
       "ui:alert": { "propsSchema": { "type": "object", "additionalProperties": true } },
+      "console:profile-pipeline-canvas": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["selectNode", "selectEdge"] },
       "ui:list": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["select"] },
       "ui:table": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["rowSelect"] },
       "ui:field": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["input"] },
@@ -27,11 +29,14 @@
     },
     "externals": {
       "projectionViews": {
-        "ui": { "from": "floor" }
+        "ui": { "from": "floor" },
+        "console": { "from": "self" }
       },
       "effectHandlers": [
         "syncCatalog",
         "loadProfile",
+        "selectLayer",
+        "selectRecipe",
         "validateProfile",
         "refreshPreview",
         "seedLocalDraft",

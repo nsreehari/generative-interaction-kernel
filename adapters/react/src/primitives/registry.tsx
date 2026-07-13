@@ -7,6 +7,7 @@
 // declares its own projection views as the `self` provider in its manifest `externals` (see bundle.projectionViews).
 
 import React from "react";
+import "@xyflow/react/dist/style.css";
 import { unwrap } from "../../../../kernel/src/index";
 import {
   buildRegistryFromImports,

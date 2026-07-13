@@ -6,7 +6,7 @@
         "kind": "genui-profile",
         "version": "0.1.0",
         "layers": 3,
-        "stages": 2,
+        "recipes": 2,
         "source": "repo",
         "readonly": true,
         "access": "read-only"
@@ -16,7 +16,7 @@
         "kind": "briefing-profile",
         "version": "0.1.0",
         "layers": 3,
-        "stages": 2,
+        "recipes": 2,
         "source": "repo",
         "readonly": true,
         "access": "read-only"
@@ -30,13 +30,49 @@
       "version": "",
       "source": "",
       "readonly": true,
-      "sourceKind": "",
-      "targetKind": "",
       "layerCount": 0,
-      "stageCount": 0,
-      "layers": [],
-      "stages": [],
-      "capabilities": []
+      "recipeCount": 0
+    },
+    "pipeline": {
+      "nodes": [],
+      "edges": []
+    },
+    "layers": [],
+    "recipes": [],
+    "selectedLayerId": "",
+    "layerDetail": {
+      "id": "",
+      "kind": "",
+      "schema": "",
+      "description": ""
+    },
+    "selectedRecipeId": "",
+    "recipeDetail": {
+      "id": "",
+      "kind": "",
+      "kindLabel": "",
+      "from": "",
+      "to": "",
+      "summary": "",
+      "constrainedWhenText": "",
+      "containerCapability": "",
+      "fallbackCapability": "",
+      "fromLayer": {
+        "id": "",
+        "kind": "",
+        "schema": "",
+        "description": ""
+      },
+      "toLayer": {
+        "id": "",
+        "kind": "",
+        "schema": "",
+        "description": ""
+      },
+      "ruleGroups": [],
+      "templates": [],
+      "runtimeRules": [],
+      "runtimeCapabilities": []
     },
     "validation": {
       "status": "unknown",
@@ -60,8 +96,6 @@
       "error": ""
     },
     "tab": "overview",
-    "overviewTab": "preview",
-    "draftTab": "editor",
     "previewInteraction": "investigate",
     "previewSubject": "incident",
     "previewSurface": "desktop",

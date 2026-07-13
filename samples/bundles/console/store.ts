@@ -11,12 +11,14 @@ import type { CapabilityDescriptor, Enveloped, Json, ManifestPayload } from "@gi
 import { setOp, type EffectContext, type EffectHandlerMap, type SerializableBundle } from "@gik/react";
 import {
   createProfileBundle,
+  type InteractionToPresentationRecipe,
+  type LayerDefinition,
   lintLoweringRecipeArtifact,
   lintProfileArtifacts,
   loadProfileBundle,
   parseProfileBundleJson,
-  recipeForKinds,
   stringifyProfileBundle,
+  type LoweringRecipe,
   validateLoweringRecipeArtifact,
   validateProfileArtifact,
   type PresentationToRuntimeRecipe,
@@ -31,7 +33,7 @@ import {
 import { sampleProfileCatalog, type SampleProfileEntry } from "../../profiles/registry";
 import { demoDataFor } from "../workbench/bundles/demo/demo";
 
-export type ConsoleTab = "overview" | "validation" | "draft";
+export type ConsoleTab = "overview" | "layers" | "recipes" | "preview" | "draft";
 
 interface PreviewInput {
   interaction: InteractionKind;
@@ -148,13 +150,37 @@ const EMPTY_PROFILE = {
   version: "",
   source: "",
   readonly: true,
-  sourceKind: "",
-  targetKind: "",
   layerCount: 0,
-  stageCount: 0,
-  layers: [],
-  stages: [],
-  capabilities: [],
+  recipeCount: 0,
+};
+
+const EMPTY_PIPELINE = {
+  nodes: [],
+};
+
+const EMPTY_LAYER_DETAIL = {
+  id: "",
+  kind: "",
+  schema: "",
+  description: "",
+};
+
+const EMPTY_RECIPE_DETAIL = {
+  id: "",
+  kind: "",
+  kindLabel: "",
+  from: "",
+  to: "",
+  summary: "",
+  constrainedWhenText: "",
+  containerCapability: "",
+  fallbackCapability: "",
+  fromLayer: { ...EMPTY_LAYER_DETAIL },
+  toLayer: { ...EMPTY_LAYER_DETAIL },
+  ruleGroups: [],
+  templates: [],
+  runtimeRules: [],
+  runtimeCapabilities: [],
 };
 
 const EMPTY_EDITOR: EditableProfileState = {
@@ -194,9 +220,17 @@ function readSelectedId(ctx: EffectContext): string {
 
 function readTab(ctx: EffectContext): ConsoleTab {
   const value = readStr(ctx, "console.tab", "overview");
-  return value === "overview" || value === "validation" || value === "draft"
+  return value === "overview" || value === "layers" || value === "recipes" || value === "preview" || value === "draft"
     ? value
     : "overview";
+}
+
+function readSelectedLayerId(ctx: EffectContext): string {
+  return readStr(ctx, "console.selectedLayerId");
+}
+
+function readSelectedRecipeId(ctx: EffectContext): string {
+  return readStr(ctx, "console.selectedRecipeId");
 }
 
 function readPreviewInput(ctx: EffectContext): PreviewInput {
@@ -213,7 +247,7 @@ function catalogRows(entries: readonly CatalogEntry[]) {
     kind: entry.artifact.payload.kind,
     version: entry.artifact.payload.version,
     layers: entry.artifact.payload.layers.length,
-    stages: entry.profile.stages.length,
+    recipes: entry.artifact.payload.recipes.length,
     source: entry.source,
     readonly: entry.readonly,
     access: entry.readonly ? "read-only" : "editable",
@@ -345,50 +379,188 @@ function editorState(entry: CatalogEntry, statusOverride?: string, error = ""): 
   };
 }
 
-function runtimeRecipeOf(entry: SampleProfileEntry): PresentationToRuntimeRecipe {
-  return recipeForKinds(entry.profile, "presentation", "runtime-document") as PresentationToRuntimeRecipe;
+function layerDetailView(layer: LayerDefinition | undefined) {
+  return {
+    id: layer?.id ?? "",
+    kind: layer?.kind ?? "",
+    schema: layer?.schema ?? "",
+    description: layer?.description ?? "",
+  };
 }
 
-function capabilityRows(entry: SampleProfileEntry) {
-  const recipe = runtimeRecipeOf(entry);
-  const seen = new Set<string>();
-  const values = [
-    recipe.container.capability,
-    ...recipe.rules.map((rule) => rule.emit.capability).filter((value): value is string => !!value),
-    ...(recipe.fallback?.capability ? [recipe.fallback.capability] : []),
-  ].filter((value, index, all) => all.indexOf(value) === index);
+function ruleMatchSummary(match: Record<string, unknown>): string {
+  const entries = Object.entries(match ?? {});
+  return entries.length === 0 ? "default" : entries.map(([key, value]) => `${key}=${String(value)}`).join(", ");
+}
 
-  return values.map((capability) => {
-    seen.add(capability);
-    return { id: capability, capability };
+function recipeTypeLabel(recipe: LoweringRecipe): string {
+  return `${recipe.from} -> ${recipe.to}`;
+}
+
+function pipelineState(entry: CatalogEntry) {
+  const incomingByNode = new Map<string, Array<{ token: string; label: string }>>();
+  const outgoingByNode = new Map<string, Array<{ token: string; label: string }>>();
+
+  for (const ref of entry.artifact.payload.recipes) {
+    const recipe = entry.profile.recipesById[ref.id];
+    const label = recipe ? recipeTypeLabel(recipe) : `${ref.from} -> ${ref.to}`;
+    const outgoing = outgoingByNode.get(ref.from) ?? [];
+    outgoing.push({ token: ref.id, label });
+    outgoingByNode.set(ref.from, outgoing);
+
+    const incoming = incomingByNode.get(ref.to) ?? [];
+    incoming.push({ token: ref.id, label });
+    incomingByNode.set(ref.to, incoming);
+  }
+
+  return {
+    nodes: entry.artifact.payload.layers.map((layer, index) => ({
+      id: layer.id,
+      label: layer.id,
+      subtitle: layer.kind,
+      meta: layer.schema ?? `layer ${index + 1}`,
+      description: layer.description ?? "",
+      requires: incomingByNode.get(layer.id) ?? [],
+      provides: outgoingByNode.get(layer.id) ?? [],
+    })),
+  };
+}
+
+function layerRows(entry: CatalogEntry) {
+  return entry.artifact.payload.layers.map((layer) => ({
+    id: layer.id,
+    kind: layer.kind,
+    schema: layer.schema ?? "",
+    description: layer.description ?? "",
+  }));
+}
+
+function recipeRows(entry: CatalogEntry) {
+  return entry.artifact.payload.recipes.map((ref) => {
+    const recipe = entry.profile.recipesById[ref.id];
+    return {
+      id: ref.id,
+      connection: `${ref.from} -> ${ref.to}`,
+      kindLabel: recipe ? recipeTypeLabel(recipe) : "",
+    };
   });
+}
+
+function defaultLayerId(entry: CatalogEntry): string {
+  return entry.artifact.payload.layers[0]?.id ?? "";
+}
+
+function defaultRecipeId(entry: CatalogEntry): string {
+  return entry.artifact.payload.recipes[0]?.id ?? "";
+}
+
+function resolveLayerId(entry: CatalogEntry, layerId?: string): string {
+  const ids = new Set(entry.artifact.payload.layers.map((layer) => layer.id));
+  return layerId && ids.has(layerId) ? layerId : defaultLayerId(entry);
+}
+
+function resolveRecipeId(entry: CatalogEntry, recipeId?: string): string {
+  const ids = new Set(entry.artifact.payload.recipes.map((ref) => ref.id));
+  return recipeId && ids.has(recipeId) ? recipeId : defaultRecipeId(entry);
+}
+
+function layerDetailState(entry: CatalogEntry, layerId: string) {
+  const layer = entry.artifact.payload.layers.find((candidate) => candidate.id === layerId);
+  return layerDetailView(layer);
+}
+
+function runtimeCapabilityRows(recipe: PresentationToRuntimeRecipe) {
+  const rows: Array<{ id: string; capability: string; source: string }> = [];
+  const seen = new Set<string>();
+  const push = (capability: string | undefined, source: string) => {
+    if (!capability || seen.has(`${capability}:${source}`)) return;
+    seen.add(`${capability}:${source}`);
+    rows.push({ id: `${source}:${capability}`, capability, source });
+  };
+
+  push(recipe.container.capability, "container");
+  recipe.rules.forEach((rule, index) => push(rule.emit.capability, `rule ${index + 1}`));
+  push(recipe.fallback?.capability, "fallback");
+  return rows;
+}
+
+function recipeDetailState(entry: CatalogEntry, recipeId: string) {
+  const ref = entry.artifact.payload.recipes.find((candidate) => candidate.id === recipeId);
+  if (!ref) return { ...EMPTY_RECIPE_DETAIL };
+
+  const recipe = entry.profile.recipesById[ref.id];
+  const fromLayer = entry.profile.layersById[ref.from];
+  const toLayer = entry.profile.layersById[ref.to];
+  const base = {
+    id: ref.id,
+    from: ref.from,
+    to: ref.to,
+    fromLayer: layerDetailView(fromLayer),
+    toLayer: layerDetailView(toLayer),
+  };
+
+  if (recipe.from === "interaction" && recipe.to === "presentation") {
+    const typed = recipe as InteractionToPresentationRecipe;
+    return {
+      ...base,
+      kind: "interaction-to-presentation",
+      kindLabel: "Interaction -> Presentation",
+      summary: `${typed.templates.length} templates and ${typed.templateRules.length} template rules`,
+      constrainedWhenText: typed.constrainedWhen?.length ? typed.constrainedWhen.map(ruleMatchSummary).join("; ") : "",
+      containerCapability: "",
+      fallbackCapability: "",
+      ruleGroups: [
+        { id: "templates", label: "Templates", value: String(typed.templates.length) },
+        { id: "templateRules", label: "Template rules", value: String(typed.templateRules.length) },
+        { id: "orderRules", label: "Order rules", value: String(typed.orderRules.length) },
+        { id: "priorityRules", label: "Priority rules", value: String(typed.priorityRules.length) },
+        { id: "disclosureRules", label: "Disclosure rules", value: String(typed.disclosureRules.length) },
+        { id: "regionRules", label: "Presentation rules", value: String(typed.regionRules?.length ?? 0) },
+        { id: "rationaleRules", label: "Rationale rules", value: String(typed.rationaleRules?.length ?? 0) },
+      ],
+      templates: typed.templates.map((template) => ({
+        id: template.name,
+        name: template.name,
+        arrangement: template.arrangement,
+        maxRegions: template.maxRegions == null ? "" : String(template.maxRegions),
+      })),
+      runtimeRules: [],
+      runtimeCapabilities: [],
+    };
+  }
+
+  const typed = recipe as PresentationToRuntimeRecipe;
+  return {
+    ...base,
+    kind: "presentation-to-runtime",
+    kindLabel: "Presentation -> Runtime",
+    summary: `${typed.rules.length} runtime rules`,
+    constrainedWhenText: "",
+    containerCapability: typed.container.capability,
+    fallbackCapability: String(typed.fallback?.capability ?? ""),
+    ruleGroups: [],
+    templates: [],
+    runtimeRules: typed.rules.map((rule, index) => ({
+      id: `rule-${index + 1}`,
+      match: ruleMatchSummary(rule.match as Record<string, unknown>),
+      capability: String(rule.emit.capability ?? ""),
+      reads: Object.keys(rule.emit.read ?? rule.emit.readExpr ?? {}).join(", "),
+      actions: Object.keys(rule.emit.on ?? {}).join(", "),
+    })),
+    runtimeCapabilities: runtimeCapabilityRows(typed),
+  };
 }
 
 function profileState(entry: CatalogEntry) {
   const artifact = entry.artifact.payload;
-  const firstStage = entry.profile.stages[0];
-  const lastStage = entry.profile.stages[entry.profile.stages.length - 1];
   return {
     id: artifact.id,
     kind: artifact.kind,
     version: artifact.version,
     source: entry.source,
     readonly: entry.readonly,
-    sourceKind: firstStage?.fromLayer.kind ?? "",
-    targetKind: lastStage?.toLayer.kind ?? "",
     layerCount: artifact.layers.length,
-    stageCount: entry.profile.stages.length,
-    layers: artifact.layers.map((layer) => ({
-      id: layer.id,
-      kind: layer.kind,
-      schema: layer.schema ?? "",
-    })),
-    stages: entry.profile.stages.map((stage) => ({
-      id: stage.ref.id,
-      from: stage.fromLayer.kind,
-      to: stage.toLayer.kind,
-    })),
-    capabilities: capabilityRows(entry),
+    recipeCount: artifact.recipes.length,
   };
 }
 
@@ -529,6 +701,13 @@ function clearSelectionOps(snapshot: CatalogSnapshot, message = "") {
     ...baseCatalogOps(snapshot),
     setOp("console.selectedId", ""),
     setOp("console.profile", EMPTY_PROFILE as unknown as Json),
+    setOp("console.pipeline", EMPTY_PIPELINE as unknown as Json),
+    setOp("console.layers", [] as unknown as Json),
+    setOp("console.recipes", [] as unknown as Json),
+    setOp("console.selectedLayerId", ""),
+    setOp("console.layerDetail", EMPTY_LAYER_DETAIL as unknown as Json),
+    setOp("console.selectedRecipeId", ""),
+    setOp("console.recipeDetail", EMPTY_RECIPE_DETAIL as unknown as Json),
     setOp("console.validation", EMPTY_VALIDATION as unknown as Json),
     setOp("console.artifacts", { ...EMPTY_EDITOR, profileText: "", recipesText: "", resolvedText: "", bundleText: "" } as unknown as Json),
     setOp("console.previewBundle", null as unknown as Json),
@@ -537,13 +716,28 @@ function clearSelectionOps(snapshot: CatalogSnapshot, message = "") {
   ];
 }
 
-function selectionOps(entry: CatalogEntry, input: PreviewInput, tab: ConsoleTab, snapshot: CatalogSnapshot) {
+function selectionOps(
+  entry: CatalogEntry,
+  input: PreviewInput,
+  tab: ConsoleTab,
+  snapshot: CatalogSnapshot,
+  selection?: { layerId?: string; recipeId?: string }
+) {
   const validation = validateSampleProfile(entry);
   const preview = previewState(entry, input);
+  const layerId = resolveLayerId(entry, selection?.layerId);
+  const recipeId = resolveRecipeId(entry, selection?.recipeId);
   return [
     ...baseCatalogOps(snapshot),
     setOp("console.selectedId", entry.artifact.payload.id),
     setOp("console.profile", profileState(entry) as unknown as Json),
+    setOp("console.pipeline", pipelineState(entry) as unknown as Json),
+    setOp("console.layers", layerRows(entry) as unknown as Json),
+    setOp("console.recipes", recipeRows(entry) as unknown as Json),
+    setOp("console.selectedLayerId", layerId),
+    setOp("console.layerDetail", layerDetailState(entry, layerId) as unknown as Json),
+    setOp("console.selectedRecipeId", recipeId),
+    setOp("console.recipeDetail", recipeDetailState(entry, recipeId) as unknown as Json),
     setOp("console.validation", validation as unknown as Json),
     setOp("console.artifacts", artifactState(entry) as unknown as Json),
     setOp("console.previewBundle", preview.bundle as unknown as Json),
@@ -563,7 +757,12 @@ export const consoleEffects: EffectHandlerMap = {
     const snapshot = loadCatalog();
     const selected = findEntry(readSelectedId(ctx), snapshot.entries);
     if (!selected) return { ops: baseCatalogOps(snapshot) };
-    return { ops: selectionOps(selected, readPreviewInput(ctx), readTab(ctx), snapshot) };
+    return {
+      ops: selectionOps(selected, readPreviewInput(ctx), readTab(ctx), snapshot, {
+        layerId: readSelectedLayerId(ctx),
+        recipeId: readSelectedRecipeId(ctx),
+      }),
+    };
   },
 
   loadProfile(ctx) {
@@ -586,8 +785,31 @@ export const consoleEffects: EffectHandlerMap = {
       ops: [
         ...baseCatalogOps(snapshot),
         setOp("console.validation", validation as unknown as Json),
-        setOp("console.tab", "validation"),
       ],
+    };
+  },
+
+  selectLayer(ctx) {
+    const snapshot = loadCatalog();
+    const entry = findEntry(readSelectedId(ctx), snapshot.entries);
+    if (!entry) return { ops: [] };
+    return {
+      ops: selectionOps(entry, readPreviewInput(ctx), readTab(ctx), snapshot, {
+        layerId: String(ctx.payload.id ?? ""),
+        recipeId: readSelectedRecipeId(ctx),
+      }),
+    };
+  },
+
+  selectRecipe(ctx) {
+    const snapshot = loadCatalog();
+    const entry = findEntry(readSelectedId(ctx), snapshot.entries);
+    if (!entry) return { ops: [] };
+    return {
+      ops: selectionOps(entry, readPreviewInput(ctx), readTab(ctx), snapshot, {
+        layerId: readSelectedLayerId(ctx),
+        recipeId: String(ctx.payload.id ?? ""),
+      }),
     };
   },
 

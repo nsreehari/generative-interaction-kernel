@@ -1,11 +1,10 @@
 {
-  "name": "@gik/react",
+  "name": "@gik/component-infinite-canvas",
   "version": "0.1.0",
   "type": "module",
   "sideEffects": false,
   "files": [
-    "dist",
-    "docs"
+    "dist"
   ],
   "exports": {
     ".": {
@@ -16,15 +15,13 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "peerDependencies": {
-    "@fluentui/react-components": "^9.74.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "dependencies": {
-    "@gik/component-infinite-canvas": "0.1.0"
+    "@xyflow/react": "^12.8.5"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --sourcemap --clean --tsconfig tsconfig.json",
-    "prepack": "node ../../scripts/sync-public-docs.mjs packages/react"
+    "build": "tsup src/index.tsx --format esm --dts --sourcemap --clean --tsconfig tsconfig.json"
   }
 }
