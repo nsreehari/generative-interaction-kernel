@@ -179,6 +179,26 @@ const HOST_THEME_CSS = `
 }
 .gx-host .gx-field textarea { resize: vertical; }
 
+.gx-host .gx-json-field textarea.gx-json-input {
+  font-family: var(--fontFamilyMonospace, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: var(--fontSizeBase200);
+  line-height: 1.5;
+  white-space: pre;
+  tab-size: 2;
+}
+.gx-host .gx-json-field textarea.gx-json-input.invalid {
+  border-color: var(--colorPaletteRedBorder2, #d13438);
+}
+.gx-host .gx-json-error {
+  font-size: var(--fontSizeBase100);
+  color: var(--colorPaletteRedForeground1, #d13438);
+}
+.gx-host .gx-form-errors {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .gx-host .gx-btn {
   background: var(--colorNeutralBackground3);
   color: var(--text);

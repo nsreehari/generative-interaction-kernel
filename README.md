@@ -154,13 +154,13 @@ generative-interaction-kernel/
       tool-surface.ts           ← shared JSON-RPC tool primitive + dispatcher
     test/                       ← pure + live + projection integration tests
     tsconfig.json
-  packages/                     ← public npm/browser package surfaces
+  packages/                     ← workspace package surfaces (public and internal)
     kernel/                     ← @gik/kernel
     controlface/                ← @gik/controlface
     agentface/                  ← @gik/agentface
     react/                      ← @gik/react
     profile/                    ← @gik/profile (generic profile machinery: N layers + N-1 recipes; real source under src/)
-    profile-genui/              ← @gik/profile-genui (GenUI flavor: interaction/presentation/runtime layers + authoring; real source under src/)
+    profile-genui/              ← internal GenUI workspace (being collapsed toward profile JSON/templates; real source under src/)
     provider-reactive-state-model/ ← @gik/provider-reactive-state-model
     provider-consequence-graph/ ← @gik/provider-consequence-graph
     provider-exploratory-graph/ ← @gik/provider-exploratory-graph
