@@ -13,7 +13,7 @@ import {
   type PresentationEdits,
   type RegionDisclosure,
   type RegionPriority,
-} from "../../../../../interaction/src/index";
+} from "@gik/profile-genui";
 import {
   emptyEdits,
   moveRegion,

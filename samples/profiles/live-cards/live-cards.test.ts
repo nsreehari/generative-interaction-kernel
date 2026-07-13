@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { compileInteraction, type InteractionSpec } from "../../../interaction/src/index";
+import { compileInteraction, type InteractionSpec } from "@gik/profile-genui";
 import { loadProfile } from "@gik/profile-genui";
 import liveCardsProfileJson from "./profile.json" with { type: "json" };
 import liveCardsInteractionRecipeJson from "./interaction-to-presentation.recipe.json" with { type: "json" };

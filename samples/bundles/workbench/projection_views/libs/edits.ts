@@ -8,10 +8,10 @@
 // on a state model" seam: `applyPresentationEdits` is the pure reducer those patches drive.
 //
 // These reducers are consumed only by the workbench bundle, so they live with the sample rather than
-// leaking through the interaction package. The `PresentationEdits` type they operate on is the
+// leaking through the shared interaction runtime package. The `PresentationEdits` type they operate on is the
 // platform's sanctioned override channel and stays in the interaction package.
 
-import { resolveFacets } from "../../../../../interaction/src/index";
+import { resolveFacets } from "@gik/profile-genui";
 import type {
   InteractionSpec,
   PresentationSpec,
@@ -19,7 +19,7 @@ import type {
   RegionPriority,
   RegionDisclosure,
   PresentationEdits,
-} from "../../../../../interaction/src/index";
+} from "@gik/profile-genui";
 
 /** The no-op edit set: defer entirely to the planner. */
 export const emptyEdits: PresentationEdits = { disabled: [], priority: {}, disclosure: {}, order: [] };

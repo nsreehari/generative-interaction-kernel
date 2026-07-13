@@ -6,7 +6,7 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
 
-import type { PresentationSpec, PresentationEdits } from "../../../../../interaction/src/index";
+import type { PresentationSpec, PresentationEdits } from "@gik/profile-genui";
 import {
   applyPresentationEdits,
   emptyEdits,

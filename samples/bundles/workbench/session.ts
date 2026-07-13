@@ -26,7 +26,7 @@ import {
   type PresentationContext,
   type PresentationEdits,
   type PresentationSpec,
-} from "../../../interaction/src/index";
+} from "@gik/profile-genui";
 import { applyPresentationEdits, emptyEdits } from "./projection_views/libs/edits";
 import type { ProfileIdentity } from "./projection_views/libs/authoring";
 import { DEMO_MANIFEST, demoDataFor, seedState } from "./bundles/demo/demo";

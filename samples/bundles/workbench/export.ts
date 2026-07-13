@@ -1,10 +1,10 @@
 // Slice 3 — the demo-specific export bundle. The portable authored-session artifact ({interaction,
-// context, edits}) and its parse/serialize now live in the interaction lib (any host can import/export
-// one); this module only assembles the self-describing EXPORT bundle for the workbench's demo manifest:
-// the authored artifact plus the manifest generated from its compiled document.
+// context, edits}) lives in the workbench sample libs; this module only assembles the self-describing
+// EXPORT bundle for the demo manifest: the authored artifact plus the manifest generated from its
+// compiled document.
 
 import { generateManifest, unwrap, type DocumentPayload, type ManifestPayload } from "@gik/kernel";
-import { type PresentationEdits } from "../../../interaction/src/index";
+import { type PresentationEdits } from "@gik/profile-genui";
 import { toAuthoredSession, type AuthoredSession } from "./projection_views/libs/authoring";
 import { DEMO_MANIFEST } from "./bundles/demo/demo";
 import type { Session } from "./session";
