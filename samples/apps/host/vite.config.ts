@@ -56,6 +56,9 @@ function jsonataUmdInterop(): Plugin {
 // (kernel/src, adapters/react/src) plus the bundles it mounts (samples/bundles/*). It runs any
 // bundle by id; there is no per-app shell.
 export default defineConfig({
+  // For GitHub Pages the site is served under /<repo>/, so built asset URLs must be prefixed.
+  // The Pages workflow sets VITE_BASE=/generative-interaction-kernel/; local dev/build default to "/".
+  base: process.env.VITE_BASE || "/",
   plugins: [jsonataUmdInterop(), react()],
   resolve: {
     alias: {
