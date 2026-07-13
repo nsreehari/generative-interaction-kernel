@@ -53,15 +53,15 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
    which is a pragmatic pilot adopter, not a pristine reference). Note: a **profile** is now defined
    as a *Domain DSL + its lowering to the kernel* ([ADR-0016](decisions/ADR-0016-layered-dsl-stack.md)).
 
-6. **Interaction taxonomy (Layer 3).** The platform-owned interaction vocabulary
+6. **Interaction taxonomy (interaction layer).** The platform-owned interaction vocabulary
     ([ADR-0018](decisions/ADR-0018-interaction-presentation-split.md)) is specified in
-    `interaction/src/interaction.ts`: all 12 kinds, each with its `Facet[]` (`{ name, role,
+    `packages/profile-genui/src/interaction.ts`: all 12 kinds, each with its `Facet[]` (`{ name, role,
     required }`, `role` = a semantic display role, `required` = never dropped on constrained
     surfaces). Still open: whether these facet sets are *authoritative*, how facets/roles are
     versioned, and how a domain extends the taxonomy without forking it — this taxonomy is "the moat"
     ([ADR-0017](decisions/ADR-0017-platform-boundary.md)) so its shape needs deliberate design.
 
-7. **Presentation planner + compiler + context taxonomy (Layer 3→4).** The seam is now split: a
+7. **Presentation planner + compiler + context taxonomy (interaction → presentation lowering).** The seam is now split: a
     `PresentationPlanner` (interaction + context → Presentation DSL; `defaultPresentationPlanner`
     is the deterministic reference, and the slot an AI planner fills) and the Presentation
     *Compiler* (`lowerPresentation`: Presentation DSL → UI DSL). The DSL is a first-class,

@@ -2,6 +2,13 @@
 
 **Status:** Accepted — 2026-07-04
 
+> **Update (2026-07-13):** This ADR describes the split using fixed **Layer 3 / Layer 4** numbering.
+> That numbering is superseded by [ADR-0038](ADR-0038-declarative-profiles-and-lowering-recipes.md):
+> a profile is an ordered set of **N declarative layers connected by N-1 lowering recipes**, authored
+> per profile — there is no hard-coded L3/L4/L5 stack. Read every "Layer 3 / Layer 4" below as
+> "the interaction layer / the presentation layer" of the *default GenUI profile*, one particular
+> authored choice of layers rather than a platform-wide invariant.
+
 ## Context
 
 ADR-0016 treated "Interaction -> UI" as a single lowering. In practice two very different concerns
