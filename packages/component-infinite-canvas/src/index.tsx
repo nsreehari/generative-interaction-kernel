@@ -4,10 +4,12 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import {
+  BaseEdge,
   Background,
   Controls,
   getBezierPath,
@@ -36,6 +38,9 @@ const SIDE_POSITION = {
 
 const DEFAULT_BACKGROUND = { gap: 24, size: 1.1, color: "var(--line)" };
 const DEFAULT_PRO_OPTIONS: ProOptions = { hideAttribution: true };
+const EDGE_CURVATURE_SUBTLE = 0.26;
+const EDGE_CURVATURE_BASE = 0.46;
+const EDGE_CURVATURE_DRAMATIC = 0.68;
 
 type Side = keyof typeof SIDE_POSITION;
 
@@ -46,20 +51,10 @@ interface DerivedEdgeState {
   running: boolean;
 }
 
-interface DerivedEdge {
-  id: string;
-  source: string;
-  target: string;
-  sourceHandle: string;
-  targetHandle: string;
-  sourceSide: Side;
-  targetSide: Side;
-  sourceIndex: number;
-  targetIndex: number;
-  sourceCount: number;
-  targetCount: number;
+interface InfiniteCanvasEdgeData extends Record<string, unknown> {
+  token?: string;
   label?: string;
-  state: DerivedEdgeState;
+  isRunning?: boolean;
 }
 
 export interface InfiniteCanvasPort {
@@ -277,26 +272,152 @@ function resolveLeaderCurve(sourceX: number, sourceY: number, targetX: number, t
   const verticalDistance = Math.abs(targetY - sourceY);
 
   if (horizontalDistance < 180 && verticalDistance < 120) {
-    return 0.26;
+    return EDGE_CURVATURE_SUBTLE;
   }
 
   if (horizontalDistance > 520 || verticalDistance > 320) {
-    return state.highlighted || state.running ? 0.68 : 0.58;
+    return state.highlighted || state.running ? EDGE_CURVATURE_DRAMATIC : 0.58;
   }
 
-  return state.highlighted || state.running ? 0.58 : 0.46;
+  return state.highlighted || state.running ? 0.58 : EDGE_CURVATURE_BASE;
 }
+
+function LeaderLineEdge({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  markerEnd,
+  className,
+  data,
+  style,
+}: {
+  id: string;
+  sourceX: number;
+  sourceY: number;
+  targetX: number;
+  targetY: number;
+  sourcePosition: Position;
+  targetPosition: Position;
+  markerEnd?: string;
+  className?: string;
+  data?: InfiniteCanvasEdgeData;
+  style?: React.CSSProperties;
+}) {
+  const isHighlighted = className?.includes("is-highlighted");
+  const isDimmed = className?.includes("is-dimmed");
+  const isRunning = Boolean(data?.isRunning);
+  const curvature = resolveLeaderCurve(
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    { highlighted: Boolean(isHighlighted), dimmed: Boolean(isDimmed), running: isRunning, selected: false },
+  );
+  const [edgePath, labelX, labelY] = getBezierPath({
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    sourcePosition,
+    targetPosition,
+    curvature,
+  });
+  const baseStrokeColor = "var(--line)";
+  const highlightStrokeColor = "var(--accent)";
+  const dimStrokeColor = "color-mix(in srgb, var(--line) 32%, transparent)";
+  const strokeColor = isHighlighted
+    ? highlightStrokeColor
+    : isDimmed
+      ? dimStrokeColor
+      : baseStrokeColor;
+  const flowColor = isHighlighted
+    ? "color-mix(in srgb, var(--accent) 78%, white)"
+    : "color-mix(in srgb, var(--accent) 58%, transparent)";
+  const plugMarkerId = `${id}-plug`;
+  const endPlugMarkerId = `${id}-end-plug`;
+  const mainStrokeWidth = isHighlighted ? 2.4 : 1.8;
+  const labelClassName = [
+    "infinite-canvas-edge-label",
+    isHighlighted ? "is-highlighted" : "",
+    isRunning ? "is-running" : "",
+  ].filter(Boolean).join(" ");
+
+  return (
+    <>
+      <defs>
+        <marker
+          id={plugMarkerId}
+          viewBox="0 0 10 10"
+          markerWidth="6"
+          markerHeight="6"
+          refX="5"
+          refY="5"
+        >
+          <circle cx="5" cy="5" r="3" fill={strokeColor} />
+        </marker>
+        <marker
+          id={endPlugMarkerId}
+          viewBox="0 0 12 12"
+          markerWidth="8.5"
+          markerHeight="8.5"
+          refX="6"
+          refY="6"
+          orient="auto-start-reverse"
+        >
+          <circle cx="6" cy="6" r="3.9" fill={strokeColor} />
+        </marker>
+      </defs>
+      <g className={className}>
+        <BaseEdge
+          id={id}
+          path={edgePath}
+          className="infinite-canvas-edge__main"
+          markerStart={`url(#${plugMarkerId})`}
+          markerEnd={markerEnd ?? `url(#${endPlugMarkerId})`}
+          style={{
+            ...style,
+            stroke: strokeColor,
+            strokeWidth: mainStrokeWidth,
+            strokeLinecap: "round",
+            strokeLinejoin: "round",
+          }}
+        />
+        {isRunning ? (
+          <BaseEdge
+            id={`${id}-flow`}
+            path={edgePath}
+            className="infinite-canvas-edge__flow"
+            style={{
+              stroke: flowColor,
+              strokeWidth: mainStrokeWidth + 0.35,
+            }}
+          />
+        ) : null}
+        {data?.label ? (
+          <text x={labelX} y={labelY} textAnchor="middle" className={labelClassName}>
+            {String(data.label)}
+          </text>
+        ) : null}
+      </g>
+    </>
+  );
+}
+
+const EDGE_TYPES = {
+  leaderLine: LeaderLineEdge,
+};
 
 function deriveEdgesFromNodePorts(
   nodeDescriptors: InfiniteCanvasNodeDescriptor[],
   nodePorts: InfiniteCanvasPortMap | undefined,
-): DerivedEdge[] {
+): Array<Edge<InfiniteCanvasEdgeData>> {
   const targetPortsByToken = new Map<string, Array<{
     nodeId: string;
     port: InfiniteCanvasPort;
-    side: Side;
-    index: number;
-    count: number;
   }>>();
 
   for (const descriptor of nodeDescriptors) {
@@ -304,88 +425,57 @@ function deriveEdgesFromNodePorts(
     for (const side of ["left", "top"] as const) {
       const rail = ports?.[side];
       if (!Array.isArray(rail)) continue;
-      for (const [index, port] of rail.entries()) {
+      for (const port of rail) {
         const token = readPortToken(port);
         if (!token) continue;
         const list = targetPortsByToken.get(token) ?? [];
-        list.push({ nodeId: descriptor.id, port, side, index, count: rail.length });
+        list.push({ nodeId: descriptor.id, port });
         targetPortsByToken.set(token, list);
       }
     }
   }
 
-  const edges: DerivedEdge[] = [];
+  const edges: Array<Edge<InfiniteCanvasEdgeData>> = [];
   for (const descriptor of nodeDescriptors) {
     const ports = resolvePortsForDescriptor(descriptor, nodePorts);
     for (const side of ["right", "bottom"] as const) {
       const rail = ports?.[side];
       if (!Array.isArray(rail)) continue;
-      for (const [index, sourcePort] of rail.entries()) {
+      for (const sourcePort of rail) {
         const token = readPortToken(sourcePort);
         const sourcePortId = typeof sourcePort.id === "string" ? sourcePort.id : "";
         if (!token || !sourcePortId) continue;
         const targets = targetPortsByToken.get(token) ?? [];
-        for (const { nodeId: targetNodeId, port: targetPort, side: targetSide, index: targetIndex, count: targetCount } of targets) {
+        for (const { nodeId: targetNodeId, port: targetPort } of targets) {
           const targetPortId = typeof targetPort.id === "string" ? targetPort.id : "";
           if (!targetPortId || descriptor.id === targetNodeId) continue;
+          const state = mergeEdgeState(sourcePort, targetPort);
           edges.push({
-            id: token,
+            id: `${descriptor.id}::${targetNodeId}::${sourcePortId}::${targetPortId}::${token}`,
             source: descriptor.id,
             target: targetNodeId,
             sourceHandle: sourcePortId,
             targetHandle: targetPortId,
-            sourceSide: side,
-            targetSide,
-            sourceIndex: index,
-            targetIndex,
-            sourceCount: rail.length,
-            targetCount,
-            label: readEdgeLabel(sourcePort, targetPort),
-            state: mergeEdgeState(sourcePort, targetPort),
+            data: {
+              token,
+              label: readEdgeLabel(sourcePort, targetPort),
+              isRunning: state.running,
+            },
+            animated: state.running,
+            className: [
+              "infinite-canvas-edge",
+              state.selected ? "selected" : "",
+              state.highlighted ? "is-highlighted" : "",
+              state.dimmed ? "is-dimmed" : "",
+              state.running ? "is-running" : "",
+            ].filter(Boolean).join(" "),
+            type: "leaderLine",
           });
         }
       }
     }
   }
   return edges;
-}
-
-function resolveAnchor(
-  node: Node<InternalNodeData>,
-  side: Side,
-  index: number,
-  count: number,
-): { x: number; y: number; position: Position } {
-  const width = Number(node.measured?.width ?? node.width ?? node.style?.width ?? 220);
-  const height = Number(node.measured?.height ?? node.height ?? 72);
-  const ratio = (index + 0.5) / Math.max(count, 1);
-
-  switch (side) {
-    case "left":
-      return {
-        x: node.position.x - 18,
-        y: node.position.y + (height * ratio),
-        position: Position.Left,
-      };
-    case "right":
-      return {
-        x: node.position.x + width + 18,
-        y: node.position.y + (height * ratio),
-        position: Position.Right,
-      };
-    case "top":
-      return {
-        x: node.position.x + (width * ratio),
-        y: node.position.y - 18,
-        position: Position.Top,
-      };
-    case "bottom":
-      return {
-        x: node.position.x + (width * ratio),
-        y: node.position.y + height + 18,
-        position: Position.Bottom,
-      };
-  }
 }
 
 function resolveNodeEndpoints(ports: InfiniteCanvasPorts | null | undefined) {
@@ -430,12 +520,13 @@ export const InfiniteCanvas = forwardRef<InfiniteCanvasRef, InfiniteCanvasProps>
   },
   ref
 ) {
-  const [instance, setInstance] = useState<ReactFlowInstance<Node<InternalNodeData>, Edge> | null>(null);
+  const [instance, setInstance] = useState<ReactFlowInstance<Node<InternalNodeData>, Edge<InfiniteCanvasEdgeData>> | null>(null);
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState<Node<InternalNodeData>>([]);
   const [isReady, setIsReady] = useState(false);
-  const [viewportState, setViewportState] = useState<Viewport | null>(canvasState?.viewport ?? null);
-  const graphEdges = deriveEdgesFromNodePorts(nodeDescriptors, nodePorts);
-  const overlayViewport = viewportState ?? { x: 0, y: 0, zoom: 1 };
+  const graphEdges = useMemo(
+    () => deriveEdgesFromNodePorts(nodeDescriptors, nodePorts),
+    [nodeDescriptors, nodePorts],
+  );
   const nodeTypesRef = useRef(NODE_TYPES);
 
   const canvasStateRef = useRef(canvasState);
@@ -548,14 +639,16 @@ export const InfiniteCanvas = forwardRef<InfiniteCanvasRef, InfiniteCanvasProps>
 
         const width = descriptor.width;
         const ports = resolvePortsForDescriptor(descriptor, nodePorts);
+        const sameNodeData = existing && (existing.data.__node === descriptor || deepEqualView(existing.data.__node, descriptor));
+        const samePorts = existing && (existing.data.__ports === ports || deepEqualView(existing.data.__ports, ports));
 
         if (
           existing
           && existing.position === position
           && existing.style?.width === width
           && existing.draggable === (descriptor.draggable ?? true)
-          && deepEqualView(existing.data.__node, descriptor)
-          && deepEqualView(existing.data.__ports, ports)
+          && sameNodeData
+          && samePorts
           && existing.data.__renderNode === renderNode
           && existing.data.__renderNodePort === renderNodePort
         ) {
@@ -582,7 +675,7 @@ export const InfiniteCanvas = forwardRef<InfiniteCanvasRef, InfiniteCanvasProps>
 
       return changed ? next : current;
     });
-  }, [nodeDescriptors, nodePorts, canvasState, renderNode, renderNodePort, resolvePlacement, setRfNodes]);
+  }, [nodeDescriptors, nodePorts, renderNode, renderNodePort, resolvePlacement, setRfNodes]);
 
   useEffect(() => {
     if (rfNodes.length === 0) return;
@@ -607,17 +700,15 @@ export const InfiniteCanvas = forwardRef<InfiniteCanvasRef, InfiniteCanvasProps>
         instance.fitView?.({ duration: 0, padding: 0.18, minZoom: 0.35, maxZoom: 1.08, ...fitViewOptions });
         viewportRef.current = instance.getViewport?.() ?? null;
       }
-      setViewportState(viewportRef.current);
       onViewportChange?.(viewportRef.current);
       setIsReady(true);
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [instance, rfNodes.length, fitViewOptions]);
+  }, [instance, rfNodes.length, fitViewOptions, onViewportChange]);
 
   const handleMoveEnd = useCallback(() => {
     viewportRef.current = instance?.getViewport?.() ?? viewportRef.current;
-    setViewportState(viewportRef.current);
     onViewportChange?.(viewportRef.current);
     commitGeometry();
   }, [commitGeometry, instance, onViewportChange]);
@@ -636,103 +727,13 @@ export const InfiniteCanvas = forwardRef<InfiniteCanvasRef, InfiniteCanvasProps>
     instance,
   }), [instance]);
 
-  const edgeOverlay = (
-    <svg className="infinite-canvas-edge-overlay" viewBox="0 0 1000 260" preserveAspectRatio="none" aria-hidden="true">
-      <defs>
-        <marker id={`ic-edge-default-${stateKey}`} markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line)" />
-        </marker>
-        <marker id={`ic-edge-selected-${stateKey}`} markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)" />
-        </marker>
-      </defs>
-      <g transform={`translate(${overlayViewport.x} ${overlayViewport.y}) scale(${overlayViewport.zoom})`}>
-        {graphEdges.map((edge) => {
-          const sourceNode = rfNodes.find((node) => node.id === edge.source);
-          const targetNode = rfNodes.find((node) => node.id === edge.target);
-          if (!sourceNode || !targetNode) return null;
-          const sourceAnchor = resolveAnchor(sourceNode, edge.sourceSide, edge.sourceIndex, edge.sourceCount);
-          const targetAnchor = resolveAnchor(targetNode, edge.targetSide, edge.targetIndex, edge.targetCount);
-          const curvature = resolveLeaderCurve(sourceAnchor.x, sourceAnchor.y, targetAnchor.x, targetAnchor.y, edge.state);
-          const [edgePath, labelX, labelY] = getBezierPath({
-            sourceX: sourceAnchor.x,
-            sourceY: sourceAnchor.y,
-            targetX: targetAnchor.x,
-            targetY: targetAnchor.y,
-            sourcePosition: sourceAnchor.position,
-            targetPosition: targetAnchor.position,
-            curvature,
-          });
-          const id = String(edge.id);
-          const classes = [
-            "infinite-canvas-edge",
-            edge.state.selected ? "selected" : "",
-            edge.state.highlighted ? "is-highlighted" : "",
-            edge.state.dimmed ? "is-dimmed" : "",
-            edge.state.running ? "is-running" : "",
-          ].filter(Boolean).join(" ");
-          const strokeColor = edge.state.highlighted || edge.state.selected
-            ? "var(--accent)"
-            : edge.state.dimmed
-              ? "color-mix(in srgb, var(--line) 32%, transparent)"
-              : "var(--line)";
-          const flowColor = edge.state.highlighted || edge.state.selected
-            ? "color-mix(in srgb, var(--accent) 78%, white)"
-            : "color-mix(in srgb, var(--accent) 58%, transparent)";
-          const mainStrokeWidth = edge.state.highlighted || edge.state.running || edge.state.selected ? 2.4 : 1.8;
-          const labelClassName = [
-            "infinite-canvas-edge-label",
-            edge.state.highlighted || edge.state.selected ? "is-highlighted" : "",
-            edge.state.running ? "is-running" : "",
-          ].filter(Boolean).join(" ");
-          return (
-            <g
-              key={id}
-              className={classes}
-              onClick={() => onEdgeClick?.(id)}
-            >
-              <path
-                d={edgePath}
-                className="infinite-canvas-edge__main"
-                fill="none"
-                stroke={strokeColor}
-                strokeWidth={mainStrokeWidth}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity={edge.state.dimmed ? 0.18 : 1}
-                markerEnd={`url(#ic-edge-${edge.state.highlighted || edge.state.selected ? "selected" : "default"}-${stateKey})`}
-              />
-              {edge.state.running ? (
-                <path
-                  d={edgePath}
-                  className="infinite-canvas-edge__flow"
-                  fill="none"
-                  stroke={flowColor}
-                  strokeWidth={mainStrokeWidth + 0.35}
-                  strokeDasharray="10 12"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  opacity={edge.state.dimmed ? 0.18 : 1}
-                />
-              ) : null}
-              {edge.label ? (
-                <text x={labelX} y={labelY} textAnchor="middle" className={labelClassName} opacity={edge.state.dimmed ? 0.12 : 1}>
-                  {String(edge.label)}
-                </text>
-              ) : null}
-            </g>
-          );
-        })}
-      </g>
-    </svg>
-  );
-
   return (
     <div className={viewportClassName}>
-      <ReactFlow<Node<InternalNodeData>>
+      <ReactFlow<Node<InternalNodeData>, Edge<InfiniteCanvasEdgeData>>
         nodes={rfNodes}
-        edges={[]}
+        edges={graphEdges}
         nodeTypes={nodeTypesRef.current}
+        edgeTypes={EDGE_TYPES}
         minZoom={minZoom}
         maxZoom={maxZoom}
         proOptions={proOptions}
@@ -745,8 +746,8 @@ export const InfiniteCanvas = forwardRef<InfiniteCanvasRef, InfiniteCanvasProps>
         onNodesChange={onNodesChange}
         onNodeDragStop={handleNodeDragStop}
         onNodeClick={(_, node) => onNodeClick?.(node.id)}
+        onEdgeClick={(_, edge) => onEdgeClick?.(String(edge.data?.token ?? edge.id))}
       >
-        {edgeOverlay}
         {overlay}
         {miniMap ? <MiniMap pannable zoomable {...(typeof miniMap === "object" ? miniMap : {})} /> : null}
         {controls ? <Controls showInteractive={false} {...(typeof controls === "object" ? controls : {})} /> : null}

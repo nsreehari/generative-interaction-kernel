@@ -55,13 +55,46 @@ function createState(): Record<string, Json> {
         nodes: [],
       },
       layers: [],
-      recipes: [],
       selectedLayerId: "",
       layerDetail: {
         id: "",
         kind: "",
         schema: "",
         description: "",
+        outgoingRecipe: {
+          id: "",
+          kind: "",
+          kindLabel: "",
+          from: "",
+          to: "",
+          summary: "",
+          constrainedWhenText: "",
+          containerCapability: "",
+          fallbackCapability: "",
+          fromLayer: { id: "", kind: "", schema: "", description: "" },
+          toLayer: { id: "", kind: "", schema: "", description: "" },
+          ruleGroups: [],
+          templates: [],
+          runtimeRules: [],
+          runtimeCapabilities: [],
+        },
+        incomingRecipe: {
+          id: "",
+          kind: "",
+          kindLabel: "",
+          from: "",
+          to: "",
+          summary: "",
+          constrainedWhenText: "",
+          containerCapability: "",
+          fallbackCapability: "",
+          fromLayer: { id: "", kind: "", schema: "", description: "" },
+          toLayer: { id: "", kind: "", schema: "", description: "" },
+          ruleGroups: [],
+          templates: [],
+          runtimeRules: [],
+          runtimeCapabilities: [],
+        },
       },
       selectedRecipeId: "",
       recipeDetail: {
@@ -164,7 +197,7 @@ test("loadProfile marks repo sample entries as read-only and seeds the editor bu
   assert.equal(typeof opRecord(result?.ops, "console.editor").bundleText, "string");
   assert.match(String(opRecord(result?.ops, "console.editor").status), /read-only/i);
   assert.equal(opValue(result?.ops, "console.selectedLayerId"), sampleProfileCatalog[0].artifact.payload.layers[0].id);
-  assert.equal(opValue(result?.ops, "console.selectedRecipeId"), sampleProfileCatalog[0].artifact.payload.recipes[0].id);
+  assert.equal(opValue(result?.ops, "console.selectedRecipeId"), "");
 });
 
 test("$init hydrates the console catalog from localStorage on first load", async () => {
@@ -332,6 +365,7 @@ test("selectLayer and selectRecipe update the focused detail models", async () =
 
   assert.equal(opValue(layerResult?.ops, "console.selectedLayerId"), selectedLayer);
   assert.equal(opRecord(layerResult?.ops, "console.layerDetail").id, selectedLayer);
+  assert.equal(opValue(layerResult?.ops, "console.selectedRecipeId"), "");
 
   const selectedRecipe = sample.artifact.payload.recipes[1].id;
   const recipeResult = await consoleEffects.selectRecipe({
@@ -342,8 +376,10 @@ test("selectLayer and selectRecipe update the focused detail models", async () =
     store: { get: (path: string) => getPath(state, path) } as never,
   });
 
+  assert.equal(opValue(recipeResult?.ops, "console.selectedLayerId"), sample.artifact.payload.recipes[1].from);
   assert.equal(opValue(recipeResult?.ops, "console.selectedRecipeId"), selectedRecipe);
   assert.equal(opRecord(recipeResult?.ops, "console.recipeDetail").id, selectedRecipe);
+  assert.equal(opRecord(recipeResult?.ops, "console.layerDetail").outgoingRecipe.id, selectedRecipe);
 });
 
 test("configure preview for live-cards emits the frontend editable-table kind end-to-end", () => {

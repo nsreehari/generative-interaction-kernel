@@ -40,7 +40,7 @@ function ProfilePipelineCanvas({ node, emit }: ProjectionViewProps) {
         return {
           id: token ? `require:${token}` : `${descriptor.id}-in`,
           token,
-          label: String((edge as Record<string, unknown>).label ?? token ?? "In"),
+          title: String((edge as Record<string, unknown>).label ?? token ?? "Incoming recipe"),
           selected: isSelected,
           highlighted: isSelected,
           dimmed: hasEdgeSelection && !isSelected,
@@ -52,7 +52,7 @@ function ProfilePipelineCanvas({ node, emit }: ProjectionViewProps) {
         return {
           id: token ? `provide:${token}` : `${descriptor.id}-out`,
           token,
-          label: String((edge as Record<string, unknown>).label ?? token ?? "Out"),
+          title: String((edge as Record<string, unknown>).label ?? token ?? "Outgoing recipe"),
           selected: isSelected,
           highlighted: isSelected,
           dimmed: hasEdgeSelection && !isSelected,
@@ -89,8 +89,9 @@ function ProfilePipelineCanvas({ node, emit }: ProjectionViewProps) {
           const portId = String(port.id ?? `${context.side}-port`);
           const isSource = context.side === "right" || context.side === "bottom";
           const isSelected = port.selected === true;
+          const title = String(port.title ?? port.label ?? portId);
           return (
-            <div className={`gx-flow-node-port gx-flow-node-port-${context.side}${isSelected ? " selected" : ""}`} title={String(port.label ?? portId)}>
+            <div className={`gx-flow-node-port gx-flow-node-port-${context.side}${isSelected ? " selected" : ""}`} title={title}>
               <Handle
                 id={portId}
                 type={isSource ? "source" : "target"}
@@ -99,12 +100,12 @@ function ProfilePipelineCanvas({ node, emit }: ProjectionViewProps) {
                 isConnectable={false}
               />
               <span className="gx-flow-node-port-dot" aria-hidden="true" />
-              <span className="gx-flow-node-port-label">{String(port.label ?? portId)}</span>
+              {port.label ? <span className="gx-flow-node-port-label">{String(port.label)}</span> : null}
             </div>
           );
         }}
         onNodeClick={(id) => emit("selectNode", { id, tab: "layers" })}
-        onEdgeClick={(id) => emit("selectEdge", { id, tab: "recipes" })}
+        onEdgeClick={(id) => emit("selectEdge", { id, tab: "layers" })}
         controls={false}
         miniMap={false}
         background={false}
