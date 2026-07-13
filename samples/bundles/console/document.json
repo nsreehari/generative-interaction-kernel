@@ -178,19 +178,19 @@
                                           "edges": {
                                             "children": [
                                               {
-                                                "capability": "ui:metric",
+                                                "capability": "ui:property",
                                                 "id": "metric-profile-id",
                                                 "props": { "label": "Profile id" },
                                                 "edges": { "read": { "value": "console.profile.id" } }
                                               },
                                               {
-                                                "capability": "ui:metric",
+                                                "capability": "ui:property",
                                                 "id": "metric-kind",
                                                 "props": { "label": "Kind" },
                                                 "edges": { "read": { "value": "console.profile.kind" } }
                                               },
                                               {
-                                                "capability": "ui:metric",
+                                                "capability": "ui:property",
                                                 "id": "metric-version",
                                                 "props": { "label": "Version" },
                                                 "edges": { "read": { "value": "console.profile.version" } }
@@ -282,11 +282,8 @@
                                 "gate": "console.tab = 'layers'",
                                 "children": [
                                   {
-                                    "capability": "ui:row",
+                                    "capability": "ui:col",
                                     "id": "layers-layout",
-                                    "props": {
-                                      "variant": "split"
-                                    },
                                     "edges": {
                                       "children": [
                                         {
@@ -347,33 +344,37 @@
                                                       "edges": {
                                                         "children": [
                                                           {
-                                                            "capability": "ui:metric",
-                                                            "id": "layer-detail-id",
-                                                            "props": { "label": "Layer id" },
-                                                            "edges": { "read": { "value": "console.layerDetail.id" } }
-                                                          },
-                                                          {
-                                                            "capability": "ui:metric",
+                                                            "capability": "ui:property",
                                                             "id": "layer-detail-kind",
-                                                            "props": { "label": "Kind" },
+                                                            "props": { "label": "Layer" },
                                                             "edges": { "read": { "value": "console.layerDetail.kind" } }
                                                           },
                                                           {
-                                                            "capability": "ui:metric",
-                                                            "id": "layer-detail-schema",
-                                                            "props": { "label": "Schema ref" },
-                                                            "edges": { "read": { "value": "console.layerDetail.schema" } }
+                                                            "capability": "ui:property",
+                                                            "id": "layer-detail-stage",
+                                                            "props": { "label": "Pipeline stage" },
+                                                            "edges": { "read": { "value": "console.layerDetail.stageLabel" } }
                                                           }
                                                         ]
                                                       }
                                                     },
                                                     {
                                                       "capability": "ui:narrative",
-                                                      "id": "layer-detail-description",
+                                                      "id": "layer-detail-role",
                                                       "props": {
-                                                        "emptyMessage": "No layer description authored yet."
+                                                        "emptyMessage": "Select a layer to see what it represents."
                                                       },
                                                       "edges": {
+                                                        "read": {
+                                                          "text": "console.layerDetail.role"
+                                                        }
+                                                      }
+                                                    },
+                                                    {
+                                                      "capability": "ui:narrative",
+                                                      "id": "layer-detail-description",
+                                                      "edges": {
+                                                        "gate": "console.layerDetail.description != ''",
                                                         "read": {
                                                           "text": "console.layerDetail.description"
                                                         }
@@ -386,7 +387,7 @@
                                                 "capability": "ui:panel",
                                                 "id": "layer-outgoing-recipe-header",
                                                 "props": {
-                                                  "title": "Lowering recipe from this layer",
+                                                  "title": "Lowers into the next layer",
                                                   "variant": "inset"
                                                 },
                                                 "edges": {
@@ -398,15 +399,9 @@
                                                       "edges": {
                                                         "children": [
                                                           {
-                                                            "capability": "ui:metric",
-                                                            "id": "layer-outgoing-recipe-id",
-                                                            "props": { "label": "Recipe id" },
-                                                            "edges": { "read": { "value": "console.layerDetail.outgoingRecipe.id" } }
-                                                          },
-                                                          {
-                                                            "capability": "ui:metric",
+                                                            "capability": "ui:property",
                                                             "id": "layer-outgoing-recipe-kind",
-                                                            "props": { "label": "Kind" },
+                                                            "props": { "label": "Transformation" },
                                                             "edges": { "read": { "value": "console.layerDetail.outgoingRecipe.kindLabel" } }
                                                           }
                                                         ]
@@ -420,7 +415,7 @@
                                                       },
                                                       "edges": {
                                                         "read": {
-                                                          "text": "console.layerDetail.outgoingRecipe.summary"
+                                                          "text": "console.layerDetail.outgoingRecipe.purpose"
                                                         }
                                                       }
                                                     }
@@ -431,37 +426,12 @@
                                                 "capability": "ui:panel",
                                                 "id": "layer-interaction-recipe-panel",
                                                 "props": {
-                                                  "title": "Interaction to presentation",
+                                                  "title": "Layout templates it can produce",
                                                   "variant": "inset"
                                                 },
                                                 "edges": {
                                                   "gate": "console.layerDetail.outgoingRecipe.kind = 'interaction-to-presentation'",
                                                   "children": [
-                                                    {
-                                                      "capability": "ui:table",
-                                                      "id": "layer-interaction-recipe-rules",
-                                                      "props": {
-                                                        "columns": ["label", "value"],
-                                                        "emptyText": "No rule groups."
-                                                      },
-                                                      "edges": {
-                                                        "read": {
-                                                          "rows": "console.layerDetail.outgoingRecipe.ruleGroups"
-                                                        }
-                                                      }
-                                                    },
-                                                    {
-                                                      "capability": "ui:narrative",
-                                                      "id": "layer-interaction-recipe-constraints",
-                                                      "props": {
-                                                        "emptyMessage": "No constrained surface conditions are authored."
-                                                      },
-                                                      "edges": {
-                                                        "read": {
-                                                          "text": "console.layerDetail.outgoingRecipe.constrainedWhenText"
-                                                        }
-                                                      }
-                                                    },
                                                     {
                                                       "capability": "ui:table",
                                                       "id": "layer-interaction-recipe-templates",
@@ -482,7 +452,7 @@
                                                 "capability": "ui:panel",
                                                 "id": "layer-runtime-recipe-panel",
                                                 "props": {
-                                                  "title": "Presentation to runtime",
+                                                  "title": "UI capabilities it produces",
                                                   "variant": "inset"
                                                 },
                                                 "edges": {
@@ -494,31 +464,12 @@
                                                       "edges": {
                                                         "children": [
                                                           {
-                                                            "capability": "ui:metric",
+                                                            "capability": "ui:property",
                                                             "id": "layer-runtime-container-capability",
                                                             "props": { "label": "Container capability" },
                                                             "edges": { "read": { "value": "console.layerDetail.outgoingRecipe.containerCapability" } }
-                                                          },
-                                                          {
-                                                            "capability": "ui:metric",
-                                                            "id": "layer-runtime-fallback-capability",
-                                                            "props": { "label": "Fallback capability" },
-                                                            "edges": { "read": { "value": "console.layerDetail.outgoingRecipe.fallbackCapability" } }
                                                           }
                                                         ]
-                                                      }
-                                                    },
-                                                    {
-                                                      "capability": "ui:table",
-                                                      "id": "layer-runtime-rules-table",
-                                                      "props": {
-                                                        "columns": ["match", "capability", "reads", "actions"],
-                                                        "emptyText": "No runtime rules authored."
-                                                      },
-                                                      "edges": {
-                                                        "read": {
-                                                          "rows": "console.layerDetail.outgoingRecipe.runtimeRules"
-                                                        }
                                                       }
                                                     },
                                                     {
@@ -553,16 +504,10 @@
                                                       "edges": {
                                                         "children": [
                                                           {
-                                                            "capability": "ui:metric",
+                                                            "capability": "ui:property",
                                                             "id": "terminal-runtime-container-capability",
                                                             "props": { "label": "Container capability" },
                                                             "edges": { "read": { "value": "console.layerDetail.incomingRecipe.containerCapability" } }
-                                                          },
-                                                          {
-                                                            "capability": "ui:metric",
-                                                            "id": "terminal-runtime-fallback-capability",
-                                                            "props": { "label": "Fallback capability" },
-                                                            "edges": { "read": { "value": "console.layerDetail.incomingRecipe.fallbackCapability" } }
                                                           }
                                                         ]
                                                       }
