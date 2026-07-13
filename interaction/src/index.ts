@@ -14,5 +14,4 @@ export * from "./edits";
 export * from "./authoring";
 export * from "./lowering";
 export * from "./schema";
-export * from "./planner-model";
 export * from "./profile";
