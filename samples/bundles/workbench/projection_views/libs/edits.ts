@@ -6,31 +6,20 @@
 // the user *didn't* touch keeps flowing from the planner (a novice/expert or mobile/desktop switch
 // still re-derives disclosure for every region the user left alone). This is the "editing = patches
 // on a state model" seam: `applyPresentationEdits` is the pure reducer those patches drive.
+//
+// These reducers are consumed only by the workbench bundle, so they live with the sample rather than
+// leaking through the interaction package. The `PresentationEdits` type they operate on is the
+// platform's sanctioned override channel and stays in the interaction package.
 
-import { resolveFacets, type InteractionSpec } from "./interaction";
+import { resolveFacets } from "../../../../../interaction/src/index";
 import type {
+  InteractionSpec,
   PresentationSpec,
   PresentationRegion,
   RegionPriority,
   RegionDisclosure,
-} from "./presentation";
-
-/**
- * The override deltas an authoring session imposes on a planned presentation. Every field is a
- * *sparse* override: an absent entry means "defer to the planner". `disabled` never drops a facet
- * the interaction marks required; `order` lists the region names to lead with (any region not named
- * keeps its planner-relative order behind them).
- */
-export type PresentationEdits = {
-  /** region names the user hid (required facets are ignored — they can't be dropped). */
-  disabled: string[];
-  /** per-region priority overrides (region name -> priority). */
-  priority: Record<string, RegionPriority>;
-  /** per-region disclosure overrides (region name -> disclosure). */
-  disclosure: Record<string, RegionDisclosure>;
-  /** the leading region order the user pinned (unlisted regions follow in planner order). */
-  order: string[];
-};
+  PresentationEdits,
+} from "../../../../../interaction/src/index";
 
 /** The no-op edit set: defer entirely to the planner. */
 export const emptyEdits: PresentationEdits = { disabled: [], priority: {}, disclosure: {}, order: [] };

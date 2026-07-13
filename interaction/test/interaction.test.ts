@@ -20,9 +20,7 @@ import {
 } from "../../kernel/src/index";
 import {
   compileInteraction,
-  applyPresentationEdits,
   interactionTaxonomy,
-  isValidPresentationSpec,
   lowerPresentation,
   planPresentationWithRecipe,
   recipeForKinds,
@@ -30,10 +28,19 @@ import {
   validatePresentationSpec,
   type InteractionSpec,
   type PresentationContext,
-  type PresentationEdits,
   type PresentationSpec,
 } from "../src/index";
 import { liveCardsProfile } from "./live-cards-fixture";
+
+/** Non-throwing validation helper, local to the test: does the artifact pass its schema? */
+const isValidPresentationSpec = (spec: unknown): boolean => {
+  try {
+    validatePresentationSpec(spec);
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 const fx = (name: string) =>
   JSON.parse(
@@ -382,55 +389,4 @@ test("authored facetViews can choose committed searchbox over the coarse form ro
   assert.equal(form?.capability, "ui:searchbox", "authored facet view can select searchbox");
   assert.equal((form?.props as Record<string, unknown>)?.actionLabel, "Run", "authored props survive into the node");
   assert.deepEqual(form?.edges?.read, { value: "card_data.query" }, "searchbox binds through authored read");
-});
-
-test("presentation edits are sparse overrides on top of the planner (hide, re-rank, disclose, reorder)", () => {
-  const spec: InteractionSpec = { interaction: "investigate", subject: "incident" };
-  const planned = planner(spec, { surface: "desktop" });
-  const names = planned.regions.map((r) => r.name);
-
-  // baseline: an empty edit set is a no-op — defer entirely to the planner.
-  assert.deepEqual(
-    applyPresentationEdits(planned, { disabled: [], priority: {}, disclosure: {}, order: [] }).regions,
-    planned.regions,
-    "empty edits leave the planned presentation untouched"
-  );
-
-  const edits: PresentationEdits = {
-    disabled: ["relationships"], // an optional facet -> dropped
-    priority: { evidence: "primary" },
-    disclosure: { timeline: "on-demand" },
-    order: ["actions"], // pin actions to the front
-  };
-  const edited = applyPresentationEdits(planned, edits);
-  const editedNames = edited.regions.map((r) => r.name);
-
-  assert.ok(!editedNames.includes("relationships"), "a disabled optional facet is hidden");
-  assert.equal(edited.regions[0].name, "actions", "a pinned region leads the order");
-  assert.equal(edited.regions.find((r) => r.name === "evidence")?.priority, "primary", "priority override applies");
-  assert.equal(
-    edited.regions.find((r) => r.name === "timeline")?.disclosure,
-    "on-demand",
-    "disclosure override applies"
-  );
-  // untouched regions keep their planned placement (overrides are sparse, not a full freeze).
-  const context = planned.regions.find((r) => r.name === "context")!;
-  assert.equal(
-    edited.regions.find((r) => r.name === "context")?.disclosure,
-    context.disclosure,
-    "a region the user left alone keeps the planner's disclosure"
-  );
-
-  // a required facet can never be dropped, even if explicitly disabled.
-  const stubborn = applyPresentationEdits(planned, {
-    disabled: ["context"],
-    priority: {},
-    disclosure: {},
-    order: [],
-  });
-  assert.ok(
-    stubborn.regions.some((r) => r.name === "context"),
-    "a required facet survives an attempt to disable it"
-  );
-  assert.deepEqual(names, planned.regions.map((r) => r.name), "the planner output is not mutated by editing");
 });

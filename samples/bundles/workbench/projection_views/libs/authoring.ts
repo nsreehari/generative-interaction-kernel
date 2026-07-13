@@ -2,11 +2,10 @@
 // interaction pipeline. An authoring session is fully described by the triple {interaction, context,
 // edits} — everything downstream (presentation, document, generated manifest) is DERIVED by the pure
 // pipeline. So the serialized session is exactly that triple, and any host can import one and replay
-// it. This lives next to the compiler that consumes it, so the artifact and its reader stay together.
+// it. This is a workbench-bundle concern (import/export of authored sessions), so it lives with the
+// sample rather than leaking through the interaction package.
 
-import type { InteractionSpec } from "./interaction";
-import type { PresentationContext } from "./presentation";
-import type { PresentationEdits } from "./edits";
+import type { InteractionSpec, PresentationContext, PresentationEdits } from "../../../../../interaction/src/index";
 
 /** Identity of the profile an authored session was produced against, so replay is deterministic. */
 export interface ProfileIdentity {
