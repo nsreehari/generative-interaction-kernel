@@ -31,7 +31,7 @@ import {
   type PresentationContext,
   type ProfileStageTrace,
   traceProfile,
-} from "../../../interaction/src/index";
+} from "@gik/profile-genui";
 import { sampleProfileCatalog, type SampleProfileEntry } from "../../profiles/registry";
 import { demoDataFor } from "../workbench/bundles/demo/demo";
 

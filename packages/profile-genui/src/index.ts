@@ -3,28 +3,7 @@
 // recipe shapes and their schema/lint, the stage executors, and the full pipeline runner. It
 // builds on the generic kind *mechanism* in @gik/profile.
 
-export * from "../../../interaction/src/profile";
-export {
-  loadProfile,
-  lintLoweringRecipeArtifact,
-  validateLoweringRecipeArtifact,
-  validateProfileArtifact,
-  validatePresentationSpec,
-  presentationSchema,
-  layerSchema,
-  profileSchema,
-  loweringRecipeSchema,
-  PresentationValidationError,
-  ProfileValidationError,
-  LoweringRecipeValidationError,
-} from "../../../interaction/src/schema";
-export {
-  lowerPresentation,
-  compileInteraction,
-  traceProfile,
-  type ProfileStageTrace,
-  type StageValue,
-} from "../../../interaction/src/lowering";
+export * from "../../../interaction/src/index";
 export {
   PROFILE_BUNDLE_FORMAT,
   createProfileBundle,

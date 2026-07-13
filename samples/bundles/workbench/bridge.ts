@@ -13,7 +13,7 @@ import {
   type InteractionSpec,
   type PresentationContext,
   type PresentationEdits,
-} from "../../../interaction/src/index";
+} from "@gik/profile-genui";
 import { emptyEdits } from "./projection_views/libs/edits";
 import type { AuthoredSession } from "./projection_views/libs/authoring";
 import { exportBundle } from "./export";
