@@ -1,4 +1,5 @@
 import React from "react";
+import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
 import { JsonataExpressionProvider } from "@gik/kernel";
 import { readProps, type ProjectionView } from "@gik/react";
 
@@ -31,25 +32,25 @@ function prettyJson(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
-const cardStyle: React.CSSProperties = {
-  border: "1px solid #e0ddd8",
-  borderRadius: 10,
-  padding: "0.8rem 0.9rem",
-  background: "#faf8f4",
-};
-
-const gridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: "0.8rem",
-};
-
-const stackStyle: React.CSSProperties = {
-  display: "grid",
-  gap: "1rem",
-};
+const useStyles = makeStyles({
+  stack: { display: "grid", gap: tokens.spacingVerticalL, color: "var(--text)" },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: tokens.spacingHorizontalM,
+  },
+  card: {
+    ...shorthands.border(tokens.strokeWidthThin, "solid", "var(--line)"),
+    borderRadius: tokens.borderRadiusLarge,
+    padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalM}`,
+    backgroundColor: "var(--panel)",
+    boxShadow: tokens.shadow4,
+  },
+  pre: { margin: 0, whiteSpace: "pre-wrap", fontFamily: tokens.fontFamilyMonospace, fontSize: tokens.fontSizeBase100 },
+});
 
 const ReactiveSampleView: ProjectionView = ({ node }) => {
+  const styles = useStyles();
   const sampleName = readProps(node).str("sample") as SampleName | "";
   const props = readProps(node);
   const formFirst = props.str("formFirst");
@@ -108,11 +109,11 @@ const ReactiveSampleView: ProjectionView = ({ node }) => {
   }, [apply, consent, formFirst, formLast, metricsApproved, metricsLimit, metricsPending, sample.name]);
 
   return (
-    <div style={stackStyle}>
+    <div className={styles.stack}>
       <p className="gx-note gx-note-muted">{sample.description}</p>
 
-      <div style={gridStyle}>
-        <div style={cardStyle}>
+      <div className={styles.grid}>
+        <div className={styles.card}>
           <div className="gx-muted">Base cells</div>
           {sample.name === "profile-form" ? (
             <>
@@ -128,7 +129,7 @@ const ReactiveSampleView: ProjectionView = ({ node }) => {
             </>
           )}
         </div>
-        <div style={cardStyle}>
+        <div className={styles.card}>
           <div className="gx-muted">Derived cells</div>
           {sample.name === "profile-form" ? (
             <>
@@ -146,14 +147,14 @@ const ReactiveSampleView: ProjectionView = ({ node }) => {
         </div>
       </div>
 
-      <div style={gridStyle}>
-        <div style={cardStyle}>
+      <div className={styles.grid}>
+        <div className={styles.card}>
           <div className="gx-muted">Snapshot</div>
-          <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>{prettyJson(snapshot)}</pre>
+          <pre className={styles.pre}>{prettyJson(snapshot)}</pre>
         </div>
-        <div style={cardStyle}>
+        <div className={styles.card}>
           <div className="gx-muted">Inferred dependency graph</div>
-          <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>{mermaid}</pre>
+          <pre className={styles.pre}>{mermaid}</pre>
         </div>
       </div>
     </div>
