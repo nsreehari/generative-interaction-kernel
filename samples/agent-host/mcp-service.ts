@@ -15,13 +15,18 @@
 //        -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 
 import { createServer } from "node:http";
-import { createStatelessAgentFaceDispatcher } from "@gik/agentface";
+import { createStatelessAgentFaceDispatcher, toolsFromProfile } from "@gik/agentface";
+import { genuiAuthoringProfile, genuiAuthoringRegistry } from "@gik/profile-genui";
 import { McpHttpServer } from "@gik/transport-mcp-http";
 
 const port = Number(process.env.GENUI_MCP_PORT || 8787);
 const host = process.env.GENUI_MCP_HOST || "127.0.0.1";
 
-const mcp = new McpHttpServer({ handler: createStatelessAgentFaceDispatcher().handleMcpMessage });
+// The genui authoring tools are a DECLARATIVE contribution: the genui profile DECLARES them and the
+// registry supplies their code; `toolsFromProfile` materializes them, and the generic stateless
+// AgentFace composes them alongside the platform authoring tools.
+const genuiTools = toolsFromProfile(genuiAuthoringProfile, genuiAuthoringRegistry);
+const mcp = new McpHttpServer({ handler: createStatelessAgentFaceDispatcher(genuiTools).handleMcpMessage });
 
 const server = createServer(async (req, res) => {
   if (await mcp.handle(req, res)) return;

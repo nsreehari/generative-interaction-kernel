@@ -5,9 +5,6 @@
 import { describeCatalog, namespaces, effects } from "./catalog";
 import { validateDocument, lint, authorDocument } from "./document";
 import { validateCapability } from "./capability";
-import { describeInteractions, validateInteraction } from "./interaction";
-import { validatePresentation } from "./presentation";
-import { validateIntent, intentToEdits } from "./intent";
 import type { McpTool } from "../tool-surface";
 
 const obj = (properties: Record<string, unknown>, required: string[] = []): Record<string, unknown> => ({
@@ -61,36 +58,6 @@ const platformAuthoringTools: McpTool[] = [
     description: "Validate a capability DEFINITION (leaf track); optional registry view enables render/floor checks.",
     inputSchema: obj({ capability: any, registryView: any }, ["capability"]),
     handler: (a) => validateCapability(a.capability, a.registryView as never),
-  },
-  {
-    name: "describeInteractions",
-    description: "List the interaction taxonomy (every kind with its facets) — vocabulary discovery.",
-    inputSchema: obj({}),
-    handler: () => describeInteractions(),
-  },
-  {
-    name: "validateInteraction",
-    description: "Validate an InteractionSpec (kind known, subject present, facet/data references).",
-    inputSchema: obj({ spec: any }, ["spec"]),
-    handler: (a) => validateInteraction(a.spec),
-  },
-  {
-    name: "validatePresentation",
-    description: "Validate a Presentation DSL artifact (structure + the required-facet-survives invariant).",
-    inputSchema: obj({ spec: any }, ["spec"]),
-    handler: (a) => validatePresentation(a.spec),
-  },
-  {
-    name: "validateIntent",
-    description: "Validate an IntentSpec; when an interaction is supplied, check targets against its facets.",
-    inputSchema: obj({ intent: any, interaction: any }, ["intent"]),
-    handler: (a) => validateIntent(a.intent, a.interaction as never),
-  },
-  {
-    name: "intentToEdits",
-    description: "Project an IntentSpec into PresentationEdits (the sanctioned override channel).",
-    inputSchema: obj({ intent: any }, ["intent"]),
-    handler: (a) => intentToEdits(a.intent as never),
   },
 ];
 

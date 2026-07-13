@@ -9,30 +9,20 @@
 // projectors, referenced by NAME. This module knows nothing GenUI-specific.
 
 import type { McpTool } from "../tool-surface";
-import type { AuthoringToolDecl, Profile, LayerDefinition } from "../../../interaction/src/profile-core";
+import type { Json } from "../../../kernel/src/index";
+import type {
+  AuthoringRegistry,
+  AuthoringReport,
+  AuthoringToolDecl,
+  LayerDefinition,
+  Profile,
+} from "../../../interaction/src/profile-core";
 
-/** The uniform authoring report shape (JSON in, JSON out). */
-export interface AuthoringReport {
-  ok: boolean;
-  errors: { detail: string }[];
-  warnings: { code: string; node?: string; detail: string }[];
-}
-
-/** The profile-family code seam: named validators/checks/projectors/describers the declarations
- *  bind to. Everything here is the irreducible logic that cannot be pure JSON. */
-export interface AuthoringRegistry {
-  /** Structural validators keyed by `LayerDefinition.schema` (the schema ref). Receive the full
-   *  tool args and return a report. */
-  validators?: Record<string, (args: Record<string, unknown>) => AuthoringReport>;
-  /** Vocabulary describers keyed by `decl.describe ?? decl.layer`. */
-  describe?: Record<string, () => unknown>;
-  /** Named semantic checks keyed by name; receive the full args, return report parts to merge. */
-  checks?: Record<string, (args: Record<string, unknown>) => Partial<AuthoringReport>>;
-  /** Named projectors keyed by name for `op:"project"`. */
-  projectors?: Record<string, (args: Record<string, unknown>) => unknown>;
-}
+export type { AuthoringRegistry, AuthoringReport } from "../../../interaction/src/profile-core";
 
 const anyObj = { type: "object" } as const;
+
+const asJsonArgs = (args: Record<string, unknown>): Record<string, Json> => args as Record<string, Json>;
 
 const defaultInputSchema = (decl: AuthoringToolDecl): Record<string, unknown> => {
   if (decl.op === "describe") return { type: "object", properties: {}, required: [], additionalProperties: false };
@@ -87,7 +77,7 @@ export function toolsFromProfile(profile: Profile, registry: AuthoringRegistry):
       return {
         ...base,
         description: decl.description ?? `Project via '${decl.projector}'.`,
-        handler: (args) => proj!(args),
+        handler: (args) => proj!(asJsonArgs(args)),
       };
     }
 
@@ -106,11 +96,12 @@ export function toolsFromProfile(profile: Profile, registry: AuthoringRegistry):
       ...base,
       description: decl.description ?? `Validate a '${decl.layer ?? "spec"}' artifact.`,
       handler: (args) => {
+        const jsonArgs = asJsonArgs(args);
         const parts: Partial<AuthoringReport>[] = [];
-        parts.push(structural ? structural(args) : emptyReport());
+        parts.push(structural ? structural(jsonArgs) : emptyReport());
         // Only run semantic checks if the structural pass produced no errors.
         if ((parts[0].errors?.length ?? 0) === 0) {
-          for (const check of checks) parts.push(check(args));
+          for (const check of checks) parts.push(check(jsonArgs));
         }
         return mergeReports(parts);
       },

@@ -8,16 +8,9 @@ import { test } from "vitest";
 import { describeCatalog, namespaces, effects } from "../src/pure/catalog";
 import { validateDocument, lint, authorDocument } from "../src/pure/document";
 import { validateCapability } from "../src/pure/capability";
-import { describeInteractions, validateInteraction } from "../src/pure/interaction";
-import { validatePresentation } from "../src/pure/presentation";
-import { validateIntent, intentToEdits } from "../src/pure/intent";
 import { authoringTools } from "../src/pure/authoring-tools";
 import { createStatelessAgentFaceDispatcher } from "../src/projections/agentface";
-import { planPresentationWithRecipe, recipeForKinds } from "../../interaction/src/index";
-import { liveCardsProfile } from "./live-cards-fixture";
 import type { ManifestPayload } from "../../kernel/src/index";
-
-const liveCardsIToP = recipeForKinds(liveCardsProfile, "interaction", "presentation");
 
 const manifest: ManifestPayload = {
   version: "0.1",
@@ -117,55 +110,6 @@ test("capability: registry view surfaces shadow + missing-binding warnings", () 
   assert.ok(unbound.has("missing-render-binding"));
 });
 
-test("interaction: catalog projects every kind with facets", () => {
-  const kinds = describeInteractions();
-  assert.ok(kinds.length >= 12);
-  const review = kinds.find((k) => k.interaction === "review");
-  assert.ok(review && review.facets.some((f) => f.name === "summary" && f.required));
-});
-
-test("interaction: known ok; unknown kind / missing subject not ok; synthesized facet warns", () => {
-  assert.equal(validateInteraction({ interaction: "review", subject: "pr" }).ok, true);
-  assert.equal(validateInteraction({ interaction: "bogus", subject: "x" }).ok, false);
-  assert.equal(validateInteraction({ interaction: "review" }).ok, false);
-  const codes = new Set(
-    validateInteraction({ interaction: "review", subject: "pr", capabilities: ["summary", "ghost"] }).warnings.map((w) => w.code)
-  );
-  assert.ok(codes.has("synthesized-facet"));
-});
-
-test("presentation: planner output is valid; dropping a required facet fails", () => {
-  const spec = planPresentationWithRecipe({ interaction: "review", subject: "pr" }, { surface: "desktop" }, liveCardsIToP);
-  assert.equal(validatePresentation(spec).ok, true);
-
-  const summary = spec.regions.find((r) => r.name === "summary");
-  assert.ok(summary); // summary is a required facet of review
-  const dropped = { ...spec, regions: spec.regions.filter((r) => r.name !== "summary") };
-  const report = validatePresentation(dropped);
-  assert.equal(report.ok, false);
-  assert.ok(report.errors.some((e) => e.detail.includes("summary")));
-});
-
-test("presentation: structurally invalid input fails without throwing", () => {
-  const report = validatePresentation({ layout: "stack" });
-  assert.equal(report.ok, false);
-  assert.ok(report.errors.length >= 1);
-});
-
-test("intent: shape validated; targets checked against interaction; projects to edits", () => {
-  assert.equal(validateIntent({ goal: "triage", priorities: ["summary"] }).ok, true);
-  assert.equal(validateIntent({ priorities: "nope" }).ok, false);
-  const codes = new Set(
-    validateIntent({ priorities: ["ghost"] }, { interaction: "review", subject: "pr" }).warnings.map((w) => w.code)
-  );
-  assert.ok(codes.has("intent-target-unknown"));
-
-  const edits = intentToEdits({ priorities: ["summary", "detail"] });
-  assert.equal(edits.priority.summary, "primary");
-  assert.equal(edits.priority.detail, "secondary");
-  assert.deepEqual(edits.order, ["summary", "detail"]);
-});
-
 test("mcp: registry exposes one tool per method and dispatches", () => {
   const dispatcher = createStatelessAgentFaceDispatcher();
   const tools = dispatcher.listTools();
@@ -176,14 +120,11 @@ test("mcp: registry exposes one tool per method and dispatches", () => {
     "lintDocument",
     "authorDocument",
     "validateCapability",
-    "describeInteractions",
-    "validateInteraction",
-    "validatePresentation",
-    "validateIntent",
-    "intentToEdits",
   ]) {
     assert.ok(names.has(n), `missing tool ${n}`);
   }
+  // face carries only the generic platform authoring tools; genui tools are a profile contribution.
+  assert.ok(!names.has("describeInteractions"), "face must not hardcode genui tools");
   // every tool advertises an object input schema
   assert.ok(tools.every((t) => (t.inputSchema as { type?: string }).type === "object"));
   assert.equal(authoringTools.length, tools.length);
@@ -204,13 +145,13 @@ test("mcp: JSON-RPC initialize / tools/list / tools/call round trip", () => {
   const list = dispatcher.handleMcpMessage({ jsonrpc: "2.0", id: 2, method: "tools/list" }) as {
     result: { tools: unknown[] };
   };
-  assert.ok(list.result.tools.length >= 10);
+  assert.ok(list.result.tools.length >= 5);
 
   const call = dispatcher.handleMcpMessage({
     jsonrpc: "2.0",
     id: 3,
     method: "tools/call",
-    params: { name: "validateInteraction", arguments: { spec: { interaction: "review", subject: "pr" } } },
+    params: { name: "validateCapability", arguments: { capability: { id: "text", emits: ["submit"] } } },
   }) as { result: { structuredContent: { ok: boolean }; content: { type: string; text: string }[] } };
   assert.equal(call.result.structuredContent.ok, true);
   assert.equal(call.result.content[0].type, "text");

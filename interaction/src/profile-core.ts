@@ -56,6 +56,29 @@ export interface ProfileAuthoring {
   tools: AuthoringToolDecl[];
 }
 
+/** The uniform authoring report shape (JSON in, JSON out) every validator/check produces. */
+export interface AuthoringReport {
+  ok: boolean;
+  errors: { detail: string }[];
+  warnings: { code: string; node?: string; detail: string }[];
+}
+
+/** The profile-FAMILY code seam a declarative authoring surface binds to: the small, named,
+ *  irreducible functions (structural validators, semantic checks, projectors, vocabulary
+ *  describers) that cannot be pure JSON. Same shape as the lowering stage executors. A face engine
+ *  (toolsFromProfile) maps a profile's `authoring.tools` declarations onto these. Generic — this
+ *  contract knows nothing about any specific profile family. */
+export interface AuthoringRegistry {
+  /** structural validators keyed by `LayerDefinition.schema` (the schema ref). */
+  validators?: Record<string, (args: Record<string, Json>) => AuthoringReport>;
+  /** vocabulary describers keyed by `decl.describe ?? decl.layer`. */
+  describe?: Record<string, () => Json>;
+  /** named semantic checks keyed by name; return report parts to merge. */
+  checks?: Record<string, (args: Record<string, Json>) => Partial<AuthoringReport>>;
+  /** named projectors keyed by name for `op:"project"`. */
+  projectors?: Record<string, (args: Record<string, Json>) => Json>;
+}
+
 export interface ProfileArtifact {
   gik: "0.1";
   type: "profile";
