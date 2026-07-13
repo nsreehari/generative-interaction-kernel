@@ -1,4 +1,4 @@
-import type { LoweringRecipeArtifact, ProfileArtifact } from "../../../interaction/src/index";
+import type { ProfileArtifact, RecipeArtifactBase } from "../../../interaction/src/profile-core";
 import type { FlowRegistry } from "../../step-orchestrator/src/step-orchestrator";
 import type { StepFlowConfig } from "../../vendor/step-machine/types";
 
@@ -238,10 +238,10 @@ function asProfileArtifact(value: unknown): ProfileArtifact | null {
   return rec as unknown as ProfileArtifact;
 }
 
-function asRecipeArtifacts(value: unknown): LoweringRecipeArtifact[] {
+function asRecipeArtifacts(value: unknown): RecipeArtifactBase[] {
   return asArray(value)
     .map((item) => asRecord(item))
-    .filter((item) => item.gik === "0.1" && item.type === "lowering-recipe") as unknown as LoweringRecipeArtifact[];
+    .filter((item) => item.gik === "0.1" && item.type === "lowering-recipe") as unknown as RecipeArtifactBase[];
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
