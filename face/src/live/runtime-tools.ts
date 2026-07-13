@@ -23,12 +23,14 @@ export function runtimeTools(face: ControlFace): McpTool[] {
       description: "Snapshot the live kernel state (all namespaces) as JSON.",
       inputSchema: obj({}),
       handler: () => face.getState(),
+      agentSafe: true,
     },
     {
       name: "getTree",
       description: "Resolve and return the current render tree as JSON.",
       inputSchema: obj({}),
       handler: () => face.getTree(),
+      agentSafe: true,
     },
     {
       name: "emit",

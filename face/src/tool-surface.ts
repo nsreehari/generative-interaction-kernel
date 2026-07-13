@@ -17,6 +17,9 @@ export interface McpTool {
   description: string;
   inputSchema: Record<string, unknown>;
   handler: (args: Record<string, unknown>) => unknown | Promise<unknown>;
+  /** Safe to expose to agents (drives the AgentFace projection). Design-time authoring tools and
+   *  read-only runtime reads are safe; drive/time-travel control-plane ops are not. */
+  agentSafe?: boolean;
 }
 
 export class McpToolError extends Error {}
