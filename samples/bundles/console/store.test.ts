@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import type { Json, PatchOp } from "@gik/kernel";
-import { createProfileBundle, stringifyProfileBundle } from "@gik/profile-genui";
+import { createProfileBundle, stringifyProfileBundle } from "@gik/profile";
 import { buildProfilePreviewBundle, consoleEffects } from "./store";
 import { sampleProfileCatalog } from "../../profiles/registry";
 
@@ -136,8 +136,8 @@ function createState(): Record<string, Json> {
         error: "",
       },
       tab: "overview",
-      previewInteraction: "investigate",
-      previewSubject: "incident",
+      interactionInputForm: { properties: {} },
+      interactionInput: {},
       previewSurface: "desktop",
       previewBundle: null,
       previewError: "",
@@ -379,7 +379,7 @@ test("selectLayer and selectRecipe update the focused detail models", async () =
   assert.equal(opValue(recipeResult?.ops, "console.selectedLayerId"), sample.artifact.payload.recipes[1].from);
   assert.equal(opValue(recipeResult?.ops, "console.selectedRecipeId"), selectedRecipe);
   assert.equal(opRecord(recipeResult?.ops, "console.recipeDetail").id, selectedRecipe);
-  assert.equal(opRecord(recipeResult?.ops, "console.layerDetail").outgoingRecipe.id, selectedRecipe);
+  assert.equal((opRecord(recipeResult?.ops, "console.layerDetail").outgoingRecipe as JsonRecord).id, selectedRecipe);
 });
 
 test("configure preview for live-cards emits the frontend editable-table kind end-to-end", () => {

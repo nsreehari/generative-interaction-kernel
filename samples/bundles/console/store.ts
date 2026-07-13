@@ -8,21 +8,23 @@
 // effectful/derived logic lives here in code; everything above it is data.
 
 import type { CapabilityDescriptor, Enveloped, Json, ManifestPayload } from "@gik/kernel";
-import { setOp, type EffectContext, type EffectHandlerMap, type SerializableBundle } from "@gik/react";
 import {
   createProfileBundle,
+  loadProfileBundle,
+  parseProfileBundleJson,
+  stringifyProfileBundle,
+  validateLoweringRecipeArtifact,
+  validateProfileArtifact,
+  type ProfileArtifactBundle,
+} from "@gik/profile";
+import { setOp, type EffectContext, type EffectHandlerMap, type SerializableBundle } from "@gik/react";
+import {
   type InteractionToPresentationRecipe,
   type LayerDefinition,
   lintLoweringRecipeArtifact,
   lintProfileArtifacts,
-  loadProfileBundle,
-  parseProfileBundleJson,
-  stringifyProfileBundle,
   type LoweringRecipe,
-  validateLoweringRecipeArtifact,
-  validateProfileArtifact,
   type PresentationToRuntimeRecipe,
-  type ProfileArtifactBundle,
 } from "@gik/profile-genui";
 import {
   compileInteraction,
@@ -32,6 +34,7 @@ import {
   type ProfileStageTrace,
   traceProfile,
 } from "@gik/profile-genui";
+import { resolveProfileTemplate, resolveProfileTemplateResource } from "../../profiles/template-resolver";
 import { sampleProfileCatalog, type SampleProfileEntry } from "../../profiles/registry";
 import { demoDataFor } from "../workbench/bundles/demo/demo";
 
@@ -41,6 +44,9 @@ interface PreviewInput {
   interaction: InteractionKind;
   subject: string;
   surface: string;
+  // Optional user-supplied top-level input data (from the Preview tab's editable JSON field). When
+  // absent/empty the profile's sample data (demoDataFor) is used instead.
+  data?: Record<string, string>;
 }
 
 interface ValidationResult {
@@ -169,6 +175,7 @@ const EMPTY_LAYER_DETAIL = {
   description: "",
   role: "",
   stageLabel: "",
+  seeds: [] as string[],
   vocabulary: { groups: [] as Array<{ id: string; label: string; note: string; terms: string[] }> },
   loweringExamples: {
     columns: [] as Array<{ key: string; label: string }>,
@@ -286,12 +293,56 @@ function readSelectedRecipeId(ctx: EffectContext): string {
   return readStr(ctx, "console.selectedRecipeId");
 }
 
-function readPreviewInput(ctx: EffectContext): PreviewInput {
+function readInteractionInput(ctx: EffectContext): Record<string, unknown> {
+  const raw = ctx.get("console.interactionInput");
+  return raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+}
+
+function readPreviewData(values: Record<string, unknown>): Record<string, string> | undefined {
+  const raw = values.data;
+  if (raw && typeof raw === "object" && !Array.isArray(raw) && Object.keys(raw as object).length > 0) {
+    return raw as Record<string, string>;
+  }
+  return undefined;
+}
+
+function previewInputFromValues(values: Record<string, unknown>, surface: string): PreviewInput {
+  const interaction = typeof values.interaction === "string" && values.interaction ? values.interaction : "investigate";
+  const subject = typeof values.subject === "string" && values.subject ? values.subject : "incident";
   return {
-    interaction: readStr(ctx, "console.previewInteraction", "investigate") as InteractionKind,
-    subject: readStr(ctx, "console.previewSubject", "incident"),
-    surface: readStr(ctx, "console.previewSurface", "desktop"),
+    interaction: interaction as InteractionKind,
+    subject,
+    surface,
+    data: readPreviewData(values),
   };
+}
+
+function readPreviewInput(ctx: EffectContext): PreviewInput {
+  // The interaction layer's inputs are entered through the profile-declared `ui:form` (values live
+  // in console.interactionInput). Surface is a cross-cutting presentation-context knob, not a
+  // layer-0 field, so it stays its own control.
+  return previewInputFromValues(readInteractionInput(ctx), readStr(ctx, "console.previewSurface", "desktop"));
+}
+
+// Layer 0's declared input form (a `ui:form` FormSchema) drives the pipeline-input UI. Reading it
+// straight from the selected profile's interaction layer is what makes the form data-driven: a
+// profile with 2 fields or 3 fields just renders, no console-side hardcoding.
+function interactionInputFormFor(entry: CatalogEntry): Record<string, unknown> {
+  const layer = entry.artifact.payload.layers.find((candidate) => candidate.kind === "interaction");
+  const input = layer?.input;
+  return input && typeof input === "object" && !Array.isArray(input) ? (input as Record<string, unknown>) : { properties: {} };
+}
+
+// Seed the form's values from each field's declared `default` (also data-driven — the profile owns
+// the defaults). Fields without a default start empty.
+function interactionInputDefaults(entry: CatalogEntry): Record<string, unknown> {
+  const form = interactionInputFormFor(entry);
+  const props = (form.properties ?? {}) as Record<string, Record<string, unknown>>;
+  const out: Record<string, unknown> = {};
+  for (const [key, field] of Object.entries(props)) {
+    if (field && field.default !== undefined) out[key] = field.default;
+  }
+  return out;
 }
 
 function catalogRows(entries: readonly CatalogEntry[]) {
@@ -299,8 +350,8 @@ function catalogRows(entries: readonly CatalogEntry[]) {
     id: entry.artifact.payload.id,
     kind: entry.artifact.payload.kind,
     version: entry.artifact.payload.version,
-    layers: entry.artifact.payload.layers.length,
-    recipes: entry.artifact.payload.recipes.length,
+    layers: Object.keys(entry.profile.layersById).length,
+    recipes: entry.profile.stages.length,
     source: entry.source,
     readonly: entry.readonly,
     access: entry.readonly ? "read-only" : "editable",
@@ -379,7 +430,7 @@ function asCatalogEntry(bundle: ProfileArtifactBundle, source: ProfileSource, re
   return {
     artifact: bundle.profileArtifact,
     recipeArtifacts: bundle.recipeArtifacts,
-    profile: loadProfileBundle(bundle),
+    profile: loadProfileBundle(bundle, resolveProfileTemplateResource, resolveProfileTemplate),
     source,
     readonly,
     bundle,
@@ -485,10 +536,11 @@ function regionRuleView(recipe: LoweringRecipe): {
 } {
   if (recipe.from === "interaction" && recipe.to === "presentation") {
     const typed = recipe as InteractionToPresentationRecipe;
+    const regionRules = typed.program.filter((rule) => rule.slot === "presentation");
     return {
       fromLabel: "A region whose role is",
       toLabel: "Is presented as",
-      mappings: (typed.regionRules ?? []).map((rule, index) => ({
+      mappings: regionRules.map((rule, index) => ({
         id: `rgn-${index}`,
         from: mappingWhen(rule.match as Record<string, unknown>),
         to: String((rule.emit as Record<string, unknown>).presentation ?? ""),
@@ -496,14 +548,12 @@ function regionRuleView(recipe: LoweringRecipe): {
     };
   }
   const typed = recipe as PresentationToRuntimeRecipe;
-  const mappings = typed.rules.map((rule, index) => ({
+  const regionRules = typed.program.filter((rule) => rule.slot === "region");
+  const mappings = regionRules.map((rule, index) => ({
     id: `cap-${index}`,
     from: mappingWhen(rule.match as Record<string, unknown>),
     to: String(rule.emit.capability ?? ""),
   }));
-  if (typed.fallback?.capability) {
-    mappings.push({ id: "cap-fallback", from: "Otherwise", to: String(typed.fallback.capability) });
-  }
   return { fromLabel: "A region / role", toLabel: "Renders as", mappings };
 }
 
@@ -519,8 +569,8 @@ function recipeTypeLabel(recipe: LoweringRecipe): string {
 }
 
 function pipelineState(entry: CatalogEntry) {
-  const incomingByNode = new Map<string, Array<{ token: string; label: string }>>();
-  const outgoingByNode = new Map<string, Array<{ token: string; label: string }>>();
+  const incomingByNode = new Map<string, Array<{ token: string; label?: string }>>();
+  const outgoingByNode = new Map<string, Array<{ token: string; label?: string }>>();
 
   for (const ref of entry.artifact.payload.recipes) {
     const outgoing = outgoingByNode.get(ref.from) ?? [];
@@ -655,30 +705,35 @@ function layerVocabulary(entry: CatalogEntry, layerId: string) {
 
   if (layer.kind === "interaction" && outgoing) {
     const rec = outgoing as InteractionToPresentationRecipe;
+    const templateRules = rec.program.filter((rule) => rule.slot === "template");
+    const regionRules = rec.program.filter((rule) => rule.slot === "presentation");
     const interactions = distinctTerms(
-      rec.templateRules.map((rule) => String((rule.match as Record<string, unknown>).interaction ?? "")),
+      templateRules.map((rule) => String((rule.match as Record<string, unknown>).interaction ?? "")),
     );
     const roles = distinctTerms(
-      (rec.regionRules ?? []).map((rule) => String((rule.match as Record<string, unknown>).role ?? "")),
+      regionRules.map((rule) => String((rule.match as Record<string, unknown>).role ?? "")),
     );
     const contextKeys = distinctTerms(
-      rec.templateRules.flatMap((rule) => Object.keys(rule.match ?? {}).filter((key) => key !== "interaction")),
+      templateRules.flatMap((rule) => Object.keys(rule.match ?? {}).filter((key) => key !== "interaction")),
     );
     groups.push({ id: "interactions", label: "Interactions", note: "the goal patterns this layer routes on", terms: interactions });
     groups.push({ id: "roles", label: "Facet roles", note: "the semantic role a region can carry", terms: roles });
     groups.push({ id: "context", label: "Context signals", note: "situational keys that can steer the layout", terms: contextKeys });
   } else if (layer.kind === "presentation" && incoming) {
     const rec = incoming as InteractionToPresentationRecipe;
-    const layouts = distinctTerms(rec.templateRules.map((rule) => String((rule.emit as Record<string, unknown>).template ?? "")));
-    const presentations = distinctTerms((rec.regionRules ?? []).map((rule) => String((rule.emit as Record<string, unknown>).presentation ?? "")));
+    const templateRules = rec.program.filter((rule) => rule.slot === "template");
+    const regionRules = rec.program.filter((rule) => rule.slot === "presentation");
+    const layouts = distinctTerms(templateRules.map((rule) => String((rule.emit as Record<string, unknown>).template ?? "")));
+    const presentations = distinctTerms(regionRules.map((rule) => String((rule.emit as Record<string, unknown>).presentation ?? "")));
     groups.push({ id: "layouts", label: "Layouts", note: "arrangements this layer can produce", terms: layouts });
     groups.push({ id: "presentations", label: "Region presentations", note: "how a region can be shown", terms: presentations });
   } else if (layer.kind === "runtime-document" && incoming) {
     const rec = incoming as PresentationToRuntimeRecipe;
+    const containerRule = rec.program.find((rule) => rule.slot === "container");
+    const regionRules = rec.program.filter((rule) => rule.slot === "region");
     const capabilities = distinctTerms([
-      rec.container?.capability,
-      ...rec.rules.map((rule) => String(rule.emit.capability ?? "")),
-      rec.fallback?.capability,
+      containerRule?.emit.capability,
+      ...regionRules.map((rule) => String(rule.emit.capability ?? "")),
     ]);
     groups.push({ id: "capabilities", label: "UI capabilities", note: "the concrete components a renderer can draw", terms: capabilities });
   }
@@ -689,7 +744,7 @@ function layerVocabulary(entry: CatalogEntry, layerId: string) {
 // Representative context surfaces to vary in the worked examples. We run every surface and then
 // collapse identical outcomes, so a row that reads "any surface" means context doesn't change that
 // interaction's result, while a split into specific surfaces reveals exactly where context matters.
-const EXAMPLE_SURFACES: Array<PresentationContext["surface"]> = ["desktop", "web", "mobile", "copilot", "teams"];
+const EXAMPLE_SURFACES = ["desktop", "web", "mobile", "copilot", "teams"] as const;
 const EXAMPLE_LIMIT = 10;
 
 // A compact, shape-based summary of ANY stage value, so the worked-examples table can render the
@@ -741,7 +796,7 @@ function loweringExamples(entry: CatalogEntry, layerId: string) {
       ? (firstStage.recipe as InteractionToPresentationRecipe)
       : undefined;
   const interactions = seedRecipe
-    ? distinctTerms(seedRecipe.templateRules.map((rule) => String((rule.match as Record<string, unknown>).interaction ?? "")))
+    ? distinctTerms(seedRecipe.program.filter((rule) => rule.slot === "template").map((rule) => String((rule.match as Record<string, unknown>).interaction ?? "")))
     : [];
   if (interactions.length === 0) return empty;
 
@@ -792,6 +847,19 @@ function loweringExamples(entry: CatalogEntry, layerId: string) {
   return { columns, rows };
 }
 
+// The interaction goals this profile can run — the only external input to the pipeline. Exposed on
+// every layer's detail so the live compute panel can trace ANY layer from a real seed.
+function profileInteractionSeeds(entry: CatalogEntry): string[] {
+  const firstStage = entry.profile.stages[0];
+  const seedRecipe =
+    firstStage && firstStage.fromLayer.kind === "interaction"
+      ? (firstStage.recipe as InteractionToPresentationRecipe)
+      : undefined;
+  return seedRecipe
+    ? distinctTerms(seedRecipe.program.filter((rule) => rule.slot === "template").map((rule) => String((rule.match as Record<string, unknown>).interaction ?? "")))
+    : [];
+}
+
 function layerDetailState(entry: CatalogEntry, layerId: string) {
   const layer = entry.artifact.payload.layers.find((candidate) => candidate.id === layerId);
   const outgoingRef = entry.artifact.payload.recipes.find((candidate) => candidate.from === layerId);
@@ -802,6 +870,7 @@ function layerDetailState(entry: CatalogEntry, layerId: string) {
     // only a fallback for profiles that don't author one (and a generic line for unknown kinds).
     role: layer ? (layer.description?.trim() || layerRole(layer.kind)) : "",
     stageLabel: layer ? layerStageLabel(entry, layerId) : "",
+    seeds: layer ? profileInteractionSeeds(entry) : [],
     vocabulary: layer ? layerVocabulary(entry, layerId) : { groups: [] },
     loweringExamples: layer ? loweringExamples(entry, layerId) : { columns: [], rows: [] },
     outgoingRecipe: outgoingRef ? recipeDetailState(entry, outgoingRef.id) : emptyRecipeDetailState(),
@@ -822,9 +891,10 @@ function runtimeCapabilityRows(recipe: PresentationToRuntimeRecipe) {
     rows.push({ id: `${source}:${capability}`, capability, source });
   };
 
-  push(recipe.container.capability, "container region");
-  recipe.rules.forEach((rule) => push(rule.emit.capability, ruleMatchSummary(rule.match as Record<string, unknown>)));
-  push(recipe.fallback?.capability, "fallback");
+  const containerRule = recipe.program.find((rule) => rule.slot === "container");
+  const regionRules = recipe.program.filter((rule) => rule.slot === "region");
+  push(containerRule?.emit.capability, "container region");
+  regionRules.forEach((rule) => push(rule.emit.capability, ruleMatchSummary(rule.match as Record<string, unknown>)));
   return rows;
 }
 
@@ -849,24 +919,30 @@ function recipeDetailState(entry: CatalogEntry, recipeId: string) {
 
   if (recipe.from === "interaction" && recipe.to === "presentation") {
     const typed = recipe as InteractionToPresentationRecipe;
+    const templateRules = typed.program.filter((rule) => rule.slot === "template");
+    const rankRules = typed.program.filter((rule) => rule.slot === "rank");
+    const priorityRules = typed.program.filter((rule) => rule.slot === "priority");
+    const disclosureRules = typed.program.filter((rule) => rule.slot === "disclosure");
+    const regionRules = typed.program.filter((rule) => rule.slot === "presentation");
+    const rationaleRules = typed.program.filter((rule) => rule.slot === "rationale");
     return {
       ...base,
       kind: "interaction-to-presentation",
       kindLabel: "Interaction → Presentation",
       tagline: recipeTagline("interaction-to-presentation"),
       purpose: recipePurpose("interaction-to-presentation"),
-      summary: `${typed.templates.length} templates and ${typed.templateRules.length} template rules`,
+      summary: `${typed.templates.length} templates and ${templateRules.length} template rules`,
       constrainedWhenText: typed.constrainedWhen?.length ? typed.constrainedWhen.map(ruleMatchSummary).join("; ") : "",
       containerCapability: "",
       fallbackCapability: "",
       ruleGroups: [
         { id: "templates", label: "Templates", value: String(typed.templates.length) },
-        { id: "templateRules", label: "Template rules", value: String(typed.templateRules.length) },
-        { id: "orderRules", label: "Order rules", value: String(typed.orderRules.length) },
-        { id: "priorityRules", label: "Priority rules", value: String(typed.priorityRules.length) },
-        { id: "disclosureRules", label: "Disclosure rules", value: String(typed.disclosureRules.length) },
-        { id: "regionRules", label: "Presentation rules", value: String(typed.regionRules?.length ?? 0) },
-        { id: "rationaleRules", label: "Rationale rules", value: String(typed.rationaleRules?.length ?? 0) },
+        { id: "templateRules", label: "Template rules", value: String(templateRules.length) },
+        { id: "orderRules", label: "Order rules", value: String(rankRules.length) },
+        { id: "priorityRules", label: "Priority rules", value: String(priorityRules.length) },
+        { id: "disclosureRules", label: "Disclosure rules", value: String(disclosureRules.length) },
+        { id: "regionRules", label: "Presentation rules", value: String(regionRules.length) },
+        { id: "rationaleRules", label: "Rationale rules", value: String(rationaleRules.length) },
       ],
       templates: typed.templates.map((template) => ({
         id: template.name,
@@ -874,12 +950,12 @@ function recipeDetailState(entry: CatalogEntry, recipeId: string) {
         arrangement: template.arrangement,
         maxRegions: template.maxRegions == null ? "" : String(template.maxRegions),
       })),
-      templateMappings: typed.templateRules.map((rule, index) => ({
+      templateMappings: templateRules.map((rule, index) => ({
         id: `tpl-${index}`,
         from: mappingWhen(rule.match as Record<string, unknown>),
         to: String((rule.emit as Record<string, unknown>).template ?? ""),
       })),
-      regionMappings: (typed.regionRules ?? []).map((rule, index) => ({
+      regionMappings: regionRules.map((rule, index) => ({
         id: `rgn-${index}`,
         from: mappingWhen(rule.match as Record<string, unknown>),
         to: String((rule.emit as Record<string, unknown>).presentation ?? ""),
@@ -891,32 +967,29 @@ function recipeDetailState(entry: CatalogEntry, recipeId: string) {
   }
 
   const typed = recipe as PresentationToRuntimeRecipe;
+  const containerRule = typed.program.find((rule) => rule.slot === "container");
+  const regionRules = typed.program.filter((rule) => rule.slot === "region");
+  const defaultRegionRule = [...regionRules].reverse().find((rule) => Object.keys(rule.match ?? {}).length === 0);
   return {
     ...base,
     kind: "presentation-to-runtime",
     kindLabel: "Presentation → Runtime",
     tagline: recipeTagline("presentation-to-runtime"),
     purpose: recipePurpose("presentation-to-runtime"),
-    summary: `${typed.rules.length} runtime rules`,
+    summary: `${regionRules.length} runtime rules`,
     constrainedWhenText: "",
-    containerCapability: typed.container.capability,
-    fallbackCapability: String(typed.fallback?.capability ?? ""),
+    containerCapability: String(containerRule?.emit.capability ?? ""),
+    fallbackCapability: String(defaultRegionRule?.emit.capability ?? ""),
     ruleGroups: [],
     templates: [],
     templateMappings: [],
     regionMappings: [],
-    capabilityMappings: (() => {
-      const rows = typed.rules.map((rule, index) => ({
-        id: `cap-${index}`,
-        from: mappingWhen(rule.match as Record<string, unknown>),
-        to: String(rule.emit.capability ?? ""),
-      }));
-      if (typed.fallback?.capability) {
-        rows.push({ id: "cap-fallback", from: "Otherwise", to: String(typed.fallback.capability) });
-      }
-      return rows;
-    })(),
-    runtimeRules: typed.rules.map((rule, index) => ({
+    capabilityMappings: regionRules.map((rule, index) => ({
+      id: `cap-${index}`,
+      from: mappingWhen(rule.match as Record<string, unknown>),
+      to: String(rule.emit.capability ?? ""),
+    })),
+    runtimeRules: regionRules.map((rule, index) => ({
       id: `rule-${index + 1}`,
       match: ruleMatchSummary(rule.match as Record<string, unknown>),
       capability: String(rule.emit.capability ?? ""),
@@ -1015,11 +1088,12 @@ function previewSpec(input: PreviewInput): InteractionSpec {
     interaction: input.interaction,
     subject: input.subject.trim() || "incident",
   };
+  const data = input.data ?? demoDataFor(base);
   if (input.interaction === "configure") {
     return {
       ...base,
       data: {
-        ...demoDataFor(base),
+        ...data,
         settings: "fetched_sources.orders",
       },
       facetViews: {
@@ -1038,7 +1112,7 @@ function previewSpec(input: PreviewInput): InteractionSpec {
     };
   }
 
-  return { ...base, data: demoDataFor(base) };
+  return { ...base, data };
 }
 
 export function buildProfilePreviewBundle(
@@ -1047,7 +1121,7 @@ export function buildProfilePreviewBundle(
 ): SerializableBundle {
   const spec = previewSpec(input);
   const ctx: PresentationContext = {
-    surface: (input.surface || "desktop") as PresentationContext["surface"],
+    surface: String(input.surface || "desktop"),
   };
   const document = compileInteraction(spec, ctx, entry.profile);
   return {
@@ -1091,6 +1165,8 @@ function clearSelectionOps(snapshot: CatalogSnapshot, message = "") {
     setOp("console.recipeDetail", EMPTY_RECIPE_DETAIL as unknown as Json),
     setOp("console.validation", EMPTY_VALIDATION as unknown as Json),
     setOp("console.artifacts", { ...EMPTY_EDITOR, profileText: "", recipesText: "", resolvedText: "", bundleText: "" } as unknown as Json),
+    setOp("console.interactionInputForm", { properties: {} } as unknown as Json),
+    setOp("console.interactionInput", {} as unknown as Json),
     setOp("console.previewBundle", null as unknown as Json),
     setOp("console.previewError", message),
     setOp("console.editor", { ...EMPTY_EDITOR, status: message || EMPTY_EDITOR.status } as unknown as Json),
@@ -1120,6 +1196,7 @@ function selectionOps(
     setOp("console.recipeDetail", recipeDetailState(entry, recipeId) as unknown as Json),
     setOp("console.validation", validation as unknown as Json),
     setOp("console.artifacts", artifactState(entry) as unknown as Json),
+    setOp("console.interactionInputForm", interactionInputFormFor(entry) as unknown as Json),
     setOp("console.previewBundle", preview.bundle as unknown as Json),
     setOp("console.previewError", preview.error),
     setOp("console.editor", editorState(entry) as unknown as Json),
@@ -1153,7 +1230,16 @@ export const consoleEffects: EffectHandlerMap = {
         ops: clearSelectionOps(snapshot, `Profile '${String(ctx.payload.id ?? "")}' not found.`),
       };
     }
-    return { ops: selectionOps(entry, readPreviewInput(ctx), "overview", snapshot) };
+    const defaults = interactionInputDefaults(entry);
+    const input = previewInputFromValues(defaults, readStr(ctx, "console.previewSurface", "desktop"));
+    return {
+      ops: [
+        ...selectionOps(entry, input, "overview", snapshot),
+        // Reset the form values to the new profile's declared defaults (only on profile change,
+        // not on every layer/recipe reselection which also runs selectionOps).
+        setOp("console.interactionInput", defaults as unknown as Json),
+      ],
+    };
   },
 
   validateProfile(ctx) {

@@ -8,14 +8,20 @@ import type { Action, CapabilityDescriptor, Json } from "../../../kernel/src/ind
 import type { FacetRole, InteractionKind } from "./interaction";
 import type {
   LayoutArrangement,
-  PresentationContext,
   RegionDisclosure,
   RegionPriority,
 } from "./presentation";
 import {
+  matchProgramEmit,
+  matchesFacts,
+  rulesForSlot,
   recipeForKinds as recipeForKindsCore,
+  type EmitRule,
+  type LayerContext,
   type Profile,
+  type ProgramRule,
   type RecipeLintWarning,
+  type RuleFacts,
   type ResolvedProfile as ResolvedProfileCore,
   type ResolvedProfileStage as ResolvedProfileStageCore,
 } from "../../profile/src/profile-core";
@@ -46,7 +52,7 @@ export interface GenUiProfile extends Profile {
   kind: "genui-profile";
 }
 
-export interface RecipeMatch extends Partial<PresentationContext> {
+export interface RecipeMatch extends RuleFacts, Partial<LayerContext> {
   interaction?: InteractionKind;
   constrained?: boolean;
   region?: string;
@@ -64,35 +70,33 @@ export interface TemplateDefinition {
   maxRegions?: number;
 }
 
-export interface TemplateRule {
-  match: RecipeMatch;
-  emit: { template: string; layout: string };
-}
+export type TemplateRule = EmitRule<RecipeMatch, { template: string; layout: string }>;
 
-export interface OrderRule {
-  match: RecipeMatch;
-  emit: { rank: number };
-}
+export type OrderRule = EmitRule<RecipeMatch, { rank: number }>;
 
-export interface PriorityRule {
-  match: RecipeMatch;
-  emit: { priority: RegionPriority };
-}
+export type PriorityRule = EmitRule<RecipeMatch, { priority: RegionPriority }>;
 
-export interface DisclosureRule {
-  match: RecipeMatch;
-  emit: { disclosure: RegionDisclosure };
-}
+export type DisclosureRule = EmitRule<RecipeMatch, { disclosure: RegionDisclosure }>;
 
-export interface PresentationRule {
-  match: RecipeMatch;
-  emit: { presentation?: string };
-}
+export type PresentationRule = EmitRule<RecipeMatch, { presentation?: string }>;
 
-export interface RationaleRule {
-  match: RecipeMatch;
-  emit: { template: string };
-}
+export type RationaleRule = EmitRule<RecipeMatch, { template: string }>;
+
+export type InteractionProgramSlot =
+  | "template"
+  | "rank"
+  | "priority"
+  | "disclosure"
+  | "presentation"
+  | "rationale";
+
+export type InteractionProgramRule =
+  | ProgramRule<"template", RecipeMatch, { template: string; layout: string }>
+  | ProgramRule<"rank", RecipeMatch, { rank: number }>
+  | ProgramRule<"priority", RecipeMatch, { priority: RegionPriority }>
+  | ProgramRule<"disclosure", RecipeMatch, { disclosure: RegionDisclosure }>
+  | ProgramRule<"presentation", RecipeMatch, { presentation?: string }>
+  | ProgramRule<"rationale", RecipeMatch, { template: string }>;
 
 export interface InteractionToPresentationRecipe {
   id: string;
@@ -100,12 +104,7 @@ export interface InteractionToPresentationRecipe {
   to: "presentation";
   constrainedWhen?: RecipeMatch[];
   templates: TemplateDefinition[];
-  templateRules: TemplateRule[];
-  orderRules: OrderRule[];
-  priorityRules: PriorityRule[];
-  disclosureRules: DisclosureRule[];
-  regionRules?: PresentationRule[];
-  rationaleRules?: RationaleRule[];
+  program: InteractionProgramRule[];
   cap: {
     preserveRequired: boolean;
   };
@@ -119,18 +118,33 @@ export interface RuntimeNodeRecipeFields {
   on?: Record<string, Action[]>;
 }
 
-export interface PresentationToRuntimeRule {
-  match: RecipeMatch;
-  emit: RuntimeNodeRecipeFields;
+export interface PresentationRuntimeFacts extends RecipeMatch {
+  subject?: string;
+  layout?: string;
+  arrangement?: LayoutArrangement;
 }
+
+export type PresentationRuntimeProgramSlot = "container" | "region";
+
+export type PresentationContainerRule = ProgramRule<
+  "container",
+  PresentationRuntimeFacts,
+  RuntimeNodeRecipeFields & { capability: string }
+>;
+
+export type PresentationRegionRule = ProgramRule<
+  "region",
+  PresentationRuntimeFacts,
+  RuntimeNodeRecipeFields
+>;
+
+export type PresentationRuntimeProgramRule = PresentationContainerRule | PresentationRegionRule;
 
 export interface PresentationToRuntimeRecipe {
   id: string;
   from: "presentation";
   to: "runtime-document";
-  container: RuntimeNodeRecipeFields & { capability: string };
-  rules: PresentationToRuntimeRule[];
-  fallback?: RuntimeNodeRecipeFields;
+  program: PresentationRuntimeProgramRule[];
 }
 
 export type LoweringRecipe = InteractionToPresentationRecipe | PresentationToRuntimeRecipe;
@@ -144,6 +158,76 @@ export interface LoweringRecipeArtifact {
 /** A GenUI profile resolved into its interaction -> presentation -> runtime-document chain. */
 export type ResolvedProfileStage = ResolvedProfileStageCore<LoweringRecipe>;
 export type ResolvedProfile = ResolvedProfileCore<LoweringRecipe>;
+
+export function interactionProgramRules<TSlot extends InteractionProgramSlot>(
+  recipe: InteractionToPresentationRecipe,
+  slot: TSlot
+): Extract<InteractionProgramRule, { slot: TSlot }>[] {
+  return rulesForSlot(recipe.program, slot);
+}
+
+export function interactionProgramEmit(
+  recipe: InteractionToPresentationRecipe,
+  slot: "template",
+  facts: RecipeMatch
+): { template: string; layout: string } | undefined;
+export function interactionProgramEmit(
+  recipe: InteractionToPresentationRecipe,
+  slot: "rank",
+  facts: RecipeMatch
+): { rank: number } | undefined;
+export function interactionProgramEmit(
+  recipe: InteractionToPresentationRecipe,
+  slot: "priority",
+  facts: RecipeMatch
+): { priority: RegionPriority } | undefined;
+export function interactionProgramEmit(
+  recipe: InteractionToPresentationRecipe,
+  slot: "disclosure",
+  facts: RecipeMatch
+): { disclosure: RegionDisclosure } | undefined;
+export function interactionProgramEmit(
+  recipe: InteractionToPresentationRecipe,
+  slot: "presentation",
+  facts: RecipeMatch
+): { presentation?: string } | undefined;
+export function interactionProgramEmit(
+  recipe: InteractionToPresentationRecipe,
+  slot: "rationale",
+  facts: RecipeMatch
+): { template: string } | undefined;
+export function interactionProgramEmit(
+  recipe: InteractionToPresentationRecipe,
+  slot: InteractionProgramSlot,
+  facts: RecipeMatch
+): InteractionProgramRule["emit"] | undefined {
+  return matchProgramEmit(recipe.program, slot, facts);
+}
+
+export function presentationRuntimeProgramRules<TSlot extends PresentationRuntimeProgramSlot>(
+  recipe: PresentationToRuntimeRecipe,
+  slot: TSlot
+): Extract<PresentationRuntimeProgramRule, { slot: TSlot }>[] {
+  return rulesForSlot(recipe.program, slot);
+}
+
+export function presentationRuntimeProgramEmit(
+  recipe: PresentationToRuntimeRecipe,
+  slot: "container",
+  facts: PresentationRuntimeFacts
+): (RuntimeNodeRecipeFields & { capability: string }) | undefined;
+export function presentationRuntimeProgramEmit(
+  recipe: PresentationToRuntimeRecipe,
+  slot: "region",
+  facts: PresentationRuntimeFacts
+): RuntimeNodeRecipeFields | undefined;
+export function presentationRuntimeProgramEmit(
+  recipe: PresentationToRuntimeRecipe,
+  slot: PresentationRuntimeProgramSlot,
+  facts: PresentationRuntimeFacts
+): PresentationRuntimeProgramRule["emit"] | undefined {
+  return matchProgramEmit(recipe.program, slot, facts);
+}
 
 function isInteractionToPresentationRecipe(recipe: LoweringRecipe): recipe is InteractionToPresentationRecipe {
   return recipe.from === "interaction" && recipe.to === "presentation";
@@ -174,21 +258,21 @@ export function lintLoweringRecipe(
   if (isInteractionToPresentationRecipe(recipe)) {
     const templates = new Set(recipe.templates.map((template) => template.name));
     const seen = new Set<string>();
-    for (const rule of recipe.templateRules) {
-      if (!templates.has(rule.emit.template)) {
+    for (const rule of recipe.program) {
+      const key = `${rule.slot}:${JSON.stringify(rule.match)}`;
+      if (seen.has(key)) {
+        warnings.push({
+          code: "duplicate-rule-match",
+          detail: `duplicate ${rule.slot} rule match ${JSON.stringify(rule.match)}`,
+        });
+      }
+      seen.add(key);
+      if (rule.slot === "template" && !templates.has(rule.emit.template)) {
         warnings.push({
           code: "unknown-template",
           detail: `template rule emits unknown template '${rule.emit.template}'`,
         });
       }
-      const key = JSON.stringify(rule.match);
-      if (seen.has(key)) {
-        warnings.push({
-          code: "duplicate-rule-match",
-          detail: `duplicate template rule match ${key}`,
-        });
-      }
-      seen.add(key);
     }
     return warnings;
   }
@@ -203,24 +287,16 @@ export function lintLoweringRecipe(
     }
   };
 
-  for (const rule of recipe.rules) {
-    const key = JSON.stringify(rule.match);
+  for (const rule of recipe.program) {
+    const key = `${rule.slot}:${JSON.stringify(rule.match)}`;
     if (seen.has(key)) {
       warnings.push({
         code: "duplicate-rule-match",
-        detail: `duplicate runtime rule match ${key}`,
+        detail: `duplicate runtime ${rule.slot} rule match ${key}`,
       });
     }
     seen.add(key);
-    checkCapability(rule.emit.capability, `rule ${key}`);
-  }
-  checkCapability(recipe.container.capability, "container");
-  checkCapability(recipe.fallback?.capability, "fallback");
-  if (recipe.fallback && recipe.rules.some((rule) => Object.keys(rule.match).length === 0)) {
-    warnings.push({
-      code: "unreachable-fallback",
-      detail: `fallback on recipe '${recipe.id}' is unreachable because an empty-match rule already catches every region`,
-    });
+    checkCapability(rule.emit.capability, `${rule.slot} rule ${key}`);
   }
   return warnings;
 }

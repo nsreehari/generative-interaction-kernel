@@ -6,34 +6,29 @@
 // the interaction marks as required.
 
 import type { Json } from "../../../kernel/src/index";
-import { resolveFacets, type Facet, type FacetRole, type InteractionFacetView, type InteractionSpec } from "./interaction";
+import { resolveFacets, type Facet, type FacetRole, type InteractionFacetView, type InteractionSpec, type InteractionTaxonomy } from "./interaction";
 import type {
   InteractionToPresentationRecipe,
   RecipeMatch,
   TemplateDefinition,
 } from "./profile";
+import {
+  capOrderedItems,
+  matchesFacts,
+  orderByRank,
+  renderTemplate,
+  requireProgramEmit,
+  type LayerContext,
+} from "../../profile/src/profile-core";
+import { interactionProgramEmit } from "./profile";
 
-/**
- * Where and how the experience is being surfaced. `surface` is the primary axis; the rest
- * refine it. A richer compiler can read every field — the reference one below uses surface,
- * space, and attention.
- */
-export interface PresentationContext {
-  /** the host surface. */
-  surface: "desktop" | "web" | "mobile" | "copilot" | "teams";
-  /** primary input modality. */
-  device?: "pointer" | "touch" | "voice";
-  /** available room to render into. */
-  space?: "compact" | "regular" | "expanded";
-  /** how much of the user's attention this has. */
-  attention?: "focused" | "glanceable";
-  /** the user's familiarity with the domain (affects density / disclosure). */
-  expertise?: "novice" | "intermediate" | "expert";
-  [k: string]: unknown;
-}
+/** Compatibility alias only. GenUI no longer privileges a presentation-specific context type;
+ *  recipes consume the shared per-run layer context bag as-is. */
+export type PresentationContext = LayerContext;
 
-/** How a template arranges its regions — the shape a renderer materializes. */
-export type LayoutArrangement = "stack" | "narrative" | "split" | "grid" | "dashboard" | "wizard";
+/** How a template arranges its regions — the shape a renderer materializes. A `string`; the
+ *  authoritative arrangement vocabulary is the `arrangement` enum in presentation.schema.json. */
+export type LayoutArrangement = string;
 
 /** A named layout template: an arrangement plus an optional cap on how many regions it shows. */
 export interface LayoutTemplate {
@@ -47,11 +42,13 @@ function asTemplateRecord(templates: readonly TemplateDefinition[]): Record<stri
   return Object.fromEntries(templates.map((template) => [template.name, template]));
 }
 
-/** Information hierarchy — how prominent a region is ("what should be prominent"). */
-export type RegionPriority = "primary" | "secondary" | "tertiary";
+/** Information hierarchy — how prominent a region is ("what should be prominent"). A `string`; the
+ *  authoritative vocabulary is the `priority` enum in presentation.schema.json. */
+export type RegionPriority = string;
 
-/** Progressive disclosure — whether a region is shown up front, folded, or fetched on demand. */
-export type RegionDisclosure = "always" | "collapsed" | "on-demand";
+/** Progressive disclosure — whether a region is shown up front, folded, or fetched on demand. A
+ *  `string`; the authoritative vocabulary is the `disclosure` enum in presentation.schema.json. */
+export type RegionDisclosure = string;
 
 /**
  * The override deltas an authoring session imposes on a planned presentation. Every field is a
@@ -119,93 +116,54 @@ export interface PresentationSpec {
   source: InteractionSpec;
 }
 
-function readToken(path: string, tokens: Record<string, unknown>): unknown {
-  return path.split(".").reduce<unknown>((current, segment) => {
-    if (current == null || typeof current !== "object") return undefined;
-    return (current as Record<string, unknown>)[segment];
-  }, tokens);
-}
-
-function renderTemplate(template: string, tokens: Record<string, unknown>): string {
-  return template.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_full, key: string) => {
-    const value = readToken(key.trim(), tokens);
-    return value == null ? "" : String(value);
-  });
-}
-
-function matchesRecipe(match: RecipeMatch, facts: RecipeMatch): boolean {
-  return Object.entries(match).every(([key, value]) => facts[key as keyof RecipeMatch] === value);
-}
-
-function firstMatchingRule<T extends { match: RecipeMatch }>(
-  rules: readonly T[],
-  facts: RecipeMatch
-): T | undefined {
-  return rules.find((rule) => matchesRecipe(rule.match, facts));
-}
-
 /** Pick a template from the recipe based on the interaction and context. */
 function selectTemplate(
   spec: InteractionSpec,
-  ctx: PresentationContext,
+  ctx: LayerContext,
   recipe: InteractionToPresentationRecipe
 ): { template: LayoutTemplate; layout: string } {
   const templates = asTemplateRecord(recipe.templates);
   const facts: RecipeMatch = {
+    ...ctx,
     interaction: spec.interaction,
-    surface: ctx.surface,
-    device: ctx.device,
-    space: ctx.space,
-    attention: ctx.attention,
-    expertise: ctx.expertise,
     constrained: isConstrained(ctx, recipe),
   };
-  const match = firstMatchingRule(recipe.templateRules, facts);
-  if (!match) throw new Error(`No template rule matched interaction '${spec.interaction}' in recipe '${recipe.id}'`);
-  const templateName = match.emit.template;
+  const match = requireProgramEmit(
+    recipe.program,
+    "template",
+    facts,
+    `No template rule matched interaction '${spec.interaction}' in recipe '${recipe.id}'`
+  );
+  const templateName = match.template;
   const template = templateName ? templates[templateName] : undefined;
   if (!template) throw new Error(`No template '${templateName ?? "<none>"}' declared in recipe '${recipe.id}'`);
   return {
     template,
-    layout: renderTemplate(match.emit.layout, {
+    layout: renderTemplate(match.layout, {
+      ...ctx,
       interaction: spec.interaction,
       subject: spec.subject,
-      surface: ctx.surface,
-      device: ctx.device,
-      space: ctx.space,
-      attention: ctx.attention,
-      expertise: ctx.expertise,
     }),
   };
 }
 
 /** True when the surface/attention/space/device budget forces tighter disclosure. */
-function isConstrained(ctx: PresentationContext, recipe: InteractionToPresentationRecipe): boolean {
-  const facts: RecipeMatch = {
-    surface: ctx.surface,
-    device: ctx.device,
-    space: ctx.space,
-    attention: ctx.attention,
-    expertise: ctx.expertise,
-  };
-  return (recipe.constrainedWhen ?? []).some((rule) => matchesRecipe(rule, facts));
+function isConstrained(ctx: LayerContext, recipe: InteractionToPresentationRecipe): boolean {
+  const facts: RecipeMatch = { ...ctx };
+  return (recipe.constrainedWhen ?? []).some((rule) => matchesFacts(rule, facts));
 }
 
 function regionFacts(
   facet: Facet,
   index: number,
   spec: InteractionSpec,
-  ctx: PresentationContext,
+  ctx: LayerContext,
   recipe: InteractionToPresentationRecipe,
   extra: Partial<RecipeMatch> = {}
 ): RecipeMatch {
   return {
+    ...ctx,
     interaction: spec.interaction,
-    surface: ctx.surface,
-    device: ctx.device,
-    space: ctx.space,
-    attention: ctx.attention,
-    expertise: ctx.expertise,
     constrained: isConstrained(ctx, recipe),
     region: facet.name,
     role: facet.role,
@@ -219,24 +177,32 @@ function orderRankOf(
   facet: Facet,
   index: number,
   spec: InteractionSpec,
-  ctx: PresentationContext,
+  ctx: LayerContext,
   recipe: InteractionToPresentationRecipe
 ): number {
-  const rule = firstMatchingRule(recipe.orderRules, regionFacts(facet, index, spec, ctx, recipe));
-  if (!rule) throw new Error(`No order rule matched region '${facet.name}' in recipe '${recipe.id}'`);
-  return rule.emit.rank;
+  const emit = requireProgramEmit(
+    recipe.program,
+    "rank",
+    regionFacts(facet, index, spec, ctx, recipe),
+    `No order rule matched region '${facet.name}' in recipe '${recipe.id}'`
+  );
+  return emit.rank;
 }
 
 function priorityOf(
   facet: Facet,
   index: number,
   spec: InteractionSpec,
-  ctx: PresentationContext,
+  ctx: LayerContext,
   recipe: InteractionToPresentationRecipe
 ): RegionPriority {
-  const rule = firstMatchingRule(recipe.priorityRules, regionFacts(facet, index, spec, ctx, recipe));
-  if (!rule) throw new Error(`No priority rule matched region '${facet.name}' in recipe '${recipe.id}'`);
-  return rule.emit.priority;
+  const emit = requireProgramEmit(
+    recipe.program,
+    "priority",
+    regionFacts(facet, index, spec, ctx, recipe),
+    `No priority rule matched region '${facet.name}' in recipe '${recipe.id}'`
+  );
+  return emit.priority;
 }
 
 /**
@@ -249,15 +215,16 @@ function disclosureOf(
   priority: RegionPriority,
   index: number,
   spec: InteractionSpec,
-  ctx: PresentationContext,
+  ctx: LayerContext,
   recipe: InteractionToPresentationRecipe
 ): RegionDisclosure {
-  const rule = firstMatchingRule(
-    recipe.disclosureRules,
-    regionFacts(facet, index, spec, ctx, recipe, { priority })
+  const emit = requireProgramEmit(
+    recipe.program,
+    "disclosure",
+    regionFacts(facet, index, spec, ctx, recipe, { priority }),
+    `No disclosure rule matched region '${facet.name}' in recipe '${recipe.id}'`
   );
-  if (!rule) throw new Error(`No disclosure rule matched region '${facet.name}' in recipe '${recipe.id}'`);
-  return rule.emit.disclosure;
+  return emit.disclosure;
 }
 
 function rationaleFor(
@@ -266,22 +233,15 @@ function rationaleFor(
   disclosure: RegionDisclosure,
   index: number,
   spec: InteractionSpec,
-  ctx: PresentationContext,
+  ctx: LayerContext,
   recipe: InteractionToPresentationRecipe
 ): string | undefined {
-  const rule = firstMatchingRule(
-    recipe.rationaleRules ?? [],
-    regionFacts(facet, index, spec, ctx, recipe, { priority, disclosure })
-  );
-  if (!rule) return undefined;
-  return renderTemplate(rule.emit.template, {
+  const emit = interactionProgramEmit(recipe, "rationale", regionFacts(facet, index, spec, ctx, recipe, { priority, disclosure }));
+  if (!emit) return undefined;
+  return renderTemplate(emit.template, {
+    ...ctx,
     interaction: spec.interaction,
     subject: spec.subject,
-    surface: ctx.surface,
-    device: ctx.device,
-    space: ctx.space,
-    attention: ctx.attention,
-    expertise: ctx.expertise,
     constrained: isConstrained(ctx, recipe),
     region: {
       name: facet.name,
@@ -300,39 +260,30 @@ function defaultPresentation(
   disclosure: RegionDisclosure,
   index: number,
   spec: InteractionSpec,
-  ctx: PresentationContext,
+  ctx: LayerContext,
   recipe: InteractionToPresentationRecipe
 ): string | undefined {
-  return firstMatchingRule(
-    recipe.regionRules ?? [],
-    regionFacts(facet, index, spec, ctx, recipe, { priority, disclosure })
-  )?.emit.presentation;
+  return interactionProgramEmit(recipe, "presentation", regionFacts(facet, index, spec, ctx, recipe, { priority, disclosure }))?.presentation;
 }
 
 export function planPresentationWithRecipe(
   spec: InteractionSpec,
-  ctx: PresentationContext,
-  recipe: InteractionToPresentationRecipe
+  ctx: LayerContext,
+  recipe: InteractionToPresentationRecipe,
+  taxonomy?: InteractionTaxonomy
 ): PresentationSpec {
   const { template, layout } = selectTemplate(spec, ctx, recipe);
-  const facets = resolveFacets(spec);
+  const facets = resolveFacets(spec, taxonomy);
 
-  const ordered = [...facets]
-    .map((facet, index) => ({ facet, index, rank: orderRankOf(facet, index, spec, ctx, recipe) }))
-    .sort((a, b) => a.rank - b.rank || a.index - b.index);
+  const ordered = orderByRank(facets, (facet, index) => orderRankOf(facet, index, spec, ctx, recipe));
+  const chosen = capOrderedItems(
+    ordered,
+    template.maxRegions,
+    recipe.cap.preserveRequired,
+    (facet) => facet.required
+  );
 
-  let chosen = ordered;
-  if (template.maxRegions != null && ordered.length > template.maxRegions) {
-    if (recipe.cap.preserveRequired) {
-      const required = ordered.filter(({ facet }) => facet.required);
-      const optional = ordered.filter(({ facet }) => !facet.required);
-      chosen = [...required, ...optional].slice(0, Math.max(template.maxRegions, required.length));
-    } else {
-      chosen = ordered.slice(0, template.maxRegions);
-    }
-  }
-
-  const regions: PresentationRegion[] = chosen.map(({ facet, index }, i) => {
+  const regions: PresentationRegion[] = chosen.map(({ item: facet }, i) => {
     const priority = priorityOf(facet, i, spec, ctx, recipe);
     const disclosure = disclosureOf(facet, priority, i, spec, ctx, recipe);
     const facetView: InteractionFacetView | undefined = spec.facetViews?.[facet.name];

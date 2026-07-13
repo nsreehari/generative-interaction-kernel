@@ -5,6 +5,7 @@
     "id": "live-cards",
     "kind": "genui-profile",
     "version": "0.1.0",
+    "profile-template": "genui",
     "layers": [
       { "id": "interaction", "kind": "interaction" },
       { "id": "presentation", "kind": "presentation" },

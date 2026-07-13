@@ -1,0 +1,66 @@
+{
+  "investigate": [
+    { "name": "context", "role": "narrative", "required": true },
+    { "name": "evidence", "role": "collection", "required": true },
+    { "name": "timeline", "role": "timeline", "required": true },
+    { "name": "relationships", "role": "graph", "required": false },
+    { "name": "explanation", "role": "narrative", "required": true },
+    { "name": "actions", "role": "actions", "required": true }
+  ],
+  "compare": [
+    { "name": "left", "role": "detail", "required": true },
+    { "name": "right", "role": "detail", "required": true },
+    { "name": "diff", "role": "comparison", "required": true },
+    { "name": "recommendation", "role": "recommendation", "required": false }
+  ],
+  "review": [
+    { "name": "summary", "role": "summary", "required": true },
+    { "name": "detail", "role": "collection", "required": true },
+    { "name": "actions", "role": "actions", "required": false }
+  ],
+  "approve": [
+    { "name": "explanation", "role": "narrative", "required": true },
+    { "name": "action", "role": "actions", "required": true }
+  ],
+  "monitor": [
+    { "name": "status", "role": "status", "required": true },
+    { "name": "metrics", "role": "metrics", "required": true },
+    { "name": "alerts", "role": "collection", "required": false }
+  ],
+  "explore": [
+    { "name": "overview", "role": "summary", "required": true },
+    { "name": "facets", "role": "collection", "required": false },
+    { "name": "results", "role": "collection", "required": true }
+  ],
+  "create": [
+    { "name": "form", "role": "form", "required": true },
+    { "name": "preview", "role": "detail", "required": false },
+    { "name": "actions", "role": "actions", "required": true }
+  ],
+  "configure": [
+    { "name": "settings", "role": "form", "required": true },
+    { "name": "preview", "role": "detail", "required": false },
+    { "name": "actions", "role": "actions", "required": true }
+  ],
+  "collaborate": [
+    { "name": "participants", "role": "collection", "required": false },
+    { "name": "thread", "role": "collection", "required": true },
+    { "name": "actions", "role": "actions", "required": true }
+  ],
+  "plan": [
+    { "name": "timeline", "role": "timeline", "required": true },
+    { "name": "tasks", "role": "collection", "required": true },
+    { "name": "actions", "role": "actions", "required": false }
+  ],
+  "learn": [
+    { "name": "content", "role": "narrative", "required": true },
+    { "name": "progress", "role": "status", "required": false },
+    { "name": "actions", "role": "actions", "required": false }
+  ],
+  "decide": [
+    { "name": "options", "role": "collection", "required": true },
+    { "name": "criteria", "role": "detail", "required": false },
+    { "name": "recommendation", "role": "recommendation", "required": true },
+    { "name": "action", "role": "actions", "required": true }
+  ]
+}
