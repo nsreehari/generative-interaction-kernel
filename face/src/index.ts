@@ -4,6 +4,7 @@ export * from "./pure/capability";
 export * from "./pure/interaction";
 export * from "./pure/presentation";
 export * from "./pure/intent";
+export * from "./pure/profile-tools";
 export * from "./tool-surface";
 export * from "./pure/authoring-tools";
 export * from "./live/runtime-tools";

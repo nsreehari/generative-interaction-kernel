@@ -26,7 +26,34 @@ export interface Profile {
   version: string;
   layers: LayerDefinition[];
   recipes: LoweringRecipeRef[];
+  /** Optional declarative authoring surface: the tools this profile projects from its layers and
+   *  recipes. Data only — the core never interprets it; a face engine materializes it into tools. */
+  authoring?: ProfileAuthoring;
   metadata?: Record<string, Json>;
+}
+
+/** A declarative authoring-tool declaration: an operation over a declared layer (or a named
+ *  projector), materialized into a concrete tool by a profile-family registry. Data only. */
+export interface AuthoringToolDecl {
+  id: string;
+  op: "validate" | "describe" | "project";
+  /** the layer this tool operates on (validate/describe). */
+  layer?: string;
+  description?: string;
+  /** explicit input schema; a per-op default is used when omitted. */
+  inputSchema?: Record<string, Json>;
+  /** named semantic checks (registry.checks) run after structural schema validation. */
+  checks?: string[];
+  /** named projector (registry.projectors) for op:"project". */
+  projector?: string;
+  /** named describe hook (registry.describe); defaults to the layer id. */
+  describe?: string;
+  /** safe to expose to agents (drives the AgentFace projection). */
+  agentSafe?: boolean;
+}
+
+export interface ProfileAuthoring {
+  tools: AuthoringToolDecl[];
 }
 
 export interface ProfileArtifact {
