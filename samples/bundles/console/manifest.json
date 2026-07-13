@@ -2,7 +2,7 @@
   "gik": "0.1",
   "type": "manifest",
   "payload": {
-    "version": "genui-console/2.0",
+    "version": "genui-console/3.0",
     "expression": "jsonata",
     "namespaces": ["console"],
     "actions": ["assign", "assignFrom", "derive", "invoke", "route", "confirm", "emit"],
@@ -19,6 +19,7 @@
       "ui:field": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["input"] },
       "ui:select": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["change"] },
       "ui:button": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["press"] },
+      "ui:textarea": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["input"] },
       "ui:tabBar": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["select"] },
       "ui:codeBlock": { "propsSchema": { "type": "object", "additionalProperties": true } },
       "ui:embed": { "propsSchema": { "type": "object", "additionalProperties": true } }
@@ -27,7 +28,15 @@
       "projectionViews": {
         "ui": { "from": "floor" }
       },
-      "effectHandlers": ["syncCatalog", "loadProfile", "validateProfile", "refreshPreview"]
+      "effectHandlers": [
+        "syncCatalog",
+        "loadProfile",
+        "validateProfile",
+        "refreshPreview",
+        "seedLocalDraft",
+        "saveLocalProfile",
+        "deleteLocalProfile"
+      ]
     }
   }
 }

@@ -1,0 +1,73 @@
+{
+  "gik": "0.1",
+  "type": "document",
+  "payload": {
+    "root": {
+      "capability": "ui:screen",
+      "id": "samples-overview-root",
+      "props": {
+        "title": "Samples Overview",
+        "subtitle": "Customer-facing guide to the sample hosts, browser bundles, and where to start."
+      },
+      "edges": {
+        "children": [
+          {
+            "capability": "ui:row",
+            "id": "samples-overview-layout",
+            "props": { "variant": "split" },
+            "edges": {
+              "children": [
+                {
+                  "capability": "ui:panel",
+                  "id": "samples-overview-context",
+                  "props": { "title": "How to read this", "variant": "rail" },
+                  "edges": {
+                    "children": [
+                      {
+                        "capability": "ui:note",
+                        "id": "samples-overview-note-1",
+                        "props": {
+                          "tone": "muted",
+                          "value": "Use this page as the quick external overview for customer developers evaluating GenUI samples."
+                        }
+                      },
+                      {
+                        "capability": "ui:note",
+                        "id": "samples-overview-note-2",
+                        "props": {
+                          "tone": "muted",
+                          "value": "It answers three questions: what the sample product looks like, how the pieces relate, and where a new developer should start."
+                        }
+                      },
+                      {
+                        "capability": "ui:note",
+                        "id": "samples-overview-note-3",
+                        "props": {
+                          "tone": "muted",
+                          "value": "The browser host runs multiple sample bundles; the other sample hosts show agent-only, control-plane, and backend embedding shapes."
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "capability": "ui:panel",
+                  "id": "samples-overview-content",
+                  "props": { "title": "External product overview", "variant": "detail" },
+                  "edges": {
+                    "children": [
+                      {
+                        "capability": "demo:samplesOverview",
+                        "id": "samples-overview-view"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

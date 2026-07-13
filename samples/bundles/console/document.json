@@ -7,7 +7,7 @@
       "id": "console-root",
       "props": {
         "title": "GenUI Profile Console",
-        "subtitle": "Inspect, validate, and run real sample-authored profiles"
+          "subtitle": "Inspect repo samples, validate profile bundles, and save editable local drafts"
       },
       "edges": {
         "children": [
@@ -33,7 +33,40 @@
                         "id": "rail-note",
                         "props": {
                           "tone": "muted",
-                          "value": "Catalog entries come from samples/profiles and resolve through the real loadProfile pipeline."
+                          "value": "Repo sample profiles are read-only. Seed a local draft from any selection to save and edit browser-stored JSON bundles."
+                        }
+                      },
+                      {
+                        "capability": "ui:note",
+                        "id": "catalog-status",
+                        "props": {
+                          "tone": "info"
+                        },
+                        "edges": {
+                          "gate": "console.catalogStatus != ''",
+                          "read": {
+                            "value": "console.catalogStatus"
+                          }
+                        }
+                      },
+                      {
+                        "capability": "ui:button",
+                        "id": "create-local-profile",
+                        "props": {
+                          "label": "Add new local profile",
+                          "tone": "primary"
+                        },
+                        "edges": {
+                          "on": {
+                            "press": [
+                              {
+                                "do": "invoke",
+                                "args": {
+                                  "tool": "seedLocalDraft"
+                                }
+                              }
+                            ]
+                          }
                         }
                       },
                       {
@@ -107,7 +140,27 @@
                               "id": "empty-hint",
                               "props": {
                                 "tone": "muted",
-                                "value": "Select a profile on the left to inspect its layers, validate its artifacts, and run a real preview."
+                                "value": "Select a profile on the left to inspect it, or create a new local profile draft to start editing immediately."
+                              }
+                            },
+                            {
+                              "capability": "ui:button",
+                              "id": "empty-create-local-profile",
+                              "props": {
+                                "label": "Add new local profile",
+                                "tone": "primary"
+                              },
+                              "edges": {
+                                "on": {
+                                  "press": [
+                                    {
+                                      "do": "invoke",
+                                      "args": {
+                                        "tool": "seedLocalDraft"
+                                      }
+                                    }
+                                  ]
+                                }
                               }
                             }
                           ]
@@ -181,6 +234,18 @@
                                           "id": "metric-version",
                                           "props": { "label": "Version" },
                                           "edges": { "read": { "value": "console.profile.version" } }
+                                        },
+                                        {
+                                          "capability": "ui:metric",
+                                          "id": "metric-source-entry",
+                                          "props": { "label": "Source" },
+                                          "edges": { "read": { "value": "console.profile.source" } }
+                                        },
+                                        {
+                                          "capability": "ui:metric",
+                                          "id": "metric-readonly",
+                                          "props": { "label": "Read-only" },
+                                          "edges": { "read": { "value": "console.profile.readonly" } }
                                         },
                                         {
                                           "capability": "ui:metric",
@@ -562,6 +627,149 @@
                                 "children": [
                                   {
                                     "capability": "ui:panel",
+                                    "id": "artifact-editor-panel",
+                                    "props": {
+                                      "title": "Local storage editor",
+                                      "variant": "inset"
+                                    },
+                                    "edges": {
+                                      "children": [
+                                        {
+                                          "capability": "ui:note",
+                                          "id": "artifact-editor-status",
+                                          "props": {
+                                            "tone": "info"
+                                          },
+                                          "edges": {
+                                            "read": {
+                                              "value": "console.editor.status"
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:note",
+                                          "id": "artifact-editor-error",
+                                          "props": {
+                                            "tone": "critical"
+                                          },
+                                          "edges": {
+                                            "gate": "console.editor.error != ''",
+                                            "read": {
+                                              "value": "console.editor.error"
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:field",
+                                          "id": "artifact-editor-id",
+                                          "props": {
+                                            "label": "Local profile id",
+                                            "placeholder": "my-profile-local"
+                                          },
+                                          "edges": {
+                                            "read": {
+                                              "value": "console.editor.id"
+                                            },
+                                            "on": {
+                                              "input": [
+                                                {
+                                                  "do": "assign",
+                                                  "target": "console.editor.id",
+                                                  "args": {
+                                                    "from": "$event.value"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:button",
+                                          "id": "artifact-seed-draft",
+                                          "props": {
+                                            "label": "Add new local profile from selection"
+                                          },
+                                          "edges": {
+                                            "on": {
+                                              "press": [
+                                                {
+                                                  "do": "invoke",
+                                                  "args": {
+                                                    "tool": "seedLocalDraft"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:textarea",
+                                          "id": "artifact-editor-bundle",
+                                          "props": {
+                                            "label": "Stored profile bundle JSON",
+                                            "placeholder": "{\n  \"format\": \"gik-profile-bundle/1\",\n  ...\n}"
+                                          },
+                                          "edges": {
+                                            "read": {
+                                              "value": "console.editor.bundleText"
+                                            },
+                                            "on": {
+                                              "input": [
+                                                {
+                                                  "do": "assign",
+                                                  "target": "console.editor.bundleText",
+                                                  "args": {
+                                                    "from": "$event.value"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:button",
+                                          "id": "artifact-save-local",
+                                          "props": {
+                                            "label": "Save local profile",
+                                            "tone": "primary"
+                                          },
+                                          "edges": {
+                                            "on": {
+                                              "press": [
+                                                {
+                                                  "do": "invoke",
+                                                  "args": {
+                                                    "tool": "saveLocalProfile"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:button",
+                                          "id": "artifact-delete-local",
+                                          "props": {
+                                            "label": "Delete selected local profile"
+                                          },
+                                          "edges": {
+                                            "on": {
+                                              "press": [
+                                                {
+                                                  "do": "invoke",
+                                                  "args": {
+                                                    "tool": "deleteLocalProfile"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:panel",
                                     "id": "artifact-profile-panel",
                                     "props": {
                                       "title": "profile.json",
@@ -617,6 +825,27 @@
                                           "edges": {
                                             "read": {
                                               "code": "console.artifacts.resolvedText"
+                                            }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:panel",
+                                    "id": "artifact-bundle-panel",
+                                    "props": {
+                                      "title": "stored bundle payload",
+                                      "variant": "inset"
+                                    },
+                                    "edges": {
+                                      "children": [
+                                        {
+                                          "capability": "ui:codeBlock",
+                                          "id": "artifact-bundle-code",
+                                          "edges": {
+                                            "read": {
+                                              "code": "console.artifacts.bundleText"
                                             }
                                           }
                                         }

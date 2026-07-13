@@ -13,6 +13,7 @@ import {
   Kernel,
   bufferSink,
   unwrap,
+  type OrchestratorResult,
   type DocumentMessage,
   type Enveloped,
   type Json,
@@ -21,6 +22,8 @@ import {
 import { GenUIController } from "../controller";
 import { createEffectDispatcher, type EffectHandlerMap } from "./effects";
 import type { ProjectionView } from "../registry";
+
+const BUNDLE_INIT_EFFECT = "$init";
 
 /** The JSON-only part of a bundle — safe to store in state and embed via the `embed` primitive. */
 export interface SerializableBundle {
@@ -131,6 +134,26 @@ export interface BundleRuntime {
   state: InMemoryStateModel;
 }
 
+function applyBundleInit(bundle: Bundle, state: InMemoryStateModel): void {
+  const init = bundle.effectHandlers?.[BUNDLE_INIT_EFFECT];
+  if (!init) return;
+  const result = init({
+    get: (path) => state.get(path),
+    set: (path, value) => ({ op: "set", path, value }),
+    args: {},
+    payload: {},
+    store: state,
+  });
+  if (result && typeof (result as Promise<unknown>).then === "function") {
+    throw new Error(`bundle: ${BUNDLE_INIT_EFFECT} must be synchronous`);
+  }
+  const syncResult = result as OrchestratorResult | void;
+  const ops = syncResult?.ops;
+  if (ops && ops.length > 0) {
+    state.apply(ops);
+  }
+}
+
 /**
  * Stand up a runtime for a bundle, exposing BOTH the controller and its state model. Most hosts want
  * only the controller (`loadBundle`); the state is exposed for the rare host that must bridge two
@@ -140,6 +163,7 @@ export interface BundleRuntime {
 export function loadBundleRuntime(bundle: Bundle): BundleRuntime {
   assertExternalsSatisfied(bundle);
   const state = seedState(bundle.manifest, bundle.state);
+  applyBundleInit(bundle, state);
   const orchestrator = createEffectDispatcher(state, bundle.effectHandlers ?? {});
   const kernel = new Kernel(bundle.manifest, bundle.document, {
     state,

@@ -15,6 +15,9 @@ const jsonataCjs = fileURLToPath(
 const providerReactiveStateModel = fileURLToPath(
   new URL("../../../packages/provider-reactive-state-model/src/index.ts", import.meta.url)
 );
+const reactPackage = fileURLToPath(
+  new URL("../../../packages/react/src/index.ts", import.meta.url)
+);
 const profilePackage = fileURLToPath(
   new URL("../../../packages/profile/src/index.ts", import.meta.url)
 );
@@ -53,6 +56,7 @@ export default defineConfig({
   plugins: [jsonataUmdInterop(), react()],
   resolve: {
     alias: {
+      "@gik/react": reactPackage,
       "@gik/profile": profilePackage,
       "@gik/provider-reactive-state-model": providerReactiveStateModel,
       "@gik/provider-consequence-graph": providerConsequenceGraph,

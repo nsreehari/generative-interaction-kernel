@@ -6,12 +6,16 @@ import { createHostRegistry, DEFAULT_BUNDLE } from "./bundles";
 test("host registry exposes the new sample bundles to the switcher", () => {
   const registry = createHostRegistry();
 
-  assert.equal(DEFAULT_BUNDLE, "console");
+  assert.equal(DEFAULT_BUNDLE, "samples-overview");
+  assert.equal(registry.has("samples-overview"), true);
   assert.equal(registry.has("reactive-demo"), true);
   assert.equal(registry.has("provider-authoring-demo"), true);
   assert.deepEqual(
-    registry.ids({ listable: true }).filter((id) => id === "reactive-demo" || id === "provider-authoring-demo").sort(),
-    ["provider-authoring-demo", "reactive-demo"]
+    registry
+      .ids({ listable: true })
+      .filter((id) => id === "reactive-demo" || id === "provider-authoring-demo" || id === "samples-overview")
+      .sort(),
+    ["provider-authoring-demo", "reactive-demo", "samples-overview"]
   );
 });
 

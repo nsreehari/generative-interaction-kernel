@@ -10,16 +10,23 @@
 import type { CapabilityDescriptor, Enveloped, Json, ManifestPayload } from "@gik/kernel";
 import { setOp, type EffectContext, type EffectHandlerMap, type SerializableBundle } from "@gik/react";
 import {
-  compileInteraction,
+  createProfileBundle,
   lintLoweringRecipeArtifact,
   lintProfileArtifacts,
+  loadProfileBundle,
+  parseProfileBundleJson,
   recipeForKinds,
+  stringifyProfileBundle,
   validateLoweringRecipeArtifact,
   validateProfileArtifact,
+  type PresentationToRuntimeRecipe,
+  type ProfileArtifactBundle,
+} from "@gik/profile";
+import {
+  compileInteraction,
   type InteractionKind,
   type InteractionSpec,
   type PresentationContext,
-  type PresentationToRuntimeRecipe,
 } from "../../../interaction/src/index";
 import { sampleProfileCatalog, type SampleProfileEntry } from "../../profiles/registry";
 import { demoDataFor } from "../workbench/bundles/demo/demo";
@@ -39,6 +46,28 @@ interface ValidationResult {
   errorsText: string;
   warningsText: string;
 }
+
+type ProfileSource = "repo" | "local";
+
+interface CatalogEntry extends SampleProfileEntry {
+  source: ProfileSource;
+  readonly: boolean;
+  bundle: ProfileArtifactBundle;
+}
+
+interface CatalogSnapshot {
+  entries: readonly CatalogEntry[];
+  status: string;
+}
+
+interface EditableProfileState {
+  id: string;
+  bundleText: string;
+  status: string;
+  error: string;
+}
+
+const LOCAL_PROFILE_STORAGE_KEY = "gik.console.profileBundles.v1";
 
 const PREVIEW_CAPABILITIES: Record<string, CapabilityDescriptor> = {
   "ui:board": {
@@ -109,6 +138,8 @@ const EMPTY_PROFILE = {
   id: "",
   kind: "",
   version: "",
+  source: "",
+  readonly: true,
   sourceKind: "",
   targetKind: "",
   layerCount: 0,
@@ -117,6 +148,30 @@ const EMPTY_PROFILE = {
   stages: [],
   capabilities: [],
 };
+
+const EMPTY_EDITOR: EditableProfileState = {
+  id: "",
+  bundleText: "",
+  status: "Add a new local profile or select an existing one to edit and save it in browser storage.",
+  error: "",
+};
+
+const EMPTY_VALIDATION: ValidationResult = {
+  status: "unknown",
+  errors: [],
+  warnings: [],
+  errorsText: "Select a profile to validate.",
+  warningsText: "",
+};
+
+function readRepoCatalog(): readonly CatalogEntry[] {
+  return sampleProfileCatalog.map((entry) => ({
+    ...entry,
+    source: "repo" as const,
+    readonly: true,
+    bundle: createProfileBundle(entry.artifact, entry.recipeArtifacts),
+  }));
+}
 
 function readStr(ctx: EffectContext, path: string, fallback = ""): string {
   const value = ctx.get(path);
@@ -127,6 +182,13 @@ function readSelectedId(ctx: EffectContext): string {
   return readStr(ctx, "console.selectedId");
 }
 
+function readTab(ctx: EffectContext): ConsoleTab {
+  const value = readStr(ctx, "console.tab", "overview");
+  return value === "overview" || value === "validation" || value === "preview" || value === "artifacts"
+    ? value
+    : "overview";
+}
+
 function readPreviewInput(ctx: EffectContext): PreviewInput {
   return {
     interaction: readStr(ctx, "console.previewInteraction", "investigate") as InteractionKind,
@@ -135,18 +197,141 @@ function readPreviewInput(ctx: EffectContext): PreviewInput {
   };
 }
 
-function catalogRows() {
-  return sampleProfileCatalog.map((entry) => ({
+function catalogRows(entries: readonly CatalogEntry[]) {
+  return entries.map((entry) => ({
     id: entry.artifact.payload.id,
     kind: entry.artifact.payload.kind,
     version: entry.artifact.payload.version,
     layers: entry.artifact.payload.layers.length,
     stages: entry.profile.stages.length,
+    source: entry.source,
+    readonly: entry.readonly,
   }));
 }
 
-function findEntry(id: string): SampleProfileEntry | undefined {
-  return sampleProfileCatalog.find((entry) => entry.artifact.payload.id === id);
+function findEntry(id: string, entries: readonly CatalogEntry[]): CatalogEntry | undefined {
+  return entries.find((entry) => entry.artifact.payload.id === id);
+}
+
+function profileStorage(): Storage | null {
+  if (typeof globalThis === "undefined" || !("localStorage" in globalThis)) return null;
+  return globalThis.localStorage ?? null;
+}
+
+function readStoredBundleMap(): { bundles: Record<string, ProfileArtifactBundle>; errors: string[] } {
+  const storage = profileStorage();
+  if (!storage) return { bundles: {}, errors: [] };
+
+  const raw = storage.getItem(LOCAL_PROFILE_STORAGE_KEY);
+  if (!raw) return { bundles: {}, errors: [] };
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {
+        bundles: {},
+        errors: ["Local profile storage was ignored because it is not a JSON object."],
+      };
+    }
+
+    const bundles: Record<string, ProfileArtifactBundle> = {};
+    const errors: string[] = [];
+    for (const [id, value] of Object.entries(parsed as Record<string, unknown>)) {
+      try {
+        const bundle = parseProfileBundleJson(JSON.stringify(value));
+        bundles[id] = normalizeBundleId(bundle, id);
+      } catch (error) {
+        errors.push(`Skipped stored profile '${id}': ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    return { bundles, errors };
+  } catch (error) {
+    return {
+      bundles: {},
+      errors: [
+        `Local profile storage could not be parsed: ${error instanceof Error ? error.message : String(error)}`,
+      ],
+    };
+  }
+}
+
+function writeStoredBundleMap(bundles: Record<string, ProfileArtifactBundle>): void {
+  const storage = profileStorage();
+  if (!storage) {
+    throw new Error("Browser localStorage is unavailable in this host.");
+  }
+  storage.setItem(LOCAL_PROFILE_STORAGE_KEY, JSON.stringify(bundles));
+}
+
+function normalizeBundleId(bundle: ProfileArtifactBundle, id: string): ProfileArtifactBundle {
+  if (bundle.profileArtifact.payload.id === id) return bundle;
+  return createProfileBundle(
+    {
+      ...bundle.profileArtifact,
+      payload: {
+        ...bundle.profileArtifact.payload,
+        id,
+      },
+    },
+    bundle.recipeArtifacts
+  );
+}
+
+function asCatalogEntry(bundle: ProfileArtifactBundle, source: ProfileSource, readonly: boolean): CatalogEntry {
+  return {
+    artifact: bundle.profileArtifact,
+    recipeArtifacts: bundle.recipeArtifacts,
+    profile: loadProfileBundle(bundle),
+    source,
+    readonly,
+    bundle,
+  };
+}
+
+function loadCatalog(): CatalogSnapshot {
+  const repoCatalog = readRepoCatalog();
+  const { bundles, errors } = readStoredBundleMap();
+  const localEntries: CatalogEntry[] = [];
+  for (const [id, bundle] of Object.entries(bundles)) {
+    try {
+      localEntries.push(asCatalogEntry(normalizeBundleId(bundle, id), "local", false));
+    } catch (error) {
+      errors.push(`Skipped local profile '${id}': ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  localEntries.sort((left, right) => left.artifact.payload.id.localeCompare(right.artifact.payload.id));
+  return {
+    entries: [...repoCatalog, ...localEntries],
+    status: errors.join("\n"),
+  };
+}
+
+function catalogStatus(snapshot: CatalogSnapshot): string {
+  if (snapshot.status) return snapshot.status;
+  const localCount = snapshot.entries.filter((entry) => entry.source === "local").length;
+  return localCount > 0 ? `${localCount} local profile${localCount === 1 ? "" : "s"} loaded from browser storage.` : "";
+}
+
+function nextDraftId(baseId: string, entries: readonly CatalogEntry[]): string {
+  const taken = new Set(entries.map((entry) => entry.artifact.payload.id));
+  if (!taken.has(baseId)) return baseId;
+  let index = 2;
+  while (taken.has(`${baseId}-${index}`)) index += 1;
+  return `${baseId}-${index}`;
+}
+
+function editorState(entry: CatalogEntry, statusOverride?: string, error = ""): EditableProfileState {
+  return {
+    id: entry.readonly ? nextDraftId(`${entry.artifact.payload.id}-local`, loadCatalog().entries) : entry.artifact.payload.id,
+    bundleText: stringifyProfileBundle(entry.bundle),
+    status:
+      statusOverride ??
+      (entry.readonly
+        ? "Repo sample profiles are read-only. Change the local id and save to browser storage to make an editable copy."
+        : `Editing browser-stored profile '${entry.artifact.payload.id}'. Save to persist changes or delete to remove it.`),
+    error,
+  };
 }
 
 function runtimeRecipeOf(entry: SampleProfileEntry): PresentationToRuntimeRecipe {
@@ -168,7 +353,7 @@ function capabilityRows(entry: SampleProfileEntry) {
   });
 }
 
-function profileState(entry: SampleProfileEntry) {
+function profileState(entry: CatalogEntry) {
   const artifact = entry.artifact.payload;
   const firstStage = entry.profile.stages[0];
   const lastStage = entry.profile.stages[entry.profile.stages.length - 1];
@@ -176,6 +361,8 @@ function profileState(entry: SampleProfileEntry) {
     id: artifact.id,
     kind: artifact.kind,
     version: artifact.version,
+    source: entry.source,
+    readonly: entry.readonly,
     sourceKind: firstStage?.fromLayer.kind ?? "",
     targetKind: lastStage?.toLayer.kind ?? "",
     layerCount: artifact.layers.length,
@@ -198,7 +385,8 @@ function formatJson(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
-function artifactState(entry: SampleProfileEntry) {
+function artifactState(entry: CatalogEntry) {
+  const bundle = entry.bundle;
   return {
     profileText: formatJson(entry.artifact),
     recipesText: entry.recipeArtifacts.map((artifact) => formatJson(artifact)).join("\n\n"),
@@ -210,6 +398,7 @@ function artifactState(entry: SampleProfileEntry) {
         toLayer: stage.toLayer,
       })),
     }),
+    bundleText: stringifyProfileBundle(bundle),
   };
 }
 
@@ -285,48 +474,74 @@ function previewState(entry: SampleProfileEntry, input: PreviewInput) {
   }
 }
 
-function selectionOps(entry: SampleProfileEntry, input: PreviewInput, tab: ConsoleTab) {
+function baseCatalogOps(snapshot: CatalogSnapshot) {
+  return [
+    setOp("console.profiles", catalogRows(snapshot.entries) as unknown as Json),
+    setOp("console.catalogStatus", catalogStatus(snapshot)),
+  ];
+}
+
+function clearSelectionOps(snapshot: CatalogSnapshot, message = "") {
+  return [
+    ...baseCatalogOps(snapshot),
+    setOp("console.selectedId", ""),
+    setOp("console.profile", EMPTY_PROFILE as unknown as Json),
+    setOp("console.validation", EMPTY_VALIDATION as unknown as Json),
+    setOp("console.artifacts", { ...EMPTY_EDITOR, profileText: "", recipesText: "", resolvedText: "", bundleText: "" } as unknown as Json),
+    setOp("console.previewBundle", null as unknown as Json),
+    setOp("console.previewError", message),
+    setOp("console.editor", { ...EMPTY_EDITOR, status: message || EMPTY_EDITOR.status } as unknown as Json),
+  ];
+}
+
+function selectionOps(entry: CatalogEntry, input: PreviewInput, tab: ConsoleTab, snapshot: CatalogSnapshot) {
   const validation = validateSampleProfile(entry);
   const preview = previewState(entry, input);
   return [
-    setOp("console.profiles", catalogRows() as unknown as Json),
+    ...baseCatalogOps(snapshot),
     setOp("console.selectedId", entry.artifact.payload.id),
     setOp("console.profile", profileState(entry) as unknown as Json),
     setOp("console.validation", validation as unknown as Json),
     setOp("console.artifacts", artifactState(entry) as unknown as Json),
     setOp("console.previewBundle", preview.bundle as unknown as Json),
     setOp("console.previewError", preview.error),
+    setOp("console.editor", editorState(entry) as unknown as Json),
     setOp("console.tab", tab),
   ];
 }
 
 export const consoleEffects: EffectHandlerMap = {
-  syncCatalog() {
-    return { ops: [setOp("console.profiles", catalogRows() as unknown as Json)] };
+  $init() {
+    const snapshot = loadCatalog();
+    return { ops: baseCatalogOps(snapshot) };
+  },
+
+  syncCatalog(ctx) {
+    const snapshot = loadCatalog();
+    const selected = findEntry(readSelectedId(ctx), snapshot.entries);
+    if (!selected) return { ops: baseCatalogOps(snapshot) };
+    return { ops: selectionOps(selected, readPreviewInput(ctx), readTab(ctx), snapshot) };
   },
 
   loadProfile(ctx) {
-    const entry = findEntry(String(ctx.payload.id ?? ""));
+    const snapshot = loadCatalog();
+    const entry = findEntry(String(ctx.payload.id ?? ""), snapshot.entries);
     if (!entry) {
       return {
-        ops: [
-          setOp("console.profiles", catalogRows() as unknown as Json),
-          setOp("console.profile", EMPTY_PROFILE as unknown as Json),
-          setOp("console.previewBundle", null as unknown as Json),
-          setOp("console.previewError", `Profile '${String(ctx.payload.id ?? "")}' not found.`),
-        ],
+        ops: clearSelectionOps(snapshot, `Profile '${String(ctx.payload.id ?? "")}' not found.`),
       };
     }
-    return { ops: selectionOps(entry, readPreviewInput(ctx), "overview") };
+    return { ops: selectionOps(entry, readPreviewInput(ctx), "overview", snapshot) };
   },
 
   validateProfile(ctx) {
-    const entry = findEntry(readSelectedId(ctx));
+    const snapshot = loadCatalog();
+    const entry = findEntry(readSelectedId(ctx), snapshot.entries);
     if (!entry) return { ops: [] };
     const validation = validateSampleProfile(entry);
     return {
       ops: [
-        setOp("console.profiles", catalogRows() as unknown as Json),
+        ...baseCatalogOps(snapshot),
         setOp("console.validation", validation as unknown as Json),
         setOp("console.tab", "validation"),
       ],
@@ -334,15 +549,150 @@ export const consoleEffects: EffectHandlerMap = {
   },
 
   refreshPreview(ctx) {
-    const entry = findEntry(readSelectedId(ctx));
+    const snapshot = loadCatalog();
+    const entry = findEntry(readSelectedId(ctx), snapshot.entries);
     if (!entry) return { ops: [] };
     const preview = previewState(entry, readPreviewInput(ctx));
     return {
       ops: [
-        setOp("console.profiles", catalogRows() as unknown as Json),
+        ...baseCatalogOps(snapshot),
         setOp("console.previewBundle", preview.bundle as unknown as Json),
         setOp("console.previewError", preview.error),
         setOp("console.tab", "preview"),
+      ],
+    };
+  },
+
+  seedLocalDraft(ctx) {
+    const snapshot = loadCatalog();
+    const selected = findEntry(readSelectedId(ctx), snapshot.entries) ?? snapshot.entries[0];
+    if (!selected) return { ops: baseCatalogOps(snapshot) };
+
+    const localId = nextDraftId(`${selected.artifact.payload.id}-local`, snapshot.entries);
+    const draft = normalizeBundleId(selected.bundle, localId);
+    return {
+      ops: [
+        ...selectionOps(selected, readPreviewInput(ctx), "artifacts", snapshot),
+        setOp(
+          "console.editor",
+          {
+            id: localId,
+            bundleText: stringifyProfileBundle(draft),
+            status: `New local profile draft started from '${selected.artifact.payload.id}'. Save it to browser storage to create an editable local profile.`,
+            error: "",
+          } as unknown as Json
+        ),
+      ],
+    };
+  },
+
+  saveLocalProfile(ctx) {
+    const snapshot = loadCatalog();
+    try {
+      const rawId = readStr(ctx, "console.editor.id").trim();
+      const rawBundle = readStr(ctx, "console.editor.bundleText").trim();
+      if (!rawBundle) throw new Error("Profile bundle JSON is empty.");
+
+      const parsed = parseProfileBundleJson(rawBundle);
+      const nextId = (rawId || parsed.profileArtifact.payload.id).trim();
+      if (!nextId) throw new Error("Local profile id is required.");
+      if (readRepoCatalog().some((entry) => entry.artifact.payload.id === nextId)) {
+        throw new Error(`'${nextId}' is a repo sample profile id. Save with a different local id.`);
+      }
+
+      const normalized = normalizeBundleId(parsed, nextId);
+      const selected = findEntry(readSelectedId(ctx), snapshot.entries);
+      const { bundles } = readStoredBundleMap();
+      if (selected?.source === "local" && selected.artifact.payload.id !== nextId) {
+        delete bundles[selected.artifact.payload.id];
+      }
+      bundles[nextId] = normalized;
+      writeStoredBundleMap(bundles);
+
+      const fresh = loadCatalog();
+      const saved = findEntry(nextId, fresh.entries);
+      if (!saved) throw new Error(`Saved local profile '${nextId}' could not be reloaded.`);
+
+      return {
+        ops: [
+          ...selectionOps(saved, readPreviewInput(ctx), "artifacts", fresh),
+          setOp(
+            "console.editor",
+            {
+              ...editorState(saved),
+              status: `Saved local profile '${nextId}' to browser storage.`,
+              error: "",
+            } as unknown as Json
+          ),
+        ],
+      };
+    } catch (error) {
+      return {
+        ops: [
+          ...baseCatalogOps(snapshot),
+          setOp(
+            "console.editor",
+            {
+              id: readStr(ctx, "console.editor.id"),
+              bundleText: readStr(ctx, "console.editor.bundleText"),
+              status: readStr(ctx, "console.editor.status", EMPTY_EDITOR.status),
+              error: error instanceof Error ? error.message : String(error),
+            } as unknown as Json
+          ),
+          setOp("console.tab", "artifacts"),
+        ],
+      };
+    }
+  },
+
+  deleteLocalProfile(ctx) {
+    const snapshot = loadCatalog();
+    const selected = findEntry(readSelectedId(ctx), snapshot.entries);
+    if (!selected) {
+      return {
+        ops: [
+          ...baseCatalogOps(snapshot),
+          setOp(
+            "console.editor",
+            {
+              ...EMPTY_EDITOR,
+              error: "Select a local profile before deleting it.",
+            } as unknown as Json
+          ),
+          setOp("console.tab", "artifacts"),
+        ],
+      };
+    }
+    if (selected.readonly || selected.source !== "local") {
+      return {
+        ops: [
+          ...selectionOps(selected, readPreviewInput(ctx), "artifacts", snapshot),
+          setOp(
+            "console.editor",
+            {
+              ...editorState(selected),
+              error: "Repo sample profiles are read-only and cannot be deleted from browser storage.",
+            } as unknown as Json
+          ),
+        ],
+      };
+    }
+
+    const { bundles } = readStoredBundleMap();
+    delete bundles[selected.artifact.payload.id];
+    writeStoredBundleMap(bundles);
+    const fresh = loadCatalog();
+    return {
+      ops: [
+        ...clearSelectionOps(fresh, ""),
+        setOp(
+          "console.editor",
+          {
+            ...EMPTY_EDITOR,
+            status: `Deleted local profile '${selected.artifact.payload.id}' from browser storage.`,
+          } as unknown as Json
+        ),
+        setOp("console.tab", "artifacts"),
       ],
     };
   },

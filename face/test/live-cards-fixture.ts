@@ -4,7 +4,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { loadProfile, type LoweringRecipeArtifact, type ProfileArtifact } from "../../interaction/src/index";
+import { loadProfile, type LoweringRecipeArtifact, type ProfileArtifact } from "@gik/profile";
 
 const fx = (name: string) =>
   JSON.parse(

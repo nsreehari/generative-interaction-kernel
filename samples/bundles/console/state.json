@@ -1,14 +1,33 @@
 {
   "console": {
     "profiles": [
-      { "id": "live-cards", "kind": "genui-profile", "version": "0.1.0", "layers": 3, "stages": 2 },
-      { "id": "briefing", "kind": "briefing-profile", "version": "0.1.0", "layers": 3, "stages": 2 }
+      {
+        "id": "live-cards",
+        "kind": "genui-profile",
+        "version": "0.1.0",
+        "layers": 3,
+        "stages": 2,
+        "source": "repo",
+        "readonly": true
+      },
+      {
+        "id": "briefing",
+        "kind": "briefing-profile",
+        "version": "0.1.0",
+        "layers": 3,
+        "stages": 2,
+        "source": "repo",
+        "readonly": true
+      }
     ],
+    "catalogStatus": "",
     "selectedId": "",
     "profile": {
       "id": "",
       "kind": "",
       "version": "",
+      "source": "",
+      "readonly": true,
       "sourceKind": "",
       "targetKind": "",
       "layerCount": 0,
@@ -27,7 +46,14 @@
     "artifacts": {
       "profileText": "",
       "recipesText": "",
-      "resolvedText": ""
+      "resolvedText": "",
+      "bundleText": ""
+    },
+    "editor": {
+      "id": "",
+      "bundleText": "",
+      "status": "Add a new local profile or select an existing one to edit and save it in browser storage.",
+      "error": ""
     },
     "tab": "overview",
     "previewInteraction": "investigate",

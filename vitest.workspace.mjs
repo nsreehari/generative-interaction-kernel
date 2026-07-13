@@ -43,6 +43,11 @@ export default defineWorkspace([
     },
   },
   {
+    resolve: {
+      alias: {
+        "@gik/profile": profilePackage,
+      },
+    },
     test: {
       name: "face",
       environment: "node",
