@@ -19,9 +19,9 @@ import {
 } from "./interaction";
 import type { PresentationEdits, PresentationSpec } from "./presentation";
 import { validatePresentationSpec, PresentationValidationError } from "./schema";
-import type { AuthoringRegistry, AuthoringReport } from "./profile-core";
+import type { AuthoringRegistry, AuthoringReport } from "../../profile/src/profile-core";
 import type { GenUiProfile } from "./profile";
-import type { Json } from "../../kernel/src/index";
+import type { Json } from "../../../kernel/src/index";
 
 // --- shared report helpers ---------------------------------------------------------------------
 

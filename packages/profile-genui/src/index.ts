@@ -3,7 +3,12 @@
 // recipe shapes and their schema/lint, the stage executors, and the full pipeline runner. It
 // builds on the generic kind *mechanism* in @gik/profile.
 
-export * from "../../../interaction/src/index";
+export * from "./interaction";
+export * from "./presentation";
+export * from "./lowering";
+export * from "./schema";
+export * from "./profile";
+export * from "./authoring";
 export {
   PROFILE_BUNDLE_FORMAT,
   createProfileBundle,

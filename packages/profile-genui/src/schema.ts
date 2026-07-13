@@ -6,10 +6,10 @@
 import Ajv, { type ValidateFunction } from "ajv";
 import type { PresentationSpec } from "./presentation";
 import type { LoweringRecipeArtifact, ProfileArtifact, RecipeLintWarning } from "./profile";
-import presentationSchemaJson from "../../schemas/presentation.schema.json" with { type: "json" };
-import layerSchemaJson from "../../schemas/layer.schema.json" with { type: "json" };
-import profileSchemaJson from "../../schemas/profile.schema.json" with { type: "json" };
-import loweringRecipeSchemaJson from "../../schemas/lowering-recipe.schema.json" with { type: "json" };
+import presentationSchemaJson from "../../../schemas/presentation.schema.json" with { type: "json" };
+import layerSchemaJson from "../../../schemas/layer.schema.json" with { type: "json" };
+import profileSchemaJson from "../../../schemas/profile.schema.json" with { type: "json" };
+import loweringRecipeSchemaJson from "../../../schemas/lowering-recipe.schema.json" with { type: "json" };
 import { lintLoweringRecipe as lintRecipeArtifact, resolveProfile, type ResolvedProfile } from "./profile";
 
 /** The normative JSON Schema (draft-07) for the Presentation DSL. */

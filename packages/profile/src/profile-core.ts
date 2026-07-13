@@ -5,7 +5,7 @@
 // executors live in the GenUI flavor package (@gik/profile-genui). Any profile family can reuse
 // this core by supplying its own recipe types and registering executors.
 
-import type { Json } from "../../kernel/src/index";
+import type { Json } from "../../../kernel/src/index";
 
 export interface LayerDefinition {
   id: string;
