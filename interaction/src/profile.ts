@@ -34,6 +34,10 @@ export type {
   RecipeLintWarning,
   StageExecutor,
   StageTrace,
+  AuthoringToolDecl,
+  ProfileAuthoring,
+  AuthoringRegistry,
+  AuthoringReport,
 } from "./profile-core";
 
 export type GenUiLayerKind = "interaction" | "presentation" | "runtime-document";

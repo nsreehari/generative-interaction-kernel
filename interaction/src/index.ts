@@ -13,3 +13,4 @@ export * from "./presentation";
 export * from "./lowering";
 export * from "./schema";
 export * from "./profile";
+export * from "./authoring";

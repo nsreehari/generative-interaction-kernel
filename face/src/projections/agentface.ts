@@ -25,7 +25,10 @@ export function createAgentFaceDispatcher(face: ControlFace): McpDispatcher {
 }
 
 // A stateless projection for hosts that only want the pure authoring tools and do not have a live
-// runtime. This is a strict subset of the live AgentFace projection.
-export function createStatelessAgentFaceDispatcher(): McpDispatcher {
-  return createMcpDispatcher(authoringTools, { name: "genui-agentface", version: "0.1" });
+// runtime. Callers compose profile-contributed tools (e.g. a genui profile's declared authoring
+// surface via `toolsFromProfile`) by passing them as `extraTools`; the projection stays a uniform
+// agent-safe filter over the combined catalog, so face itself carries no profile-specific tools.
+export function createStatelessAgentFaceDispatcher(extraTools: McpTool[] = []): McpDispatcher {
+  const tools = [...authoringTools, ...extraTools].filter((t) => t.agentSafe);
+  return createMcpDispatcher(tools, { name: "genui-agentface", version: "0.1" });
 }

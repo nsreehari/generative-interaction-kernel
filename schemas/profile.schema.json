@@ -35,6 +35,32 @@
             }
           }
         },
+        "authoring": {
+          "type": "object",
+          "required": ["tools"],
+          "additionalProperties": false,
+          "properties": {
+            "tools": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "op"],
+                "additionalProperties": false,
+                "properties": {
+                  "id": { "type": "string", "minLength": 1 },
+                  "op": { "enum": ["validate", "describe", "project"] },
+                  "layer": { "type": "string" },
+                  "description": { "type": "string" },
+                  "inputSchema": { "type": "object" },
+                  "checks": { "type": "array", "items": { "type": "string" } },
+                  "projector": { "type": "string" },
+                  "describe": { "type": "string" },
+                  "agentSafe": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
         "metadata": {
           "type": "object",
           "additionalProperties": true
