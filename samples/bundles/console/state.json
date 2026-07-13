@@ -34,17 +34,69 @@
       "recipeCount": 0
     },
     "pipeline": {
-      "nodes": [],
-      "edges": []
+      "nodes": []
     },
     "layers": [],
-    "recipes": [],
     "selectedLayerId": "",
     "layerDetail": {
       "id": "",
       "kind": "",
       "schema": "",
-      "description": ""
+      "description": "",
+      "outgoingRecipe": {
+        "id": "",
+        "kind": "",
+        "kindLabel": "",
+        "from": "",
+        "to": "",
+        "summary": "",
+        "constrainedWhenText": "",
+        "containerCapability": "",
+        "fallbackCapability": "",
+        "fromLayer": {
+          "id": "",
+          "kind": "",
+          "schema": "",
+          "description": ""
+        },
+        "toLayer": {
+          "id": "",
+          "kind": "",
+          "schema": "",
+          "description": ""
+        },
+        "ruleGroups": [],
+        "templates": [],
+        "runtimeRules": [],
+        "runtimeCapabilities": []
+      },
+      "incomingRecipe": {
+        "id": "",
+        "kind": "",
+        "kindLabel": "",
+        "from": "",
+        "to": "",
+        "summary": "",
+        "constrainedWhenText": "",
+        "containerCapability": "",
+        "fallbackCapability": "",
+        "fromLayer": {
+          "id": "",
+          "kind": "",
+          "schema": "",
+          "description": ""
+        },
+        "toLayer": {
+          "id": "",
+          "kind": "",
+          "schema": "",
+          "description": ""
+        },
+        "ruleGroups": [],
+        "templates": [],
+        "runtimeRules": [],
+        "runtimeCapabilities": []
+      }
     },
     "selectedRecipeId": "",
     "recipeDetail": {

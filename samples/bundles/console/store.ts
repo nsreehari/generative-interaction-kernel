@@ -33,7 +33,7 @@ import {
 import { sampleProfileCatalog, type SampleProfileEntry } from "../../profiles/registry";
 import { demoDataFor } from "../workbench/bundles/demo/demo";
 
-export type ConsoleTab = "overview" | "layers" | "recipes" | "preview" | "draft";
+export type ConsoleTab = "overview" | "layers" | "preview" | "draft";
 
 interface PreviewInput {
   interaction: InteractionKind;
@@ -163,6 +163,40 @@ const EMPTY_LAYER_DETAIL = {
   kind: "",
   schema: "",
   description: "",
+  outgoingRecipe: {
+    id: "",
+    kind: "",
+    kindLabel: "",
+    from: "",
+    to: "",
+    summary: "",
+    constrainedWhenText: "",
+    containerCapability: "",
+    fallbackCapability: "",
+    fromLayer: { id: "", kind: "", schema: "", description: "" },
+    toLayer: { id: "", kind: "", schema: "", description: "" },
+    ruleGroups: [],
+    templates: [],
+    runtimeRules: [],
+    runtimeCapabilities: [],
+  },
+  incomingRecipe: {
+    id: "",
+    kind: "",
+    kindLabel: "",
+    from: "",
+    to: "",
+    summary: "",
+    constrainedWhenText: "",
+    containerCapability: "",
+    fallbackCapability: "",
+    fromLayer: { id: "", kind: "", schema: "", description: "" },
+    toLayer: { id: "", kind: "", schema: "", description: "" },
+    ruleGroups: [],
+    templates: [],
+    runtimeRules: [],
+    runtimeCapabilities: [],
+  },
 };
 
 const EMPTY_RECIPE_DETAIL = {
@@ -220,7 +254,7 @@ function readSelectedId(ctx: EffectContext): string {
 
 function readTab(ctx: EffectContext): ConsoleTab {
   const value = readStr(ctx, "console.tab", "overview");
-  return value === "overview" || value === "layers" || value === "recipes" || value === "preview" || value === "draft"
+  return value === "overview" || value === "layers" || value === "preview" || value === "draft"
     ? value
     : "overview";
 }
@@ -388,6 +422,26 @@ function layerDetailView(layer: LayerDefinition | undefined) {
   };
 }
 
+function emptyRecipeDetailState() {
+  return {
+    id: "",
+    kind: "",
+    kindLabel: "",
+    from: "",
+    to: "",
+    summary: "",
+    constrainedWhenText: "",
+    containerCapability: "",
+    fallbackCapability: "",
+    fromLayer: layerDetailView(undefined),
+    toLayer: layerDetailView(undefined),
+    ruleGroups: [],
+    templates: [],
+    runtimeRules: [],
+    runtimeCapabilities: [],
+  };
+}
+
 function ruleMatchSummary(match: Record<string, unknown>): string {
   const entries = Object.entries(match ?? {});
   return entries.length === 0 ? "default" : entries.map(([key, value]) => `${key}=${String(value)}`).join(", ");
@@ -402,14 +456,12 @@ function pipelineState(entry: CatalogEntry) {
   const outgoingByNode = new Map<string, Array<{ token: string; label: string }>>();
 
   for (const ref of entry.artifact.payload.recipes) {
-    const recipe = entry.profile.recipesById[ref.id];
-    const label = recipe ? recipeTypeLabel(recipe) : `${ref.from} -> ${ref.to}`;
     const outgoing = outgoingByNode.get(ref.from) ?? [];
-    outgoing.push({ token: ref.id, label });
+    outgoing.push({ token: ref.id });
     outgoingByNode.set(ref.from, outgoing);
 
     const incoming = incomingByNode.get(ref.to) ?? [];
-    incoming.push({ token: ref.id, label });
+    incoming.push({ token: ref.id });
     incomingByNode.set(ref.to, incoming);
   }
 
@@ -435,23 +487,8 @@ function layerRows(entry: CatalogEntry) {
   }));
 }
 
-function recipeRows(entry: CatalogEntry) {
-  return entry.artifact.payload.recipes.map((ref) => {
-    const recipe = entry.profile.recipesById[ref.id];
-    return {
-      id: ref.id,
-      connection: `${ref.from} -> ${ref.to}`,
-      kindLabel: recipe ? recipeTypeLabel(recipe) : "",
-    };
-  });
-}
-
 function defaultLayerId(entry: CatalogEntry): string {
   return entry.artifact.payload.layers[0]?.id ?? "";
-}
-
-function defaultRecipeId(entry: CatalogEntry): string {
-  return entry.artifact.payload.recipes[0]?.id ?? "";
 }
 
 function resolveLayerId(entry: CatalogEntry, layerId?: string): string {
@@ -461,12 +498,22 @@ function resolveLayerId(entry: CatalogEntry, layerId?: string): string {
 
 function resolveRecipeId(entry: CatalogEntry, recipeId?: string): string {
   const ids = new Set(entry.artifact.payload.recipes.map((ref) => ref.id));
-  return recipeId && ids.has(recipeId) ? recipeId : defaultRecipeId(entry);
+  return recipeId && ids.has(recipeId) ? recipeId : "";
 }
 
 function layerDetailState(entry: CatalogEntry, layerId: string) {
   const layer = entry.artifact.payload.layers.find((candidate) => candidate.id === layerId);
-  return layerDetailView(layer);
+  const outgoingRef = entry.artifact.payload.recipes.find((candidate) => candidate.from === layerId);
+  const incomingRef = entry.artifact.payload.recipes.find((candidate) => candidate.to === layerId);
+  return {
+    ...layerDetailView(layer),
+    outgoingRecipe: outgoingRef ? recipeDetailState(entry, outgoingRef.id) : emptyRecipeDetailState(),
+    incomingRecipe: incomingRef ? recipeDetailState(entry, incomingRef.id) : emptyRecipeDetailState(),
+  };
+}
+
+function recipeSourceLayerId(entry: CatalogEntry, recipeId: string): string {
+  return entry.artifact.payload.recipes.find((candidate) => candidate.id === recipeId)?.from ?? defaultLayerId(entry);
 }
 
 function runtimeCapabilityRows(recipe: PresentationToRuntimeRecipe) {
@@ -703,7 +750,6 @@ function clearSelectionOps(snapshot: CatalogSnapshot, message = "") {
     setOp("console.profile", EMPTY_PROFILE as unknown as Json),
     setOp("console.pipeline", EMPTY_PIPELINE as unknown as Json),
     setOp("console.layers", [] as unknown as Json),
-    setOp("console.recipes", [] as unknown as Json),
     setOp("console.selectedLayerId", ""),
     setOp("console.layerDetail", EMPTY_LAYER_DETAIL as unknown as Json),
     setOp("console.selectedRecipeId", ""),
@@ -733,7 +779,6 @@ function selectionOps(
     setOp("console.profile", profileState(entry) as unknown as Json),
     setOp("console.pipeline", pipelineState(entry) as unknown as Json),
     setOp("console.layers", layerRows(entry) as unknown as Json),
-    setOp("console.recipes", recipeRows(entry) as unknown as Json),
     setOp("console.selectedLayerId", layerId),
     setOp("console.layerDetail", layerDetailState(entry, layerId) as unknown as Json),
     setOp("console.selectedRecipeId", recipeId),
@@ -796,7 +841,7 @@ export const consoleEffects: EffectHandlerMap = {
     return {
       ops: selectionOps(entry, readPreviewInput(ctx), readTab(ctx), snapshot, {
         layerId: String(ctx.payload.id ?? ""),
-        recipeId: readSelectedRecipeId(ctx),
+        recipeId: "",
       }),
     };
   },
@@ -805,10 +850,11 @@ export const consoleEffects: EffectHandlerMap = {
     const snapshot = loadCatalog();
     const entry = findEntry(readSelectedId(ctx), snapshot.entries);
     if (!entry) return { ops: [] };
+    const recipeId = String(ctx.payload.id ?? "");
     return {
       ops: selectionOps(entry, readPreviewInput(ctx), readTab(ctx), snapshot, {
-        layerId: readSelectedLayerId(ctx),
-        recipeId: String(ctx.payload.id ?? ""),
+        layerId: recipeSourceLayerId(entry, recipeId),
+        recipeId,
       }),
     };
   },
