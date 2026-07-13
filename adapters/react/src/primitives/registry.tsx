@@ -58,6 +58,11 @@ interface EditableTableSpec {
   placeholder?: string;
 }
 
+interface FormSchema {
+  properties?: Record<string, Record<string, unknown>>;
+  required?: string[];
+}
+
 interface MultiFileUploadGroup {
   message?: string;
   file_idxs?: number[];
@@ -81,8 +86,76 @@ function toOptions(raw: unknown[]): Option[] {
     typeof o === "string" ? { value: o, label: o } : (o as Option)
   );
 }
+
+function buildFieldOptions(prop: Record<string, unknown>): unknown[] | null {
+  if (Array.isArray(prop.oneOf)) {
+    return prop.oneOf.map((item) => {
+      const record = item as Record<string, unknown>;
+      return { value: String(record.const ?? ""), label: String(record.title ?? record.const ?? "") };
+    });
+  }
+  if (Array.isArray(prop.options)) return prop.options as unknown[];
+  if (Array.isArray(prop.enum)) {
+    const enumNames = Array.isArray(prop.enumNames) ? prop.enumNames : null;
+    return (prop.enum as unknown[]).map((value, index) => ({
+      value: String(value ?? ""),
+      label: String(enumNames?.[index] ?? value ?? ""),
+    }));
+  }
+  return null;
+}
+
+function buildMultiOptions(prop: Record<string, unknown>): unknown[] {
+  const items = (prop.items ?? {}) as Record<string, unknown>;
+  if (Array.isArray(items.oneOf)) {
+    return items.oneOf.map((item) => {
+      const record = item as Record<string, unknown>;
+      return { value: String(record.const ?? ""), label: String(record.title ?? record.const ?? "") };
+    });
+  }
+  if (Array.isArray(prop.options)) return prop.options as unknown[];
+  if (Array.isArray(items.enum)) {
+    const enumNames = Array.isArray(items.enumNames) ? items.enumNames : null;
+    return (items.enum as unknown[]).map((value, index) => ({
+      value: String(value ?? ""),
+      label: String(enumNames?.[index] ?? value ?? ""),
+    }));
+  }
+  return [];
+}
+
 function toColumns(raw: unknown[]): Column[] {
   return raw.map((c) => (typeof c === "string" ? { key: c, label: c } : (c as Column)));
+}
+
+function isMultiSelect(prop: Record<string, unknown>): boolean {
+  const items = (prop.items ?? {}) as Record<string, unknown>;
+  return prop.type === "array" && (Array.isArray(items.enum) || Array.isArray(items.oneOf) || Array.isArray(prop.options));
+}
+
+function isSelectField(prop: Record<string, unknown>): boolean {
+  return buildFieldOptions(prop) != null;
+}
+
+function isTextareaField(prop: Record<string, unknown>): boolean {
+  return prop.format === "textarea" || prop.multiline === true;
+}
+
+function inputTypeFor(prop: Record<string, unknown>): string {
+  if (prop.format === "date") return "date";
+  if (prop.format === "time") return "time";
+  if (prop.format === "date-time" || prop.format === "datetime") return "datetime-local";
+  if (prop.type === "number" || prop.type === "integer") return "number";
+  return "text";
+}
+
+function formatTemporalValue(prop: Record<string, unknown>, value: unknown): string {
+  if (value == null) return "";
+  const text = String(value);
+  if (prop.format === "date") return text.slice(0, 10);
+  if (prop.format === "date-time" || prop.format === "datetime") return text.slice(0, 16);
+  if (prop.format === "time") return text.slice(0, 5);
+  return text;
 }
 
 const CHART_PALETTE = [
@@ -390,6 +463,32 @@ function Badge({ node }: ProjectionViewProps) {
   return <span className={`gx-badge gx-badge-${tone}`}>{value}</span>;
 }
 
+function Alert({ node }: ProjectionViewProps) {
+  const p = readProps(node);
+  const value = p.str("value").trim() || "-";
+  const label = p.str("label");
+  const level = p.str("level", "unknown");
+  const tone = level === "green" || level === "good"
+    ? "active"
+    : level === "amber" || level === "warn" || level === "warning"
+      ? "draft"
+      : level === "red" || level === "bad" || level === "error"
+        ? "danger"
+        : "default";
+
+  return (
+    <div className="gx-panel-inset">
+      <div className="gx-row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+        <div className="gx-metric">
+          <strong className="gx-metric-value">{value}</strong>
+          {label ? <span className="gx-metric-label">{label}</span> : null}
+        </div>
+        <span className={`gx-badge gx-badge-${tone}`}>{level}</span>
+      </div>
+    </div>
+  );
+}
+
 function Metric({ node }: ProjectionViewProps) {
   const p = readProps(node);
   return (
@@ -398,6 +497,17 @@ function Metric({ node }: ProjectionViewProps) {
       <strong className="gx-metric-value">{p.str("value")}</strong>
     </div>
   );
+}
+
+function Narrative({ node }: ProjectionViewProps) {
+  const p = readProps(node);
+  const text = p.str("text") || p.str("value");
+  const emptyMessage = p.str("emptyMessage", "No narrative yet.");
+  if (!text.trim()) {
+    return <p className="gx-note gx-note-muted">{emptyMessage}</p>;
+  }
+
+  return <div className="gx-text">{text}</div>;
 }
 
 // A scrollable, whitespace-preserving monospace block for JSON/code dumps (reads `code`). Distinct
@@ -741,6 +851,137 @@ function TextArea({ node, emit }: ProjectionViewProps) {
   );
 }
 
+function Form({ node, emit }: ProjectionViewProps) {
+  const p = readProps(node);
+  const schema = p.obj<FormSchema>("fields", {});
+  const props = schema.properties ?? {};
+  const required = Array.isArray(schema.required) ? schema.required : [];
+  const incoming = p.obj<Record<string, unknown>>("value", p.obj<Record<string, unknown>>("data", {}));
+  const [values, setValues] = React.useState<Record<string, unknown>>(incoming ?? {});
+  const [dirty, setDirty] = React.useState(false);
+
+  React.useEffect(() => {
+    setValues(incoming ?? {});
+    setDirty(false);
+  }, [JSON.stringify(incoming)]);
+
+  const setField = (key: string, nextValue: unknown) => {
+    setValues((current) => ({ ...current, [key]: nextValue }));
+    setDirty(true);
+  };
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    emit("save", { values });
+    setDirty(false);
+  };
+
+  return (
+    <form className="gx-col" onSubmit={submit}>
+      {Object.entries(props).map(([key, prop]) => {
+        const field = prop ?? {};
+        const title = String(field.title ?? key);
+        const isRequired = required.includes(key);
+        const current = values[key];
+
+        if (field.type === "boolean") {
+          return (
+            <label key={key} className="gx-row" style={{ alignItems: "center" }}>
+              <input
+                type="checkbox"
+                checked={Boolean(current)}
+                onChange={(event) => setField(key, event.target.checked)}
+              />
+              <span className="gx-field-label">{title}</span>
+            </label>
+          );
+        }
+
+        if (isMultiSelect(field)) {
+          const selected = Array.isArray(current) ? current.map(String) : [];
+          const options = toOptions(buildMultiOptions(field));
+          return (
+            <label key={key} className="gx-field">
+              <span className="gx-field-label">{title}</span>
+              <select
+                multiple
+                value={selected}
+                required={isRequired}
+                onChange={(event) => setField(key, Array.from(event.target.selectedOptions).map((option) => option.value))}
+              >
+                {options.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+          );
+        }
+
+        if (isSelectField(field)) {
+          const options = toOptions(buildFieldOptions(field) ?? []);
+          const value = current == null ? "" : String(current);
+          return (
+            <label key={key} className="gx-field">
+              <span className="gx-field-label">{title}</span>
+              <select value={value} required={isRequired} onChange={(event) => setField(key, event.target.value)}>
+                {isRequired ? null : <option value="">All</option>}
+                {options.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+          );
+        }
+
+        if (isTextareaField(field)) {
+          return (
+            <label key={key} className="gx-field">
+              <span className="gx-field-label">{title}</span>
+              <textarea
+                rows={Number.parseInt(String(field.rows ?? 4), 10) || 4}
+                value={current == null ? "" : String(current)}
+                placeholder={String(field.placeholder ?? "")}
+                required={isRequired}
+                onChange={(event) => setField(key, event.target.value)}
+              />
+            </label>
+          );
+        }
+
+        const type = inputTypeFor(field);
+        const value = type === "date" || type === "time" || type === "datetime-local"
+          ? formatTemporalValue(field, current)
+          : current == null ? "" : String(current);
+        return (
+          <label key={key} className="gx-field">
+            <span className="gx-field-label">{title}</span>
+            <input
+              type={type}
+              value={value}
+              placeholder={String(field.placeholder ?? "")}
+              required={isRequired}
+              min={typeof field.minimum === "number" ? field.minimum : undefined}
+              max={typeof field.maximum === "number" ? field.maximum : undefined}
+              step={field.type === "integer" ? "1" : (field.type === "number" ? "any" : undefined)}
+              onChange={(event) => setField(key, coerceFieldValue(event.target.value, field))}
+            />
+          </label>
+        );
+      })}
+      {dirty ? (
+        <div className="gx-panel-actions">
+          <button type="button" className="gx-btn" onClick={() => { setValues(incoming ?? {}); setDirty(false); }}>
+            {p.str("discardLabel", "Discard")}
+          </button>
+          <button type="submit" className="gx-btn gx-btn-primary">
+            {p.str("saveLabel", "Save")}
+          </button>
+        </div>
+      ) : null}
+    </form>
+  );
+}
+
 function Select({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
   const options = toOptions(p.list<unknown>("options"));
@@ -941,6 +1182,77 @@ function Todo({ node, emit }: ProjectionViewProps) {
         />
         <button type="submit">{p.str("actionLabel", "+")}</button>
       </form>
+    </div>
+  );
+}
+
+function Actions({ node, emit }: ProjectionViewProps) {
+  const p = readProps(node);
+  const buttons = p.list<unknown>("buttons")
+    .map((entry, index) => {
+      if (typeof entry === "string") {
+        return { id: entry, label: entry, tone: "default", disabled: false, index };
+      }
+
+      if (!entry || typeof entry !== "object") return null;
+      const row = entry as Record<string, unknown>;
+      const id = String(row.id ?? row.value ?? row.label ?? `action-${index}`);
+      return {
+        id,
+        label: String(row.label ?? id),
+        tone: String(row.tone ?? row.style ?? "default"),
+        disabled: Boolean(row.disabled),
+        index,
+      };
+    })
+    .filter((entry): entry is { id: string; label: string; tone: string; disabled: boolean; index: number } => !!entry);
+
+  if (buttons.length === 0) return null;
+
+  return (
+    <div className="gx-panel-actions">
+      {buttons.map((button) => (
+        <button
+          key={`${button.id}-${button.index}`}
+          className={`gx-btn gx-btn-${button.tone}`}
+          disabled={button.disabled}
+          onClick={() => emit("press", { id: button.id })}
+        >
+          {button.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Notes({ node, emit }: ProjectionViewProps) {
+  const p = readProps(node);
+  const baseContent = p.str("content") || p.str("value");
+  const [content, setContent] = useSyncedValue(baseContent);
+  const dirty = content !== baseContent;
+  const rows = Math.max(3, Number.parseInt(String(node.props.rows ?? 8), 10) || 8);
+
+  return (
+    <div className="gx-col">
+      <label className="gx-field">
+        {p.str("label") ? <span className="gx-field-label">{p.str("label")}</span> : null}
+        <textarea
+          rows={rows}
+          value={content}
+          placeholder={p.str("placeholder", "Write markdown...")}
+          onChange={(event) => setContent(event.target.value)}
+        />
+      </label>
+      {dirty ? (
+        <div className="gx-panel-actions">
+          <button type="button" className="gx-btn" onClick={() => setContent(baseContent)}>
+            {p.str("discardLabel", "Discard")}
+          </button>
+          <button type="button" className="gx-btn gx-btn-primary" onClick={() => emit("save", { content })}>
+            {p.str("saveLabel", "Save")}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1226,20 +1538,25 @@ export const FLOOR_COMPONENTS: Record<string, ProjectionView> = {
   heading: Heading,
   note: Note,
   badge: Badge,
+  alert: Alert,
   metric: Metric,
+  narrative: Narrative,
   codeBlock: CodeBlock,
   chart: ChartPrimitive,
   markdown: Markdown,
   markup: Markdown,
   todo: Todo,
-  editableTable: EditableTable,
-  multiFileUpload: MultiFileUpload,
+  actions: Actions,
+  notes: Notes,
+  "editable-table": EditableTable,
+  "multi-file-upload": MultiFileUpload,
   list: List,
   table: Table,
   selection: Selection,
   field: Field,
   textarea: TextArea,
   select: Select,
+  form: Form,
   button: Button,
   tabBar: TabBar,
   chips: Chips,

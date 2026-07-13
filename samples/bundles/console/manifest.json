@@ -14,6 +14,7 @@
       "ui:text": { "propsSchema": { "type": "object", "additionalProperties": true } },
       "ui:note": { "propsSchema": { "type": "object", "additionalProperties": true } },
       "ui:metric": { "propsSchema": { "type": "object", "additionalProperties": true } },
+      "ui:alert": { "propsSchema": { "type": "object", "additionalProperties": true } },
       "ui:list": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["select"] },
       "ui:table": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["rowSelect"] },
       "ui:field": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["input"] },

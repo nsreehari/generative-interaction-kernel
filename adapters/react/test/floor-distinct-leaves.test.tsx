@@ -5,7 +5,7 @@ import type { ReactElement } from "react";
 import type { Json } from "../../../kernel/src/types";
 
 import { renderNode } from "../src/render";
-import { buildRegistryFromImports } from "../src/registry";
+import { buildRegistryFromImports, type ProjectionViewProps } from "../src/registry";
 import { FLOOR_COMPONENTS, floorFallback } from "../src/primitives/registry";
 
 const registry = buildRegistryFromImports(
@@ -29,6 +29,27 @@ test("markdown leaf renders markdown content", () => {
   const markup = renderToStaticMarkup(renderNode(leaf("ui:markdown", { value: "# Hello\n\nbody" }), registry, () => {}));
   assert.match(markup, /<h1>Hello<\/h1>/);
   assert.match(markup, /<p>body<\/p>/);
+});
+
+test("alert leaf renders the value, label, and severity badge", () => {
+  const markup = renderToStaticMarkup(renderNode(leaf("ui:alert", {
+    value: 7,
+    label: "Blocked checks",
+    level: "amber",
+  }), registry, () => {}));
+
+  assert.match(markup, /Blocked checks/);
+  assert.match(markup, />7</);
+  assert.match(markup, /amber/);
+});
+
+test("narrative leaf renders empty placeholder when text is blank", () => {
+  const markup = renderToStaticMarkup(renderNode(leaf("ui:narrative", {
+    text: "",
+    emptyMessage: "Nothing to explain.",
+  }), registry, () => {}));
+
+  assert.match(markup, /Nothing to explain\./);
 });
 
 test("chart leaf renders an svg chart with axis labels", () => {
@@ -57,8 +78,47 @@ test("todo leaf emits committed items on add", () => {
   assert.match(markup, />Add<\/button>/);
 });
 
-test("editableTable leaf renders headers and save affordance shell", () => {
-  const markup = renderToStaticMarkup(renderNode(leaf("ui:editableTable", {
+test("actions leaf renders button row labels", () => {
+  const markup = renderToStaticMarkup(renderNode(leaf("ui:actions", {
+    buttons: [
+      { id: "approve", label: "Approve", tone: "primary" },
+      { id: "reject", label: "Reject", tone: "danger" },
+    ],
+  }), registry, () => {}));
+
+  assert.match(markup, />Approve<\/button>/);
+  assert.match(markup, />Reject<\/button>/);
+});
+
+test("form leaf renders schema-driven fields and save shell", () => {
+  const markup = renderToStaticMarkup(renderNode(leaf("ui:form", {
+    fields: {
+      properties: {
+        status: { title: "Status", enum: ["open", "closed"] },
+        notes: { title: "Notes", format: "textarea" },
+      },
+      required: ["status"],
+    },
+    value: { status: "open", notes: "hello" },
+  }), registry, () => {}));
+
+  assert.match(markup, /Status/);
+  assert.match(markup, /Notes/);
+  assert.match(markup, /textarea/);
+});
+
+test("notes leaf renders textarea shell", () => {
+  const markup = renderToStaticMarkup(renderNode(leaf("ui:notes", {
+    content: "Draft note",
+    placeholder: "Write markdown...",
+  }), registry, () => {}));
+
+  assert.match(markup, /textarea/);
+  assert.match(markup, /Draft note/);
+});
+
+test("editable-table leaf renders headers and save affordance shell", () => {
+  const markup = renderToStaticMarkup(renderNode(leaf("ui:editable-table", {
     spec: { columns: ["name", "amount"] },
     rows: [{ name: "Budget", amount: 3 }],
   }), registry, () => {}));
@@ -69,8 +129,8 @@ test("editableTable leaf renders headers and save affordance shell", () => {
   assert.match(markup, /value="Budget"/);
 });
 
-test("multiFileUpload leaf renders grouped files and upload affordance", () => {
-  const markup = renderToStaticMarkup(renderNode(leaf("ui:multiFileUpload", {
+test("multi-file-upload leaf renders grouped files and upload affordance", () => {
+  const markup = renderToStaticMarkup(renderNode(leaf("ui:multi-file-upload", {
     submitLabel: "Upload",
     data: {
       files: [{ name: "brief.txt", size: 1280 }],
@@ -78,26 +138,27 @@ test("multiFileUpload leaf renders grouped files and upload affordance", () => {
     },
   }), registry, () => {}));
 
-  assert.match(markup, /Context/);
   assert.match(markup, /brief.txt/);
+  assert.match(markup, /Context/);
   assert.match(markup, />Upload<\/button>/);
 });
 
 test("selection leaf emits select {value}", () => {
   const calls: Array<{ name: string; payload?: Record<string, unknown> }> = [];
-  const View = FLOOR_COMPONENTS.selection as (props: {
-    node: ReturnType<typeof leaf>;
-    emit: (name: string, payload?: Record<string, unknown>) => void;
-    children: null;
-  }) => ReactElement<{ children: ReactElement[] }>;
-  const element = View({
+  const SelectionView = FLOOR_COMPONENTS.selection as (props: ProjectionViewProps) => ReactElement<{ children: ReactElement[] }>;
+  const element = SelectionView({
     node: leaf("ui:selection", {
-      fields: { properties: { status: { title: "Status", enum: ["open", "closed"] } } },
+      fields: {
+        properties: {
+          status: { title: "Status", enum: ["open", "closed"] },
+        },
+        required: ["status"],
+      },
       value: "open",
     }),
-    emit: (name, payload) => calls.push({ name, payload }),
-    children: null,
-  }) as ReactElement<{ children: ReactElement[] }>;
+    emit: (name: string, payload?: Record<string, unknown>) => calls.push({ name, payload }),
+    children: [],
+  });
 
   const select = element.props.children[1] as ReactElement<{ onChange: (event: { target: { value: string } }) => void }>;
   select.props.onChange({ target: { value: "closed" } });
