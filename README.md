@@ -80,8 +80,8 @@ conformance matrix** of portable JSON cases with a per-kernel runner (Phase 9) �
 | Network transport | **HTTP/SSE binding** (`transports/http-sse/`): SSE for host→client, POST for client→host, session via header, `?fromRev=N` resume; kept out of the portable core |
 | Conformance | **Behavioral matrix** (`conformance/cases/*.case.json`): language-neutral document + seed + event steps → exact patches/resolves; per-kernel runner → reducer equivalence |
 | Layered DSL | **One kernel, lowering compilers above it**: Task → Domain → Interaction → UI (kernel doc) as pure `Stage`s; a **profile = a Domain DSL + its lowering**; layers optional; `lowerToDocument` reuses validate-before-commit |
-| Platform boundary | **Platform owns Interaction (L3) + Presentation (L4) + Runtime (L5)**; Intent (agents) and Domain semantics (app teams) sit outside and plug in via a translation contract; the UI DSL is an internal target; the **moat = interaction taxonomy + presentation compiler** |
-| Interaction / Presentation | **Two owned layers + a planner and a compiler** (`interaction/`): Interaction Model (goal patterns + facet taxonomy) → `PresentationPlanner(spec, context)` → Presentation DSL (layout + enriched regions: priority / disclosure / presentation-type, schema-validated) → `lowerPresentation` compiler → kernel doc; *same interaction, different presentation by surface*. The planner is the slot an AI presentation planner fills |
+| Platform boundary | **Platform owns the profile layers + Runtime**; a profile is **N declarative layers connected by N-1 lowering recipes** (the default GenUI profile happens to be Interaction → Presentation → Runtime — no fixed L3/L4/L5 numbering; see ADR-0038); Intent (agents) and Domain semantics (app teams) sit outside and plug in via a translation contract; the UI DSL is an internal target; the **moat = interaction taxonomy + presentation compiler** |
+| Interaction / Presentation | **Two owned layers + a planner and a compiler** (`packages/profile-genui/`): Interaction Model (goal patterns + facet taxonomy) → `PresentationPlanner(spec, context)` → Presentation DSL (layout + enriched regions: priority / disclosure / presentation-type, schema-validated) → `lowerPresentation` compiler → kernel doc; *same interaction, different presentation by surface*. The planner is the slot an AI presentation planner fills |
 | HITL confirm | **`confirm` contract** (`kernel/src/confirm.ts`): standard prompt payload, outcome vocabulary (`approved`/`denied`/`cancelled`/`timeout`), and `confirmed`/`dismissed` follow-up event names |
 | Observability | **Fixed trace points** (`TRACE_POINTS`) + reference `console`/`buffer`/`multi` sinks over the `TraceSink` seam; exporters stay out-of-core; traces are *not* on the behavioral conformance contract |
 | Optional layers | **No layer is mandatory**: a partial pipeline (e.g. single-stage `Domain → UI`) is valid; validation happens once at the UI-DSL boundary. **Streaming** of the initial document is deferred beyond v0.1 (complete document per message) |
@@ -159,6 +159,8 @@ generative-interaction-kernel/
     controlface/                ← @gik/controlface
     agentface/                  ← @gik/agentface
     react/                      ← @gik/react
+    profile/                    ← @gik/profile (generic profile machinery: N layers + N-1 recipes; real source under src/)
+    profile-genui/              ← @gik/profile-genui (GenUI flavor: interaction/presentation/runtime layers + authoring; real source under src/)
     provider-reactive-state-model/ ← @gik/provider-reactive-state-model
     provider-consequence-graph/ ← @gik/provider-consequence-graph
     provider-exploratory-graph/ ← @gik/provider-exploratory-graph
@@ -170,10 +172,6 @@ generative-interaction-kernel/
     react/                      ← Phase 2 React render adapter
       src/                      ← registry, renderer, controller, live-cards components, source-agnostic hook
       test/                     ← tree render, gate flip, event wiring, fallback, render-over-the-wire
-      tsconfig.json
-  interaction/                  ← Interaction (L3) + Presentation (L4) layers (ADR-0017/0018)
-      src/                      ← interaction taxonomy, presentation compiler, presentation→UI lowering
-      test/                     ← context-varied presentation, review interpret, fallback facets, full pipe
       tsconfig.json
   transports/
     http-sse/                   ← Phase 8 HTTP/SSE transport binding (kept out of the portable core)
