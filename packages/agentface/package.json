@@ -1,6 +1,27 @@
 {
   "name": "@gik/agentface",
   "version": "0.1.0",
+  "description": "Agent-facing projection surface (agent-safe subset) for the Generative Interaction Kernel.",
+  "license": "MIT",
+  "author": "nsreehari",
+  "keywords": [
+    "gik",
+    "generative-ui",
+    "declarative-ui",
+    "reactive",
+    "agent",
+    "projection",
+    "face"
+  ],
+  "homepage": "https://github.com/nsreehari/generative-interaction-kernel#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nsreehari/generative-interaction-kernel.git",
+    "directory": "packages/agentface"
+  },
+  "bugs": {
+    "url": "https://github.com/nsreehari/generative-interaction-kernel/issues"
+  },
   "type": "module",
   "sideEffects": false,
   "files": [
@@ -15,6 +36,10 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --sourcemap --clean --tsconfig tsconfig.json",
     "prepack": "node ../../scripts/sync-public-docs.mjs packages/agentface"

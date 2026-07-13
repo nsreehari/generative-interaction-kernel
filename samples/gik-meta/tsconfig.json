@@ -1,0 +1,48 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "jsx": "react-jsx",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "types": [
+      "node"
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "gik": [
+        "../../packages/gik/src/index.ts"
+      ],
+      "@gik/kernel": [
+        "../../packages/kernel/src/index.ts"
+      ],
+      "@gik/react": [
+        "../../packages/react/src/index.ts"
+      ],
+      "@gik/agentface": [
+        "../../packages/agentface/src/index.ts"
+      ],
+      "@gik/controlface": [
+        "../../packages/controlface/src/index.ts"
+      ],
+      "@gik/transport-http-sse": [
+        "../../packages/transport-http-sse/src/index.ts"
+      ],
+      "@gik/transport-mcp-http": [
+        "../../packages/transport-mcp-http/src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "."
+  ]
+}

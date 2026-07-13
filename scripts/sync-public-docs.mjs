@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
 const sourceDocsDir = path.join(repoRoot, "docs", "public");
+const licenseFile = path.join(repoRoot, "LICENSE");
 const targets = process.argv.slice(2);
 
 if (!existsSync(sourceDocsDir)) {
@@ -29,5 +30,9 @@ for (const target of targets) {
 
   for (const entry of readdirSync(sourceDocsDir)) {
     cpSync(path.join(sourceDocsDir, entry), path.join(docsDir, entry), { recursive: true });
+  }
+
+  if (existsSync(licenseFile)) {
+    cpSync(licenseFile, path.join(packageRoot, "LICENSE"));
   }
 }

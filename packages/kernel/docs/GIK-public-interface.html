@@ -182,7 +182,7 @@
 <body>
 
 <h1>GIK Public Interface</h1>
-<div class="subtitle">Consumer Manual · Public packages: <code>@gik/kernel</code> · <code>@gik/controlface</code> · <code>@gik/agentface</code> · <code>@gik/react</code> · <code>@gik/transport-*</code></div>
+<div class="subtitle">Consumer Manual · Public packages: <code>gik</code> (meta) · <code>@gik/kernel</code> · <code>@gik/react</code> · <code>@gik/controlface</code> · <code>@gik/agentface</code> · <code>@gik/transport-*</code> · <code>@gik/profile</code> · <code>@gik/profile-genui</code> · <code>@gik/provider-*</code> · <code>@gik/component-infinite-canvas</code></div>
 
 <div class="description">
 This page is a <strong>practical manual</strong> for consuming GenUI. It answers one question at each
@@ -222,7 +222,8 @@ filtered.</div>
 <a href="#types">10 · Core data types</a><br>
 <a href="#remote">11 · Stream renders &amp; connect remotely</a><br>
 <a href="#authoring">12 · Authoring helpers</a><br>
-<a href="#wire">13 · Protocol reference</a>
+<a href="#wire">13 · Protocol reference</a><br>
+<a href="#engines">14 · Provider engines &amp; building blocks</a>
 </div>
 
 <h2 id="surfaces">1 · What you can use</h2>
@@ -240,6 +241,10 @@ repo — pick a row by what you are building.</p>
 <tr><td><code>SseTransportServer</code></td><td><code>@gik/transport-http-sse/server</code></td><td>You stream the render/patch feed to a renderer over SSE.</td></tr>
 <tr><td><code>McpHttpServer</code></td><td><code>@gik/transport-mcp-http</code></td><td>You carry a projection's tool dispatcher over MCP/HTTP.</td></tr>
 <tr><td><code>GIKClient</code> · <code>KernelTransportHost</code></td><td><code>@gik/kernel</code></td><td>You connect a remote renderer to an authoritative host over the GIK protocol.</td></tr>
+<tr><td><code>InfiniteCanvas</code></td><td><code>@gik/component-infinite-canvas</code></td><td>You render a pan/zoom node canvas inside a React surface (used by <code>@gik/react</code>).</td></tr>
+<tr><td>profile / lowering</td><td><code>@gik/profile</code> · <code>@gik/profile-genui</code></td><td>You compile a higher-level DSL down to a kernel document (Task → Domain → Interaction → UI).</td></tr>
+<tr><td>provider engines</td><td><code>@gik/provider-*</code></td><td>You plug a ready-made <code>Orchestrator</code> / <code>StateModel</code> / graph engine into a kernel seam (§14).</td></tr>
+<tr><td><code>gik</code></td><td><code>gik</code></td><td>You want one batteries-included install that re-exports the core packages under namespaces.</td></tr>
 </table>
 
 <h2 id="pick">2 · Pick your surface</h2>
@@ -580,6 +585,40 @@ Action builders return the closed-grammar <code>Action</code> shapes:</p>
 and deltas are portable, language-neutral artifacts, and every provider is a conformance target. The
 five message types above are the whole <strong>GIK render/patch wire contract</strong>; MCP-mounted
 <code>controlface</code> / <code>agentface</code> tool catalogs are a separate outward surface described in §§5-6.</div>
+
+<h2 id="engines">14 · Provider engines &amp; building blocks</h2>
+
+<p>Beyond the runtime and transport surfaces, GIK publishes the reusable building blocks that implement
+the kernel's provider <em>seams</em> (§9) and the declarative <strong>lowering</strong> pipeline. Depend on
+these directly when you are assembling a concrete platform — <code>kernel + one implementation of each
+provider</code> — or authoring a domain DSL that compiles to a kernel document. Every one is dependency-light
+(the kernel itself is dependency-free) and ships its own <code>dist</code> + types.</p>
+
+<table class="sig">
+<tr><th>Package</th><th>What it is</th><th>Key exports</th><th>Kernel seam</th></tr>
+<tr><td><code>@gik/profile</code></td><td>The generic profile <em>mechanism</em>: a typed pipeline of kinded layers connected by recipes, executed through an open executor registry.</td><td><code>traceStages</code>, profile/stage types</td><td>Lowering (above the kernel)</td></tr>
+<tr><td><code>@gik/profile-genui</code></td><td>The GenUI profile <em>flavor</em>: the interaction / presentation / runtime-document vocabulary, the two lowering recipe shapes, schema/lint, and the full pipeline runner.</td><td><code>createProfileBundle</code>, <code>loadProfileBundle</code>, <code>validateProfileBundle</code>, lowering runner</td><td>Lowering (above the kernel)</td></tr>
+<tr><td><code>@gik/provider-reactive-state-model</code></td><td>A reactive <code>StateModel</code> over a continuous event graph — derived/computed cells recompute on dependency change.</td><td><code>ReactiveStateModel</code>, <code>inspect*</code> helpers</td><td><code>StateModel</code></td></tr>
+<tr><td><code>@gik/provider-step-orchestrator</code></td><td>A flow/step <code>Orchestrator</code>: registers named flows and drives multi-step effects through the kernel dispatch seam.</td><td><code>StepOrchestrator</code>, <code>FlowRegistry</code></td><td><code>Orchestrator</code></td></tr>
+<tr><td><code>@gik/provider-consequence-graph</code></td><td>A consequence-graph engine: activates/blocks nodes along typed consequence edges and exposes an inspection view.</td><td><code>activateConsequenceGraph</code>, <code>inspectConsequenceGraph</code></td><td>Domain engine</td></tr>
+<tr><td><code>@gik/provider-exploratory-graph</code></td><td>An exploratory-frontier engine: evaluates choices/options across a graph frontier with an inspection view.</td><td><code>evaluateExploratoryFrontier</code>, <code>inspectExploratoryGraph</code></td><td>Domain engine</td></tr>
+<tr><td><code>@gik/provider-profile-authoring</code></td><td>The profile-authoring flow: builds an authoring registry and summarizes profile artifacts (used by the Profiles console).</td><td><code>profileAuthoringFlow</code>, <code>createProfileAuthoringRegistry</code>, <code>summarizeProfileArtifacts</code></td><td>Authoring engine</td></tr>
+<tr><td><code>@gik/component-infinite-canvas</code></td><td>An infinite pan/zoom canvas React component (xyflow-based) used to render node/graph surfaces.</td><td><code>InfiniteCanvas</code> (+ <code>InfiniteCanvasProps</code>, <code>InfiniteCanvasRef</code>)</td><td>React surface (peer: react)</td></tr>
+</table>
+
+<div class="callout"><strong>Meta-package.</strong> <code>gik</code> is a batteries-included convenience wrapper — it re-exports the
+core packages under stable namespaces so newcomers can start from a single install. Reach for the individual
+<code>@gik/*</code> packages directly in real projects for the leanest dependency graph.</div>
+
+<div class="example"><span class="tag">Example</span>
+<pre><code>// batteries-included entry point
+import { kernel, react } from "gik";
+
+// or depend on the exact packages you need
+import { Kernel } from "@gik/kernel";
+import { ReactiveStateModel } from "@gik/provider-reactive-state-model";
+import { StepOrchestrator } from "@gik/provider-step-orchestrator";
+import { InfiniteCanvas } from "@gik/component-infinite-canvas";</code></pre></div>
 
 </body>
 </html>

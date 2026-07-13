@@ -26,13 +26,16 @@
     "dev:backend-host": "tsx samples/backend-host/order-service.ts",
     "dev:mcp": "tsx samples/agent-host/mcp-service.ts",
     "dev:controlface": "tsx samples/control-host/service.ts",
+    "dev:gik": "tsx samples/gik-meta/quickstart.ts",
     "dev:console": "npm run dev:host",
     "build:console": "npm run build:host",
     "build:public-packages": "npm run build --workspaces --if-present",
     "build:package:kernel": "npm run build --workspace=@gik/kernel",
-    "typecheck": "tsc -p kernel/tsconfig.json --noEmit && tsc -p adapters/react/tsconfig.json --noEmit && tsc -p packages/profile/tsconfig.json --noEmit && tsc -p packages/profile-genui/tsconfig.json --noEmit && tsc -p face/tsconfig.json --noEmit && tsc -p transports/http-sse/tsconfig.json --noEmit && tsc -p transports/mcp-http/tsconfig.json --noEmit && tsc -p samples/apps/host/tsconfig.json --noEmit && tsc -p samples/backend-host/tsconfig.json --noEmit && tsc -p samples/agent-host/tsconfig.json --noEmit && tsc -p samples/control-host/tsconfig.json --noEmit && tsc -p providers/tsconfig.json --noEmit && tsc -p packages/component-infinite-canvas/tsconfig.json --noEmit",
+    "typecheck": "tsc -p kernel/tsconfig.json --noEmit && tsc -p adapters/react/tsconfig.json --noEmit && tsc -p packages/profile/tsconfig.json --noEmit && tsc -p packages/profile-genui/tsconfig.json --noEmit && tsc -p face/tsconfig.json --noEmit && tsc -p transports/http-sse/tsconfig.json --noEmit && tsc -p transports/mcp-http/tsconfig.json --noEmit && tsc -p samples/apps/host/tsconfig.json --noEmit && tsc -p samples/backend-host/tsconfig.json --noEmit && tsc -p samples/agent-host/tsconfig.json --noEmit && tsc -p samples/control-host/tsconfig.json --noEmit && tsc -p providers/tsconfig.json --noEmit && tsc -p packages/component-infinite-canvas/tsconfig.json --noEmit && tsc -p samples/gik-meta/tsconfig.json --noEmit",
     "test": "npm run conformance && npm run typecheck && npm run test:jsonata && npm run test:vitest",
-    "sync:public-docs": "node scripts/sync-public-docs.mjs packages/kernel packages/controlface packages/agentface packages/react packages/transport-http-sse packages/transport-mcp-http"
+    "sync:public-docs": "node scripts/sync-public-docs.mjs packages/kernel packages/controlface packages/agentface packages/react packages/transport-http-sse packages/transport-mcp-http packages/component-infinite-canvas packages/profile packages/profile-genui packages/provider-consequence-graph packages/provider-exploratory-graph packages/provider-profile-authoring packages/provider-reactive-state-model packages/provider-step-orchestrator packages/gik",
+    "release:dry": "npm run build:public-packages && npm publish --workspaces --dry-run",
+    "release": "npm run build:public-packages && npm publish --workspaces"
   },
   "dependencies": {
     "@fluentui/react-components": "^9.74.3",

@@ -1,0 +1,70 @@
+{
+  "name": "gik",
+  "version": "0.1.0",
+  "description": "Batteries-included entry point for the Generative Interaction Kernel — re-exports the core @gik/* packages (kernel, react, agentface, controlface, transports).",
+  "license": "MIT",
+  "author": "nsreehari",
+  "type": "module",
+  "sideEffects": false,
+  "keywords": [
+    "gik",
+    "generative-ui",
+    "generative-interaction-kernel",
+    "declarative-ui",
+    "reactive",
+    "kernel"
+  ],
+  "homepage": "https://github.com/nsreehari/generative-interaction-kernel#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nsreehari/generative-interaction-kernel.git",
+    "directory": "packages/gik"
+  },
+  "bugs": {
+    "url": "https://github.com/nsreehari/generative-interaction-kernel/issues"
+  },
+  "files": [
+    "dist",
+    "docs"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@gik/kernel": "0.1.0",
+    "@gik/react": "0.1.0",
+    "@gik/agentface": "0.1.0",
+    "@gik/controlface": "0.1.0",
+    "@gik/transport-http-sse": "0.1.0",
+    "@gik/transport-mcp-http": "0.1.0"
+  },
+  "peerDependencies": {
+    "@fluentui/react-components": "^9.74.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "peerDependenciesMeta": {
+    "@fluentui/react-components": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --sourcemap --clean --tsconfig tsconfig.json",
+    "prepack": "node ../../scripts/sync-public-docs.mjs packages/gik"
+  }
+}
