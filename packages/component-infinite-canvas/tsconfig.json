@@ -1,0 +1,6 @@
+{
+  "extends": "../../adapters/react/tsconfig.json",
+  "include": [
+    "src"
+  ]
+}

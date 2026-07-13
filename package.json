@@ -30,7 +30,7 @@
     "build:console": "npm run build:host",
     "build:public-packages": "npm run build --workspaces --if-present",
     "build:package:kernel": "npm run build --workspace=@gik/kernel",
-    "typecheck": "tsc -p kernel/tsconfig.json --noEmit && tsc -p adapters/react/tsconfig.json --noEmit && tsc -p interaction/tsconfig.json --noEmit && tsc -p face/tsconfig.json --noEmit && tsc -p transports/http-sse/tsconfig.json --noEmit && tsc -p transports/mcp-http/tsconfig.json --noEmit && tsc -p samples/apps/host/tsconfig.json --noEmit && tsc -p samples/backend-host/tsconfig.json --noEmit && tsc -p samples/agent-host/tsconfig.json --noEmit && tsc -p samples/control-host/tsconfig.json --noEmit && tsc -p providers/tsconfig.json --noEmit",
+    "typecheck": "tsc -p kernel/tsconfig.json --noEmit && tsc -p adapters/react/tsconfig.json --noEmit && tsc -p interaction/tsconfig.json --noEmit && tsc -p face/tsconfig.json --noEmit && tsc -p transports/http-sse/tsconfig.json --noEmit && tsc -p transports/mcp-http/tsconfig.json --noEmit && tsc -p samples/apps/host/tsconfig.json --noEmit && tsc -p samples/backend-host/tsconfig.json --noEmit && tsc -p samples/agent-host/tsconfig.json --noEmit && tsc -p samples/control-host/tsconfig.json --noEmit && tsc -p providers/tsconfig.json --noEmit && tsc -p packages/component-infinite-canvas/tsconfig.json --noEmit",
     "test": "npm run conformance && npm run typecheck && npm run test:jsonata && npm run test:vitest",
     "sync:public-docs": "node scripts/sync-public-docs.mjs packages/kernel packages/controlface packages/agentface packages/react packages/transport-http-sse packages/transport-mcp-http"
   },

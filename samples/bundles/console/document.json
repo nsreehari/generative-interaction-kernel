@@ -7,7 +7,7 @@
       "id": "console-root",
       "props": {
         "title": "Profiles",
-          "subtitle": "Browse, validate, preview, and fork sample profiles"
+        "subtitle": "Browse, inspect, and preview sample profiles"
       },
       "edges": {
         "children": [
@@ -38,26 +38,6 @@
                           "gate": "console.catalogStatus != ''",
                           "read": {
                             "value": "console.catalogStatus"
-                          }
-                        }
-                      },
-                      {
-                        "capability": "ui:button",
-                        "id": "create-local-profile",
-                        "props": {
-                          "label": "Create local draft",
-                          "tone": "primary"
-                        },
-                        "edges": {
-                          "on": {
-                            "press": [
-                              {
-                                "do": "invoke",
-                                "args": {
-                                  "tool": "seedLocalDraft"
-                                }
-                              }
-                            ]
                           }
                         }
                       },
@@ -132,8 +112,8 @@
                               "id": "empty-hint",
                               "props": {
                                 "tone": "muted",
-                                "value": "Select a profile on the left to inspect it, or create a new local profile draft to start editing immediately."
-                                }
+                                "value": "Select a profile on the left to inspect its layers, lowering recipes, and preview."
+                              }
                             }
                           ]
                         }
@@ -153,8 +133,9 @@
                               "props": {
                                 "options": [
                                   { "value": "overview", "label": "Overview" },
-                                  { "value": "validation", "label": "Validate" },
-                                  { "value": "draft", "label": "Edit Draft" }
+                                  { "value": "layers", "label": "Layers" },
+                                  { "value": "recipes", "label": "Lowering Recipes" },
+                                  { "value": "preview", "label": "Preview" }
                                 ]
                               },
                               "edges": {
@@ -184,53 +165,53 @@
                                 "gate": "console.tab = 'overview'",
                                 "children": [
                                   {
-                                    "capability": "ui:row",
-                                    "id": "profile-summary",
+                                    "capability": "ui:panel",
+                                    "id": "profile-summary-panel",
+                                    "props": {
+                                      "title": "Basic info",
+                                      "variant": "inset"
+                                    },
                                     "edges": {
                                       "children": [
                                         {
-                                          "capability": "ui:metric",
-                                          "id": "metric-kind",
-                                          "props": { "label": "Kind" },
-                                          "edges": { "read": { "value": "console.profile.kind" } }
-                                        },
-                                        {
-                                          "capability": "ui:metric",
-                                          "id": "metric-version",
-                                          "props": { "label": "Version" },
-                                          "edges": { "read": { "value": "console.profile.version" } }
-                                        },
-                                        {
-                                          "capability": "ui:metric",
-                                          "id": "metric-layers",
-                                          "props": { "label": "Layers" },
-                                          "edges": { "read": { "value": "console.profile.layerCount" } }
-                                        },
-                                        {
-                                          "capability": "ui:metric",
-                                          "id": "metric-stages",
-                                          "props": { "label": "Stages" },
-                                          "edges": { "read": { "value": "console.profile.stageCount" } }
+                                          "capability": "ui:row",
+                                          "id": "profile-summary",
+                                          "edges": {
+                                            "children": [
+                                              {
+                                                "capability": "ui:metric",
+                                                "id": "metric-profile-id",
+                                                "props": { "label": "Profile id" },
+                                                "edges": { "read": { "value": "console.profile.id" } }
+                                              },
+                                              {
+                                                "capability": "ui:metric",
+                                                "id": "metric-kind",
+                                                "props": { "label": "Kind" },
+                                                "edges": { "read": { "value": "console.profile.kind" } }
+                                              },
+                                              {
+                                                "capability": "ui:metric",
+                                                "id": "metric-version",
+                                                "props": { "label": "Version" },
+                                                "edges": { "read": { "value": "console.profile.version" } }
+                                              },
+                                              {
+                                                "capability": "ui:metric",
+                                                "id": "metric-layers",
+                                                "props": { "label": "Layers" },
+                                                "edges": { "read": { "value": "console.profile.layerCount" } }
+                                              },
+                                              {
+                                                "capability": "ui:metric",
+                                                "id": "metric-recipes",
+                                                "props": { "label": "Lowering recipes" },
+                                                "edges": { "read": { "value": "console.profile.recipeCount" } }
+                                              }
+                                            ]
+                                          }
                                         }
                                       ]
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:tabBar",
-                                    "id": "overview-subtabs",
-                                    "props": {
-                                      "options": [
-                                        { "value": "preview", "label": "Preview" },
-                                        { "value": "structure", "label": "Structure" }
-                                      ]
-                                    },
-                                    "edges": {
-                                      "read": { "active": "console.overviewTab" },
-                                      "on": {
-                                        "select": [
-                                          { "do": "assign", "target": "console.overviewTab", "args": { "from": "$event.value" } }
-                                        ]
-                                      }
                                     }
                                   },
                                   {
@@ -241,83 +222,480 @@
                                       "variant": "inset"
                                     },
                                     "edges": {
-                                      "gate": "console.overviewTab = 'structure'",
                                       "children": [
                                         {
-                                          "capability": "ui:row",
-                                          "id": "pipeline-metrics",
+                                          "capability": "console:profile-pipeline-canvas",
+                                          "id": "profile-pipeline",
+                                          "edges": {
+                                            "read": {
+                                              "stateKey": "console.profile.id",
+                                              "nodes": "console.pipeline.nodes",
+                                              "selectedNodeId": "console.selectedLayerId",
+                                              "selectedEdgeId": "console.selectedRecipeId"
+                                            },
+                                            "on": {
+                                              "selectNode": [
+                                                {
+                                                  "do": "assign",
+                                                  "target": "console.tab",
+                                                  "args": {
+                                                    "from": "$event.tab"
+                                                  }
+                                                },
+                                                {
+                                                  "do": "invoke",
+                                                  "args": {
+                                                    "tool": "selectLayer"
+                                                  }
+                                                }
+                                              ],
+                                              "selectEdge": [
+                                                {
+                                                  "do": "assign",
+                                                  "target": "console.tab",
+                                                  "args": {
+                                                    "from": "$event.tab"
+                                                  }
+                                                },
+                                                {
+                                                  "do": "invoke",
+                                                  "args": {
+                                                    "tool": "selectRecipe"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "capability": "ui:panel",
+                              "id": "layers-tab",
+                              "props": {
+                                "variant": "tab"
+                              },
+                              "edges": {
+                                "gate": "console.tab = 'layers'",
+                                "children": [
+                                  {
+                                    "capability": "ui:row",
+                                    "id": "layers-layout",
+                                    "props": {
+                                      "variant": "split"
+                                    },
+                                    "edges": {
+                                      "children": [
+                                        {
+                                          "capability": "ui:panel",
+                                          "id": "layers-list-panel",
+                                          "props": {
+                                            "title": "Layers",
+                                            "variant": "inset"
+                                          },
                                           "edges": {
                                             "children": [
                                               {
-                                                "capability": "ui:metric",
-                                                "id": "metric-source",
-                                                "props": { "label": "Source" },
-                                                "edges": { "read": { "value": "console.profile.sourceKind" } }
+                                                "capability": "ui:list",
+                                                "id": "layers-list",
+                                                "props": {
+                                                  "idKey": "id",
+                                                  "primaryKey": "id",
+                                                  "secondaryKey": "kind",
+                                                  "valueKey": "schema"
+                                                },
+                                                "edges": {
+                                                  "read": {
+                                                    "items": "console.layers",
+                                                    "selectedId": "console.selectedLayerId"
+                                                  },
+                                                  "on": {
+                                                    "select": [
+                                                      {
+                                                        "do": "invoke",
+                                                        "args": {
+                                                          "tool": "selectLayer"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:panel",
+                                          "id": "layer-detail-panel",
+                                          "props": {
+                                            "title": "Selected layer",
+                                            "variant": "inset"
+                                          },
+                                          "edges": {
+                                            "children": [
+                                              {
+                                                "capability": "ui:row",
+                                                "id": "layer-detail-metrics",
+                                                "edges": {
+                                                  "children": [
+                                                    {
+                                                      "capability": "ui:metric",
+                                                      "id": "layer-detail-id",
+                                                      "props": { "label": "Layer id" },
+                                                      "edges": { "read": { "value": "console.layerDetail.id" } }
+                                                    },
+                                                    {
+                                                      "capability": "ui:metric",
+                                                      "id": "layer-detail-kind",
+                                                      "props": { "label": "Kind" },
+                                                      "edges": { "read": { "value": "console.layerDetail.kind" } }
+                                                    },
+                                                    {
+                                                      "capability": "ui:metric",
+                                                      "id": "layer-detail-schema",
+                                                      "props": { "label": "Schema ref" },
+                                                      "edges": { "read": { "value": "console.layerDetail.schema" } }
+                                                    }
+                                                  ]
+                                                }
                                               },
                                               {
-                                                "capability": "ui:metric",
-                                                "id": "metric-target",
-                                                "props": { "label": "Target" },
-                                                "edges": { "read": { "value": "console.profile.targetKind" } }
+                                                "capability": "ui:narrative",
+                                                "id": "layer-detail-description",
+                                                "props": {
+                                                  "emptyMessage": "No layer description authored yet."
+                                                },
+                                                "edges": {
+                                                  "read": {
+                                                    "text": "console.layerDetail.description"
+                                                  }
+                                                }
                                               }
                                             ]
                                           }
                                         }
                                       ]
                                     }
-                                  },
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "capability": "ui:panel",
+                              "id": "recipes-tab",
+                              "props": {
+                                "variant": "tab"
+                              },
+                              "edges": {
+                                "gate": "console.tab = 'recipes'",
+                                "children": [
                                   {
-                                    "capability": "ui:panel",
-                                    "id": "layers-panel",
+                                    "capability": "ui:row",
+                                    "id": "recipes-layout",
                                     "props": {
-                                      "title": "Layers",
-                                      "variant": "inset"
+                                      "variant": "split"
                                     },
                                     "edges": {
-                                      "gate": "console.overviewTab = 'structure'",
                                       "children": [
                                         {
-                                          "capability": "ui:table",
-                                          "id": "layers-table",
+                                          "capability": "ui:panel",
+                                          "id": "recipes-list-panel",
                                           "props": {
-                                            "columns": ["id", "kind", "schema"],
-                                            "emptyText": "No layers."
+                                            "title": "Lowering recipes",
+                                            "variant": "inset"
                                           },
                                           "edges": {
-                                            "read": {
-                                              "rows": "console.profile.layers"
-                                            }
+                                            "children": [
+                                              {
+                                                "capability": "ui:list",
+                                                "id": "recipes-list",
+                                                "props": {
+                                                  "idKey": "id",
+                                                  "primaryKey": "id",
+                                                  "secondaryKey": "connection",
+                                                  "valueKey": "kindLabel"
+                                                },
+                                                "edges": {
+                                                  "read": {
+                                                    "items": "console.recipes",
+                                                    "selectedId": "console.selectedRecipeId"
+                                                  },
+                                                  "on": {
+                                                    "select": [
+                                                      {
+                                                        "do": "invoke",
+                                                        "args": {
+                                                          "tool": "selectRecipe"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:col",
+                                          "id": "recipe-detail-col",
+                                          "edges": {
+                                            "children": [
+                                              {
+                                                "capability": "ui:panel",
+                                                "id": "recipe-detail-header",
+                                                "props": {
+                                                  "title": "Selected recipe",
+                                                  "variant": "inset"
+                                                },
+                                                "edges": {
+                                                  "children": [
+                                                    {
+                                                      "capability": "ui:row",
+                                                      "id": "recipe-detail-header-metrics",
+                                                      "edges": {
+                                                        "children": [
+                                                          {
+                                                            "capability": "ui:metric",
+                                                            "id": "recipe-detail-id",
+                                                            "props": { "label": "Recipe id" },
+                                                            "edges": { "read": { "value": "console.recipeDetail.id" } }
+                                                          },
+                                                          {
+                                                            "capability": "ui:metric",
+                                                            "id": "recipe-detail-kind",
+                                                            "props": { "label": "Kind" },
+                                                            "edges": { "read": { "value": "console.recipeDetail.kindLabel" } }
+                                                          }
+                                                        ]
+                                                      }
+                                                    },
+                                                    {
+                                                      "capability": "ui:narrative",
+                                                      "id": "recipe-detail-summary",
+                                                      "props": {
+                                                        "emptyMessage": "No recipe summary available."
+                                                      },
+                                                      "edges": {
+                                                        "read": {
+                                                          "text": "console.recipeDetail.summary"
+                                                        }
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              {
+                                                "capability": "ui:row",
+                                                "id": "recipe-context-row",
+                                                "edges": {
+                                                  "children": [
+                                                    {
+                                                      "capability": "ui:panel",
+                                                      "id": "recipe-from-layer-panel",
+                                                      "props": {
+                                                        "title": "From layer",
+                                                        "variant": "inset"
+                                                      },
+                                                      "edges": {
+                                                        "children": [
+                                                          {
+                                                            "capability": "ui:metric",
+                                                            "id": "recipe-from-layer-id",
+                                                            "props": { "label": "Layer id" },
+                                                            "edges": { "read": { "value": "console.recipeDetail.fromLayer.id" } }
+                                                          },
+                                                          {
+                                                            "capability": "ui:metric",
+                                                            "id": "recipe-from-layer-kind",
+                                                            "props": { "label": "Kind" },
+                                                            "edges": { "read": { "value": "console.recipeDetail.fromLayer.kind" } }
+                                                          },
+                                                          {
+                                                            "capability": "ui:narrative",
+                                                            "id": "recipe-from-layer-description",
+                                                            "props": {
+                                                              "emptyMessage": "No description authored for this layer."
+                                                            },
+                                                            "edges": {
+                                                              "read": {
+                                                                "text": "console.recipeDetail.fromLayer.description"
+                                                              }
+                                                            }
+                                                          }
+                                                        ]
+                                                      }
+                                                    },
+                                                    {
+                                                      "capability": "ui:panel",
+                                                      "id": "recipe-to-layer-panel",
+                                                      "props": {
+                                                        "title": "To layer",
+                                                        "variant": "inset"
+                                                      },
+                                                      "edges": {
+                                                        "children": [
+                                                          {
+                                                            "capability": "ui:metric",
+                                                            "id": "recipe-to-layer-id",
+                                                            "props": { "label": "Layer id" },
+                                                            "edges": { "read": { "value": "console.recipeDetail.toLayer.id" } }
+                                                          },
+                                                          {
+                                                            "capability": "ui:metric",
+                                                            "id": "recipe-to-layer-kind",
+                                                            "props": { "label": "Kind" },
+                                                            "edges": { "read": { "value": "console.recipeDetail.toLayer.kind" } }
+                                                          },
+                                                          {
+                                                            "capability": "ui:narrative",
+                                                            "id": "recipe-to-layer-description",
+                                                            "props": {
+                                                              "emptyMessage": "No description authored for this layer."
+                                                            },
+                                                            "edges": {
+                                                              "read": {
+                                                                "text": "console.recipeDetail.toLayer.description"
+                                                              }
+                                                            }
+                                                          }
+                                                        ]
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              {
+                                                "capability": "ui:panel",
+                                                "id": "interaction-recipe-panel",
+                                                "props": {
+                                                  "title": "Interaction to presentation",
+                                                  "variant": "inset"
+                                                },
+                                                "edges": {
+                                                  "gate": "console.recipeDetail.kind = 'interaction-to-presentation'",
+                                                  "children": [
+                                                    {
+                                                      "capability": "ui:table",
+                                                      "id": "interaction-recipe-rules",
+                                                      "props": {
+                                                        "columns": ["label", "value"],
+                                                        "emptyText": "No rule groups."
+                                                      },
+                                                      "edges": {
+                                                        "read": {
+                                                          "rows": "console.recipeDetail.ruleGroups"
+                                                        }
+                                                      }
+                                                    },
+                                                    {
+                                                      "capability": "ui:narrative",
+                                                      "id": "interaction-recipe-constraints",
+                                                      "props": {
+                                                        "emptyMessage": "No constrained surface conditions are authored."
+                                                      },
+                                                      "edges": {
+                                                        "read": {
+                                                          "text": "console.recipeDetail.constrainedWhenText"
+                                                        }
+                                                      }
+                                                    },
+                                                    {
+                                                      "capability": "ui:table",
+                                                      "id": "interaction-recipe-templates",
+                                                      "props": {
+                                                        "columns": ["name", "arrangement", "maxRegions"],
+                                                        "emptyText": "No templates authored."
+                                                      },
+                                                      "edges": {
+                                                        "read": {
+                                                          "rows": "console.recipeDetail.templates"
+                                                        }
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              {
+                                                "capability": "ui:panel",
+                                                "id": "runtime-recipe-panel",
+                                                "props": {
+                                                  "title": "Presentation to runtime",
+                                                  "variant": "inset"
+                                                },
+                                                "edges": {
+                                                  "gate": "console.recipeDetail.kind = 'presentation-to-runtime'",
+                                                  "children": [
+                                                    {
+                                                      "capability": "ui:row",
+                                                      "id": "runtime-recipe-metrics",
+                                                      "edges": {
+                                                        "children": [
+                                                          {
+                                                            "capability": "ui:metric",
+                                                            "id": "runtime-container-capability",
+                                                            "props": { "label": "Container capability" },
+                                                            "edges": { "read": { "value": "console.recipeDetail.containerCapability" } }
+                                                          },
+                                                          {
+                                                            "capability": "ui:metric",
+                                                            "id": "runtime-fallback-capability",
+                                                            "props": { "label": "Fallback capability" },
+                                                            "edges": { "read": { "value": "console.recipeDetail.fallbackCapability" } }
+                                                          }
+                                                        ]
+                                                      }
+                                                    },
+                                                    {
+                                                      "capability": "ui:table",
+                                                      "id": "runtime-rules-table",
+                                                      "props": {
+                                                        "columns": ["match", "capability", "reads", "actions"],
+                                                        "emptyText": "No runtime rules authored."
+                                                      },
+                                                      "edges": {
+                                                        "read": {
+                                                          "rows": "console.recipeDetail.runtimeRules"
+                                                        }
+                                                      }
+                                                    },
+                                                    {
+                                                      "capability": "ui:table",
+                                                      "id": "runtime-capabilities-table",
+                                                      "props": {
+                                                        "columns": ["capability", "source"],
+                                                        "emptyText": "No runtime capabilities derived."
+                                                      },
+                                                      "edges": {
+                                                        "read": {
+                                                          "rows": "console.recipeDetail.runtimeCapabilities"
+                                                        }
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              }
+                                            ]
                                           }
                                         }
                                       ]
                                     }
-                                  },
-                                  {
-                                    "capability": "ui:panel",
-                                    "id": "stages-panel",
-                                    "props": {
-                                      "title": "Stages",
-                                      "variant": "inset"
-                                    },
-                                    "edges": {
-                                      "gate": "console.overviewTab = 'structure'",
-                                      "children": [
-                                        {
-                                          "capability": "ui:table",
-                                          "id": "stages-table",
-                                          "props": {
-                                            "columns": ["id", "from", "to"],
-                                            "emptyText": "No stages."
-                                          },
-                                          "edges": {
-                                            "read": {
-                                              "rows": "console.profile.stages"
-                                            }
-                                          }
-                                        }
-                                      ]
-                                    }
-                                  },
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "capability": "ui:panel",
+                              "id": "preview-tab",
+                              "props": {
+                                "variant": "tab"
+                              },
+                              "edges": {
+                                "gate": "console.tab = 'preview'",
+                                "children": [
                                   {
                                     "capability": "ui:panel",
                                     "id": "preview-panel",
@@ -326,7 +704,6 @@
                                       "variant": "inset"
                                     },
                                     "edges": {
-                                      "gate": "console.overviewTab = 'preview'",
                                       "children": [
                                         {
                                           "capability": "ui:row",
@@ -473,258 +850,41 @@
                                         }
                                       ]
                                     }
-                                  },
-                                  {
-                                    "capability": "ui:panel",
-                                    "id": "capabilities-panel",
-                                    "props": {
-                                      "title": "Runtime capabilities",
-                                      "variant": "inset"
-                                    },
-                                    "edges": {
-                                      "gate": "console.overviewTab = 'structure'",
-                                      "children": [
-                                        {
-                                          "capability": "ui:table",
-                                          "id": "capabilities-table",
-                                          "props": {
-                                            "columns": ["capability"],
-                                            "emptyText": "No runtime capabilities."
-                                          },
-                                          "edges": {
-                                            "read": {
-                                              "rows": "console.profile.capabilities"
-                                            }
-                                          }
-                                        }
-                                      ]
-                                    }
                                   }
                                 ]
                               }
                             },
                             {
                               "capability": "ui:panel",
-                              "id": "validation-tab",
+                              "id": "detail-footer",
                               "props": {
-                                "variant": "tab"
+                                "variant": "footer"
                               },
                               "edges": {
-                                "gate": "console.tab = 'validation'",
                                 "children": [
                                   {
-                                    "capability": "ui:button",
-                                    "id": "validate-btn",
-                                    "props": {
-                                      "label": "Re-run validation"
-                                    },
-                                    "edges": {
-                                      "on": {
-                                        "press": [
-                                          {
-                                            "do": "invoke",
-                                            "args": {
-                                              "tool": "validateProfile"
-                                            }
-                                          }
-                                        ]
-                                      }
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:alert",
-                                    "id": "validation-status",
-                                    "props": {
-                                      "label": "Validation"
-                                    },
-                                    "edges": {
-                                      "read": {
-                                        "value": "console.validation.summary",
-                                        "level": "console.validation.level"
-                                      }
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:panel",
-                                    "id": "validation-errors",
-                                    "props": {
-                                      "title": "Errors",
-                                      "variant": "inset"
-                                    },
+                                    "capability": "ui:row",
+                                    "id": "detail-footer-row",
                                     "edges": {
                                       "children": [
                                         {
-                                          "capability": "ui:codeBlock",
-                                          "id": "validation-errors-code",
-                                          "edges": {
-                                            "read": {
-                                              "code": "console.validation.errorsText"
-                                            }
-                                          }
-                                        }
-                                      ]
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:panel",
-                                    "id": "validation-warnings",
-                                    "props": {
-                                      "title": "Warnings",
-                                      "variant": "inset"
-                                    },
-                                    "edges": {
-                                      "children": [
-                                        {
-                                          "capability": "ui:codeBlock",
-                                          "id": "validation-warnings-code",
-                                          "edges": {
-                                            "read": {
-                                              "code": "console.validation.warningsText"
-                                            }
-                                          }
-                                        }
-                                      ]
-                                    }
-                                  }
-                                ]
-                              }
-                            },
-                            {
-                              "capability": "ui:panel",
-                              "id": "draft-tab",
-                              "props": {
-                                "variant": "tab"
-                              },
-                              "edges": {
-                                "gate": "console.tab = 'draft'",
-                                "children": [
-                                  {
-                                    "capability": "ui:tabBar",
-                                    "id": "draft-subtabs",
-                                    "props": {
-                                      "options": [
-                                        { "value": "editor", "label": "Editor" },
-                                        { "value": "source", "label": "Source artifacts" }
-                                      ]
-                                    },
-                                    "edges": {
-                                      "read": { "active": "console.draftTab" },
-                                      "on": {
-                                        "select": [
-                                          { "do": "assign", "target": "console.draftTab", "args": { "from": "$event.value" } }
-                                        ]
-                                      }
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:panel",
-                                    "id": "artifact-editor-panel",
-                                    "props": {
-                                      "title": "Edit local draft",
-                                      "variant": "inset"
-                                    },
-                                    "edges": {
-                                      "gate": "console.draftTab = 'editor'",
-                                      "children": [
-                                        {
-                                          "capability": "ui:note",
-                                          "id": "artifact-editor-status",
+                                          "capability": "ui:alert",
+                                          "id": "validation-status",
                                           "props": {
-                                            "tone": "info"
+                                            "label": "Validation"
                                           },
                                           "edges": {
                                             "read": {
-                                              "value": "console.editor.status"
-                                            }
-                                          }
-                                        },
-                                        {
-                                          "capability": "ui:note",
-                                          "id": "artifact-editor-error",
-                                          "props": {
-                                            "tone": "critical"
-                                          },
-                                          "edges": {
-                                            "gate": "console.editor.error != ''",
-                                            "read": {
-                                              "value": "console.editor.error"
-                                            }
-                                          }
-                                        },
-                                        {
-                                          "capability": "ui:field",
-                                          "id": "artifact-editor-id",
-                                          "props": {
-                                            "label": "Local profile id",
-                                            "placeholder": "my-profile-local"
-                                          },
-                                          "edges": {
-                                            "read": {
-                                              "value": "console.editor.id"
-                                            },
-                                            "on": {
-                                              "input": [
-                                                {
-                                                  "do": "assign",
-                                                  "target": "console.editor.id",
-                                                  "args": {
-                                                    "from": "$event.value"
-                                                  }
-                                                }
-                                              ]
+                                              "value": "console.validation.summary",
+                                              "level": "console.validation.level"
                                             }
                                           }
                                         },
                                         {
                                           "capability": "ui:button",
-                                          "id": "artifact-seed-draft",
+                                          "id": "validate-btn",
                                           "props": {
-                                            "label": "Create local draft from selection"
-                                          },
-                                          "edges": {
-                                            "gate": "console.profile.source = 'repo'",
-                                            "on": {
-                                              "press": [
-                                                {
-                                                  "do": "invoke",
-                                                  "args": {
-                                                    "tool": "seedLocalDraft"
-                                                  }
-                                                }
-                                              ]
-                                            }
-                                          }
-                                        },
-                                        {
-                                          "capability": "ui:textarea",
-                                          "id": "artifact-editor-bundle",
-                                          "props": {
-                                            "label": "Profile bundle JSON",
-                                            "placeholder": "{\n  \"format\": \"gik-profile-bundle/1\",\n  ...\n}"
-                                          },
-                                          "edges": {
-                                            "read": {
-                                              "value": "console.editor.bundleText"
-                                            },
-                                            "on": {
-                                              "input": [
-                                                {
-                                                  "do": "assign",
-                                                  "target": "console.editor.bundleText",
-                                                  "args": {
-                                                    "from": "$event.value"
-                                                  }
-                                                }
-                                              ]
-                                            }
-                                          }
-                                        },
-                                        {
-                                          "capability": "ui:button",
-                                          "id": "artifact-save-local",
-                                          "props": {
-                                            "label": "Save draft",
-                                            "tone": "primary"
+                                            "label": "Re-run validation"
                                           },
                                           "edges": {
                                             "on": {
@@ -732,118 +892,10 @@
                                                 {
                                                   "do": "invoke",
                                                   "args": {
-                                                    "tool": "saveLocalProfile"
+                                                    "tool": "validateProfile"
                                                   }
                                                 }
                                               ]
-                                            }
-                                          }
-                                        },
-                                        {
-                                          "capability": "ui:button",
-                                          "id": "artifact-delete-local",
-                                          "props": {
-                                            "label": "Delete local draft"
-                                          },
-                                          "edges": {
-                                            "gate": "console.profile.source = 'local'",
-                                            "on": {
-                                              "press": [
-                                                {
-                                                  "do": "invoke",
-                                                  "args": {
-                                                    "tool": "deleteLocalProfile"
-                                                  }
-                                                }
-                                              ]
-                                            }
-                                          }
-                                        }
-                                      ]
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:panel",
-                                    "id": "artifact-profile-panel",
-                                    "props": {
-                                      "title": "Source profile artifact",
-                                      "variant": "inset"
-                                    },
-                                    "edges": {
-                                      "gate": "console.draftTab = 'source'",
-                                      "children": [
-                                        {
-                                          "capability": "ui:codeBlock",
-                                          "id": "artifact-profile-code",
-                                          "edges": {
-                                            "read": {
-                                              "code": "console.artifacts.profileText"
-                                            }
-                                          }
-                                        }
-                                      ]
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:panel",
-                                    "id": "artifact-recipes-panel",
-                                    "props": {
-                                      "title": "Source recipe artifacts",
-                                      "variant": "inset"
-                                    },
-                                    "edges": {
-                                      "gate": "console.draftTab = 'source'",
-                                      "children": [
-                                        {
-                                          "capability": "ui:codeBlock",
-                                          "id": "artifact-recipes-code",
-                                          "edges": {
-                                            "read": {
-                                              "code": "console.artifacts.recipesText"
-                                            }
-                                          }
-                                        }
-                                      ]
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:panel",
-                                    "id": "artifact-resolved-panel",
-                                    "props": {
-                                      "title": "Resolved chain",
-                                      "variant": "inset"
-                                    },
-                                    "edges": {
-                                      "gate": "console.draftTab = 'source'",
-                                      "children": [
-                                        {
-                                          "capability": "ui:codeBlock",
-                                          "id": "artifact-resolved-code",
-                                          "edges": {
-                                            "read": {
-                                              "code": "console.artifacts.resolvedText"
-                                            }
-                                          }
-                                        }
-                                      ]
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:panel",
-                                    "id": "artifact-bundle-panel",
-                                    "props": {
-                                      "title": "Stored draft payload",
-                                      "variant": "inset"
-                                    },
-                                    "edges": {
-                                      "gate": "console.draftTab = 'source'",
-                                      "children": [
-                                        {
-                                          "capability": "ui:codeBlock",
-                                          "id": "artifact-bundle-code",
-                                          "edges": {
-                                            "read": {
-                                              "code": "console.artifacts.bundleText"
                                             }
                                           }
                                         }

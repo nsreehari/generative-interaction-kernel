@@ -48,16 +48,43 @@ function createState(): Record<string, Json> {
         version: "",
         source: "",
         readonly: true,
-        sourceKind: "",
-        targetKind: "",
         layerCount: 0,
-        stageCount: 0,
-        layers: [],
-        stages: [],
-        capabilities: [],
+        recipeCount: 0,
+      },
+      pipeline: {
+        nodes: [],
+      },
+      layers: [],
+      recipes: [],
+      selectedLayerId: "",
+      layerDetail: {
+        id: "",
+        kind: "",
+        schema: "",
+        description: "",
+      },
+      selectedRecipeId: "",
+      recipeDetail: {
+        id: "",
+        kind: "",
+        kindLabel: "",
+        from: "",
+        to: "",
+        summary: "",
+        constrainedWhenText: "",
+        containerCapability: "",
+        fallbackCapability: "",
+        fromLayer: { id: "", kind: "", schema: "", description: "" },
+        toLayer: { id: "", kind: "", schema: "", description: "" },
+        ruleGroups: [],
+        templates: [],
+        runtimeRules: [],
+        runtimeCapabilities: [],
       },
       validation: {
         status: "unknown",
+        level: "unknown",
+        summary: "",
         errors: [],
         warnings: [],
         errorsText: "",
@@ -136,6 +163,8 @@ test("loadProfile marks repo sample entries as read-only and seeds the editor bu
   assert.equal(opRecord(result?.ops, "console.profile").readonly, true);
   assert.equal(typeof opRecord(result?.ops, "console.editor").bundleText, "string");
   assert.match(String(opRecord(result?.ops, "console.editor").status), /read-only/i);
+  assert.equal(opValue(result?.ops, "console.selectedLayerId"), sampleProfileCatalog[0].artifact.payload.layers[0].id);
+  assert.equal(opValue(result?.ops, "console.selectedRecipeId"), sampleProfileCatalog[0].artifact.payload.recipes[0].id);
 });
 
 test("$init hydrates the console catalog from localStorage on first load", async () => {
@@ -280,6 +309,41 @@ test("deleteLocalProfile removes the stored local profile and clears the selecti
   assert.equal(storage.getItem("gik.console.profileBundles.v1"), "{}");
   assert.equal(opValue(result?.ops, "console.selectedId"), "");
   assert.match(String(opRecord(result?.ops, "console.editor").status), /Deleted local profile/);
+});
+
+test("selectLayer and selectRecipe update the focused detail models", async () => {
+  const storage = new MemoryStorage();
+  Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
+
+  const sample = sampleProfileCatalog[0];
+  const state = createState();
+  setPath(state, "console.selectedId", sample.artifact.payload.id);
+  setPath(state, "console.selectedLayerId", sample.artifact.payload.layers[0].id);
+  setPath(state, "console.selectedRecipeId", sample.artifact.payload.recipes[0].id);
+
+  const selectedLayer = sample.artifact.payload.layers[1].id;
+  const layerResult = await consoleEffects.selectLayer({
+    get: (path) => getPath(state, path),
+    set: (path, value) => ({ op: "set", path, value }),
+    args: {},
+    payload: { id: selectedLayer },
+    store: { get: (path: string) => getPath(state, path) } as never,
+  });
+
+  assert.equal(opValue(layerResult?.ops, "console.selectedLayerId"), selectedLayer);
+  assert.equal(opRecord(layerResult?.ops, "console.layerDetail").id, selectedLayer);
+
+  const selectedRecipe = sample.artifact.payload.recipes[1].id;
+  const recipeResult = await consoleEffects.selectRecipe({
+    get: (path) => getPath(state, path),
+    set: (path, value) => ({ op: "set", path, value }),
+    args: {},
+    payload: { id: selectedRecipe },
+    store: { get: (path: string) => getPath(state, path) } as never,
+  });
+
+  assert.equal(opValue(recipeResult?.ops, "console.selectedRecipeId"), selectedRecipe);
+  assert.equal(opRecord(recipeResult?.ops, "console.recipeDetail").id, selectedRecipe);
 });
 
 test("configure preview for live-cards emits the frontend editable-table kind end-to-end", () => {
