@@ -7,6 +7,9 @@ const providerReactiveStateModel = fileURLToPath(
 const profilePackage = fileURLToPath(
   new URL("./packages/profile/src/index.ts", import.meta.url)
 );
+const profileGenuiPackage = fileURLToPath(
+  new URL("./packages/profile-genui/src/index.ts", import.meta.url)
+);
 const providerConsequenceGraph = fileURLToPath(
   new URL("./packages/provider-consequence-graph/src/index.ts", import.meta.url)
 );
@@ -46,6 +49,7 @@ export default defineWorkspace([
     resolve: {
       alias: {
         "@gik/profile": profilePackage,
+        "@gik/profile-genui": profileGenuiPackage,
       },
     },
     test: {
@@ -55,6 +59,12 @@ export default defineWorkspace([
     },
   },
   {
+    resolve: {
+      alias: {
+        "@gik/profile": profilePackage,
+        "@gik/profile-genui": profileGenuiPackage,
+      },
+    },
     test: {
       name: "providers",
       environment: "node",
@@ -72,6 +82,7 @@ export default defineWorkspace([
     resolve: {
       alias: {
         "@gik/profile": profilePackage,
+        "@gik/profile-genui": profileGenuiPackage,
         "@gik/provider-reactive-state-model": providerReactiveStateModel,
         "@gik/provider-consequence-graph": providerConsequenceGraph,
         "@gik/provider-exploratory-graph": providerExploratoryGraph,

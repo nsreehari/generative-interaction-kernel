@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import type { Json, PatchOp } from "@gik/kernel";
-import { createProfileBundle, stringifyProfileBundle } from "@gik/profile";
+import { createProfileBundle, stringifyProfileBundle } from "@gik/profile-genui";
 import { buildProfilePreviewBundle, consoleEffects } from "./store";
 import { sampleProfileCatalog } from "../../profiles/registry";
 

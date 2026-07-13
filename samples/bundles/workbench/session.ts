@@ -17,19 +17,18 @@ import {
   type DocumentPayload,
   type TraceEvent,
 } from "@gik/kernel";
-import { recipeForKinds, type ResolvedProfile } from "@gik/profile";
+import { recipeForKinds, type ResolvedProfile } from "@gik/profile-genui";
 import { GenUIController } from "@gik/react";
 import {
-  applyPresentationEdits,
-  emptyEdits,
   lowerPresentation,
   planPresentationWithRecipe,
-  type ProfileIdentity,
   type InteractionSpec,
   type PresentationContext,
   type PresentationEdits,
   type PresentationSpec,
 } from "../../../interaction/src/index";
+import { applyPresentationEdits, emptyEdits } from "./projection_views/libs/edits";
+import type { ProfileIdentity } from "./projection_views/libs/authoring";
 import { DEMO_MANIFEST, demoDataFor, seedState } from "./bundles/demo/demo";
 
 export interface Session {

@@ -1,7 +1,7 @@
 import React from "react";
 import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
 import type { Json } from "@gik/kernel";
-import { loadProfile, type LoweringRecipeArtifact, type ProfileArtifact } from "@gik/profile";
+import { loadProfile, type LoweringRecipeArtifact, type ProfileArtifact } from "@gik/profile-genui";
 import { readProps, type ProjectionView } from "@gik/react";
 
 import {

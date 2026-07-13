@@ -9,7 +9,7 @@
 // pipeline (interaction -> presentation -> UI) re-runs per step and the guest re-renders, with no
 // special-casing anywhere downstream.
 
-import type { AuthoredSession } from "../../../interaction/src/index";
+import type { AuthoredSession } from "./projection_views/libs/authoring";
 import agentPlaylist from "./agent-playlist.json";
 
 /** The one capability the agent needs: emit a GIK event. GenUIController and GIKClient both satisfy it. */

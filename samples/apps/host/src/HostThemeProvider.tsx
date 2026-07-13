@@ -104,6 +104,25 @@ const HOST_THEME_CSS = `
 .gx-host .gx-property-label { font-size: var(--fontSizeBase100); color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
 .gx-host .gx-property-value { font-size: var(--fontSizeBase300); font-weight: var(--fontWeightSemibold, 600); }
 
+.gx-host .gx-maplist { display: flex; flex-direction: column; }
+.gx-host .gx-maplist-head,
+.gx-host .gx-maplist-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: var(--spacingHorizontalL); align-items: center; }
+.gx-host .gx-maplist-head { font-size: var(--fontSizeBase100); color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; padding-bottom: var(--spacingVerticalXS); border-bottom: 1px solid var(--line); }
+.gx-host .gx-maplist-row { padding: var(--spacingVerticalS) 0; border-bottom: 1px solid var(--line); }
+.gx-host .gx-maplist-row:last-child { border-bottom: none; }
+.gx-host .gx-maplist-from { font-size: var(--fontSizeBase300); color: var(--muted); }
+.gx-host .gx-maplist-to { font-size: var(--fontSizeBase300); font-weight: var(--fontWeightSemibold, 600); }
+.gx-host .gx-maplist-arrow { color: var(--muted); font-size: var(--fontSizeBase300); }
+
+.gx-host .gx-vocab { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--spacingHorizontalM); align-items: start; }
+.gx-host .gx-vocab-group { border: 1px solid var(--line); border-radius: 8px; padding: var(--spacingVerticalM) var(--spacingHorizontalM); background: var(--gx-subtle, rgba(127, 127, 127, 0.04)); }
+.gx-host .gx-vocab-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: var(--spacingVerticalS); }
+.gx-host .gx-vocab-label { font-size: var(--fontSizeBase100); color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: var(--fontWeightSemibold, 600); }
+.gx-host .gx-vocab-note { font-size: var(--fontSizeBase100); color: var(--muted); font-style: italic; }
+.gx-host .gx-vocab-terms { display: flex; flex-wrap: wrap; gap: var(--spacingHorizontalXS); }
+.gx-host .gx-vocab-term { font-family: var(--fontFamilyMonospace, monospace); font-size: var(--fontSizeBase200); background: var(--gx-card-bg, rgba(127, 127, 127, 0.12)); border: 1px solid var(--line); border-radius: 4px; padding: 2px 7px; }
+.gx-host .gx-vocab-empty { color: var(--muted); }
+
 .gx-host .gx-list { list-style: none; margin: 0; padding: 0; }
 .gx-host .gx-list-row {
   display: flex;

@@ -64,11 +64,6 @@ export function validatePresentationSpec(spec: unknown): asserts spec is Present
   }
 }
 
-/** Non-throwing variant: returns true when the artifact is a structurally valid Presentation DSL. */
-export function isValidPresentationSpec(spec: unknown): spec is PresentationSpec {
-  return validateFn(spec) as boolean;
-}
-
 export function validateProfileArtifact(artifact: unknown): asserts artifact is ProfileArtifact {
   if (!validateProfileFn(artifact)) {
     const detail = (validateProfileFn.errors ?? [])
@@ -76,10 +71,6 @@ export function validateProfileArtifact(artifact: unknown): asserts artifact is 
       .join("; ");
     throw new ProfileValidationError(`Invalid profile artifact: ${detail}`, validateProfileFn.errors);
   }
-}
-
-export function isValidProfileArtifact(artifact: unknown): artifact is ProfileArtifact {
-  return validateProfileFn(artifact) as boolean;
 }
 
 export function validateLoweringRecipeArtifact(
@@ -94,10 +85,6 @@ export function validateLoweringRecipeArtifact(
       validateLoweringRecipeFn.errors
     );
   }
-}
-
-export function isValidLoweringRecipeArtifact(artifact: unknown): artifact is LoweringRecipeArtifact {
-  return validateLoweringRecipeFn(artifact) as boolean;
 }
 
 export function lintLoweringRecipeArtifact(

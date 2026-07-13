@@ -2,7 +2,7 @@ import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import type { Json } from "../../../kernel/src/index";
-import { loadProfile, type LoweringRecipeArtifact, type ProfileArtifact } from "@gik/profile";
+import { loadProfile, type LoweringRecipeArtifact, type ProfileArtifact } from "@gik/profile-genui";
 import { StepOrchestrator } from "../../step-orchestrator/src/step-orchestrator";
 import { createProfileAuthoringRegistry, summarizeProfileArtifacts } from "../src/profile-authoring";
 import liveCardsProfileJson from "../../../samples/profiles/live-cards/profile.json" with { type: "json" };

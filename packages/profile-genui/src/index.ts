@@ -1,0 +1,37 @@
+// @gik/profile-genui — the GenUI profile *flavor*: the concrete layer-kind vocabulary
+// (interaction / presentation / runtime-document), the `genui-profile` kind, the two lowering
+// recipe shapes and their schema/lint, the stage executors, and the full pipeline runner. It
+// builds on the generic kind *mechanism* in @gik/profile.
+
+export * from "../../../interaction/src/profile";
+export {
+  loadProfile,
+  lintLoweringRecipeArtifact,
+  validateLoweringRecipeArtifact,
+  validateProfileArtifact,
+  validatePresentationSpec,
+  isValidPresentationSpec,
+  presentationSchema,
+  layerSchema,
+  profileSchema,
+  loweringRecipeSchema,
+  PresentationValidationError,
+  ProfileValidationError,
+  LoweringRecipeValidationError,
+} from "../../../interaction/src/schema";
+export {
+  lowerPresentation,
+  compileInteraction,
+  traceProfile,
+  type ProfileStageTrace,
+  type StageValue,
+} from "../../../interaction/src/lowering";
+export {
+  PROFILE_BUNDLE_FORMAT,
+  createProfileBundle,
+  loadProfileBundle,
+  parseProfileBundleJson,
+  stringifyProfileBundle,
+  validateProfileBundle,
+  type ProfileArtifactBundle,
+} from "./bundle";

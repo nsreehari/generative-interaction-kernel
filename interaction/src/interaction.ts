@@ -162,16 +162,6 @@ export const interactionTaxonomy: Record<InteractionKind, Facet[]> = {
   ],
 };
 
-/** The full facet descriptors for an interaction kind. */
-export function facetsOf(kind: InteractionKind): Facet[] {
-  return interactionTaxonomy[kind];
-}
-
-/** Only the required facets of an interaction kind (never dropped by the compiler). */
-export function requiredFacets(kind: InteractionKind): Facet[] {
-  return interactionTaxonomy[kind].filter((f) => f.required);
-}
-
 /**
  * Resolve a spec's facets as full descriptors. Explicit `capabilities` override the
  * taxonomy: names that match a known facet keep their role/required; unknown names become
@@ -185,9 +175,4 @@ export function resolveFacets(spec: InteractionSpec): Facet[] {
     );
   }
   return interactionTaxonomy[spec.interaction];
-}
-
-/** Resolve the facet NAMES (presentation regions) for a spec. */
-export function facetsFor(spec: InteractionSpec): string[] {
-  return resolveFacets(spec).map((f) => f.name);
 }

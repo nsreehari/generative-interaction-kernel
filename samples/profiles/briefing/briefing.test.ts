@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import { compileInteraction, type InteractionSpec } from "../../../interaction/src/index";
-import { loadProfile } from "@gik/profile";
+import { loadProfile } from "@gik/profile-genui";
 import briefingProfileJson from "./profile.json" with { type: "json" };
 import briefingInteractionRecipeJson from "./interaction-to-presentation.recipe.json" with { type: "json" };
 import briefingRuntimeRecipeJson from "./presentation-to-runtime.recipe.json" with { type: "json" };

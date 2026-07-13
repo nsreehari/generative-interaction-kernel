@@ -9,13 +9,13 @@
 
 import { type Json, type Patch, type ResolvedNode, type TraceEvent } from "@gik/kernel";
 import {
-  emptyEdits,
-  type AuthoredSession,
   type InteractionKind,
   type InteractionSpec,
   type PresentationContext,
   type PresentationEdits,
 } from "../../../interaction/src/index";
+import { emptyEdits } from "./projection_views/libs/edits";
+import type { AuthoredSession } from "./projection_views/libs/authoring";
 import { exportBundle } from "./export";
 import type { Session } from "./session";
 

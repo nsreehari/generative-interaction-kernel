@@ -516,6 +516,80 @@ function Property({ node }: ProjectionViewProps) {
   );
 }
 
+// A list of directional mappings ("when → then"), used to make a lowering step legible: each row
+// reads left-to-right as input → output (e.g. `role = timeline → timeline`). Reads `rows` of
+// `{ from, to }`; optional `fromLabel`/`toLabel` render a column caption header.
+function MapList({ node }: ProjectionViewProps) {
+  const p = readProps(node);
+  const rows = p.list<Record<string, unknown>>("rows");
+  const fromLabel = p.str("fromLabel");
+  const toLabel = p.str("toLabel");
+  const emptyText = p.str("emptyText", "Nothing to map.");
+  if (rows.length === 0) {
+    return <p className="gx-note gx-note-muted">{emptyText}</p>;
+  }
+  return (
+    <div className="gx-maplist">
+      {fromLabel || toLabel ? (
+        <div className="gx-maplist-head">
+          <span className="gx-maplist-from">{fromLabel}</span>
+          <span className="gx-maplist-arrow" aria-hidden="true" />
+          <span className="gx-maplist-to">{toLabel}</span>
+        </div>
+      ) : null}
+      {rows.map((row, index) => {
+        const r = row as Record<string, unknown>;
+        return (
+          <div className="gx-maplist-row" key={String(r.id ?? index)}>
+            <span className="gx-maplist-from">{String(r.from ?? "")}</span>
+            <span className="gx-maplist-arrow" aria-hidden="true">→</span>
+            <span className="gx-maplist-to">{String(r.to ?? "") || "—"}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// A read-only catalog of a layer's closed grammar: `groups` of `{ label, note, terms[] }`, each
+// term shown as a static chip. Unlike `chips`, nothing here is removable — it documents the fixed
+// vocabulary a layer speaks (interaction kinds, roles, capabilities), not an editable selection.
+function Vocabulary({ node }: ProjectionViewProps) {
+  const p = readProps(node);
+  const groups = p.list<Record<string, unknown>>("groups");
+  const emptyText = p.str("emptyText", "No vocabulary for this layer.");
+  if (groups.length === 0) {
+    return <p className="gx-note gx-note-muted">{emptyText}</p>;
+  }
+  return (
+    <div className="gx-vocab">
+      {groups.map((group, index) => {
+        const g = group as Record<string, unknown>;
+        const terms = Array.isArray(g.terms) ? (g.terms as unknown[]) : [];
+        return (
+          <div className="gx-vocab-group" key={String(g.id ?? index)}>
+            <div className="gx-vocab-head">
+              <span className="gx-vocab-label">{String(g.label ?? "")}</span>
+              {g.note ? <span className="gx-vocab-note">{String(g.note)}</span> : null}
+            </div>
+            <div className="gx-vocab-terms">
+              {terms.length === 0 ? (
+                <span className="gx-vocab-empty">—</span>
+              ) : (
+                terms.map((term, termIndex) => (
+                  <code className="gx-vocab-term" key={termIndex}>
+                    {String(term)}
+                  </code>
+                ))
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function Narrative({ node }: ProjectionViewProps) {
   const p = readProps(node);
   const text = p.str("text") || p.str("value");
@@ -1559,6 +1633,8 @@ export const FLOOR_COMPONENTS: Record<string, ProjectionView> = {
   metric: Metric,
   narrative: Narrative,
   property: Property,
+  maplist: MapList,
+  vocabulary: Vocabulary,
   codeBlock: CodeBlock,
   chart: ChartPrimitive,
   markdown: Markdown,

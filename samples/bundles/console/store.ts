@@ -23,12 +23,14 @@ import {
   validateProfileArtifact,
   type PresentationToRuntimeRecipe,
   type ProfileArtifactBundle,
-} from "@gik/profile";
+} from "@gik/profile-genui";
 import {
   compileInteraction,
   type InteractionKind,
   type InteractionSpec,
   type PresentationContext,
+  type ProfileStageTrace,
+  traceProfile,
 } from "../../../interaction/src/index";
 import { sampleProfileCatalog, type SampleProfileEntry } from "../../profiles/registry";
 import { demoDataFor } from "../workbench/bundles/demo/demo";
@@ -152,6 +154,8 @@ const EMPTY_PROFILE = {
   readonly: true,
   layerCount: 0,
   recipeCount: 0,
+  summary: "",
+  legend: "",
 };
 
 const EMPTY_PIPELINE = {
@@ -165,6 +169,11 @@ const EMPTY_LAYER_DETAIL = {
   description: "",
   role: "",
   stageLabel: "",
+  vocabulary: { groups: [] as Array<{ id: string; label: string; note: string; terms: string[] }> },
+  loweringExamples: {
+    columns: [] as Array<{ key: string; label: string }>,
+    rows: [] as Array<{ id: string; input: string; context: string; output: string }>,
+  },
   outgoingRecipe: {
     id: "",
     kind: "",
@@ -206,6 +215,7 @@ const EMPTY_RECIPE_DETAIL = {
   kind: "",
   kindLabel: "",
   purpose: "",
+  tagline: "",
   from: "",
   to: "",
   summary: "",
@@ -214,8 +224,14 @@ const EMPTY_RECIPE_DETAIL = {
   fallbackCapability: "",
   fromLayer: { ...EMPTY_LAYER_DETAIL },
   toLayer: { ...EMPTY_LAYER_DETAIL },
+  regionRuleFromLabel: "",
+  regionRuleToLabel: "",
+  regionRuleMappings: [] as Array<{ id: string; from: string; to: string }>,
   ruleGroups: [],
   templates: [],
+  templateMappings: [],
+  regionMappings: [],
+  capabilityMappings: [],
   runtimeRules: [],
   runtimeCapabilities: [],
 };
@@ -431,6 +447,7 @@ function emptyRecipeDetailState() {
     kind: "",
     kindLabel: "",
     purpose: "",
+    tagline: "",
     from: "",
     to: "",
     summary: "",
@@ -439,8 +456,14 @@ function emptyRecipeDetailState() {
     fallbackCapability: "",
     fromLayer: layerDetailView(undefined),
     toLayer: layerDetailView(undefined),
+    regionRuleFromLabel: "",
+    regionRuleToLabel: "",
+    regionRuleMappings: [] as Array<{ id: string; from: string; to: string }>,
     ruleGroups: [],
     templates: [],
+    templateMappings: [],
+    regionMappings: [],
+    capabilityMappings: [],
     runtimeRules: [],
     runtimeCapabilities: [],
   };
@@ -449,6 +472,46 @@ function emptyRecipeDetailState() {
 function ruleMatchSummary(match: Record<string, unknown>): string {
   const entries = Object.entries(match ?? {});
   return entries.length === 0 ? "default" : entries.map(([key, value]) => `${key}=${String(value)}`).join(", ");
+}
+
+// A single, kind-agnostic view of a recipe's per-region rules: each rule as a `match -> emit` row,
+// plus the human labels for the two columns. This is the one place that knows the shape of each
+// recipe kind, so the UI can render "how each region is handled" for ANY non-terminal layer without
+// gating on a specific transition.
+function regionRuleView(recipe: LoweringRecipe): {
+  fromLabel: string;
+  toLabel: string;
+  mappings: Array<{ id: string; from: string; to: string }>;
+} {
+  if (recipe.from === "interaction" && recipe.to === "presentation") {
+    const typed = recipe as InteractionToPresentationRecipe;
+    return {
+      fromLabel: "A region whose role is",
+      toLabel: "Is presented as",
+      mappings: (typed.regionRules ?? []).map((rule, index) => ({
+        id: `rgn-${index}`,
+        from: mappingWhen(rule.match as Record<string, unknown>),
+        to: String((rule.emit as Record<string, unknown>).presentation ?? ""),
+      })),
+    };
+  }
+  const typed = recipe as PresentationToRuntimeRecipe;
+  const mappings = typed.rules.map((rule, index) => ({
+    id: `cap-${index}`,
+    from: mappingWhen(rule.match as Record<string, unknown>),
+    to: String(rule.emit.capability ?? ""),
+  }));
+  if (typed.fallback?.capability) {
+    mappings.push({ id: "cap-fallback", from: "Otherwise", to: String(typed.fallback.capability) });
+  }
+  return { fromLabel: "A region / role", toLabel: "Renders as", mappings };
+}
+
+// Reads a rule's match condition as the left-hand side of a lowering mapping ("when …"). An empty
+// match is the catch-all, shown as "Otherwise" so the row reads like a fallback branch.
+function mappingWhen(match: Record<string, unknown> | undefined): string {
+  const entries = Object.entries(match ?? {});
+  return entries.length === 0 ? "Otherwise" : entries.map(([key, value]) => `${key} = ${String(value)}`).join(", ");
 }
 
 function recipeTypeLabel(recipe: LoweringRecipe): string {
@@ -473,7 +536,7 @@ function pipelineState(entry: CatalogEntry) {
     nodes: entry.artifact.payload.layers.map((layer, index) => ({
       id: layer.id,
       label: layer.id,
-      subtitle: layer.kind,
+      subtitle: layerRoleLabel(layer.kind),
       meta: layer.schema ?? `layer ${index + 1}`,
       description: layer.description ?? "",
       requires: incomingByNode.get(layer.id) ?? [],
@@ -486,6 +549,7 @@ function layerRows(entry: CatalogEntry) {
   return entry.artifact.payload.layers.map((layer) => ({
     id: layer.id,
     kind: layer.kind,
+    roleLabel: layerRoleLabel(layer.kind),
     schema: layer.schema ?? "",
     description: layer.description ?? "",
   }));
@@ -514,8 +578,24 @@ const LAYER_ROLES: Record<string, string> = {
     "The final, validated UI document — the concrete kernel capabilities a renderer actually draws.",
 };
 
+const LAYER_ROLE_LABELS: Record<string, string> = {
+  interaction: "The user's goal",
+  presentation: "The layout plan",
+  "runtime-document": "The rendered UI",
+};
+
 function layerRole(kind: string): string {
   return LAYER_ROLES[kind] ?? "A stage in this profile's lowering pipeline.";
+}
+
+function layerRoleLabel(kind: string): string {
+  return LAYER_ROLE_LABELS[kind] ?? "Pipeline stage";
+}
+
+function recipeTagline(kind: string): string {
+  if (kind === "interaction-to-presentation") return "decides the layout";
+  if (kind === "presentation-to-runtime") return "picks the components";
+  return "";
 }
 
 function recipePurpose(kind: string): string {
@@ -545,14 +625,185 @@ function layerStageLabel(entry: CatalogEntry, layerId: string): string {
   return `${position} · stage ${index + 1} of ${total}`;
 }
 
+// Distinct, non-empty term list preserving first-seen order.
+function distinctTerms(values: Array<string | undefined>): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const value of values) {
+    const term = (value ?? "").trim();
+    if (term && !seen.has(term)) {
+      seen.add(term);
+      out.push(term);
+    }
+  }
+  return out;
+}
+
+// The closed grammar each layer speaks, DERIVED FROM THE LOADED PROFILE DATA (no imported
+// taxonomy): the interaction layer's terms come from its outgoing recipe's rule matches, the
+// presentation layer's from what that recipe emits, and the runtime layer's from the concrete
+// capabilities its incoming recipe binds. So the panel always reflects the profile on screen.
+function layerVocabulary(entry: CatalogEntry, layerId: string) {
+  const layer = entry.artifact.payload.layers.find((candidate) => candidate.id === layerId);
+  const groups: Array<{ id: string; label: string; note: string; terms: string[] }> = [];
+  if (!layer) return { groups };
+
+  const outgoingRef = entry.artifact.payload.recipes.find((candidate) => candidate.from === layerId);
+  const incomingRef = entry.artifact.payload.recipes.find((candidate) => candidate.to === layerId);
+  const outgoing = outgoingRef ? entry.profile.recipesById[outgoingRef.id] : undefined;
+  const incoming = incomingRef ? entry.profile.recipesById[incomingRef.id] : undefined;
+
+  if (layer.kind === "interaction" && outgoing) {
+    const rec = outgoing as InteractionToPresentationRecipe;
+    const interactions = distinctTerms(
+      rec.templateRules.map((rule) => String((rule.match as Record<string, unknown>).interaction ?? "")),
+    );
+    const roles = distinctTerms(
+      (rec.regionRules ?? []).map((rule) => String((rule.match as Record<string, unknown>).role ?? "")),
+    );
+    const contextKeys = distinctTerms(
+      rec.templateRules.flatMap((rule) => Object.keys(rule.match ?? {}).filter((key) => key !== "interaction")),
+    );
+    groups.push({ id: "interactions", label: "Interactions", note: "the goal patterns this layer routes on", terms: interactions });
+    groups.push({ id: "roles", label: "Facet roles", note: "the semantic role a region can carry", terms: roles });
+    groups.push({ id: "context", label: "Context signals", note: "situational keys that can steer the layout", terms: contextKeys });
+  } else if (layer.kind === "presentation" && incoming) {
+    const rec = incoming as InteractionToPresentationRecipe;
+    const layouts = distinctTerms(rec.templateRules.map((rule) => String((rule.emit as Record<string, unknown>).template ?? "")));
+    const presentations = distinctTerms((rec.regionRules ?? []).map((rule) => String((rule.emit as Record<string, unknown>).presentation ?? "")));
+    groups.push({ id: "layouts", label: "Layouts", note: "arrangements this layer can produce", terms: layouts });
+    groups.push({ id: "presentations", label: "Region presentations", note: "how a region can be shown", terms: presentations });
+  } else if (layer.kind === "runtime-document" && incoming) {
+    const rec = incoming as PresentationToRuntimeRecipe;
+    const capabilities = distinctTerms([
+      rec.container?.capability,
+      ...rec.rules.map((rule) => String(rule.emit.capability ?? "")),
+      rec.fallback?.capability,
+    ]);
+    groups.push({ id: "capabilities", label: "UI capabilities", note: "the concrete components a renderer can draw", terms: capabilities });
+  }
+
+  return { groups: groups.filter((group) => group.terms.length > 0) };
+}
+
+// Representative context surfaces to vary in the worked examples. We run every surface and then
+// collapse identical outcomes, so a row that reads "any surface" means context doesn't change that
+// interaction's result, while a split into specific surfaces reveals exactly where context matters.
+const EXAMPLE_SURFACES: Array<PresentationContext["surface"]> = ["desktop", "web", "mobile", "copilot", "teams"];
+const EXAMPLE_LIMIT = 10;
+
+// A compact, shape-based summary of ANY stage value, so the worked-examples table can render the
+// input and output of any layer transition without knowing which kind it is: a runtime document
+// shows its root capability + the components it contains, a presentation spec shows its layout +
+// regions, an interaction spec shows its goal.
+function summarizeStageValue(value: unknown): string {
+  if (value && typeof value === "object") {
+    const v = value as Record<string, unknown>;
+    if (v.root && typeof v.root === "object") {
+      const root = v.root as { capability?: string; edges?: { children?: Array<{ capability?: string }> } };
+      const children = (root.edges?.children ?? [])
+        .map((child) => String(child.capability ?? ""))
+        .filter(Boolean);
+      return children.length ? `${root.capability} — ${children.join(", ")}` : String(root.capability ?? "");
+    }
+    if ("layout" in v && Array.isArray(v.regions)) {
+      const regions = (v.regions as Array<{ name?: string }>)
+        .map((region) => String(region.name ?? ""))
+        .filter(Boolean);
+      return regions.length ? `${v.layout} — ${regions.join(", ")}` : String(v.layout ?? "");
+    }
+    if (typeof v.interaction === "string") return v.interaction;
+  }
+  return String(value ?? "");
+}
+
+// Worked examples: the FIRST N real results of running this profile over sample inputs, read from
+// the stage where THIS layer lowers into the next one. Each row is genuine engine output (via
+// traceProfile), not an authored rule row — so it shows what the profile actually produces for a
+// concrete input. Fully generic: it works for any layer that has an outgoing stage (interaction,
+// presentation, or a future layer kind), and a terminal layer simply yields no rows.
+function loweringExamples(entry: CatalogEntry, layerId: string) {
+  const empty = {
+    columns: [] as Array<{ key: string; label: string }>,
+    rows: [] as Array<{ id: string; input: string; context: string; output: string }>,
+  };
+  const profile = entry.profile;
+  // The stage where this layer lowers into the next one. Terminal layers have none.
+  const stage = profile.stages.find((candidate) => candidate.fromLayer.id === layerId);
+  if (!stage) return empty;
+
+  // The pipeline's only external input is an interaction goal, so sample inputs come from the very
+  // first stage's rules — the same seed set for every layer. Each seed is run through the whole
+  // profile; we then read the input/output of THIS layer's stage from the trace.
+  const firstStage = profile.stages[0];
+  const seedRecipe =
+    firstStage && firstStage.fromLayer.kind === "interaction"
+      ? (firstStage.recipe as InteractionToPresentationRecipe)
+      : undefined;
+  const interactions = seedRecipe
+    ? distinctTerms(seedRecipe.templateRules.map((rule) => String((rule.match as Record<string, unknown>).interaction ?? "")))
+    : [];
+  if (interactions.length === 0) return empty;
+
+  const columns = [
+    { key: "input", label: `From ${stage.fromLayer.kind}` },
+    { key: "context", label: "Context (surface)" },
+    { key: "output", label: `→ ${stage.toLayer.kind}` },
+  ];
+
+  // Run every seed × surface, then group by identical (input, output) outcome so a row that reads
+  // "any surface" means context doesn't change that result, while a split reveals where it does.
+  const byOutcome = new Map<string, { surfaces: string[]; input: string; output: string }>();
+  for (const interaction of interactions) {
+    for (const surface of EXAMPLE_SURFACES) {
+      try {
+        const trace: ProfileStageTrace[] = traceProfile(
+          profile,
+          { interaction: interaction as InteractionKind, subject: "incident" },
+          { surface },
+        );
+        const step = trace.find((candidate) => candidate.fromLayerId === layerId);
+        if (!step) continue;
+        const input = summarizeStageValue(step.input);
+        const output = summarizeStageValue(step.output);
+        const key = `${input}|${output}`;
+        const existing = byOutcome.get(key);
+        if (existing) {
+          if (surface && !existing.surfaces.includes(surface)) existing.surfaces.push(surface);
+        } else {
+          byOutcome.set(key, { surfaces: surface ? [surface] : [], input, output });
+        }
+      } catch {
+        // Skip any seed the profile cannot resolve rather than failing the whole panel.
+      }
+    }
+  }
+
+  const rows: Array<{ id: string; input: string; context: string; output: string }> = [];
+  for (const [key, outcome] of byOutcome) {
+    if (rows.length >= EXAMPLE_LIMIT) break;
+    rows.push({
+      id: key,
+      input: outcome.input,
+      context: outcome.surfaces.length === EXAMPLE_SURFACES.length ? "any surface" : outcome.surfaces.join(", "),
+      output: outcome.output,
+    });
+  }
+  return { columns, rows };
+}
+
 function layerDetailState(entry: CatalogEntry, layerId: string) {
   const layer = entry.artifact.payload.layers.find((candidate) => candidate.id === layerId);
   const outgoingRef = entry.artifact.payload.recipes.find((candidate) => candidate.from === layerId);
   const incomingRef = entry.artifact.payload.recipes.find((candidate) => candidate.to === layerId);
   return {
     ...layerDetailView(layer),
-    role: layer ? layerRole(layer.kind) : "",
+    // Data-first: a layer's own `description` from the profile JSON wins; the kind-keyed sentence is
+    // only a fallback for profiles that don't author one (and a generic line for unknown kinds).
+    role: layer ? (layer.description?.trim() || layerRole(layer.kind)) : "",
     stageLabel: layer ? layerStageLabel(entry, layerId) : "",
+    vocabulary: layer ? layerVocabulary(entry, layerId) : { groups: [] },
+    loweringExamples: layer ? loweringExamples(entry, layerId) : { columns: [], rows: [] },
     outgoingRecipe: outgoingRef ? recipeDetailState(entry, outgoingRef.id) : emptyRecipeDetailState(),
     incomingRecipe: incomingRef ? recipeDetailState(entry, incomingRef.id) : emptyRecipeDetailState(),
   };
@@ -584,12 +835,16 @@ function recipeDetailState(entry: CatalogEntry, recipeId: string) {
   const recipe = entry.profile.recipesById[ref.id];
   const fromLayer = entry.profile.layersById[ref.from];
   const toLayer = entry.profile.layersById[ref.to];
+  const region = regionRuleView(recipe);
   const base = {
     id: ref.id,
     from: ref.from,
     to: ref.to,
     fromLayer: layerDetailView(fromLayer),
     toLayer: layerDetailView(toLayer),
+    regionRuleFromLabel: region.fromLabel,
+    regionRuleToLabel: region.toLabel,
+    regionRuleMappings: region.mappings,
   };
 
   if (recipe.from === "interaction" && recipe.to === "presentation") {
@@ -597,7 +852,8 @@ function recipeDetailState(entry: CatalogEntry, recipeId: string) {
     return {
       ...base,
       kind: "interaction-to-presentation",
-      kindLabel: "Interaction -> Presentation",
+      kindLabel: "Interaction → Presentation",
+      tagline: recipeTagline("interaction-to-presentation"),
       purpose: recipePurpose("interaction-to-presentation"),
       summary: `${typed.templates.length} templates and ${typed.templateRules.length} template rules`,
       constrainedWhenText: typed.constrainedWhen?.length ? typed.constrainedWhen.map(ruleMatchSummary).join("; ") : "",
@@ -618,6 +874,17 @@ function recipeDetailState(entry: CatalogEntry, recipeId: string) {
         arrangement: template.arrangement,
         maxRegions: template.maxRegions == null ? "" : String(template.maxRegions),
       })),
+      templateMappings: typed.templateRules.map((rule, index) => ({
+        id: `tpl-${index}`,
+        from: mappingWhen(rule.match as Record<string, unknown>),
+        to: String((rule.emit as Record<string, unknown>).template ?? ""),
+      })),
+      regionMappings: (typed.regionRules ?? []).map((rule, index) => ({
+        id: `rgn-${index}`,
+        from: mappingWhen(rule.match as Record<string, unknown>),
+        to: String((rule.emit as Record<string, unknown>).presentation ?? ""),
+      })),
+      capabilityMappings: [],
       runtimeRules: [],
       runtimeCapabilities: [],
     };
@@ -627,7 +894,8 @@ function recipeDetailState(entry: CatalogEntry, recipeId: string) {
   return {
     ...base,
     kind: "presentation-to-runtime",
-    kindLabel: "Presentation -> Runtime",
+    kindLabel: "Presentation → Runtime",
+    tagline: recipeTagline("presentation-to-runtime"),
     purpose: recipePurpose("presentation-to-runtime"),
     summary: `${typed.rules.length} runtime rules`,
     constrainedWhenText: "",
@@ -635,6 +903,19 @@ function recipeDetailState(entry: CatalogEntry, recipeId: string) {
     fallbackCapability: String(typed.fallback?.capability ?? ""),
     ruleGroups: [],
     templates: [],
+    templateMappings: [],
+    regionMappings: [],
+    capabilityMappings: (() => {
+      const rows = typed.rules.map((rule, index) => ({
+        id: `cap-${index}`,
+        from: mappingWhen(rule.match as Record<string, unknown>),
+        to: String(rule.emit.capability ?? ""),
+      }));
+      if (typed.fallback?.capability) {
+        rows.push({ id: "cap-fallback", from: "Otherwise", to: String(typed.fallback.capability) });
+      }
+      return rows;
+    })(),
     runtimeRules: typed.rules.map((rule, index) => ({
       id: `rule-${index + 1}`,
       match: ruleMatchSummary(rule.match as Record<string, unknown>),
@@ -648,6 +929,10 @@ function recipeDetailState(entry: CatalogEntry, recipeId: string) {
 
 function profileState(entry: CatalogEntry) {
   const artifact = entry.artifact.payload;
+  const kindById = new Map(artifact.layers.map((layer) => [layer.id, layer.kind]));
+  const legend = orderedLayerIds(entry)
+    .map((id) => layerRoleLabel(kindById.get(id) ?? ""))
+    .join("  →  ");
   return {
     id: artifact.id,
     kind: artifact.kind,
@@ -656,6 +941,8 @@ function profileState(entry: CatalogEntry) {
     readonly: entry.readonly,
     layerCount: artifact.layers.length,
     recipeCount: artifact.recipes.length,
+    summary: `This profile lowers a user's goal into a rendered UI across ${artifact.layers.length} stages, joined by ${artifact.recipes.length} lowering ${artifact.recipes.length === 1 ? "recipe" : "recipes"}.`,
+    legend,
   };
 }
 

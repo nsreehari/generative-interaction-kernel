@@ -10,16 +10,18 @@ import {
   type ProjectionViewProps,
 } from "@gik/react";
 import {
+  type PresentationEdits,
+  type RegionDisclosure,
+  type RegionPriority,
+} from "../../../../../interaction/src/index";
+import {
   emptyEdits,
   moveRegion,
   reorderRegion,
   setRegionDisclosure,
   setRegionPriority,
   toggleRegion,
-  type PresentationEdits,
-  type RegionDisclosure,
-  type RegionPriority,
-} from "../../../../../interaction/src/index";
+} from "../../projection_views/libs/edits";
 
 interface Option {
   value: string;

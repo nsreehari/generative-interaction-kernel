@@ -3,7 +3,7 @@ import {
   type LoweringRecipeArtifact,
   type ProfileArtifact,
   type ResolvedProfile,
-} from "@gik/profile";
+} from "@gik/profile-genui";
 import briefingProfileJson from "./briefing/profile.json" with { type: "json" };
 import briefingInteractionRecipeJson from "./briefing/interaction-to-presentation.recipe.json" with { type: "json" };
 import briefingRuntimeRecipeJson from "./briefing/presentation-to-runtime.recipe.json" with { type: "json" };

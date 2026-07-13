@@ -10,8 +10,6 @@
 
 export * from "./interaction";
 export * from "./presentation";
-export * from "./edits";
-export * from "./authoring";
 export * from "./lowering";
 export * from "./schema";
 export * from "./profile";

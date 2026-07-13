@@ -54,6 +54,24 @@ export type RegionPriority = "primary" | "secondary" | "tertiary";
 export type RegionDisclosure = "always" | "collapsed" | "on-demand";
 
 /**
+ * The override deltas an authoring session imposes on a planned presentation. Every field is a
+ * *sparse* override: an absent entry means "defer to the planner". `disabled` never drops a facet
+ * the interaction marks required; `order` lists the region names to lead with (any region not named
+ * keeps its planner-relative order behind them). This is the platform's sanctioned override channel
+ * (agents produce it via AgentFace intent); the reducers that apply it live with their consumer.
+ */
+export type PresentationEdits = {
+  /** region names the user hid (required facets are ignored — they can't be dropped). */
+  disabled: string[];
+  /** per-region priority overrides (region name -> priority). */
+  priority: Record<string, RegionPriority>;
+  /** per-region disclosure overrides (region name -> disclosure). */
+  disclosure: Record<string, RegionDisclosure>;
+  /** the leading region order the user pinned (unlisted regions follow in planner order). */
+  order: string[];
+};
+
+/**
  * One region of the Presentation DSL: a facet placed into the experience with a hierarchy and
  * a disclosure decision, plus an optional concrete presentation-type hint. This is the
  * renderer-agnostic, validatable, per-region unit a planner (deterministic or AI) produces.
