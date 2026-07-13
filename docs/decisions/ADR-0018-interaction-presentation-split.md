@@ -45,6 +45,12 @@ Full span: `Domain -> Interaction (L3) -> [compiler + context] -> Presentation (
 It composes through the kernel's existing `pipeline`/`lowerToDocument` seam (ADR-0016) — no new
 grammar, no new wire message.
 
+> **Update (2026-07-13):** The fixed `Interaction (L3) -> Presentation (L4)` numbering is
+> superseded by ADR-0038's layers/recipes model. A profile declares **N layers connected by N-1
+> lowering recipes**; `interaction -> presentation` is now just one authored `(layer, recipe)`
+> pair in the default GenUI profile, not a fixed platform level. Adding, removing, or reordering
+> layers is a profile authoring choice rather than a change to a hard-coded L3/L4 stack.
+
 ## Why this matters for AI
 
 Users say "help me understand why this alert fired," not "render a table." The AI naturally emits at

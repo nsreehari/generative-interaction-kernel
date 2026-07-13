@@ -61,7 +61,11 @@ not "render a two-column table." Keeping the UI DSL public leaves the platform o
 - No kernel or protocol change: this is a boundary/ownership decision realized by the layer
   packaging (`interaction/` owns L3–L4 lowering; `kernel/` owns L5's document + runtime).
 
-> **Update (2026-07-13):** The L3–L4 framing is superseded by ADR-0038's layers/recipes model,
-> and the `interaction/` source tree has been retired. Its generic profile machinery now lives in
+> **Update (2026-07-13):** The fixed **L3/L4/L5** layer numbering is superseded by ADR-0038's
+> layers/recipes model. A profile is now an ordered set of **N declarative layers connected by
+> N-1 lowering recipes** — the number and identity of layers is authored per profile, not a fixed
+> Interaction/Presentation/Runtime stack. `Interaction -> Presentation -> Runtime` is just the
+> default GenUI profile's particular choice of layers, not a platform-wide invariant. The
+> `interaction/` source tree has also been retired: its generic profile machinery now lives in
 > `@gik/profile` (`packages/profile/`) and the GenUI flavor in `@gik/profile-genui`
 > (`packages/profile-genui/`). `kernel/` still owns the document + runtime.
