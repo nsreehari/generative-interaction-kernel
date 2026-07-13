@@ -1,7 +1,16 @@
 import React from "react";
 import { Handle } from "@xyflow/react";
 import { InfiniteCanvas, type InfiniteCanvasNodeDescriptor } from "@gik/component-infinite-canvas";
+import { loadProfileBundle, parseProfileBundleJson } from "@gik/profile";
 import { readProps, type ProjectionView, type ProjectionViewProps } from "@gik/react";
+import {
+  traceProfile,
+  type InteractionKind,
+  type InteractionSpec,
+  type PresentationContext,
+  type ProfileStageTrace,
+} from "@gik/profile-genui";
+import { resolveProfileTemplate, resolveProfileTemplateResource } from "../../../profiles/template-resolver";
 
 function ProfilePipelineCanvas({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
@@ -121,8 +130,146 @@ function ProfilePipelineCanvas({ node, emit }: ProjectionViewProps) {
   );
 }
 
+// Rebuild a runnable profile from the selected bundle's JSON text (console.artifacts.bundleText).
+// Mirrors the store's proven load path (parse -> loadProfileBundle) so the leaves can run the SAME
+// engine (traceProfile) the store uses, but live and driven by in-component selections.
+function reconstructProfile(bundleText: string) {
+  return loadProfileBundle(
+    parseProfileBundleJson(bundleText),
+    resolveProfileTemplateResource,
+    resolveProfileTemplate
+  );
+}
+
+function prettyJson(value: unknown): string {
+  return JSON.stringify(value, null, 2);
+}
+
+// Preview tab: run the WHOLE profile for the current inputs and show every stage's output as a
+// vertical waterfall — the literal "watch it lower" view. Read-only compute; the final rendered
+// document is still mounted separately via ui:embed.
+function PipelineRunner({ node }: ProjectionViewProps) {
+  const p = readProps(node);
+  const bundleText = p.str("bundleText");
+  const interaction = p.str("interaction", "investigate");
+  const subject = p.str("subject", "incident");
+  const surface = p.str("surface", "desktop");
+  const data = p.obj<Record<string, string>>("data", {});
+
+  const result = React.useMemo(() => {
+    if (!bundleText.trim()) return { stages: [] as ProfileStageTrace[], spec: null as InteractionSpec | null, error: "" };
+    try {
+      const profile = reconstructProfile(bundleText);
+      const spec: InteractionSpec = {
+        interaction: interaction as InteractionKind,
+        subject: subject.trim() || "incident",
+        ...(Object.keys(data).length > 0 ? { data } : {}),
+      };
+      const stages = traceProfile(profile, spec, { surface: String(surface) });
+      return { stages, spec, error: "" };
+    } catch (err) {
+      return { stages: [] as ProfileStageTrace[], spec: null as InteractionSpec | null, error: err instanceof Error ? err.message : String(err) };
+    }
+  }, [bundleText, interaction, subject, surface, JSON.stringify(data)]);
+
+  if (!bundleText.trim()) return <p className="gx-muted">Select a profile to trace its lowering.</p>;
+  if (result.error) return <p className="gx-json-error">{result.error}</p>;
+
+  return (
+    <div className="gx-col">
+      <div className="gx-panel-inset">
+        <span className="gx-property-label">Input · interaction goal</span>
+        <div className="gx-code">
+          <pre>{prettyJson(result.spec)}</pre>
+        </div>
+      </div>
+      {result.stages.map((stage, index) => (
+        <div key={`${stage.fromLayerId}->${stage.toLayerId}`} className="gx-panel-inset">
+          <span className="gx-property-label">
+            Stage {index + 1} · {stage.fromKind} → {stage.toKind}
+          </span>
+          <div className="gx-code">
+            <pre>{prettyJson(stage.output)}</pre>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Layers tab: pick one interaction goal (the profile's real external inputs) and run the profile,
+// showing what the SELECTED layer lowers into for that seed — the interactive replacement for the
+// old static worked-examples table. Terminal layers (no outgoing stage) report so.
+function LoweringRecipeRunner({ node }: ProjectionViewProps) {
+  const p = readProps(node);
+  const bundleText = p.str("bundleText");
+  const layerId = p.str("layerId");
+  const subject = p.str("subject", "incident");
+  const surface = p.str("surface", "desktop");
+  const seeds = p.list<string>("seeds");
+  const [picked, setPicked] = React.useState("");
+  const activeSeed = picked && seeds.includes(picked) ? picked : seeds[0] ?? "";
+
+  const result = React.useMemo(() => {
+    if (!bundleText.trim() || !layerId || !activeSeed) return null;
+    try {
+      const profile = reconstructProfile(bundleText);
+      const trace = traceProfile(
+        profile,
+        { interaction: activeSeed as InteractionKind, subject: subject.trim() || "incident" },
+        { surface: String(surface) },
+      );
+      const step = trace.find((candidate) => candidate.fromLayerId === layerId);
+      if (!step) return { error: "This layer is terminal for that goal — nothing lowers out of it." };
+      return { error: "", fromKind: step.fromKind, toKind: step.toKind, input: step.input, output: step.output };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err) };
+    }
+  }, [bundleText, layerId, activeSeed, subject, surface]);
+
+  if (!bundleText.trim() || !layerId) return <p className="gx-muted">Select a layer to compute its lowering.</p>;
+  if (seeds.length === 0) return <p className="gx-muted">This profile has no interaction goals to run.</p>;
+
+  return (
+    <div className="gx-col">
+      <div className="gx-row">
+        {seeds.map((seed) => (
+          <button
+            key={seed}
+            type="button"
+            className={`gx-btn${seed === activeSeed ? " gx-btn-primary" : ""}`}
+            onClick={() => setPicked(seed)}
+          >
+            {seed}
+          </button>
+        ))}
+      </div>
+      {result?.error ? (
+        <p className="gx-json-error">{result.error}</p>
+      ) : result ? (
+        <div className="gx-col">
+          <div className="gx-panel-inset">
+            <span className="gx-property-label">Input · {result.fromKind}</span>
+            <div className="gx-code">
+              <pre>{prettyJson(result.input)}</pre>
+            </div>
+          </div>
+          <div className="gx-panel-inset">
+            <span className="gx-property-label">Output · {result.toKind}</span>
+            <div className="gx-code">
+              <pre>{prettyJson(result.output)}</pre>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 const projectionViews: Record<string, ProjectionView> = {
   "profile-pipeline-canvas": ProfilePipelineCanvas,
+  "pipeline-runner": PipelineRunner,
+  "lowering-recipe-runner": LoweringRecipeRunner,
 };
 
 export default projectionViews;

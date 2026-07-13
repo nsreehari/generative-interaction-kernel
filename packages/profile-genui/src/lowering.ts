@@ -12,50 +12,24 @@ import {
   type Lowering,
   type NodeOptions,
 } from "../../../kernel/src/index";
-import { planPresentationWithRecipe, type PresentationContext, type PresentationSpec } from "./presentation";
+import { planPresentationWithRecipe, type PresentationSpec } from "./presentation";
 import type {
   InteractionToPresentationRecipe,
   LoweringRecipe,
+  PresentationRuntimeFacts,
   PresentationToRuntimeRecipe,
-  RecipeMatch,
   ResolvedProfile,
   RuntimeNodeRecipeFields,
 } from "./profile";
-import { traceStages, type StageExecutor } from "../../profile/src/profile-core";
-import type { InteractionSpec } from "./interaction";
-
-function readToken(path: string, tokens: Record<string, unknown>): unknown {
-  return path.split(".").reduce<unknown>((current, segment) => {
-    if (current == null || typeof current !== "object") return undefined;
-    return (current as Record<string, unknown>)[segment];
-  }, tokens);
-}
-
-function interpolateString(template: string, tokens: Record<string, unknown>): string {
-  return template.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_full, key: string) => {
-    const value = readToken(key.trim(), tokens);
-    return value == null ? "" : String(value);
-  });
-}
-
-function resolveTemplatedValue(value: unknown, tokens: Record<string, unknown>): unknown {
-  if (typeof value === "string") {
-    // An exact single-token string resolves to the token's native JSON value (number, boolean,
-    // array, object, string) so typed recipe props survive; a token embedded in surrounding text
-    // interpolates to a string.
-    const exact = value.match(/^\{\{\s*([^}]+?)\s*\}\}$/);
-    if (exact) return readToken(exact[1].trim(), tokens);
-    return interpolateString(value, tokens);
-  }
-  if (Array.isArray(value)) return value.map((item) => resolveTemplatedValue(item, tokens));
-  if (value && typeof value === "object") {
-    const entries = Object.entries(value as Record<string, unknown>)
-      .map(([key, entry]) => [key, resolveTemplatedValue(entry, tokens)] as const)
-      .filter(([, entry]) => entry !== undefined);
-    return Object.fromEntries(entries);
-  }
-  return value;
-}
+import {
+  matchesFacts,
+  traceStages,
+  resolveTemplatedValue,
+  type LayerContext,
+  type StageExecutor,
+} from "../../profile/src/profile-core";
+import { presentationRuntimeProgramEmit, presentationRuntimeProgramRules } from "./profile";
+import type { InteractionSpec, InteractionTaxonomy } from "./interaction";
 
 function buildRegionTokens(p: PresentationSpec, region: PresentationSpec["regions"][number]): Record<string, unknown> {
   return {
@@ -93,10 +67,6 @@ function buildContainerTokens(p: PresentationSpec): Record<string, unknown> {
   };
 }
 
-function matchesRecipe(match: RecipeMatch, facts: RecipeMatch): boolean {
-  return Object.entries(match).every(([key, value]) => facts[key as keyof RecipeMatch] === value);
-}
-
 function runtimeFieldsToNodeOptions(
   source: RuntimeNodeRecipeFields | undefined,
   tokens: Record<string, unknown>
@@ -123,16 +93,27 @@ export function lowerPresentation(
 ): Lowering<PresentationSpec> {
   return (p: PresentationSpec): DocumentPayload => {
     const src = p.source;
+    const containerFacts: PresentationRuntimeFacts = {
+      interaction: src.interaction,
+      subject: src.subject,
+      layout: p.layout,
+      arrangement: p.arrangement,
+    };
+    const container = presentationRuntimeProgramEmit(recipe, "container", containerFacts);
     const children: DocNode[] = p.regions.map((region) => {
-      const matchFacts: RecipeMatch = {
+      const matchFacts: PresentationRuntimeFacts = {
+        ...containerFacts,
         region: region.name,
         role: region.role,
         priority: region.priority,
         disclosure: region.disclosure,
         presentation: region.presentation,
       };
-      const matched = recipe.rules.find((rule) => matchesRecipe(rule.match, matchFacts))?.emit;
-      const fallback = recipe.fallback;
+      const regionRules = presentationRuntimeProgramRules(recipe, "region");
+      const fallback = [...regionRules].reverse().find((rule) => Object.keys(rule.match ?? {}).length === 0)?.emit;
+      const matched = regionRules
+        .filter((rule) => Object.keys(rule.match ?? {}).length > 0)
+        .find((rule) => matchesFacts(rule.match, matchFacts))?.emit;
       const capability = region.capability ?? matched?.capability ?? fallback?.capability ?? region.name;
       const tokens = buildRegionTokens(p, region);
       const fallbackOpts = runtimeFieldsToNodeOptions(fallback, tokens);
@@ -158,8 +139,8 @@ export function lowerPresentation(
       return node(capability, `${region.name}-region`, opts);
     });
     return {
-      root: node(recipe.container.capability, src.interaction, {
-        ...runtimeFieldsToNodeOptions(recipe.container, buildContainerTokens(p)),
+      root: node(container?.capability ?? src.interaction, src.interaction, {
+        ...runtimeFieldsToNodeOptions(container, buildContainerTokens(p)),
         children,
       }),
     };
@@ -175,11 +156,12 @@ export function lowerPresentation(
 export type StageValue = InteractionSpec | PresentationSpec | DocumentPayload;
 
 const STAGE_EXECUTORS: Record<string, StageExecutor<LoweringRecipe>> = {
-  "interaction->presentation": (recipe, input, ctx) =>
+  "interaction->presentation": (recipe, input, ctx, profile) =>
     planPresentationWithRecipe(
       input as InteractionSpec,
-      ctx as PresentationContext,
-      recipe as InteractionToPresentationRecipe
+      ctx,
+      recipe as InteractionToPresentationRecipe,
+      profile.resources.taxonomy as unknown as InteractionTaxonomy | undefined
     ),
   "presentation->runtime-document": (recipe, input) =>
     lowerPresentation(recipe as PresentationToRuntimeRecipe)(input as PresentationSpec),
@@ -203,14 +185,14 @@ export interface ProfileStageTrace {
 export function traceProfile(
   profile: ResolvedProfile,
   spec: InteractionSpec,
-  ctx: PresentationContext
+  ctx: LayerContext
 ): ProfileStageTrace[] {
   return traceStages(profile, spec, ctx, STAGE_EXECUTORS) as ProfileStageTrace[];
 }
 
 export function compileInteraction(
   spec: InteractionSpec,
-  ctx: PresentationContext,
+  ctx: LayerContext,
   profile: ResolvedProfile
 ): DocumentPayload {
   const trace = traceProfile(profile, spec, ctx);

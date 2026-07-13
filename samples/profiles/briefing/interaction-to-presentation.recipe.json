@@ -8,24 +8,16 @@
     "templates": [
       { "name": "briefing", "arrangement": "narrative", "maxRegions": 6 }
     ],
-    "templateRules": [
-      { "match": {}, "emit": { "template": "briefing", "layout": "briefing" } }
-    ],
-    "orderRules": [
-      { "match": { "required": true }, "emit": { "rank": 0 } },
-      { "match": {}, "emit": { "rank": 1 } }
-    ],
-    "priorityRules": [
-      { "match": { "index": 0 }, "emit": { "priority": "primary" } },
-      { "match": { "required": true }, "emit": { "priority": "secondary" } },
-      { "match": {}, "emit": { "priority": "tertiary" } }
-    ],
-    "disclosureRules": [
-      { "match": { "priority": "primary" }, "emit": { "disclosure": "always" } },
-      { "match": {}, "emit": { "disclosure": "collapsed" } }
-    ],
-    "rationaleRules": [
-      { "match": {}, "emit": { "template": "briefing region {{region.role}} ({{region.priority}})" } }
+    "program": [
+      { "slot": "template", "match": {}, "emit": { "template": "briefing", "layout": "briefing" } },
+      { "slot": "rank", "match": { "required": true }, "emit": { "rank": 0 } },
+      { "slot": "rank", "match": {}, "emit": { "rank": 1 } },
+      { "slot": "priority", "match": { "index": 0 }, "emit": { "priority": "primary" } },
+      { "slot": "priority", "match": { "required": true }, "emit": { "priority": "secondary" } },
+      { "slot": "priority", "match": {}, "emit": { "priority": "tertiary" } },
+      { "slot": "disclosure", "match": { "priority": "primary" }, "emit": { "disclosure": "always" } },
+      { "slot": "disclosure", "match": {}, "emit": { "disclosure": "collapsed" } },
+      { "slot": "rationale", "match": {}, "emit": { "template": "briefing region {{region.role}} ({{region.priority}})" } }
     ],
     "cap": {
       "preserveRequired": true

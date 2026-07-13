@@ -1,7 +1,8 @@
 {
   "name": "@gik/profile-genui",
   "version": "0.1.0",
-  "description": "GenUI domain profile and lowering recipes for the Generative Interaction Kernel.",
+  "private": true,
+  "description": "Internal GenUI profile workspace for the Generative Interaction Kernel.",
   "license": "MIT",
   "author": "nsreehari",
   "keywords": [
@@ -35,12 +36,7 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
-  },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --sourcemap --clean --tsconfig tsconfig.json",
-    "prepack": "node ../../scripts/sync-public-docs.mjs packages/profile-genui"
+    "build": "tsup src/index.ts --format esm --dts --sourcemap --clean --tsconfig tsconfig.json"
   }
 }

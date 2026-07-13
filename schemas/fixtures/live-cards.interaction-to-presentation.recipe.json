@@ -20,48 +20,38 @@
       { "name": "dashboard", "arrangement": "dashboard" },
       { "name": "wizard", "arrangement": "wizard" }
     ],
-    "templateRules": [
-      { "match": { "interaction": "compare" }, "emit": { "template": "comparison", "layout": "comparison" } },
-      { "match": { "interaction": "monitor" }, "emit": { "template": "dashboard", "layout": "dashboard" } },
-      { "match": { "interaction": "create" }, "emit": { "template": "wizard", "layout": "wizard" } },
-      { "match": { "interaction": "configure" }, "emit": { "template": "wizard", "layout": "wizard" } },
-      { "match": { "surface": "copilot" }, "emit": { "template": "narrative", "layout": "narrative" } },
-      { "match": { "attention": "glanceable" }, "emit": { "template": "narrative", "layout": "narrative" } },
-      { "match": { "surface": "mobile" }, "emit": { "template": "stack", "layout": "stack" } },
-      { "match": { "space": "compact" }, "emit": { "template": "stack", "layout": "stack" } },
-      { "match": {}, "emit": { "template": "workspace", "layout": "{{interaction}}_workspace" } }
-    ],
-    "orderRules": [
-      { "match": { "required": true }, "emit": { "rank": 0 } },
-      { "match": {}, "emit": { "rank": 1 } }
-    ],
-    "priorityRules": [
-      { "match": { "index": 0 }, "emit": { "priority": "primary" } },
-      { "match": { "required": true }, "emit": { "priority": "secondary" } },
-      { "match": {}, "emit": { "priority": "tertiary" } }
-    ],
-    "disclosureRules": [
-      { "match": { "priority": "primary" }, "emit": { "disclosure": "always" } },
-      { "match": { "priority": "secondary", "expertise": "novice" }, "emit": { "disclosure": "always" } },
-      { "match": { "priority": "tertiary", "expertise": "novice", "constrained": false }, "emit": { "disclosure": "always" } },
-      { "match": { "priority": "secondary", "expertise": "expert", "constrained": true }, "emit": { "disclosure": "on-demand" } },
-      { "match": { "priority": "secondary", "expertise": "expert" }, "emit": { "disclosure": "collapsed" } },
-      { "match": { "priority": "tertiary", "expertise": "expert" }, "emit": { "disclosure": "on-demand" } },
-      { "match": { "priority": "secondary", "constrained": true }, "emit": { "disclosure": "collapsed" } },
-      { "match": { "priority": "secondary" }, "emit": { "disclosure": "always" } },
-      { "match": { "priority": "tertiary", "constrained": true }, "emit": { "disclosure": "on-demand" } },
-      { "match": { "priority": "tertiary" }, "emit": { "disclosure": "collapsed" } }
-    ],
-    "regionRules": [
-      { "match": { "role": "graph" }, "emit": { "presentation": "relationship_graph" } },
-      { "match": { "role": "timeline" }, "emit": { "presentation": "timeline" } },
-      { "match": { "role": "comparison" }, "emit": { "presentation": "diff" } },
-      { "match": { "role": "metrics" }, "emit": { "presentation": "metric_grid" } },
-      { "match": { "role": "narrative" }, "emit": { "presentation": "narrative" } },
-      { "match": { "role": "form" }, "emit": { "presentation": "form" } }
-    ],
-    "rationaleRules": [
-      { "match": {}, "emit": { "template": "role={{region.role}}, priority={{region.priority}}, disclosure={{region.disclosure}}" } }
+    "program": [
+      { "slot": "template", "match": { "interaction": "compare" }, "emit": { "template": "comparison", "layout": "comparison" } },
+      { "slot": "template", "match": { "interaction": "monitor" }, "emit": { "template": "dashboard", "layout": "dashboard" } },
+      { "slot": "template", "match": { "interaction": "create" }, "emit": { "template": "wizard", "layout": "wizard" } },
+      { "slot": "template", "match": { "interaction": "configure" }, "emit": { "template": "wizard", "layout": "wizard" } },
+      { "slot": "template", "match": { "surface": "copilot" }, "emit": { "template": "narrative", "layout": "narrative" } },
+      { "slot": "template", "match": { "attention": "glanceable" }, "emit": { "template": "narrative", "layout": "narrative" } },
+      { "slot": "template", "match": { "surface": "mobile" }, "emit": { "template": "stack", "layout": "stack" } },
+      { "slot": "template", "match": { "space": "compact" }, "emit": { "template": "stack", "layout": "stack" } },
+      { "slot": "template", "match": {}, "emit": { "template": "workspace", "layout": "{{interaction}}_workspace" } },
+      { "slot": "rank", "match": { "required": true }, "emit": { "rank": 0 } },
+      { "slot": "rank", "match": {}, "emit": { "rank": 1 } },
+      { "slot": "priority", "match": { "index": 0 }, "emit": { "priority": "primary" } },
+      { "slot": "priority", "match": { "required": true }, "emit": { "priority": "secondary" } },
+      { "slot": "priority", "match": {}, "emit": { "priority": "tertiary" } },
+      { "slot": "disclosure", "match": { "priority": "primary" }, "emit": { "disclosure": "always" } },
+      { "slot": "disclosure", "match": { "priority": "secondary", "expertise": "novice" }, "emit": { "disclosure": "always" } },
+      { "slot": "disclosure", "match": { "priority": "tertiary", "expertise": "novice", "constrained": false }, "emit": { "disclosure": "always" } },
+      { "slot": "disclosure", "match": { "priority": "secondary", "expertise": "expert", "constrained": true }, "emit": { "disclosure": "on-demand" } },
+      { "slot": "disclosure", "match": { "priority": "secondary", "expertise": "expert" }, "emit": { "disclosure": "collapsed" } },
+      { "slot": "disclosure", "match": { "priority": "tertiary", "expertise": "expert" }, "emit": { "disclosure": "on-demand" } },
+      { "slot": "disclosure", "match": { "priority": "secondary", "constrained": true }, "emit": { "disclosure": "collapsed" } },
+      { "slot": "disclosure", "match": { "priority": "secondary" }, "emit": { "disclosure": "always" } },
+      { "slot": "disclosure", "match": { "priority": "tertiary", "constrained": true }, "emit": { "disclosure": "on-demand" } },
+      { "slot": "disclosure", "match": { "priority": "tertiary" }, "emit": { "disclosure": "collapsed" } },
+      { "slot": "presentation", "match": { "role": "graph" }, "emit": { "presentation": "relationship_graph" } },
+      { "slot": "presentation", "match": { "role": "timeline" }, "emit": { "presentation": "timeline" } },
+      { "slot": "presentation", "match": { "role": "comparison" }, "emit": { "presentation": "diff" } },
+      { "slot": "presentation", "match": { "role": "metrics" }, "emit": { "presentation": "metric_grid" } },
+      { "slot": "presentation", "match": { "role": "narrative" }, "emit": { "presentation": "narrative" } },
+      { "slot": "presentation", "match": { "role": "form" }, "emit": { "presentation": "form" } },
+      { "slot": "rationale", "match": {}, "emit": { "template": "role={{region.role}}, priority={{region.priority}}, disclosure={{region.disclosure}}" } }
     ],
     "cap": {
       "preserveRequired": true

@@ -1,49 +1,62 @@
 import {
   loadProfile,
-  type LoweringRecipeArtifact,
   type ProfileArtifact,
+  type RecipeArtifactBase,
   type ResolvedProfile,
-} from "@gik/profile-genui";
+} from "@gik/profile";
 import briefingProfileJson from "./briefing/profile.json" with { type: "json" };
 import briefingInteractionRecipeJson from "./briefing/interaction-to-presentation.recipe.json" with { type: "json" };
 import briefingRuntimeRecipeJson from "./briefing/presentation-to-runtime.recipe.json" with { type: "json" };
 import liveCardsProfileJson from "./live-cards/profile.json" with { type: "json" };
 import liveCardsInteractionRecipeJson from "./live-cards/interaction-to-presentation.recipe.json" with { type: "json" };
 import liveCardsRuntimeRecipeJson from "./live-cards/presentation-to-runtime.recipe.json" with { type: "json" };
+import { resolveProfileTemplate, resolveProfileTemplateResource } from "./template-resolver";
 
-function recipeArtifacts(...artifacts: readonly unknown[]): readonly LoweringRecipeArtifact[] {
-  return artifacts as unknown as readonly LoweringRecipeArtifact[];
+function recipeArtifacts(...artifacts: readonly unknown[]): readonly RecipeArtifactBase[] {
+  return artifacts as unknown as readonly RecipeArtifactBase[];
 }
 
-const liveCardsProfileArtifact = liveCardsProfileJson as ProfileArtifact;
+export const liveCardsProfileArtifact = liveCardsProfileJson as ProfileArtifact;
 const liveCardsRecipeArtifacts = recipeArtifacts(
   liveCardsInteractionRecipeJson,
   liveCardsRuntimeRecipeJson
 );
-const liveCardsProfile = loadProfile(liveCardsProfileArtifact, liveCardsRecipeArtifacts);
 
-const briefingProfileArtifact = briefingProfileJson as ProfileArtifact;
+export const briefingProfileArtifact = briefingProfileJson as ProfileArtifact;
 const briefingRecipeArtifacts = recipeArtifacts(
   briefingInteractionRecipeJson,
   briefingRuntimeRecipeJson
 );
-const briefingProfile = loadProfile(briefingProfileArtifact, briefingRecipeArtifacts);
+export { liveCardsRecipeArtifacts, briefingRecipeArtifacts };
+const liveCardsResolvedProfile = loadProfile(
+  liveCardsProfileArtifact,
+  liveCardsRecipeArtifacts,
+  resolveProfileTemplateResource,
+  resolveProfileTemplate
+);
+
+const briefingResolvedProfile = loadProfile(
+  briefingProfileArtifact,
+  briefingRecipeArtifacts,
+  resolveProfileTemplateResource,
+  resolveProfileTemplate
+);
 
 export interface SampleProfileEntry {
   artifact: ProfileArtifact;
   profile: ResolvedProfile;
-  recipeArtifacts: readonly LoweringRecipeArtifact[];
+  recipeArtifacts: readonly RecipeArtifactBase[];
 }
 
 export const sampleProfileCatalog: readonly SampleProfileEntry[] = [
   {
     artifact: liveCardsProfileArtifact,
-    profile: liveCardsProfile,
+    profile: liveCardsResolvedProfile,
     recipeArtifacts: liveCardsRecipeArtifacts,
   },
   {
     artifact: briefingProfileArtifact,
-    profile: briefingProfile,
+    profile: briefingResolvedProfile,
     recipeArtifacts: briefingRecipeArtifacts,
   },
 ] as const;

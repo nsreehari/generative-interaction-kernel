@@ -5,8 +5,36 @@
     "id": "live-cards",
     "kind": "genui-profile",
     "version": "0.1.0",
+    "profile-template": "genui",
     "layers": [
-      { "id": "interaction", "kind": "interaction" },
+      {
+        "id": "interaction",
+        "kind": "interaction",
+        "input": {
+          "properties": {
+            "interaction": {
+              "title": "Interaction",
+              "default": "investigate",
+              "enum": [
+                "investigate", "compare", "review", "approve", "monitor", "explore",
+                "create", "configure", "collaborate", "plan", "learn", "decide"
+              ]
+            },
+            "subject": {
+              "title": "Subject",
+              "default": "incident",
+              "placeholder": "incident"
+            },
+            "data": {
+              "title": "Input data (optional)",
+              "type": "json",
+              "rows": 6,
+              "placeholder": "{ }"
+            }
+          },
+          "required": ["interaction", "subject"]
+        }
+      },
       { "id": "presentation", "kind": "presentation" },
       { "id": "runtime-document", "kind": "runtime-document" }
     ],

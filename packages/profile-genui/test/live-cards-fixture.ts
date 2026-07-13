@@ -6,7 +6,8 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { loadProfile, type LoweringRecipeArtifact, type ProfileArtifact } from "../src/index";
+import { loadProfile, type ProfileArtifact, type RecipeArtifactBase } from "../../profile/src/index";
+import { resolveProfileTemplate, resolveProfileTemplateResource } from "../../../samples/profiles/template-resolver";
 
 const fx = (name: string) =>
   JSON.parse(
@@ -15,8 +16,13 @@ const fx = (name: string) =>
 
 export const liveCardsProfileArtifact = fx("live-cards.profile.json") as ProfileArtifact;
 export const liveCardsRecipeArtifacts = [
-  fx("live-cards.interaction-to-presentation.recipe.json") as LoweringRecipeArtifact,
-  fx("live-cards.presentation-to-runtime.recipe.json") as LoweringRecipeArtifact,
+  fx("live-cards.interaction-to-presentation.recipe.json") as RecipeArtifactBase,
+  fx("live-cards.presentation-to-runtime.recipe.json") as RecipeArtifactBase,
 ];
 
-export const liveCardsProfile = loadProfile(liveCardsProfileArtifact, liveCardsRecipeArtifacts);
+export const liveCardsProfile = loadProfile(
+  liveCardsProfileArtifact,
+  liveCardsRecipeArtifacts,
+  resolveProfileTemplateResource,
+  resolveProfileTemplate
+);

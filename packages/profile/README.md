@@ -5,14 +5,18 @@ profile is a typed pipeline of kinded layers connected by recipes; each stage's 
 the `${fromKind}->${toKind}` pair and executed through an open executor registry (`traceStages`).
 
 The concrete GenUI kind *values* (interaction / presentation / runtime-document), their recipe shapes,
-and their executors live in [`@gik/profile-genui`](https://www.npmjs.com/package/@gik/profile-genui).
+and their executors currently live in the internal `packages/profile-genui` workspace.
+
+This package also owns the generic profile artifact validators, bundle helpers, and template-aware
+profile loader (`validateProfileArtifact`, `validateLoweringRecipeArtifact`, `loadProfile`,
+`createProfileBundle`, `loadProfileBundle`).
 
 ```bash
 npm install @gik/profile
 ```
 
 ```ts
-import { traceStages } from "@gik/profile";
+import { loadProfile, traceStages } from "@gik/profile";
 ```
 
 ## Documentation

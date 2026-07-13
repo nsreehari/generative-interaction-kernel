@@ -15,20 +15,10 @@ import type { Action } from "../../../kernel/src/index";
 // from a kernel "capability" (a UI component kind like board/metric/table). We keep the
 // user-facing DSL field named `capabilities` but resolve it internally as `facets`.
 
-/** The interaction taxonomy — the platform's owned vocabulary of human goal patterns. */
-export type InteractionKind =
-  | "investigate"
-  | "compare"
-  | "review"
-  | "approve"
-  | "monitor"
-  | "explore"
-  | "create"
-  | "configure"
-  | "collaborate"
-  | "plan"
-  | "learn"
-  | "decide";
+/** The interaction taxonomy — the platform's owned vocabulary of human goal patterns. A `string`
+ *  (not a closed union): the concrete vocabulary is data (the taxonomy resource / a profile's
+ *  layer-input enum), so agents and profiles can extend it without a code change. */
+export type InteractionKind = string;
 
 /** A statement of interaction intent — the equivalent of a React component, one level up. */
 export interface InteractionFacetView {
@@ -64,20 +54,9 @@ export interface InteractionSpec {
  * A facet's semantic display ROLE — what kind of thing it shows, still not a component.
  * A lowering recipe maps a role or region to one of a profile's kernel capabilities, so a
  * profile can stay data-driven instead of hard-coding facet-by-facet mappings in TypeScript.
+ * A `string`: the authoritative role vocabulary is the `role` enum in presentation.schema.json.
  */
-export type FacetRole =
-  | "summary"
-  | "collection"
-  | "detail"
-  | "timeline"
-  | "graph"
-  | "narrative"
-  | "metrics"
-  | "status"
-  | "form"
-  | "actions"
-  | "comparison"
-  | "recommendation";
+export type FacetRole = string;
 
 /** One facet of an interaction: a named part, its display role, and whether it is core. */
 export interface Facet {
@@ -89,13 +68,12 @@ export interface Facet {
   required: boolean;
 }
 
-/**
- * What each interaction is *made of*. This is the platform "already knowing" that an
- * investigation needs context/evidence/timeline/relationships/actions — the app never
- * chooses grid/panel/tree; it only states the interaction, and the platform owns the rest.
- * `required` marks the facets an interaction cannot be itself without.
- */
-export const interactionTaxonomy: Record<InteractionKind, Facet[]> = {
+/** The interaction taxonomy as a shared, referenceable data artifact. A profile family reads a
+ *  taxonomy (this bundled default, or a profile-declared `taxonomy` resource) instead of the engine
+ *  hard-coding one, so the vocabulary lives in data, not TypeScript. */
+export type InteractionTaxonomy = Record<string, Facet[]>;
+
+const DEFAULT_INTERACTION_TAXONOMY: InteractionTaxonomy = {
   investigate: [
     { name: "context", role: "narrative", required: true },
     { name: "evidence", role: "collection", required: true },
@@ -163,16 +141,32 @@ export const interactionTaxonomy: Record<InteractionKind, Facet[]> = {
 };
 
 /**
+ * What each interaction is *made of*. This is the platform "already knowing" that an
+ * investigation needs context/evidence/timeline/relationships/actions — the app never
+ * chooses grid/panel/tree; it only states the interaction, and the platform owns the rest.
+ * `required` marks the facets an interaction cannot be itself without. The concrete table is data
+ * in the `profile-templates/genui/` bouquet; code does not import those files directly. This
+ * exported fallback keeps non-profile callers working until every path resolves taxonomy through a
+ * profile/template resource.
+ */
+export const interactionTaxonomy = DEFAULT_INTERACTION_TAXONOMY;
+
+/**
  * Resolve a spec's facets as full descriptors. Explicit `capabilities` override the
  * taxonomy: names that match a known facet keep their role/required; unknown names become
- * required `detail` facets.
+ * required `detail` facets. `taxonomy` defaults to the bundled {@link interactionTaxonomy}; pass a
+ * profile-supplied taxonomy resource to drive facets entirely from data.
  */
-export function resolveFacets(spec: InteractionSpec): Facet[] {
+export function resolveFacets(
+  spec: InteractionSpec,
+  taxonomy: InteractionTaxonomy = interactionTaxonomy
+): Facet[] {
+  const facets = taxonomy[spec.interaction] ?? [];
   if (spec.capabilities?.length) {
-    const byName = new Map(interactionTaxonomy[spec.interaction].map((f) => [f.name, f]));
+    const byName = new Map(facets.map((f) => [f.name, f]));
     return spec.capabilities.map(
       (name) => byName.get(name) ?? { name, role: "detail" as FacetRole, required: true }
     );
   }
-  return interactionTaxonomy[spec.interaction];
+  return facets;
 }

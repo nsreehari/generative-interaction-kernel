@@ -7,11 +7,22 @@
 
 import type { Json } from "../../../kernel/src/index";
 
+/** A generic per-run context bag threaded through every profile stage. Profile families may
+ *  document preferred keys, but the core treats context as plain data rather than a hardcoded,
+ *  layer-specific structure. */
+export type LayerContext = Record<string, unknown>;
+
 export interface LayerDefinition {
   id: string;
   kind: string;
   schema?: string;
   description?: string;
+  /** Optional declarative authoring surface for THIS layer's input: a `ui:form` FormSchema
+   *  (`{ properties, required?, validators? }`, data only) describing the fields a human fills to
+   *  produce a value for the stage that leaves this layer. The core never interprets it; a host
+   *  renders it into a form. Distinct from `kind` (which binds the layer to its transform code):
+   *  this is the human authoring surface, `kind` is the engine routing key. */
+  input?: Record<string, Json>;
 }
 
 export interface LoweringRecipeRef {
@@ -20,12 +31,33 @@ export interface LoweringRecipeRef {
   to: string;
 }
 
+/** A declared reference to a named data resource a profile depends on. Either the data is carried
+ *  inline in the profile (`inline`), or it is named by a family/host-resolvable reference (`$ref`,
+ *  e.g. `"genui:taxonomy"`) that a {@link ResourceResolver} turns into data. Data only — the core
+ *  never interprets a resource's shape; a profile family decides what each named resource means. */
+export type ResourceRef = { inline: Json } | { $ref: string };
+
+/** Resolves a profile resource `$ref` into its data. This is the ONE environment-specific seam of
+ *  the resource meta-loader: byte/module resolution (bundler import map, fetch, fs, a family's
+ *  built-in defaults) lives here, injected by the host or profile family, so the core stays pure. */
+export type ResourceResolver = (ref: string, name: string) => Json;
+
 export interface Profile {
   id: string;
   kind: string;
   version: string;
+  "profile-template"?: string;
   layers: LayerDefinition[];
   recipes: LoweringRecipeRef[];
+  /** Optional declarative authoring surface for the shared run-context bag threaded across all
+   *  layers. Data only (typically a `ui:form` FormSchema); the core never interprets it. */
+  context?: Record<string, Json>;
+  /** Optional named data resources this profile depends on (e.g. a `taxonomy`). Declared as data;
+   *  the generic resource meta-loader ({@link resolveResources}) resolves each into concrete JSON,
+   *  attaches it to {@link ResolvedProfile.resources}, and threads it into stage executors — so a
+   *  profile family reads pre-loaded data instead of importing it, and a profile can override a
+   *  family default by declaring its own. */
+  resources?: Record<string, ResourceRef>;
   /** Optional declarative authoring surface: the tools this profile projects from its layers and
    *  recipes. Data only — the core never interprets it; a face engine materializes it into tools. */
   authoring?: ProfileAuthoring;
@@ -85,6 +117,23 @@ export interface ProfileArtifact {
   payload: Profile;
 }
 
+export interface ProfileTemplate {
+  id: string;
+  profileKind?: string;
+  description?: string;
+  files?: Record<string, string>;
+  defaultResources?: Record<string, ResourceRef>;
+}
+
+export interface ProfileTemplateArtifact {
+  gik: "0.1";
+  type: "profile-template";
+  payload: ProfileTemplate;
+}
+
+/** Resolves a profile template id (e.g. `genui`) into its declarative template artifact. */
+export type ProfileTemplateResolver = (id: string) => ProfileTemplateArtifact;
+
 /** The minimal shape every lowering recipe must satisfy: an id and the two layer kinds it connects. */
 export interface RecipeBase {
   id: string;
@@ -111,6 +160,9 @@ export interface ResolvedProfile<TRecipe extends RecipeBase = RecipeBase> {
   recipesById: Record<string, TRecipe>;
   /** Ordered execution chain from the profile's source layer to its terminal layer. */
   stages: ResolvedProfileStage<TRecipe>[];
+  /** Named data resources resolved from the profile's `resources` declaration (empty when none).
+   *  Available to stage executors via the resolved profile they receive. */
+  resources: Record<string, Json>;
 }
 
 export interface RecipeLintWarning {
@@ -125,6 +177,48 @@ export interface RecipeLintWarning {
 }
 
 /**
+ * Merge a profile artifact with its referenced profile-template defaults. The profile remains the
+ * owner of its declared structure; template defaults currently flow only through resources, with
+ * profile-declared resources overriding template defaults by name.
+ */
+export function applyProfileTemplate(
+  artifact: ProfileArtifact,
+  resolveTemplate?: ProfileTemplateResolver
+): ProfileArtifact {
+  const rawPayload = (artifact as unknown as { payload?: Record<string, unknown> } | null)?.payload;
+  const templateId = typeof rawPayload?.["profile-template"] === "string" ? rawPayload["profile-template"] : undefined;
+  if (!templateId) return artifact;
+  if (!resolveTemplate) return artifact;
+
+  const template = resolveTemplate(templateId);
+  if (template.type !== "profile-template") {
+    throw new Error(`Profile template '${templateId}' must be a 'profile-template' artifact`);
+  }
+  if (template.payload.id !== templateId) {
+    throw new Error(
+      `Profile template resolver returned '${template.payload.id}' for requested template '${templateId}'`
+    );
+  }
+  if (template.payload.profileKind && template.payload.profileKind !== artifact.payload.kind) {
+    throw new Error(
+      `Profile '${artifact.payload.id}' kind '${artifact.payload.kind}' is incompatible with template '${templateId}' kind '${template.payload.profileKind}'`
+    );
+  }
+  const mergedResources = {
+    ...(template.payload.defaultResources ?? {}),
+    ...(artifact.payload.resources ?? {}),
+  };
+
+  return {
+    ...artifact,
+    payload: {
+      ...artifact.payload,
+      resources: Object.keys(mergedResources).length > 0 ? mergedResources : undefined,
+    },
+  };
+}
+
+/**
  * Resolve a profile artifact + its recipe artifacts into an ordered execution chain. The chain is
  * derived from the profile's declared layer graph — any number of layers connected by adjacent
  * lowering recipes — not a fixed pipeline. A profile of a different kind, or with extra layers,
@@ -132,7 +226,8 @@ export interface RecipeLintWarning {
  */
 export function resolveProfile<TRecipe extends RecipeBase>(
   artifact: ProfileArtifact,
-  recipeArtifacts: readonly RecipeArtifactBase<TRecipe>[]
+  recipeArtifacts: readonly RecipeArtifactBase<TRecipe>[],
+  resolveResource?: ResourceResolver
 ): ResolvedProfile<TRecipe> {
   const { id, layers, recipes } = artifact.payload;
   const layersById: Record<string, LayerDefinition> = Object.fromEntries(
@@ -180,7 +275,37 @@ export function resolveProfile<TRecipe extends RecipeBase>(
     throw new Error(`Profile '${id}' recipes do not form a single connected chain`);
   }
 
-  return { artifact, layersById, recipesById, stages };
+  const resources = resolveResources(artifact, resolveResource);
+  return { artifact, layersById, recipesById, stages, resources };
+}
+
+/**
+ * The generic resource meta-loader. Walks a profile's declared `resources`, turning each
+ * {@link ResourceRef} into concrete JSON: `inline` refs carry their own data; `$ref` refs are
+ * handed to the supplied {@link ResourceResolver} (the only environment-specific seam). Returns the
+ * resolved name→data map that gets attached to the {@link ResolvedProfile}. Profiles that declare
+ * no resources resolve to an empty map with no resolver required.
+ */
+export function resolveResources(
+  artifact: ProfileArtifact,
+  resolveResource?: ResourceResolver
+): Record<string, Json> {
+  const declared = artifact.payload.resources;
+  if (!declared) return {};
+  const out: Record<string, Json> = {};
+  for (const [name, ref] of Object.entries(declared)) {
+    if ("inline" in ref) {
+      out[name] = ref.inline;
+    } else {
+      if (!resolveResource) {
+        throw new Error(
+          `Profile '${artifact.payload.id}' resource '${name}' needs a resolver for $ref '${ref.$ref}'`
+        );
+      }
+      out[name] = resolveResource(ref.$ref, name);
+    }
+  }
+  return out;
 }
 
 /** Look up the recipe connecting two layer *kinds* in a resolved profile's chain. */
@@ -226,6 +351,159 @@ export function lintProfileArtifacts(
   return warnings;
 }
 
+// --- Generic sync template + match primitives ------------------------------------------------
+// Pure, domain-neutral helpers shared by profile-family lowering/planning code: dotted-path token
+// reads, `{{token}}` string interpolation, exact-token native-value resolution, and record-equality
+// matching over rule facts. No expression engine is involved — recipes stay data, and these
+// compile-time transforms are plain synchronous JavaScript (ADR-0039: platform JSONata is pure and
+// a single canonical engine version is kept; these primitives deliberately do not call it).
+
+/** A flat bag of facts a recipe rule's `match` is tested against (region role, surface, etc.). */
+export type RuleFacts = Record<string, unknown>;
+
+/** A generic matched rule: when `match` satisfies the current facts, emit `emit`. Profile families
+ *  specialize only the emit payload shape; the match/emit envelope itself is generic core
+ *  machinery. */
+export interface EmitRule<TMatch extends RuleFacts = RuleFacts, TEmit = unknown> {
+  match: TMatch;
+  emit: TEmit;
+}
+
+/** A generic stage-program rule: a named decision slot (`template`, `priority`, `presentation`,
+ *  etc.), its match facts, and the value it emits when matched. */
+export interface ProgramRule<
+  TSlot extends string = string,
+  TMatch extends RuleFacts = RuleFacts,
+  TEmit = unknown,
+> extends EmitRule<TMatch, TEmit> {
+  slot: TSlot;
+}
+
+/** Read a dotted path (e.g. `"region.role"`) out of a token tree. Returns `undefined` at the first
+ *  missing or non-object segment. */
+export function readToken(path: string, tokens: Record<string, unknown>): unknown {
+  return path.split(".").reduce<unknown>((current, segment) => {
+    if (current == null || typeof current !== "object") return undefined;
+    return (current as Record<string, unknown>)[segment];
+  }, tokens);
+}
+
+/** Interpolate `{{ dotted.path }}` tokens in a string; a missing/nullish token renders as empty. */
+export function renderTemplate(template: string, tokens: Record<string, unknown>): string {
+  return template.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_full, key: string) => {
+    const value = readToken(key.trim(), tokens);
+    return value == null ? "" : String(value);
+  });
+}
+
+/**
+ * Resolve every template in a JSON value against `tokens`. An *exact* single-token string
+ * (`"{{ x }}"`) yields the token's NATIVE value (number/boolean/array/object preserved) so typed
+ * recipe props survive; a token embedded in surrounding text interpolates to a string. Arrays and
+ * objects recurse; object entries that resolve to `undefined` are dropped.
+ */
+export function resolveTemplatedValue(value: unknown, tokens: Record<string, unknown>): unknown {
+  if (typeof value === "string") {
+    const exact = value.match(/^\{\{\s*([^}]+?)\s*\}\}$/);
+    if (exact) return readToken(exact[1].trim(), tokens);
+    return renderTemplate(value, tokens);
+  }
+  if (Array.isArray(value)) return value.map((item) => resolveTemplatedValue(item, tokens));
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .map(([key, entry]) => [key, resolveTemplatedValue(entry, tokens)] as const)
+      .filter(([, entry]) => entry !== undefined);
+    return Object.fromEntries(entries);
+  }
+  return value;
+}
+
+/** True when every field declared in `match` strictly equals the corresponding fact. Absent facts
+ *  never satisfy a declared field. This record-equality test is the basis of recipe rule matching. */
+export function matchesFacts(match: RuleFacts, facts: RuleFacts): boolean {
+  return Object.entries(match).every(([key, value]) => facts[key] === value);
+}
+
+/** The first rule whose `match` satisfies {@link matchesFacts} against `facts`, or `undefined`. */
+export function firstMatchingRule<T extends { match: RuleFacts }>(
+  rules: readonly T[],
+  facts: RuleFacts
+): T | undefined {
+  return rules.find((rule) => matchesFacts(rule.match, facts));
+}
+
+/** The emitted payload from the first matching rule, or `undefined` when none match. */
+export function matchEmit<TMatch extends RuleFacts, TEmit>(
+  rules: readonly EmitRule<TMatch, TEmit>[],
+  facts: TMatch
+): TEmit | undefined {
+  return firstMatchingRule(rules, facts)?.emit;
+}
+
+/** All program rules for one decision slot. */
+export function rulesForSlot<TRule extends { slot: string }, TSlot extends TRule["slot"]>(
+  rules: readonly TRule[],
+  slot: TSlot
+): Extract<TRule, { slot: TSlot }>[] {
+  return rules.filter((rule): rule is Extract<TRule, { slot: TSlot }> => rule.slot === slot);
+}
+
+/** The emitted payload from the first matching program rule for one slot. */
+export function matchProgramEmit<TRule extends ProgramRule<string, RuleFacts, unknown>, TSlot extends TRule["slot"]>(
+  rules: readonly TRule[],
+  slot: TSlot,
+  facts: Extract<TRule, { slot: TSlot }>["match"]
+): Extract<TRule, { slot: TSlot }>["emit"] | undefined {
+  return firstMatchingRule(rulesForSlot(rules, slot), facts)?.emit;
+}
+
+/** Like {@link matchProgramEmit}, but throws the caller-supplied error when no rule matches. */
+export function requireProgramEmit<TRule extends ProgramRule<string, RuleFacts, unknown>, TSlot extends TRule["slot"]>(
+  rules: readonly TRule[],
+  slot: TSlot,
+  facts: Extract<TRule, { slot: TSlot }>["match"],
+  error: string
+): Extract<TRule, { slot: TSlot }>["emit"] {
+  const emit = matchProgramEmit(rules, slot, facts);
+  if (emit === undefined) throw new Error(error);
+  return emit;
+}
+
+/** One item after stable rank ordering: keeps the original index as a deterministic tiebreaker. */
+export interface RankedItem<T> {
+  item: T;
+  index: number;
+  rank: number;
+}
+
+/** Stable rank ordering used by profile-family planners: lower rank wins, original index breaks ties. */
+export function orderByRank<T>(
+  items: readonly T[],
+  rankOf: (item: T, index: number) => number
+): RankedItem<T>[] {
+  return items
+    .map((item, index) => ({ item, index, rank: rankOf(item, index) }))
+    .sort((a, b) => a.rank - b.rank || a.index - b.index);
+}
+
+/**
+ * Apply a simple cap to an already ordered list. When `preserveRequired` is true, required items
+ * are kept ahead of optional ones and never dropped solely because they fell beyond `maxItems`.
+ */
+export function capOrderedItems<T>(
+  ordered: readonly RankedItem<T>[],
+  maxItems: number | undefined,
+  preserveRequired: boolean,
+  isRequired: (item: T) => boolean
+): RankedItem<T>[] {
+  if (maxItems == null || ordered.length <= maxItems) return [...ordered];
+  if (!preserveRequired) return ordered.slice(0, maxItems);
+
+  const required = ordered.filter(({ item }) => isRequired(item));
+  const optional = ordered.filter(({ item }) => !isRequired(item));
+  return [...required, ...optional].slice(0, Math.max(maxItems, required.length));
+}
+
 // --- Open stage-executor registry ------------------------------------------------------------
 // The generic driver: a profile family registers an executor per `${fromKind}->${toKind}`
 // transition; `traceStages` walks the resolved chain, runs each stage's executor, and captures
@@ -235,7 +513,8 @@ export function lintProfileArtifacts(
 export type StageExecutor<TRecipe extends RecipeBase = RecipeBase> = (
   recipe: TRecipe,
   input: unknown,
-  ctx: unknown
+  ctx: LayerContext,
+  profile: ResolvedProfile<TRecipe>
 ) => unknown;
 
 /** One stage of a profile run: what entered the layer transition and what came out. */
@@ -256,7 +535,7 @@ export interface StageTrace {
 export function traceStages<TRecipe extends RecipeBase>(
   profile: ResolvedProfile<TRecipe>,
   seed: unknown,
-  ctx: unknown,
+  ctx: LayerContext,
   executors: Record<string, StageExecutor<TRecipe>>
 ): StageTrace[] {
   const trace: StageTrace[] = [];
@@ -267,7 +546,7 @@ export function traceStages<TRecipe extends RecipeBase>(
     if (!execute) {
       throw new Error(`Profile '${profile.artifact.payload.id}' has no executor for stage '${key}'`);
     }
-    const output = execute(stage.recipe, value, ctx);
+    const output = execute(stage.recipe, value, ctx, profile);
     trace.push({
       fromLayerId: stage.fromLayer.id,
       toLayerId: stage.toLayer.id,

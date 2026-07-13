@@ -8,8 +8,9 @@ import assert from "node:assert/strict";
 import {
   recipeForKinds,
   resolveProfile,
-  type ProfileArtifact,
 } from "../src/index";
+import { loadProfile, type ProfileArtifact } from "../../profile/src/index";
+import { applyProfileTemplate, type ProfileTemplateArtifact } from "../../profile/src/profile-core";
 import {
   liveCardsProfile,
   liveCardsProfileArtifact,
@@ -84,4 +85,54 @@ test("resolveProfile rejects a profile whose recipes do not form one connected c
     },
   };
   assert.throws(() => resolveProfile(twoSources, liveCardsRecipeArtifacts), /exactly one source layer/);
+});
+
+test("profile-template default resources merge through core and profile-owned resources override them", () => {
+  const artifact: ProfileArtifact = {
+    gik: "0.1",
+    type: "profile",
+    payload: {
+      id: "templated",
+      kind: "genui-profile",
+      version: "0.0.0",
+      "profile-template": "genui",
+      layers: [
+        { id: "interaction", kind: "interaction" },
+        { id: "presentation", kind: "presentation" },
+      ],
+      recipes: [{ id: "live-cards.interaction-to-presentation", from: "interaction", to: "presentation" }],
+      resources: {
+        taxonomy: { inline: { from: "profile" } as unknown as import("../../../kernel/src/index").Json },
+      },
+    },
+  };
+
+  const template: ProfileTemplateArtifact = {
+    gik: "0.1",
+    type: "profile-template",
+    payload: {
+      id: "genui",
+      profileKind: "genui-profile",
+      defaultResources: {
+        taxonomy: { $ref: "profile-template:genui/taxonomy.json" },
+        palette: { inline: { from: "template" } as unknown as import("../../../kernel/src/index").Json },
+      },
+    },
+  };
+
+  const applied = applyProfileTemplate(artifact, (id: string) => {
+    assert.equal(id, "genui");
+    return template;
+  });
+
+  assert.deepEqual(applied.payload.resources, {
+    taxonomy: { inline: { from: "profile" } },
+    palette: { inline: { from: "template" } },
+  });
+
+  const resolved = resolveProfile(applied, [liveCardsRecipeArtifacts[0]], (ref) => ({ ref }));
+  assert.deepEqual(resolved.resources, {
+    taxonomy: { from: "profile" },
+    palette: { from: "template" },
+  });
 });
