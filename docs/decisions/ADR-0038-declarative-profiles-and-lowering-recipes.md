@@ -101,7 +101,9 @@ reviewed, diffed, and stored independently of handwritten TypeScript.
 ## Consequences
 
 - `PresentationBinding` is migration residue and should be removed.
-- The interaction package gains explicit profile and recipe contracts plus validators/lints.
+- The generic profile machinery (`@gik/profile`) and the GenUI flavor (`@gik/profile-genui`) gain
+  explicit profile and recipe contracts plus validators/lints. (2026-07-13: these two packages
+  superseded the former single `interaction/` source tree.)
 - The workbench pivots to a profile-first model.
 - Existing ADRs that described profile translation in terms of `binding` need refinement, not
   reversal.
