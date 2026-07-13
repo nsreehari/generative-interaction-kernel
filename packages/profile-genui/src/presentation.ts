@@ -5,7 +5,7 @@
 // — desktop workspace vs mobile stack vs copilot narrative — while never dropping a facet
 // the interaction marks as required.
 
-import type { Json } from "../../kernel/src/index";
+import type { Json } from "../../../kernel/src/index";
 import { resolveFacets, type Facet, type FacetRole, type InteractionFacetView, type InteractionSpec } from "./interaction";
 import type {
   InteractionToPresentationRecipe,
@@ -94,7 +94,7 @@ export interface PresentationRegion {
   /** optional explicit shaped read edge override supplied by authored facet views. */
   readExpr?: Record<string, string>;
   /** optional explicit runtime event handlers supplied by authored facet views. */
-  on?: Record<string, import("../../kernel/src/index").Action[]>;
+  on?: Record<string, import("../../../kernel/src/index").Action[]>;
   /**
    * Static, per-capability presentation config (the "spec" channel, orthogonal to the dynamic
    * `read`/data edge): columns for a table, chartType/series for a chart, thresholds for an alert.

@@ -10,7 +10,7 @@ import { loadProfile, type LoweringRecipeArtifact, type ProfileArtifact } from "
 
 const fx = (name: string) =>
   JSON.parse(
-    readFileSync(fileURLToPath(new URL(`../../schemas/fixtures/${name}`, import.meta.url)), "utf8")
+    readFileSync(fileURLToPath(new URL(`../../../schemas/fixtures/${name}`, import.meta.url)), "utf8")
   );
 
 export const liveCardsProfileArtifact = fx("live-cards.profile.json") as ProfileArtifact;

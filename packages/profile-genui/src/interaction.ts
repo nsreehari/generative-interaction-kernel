@@ -6,9 +6,9 @@
 // failed" (productivity), "review a candidate" (HR) — the noun changes, the interaction
 // does not. So this layer is domain-neutral and platform-owned.
 //
-import type { Json } from "../../kernel/src/index";
+import type { Json } from "../../../kernel/src/index";
 
-import type { Action } from "../../kernel/src/index";
+import type { Action } from "../../../kernel/src/index";
 
 // NOTE on the word "capabilities": at this layer it means experience *facets*
 // (timeline / evidence / actions) an interaction is made of. This is a DIFFERENT concept

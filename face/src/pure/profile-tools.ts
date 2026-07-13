@@ -16,9 +16,9 @@ import type {
   AuthoringToolDecl,
   LayerDefinition,
   Profile,
-} from "../../../interaction/src/profile-core";
+} from "../../../packages/profile/src/profile-core";
 
-export type { AuthoringRegistry, AuthoringReport } from "../../../interaction/src/profile-core";
+export type { AuthoringRegistry, AuthoringReport } from "../../../packages/profile/src/profile-core";
 
 const anyObj = { type: "object" } as const;
 

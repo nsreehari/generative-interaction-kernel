@@ -40,9 +40,9 @@ export default defineWorkspace([
   },
   {
     test: {
-      name: "interaction",
+      name: "profile-genui",
       environment: "node",
-      include: ["interaction/test/**/*.test.ts"],
+      include: ["packages/profile-genui/test/**/*.test.ts"],
     },
   },
   {

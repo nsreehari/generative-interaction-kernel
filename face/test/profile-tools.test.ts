@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import { toolsFromProfile, type AuthoringRegistry } from "../src/pure/profile-tools";
-import type { Profile } from "../../interaction/src/profile-core";
+import type { Profile } from "../../packages/profile/src/profile-core";
 
 const profile: Profile = {
   id: "demo",

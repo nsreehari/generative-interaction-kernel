@@ -11,7 +11,7 @@ import {
   type Json,
   type Lowering,
   type NodeOptions,
-} from "../../kernel/src/index";
+} from "../../../kernel/src/index";
 import { planPresentationWithRecipe, type PresentationContext, type PresentationSpec } from "./presentation";
 import type {
   InteractionToPresentationRecipe,
@@ -21,7 +21,7 @@ import type {
   ResolvedProfile,
   RuntimeNodeRecipeFields,
 } from "./profile";
-import { traceStages, type StageExecutor } from "./profile-core";
+import { traceStages, type StageExecutor } from "../../profile/src/profile-core";
 import type { InteractionSpec } from "./interaction";
 
 function readToken(path: string, tokens: Record<string, unknown>): unknown {

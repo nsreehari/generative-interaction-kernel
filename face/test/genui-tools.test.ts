@@ -13,7 +13,7 @@ import {
   genuiAuthoringRegistry,
   planPresentationWithRecipe,
   recipeForKinds,
-} from "../../interaction/src/index";
+} from "../../packages/profile-genui/src/index";
 import { liveCardsProfile } from "./live-cards-fixture";
 
 const genuiTools = toolsFromProfile(genuiAuthoringProfile, genuiAuthoringRegistry);

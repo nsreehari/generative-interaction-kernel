@@ -4,7 +4,7 @@
 // recipeForKinds, the stage runner) lives in ./profile-core (@gik/profile). This module is what
 // @gik/profile-genui re-exports.
 
-import type { Action, CapabilityDescriptor, Json } from "../../kernel/src/index";
+import type { Action, CapabilityDescriptor, Json } from "../../../kernel/src/index";
 import type { FacetRole, InteractionKind } from "./interaction";
 import type {
   LayoutArrangement,
@@ -18,12 +18,12 @@ import {
   type RecipeLintWarning,
   type ResolvedProfile as ResolvedProfileCore,
   type ResolvedProfileStage as ResolvedProfileStageCore,
-} from "./profile-core";
+} from "../../profile/src/profile-core";
 
 // Re-export the generic core so importers of the GenUI surface (and the interaction barrel) still
 // see the full profile API. `recipeForKinds`, `ResolvedProfile`, and `ResolvedProfileStage` are
 // intentionally NOT re-exported here — this module ships GenUI-typed versions of them below.
-export { resolveProfile, lintProfileArtifacts, traceStages } from "./profile-core";
+export { resolveProfile, lintProfileArtifacts, traceStages } from "../../profile/src/profile-core";
 export type {
   LayerDefinition,
   LoweringRecipeRef,
@@ -38,7 +38,7 @@ export type {
   ProfileAuthoring,
   AuthoringRegistry,
   AuthoringReport,
-} from "./profile-core";
+} from "../../profile/src/profile-core";
 
 export type GenUiLayerKind = "interaction" | "presentation" | "runtime-document";
 

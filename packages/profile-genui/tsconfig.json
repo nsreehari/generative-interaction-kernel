@@ -2,7 +2,8 @@
   "extends": "../../kernel/tsconfig.json",
   "include": [
     "src",
-    "../../interaction/src",
+    "test",
+    "../profile/src",
     "../../kernel/src"
   ]
 }

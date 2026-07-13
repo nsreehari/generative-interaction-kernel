@@ -1,5 +1,5 @@
-import { loadProfile, validateLoweringRecipeArtifact, validateProfileArtifact } from "../../../interaction/src/schema";
-import type { LoweringRecipeArtifact, ProfileArtifact, ResolvedProfile } from "../../../interaction/src/profile";
+import { loadProfile, validateLoweringRecipeArtifact, validateProfileArtifact } from "./schema";
+import type { LoweringRecipeArtifact, ProfileArtifact, ResolvedProfile } from "./profile";
 
 export const PROFILE_BUNDLE_FORMAT = "gik-profile-bundle/1";
 

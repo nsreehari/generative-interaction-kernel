@@ -17,7 +17,7 @@ import {
   type DocumentPayload,
   type ManifestPayload,
   type ResolvedNode,
-} from "../../kernel/src/index";
+} from "../../../kernel/src/index";
 import {
   compileInteraction,
   interactionTaxonomy,
@@ -45,7 +45,7 @@ const isValidPresentationSpec = (spec: unknown): boolean => {
 const fx = (name: string) =>
   JSON.parse(
     readFileSync(
-      fileURLToPath(new URL(`../../schemas/fixtures/${name}`, import.meta.url)),
+      fileURLToPath(new URL(`../../../schemas/fixtures/${name}`, import.meta.url)),
       "utf8"
     )
   );
