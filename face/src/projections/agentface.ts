@@ -8,13 +8,16 @@ import type { ControlFace } from "../live/controlface";
 
 const AGENT_SAFE_RUNTIME = ["getState", "getTree"] as const;
 
+// Agent-safety is a property of each tool (`McpTool.agentSafe`), so the projection is a uniform
+// predicate filter that also covers profile-contributed tools. AGENTFACE_ALLOWLIST stays exported
+// as the derived set of agent-safe names for the built-in surface.
 export const AGENTFACE_ALLOWLIST: ReadonlySet<string> = new Set<string>([
-  ...authoringTools.map((t) => t.name),
+  ...authoringTools.filter((t) => t.agentSafe).map((t) => t.name),
   ...AGENT_SAFE_RUNTIME,
 ]);
 
 export function agentFaceProjection(face: ControlFace): McpTool[] {
-  return controlFaceTools(face).filter((t) => AGENTFACE_ALLOWLIST.has(t.name));
+  return controlFaceTools(face).filter((t) => t.agentSafe);
 }
 
 export function createAgentFaceDispatcher(face: ControlFace): McpDispatcher {

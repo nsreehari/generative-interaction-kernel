@@ -18,7 +18,8 @@ const obj = (properties: Record<string, unknown>, required: string[] = []): Reco
 });
 const any = { type: "object" } as const;
 
-export const authoringTools: McpTool[] = [
+// Every authoring tool is design-time and pure (JSON in, JSON out), so all are agent-safe.
+const platformAuthoringTools: McpTool[] = [
   {
     name: "describeCatalog",
     description: "Project a manifest into a discovery catalog (capabilities, namespaces, effects).",
@@ -92,3 +93,5 @@ export const authoringTools: McpTool[] = [
     handler: (a) => intentToEdits(a.intent as never),
   },
 ];
+
+export const authoringTools: McpTool[] = platformAuthoringTools.map((t) => ({ ...t, agentSafe: true }));
