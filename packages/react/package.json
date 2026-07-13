@@ -1,6 +1,27 @@
 {
   "name": "@gik/react",
   "version": "0.1.0",
+  "description": "React renderer and <BundleHost> adapter for the Generative Interaction Kernel.",
+  "license": "MIT",
+  "author": "nsreehari",
+  "keywords": [
+    "gik",
+    "generative-ui",
+    "declarative-ui",
+    "reactive",
+    "react",
+    "renderer",
+    "adapter"
+  ],
+  "homepage": "https://github.com/nsreehari/generative-interaction-kernel#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nsreehari/generative-interaction-kernel.git",
+    "directory": "packages/react"
+  },
+  "bugs": {
+    "url": "https://github.com/nsreehari/generative-interaction-kernel/issues"
+  },
   "type": "module",
   "sideEffects": false,
   "files": [
@@ -15,6 +36,10 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "peerDependencies": {
     "@fluentui/react-components": "^9.74.3",
     "react": "^18.3.1",

@@ -1,10 +1,31 @@
 {
   "name": "@gik/provider-consequence-graph",
   "version": "0.1.0",
+  "description": "Consequence-graph provider engine for the Generative Interaction Kernel.",
+  "license": "MIT",
+  "author": "nsreehari",
+  "keywords": [
+    "gik",
+    "generative-ui",
+    "declarative-ui",
+    "provider",
+    "consequence-graph",
+    "engine"
+  ],
+  "homepage": "https://github.com/nsreehari/generative-interaction-kernel#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nsreehari/generative-interaction-kernel.git",
+    "directory": "packages/provider-consequence-graph"
+  },
+  "bugs": {
+    "url": "https://github.com/nsreehari/generative-interaction-kernel/issues"
+  },
   "type": "module",
   "sideEffects": false,
   "files": [
-    "dist"
+    "dist",
+    "docs"
   ],
   "exports": {
     ".": {
@@ -14,7 +35,12 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --sourcemap --clean --tsconfig tsconfig.json"
+    "build": "tsup src/index.ts --format esm --dts --sourcemap --clean --tsconfig tsconfig.json",
+    "prepack": "node ../../scripts/sync-public-docs.mjs packages/provider-consequence-graph"
   }
 }
