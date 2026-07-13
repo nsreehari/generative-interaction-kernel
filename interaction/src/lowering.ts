@@ -21,6 +21,7 @@ import type {
   ResolvedProfile,
   RuntimeNodeRecipeFields,
 } from "./profile";
+import { traceStages, type StageExecutor } from "./profile-core";
 import type { InteractionSpec } from "./interaction";
 
 function readToken(path: string, tokens: Record<string, unknown>): unknown {
@@ -173,12 +174,13 @@ export function lowerPresentation(
  */
 export type StageValue = InteractionSpec | PresentationSpec | DocumentPayload;
 
-const STAGE_EXECUTORS: Record<
-  string,
-  (recipe: LoweringRecipe, input: StageValue, ctx: PresentationContext) => StageValue
-> = {
+const STAGE_EXECUTORS: Record<string, StageExecutor<LoweringRecipe>> = {
   "interaction->presentation": (recipe, input, ctx) =>
-    planPresentationWithRecipe(input as InteractionSpec, ctx, recipe as InteractionToPresentationRecipe),
+    planPresentationWithRecipe(
+      input as InteractionSpec,
+      ctx as PresentationContext,
+      recipe as InteractionToPresentationRecipe
+    ),
   "presentation->runtime-document": (recipe, input) =>
     lowerPresentation(recipe as PresentationToRuntimeRecipe)(input as PresentationSpec),
 };
@@ -194,36 +196,16 @@ export interface ProfileStageTrace {
 }
 
 /**
- * Run the profile and capture every stage's input and output. Same execution path as
- * {@link compileInteraction} (each stage goes through the executor registered for its layer-kind
- * transition), but returns the per-stage trace so tooling can show what any layer lowers into —
- * generically, without hardcoding a specific layer kind.
+ * Run the profile and capture every stage's input and output. Delegates to the generic
+ * {@link traceStages} driver with the GenUI stage executors, so tooling can show what any layer
+ * lowers into — generically, without hardcoding a specific layer kind.
  */
 export function traceProfile(
   profile: ResolvedProfile,
   spec: InteractionSpec,
   ctx: PresentationContext
 ): ProfileStageTrace[] {
-  const trace: ProfileStageTrace[] = [];
-  let value: StageValue = spec;
-  for (const stage of profile.stages) {
-    const key = `${stage.fromLayer.kind}->${stage.toLayer.kind}`;
-    const execute = STAGE_EXECUTORS[key];
-    if (!execute) {
-      throw new Error(`Profile '${profile.artifact.payload.id}' has no executor for stage '${key}'`);
-    }
-    const output = execute(stage.recipe, value, ctx);
-    trace.push({
-      fromLayerId: stage.fromLayer.id,
-      toLayerId: stage.toLayer.id,
-      fromKind: stage.fromLayer.kind,
-      toKind: stage.toLayer.kind,
-      input: value,
-      output,
-    });
-    value = output;
-  }
-  return trace;
+  return traceStages(profile, spec, ctx, STAGE_EXECUTORS) as ProfileStageTrace[];
 }
 
 export function compileInteraction(

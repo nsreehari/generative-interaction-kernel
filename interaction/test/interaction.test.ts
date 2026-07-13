@@ -21,14 +21,12 @@ import {
 import {
   compileInteraction,
   applyPresentationEdits,
-  facetsFor,
-  facetsOf,
   interactionTaxonomy,
   isValidPresentationSpec,
   lowerPresentation,
   planPresentationWithRecipe,
   recipeForKinds,
-  requiredFacets,
+  resolveFacets,
   validatePresentationSpec,
   type InteractionSpec,
   type PresentationContext,
@@ -64,18 +62,16 @@ function findResolved(n: ResolvedNode, id: string): ResolvedNode | undefined {
 test("interaction taxonomy: facets carry a role + required flag; capabilities override names", () => {
   const investigate = interactionTaxonomy.investigate;
   assert.ok(investigate.every((f) => typeof f.role === "string" && typeof f.required === "boolean"));
+  // default facet resolution returns the taxonomy facets in order
   assert.deepEqual(
-    facetsFor({ interaction: "investigate", subject: "incident" }),
+    resolveFacets({ interaction: "investigate", subject: "incident" }).map((f) => f.name),
     investigate.map((f) => f.name)
-  );
-  // required facets are the non-optional subset
-  assert.deepEqual(
-    requiredFacets("investigate").map((f) => f.name),
-    facetsOf("investigate").filter((f) => f.required).map((f) => f.name)
   );
   // explicit capabilities override the default facet set
   assert.deepEqual(
-    facetsFor({ interaction: "investigate", subject: "incident", capabilities: ["evidence", "actions"] }),
+    resolveFacets({ interaction: "investigate", subject: "incident", capabilities: ["evidence", "actions"] }).map(
+      (f) => f.name
+    ),
     ["evidence", "actions"]
   );
 });
@@ -131,7 +127,7 @@ test("a capped template sheds optional facets but never a required one", () => {
   // investigate has 5 required facets + 1 optional (relationships); narrative caps at 3.
   const copilot = planner({ interaction: "investigate", subject: "incident" }, { surface: "copilot" });
   const names = copilot.regions.map((r) => r.name);
-  const required = requiredFacets("investigate").map((f) => f.name);
+  const required = interactionTaxonomy.investigate.filter((f) => f.required).map((f) => f.name);
   for (const r of required) assert.ok(names.includes(r), `required facet ${r} kept`);
   assert.ok(!names.includes("relationships"), "optional facet dropped under the cap");
 });

@@ -4,11 +4,8 @@
 // the authored artifact plus the manifest generated from its compiled document.
 
 import { generateManifest, unwrap, type DocumentPayload, type ManifestPayload } from "@gik/kernel";
-import {
-  toAuthoredSession,
-  type AuthoredSession,
-  type PresentationEdits,
-} from "../../../interaction/src/index";
+import { type PresentationEdits } from "../../../interaction/src/index";
+import { toAuthoredSession, type AuthoredSession } from "./projection_views/libs/authoring";
 import { DEMO_MANIFEST } from "./bundles/demo/demo";
 import type { Session } from "./session";
 

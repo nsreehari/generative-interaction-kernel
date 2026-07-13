@@ -1,44 +1,22 @@
+// @gik/profile — the generic profile machinery (the kind *mechanism*). A profile is a typed
+// pipeline of kinded layers connected by recipes; each stage's transform is selected by the
+// `${fromKind}->${toKind}` pair and executed through an open executor registry (`traceStages`).
+// The concrete GenUI kind *values* (interaction / presentation / runtime-document), their recipe
+// shapes, and their executors live in @gik/profile-genui.
 export {
-  PROFILE_BUNDLE_FORMAT,
-  createProfileBundle,
-  loadProfileBundle,
-  parseProfileBundleJson,
-  stringifyProfileBundle,
-  validateProfileBundle,
-  type ProfileArtifactBundle,
-} from "./bundle";
-export {
-  loadProfile,
-  lintLoweringRecipeArtifact,
-  validateLoweringRecipeArtifact,
-  validateProfileArtifact,
-} from "../../../interaction/src/schema";
-export {
-  lintLoweringRecipe,
   resolveProfile,
   recipeForKinds,
   lintProfileArtifacts,
-  type LoweringRecipe,
-  type LoweringRecipeArtifact,
-  type GenUiLayerKind,
+  traceStages,
   type LayerDefinition,
   type LoweringRecipeRef,
   type Profile,
-  type GenUiProfile,
   type ProfileArtifact,
-  type RecipeMatch,
-  type TemplateDefinition,
-  type TemplateRule,
-  type OrderRule,
-  type PriorityRule,
-  type DisclosureRule,
-  type PresentationRule,
-  type RationaleRule,
-  type InteractionToPresentationRecipe,
-  type RuntimeNodeRecipeFields,
-  type PresentationToRuntimeRule,
-  type PresentationToRuntimeRecipe,
-  type RecipeLintWarning,
-  type ResolvedProfileStage,
+  type RecipeBase,
+  type RecipeArtifactBase,
   type ResolvedProfile,
-} from "../../../interaction/src/profile";
+  type ResolvedProfileStage,
+  type RecipeLintWarning,
+  type StageExecutor,
+  type StageTrace,
+} from "../../../interaction/src/profile-core";

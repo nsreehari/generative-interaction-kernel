@@ -19,12 +19,8 @@ import {
   type ProjectionView,
   type ProjectionViewProps,
 } from "@gik/react";
-import {
-  checkAuthoredProfile,
-  editableRegions,
-  facetsAsItems,
-  parseAuthoredSession,
-} from "../../../../interaction/src/index";
+import { editableRegions, facetsAsItems } from "./libs/edits";
+import { checkAuthoredProfile, parseAuthoredSession } from "./libs/authoring";
 import type { Json } from "@gik/kernel";
 import { buildSession, type Session } from "../session";
 import {

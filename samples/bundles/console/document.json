@@ -165,6 +165,36 @@
                                 "children": [
                                   {
                                     "capability": "ui:panel",
+                                    "id": "profile-orientation-panel",
+                                    "props": {
+                                      "title": "What this profile is",
+                                      "variant": "inset"
+                                    },
+                                    "edges": {
+                                      "children": [
+                                        {
+                                          "capability": "ui:narrative",
+                                          "id": "profile-orientation-summary",
+                                          "props": {
+                                            "emptyMessage": "Select a profile to see how it lowers a goal into a UI."
+                                          },
+                                          "edges": {
+                                            "read": {
+                                              "text": "console.profile.summary"
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:property",
+                                          "id": "profile-orientation-legend",
+                                          "props": { "label": "Pipeline" },
+                                          "edges": { "read": { "value": "console.profile.legend" } }
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:panel",
                                     "id": "profile-summary-panel",
                                     "props": {
                                       "title": "Basic info",
@@ -301,7 +331,7 @@
                                                 "props": {
                                                   "idKey": "id",
                                                   "primaryKey": "id",
-                                                  "secondaryKey": "kind",
+                                                  "secondaryKey": "roleLabel",
                                                   "valueKey": "schema"
                                                 },
                                                 "edges": {
@@ -369,14 +399,34 @@
                                                           "text": "console.layerDetail.role"
                                                         }
                                                       }
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              {
+                                                "capability": "ui:panel",
+                                                "id": "layer-vocabulary-panel",
+                                                "props": {
+                                                  "title": "Vocabulary it speaks",
+                                                  "variant": "inset"
+                                                },
+                                                "edges": {
+                                                  "gate": "console.layerDetail.kind != ''",
+                                                  "children": [
+                                                    {
+                                                      "capability": "ui:note",
+                                                      "id": "layer-vocabulary-caption",
+                                                      "props": { "value": "The closed set of terms this layer works with — every branch above is phrased in these words.", "tone": "muted" }
                                                     },
                                                     {
-                                                      "capability": "ui:narrative",
-                                                      "id": "layer-detail-description",
+                                                      "capability": "ui:vocabulary",
+                                                      "id": "layer-vocabulary",
+                                                      "props": {
+                                                        "emptyText": "This layer has no derived vocabulary."
+                                                      },
                                                       "edges": {
-                                                        "gate": "console.layerDetail.description != ''",
                                                         "read": {
-                                                          "text": "console.layerDetail.description"
+                                                          "groups": "console.layerDetail.vocabulary.groups"
                                                         }
                                                       }
                                                     }
@@ -403,6 +453,12 @@
                                                             "id": "layer-outgoing-recipe-kind",
                                                             "props": { "label": "Transformation" },
                                                             "edges": { "read": { "value": "console.layerDetail.outgoingRecipe.kindLabel" } }
+                                                          },
+                                                          {
+                                                            "capability": "ui:property",
+                                                            "id": "layer-outgoing-recipe-tagline",
+                                                            "props": { "label": "In plain terms" },
+                                                            "edges": { "read": { "value": "console.layerDetail.outgoingRecipe.tagline" } }
                                                           }
                                                         ]
                                                       }
@@ -424,24 +480,30 @@
                                               },
                                               {
                                                 "capability": "ui:panel",
-                                                "id": "layer-interaction-recipe-panel",
+                                                "id": "layer-lowering-examples-panel",
                                                 "props": {
-                                                  "title": "Layout templates it can produce",
+                                                  "title": "See it lower — worked examples",
                                                   "variant": "inset"
                                                 },
                                                 "edges": {
-                                                  "gate": "console.layerDetail.outgoingRecipe.kind = 'interaction-to-presentation'",
+                                                  "gate": "console.layerDetail.outgoingRecipe.id != ''",
                                                   "children": [
                                                     {
+                                                      "capability": "ui:note",
+                                                      "id": "layer-lowering-examples-caption",
+                                                      "props": { "value": "Real output of running this profile for sample inputs — what this layer actually produces when it lowers into the next one, not a rulebook.", "tone": "muted" }
+                                                    },
+                                                    {
                                                       "capability": "ui:table",
-                                                      "id": "layer-interaction-recipe-templates",
+                                                      "id": "layer-lowering-examples-table",
                                                       "props": {
-                                                        "columns": ["name", "arrangement", "maxRegions"],
-                                                        "emptyText": "No templates authored."
+                                                        "static": true,
+                                                        "emptyText": "No worked examples for this layer."
                                                       },
                                                       "edges": {
                                                         "read": {
-                                                          "rows": "console.layerDetail.outgoingRecipe.templates"
+                                                          "columns": "console.layerDetail.loweringExamples.columns",
+                                                          "rows": "console.layerDetail.loweringExamples.rows"
                                                         }
                                                       }
                                                     }
@@ -450,38 +512,39 @@
                                               },
                                               {
                                                 "capability": "ui:panel",
-                                                "id": "layer-runtime-recipe-panel",
+                                                "id": "layer-region-rules-panel",
                                                 "props": {
-                                                  "title": "UI capabilities it produces",
+                                                  "title": "How each region is handled",
                                                   "variant": "inset"
                                                 },
                                                 "edges": {
-                                                  "gate": "console.layerDetail.outgoingRecipe.kind = 'presentation-to-runtime'",
+                                                  "gate": "console.layerDetail.outgoingRecipe.id != ''",
                                                   "children": [
                                                     {
-                                                      "capability": "ui:row",
-                                                      "id": "layer-runtime-recipe-metrics",
+                                                      "capability": "ui:property",
+                                                      "id": "layer-region-rules-container",
+                                                      "props": { "label": "Everything sits inside" },
                                                       "edges": {
-                                                        "children": [
-                                                          {
-                                                            "capability": "ui:property",
-                                                            "id": "layer-runtime-container-capability",
-                                                            "props": { "label": "Container capability" },
-                                                            "edges": { "read": { "value": "console.layerDetail.outgoingRecipe.containerCapability" } }
-                                                          }
-                                                        ]
+                                                        "gate": "console.layerDetail.outgoingRecipe.containerCapability != ''",
+                                                        "read": { "value": "console.layerDetail.outgoingRecipe.containerCapability" }
                                                       }
                                                     },
                                                     {
-                                                      "capability": "ui:table",
-                                                      "id": "layer-runtime-capabilities-table",
+                                                      "capability": "ui:note",
+                                                      "id": "layer-region-rules-caption",
+                                                      "props": { "value": "Whichever result the worked examples show, each region inside it is bound by these rules:", "tone": "muted" }
+                                                    },
+                                                    {
+                                                      "capability": "ui:maplist",
+                                                      "id": "layer-region-rules-map",
                                                       "props": {
-                                                        "columns": ["capability", "source"],
-                                                        "emptyText": "No runtime capabilities derived."
+                                                        "emptyText": "No per-region rules authored."
                                                       },
                                                       "edges": {
                                                         "read": {
-                                                          "rows": "console.layerDetail.outgoingRecipe.runtimeCapabilities"
+                                                          "fromLabel": "console.layerDetail.outgoingRecipe.regionRuleFromLabel",
+                                                          "toLabel": "console.layerDetail.outgoingRecipe.regionRuleToLabel",
+                                                          "rows": "console.layerDetail.outgoingRecipe.regionRuleMappings"
                                                         }
                                                       }
                                                     }
@@ -492,36 +555,37 @@
                                                 "capability": "ui:panel",
                                                 "id": "terminal-runtime-components-panel",
                                                 "props": {
-                                                  "title": "Runtime components",
+                                                  "title": "How each region is handled",
                                                   "variant": "inset"
                                                 },
                                                 "edges": {
-                                                  "gate": "console.layerDetail.kind = 'runtime-document' and console.layerDetail.incomingRecipe.kind = 'presentation-to-runtime'",
+                                                  "gate": "console.layerDetail.outgoingRecipe.id = '' and console.layerDetail.incomingRecipe.id != ''",
                                                   "children": [
                                                     {
-                                                      "capability": "ui:row",
-                                                      "id": "terminal-runtime-components-metrics",
+                                                      "capability": "ui:property",
+                                                      "id": "terminal-runtime-container-capability",
+                                                      "props": { "label": "Everything sits inside" },
                                                       "edges": {
-                                                        "children": [
-                                                          {
-                                                            "capability": "ui:property",
-                                                            "id": "terminal-runtime-container-capability",
-                                                            "props": { "label": "Container capability" },
-                                                            "edges": { "read": { "value": "console.layerDetail.incomingRecipe.containerCapability" } }
-                                                          }
-                                                        ]
+                                                        "gate": "console.layerDetail.incomingRecipe.containerCapability != ''",
+                                                        "read": { "value": "console.layerDetail.incomingRecipe.containerCapability" }
                                                       }
                                                     },
                                                     {
-                                                      "capability": "ui:table",
-                                                      "id": "terminal-runtime-components-table",
+                                                      "capability": "ui:note",
+                                                      "id": "terminal-runtime-map-caption",
+                                                      "props": { "value": "This is a terminal layer. Each region that reaches it is bound by these rules:", "tone": "muted" }
+                                                    },
+                                                    {
+                                                      "capability": "ui:maplist",
+                                                      "id": "terminal-runtime-components-map",
                                                       "props": {
-                                                        "columns": ["capability", "source"],
-                                                        "emptyText": "No runtime capabilities derived."
+                                                        "emptyText": "No incoming rules derived."
                                                       },
                                                       "edges": {
                                                         "read": {
-                                                          "rows": "console.layerDetail.incomingRecipe.runtimeCapabilities"
+                                                          "fromLabel": "console.layerDetail.incomingRecipe.regionRuleFromLabel",
+                                                          "toLabel": "console.layerDetail.incomingRecipe.regionRuleToLabel",
+                                                          "rows": "console.layerDetail.incomingRecipe.regionRuleMappings"
                                                         }
                                                       }
                                                     }

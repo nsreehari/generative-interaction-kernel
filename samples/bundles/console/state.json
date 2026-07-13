@@ -31,7 +31,9 @@
       "source": "",
       "readonly": true,
       "layerCount": 0,
-      "recipeCount": 0
+      "recipeCount": 0,
+      "summary": "",
+      "legend": ""
     },
     "pipeline": {
       "nodes": []
@@ -45,11 +47,14 @@
       "description": "",
       "role": "",
       "stageLabel": "",
+      "vocabulary": { "groups": [] },
+      "loweringExamples": { "columns": [], "rows": [] },
       "outgoingRecipe": {
         "id": "",
         "kind": "",
         "kindLabel": "",
         "purpose": "",
+        "tagline": "",
         "from": "",
         "to": "",
         "summary": "",
@@ -68,8 +73,14 @@
           "schema": "",
           "description": ""
         },
+        "regionRuleFromLabel": "",
+        "regionRuleToLabel": "",
+        "regionRuleMappings": [],
         "ruleGroups": [],
         "templates": [],
+        "templateMappings": [],
+        "regionMappings": [],
+        "capabilityMappings": [],
         "runtimeRules": [],
         "runtimeCapabilities": []
       },
@@ -78,6 +89,7 @@
         "kind": "",
         "kindLabel": "",
         "purpose": "",
+        "tagline": "",
         "from": "",
         "to": "",
         "summary": "",
@@ -96,8 +108,14 @@
           "schema": "",
           "description": ""
         },
+        "regionRuleFromLabel": "",
+        "regionRuleToLabel": "",
+        "regionRuleMappings": [],
         "ruleGroups": [],
         "templates": [],
+        "templateMappings": [],
+        "regionMappings": [],
+        "capabilityMappings": [],
         "runtimeRules": [],
         "runtimeCapabilities": []
       }
@@ -127,6 +145,9 @@
       },
       "ruleGroups": [],
       "templates": [],
+      "templateMappings": [],
+      "regionMappings": [],
+      "capabilityMappings": [],
       "runtimeRules": [],
       "runtimeCapabilities": []
     },
