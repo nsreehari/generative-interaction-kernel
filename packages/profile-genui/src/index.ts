@@ -10,7 +10,6 @@ export {
   validateLoweringRecipeArtifact,
   validateProfileArtifact,
   validatePresentationSpec,
-  isValidPresentationSpec,
   presentationSchema,
   layerSchema,
   profileSchema,
