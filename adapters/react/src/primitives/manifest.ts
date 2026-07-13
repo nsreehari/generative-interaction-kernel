@@ -41,14 +41,18 @@ export const PRIMITIVE_CAPABILITIES: Record<string, CapabilityDescriptor> = {
   heading: { propsSchema: anyProps }, // value + level
   note: { propsSchema: anyProps }, // value + tone (muted|info|toast|...)
   badge: { propsSchema: anyProps }, // value + tone
+  alert: { propsSchema: anyProps }, // value + label + level (good|warn|bad|unknown)
   metric: { propsSchema: anyProps }, // label + value
+  narrative: { propsSchema: anyProps, dataProp: "text" }, // read-only narrative copy with empty fallback
   codeBlock: { propsSchema: anyProps }, // scrollable monospace block for JSON/code dumps (reads `code`)
   chart: { propsSchema: anyProps, dataProp: "data" }, // read-only chart: spec + bound data -> native render
   markdown: { propsSchema: anyProps, dataProp: "value" }, // markdown text, rendered read-only
   markup: { propsSchema: anyProps, dataProp: "value" }, // explicit alias of markdown
   todo: { propsSchema: anyProps, emits: ["save"], dataProp: "items" }, // committed todo list: bound items + save {items}
-  editableTable: { propsSchema: anyProps, emits: ["save"], dataProp: "rows" }, // committed editable grid: spec + bound rows -> save {rows}
-  multiFileUpload: { propsSchema: anyProps, emits: ["submit"], dataProp: "data" }, // grouped files + staged upload composer, submit emits metadata
+  actions: { propsSchema: anyProps, emits: ["press"], dataProp: "buttons" }, // button row, emits press {id}
+  notes: { propsSchema: anyProps, emits: ["save"], dataProp: "content" }, // committed notes editor: content + save {content}
+  "editable-table": { propsSchema: anyProps, emits: ["save"], dataProp: "rows" }, // committed editable grid: spec + bound rows -> save {rows}
+  "multi-file-upload": { propsSchema: anyProps, emits: ["submit"], dataProp: "data" }, // grouped files + staged upload composer, submit emits metadata
 
   // --- Data display (bind data into `items`/`rows`) ---
   list: { propsSchema: anyProps, emits: ["select"] }, // items + field-key spec, emits select {id}
@@ -59,6 +63,7 @@ export const PRIMITIVE_CAPABILITIES: Record<string, CapabilityDescriptor> = {
   field: { propsSchema: anyProps, emits: ["input"] }, // label + value + placeholder
   textarea: { propsSchema: anyProps, emits: ["input"] },
   select: { propsSchema: anyProps, emits: ["change"] }, // label + value + options
+  form: { propsSchema: anyProps, emits: ["save"] }, // schema-ish committed form, emits save {values}
   button: { propsSchema: anyProps, emits: ["press"] }, // label + tone + disabled
   tabBar: { propsSchema: anyProps, emits: ["select"] }, // active + options, emits select {value}
   chips: { propsSchema: anyProps, emits: ["remove"] }, // items + emits remove {value}

@@ -8,7 +8,8 @@
         "layers": 3,
         "stages": 2,
         "source": "repo",
-        "readonly": true
+        "readonly": true,
+        "access": "read-only"
       },
       {
         "id": "briefing",
@@ -17,7 +18,8 @@
         "layers": 3,
         "stages": 2,
         "source": "repo",
-        "readonly": true
+        "readonly": true,
+        "access": "read-only"
       }
     ],
     "catalogStatus": "",
@@ -38,6 +40,8 @@
     },
     "validation": {
       "status": "unknown",
+      "level": "unknown",
+      "summary": "Not validated yet.",
       "errors": [],
       "warnings": [],
       "errorsText": "Select a profile to validate.",
@@ -52,10 +56,12 @@
     "editor": {
       "id": "",
       "bundleText": "",
-      "status": "Add a new local profile or select an existing one to edit and save it in browser storage.",
+      "status": "Select a profile, or create a local draft to start editing.",
       "error": ""
     },
     "tab": "overview",
+    "overviewTab": "preview",
+    "draftTab": "editor",
     "previewInteraction": "investigate",
     "previewSubject": "incident",
     "previewSurface": "desktop",

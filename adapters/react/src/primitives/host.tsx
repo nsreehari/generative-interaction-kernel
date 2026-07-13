@@ -18,7 +18,7 @@ export function BundleHost({
   fileServices,
 }: {
   bundle: Bundle;
-  /** Optional host-level file helpers consumed by `multiFileUpload` / file-link leaves. */
+  /** Optional host-level file helpers consumed by `multi-file-upload` / file-link leaves. */
   fileServices?: GenUIFileServices;
 }): React.ReactElement {
   const resolveProvider = useProjectionProviderResolver();

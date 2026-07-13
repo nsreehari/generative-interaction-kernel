@@ -3,7 +3,7 @@ import { test } from "vitest";
 
 import type { Json, PatchOp } from "@gik/kernel";
 import { createProfileBundle, stringifyProfileBundle } from "@gik/profile";
-import { consoleEffects } from "./store";
+import { buildProfilePreviewBundle, consoleEffects } from "./store";
 import { sampleProfileCatalog } from "../../profiles/registry";
 
 type JsonRecord = Record<string, Json>;
@@ -135,7 +135,7 @@ test("loadProfile marks repo sample entries as read-only and seeds the editor bu
 
   assert.equal(opRecord(result?.ops, "console.profile").readonly, true);
   assert.equal(typeof opRecord(result?.ops, "console.editor").bundleText, "string");
-  assert.match(String(opRecord(result?.ops, "console.editor").status), /read-only/);
+  assert.match(String(opRecord(result?.ops, "console.editor").status), /read-only/i);
 });
 
 test("$init hydrates the console catalog from localStorage on first load", async () => {
@@ -187,9 +187,9 @@ test("seedLocalDraft creates a visible local draft flow even when nothing was se
   });
 
   assert.equal(opValue(result?.ops, "console.selectedId"), "live-cards");
-  assert.equal(opValue(result?.ops, "console.tab"), "artifacts");
+  assert.equal(opValue(result?.ops, "console.tab"), "draft");
   assert.equal(opRecord(result?.ops, "console.editor").id, "live-cards-local");
-  assert.match(String(opRecord(result?.ops, "console.editor").status), /New local profile draft started/);
+  assert.match(String(opRecord(result?.ops, "console.editor").status), /New draft from/);
 });
 
 test("saveLocalProfile persists a local bundle and syncCatalog exposes it as editable", async () => {
@@ -280,4 +280,28 @@ test("deleteLocalProfile removes the stored local profile and clears the selecti
   assert.equal(storage.getItem("gik.console.profileBundles.v1"), "{}");
   assert.equal(opValue(result?.ops, "console.selectedId"), "");
   assert.match(String(opRecord(result?.ops, "console.editor").status), /Deleted local profile/);
+});
+
+test("configure preview for live-cards emits the frontend editable-table kind end-to-end", () => {
+  const liveCards = sampleProfileCatalog.find((entry) => entry.artifact.payload.id === "live-cards");
+  assert.ok(liveCards, "live-cards sample profile should be registered");
+
+  const bundle = buildProfilePreviewBundle(liveCards, {
+    interaction: "configure",
+    subject: "incident",
+    surface: "desktop",
+  });
+
+  const document = (bundle.document as { payload: { root: { edges?: { children?: Array<Record<string, unknown>> } } } }).payload;
+  const settings = document.root.edges?.children?.find((child) => child.id === "settings-region") as
+    | { capability?: string; edges?: { read?: Record<string, unknown> }; props?: Record<string, unknown> }
+    | undefined;
+
+  assert.equal(settings?.capability, "ui:editable-table");
+  assert.deepEqual(settings?.edges?.read, { rows: "fetched_sources.orders" });
+  assert.deepEqual(settings?.props?.spec, {
+    columns: ["id", "amount"],
+    addRow: false,
+    deleteRow: false,
+  });
 });

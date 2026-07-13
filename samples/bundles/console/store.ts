@@ -31,7 +31,7 @@ import {
 import { sampleProfileCatalog, type SampleProfileEntry } from "../../profiles/registry";
 import { demoDataFor } from "../workbench/bundles/demo/demo";
 
-export type ConsoleTab = "overview" | "validation" | "preview" | "artifacts";
+export type ConsoleTab = "overview" | "validation" | "draft";
 
 interface PreviewInput {
   interaction: InteractionKind;
@@ -41,6 +41,9 @@ interface PreviewInput {
 
 interface ValidationResult {
   status: "unknown" | "ok" | "error";
+  // `level`/`summary` drive the ui:alert banner (level maps to its good/warn/error/unknown badge tone).
+  level: "good" | "warn" | "error" | "unknown";
+  summary: string;
   errors: string[];
   warnings: string[];
   errorsText: string;
@@ -103,6 +106,11 @@ const PREVIEW_CAPABILITIES: Record<string, CapabilityDescriptor> = {
     emits: ["save"],
     dataProp: "items",
   },
+  "ui:editable-table": {
+    propsSchema: { type: "object", additionalProperties: true },
+    emits: ["save"],
+    dataProp: "rows",
+  },
 };
 
 const PROFILE_PREVIEW_MANIFEST: Enveloped<ManifestPayload> = {
@@ -152,12 +160,14 @@ const EMPTY_PROFILE = {
 const EMPTY_EDITOR: EditableProfileState = {
   id: "",
   bundleText: "",
-  status: "Add a new local profile or select an existing one to edit and save it in browser storage.",
+  status: "Select a profile, or create a local draft to start editing.",
   error: "",
 };
 
 const EMPTY_VALIDATION: ValidationResult = {
   status: "unknown",
+  level: "unknown",
+  summary: "Not validated yet.",
   errors: [],
   warnings: [],
   errorsText: "Select a profile to validate.",
@@ -184,7 +194,7 @@ function readSelectedId(ctx: EffectContext): string {
 
 function readTab(ctx: EffectContext): ConsoleTab {
   const value = readStr(ctx, "console.tab", "overview");
-  return value === "overview" || value === "validation" || value === "preview" || value === "artifacts"
+  return value === "overview" || value === "validation" || value === "draft"
     ? value
     : "overview";
 }
@@ -206,6 +216,7 @@ function catalogRows(entries: readonly CatalogEntry[]) {
     stages: entry.profile.stages.length,
     source: entry.source,
     readonly: entry.readonly,
+    access: entry.readonly ? "read-only" : "editable",
   }));
 }
 
@@ -328,8 +339,8 @@ function editorState(entry: CatalogEntry, statusOverride?: string, error = ""): 
     status:
       statusOverride ??
       (entry.readonly
-        ? "Repo sample profiles are read-only. Change the local id and save to browser storage to make an editable copy."
-        : `Editing browser-stored profile '${entry.artifact.payload.id}'. Save to persist changes or delete to remove it.`),
+        ? "Read-only sample. Save with a local id to create an editable copy."
+        : `Editing local draft '${entry.artifact.payload.id}'.`),
     error,
   };
 }
@@ -427,8 +438,17 @@ export function validateSampleProfile(entry: SampleProfileEntry): ValidationResu
     );
   }
 
+  const errorLabel = errors.length === 1 ? "error" : "errors";
+  const warningLabel = warnings.length === 1 ? "warning" : "warnings";
   return {
     status: errors.length > 0 ? "error" : "ok",
+    level: errors.length > 0 ? "error" : warnings.length > 0 ? "warn" : "good",
+    summary:
+      errors.length > 0
+        ? `${errors.length} ${errorLabel}`
+        : warnings.length > 0
+          ? `Valid \u00b7 ${warnings.length} ${warningLabel}`
+          : "Valid",
     errors,
     warnings,
     errorsText: errors.length > 0 ? errors.join("\n") : "No errors.",
@@ -441,6 +461,29 @@ function previewSpec(input: PreviewInput): InteractionSpec {
     interaction: input.interaction,
     subject: input.subject.trim() || "incident",
   };
+  if (input.interaction === "configure") {
+    return {
+      ...base,
+      data: {
+        ...demoDataFor(base),
+        settings: "fetched_sources.orders",
+      },
+      facetViews: {
+        settings: {
+          capability: "ui:editable-table",
+          read: { rows: "{{region.dataPath}}" },
+          props: {
+            spec: {
+              columns: ["id", "amount"],
+              addRow: false,
+              deleteRow: false,
+            },
+          },
+        },
+      },
+    };
+  }
+
   return { ...base, data: demoDataFor(base) };
 }
 
@@ -572,13 +615,13 @@ export const consoleEffects: EffectHandlerMap = {
     const draft = normalizeBundleId(selected.bundle, localId);
     return {
       ops: [
-        ...selectionOps(selected, readPreviewInput(ctx), "artifacts", snapshot),
+        ...selectionOps(selected, readPreviewInput(ctx), "draft", snapshot),
         setOp(
           "console.editor",
           {
             id: localId,
             bundleText: stringifyProfileBundle(draft),
-            status: `New local profile draft started from '${selected.artifact.payload.id}'. Save it to browser storage to create an editable local profile.`,
+            status: `New draft from '${selected.artifact.payload.id}'. Save to persist.`,
             error: "",
           } as unknown as Json
         ),
@@ -615,7 +658,7 @@ export const consoleEffects: EffectHandlerMap = {
 
       return {
         ops: [
-          ...selectionOps(saved, readPreviewInput(ctx), "artifacts", fresh),
+          ...selectionOps(saved, readPreviewInput(ctx), "draft", fresh),
           setOp(
             "console.editor",
             {
@@ -639,7 +682,7 @@ export const consoleEffects: EffectHandlerMap = {
               error: error instanceof Error ? error.message : String(error),
             } as unknown as Json
           ),
-          setOp("console.tab", "artifacts"),
+          setOp("console.tab", "draft"),
         ],
       };
     }
@@ -659,14 +702,14 @@ export const consoleEffects: EffectHandlerMap = {
               error: "Select a local profile before deleting it.",
             } as unknown as Json
           ),
-          setOp("console.tab", "artifacts"),
+          setOp("console.tab", "draft"),
         ],
       };
     }
     if (selected.readonly || selected.source !== "local") {
       return {
         ops: [
-          ...selectionOps(selected, readPreviewInput(ctx), "artifacts", snapshot),
+          ...selectionOps(selected, readPreviewInput(ctx), "draft", snapshot),
           setOp(
             "console.editor",
             {
@@ -692,7 +735,7 @@ export const consoleEffects: EffectHandlerMap = {
             status: `Deleted local profile '${selected.artifact.payload.id}' from browser storage.`,
           } as unknown as Json
         ),
-        setOp("console.tab", "artifacts"),
+        setOp("console.tab", "draft"),
       ],
     };
   },

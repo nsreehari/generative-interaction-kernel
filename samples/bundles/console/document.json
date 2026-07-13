@@ -6,8 +6,8 @@
       "capability": "ui:screen",
       "id": "console-root",
       "props": {
-        "title": "GenUI Profile Console",
-          "subtitle": "Inspect repo samples, validate profile bundles, and save editable local drafts"
+        "title": "Profiles",
+          "subtitle": "Browse, validate, preview, and fork sample profiles"
       },
       "edges": {
         "children": [
@@ -23,19 +23,11 @@
                   "capability": "ui:panel",
                   "id": "list-rail",
                   "props": {
-                    "title": "Profiles",
+                    "title": "Catalog",
                     "variant": "rail"
                   },
                   "edges": {
                     "children": [
-                      {
-                        "capability": "ui:note",
-                        "id": "rail-note",
-                        "props": {
-                          "tone": "muted",
-                          "value": "Repo sample profiles are read-only. Seed a local draft from any selection to save and edit browser-stored JSON bundles."
-                        }
-                      },
                       {
                         "capability": "ui:note",
                         "id": "catalog-status",
@@ -53,7 +45,7 @@
                         "capability": "ui:button",
                         "id": "create-local-profile",
                         "props": {
-                          "label": "Add new local profile",
+                          "label": "Create local draft",
                           "tone": "primary"
                         },
                         "edges": {
@@ -94,7 +86,7 @@
                         "props": {
                           "idKey": "id",
                           "primaryKey": "id",
-                          "badgeKey": "kind",
+                          "badgeKey": "access",
                           "valueKey": "version"
                         },
                         "edges": {
@@ -121,7 +113,7 @@
                   "capability": "ui:panel",
                   "id": "detail",
                   "props": {
-                    "title": "Profile",
+                    "title": "Selected Profile",
                     "variant": "detail"
                   },
                   "edges": {
@@ -141,27 +133,7 @@
                               "props": {
                                 "tone": "muted",
                                 "value": "Select a profile on the left to inspect it, or create a new local profile draft to start editing immediately."
-                              }
-                            },
-                            {
-                              "capability": "ui:button",
-                              "id": "empty-create-local-profile",
-                              "props": {
-                                "label": "Add new local profile",
-                                "tone": "primary"
-                              },
-                              "edges": {
-                                "on": {
-                                  "press": [
-                                    {
-                                      "do": "invoke",
-                                      "args": {
-                                        "tool": "seedLocalDraft"
-                                      }
-                                    }
-                                  ]
                                 }
-                              }
                             }
                           ]
                         }
@@ -181,9 +153,8 @@
                               "props": {
                                 "options": [
                                   { "value": "overview", "label": "Overview" },
-                                  { "value": "validation", "label": "Validation" },
-                                  { "value": "preview", "label": "Preview" },
-                                  { "value": "artifacts", "label": "Artifacts" }
+                                  { "value": "validation", "label": "Validate" },
+                                  { "value": "draft", "label": "Edit Draft" }
                                 ]
                               },
                               "edges": {
@@ -219,12 +190,6 @@
                                       "children": [
                                         {
                                           "capability": "ui:metric",
-                                          "id": "metric-id",
-                                          "props": { "label": "Id" },
-                                          "edges": { "read": { "value": "console.profile.id" } }
-                                        },
-                                        {
-                                          "capability": "ui:metric",
                                           "id": "metric-kind",
                                           "props": { "label": "Kind" },
                                           "edges": { "read": { "value": "console.profile.kind" } }
@@ -234,18 +199,6 @@
                                           "id": "metric-version",
                                           "props": { "label": "Version" },
                                           "edges": { "read": { "value": "console.profile.version" } }
-                                        },
-                                        {
-                                          "capability": "ui:metric",
-                                          "id": "metric-source-entry",
-                                          "props": { "label": "Source" },
-                                          "edges": { "read": { "value": "console.profile.source" } }
-                                        },
-                                        {
-                                          "capability": "ui:metric",
-                                          "id": "metric-readonly",
-                                          "props": { "label": "Read-only" },
-                                          "edges": { "read": { "value": "console.profile.readonly" } }
                                         },
                                         {
                                           "capability": "ui:metric",
@@ -263,6 +216,24 @@
                                     }
                                   },
                                   {
+                                    "capability": "ui:tabBar",
+                                    "id": "overview-subtabs",
+                                    "props": {
+                                      "options": [
+                                        { "value": "preview", "label": "Preview" },
+                                        { "value": "structure", "label": "Structure" }
+                                      ]
+                                    },
+                                    "edges": {
+                                      "read": { "active": "console.overviewTab" },
+                                      "on": {
+                                        "select": [
+                                          { "do": "assign", "target": "console.overviewTab", "args": { "from": "$event.value" } }
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  {
                                     "capability": "ui:panel",
                                     "id": "pipeline-panel",
                                     "props": {
@@ -270,6 +241,7 @@
                                       "variant": "inset"
                                     },
                                     "edges": {
+                                      "gate": "console.overviewTab = 'structure'",
                                       "children": [
                                         {
                                           "capability": "ui:row",
@@ -302,6 +274,7 @@
                                       "variant": "inset"
                                     },
                                     "edges": {
+                                      "gate": "console.overviewTab = 'structure'",
                                       "children": [
                                         {
                                           "capability": "ui:table",
@@ -327,6 +300,7 @@
                                       "variant": "inset"
                                     },
                                     "edges": {
+                                      "gate": "console.overviewTab = 'structure'",
                                       "children": [
                                         {
                                           "capability": "ui:table",
@@ -346,12 +320,169 @@
                                   },
                                   {
                                     "capability": "ui:panel",
+                                    "id": "preview-panel",
+                                    "props": {
+                                      "title": "Preview",
+                                      "variant": "inset"
+                                    },
+                                    "edges": {
+                                      "gate": "console.overviewTab = 'preview'",
+                                      "children": [
+                                        {
+                                          "capability": "ui:row",
+                                          "id": "preview-controls-inline",
+                                          "edges": {
+                                            "children": [
+                                              {
+                                                "capability": "ui:select",
+                                                "id": "preview-interaction",
+                                                "props": {
+                                                  "label": "Interaction",
+                                                  "options": [
+                                                    { "value": "investigate", "label": "investigate" },
+                                                    { "value": "compare", "label": "compare" },
+                                                    { "value": "review", "label": "review" },
+                                                    { "value": "approve", "label": "approve" },
+                                                    { "value": "monitor", "label": "monitor" },
+                                                    { "value": "explore", "label": "explore" },
+                                                    { "value": "create", "label": "create" },
+                                                    { "value": "configure", "label": "configure" },
+                                                    { "value": "collaborate", "label": "collaborate" },
+                                                    { "value": "plan", "label": "plan" },
+                                                    { "value": "learn", "label": "learn" },
+                                                    { "value": "decide", "label": "decide" }
+                                                  ]
+                                                },
+                                                "edges": {
+                                                  "read": {
+                                                    "value": "console.previewInteraction"
+                                                  },
+                                                  "on": {
+                                                    "change": [
+                                                      {
+                                                        "do": "assign",
+                                                        "target": "console.previewInteraction",
+                                                        "args": {
+                                                          "from": "$event.value"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "capability": "ui:field",
+                                                "id": "preview-subject",
+                                                "props": {
+                                                  "label": "Subject"
+                                                },
+                                                "edges": {
+                                                  "read": {
+                                                    "value": "console.previewSubject"
+                                                  },
+                                                  "on": {
+                                                    "input": [
+                                                      {
+                                                        "do": "assign",
+                                                        "target": "console.previewSubject",
+                                                        "args": {
+                                                          "from": "$event.value"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "capability": "ui:select",
+                                                "id": "preview-surface",
+                                                "props": {
+                                                  "label": "Surface",
+                                                  "options": [
+                                                    { "value": "desktop", "label": "desktop" },
+                                                    { "value": "web", "label": "web" },
+                                                    { "value": "mobile", "label": "mobile" },
+                                                    { "value": "copilot", "label": "copilot" },
+                                                    { "value": "teams", "label": "teams" }
+                                                  ]
+                                                },
+                                                "edges": {
+                                                  "read": {
+                                                    "value": "console.previewSurface"
+                                                  },
+                                                  "on": {
+                                                    "change": [
+                                                      {
+                                                        "do": "assign",
+                                                        "target": "console.previewSurface",
+                                                        "args": {
+                                                          "from": "$event.value"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "capability": "ui:button",
+                                                "id": "preview-refresh",
+                                                "props": {
+                                                  "label": "Refresh preview",
+                                                  "tone": "primary"
+                                                },
+                                                "edges": {
+                                                  "on": {
+                                                    "press": [
+                                                      {
+                                                        "do": "invoke",
+                                                        "args": {
+                                                          "tool": "refreshPreview"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:note",
+                                          "id": "preview-error",
+                                          "props": {
+                                            "tone": "info"
+                                          },
+                                          "edges": {
+                                            "gate": "console.previewError != ''",
+                                            "read": {
+                                              "value": "console.previewError"
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:embed",
+                                          "id": "preview-mount",
+                                          "props": {
+                                            "emptyText": "Nothing to preview yet."
+                                          },
+                                          "edges": {
+                                            "read": {
+                                              "bundle": "console.previewBundle"
+                                            }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:panel",
                                     "id": "capabilities-panel",
                                     "props": {
                                       "title": "Runtime capabilities",
                                       "variant": "inset"
                                     },
                                     "edges": {
+                                      "gate": "console.overviewTab = 'structure'",
                                       "children": [
                                         {
                                           "capability": "ui:table",
@@ -401,14 +532,15 @@
                                     }
                                   },
                                   {
-                                    "capability": "ui:metric",
+                                    "capability": "ui:alert",
                                     "id": "validation-status",
                                     "props": {
-                                      "label": "Status"
+                                      "label": "Validation"
                                     },
                                     "edges": {
                                       "read": {
-                                        "value": "console.validation.status"
+                                        "value": "console.validation.summary",
+                                        "level": "console.validation.level"
                                       }
                                     }
                                   },
@@ -459,180 +591,40 @@
                             },
                             {
                               "capability": "ui:panel",
-                              "id": "preview-tab",
+                              "id": "draft-tab",
                               "props": {
                                 "variant": "tab"
                               },
                               "edges": {
-                                "gate": "console.tab = 'preview'",
+                                "gate": "console.tab = 'draft'",
                                 "children": [
                                   {
-                                    "capability": "ui:panel",
-                                    "id": "preview-controls",
+                                    "capability": "ui:tabBar",
+                                    "id": "draft-subtabs",
                                     "props": {
-                                      "title": "Preview inputs",
-                                      "variant": "inset"
-                                    },
-                                    "edges": {
-                                      "children": [
-                                        {
-                                          "capability": "ui:select",
-                                          "id": "preview-interaction",
-                                          "props": {
-                                            "label": "Interaction",
-                                            "options": [
-                                              { "value": "investigate", "label": "investigate" },
-                                              { "value": "compare", "label": "compare" },
-                                              { "value": "review", "label": "review" },
-                                              { "value": "approve", "label": "approve" },
-                                              { "value": "monitor", "label": "monitor" },
-                                              { "value": "explore", "label": "explore" },
-                                              { "value": "create", "label": "create" },
-                                              { "value": "configure", "label": "configure" },
-                                              { "value": "collaborate", "label": "collaborate" },
-                                              { "value": "plan", "label": "plan" },
-                                              { "value": "learn", "label": "learn" },
-                                              { "value": "decide", "label": "decide" }
-                                            ]
-                                          },
-                                          "edges": {
-                                            "read": {
-                                              "value": "console.previewInteraction"
-                                            },
-                                            "on": {
-                                              "change": [
-                                                {
-                                                  "do": "assign",
-                                                  "target": "console.previewInteraction",
-                                                  "args": {
-                                                    "from": "$event.value"
-                                                  }
-                                                }
-                                              ]
-                                            }
-                                          }
-                                        },
-                                        {
-                                          "capability": "ui:field",
-                                          "id": "preview-subject",
-                                          "props": {
-                                            "label": "Subject"
-                                          },
-                                          "edges": {
-                                            "read": {
-                                              "value": "console.previewSubject"
-                                            },
-                                            "on": {
-                                              "input": [
-                                                {
-                                                  "do": "assign",
-                                                  "target": "console.previewSubject",
-                                                  "args": {
-                                                    "from": "$event.value"
-                                                  }
-                                                }
-                                              ]
-                                            }
-                                          }
-                                        },
-                                        {
-                                          "capability": "ui:select",
-                                          "id": "preview-surface",
-                                          "props": {
-                                            "label": "Surface",
-                                            "options": [
-                                              { "value": "desktop", "label": "desktop" },
-                                              { "value": "web", "label": "web" },
-                                              { "value": "mobile", "label": "mobile" },
-                                              { "value": "copilot", "label": "copilot" },
-                                              { "value": "teams", "label": "teams" }
-                                            ]
-                                          },
-                                          "edges": {
-                                            "read": {
-                                              "value": "console.previewSurface"
-                                            },
-                                            "on": {
-                                              "change": [
-                                                {
-                                                  "do": "assign",
-                                                  "target": "console.previewSurface",
-                                                  "args": {
-                                                    "from": "$event.value"
-                                                  }
-                                                }
-                                              ]
-                                            }
-                                          }
-                                        },
-                                        {
-                                          "capability": "ui:button",
-                                          "id": "preview-refresh",
-                                          "props": {
-                                            "label": "Rebuild preview",
-                                            "tone": "primary"
-                                          },
-                                          "edges": {
-                                            "on": {
-                                              "press": [
-                                                {
-                                                  "do": "invoke",
-                                                  "args": {
-                                                    "tool": "refreshPreview"
-                                                  }
-                                                }
-                                              ]
-                                            }
-                                          }
-                                        }
+                                      "options": [
+                                        { "value": "editor", "label": "Editor" },
+                                        { "value": "source", "label": "Source artifacts" }
                                       ]
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:note",
-                                    "id": "preview-error",
-                                    "props": {
-                                      "tone": "info"
                                     },
                                     "edges": {
-                                      "gate": "console.previewError != ''",
-                                      "read": {
-                                        "value": "console.previewError"
+                                      "read": { "active": "console.draftTab" },
+                                      "on": {
+                                        "select": [
+                                          { "do": "assign", "target": "console.draftTab", "args": { "from": "$event.value" } }
+                                        ]
                                       }
                                     }
                                   },
-                                  {
-                                    "capability": "ui:embed",
-                                    "id": "preview-mount",
-                                    "props": {
-                                      "emptyText": "Nothing to preview yet."
-                                    },
-                                    "edges": {
-                                      "read": {
-                                        "bundle": "console.previewBundle"
-                                      }
-                                    }
-                                  }
-                                ]
-                              }
-                            },
-                            {
-                              "capability": "ui:panel",
-                              "id": "artifacts-tab",
-                              "props": {
-                                "variant": "tab"
-                              },
-                              "edges": {
-                                "gate": "console.tab = 'artifacts'",
-                                "children": [
                                   {
                                     "capability": "ui:panel",
                                     "id": "artifact-editor-panel",
                                     "props": {
-                                      "title": "Local storage editor",
+                                      "title": "Edit local draft",
                                       "variant": "inset"
                                     },
                                     "edges": {
+                                      "gate": "console.draftTab = 'editor'",
                                       "children": [
                                         {
                                           "capability": "ui:note",
@@ -687,9 +679,10 @@
                                           "capability": "ui:button",
                                           "id": "artifact-seed-draft",
                                           "props": {
-                                            "label": "Add new local profile from selection"
+                                            "label": "Create local draft from selection"
                                           },
                                           "edges": {
+                                            "gate": "console.profile.source = 'repo'",
                                             "on": {
                                               "press": [
                                                 {
@@ -706,7 +699,7 @@
                                           "capability": "ui:textarea",
                                           "id": "artifact-editor-bundle",
                                           "props": {
-                                            "label": "Stored profile bundle JSON",
+                                            "label": "Profile bundle JSON",
                                             "placeholder": "{\n  \"format\": \"gik-profile-bundle/1\",\n  ...\n}"
                                           },
                                           "edges": {
@@ -730,7 +723,7 @@
                                           "capability": "ui:button",
                                           "id": "artifact-save-local",
                                           "props": {
-                                            "label": "Save local profile",
+                                            "label": "Save draft",
                                             "tone": "primary"
                                           },
                                           "edges": {
@@ -750,9 +743,10 @@
                                           "capability": "ui:button",
                                           "id": "artifact-delete-local",
                                           "props": {
-                                            "label": "Delete selected local profile"
+                                            "label": "Delete local draft"
                                           },
                                           "edges": {
+                                            "gate": "console.profile.source = 'local'",
                                             "on": {
                                               "press": [
                                                 {
@@ -772,10 +766,11 @@
                                     "capability": "ui:panel",
                                     "id": "artifact-profile-panel",
                                     "props": {
-                                      "title": "profile.json",
+                                      "title": "Source profile artifact",
                                       "variant": "inset"
                                     },
                                     "edges": {
+                                      "gate": "console.draftTab = 'source'",
                                       "children": [
                                         {
                                           "capability": "ui:codeBlock",
@@ -793,10 +788,11 @@
                                     "capability": "ui:panel",
                                     "id": "artifact-recipes-panel",
                                     "props": {
-                                      "title": "recipe artifacts",
+                                      "title": "Source recipe artifacts",
                                       "variant": "inset"
                                     },
                                     "edges": {
+                                      "gate": "console.draftTab = 'source'",
                                       "children": [
                                         {
                                           "capability": "ui:codeBlock",
@@ -814,10 +810,11 @@
                                     "capability": "ui:panel",
                                     "id": "artifact-resolved-panel",
                                     "props": {
-                                      "title": "resolved chain",
+                                      "title": "Resolved chain",
                                       "variant": "inset"
                                     },
                                     "edges": {
+                                      "gate": "console.draftTab = 'source'",
                                       "children": [
                                         {
                                           "capability": "ui:codeBlock",
@@ -835,10 +832,11 @@
                                     "capability": "ui:panel",
                                     "id": "artifact-bundle-panel",
                                     "props": {
-                                      "title": "stored bundle payload",
+                                      "title": "Stored draft payload",
                                       "variant": "inset"
                                     },
                                     "edges": {
+                                      "gate": "console.draftTab = 'source'",
                                       "children": [
                                         {
                                           "capability": "ui:codeBlock",

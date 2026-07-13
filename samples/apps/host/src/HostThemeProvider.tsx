@@ -83,6 +83,9 @@ const HOST_THEME_CSS = `
 }
 .gx-host .gx-badge-draft { color: var(--warn); border-color: var(--warn); }
 .gx-host .gx-badge-active { color: var(--good); border-color: var(--good); }
+.gx-host .gx-badge-danger { color: var(--bad); border-color: var(--bad); }
+.gx-host .gx-badge-read-only { color: var(--muted); border-color: var(--line); }
+.gx-host .gx-badge-editable { color: var(--good); border-color: var(--good); }
 
 .gx-host .gx-metric { display: flex; flex-direction: column; gap: var(--spacingVerticalXXS); }
 .gx-host .gx-metric-label { font-size: var(--fontSizeBase100); color: var(--muted); }
@@ -90,10 +93,9 @@ const HOST_THEME_CSS = `
 
 .gx-host .gx-list { list-style: none; margin: 0; padding: 0; }
 .gx-host .gx-list-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-areas: "primary badge" "value value";
-  gap: var(--spacingVerticalXXS) var(--spacingHorizontalS);
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacingHorizontalS);
   width: 100%;
   text-align: left;
   background: transparent;
@@ -102,15 +104,14 @@ const HOST_THEME_CSS = `
   font: inherit;
   border: var(--strokeWidthThin) solid transparent;
   border-radius: var(--borderRadiusLarge);
-  padding: var(--spacingVerticalS) var(--spacingHorizontalMNudge);
-  margin-bottom: var(--spacingVerticalXS);
+  padding: var(--spacingVerticalSNudge) var(--spacingHorizontalMNudge);
+  margin-bottom: var(--spacingVerticalXXS);
 }
 .gx-host .gx-list-row:hover { background: var(--panel-2); }
 .gx-host .gx-list-row.selected { border-color: var(--accent); background: var(--panel-2); }
-.gx-host .gx-list-primary { grid-area: primary; font-weight: var(--fontWeightSemibold); }
-.gx-host .gx-list-row .gx-badge { grid-area: badge; }
+.gx-host .gx-list-primary { font-weight: var(--fontWeightSemibold); }
 .gx-host .gx-list-secondary,
-.gx-host .gx-list-value { grid-area: value; font-size: var(--fontSizeBase100); }
+.gx-host .gx-list-value { margin-left: auto; font-size: var(--fontSizeBase100); color: var(--muted); }
 
 .gx-host .gx-table { width: 100%; border-collapse: collapse; }
 .gx-host .gx-table th {
