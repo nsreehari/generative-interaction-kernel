@@ -8,7 +8,8 @@
 
 import React from "react";
 import "@xyflow/react/dist/style.css";
-import { unwrap } from "../../../../kernel/src/index";
+import { unwrap, JsonataExpressionProvider } from "../../../../kernel/src/index";
+import type { Json, ResolvedNode } from "../../../../kernel/src/types";
 import {
   buildRegistryFromImports,
   type ProjectionView,
@@ -62,6 +63,11 @@ interface EditableTableSpec {
 interface FormSchema {
   properties?: Record<string, Record<string, unknown>>;
   required?: string[];
+  // Declarative JSONata validators (parity with the frontend Form). Each entry is a
+  // `[expr, message]` pair or `{ expr, message }`; the expr is evaluated against `{ data: values }`
+  // and must return literal `true` to pass. Evaluated with the SAFE subset (no lambdas / transform /
+  // $eval) since validators are predicate positions.
+  validators?: Array<[string, string?] | { expr: string; message?: string }>;
 }
 
 interface MultiFileUploadGroup {
@@ -942,18 +948,124 @@ function TextArea({ node, emit }: ProjectionViewProps) {
   );
 }
 
+// Declarative validators shared by `Form` (and therefore `json-field`). Validators are JSONata
+// predicate positions, so they run through the SAFE provider subset (lambdas / transform / $eval are
+// rejected at compile time). The frontend Form uses a synchronous JSONata build; the kernel only
+// vendors an async provider, so here validation runs asynchronously in an effect / on submit and the
+// result gates the Save button — the same blur/submit cadence, just awaited.
+const formValidatorProvider = new JsonataExpressionProvider({ safe: true });
+
+interface NormalizedValidator {
+  expr: string;
+  message: string;
+}
+
+function normalizeValidators(raw: unknown): NormalizedValidator[] {
+  if (!Array.isArray(raw)) return [];
+  const out: NormalizedValidator[] = [];
+  for (const entry of raw) {
+    if (Array.isArray(entry)) {
+      const expr = typeof entry[0] === "string" ? entry[0].trim() : "";
+      if (expr) out.push({ expr, message: typeof entry[1] === "string" ? entry[1] : "Invalid value" });
+    } else if (entry && typeof entry === "object") {
+      const e = entry as Record<string, unknown>;
+      const expr = typeof e.expr === "string" ? e.expr.trim() : "";
+      if (expr) out.push({ expr, message: typeof e.message === "string" ? e.message : "Invalid value" });
+    }
+  }
+  return out;
+}
+
+/** Evaluate each validator against `{ data: values }`; collect the messages of those that don't pass. */
+async function runValidators(validators: NormalizedValidator[], values: unknown): Promise<string[]> {
+  if (validators.length === 0) return [];
+  const root = { data: values };
+  const errors: string[] = [];
+  for (const validator of validators) {
+    let ok = false;
+    try {
+      ok = (await formValidatorProvider.eval(validator.expr, root)) === true;
+    } catch {
+      ok = false;
+    }
+    if (!ok) errors.push(validator.message);
+  }
+  return errors;
+}
+
+/** A `json` field renders a JSON textarea whose parse-validity gates the enclosing form's Save. */
+function isJsonField(prop: Record<string, unknown>): boolean {
+  return prop.format === "json" || prop.type === "json";
+}
+
+// A JSON text field: sugar for a single-field committed `Form` whose one field is a `json` textarea.
+// It is a reusable floor input (not console-specific): reads `value`/`data` (a parsed object or raw
+// JSON text), renders one JSON field with live parse validation, and — like any Form — emits
+// `save { values }` on commit, with `values[name]` holding the parsed value. Optional `validators`
+// (JSONata `[expr, message]` pairs) are passed straight through to the Form. `name` (default
+// "value") is the field key consumers read back from `$event.values`.
+function JsonField({ node, emit }: ProjectionViewProps) {
+  const p = readProps(node);
+  const name = p.str("name", "value");
+  const fieldSpec: Record<string, Json> = {
+    type: "json",
+    title: p.str("label"),
+    rows: p.str("rows", "8"),
+    placeholder: p.str("placeholder"),
+  };
+  const validators = node.props.validators;
+  const fields: Record<string, Json> = {
+    properties: { [name]: fieldSpec },
+    ...(validators !== undefined ? { validators } : {}),
+  };
+  const initial = node.props.value !== undefined ? node.props.value : (node.props.data ?? null);
+  const formProps: Record<string, Json> = {
+    ...node.props,
+    fields,
+    value: initial === null ? {} : { [name]: initial },
+    saveLabel: p.str("saveLabel", "Apply"),
+    discardLabel: p.str("discardLabel", "Reset"),
+  };
+  const formNode: ResolvedNode = { ...node, props: formProps };
+  return <Form node={formNode} emit={emit} children={undefined} />;
+}
+
 function Form({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
   const schema = p.obj<FormSchema>("fields", {});
   const props = schema.properties ?? {};
   const required = Array.isArray(schema.required) ? schema.required : [];
   const incoming = p.obj<Record<string, unknown>>("value", p.obj<Record<string, unknown>>("data", {}));
+
+  // `json` fields keep their raw textarea text apart from the parsed `values` so an in-progress /
+  // invalid edit doesn't clobber the last parsed value or fight the controlled textarea.
+  const jsonKeys = React.useMemo(
+    () => Object.entries(props).filter(([, prop]) => isJsonField(prop ?? {})).map(([key]) => key),
+    [JSON.stringify(props)],
+  );
+  const jsonTextFrom = React.useCallback((source: Record<string, unknown>): Record<string, string> => {
+    const out: Record<string, string> = {};
+    for (const key of jsonKeys) {
+      const v = source[key];
+      out[key] = v === null || v === undefined ? "" : typeof v === "string" ? v : JSON.stringify(v, null, 2);
+    }
+    return out;
+  }, [jsonKeys]);
+
+  const validators = React.useMemo(() => normalizeValidators(schema.validators), [JSON.stringify(schema.validators)]);
+
   const [values, setValues] = React.useState<Record<string, unknown>>(incoming ?? {});
+  const [jsonText, setJsonText] = React.useState<Record<string, string>>(() => jsonTextFrom(incoming ?? {}));
+  const [jsonErrors, setJsonErrors] = React.useState<Record<string, string>>({});
   const [dirty, setDirty] = React.useState(false);
+  const [validation, setValidation] = React.useState<{ checked: boolean; errors: string[] }>({ checked: false, errors: [] });
 
   React.useEffect(() => {
     setValues(incoming ?? {});
+    setJsonText(jsonTextFrom(incoming ?? {}));
+    setJsonErrors({});
     setDirty(false);
+    setValidation({ checked: false, errors: [] });
   }, [JSON.stringify(incoming)]);
 
   const setField = (key: string, nextValue: unknown) => {
@@ -961,8 +1073,55 @@ function Form({ node, emit }: ProjectionViewProps) {
     setDirty(true);
   };
 
-  const submit = (event: React.FormEvent) => {
+  const setJsonField = (key: string, text: string) => {
+    setJsonText((current) => ({ ...current, [key]: text }));
+    setDirty(true);
+    const trimmed = text.trim();
+    if (trimmed === "") {
+      setJsonErrors((cur) => ({ ...cur, [key]: "" }));
+      setValues((cur) => ({ ...cur, [key]: undefined }));
+      return;
+    }
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      setJsonErrors((cur) => ({ ...cur, [key]: "" }));
+      setValues((cur) => ({ ...cur, [key]: parsed }));
+    } catch (err) {
+      setJsonErrors((cur) => ({ ...cur, [key]: err instanceof Error ? err.message : "Invalid JSON" }));
+    }
+  };
+
+  const hasJsonError = Object.values(jsonErrors).some((message) => message);
+
+  // Re-run declarative validators whenever the committed values settle. Keyed on serialized values so
+  // the Save gate stays live without running per keystroke inside each field.
+  React.useEffect(() => {
+    if (validators.length === 0) return;
+    let cancelled = false;
+    void runValidators(validators, values).then((errors) => {
+      if (!cancelled) setValidation({ checked: true, errors });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [validators, JSON.stringify(values)]);
+
+  const submitDisabled = hasJsonError || (validation.checked && validation.errors.length > 0);
+
+  const reset = () => {
+    setValues(incoming ?? {});
+    setJsonText(jsonTextFrom(incoming ?? {}));
+    setJsonErrors({});
+    setDirty(false);
+    setValidation({ checked: false, errors: [] });
+  };
+
+  const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (hasJsonError) return;
+    const errors = await runValidators(validators, values);
+    setValidation({ checked: true, errors });
+    if (errors.length > 0) return;
     emit("save", { values });
     setDirty(false);
   };
@@ -974,6 +1133,27 @@ function Form({ node, emit }: ProjectionViewProps) {
         const title = String(field.title ?? key);
         const isRequired = required.includes(key);
         const current = values[key];
+
+        if (isJsonField(field)) {
+          const rowsRaw = Number.parseInt(String(field.rows ?? 8), 10);
+          const rows = Number.isFinite(rowsRaw) && rowsRaw > 0 ? rowsRaw : 8;
+          const err = jsonErrors[key];
+          return (
+            <label key={key} className="gx-field gx-json-field">
+              {field.title ? <span className="gx-field-label">{title}</span> : null}
+              <textarea
+                className={err ? "gx-json-input invalid" : "gx-json-input"}
+                spellCheck={false}
+                rows={rows}
+                value={jsonText[key] ?? ""}
+                placeholder={String(field.placeholder ?? "")}
+                required={isRequired}
+                onChange={(event) => setJsonField(key, event.target.value)}
+              />
+              {err ? <span className="gx-json-error" role="alert">{err}</span> : null}
+            </label>
+          );
+        }
 
         if (field.type === "boolean") {
           return (
@@ -1059,12 +1239,19 @@ function Form({ node, emit }: ProjectionViewProps) {
           </label>
         );
       })}
+      {validation.checked && validation.errors.length > 0 ? (
+        <div className="gx-form-errors" role="alert">
+          {validation.errors.map((message, index) => (
+            <span key={index} className="gx-json-error">{message}</span>
+          ))}
+        </div>
+      ) : null}
       {dirty ? (
         <div className="gx-panel-actions">
-          <button type="button" className="gx-btn" onClick={() => { setValues(incoming ?? {}); setDirty(false); }}>
+          <button type="button" className="gx-btn" onClick={reset}>
             {p.str("discardLabel", "Discard")}
           </button>
-          <button type="submit" className="gx-btn gx-btn-primary">
+          <button type="submit" className="gx-btn gx-btn-primary" disabled={submitDisabled}>
             {p.str("saveLabel", "Save")}
           </button>
         </div>
@@ -1649,6 +1836,7 @@ export const FLOOR_COMPONENTS: Record<string, ProjectionView> = {
   selection: Selection,
   field: Field,
   textarea: TextArea,
+  "json-field": JsonField,
   select: Select,
   form: Form,
   button: Button,

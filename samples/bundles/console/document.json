@@ -474,55 +474,10 @@
                                                           "text": "console.layerDetail.outgoingRecipe.purpose"
                                                         }
                                                       }
-                                                    }
-                                                  ]
-                                                }
-                                              },
-                                              {
-                                                "capability": "ui:panel",
-                                                "id": "layer-lowering-examples-panel",
-                                                "props": {
-                                                  "title": "See it lower — worked examples",
-                                                  "variant": "inset"
-                                                },
-                                                "edges": {
-                                                  "gate": "console.layerDetail.outgoingRecipe.id != ''",
-                                                  "children": [
-                                                    {
-                                                      "capability": "ui:note",
-                                                      "id": "layer-lowering-examples-caption",
-                                                      "props": { "value": "Real output of running this profile for sample inputs — what this layer actually produces when it lowers into the next one, not a rulebook.", "tone": "muted" }
                                                     },
                                                     {
-                                                      "capability": "ui:table",
-                                                      "id": "layer-lowering-examples-table",
-                                                      "props": {
-                                                        "static": true,
-                                                        "emptyText": "No worked examples for this layer."
-                                                      },
-                                                      "edges": {
-                                                        "read": {
-                                                          "columns": "console.layerDetail.loweringExamples.columns",
-                                                          "rows": "console.layerDetail.loweringExamples.rows"
-                                                        }
-                                                      }
-                                                    }
-                                                  ]
-                                                }
-                                              },
-                                              {
-                                                "capability": "ui:panel",
-                                                "id": "layer-region-rules-panel",
-                                                "props": {
-                                                  "title": "How each region is handled",
-                                                  "variant": "inset"
-                                                },
-                                                "edges": {
-                                                  "gate": "console.layerDetail.outgoingRecipe.id != ''",
-                                                  "children": [
-                                                    {
                                                       "capability": "ui:property",
-                                                      "id": "layer-region-rules-container",
+                                                      "id": "layer-outgoing-recipe-container",
                                                       "props": { "label": "Everything sits inside" },
                                                       "edges": {
                                                         "gate": "console.layerDetail.outgoingRecipe.containerCapability != ''",
@@ -531,12 +486,12 @@
                                                     },
                                                     {
                                                       "capability": "ui:note",
-                                                      "id": "layer-region-rules-caption",
-                                                      "props": { "value": "Whichever result the worked examples show, each region inside it is bound by these rules:", "tone": "muted" }
+                                                      "id": "layer-outgoing-recipe-region-caption",
+                                                      "props": { "value": "How each region inside the result is handled by this lowering:", "tone": "muted" }
                                                     },
                                                     {
                                                       "capability": "ui:maplist",
-                                                      "id": "layer-region-rules-map",
+                                                      "id": "layer-outgoing-recipe-region-map",
                                                       "props": {
                                                         "emptyText": "No per-region rules authored."
                                                       },
@@ -545,6 +500,37 @@
                                                           "fromLabel": "console.layerDetail.outgoingRecipe.regionRuleFromLabel",
                                                           "toLabel": "console.layerDetail.outgoingRecipe.regionRuleToLabel",
                                                           "rows": "console.layerDetail.outgoingRecipe.regionRuleMappings"
+                                                        }
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              {
+                                                "capability": "ui:panel",
+                                                "id": "layer-compute-panel",
+                                                "props": {
+                                                  "title": "Watch it lower — run this layer",
+                                                  "variant": "inset"
+                                                },
+                                                "edges": {
+                                                  "gate": "console.layerDetail.outgoingRecipe.id != ''",
+                                                  "children": [
+                                                    {
+                                                      "capability": "ui:note",
+                                                      "id": "layer-compute-caption",
+                                                      "props": { "value": "Pick an interaction goal and see exactly what this layer produces when the live profile lowers it into the next stage.", "tone": "muted" }
+                                                    },
+                                                    {
+                                                      "capability": "console:lowering-recipe-runner",
+                                                      "id": "layer-compute-runner",
+                                                      "edges": {
+                                                        "read": {
+                                                          "bundleText": "console.artifacts.bundleText",
+                                                          "layerId": "console.selectedLayerId",
+                                                          "seeds": "console.layerDetail.seeds",
+                                                          "subject": "console.interactionInput.subject",
+                                                          "surface": "console.previewSurface"
                                                         }
                                                       }
                                                     }
@@ -620,70 +606,42 @@
                                     "edges": {
                                       "children": [
                                         {
+                                          "capability": "ui:form",
+                                          "id": "interaction-input-form",
+                                          "props": {
+                                            "title": "Interaction input",
+                                            "saveLabel": "Apply & refresh",
+                                            "discardLabel": "Reset"
+                                          },
+                                          "edges": {
+                                            "read": {
+                                              "fields": "console.interactionInputForm",
+                                              "value": "console.interactionInput"
+                                            },
+                                            "on": {
+                                              "save": [
+                                                {
+                                                  "do": "assign",
+                                                  "target": "console.interactionInput",
+                                                  "args": {
+                                                    "from": "$event.values"
+                                                  }
+                                                },
+                                                {
+                                                  "do": "invoke",
+                                                  "args": {
+                                                    "tool": "refreshPreview"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        },
+                                        {
                                           "capability": "ui:row",
                                           "id": "preview-controls-inline",
                                           "edges": {
                                             "children": [
-                                              {
-                                                "capability": "ui:select",
-                                                "id": "preview-interaction",
-                                                "props": {
-                                                  "label": "Interaction",
-                                                  "options": [
-                                                    { "value": "investigate", "label": "investigate" },
-                                                    { "value": "compare", "label": "compare" },
-                                                    { "value": "review", "label": "review" },
-                                                    { "value": "approve", "label": "approve" },
-                                                    { "value": "monitor", "label": "monitor" },
-                                                    { "value": "explore", "label": "explore" },
-                                                    { "value": "create", "label": "create" },
-                                                    { "value": "configure", "label": "configure" },
-                                                    { "value": "collaborate", "label": "collaborate" },
-                                                    { "value": "plan", "label": "plan" },
-                                                    { "value": "learn", "label": "learn" },
-                                                    { "value": "decide", "label": "decide" }
-                                                  ]
-                                                },
-                                                "edges": {
-                                                  "read": {
-                                                    "value": "console.previewInteraction"
-                                                  },
-                                                  "on": {
-                                                    "change": [
-                                                      {
-                                                        "do": "assign",
-                                                        "target": "console.previewInteraction",
-                                                        "args": {
-                                                          "from": "$event.value"
-                                                        }
-                                                      }
-                                                    ]
-                                                  }
-                                                }
-                                              },
-                                              {
-                                                "capability": "ui:field",
-                                                "id": "preview-subject",
-                                                "props": {
-                                                  "label": "Subject"
-                                                },
-                                                "edges": {
-                                                  "read": {
-                                                    "value": "console.previewSubject"
-                                                  },
-                                                  "on": {
-                                                    "input": [
-                                                      {
-                                                        "do": "assign",
-                                                        "target": "console.previewSubject",
-                                                        "args": {
-                                                          "from": "$event.value"
-                                                        }
-                                                      }
-                                                    ]
-                                                  }
-                                                }
-                                              },
                                               {
                                                 "capability": "ui:select",
                                                 "id": "preview-surface",
@@ -731,6 +689,31 @@
                                                         }
                                                       }
                                                     ]
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:panel",
+                                          "id": "preview-waterfall-panel",
+                                          "props": {
+                                            "title": "Watch it lower — stage by stage",
+                                            "variant": "inset"
+                                          },
+                                          "edges": {
+                                            "children": [
+                                              {
+                                                "capability": "console:pipeline-runner",
+                                                "id": "preview-pipeline-runner",
+                                                "edges": {
+                                                  "read": {
+                                                    "bundleText": "console.artifacts.bundleText",
+                                                    "interaction": "console.interactionInput.interaction",
+                                                    "subject": "console.interactionInput.subject",
+                                                    "surface": "console.previewSurface",
+                                                    "data": "console.interactionInput.data"
                                                   }
                                                 }
                                               }

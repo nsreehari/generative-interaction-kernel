@@ -1,13 +1,10 @@
 # @gik/profile-genui
 
-The **GenUI profile flavor** for the Generative Interaction Kernel: the concrete layer-kind vocabulary
-(interaction / presentation / runtime-document), the `genui-profile` kind, the two lowering recipe
-shapes and their schema/lint, the stage executors, and the full pipeline runner. It builds on the
-generic kind *mechanism* in [`@gik/profile`](https://www.npmjs.com/package/@gik/profile).
+Internal workspace for the current GenUI profile flavor and its transition code.
 
-```bash
-npm install @gik/profile-genui
-```
+This workspace is no longer intended to be published as a separate npm package.
+The target direction is to shrink this code into reusable JSON profile/template artifacts plus the
+minimal irreducible runtime seams that stay inside the repo.
 
 ```ts
 import {
@@ -19,8 +16,7 @@ import {
 
 ## Documentation
 
-See [`docs/GIK-public-interface.html`](./docs/GIK-public-interface.html) (§14 · Provider engines &
-building blocks) and the [project repository](https://github.com/nsreehari/generative-interaction-kernel).
+See the project repository for current internal usage and migration work.
 
 ## License
 

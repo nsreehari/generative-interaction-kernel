@@ -37,7 +37,7 @@ export function authoredApplyPayload(a: AuthoredSession): Record<string, Json> {
   return {
     interaction: a.interaction.interaction,
     subject: a.interaction.subject ?? "",
-    surface: ctx.surface ?? "desktop",
+    surface: String((ctx as Record<string, unknown>).surface ?? "desktop"),
     device: axis("device"),
     space: axis("space"),
     attention: axis("attention"),
@@ -57,7 +57,7 @@ export function readInputs(state: StateReader): {
   const subject = String(state.get("workbench.subject") ?? "");
   const profileId = String(state.get("workbench.profile") || "live-cards");
   const ctx: PresentationContext = {
-    surface: String(state.get("workbench.surface") || "desktop") as PresentationContext["surface"],
+    surface: String(state.get("workbench.surface") || "desktop"),
   };
   for (const axis of ["device", "space", "attention", "expertise"] as const) {
     const v = state.get(`workbench.${axis}`);

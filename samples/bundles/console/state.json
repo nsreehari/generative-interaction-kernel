@@ -47,6 +47,7 @@
       "description": "",
       "role": "",
       "stageLabel": "",
+      "seeds": [],
       "vocabulary": { "groups": [] },
       "loweringExamples": { "columns": [], "rows": [] },
       "outgoingRecipe": {
@@ -173,8 +174,8 @@
       "error": ""
     },
     "tab": "overview",
-    "previewInteraction": "investigate",
-    "previewSubject": "incident",
+    "interactionInputForm": { "properties": {} },
+    "interactionInput": {},
     "previewSurface": "desktop",
     "previewBundle": null,
     "previewError": ""
