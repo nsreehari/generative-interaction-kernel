@@ -100,6 +100,10 @@ const HOST_THEME_CSS = `
 .gx-host .gx-metric-label { font-size: var(--fontSizeBase100); color: var(--muted); }
 .gx-host .gx-metric-value { font-size: var(--fontSizeBase500); }
 
+.gx-host .gx-property { display: flex; flex-direction: column; gap: var(--spacingVerticalXXS); }
+.gx-host .gx-property-label { font-size: var(--fontSizeBase100); color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.gx-host .gx-property-value { font-size: var(--fontSizeBase300); font-weight: var(--fontWeightSemibold, 600); }
+
 .gx-host .gx-list { list-style: none; margin: 0; padding: 0; }
 .gx-host .gx-list-row {
   display: flex;

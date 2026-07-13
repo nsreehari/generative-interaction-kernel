@@ -492,10 +492,26 @@ function Alert({ node }: ProjectionViewProps) {
 
 function Metric({ node }: ProjectionViewProps) {
   const p = readProps(node);
+  const variant = p.str("variant");
   return (
-    <div className="gx-metric">
+    <div className={variant ? `gx-metric gx-metric-${variant}` : "gx-metric"}>
       <span className="gx-metric-label">{p.str("label")}</span>
       <strong className="gx-metric-value">{p.str("value")}</strong>
+    </div>
+  );
+}
+
+// A labeled text attribute (identifier, enum, or short phrase). Unlike `metric`, whose value is a
+// large KPI number, `property` renders its value at body size and weight so identifiers like
+// `ui:board` read as data, not as a heading.
+function Property({ node }: ProjectionViewProps) {
+  const p = readProps(node);
+  const label = p.str("label");
+  const value = p.str("value").trim() || "—";
+  return (
+    <div className="gx-property">
+      {label ? <span className="gx-property-label">{label}</span> : null}
+      <span className="gx-property-value">{value}</span>
     </div>
   );
 }
@@ -1542,6 +1558,7 @@ export const FLOOR_COMPONENTS: Record<string, ProjectionView> = {
   alert: Alert,
   metric: Metric,
   narrative: Narrative,
+  property: Property,
   codeBlock: CodeBlock,
   chart: ChartPrimitive,
   markdown: Markdown,

@@ -15,6 +15,7 @@
       "ui:note": { "propsSchema": { "type": "object", "additionalProperties": true } },
       "ui:narrative": { "propsSchema": { "type": "object", "additionalProperties": true } },
       "ui:metric": { "propsSchema": { "type": "object", "additionalProperties": true } },
+      "ui:property": { "propsSchema": { "type": "object", "additionalProperties": true } },
       "ui:alert": { "propsSchema": { "type": "object", "additionalProperties": true } },
       "console:profile-pipeline-canvas": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["selectNode", "selectEdge"] },
       "ui:list": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["select"] },

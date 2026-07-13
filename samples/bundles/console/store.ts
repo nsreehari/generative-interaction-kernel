@@ -163,6 +163,8 @@ const EMPTY_LAYER_DETAIL = {
   kind: "",
   schema: "",
   description: "",
+  role: "",
+  stageLabel: "",
   outgoingRecipe: {
     id: "",
     kind: "",
@@ -203,6 +205,7 @@ const EMPTY_RECIPE_DETAIL = {
   id: "",
   kind: "",
   kindLabel: "",
+  purpose: "",
   from: "",
   to: "",
   summary: "",
@@ -427,6 +430,7 @@ function emptyRecipeDetailState() {
     id: "",
     kind: "",
     kindLabel: "",
+    purpose: "",
     from: "",
     to: "",
     summary: "",
@@ -501,12 +505,54 @@ function resolveRecipeId(entry: CatalogEntry, recipeId?: string): string {
   return recipeId && ids.has(recipeId) ? recipeId : "";
 }
 
+const LAYER_ROLES: Record<string, string> = {
+  interaction:
+    "What the user is trying to accomplish — a domain-neutral goal pattern (investigate, compare, review…). No layout or UI is decided here yet.",
+  presentation:
+    "How that goal should appear for the current context — its regions, each with a priority and a disclosure choice, arranged by a layout template.",
+  "runtime-document":
+    "The final, validated UI document — the concrete kernel capabilities a renderer actually draws.",
+};
+
+function layerRole(kind: string): string {
+  return LAYER_ROLES[kind] ?? "A stage in this profile's lowering pipeline.";
+}
+
+function recipePurpose(kind: string): string {
+  if (kind === "interaction-to-presentation") {
+    return "Picks a layout template for the interaction and orders each region by priority and disclosure for the target context.";
+  }
+  if (kind === "presentation-to-runtime") {
+    return "Binds each presentation region to a concrete UI capability the kernel can render.";
+  }
+  return "";
+}
+
+function orderedLayerIds(entry: CatalogEntry): string[] {
+  const stages = entry.profile.stages;
+  if (stages.length > 0) {
+    return [stages[0].fromLayer.id, ...stages.map((stage) => stage.toLayer.id)];
+  }
+  return entry.artifact.payload.layers.map((layer) => layer.id);
+}
+
+function layerStageLabel(entry: CatalogEntry, layerId: string): string {
+  const order = orderedLayerIds(entry);
+  const index = order.indexOf(layerId);
+  const total = order.length;
+  if (index < 0 || total === 0) return "";
+  const position = index === 0 ? "Source" : index === total - 1 ? "Terminal" : "Intermediate";
+  return `${position} · stage ${index + 1} of ${total}`;
+}
+
 function layerDetailState(entry: CatalogEntry, layerId: string) {
   const layer = entry.artifact.payload.layers.find((candidate) => candidate.id === layerId);
   const outgoingRef = entry.artifact.payload.recipes.find((candidate) => candidate.from === layerId);
   const incomingRef = entry.artifact.payload.recipes.find((candidate) => candidate.to === layerId);
   return {
     ...layerDetailView(layer),
+    role: layer ? layerRole(layer.kind) : "",
+    stageLabel: layer ? layerStageLabel(entry, layerId) : "",
     outgoingRecipe: outgoingRef ? recipeDetailState(entry, outgoingRef.id) : emptyRecipeDetailState(),
     incomingRecipe: incomingRef ? recipeDetailState(entry, incomingRef.id) : emptyRecipeDetailState(),
   };
@@ -525,8 +571,8 @@ function runtimeCapabilityRows(recipe: PresentationToRuntimeRecipe) {
     rows.push({ id: `${source}:${capability}`, capability, source });
   };
 
-  push(recipe.container.capability, "container");
-  recipe.rules.forEach((rule, index) => push(rule.emit.capability, `rule ${index + 1}`));
+  push(recipe.container.capability, "container region");
+  recipe.rules.forEach((rule) => push(rule.emit.capability, ruleMatchSummary(rule.match as Record<string, unknown>)));
   push(recipe.fallback?.capability, "fallback");
   return rows;
 }
@@ -552,6 +598,7 @@ function recipeDetailState(entry: CatalogEntry, recipeId: string) {
       ...base,
       kind: "interaction-to-presentation",
       kindLabel: "Interaction -> Presentation",
+      purpose: recipePurpose("interaction-to-presentation"),
       summary: `${typed.templates.length} templates and ${typed.templateRules.length} template rules`,
       constrainedWhenText: typed.constrainedWhen?.length ? typed.constrainedWhen.map(ruleMatchSummary).join("; ") : "",
       containerCapability: "",
@@ -581,6 +628,7 @@ function recipeDetailState(entry: CatalogEntry, recipeId: string) {
     ...base,
     kind: "presentation-to-runtime",
     kindLabel: "Presentation -> Runtime",
+    purpose: recipePurpose("presentation-to-runtime"),
     summary: `${typed.rules.length} runtime rules`,
     constrainedWhenText: "",
     containerCapability: typed.container.capability,
