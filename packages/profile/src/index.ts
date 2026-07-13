@@ -1,9 +1,25 @@
-export { loadProfile, lintLoweringRecipeArtifact } from "../../../interaction/src/schema";
+export {
+  PROFILE_BUNDLE_FORMAT,
+  createProfileBundle,
+  loadProfileBundle,
+  parseProfileBundleJson,
+  stringifyProfileBundle,
+  validateProfileBundle,
+  type ProfileArtifactBundle,
+} from "./bundle";
+export {
+  loadProfile,
+  lintLoweringRecipeArtifact,
+  validateLoweringRecipeArtifact,
+  validateProfileArtifact,
+} from "../../../interaction/src/schema";
 export {
   lintLoweringRecipe,
   resolveProfile,
   recipeForKinds,
   lintProfileArtifacts,
+  type LoweringRecipe,
+  type LoweringRecipeArtifact,
   type GenUiLayerKind,
   type LayerDefinition,
   type LoweringRecipeRef,
@@ -22,8 +38,6 @@ export {
   type RuntimeNodeRecipeFields,
   type PresentationToRuntimeRule,
   type PresentationToRuntimeRecipe,
-  type LoweringRecipe,
-  type LoweringRecipeArtifact,
   type RecipeLintWarning,
   type ResolvedProfileStage,
   type ResolvedProfile,

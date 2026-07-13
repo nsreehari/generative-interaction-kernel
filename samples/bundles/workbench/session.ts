@@ -17,14 +17,13 @@ import {
   type DocumentPayload,
   type TraceEvent,
 } from "@gik/kernel";
+import { recipeForKinds, type ResolvedProfile } from "@gik/profile";
 import { GenUIController } from "@gik/react";
 import {
   applyPresentationEdits,
   emptyEdits,
   lowerPresentation,
   planPresentationWithRecipe,
-  recipeForKinds,
-  type ResolvedProfile,
   type ProfileIdentity,
   type InteractionSpec,
   type PresentationContext,

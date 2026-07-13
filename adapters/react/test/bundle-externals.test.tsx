@@ -7,9 +7,10 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
 
-import { assertExternalsSatisfied, bundleFromJson, loadBundle } from "../src/primitives";
+import { assertExternalsSatisfied, bundleFromJson, loadBundle, loadBundleRuntime } from "../src/primitives";
 
 const manifestWith = (effectHandlers?: string[]) => ({
+  gik: "0.1",
   type: "manifest",
   payload: {
     version: "test/1",
@@ -20,6 +21,7 @@ const manifestWith = (effectHandlers?: string[]) => ({
 });
 
 const emptyDocument = {
+  gik: "0.1",
   type: "document",
   payload: { root: { id: "root", capability: "board", props: {} } },
 };
@@ -54,4 +56,18 @@ test("loadBundle: mount-time gate rejects a bundle missing a declared effect han
     { effectHandlers: {} }
   );
   assert.throws(() => loadBundle(bundle), /charge/);
+});
+
+test("loadBundleRuntime: applies a synchronous $init effect before the kernel starts", () => {
+  const bundle = bundleFromJson(
+    { manifest: manifestWith(undefined), document: emptyDocument, state: { app: { ready: false } } },
+    {
+      effectHandlers: {
+        $init: () => ({ ops: [{ op: "set", path: "app.ready", value: true }] }),
+      },
+    }
+  );
+
+  const runtime = loadBundleRuntime(bundle);
+  assert.equal(runtime.state.get("app.ready"), true);
 });
