@@ -5,7 +5,21 @@
   "type": "module",
   "description": "Generative Interaction Kernel workspace: GIK wire schemas, conformance fixtures, and the reference implementation.",
   "workspaces": [
-    "packages/*"
+    "packages/agentface",
+    "packages/component-infinite-canvas",
+    "packages/controlface",
+    "packages/kernel",
+    "packages/profile",
+    "packages/profile-genui",
+    "packages/provider-consequence-graph",
+    "packages/provider-exploratory-graph",
+    "packages/provider-profile-authoring",
+    "packages/provider-reactive-state-model",
+    "packages/provider-step-orchestrator",
+    "packages/react",
+    "packages/transport-http-sse",
+    "packages/transport-mcp-http",
+    "packages/gik"
   ],
   "scripts": {
     "conformance": "node schemas/validate.mjs",
