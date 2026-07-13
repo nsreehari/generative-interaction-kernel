@@ -60,3 +60,8 @@ not "render a two-column table." Keeping the UI DSL public leaves the platform o
   (ADR-0018), which is where the durable value ("the moat") sits.
 - No kernel or protocol change: this is a boundary/ownership decision realized by the layer
   packaging (`interaction/` owns L3–L4 lowering; `kernel/` owns L5's document + runtime).
+
+> **Update (2026-07-13):** The L3–L4 framing is superseded by ADR-0038's layers/recipes model,
+> and the `interaction/` source tree has been retired. Its generic profile machinery now lives in
+> `@gik/profile` (`packages/profile/`) and the GenUI flavor in `@gik/profile-genui`
+> (`packages/profile-genui/`). `kernel/` still owns the document + runtime.
