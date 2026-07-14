@@ -14,13 +14,13 @@ import assert from "node:assert/strict";
 
 import {
   Kernel,
-  JsonataExpressionProvider,
   assign,
   authorDocument,
   node,
   type ManifestPayload,
   type ResolvedNode,
 } from "../../../kernel/src/index";
+import { evalAsyncJsonata } from "../../../shared/libs/evaluators";
 import { ReactiveStateModel } from "../src/reactive-state-model";
 
 const manifestPayload: ManifestPayload = {
@@ -66,8 +66,7 @@ function find(n: ResolvedNode | null, id: string): ResolvedNode | undefined {
   return undefined;
 }
 
-const provider = new JsonataExpressionProvider();
-const evaluate = (expr: string, scope: Record<string, unknown>) => provider.eval(expr, scope);
+const evaluate = (expr: string, scope: Record<string, unknown>) => evalAsyncJsonata(expr, scope as never);
 
 test("an assign to a base cell auto-derives through the store into Kernel state (no derive action)", async () => {
   const store = new ReactiveStateModel({

@@ -8,17 +8,18 @@ import { test } from "vitest";
 
 import { toolsFromProfile } from "../src/pure/profile-tools";
 import { createStatelessAgentFaceDispatcher } from "../src/projections/agentface";
+import type { ProfileArtifact } from "../../packages/profile/src/profile-core";
 import {
-  genuiAuthoringProfile,
   genuiAuthoringRegistry,
   planPresentationWithRecipe,
-  recipeForKinds,
-} from "../../packages/profile-genui/src/index";
+  recipeForLayerKinds,
+} from "../../samples/profiles/genui";
+import liveCardsProfileJson from "../../samples/profiles/live-cards/profile.json" with { type: "json" };
 import { liveCardsProfile } from "./live-cards-fixture";
 
-const genuiTools = toolsFromProfile(genuiAuthoringProfile, genuiAuthoringRegistry);
+const genuiTools = toolsFromProfile((liveCardsProfileJson as ProfileArtifact).payload, genuiAuthoringRegistry);
 const byName = new Map(genuiTools.map((t) => [t.name, t]));
-const liveCardsIToP = recipeForKinds(liveCardsProfile, "interaction", "presentation");
+const liveCardsIToP = recipeForLayerKinds(liveCardsProfile, "interaction", "presentation");
 
 const report = (name: string, args: Record<string, unknown>) =>
   byName.get(name)!.handler(args) as { ok: boolean; errors: { detail: string }[]; warnings: { code: string }[] };
@@ -41,7 +42,7 @@ test("describe (op:describe) projects the interaction catalog", () => {
   assert.ok(review && review.facets.some((f) => f.name === "summary" && f.required));
 });
 
-test("validateInteraction (op:validate, no schema, one check)", () => {
+test("validateInteraction (op:validate) runs fully from the declarative interaction form", () => {
   assert.equal(report("validateInteraction", { spec: { interaction: "review", subject: "pr" } }).ok, true);
   assert.equal(report("validateInteraction", { spec: { interaction: "bogus", subject: "x" } }).ok, false);
   assert.equal(report("validateInteraction", { spec: { interaction: "review" } }).ok, false);
@@ -51,10 +52,27 @@ test("validateInteraction (op:validate, no schema, one check)", () => {
     }).warnings.map((w) => w.code)
   );
   assert.ok(codes.has("synthesized-facet"));
+  const dataCodes = new Set(
+    report("validateInteraction", {
+      spec: { interaction: "review", subject: "pr", data: { ghost: "$.ghost" } },
+    }).warnings.map((w) => w.code)
+  );
+  assert.ok(dataCodes.has("data-for-unknown-facet"));
+  const viewCodes = new Set(
+    report("validateInteraction", {
+      spec: { interaction: "review", subject: "pr", facetViews: { ghost: { capability: "ui:text" } } },
+    }).warnings.map((w) => w.code)
+  );
+  assert.ok(viewCodes.has("view-for-unknown-facet"));
 });
 
 test("validatePresentation (op:validate) runs structural then the facet-survival check", () => {
-  const spec = planPresentationWithRecipe({ interaction: "review", subject: "pr" }, { surface: "desktop" }, liveCardsIToP);
+  const spec = planPresentationWithRecipe(
+    { interaction: "review", subject: "pr" },
+    { surface: "desktop" },
+    liveCardsIToP,
+    liveCardsProfile.resources.taxonomy as unknown as import("../../samples/profiles/genui").InteractionTaxonomy
+  );
   assert.equal(report("validatePresentation", { spec }).ok, true);
 
   const dropped = { ...spec, regions: spec.regions.filter((r) => r.name !== "summary") };
@@ -78,8 +96,8 @@ test("validateIntent (op:validate, no layer) checks shape + targets", () => {
   assert.ok(codes.has("intent-target-unknown"));
 });
 
-test("intentToEdits (op:project) projects the sanctioned override channel", () => {
-  const edits = byName.get("intentToEdits")!.handler({ intent: { priorities: ["summary", "detail"] } }) as {
+test("intentToEdits (op:project) projects the sanctioned override channel", async () => {
+  const edits = (await byName.get("intentToEdits")!.handler({ intent: { priorities: ["summary", "detail"] } })) as {
     priority: Record<string, string>;
     order: string[];
   };

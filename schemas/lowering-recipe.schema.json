@@ -9,161 +9,24 @@
     "gik": { "const": "0.1" },
     "type": { "const": "lowering-recipe" },
     "payload": {
-      "oneOf": [
-        { "$ref": "#/definitions/interactionToPresentation" },
-        { "$ref": "#/definitions/presentationToRuntime" }
-      ]
+      "$ref": "#/definitions/layerRecipe"
     }
   },
   "definitions": {
-    "contextMatch": {
+    "layerRecipe": {
       "type": "object",
+      "required": ["id", "from", "to", "metadata"],
       "additionalProperties": true,
       "properties": {
-        "interaction": { "type": "string", "minLength": 1 },
-        "surface": { "type": "string", "minLength": 1 },
-        "device": { "type": "string", "minLength": 1 },
-        "space": { "type": "string", "minLength": 1 },
-        "attention": { "type": "string", "minLength": 1 },
-        "expertise": { "type": "string", "minLength": 1 },
-        "constrained": { "type": "boolean" },
-        "region": { "type": "string", "minLength": 1 },
-        "role": { "type": "string", "minLength": 1 },
-        "required": { "type": "boolean" },
-        "priority": { "type": "string", "minLength": 1 },
-        "disclosure": { "type": "string", "minLength": 1 },
-        "index": { "type": "integer", "minimum": 0 },
-        "presentation": { "type": "string", "minLength": 1 }
-      }
-    },
-    "templateString": {
-      "type": "string",
-      "minLength": 1
-    },
-    "runtimeNodeFields": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "capability": { "type": "string", "minLength": 1 },
-        "props": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "read": {
-          "type": "object",
-          "additionalProperties": { "type": "string", "minLength": 1 }
-        },
-        "readExpr": {
-          "type": "object",
-          "additionalProperties": { "type": "string", "minLength": 1 }
-        },
-        "on": {
-          "type": "object",
-          "additionalProperties": true
-        }
-      }
-    },
-    "interactionToPresentation": {
-      "type": "object",
-      "required": [
-        "id",
-        "from",
-        "to",
-        "templates",
-        "program",
-        "cap"
-      ],
-      "additionalProperties": false,
-      "properties": {
         "id": { "type": "string", "minLength": 1 },
-        "from": { "const": "interaction" },
-        "to": { "const": "presentation" },
-        "constrainedWhen": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/contextMatch" }
-        },
-        "templates": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "object",
-            "required": ["name", "arrangement"],
-            "additionalProperties": false,
-            "properties": {
-              "name": { "type": "string", "minLength": 1 },
-              "arrangement": { "type": "string", "minLength": 1 },
-              "maxRegions": { "type": "integer", "minimum": 1 }
-            }
-          }
-        },
-        "program": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "object",
-            "required": ["slot", "match", "emit"],
-            "additionalProperties": false,
-            "properties": {
-              "slot": {
-                "enum": ["template", "rank", "priority", "disclosure", "presentation", "rationale"]
-              },
-              "match": { "$ref": "#/definitions/contextMatch" },
-              "emit": {
-                "type": "object",
-                "additionalProperties": true
-              }
-            }
-          }
-        },
-        "cap": {
+        "from": { "type": "string", "minLength": 1 },
+        "to": { "type": "string", "minLength": 1 },
+        "metadata": {
           "type": "object",
-          "required": ["preserveRequired"],
-          "additionalProperties": false,
+          "required": ["executor"],
+          "additionalProperties": true,
           "properties": {
-            "preserveRequired": { "type": "boolean" }
-          }
-        }
-      }
-    },
-    "presentationToRuntime": {
-      "type": "object",
-      "required": ["id", "from", "to", "program"],
-      "additionalProperties": false,
-      "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "from": { "const": "presentation" },
-        "to": { "const": "runtime-document" },
-        "program": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "oneOf": [
-              {
-                "type": "object",
-                "required": ["slot", "match", "emit"],
-                "additionalProperties": false,
-                "properties": {
-                  "slot": { "const": "container" },
-                  "match": { "$ref": "#/definitions/contextMatch" },
-                  "emit": {
-                    "allOf": [
-                      { "$ref": "#/definitions/runtimeNodeFields" },
-                      { "required": ["capability"] }
-                    ]
-                  }
-                }
-              },
-              {
-                "type": "object",
-                "required": ["slot", "match", "emit"],
-                "additionalProperties": false,
-                "properties": {
-                  "slot": { "const": "region" },
-                  "match": { "$ref": "#/definitions/contextMatch" },
-                  "emit": { "$ref": "#/definitions/runtimeNodeFields" }
-                }
-              }
-            ]
+            "executor": { "type": "string", "minLength": 1 }
           }
         }
       }

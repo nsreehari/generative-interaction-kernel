@@ -8,12 +8,7 @@
 // native seam the `wb:guestSurface` view uses (ADR-0034) — not app behaviour.
 
 import { type Json, type Patch, type ResolvedNode, type TraceEvent } from "@gik/kernel";
-import {
-  type InteractionKind,
-  type InteractionSpec,
-  type PresentationContext,
-  type PresentationEdits,
-} from "@gik/profile-genui";
+import { type InteractionKind, type InteractionSpec, type PresentationContext, type PresentationEdits } from "../../profiles/genui";
 import { emptyEdits } from "./projection_views/libs/edits";
 import type { AuthoredSession } from "./projection_views/libs/authoring";
 import { exportBundle } from "./export";

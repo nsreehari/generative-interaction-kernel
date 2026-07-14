@@ -140,7 +140,7 @@ DSL → UI DSL). These are now named and separated, and the DSL itself is made a
   facets are secondary; optional facets are tertiary. Disclosure tightens one step on a constrained
   surface (mobile / copilot / compact / glanceable), so the compiler now does attention management
   and progressive disclosure, not just layout selection. These ride into the UI DSL as node props.
-- **The Presentation DSL is validatable.** `schemas/presentation.schema.json` (draft-07) plus
+- **The Presentation DSL is validatable.** `profile-templates/genui/schemas/presentation.schema.json` (draft-07) plus
   `validatePresentationSpec` / `isValidPresentationSpec` make a planner's output a structurally
   checkable artifact — a buggy planner is caught at this boundary, not at render time.
 

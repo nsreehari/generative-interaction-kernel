@@ -5,7 +5,7 @@
 // it. This is a workbench-bundle concern (import/export of authored sessions), so it lives with the
 // sample rather than leaking through the shared interaction runtime package.
 
-import type { InteractionSpec, PresentationContext, PresentationEdits } from "@gik/profile-genui";
+import type { InteractionSpec, PresentationContext, PresentationEdits } from "../../../../profiles/genui";
 
 /** Identity of the profile an authored session was produced against, so replay is deterministic. */
 export interface ProfileIdentity {

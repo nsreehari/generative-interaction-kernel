@@ -1,7 +1,7 @@
 import React from "react";
 import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
-import { JsonataExpressionProvider } from "@gik/kernel";
 import { readProps, type ProjectionView } from "@gik/react";
+import { evalAsyncJsonata } from "../../../../shared/libs/evaluators";
 
 import {
   computedGraphToMermaid,
@@ -10,8 +10,7 @@ import {
   reactiveComputedSamples,
 } from "@gik/provider-reactive-state-model";
 
-const provider = new JsonataExpressionProvider();
-const evaluate = (expr: string, scope: Record<string, unknown>) => provider.eval(expr, scope);
+const evaluate = (expr: string, scope: Record<string, unknown>) => evalAsyncJsonata(expr, scope as never);
 
 type SampleName = (typeof reactiveComputedSamples)[number]["name"];
 

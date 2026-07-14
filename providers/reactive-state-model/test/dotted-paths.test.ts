@@ -5,11 +5,10 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
 
-import { JsonataExpressionProvider } from "../../../kernel/src/index";
+import { evalAsyncJsonata } from "../../../shared/libs/evaluators";
 import { ReactiveStateModel } from "../src/reactive-state-model";
 
-const provider = new JsonataExpressionProvider();
-const evaluate = (expr: string, scope: Record<string, unknown>) => provider.eval(expr, scope);
+const evaluate = (expr: string, scope: Record<string, unknown>) => evalAsyncJsonata(expr, scope as never);
 
 test("dotted base cells derive a dotted target", async () => {
   const store = new ReactiveStateModel({

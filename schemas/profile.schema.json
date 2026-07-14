@@ -77,6 +77,7 @@
                   "inputSchema": { "type": "object" },
                   "checks": { "type": "array", "items": { "type": "string" } },
                   "projector": { "type": "string" },
+                  "projectExpression": { "type": "string" },
                   "describe": { "type": "string" },
                   "agentSafe": { "type": "boolean" }
                 }

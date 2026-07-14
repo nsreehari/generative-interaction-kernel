@@ -5,8 +5,9 @@
 
 import { test } from "vitest";
 import assert from "node:assert/strict";
+import taxonomyJson from "../../../../../profile-templates/genui/taxonomy.json" with { type: "json" };
 
-import type { PresentationSpec, PresentationEdits } from "@gik/profile-genui";
+import type { PresentationSpec, PresentationEdits } from "../../../../profiles/genui";
 import {
   applyPresentationEdits,
   emptyEdits,
@@ -16,6 +17,8 @@ import {
   setRegionPriority,
   toggleRegion,
 } from "./edits";
+
+const taxonomy = taxonomyJson as import("../../../../profiles/genui").InteractionTaxonomy;
 
 const ORDER = ["context", "evidence", "timeline"];
 
@@ -81,7 +84,7 @@ test("presentation edits are sparse overrides on top of the planner (hide, re-ra
 
   // baseline: an empty edit set is a no-op — defer entirely to the planner.
   assert.deepEqual(
-    applyPresentationEdits(planned, { disabled: [], priority: {}, disclosure: {}, order: [] }).regions,
+    applyPresentationEdits(planned, { disabled: [], priority: {}, disclosure: {}, order: [] }, taxonomy).regions,
     planned.regions,
     "empty edits leave the planned presentation untouched"
   );
@@ -92,7 +95,7 @@ test("presentation edits are sparse overrides on top of the planner (hide, re-ra
     disclosure: { timeline: "on-demand" },
     order: ["actions"], // pin actions to the front
   };
-  const edited = applyPresentationEdits(planned, edits);
+  const edited = applyPresentationEdits(planned, edits, taxonomy);
   const editedNames = edited.regions.map((r) => r.name);
 
   assert.ok(!editedNames.includes("relationships"), "a disabled optional facet is hidden");
@@ -117,7 +120,7 @@ test("presentation edits are sparse overrides on top of the planner (hide, re-ra
     priority: {},
     disclosure: {},
     order: [],
-  });
+  }, taxonomy);
   assert.ok(
     stubborn.regions.some((r) => r.name === "context"),
     "a required facet survives an attempt to disable it"

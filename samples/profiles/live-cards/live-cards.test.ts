@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import { loadProfile } from "@gik/profile";
-import { compileInteraction, type InteractionSpec } from "@gik/profile-genui";
+import { runProfile, type InteractionSpec, type LayerRecipe } from "../genui";
 import liveCardsProfileJson from "./profile.json" with { type: "json" };
 import liveCardsInteractionRecipeJson from "./interaction-to-presentation.recipe.json" with { type: "json" };
 import liveCardsRuntimeRecipeJson from "./presentation-to-runtime.recipe.json" with { type: "json" };
 import { resolveProfileTemplate, resolveProfileTemplateResource } from "../template-resolver";
 
-const liveCardsProfile = loadProfile(liveCardsProfileJson, [
+const liveCardsProfile = loadProfile<LayerRecipe>(liveCardsProfileJson, [
   liveCardsInteractionRecipeJson,
   liveCardsRuntimeRecipeJson,
 ], resolveProfileTemplateResource, resolveProfileTemplate);
@@ -24,7 +24,7 @@ test("live-cards sample profile resolves the authored layer chain", () => {
 
 test("live-cards sample profile lowers an interaction to a runtime document", () => {
   const spec: InteractionSpec = { interaction: "review", subject: "portfolio" };
-  const doc = compileInteraction(spec, { surface: "desktop" }, liveCardsProfile);
+  const doc = runProfile(liveCardsProfile, spec, { surface: "desktop" }) as { root: { capability: string; edges?: { children?: unknown[] } } };
 
   assert.equal(doc.root.capability, "ui:board");
   assert.ok((doc.root.edges?.children?.length ?? 0) > 0, "the lowered board should contain runtime children");

@@ -65,7 +65,7 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
     `PresentationPlanner` (interaction + context → Presentation DSL; `defaultPresentationPlanner`
     is the deterministic reference, and the slot an AI planner fills) and the Presentation
     *Compiler* (`lowerPresentation`: Presentation DSL → UI DSL). The DSL is a first-class,
-    schema-validated artifact (`schemas/presentation.schema.json`) whose regions carry `priority`
+   schema-validated artifact (`profile-templates/genui/schemas/presentation.schema.json`) whose regions carry `priority`
     (hierarchy), `disclosure` (progressive disclosure), an optional `presentation` type hint, and an
     optional `rationale` (explainability). The planner reads a real `PresentationContext` — including
     `device` and `expertise`, which now drive density/disclosure — and picks from `layoutTemplates`.

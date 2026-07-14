@@ -5,6 +5,8 @@
 // Node (tsx) and the browser (Vite), with no external npm dependency and no Node `require`.
 // @ts-ignore -- vendored CommonJS bundle ships no type declarations.
 import jsonataFactory from "./vendor/jsonata.cjs";
+// @ts-ignore -- generated CommonJS sync port ships no type declarations.
+import jsonataSyncFactory from "./vendor/jsonata-sync.cjs";
 import type {
   Json,
   PatchOp,
@@ -22,6 +24,12 @@ interface Compiled {
   ast(): unknown;
 }
 const jsonata = jsonataFactory as unknown as (expr: string) => Compiled;
+
+interface SyncCompiled {
+  evaluate(input: unknown, bindings?: Record<string, unknown>): unknown;
+  ast(): unknown;
+}
+const jsonataSync = jsonataSyncFactory as unknown as (expr: string) => SyncCompiled;
 
 // ---- path helpers on a namespaced snapshot -------------------------------
 
@@ -79,7 +87,11 @@ export function applyOp(obj: Record<string, Json>, op: PatchOp): void {
 // ---- ExpressionProvider --------------------------------------------------
 
 export interface ExpressionProvider {
-  eval(expr: string, data: unknown, bindings?: Record<string, unknown>): Promise<Json>;
+  eval(expr: string, data: unknown, bindings?: Record<string, unknown>): Json | Promise<Json>;
+}
+
+function isPromise(value: unknown): value is Promise<unknown> {
+  return !!value && typeof value === "object" && typeof (value as { then?: unknown }).then === "function";
 }
 
 // Constructs with no legitimate place in an agent-authored *predicate* (guard / gate /
@@ -143,6 +155,31 @@ export class JsonataExpressionProvider implements ExpressionProvider {
 
   private compile(expr: string): Compiled {
     const compiled = jsonata(expr);
+    if (this.safe) denyUnsafe(compiled.ast(), expr);
+    this.cache.set(expr, compiled);
+    return compiled;
+  }
+}
+
+export class SyncJsonataExpressionProvider implements ExpressionProvider {
+  private cache = new Map<string, SyncCompiled>();
+  private readonly safe: boolean;
+
+  constructor(opts: JsonataProviderOptions = {}) {
+    this.safe = opts.safe ?? false;
+  }
+
+  eval(expr: string, data: unknown, bindings: Record<string, unknown> = {}): Json {
+    const compiled = this.cache.get(expr) ?? this.compile(expr);
+    const res = compiled.evaluate(data, bindings);
+    if (isPromise(res)) {
+      throw new Error(`Sync JSONata expression produced a Promise for '${expr}'`);
+    }
+    return res === undefined ? null : (res as Json);
+  }
+
+  private compile(expr: string): SyncCompiled {
+    const compiled = jsonataSync(expr);
     if (this.safe) denyUnsafe(compiled.ast(), expr);
     this.cache.set(expr, compiled);
     return compiled;
