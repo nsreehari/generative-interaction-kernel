@@ -153,6 +153,24 @@ function inferColumns(rows: Array<Record<string, unknown>>, idKey: string): Colu
   return cols;
 }
 
+// Numeric-aware, null-tolerant cell comparison used by the sortable table. Nulls always sort last
+// (independent of direction); two numbers compare numerically; everything else compares as text.
+function compareCells(a: unknown, b: unknown, dir: "asc" | "desc"): number {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  const result =
+    typeof a === "number" && typeof b === "number" ? a - b : String(a).localeCompare(String(b));
+  return dir === "asc" ? result : -result;
+}
+
+/** Stable, numeric-aware sort of table rows by a column key. Pure — the leaf's sort state drives it. */
+export function sortRows<T extends Record<string, unknown>>(rows: T[], key: string, dir: "asc" | "desc"): T[] {
+  return rows.map((row, index) => ({ row, index }))
+    .sort((a, b) => compareCells(a.row[key], b.row[key], dir) || a.index - b.index)
+    .map((entry) => entry.row);
+}
+
 function isMultiSelect(prop: Record<string, unknown>): boolean {
   const items = (prop.items ?? {}) as Record<string, unknown>;
   return prop.type === "array" && (Array.isArray(items.enum) || Array.isArray(items.oneOf) || Array.isArray(prop.options));
@@ -994,24 +1012,74 @@ function Table({ node, emit }: ProjectionViewProps) {
   const rows = p.list<Record<string, unknown>>("rows");
   const idKey = p.str("idKey", "id");
   const explicitColumns = toColumns(p.list<unknown>("columns"));
-  const columns = explicitColumns.length > 0 ? explicitColumns : inferColumns(rows, idKey);
   const empty = p.str("emptyText", "No rows.");
   const isStatic = p.bool("static"); // passive display (no rowSelect), vs the default picker
   const blank = p.str("blankText", ""); // placeholder for null/empty cells
+  const sortable = node.props.sortable !== false; // click-to-sort columns, on by default
+  const maxRows = typeof node.props.maxRows === "number" ? node.props.maxRows : 200; // render cap
+
+  const [sort, setSort] = React.useState<{ key: string; dir: "asc" | "desc" } | null>(null);
+
+  // Reset the active sort when the underlying data changes (parity with the frontend table). Keyed
+  // on a content signature so identical re-renders don't drop the user's chosen sort.
+  const rowsSignature = React.useMemo(() => JSON.stringify(rows), [rows]);
+  React.useEffect(() => {
+    setSort(null);
+  }, [rowsSignature]);
+
+  const limit = Math.min(rows.length, Math.max(0, maxRows));
+
+  // Rows carry a stable render key derived from `idKey` (or their pre-sort position) so sorting
+  // reorders rather than remounts. Columns are inferred from the capped set when not given.
+  const indexed = React.useMemo(
+    () => rows.slice(0, limit).map((row, index) => ({ row, id: String(row[idKey] ?? index) })),
+    [rowsSignature, limit, idKey],
+  );
+  const columns = explicitColumns.length > 0
+    ? explicitColumns
+    : inferColumns(indexed.map((e) => e.row), idKey);
+
+  const visibleRows = React.useMemo(() => {
+    if (!sortable || !sort) return indexed;
+    return indexed
+      .map((entry, index) => ({ entry, index }))
+      .sort((a, b) => compareCells(a.entry.row[sort.key], b.entry.row[sort.key], sort.dir) || a.index - b.index)
+      .map((wrapped) => wrapped.entry);
+  }, [indexed, sort, sortable]);
+
   if (rows.length === 0) return <p className="gx-muted">{empty}</p>;
+
+  const toggleSort = (key: string) =>
+    setSort((current) =>
+      current && current.key === key
+        ? { key, dir: current.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "asc" },
+    );
+
   return (
-    <table className="gx-table">
-      <thead>
-        <tr>
-          {columns.map((c) => (
-            <th key={c.key}>{c.label}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row, i) => {
-          const id = String(row[idKey] ?? i);
-          return (
+    <>
+      <table className="gx-table">
+        <thead>
+          <tr>
+            {columns.map((c) => {
+              const active = sort?.key === c.key;
+              const arrow = active ? (sort!.dir === "asc" ? " \u2191" : " \u2193") : "";
+              return (
+                <th
+                  key={c.key}
+                  className={sortable ? "gx-table-sortable" : undefined}
+                  role={sortable ? "button" : undefined}
+                  aria-sort={active ? (sort!.dir === "asc" ? "ascending" : "descending") : undefined}
+                  onClick={sortable ? () => toggleSort(c.key) : undefined}
+                >
+                  {c.label}{arrow}
+                </th>
+              );
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          {visibleRows.map(({ row, id }) => (
             <tr key={id} onClick={isStatic ? undefined : () => emit("rowSelect", { id })}>
               {columns.map((c) => {
                 const raw = row[c.key];
@@ -1026,10 +1094,13 @@ function Table({ node, emit }: ProjectionViewProps) {
                 );
               })}
             </tr>
-          );
-        })}
-      </tbody>
-    </table>
+          ))}
+        </tbody>
+      </table>
+      {rows.length > limit ? (
+        <p className="gx-muted gx-table-overflow">Showing {limit} of {rows.length} rows</p>
+      ) : null}
+    </>
   );
 }
 
