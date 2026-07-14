@@ -89,6 +89,44 @@ function useSyncedValue(incoming: string): [string, (v: string) => void] {
   return [local, setLocal];
 }
 
+interface DraftState<T> {
+  /** The working copy the editor renders and mutates. */
+  draft: T;
+  /** Raw setter (value or updater); does NOT flag dirty — for internal derived writes. */
+  setDraft: React.Dispatch<React.SetStateAction<T>>;
+  /** Whether the draft has diverged from the last upstream value. */
+  dirty: boolean;
+  setDirty: React.Dispatch<React.SetStateAction<boolean>>;
+  /** Apply a user edit: writes the value AND flags dirty. */
+  update: (next: T) => void;
+  /** Revert to the current upstream value and clear dirty. */
+  reset: () => void;
+}
+
+// Shared committed-editor draft state (Form, EditableTable). Holds a working copy of `incoming`,
+// tracks whether it diverged, and re-syncs (clearing dirty) whenever the upstream value changes —
+// keyed on a JSON signature so a fresh server value replaces an untouched draft.
+function useDraftState<T>(incoming: T): DraftState<T> {
+  const signature = JSON.stringify(incoming);
+  const [draft, setDraft] = React.useState<T>(incoming);
+  const [dirty, setDirty] = React.useState(false);
+  React.useEffect(() => {
+    setDraft(incoming);
+    setDirty(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signature]);
+  const update = React.useCallback((next: T) => {
+    setDraft(next);
+    setDirty(true);
+  }, []);
+  const reset = React.useCallback(() => {
+    setDraft(incoming);
+    setDirty(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signature]);
+  return { draft, setDraft, dirty, setDirty, update, reset };
+}
+
 function toOptions(raw: unknown[]): Option[] {
   return raw.map((o) =>
     typeof o === "string" ? { value: o, label: o } : (o as Option)
@@ -403,7 +441,18 @@ function editableColumns(spec: EditableTableSpec, rows: Array<Record<string, unk
     return schemaColumns;
   }
 
-  return Object.keys(rows[0] ?? {});
+  // Derive from the union of keys across ALL rows (first-seen order), not just the first row, so a
+  // ragged dataset where later rows introduce new fields still exposes every editable column.
+  const seen = new Set<string>();
+  const cols: string[] = [];
+  for (const row of rows) {
+    for (const key of Object.keys(row ?? {})) {
+      if (seen.has(key)) continue;
+      seen.add(key);
+      cols.push(key);
+    }
+  }
+  return cols;
 }
 
 function formatFileSize(size: number): string {
@@ -1206,18 +1255,19 @@ function Form({ node, emit }: ProjectionViewProps) {
 
   const validators = schema.validators;
 
-  const [values, setValues] = React.useState<Record<string, unknown>>(incoming ?? {});
+  const { draft: values, setDraft: setValues, dirty, setDirty, reset: resetValues } =
+    useDraftState<Record<string, unknown>>(incoming ?? {});
   const [jsonText, setJsonText] = React.useState<Record<string, string>>(() => jsonTextFrom(incoming ?? {}));
   const [jsonErrors, setJsonErrors] = React.useState<Record<string, string>>({});
-  const [dirty, setDirty] = React.useState(false);
   const [validation, setValidation] = React.useState<{ checked: boolean; errors: string[] }>({ checked: false, errors: [] });
 
+  // Aux editor state (json text buffers, parse/validation errors) re-syncs alongside the shared draft
+  // whenever a fresh upstream value arrives.
   React.useEffect(() => {
-    setValues(incoming ?? {});
     setJsonText(jsonTextFrom(incoming ?? {}));
     setJsonErrors({});
-    setDirty(false);
     setValidation({ checked: false, errors: [] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(incoming)]);
 
   const setField = (key: string, nextValue: unknown) => {
@@ -1256,10 +1306,9 @@ function Form({ node, emit }: ProjectionViewProps) {
   const submitDisabled = hasJsonError || (validation.checked && validation.errors.length > 0);
 
   const reset = () => {
-    setValues(incoming ?? {});
+    resetValues();
     setJsonText(jsonTextFrom(incoming ?? {}));
     setJsonErrors({});
-    setDirty(false);
     setValidation({ checked: false, errors: [] });
   };
 
@@ -1394,14 +1443,14 @@ function Form({ node, emit }: ProjectionViewProps) {
         </div>
       ) : null}
       {dirty ? (
-        <div className="gx-panel-actions">
-          <button type="button" className="gx-btn" onClick={reset}>
-            {p.str("discardLabel", "Discard")}
-          </button>
-          <button type="submit" className="gx-btn gx-btn-primary" disabled={submitDisabled}>
-            {p.str("saveLabel", "Save")}
-          </button>
-        </div>
+        <DirtyActionRow
+          dirty={dirty}
+          discardLabel={p.str("discardLabel", "Discard")}
+          saveLabel={p.str("saveLabel", "Save")}
+          onDiscard={reset}
+          saveType="submit"
+          saveDisabled={submitDisabled}
+        />
       ) : null}
     </form>
   );
@@ -1659,6 +1708,56 @@ function Actions({ node, emit }: ProjectionViewProps) {
   );
 }
 
+interface DirtyActionRowProps {
+  dirty: boolean;
+  discardLabel: string;
+  saveLabel: string;
+  onDiscard: () => void;
+  onSave?: () => void;
+  /** `"submit"` renders Save as a form submit button (Form); `"button"` wires `onSave` (default). */
+  saveType?: "button" | "submit";
+  saveDisabled?: boolean;
+  /** Always-visible controls rendered before the dirty-gated Discard/Save (e.g. "+ Add row"). */
+  leading?: React.ReactNode;
+}
+
+// Shared committed-editor footer. Renders the standard Discard/Save action row (only when `dirty`),
+// optionally preceded by always-visible `leading` controls. Used by Form, EditableTable, and Notes
+// so every committed editor exposes the same bottom action-buttons row.
+function DirtyActionRow({
+  dirty,
+  discardLabel,
+  saveLabel,
+  onDiscard,
+  onSave,
+  saveType = "button",
+  saveDisabled = false,
+  leading = null,
+}: DirtyActionRowProps) {
+  if (!dirty && !leading) return null;
+  return (
+    <div className="gx-panel-actions">
+      {leading}
+      {dirty ? (
+        <button type="button" className="gx-btn" onClick={onDiscard}>
+          {discardLabel}
+        </button>
+      ) : null}
+      {dirty ? (
+        saveType === "submit" ? (
+          <button type="submit" className="gx-btn gx-btn-primary" disabled={saveDisabled}>
+            {saveLabel}
+          </button>
+        ) : (
+          <button type="button" className="gx-btn gx-btn-primary" disabled={saveDisabled} onClick={onSave}>
+            {saveLabel}
+          </button>
+        )
+      ) : null}
+    </div>
+  );
+}
+
 function Notes({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
   const baseContent = p.str("content") || p.str("value");
@@ -1677,16 +1776,13 @@ function Notes({ node, emit }: ProjectionViewProps) {
           onChange={(event) => setContent(event.target.value)}
         />
       </label>
-      {dirty ? (
-        <div className="gx-panel-actions">
-          <button type="button" className="gx-btn" onClick={() => setContent(baseContent)}>
-            {p.str("discardLabel", "Discard")}
-          </button>
-          <button type="button" className="gx-btn gx-btn-primary" onClick={() => emit("save", { content })}>
-            {p.str("saveLabel", "Save")}
-          </button>
-        </div>
-      ) : null}
+      <DirtyActionRow
+        dirty={dirty}
+        discardLabel={p.str("discardLabel", "Discard")}
+        saveLabel={p.str("saveLabel", "Save")}
+        onDiscard={() => setContent(baseContent)}
+        onSave={() => emit("save", { content })}
+      />
     </div>
   );
 }
@@ -1697,13 +1793,7 @@ function EditableTable({ node, emit }: ProjectionViewProps) {
   const incomingRows = editableRowsFrom(
     p.list<unknown>("rows").length > 0 ? p.list<unknown>("rows") : p.list<unknown>("baseRows")
   );
-  const [rows, setRows] = React.useState(incomingRows);
-  const [dirty, setDirty] = React.useState(false);
-
-  React.useEffect(() => {
-    setRows(incomingRows);
-    setDirty(false);
-  }, [JSON.stringify(incomingRows)]);
+  const { draft: rows, dirty, setDirty, update: updateRows, reset } = useDraftState(incomingRows);
 
   const columns = editableColumns(spec, rows);
   const canAdd = spec.addRow !== false;
@@ -1711,18 +1801,13 @@ function EditableTable({ node, emit }: ProjectionViewProps) {
   const placeholder = spec.placeholder ?? "No data";
   const schemaProps = spec.schema?.properties ?? {};
 
-  const updateRows = (next: Array<Record<string, unknown>>) => {
-    setRows(next);
-    setDirty(true);
-  };
-
   if (columns.length === 0 && !canAdd) {
     return <p className="gx-muted">{placeholder}</p>;
   }
 
   return (
-    <div className="gx-panel" style={{ display: "grid", gap: 8 }}>
-      <table>
+    <div className="gx-editable-table">
+      <table className="gx-table gx-table-editable">
         <thead>
           <tr>
             {columns.map((column) => <th key={column}>{column}</th>)}
@@ -1732,7 +1817,7 @@ function EditableTable({ node, emit }: ProjectionViewProps) {
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={columns.length + (canDelete ? 1 : 0)}>{placeholder}</td>
+              <td className="gx-muted" colSpan={columns.length + (canDelete ? 1 : 0)}>{placeholder}</td>
             </tr>
           ) : rows.map((row, rowIndex) => (
             <tr key={rowIndex}>
@@ -1743,6 +1828,7 @@ function EditableTable({ node, emit }: ProjectionViewProps) {
                   <td key={column}>
                     <input
                       type={isNumber ? "number" : "text"}
+                      step={isNumber ? "any" : undefined}
                       value={row[column] == null ? "" : String(row[column])}
                       onChange={(event) => {
                         const next = rows.map((entry) => ({ ...entry }));
@@ -1757,7 +1843,7 @@ function EditableTable({ node, emit }: ProjectionViewProps) {
               })}
               {canDelete ? (
                 <td>
-                  <button type="button" aria-label={`remove row ${rowIndex + 1}`} onClick={() => updateRows(rows.filter((_, index) => index !== rowIndex))}>
+                  <button type="button" className="gx-cell-delete" aria-label={`remove row ${rowIndex + 1}`} onClick={() => updateRows(rows.filter((_, index) => index !== rowIndex))}>
                     ✕
                   </button>
                 </td>
@@ -1766,10 +1852,16 @@ function EditableTable({ node, emit }: ProjectionViewProps) {
           ))}
         </tbody>
       </table>
-      <div style={{ display: "flex", gap: 8 }}>
-        {canAdd ? (
+      <DirtyActionRow
+        dirty={dirty}
+        discardLabel={p.str("discardLabel", "Discard")}
+        saveLabel={p.str("saveLabel", "Save")}
+        onDiscard={reset}
+        onSave={() => { emit("save", { rows }); setDirty(false); }}
+        leading={canAdd ? (
           <button
             type="button"
+            className="gx-btn"
             onClick={() => {
               const blank = Object.fromEntries(columns.map((column) => [column, ""]));
               updateRows([...rows, blank]);
@@ -1778,9 +1870,7 @@ function EditableTable({ node, emit }: ProjectionViewProps) {
             + Add row
           </button>
         ) : null}
-        {dirty ? <button type="button" onClick={() => { setRows(incomingRows); setDirty(false); }}>Discard</button> : null}
-        {dirty ? <button type="button" onClick={() => { emit("save", { rows }); setDirty(false); }}>Save</button> : null}
-      </div>
+      />
     </div>
   );
 }

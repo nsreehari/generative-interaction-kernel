@@ -164,6 +164,34 @@ const HOST_THEME_CSS = `
 .gx-host .gx-table th.gx-table-sortable:hover { color: var(--text); }
 .gx-host .gx-table-overflow { margin-top: var(--spacingVerticalXS); font-size: var(--fontSizeBase100); }
 
+.gx-host .gx-editable-table { display: flex; flex-direction: column; gap: var(--spacingVerticalS); }
+.gx-host .gx-table-editable tbody tr { cursor: default; }
+.gx-host .gx-table-editable tbody tr:hover { background: transparent; }
+.gx-host .gx-table-editable td { padding: 0; }
+.gx-host .gx-table-editable td input {
+  width: 100%;
+  background: transparent;
+  color: var(--text);
+  border: var(--strokeWidthThin) solid transparent;
+  border-radius: var(--borderRadiusSmall);
+  padding: var(--spacingVerticalXS) var(--spacingHorizontalS);
+  font: inherit;
+}
+.gx-host .gx-table-editable td input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--field-bg);
+}
+.gx-host .gx-table-editable .gx-cell-delete {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 var(--spacingHorizontalXS);
+  line-height: 1;
+}
+.gx-host .gx-table-editable .gx-cell-delete:hover { color: var(--bad); }
+
 .gx-host .gx-field {
   display: flex;
   flex-direction: column;
