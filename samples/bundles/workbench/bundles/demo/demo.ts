@@ -6,7 +6,7 @@
 // (the role->seed-path mapping) stays code.
 
 import { InMemoryStateModel, type Enveloped, type ManifestPayload } from "@gik/kernel";
-import { resolveFacets, type InteractionSpec, type InteractionTaxonomy } from "../../../../profiles/genui";
+import { resolveFacets, type InteractionSpec, type InteractionTaxonomy } from "@gik/profile";
 import demoManifestJson from "./manifest.json";
 import demoSeedJson from "./seed.json";
 

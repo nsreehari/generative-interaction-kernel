@@ -121,6 +121,30 @@ test("validate also enforces declarative form rules from the inline schema", () 
   });
 });
 
+test("validate routes inline warning-level form validators into warnings", () => {
+  const warningProfile: Profile = {
+    ...profile,
+    layers: profile.layers.map((layer) => layer.id !== "spec"
+      ? layer
+      : {
+          ...layer,
+          input: {
+            ...(layer.input as Record<string, unknown>),
+            validators: [{ expression: "$exists(name)", detail: "name should be provided", level: "warning", code: "missing-name" }],
+          },
+        }),
+  };
+  const validate = toolsFromProfile(warningProfile, registry).find((t) => t.name === "validateSpec")!;
+  assert.deepEqual(validate.handler({ spec: { kind: "x" } }), {
+    ok: true,
+    errors: [],
+    warnings: [
+      { code: "missing-name", node: "spec", detail: "name should be provided" },
+      { code: "empty-name", detail: "spec.name is empty" },
+    ],
+  });
+});
+
 test("project binds to the registry projector", () => {
   const project = toolsFromProfile(profile, registry).find((t) => t.name === "projectView")!;
   assert.deepEqual(project.handler({ input: { kind: "card" } }), { view: "card" });

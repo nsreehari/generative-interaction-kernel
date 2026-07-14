@@ -22,6 +22,7 @@ import {
 import { editableRegions, facetsAsItems } from "./libs/edits";
 import { checkAuthoredProfile, parseAuthoredSession } from "./libs/authoring";
 import type { Json } from "@gik/kernel";
+import type { InteractionTaxonomy } from "@gik/profile";
 import { buildSession, type Session } from "../session";
 import {
   authoredApplyPayload,
@@ -35,7 +36,7 @@ import {
 } from "../bridge";
 import { startAgentLoop, type AgentLoopClient } from "../agent-loop";
 import { workbenchComponents } from "../bundles/shared/registry";
-import { sampleProfiles } from "../../../profiles/registry";
+import { sampleProfiles } from "../../../catalog/profile-catalog";
 
 function selectedProfile(profileId: string) {
   return sampleProfiles[profileId] ?? sampleProfiles["live-cards"];
@@ -395,7 +396,7 @@ function GuestSurface({ node, emit }: ProjectionViewProps) {
     if (sig === lastSig.current) return;
     lastSig.current = sig;
     const profile = selectedProfile(inputs.profileId);
-    const taxonomy = profile.resources.taxonomy as unknown as import("../../../profiles/genui").InteractionTaxonomy;
+    const taxonomy = profile.resources.taxonomy as unknown as InteractionTaxonomy;
     setGuest(buildSession(inputs.spec, inputs.ctx, profile, inputs.edits));
     emitRef.current("facetsComputed", { facets: facetsAsItems(inputs.spec, taxonomy) });
     // inputs/sig are recomputed each render; sig is the stable dependency.
@@ -444,7 +445,7 @@ function GuestSurface({ node, emit }: ProjectionViewProps) {
     void c.start().then(() => {
       pushInspect();
       emitRef.current("guestChanged", { nodeIds: nodeIdsAsOptions(c.getTree()) });
-      const taxonomy = selectedProfile(readInputs(state).profileId).resources.taxonomy as unknown as import("../../../profiles/genui").InteractionTaxonomy;
+      const taxonomy = selectedProfile(readInputs(state).profileId).resources.taxonomy as unknown as InteractionTaxonomy;
       emitRef.current("regionsComputed", { regions: editableRegions(guest.presentation, readEdits(state), taxonomy) });
     });
     return unsubscribe;

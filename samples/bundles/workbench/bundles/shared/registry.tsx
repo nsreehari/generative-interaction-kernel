@@ -9,7 +9,7 @@ import {
   type ProjectionView,
   type ProjectionViewProps,
 } from "@gik/react";
-import { type PresentationEdits, type RegionDisclosure, type RegionPriority } from "../../../../profiles/genui";
+import { type PresentationEdits, type RegionDisclosure, type RegionPriority } from "@gik/profile";
 import {
   emptyEdits,
   moveRegion,

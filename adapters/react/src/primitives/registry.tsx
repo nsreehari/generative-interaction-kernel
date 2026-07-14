@@ -1053,8 +1053,8 @@ function Form({ node, emit }: ProjectionViewProps) {
   // the Save gate stays live without running per keystroke inside each field.
   React.useEffect(() => {
     if (!Array.isArray(validators) || validators.length === 0) return;
-    const errors = runDeclarativeValidators(validators, values as Json);
-    setValidation({ checked: true, errors });
+    const report = runDeclarativeValidators(validators, values as Json);
+    setValidation({ checked: true, errors: report.errors.map((issue) => issue.detail) });
   }, [validators, JSON.stringify(values)]);
 
   const submitDisabled = hasJsonError || (validation.checked && validation.errors.length > 0);
@@ -1070,9 +1070,9 @@ function Form({ node, emit }: ProjectionViewProps) {
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     if (hasJsonError) return;
-    const errors = runDeclarativeValidators(validators, values as Json);
-    setValidation({ checked: true, errors });
-    if (errors.length > 0) return;
+    const report = runDeclarativeValidators(validators, values as Json);
+    setValidation({ checked: true, errors: report.errors.map((issue) => issue.detail) });
+    if (!report.ok) return;
     emit("save", { values });
     setDirty(false);
   };

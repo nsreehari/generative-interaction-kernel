@@ -1,0 +1,21 @@
+{
+  "name": "live-cards sample profile",
+  "profileFile": "profile.json",
+  "recipeFiles": [
+    "interaction-to-presentation.recipe.json",
+    "presentation-to-runtime.recipe.json"
+  ],
+  "expectLoad": {
+    "id": "live-cards",
+    "kind": "genui-profile",
+    "stages": ["interaction->presentation", "presentation->runtime-document"]
+  },
+  "runs": [
+    {
+      "name": "lowers an interaction to a runtime document",
+      "seed": { "interaction": "review", "subject": "portfolio" },
+      "ctx": { "surface": "desktop" },
+      "expect": { "rootCapability": "ui:board", "minChildren": 1 }
+    }
+  ]
+}

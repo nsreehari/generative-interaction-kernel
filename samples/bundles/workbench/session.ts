@@ -18,20 +18,18 @@ import {
   type TraceEvent,
 } from "@gik/kernel";
 import {
-  type ResolvedProfile,
-} from "@gik/profile";
-import {
-  planningRecipeOf,
-  runtimeRecipeOf,
   lowerPresentation,
   planPresentationWithRecipe,
+  planningRecipeOf,
+  runtimeRecipeOf,
   type InteractionSpec,
   type InteractionTaxonomy,
   type LayerRecipe,
   type PresentationContext,
   type PresentationEdits,
   type PresentationSpec,
-} from "../../profiles/genui";
+  type ResolvedProfile,
+} from "@gik/profile";
 import { GenUIController } from "@gik/react";
 import { applyPresentationEdits, emptyEdits } from "./projection_views/libs/edits";
 import type { ProfileIdentity } from "./projection_views/libs/authoring";

@@ -4,7 +4,7 @@
 // compiled document.
 
 import { generateManifest, unwrap, type DocumentPayload, type ManifestPayload } from "@gik/kernel";
-import { type PresentationEdits } from "../../profiles/genui";
+import { type PresentationEdits } from "@gik/profile";
 import { toAuthoredSession, type AuthoredSession } from "./projection_views/libs/authoring";
 import { DEMO_MANIFEST } from "./bundles/demo/demo";
 import type { Session } from "./session";

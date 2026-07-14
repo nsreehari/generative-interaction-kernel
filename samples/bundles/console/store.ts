@@ -10,30 +10,30 @@
 import type { CapabilityDescriptor, DocumentPayload, Enveloped, Json, ManifestPayload } from "@gik/kernel";
 import {
   createProfileBundle,
+  lintLoweringRecipe as lintLoweringRecipeArtifact,
   lintProfileArtifacts,
   loadProfileBundle,
   parseProfileBundleJson,
-  stringifyProfileBundle,
-  validateProfileArtifact,
-  type ProfileArtifactBundle,
-} from "@gik/profile";
-import { setOp, type EffectContext, type EffectHandlerMap, type SerializableBundle } from "@gik/react";
-import {
-  lintLoweringRecipeArtifact,
   planningRecipeOf,
+  resolveProfileTemplate,
+  resolveProfileTemplateResource,
   runProfile,
   runtimeRecipeOf,
+  stringifyProfileBundle,
   traceProfile,
+  validateProfileArtifact,
   validateLoweringRecipeArtifact,
   type InteractionKind,
   type InteractionSpec,
+  type InteractionTaxonomy,
   type LayerDefinition,
   type LayerRecipe,
   type PresentationContext,
+  type ProfileArtifactBundle,
   type StageTrace,
-} from "../../profiles/genui";
-import { resolveProfileTemplate, resolveProfileTemplateResource } from "../../profiles/template-resolver";
-import { sampleProfileCatalog, type SampleProfileEntry } from "../../profiles/registry";
+} from "@gik/profile";
+import { setOp, type EffectContext, type EffectHandlerMap, type SerializableBundle } from "@gik/react";
+import { sampleProfileCatalog, type SampleProfileEntry } from "../../catalog/profile-catalog";
 import { demoDataFor } from "../workbench/bundles/demo/demo";
 
 export type ConsoleTab = "overview" | "layers" | "preview" | "draft";
@@ -1112,7 +1112,7 @@ export function validateSampleProfile(entry: SampleProfileEntry): ValidationResu
 
 function previewSpec(
   input: PreviewInput,
-  taxonomy: import("../../profiles/genui").InteractionTaxonomy
+  taxonomy: InteractionTaxonomy
 ): InteractionSpec {
   const base: InteractionSpec = {
     interaction: input.interaction,
@@ -1151,7 +1151,7 @@ export function buildProfilePreviewBundle(
 ): SerializableBundle {
   const spec = previewSpec(
     input,
-    entry.profile.resources.taxonomy as unknown as import("../../profiles/genui").InteractionTaxonomy
+    entry.profile.resources.taxonomy as unknown as InteractionTaxonomy
   );
   const ctx: PresentationContext = {
     surface: String(input.surface || "desktop"),

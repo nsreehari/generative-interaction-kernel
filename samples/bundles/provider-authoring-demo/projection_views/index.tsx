@@ -18,7 +18,7 @@ import {
   summarizeProfileArtifacts,
 } from "@gik/provider-profile-authoring";
 import { StepOrchestrator, type FlowRegistry } from "@gik/provider-step-orchestrator";
-import { liveCardsProfileArtifact, liveCardsRecipeArtifacts } from "../../../profiles/registry";
+import { liveCardsProfileArtifact, liveCardsRecipeArtifacts } from "../../../catalog/profile-catalog";
 
 function prettyJson(value: unknown): string {
   return JSON.stringify(value, null, 2);

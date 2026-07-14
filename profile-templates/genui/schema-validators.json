@@ -1,0 +1,21 @@
+{
+  "schemas": [
+    {
+      "file": "schemas/workflow.schema.json",
+      "message": "Invalid workflow spec"
+    },
+    {
+      "file": "schemas/interaction.schema.json",
+      "message": "Invalid interaction spec"
+    },
+    {
+      "file": "schemas/presentation.schema.json",
+      "message": "Invalid Presentation DSL"
+    },
+    {
+      "file": "schemas/runtime-document.schema.json",
+      "refs": ["https://genui.dev/gik/0.1/document.schema.json"],
+      "message": "Invalid runtime document"
+    }
+  ]
+}

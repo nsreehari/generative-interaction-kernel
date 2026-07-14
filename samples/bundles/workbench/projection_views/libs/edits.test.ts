@@ -7,7 +7,7 @@ import { test } from "vitest";
 import assert from "node:assert/strict";
 import taxonomyJson from "../../../../../profile-templates/genui/taxonomy.json" with { type: "json" };
 
-import type { PresentationSpec, PresentationEdits } from "../../../../profiles/genui";
+import type { InteractionTaxonomy, PresentationSpec, PresentationEdits } from "@gik/profile";
 import {
   applyPresentationEdits,
   emptyEdits,
@@ -18,7 +18,7 @@ import {
   toggleRegion,
 } from "./edits";
 
-const taxonomy = taxonomyJson as import("../../../../profiles/genui").InteractionTaxonomy;
+const taxonomy = taxonomyJson as InteractionTaxonomy;
 
 const ORDER = ["context", "evidence", "timeline"];
 
