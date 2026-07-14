@@ -200,7 +200,8 @@ const HOST_THEME_CSS = `
 }
 .gx-host .gx-field-label { font-size: var(--fontSizeBase100); color: var(--muted); }
 .gx-host .gx-field input,
-.gx-host .gx-field textarea {
+.gx-host .gx-field textarea,
+.gx-host .gx-field select {
   background: var(--field-bg);
   color: var(--text);
   border: var(--strokeWidthThin) solid var(--line);
@@ -209,6 +210,40 @@ const HOST_THEME_CSS = `
   font: inherit;
 }
 .gx-host .gx-field textarea { resize: vertical; }
+.gx-host .gx-field input:read-only,
+.gx-host .gx-field textarea:read-only,
+.gx-host .gx-field select:disabled,
+.gx-host .gx-field-check input:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* Schema form: 12-column responsive grid + per-field helper text and checkbox rows. */
+.gx-host .gx-form-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--spacingVerticalS) var(--spacingHorizontalM);
+}
+.gx-host .gx-field-cell { min-width: 0; }
+.gx-host .gx-field-hint { font-size: var(--fontSizeBase100); color: var(--muted); }
+.gx-host .gx-field-check {
+  display: flex;
+  align-items: center;
+  gap: var(--spacingHorizontalS);
+  margin-bottom: var(--spacingVerticalMNudge);
+}
+.gx-host .gx-col-span-1 { grid-column: span 1; }
+.gx-host .gx-col-span-2 { grid-column: span 2; }
+.gx-host .gx-col-span-3 { grid-column: span 3; }
+.gx-host .gx-col-span-4 { grid-column: span 4; }
+.gx-host .gx-col-span-5 { grid-column: span 5; }
+.gx-host .gx-col-span-6 { grid-column: span 6; }
+.gx-host .gx-col-span-7 { grid-column: span 7; }
+.gx-host .gx-col-span-8 { grid-column: span 8; }
+.gx-host .gx-col-span-9 { grid-column: span 9; }
+.gx-host .gx-col-span-10 { grid-column: span 10; }
+.gx-host .gx-col-span-11 { grid-column: span 11; }
+.gx-host .gx-col-span-12 { grid-column: span 12; }
+@media (max-width: 640px) {
+  .gx-host .gx-form-grid > * { grid-column: span 12; }
+}
 
 .gx-host .gx-json-field textarea.gx-json-input {
   font-family: var(--fontFamilyMonospace, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
