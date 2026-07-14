@@ -84,8 +84,8 @@ export class GIKClient {
     return () => this.listeners.delete(listener);
   }
 
-  emit(node: string, name: string, payload?: Record<string, Json>): void | Promise<void> {
-    return this.transport.send(envelope("event", { node, name, payload }));
+  emit(node: string, name: string, payload?: Record<string, Json>, actorId?: string): void | Promise<void> {
+    return this.transport.send(envelope("event", { node, name, payload, actorId }));
   }
 
   private async onMessage(message: GIKMessage): Promise<void> {

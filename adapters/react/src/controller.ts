@@ -47,12 +47,14 @@ export class GenUIController {
   async emit(
     node: string,
     name: string,
-    payload?: Record<string, unknown>
+    payload?: Record<string, unknown>,
+    actorId?: string
   ): Promise<ResolvedNode> {
     this.lastPatch = await this.kernel.dispatch({
       node,
       name,
       payload: payload as Record<string, never> | undefined,
+      actorId,
     });
     return this.refresh();
   }

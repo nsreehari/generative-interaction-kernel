@@ -7,7 +7,7 @@ import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import { Kernel } from "../src/index";
-import type { Orchestrator, OrchestratorEffect } from "../src/index";
+import { bufferSink, type Orchestrator, type OrchestratorEffect } from "../src/index";
 
 const manifest = {
   version: "orchestration-test/1",
@@ -59,8 +59,10 @@ const asyncDoc = {
 };
 
 test("invoke: async fetch settles as store delta + machine transition (idle->loading->ready)", async () => {
+  const invocations: OrchestratorEffect[] = [];
   const orchestrator: Orchestrator = {
     async invoke(effect: OrchestratorEffect) {
+      invocations.push(effect);
       if (effect.tool !== "fetchOrders") return;
       return {
         ops: [{ op: "set", path: "fetched_sources.orders", value: [{ id: "order-42" }] }],
@@ -73,7 +75,11 @@ test("invoke: async fetch settles as store delta + machine transition (idle->loa
   k.init();
   assert.deepEqual((k.state() as any).computed_values.orders, { state: "idle" });
 
-  const patch = await k.dispatch({ node: "btn-refresh", name: "tap" });
+  const patch = await k.dispatch({
+    node: "btn-refresh",
+    name: "tap",
+    actorId: "agent-endpoint",
+  });
 
   // Settled ops within one dispatch: loading (emit) -> orders written (invoke) -> ready (resolved).
   assert.deepEqual(patch.ops, [
@@ -84,6 +90,7 @@ test("invoke: async fetch settles as store delta + machine transition (idle->loa
   assert.deepEqual((k.state() as any).computed_values.orders, { state: "ready" });
   assert.deepEqual((k.state() as any).fetched_sources.orders, [{ id: "order-42" }]);
   assert.equal(patch.rev, 1, "one dispatch is one rev regardless of fan-out");
+  assert.equal(invocations[0]?.actorId, "agent-endpoint");
 });
 
 test("confirm: HITL approval returns a follow-up event that assigns status", async () => {
@@ -120,10 +127,15 @@ test("confirm: HITL approval returns a follow-up event that assigns status", asy
   const kernel = new Kernel(manifest as any, doc as any, { orchestrator });
   kernel.init();
 
-  const patch = await kernel.dispatch({ node: "btn-approve", name: "tap" });
+  const patch = await kernel.dispatch({
+    node: "btn-approve",
+    name: "tap",
+    actorId: "agent-response",
+  });
 
   assert.equal(confirmations.length, 1);
   assert.equal(confirmations[0].args.message, "Approve order?");
+  assert.equal(confirmations[0].actorId, "agent-response");
   assert.deepEqual(patch.ops, [
     { op: "set", path: "card_data.status", value: "approved" },
   ]);
@@ -157,6 +169,38 @@ test("route: routing effect reaches the orchestrator without touching the store"
 
   assert.deepEqual(routes, ["/orders/42"]);
   assert.deepEqual(patch.ops, [], "routing produces no store delta");
+});
+
+test("orchestrator settlement emits an attributable semantic outcome trace", async () => {
+  const { sink, events } = bufferSink();
+  const orchestrator: Orchestrator = {
+    async route() {
+      return { outcome: "rejected", detail: { reason: "protected-target" } };
+    },
+  };
+  const doc = {
+    gik: "0.1",
+    type: "document",
+    payload: {
+      root: {
+        capability: "actions",
+        id: "proposal",
+        edges: { on: { submit: [{ do: "route", args: { to: "isolate:dc-01" } }] } },
+      },
+    },
+  };
+  const kernel = new Kernel(manifest as any, doc as any, { orchestrator, sink });
+  kernel.init();
+
+  await kernel.dispatch({ node: "proposal", name: "submit", actorId: "agent-response" });
+
+  assert.ok(events.some((event) =>
+    event.event === "effect" &&
+    event.detail?.phase === "outcome" &&
+    event.detail?.outcome === "rejected" &&
+    event.detail?.actorId === "agent-response" &&
+    event.detail?.reason === "protected-target"
+  ));
 });
 
 test("unhandled effect is safe: default NullOrchestrator performs nothing", async () => {

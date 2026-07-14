@@ -41,6 +41,7 @@ export interface GIKEvent {
   node: string;
   name: string;
   payload?: Record<string, Json>;
+  actorId?: string;
 }
 
 export interface Action {
@@ -131,6 +132,7 @@ export interface CapabilityDescriptor {
 export interface OrchestratorEffect {
   kind: "invoke" | "confirm" | "route";
   node: string;
+  actorId?: string;
   tool?: string;
   to?: Json;
   args: Record<string, Json>;
@@ -142,6 +144,10 @@ export interface OrchestratorEffect {
 export interface OrchestratorResult {
   ops?: PatchOp[];
   events?: GIKEvent[];
+  /** Semantic settlement recorded by observability (for example rejected or confirmation-required). */
+  outcome?: string;
+  /** Structured, serializable context for the settlement receipt. */
+  detail?: Record<string, Json>;
 }
 
 /**

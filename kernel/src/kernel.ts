@@ -206,6 +206,21 @@ export class Kernel {
       const result = await handler.call(this.orchestrator, effect);
       if (!result) continue;
 
+      this.sink?.({
+        event: "effect",
+        node: effect.node,
+        detail: {
+          kind: effect.kind,
+          tool: effect.tool,
+          phase: "outcome",
+          outcome: result.outcome ?? "settled",
+          actorId: effect.actorId,
+          opCount: result.ops?.length ?? 0,
+          eventCount: result.events?.length ?? 0,
+          ...(result.detail ?? {}),
+        },
+      });
+
       if (result.ops?.length) {
         this.store.apply(result.ops);
         acc.push(...result.ops);

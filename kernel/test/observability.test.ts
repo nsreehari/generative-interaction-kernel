@@ -67,6 +67,24 @@ test("bufferSink collects action + resolve traces at the documented points", asy
   }
 });
 
+test("event actor provenance flows into reducer traces", async () => {
+  const { sink, events } = bufferSink();
+  const k = kernelWith(sink as never);
+  k.init();
+
+  await k.dispatch({ node: "w", name: "go", actorId: "agent-triage" });
+
+  assert.ok(
+    events.some(
+      (e) =>
+        e.event === "action" &&
+        e.detail?.do === "assign" &&
+        e.detail?.actorId === "agent-triage"
+    ),
+    "action trace attributes the mutation to the emitting actor"
+  );
+});
+
 test("formatTrace renders a stable line and consoleSink writes it", () => {
   const line = formatTrace({ event: "action", node: "w", detail: { do: "assign" } });
   assert.equal(line, 'ACTION node=w {"do":"assign"}');
