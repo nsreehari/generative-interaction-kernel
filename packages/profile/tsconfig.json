@@ -1,7 +1,11 @@
 {
-  "extends": "../../kernel/tsconfig.json",
+  "extends": "../../profile/tsconfig.json",
   "include": [
     "src",
-    "../../kernel/src"
+    "../../profile/src",
+    "../../kernel/src",
+    "../../shared/libs",
+    "../../schemas",
+    "../../profile-templates"
   ]
 }

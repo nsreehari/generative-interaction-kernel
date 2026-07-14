@@ -23,7 +23,7 @@
         "../../packages/agentface/src/index.ts"
       ],
       "@gik/profile": [
-        "../../packages/profile/src/index.ts"
+        "../../profile/src/index.ts"
       ],
       "@gik/react": [
         "../../packages/react/src/index.ts"

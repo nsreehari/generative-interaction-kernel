@@ -19,7 +19,7 @@ const reactPackage = fileURLToPath(
   new URL("../../../packages/react/src/index.ts", import.meta.url)
 );
 const profilePackage = fileURLToPath(
-  new URL("../../../packages/profile/src/index.ts", import.meta.url)
+  new URL("../../../profile/src/index.ts", import.meta.url)
 );
 const providerConsequenceGraph = fileURLToPath(
   new URL("../../../packages/provider-consequence-graph/src/index.ts", import.meta.url)
