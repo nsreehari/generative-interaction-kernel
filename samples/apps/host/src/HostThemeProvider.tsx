@@ -192,6 +192,34 @@ const HOST_THEME_CSS = `
 }
 .gx-host .gx-table-editable .gx-cell-delete:hover { color: var(--bad); }
 
+/* Chart series palette — primary series follow the theme's semantic roles; the rest fill out a
+   categorical set. Charts recolor with the theme instead of hardcoding hex in the component. */
+.gx-host {
+  --gx-chart-1: var(--accent);
+  --gx-chart-2: var(--good);
+  --gx-chart-3: var(--warn);
+  --gx-chart-4: var(--bad);
+  --gx-chart-5: #8b5cf6;
+  --gx-chart-6: #06b6d4;
+  --gx-chart-7: #ec4899;
+  --gx-chart-8: #84cc16;
+  --gx-chart-9: #f59e0b;
+  --gx-chart-10: #64748b;
+}
+.gx-host .gx-chart { display: flex; flex-direction: column; gap: var(--spacingVerticalS); }
+.gx-host .gx-chart-grid { stroke: var(--line); stroke-width: 1; opacity: 0.5; }
+.gx-host .gx-chart-axis-line { stroke: var(--muted); stroke-width: 1; opacity: 0.7; }
+.gx-host .gx-chart-axis-label { fill: var(--muted); font-size: 9px; }
+.gx-host .gx-chart-legend { display: flex; flex-wrap: wrap; gap: var(--spacingHorizontalM); }
+.gx-host .gx-chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacingHorizontalXS);
+  font-size: var(--fontSizeBase100);
+  color: var(--muted);
+}
+.gx-host .gx-chart-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
 .gx-host .gx-field {
   display: flex;
   flex-direction: column;
