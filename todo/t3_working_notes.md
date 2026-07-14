@@ -1,107 +1,173 @@
 # T3 — Live Workspace : SOC — working notes
 
-> Scope: **Beat 2** of the 4-Beat pitch IA (see `working-doc.md` D3). Refocus the `workbench`
-> bundle into **Live Workspace : SOC**, the runtime-plane hero. It must prove HX+AX symbiosis,
-> continuous governance (inside/outside the loop), and trace forensics (including rejected
-> hallucinations).
+> Scope: **Beat 2** of the 4-Beat pitch IA (see `working-doc.md` D3). Build the runtime-plane hero:
+> a live SOC workspace where an analyst and a visible team of agents investigate one incident,
+> share one evolving state, cross policy boundaries, continue asynchronously, and return a
+> consequential decision to the human.
 >
-> Status: PLANNING (no bundle edits yet). This file details the architecture of the new bundle.
+> Status: PLANNING (no bundle edits yet). **Start from the pitch experience, not from the current
+> `workbench`.** Reuse its proven kernel/transport pieces where they help; discard its shell and
+> authoring chrome where they diminish the demo.
 
 ---
 
+## 0. Product thesis
+
+The hero is not a layout and it is not an inspector. It is a **live collaboration** the audience
+can understand without knowing GIK:
+
+> One incident. One evolving workspace. Several visible agents. One governed authority.
+
+The audience must see agents as participants, not infer them from a trace or watch a generic
+playlist advance. Each agent has an identity, role, current activity, contribution, and authority
+boundary. Their work changes the same evidence, hypotheses, and response plan the analyst sees.
+Governance appears at the moment it matters — attached to the proposal it validates, rejects, or
+holds for confirmation — rather than living only in a permanent diagnostics pane.
+
 ## 1. Job of this bundle
 
-Be the irrefutable evidence of the product contract established in Beat 1.
+Be the irrefutable, working proof of the product contract established in Beat 1:
 
-It must prove the **Canonical Moat**: humans and agents share one evolving state under the same
-governed authority. It does this by physically splitting the screen to show both faces of the
-same running state:
-- What the human sees (the rendered analyst UI)
-- What the system knows (the semantic shadow tree and trace)
+- **Visible collaboration:** the analyst can see which agents are present, what each is doing,
+  what evidence each contributes, and when they disagree or converge.
+- **Shared state:** agent activity changes the operational workspace itself — evidence graph,
+  hypotheses, timeline, and response plan — not a separate chat transcript.
+- **Governed agency:** proposals carry visible authority receipts (`validated`, `rejected`,
+  `confirmation required`) at the point of action.
+- **Continuity:** the analyst can hand the investigation to the agent team, leave the active loop,
+  and return to the same workspace with state, policy, authority, and provenance intact.
 
-We are NOT building a real SOC tool. We are building a *governance simulation* that plays a
-controlled scenario proving the physics.
+We are not building a full SOC product. We are building one unusually convincing incident journey
+that exposes platform complexity through clear work, not through developer instrumentation.
 
-## 2. Current state of `workbench` (to retire vs reuse)
+## 2. Experience architecture (not a fixed 3-pane requirement)
 
-- **Retire:** The entire "Studio" metaphor. Eliminate the layout/interaction kind form, the generic
-  JSON document editor, the generic bundle selector, and the "Authored Session" concept. This is
-  no longer an authoring tool.
-- **Reuse:** The projection infra (`demo:workbench`), the 3-pane responsive layout shell, the
-  underlying capability resolution loop.
-- **Rename:** `workbench` becomes `live-workspace-soc`. (Requires changes to `registry.json` and
-  references in `samples-overview` and `console`).
+The desktop composition should feel like an operational incident room, with responsive regions
+chosen for legibility rather than symmetry:
 
-## 3. The 3-Pane Layout
+1. **Incident command bar:** incident severity/status, current mode (`Collaborative` or
+  `Autonomous`), participating humans/agents, and the next consequential decision.
+2. **Shared investigation canvas (primary):** evidence, hypotheses, affected entities, and response
+  plan evolve in place. Agent contributions land as attributed changes on this shared surface.
+3. **Agent presence + activity:** a visible team roster and live activity stream. Named agents such
+  as **Triage**, **Identity**, **Endpoint**, and **Response** expose `working / waiting / blocked /
+  needs approval`, the capability or tool in use, and their latest contribution.
+4. **Contextual authority receipts:** validation, rejection, fallback, and confirmation appear next
+  to the affected proposal. A compact activity ledger or expandable forensic drawer preserves the
+  complete trace without making diagnostics one-third of the product.
+5. **Human command surface:** the analyst assigns/refines intent, inspects evidence, changes the
+  collaboration mode, and approves or rejects consequential actions. Controls are contextual, not
+  a generic form builder.
 
-The layout is a dashboard proving the dual-face architecture:
+Desktop may use a main canvas plus one activity rail. Mobile should use a single primary workspace
+with agent activity and forensics in tabs/drawers. The architecture must not require three panes.
 
-1. **Pane 1 (HX / Human Experience): The Guided UI**
-   - The rendered view of the document.
-   - Shows trusted evidence (the phishing alert details).
-   - Shows an actionable button: "Isolate Host" (but disabled or hidden behind a confirmation).
+## 3. Build direction: new hero, workbench untouched
 
-2. **Pane 2 (AX / Agent Experience): The Semantic Shadow Graph**
-   - A live, readable view of the state the agent sees.
-   - Not raw JSON, but a visual representation of the graph (e.g., nodes for 'Alert', 'Host',
-     'Finding', 'Capabilities').
-   - Visualizes when the agent proposes a 'derive' or 'route' action against this graph.
+Create a purpose-built `live-workspace-soc` bundle and route the Runtime CTA to it. T3 is strictly
+additive: do not rename, restyle, relocate, or remove anything under `samples/bundles/workbench`.
+Keep the existing bundle routable as a reference and regression baseline throughout the remaining
+pitch implementation. Decide whether to retire/remove it only in a separate cleanup task after all
+four beats are complete and validated.
 
-3. **Pane 3: Trace / Forensics (The Moat)**
-   - A scrolling, immutable log of the reducer's activity.
-   - `[PROPOSED]` -> `[VALIDATED]` -> `[PATCHED]`
-   - This must be the most prominent, convincing part of the screen.
+The old bundle may inform the implementation, but the new bundle must not import its private
+internals or make it a runtime dependency. Prefer existing shared packages; where no shared seam
+exists, implement the narrow capability in the new bundle and defer any deduplication/extraction
+until the cleanup phase.
 
-## 4. The Governed SOC Scenario (The Script)
+**Candidate mechanisms to reference and reimplement/reuse through existing shared APIs:**
+- `AgentPort` and the controller/transport-neutral emit contract.
+- Guest-kernel/session construction and capability registry pieces.
+- Trace normalization/rendering logic, redesigned as receipts + a forensic drawer.
+- Existing action grammar and reducer paths for `derive`, `invoke`, `route`, and `confirm`.
 
-The bundle should auto-play or step-through this exact sequence to prove the claims:
+**Do not carry forward by default:**
+- The fixed `300px | 1fr | 420px` shell.
+- Generic interaction/layout forms, JSON/session editors, profile selectors, region/facet tables,
+  and authoring-tour chrome.
+- `workbench.*`, `inspect`, or `wb:` names merely because they exist.
+- `agent-playlist.json` as the user-facing mental model. A deterministic scenario script may drive
+  the demo, but the UI must render persistent agent actors and their actual participation.
 
-**Step 1: Inside the loop (Shared Investigation)**
-- *Context:* Initial intent loaded: "Investigate unusual lateral movement from Host-A."
-- *Trace:* `[PROPOSED]` Agent queries SIEM. `[VALIDATED]` tool execution. `[PATCHED]` Graph updates
-  with new evidence.
-- *HX:* UI updates to show new log data in the context of the alert.
-- *AX:* Shadow graph lights up a new 'Finding' node linked to 'Host-A'.
+## 4. The governed SOC scenario
 
-**Step 2: The Rejected Hallucination (Deterministic Fallback)**
-- *Context:* The agent makes a bounded error.
-- *Trace:* `[PROPOSED]` Agent attempts to isolate the core Domain Controller.
-- *Trace:* `[REJECTED]` Policy engine blocks action (Domain Controller is in protected class).
-  Fallback applied.
-- *HX:* A safe, governed note appears: "Agent recommended isolation, but target is protected."
-- *Proof:* The system, not the LLM, is the authority.
+The scenario is one coherent incident, not a feature tour:
 
-**Step 3: Outside the loop (Autonomous Continuation)**
-- *Context:* The analyst explicitly transitions the task.
-- *HX:* Analyst clicks "Continue investigation asynchronously." The UI minimizes.
-- *Trace:* `[MODE SHIFT]` Agent transitions to autonomous monitoring.
-- *Proof:* The trace continues to glow. The shadow graph continues to evolve. Governance holds.
+**Act 1 — Assemble the team.** A suspicious identity event and lateral movement on Host-A open the
+workspace. The analyst sets the intent: "Establish scope, contain safely, preserve evidence."
+Triage, Identity, Endpoint, and Response agents visibly join with bounded roles and authority.
 
-**Step 4: The Governed Return (Confirmation)**
-- *Context:* The agent finds conclusive evidence necessitating action.
-- *Trace:* `[PROPOSED]` Execute 'Isolate Host-A'.
-- *Trace:* `[CONFIRM]` Action blocked pending human approval.
-- *HX:* The workspace alerts the analyst. A clear, bounded "Approve Isolation of Host-A"
-  button appears, attached to the exact evidence chain.
+**Act 2 — Investigate in parallel.** Identity correlates impossible travel; Endpoint finds a new
+remote service; Triage links both observations into a high-confidence hypothesis. Their activity,
+tool calls, and attributed evidence appear live while the shared graph/timeline updates. The analyst
+can inspect or redirect work without leaving the workspace.
 
-## 5. Implementation Strategy (The "Simulated" Kernel)
+**Act 3 — Hit a real boundary.** Response proposes isolating a protected domain controller based on
+an incomplete correlation. Policy rejects the proposal and applies a safe fallback (increase
+telemetry + preserve evidence). The rejected proposal remains visible with the evidence used, the
+policy reason, and the fallback. Call this **policy-blocked overreach**, not a hallucination.
 
-We cannot wire up a real LLM or real SIEM. The scenario must be a **controlled simulation**
-driven by a script, but it must pass through the *real* kernel mechanisms.
+**Act 4 — Hand off without losing control.** The analyst selects **Continue autonomously**. Presence
+changes from live collaboration to autonomous monitoring; simulated time advances; agents continue
+to contribute to the same evidence and timeline. The workspace explicitly shows that authority and
+trace remain active while the human is outside the interaction loop.
 
-1. **State:** The bundle `document.json` pre-loads the initial state.
-2. **Simulation Runner:** A timed or click-through step engine in the projection view.
-3. **Faking the Agent:** The simulation runner dispatches real GIK intents/events (e.g., `derive`,
-  `route`, `invoke`) as if an agent had emitted them.
-4. **Real Validation:** The kernel's *actual* schemas and validation logic process the simulated
-  events, proving the trace is real. We deliberately send a bad event to trigger the rejection.
+**Act 5 — Governed return.** Agents converge on Host-A as the correct containment target. Response
+returns a confirmation-gated isolation proposal with its evidence chain and blast-radius summary.
+The analyst approves it; Host-A status changes to contained; every contribution and decision remains
+attributable.
 
-## 6. Acceptance Criteria
+Pitch takeaway: **Agents can leave the screen. They cannot leave the governance boundary.**
 
-- [ ] Bundle renamed from `workbench` to `live-workspace-soc` site-wide.
-- [ ] 3-pane layout established (HX UI / AX Graph / Trace).
-- [ ] Studio/authoring chrome completely removed.
-- [ ] Simulation script accurately plays the 4-step SOC scenario.
-- [ ] The "Rejected Hallucination" appears clearly as a red `[REJECTED]` block in the trace.
-- [ ] The "Confirmation" boundary is visibly enforced before the final action.
-- [ ] Back-navigation ("← Return to Overview") is present.
+## 5. Implementation principles
+
+1. **Real kernel events, deterministic scenario.** A scripted scenario is acceptable for demo
+  reliability, but every visible contribution must dispatch a real GIK event through schema,
+  authority, reducer, and trace. Do not paint fake success/rejection labels in the React view.
+2. **Agents are stateful actors, not toast messages.** Model agent identity, role, mode, current
+  activity, authority, and contributions in shared state. The scenario runner advances actors; it
+  does not replace them.
+3. **Two representations, one state.** HX presents operational evidence; AX presents agent-readable
+  entities/capabilities. They must derive from one state graph, not parallel demo fixtures.
+4. **Progressive disclosure for platform proof.** Show compact authority receipts inline; expose
+  full event payloads/state diffs in the forensic drawer for technical audiences.
+5. **Step-through first, autoplay second.** Let the presenter advance acts deliberately, with an
+  optional autoplay mode. Cause, authority decision, and state change must remain legible.
+
+## 6. Risks to resolve before committing the UI architecture
+
+- **Rejection semantics:** verify whether the kernel can represent a policy rejection + fallback as
+  a first-class trace result. If not, add the smallest real kernel/trace capability needed.
+- **Confirmation lifecycle:** verify `confirm` supports pending → approved/rejected → executed, not
+  merely a static trace label.
+- **Multi-agent attribution:** determine whether actor identity/provenance already flows through
+  events. If absent, define it at the event/trace contract, not only in presentation state.
+- **Autonomous continuity:** prove the same state authority can be driven through the transport-
+  neutral agent port while no human action is occurring. The UI mode switch alone is insufficient.
+- **Scenario density:** four agents and five acts are enough complexity. Keep one incident and one
+  final decision so the audience sees orchestration rather than dashboard noise.
+
+## 7. Acceptance criteria
+
+- [ ] A new `live-workspace-soc` bundle opens from the Runtime CTA; the old `workbench` remains
+  unchanged and independently routable throughout T3 and the remaining pitch implementation.
+- [ ] The analyst and at least four named agent roles are simultaneously visible with live status,
+  current activity, authority, and attributed contributions.
+- [ ] Agent contributions mutate the same evidence/timeline/response state the analyst sees.
+- [ ] A policy-blocked overreach produces a real rejection + fallback receipt beside the proposal
+  and in the full forensic ledger.
+- [ ] Autonomous continuation visibly changes participation mode while preserving state authority,
+  provenance, and trace.
+- [ ] The final containment action cannot execute until the analyst confirms it.
+- [ ] The five-act scenario supports presenter-controlled stepping and optional autoplay/reset.
+- [ ] Full trace/state detail is available on demand without dominating the default experience.
+- [ ] Back-navigation returns to `samples-overview`.
+- [ ] `npm run build:host` + Vitest pass; Playwright validates desktop/mobile layout, readable actor
+  activity, no horizontal overflow, and the complete scenario path.
+
+## 8. Deferred cleanup (not part of T3)
+
+After Beats 1–4 are complete, assess whether `workbench` still serves a useful developer/sample
+purpose. Only then choose explicitly to keep it, move it out of the pitch catalog, deprecate it, or
+remove it. That decision must include reference checks and regression validation; T3 does not
+pre-commit to retirement.

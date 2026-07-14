@@ -276,8 +276,8 @@ The host/bundles ARE the pitch deck. The Console is *not* the ultimate hero — 
 authoring-plane tool. People buy the **runtime magic** first, then the tooling behind it.
 
 **Two heroes, one per plane:**
-- **Runtime-plane hero — Live Workspace (SOC):** the refocused `workbench`. Proves HX+AX
-  symbiosis, determinism, and trace forensics.
+- **Runtime-plane hero — Live Workspace (SOC):** a purpose-built operational workspace. Proves
+  visible HX+AX collaboration, governed agency, deterministic authority, and trace forensics.
 - **Authoring-plane hero — Console:** proves blueprints are bounded, testable, and
   machine-authorable (DX + ACX).
 
@@ -291,14 +291,14 @@ authoring-plane tool. People buy the **runtime magic** first, then the tooling b
   autonomously. First wedge = SOC. After the SOC proof spine, two dominant CTAs:
   **Experience the SOC Runtime** → Hero 1; **Author Governed Experiences** → Hero 2, with
   `DX + ACX · Powered by the GIK Compiler` as the mechanism label. Zero builder jargon.
-2. **Runtime plane / the magic** (Hero 1 — Live Workspace : SOC). 3-pane: **HX** (rendered
-  analyst UI, `confirm`-gated "Isolate Host"), **AX** (live semantic shadow tree; agent proposes
-  `derive`/`route` against the graph, not pixels), **Trace/forensics** (every action hits the
-  governed authority: `[Proposed by AI] → [Validated] → [Patched]`; show a hallucinated proposal
-  *rejected* by fallback). The scenario must also show continuity: the agent continues an
-  investigation asynchronously after the analyst leaves, then returns findings and a
-  confirmation-gated action to the same workspace. Takeaway: "Agents can leave the screen.
-  They cannot leave the governance boundary."
+2. **Runtime plane / the magic** (Hero 1 — Live Workspace : SOC). A live incident workspace where
+  an analyst and a visible team of bounded agents investigate in parallel over one evolving state.
+  Agent identity, role, activity, tool use, evidence, and authority are explicit — not hidden in a
+  playlist or diagnostics pane. Governance appears beside the work: proposals are validated,
+  rejected with fallback, or held for human confirmation, with full trace/forensics available on
+  demand. The scenario also proves continuity: the team continues asynchronously after the analyst
+  leaves, then returns findings and a confirmation-gated action to the same workspace. Takeaway:
+  "Agents can leave the screen. They cannot leave the governance boundary."
 3. **Authoring plane / the moat** (Hero 2 — Console). Tabs: **Blueprint Overview** (intent →
    [tiers] → bundle), **Lowering Recipes** (bounded taxonomy → layout mapping), **Surface
    Preview** (small-multiples: desktop war-room / mobile alert / copilot panel). Takeaway:
@@ -376,13 +376,14 @@ building TurboTax. Frame strictly as "same kernel, headless, a tax journey."
   → Console, powered by the GIK Compiler). Retired the stale sample catalog/customer script. Uses the host `HostThemeProvider`
   semantic roles; host build passes, both routes work, and 375px mobile has no overflow.
 
-## Beat 2 — Runtime-plane hero (Live Workspace : SOC) — was the "Workbench fork"
-- **T3 — Refocus `workbench` into Live Workspace : SOC** (fork RESOLVED = refocus, not retire).
-  3-pane: **HX** rendered analyst UI (`confirm`-gated action) · **AX** live semantic shadow tree
-  (agent proposes `derive`/`route` against the graph) · **Trace** forensics showing
-  `[Proposed] → [Validated] → [Patched]` incl. a *rejected* hallucinated proposal. Add an
-  asynchronous continuation: the agent leaves the active human loop, continues under the same
-  authority, then returns governed findings/actions to the same workspace.
+## Beat 2 — Runtime-plane hero (Live Workspace : SOC)
+- **T3 — Build the Live Workspace : SOC from the pitch outcome backward.** Create a purpose-built
+  runtime bundle where the analyst and named agents are visible participants in one investigation.
+  Leave the old `workbench` unchanged and routable through all pitch implementation; use it only as
+  a reference for proven kernel, transport, event, and trace mechanisms, without importing its
+  private internals. Show parallel agent contributions, a policy-blocked overreach with real
+  fallback, asynchronous continuation under the same authority, and a confirmation-gated return
+  to the human. Evaluate workbench retirement separately after all four beats are complete.
 
 ## Beat 3 — Authoring-plane hero (Console)
 - **T4 — Blueprint Overview tab:** lead with `intent → [tiers] → bundle` + rendered thumbnail +
