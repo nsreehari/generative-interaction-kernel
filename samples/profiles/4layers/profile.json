@@ -10,6 +10,7 @@
       {
         "id": "workflow",
         "kind": "workflow",
+        "schema": "genui/workflow.schema.json",
         "input": {
           "properties": {
             "workflow": {
@@ -41,6 +42,7 @@
       {
         "id": "interaction",
         "kind": "interaction",
+        "schema": "genui/interaction.schema.json",
         "description": "The selected user-facing interaction pattern.",
         "input": {
           "properties": {
@@ -103,7 +105,7 @@
         }
       },
       { "id": "presentation", "kind": "presentation", "description": "The planned presentation layout for the chosen interaction.", "schema": "genui/presentation.schema.json" },
-      { "id": "runtime-doc", "kind": "runtime-doc", "description": "The final lowered runtime document." }
+      { "id": "runtime-doc", "kind": "runtime-doc", "description": "The final lowered runtime document.", "schema": "genui/runtime-document.schema.json" }
     ],
     "recipes": [
       {

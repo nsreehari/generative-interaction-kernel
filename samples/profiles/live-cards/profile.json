@@ -10,6 +10,7 @@
       {
         "id": "interaction",
         "kind": "interaction",
+        "schema": "genui/interaction.schema.json",
         "input": {
           "properties": {
             "interaction": {
@@ -71,7 +72,7 @@
         }
       },
       { "id": "presentation", "kind": "presentation", "schema": "genui/presentation.schema.json" },
-      { "id": "runtime-document", "kind": "runtime-document" }
+      { "id": "runtime-document", "kind": "runtime-document", "schema": "genui/runtime-document.schema.json" }
     ],
     "recipes": [
       {

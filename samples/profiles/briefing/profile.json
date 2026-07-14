@@ -10,6 +10,7 @@
       {
         "id": "agent-interaction",
         "kind": "agent-interaction",
+        "schema": "genui/interaction.schema.json",
         "input": {
           "properties": {
             "interaction": {
@@ -70,7 +71,7 @@
           "required": ["interaction", "subject"]
         }
       },
-      { "id": "runtime-doc", "kind": "runtime-doc" }
+      { "id": "runtime-doc", "kind": "runtime-doc", "schema": "genui/runtime-document.schema.json" }
     ],
     "recipes": [
       {
