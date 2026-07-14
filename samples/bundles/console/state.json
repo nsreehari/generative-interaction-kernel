@@ -174,9 +174,19 @@
       "error": ""
     },
     "tab": "overview",
-    "interactionInputForm": { "properties": {} },
-    "interactionInput": {},
-    "previewSurface": "desktop",
+    "sourceInputForm": { "properties": {} },
+    "sourceInput": {},
+    "previewContextForm": {
+      "properties": {
+        "surface": {
+          "title": "Surface",
+          "default": "desktop",
+          "enum": ["desktop", "web", "mobile", "copilot", "teams"]
+        }
+      },
+      "required": ["surface"]
+    },
+    "previewContext": { "surface": "desktop" },
     "previewBundle": null,
     "previewError": ""
   }

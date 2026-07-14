@@ -867,6 +867,107 @@ function List({ node, emit }: ProjectionViewProps) {
   );
 }
 
+function Timeline({ node }: ProjectionViewProps) {
+  const p = readProps(node);
+  const items = p.list<unknown>("items");
+  const empty = p.str("emptyText", "No timeline data.");
+  if (items.length === 0) return <p className="gx-muted">{empty}</p>;
+
+  const headlineOf = (entry: Record<string, unknown>, index: number) =>
+    String(
+      entry.title ??
+      entry.label ??
+      entry.name ??
+      entry.event ??
+      entry.step ??
+      entry.id ??
+      `Item ${index + 1}`
+    );
+
+  const metaOf = (entry: Record<string, unknown>) => {
+    const meta = entry.at ?? entry.time ?? entry.date ?? entry.timestamp;
+    return meta == null ? "" : String(meta);
+  };
+
+  const detailOf = (entry: Record<string, unknown>) => {
+    const detail = entry.detail ?? entry.summary ?? entry.description ?? entry.value ?? entry.status;
+    return detail == null ? "" : String(detail);
+  };
+
+  return (
+    <ol className="gx-list">
+      {items.map((raw, index) => {
+        const entry =
+          raw && typeof raw === "object" && !Array.isArray(raw)
+            ? (raw as Record<string, unknown>)
+            : { value: raw };
+        const headline = headlineOf(entry, index);
+        const meta = metaOf(entry);
+        const detail = detailOf(entry);
+        return (
+          <li key={String(entry.id ?? entry.key ?? index)}>
+            <span className="gx-list-row">
+              <span className="gx-list-primary">{headline}</span>
+              {meta ? <span className="gx-list-secondary gx-muted">{meta}</span> : null}
+              {detail ? <span className="gx-list-value gx-muted">{detail}</span> : null}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function Stats({ node }: ProjectionViewProps) {
+  const p = readProps(node);
+  const items = p.list<unknown>("items");
+  const empty = p.str("emptyText", "No stats available.");
+  if (items.length === 0) return <p className="gx-muted">{empty}</p>;
+
+  return (
+    <div className="gx-row gx-wrap">
+      {items.map((raw, index) => {
+        const entry = raw && typeof raw === "object" && !Array.isArray(raw)
+          ? (raw as Record<string, unknown>)
+          : { value: raw };
+        const label = String(entry.label ?? entry.name ?? entry.key ?? entry.id ?? `Metric ${index + 1}`);
+        const value = String(entry.value ?? entry.amount ?? entry.total ?? entry.count ?? raw ?? "");
+        return (
+          <div key={String(entry.id ?? entry.key ?? index)} className="gx-metric">
+            <span className="gx-metric-label">{label}</span>
+            <strong className="gx-metric-value">{value}</strong>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Diff({ node }: ProjectionViewProps) {
+  const p = readProps(node);
+  const before = node.props.before;
+  const after = node.props.after;
+  const empty = p.str("emptyText", "No diff data.");
+  if (before == null && after == null) return <p className="gx-muted">{empty}</p>;
+
+  return (
+    <div className="gx-col">
+      <div className="gx-panel-inset">
+        <span className="gx-property-label">Before</span>
+        <div className="gx-code">
+          <pre>{JSON.stringify(before, null, 2)}</pre>
+        </div>
+      </div>
+      <div className="gx-panel-inset">
+        <span className="gx-property-label">After</span>
+        <div className="gx-code">
+          <pre>{JSON.stringify(after, null, 2)}</pre>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Table({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
   const rows = p.list<Record<string, unknown>>("rows");
@@ -1772,6 +1873,9 @@ export const FLOOR_COMPONENTS: Record<string, ProjectionView> = {
   narrative: Narrative,
   property: Property,
   maplist: MapList,
+  timeline: Timeline,
+  stats: Stats,
+  diff: Diff,
   vocabulary: Vocabulary,
   codeBlock: CodeBlock,
   chart: ChartPrimitive,

@@ -1,0 +1,67 @@
+{
+  "rules": [
+    {
+      "match": { "source": "outgoingPlanning" },
+      "groups": [
+        {
+          "id": "interactions",
+          "label": "Interactions",
+          "note": "the goal patterns this layer routes on",
+          "kind": "rule-match-values",
+          "slot": "template",
+          "field": "interaction"
+        },
+        {
+          "id": "roles",
+          "label": "Facet roles",
+          "note": "the semantic role a region can carry",
+          "kind": "rule-match-values",
+          "slot": "presentation",
+          "field": "role"
+        },
+        {
+          "id": "context",
+          "label": "Context signals",
+          "note": "situational keys that can steer the layout",
+          "kind": "rule-match-keys",
+          "slot": "template",
+          "exclude": ["interaction"]
+        }
+      ]
+    },
+    {
+      "match": { "source": "incomingPlanning", "layerKind": "presentation" },
+      "groups": [
+        {
+          "id": "layouts",
+          "label": "Layouts",
+          "note": "arrangements this layer can produce",
+          "kind": "rule-emit-values",
+          "slots": ["template"],
+          "field": "template"
+        },
+        {
+          "id": "presentations",
+          "label": "Region presentations",
+          "note": "how a region can be shown",
+          "kind": "rule-emit-values",
+          "slots": ["presentation"],
+          "field": "presentation"
+        }
+      ]
+    },
+    {
+      "match": { "source": "incomingRuntime" },
+      "groups": [
+        {
+          "id": "capabilities",
+          "label": "UI capabilities",
+          "note": "the concrete components a renderer can draw",
+          "kind": "rule-emit-values",
+          "slots": ["container", "region"],
+          "field": "capability"
+        }
+      ]
+    }
+  ]
+}

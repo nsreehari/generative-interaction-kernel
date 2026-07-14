@@ -7,6 +7,8 @@
     "files": {
       "taxonomy": "taxonomy.json",
       "authoringChecks": "authoring-checks.json",
+      "consoleInspector": "console-inspector.json",
+      "layerVocabulary": "layer-vocabulary.json",
       "schemaValidators": "schema-validators.json",
       "workflowSchema": "schemas/workflow.schema.json",
       "interactionSchema": "schemas/interaction.schema.json",

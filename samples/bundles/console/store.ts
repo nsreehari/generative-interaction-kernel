@@ -14,7 +14,9 @@ import {
   lintProfileArtifacts,
   loadProfileBundle,
   parseProfileBundleJson,
+  isWorkflowToInteractionRecipe,
   planningRecipeOf,
+  resolveNamedProfileTemplateFile,
   resolveProfileTemplate,
   resolveProfileTemplateResource,
   runProfile,
@@ -39,12 +41,8 @@ import { demoDataFor } from "../workbench/bundles/demo/demo";
 export type ConsoleTab = "overview" | "layers" | "preview" | "draft";
 
 interface PreviewInput {
-  interaction: InteractionKind;
-  subject: string;
-  surface: string;
-  // Optional user-supplied top-level input data (from the Preview tab's editable JSON field). When
-  // absent/empty the profile's sample data (demoDataFor) is used instead.
-  data?: Record<string, string>;
+  source: Record<string, unknown>;
+  ctx: PresentationContext;
 }
 
 interface ValidationResult {
@@ -78,10 +76,138 @@ interface EditableProfileState {
   error: string;
 }
 
+type LayerVocabularySource = "outgoingPlanning" | "incomingPlanning" | "incomingRuntime";
+
+type RuleMatchValuesVocabularyGroup = {
+  id: string;
+  label: string;
+  note: string;
+  kind: "rule-match-values";
+  slot: string;
+  field: string;
+};
+
+type RuleMatchKeysVocabularyGroup = {
+  id: string;
+  label: string;
+  note: string;
+  kind: "rule-match-keys";
+  slot: string;
+  exclude?: readonly string[];
+};
+
+type RuleEmitValuesVocabularyGroup = {
+  id: string;
+  label: string;
+  note: string;
+  kind: "rule-emit-values";
+  slots: readonly string[];
+  field: string;
+};
+
+type LayerVocabularyGroupConfig =
+  | RuleMatchValuesVocabularyGroup
+  | RuleMatchKeysVocabularyGroup
+  | RuleEmitValuesVocabularyGroup;
+
+type LayerVocabularyRuleConfig = {
+  match: { source: LayerVocabularySource; layerKind?: string };
+  groups: readonly LayerVocabularyGroupConfig[];
+};
+
+type LayerVocabularyConfig = {
+  rules: readonly LayerVocabularyRuleConfig[];
+};
+
+type VocabularyProgramRule = {
+  slot?: string;
+  match?: Record<string, unknown>;
+  emit?: Record<string, unknown>;
+};
+
+type VocabularyProgram = {
+  program: readonly VocabularyProgramRule[];
+};
+
+type LayerPositionName = "source" | "intermediate" | "terminal" | "unknown";
+
+type LayerPositionInspectorConfig = {
+  label: string;
+  role: string;
+};
+
+type SampleSeedConfig = {
+  match?: { sourceKind?: string };
+  kind: "workflow-rules" | "planning-match-values";
+  slot: string;
+  matchField: string;
+  payloadField: string;
+  labelPrefix?: string;
+};
+
+type RecipeRulePathConfig = {
+  kind: "mapping-when" | "path";
+  path?: string;
+};
+
+type RecipeRegionRulesConfig = {
+  fromLabel: string;
+  toLabel: string;
+  slots: readonly string[];
+  from: RecipeRulePathConfig;
+  to: { path: string };
+};
+
+type RecipeContainerCapabilityConfig = {
+  slot: string;
+  path: string;
+};
+
+type RecipeViewConfig = {
+  match: { family: "workflow" | "planning" | "runtime" };
+  kind: string;
+  kindLabel: string;
+  tagline: string;
+  purpose: string;
+  regionRules: RecipeRegionRulesConfig;
+  containerCapability?: RecipeContainerCapabilityConfig;
+};
+
+type ConsoleInspectorConfig = {
+  layerPositions: Record<LayerPositionName, LayerPositionInspectorConfig>;
+  stageLabelTemplate?: string;
+  sampleSeeds: readonly SampleSeedConfig[];
+  recipeViews: readonly RecipeViewConfig[];
+};
+
+type ConsoleSeed = {
+  id: string;
+  label: string;
+  payload: Record<string, unknown>;
+};
+
 const LOCAL_PROFILE_STORAGE_KEY = "gik.console.profileBundles.v1";
+const PREVIEW_SURFACES = ["desktop", "web", "mobile", "copilot", "teams"] as const;
+const DEFAULT_PREVIEW_CONTEXT_FORM: Record<string, Json> = {
+  properties: {
+    surface: {
+      title: "Surface",
+      default: "desktop",
+      enum: [...PREVIEW_SURFACES],
+    },
+  },
+  required: ["surface"],
+};
+const DEFAULT_PREVIEW_CONTEXT: PresentationContext = {
+  surface: "desktop",
+};
 
 const PREVIEW_CAPABILITIES: Record<string, CapabilityDescriptor> = {
   "ui:board": {
+    propsSchema: { type: "object", additionalProperties: true },
+    slots: ["children"],
+  },
+  "ui:panel": {
     propsSchema: { type: "object", additionalProperties: true },
     slots: ["children"],
   },
@@ -113,6 +239,21 @@ const PREVIEW_CAPABILITIES: Record<string, CapabilityDescriptor> = {
     propsSchema: { type: "object", additionalProperties: true },
     emits: ["save"],
     dataProp: "items",
+  },
+  "ui:timeline": {
+    propsSchema: { type: "object", additionalProperties: true },
+    dataProp: "items",
+  },
+  "ui:stats": {
+    propsSchema: { type: "object", additionalProperties: true },
+    dataProp: "items",
+  },
+  "ui:diff": {
+    propsSchema: { type: "object", additionalProperties: true },
+  },
+  "ui:form": {
+    propsSchema: { type: "object", additionalProperties: true },
+    emits: ["save"],
   },
   "ui:editable-table": {
     propsSchema: { type: "object", additionalProperties: true },
@@ -291,8 +432,13 @@ function readSelectedRecipeId(ctx: EffectContext): string {
   return readStr(ctx, "console.selectedRecipeId");
 }
 
-function readInteractionInput(ctx: EffectContext): Record<string, unknown> {
-  const raw = ctx.get("console.interactionInput");
+function readSourceInput(ctx: EffectContext): Record<string, unknown> {
+  const raw = ctx.get("console.sourceInput");
+  return raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+}
+
+function readPreviewContextValues(ctx: EffectContext): Record<string, unknown> {
+  const raw = ctx.get("console.previewContext");
   return raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
 }
 
@@ -304,44 +450,126 @@ function readPreviewData(values: Record<string, unknown>): Record<string, string
   return undefined;
 }
 
-function previewInputFromValues(values: Record<string, unknown>, surface: string): PreviewInput {
-  const interaction = typeof values.interaction === "string" && values.interaction ? values.interaction : "investigate";
-  const subject = typeof values.subject === "string" && values.subject ? values.subject : "incident";
+function previewContextFromValues(values: Record<string, unknown>): PresentationContext {
   return {
-    interaction: interaction as InteractionKind,
-    subject,
-    surface,
-    data: readPreviewData(values),
+    ...values,
+    surface: typeof values.surface === "string" && values.surface ? values.surface : "desktop",
+  };
+}
+
+function previewInputFromValues(source: Record<string, unknown>, ctx: Record<string, unknown>): PreviewInput {
+  const normalized = { ...source };
+  const data = readPreviewData(source);
+  if (data) normalized.data = data;
+  return {
+    source: normalized,
+    ctx: previewContextFromValues(ctx),
   };
 }
 
 function readPreviewInput(ctx: EffectContext): PreviewInput {
-  // The interaction layer's inputs are entered through the profile-declared `ui:form` (values live
-  // in console.interactionInput). Surface is a cross-cutting presentation-context knob, not a
-  // layer-0 field, so it stays its own control.
-  return previewInputFromValues(readInteractionInput(ctx), readStr(ctx, "console.previewSurface", "desktop"));
+  return previewInputFromValues(readSourceInput(ctx), readPreviewContextValues(ctx));
 }
 
-// Layer 0's declared input form (a `ui:form` FormSchema) drives the pipeline-input UI. Reading it
-// straight from the selected profile's interaction layer is what makes the form data-driven: a
-// profile with 2 fields or 3 fields just renders, no console-side hardcoding.
-function interactionInputFormFor(entry: CatalogEntry): Record<string, unknown> {
+function sourceLayerId(entry: CatalogEntry | SampleProfileEntry): string {
   const sourceLayerId = entry.profile.stages[0]?.fromLayer.id ?? entry.artifact.payload.layers[0]?.id;
-  const layer = entry.profile.layersById[sourceLayerId ?? ""];
+  return sourceLayerId ?? "";
+}
+
+function sourceLayer(entry: CatalogEntry | SampleProfileEntry): LayerDefinition | undefined {
+  const layerId = sourceLayerId(entry);
+  return layerId ? entry.profile.layersById[layerId] : undefined;
+}
+
+function sourceLayerKind(entry: CatalogEntry | SampleProfileEntry): string {
+  return sourceLayer(entry)?.kind ?? "";
+}
+
+function sourceInputFormFor(entry: CatalogEntry): Record<string, unknown> {
+  const layer = sourceLayer(entry);
   const input = layer?.input;
   return input && typeof input === "object" && !Array.isArray(input) ? (input as Record<string, unknown>) : { properties: {} };
 }
 
-// Seed the form's values from each field's declared `default` (also data-driven — the profile owns
-// the defaults). Fields without a default start empty.
-function interactionInputDefaults(entry: CatalogEntry): Record<string, unknown> {
-  const form = interactionInputFormFor(entry);
+function formDefaults(form: Record<string, unknown>): Record<string, unknown> {
   const props = (form.properties ?? {}) as Record<string, Record<string, unknown>>;
   const out: Record<string, unknown> = {};
   for (const [key, field] of Object.entries(props)) {
     if (field && field.default !== undefined) out[key] = field.default;
   }
   return out;
+}
+
+function sourceInputDefaults(entry: CatalogEntry): Record<string, unknown> {
+  return formDefaults(sourceInputFormFor(entry));
+}
+
+function previewContextFormFor(entry: CatalogEntry): Record<string, unknown> {
+  const declared = entry.artifact.payload.context;
+  if (!declared || typeof declared !== "object" || Array.isArray(declared)) {
+    return DEFAULT_PREVIEW_CONTEXT_FORM;
+  }
+
+  const declaredRecord = declared as Record<string, unknown>;
+  const declaredRequired = Array.isArray(declaredRecord.required) ? (declaredRecord.required as string[]) : [];
+  const required = new Set<string>(["surface", ...declaredRequired]);
+
+  return {
+    ...declaredRecord,
+    properties: {
+      ...((DEFAULT_PREVIEW_CONTEXT_FORM.properties ?? {}) as Record<string, unknown>),
+      ...((declaredRecord.properties ?? {}) as Record<string, unknown>),
+    },
+    required: [...required],
+  };
+}
+
+function previewContextDefaults(entry: CatalogEntry): Record<string, unknown> {
+  return {
+    ...DEFAULT_PREVIEW_CONTEXT,
+    ...formDefaults(previewContextFormFor(entry)),
+  };
+}
+
+function isInteractionLikeSource(entry: CatalogEntry | SampleProfileEntry): boolean {
+  return sourceLayerKind(entry).includes("interaction");
+}
+
+function interactionPreviewSeed(
+  values: Record<string, unknown>,
+  taxonomy: InteractionTaxonomy
+): InteractionSpec {
+  const interaction = typeof values.interaction === "string" && values.interaction ? values.interaction : "investigate";
+  const subject = typeof values.subject === "string" && values.subject ? values.subject : "incident";
+  const base: InteractionSpec = {
+    interaction: interaction as InteractionKind,
+    subject,
+  };
+  const data = readPreviewData(values) ?? demoDataFor(base, taxonomy);
+  if (interaction === "configure") {
+    return {
+      ...base,
+      data: {
+        ...data,
+        settings: "fetched_sources.orders",
+      },
+      facetViews: {
+        settings: {
+          capability: "ui:editable-table",
+          read: { rows: "{{region.dataPath}}" },
+          props: {
+            spec: {
+              columns: ["id", "amount"],
+              addRow: false,
+              deleteRow: false,
+            },
+          },
+        },
+      },
+    };
+  }
+
+  return { ...base, data };
 }
 
 function catalogRows(entries: readonly CatalogEntry[]) {
@@ -491,6 +719,25 @@ function layerDetailView(layer: LayerDefinition | undefined) {
   };
 }
 
+function consoleInspectorConfig(entry: CatalogEntry): ConsoleInspectorConfig {
+  const templateId = profileTemplateId(entry);
+  if (!templateId) {
+    return {
+      layerPositions: {
+        source: { label: "Source layer", role: "The external input layer where the profile starts before any lowering rules run." },
+        intermediate: { label: "Intermediate layer", role: "An internal stage in the lowering pipeline that reshapes the previous layer into a more concrete representation." },
+        terminal: { label: "Terminal layer", role: "The final emitted layer after all lowering rules have run." },
+        unknown: { label: "Pipeline stage", role: "A stage in this profile's lowering pipeline." },
+      },
+      stageLabelTemplate: "{label} · stage {index} of {total}",
+      sampleSeeds: [],
+      recipeViews: [],
+    };
+  }
+  const template = resolveProfileTemplate(templateId);
+  return resolveNamedProfileTemplateFile(template, "consoleInspector") as unknown as ConsoleInspectorConfig;
+}
+
 function emptyRecipeDetailState() {
   return {
     id: "",
@@ -528,34 +775,46 @@ function ruleMatchSummary(match: Record<string, unknown>): string {
 // plus the human labels for the two columns. This is the one place that knows the shape of each
 // recipe kind, so the UI can render "how each region is handled" for ANY non-terminal layer without
 // gating on a specific transition.
-function regionRuleView(recipe: LayerRecipe): {
+function recipeFamily(recipe: LayerRecipe): "workflow" | "planning" | "runtime" | "unknown" {
+  if (isWorkflowToInteractionRecipe(recipe)) return "workflow";
+  if (planningRecipeOf(recipe)) return "planning";
+  if (runtimeRecipeOf(recipe)) return "runtime";
+  return "unknown";
+}
+
+function recipeViewConfig(entry: CatalogEntry, recipe: LayerRecipe): RecipeViewConfig | undefined {
+  const family = recipeFamily(recipe);
+  if (family === "unknown") return undefined;
+  return consoleInspectorConfig(entry).recipeViews.find((config) => config.match.family === family);
+}
+
+function ruleDisplayValue(rule: VocabularyProgramRule, config: RecipeRulePathConfig): string {
+  if (config.kind === "mapping-when") {
+    return mappingWhen((rule.match ?? {}) as Record<string, unknown>);
+  }
+  return String(readPathValue(rule, config.path ?? "") ?? "");
+}
+
+function regionRuleView(entry: CatalogEntry, recipe: LayerRecipe): {
   fromLabel: string;
   toLabel: string;
   mappings: Array<{ id: string; from: string; to: string }>;
 } {
-  const planning = planningRecipeOf(recipe);
-  if (planning) {
-    const typed = planning;
-    const regionRules = typed.program.filter((rule) => rule.slot === "presentation");
-    return {
-      fromLabel: "A region whose role is",
-      toLabel: "Is presented as",
-      mappings: regionRules.map((rule, index) => ({
-        id: `rgn-${index}`,
-        from: mappingWhen(rule.match as Record<string, unknown>),
-        to: String((rule.emit as Record<string, unknown>).presentation ?? ""),
-      })),
-    };
-  }
-  const typed = runtimeRecipeOf(recipe);
-  if (!typed) return { fromLabel: "When", toLabel: "Does", mappings: [] };
-  const regionRules = typed.program.filter((rule) => rule.slot === "region");
-  const mappings = regionRules.map((rule, index) => ({
-    id: `cap-${index}`,
-    from: mappingWhen(rule.match as Record<string, unknown>),
-    to: String(rule.emit.capability ?? ""),
+  const view = recipeViewConfig(entry, recipe);
+  if (!view) return { fromLabel: "When", toLabel: "Does", mappings: [] };
+
+  const program =
+    recipeFamily(recipe) === "workflow"
+      ? ((recipe as unknown as VocabularyProgram).program ? (recipe as unknown as VocabularyProgram) : undefined)
+      : ((planningRecipeOf(recipe) ?? runtimeRecipeOf(recipe)) as unknown as VocabularyProgram | undefined);
+  if (!program) return { fromLabel: view.regionRules.fromLabel, toLabel: view.regionRules.toLabel, mappings: [] };
+
+  const mappings = ruleMatches(program, view.regionRules.slots).map((rule, index) => ({
+    id: `map-${index}`,
+    from: ruleDisplayValue(rule, view.regionRules.from),
+    to: String(readPathValue(rule, view.regionRules.to.path) ?? ""),
   }));
-  return { fromLabel: "A region / role", toLabel: "Renders as", mappings };
+  return { fromLabel: view.regionRules.fromLabel, toLabel: view.regionRules.toLabel, mappings };
 }
 
 // Reads a rule's match condition as the left-hand side of a lowering mapping ("when …"). An empty
@@ -620,7 +879,7 @@ function resolveRecipeId(entry: CatalogEntry, recipeId?: string): string {
   return recipeId && ids.has(recipeId) ? recipeId : "";
 }
 
-function layerPosition(entry: CatalogEntry, layerId: string): "source" | "intermediate" | "terminal" | "unknown" {
+function layerPosition(entry: CatalogEntry, layerId: string): LayerPositionName {
   const order = orderedLayerIds(entry);
   const index = order.indexOf(layerId);
   if (index < 0) return "unknown";
@@ -630,41 +889,11 @@ function layerPosition(entry: CatalogEntry, layerId: string): "source" | "interm
 }
 
 function layerRole(entry: CatalogEntry, layerId: string): string {
-  const position = layerPosition(entry, layerId);
-  if (position === "source") {
-    return "The external input layer where the profile starts before any lowering rules run.";
-  }
-  if (position === "intermediate") {
-    return "An internal stage in the lowering pipeline that reshapes the previous layer into a more concrete representation.";
-  }
-  if (position === "terminal") {
-    return "The final emitted layer after all lowering rules have run.";
-  }
-  return "A stage in this profile's lowering pipeline.";
+  return consoleInspectorConfig(entry).layerPositions[layerPosition(entry, layerId)].role;
 }
 
 function layerRoleLabel(entry: CatalogEntry, layerId: string): string {
-  const position = layerPosition(entry, layerId);
-  if (position === "source") return "Source layer";
-  if (position === "intermediate") return "Intermediate layer";
-  if (position === "terminal") return "Terminal layer";
-  return "Pipeline stage";
-}
-
-function recipeTagline(kind: string): string {
-  if (kind === "interaction-to-presentation") return "decides the layout";
-  if (kind === "presentation-to-runtime") return "picks the components";
-  return "";
-}
-
-function recipePurpose(kind: string): string {
-  if (kind === "interaction-to-presentation") {
-    return "Picks a layout template for the interaction and orders each region by priority and disclosure for the target context.";
-  }
-  if (kind === "presentation-to-runtime") {
-    return "Binds each presentation region to a concrete UI capability the kernel can render.";
-  }
-  return "";
+  return consoleInspectorConfig(entry).layerPositions[layerPosition(entry, layerId)].label;
 }
 
 function orderedLayerIds(entry: CatalogEntry): string[] {
@@ -680,8 +909,12 @@ function layerStageLabel(entry: CatalogEntry, layerId: string): string {
   const index = order.indexOf(layerId);
   const total = order.length;
   if (index < 0 || total === 0) return "";
-  const position = index === 0 ? "Source" : index === total - 1 ? "Terminal" : "Intermediate";
-  return `${position} · stage ${index + 1} of ${total}`;
+  const positionLabel = layerRoleLabel(entry, layerId);
+  const template = consoleInspectorConfig(entry).stageLabelTemplate ?? "{label} · stage {index} of {total}";
+  return template
+    .replace("{label}", positionLabel)
+    .replace("{index}", String(index + 1))
+    .replace("{total}", String(total));
 }
 
 // Distinct, non-empty term list preserving first-seen order.
@@ -698,10 +931,113 @@ function distinctTerms(values: Array<string | undefined>): string[] {
   return out;
 }
 
-// The closed grammar each layer speaks, DERIVED FROM THE LOADED PROFILE DATA (no imported
-// taxonomy): the interaction layer's terms come from its outgoing recipe's rule matches, the
-// presentation layer's from what that recipe emits, and the runtime layer's from the concrete
-// capabilities its incoming recipe binds. So the panel always reflects the profile on screen.
+function profileTemplateId(entry: CatalogEntry): string | undefined {
+  const templateId = entry.artifact.payload["profile-template"];
+  return typeof templateId === "string" && templateId.length > 0 ? templateId : undefined;
+}
+
+function layerVocabularyConfig(entry: CatalogEntry): LayerVocabularyConfig {
+  const templateId = profileTemplateId(entry);
+  if (!templateId) return { rules: [] };
+  const template = resolveProfileTemplate(templateId);
+  return resolveNamedProfileTemplateFile(template, "layerVocabulary") as unknown as LayerVocabularyConfig;
+}
+
+function readPathValue(value: unknown, path: string): unknown {
+  return path.split(".").reduce<unknown>((current, segment) => {
+    if (!current || typeof current !== "object" || Array.isArray(current)) return undefined;
+    return (current as Record<string, unknown>)[segment];
+  }, value);
+}
+
+function collectVocabularyTerms(value: unknown, out: string[]): void {
+  if (Array.isArray(value)) {
+    for (const item of value) collectVocabularyTerms(item, out);
+    return;
+  }
+  if (value != null && typeof value !== "object") {
+    out.push(String(value));
+  }
+}
+
+function configuredTerms(values: readonly unknown[], exclude: readonly string[] = []): string[] {
+  const rawTerms: string[] = [];
+  for (const value of values) collectVocabularyTerms(value, rawTerms);
+  const excluded = new Set(exclude.map(String));
+  return distinctTerms(rawTerms.filter((term) => !excluded.has(term)));
+}
+
+function defaultSeedPayload(entry: CatalogEntry): Record<string, unknown> {
+  return sourceInputDefaults(entry);
+}
+
+function seedSourceConfig(entry: CatalogEntry): SampleSeedConfig | undefined {
+  const sourceLayer = entry.profile.stages[0]?.fromLayer ?? entry.artifact.payload.layers[0];
+  return consoleInspectorConfig(entry).sampleSeeds.find((config) => !config.match?.sourceKind || config.match.sourceKind === sourceLayer?.kind);
+}
+
+function profileSampleSeeds(entry: CatalogEntry): ConsoleSeed[] {
+  const sourceConfig = seedSourceConfig(entry);
+  if (!sourceConfig) return [];
+  const defaults = defaultSeedPayload(entry);
+  const firstStage = entry.profile.stages[0];
+  if (!firstStage) return [];
+
+  const addSeed = (labels: string[]) => distinctTerms(labels).map((label) => ({
+    id: label,
+    label,
+    payload: { ...defaults, [sourceConfig.payloadField]: label },
+  }));
+
+  if (sourceConfig.kind === "workflow-rules") {
+    const recipe = entry.profile.stages[0]?.recipe;
+    if (!recipe || !isWorkflowToInteractionRecipe(recipe)) return [];
+    const labels = recipe.program
+      .filter((rule) => rule.slot === sourceConfig.slot)
+      .map((rule) => String((rule.match as Record<string, unknown>)[sourceConfig.matchField] ?? ""));
+    return addSeed(labels);
+  }
+
+  const planning = planningRecipeOf(firstStage.recipe);
+  if (!planning) return [];
+  const labels = planning.program
+    .filter((rule) => rule.slot === sourceConfig.slot)
+    .map((rule) => String((rule.match as Record<string, unknown>)[sourceConfig.matchField] ?? ""));
+  return addSeed(labels);
+}
+
+function ruleMatches(program: VocabularyProgram, slots: readonly string[]): VocabularyProgramRule[] {
+  const allowed = new Set(slots);
+  return program.program.filter((rule) => typeof rule.slot === "string" && allowed.has(rule.slot));
+}
+
+function extractConfiguredVocabularyTerms(
+  program: VocabularyProgram,
+  group: LayerVocabularyGroupConfig
+): string[] {
+  if (group.kind === "rule-match-values") {
+    return configuredTerms(
+      ruleMatches(program, [group.slot]).map((rule) => readPathValue(rule.match ?? {}, group.field))
+    );
+  }
+
+  if (group.kind === "rule-match-keys") {
+    const excluded = new Set((group.exclude ?? []).map(String));
+    return distinctTerms(
+      ruleMatches(program, [group.slot]).flatMap((rule) =>
+        Object.keys(rule.match ?? {}).filter((key) => !excluded.has(key))
+      )
+    );
+  }
+
+  return configuredTerms(
+    ruleMatches(program, group.slots).map((rule) => readPathValue(rule.emit ?? {}, group.field))
+  );
+}
+
+// The vocabulary panel is template-owned semantics over a generic layer graph: the console chooses
+// the selected layer's adjacent lowering program (outgoing planning, incoming planning, or incoming
+// runtime), then applies the template's declarative extraction rules to derive the terms it speaks.
 function layerVocabulary(entry: CatalogEntry, layerId: string) {
   const layer = entry.artifact.payload.layers.find((candidate) => candidate.id === layerId);
   const groups: Array<{ id: string; label: string; note: string; terms: string[] }> = [];
@@ -715,42 +1051,28 @@ function layerVocabulary(entry: CatalogEntry, layerId: string) {
   const incomingPlanning = incoming ? planningRecipeOf(incoming) : undefined;
   const incomingRuntime = incoming ? runtimeRecipeOf(incoming) : undefined;
 
-  if (outgoingPlanning) {
-    const rec = outgoingPlanning;
-    const templateRules = rec.program.filter((rule) => rule.slot === "template");
-    const regionRules = rec.program.filter((rule) => rule.slot === "presentation");
-    const interactions = distinctTerms(
-      templateRules.map((rule) => String((rule.match as Record<string, unknown>).interaction ?? "")),
-    );
-    const roles = distinctTerms(
-      regionRules.map((rule) => String((rule.match as Record<string, unknown>).role ?? "")),
-    );
-    const contextKeys = distinctTerms(
-      templateRules.flatMap((rule) => Object.keys(rule.match ?? {}).filter((key) => key !== "interaction")),
-    );
-    groups.push({ id: "interactions", label: "Interactions", note: "the goal patterns this layer routes on", terms: interactions });
-    groups.push({ id: "roles", label: "Facet roles", note: "the semantic role a region can carry", terms: roles });
-    groups.push({ id: "context", label: "Context signals", note: "situational keys that can steer the layout", terms: contextKeys });
-  } else if (layer.kind === "presentation" && incomingPlanning) {
-    const rec = incomingPlanning;
-    const templateRules = rec.program.filter((rule) => rule.slot === "template");
-    const regionRules = rec.program.filter((rule) => rule.slot === "presentation");
-    const layouts = distinctTerms(templateRules.map((rule) => String((rule.emit as Record<string, unknown>).template ?? "")));
-    const presentations = distinctTerms(regionRules.map((rule) => String((rule.emit as Record<string, unknown>).presentation ?? "")));
-    groups.push({ id: "layouts", label: "Layouts", note: "arrangements this layer can produce", terms: layouts });
-    groups.push({ id: "presentations", label: "Region presentations", note: "how a region can be shown", terms: presentations });
-  } else if (incomingRuntime) {
-    const rec = incomingRuntime;
-    const containerRule = rec.program.find((rule) => rule.slot === "container");
-    const regionRules = rec.program.filter((rule) => rule.slot === "region");
-    const capabilities = distinctTerms([
-      containerRule?.emit.capability,
-      ...regionRules.map((rule) => String(rule.emit.capability ?? "")),
-    ]);
-    groups.push({ id: "capabilities", label: "UI capabilities", note: "the concrete components a renderer can draw", terms: capabilities });
+  const config = layerVocabularyConfig(entry);
+  const sources: Record<LayerVocabularySource, VocabularyProgram | undefined> = {
+    outgoingPlanning: outgoingPlanning as VocabularyProgram | undefined,
+    incomingPlanning: incomingPlanning as VocabularyProgram | undefined,
+    incomingRuntime: incomingRuntime as VocabularyProgram | undefined,
+  };
+
+  const matchedRule = config.rules.find((rule) => {
+    if (rule.match.layerKind && rule.match.layerKind !== layer.kind) return false;
+    return !!sources[rule.match.source];
+  });
+  const sourceProgram = matchedRule ? sources[matchedRule.match.source] : undefined;
+  if (!matchedRule || !sourceProgram) return { groups };
+
+  for (const group of matchedRule.groups) {
+    const terms = extractConfiguredVocabularyTerms(sourceProgram, group);
+    if (terms.length > 0) {
+      groups.push({ id: group.id, label: group.label, note: group.note, terms });
+    }
   }
 
-  return { groups: groups.filter((group) => group.terms.length > 0) };
+  return { groups };
 }
 
 // Representative context surfaces to vary in the worked examples. We run every surface and then
@@ -799,14 +1121,8 @@ function loweringExamples(entry: CatalogEntry, layerId: string) {
   const stage = profile.stages.find((candidate) => candidate.fromLayer.id === layerId);
   if (!stage) return empty;
 
-  // The pipeline's only external input is an interaction goal, so sample inputs come from the very
-  // first stage's rules — the same seed set for every layer. Each seed is run through the whole
-  // profile; we then read the input/output of THIS layer's stage from the trace.
-  const seedRecipe = profile.stages.map((stage) => planningRecipeOf(stage.recipe)).find(Boolean);
-  const interactions = seedRecipe
-    ? distinctTerms(seedRecipe.program.filter((rule) => rule.slot === "template").map((rule) => String((rule.match as Record<string, unknown>).interaction ?? "")))
-    : [];
-  if (interactions.length === 0) return empty;
+  const seeds = profileSampleSeeds(entry);
+  if (seeds.length === 0) return empty;
 
   const columns = [
     { key: "input", label: `From ${stage.fromLayer.kind}` },
@@ -817,12 +1133,12 @@ function loweringExamples(entry: CatalogEntry, layerId: string) {
   // Run every seed × surface, then group by identical (input, output) outcome so a row that reads
   // "any surface" means context doesn't change that result, while a split reveals where it does.
   const byOutcome = new Map<string, { surfaces: string[]; input: string; output: string }>();
-  for (const interaction of interactions) {
+  for (const seed of seeds) {
     for (const surface of EXAMPLE_SURFACES) {
       try {
         const trace: StageTrace[] = traceProfile(
           profile,
-          { interaction: interaction as InteractionKind, subject: "incident" },
+          seed.payload,
           { surface },
         );
         const step = trace.find((candidate) => candidate.fromLayerId === layerId);
@@ -855,15 +1171,6 @@ function loweringExamples(entry: CatalogEntry, layerId: string) {
   return { columns, rows };
 }
 
-// The interaction goals this profile can run — the only external input to the pipeline. Exposed on
-// every layer's detail so the live compute panel can trace ANY layer from a real seed.
-function profileInteractionSeeds(entry: CatalogEntry): string[] {
-  const seedRecipe = entry.profile.stages.map((stage) => planningRecipeOf(stage.recipe)).find(Boolean);
-  return seedRecipe
-    ? distinctTerms(seedRecipe.program.filter((rule) => rule.slot === "template").map((rule) => String((rule.match as Record<string, unknown>).interaction ?? "")))
-    : [];
-}
-
 function layerDetailState(entry: CatalogEntry, layerId: string) {
   const layer = entry.artifact.payload.layers.find((candidate) => candidate.id === layerId);
   const outgoingRef = entry.artifact.payload.recipes.find((candidate) => candidate.from === layerId);
@@ -874,7 +1181,7 @@ function layerDetailState(entry: CatalogEntry, layerId: string) {
     // only a fallback for profiles that don't author one (and a generic line for unknown kinds).
     role: layer ? (layer.description?.trim() || layerRole(entry, layerId)) : "",
     stageLabel: layer ? layerStageLabel(entry, layerId) : "",
-    seeds: layer ? profileInteractionSeeds(entry) : [],
+    seeds: layer ? profileSampleSeeds(entry) : [],
     vocabulary: layer ? layerVocabulary(entry, layerId) : { groups: [] },
     loweringExamples: layer ? loweringExamples(entry, layerId) : { columns: [], rows: [] },
     outgoingRecipe: outgoingRef ? recipeDetailState(entry, outgoingRef.id) : emptyRecipeDetailState(),
@@ -911,7 +1218,8 @@ function recipeDetailState(entry: CatalogEntry, recipeId: string) {
   const recipe = entry.profile.recipesById[ref.id];
   const fromLayer = entry.profile.layersById[ref.from];
   const toLayer = entry.profile.layersById[ref.to];
-  const region = regionRuleView(recipe);
+  const region = regionRuleView(entry, recipe);
+  const view = recipeViewConfig(entry, recipe);
   const base = {
     id: ref.id,
     from: ref.from,
@@ -923,62 +1231,11 @@ function recipeDetailState(entry: CatalogEntry, recipeId: string) {
     regionRuleMappings: region.mappings,
   };
 
-  const planning = planningRecipeOf(recipe);
-  if (planning) {
-    const typed = planning;
-    const templateRules = typed.program.filter((rule) => rule.slot === "template");
-    const rankRules = typed.program.filter((rule) => rule.slot === "rank");
-    const priorityRules = typed.program.filter((rule) => rule.slot === "priority");
-    const disclosureRules = typed.program.filter((rule) => rule.slot === "disclosure");
-    const regionRules = typed.program.filter((rule) => rule.slot === "presentation");
-    const rationaleRules = typed.program.filter((rule) => rule.slot === "rationale");
+  if (!view) {
     return {
       ...base,
-      kind: "interaction-to-presentation",
-      kindLabel: "Interaction → Presentation",
-      tagline: recipeTagline("interaction-to-presentation"),
-      purpose: recipePurpose("interaction-to-presentation"),
-      summary: `${typed.templates.length} templates and ${templateRules.length} template rules`,
-      constrainedWhenText: typed.constrainedWhen?.length ? typed.constrainedWhen.map(ruleMatchSummary).join("; ") : "",
-      containerCapability: "",
-      fallbackCapability: "",
-      ruleGroups: [
-        { id: "templates", label: "Templates", value: String(typed.templates.length) },
-        { id: "templateRules", label: "Template rules", value: String(templateRules.length) },
-        { id: "orderRules", label: "Order rules", value: String(rankRules.length) },
-        { id: "priorityRules", label: "Priority rules", value: String(priorityRules.length) },
-        { id: "disclosureRules", label: "Disclosure rules", value: String(disclosureRules.length) },
-        { id: "regionRules", label: "Presentation rules", value: String(regionRules.length) },
-        { id: "rationaleRules", label: "Rationale rules", value: String(rationaleRules.length) },
-      ],
-      templates: typed.templates.map((template) => ({
-        id: template.name,
-        name: template.name,
-        arrangement: template.arrangement,
-        maxRegions: template.maxRegions == null ? "" : String(template.maxRegions),
-      })),
-      templateMappings: templateRules.map((rule, index) => ({
-        id: `tpl-${index}`,
-        from: mappingWhen(rule.match as Record<string, unknown>),
-        to: String((rule.emit as Record<string, unknown>).template ?? ""),
-      })),
-      regionMappings: regionRules.map((rule, index) => ({
-        id: `rgn-${index}`,
-        from: mappingWhen(rule.match as Record<string, unknown>),
-        to: String((rule.emit as Record<string, unknown>).presentation ?? ""),
-      })),
-      capabilityMappings: [],
-      runtimeRules: [],
-      runtimeCapabilities: [],
-    };
-  }
-
-  const typed = runtimeRecipeOf(recipe);
-  if (!typed) {
-    return {
-      ...base,
-      kind: "unknown",
-      kindLabel: "Unknown recipe",
+      kind: recipeTypeLabel(recipe),
+      kindLabel: recipeTypeLabel(recipe),
       tagline: "",
       purpose: "",
       summary: "",
@@ -994,36 +1251,36 @@ function recipeDetailState(entry: CatalogEntry, recipeId: string) {
       runtimeCapabilities: [],
     };
   }
-  const containerRule = typed.program.find((rule) => rule.slot === "container");
-  const regionRules = typed.program.filter((rule) => rule.slot === "region");
-  const defaultRegionRule = [...regionRules].reverse().find((rule) => Object.keys(rule.match ?? {}).length === 0);
+
+  const program =
+    recipeFamily(recipe) === "workflow"
+      ? ((recipe as unknown as VocabularyProgram).program ? (recipe as unknown as VocabularyProgram) : undefined)
+      : ((planningRecipeOf(recipe) ?? runtimeRecipeOf(recipe)) as unknown as VocabularyProgram | undefined);
+  const containerCapability = view.containerCapability && program
+    ? String(
+        readPathValue(
+          ruleMatches(program, [view.containerCapability.slot])[0] ?? {},
+          view.containerCapability.path
+        ) ?? ""
+      )
+    : "";
   return {
     ...base,
-    kind: "presentation-to-runtime",
-    kindLabel: "Presentation → Runtime",
-    tagline: recipeTagline("presentation-to-runtime"),
-    purpose: recipePurpose("presentation-to-runtime"),
-    summary: `${regionRules.length} runtime rules`,
+    kind: view.kind,
+    kindLabel: view.kindLabel,
+    tagline: view.tagline,
+    purpose: view.purpose,
+    summary: "",
     constrainedWhenText: "",
-    containerCapability: String(containerRule?.emit.capability ?? ""),
-    fallbackCapability: String(defaultRegionRule?.emit.capability ?? ""),
+    containerCapability,
+    fallbackCapability: "",
     ruleGroups: [],
     templates: [],
     templateMappings: [],
     regionMappings: [],
-    capabilityMappings: regionRules.map((rule, index) => ({
-      id: `cap-${index}`,
-      from: mappingWhen(rule.match as Record<string, unknown>),
-      to: String(rule.emit.capability ?? ""),
-    })),
-    runtimeRules: regionRules.map((rule, index) => ({
-      id: `rule-${index + 1}`,
-      match: ruleMatchSummary(rule.match as Record<string, unknown>),
-      capability: String(rule.emit.capability ?? ""),
-      reads: Object.keys(rule.emit.read ?? rule.emit.readExpr ?? {}).join(", "),
-      actions: Object.keys(rule.emit.on ?? {}).join(", "),
-    })),
-    runtimeCapabilities: runtimeCapabilityRows(typed),
+    capabilityMappings: [],
+    runtimeRules: [],
+    runtimeCapabilities: [],
   };
 }
 
@@ -1110,53 +1367,22 @@ export function validateSampleProfile(entry: SampleProfileEntry): ValidationResu
   };
 }
 
-function previewSpec(
-  input: PreviewInput,
-  taxonomy: InteractionTaxonomy
-): InteractionSpec {
-  const base: InteractionSpec = {
-    interaction: input.interaction,
-    subject: input.subject.trim() || "incident",
-  };
-  const data = input.data ?? demoDataFor(base, taxonomy);
-  if (input.interaction === "configure") {
-    return {
-      ...base,
-      data: {
-        ...data,
-        settings: "fetched_sources.orders",
-      },
-      facetViews: {
-        settings: {
-          capability: "ui:editable-table",
-          read: { rows: "{{region.dataPath}}" },
-          props: {
-            spec: {
-              columns: ["id", "amount"],
-              addRow: false,
-              deleteRow: false,
-            },
-          },
-        },
-      },
-    };
+function previewSeed(entry: SampleProfileEntry, input: PreviewInput): unknown {
+  if (isInteractionLikeSource(entry)) {
+    return interactionPreviewSeed(
+      input.source,
+      entry.profile.resources.taxonomy as unknown as InteractionTaxonomy
+    );
   }
 
-  return { ...base, data };
+  return input.source;
 }
 
 export function buildProfilePreviewBundle(
   entry: SampleProfileEntry,
   input: PreviewInput
 ): SerializableBundle {
-  const spec = previewSpec(
-    input,
-    entry.profile.resources.taxonomy as unknown as InteractionTaxonomy
-  );
-  const ctx: PresentationContext = {
-    surface: String(input.surface || "desktop"),
-  };
-  const document = runProfile(entry.profile, spec, ctx) as DocumentPayload;
+  const document = runProfile(entry.profile, previewSeed(entry, input), input.ctx) as DocumentPayload;
   return {
     manifest: PROFILE_PREVIEW_MANIFEST,
     document: { gik: "0.1", type: "document", payload: document },
@@ -1198,8 +1424,10 @@ function clearSelectionOps(snapshot: CatalogSnapshot, message = "") {
     setOp("console.recipeDetail", EMPTY_RECIPE_DETAIL as unknown as Json),
     setOp("console.validation", EMPTY_VALIDATION as unknown as Json),
     setOp("console.artifacts", { ...EMPTY_EDITOR, profileText: "", recipesText: "", resolvedText: "", bundleText: "" } as unknown as Json),
-    setOp("console.interactionInputForm", { properties: {} } as unknown as Json),
-    setOp("console.interactionInput", {} as unknown as Json),
+    setOp("console.sourceInputForm", { properties: {} } as unknown as Json),
+    setOp("console.sourceInput", {} as unknown as Json),
+    setOp("console.previewContextForm", DEFAULT_PREVIEW_CONTEXT_FORM as unknown as Json),
+    setOp("console.previewContext", DEFAULT_PREVIEW_CONTEXT as unknown as Json),
     setOp("console.previewBundle", null as unknown as Json),
     setOp("console.previewError", message),
     setOp("console.editor", { ...EMPTY_EDITOR, status: message || EMPTY_EDITOR.status } as unknown as Json),
@@ -1229,7 +1457,8 @@ function selectionOps(
     setOp("console.recipeDetail", recipeDetailState(entry, recipeId) as unknown as Json),
     setOp("console.validation", validation as unknown as Json),
     setOp("console.artifacts", artifactState(entry) as unknown as Json),
-    setOp("console.interactionInputForm", interactionInputFormFor(entry) as unknown as Json),
+    setOp("console.sourceInputForm", sourceInputFormFor(entry) as unknown as Json),
+    setOp("console.previewContextForm", previewContextFormFor(entry) as unknown as Json),
     setOp("console.previewBundle", preview.bundle as unknown as Json),
     setOp("console.previewError", preview.error),
     setOp("console.editor", editorState(entry) as unknown as Json),
@@ -1263,14 +1492,14 @@ export const consoleEffects: EffectHandlerMap = {
         ops: clearSelectionOps(snapshot, `Profile '${String(ctx.payload.id ?? "")}' not found.`),
       };
     }
-    const defaults = interactionInputDefaults(entry);
-    const input = previewInputFromValues(defaults, readStr(ctx, "console.previewSurface", "desktop"));
+    const sourceDefaults = sourceInputDefaults(entry);
+    const ctxDefaults = previewContextDefaults(entry);
+    const input = previewInputFromValues(sourceDefaults, ctxDefaults);
     return {
       ops: [
         ...selectionOps(entry, input, "overview", snapshot),
-        // Reset the form values to the new profile's declared defaults (only on profile change,
-        // not on every layer/recipe reselection which also runs selectionOps).
-        setOp("console.interactionInput", defaults as unknown as Json),
+        setOp("console.sourceInput", sourceDefaults as unknown as Json),
+        setOp("console.previewContext", ctxDefaults as unknown as Json),
       ],
     };
   },

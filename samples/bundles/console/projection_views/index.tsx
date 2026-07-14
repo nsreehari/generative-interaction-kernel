@@ -8,9 +8,7 @@ import {
   resolveProfileTemplateResource,
   traceProfile,
   type InteractionKind,
-  type InteractionSpec,
   type LayerRecipe,
-  type PresentationContext,
   type StageTrace,
 } from "@gik/profile";
 import { readProps, type ProjectionView, type ProjectionViewProps } from "@gik/react";
@@ -154,26 +152,19 @@ function prettyJson(value: unknown): string {
 function PipelineRunner({ node }: ProjectionViewProps) {
   const p = readProps(node);
   const bundleText = p.str("bundleText");
-  const interaction = p.str("interaction", "investigate");
-  const subject = p.str("subject", "incident");
-  const surface = p.str("surface", "desktop");
-  const data = p.obj<Record<string, string>>("data", {});
+  const seed = p.obj<Record<string, unknown>>("seed", {});
+  const ctx = p.obj<Record<string, unknown>>("ctx", { surface: "desktop" });
 
   const result = React.useMemo(() => {
-    if (!bundleText.trim()) return { stages: [] as StageTrace[], spec: null as InteractionSpec | null, error: "" };
+    if (!bundleText.trim()) return { stages: [] as StageTrace[], seed: null as Record<string, unknown> | null, ctx, error: "" };
     try {
       const profile = reconstructProfile(bundleText);
-      const spec: InteractionSpec = {
-        interaction: interaction as InteractionKind,
-        subject: subject.trim() || "incident",
-        ...(Object.keys(data).length > 0 ? { data } : {}),
-      };
-      const stages = traceProfile(profile, spec, { surface: String(surface) });
-      return { stages, spec, error: "" };
+      const stages = traceProfile(profile, seed, ctx);
+      return { stages, seed, ctx, error: "" };
     } catch (err) {
-      return { stages: [] as StageTrace[], spec: null as InteractionSpec | null, error: err instanceof Error ? err.message : String(err) };
+      return { stages: [] as StageTrace[], seed: null as Record<string, unknown> | null, ctx, error: err instanceof Error ? err.message : String(err) };
     }
-  }, [bundleText, interaction, subject, surface, JSON.stringify(data)]);
+  }, [bundleText, JSON.stringify(seed), JSON.stringify(ctx)]);
 
   if (!bundleText.trim()) return <p className="gx-muted">Select a profile to trace its lowering.</p>;
   if (result.error) return <p className="gx-json-error">{result.error}</p>;
@@ -181,9 +172,15 @@ function PipelineRunner({ node }: ProjectionViewProps) {
   return (
     <div className="gx-col">
       <div className="gx-panel-inset">
-        <span className="gx-property-label">Input · interaction goal</span>
+        <span className="gx-property-label">Input · source layer seed</span>
         <div className="gx-code">
-          <pre>{prettyJson(result.spec)}</pre>
+          <pre>{prettyJson(result.seed)}</pre>
+        </div>
+      </div>
+      <div className="gx-panel-inset">
+        <span className="gx-property-label">Context</span>
+        <div className="gx-code">
+          <pre>{prettyJson(result.ctx)}</pre>
         </div>
       </div>
       {result.stages.map((stage, index) => (
@@ -209,9 +206,30 @@ function LoweringRecipeRunner({ node }: ProjectionViewProps) {
   const layerId = p.str("layerId");
   const subject = p.str("subject", "incident");
   const surface = p.str("surface", "desktop");
-  const seeds = p.list<string>("seeds");
+  const rawSeeds = p.list<unknown>("seeds");
+  const seeds = rawSeeds.map((seed, index) => {
+    if (typeof seed === "string") {
+      return {
+        id: seed,
+        label: seed,
+        payload: { interaction: seed as InteractionKind, subject: subject.trim() || "incident" },
+      };
+    }
+    const record = (seed && typeof seed === "object" && !Array.isArray(seed)) ? (seed as Record<string, unknown>) : {};
+    const payload = (record.payload && typeof record.payload === "object" && !Array.isArray(record.payload))
+      ? { ...(record.payload as Record<string, unknown>) }
+      : {};
+    if (typeof payload.subject !== "string" || payload.subject.length === 0) {
+      payload.subject = subject.trim() || "incident";
+    }
+    return {
+      id: String(record.id ?? record.label ?? index),
+      label: String(record.label ?? record.id ?? index),
+      payload,
+    };
+  });
   const [picked, setPicked] = React.useState("");
-  const activeSeed = picked && seeds.includes(picked) ? picked : seeds[0] ?? "";
+  const activeSeed = seeds.find((seed) => seed.id === picked) ?? seeds[0] ?? null;
 
   const result = React.useMemo(() => {
     if (!bundleText.trim() || !layerId || !activeSeed) return null;
@@ -219,7 +237,7 @@ function LoweringRecipeRunner({ node }: ProjectionViewProps) {
       const profile = reconstructProfile(bundleText);
       const trace = traceProfile(
         profile,
-        { interaction: activeSeed as InteractionKind, subject: subject.trim() || "incident" },
+        activeSeed.payload,
         { surface: String(surface) },
       );
       const step = trace.find((candidate) => candidate.fromLayerId === layerId);
@@ -228,22 +246,22 @@ function LoweringRecipeRunner({ node }: ProjectionViewProps) {
     } catch (err) {
       return { error: err instanceof Error ? err.message : String(err) };
     }
-  }, [bundleText, layerId, activeSeed, subject, surface]);
+  }, [bundleText, layerId, activeSeed, surface]);
 
   if (!bundleText.trim() || !layerId) return <p className="gx-muted">Select a layer to compute its lowering.</p>;
-  if (seeds.length === 0) return <p className="gx-muted">This profile has no interaction goals to run.</p>;
+  if (seeds.length === 0) return <p className="gx-muted">This profile has no sample source inputs to run.</p>;
 
   return (
     <div className="gx-col">
       <div className="gx-row">
         {seeds.map((seed) => (
           <button
-            key={seed}
+            key={seed.id}
             type="button"
-            className={`gx-btn${seed === activeSeed ? " gx-btn-primary" : ""}`}
-            onClick={() => setPicked(seed)}
+            className={`gx-btn${seed.id === activeSeed?.id ? " gx-btn-primary" : ""}`}
+            onClick={() => setPicked(seed.id)}
           >
-            {seed}
+            {seed.label}
           </button>
         ))}
       </div>

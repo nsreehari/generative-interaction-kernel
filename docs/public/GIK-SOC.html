@@ -297,37 +297,33 @@
 </head>
 <body>
 
-<h1>Generative Interaction Kernel (GIK) strictly for SecOps</h1>
-<div class="subtitle">Governed Human-Agent Collaboration for the SOC &middot; From Fragmented Tools to Intent-Driven Workspaces &middot; 2026</div>
+<h1>Generative Interaction Kernel (GIK) for the SOC</h1>
+<div class="subtitle">First Wedge: SecOps &middot; Governed Human-Agent Collaboration for Investigation Workflows &middot; 2026</div>
 
 <div class="description">
-  <strong>What it is:</strong> A governed interaction layer powered by the GIK that turns security <em>intent</em> (&ldquo;hunt lateral movement from Host X&rdquo;) into adaptive analyst workspaces shaped by the operation, autonomous agent findings, and the analyst&rsquo;s current context.<br><br>
-  <strong>Lighthouse customer:</strong> The Security Operations Center (SOC). Analysts, threat hunters, incident responders, and security engineers drowning in fragmented tools and chaotic agent output.<br><br>
-  <strong>The wedge:</strong> One governed <em>incident-investigation</em> workflow that ships value in days, then expands to triage, hunting, vulnerability exposure, compliance evidence, and incident command.<br><br>
-  <strong>The moat:</strong> <strong>Deterministically Governed UI and Fallback-Safety</strong>. Unlike generic web generative AI, the GIK forces autonomous agent layouts into a strictly audited mathematically pure interaction kernel.
+  <strong>What it is:</strong> A first vertical wedge for the GIK: a governed interaction and orchestration layer that turns security <em>intent</em> (&ldquo;investigate this phishing alert&rdquo;) into analyst workspaces assembled from trusted evidence, sanctioned actions, and explicit approval paths.<br><br>
+  <strong>Why SOC first:</strong> Fragmented tools, agent overload, audit pressure, and severe time-to-understanding costs make security operations one of the clearest places where governed generative experiences matter.<br><br>
+  <strong>What exists now vs. what this paper proposes:</strong> the kernel, closed grammar, projections, transports, and profile/lowering substrate exist today. The SOC-specific interaction taxonomy, presentation policies, domain adapters, strategist flows, and evidence workspaces described here are the product layer to build on top of that substrate.<br><br>
+  <strong>The wedge:</strong> Start with one governed <em>incident-investigation</em> workflow, then expand to triage, hunting, exposure review, compliance evidence, and incident command once the investigative pattern proves out.
 </div>
 
+<div class="callout">
+  This document assumes the reader already has the architectural background from the Core Essence and Platform papers. The goal here is not to restate the whole platform thesis; it is to show why SOC is the first strong wedge, what concrete workflow lands first, and where the platform boundary sits in a real deployment.
+</div>
 
-<h3>1. The Kernel is the True Moat</h3>
-<p>The value of the platform is not that it can put AI onto a screen. The value is <strong>the pure, stateless Kernel</strong>. Because the Kernel is completely blind to UI frameworks, it acts as a generic mathematical evaluator for <code>(state, event) &rarr; state</code> flows. This means you have built a single computational model that can safely run <em>any</em> declarative graph&mdash;from high-level backend security playbooks down to individual layout grids on the frontend.</p>
-
-<h3>2. A Single Execution Model for the Entire Operations Stack</h3>
-<p>In classic architectures, the "Workflow Graph" (how a security incident is processed) runs on an external backend engine (like Temporal or Step Functions), while the "Presentation Graph" (what the analyst clicks) runs on an Angular/React frontend.</p>
-<p>Your platform collapses this entirely. If you pivot to Wealth Management, Tax, or Legal, the same principle holds: you define the business logic, the approvals, and the screens in a <strong>closed JSON grammar</strong>. The Kernel executes them identically everywhere. Native code is reduced solely to providing localized side-effects.</p>
-
-<h2>3. The New Bottleneck &mdash; Human Comprehension</h2>
+<h2>1. The New Bottleneck &mdash; Human Comprehension</h2>
 <p>Security operations is where generative AI tools have the clearest business case—but also the highest risk. Open UI generation protocols result in hallucinated buttons and broken forms, which fail cybersecurity compliance tests instantly.</p>
 <h3>The Pain, Concretely</h3>
 <ul>
   <li><strong>Analyst time is the scarce resource.</strong> A SOC analyst pivots across SIEM, EDR, and threat-intel to stitch contexts.</li>
   <li><strong>Agents are now in the loop.</strong> Triage agents push findings faster than users can correlate them.</li>
-  <li><strong>The Governance Void.</strong> Open protocol Agent SDKs cannot guarantee that a requested "Contain Threat" layout represents the real truth or contains verifiable API limits.</li>
+  <li><strong>The Governance Void.</strong> Open protocol Agent SDKs cannot guarantee that a requested "Contain Threat" action is backed by the right evidence, the right approval path, or the right API limits.</li>
 </ul>
 <div class="callout">
-  The dollar line: SOC value is measured in <strong>MTTR</strong> (mean time to respond) and <strong>analyst throughput</strong>. Anything that compresses time-from-alert-to-understanding safely is directly monetizable.
+  The dollar line: SOC value is measured in <strong>MTTR</strong>, analyst context-switch reduction, investigation assembly time, handoff quality, approval traceability, and false-positive handling. Anything that compresses time-from-alert-to-understanding safely is directly monetizable.
 </div>
 
-<h2>4. Who It&rsquo;s For &amp; The Wedge</h2>
+<h2>2. Who It&rsquo;s For &amp; The Wedge</h2>
 <table>
   <thead><tr><th>Role</th><th>Cares About</th><th>What We Give Them</th></tr></thead>
   <tbody>
@@ -341,18 +337,37 @@
 <p>The path is product first, platform second: prove the investigation experience with one SOC, extract the repeated interaction patterns, then generalize only the pieces that earn reuse.</p>
 <div class="example">
   <span class="tag">lighthouse &middot; Phishing Investigation Prototype</span><br>
-  A phishing alert fires. The platform invokes the <strong>Investigate Journey Strategist</strong>, which fetches the suspicious email headers, analyzes the attached document, and checks the sender identity against open-web and directory footprints. Instead of a five-tool scramble, the team gets <strong>one unified investigation path in 30 seconds</strong>: intent seeded, evidence gathered, malicious indicators identified, and containment actions (e.g., block sender, quarantine file) proposed for approval. 
+  A phishing alert fires. The platform invokes an <strong>Investigation Strategist</strong>, which pulls email headers from the mail gateway, endpoint details from EDR, case context from SOAR, and enrichment from threat-intel. Instead of a five-tool scramble, the analyst gets <strong>one governed investigation path</strong>: evidence gathered, entities correlated, recommended next steps surfaced, and containment actions proposed behind explicit approval gates.
 </div>
 
-<h2>5. Why Now</h2>
+<h3>Two Canonical Workflows</h3>
+<table>
+  <thead><tr><th>Workflow</th><th>Likely interactions</th><th>Likely facets / regions</th><th>Primary data sources</th><th>Operator actions</th></tr></thead>
+  <tbody>
+    <tr><td>Phishing / suspicious-email investigation</td><td><code>investigate</code>, <code>compare</code>, <code>approve</code></td><td>narrative summary, evidence collection, timeline, relationships, explanation, actions</td><td>mail gateway, EDR, identity/directory, threat intel, case system</td><td>quarantine file, block sender, isolate host, request escalation, capture rationale</td></tr>
+    <tr><td>Identity compromise triage</td><td><code>investigate</code>, <code>monitor</code>, <code>decide</code></td><td>alert summary, session/activity timeline, entity graph, risk metrics, recommendations, approvals</td><td>IdP, EDR, SIEM, UEBA, case system</td><td>disable account, revoke tokens, require reset, assign owner, document decision</td></tr>
+  </tbody>
+</table>
+
+<h2>3. What Exists Now vs. What We Still Need To Build</h2>
+<table>
+  <thead><tr><th>Already supported by the current architecture</th><th>Vertical product work still to build</th></tr></thead>
+  <tbody>
+    <tr><td>Closed grammar, deterministic reducer, traceability, projections, transports, and profile/lowering substrate</td><td>SOC interaction taxonomy, presentation policies, evidence-oriented projection views, strategist flows, and domain adapters</td></tr>
+    <tr><td>Governed runtime with confirm/invoke/route seams and bounded tool projections</td><td>Investigation-specific action packs, approval workflows, analyst handoff views, and case-specific operational metrics</td></tr>
+    <tr><td>Portable runtime that can project to browser or other adapters</td><td>Production SOC bundles, curated evidence panels, response playbook bindings, and deployment-specific integrations</td></tr>
+  </tbody>
+</table>
+
+<h2>4. Why Now</h2>
 <ul>
   <li><strong>Agents outpace static workspaces.</strong> AI triage/enrichment now generates findings faster than fixed dashboards and case tools can organize them; the experience layer is the new bottleneck.</li>
   <li><strong>Enterprises will not accept ungoverned AI experiences.</strong> In security, unauditable, non-deterministic agent output is a non-starter. A <em>governed</em> generative approach is the only one procurement will approve. That gate is our advantage.</li>
   <li><strong>The category is unformed.</strong> No incumbent owns &ldquo;governed generative security experiences.&rdquo; First credible mover with a real SOC reference defines it.</li>
 </ul>
 
-<h2>4. What We&rsquo;re Building &mdash; The Experience Platform</h2>
-<p>The complete journey from security intent to analyst understanding is a stack of graph representations. The upstream security systems own goals, cases, and automation. <strong>The Experience Platform owns the lower three graphs</strong> &mdash; how the human engages, how information is organized, and how it materializes &mdash; and nothing above that line.</p>
+<h2>5. Where the Platform Boundary Sits</h2>
+<p>In a SOC deployment, SIEM, EDR, SOAR, case systems, identity systems, and threat-intel platforms remain the upstream systems of record. GIK sits below that line as the governed interaction and orchestration layer: it assembles analyst workspaces from sanctioned state, presents recommended actions, and routes approved requests back outward through controlled seams.</p>
 <div class="section-split">
 <figure class="svg-figure split-figure">
 <svg viewBox="0 0 780 680" role="img" aria-label="Experience stack from Intent Graph down to Analyst Workspace, split by the Experience Platform Boundary">
@@ -424,7 +439,7 @@
 <figcaption>The Experience Platform owns Interaction, Presentation &amp; Analyst Workspace formation &mdash; upstream security systems own execution</figcaption>
 </figure>
 <div class="split-text">
-<p>Why &ldquo;experience&rdquo;? A component library ships parts. An experience platform ships <strong>understanding</strong> &mdash; it takes an investigative goal and produces the coherent workspace an analyst needs to act, adapted to their moment. The value we sell is the analyst&rsquo;s comprehension.</p>
+<p>Why &ldquo;experience&rdquo;? A component library ships parts. An experience platform ships <strong>understanding</strong> &mdash; it takes an investigative goal and produces the coherent workspace an analyst needs to act, adapted to their moment. The value we sell is the analyst&rsquo;s comprehension, not replacement of the upstream security systems.</p>
 
 <h3>4.1 Intent Graph (Why)</h3>
 <p>Declarative security goals and constraints. Owned upstream.<br>
@@ -435,7 +450,7 @@
 <em>Example:</em> Incident #4821 &rarr; Triage, Investigation, Containment.</p>
 
 <h3>4.3 Workflow Graph (How)</h3>
-<p>Executable response playbooks and agent runs. Owned upstream. <strong>This is where analyst actions flow back to the SOC:</strong> the experience platform emits semantic action requests that trigger these upstream playbooks without knowing how they execute.<br>
+<p>Executable response playbooks and agent runs. Owned upstream. <strong>This is where analyst actions flow back to the SOC:</strong> the experience platform emits governed action requests that trigger these upstream playbooks without owning how they execute.<br>
 <em>Example:</em> Isolate Host &rarr; Collect Forensics &rarr; Approve Remediation.</p>
 
 <h3>4.4 Interaction Graph (Engagement)</h3>
@@ -451,7 +466,7 @@
 </div>
 </div>
 
-<h2>5. The Moat</h2>
+<h2>6. The Moat</h2>
 <p>Let us be precise about defensibility, because it is easy to claim the wrong moat.</p>
 <h3>5.1 Where the Defensibility Lives</h3>
 <ul>
@@ -461,10 +476,10 @@
 </ul>
 <h3>5.2 Scope: Security Experiences First</h3>
 <div class="callout">
-  <strong>We target governed SOC value and stop there.</strong> The product is not a cross-platform technology story. The product is a repeatable way to turn security intent, agent findings, approvals, and evidence into adaptive analyst workspaces that reduce time-to-understanding.
+  <strong>We target governed SOC value first.</strong> The product is a repeatable way to turn security intent, agent findings, approvals, and evidence into adaptive analyst workspaces that reduce time-to-understanding. Other verticals may follow, but this document is intentionally disciplined about the first wedge.
 </div>
 
-<h2>6. Competitive Positioning</h2>
+<h2>7. Competitive Positioning</h2>
 <table>
   <thead><tr><th>Alternative</th><th>Why teams try it</th><th>Where it fails for SecOps</th></tr></thead>
   <tbody>
@@ -479,8 +494,8 @@
 <h3>The Bet We Are Making</h3>
 <p>As foundation models improve, raw generation gets cheaper &mdash; but in security it is still unshippable without governance. Our bet: <strong>the value migrates to the governed boundary.</strong> We are the layer that makes the model&rsquo;s output safe, auditable, and reusable for a SOC &mdash; complementary to the generator, and <em>more</em> valuable as generation gets more powerful.</p>
 
-<h2>7. How It Works — The Graph Model</h2>
-<p>The Experience Platform is a sequence of transformations over a single, closed graph grammar. A detection engineer authors it through a generative Copilot that translates &ldquo;I need a way to review phishing headers&rdquo; into structural relationships the platform can validate. Generated drafts are reviewed in an admin authoring console, validated against the closed grammar, and promoted through the same audit path as hand-authored specs.</p>
+<h2>8. How It Works — The Governed Action Loop</h2>
+<p>The Experience Platform is a sequence of transformations over a single, closed graph grammar. A detection engineer or platform owner can author investigation surfaces through profile/lowering artifacts, review them in an authoring console, validate them against the closed grammar, and promote them through the same audit path as hand-authored specs.</p>
 <table>
   <thead><tr><th>Capability</th><th>Relationship</th><th>Purpose</th></tr></thead>
   <tbody>
@@ -491,7 +506,7 @@
 </table>
 <p>Under the hood, there are exactly six relationship types &mdash; fixed for every deployment: <code>present</code>, <code>read</code> (case state&rarr;capability), <code>write</code> (capability&rarr;case state), <code>contain</code>, <code>gate</code> (predicate&rarr;availability), and <code>behavior</code> (event&rarr;actions). Actions belong to six closed families: <code>assign</code>, <code>derive</code>, <code>invoke</code>, <code>emit</code>, <code>route</code>, <code>confirm</code>. A security product can invent new <em>things</em> (capabilities) but never new <em>kinds of relationship</em>. That is what keeps the boundary from eroding.</p>
 <h3>7.1 Data Fetchers and Strategist Boards</h3>
-<p>Integration in the platform is not pushing data into predefined presentation schemas. Instead, the platform executes active <strong>Data Fetchers</strong>, driven by <strong>Strategist Boards</strong> (such as the <em>Investigate Journey Strategist</em>). When a workspace seeds a query—like a new identity or IP address—the Strategist autonomously fans out to SIEM, SOAR, and external footprint sources. It harvests the data via standard HTTP, Copilot completions, or connected sub-agents, and resolves it back into the board's unified state. The capabilities do not know how data was acquired; they simply <code>read</code> the resulting case state.</p>
+<p>Integration in the platform is not pushing data into predefined presentation schemas. Instead, the product can execute active fetchers or strategist flows that fan out to SIEM, SOAR, EDR, identity, or threat-intel sources and resolve the results back into a unified case state. The capabilities do not know how data was acquired; they simply <code>read</code> the governed case state.</p>
 
 <h3>7.2 One Unified Graph</h3>
 <p>Because <code>behavior</code> actions write the same store that <code>read</code> edges bind against, cross-node interaction is emergent: one node writes a path; another already reads it; the view re-resolves. The dataflow graph and the interaction graph are the same graph.</p>
@@ -527,18 +542,11 @@
 <figcaption>Selecting an entity in the evidence table re-resolves the detail panel &mdash; through one shared store, no explicit wiring</figcaption>
 </figure>
 
-<h2>7. Trust and Explainable Agent Breadcrumbs</h2>
-<p>In cybersecurity, UI is not just data; it carries provenance. The GIK platform maintains a rigorous chain of custody between an AI agent's conclusion and the raw backend logs that justify it. If the Strategist Board recommends isolating a laptop, the GIK dynamically binds that recommendation back to specific SIEM trace logs in the evidence table, providing mathematical un-spoofable explainability to the SOC commander.</p>
+<h3>8.1 Actions, approvals, and traceability</h3>
+<p>In security, the action loop has to be more realistic than &ldquo;agent suggests a thing and the UI flows.&rdquo; Potentially dangerous actions such as isolating a host, disabling an account, blocking a sender, or escalating containment are routed through explicit approval and orchestration seams. The UI can surface the recommendation, the evidence, and the rationale; <code>confirm</code> gates the human decision; <code>invoke</code> and <code>route</code> hand the approved action back to the system that actually performs it; and traces preserve the chain of custody.</p>
 
-<h2>8. Why Open Generative Protocols Fail Here</h2>
-<table>
-  <thead><tr><th>Alternative</th><th>Why teams try it</th><th>Where it fails for SecOps</th></tr></thead>
-  <tbody>
-    <tr><td>Build classic WinUI / React apps</td><td>Full control, familiar</td><td>Every case type rebuilds the same investigation workspace; no generic AI reuse.</td></tr>
-    <tr><td><strong>Open UI Protocols (e.g. AG-UI)</strong></td><td>Developer flexibility, fast integration</td><td>Prioritizes agent autonomy over UI strictness. Hallucinates widgets and bypasses pure state reducers. Fails SEC/SOC audit paths.</td></tr>
-    <tr><td><strong>The GIK-SOC Platform</strong></td><td><strong>Declare investigation intent</strong></td><td><strong>Adaptive, deterministic, auditable analyst workspaces with AI on a strict leash.</strong></td></tr>
-  </tbody>
-</table>
+<h3>8.2 Trust and explainable breadcrumbs</h3>
+<p>In cybersecurity, UI is not just data; it carries provenance. If the investigation surface recommends isolating a laptop, that recommendation must bind back to the raw events, detections, and enrichment that justify it. The governed runtime is valuable here because it can make evidence, recommendation, approval, and action part of one auditable path rather than four disconnected systems.</p>
 
 </body>
 </html>

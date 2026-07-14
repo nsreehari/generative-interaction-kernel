@@ -1,6 +1,8 @@
 import type { Json } from "../../kernel/src/index";
 import type { ProfileTemplateArtifact, ProfileTemplateResolver, ResourceResolver } from "./profile-core";
 import genuiAuthoringChecksJson from "../../profile-templates/genui/authoring-checks.json" with { type: "json" };
+import genuiConsoleInspectorJson from "../../profile-templates/genui/console-inspector.json" with { type: "json" };
+import genuiLayerVocabularyJson from "../../profile-templates/genui/layer-vocabulary.json" with { type: "json" };
 import genuiTemplateJson from "../../profile-templates/genui/template.json" with { type: "json" };
 import genuiInteractionSchemaJson from "../../profile-templates/genui/schemas/interaction.schema.json" with { type: "json" };
 import genuiPresentationSchemaJson from "../../profile-templates/genui/schemas/presentation.schema.json" with { type: "json" };
@@ -9,6 +11,8 @@ import genuiSchemaValidatorsJson from "../../profile-templates/genui/schema-vali
 import genuiTaxonomyJson from "../../profile-templates/genui/taxonomy.json" with { type: "json" };
 import genuiWorkflowSchemaJson from "../../profile-templates/genui/schemas/workflow.schema.json" with { type: "json" };
 import genui1AuthoringChecksJson from "../../profile-templates/genui1/authoring-checks.json" with { type: "json" };
+import genui1ConsoleInspectorJson from "../../profile-templates/genui1/console-inspector.json" with { type: "json" };
+import genui1LayerVocabularyJson from "../../profile-templates/genui1/layer-vocabulary.json" with { type: "json" };
 import genui1TemplateJson from "../../profile-templates/genui1/template.json" with { type: "json" };
 import genui1InteractionSchemaJson from "../../profile-templates/genui1/schemas/interaction.schema.json" with { type: "json" };
 import genui1PresentationSchemaJson from "../../profile-templates/genui1/schemas/presentation.schema.json" with { type: "json" };
@@ -25,6 +29,8 @@ const templateArtifacts: Record<string, ProfileTemplateArtifact> = {
 const templateFiles: Record<string, Record<string, Json>> = {
   genui: {
     "authoring-checks.json": genuiAuthoringChecksJson as Json,
+    "console-inspector.json": genuiConsoleInspectorJson as unknown as Json,
+    "layer-vocabulary.json": genuiLayerVocabularyJson as Json,
     "taxonomy.json": genuiTaxonomyJson as Json,
     "schema-validators.json": genuiSchemaValidatorsJson as Json,
     "schemas/workflow.schema.json": genuiWorkflowSchemaJson as Json,
@@ -34,6 +40,8 @@ const templateFiles: Record<string, Record<string, Json>> = {
   },
   genui1: {
     "authoring-checks.json": genui1AuthoringChecksJson as Json,
+    "console-inspector.json": genui1ConsoleInspectorJson as unknown as Json,
+    "layer-vocabulary.json": genui1LayerVocabularyJson as Json,
     "taxonomy.json": genui1TaxonomyJson as Json,
     "schema-validators.json": genui1SchemaValidatorsJson as Json,
     "schemas/workflow.schema.json": genui1WorkflowSchemaJson as Json,

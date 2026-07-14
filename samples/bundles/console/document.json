@@ -529,8 +529,8 @@
                                                           "bundleText": "console.artifacts.bundleText",
                                                           "layerId": "console.selectedLayerId",
                                                           "seeds": "console.layerDetail.seeds",
-                                                          "subject": "console.interactionInput.subject",
-                                                          "surface": "console.previewSurface"
+                                                          "subject": "console.sourceInput.subject",
+                                                          "surface": "console.previewContext.surface"
                                                         }
                                                       }
                                                     }
@@ -607,22 +607,22 @@
                                       "children": [
                                         {
                                           "capability": "ui:form",
-                                          "id": "interaction-input-form",
+                                          "id": "source-input-form",
                                           "props": {
-                                            "title": "Interaction input",
+                                            "title": "Layer inputs",
                                             "saveLabel": "Apply & refresh",
                                             "discardLabel": "Reset"
                                           },
                                           "edges": {
                                             "read": {
-                                              "fields": "console.interactionInputForm",
-                                              "value": "console.interactionInput"
+                                              "fields": "console.sourceInputForm",
+                                              "value": "console.sourceInput"
                                             },
                                             "on": {
                                               "save": [
                                                 {
                                                   "do": "assign",
-                                                  "target": "console.interactionInput",
+                                                  "target": "console.sourceInput",
                                                   "args": {
                                                     "from": "$event.values"
                                                   }
@@ -638,61 +638,35 @@
                                           }
                                         },
                                         {
-                                          "capability": "ui:row",
-                                          "id": "preview-controls-inline",
+                                          "capability": "ui:form",
+                                          "id": "preview-ctx-form",
+                                          "props": {
+                                            "title": "Context params",
+                                            "saveLabel": "Apply & refresh",
+                                            "discardLabel": "Reset"
+                                          },
                                           "edges": {
-                                            "children": [
-                                              {
-                                                "capability": "ui:select",
-                                                "id": "preview-surface",
-                                                "props": {
-                                                  "label": "Surface",
-                                                  "options": [
-                                                    { "value": "desktop", "label": "desktop" },
-                                                    { "value": "web", "label": "web" },
-                                                    { "value": "mobile", "label": "mobile" },
-                                                    { "value": "copilot", "label": "copilot" },
-                                                    { "value": "teams", "label": "teams" }
-                                                  ]
+                                            "read": {
+                                              "fields": "console.previewContextForm",
+                                              "value": "console.previewContext"
+                                            },
+                                            "on": {
+                                              "save": [
+                                                {
+                                                  "do": "assign",
+                                                  "target": "console.previewContext",
+                                                  "args": {
+                                                    "from": "$event.values"
+                                                  }
                                                 },
-                                                "edges": {
-                                                  "read": {
-                                                    "value": "console.previewSurface"
-                                                  },
-                                                  "on": {
-                                                    "change": [
-                                                      {
-                                                        "do": "assign",
-                                                        "target": "console.previewSurface",
-                                                        "args": {
-                                                          "from": "$event.value"
-                                                        }
-                                                      }
-                                                    ]
+                                                {
+                                                  "do": "invoke",
+                                                  "args": {
+                                                    "tool": "refreshPreview"
                                                   }
                                                 }
-                                              },
-                                              {
-                                                "capability": "ui:button",
-                                                "id": "preview-refresh",
-                                                "props": {
-                                                  "label": "Refresh preview",
-                                                  "tone": "primary"
-                                                },
-                                                "edges": {
-                                                  "on": {
-                                                    "press": [
-                                                      {
-                                                        "do": "invoke",
-                                                        "args": {
-                                                          "tool": "refreshPreview"
-                                                        }
-                                                      }
-                                                    ]
-                                                  }
-                                                }
-                                              }
-                                            ]
+                                              ]
+                                            }
                                           }
                                         },
                                         {
@@ -710,10 +684,8 @@
                                                 "edges": {
                                                   "read": {
                                                     "bundleText": "console.artifacts.bundleText",
-                                                    "interaction": "console.interactionInput.interaction",
-                                                    "subject": "console.interactionInput.subject",
-                                                    "surface": "console.previewSurface",
-                                                    "data": "console.interactionInput.data"
+                                                    "seed": "console.sourceInput",
+                                                    "ctx": "console.previewContext"
                                                   }
                                                 }
                                               }
