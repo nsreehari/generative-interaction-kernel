@@ -382,24 +382,70 @@ function formatTick(value: number): string {
   return value.toFixed(Math.abs(value) < 1 ? 2 : 1);
 }
 
+// Only allow link schemes that can't execute script. Anything else (e.g. `javascript:`) falls back
+// to plain text so untrusted markdown can't smuggle an XSS payload through a link.
+function safeHref(url: string): string | null {
+  const trimmed = url.trim();
+  return /^(https?:|mailto:|\/|#|\.)/i.test(trimmed) ? trimmed : null;
+}
+
+// Inline markdown within a single line: `code`, **bold**, *italic*/_italic_, and [text](url) links.
+// Returns a React node (string when there's no formatting) so callers can drop it straight into JSX.
+function renderInline(text: string): React.ReactNode {
+  const pattern = /(`[^`]+`)|(\[[^\]]+\]\([^)\s]+\))|(\*\*[^*]+\*\*)|(\*[^*]+\*)|(_[^_]+_)/g;
+  const nodes: React.ReactNode[] = [];
+  let last = 0;
+  let key = 0;
+  let m: RegExpExecArray | null;
+  while ((m = pattern.exec(text)) !== null) {
+    if (m.index > last) nodes.push(text.slice(last, m.index));
+    const token = m[0];
+    if (token.startsWith("`")) {
+      nodes.push(<code key={key++} className="gx-text-code">{token.slice(1, -1)}</code>);
+    } else if (token.startsWith("[")) {
+      const link = /^\[([^\]]+)\]\(([^)\s]+)\)$/.exec(token);
+      const href = link ? safeHref(link[2]) : null;
+      if (link && href) {
+        nodes.push(
+          <a key={key++} className="gx-link" href={href} target="_blank" rel="noreferrer noopener">
+            {link[1]}
+          </a>,
+        );
+      } else {
+        nodes.push(token);
+      }
+    } else if (token.startsWith("**")) {
+      nodes.push(<strong key={key++}>{token.slice(2, -2)}</strong>);
+    } else {
+      nodes.push(<em key={key++}>{token.slice(1, -1)}</em>);
+    }
+    last = m.index + token.length;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  if (nodes.length === 0) return text;
+  return nodes.length === 1 ? nodes[0] : nodes;
+}
+
 function renderMarkdownBlocks(value: string): React.ReactNode[] {
   const lines = value.replace(/\r\n/g, "\n").split("\n");
   const nodes: React.ReactNode[] = [];
   let paragraph: string[] = [];
   let listItems: string[] = [];
+  let listOrdered = false;
 
   const flushParagraph = () => {
     if (paragraph.length > 0) {
-      nodes.push(<p key={`p-${nodes.length}`}>{paragraph.join(" ")}</p>);
+      nodes.push(<p key={`p-${nodes.length}`}>{renderInline(paragraph.join(" "))}</p>);
       paragraph = [];
     }
   };
   const flushList = () => {
     if (listItems.length > 0) {
+      const items = listItems.map((item, index) => <li key={index}>{renderInline(item)}</li>);
       nodes.push(
-        <ul key={`ul-${nodes.length}`}>
-          {listItems.map((item, index) => <li key={index}>{item}</li>)}
-        </ul>
+        listOrdered
+          ? <ol key={`ol-${nodes.length}`}>{items}</ol>
+          : <ul key={`ul-${nodes.length}`}>{items}</ul>,
       );
       listItems = [];
     }
@@ -418,15 +464,25 @@ function renderMarkdownBlocks(value: string): React.ReactNode[] {
       flushParagraph();
       flushList();
       const level = heading[1].length;
-      const text = heading[2];
       const Tag = `h${level}` as "h1" | "h2" | "h3" | "h4";
-      nodes.push(<Tag key={`h-${nodes.length}`}>{text}</Tag>);
+      nodes.push(<Tag key={`h-${nodes.length}`}>{renderInline(heading[2])}</Tag>);
+      continue;
+    }
+
+    const ordered = /^\d+\.\s+(.*)$/.exec(line);
+    if (ordered) {
+      flushParagraph();
+      if (!listOrdered) flushList();
+      listOrdered = true;
+      listItems.push(ordered[1]);
       continue;
     }
 
     const bullet = /^[-*]\s+(.*)$/.exec(line);
     if (bullet) {
       flushParagraph();
+      if (listOrdered) flushList();
+      listOrdered = false;
       listItems.push(bullet[1]);
       continue;
     }
@@ -632,10 +688,12 @@ function Alert({ node }: ProjectionViewProps) {
 function Metric({ node }: ProjectionViewProps) {
   const p = readProps(node);
   const variant = p.str("variant");
+  const detail = p.str("detail", p.str("caption"));
   return (
     <div className={variant ? `gx-metric gx-metric-${variant}` : "gx-metric"}>
       <span className="gx-metric-label">{p.str("label")}</span>
       <strong className="gx-metric-value">{p.str("value")}</strong>
+      {detail ? <span className="gx-metric-detail gx-muted">{detail}</span> : null}
     </div>
   );
 }
@@ -1114,6 +1172,16 @@ function Stats({ node }: ProjectionViewProps) {
   );
 }
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === "object" && !Array.isArray(value);
+}
+
+function formatDiffValue(value: unknown): string {
+  if (value == null) return "—";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
 function Diff({ node }: ProjectionViewProps) {
   const p = readProps(node);
   // A diff needs two distinct sides. They can arrive either as explicit `before`/`after` props or
@@ -1124,6 +1192,31 @@ function Diff({ node }: ProjectionViewProps) {
   const after = node.props.after ?? bundle.after;
   const empty = p.str("emptyText", "No diff data.");
   if (before == null && after == null) return <p className="gx-muted">{empty}</p>;
+
+  // When both sides are plain objects, show a field-level comparison so a reader sees exactly which
+  // keys were added, removed, or changed — far more legible than two raw JSON blobs. Non-object
+  // values (strings, arrays, primitives) fall back to the side-by-side JSON view.
+  if (isPlainRecord(before) && isPlainRecord(after)) {
+    const keys = [...new Set([...Object.keys(before), ...Object.keys(after)])];
+    return (
+      <div className="gx-diff">
+        {keys.map((key) => {
+          const hasBefore = key in before;
+          const hasAfter = key in after;
+          const changed = JSON.stringify(before[key]) !== JSON.stringify(after[key]);
+          const status = !hasBefore ? "added" : !hasAfter ? "removed" : changed ? "changed" : "same";
+          return (
+            <div key={key} className={`gx-diff-row gx-diff-${status}`}>
+              <span className="gx-diff-key">{key}</span>
+              <span className="gx-diff-before">{hasBefore ? formatDiffValue(before[key]) : "—"}</span>
+              <span className="gx-diff-arrow" aria-hidden="true">→</span>
+              <span className="gx-diff-after">{hasAfter ? formatDiffValue(after[key]) : "—"}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div className="gx-col">
