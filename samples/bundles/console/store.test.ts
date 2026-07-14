@@ -136,9 +136,19 @@ function createState(): Record<string, Json> {
         error: "",
       },
       tab: "overview",
-      interactionInputForm: { properties: {} },
-      interactionInput: {},
-      previewSurface: "desktop",
+      sourceInputForm: { properties: {} },
+      sourceInput: {},
+      previewContextForm: {
+        properties: {
+          surface: {
+            title: "Surface",
+            default: "desktop",
+            enum: ["desktop", "web", "mobile", "copilot", "teams"],
+          },
+        },
+        required: ["surface"],
+      },
+      previewContext: { surface: "desktop" },
       previewBundle: null,
       previewError: "",
     },
@@ -198,6 +208,70 @@ test("loadProfile marks repo sample entries as read-only and seeds the editor bu
   assert.match(String(opRecord(result?.ops, "console.editor").status), /read-only/i);
   assert.equal(opValue(result?.ops, "console.selectedLayerId"), sampleProfileCatalog[0].artifact.payload.layers[0].id);
   assert.equal(opValue(result?.ops, "console.selectedRecipeId"), "");
+  assert.equal((opRecord(result?.ops, "console.sourceInput") as JsonRecord).interaction, "investigate");
+  assert.equal((opRecord(result?.ops, "console.previewContext") as JsonRecord).surface, "desktop");
+});
+
+test("layer vocabulary is derived from template metadata for both source and presentation layers", async () => {
+  const storage = new MemoryStorage();
+  Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
+
+  const sourceState = createState();
+  const liveCards = await consoleEffects.loadProfile({
+    get: (path) => getPath(sourceState, path),
+    set: (path, value) => ({ op: "set", path, value }),
+    args: {},
+    payload: { id: "live-cards" },
+    store: { get: (path: string) => getPath(sourceState, path) } as never,
+  });
+  const liveCardsGroups = (opRecord(liveCards?.ops, "console.layerDetail").vocabulary as JsonRecord).groups as JsonRecord[];
+  assert.deepEqual(liveCardsGroups.map((group) => group.id), ["interactions", "roles", "context"]);
+
+  const presentationState = createState();
+  const fourLayers = await consoleEffects.loadProfile({
+    get: (path) => getPath(presentationState, path),
+    set: (path, value) => ({ op: "set", path, value }),
+    args: {},
+    payload: { id: "4layers" },
+    store: { get: (path: string) => getPath(presentationState, path) } as never,
+  });
+  applyOps(presentationState, fourLayers?.ops as PatchOp[] | undefined);
+
+  const presentationLayer = await consoleEffects.selectLayer({
+    get: (path) => getPath(presentationState, path),
+    set: (path, value) => ({ op: "set", path, value }),
+    args: {},
+    payload: { id: "presentation" },
+    store: { get: (path: string) => getPath(presentationState, path) } as never,
+  });
+  const presentationGroups = (opRecord(presentationLayer?.ops, "console.layerDetail").vocabulary as JsonRecord).groups as JsonRecord[];
+  assert.deepEqual(presentationGroups.map((group) => group.id), ["layouts", "presentations"]);
+});
+
+test("console inspector metadata drives workflow recipe labels and sample seeds", async () => {
+  const storage = new MemoryStorage();
+  Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
+
+  const state = createState();
+  const result = await consoleEffects.loadProfile({
+    get: (path) => getPath(state, path),
+    set: (path, value) => ({ op: "set", path, value }),
+    args: {},
+    payload: { id: "4layers" },
+    store: { get: (path: string) => getPath(state, path) } as never,
+  });
+
+  const detail = opRecord(result?.ops, "console.layerDetail");
+  const seeds = detail.seeds as JsonRecord[];
+  assert.equal((detail.outgoingRecipe as JsonRecord).kindLabel, "Workflow → Interaction");
+  assert.equal((detail.outgoingRecipe as JsonRecord).tagline, "selects the interaction");
+  assert.deepEqual(seeds.map((seed) => seed.label), [
+    "incident-triage",
+    "portfolio-review",
+    "operations-monitoring",
+    "change-approval",
+  ]);
+  assert.equal(((seeds[0]?.payload as JsonRecord)?.workflow), "incident-triage");
 });
 
 test("$init hydrates the console catalog from localStorage on first load", async () => {
@@ -387,9 +461,13 @@ test("configure preview for live-cards emits the frontend editable-table kind en
   assert.ok(liveCards, "live-cards sample profile should be registered");
 
   const bundle = buildProfilePreviewBundle(liveCards, {
-    interaction: "configure",
-    subject: "incident",
-    surface: "desktop",
+    source: {
+      interaction: "configure",
+      subject: "incident",
+    },
+    ctx: {
+      surface: "desktop",
+    },
   });
 
   const document = (bundle.document as { payload: { root: { edges?: { children?: Array<Record<string, unknown>> } } } }).payload;
@@ -404,4 +482,22 @@ test("configure preview for live-cards emits the frontend editable-table kind en
     addRow: false,
     deleteRow: false,
   });
+});
+
+test("workflow source preview runs from the source layer form instead of assuming interaction fields", () => {
+  const fourLayers = sampleProfileCatalog.find((entry) => entry.artifact.payload.id === "4layers");
+  assert.ok(fourLayers, "4layers sample profile should be registered");
+
+  const bundle = buildProfilePreviewBundle(fourLayers, {
+    source: {
+      workflow: "change-approval",
+      subject: "incident",
+    },
+    ctx: {
+      surface: "desktop",
+    },
+  });
+
+  const document = (bundle.document as unknown as { payload: { root: Record<string, unknown> } }).payload;
+  assert.equal(typeof document.root.id, "string");
 });

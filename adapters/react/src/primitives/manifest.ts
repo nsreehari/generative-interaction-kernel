@@ -49,6 +49,9 @@ export const PRIMITIVE_CAPABILITIES: Record<string, CapabilityDescriptor> = {
   markdown: { propsSchema: anyProps, dataProp: "value" }, // markdown text, rendered read-only
   markup: { propsSchema: anyProps, dataProp: "value" }, // explicit alias of markdown
   todo: { propsSchema: anyProps, emits: ["save"], dataProp: "items" }, // committed todo list: bound items + save {items}
+  timeline: { propsSchema: anyProps, dataProp: "items" }, // read-only time-ordered item list
+  stats: { propsSchema: anyProps, dataProp: "items" }, // read-only metric list
+  diff: { propsSchema: anyProps }, // read-only before/after comparison
   actions: { propsSchema: anyProps, emits: ["press"], dataProp: "buttons" }, // button row, emits press {id}
   notes: { propsSchema: anyProps, emits: ["save"], dataProp: "content" }, // committed notes editor: content + save {content}
   "editable-table": { propsSchema: anyProps, emits: ["save"], dataProp: "rows" }, // committed editable grid: spec + bound rows -> save {rows}

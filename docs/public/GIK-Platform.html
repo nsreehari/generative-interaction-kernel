@@ -284,12 +284,12 @@
 <body>
 
 <h1>The Generative Interaction Kernel (GIK) Platform</h1>
-<div class="subtitle">Evolving WinUI &amp; Reactor into a Governed State Orchestration Engine &middot; From Intent to Execution &middot; 2026</div>
+<div class="subtitle">North-Star Platform Narrative &middot; From Intent to Governed Execution &middot; 2026</div>
 
 <h2>Purpose</h2>
-<p>The next evolution of application architecture is not just a better UI library; it is a <strong>universal state and interaction orchestration engine</strong>. The Generative Interaction Kernel (GIK) acts as a mathematically pure, declarative substrate that translates intent, workflow, and action into deterministic outcomes. UI rendering — including WinUI and Reactor — is merely an external projection adapter connected to this highly governed computational core. This completely eliminates the need to hand-wire imperative mappings between AI logic and presentation layers.</p>
+<p>The next evolution of application architecture is not just a better UI library; it is a <strong>governed state and interaction orchestration engine</strong>. The Generative Interaction Kernel (GIK) acts as a mathematically pure, declarative substrate that translates intent, workflow, and action into deterministic outcomes. Renderers and transports are downstream adapters attached to that governed core rather than the source of its semantics.</p>
 <div class="callout">
-  A note on framing: WinUI is imperative, and Reactor is an experimental, preview declarative wrapper over it. But that declarative wrapper is the exact required primitive. It is impossible to build a safe, generative UI graph over a mutable imperative tree. This paper argues Reactor is the <em>breakthrough experimental enabler</em> that makes a generative UI platform possible on Windows.
+  <strong>Target-state framing.</strong> This document is a north-star narrative, not a claim that the entire adaptive experience platform is already finished end to end. What is real in the current implementation is the kernel, the face/projection split, transports, and the profile/lowering machinery. The full interaction &rarr; presentation &rarr; runtime experience platform is the direction those pieces are meant to converge toward.
 </div>
 
 
@@ -298,7 +298,7 @@
 
 <h3>2. A Single Execution Model for the Entire Operations Stack</h3>
 <p>In classic architectures, the "Workflow Graph" (how a security incident is processed) runs on an external backend engine (like Temporal or Step Functions), while the "Presentation Graph" (what the analyst clicks) runs on an Angular/React frontend.</p>
-<p>Your platform collapses this entirely. If you pivot to Wealth Management, Tax, or Legal, the same principle holds: you define the business logic, the approvals, and the screens in a <strong>closed JSON grammar</strong>. The Kernel executes them identically everywhere. Native code is reduced solely to providing localized side-effects.</p>
+<p>The GIK aims to give those worlds one governed execution substrate: a <strong>closed grammar</strong>, deterministic reduction, revisioned patches, and validation gates that stay invariant while planners, domain DSLs, renderers, transports, and orchestrators remain swappable around it. The upper graphs in this paper are best read as upstream domains the platform can integrate with; the current concrete implementation focus is the authored interaction/presentation lowering chain and the runtime it targets.</p>
 
 <h2>3. The Generative UI Opportunity</h2>
 <p>The AI developer gold rush is constrained by a brutal presentation bottleneck. The industry knows how to build agents, but it does not know how to render their output natively without either abandoning Windows or drowning in mapping code.</p>
@@ -321,19 +321,19 @@
   </tbody>
 </table>
 <h3>The Beachhead</h3>
-<p>Generative <strong>AI Context Canvases</strong> built on Reactor. A developer passes an agent's semantic intent and a registry of local capabilities; the Canvas dynamically constructs the native surface. This accelerates scenario teams previously blocked by UI wiring, enabling them to focus entirely on domain logic.</p>
+<p>The beachhead is not a renderer brand; it is a governed authoring and runtime model. A developer declares semantic intent, capabilities, and lowering rules; the platform lowers that intent through explicit profile stages and recipes into a runtime document that an adapter can project to React, WinUI, or another surface. React and Reactor remain important examples, but they sit at the edge of the system rather than defining its center.</p>
 
 <h2>5. Why Now</h2>
 <ul>
   <li><strong>The explosion of Agentic output.</strong> Agents are generating structured reasoning, data, and workflows. Delivering this exclusively via conversational text is already recognized as a UX dead end.</li>
-  <li><strong>Reactor unlocks the door.</strong> A generative UI graph requires a declarative tree and a reconciler. WinUI alone cannot do this safely. Reactor's recent experimental release is the precise enabler that allows algorithmic planning to target native Windows safely.</li>
+  <li><strong>Declarative adapters make governed projection practical.</strong> A generative runtime needs a reconciled projection surface rather than direct mutation of imperative widget trees. That is why adapter/projector layers matter: they let the kernel own semantics while the edge owns materialization.</li>
   <li><strong>The OS turf war.</strong> If Windows apps abdicate generative user experiences to the browser or to Electron, native OS relevance shrinks further. A platform that makes <em>native</em> generative UI faster to build than web generative UI re-centers the ecosystem.</li>
 </ul>
 
 <h2>6. The Paradigm Shift</h2>
 
 <h3>The Old Question</h3>
-<p>WinUI is a component and rendering system; Reactor already makes it <em>declarative</em>, with a reconciler, hooks, and pure render. Together they solve authored, mostly-fixed native screens: layout, state, navigation, accessibility, and consistency.</p>
+<p>Traditional UI stacks answer the authored-screen question well: how do we compose stable layouts, state, navigation, and accessibility with a clear rendering boundary?</p>
 <div class="question">How do we build native interfaces declaratively, consistently, and fast?</div>
 
 <h3>The New Question</h3>
@@ -342,7 +342,7 @@
 
 <h3>The Boundary Trap</h3>
 <div class="callout">
-  Answering this does not mean Reactor expands to own workflows, agents, or business processes. That creates an amorphous, unmaintainable platform. The challenge is defining a broad experience architecture <em>on top of Reactor</em> while keeping Reactor&rsquo;s boundary precise.
+  Answering this does not mean any renderer or adapter expands to own workflows, agents, or business processes. The kernel owns runtime semantics; the profile/lowering system owns interaction and presentation compilation; adapters and projectors own materialization. The challenge is defining the broader experience architecture while keeping those boundaries precise.
 </div>
 
 <h3>Unlocking Safe Generation</h3>
@@ -459,14 +459,14 @@ protocol and lets one live runtime be exposed differently to operators, agents, 
 
   <g>
     <rect x="230" y="584" width="320" height="66" rx="6" fill="#f5f4f2" stroke="#bdb6ac" stroke-width="1.4"/>
-    <text x="390" y="618" text-anchor="middle" fill="#2c2a27" font-size="19" font-weight="600">Render Tree (Reactor)</text>
+    <text x="390" y="618" text-anchor="middle" fill="#2c2a27" font-size="19" font-weight="600">Render Tree (Adapter)</text>
     <text x="390" y="636" text-anchor="middle" fill="#7a756d" font-size="12" letter-spacing="1">MATERIALIZATION</text>
   </g>
 </svg>
-<figcaption>The experience stack &mdash; Reactor owns the lower three graphs; the render tier already ships</figcaption>
+  <figcaption>The experience stack &mdash; upstream domains feed authored interaction/presentation layers, which lower into a governed runtime and then project outward through adapters</figcaption>
 </figure>
 <div class="split-text">
-<p>The complete journey from user intent to execution is a stack of sequential graph representations. The Kernel orchestrates the bottom tiers universally — meaning the pure reducer computes interaction and behavior state regardless of whether the projection is UI or a headless process.</p>
+  <p>The complete journey from user intent to execution can be described as a stack of sequential graph representations. In implementation terms, the current concrete focus is the lower authored layers and the runtime they target: explicit interaction/presentation lowering into a kernel document, then projection outward through an adapter. The upper tiers are useful framing for upstream systems the platform can integrate with, not a claim that every tier is already a stable product surface.</p>
 
 <h3>8.1.1 Intent Graph (Why)</h3>
 <p>Captures declarative goals, constraints, and success criteria. It does not describe execution or UI.<br>
@@ -481,15 +481,15 @@ protocol and lets one live runtime be exposed differently to operators, agents, 
 <em>Example:</em> Assign Investigator &rarr; Collect Evidence &rarr; Approve Fix.</p>
 
 <h3>8.2.1 Interaction Graph (Engagement)</h3>
-<p>Captures reusable human-agent interaction patterns. This is the entry point for the evolved platform &mdash; the first new tier above Reactor. Describes experience semantics, not control trees.<br>
+<p>Captures reusable human-agent interaction patterns. This is the entry point for the current authored platform direction: experience semantics, not control trees.<br>
 <em>Example:</em> Investigate Anomaly &rarr; Compare Logs &rarr; Collaborate with Expert.</p>
 
 <h3>8.2.2 Presentation Graph (Organization)</h3>
-<p>A surface-agnostic representation of information architecture and attention priority &mdash; the second new tier above Reactor.<br>
+<p>A surface-agnostic representation of information architecture and attention priority, lowered from interaction semantics through explicit recipes.<br>
 <em>Example:</em> Investigation Workspace &rarr; [Summary Region: High], [Timeline Region: Med].</p>
 
 <h3>8.2.3 Render Tree &mdash; The External Side-Effect</h3>
-<p>The concrete UI (whether Native or Web) is produced by a rendering adapter. The Kernel walks the resolved node tree and materializes UI controls simply as an external projection of the Kernel's strictly governed mathematical state.</p>
+<p>The concrete UI (whether Native or Web) is produced by a rendering adapter. The runtime document and resolved node tree belong to the governed core; the adapter simply materializes them as an external projection of that state.</p>
 </div>
 </div>
 
@@ -534,6 +534,7 @@ protocol and lets one live runtime be exposed differently to operators, agents, 
 <div class="callout">
   <strong>Standardized Semantic Tool Actions:</strong> The GIK system unifies input at the source. Every interaction registers as a standard system-level semantic action. A human clicking the mouse on an "Approve" button and an autonomous agent submitting an `approve()` API request drop into the exact same Kernel pipeline. They follow the exact same validation edges and write to the exact same State Store.
 </div>
+<p>In the current implementation, this does not live as free-floating doctrine. It is expressed through explicit profile artifacts and lowering recipes: profiles declare the layers, recipes declare the legal transforms, and the runtime remains the single target those transforms lower into.</p>
 <table>
   <thead>
     <tr>
@@ -600,6 +601,7 @@ protocol and lets one live runtime be exposed differently to operators, agents, 
 ]</pre>
 </div>
 <p>Facets are the pivot point of the whole architecture. The <strong>interaction</strong> layer decides <em>which facets a goal requires</em> (domain-neutral, stable). The <strong>presentation</strong> layer decides <em>how those facets are arranged</em> for a given surface and context (adaptive). Because the facet set is fixed, the mapping from interaction to presentation is enumerable and testable rather than open-ended generation.</p>
+<p>Today, the implemented shape of that idea is a profile pipeline with explicit stages and recipe artifacts. A sample profile can declare workflow &rarr; interaction &rarr; presentation &rarr; runtime-document stages, and each hop is governed by a recipe rather than by ad hoc host code.</p>
 <div class="example">
   <span class="tag">running example &middot; investigate anomaly</span><br>
   Our generated <code>investigate</code> intent resolves to six facets: a <strong>narrative</strong> context, an <strong>evidence collection</strong> (the table from Section 9), a <strong>timeline</strong>, an optional <strong>relationship graph</strong>, an <strong>explanation</strong>, and an <strong>actions</strong> facet. Note that not one component has been chosen yet &mdash; only roles.
@@ -608,7 +610,7 @@ protocol and lets one live runtime be exposed differently to operators, agents, 
 <h2>14. Interaction DSL &amp; Context Hydration</h2>
 
 <h3>14.1 Interaction DSL (The ISV &amp; Agent Contract)</h3>
-<p>Agents and application developers declare semantic intent rather than layout mechanics. They pass abstract definitions to the generative platform tier above Reactor:</p>
+<p>Agents and application developers declare semantic intent rather than layout mechanics. In implementation terms, that intent enters a profile/lowering chain above the runtime rather than targeting a renderer directly:</p>
 <div class="code-block">
 <span class="lang-tag">JSON</span>
 <pre>{
@@ -639,6 +641,9 @@ protocol and lets one live runtime be exposed differently to operators, agents, 
 <div class="focus-block">
   Presentation Structure = Planner( Interaction Intent, Capabilities Matrix, Surface Constraints, Design Tokens )
 </div>
+<div class="callout">
+  <strong>Invariant vs. swap point.</strong> Closed grammar, deterministic reduction, validation gates, revisioned patches, and traceability are invariants. Planner choice, renderer choice, transport, orchestration, and domain DSLs are swap points around that governed core.
+</div>
 <ul>
   <li><strong>The Capabilities Matrix:</strong> a hard, strongly-typed inventory of what presentation layouts physically exist (e.g., <code>SplitView</code>, <code>Feed</code>, <code>TabbedFlow</code>). Any planner &mdash; deterministic or AI &mdash; must choose from this enum; it can never invent a layout wrapper.</li>
   <li><strong>Surface Constraints:</strong> a real-time context schema detailing viewport metrics, primary input modality (touch vs. voice vs. precise pointer), and attention metrics (e.g., <code>attention_state: split_focus</code>).</li>
@@ -649,10 +654,10 @@ protocol and lets one live runtime be exposed differently to operators, agents, 
 </div>
 
 <h2>16. The Compiler &amp; Semantic Telemetry</h2>
-<p>The Presentation Compiler handled by the Kernel determines layout selection and logical routing. The final step is projecting this pure logic to <strong>a UI adapter (React, WinUI, etc.)</strong>, which materializes visual widgets.</p>
+<p>The presentation compiler sits in the lowering path above the runtime, turning presentation intent into the runtime document the governed core executes. The final step is projecting the resolved runtime state to <strong>a UI adapter (React, WinUI, etc.)</strong>, which materializes visual widgets.</p>
 
 <h3>The Three Layers of Telemetry</h3>
-<p>A true platform doesn't just evaluate execution; it provides empirical evidence to prove its abstractions work. Because the GIK owns the pipeline from intent to execution independent of UI frameworks, it captures deep operational telemetry:</p>
+<p>A true platform should not just evaluate execution; it should provide empirical evidence about how its abstractions behave. Because the GIK owns the governed path from intent to execution independent of UI frameworks, the architecture is designed to support deep operational telemetry:</p>
 <ul>
   <li><strong>Layer 1: Technical.</strong> Standard Kernel and Renderer metrics: reducer frame latency, transport cost.</li>
   <li><strong>Layer 2: Developer Experience.</strong> The moat measurement: manual API overrides bypassed and custom UI bindings eliminated.</li>
@@ -660,17 +665,16 @@ protocol and lets one live runtime be exposed differently to operators, agents, 
 </ul>
 
 <div class="callout">
-  <strong>Semantic Tracking in Action:</strong> The platform empirically determines that an <code>Investigate</code> interaction mapped to a <code>narrative</code> layout yields a 93% task completion rate, while a <code>dashboard</code> layout yields 61%.
+  <strong>Intended outcome:</strong> over time, structural traces such as interaction kind, region mix, latency, and fallback frequency can inform better planner defaults and tighter presentation policies. That is an architectural opportunity, not yet a blanket claim of measured product superiority.
 </div>
-<p>This is the holy grail. This semantic trace feeds directly back into the <strong>semantic loop</strong> (Section 11.2). It allows the Presentation Planner to adapt to human cognitive styles automatically, predicting the most successful layouts natively without the developer ever changing their application code.</p>
-<p>Critically, this tuned interaction&rarr;layout mapping is a <strong>compounding asset</strong>: it improves with every session and cannot be replicated without the usage data. It is the moat that grows while the code stays still.</p>
+<p>The aspiration is for structural traces to feed back into the <strong>semantic loop</strong> (Section 11.2) without weakening the deterministic contract. If that feedback loop is realized well, tuned interaction&rarr;layout mappings become a compounding asset &mdash; but the repo today should be read as providing the governed substrate for that future, not as proving it outright.</p>
 
 <h2>17. Governed by Trust &mdash; Accessibility, Data &amp; Privacy</h2>
-<p>For any regulated or enterprise ISV, governance is not a feature bolted on afterward &mdash; it is the product. Because every surface is generated through the same governed pipeline, these guarantees hold for <em>every</em> layout the platform ever produces:</p>
+<p>For any regulated or enterprise ISV, governance is not a feature bolted on afterward &mdash; it is the product. The architecture is designed so these guarantees can be enforced at the governed boundary rather than delegated to each generated surface ad hoc:</p>
 <table>
   <thead><tr><th>Guarantee</th><th>How the platform delivers it</th></tr></thead>
   <tbody>
-    <tr><td>Accessibility, enforced</td><td>A11y is a <strong>compiler invariant</strong> &mdash; focus order, contrast, and screen-reader semantics are asserted and tested for every generated layout, not left to chance.</td></tr>
+    <tr><td>Accessibility, enforced</td><td>A11y should be treated as a <strong>compiler/runtime invariant</strong> &mdash; focus order, contrast, and screen-reader semantics need to be asserted and tested at the governed layer rather than left to chance in each generated surface.</td></tr>
     <tr><td>Data-agnostic &amp; least-privilege</td><td>The platform binds tokenized <code>context_refs</code> through providers and never holds domain data or credentials of its own.</td></tr>
     <tr><td>Auditability</td><td>Every resolve, action, and transition emits a structured trace; the reducer is replayable, so any surface can be reconstructed and reviewed.</td></tr>
     <tr><td>Determinism &amp; safe fallback</td><td>Validate-before-commit, with a deterministic fallback layout on any planner failure or timeout.</td></tr>
@@ -678,7 +682,7 @@ protocol and lets one live runtime be exposed differently to operators, agents, 
   </tbody>
 </table>
 <div class="callout">
-  This is what &ldquo;AI on a leash&rdquo; actually means in practice: the platform generates governed, auditable, accessible UI by construction &mdash; and can hand a reviewer the trace to prove it.
+  This is what &ldquo;AI on a leash&rdquo; actually means in practice: the architecture is designed to generate governed, auditable, accessible UI by construction &mdash; and to leave behind the traces required to prove it.
 </div>
 
 <h2>18. Adaptive Surfaces &amp; Execution</h2>
@@ -688,9 +692,9 @@ protocol and lets one live runtime be exposed differently to operators, agents, 
 </div>
 <p>The Kernel handles routing, gating, and state updates. The final external projection is handed off to an adapter. The identical core logic translates elegantly without any domain-logic rebuilds needed by the developer:</p>
 <ul>
-  <li><strong>Desktop workspace:</strong> The WinUI adapter maps high-priority regions into a multi-column command console.</li>
-  <li><strong>Web browser:</strong> The React adapter maps identically into highly accessible DOM Nodes.</li>
-  <li><strong>Backend Headless Flow:</strong> The Orchestrator adapter receives the state stream and fires API webhooks sequentially.</li>
+  <li><strong>Desktop workspace:</strong> A native adapter can map high-priority regions into a multi-column command console.</li>
+  <li><strong>Web browser:</strong> A React adapter can map the same runtime semantics into accessible DOM nodes.</li>
+  <li><strong>Backend headless flow:</strong> An orchestrator can consume the same governed state transitions and route sanctioned effects outward.</li>
 </ul>
 <div class="callout">
   Note the discipline applied here: reach across form factors is an <em>enabler</em>, but not the platform's core identity. The true defensibility is the mathematically governed transformation from AI intent into a declarative native substrate &mdash; shielding the developer from mapping boilerplate and guarding the app from hallucinated layouts.
