@@ -259,10 +259,10 @@ const journeySteps = [
 ];
 
 const proofItems = [
-  ["One shared workspace", "Human and agent surfaces derive from the same evolving state. No shadow source of truth."],
-  ["Continuous governance", "The agent may leave the interaction loop, never the state, policy, authority, and trace boundary."],
-  ["Governed action", "The model proposes. The authority validates, rejects, or requires confirmation."],
-  ["Complete trace", "Every proposal, rejection, patch, approval, and autonomous continuation is attributable."],
+  ["A single source of truth", "Human interface and agent context derive from the same evolving graph. There is no shadow state to sync or reconcile."],
+  ["Relentless continuity", "An agent can seamlessly transition from live collaboration to headless autonomy without leaving the governance boundary."],
+  ["Deterministic by design", "The AI proposes. A pure kernel evaluates the patch. Actions are executed, rejected, or routed to a human for confirmation."],
+  ["Forensic accountability", "Every hypothesis, rejection, state mutation, and approval is immutably traced back to a specific capability and policy."],
 ];
 
 function openBundle(bundleId: string) {
@@ -288,7 +288,7 @@ const SamplesOverviewView: ProjectionView = () => {
             <div className={styles.eyebrow}>Governed human-agent collaboration</div>
             <h1 id="platform-storyboard-title" className={styles.heroTitle}>Humans and agents need one governed place to work.</h1>
             <p className={styles.lead}>
-              AI now investigates, recommends, and acts. GIK gives humans and agents one evolving workspace where they can work
+              AI now investigates, recommends, and acts. The Generative Interaction Kernel gives humans and agents one evolving workspace where they can work
               together or continue autonomously without fragmenting state, authority, or accountability.
             </p>
             <p className={styles.contractLine}>Agents can leave the screen. They cannot leave the governance boundary.</p>
