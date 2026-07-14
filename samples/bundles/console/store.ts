@@ -385,7 +385,7 @@ const EMPTY_RECIPE_DETAIL = {
 const EMPTY_EDITOR: EditableProfileState = {
   id: "",
   bundleText: "",
-  status: "Select a profile, or create a local draft to start editing.",
+  status: "Select a blueprint, or create a local draft to start editing.",
   error: "",
 };
 
@@ -395,7 +395,7 @@ const EMPTY_VALIDATION: ValidationResult = {
   summary: "Not validated yet.",
   errors: [],
   warnings: [],
-  errorsText: "Select a profile to validate.",
+  errorsText: "Select a blueprint to validate.",
   warningsText: "",
 };
 
@@ -606,7 +606,7 @@ function readStoredBundleMap(): { bundles: Record<string, ProfileArtifactBundle<
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       return {
         bundles: {},
-        errors: ["Local profile storage was ignored because it is not a JSON object."],
+        errors: ["Local blueprint storage was ignored because it is not a JSON object."],
       };
     }
 
@@ -724,10 +724,10 @@ function consoleInspectorConfig(entry: CatalogEntry): ConsoleInspectorConfig {
   if (!templateId) {
     return {
       layerPositions: {
-        source: { label: "Source layer", role: "The external input layer where the profile starts before any lowering rules run." },
-        intermediate: { label: "Intermediate layer", role: "An internal stage in the lowering pipeline that reshapes the previous layer into a more concrete representation." },
-        terminal: { label: "Terminal layer", role: "The final emitted layer after all lowering rules have run." },
-        unknown: { label: "Pipeline stage", role: "A stage in this profile's lowering pipeline." },
+        source: { label: "Source tier", role: "The external input tier where the blueprint starts before any lowering rules run." },
+        intermediate: { label: "Intermediate tier", role: "An internal stage in the lowering pipeline that reshapes the previous tier into a more concrete representation." },
+        terminal: { label: "Terminal tier", role: "The final emitted tier after all lowering rules have run." },
+        unknown: { label: "Pipeline stage", role: "A stage in this blueprint's lowering pipeline." },
       },
       stageLabelTemplate: "{label} · stage {index} of {total}",
       sampleSeeds: [],
@@ -1298,7 +1298,7 @@ function profileState(entry: CatalogEntry) {
     readonly: entry.readonly,
     layerCount: artifact.layers.length,
     recipeCount: artifact.recipes.length,
-    summary: `This profile lowers a user's goal into a rendered UI across ${artifact.layers.length} stages, joined by ${artifact.recipes.length} lowering ${artifact.recipes.length === 1 ? "recipe" : "recipes"}.`,
+    summary: `This blueprint lowers a user's goal into a rendered UI across ${artifact.layers.length} stages, joined by ${artifact.recipes.length} lowering ${artifact.recipes.length === 1 ? "recipe" : "recipes"}.`,
     legend,
   };
 }
@@ -1585,11 +1585,11 @@ export const consoleEffects: EffectHandlerMap = {
     try {
       const rawId = readStr(ctx, "console.editor.id").trim();
       const rawBundle = readStr(ctx, "console.editor.bundleText").trim();
-      if (!rawBundle) throw new Error("Profile bundle JSON is empty.");
+      if (!rawBundle) throw new Error("Blueprint bundle JSON is empty.");
 
       const parsed = parseProfileBundleJson<LayerRecipe>(rawBundle);
       const nextId = (rawId || parsed.profileArtifact.payload.id).trim();
-      if (!nextId) throw new Error("Local profile id is required.");
+      if (!nextId) throw new Error("Local blueprint id is required.");
       if (readRepoCatalog().some((entry) => entry.artifact.payload.id === nextId)) {
         throw new Error(`'${nextId}' is a repo sample profile id. Save with a different local id.`);
       }
@@ -1650,7 +1650,7 @@ export const consoleEffects: EffectHandlerMap = {
             "console.editor",
             {
               ...EMPTY_EDITOR,
-              error: "Select a local profile before deleting it.",
+              error: "Select a local blueprint before deleting it.",
             } as unknown as Json
           ),
           setOp("console.tab", "draft"),
@@ -1665,7 +1665,7 @@ export const consoleEffects: EffectHandlerMap = {
             "console.editor",
             {
               ...editorState(selected),
-              error: "Repo sample profiles are read-only and cannot be deleted from browser storage.",
+              error: "Repo sample blueprints are read-only and cannot be deleted from browser storage.",
             } as unknown as Json
           ),
         ],
