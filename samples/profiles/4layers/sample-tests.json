@@ -1,0 +1,22 @@
+{
+  "name": "4layers sample profile",
+  "profileFile": "profile.json",
+  "recipeFiles": [
+    "workflow-to-interaction.recipe.json",
+    "interaction-to-presentation.recipe.json",
+    "presentation-to-runtime.recipe.json"
+  ],
+  "expectLoad": {
+    "id": "4layers",
+    "kind": "genui-profile",
+    "stages": ["workflow->interaction", "interaction->presentation", "presentation->runtime-doc"]
+  },
+  "runs": [
+    {
+      "name": "lowers a workflow to a runtime document",
+      "seed": { "workflow": "operations-monitoring", "subject": "service health" },
+      "ctx": { "surface": "desktop" },
+      "expect": { "rootCapability": "ui:board", "minChildren": 1 }
+    }
+  ]
+}

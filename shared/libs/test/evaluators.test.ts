@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { evalAsyncJsonata, evalSyncJsonata } from "../evaluators";
+import { evalAsyncJsonata, evalSyncJsonata, executeSyncJsonataSteps } from "../evaluators";
 
 test("evalSyncJsonata evaluates JSONata against JSON input", () => {
   const result = evalSyncJsonata("items[name='b'].value", {
@@ -39,4 +39,51 @@ test("evalAsyncJsonata accepts JSON bindings", async () => {
   });
 
   assert.equal(result, "ok");
+});
+
+test("executeSyncJsonataSteps runs ordered steps against a local binding scope", () => {
+  const result = executeSyncJsonataSteps({
+    steps: [
+      { expr: "user.name", writeTo: "name" },
+      { expr: "$uppercase($name)", writeTo: "upperName" },
+      { expr: '$upperName & ":" & user.id', writeTo: "summary" },
+    ],
+    data: {
+      user: { id: "u1", name: "alice" },
+    },
+    returnKeys: ["name", "summary"],
+  });
+
+  assert.deepEqual(result, {
+    name: "alice",
+    summary: "ALICE:u1",
+  });
+});
+
+test("executeSyncJsonataSteps seeds and returns local bindings when no return keys are specified", () => {
+  const result = executeSyncJsonataSteps({
+    steps: [{ expr: "$prefix & value", writeTo: "label" }],
+    data: { value: "-42" },
+    bindings: { prefix: "item" },
+  });
+
+  assert.deepEqual(result, {
+    prefix: "item",
+    label: "item-42",
+  });
+});
+
+test("executeSyncJsonataSteps applies later writes in array order", () => {
+  const result = executeSyncJsonataSteps({
+    steps: [
+      { expr: "value", writeTo: "current" },
+      { expr: "$current & '-next'", writeTo: "current" },
+    ],
+    data: { value: "step" },
+    returnKeys: ["current"],
+  });
+
+  assert.deepEqual(result, {
+    current: "step-next",
+  });
 });

@@ -35,9 +35,13 @@ but they should move only through an explicit resource seam, not implicit templa
 - If a concern is not exposed through an explicit template-owned resource, keep it fully local.
 - Do not introduce implicit structural merging between template data and local profile artifacts.
 
-## Implication For Retiring `profile-genui`
+## Current Boundary
 
-The next clean removals from `packages/profile-genui/` are the generic artifact validators and
-bundle helpers, because they are not GenUI-specific. Flavor-specific logic should remain the last
-thing standing: interaction taxonomy/facets, presentation planning, runtime lowering, and GenUI
-authoring vocabulary.
+The executable GenUI interpreter now lives in `@gik/profile`, and the template-owned data lives in
+`profile-templates/*`.
+
+That means further cleanup should follow one rule:
+
+- move reusable declarations into explicit template-owned resources
+- move reusable interpreter mechanisms into `@gik/profile`
+- keep sample folders limited to authored sample profile and recipe artifacts

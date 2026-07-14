@@ -4,7 +4,7 @@ import { test } from "vitest";
 import type { Json, PatchOp } from "@gik/kernel";
 import { createProfileBundle, stringifyProfileBundle } from "@gik/profile";
 import { buildProfilePreviewBundle, consoleEffects } from "./store";
-import { sampleProfileCatalog } from "../../profiles/registry";
+import { sampleProfileCatalog } from "../../catalog/profile-catalog";
 
 type JsonRecord = Record<string, Json>;
 

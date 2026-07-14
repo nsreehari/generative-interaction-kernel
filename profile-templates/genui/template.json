@@ -5,7 +5,13 @@
     "id": "genui",
     "description": "Standard GenUI profile template assets.",
     "files": {
-      "taxonomy": "taxonomy.json"
+      "taxonomy": "taxonomy.json",
+      "authoringChecks": "authoring-checks.json",
+      "schemaValidators": "schema-validators.json",
+      "workflowSchema": "schemas/workflow.schema.json",
+      "interactionSchema": "schemas/interaction.schema.json",
+      "presentationSchema": "schemas/presentation.schema.json",
+      "runtimeDocumentSchema": "schemas/runtime-document.schema.json"
     },
     "defaultResources": {
       "taxonomy": {

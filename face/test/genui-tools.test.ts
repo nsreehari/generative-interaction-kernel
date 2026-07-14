@@ -8,15 +8,17 @@ import { test } from "vitest";
 
 import { toolsFromProfile } from "../src/pure/profile-tools";
 import { createStatelessAgentFaceDispatcher } from "../src/projections/agentface";
-import type { ProfileArtifact } from "../../packages/profile/src/profile-core";
 import {
-  genuiAuthoringRegistry,
+  createGenuiAuthoringRegistry,
   planPresentationWithRecipe,
   recipeForLayerKinds,
-} from "../../samples/profiles/genui";
+  type InteractionTaxonomy,
+  type ProfileArtifact,
+} from "@gik/profile";
 import liveCardsProfileJson from "../../samples/profiles/live-cards/profile.json" with { type: "json" };
 import { liveCardsProfile } from "./live-cards-fixture";
 
+const genuiAuthoringRegistry = createGenuiAuthoringRegistry(liveCardsProfileJson as ProfileArtifact);
 const genuiTools = toolsFromProfile((liveCardsProfileJson as ProfileArtifact).payload, genuiAuthoringRegistry);
 const byName = new Map(genuiTools.map((t) => [t.name, t]));
 const liveCardsIToP = recipeForLayerKinds(liveCardsProfile, "interaction", "presentation");
@@ -71,7 +73,7 @@ test("validatePresentation (op:validate) runs structural then the facet-survival
     { interaction: "review", subject: "pr" },
     { surface: "desktop" },
     liveCardsIToP,
-    liveCardsProfile.resources.taxonomy as unknown as import("../../samples/profiles/genui").InteractionTaxonomy
+    liveCardsProfile.resources.taxonomy as unknown as InteractionTaxonomy
   );
   assert.equal(report("validatePresentation", { spec }).ok, true);
 
@@ -94,6 +96,11 @@ test("validateIntent (op:validate, no layer) checks shape + targets", () => {
     }).warnings.map((w) => w.code)
   );
   assert.ok(codes.has("intent-target-unknown"));
+  const combinedWarnings = report("validateIntent", {
+    intent: { priorities: ["summary"], constraints: ["ghost"] },
+    interaction: { interaction: "review", subject: "pr" },
+  }).warnings.map((w) => w.code);
+  assert.ok(combinedWarnings.includes("intent-target-unknown"));
 });
 
 test("intentToEdits (op:project) projects the sanctioned override channel", async () => {

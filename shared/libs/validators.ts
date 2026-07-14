@@ -12,10 +12,27 @@ type DeclarativeTypeName =
   | "boolean"
   | "null";
 
+type DeclarativeValidatorLevel = "error" | "warning";
+
+type DeclarativeValidationIssue = {
+  detail: string;
+  code?: string;
+  node?: string;
+};
+
+type DeclarativeValidationResult = {
+  ok: boolean;
+  errors: DeclarativeValidationIssue[];
+  warnings: DeclarativeValidationIssue[];
+};
+
 interface JsonataDeclarativeValidator {
   kind: "jsonata";
   expr: string;
   message: string;
+  level: DeclarativeValidatorLevel;
+  code?: string;
+  node?: string;
 }
 
 interface AjvSchemaDeclarativeValidator {
@@ -23,12 +40,18 @@ interface AjvSchemaDeclarativeValidator {
   schema: Record<string, unknown>;
   refs?: readonly { schema: Record<string, unknown>; key?: string }[];
   message: string;
+  level: DeclarativeValidatorLevel;
+  code?: string;
+  node?: string;
 }
 
 interface TypeDefDeclarativeValidator {
   kind: "typedef";
   type: DeclarativeTypeName | readonly DeclarativeTypeName[];
   message: string;
+  level: DeclarativeValidatorLevel;
+  code?: string;
+  node?: string;
 }
 
 type DeclarativeValidator =
@@ -38,26 +61,15 @@ type DeclarativeValidator =
 
 type DeclarativeValidatorInput =
   | [string, string?]
-  | { kind?: "jsonata"; expr: string; message?: string }
-  | { kind: "ajv-schema"; schema: Record<string, unknown>; refs?: readonly { schema: Record<string, unknown>; key?: string }[]; message?: string }
-  | { kind: "typedef"; type: DeclarativeTypeName | readonly DeclarativeTypeName[]; message?: string };
+  | { kind?: "jsonata"; expr: string; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
+  | { kind: "ajv-schema"; schema: Record<string, unknown>; refs?: readonly { schema: Record<string, unknown>; key?: string }[]; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
+  | { kind: "typedef"; type: DeclarativeTypeName | readonly DeclarativeTypeName[]; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string };
 
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 
-const ajvErrorDetail = (errors: unknown): string => {
-  if (!Array.isArray(errors)) return "schema validation failed";
-  const parts = errors
-    .map((error) => {
-      if (!error || typeof error !== "object") return "schema validation failed";
-      const candidate = error as { instancePath?: unknown; message?: unknown };
-      const instancePath = typeof candidate.instancePath === "string" && candidate.instancePath.length > 0
-        ? candidate.instancePath
-        : "/";
-      const message = typeof candidate.message === "string" ? candidate.message : "is invalid";
-      return `${instancePath} ${message}`;
-    })
-    .filter((part) => part.length > 0);
-  return parts.length > 0 ? parts.join("; ") : "schema validation failed";
+type DeclarativeValidatorRunOptions = {
+  bindings?: Record<string, JsonValue>;
+  jsonataValueMode?: "wrapped-data" | "root";
 };
 
 const ajvErrorDetails = (errors: unknown): string[] => {
@@ -118,13 +130,18 @@ const compiledSchemaValidatorFor = (validator: AjvSchemaDeclarativeValidator): V
   return compiled;
 };
 
+const issueMetadata = (candidate: Record<string, unknown>) => ({
+  ...(typeof candidate.code === "string" ? { code: candidate.code } : {}),
+  ...(typeof candidate.node === "string" ? { node: candidate.node } : {}),
+});
+
 function normalizeDeclarativeValidators(raw: unknown): DeclarativeValidator[] {
   if (!Array.isArray(raw)) return [];
   const out: DeclarativeValidator[] = [];
   for (const entry of raw) {
     if (Array.isArray(entry)) {
       const expr = typeof entry[0] === "string" ? entry[0].trim() : "";
-      if (expr) out.push({ kind: "jsonata", expr, message: typeof entry[1] === "string" ? entry[1] : "Invalid value" });
+      if (expr) out.push({ kind: "jsonata", expr, message: typeof entry[1] === "string" ? entry[1] : "Invalid value", level: "error" });
     } else if (entry && typeof entry === "object") {
       const candidate = entry as Record<string, unknown>;
       if (candidate.kind === "ajv-schema") {
@@ -147,6 +164,8 @@ function normalizeDeclarativeValidators(raw: unknown): DeclarativeValidator[] {
               }))
               : undefined,
             message: typeof candidate.message === "string" ? candidate.message : "Invalid value",
+            level: candidate.level === "warning" ? "warning" : "error",
+            ...issueMetadata(candidate),
           });
         }
         continue;
@@ -159,6 +178,8 @@ function normalizeDeclarativeValidators(raw: unknown): DeclarativeValidator[] {
             kind: "typedef",
             type: type as DeclarativeTypeName | readonly DeclarativeTypeName[],
             message: typeof candidate.message === "string" ? candidate.message : "Invalid value",
+            level: candidate.level === "warning" ? "warning" : "error",
+            ...issueMetadata(candidate),
           });
         }
         continue;
@@ -169,6 +190,8 @@ function normalizeDeclarativeValidators(raw: unknown): DeclarativeValidator[] {
           kind: "jsonata",
           expr,
           message: typeof candidate.message === "string" ? candidate.message : "Invalid value",
+          level: candidate.level === "warning" ? "warning" : "error",
+          ...issueMetadata(candidate),
         });
       }
     }
@@ -178,27 +201,37 @@ function normalizeDeclarativeValidators(raw: unknown): DeclarativeValidator[] {
 
 export function runDeclarativeValidators(
   rawValidators: readonly DeclarativeValidatorInput[] | unknown,
-  value: JsonValue
-): string[] {
+  value: JsonValue,
+  options: DeclarativeValidatorRunOptions = {}
+): DeclarativeValidationResult {
   const validators = normalizeDeclarativeValidators(rawValidators);
-  if (validators.length === 0) return [];
-  const root = { data: value };
-  const errors: string[] = [];
+  if (validators.length === 0) return { ok: true, errors: [], warnings: [] };
+  const jsonataInput = options.jsonataValueMode === "root" ? value : { data: value };
+  const errors: DeclarativeValidationIssue[] = [];
+  const warnings: DeclarativeValidationIssue[] = [];
+  const pushIssue = (validator: DeclarativeValidator, detail: string) => {
+    const issue = {
+      detail,
+      ...(typeof validator.code === "string" ? { code: validator.code } : {}),
+      ...(typeof validator.node === "string" ? { node: validator.node } : {}),
+    };
+    (validator.level === "warning" ? warnings : errors).push(issue);
+  };
   for (const validator of validators) {
     if (validator.kind === "jsonata") {
       let ok = false;
       try {
-        ok = evalSyncJsonata(validator.expr, root) === true;
+        ok = evalSyncJsonata(validator.expr, jsonataInput, options.bindings ?? {}) === true;
       } catch {
         ok = false;
       }
-      if (!ok) errors.push(validator.message);
+      if (!ok) pushIssue(validator, validator.message);
       continue;
     }
 
     if (validator.kind === "typedef") {
       if (!matchesType(validator.type, value)) {
-        errors.push(validator.message ? `${validator.message}: expected ${typeLabel(validator.type)}` : `expected ${typeLabel(validator.type)}`);
+        pushIssue(validator, validator.message ? `${validator.message}: expected ${typeLabel(validator.type)}` : `expected ${typeLabel(validator.type)}`);
       }
       continue;
     }
@@ -208,13 +241,13 @@ export function runDeclarativeValidators(
 
     const details = ajvErrorDetails(validate.errors);
     if (details.length === 0) {
-      errors.push(validator.message);
+      pushIssue(validator, validator.message);
       continue;
     }
 
     for (const detail of details) {
-      errors.push(validator.message ? `${validator.message}: ${detail}` : detail);
+      pushIssue(validator, validator.message ? `${validator.message}: ${detail}` : detail);
     }
   }
-  return errors;
+  return { ok: errors.length === 0, errors, warnings };
 }

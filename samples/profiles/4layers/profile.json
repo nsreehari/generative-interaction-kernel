@@ -144,7 +144,7 @@
           "id": "validatePresentation",
           "op": "validate",
           "layer": "presentation",
-          "checks": ["presentation-facets"],
+          "checks": ["layer-semantics"],
           "agentSafe": true,
           "description": "Validate a Presentation DSL artifact (structure + the required-facet-survives invariant)."
         },

@@ -546,6 +546,14 @@ export interface StageTrace {
   output: unknown;
 }
 
+/** A tiny adapter seam between a profile-family runtime lowering plan and a concrete runtime
+ *  representation. The family computes capabilities + options; the emitter decides how those become
+ *  actual runtime nodes/documents. */
+export interface RuntimeEmitter<TNode, TOutput, TNodeOptions = unknown> {
+  node(capability: string, id: string, options: TNodeOptions): TNode;
+  output(root: TNode): TOutput;
+}
+
 /**
  * Run a resolved profile through a registry of executors and capture every stage's input and
  * output. Each stage goes through the executor registered for its layer-kind transition, so a

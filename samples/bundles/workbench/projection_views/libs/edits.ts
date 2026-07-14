@@ -19,8 +19,8 @@ import type {
   RegionPriority,
   RegionDisclosure,
   PresentationEdits,
-} from "../../../../profiles/genui";
-import { resolveFacets } from "../../../../profiles/genui";
+} from "@gik/profile";
+import { resolveFacets } from "@gik/profile";
 
 /** The no-op edit set: defer entirely to the planner. */
 export const emptyEdits: PresentationEdits = { disabled: [], priority: {}, disclosure: {}, order: [] };

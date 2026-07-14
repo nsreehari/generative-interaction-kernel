@@ -1,0 +1,20 @@
+{
+  "name": "briefing sample profile",
+  "profileFile": "profile.json",
+  "recipeFiles": [
+    "interaction-to-runtime.recipe.json"
+  ],
+  "expectLoad": {
+    "id": "briefing",
+    "kind": "briefing-profile",
+    "stages": ["agent-interaction->runtime-doc"]
+  },
+  "runs": [
+    {
+      "name": "lowers an interaction to a runtime document",
+      "seed": { "interaction": "investigate", "subject": "incident" },
+      "ctx": { "surface": "desktop" },
+      "expect": { "rootCapability": "ui:board", "minChildren": 1 }
+    }
+  ]
+}

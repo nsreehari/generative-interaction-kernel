@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import type { Json } from "../../../kernel/src/index";
 import { StepOrchestrator } from "../../step-orchestrator/src/step-orchestrator";
 import { createProfileAuthoringRegistry, summarizeProfileArtifacts } from "../src/profile-authoring";
-import { liveCardsProfileArtifact, liveCardsRecipeArtifacts } from "../../../samples/profiles/registry";
+import { liveCardsProfileArtifact, liveCardsRecipeArtifacts } from "../../../samples/catalog/profile-catalog";
 
 function asJson(value: unknown): Json {
   return JSON.parse(JSON.stringify(value)) as Json;

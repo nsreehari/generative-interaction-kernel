@@ -1,10 +1,19 @@
 import React from "react";
 import { Handle } from "@xyflow/react";
 import { InfiniteCanvas, type InfiniteCanvasNodeDescriptor } from "@gik/component-infinite-canvas";
-import { loadProfileBundle, parseProfileBundleJson, type StageTrace } from "@gik/profile";
+import {
+  loadProfileBundle,
+  parseProfileBundleJson,
+  resolveProfileTemplate,
+  resolveProfileTemplateResource,
+  traceProfile,
+  type InteractionKind,
+  type InteractionSpec,
+  type LayerRecipe,
+  type PresentationContext,
+  type StageTrace,
+} from "@gik/profile";
 import { readProps, type ProjectionView, type ProjectionViewProps } from "@gik/react";
-import { traceProfile, type InteractionKind, type InteractionSpec, type LayerRecipe, type PresentationContext } from "../../../profiles/genui";
-import { resolveProfileTemplate, resolveProfileTemplateResource } from "../../../profiles/template-resolver";
 
 function ProfilePipelineCanvas({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);

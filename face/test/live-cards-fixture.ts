@@ -4,9 +4,14 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { loadProfile, type ProfileArtifact, type RecipeArtifactBase } from "@gik/profile";
-import type { LayerRecipe } from "../../samples/profiles/genui";
-import { resolveProfileTemplate, resolveProfileTemplateResource } from "../../samples/profiles/template-resolver";
+import {
+  loadProfile,
+  resolveProfileTemplate,
+  resolveProfileTemplateResource,
+  type LayerRecipe,
+  type ProfileArtifact,
+  type RecipeArtifactBase,
+} from "@gik/profile";
 
 const fx = (name: string) =>
   JSON.parse(

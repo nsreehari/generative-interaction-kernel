@@ -7,34 +7,50 @@ import {
   type Lowering,
   type NodeOptions,
 } from "../../../kernel/src/index";
-import type { InteractionSpec, InteractionTaxonomy, WorkflowSpec } from "./interaction-model";
-import {
-  type LayerRecipe,
-  type PresentationRuntimeFacts,
-  type ResolvedLayerProfile,
-  type RuntimeNodeRecipeFields,
-  isWorkflowToInteractionRecipe,
-  planningRecipeOf,
-  recipeExecutor,
-  runtimeRecipeOf,
-  presentationRuntimeProgramEmit,
-  presentationRuntimeProgramRules,
-  workflowProgramEmit,
-} from "./layer-recipes";
-import { planPresentationWithRecipe, type PresentationSpec } from "./view-planner";
 import {
   matchesFacts,
   resolveTemplatedValue,
   type LayerContext,
-  type RecipeBase,
+  type RuntimeEmitter,
   type StageExecutor,
   type StageTrace,
-} from "../../../packages/profile/src/profile-core";
+} from "./profile-core";
+import {
+  planPresentationWithRecipe,
+  planningRecipeOf,
+  presentationRuntimeProgramEmit,
+  presentationRuntimeProgramRules,
+  recipeExecutor,
+  runtimeRecipeOf,
+  workflowProgramEmit,
+  isWorkflowToInteractionRecipe,
+  type InteractionSpec,
+  type InteractionTaxonomy,
+  type LayerRecipe,
+  type PresentationRuntimeFacts,
+  type PresentationSpec,
+  type ResolvedLayerProfile,
+  type RuntimeNodeRecipeFields,
+  type WorkflowSpec,
+} from "./genui";
 
 export const EXECUTOR_PLAN_PRESENTATION = "plan-presentation";
 export const EXECUTOR_LOWER_DOCUMENT = "lower-document";
 export const EXECUTOR_COMPOSE_DOCUMENT = "compose-document";
 export const EXECUTOR_SELECT_INTERACTION = "select-interaction";
+
+type RuntimeEmitterNodeOptions<TNode> = {
+  props?: Record<string, Json>;
+  read?: Record<string, string>;
+  readExpr?: Record<string, string>;
+  on?: Record<string, Action[]>;
+  children?: TNode[];
+};
+
+const kernelRuntimeEmitter: RuntimeEmitter<DocNode, DocumentPayload, NodeOptions> = {
+  node,
+  output: (root) => ({ root }),
+};
 
 export function lowerWorkflow(recipe: LayerRecipe): (workflow: WorkflowSpec) => InteractionSpec {
   if (!isWorkflowToInteractionRecipe(recipe)) {
@@ -96,11 +112,11 @@ function buildContainerTokens(presentation: PresentationSpec): Record<string, un
   };
 }
 
-function runtimeFieldsToNodeOptions(
+function runtimeFieldsToNodeOptions<TNode>(
   source: RuntimeNodeRecipeFields | undefined,
   tokens: Record<string, unknown>
-): NodeOptions {
-  const options: NodeOptions = {};
+): RuntimeEmitterNodeOptions<TNode> {
+  const options: RuntimeEmitterNodeOptions<TNode> = {};
   if (!source) return options;
   if (source.props) options.props = resolveTemplatedValue(source.props, tokens) as Record<string, Json>;
   if (source.read) options.read = resolveTemplatedValue(source.read, tokens) as Record<string, string>;
@@ -109,12 +125,15 @@ function runtimeFieldsToNodeOptions(
   return options;
 }
 
-export function lowerPresentation(recipe: LayerRecipe): Lowering<PresentationSpec> {
+export function lowerPresentationWithRuntimeEmitter<TNode, TOutput>(
+  recipe: LayerRecipe,
+  emitter: RuntimeEmitter<TNode, TOutput, RuntimeEmitterNodeOptions<TNode>>
+): (presentation: PresentationSpec) => TOutput {
   const runtimeRecipe = runtimeRecipeOf(recipe);
   if (!runtimeRecipe) {
     throw new Error(`Recipe '${recipe.id}' does not carry runtime lowering data`);
   }
-  return (presentation: PresentationSpec): DocumentPayload => {
+  return (presentation: PresentationSpec): TOutput => {
     const source = presentation.source;
     const containerFacts: PresentationRuntimeFacts = {
       interaction: source.interaction,
@@ -123,7 +142,7 @@ export function lowerPresentation(recipe: LayerRecipe): Lowering<PresentationSpe
       arrangement: presentation.arrangement,
     };
     const container = presentationRuntimeProgramEmit(runtimeRecipe, "container", containerFacts);
-    const children: DocNode[] = presentation.regions.map((region) => {
+    const children: TNode[] = presentation.regions.map((region) => {
       const matchFacts: PresentationRuntimeFacts = {
         ...containerFacts,
         region: region.name,
@@ -139,14 +158,14 @@ export function lowerPresentation(recipe: LayerRecipe): Lowering<PresentationSpe
         .find((rule) => matchesFacts(rule.match, matchFacts))?.emit;
       const capability = region.capability ?? matched?.capability ?? fallback?.capability ?? region.name;
       const tokens = buildRegionTokens(presentation, region);
-      const fallbackOptions = runtimeFieldsToNodeOptions(fallback, tokens);
-      const matchedOptions = runtimeFieldsToNodeOptions(matched, tokens);
+      const fallbackOptions = runtimeFieldsToNodeOptions<TNode>(fallback, tokens);
+      const matchedOptions = runtimeFieldsToNodeOptions<TNode>(matched, tokens);
       const props: Record<string, Json> = {
         ...((fallbackOptions.props ?? {}) as Record<string, Json>),
         ...((matchedOptions.props ?? {}) as Record<string, Json>),
         ...(region.props ?? {}),
       };
-      const options: NodeOptions = {
+      const options: RuntimeEmitterNodeOptions<TNode> = {
         ...fallbackOptions,
         ...matchedOptions,
         props,
@@ -169,15 +188,19 @@ export function lowerPresentation(recipe: LayerRecipe): Lowering<PresentationSpe
           ...(resolveTemplatedValue(region.on, tokens) as Record<string, Action[]>),
         };
       }
-      return node(capability, `${region.name}-region`, options);
+      return emitter.node(capability, `${region.name}-region`, options);
     });
-    return {
-      root: node(container?.capability ?? source.interaction, source.interaction, {
-        ...runtimeFieldsToNodeOptions(container, buildContainerTokens(presentation)),
-        children,
-      }),
-    };
+
+    const root = emitter.node(container?.capability ?? source.interaction, source.interaction, {
+      ...runtimeFieldsToNodeOptions<TNode>(container, buildContainerTokens(presentation)),
+      children,
+    });
+    return emitter.output(root);
   };
+}
+
+export function lowerPresentation(recipe: LayerRecipe): Lowering<PresentationSpec> {
+  return lowerPresentationWithRuntimeEmitter(recipe, kernelRuntimeEmitter);
 }
 
 export function defaultStageExecutors(): Record<string, StageExecutor<LayerRecipe>> {
