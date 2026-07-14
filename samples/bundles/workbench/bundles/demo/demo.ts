@@ -6,7 +6,7 @@
 // (the role->seed-path mapping) stays code.
 
 import { InMemoryStateModel, type Enveloped, type ManifestPayload } from "@gik/kernel";
-import { resolveFacets, type InteractionSpec } from "@gik/profile-genui";
+import { resolveFacets, type InteractionSpec, type InteractionTaxonomy } from "../../../../profiles/genui";
 import demoManifestJson from "./manifest.json";
 import demoSeedJson from "./seed.json";
 
@@ -27,9 +27,9 @@ const COLLECTION_ROLES = new Set(["collection", "detail", "timeline", "compariso
  * Point each facet at a seed data path by role, so switching interaction kind still shows
  * something live in the playground. Explicit `spec.data` (once editing exists) wins.
  */
-export function demoDataFor(spec: InteractionSpec): Record<string, string> {
+export function demoDataFor(spec: InteractionSpec, taxonomy: InteractionTaxonomy): Record<string, string> {
   const data: Record<string, string> = {};
-  for (const facet of resolveFacets(spec)) {
+  for (const facet of resolveFacets(spec, taxonomy)) {
     data[facet.name] = COLLECTION_ROLES.has(facet.role)
       ? "fetched_sources.orders"
       : "computed_values.total";

@@ -22,8 +22,8 @@
       "@gik/agentface": [
         "../../packages/agentface/src/index.ts"
       ],
-      "@gik/profile-genui": [
-        "../../packages/profile-genui/src/index.ts"
+      "@gik/profile": [
+        "../../packages/profile/src/index.ts"
       ],
       "@gik/react": [
         "../../packages/react/src/index.ts"

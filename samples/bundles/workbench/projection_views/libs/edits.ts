@@ -11,15 +11,16 @@
 // leaking through the shared interaction runtime package. The `PresentationEdits` type they operate on is the
 // platform's sanctioned override channel and stays in the interaction package.
 
-import { resolveFacets } from "@gik/profile-genui";
 import type {
   InteractionSpec,
+  InteractionTaxonomy,
   PresentationSpec,
   PresentationRegion,
   RegionPriority,
   RegionDisclosure,
   PresentationEdits,
-} from "@gik/profile-genui";
+} from "../../../../profiles/genui";
+import { resolveFacets } from "../../../../profiles/genui";
 
 /** The no-op edit set: defer entirely to the planner. */
 export const emptyEdits: PresentationEdits = { disabled: [], priority: {}, disclosure: {}, order: [] };
@@ -29,8 +30,12 @@ export const emptyEdits: PresentationEdits = { disabled: [], priority: {}, discl
  * it hides disabled (non-required) regions, overrides priority/disclosure only where the user set
  * them, and pins the requested lead order — leaving everything else exactly as the planner decided.
  */
-export function applyPresentationEdits(spec: PresentationSpec, edits: PresentationEdits): PresentationSpec {
-  const required = new Set(resolveFacets(spec.source).filter((f) => f.required).map((f) => f.name));
+export function applyPresentationEdits(
+  spec: PresentationSpec,
+  edits: PresentationEdits,
+  taxonomy: InteractionTaxonomy
+): PresentationSpec {
+  const required = new Set(resolveFacets(spec.source, taxonomy).filter((f) => f.required).map((f) => f.name));
   const disabled = new Set(edits.disabled);
 
   let regions: PresentationRegion[] = spec.regions
@@ -54,8 +59,11 @@ export function applyPresentationEdits(spec: PresentationSpec, edits: Presentati
 }
 
 /** The facet descriptors an authoring "facet list" surface renders, for the current interaction. */
-export function facetsAsItems(spec: InteractionSpec): { name: string; role: string; required: boolean }[] {
-  return resolveFacets(spec).map((f) => ({ name: f.name, role: f.role, required: f.required }));
+export function facetsAsItems(
+  spec: InteractionSpec,
+  taxonomy: InteractionTaxonomy
+): { name: string; role: string; required: boolean }[] {
+  return resolveFacets(spec, taxonomy).map((f) => ({ name: f.name, role: f.role, required: f.required }));
 }
 
 /** One row of the editing surface: a facet plus its current enabled/priority/disclosure placement. */
@@ -75,8 +83,12 @@ export type EditRegion = {
  * back to any override or the neutral default. The list order drives up/down reorder controls. Pure:
  * derived entirely from the presentation (its `source` interaction + regions) and the edits.
  */
-export function editableRegions(presentation: PresentationSpec, edits: PresentationEdits): EditRegion[] {
-  const facets = resolveFacets(presentation.source);
+export function editableRegions(
+  presentation: PresentationSpec,
+  edits: PresentationEdits,
+  taxonomy: InteractionTaxonomy
+): EditRegion[] {
+  const facets = resolveFacets(presentation.source, taxonomy);
   const present = new Map(presentation.regions.map((r) => [r.name, r]));
   const disabled = new Set(edits.disabled);
   const order = [

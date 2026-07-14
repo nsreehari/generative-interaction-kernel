@@ -30,17 +30,15 @@ Two things, and they hold together:
    would need I/O or async is a design error.
 
 2. **Exactly one vendored JSONata engine version is canonical (currently v2.2.1). Never vendor a
-   second, different version to obtain synchronous evaluation.** If a synchronous evaluation mode is
-   ever genuinely required, it must be a sync **port of the same canonical version** — held to the
-   same shared conformance corpus ([ADR-0015](ADR-0015-conformance-matrix.md)) — not an unrelated
-   older build. Until such a need is real, no sync engine is added: the platform's current
-   compile-time transforms (matcher/equality and `{{token}}` templating in the lowering primitives)
-   are plain synchronous JavaScript and do not call JSONata at all.
+  second, different version to obtain synchronous evaluation.** If a synchronous evaluation mode is
+  required, it must be a sync **port of the same canonical version** — held to the same shared
+  conformance corpus ([ADR-0015](ADR-0015-conformance-matrix.md)) — not an unrelated older build.
+  That path is now implemented in the TypeScript kernel as `kernel/src/vendor/jsonata-sync.cjs`, a
+  bounded sync port of the same canonical engine used by `SyncJsonataExpressionProvider`.
 
-The purity assumption (1) is what makes a future sync port sound: an expression that never performs
-I/O and never suspends has a value available in the same tick, so a sync port of the canonical engine
-would produce the identical result its async counterpart resolves to — only the calling convention
-differs.
+The purity assumption (1) is what makes the sync port sound: an expression that never performs I/O
+and never suspends has a value available in the same tick, so a sync port of the canonical engine can
+produce the identical result its async counterpart resolves to — only the calling convention differs.
 
 ## Alternatives considered
 
@@ -64,7 +62,9 @@ differs.
 - One vendored engine version, one AST, one function library — no sync/async behavioral drift.
 - The purity assumption is now a contract: reviewers reject any expression that reaches for I/O or
   async; such logic must be modeled as an orchestrator effect.
-- Lowering and pure predicate/template code stay synchronous by using plain JavaScript primitives (the
-  deduplicated matcher/renderer in the profile core), not by introducing an expression engine.
-- If a compile-time position ever truly needs JSONata, the path is fixed in advance: port the *same*
-  canonical version to sync and gate it on the shared corpus — never vendor a different version.
+- The kernel now carries both async and sync calling conventions over the same canonical JSONata
+  version: `jsonata.cjs` for promise-based evaluation and `jsonata-sync.cjs` for synchronous
+  evaluation surfaces.
+- The sync port must stay coupled to the canonical engine refresh path and must fail loudly if a
+  Promise-returning branch is reached; that preserves the purity boundary rather than silently
+  widening it.

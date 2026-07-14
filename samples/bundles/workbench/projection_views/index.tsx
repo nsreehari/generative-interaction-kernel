@@ -394,8 +394,10 @@ function GuestSurface({ node, emit }: ProjectionViewProps) {
   useEffect(() => {
     if (sig === lastSig.current) return;
     lastSig.current = sig;
-    setGuest(buildSession(inputs.spec, inputs.ctx, selectedProfile(inputs.profileId), inputs.edits));
-    emitRef.current("facetsComputed", { facets: facetsAsItems(inputs.spec) });
+    const profile = selectedProfile(inputs.profileId);
+    const taxonomy = profile.resources.taxonomy as unknown as import("../../../profiles/genui").InteractionTaxonomy;
+    setGuest(buildSession(inputs.spec, inputs.ctx, profile, inputs.edits));
+    emitRef.current("facetsComputed", { facets: facetsAsItems(inputs.spec, taxonomy) });
     // inputs/sig are recomputed each render; sig is the stable dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sig]);
@@ -442,7 +444,8 @@ function GuestSurface({ node, emit }: ProjectionViewProps) {
     void c.start().then(() => {
       pushInspect();
       emitRef.current("guestChanged", { nodeIds: nodeIdsAsOptions(c.getTree()) });
-      emitRef.current("regionsComputed", { regions: editableRegions(guest.presentation, readEdits(state)) });
+      const taxonomy = selectedProfile(readInputs(state).profileId).resources.taxonomy as unknown as import("../../../profiles/genui").InteractionTaxonomy;
+      emitRef.current("regionsComputed", { regions: editableRegions(guest.presentation, readEdits(state), taxonomy) });
     });
     return unsubscribe;
     // eslint-disable-next-line react-hooks/exhaustive-deps

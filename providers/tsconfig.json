@@ -5,8 +5,7 @@
     "moduleResolution": "Bundler",
     "baseUrl": "..",
     "paths": {
-      "@gik/profile": ["packages/profile/src/index.ts"],
-      "@gik/profile-genui": ["packages/profile-genui/src/index.ts"]
+      "@gik/profile": ["packages/profile/src/index.ts"]
     },
     "strict": true,
     "skipLibCheck": true,

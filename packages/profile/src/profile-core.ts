@@ -15,10 +15,13 @@ export type LayerContext = Record<string, unknown>;
 export interface LayerDefinition {
   id: string;
   kind: string;
+  /** Optional structural schema ref for this layer's payload/artifact. Profiles declare it per
+   *  layer (for example `genui/presentation.schema.json` on a presentation layer); generic hosts
+   *  can use the ref to pick the appropriate family validator without hardcoding layer ids. */
   schema?: string;
   description?: string;
   /** Optional declarative authoring surface for THIS layer's input: a `ui:form` FormSchema
-   *  (`{ properties, required?, validators? }`, data only) describing the fields a human fills to
+    *  (`{ properties, required?, validators? }`, data only) describing the fields a human fills to
    *  produce a value for the stage that leaves this layer. The core never interprets it; a host
    *  renders it into a form. Distinct from `kind` (which binds the layer to its transform code):
    *  this is the human authoring surface, `kind` is the engine routing key. */
@@ -72,12 +75,14 @@ export interface AuthoringToolDecl {
   /** the layer this tool operates on (validate/describe). */
   layer?: string;
   description?: string;
-  /** explicit input schema; a per-op default is used when omitted. */
+  /** explicit inline `ui:form` schema; a per-op default is used when omitted. */
   inputSchema?: Record<string, Json>;
   /** named semantic checks (registry.checks) run after structural schema validation. */
   checks?: string[];
   /** named projector (registry.projectors) for op:"project". */
   projector?: string;
+  /** declarative projector expression evaluated over the tool args for op:"project". */
+  projectExpression?: string;
   /** named describe hook (registry.describe); defaults to the layer id. */
   describe?: string;
   /** safe to expose to agents (drives the AgentFace projection). */
@@ -95,6 +100,9 @@ export interface AuthoringReport {
   warnings: { code: string; node?: string; detail: string }[];
 }
 
+/** A structural validator keyed by `LayerDefinition.schema`. */
+export type StructuralValidator = (args: Record<string, Json>) => AuthoringReport;
+
 /** The profile-FAMILY code seam a declarative authoring surface binds to: the small, named,
  *  irreducible functions (structural validators, semantic checks, projectors, vocabulary
  *  describers) that cannot be pure JSON. Same shape as the lowering stage executors. A face engine
@@ -102,13 +110,23 @@ export interface AuthoringReport {
  *  contract knows nothing about any specific profile family. */
 export interface AuthoringRegistry {
   /** structural validators keyed by `LayerDefinition.schema` (the schema ref). */
-  validators?: Record<string, (args: Record<string, Json>) => AuthoringReport>;
+  validators?: Record<string, StructuralValidator>;
   /** vocabulary describers keyed by `decl.describe ?? decl.layer`. */
   describe?: Record<string, () => Json>;
   /** named semantic checks keyed by name; return report parts to merge. */
   checks?: Record<string, (args: Record<string, Json>) => Partial<AuthoringReport>>;
   /** named projectors keyed by name for `op:"project"`. */
   projectors?: Record<string, (args: Record<string, Json>) => Json>;
+}
+
+/** Resolve the structural validator declared by a layer's `schema` ref, if any. The profile core
+ *  owns the mapping from a layer declaration to a validator key; hosts only supply the registry. */
+export function structuralValidatorForLayer(
+  layer: LayerDefinition | undefined,
+  registry?: Pick<AuthoringRegistry, "validators">
+): StructuralValidator | undefined {
+  if (!layer?.schema) return undefined;
+  return registry?.validators?.[layer.schema];
 }
 
 export interface ProfileArtifact {
@@ -139,6 +157,7 @@ export interface RecipeBase {
   id: string;
   from: string;
   to: string;
+  metadata?: Record<string, Json>;
 }
 
 export interface RecipeArtifactBase<TRecipe extends RecipeBase = RecipeBase> {

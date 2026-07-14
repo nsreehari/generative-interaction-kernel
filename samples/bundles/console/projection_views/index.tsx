@@ -1,15 +1,9 @@
 import React from "react";
 import { Handle } from "@xyflow/react";
 import { InfiniteCanvas, type InfiniteCanvasNodeDescriptor } from "@gik/component-infinite-canvas";
-import { loadProfileBundle, parseProfileBundleJson } from "@gik/profile";
+import { loadProfileBundle, parseProfileBundleJson, type StageTrace } from "@gik/profile";
 import { readProps, type ProjectionView, type ProjectionViewProps } from "@gik/react";
-import {
-  traceProfile,
-  type InteractionKind,
-  type InteractionSpec,
-  type PresentationContext,
-  type ProfileStageTrace,
-} from "@gik/profile-genui";
+import { traceProfile, type InteractionKind, type InteractionSpec, type LayerRecipe, type PresentationContext } from "../../../profiles/genui";
 import { resolveProfileTemplate, resolveProfileTemplateResource } from "../../../profiles/template-resolver";
 
 function ProfilePipelineCanvas({ node, emit }: ProjectionViewProps) {
@@ -134,8 +128,8 @@ function ProfilePipelineCanvas({ node, emit }: ProjectionViewProps) {
 // Mirrors the store's proven load path (parse -> loadProfileBundle) so the leaves can run the SAME
 // engine (traceProfile) the store uses, but live and driven by in-component selections.
 function reconstructProfile(bundleText: string) {
-  return loadProfileBundle(
-    parseProfileBundleJson(bundleText),
+  return loadProfileBundle<LayerRecipe>(
+    parseProfileBundleJson<LayerRecipe>(bundleText),
     resolveProfileTemplateResource,
     resolveProfileTemplate
   );
@@ -157,7 +151,7 @@ function PipelineRunner({ node }: ProjectionViewProps) {
   const data = p.obj<Record<string, string>>("data", {});
 
   const result = React.useMemo(() => {
-    if (!bundleText.trim()) return { stages: [] as ProfileStageTrace[], spec: null as InteractionSpec | null, error: "" };
+    if (!bundleText.trim()) return { stages: [] as StageTrace[], spec: null as InteractionSpec | null, error: "" };
     try {
       const profile = reconstructProfile(bundleText);
       const spec: InteractionSpec = {
@@ -168,7 +162,7 @@ function PipelineRunner({ node }: ProjectionViewProps) {
       const stages = traceProfile(profile, spec, { surface: String(surface) });
       return { stages, spec, error: "" };
     } catch (err) {
-      return { stages: [] as ProfileStageTrace[], spec: null as InteractionSpec | null, error: err instanceof Error ? err.message : String(err) };
+      return { stages: [] as StageTrace[], spec: null as InteractionSpec | null, error: err instanceof Error ? err.message : String(err) };
     }
   }, [bundleText, interaction, subject, surface, JSON.stringify(data)]);
 

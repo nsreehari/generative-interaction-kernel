@@ -5,6 +5,7 @@
     "id": "live-cards.presentation-to-runtime",
     "from": "presentation",
     "to": "runtime-document",
+    "metadata": { "executor": "lower-document" },
     "program": [
       {
         "slot": "container",

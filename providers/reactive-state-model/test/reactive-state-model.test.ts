@@ -5,12 +5,11 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
 
-import { JsonataExpressionProvider } from "../../../kernel/src/index";
+import { evalAsyncJsonata } from "../../../shared/libs/evaluators";
 import { ReactiveStateModel } from "../src/reactive-state-model";
 
 function jsonataEvaluate() {
-  const provider = new JsonataExpressionProvider();
-  return (expr: string, scope: Record<string, unknown>) => provider.eval(expr, scope);
+  return (expr: string, scope: Record<string, unknown>) => evalAsyncJsonata(expr, scope as never);
 }
 
 test("a base-cell apply cascades to a derived cell", async () => {

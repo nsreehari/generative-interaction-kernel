@@ -17,16 +17,22 @@ import {
   type DocumentPayload,
   type TraceEvent,
 } from "@gik/kernel";
-import { recipeForKinds, type ResolvedProfile } from "@gik/profile-genui";
-import { GenUIController } from "@gik/react";
 import {
+  type ResolvedProfile,
+} from "@gik/profile";
+import {
+  planningRecipeOf,
+  runtimeRecipeOf,
   lowerPresentation,
   planPresentationWithRecipe,
   type InteractionSpec,
+  type InteractionTaxonomy,
+  type LayerRecipe,
   type PresentationContext,
   type PresentationEdits,
   type PresentationSpec,
-} from "@gik/profile-genui";
+} from "../../profiles/genui";
+import { GenUIController } from "@gik/react";
 import { applyPresentationEdits, emptyEdits } from "./projection_views/libs/edits";
 import type { ProfileIdentity } from "./projection_views/libs/authoring";
 import { DEMO_MANIFEST, demoDataFor, seedState } from "./bundles/demo/demo";
@@ -52,17 +58,21 @@ export interface Session {
 export function buildSession(
   base: InteractionSpec,
   ctx: PresentationContext,
-  profile: ResolvedProfile,
+  profile: ResolvedProfile<LayerRecipe>,
   edits: PresentationEdits = emptyEdits
 ): Session {
+  const taxonomy = profile.resources.taxonomy as unknown as InteractionTaxonomy;
   // fill demo data by facet role unless the spec already carries an explicit data map.
-  const spec: InteractionSpec = { ...base, data: base.data ?? demoDataFor(base) };
-
-  const planning = recipeForKinds(profile, "interaction", "presentation");
-  const lowering = recipeForKinds(profile, "presentation", "runtime-document");
+  const spec: InteractionSpec = { ...base, data: base.data ?? demoDataFor(base, taxonomy) };
+  const planning = profile.stages.map((stage) => planningRecipeOf(stage.recipe)).find(Boolean);
+  const lowering = [...profile.stages].reverse().map((stage) => runtimeRecipeOf(stage.recipe)).find(Boolean);
+  if (!planning || !lowering) {
+    throw new Error(`Profile '${profile.artifact.payload.id}' must expose planning and runtime lowering recipe data`);
+  }
   const presentation = applyPresentationEdits(
-    planPresentationWithRecipe(spec, ctx, planning),
-    edits
+    planPresentationWithRecipe(spec, ctx, planning, taxonomy),
+    edits,
+    taxonomy
   );
   const message = lowerToDocument(lowerPresentation(lowering), presentation);
   const document = unwrap(message);

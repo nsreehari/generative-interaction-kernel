@@ -14,6 +14,8 @@ re-implementation follow the same reference.
 - **License:** MIT (see `jsonata.LICENSE`, and the header inside `jsonata.cjs`).
 - **Shape:** a UMD/CommonJS bundle exposing `jsonata(expr)` → `{ evaluate(input, bindings?) }`,
   where `evaluate` returns a `Promise` (v2 semantics), so `JsonataExpressionProvider.eval` awaits it.
+- **Sync port:** `jsonata-sync.cjs` is a repo-owned generated sync port of the same canonical engine,
+  used only by `SyncJsonataExpressionProvider` for sync-safe evaluation surfaces.
 
 Do not hand-edit the bundle. To refresh it, re-copy `node_modules/jsonata/jsonata.js` at the pinned
 version and update this note.

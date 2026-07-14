@@ -508,7 +508,7 @@ per-region hierarchy and progressive disclosure. We closed that gap.
   and mobile but folds its secondary/tertiary regions on mobile — attention management and progressive
   disclosure, not just layout selection. These decisions ride into the UI DSL as node props, so a
   renderer can honor them.
-- **The DSL is validatable.** `schemas/presentation.schema.json` (draft-07) +
+- **The DSL is validatable.** `profile-templates/genui/schemas/presentation.schema.json` (draft-07) +
   `validatePresentationSpec` / `isValidPresentationSpec` make a planner's output structurally
   checkable — a buggy planner is caught at this boundary, not at render time.
 

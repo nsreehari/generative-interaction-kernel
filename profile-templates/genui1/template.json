@@ -1,0 +1,16 @@
+{
+  "gik": "0.1",
+  "type": "profile-template",
+  "payload": {
+    "id": "genui1",
+    "description": "Standard GenUI v1 profile template assets.",
+    "files": {
+      "taxonomy": "taxonomy.json"
+    },
+    "defaultResources": {
+      "taxonomy": {
+        "$ref": "profile-template:genui1/taxonomy.json"
+      }
+    }
+  }
+}

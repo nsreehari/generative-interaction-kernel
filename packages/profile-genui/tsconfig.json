@@ -1,9 +1,0 @@
-{
-  "extends": "../../kernel/tsconfig.json",
-  "include": [
-    "src",
-    "test",
-    "../profile/src",
-    "../../kernel/src"
-  ]
-}

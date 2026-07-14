@@ -7,33 +7,31 @@
 // reducer ops before effects run) and returns store deltas — the reducer stays pure. Only genuinely
 // effectful/derived logic lives here in code; everything above it is data.
 
-import type { CapabilityDescriptor, Enveloped, Json, ManifestPayload } from "@gik/kernel";
+import type { CapabilityDescriptor, DocumentPayload, Enveloped, Json, ManifestPayload } from "@gik/kernel";
 import {
   createProfileBundle,
+  lintProfileArtifacts,
   loadProfileBundle,
   parseProfileBundleJson,
   stringifyProfileBundle,
-  validateLoweringRecipeArtifact,
   validateProfileArtifact,
   type ProfileArtifactBundle,
 } from "@gik/profile";
 import { setOp, type EffectContext, type EffectHandlerMap, type SerializableBundle } from "@gik/react";
 import {
-  type InteractionToPresentationRecipe,
-  type LayerDefinition,
   lintLoweringRecipeArtifact,
-  lintProfileArtifacts,
-  type LoweringRecipe,
-  type PresentationToRuntimeRecipe,
-} from "@gik/profile-genui";
-import {
-  compileInteraction,
+  planningRecipeOf,
+  runProfile,
+  runtimeRecipeOf,
+  traceProfile,
+  validateLoweringRecipeArtifact,
   type InteractionKind,
   type InteractionSpec,
+  type LayerDefinition,
+  type LayerRecipe,
   type PresentationContext,
-  type ProfileStageTrace,
-  traceProfile,
-} from "@gik/profile-genui";
+  type StageTrace,
+} from "../../profiles/genui";
 import { resolveProfileTemplate, resolveProfileTemplateResource } from "../../profiles/template-resolver";
 import { sampleProfileCatalog, type SampleProfileEntry } from "../../profiles/registry";
 import { demoDataFor } from "../workbench/bundles/demo/demo";
@@ -65,7 +63,7 @@ type ProfileSource = "repo" | "local";
 interface CatalogEntry extends SampleProfileEntry {
   source: ProfileSource;
   readonly: boolean;
-  bundle: ProfileArtifactBundle;
+  bundle: ProfileArtifactBundle<LayerRecipe>;
 }
 
 interface CatalogSnapshot {
@@ -328,7 +326,8 @@ function readPreviewInput(ctx: EffectContext): PreviewInput {
 // straight from the selected profile's interaction layer is what makes the form data-driven: a
 // profile with 2 fields or 3 fields just renders, no console-side hardcoding.
 function interactionInputFormFor(entry: CatalogEntry): Record<string, unknown> {
-  const layer = entry.artifact.payload.layers.find((candidate) => candidate.kind === "interaction");
+  const sourceLayerId = entry.profile.stages[0]?.fromLayer.id ?? entry.artifact.payload.layers[0]?.id;
+  const layer = entry.profile.layersById[sourceLayerId ?? ""];
   const input = layer?.input;
   return input && typeof input === "object" && !Array.isArray(input) ? (input as Record<string, unknown>) : { properties: {} };
 }
@@ -367,7 +366,7 @@ function profileStorage(): Storage | null {
   return globalThis.localStorage ?? null;
 }
 
-function readStoredBundleMap(): { bundles: Record<string, ProfileArtifactBundle>; errors: string[] } {
+function readStoredBundleMap(): { bundles: Record<string, ProfileArtifactBundle<LayerRecipe>>; errors: string[] } {
   const storage = profileStorage();
   if (!storage) return { bundles: {}, errors: [] };
 
@@ -383,11 +382,11 @@ function readStoredBundleMap(): { bundles: Record<string, ProfileArtifactBundle>
       };
     }
 
-    const bundles: Record<string, ProfileArtifactBundle> = {};
+    const bundles: Record<string, ProfileArtifactBundle<LayerRecipe>> = {};
     const errors: string[] = [];
     for (const [id, value] of Object.entries(parsed as Record<string, unknown>)) {
       try {
-        const bundle = parseProfileBundleJson(JSON.stringify(value));
+        const bundle = parseProfileBundleJson<LayerRecipe>(JSON.stringify(value));
         bundles[id] = normalizeBundleId(bundle, id);
       } catch (error) {
         errors.push(`Skipped stored profile '${id}': ${error instanceof Error ? error.message : String(error)}`);
@@ -404,7 +403,7 @@ function readStoredBundleMap(): { bundles: Record<string, ProfileArtifactBundle>
   }
 }
 
-function writeStoredBundleMap(bundles: Record<string, ProfileArtifactBundle>): void {
+function writeStoredBundleMap(bundles: Record<string, ProfileArtifactBundle<LayerRecipe>>): void {
   const storage = profileStorage();
   if (!storage) {
     throw new Error("Browser localStorage is unavailable in this host.");
@@ -412,7 +411,7 @@ function writeStoredBundleMap(bundles: Record<string, ProfileArtifactBundle>): v
   storage.setItem(LOCAL_PROFILE_STORAGE_KEY, JSON.stringify(bundles));
 }
 
-function normalizeBundleId(bundle: ProfileArtifactBundle, id: string): ProfileArtifactBundle {
+function normalizeBundleId(bundle: ProfileArtifactBundle<LayerRecipe>, id: string): ProfileArtifactBundle<LayerRecipe> {
   if (bundle.profileArtifact.payload.id === id) return bundle;
   return createProfileBundle(
     {
@@ -426,11 +425,11 @@ function normalizeBundleId(bundle: ProfileArtifactBundle, id: string): ProfileAr
   );
 }
 
-function asCatalogEntry(bundle: ProfileArtifactBundle, source: ProfileSource, readonly: boolean): CatalogEntry {
+function asCatalogEntry(bundle: ProfileArtifactBundle<LayerRecipe>, source: ProfileSource, readonly: boolean): CatalogEntry {
   return {
     artifact: bundle.profileArtifact,
     recipeArtifacts: bundle.recipeArtifacts,
-    profile: loadProfileBundle(bundle, resolveProfileTemplateResource, resolveProfileTemplate),
+    profile: loadProfileBundle<LayerRecipe>(bundle, resolveProfileTemplateResource, resolveProfileTemplate),
     source,
     readonly,
     bundle,
@@ -529,13 +528,14 @@ function ruleMatchSummary(match: Record<string, unknown>): string {
 // plus the human labels for the two columns. This is the one place that knows the shape of each
 // recipe kind, so the UI can render "how each region is handled" for ANY non-terminal layer without
 // gating on a specific transition.
-function regionRuleView(recipe: LoweringRecipe): {
+function regionRuleView(recipe: LayerRecipe): {
   fromLabel: string;
   toLabel: string;
   mappings: Array<{ id: string; from: string; to: string }>;
 } {
-  if (recipe.from === "interaction" && recipe.to === "presentation") {
-    const typed = recipe as InteractionToPresentationRecipe;
+  const planning = planningRecipeOf(recipe);
+  if (planning) {
+    const typed = planning;
     const regionRules = typed.program.filter((rule) => rule.slot === "presentation");
     return {
       fromLabel: "A region whose role is",
@@ -547,7 +547,8 @@ function regionRuleView(recipe: LoweringRecipe): {
       })),
     };
   }
-  const typed = recipe as PresentationToRuntimeRecipe;
+  const typed = runtimeRecipeOf(recipe);
+  if (!typed) return { fromLabel: "When", toLabel: "Does", mappings: [] };
   const regionRules = typed.program.filter((rule) => rule.slot === "region");
   const mappings = regionRules.map((rule, index) => ({
     id: `cap-${index}`,
@@ -564,7 +565,7 @@ function mappingWhen(match: Record<string, unknown> | undefined): string {
   return entries.length === 0 ? "Otherwise" : entries.map(([key, value]) => `${key} = ${String(value)}`).join(", ");
 }
 
-function recipeTypeLabel(recipe: LoweringRecipe): string {
+function recipeTypeLabel(recipe: LayerRecipe): string {
   return `${recipe.from} -> ${recipe.to}`;
 }
 
@@ -586,7 +587,7 @@ function pipelineState(entry: CatalogEntry) {
     nodes: entry.artifact.payload.layers.map((layer, index) => ({
       id: layer.id,
       label: layer.id,
-      subtitle: layerRoleLabel(layer.kind),
+      subtitle: layerRoleLabel(entry, layer.id),
       meta: layer.schema ?? `layer ${index + 1}`,
       description: layer.description ?? "",
       requires: incomingByNode.get(layer.id) ?? [],
@@ -599,7 +600,7 @@ function layerRows(entry: CatalogEntry) {
   return entry.artifact.payload.layers.map((layer) => ({
     id: layer.id,
     kind: layer.kind,
-    roleLabel: layerRoleLabel(layer.kind),
+    roleLabel: layerRoleLabel(entry, layer.id),
     schema: layer.schema ?? "",
     description: layer.description ?? "",
   }));
@@ -619,27 +620,35 @@ function resolveRecipeId(entry: CatalogEntry, recipeId?: string): string {
   return recipeId && ids.has(recipeId) ? recipeId : "";
 }
 
-const LAYER_ROLES: Record<string, string> = {
-  interaction:
-    "What the user is trying to accomplish — a domain-neutral goal pattern (investigate, compare, review…). No layout or UI is decided here yet.",
-  presentation:
-    "How that goal should appear for the current context — its regions, each with a priority and a disclosure choice, arranged by a layout template.",
-  "runtime-document":
-    "The final, validated UI document — the concrete kernel capabilities a renderer actually draws.",
-};
-
-const LAYER_ROLE_LABELS: Record<string, string> = {
-  interaction: "The user's goal",
-  presentation: "The layout plan",
-  "runtime-document": "The rendered UI",
-};
-
-function layerRole(kind: string): string {
-  return LAYER_ROLES[kind] ?? "A stage in this profile's lowering pipeline.";
+function layerPosition(entry: CatalogEntry, layerId: string): "source" | "intermediate" | "terminal" | "unknown" {
+  const order = orderedLayerIds(entry);
+  const index = order.indexOf(layerId);
+  if (index < 0) return "unknown";
+  if (index === 0) return "source";
+  if (index === order.length - 1) return "terminal";
+  return "intermediate";
 }
 
-function layerRoleLabel(kind: string): string {
-  return LAYER_ROLE_LABELS[kind] ?? "Pipeline stage";
+function layerRole(entry: CatalogEntry, layerId: string): string {
+  const position = layerPosition(entry, layerId);
+  if (position === "source") {
+    return "The external input layer where the profile starts before any lowering rules run.";
+  }
+  if (position === "intermediate") {
+    return "An internal stage in the lowering pipeline that reshapes the previous layer into a more concrete representation.";
+  }
+  if (position === "terminal") {
+    return "The final emitted layer after all lowering rules have run.";
+  }
+  return "A stage in this profile's lowering pipeline.";
+}
+
+function layerRoleLabel(entry: CatalogEntry, layerId: string): string {
+  const position = layerPosition(entry, layerId);
+  if (position === "source") return "Source layer";
+  if (position === "intermediate") return "Intermediate layer";
+  if (position === "terminal") return "Terminal layer";
+  return "Pipeline stage";
 }
 
 function recipeTagline(kind: string): string {
@@ -702,9 +711,12 @@ function layerVocabulary(entry: CatalogEntry, layerId: string) {
   const incomingRef = entry.artifact.payload.recipes.find((candidate) => candidate.to === layerId);
   const outgoing = outgoingRef ? entry.profile.recipesById[outgoingRef.id] : undefined;
   const incoming = incomingRef ? entry.profile.recipesById[incomingRef.id] : undefined;
+  const outgoingPlanning = outgoing ? planningRecipeOf(outgoing) : undefined;
+  const incomingPlanning = incoming ? planningRecipeOf(incoming) : undefined;
+  const incomingRuntime = incoming ? runtimeRecipeOf(incoming) : undefined;
 
-  if (layer.kind === "interaction" && outgoing) {
-    const rec = outgoing as InteractionToPresentationRecipe;
+  if (outgoingPlanning) {
+    const rec = outgoingPlanning;
     const templateRules = rec.program.filter((rule) => rule.slot === "template");
     const regionRules = rec.program.filter((rule) => rule.slot === "presentation");
     const interactions = distinctTerms(
@@ -719,16 +731,16 @@ function layerVocabulary(entry: CatalogEntry, layerId: string) {
     groups.push({ id: "interactions", label: "Interactions", note: "the goal patterns this layer routes on", terms: interactions });
     groups.push({ id: "roles", label: "Facet roles", note: "the semantic role a region can carry", terms: roles });
     groups.push({ id: "context", label: "Context signals", note: "situational keys that can steer the layout", terms: contextKeys });
-  } else if (layer.kind === "presentation" && incoming) {
-    const rec = incoming as InteractionToPresentationRecipe;
+  } else if (layer.kind === "presentation" && incomingPlanning) {
+    const rec = incomingPlanning;
     const templateRules = rec.program.filter((rule) => rule.slot === "template");
     const regionRules = rec.program.filter((rule) => rule.slot === "presentation");
     const layouts = distinctTerms(templateRules.map((rule) => String((rule.emit as Record<string, unknown>).template ?? "")));
     const presentations = distinctTerms(regionRules.map((rule) => String((rule.emit as Record<string, unknown>).presentation ?? "")));
     groups.push({ id: "layouts", label: "Layouts", note: "arrangements this layer can produce", terms: layouts });
     groups.push({ id: "presentations", label: "Region presentations", note: "how a region can be shown", terms: presentations });
-  } else if (layer.kind === "runtime-document" && incoming) {
-    const rec = incoming as PresentationToRuntimeRecipe;
+  } else if (incomingRuntime) {
+    const rec = incomingRuntime;
     const containerRule = rec.program.find((rule) => rule.slot === "container");
     const regionRules = rec.program.filter((rule) => rule.slot === "region");
     const capabilities = distinctTerms([
@@ -790,11 +802,7 @@ function loweringExamples(entry: CatalogEntry, layerId: string) {
   // The pipeline's only external input is an interaction goal, so sample inputs come from the very
   // first stage's rules — the same seed set for every layer. Each seed is run through the whole
   // profile; we then read the input/output of THIS layer's stage from the trace.
-  const firstStage = profile.stages[0];
-  const seedRecipe =
-    firstStage && firstStage.fromLayer.kind === "interaction"
-      ? (firstStage.recipe as InteractionToPresentationRecipe)
-      : undefined;
+  const seedRecipe = profile.stages.map((stage) => planningRecipeOf(stage.recipe)).find(Boolean);
   const interactions = seedRecipe
     ? distinctTerms(seedRecipe.program.filter((rule) => rule.slot === "template").map((rule) => String((rule.match as Record<string, unknown>).interaction ?? "")))
     : [];
@@ -812,7 +820,7 @@ function loweringExamples(entry: CatalogEntry, layerId: string) {
   for (const interaction of interactions) {
     for (const surface of EXAMPLE_SURFACES) {
       try {
-        const trace: ProfileStageTrace[] = traceProfile(
+        const trace: StageTrace[] = traceProfile(
           profile,
           { interaction: interaction as InteractionKind, subject: "incident" },
           { surface },
@@ -850,11 +858,7 @@ function loweringExamples(entry: CatalogEntry, layerId: string) {
 // The interaction goals this profile can run — the only external input to the pipeline. Exposed on
 // every layer's detail so the live compute panel can trace ANY layer from a real seed.
 function profileInteractionSeeds(entry: CatalogEntry): string[] {
-  const firstStage = entry.profile.stages[0];
-  const seedRecipe =
-    firstStage && firstStage.fromLayer.kind === "interaction"
-      ? (firstStage.recipe as InteractionToPresentationRecipe)
-      : undefined;
+  const seedRecipe = entry.profile.stages.map((stage) => planningRecipeOf(stage.recipe)).find(Boolean);
   return seedRecipe
     ? distinctTerms(seedRecipe.program.filter((rule) => rule.slot === "template").map((rule) => String((rule.match as Record<string, unknown>).interaction ?? "")))
     : [];
@@ -868,7 +872,7 @@ function layerDetailState(entry: CatalogEntry, layerId: string) {
     ...layerDetailView(layer),
     // Data-first: a layer's own `description` from the profile JSON wins; the kind-keyed sentence is
     // only a fallback for profiles that don't author one (and a generic line for unknown kinds).
-    role: layer ? (layer.description?.trim() || layerRole(layer.kind)) : "",
+    role: layer ? (layer.description?.trim() || layerRole(entry, layerId)) : "",
     stageLabel: layer ? layerStageLabel(entry, layerId) : "",
     seeds: layer ? profileInteractionSeeds(entry) : [],
     vocabulary: layer ? layerVocabulary(entry, layerId) : { groups: [] },
@@ -882,7 +886,9 @@ function recipeSourceLayerId(entry: CatalogEntry, recipeId: string): string {
   return entry.artifact.payload.recipes.find((candidate) => candidate.id === recipeId)?.from ?? defaultLayerId(entry);
 }
 
-function runtimeCapabilityRows(recipe: PresentationToRuntimeRecipe) {
+function runtimeCapabilityRows(recipe: LayerRecipe) {
+  const runtime = runtimeRecipeOf(recipe);
+  if (!runtime) return [];
   const rows: Array<{ id: string; capability: string; source: string }> = [];
   const seen = new Set<string>();
   const push = (capability: string | undefined, source: string) => {
@@ -891,8 +897,8 @@ function runtimeCapabilityRows(recipe: PresentationToRuntimeRecipe) {
     rows.push({ id: `${source}:${capability}`, capability, source });
   };
 
-  const containerRule = recipe.program.find((rule) => rule.slot === "container");
-  const regionRules = recipe.program.filter((rule) => rule.slot === "region");
+  const containerRule = runtime.program.find((rule) => rule.slot === "container");
+  const regionRules = runtime.program.filter((rule) => rule.slot === "region");
   push(containerRule?.emit.capability, "container region");
   regionRules.forEach((rule) => push(rule.emit.capability, ruleMatchSummary(rule.match as Record<string, unknown>)));
   return rows;
@@ -917,8 +923,9 @@ function recipeDetailState(entry: CatalogEntry, recipeId: string) {
     regionRuleMappings: region.mappings,
   };
 
-  if (recipe.from === "interaction" && recipe.to === "presentation") {
-    const typed = recipe as InteractionToPresentationRecipe;
+  const planning = planningRecipeOf(recipe);
+  if (planning) {
+    const typed = planning;
     const templateRules = typed.program.filter((rule) => rule.slot === "template");
     const rankRules = typed.program.filter((rule) => rule.slot === "rank");
     const priorityRules = typed.program.filter((rule) => rule.slot === "priority");
@@ -966,7 +973,27 @@ function recipeDetailState(entry: CatalogEntry, recipeId: string) {
     };
   }
 
-  const typed = recipe as PresentationToRuntimeRecipe;
+  const typed = runtimeRecipeOf(recipe);
+  if (!typed) {
+    return {
+      ...base,
+      kind: "unknown",
+      kindLabel: "Unknown recipe",
+      tagline: "",
+      purpose: "",
+      summary: "",
+      constrainedWhenText: "",
+      containerCapability: "",
+      fallbackCapability: "",
+      ruleGroups: [],
+      templates: [],
+      templateMappings: [],
+      regionMappings: [],
+      capabilityMappings: [],
+      runtimeRules: [],
+      runtimeCapabilities: [],
+    };
+  }
   const containerRule = typed.program.find((rule) => rule.slot === "container");
   const regionRules = typed.program.filter((rule) => rule.slot === "region");
   const defaultRegionRule = [...regionRules].reverse().find((rule) => Object.keys(rule.match ?? {}).length === 0);
@@ -1004,7 +1031,7 @@ function profileState(entry: CatalogEntry) {
   const artifact = entry.artifact.payload;
   const kindById = new Map(artifact.layers.map((layer) => [layer.id, layer.kind]));
   const legend = orderedLayerIds(entry)
-    .map((id) => layerRoleLabel(kindById.get(id) ?? ""))
+    .map((id) => layerRoleLabel(entry, id))
     .join("  →  ");
   return {
     id: artifact.id,
@@ -1083,12 +1110,15 @@ export function validateSampleProfile(entry: SampleProfileEntry): ValidationResu
   };
 }
 
-function previewSpec(input: PreviewInput): InteractionSpec {
+function previewSpec(
+  input: PreviewInput,
+  taxonomy: import("../../profiles/genui").InteractionTaxonomy
+): InteractionSpec {
   const base: InteractionSpec = {
     interaction: input.interaction,
     subject: input.subject.trim() || "incident",
   };
-  const data = input.data ?? demoDataFor(base);
+  const data = input.data ?? demoDataFor(base, taxonomy);
   if (input.interaction === "configure") {
     return {
       ...base,
@@ -1119,11 +1149,14 @@ export function buildProfilePreviewBundle(
   entry: SampleProfileEntry,
   input: PreviewInput
 ): SerializableBundle {
-  const spec = previewSpec(input);
+  const spec = previewSpec(
+    input,
+    entry.profile.resources.taxonomy as unknown as import("../../profiles/genui").InteractionTaxonomy
+  );
   const ctx: PresentationContext = {
     surface: String(input.surface || "desktop"),
   };
-  const document = compileInteraction(spec, ctx, entry.profile);
+  const document = runProfile(entry.profile, spec, ctx) as DocumentPayload;
   return {
     manifest: PROFILE_PREVIEW_MANIFEST,
     document: { gik: "0.1", type: "document", payload: document },
@@ -1325,7 +1358,7 @@ export const consoleEffects: EffectHandlerMap = {
       const rawBundle = readStr(ctx, "console.editor.bundleText").trim();
       if (!rawBundle) throw new Error("Profile bundle JSON is empty.");
 
-      const parsed = parseProfileBundleJson(rawBundle);
+      const parsed = parseProfileBundleJson<LayerRecipe>(rawBundle);
       const nextId = (rawId || parsed.profileArtifact.payload.id).trim();
       if (!nextId) throw new Error("Local profile id is required.");
       if (readRepoCatalog().some((entry) => entry.artifact.payload.id === nextId)) {

@@ -4,12 +4,11 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
 
-import { JsonataExpressionProvider } from "../../../kernel/src/index";
+import { evalAsyncJsonata } from "../../../shared/libs/evaluators";
 import { ReactiveStateModel } from "../src/reactive-state-model";
 import { extractDeps } from "../src/jsonata-deps";
 
-const provider = new JsonataExpressionProvider();
-const evaluate = (expr: string, scope: Record<string, unknown>) => provider.eval(expr, scope);
+const evaluate = (expr: string, scope: Record<string, unknown>) => evalAsyncJsonata(expr, scope as never);
 
 test("extractDeps infers cell tokens from a JSONata expression", () => {
   assert.deepEqual(extractDeps("a + b").sort(), ["a", "b"]);

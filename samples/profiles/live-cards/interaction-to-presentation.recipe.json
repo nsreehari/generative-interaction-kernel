@@ -5,6 +5,7 @@
     "id": "live-cards.interaction-to-presentation",
     "from": "interaction",
     "to": "presentation",
+    "metadata": { "executor": "plan-presentation" },
     "constrainedWhen": [
       { "surface": "mobile" },
       { "surface": "copilot" },

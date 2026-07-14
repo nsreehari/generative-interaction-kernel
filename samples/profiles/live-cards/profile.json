@@ -25,17 +25,52 @@
               "default": "incident",
               "placeholder": "incident"
             },
+            "capabilities": {
+              "title": "Capabilities (optional override)",
+              "type": "array",
+              "items": { "type": "string" },
+              "validators": [
+                {
+                  "expression": "($allowed := $lookup($catalog, 'interaction-catalog')[interaction = $root.spec.interaction].facets.name; $count($allowed) = 0 or $count($[$not($ in $allowed)]) = 0)",
+                  "detail": "one or more capabilities are not taxonomy facets of this interaction; they become synthesized detail facets",
+                  "level": "warning",
+                  "code": "synthesized-facet"
+                }
+              ]
+            },
             "data": {
               "title": "Input data (optional)",
-              "type": "json",
+              "type": "object",
+              "additionalProperties": { "type": "string" },
               "rows": 6,
-              "placeholder": "{ }"
+              "placeholder": "{ }",
+              "validators": [
+                {
+                  "expression": "($allowed := $count($root.spec.capabilities) > 0 ? $root.spec.capabilities : $lookup($catalog, 'interaction-catalog')[interaction = $root.spec.interaction].facets.name; $count($allowed) = 0 or $count($keys($)[$not($ in $allowed)]) = 0)",
+                  "detail": "one or more data bindings target no facet of this interaction",
+                  "level": "warning",
+                  "code": "data-for-unknown-facet"
+                }
+              ]
+            },
+            "facetViews": {
+              "title": "Facet views (optional)",
+              "type": "object",
+              "additionalProperties": { "type": "object" },
+              "validators": [
+                {
+                  "expression": "($allowed := $count($root.spec.capabilities) > 0 ? $root.spec.capabilities : $lookup($catalog, 'interaction-catalog')[interaction = $root.spec.interaction].facets.name; $count($allowed) = 0 or $count($keys($)[$not($ in $allowed)]) = 0)",
+                  "detail": "one or more facetViews entries target no facet of this interaction",
+                  "level": "warning",
+                  "code": "view-for-unknown-facet"
+                }
+              ]
             }
           },
           "required": ["interaction", "subject"]
         }
       },
-      { "id": "presentation", "kind": "presentation" },
+      { "id": "presentation", "kind": "presentation", "schema": "genui/presentation.schema.json" },
       { "id": "runtime-document", "kind": "runtime-document" }
     ],
     "recipes": [
@@ -49,6 +84,68 @@
         "from": "presentation",
         "to": "runtime-document"
       }
-    ]
+    ],
+    "authoring": {
+      "tools": [
+        {
+          "id": "describeInteractions",
+          "op": "describe",
+          "describe": "interaction-catalog",
+          "agentSafe": true,
+          "description": "List the interaction taxonomy (every kind with its facets) — vocabulary discovery."
+        },
+        {
+          "id": "validateInteraction",
+          "op": "validate",
+          "layer": "interaction",
+          "agentSafe": true,
+          "description": "Validate an InteractionSpec (kind known, subject present, facet/data references)."
+        },
+        {
+          "id": "validatePresentation",
+          "op": "validate",
+          "layer": "presentation",
+          "checks": ["presentation-facets"],
+          "agentSafe": true,
+          "description": "Validate a Presentation DSL artifact (structure + the required-facet-survives invariant)."
+        },
+        {
+          "id": "validateIntent",
+          "op": "validate",
+          "checks": ["intent-spec"],
+          "agentSafe": true,
+          "description": "Validate an IntentSpec; when an interaction is supplied, check targets against its facets.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "intent": {
+                "type": "object",
+                "properties": {
+                  "goal": { "type": "string" },
+                  "priorities": { "type": "array", "items": { "type": "string" } },
+                  "constraints": { "type": "array", "items": { "type": "string" } }
+                }
+              },
+              "interaction": { "type": "object" }
+            },
+            "required": ["intent"],
+            "additionalProperties": false
+          }
+        },
+        {
+          "id": "intentToEdits",
+          "op": "project",
+          "projectExpression": "($priorities := intent.priorities ? intent.priorities : []; {\"disabled\": [], \"priority\": ($count($priorities) = 0 ? {} : $merge($priorities@$v#$i.{ $v: ($i = 0 ? \"primary\" : \"secondary\") })), \"disclosure\": {}, \"order\": $priorities})",
+          "agentSafe": true,
+          "description": "Project an IntentSpec into PresentationEdits (the sanctioned override channel).",
+          "inputSchema": {
+            "type": "object",
+            "properties": { "intent": { "type": "object" } },
+            "required": ["intent"],
+            "additionalProperties": false
+          }
+        }
+      ]
+    }
   }
 }

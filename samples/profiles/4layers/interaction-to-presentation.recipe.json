@@ -1,0 +1,55 @@
+{
+  "gik": "0.1",
+  "type": "lowering-recipe",
+  "payload": {
+    "id": "4layers.interaction-to-presentation",
+    "from": "interaction",
+    "to": "presentation",
+    "metadata": { "executor": "plan-presentation" },
+    "constrainedWhen": [
+      { "surface": "mobile" },
+      { "surface": "copilot" },
+      { "space": "compact" },
+      { "attention": "glanceable" },
+      { "device": "voice" }
+    ],
+    "templates": [
+      { "name": "stack", "arrangement": "stack" },
+      { "name": "narrative", "arrangement": "narrative", "maxRegions": 3 },
+      { "name": "comparison", "arrangement": "split" },
+      { "name": "workspace", "arrangement": "grid" },
+      { "name": "dashboard", "arrangement": "dashboard" },
+      { "name": "wizard", "arrangement": "wizard" }
+    ],
+    "program": [
+      { "slot": "template", "match": { "interaction": "compare" }, "emit": { "template": "comparison", "layout": "comparison" } },
+      { "slot": "template", "match": { "interaction": "monitor" }, "emit": { "template": "dashboard", "layout": "dashboard" } },
+      { "slot": "template", "match": { "interaction": "create" }, "emit": { "template": "wizard", "layout": "wizard" } },
+      { "slot": "template", "match": { "interaction": "configure" }, "emit": { "template": "wizard", "layout": "wizard" } },
+      { "slot": "template", "match": { "surface": "copilot" }, "emit": { "template": "narrative", "layout": "narrative" } },
+      { "slot": "template", "match": { "attention": "glanceable" }, "emit": { "template": "narrative", "layout": "narrative" } },
+      { "slot": "template", "match": { "surface": "mobile" }, "emit": { "template": "stack", "layout": "stack" } },
+      { "slot": "template", "match": { "space": "compact" }, "emit": { "template": "stack", "layout": "stack" } },
+      { "slot": "template", "match": {}, "emit": { "template": "workspace", "layout": "{{interaction}}_workspace" } },
+      { "slot": "rank", "match": { "required": true }, "emit": { "rank": 0 } },
+      { "slot": "rank", "match": {}, "emit": { "rank": 1 } },
+      { "slot": "priority", "match": { "index": 0 }, "emit": { "priority": "primary" } },
+      { "slot": "priority", "match": { "required": true }, "emit": { "priority": "secondary" } },
+      { "slot": "priority", "match": {}, "emit": { "priority": "tertiary" } },
+      { "slot": "disclosure", "match": { "priority": "primary" }, "emit": { "disclosure": "always" } },
+      { "slot": "disclosure", "match": { "priority": "secondary", "expertise": "novice" }, "emit": { "disclosure": "always" } },
+      { "slot": "disclosure", "match": {}, "emit": { "disclosure": "toggle" } },
+      { "slot": "presentation", "match": { "role": "graph" }, "emit": { "presentation": "relationship_graph" } },
+      { "slot": "presentation", "match": { "role": "timeline" }, "emit": { "presentation": "timeline" } },
+      { "slot": "presentation", "match": { "role": "comparison" }, "emit": { "presentation": "diff" } },
+      { "slot": "presentation", "match": { "role": "metrics" }, "emit": { "presentation": "metric_grid" } },
+      { "slot": "presentation", "match": { "role": "narrative" }, "emit": { "presentation": "narrative" } },
+      { "slot": "presentation", "match": { "role": "form" }, "emit": { "presentation": "form" } },
+      { "slot": "presentation", "match": {}, "emit": { "presentation": "detail" } },
+      { "slot": "rationale", "match": { "surface": "copilot" }, "emit": { "template": "copilot prefers concise narrative cards" } },
+      { "slot": "rationale", "match": { "surface": "mobile" }, "emit": { "template": "mobile surfaces collapse to a stack" } },
+      { "slot": "rationale", "match": {}, "emit": { "template": "default workspace keeps all required facets visible" } }
+    ],
+    "cap": { "preserveRequired": true }
+  }
+}
