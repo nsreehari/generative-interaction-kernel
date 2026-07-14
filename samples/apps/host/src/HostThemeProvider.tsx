@@ -160,6 +160,9 @@ const HOST_THEME_CSS = `
 }
 .gx-host .gx-table tbody tr { cursor: pointer; }
 .gx-host .gx-table tbody tr:hover { background: var(--panel-2); }
+.gx-host .gx-table th.gx-table-sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+.gx-host .gx-table th.gx-table-sortable:hover { color: var(--text); }
+.gx-host .gx-table-overflow { margin-top: var(--spacingVerticalXS); font-size: var(--fontSizeBase100); }
 
 .gx-host .gx-field {
   display: flex;
