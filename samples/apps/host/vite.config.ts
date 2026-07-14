@@ -11,6 +11,9 @@ import { defineConfig, type Plugin } from "vite";
 const jsonataCjs = fileURLToPath(
   new URL("../../../kernel/src/vendor/jsonata.cjs", import.meta.url)
 ).replace(/\\/g, "/");
+const jsonataSyncCjs = fileURLToPath(
+  new URL("../../../kernel/src/vendor/jsonata-sync.cjs", import.meta.url)
+).replace(/\\/g, "/");
 
 const providerReactiveStateModel = fileURLToPath(
   new URL("../../../packages/provider-reactive-state-model/src/index.ts", import.meta.url)
@@ -40,7 +43,8 @@ function jsonataUmdInterop(): Plugin {
     apply: "serve",
     enforce: "pre",
     transform(code, id) {
-      if (id.replace(/\\/g, "/").split("?")[0] !== jsonataCjs) return null;
+      const normalizedId = id.replace(/\\/g, "/").split("?")[0];
+      if (normalizedId !== jsonataCjs && normalizedId !== jsonataSyncCjs) return null;
       return {
         code: `const module = { exports: {} };\nconst exports = module.exports;\n${code}\nexport default module.exports;\n`,
         map: null,
