@@ -42,17 +42,17 @@
       {
         "slot": "region",
         "match": { "presentation": "diff" },
-        "emit": { "capability": "ui:diff", "read": { "before": "{{region.dataPath}}", "after": "{{region.dataPath}}" } }
+        "emit": { "capability": "ui:diff", "read": { "value": "{{region.dataPath}}" } }
       },
       {
         "slot": "region",
         "match": { "role": "form" },
-        "emit": { "capability": "ui:form", "read": { "schema": "{{region.dataPath}}" } }
+        "emit": { "capability": "ui:form", "read": { "fields": "{{region.dataPath}}" } }
       },
       {
         "slot": "region",
         "match": { "role": "actions" },
-        "emit": { "capability": "ui:actions", "read": { "items": "{{region.dataPath}}" } }
+        "emit": { "capability": "ui:actions", "read": { "buttons": "{{region.dataPath}}" } }
       },
       {
         "slot": "region",

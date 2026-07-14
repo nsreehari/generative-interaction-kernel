@@ -136,6 +136,23 @@ function toColumns(raw: unknown[]): Column[] {
   return raw.map((c) => (typeof c === "string" ? { key: c, label: c } : (c as Column)));
 }
 
+// When a table is bound to `rows` but no `columns` spec is provided (the common lowering-recipe
+// case, where a region's dataPath yields row objects with no separate schema), derive the columns
+// from the row data: the union of keys across rows, in first-seen order, excluding the id key.
+function inferColumns(rows: Array<Record<string, unknown>>, idKey: string): Column[] {
+  const seen = new Set<string>();
+  const cols: Column[] = [];
+  for (const row of rows) {
+    if (!row || typeof row !== "object") continue;
+    for (const key of Object.keys(row)) {
+      if (key === idKey || seen.has(key)) continue;
+      seen.add(key);
+      cols.push({ key, label: key });
+    }
+  }
+  return cols;
+}
+
 function isMultiSelect(prop: Record<string, unknown>): boolean {
   const items = (prop.items ?? {}) as Record<string, unknown>;
   return prop.type === "array" && (Array.isArray(items.enum) || Array.isArray(items.oneOf) || Array.isArray(prop.options));
@@ -945,8 +962,12 @@ function Stats({ node }: ProjectionViewProps) {
 
 function Diff({ node }: ProjectionViewProps) {
   const p = readProps(node);
-  const before = node.props.before;
-  const after = node.props.after;
+  // A diff needs two distinct sides. They can arrive either as explicit `before`/`after` props or
+  // as a single bound object (`value`/`data` = `{ before, after }`) — the latter is what a lowering
+  // recipe naturally produces when a region's dataPath points at one comparison record.
+  const bundle = p.obj<Record<string, unknown>>("value", p.obj<Record<string, unknown>>("data", {}));
+  const before = node.props.before ?? bundle.before;
+  const after = node.props.after ?? bundle.after;
   const empty = p.str("emptyText", "No diff data.");
   if (before == null && after == null) return <p className="gx-muted">{empty}</p>;
 
@@ -971,8 +992,9 @@ function Diff({ node }: ProjectionViewProps) {
 function Table({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
   const rows = p.list<Record<string, unknown>>("rows");
-  const columns = toColumns(p.list<unknown>("columns"));
   const idKey = p.str("idKey", "id");
+  const explicitColumns = toColumns(p.list<unknown>("columns"));
+  const columns = explicitColumns.length > 0 ? explicitColumns : inferColumns(rows, idKey);
   const empty = p.str("emptyText", "No rows.");
   const isStatic = p.bool("static"); // passive display (no rowSelect), vs the default picker
   const blank = p.str("blankText", ""); // placeholder for null/empty cells
@@ -1089,7 +1111,9 @@ function JsonField({ node, emit }: ProjectionViewProps) {
 
 function Form({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
-  const schema = p.obj<FormSchema>("fields", {});
+  // Canonical schema prop is `fields`; `schema` is accepted as a defensive alias so a lowering
+  // recipe that binds `read.schema` (a natural authoring mistake) still renders instead of blanking.
+  const schema = p.obj<FormSchema>("fields", p.obj<FormSchema>("schema", {}));
   const props = schema.properties ?? {};
   const required = Array.isArray(schema.required) ? schema.required : [];
   const incoming = p.obj<Record<string, unknown>>("value", p.obj<Record<string, unknown>>("data", {}));
@@ -1518,7 +1542,16 @@ function Todo({ node, emit }: ProjectionViewProps) {
 
 function Actions({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
-  const buttons = p.list<unknown>("buttons")
+  // Canonical prop is `buttons`; `items`/`actions` are accepted as defensive aliases so a recipe
+  // that binds `read.items` still renders its button row instead of collapsing to nothing.
+  const source = ((): unknown[] => {
+    const buttons = p.list<unknown>("buttons");
+    if (buttons.length > 0) return buttons;
+    const items = p.list<unknown>("items");
+    if (items.length > 0) return items;
+    return p.list<unknown>("actions");
+  })();
+  const buttons = source
     .map((entry, index) => {
       if (typeof entry === "string") {
         return { id: entry, label: entry, tone: "default", disabled: false, index };

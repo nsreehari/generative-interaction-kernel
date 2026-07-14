@@ -144,7 +144,7 @@
       { "slot": "region", "match": { "role": "detail" }, "emit": { "capability": "ui:table", "read": { "rows": "{{region.dataPath}}" } } },
       { "slot": "region", "match": { "role": "timeline" }, "emit": { "capability": "ui:table", "read": { "rows": "{{region.dataPath}}" } } },
       { "slot": "region", "match": { "role": "comparison" }, "emit": { "capability": "ui:table", "read": { "rows": "{{region.dataPath}}" } } },
-      { "slot": "region", "match": { "role": "actions" }, "emit": { "capability": "ui:actions" } },
+      { "slot": "region", "match": { "role": "actions" }, "emit": { "capability": "ui:actions", "read": { "buttons": "{{region.dataPath}}" } } },
       { "slot": "region", "match": { "role": "graph" }, "emit": { "capability": "ui:chart", "read": { "data": "{{region.dataPath}}" } } },
       {
         "slot": "region",
