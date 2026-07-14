@@ -6,8 +6,8 @@
       "capability": "ui:screen",
       "id": "console-root",
       "props": {
-        "title": "Profiles",
-        "subtitle": "Browse, inspect, and preview sample profiles"
+        "title": "Blueprints",
+        "subtitle": "Browse, inspect, and preview sample blueprints"
       },
       "edges": {
         "children": [
@@ -93,7 +93,7 @@
                   "capability": "ui:panel",
                   "id": "detail",
                   "props": {
-                    "title": "Selected Profile",
+                    "title": "Selected Blueprint",
                     "variant": "detail"
                   },
                   "edges": {
@@ -112,7 +112,7 @@
                               "id": "empty-hint",
                               "props": {
                                 "tone": "muted",
-                                "value": "Select a profile on the left to inspect its layers and preview."
+                                "value": "Select a blueprint on the left to inspect its tiers and preview."
                               }
                             }
                           ]
@@ -133,7 +133,7 @@
                               "props": {
                                 "options": [
                                   { "value": "overview", "label": "Overview" },
-                                  { "value": "layers", "label": "Layers" },
+                                  { "value": "layers", "label": "Tiers" },
                                   { "value": "preview", "label": "Preview" }
                                 ]
                               },
@@ -167,7 +167,7 @@
                                     "capability": "ui:panel",
                                     "id": "profile-orientation-panel",
                                     "props": {
-                                      "title": "What this profile is",
+                                      "title": "What this blueprint is",
                                       "variant": "inset"
                                     },
                                     "edges": {
@@ -176,7 +176,7 @@
                                           "capability": "ui:narrative",
                                           "id": "profile-orientation-summary",
                                           "props": {
-                                            "emptyMessage": "Select a profile to see how it lowers a goal into a UI."
+                                            "emptyMessage": "Select a blueprint to see how it lowers a goal into a UI."
                                           },
                                           "edges": {
                                             "read": {
@@ -210,7 +210,7 @@
                                               {
                                                 "capability": "ui:property",
                                                 "id": "metric-profile-id",
-                                                "props": { "label": "Profile id" },
+                                                "props": { "label": "Blueprint id" },
                                                 "edges": { "read": { "value": "console.profile.id" } }
                                               },
                                               {
@@ -228,7 +228,7 @@
                                               {
                                                 "capability": "ui:metric",
                                                 "id": "metric-layers",
-                                                "props": { "label": "Layers" },
+                                                "props": { "label": "Tiers" },
                                                 "edges": { "read": { "value": "console.profile.layerCount" } }
                                               },
                                               {
@@ -320,7 +320,7 @@
                                           "capability": "ui:panel",
                                           "id": "layers-list-panel",
                                           "props": {
-                                            "title": "Layers",
+                                            "title": "Tiers",
                                             "variant": "inset"
                                           },
                                           "edges": {
@@ -363,7 +363,7 @@
                                                 "capability": "ui:panel",
                                                 "id": "layer-detail-panel",
                                                 "props": {
-                                                  "title": "Selected layer",
+                                                  "title": "Selected tier",
                                                   "variant": "inset"
                                                 },
                                                 "edges": {
@@ -376,7 +376,7 @@
                                                           {
                                                             "capability": "ui:property",
                                                             "id": "layer-detail-kind",
-                                                            "props": { "label": "Layer" },
+                                                            "props": { "label": "Tier" },
                                                             "edges": { "read": { "value": "console.layerDetail.kind" } }
                                                           },
                                                           {
@@ -392,7 +392,7 @@
                                                       "capability": "ui:narrative",
                                                       "id": "layer-detail-role",
                                                       "props": {
-                                                        "emptyMessage": "Select a layer to see what it represents."
+                                                        "emptyMessage": "Select a tier to see what it represents."
                                                       },
                                                       "edges": {
                                                         "read": {
@@ -416,13 +416,13 @@
                                                     {
                                                       "capability": "ui:note",
                                                       "id": "layer-vocabulary-caption",
-                                                      "props": { "value": "The closed set of terms this layer works with — every branch above is phrased in these words.", "tone": "muted" }
+                                                      "props": { "value": "The closed set of terms this tier works with — every branch above is phrased in these words.", "tone": "muted" }
                                                     },
                                                     {
                                                       "capability": "ui:vocabulary",
                                                       "id": "layer-vocabulary",
                                                       "props": {
-                                                        "emptyText": "This layer has no derived vocabulary."
+                                                        "emptyText": "This tier has no derived vocabulary."
                                                       },
                                                       "edges": {
                                                         "read": {
@@ -437,7 +437,7 @@
                                                 "capability": "ui:panel",
                                                 "id": "layer-outgoing-recipe-header",
                                                 "props": {
-                                                  "title": "Lowers into the next layer",
+                                                  "title": "Lowers into the next tier",
                                                   "variant": "inset"
                                                 },
                                                 "edges": {
@@ -467,7 +467,7 @@
                                                       "capability": "ui:narrative",
                                                       "id": "layer-outgoing-recipe-summary",
                                                       "props": {
-                                                        "emptyMessage": "No recipe summary available."
+                                                        "emptyMessage": "No lowering-recipe summary available."
                                                       },
                                                       "edges": {
                                                         "read": {
@@ -510,7 +510,7 @@
                                                 "capability": "ui:panel",
                                                 "id": "layer-compute-panel",
                                                 "props": {
-                                                  "title": "Watch it lower — run this layer",
+                                                  "title": "Watch it lower — run this tier",
                                                   "variant": "inset"
                                                 },
                                                 "edges": {
@@ -519,7 +519,7 @@
                                                     {
                                                       "capability": "ui:note",
                                                       "id": "layer-compute-caption",
-                                                      "props": { "value": "Pick an interaction goal and see exactly what this layer produces when the live profile lowers it into the next stage.", "tone": "muted" }
+                                                      "props": { "value": "Pick an interaction goal and see exactly what this tier produces when the live blueprint lowers it into the next stage.", "tone": "muted" }
                                                     },
                                                     {
                                                       "capability": "console:lowering-recipe-runner",
@@ -559,7 +559,7 @@
                                                     {
                                                       "capability": "ui:note",
                                                       "id": "terminal-runtime-map-caption",
-                                                      "props": { "value": "This is a terminal layer. Each region that reaches it is bound by these rules:", "tone": "muted" }
+                                                      "props": { "value": "This is a terminal tier. Each region that reaches it is bound by these rules:", "tone": "muted" }
                                                     },
                                                     {
                                                       "capability": "ui:maplist",
@@ -609,7 +609,7 @@
                                           "capability": "ui:form",
                                           "id": "source-input-form",
                                           "props": {
-                                            "title": "Layer inputs",
+                                            "title": "Tier inputs",
                                             "saveLabel": "Apply & refresh",
                                             "discardLabel": "Reset"
                                           },

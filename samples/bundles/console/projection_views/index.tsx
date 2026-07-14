@@ -24,7 +24,7 @@ function ProfilePipelineCanvas({ node, emit }: ProjectionViewProps) {
     `${nodes.map((entry) => String(entry.id ?? "")).join("|")}`
   );
 
-  if (nodes.length === 0) return <p className="gx-muted">No layers.</p>;
+  if (nodes.length === 0) return <p className="gx-muted">No tiers.</p>;
 
   const nodeById = new Map(nodes.map((entry) => [String(entry.id ?? ""), entry]));
 
@@ -50,7 +50,7 @@ function ProfilePipelineCanvas({ node, emit }: ProjectionViewProps) {
         return {
           id: token ? `require:${token}` : `${descriptor.id}-in`,
           token,
-          title: String((edge as Record<string, unknown>).label ?? token ?? "Incoming recipe"),
+          title: String((edge as Record<string, unknown>).label ?? token ?? "Incoming lowering recipe"),
           selected: isSelected,
           highlighted: isSelected,
           dimmed: hasEdgeSelection && !isSelected,
@@ -62,7 +62,7 @@ function ProfilePipelineCanvas({ node, emit }: ProjectionViewProps) {
         return {
           id: token ? `provide:${token}` : `${descriptor.id}-out`,
           token,
-          title: String((edge as Record<string, unknown>).label ?? token ?? "Outgoing recipe"),
+          title: String((edge as Record<string, unknown>).label ?? token ?? "Outgoing lowering recipe"),
           selected: isSelected,
           highlighted: isSelected,
           dimmed: hasEdgeSelection && !isSelected,
@@ -166,13 +166,13 @@ function PipelineRunner({ node }: ProjectionViewProps) {
     }
   }, [bundleText, JSON.stringify(seed), JSON.stringify(ctx)]);
 
-  if (!bundleText.trim()) return <p className="gx-muted">Select a profile to trace its lowering.</p>;
+  if (!bundleText.trim()) return <p className="gx-muted">Select a blueprint to trace its lowering.</p>;
   if (result.error) return <p className="gx-json-error">{result.error}</p>;
 
   return (
     <div className="gx-col">
       <div className="gx-panel-inset">
-        <span className="gx-property-label">Input · source layer seed</span>
+        <span className="gx-property-label">Intent · source tier seed</span>
         <div className="gx-code">
           <pre>{prettyJson(result.seed)}</pre>
         </div>
@@ -241,15 +241,15 @@ function LoweringRecipeRunner({ node }: ProjectionViewProps) {
         { surface: String(surface) },
       );
       const step = trace.find((candidate) => candidate.fromLayerId === layerId);
-      if (!step) return { error: "This layer is terminal for that goal — nothing lowers out of it." };
+      if (!step) return { error: "This tier is terminal for that goal — nothing lowers out of it." };
       return { error: "", fromKind: step.fromKind, toKind: step.toKind, input: step.input, output: step.output };
     } catch (err) {
       return { error: err instanceof Error ? err.message : String(err) };
     }
   }, [bundleText, layerId, activeSeed, surface]);
 
-  if (!bundleText.trim() || !layerId) return <p className="gx-muted">Select a layer to compute its lowering.</p>;
-  if (seeds.length === 0) return <p className="gx-muted">This profile has no sample source inputs to run.</p>;
+  if (!bundleText.trim() || !layerId) return <p className="gx-muted">Select a tier to compute its lowering.</p>;
+  if (seeds.length === 0) return <p className="gx-muted">This blueprint has no sample source inputs to run.</p>;
 
   return (
     <div className="gx-col">
