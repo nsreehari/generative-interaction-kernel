@@ -377,7 +377,7 @@ building TurboTax. Frame strictly as "same kernel, headless, a tax journey."
   semantic roles; host build passes, both routes work, and 375px mobile has no overflow.
 
 ## Beat 2 — Runtime-plane hero (Live Workspace : SOC)
-- **T3 — Build the Live Workspace : SOC from the pitch outcome backward.** Create a purpose-built
+- **T3 — DONE (2026-07-15) — Built the Live Workspace : SOC from the pitch outcome backward.** Created a purpose-built
   runtime bundle where the analyst and named agents are visible participants in one investigation.
   Leave the old `workbench` unchanged and routable through all pitch implementation; use it only as
   a reference for proven kernel, transport, event, and trace mechanisms, without importing its

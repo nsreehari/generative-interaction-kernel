@@ -1,0 +1,29 @@
+{
+  "soc": {
+    "act": 1,
+    "incident": {
+      "id": "INC-2048",
+      "title": "Suspected lateral movement",
+      "severity": "High",
+      "status": "Investigating",
+      "target": "Host-A"
+    },
+    "mode": "Collaborative",
+    "stage": "Assemble the team",
+    "actors": [
+      { "id": "agent-triage", "name": "Triage", "role": "Investigation lead", "status": "waiting", "activity": "Ready to join the investigation", "authority": "derive, invoke" },
+      { "id": "agent-identity", "name": "Identity", "role": "Identity specialist", "status": "waiting", "activity": "Ready to join the investigation", "authority": "derive, invoke" },
+      { "id": "agent-endpoint", "name": "Endpoint", "role": "Endpoint specialist", "status": "waiting", "activity": "Ready to join the investigation", "authority": "derive, invoke" },
+      { "id": "agent-response", "name": "Response", "role": "Containment planner", "status": "waiting", "activity": "Ready to join the investigation", "authority": "route, confirm" }
+    ],
+    "evidence": [],
+    "hypothesis": {
+      "statement": "Suspicious identity activity may be connected to lateral movement on Host-A.",
+      "confidence": 32
+    },
+    "proposal": null,
+    "ledger": [
+      { "time": "09:40:00", "actorId": "analyst-morgan", "result": "intent", "summary": "Establish scope, contain safely, preserve evidence" }
+    ]
+  }
+}

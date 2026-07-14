@@ -395,7 +395,7 @@ const SamplesOverviewView: ProjectionView = () => {
             <article className={styles.fork}>
               <div className={styles.forkLabel}>Runtime · HX + AX</div><h3 className={styles.forkTitle}>Experience the SOC Runtime</h3>
               <p className={styles.forkText}>Watch an analyst and agent share one workspace, continue across interactive and autonomous work, and return consequential actions through the same governance boundary.</p>
-              <Button appearance="primary" className={styles.button} onClick={() => openBundle("workbench")}>Open Live Workspace</Button>
+              <Button appearance="primary" className={styles.button} onClick={() => openBundle("live-workspace-soc")}>Open Live Workspace</Button>
             </article>
             <article className={styles.fork}>
               <div className={styles.forkLabel}>DX + ACX · Powered by the GIK Compiler</div><h3 className={styles.forkTitle}>Author Governed Experiences</h3>

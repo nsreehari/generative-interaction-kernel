@@ -1,0 +1,43 @@
+{
+  "gik": "0.1",
+  "type": "document",
+  "payload": {
+    "root": {
+      "capability": "soc:workspace",
+      "id": "soc-workspace",
+      "edges": {
+        "on": {
+          "parallel": [
+            { "do": "invoke", "args": { "tool": "parallelInvestigation" } }
+          ],
+          "overreach": [
+            { "do": "route", "args": { "tool": "policyGuard", "to": "isolate:DC-01" } }
+          ],
+          "autonomous": [
+            { "do": "invoke", "args": { "tool": "autonomousContinuation" } }
+          ],
+          "requestContainment": [
+            { "do": "confirm", "args": { "tool": "requestContainment", "title": "Contain Host-A", "message": "Return this evidence-backed isolation proposal to the analyst?", "danger": true } }
+          ],
+          "approve": [
+            { "do": "invoke", "args": { "tool": "executeContainment" } }
+          ],
+          "reset": [
+            { "do": "invoke", "args": { "tool": "resetScenario" } }
+          ]
+        },
+        "read": {
+          "act": "soc.act",
+          "incident": "soc.incident",
+          "mode": "soc.mode",
+          "stage": "soc.stage",
+          "actors": "soc.actors",
+          "evidence": "soc.evidence",
+          "hypothesis": "soc.hypothesis",
+          "proposal": "soc.proposal",
+          "ledger": "soc.ledger"
+        }
+      }
+    }
+  }
+}
