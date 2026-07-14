@@ -43,6 +43,7 @@ export const PRIMITIVE_CAPABILITIES: Record<string, CapabilityDescriptor> = {
   badge: { propsSchema: anyProps }, // value + tone
   alert: { propsSchema: anyProps }, // value + label + level (good|warn|bad|unknown)
   metric: { propsSchema: anyProps }, // label + value
+  property: { propsSchema: anyProps }, // labeled body-size text attribute (identifier/enum/short phrase)
   narrative: { propsSchema: anyProps, dataProp: "text" }, // read-only narrative copy with empty fallback
   codeBlock: { propsSchema: anyProps }, // scrollable monospace block for JSON/code dumps (reads `code`)
   chart: { propsSchema: anyProps, dataProp: "data" }, // read-only chart: spec + bound data -> native render
@@ -51,7 +52,9 @@ export const PRIMITIVE_CAPABILITIES: Record<string, CapabilityDescriptor> = {
   todo: { propsSchema: anyProps, emits: ["save"], dataProp: "items" }, // committed todo list: bound items + save {items}
   timeline: { propsSchema: anyProps, dataProp: "items" }, // read-only time-ordered item list
   stats: { propsSchema: anyProps, dataProp: "items" }, // read-only metric list
-  diff: { propsSchema: anyProps }, // read-only before/after comparison
+  diff: { propsSchema: anyProps, dataProp: "value" }, // read-only before/after comparison: bound { before, after }
+  maplist: { propsSchema: anyProps, dataProp: "rows" }, // read-only directional mapping rows: { from, to }
+  vocabulary: { propsSchema: anyProps, dataProp: "groups" }, // read-only closed-grammar catalog: groups of terms
   actions: { propsSchema: anyProps, emits: ["press"], dataProp: "buttons" }, // button row, emits press {id}
   notes: { propsSchema: anyProps, emits: ["save"], dataProp: "content" }, // committed notes editor: content + save {content}
   "editable-table": { propsSchema: anyProps, emits: ["save"], dataProp: "rows" }, // committed editable grid: spec + bound rows -> save {rows}
@@ -76,6 +79,53 @@ export const PRIMITIVE_CAPABILITIES: Record<string, CapabilityDescriptor> = {
 
   // --- Composition: embed a whole bundle/app as a nested runtime ---
   embed: { propsSchema: anyProps }, // props.app: registered app by name | props.bundle: inline { manifest, document, state }
+};
+
+/**
+ * The floor's READ-KEY CONTRACT: for each capability that accepts bound document data, the named
+ * props a lowering recipe may bind through `read` (canonical prop first, then any defensive aliases
+ * the leaf also consumes). This is the machine-checkable half of "honor the contracts": a recipe
+ * that binds `read.schema` on `ui:form` (which reads `fields`) or `read.items` on `ui:actions`
+ * (which reads `buttons`) is a silent no-op at render time, and only this table catches it.
+ *
+ * Keep in sync with the leaf implementations in registry.tsx. Capabilities absent here accept no
+ * bound `read` keys (pure props-configured leaves). The `dataProp` declared on a capability above
+ * MUST appear in its entry here (enforced by the floor read-contract test).
+ */
+export const FLOOR_READ_KEYS: Record<string, string[]> = {
+  // containers
+  panel: ["data", "children"],
+  // text / status / display
+  metric: ["value", "label"],
+  property: ["value", "label"],
+  narrative: ["text", "value"],
+  codeBlock: ["code"],
+  chart: ["data"],
+  markdown: ["value", "text"],
+  markup: ["value", "text"],
+  timeline: ["items"],
+  stats: ["items"],
+  diff: ["value", "data", "before", "after"],
+  maplist: ["rows"],
+  vocabulary: ["groups"],
+  // committed / interactive
+  todo: ["items"],
+  actions: ["buttons", "items", "actions"],
+  notes: ["content", "value"],
+  "editable-table": ["rows"],
+  "multi-file-upload": ["data", "files", "filegroups"],
+  // data display
+  list: ["items"],
+  table: ["rows", "columns"],
+  selection: ["options", "value"],
+  // inputs
+  field: ["value"],
+  textarea: ["value"],
+  select: ["value", "options"],
+  form: ["fields", "schema", "value", "data"],
+  "json-field": ["value", "data"],
+  searchbox: ["value"],
+  query: ["value"],
 };
 
 export interface BundleManifestOptions {
