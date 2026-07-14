@@ -2,6 +2,7 @@
   "default": "samples-overview",
   "bundles": {
     "console": { "kind": "json" },
+    "live-workspace-soc": { "kind": "json" },
     "samples-overview": { "kind": "json" },
     "provider-authoring-demo": { "kind": "json" },
     "reactive-demo": { "kind": "json" },

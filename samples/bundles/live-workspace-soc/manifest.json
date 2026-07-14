@@ -1,0 +1,29 @@
+{
+  "gik": "0.1",
+  "type": "manifest",
+  "payload": {
+    "version": "live-workspace-soc/1.0",
+    "expression": "jsonata",
+    "namespaces": ["soc"],
+    "actions": ["assign", "derive", "emit", "invoke", "route", "confirm"],
+    "capabilities": {
+      "soc:workspace": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "emits": ["parallel", "overreach", "autonomous", "requestContainment", "approve", "reset"]
+      }
+    },
+    "externals": {
+      "projectionViews": {
+        "soc": { "from": "self" }
+      },
+      "effectHandlers": [
+        "parallelInvestigation",
+        "policyGuard",
+        "autonomousContinuation",
+        "requestContainment",
+        "executeContainment",
+        "resetScenario"
+      ]
+    }
+  }
+}

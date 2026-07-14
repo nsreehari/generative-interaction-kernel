@@ -5,9 +5,8 @@
 > share one evolving state, cross policy boundaries, continue asynchronously, and return a
 > consequential decision to the human.
 >
-> Status: PLANNING (no bundle edits yet). **Start from the pitch experience, not from the current
-> `workbench`.** Reuse its proven kernel/transport pieces where they help; discard its shell and
-> authoring chrome where they diminish the demo.
+> Status: **IMPLEMENTED (2026-07-15).** Built as a new `live-workspace-soc` bundle; the existing
+> `workbench` remains unchanged and independently routable.
 
 ---
 
@@ -207,20 +206,20 @@ Each phase should end green on `build:host` + Vitest so the hero is always demoa
 
 ## 9. Acceptance criteria
 
-- [ ] A new `live-workspace-soc` bundle opens from the Runtime CTA; the old `workbench` remains
+- [x] A new `live-workspace-soc` bundle opens from the Runtime CTA; the old `workbench` remains
   unchanged and independently routable throughout T3 and the remaining pitch implementation.
-- [ ] The analyst and at least four named agent roles are simultaneously visible with live status,
+- [x] The analyst and at least four named agent roles are simultaneously visible with live status,
   current activity, authority, and attributed contributions.
-- [ ] Agent contributions mutate the same evidence/timeline/response state the analyst sees.
-- [ ] A policy-blocked overreach produces a real rejection + fallback receipt beside the proposal
+- [x] Agent contributions mutate the same evidence/timeline/response state the analyst sees.
+- [x] A policy-blocked overreach produces a real rejection + fallback receipt beside the proposal
   and in the full forensic ledger.
-- [ ] Autonomous continuation visibly changes participation mode while preserving state authority,
+- [x] Autonomous continuation visibly changes participation mode while preserving state authority,
   provenance, and trace.
-- [ ] The final containment action cannot execute until the analyst confirms it.
-- [ ] The five-act scenario supports presenter-controlled stepping and optional autoplay/reset.
-- [ ] Full trace/state detail is available on demand without dominating the default experience.
-- [ ] Back-navigation returns to `samples-overview`.
-- [ ] `npm run build:host` + Vitest pass; Playwright validates desktop/mobile layout, readable actor
+- [x] The final containment action cannot execute until the analyst confirms it.
+- [x] The five-act scenario supports presenter-controlled stepping and optional autoplay/reset.
+- [x] Full trace/state detail is available on demand without dominating the default experience.
+- [x] Back-navigation returns to `samples-overview`.
+- [x] `npm run build:host` + Vitest pass; Playwright validates desktop/mobile layout, readable actor
   activity, no horizontal overflow, and the complete scenario path.
 
 ## 10. Deferred cleanup (not part of T3)
