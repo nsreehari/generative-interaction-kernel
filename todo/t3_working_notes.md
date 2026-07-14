@@ -62,10 +62,19 @@ chosen for legibility rather than symmetry:
 Desktop may use a main canvas plus one activity rail. Mobile should use a single primary workspace
 with agent activity and forensics in tabs/drawers. The architecture must not require three panes.
 
+**Reconciling with the D3 "dual-face (HX + AX)" promise:** the shared canvas is the *merged* face
+of one state, not a rejection of the AX view. Keep AX provable via an explicit "agent's-eye view"
+toggle/inspector over the *same* graph (entities, capabilities, proposals, trace) rather than a
+permanent second column. The dual-face claim must be demonstrable on demand; it need not consume a
+third of the screen at rest.
+
 ## 3. Build direction: new hero, workbench untouched
 
-Create a purpose-built `live-workspace-soc` bundle and route the Runtime CTA to it. T3 is strictly
-additive: do not rename, restyle, relocate, or remove anything under `samples/bundles/workbench`.
+Create a purpose-built `live-workspace-soc` bundle and route the Runtime CTA to it. Register it in
+`samples/bundles/registry.json` and repoint the `samples-overview` Runtime CTA (currently
+`openBundle("workbench")`) at the new id; leave `default` = `samples-overview` unchanged. T3 is
+strictly additive: do not rename, restyle, relocate, or remove anything under
+`samples/bundles/workbench`.
 Keep the existing bundle routable as a reference and regression baseline throughout the remaining
 pitch implementation. Decide whether to retire/remove it only in a separate cleanup task after all
 four beats are complete and validated.
@@ -119,7 +128,32 @@ attributable.
 
 Pitch takeaway: **Agents can leave the screen. They cannot leave the governance boundary.**
 
-## 5. Implementation principles
+## 5. Multi-agent model & state shape
+
+**Every agent is "just another client."** Preserve the core thesis: no agent has a privileged
+mutation path. The four roles are distinct **actor identities** that emit through the same
+transport-neutral port the platform exposes to any client. The deterministic scenario runner acts
+as the orchestrator that advances each actor; it authors on their behalf but through the identical
+event path, so provenance (`actorId`) rides the event, not a side channel. This keeps the demo
+honest: swapping the runner for real over-the-wire agents changes nothing downstream.
+
+**Minimum viable shared-state shape** (illustrative, not final — pin during the Phase 0 spike):
+
+- `incident`: id, title, severity, status (`triage → investigating → contained`), mode
+  (`collaborative | autonomous`).
+- `actors[]`: id, role (`triage/identity/endpoint/response/analyst`), kind (`human | agent`),
+  status (`working/waiting/blocked/needs-approval/idle`), currentActivity, authority scope.
+- `evidence[]`: id, sourceActorId, kind, summary, confidence, linkedEntityIds, timestamp.
+- `entities[]`: id, kind (`host/account/service`), label, riskState, protectedClass?.
+- `hypotheses[]`: id, statement, confidence, supportingEvidenceIds.
+- `proposals[]`: id, actorId, action verb + target, evidenceIds, authorityResult
+  (`validated | rejected+fallback | confirmation-required | approved | executed`), reason.
+- `timeline[]` / `trace[]`: append-only, attributable, the forensic spine.
+
+HX projects `evidence/entities/hypotheses/proposals/timeline`; AX projects
+`actors/entities/proposals/trace`. Both are views of this one graph — never parallel fixtures.
+
+## 6. Implementation principles
 
 1. **Real kernel events, deterministic scenario.** A scripted scenario is acceptable for demo
   reliability, but every visible contribution must dispatch a real GIK event through schema,
@@ -133,8 +167,11 @@ Pitch takeaway: **Agents can leave the screen. They cannot leave the governance 
   full event payloads/state diffs in the forensic drawer for technical audiences.
 5. **Step-through first, autoplay second.** Let the presenter advance acts deliberately, with an
   optional autoplay mode. Cause, authority decision, and state change must remain legible.
+6. **Honor host theming + reuse conventions.** Consume `HostThemeProvider` semantic variables
+  (`var(--bg)`, `var(--panel)`, `var(--accent)`, `var(--line)`, …); no hard-coded Fluent palette
+  colors (the T2 lesson). Prefer shared `@gik/*` packages over bundle-local reimplementation.
 
-## 6. Risks to resolve before committing the UI architecture
+## 7. Risks to resolve before committing the UI architecture
 
 - **Rejection semantics:** verify whether the kernel can represent a policy rejection + fallback as
   a first-class trace result. If not, add the smallest real kernel/trace capability needed.
@@ -147,7 +184,28 @@ Pitch takeaway: **Agents can leave the screen. They cannot leave the governance 
 - **Scenario density:** four agents and five acts are enough complexity. Keep one incident and one
   final decision so the audience sees orchestration rather than dashboard noise.
 
-## 7. Acceptance criteria
+## 8. Phased delivery (discovery first)
+
+Sequence the build so the riskiest platform claims are proven before any UI polish:
+
+- **Phase 0 — Capability spike (resolves Section 7 risks):** in a throwaway harness, prove the
+  kernel can (a) carry `actorId` provenance on events, (b) represent a policy `rejected + fallback`
+  result as first-class trace, and (c) run the `confirm` lifecycle `pending → approved → executed`.
+  Where a primitive is missing, decide *build-the-smallest-real-thing* vs *narrow the scenario*
+  before committing the UI. No UI investment until these are answered.
+- **Phase 1 — Static incident room:** layout, actor roster, and shared canvas rendering seeded
+  state (no motion). Establishes legibility and theming.
+- **Phase 2 — One real agent event:** a single actor emits a real event that mutates shared state
+  and appears attributed in the timeline. Proves the wiring end-to-end.
+- **Phase 3 — Parallel multi-agent (Acts 1–2):** all four actors contribute concurrently.
+- **Phase 4 — Governance boundary (Act 3):** the policy-blocked overreach + fallback receipt.
+- **Phase 5 — Continuity + return (Acts 4–5):** autonomous handoff and the confirmation-gated
+  containment.
+- **Phase 6 — Presenter controls + polish:** stepping, autoplay/reset, forensic drawer, mobile.
+
+Each phase should end green on `build:host` + Vitest so the hero is always demoable.
+
+## 9. Acceptance criteria
 
 - [ ] A new `live-workspace-soc` bundle opens from the Runtime CTA; the old `workbench` remains
   unchanged and independently routable throughout T3 and the remaining pitch implementation.
@@ -165,7 +223,7 @@ Pitch takeaway: **Agents can leave the screen. They cannot leave the governance 
 - [ ] `npm run build:host` + Vitest pass; Playwright validates desktop/mobile layout, readable actor
   activity, no horizontal overflow, and the complete scenario path.
 
-## 8. Deferred cleanup (not part of T3)
+## 10. Deferred cleanup (not part of T3)
 
 After Beats 1–4 are complete, assess whether `workbench` still serves a useful developer/sample
 purpose. Only then choose explicitly to keep it, move it out of the pitch catalog, deprecate it, or
