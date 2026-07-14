@@ -260,10 +260,12 @@ function fieldHint(prop: Record<string, unknown>): string {
   return "";
 }
 
-const CHART_PALETTE = [
-  "#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f",
-  "#edc948", "#b07aa1", "#ff9da7", "#9c755f", "#bab0ac",
-];
+// Categorical series colors come from the ThemeProvider (--gx-chart-1..10 role vars) so charts
+// recolor with the theme instead of hardcoding a palette in the component.
+const CHART_SERIES_COUNT = 10;
+function chartColor(index: number): string {
+  return `var(--gx-chart-${(index % CHART_SERIES_COUNT) + 1})`;
+}
 
 function detectChartType(rows: Array<Record<string, unknown>>): string {
   if (!rows.length) return "bar";
@@ -353,6 +355,31 @@ function maxChartValue(model: ChartModel, stacked: boolean): number {
 function chartLabel(row: Record<string, unknown>, key: string): string {
   const value = row[key];
   return value == null ? "" : String(value);
+}
+
+// A "nice" rounded step (1/2/5 x 10^n) so axis ticks land on readable values.
+function niceStep(raw: number): number {
+  if (!(raw > 0)) return 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const norm = raw / mag;
+  const nice = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
+  return nice * mag;
+}
+
+// Evenly spaced axis ticks from 0 up to (at least) max, using a nice step. The last tick is the
+// value chart series are scaled against, so bars/lines align to the gridlines.
+function niceTicks(max: number, count = 4): number[] {
+  if (!(max > 0)) return [0];
+  const step = niceStep(max / count);
+  const ticks: number[] = [];
+  for (let v = 0; v <= max + step * 1e-6; v += step) ticks.push(Number(v.toFixed(6)));
+  if (ticks[ticks.length - 1] < max) ticks.push(ticks[ticks.length - 1] + step);
+  return ticks;
+}
+
+function formatTick(value: number): string {
+  if (Number.isInteger(value)) return String(value);
+  return value.toFixed(Math.abs(value) < 1 ? 2 : 1);
 }
 
 function renderMarkdownBlocks(value: string): React.ReactNode[] {
@@ -736,28 +763,71 @@ function ChartPrimitive({ node }: ProjectionViewProps) {
     ? spec.chartType
     : detectChartType(model.rows);
   const stacked = spec.stacked === true;
-  const showLegend = spec.legend !== false && (model.seriesKeys.length > 1 || variant === "pie" || variant === "doughnut");
-  const left = 6;
+  const isPie = variant === "pie" || variant === "doughnut";
+  const showLegend = spec.legend !== false && (model.seriesKeys.length > 1 || isPie);
+  const showGrid = spec.grid !== false && !isPie;
+
+  // Cartesian charts reserve a left gutter for Y-axis tick labels; pie/doughnut use the full box.
+  const left = isPie ? 6 : 34;
   const top = 8;
-  const right = 8;
-  const bottom = 18;
+  const right = 10;
+  const bottom = 20;
   const plotW = width - left - right;
   const plotH = height - top - bottom;
-  const max = maxChartValue(model, stacked);
 
-  const legendLabels = variant === "pie" || variant === "doughnut"
+  const rawMax = maxChartValue(model, stacked);
+  const ticks = isPie ? [] : niceTicks(rawMax, 4);
+  const axisMax = ticks.length ? ticks[ticks.length - 1] : rawMax;
+  const scaleMax = axisMax > 0 ? axisMax : 1;
+  const yFor = (value: number) => top + plotH - (value / scaleMax) * plotH;
+
+  const legendLabels = isPie
     ? model.rows.map((row) => chartLabel(row, model.labelKey))
     : model.seriesKeys;
 
-  const baseline = <line key="baseline" x1={left} x2={left + plotW} y1={top + plotH} y2={top + plotH} stroke="currentColor" opacity="0.35" />;
+  // Y-axis gridlines + tick labels (Cartesian only). The tick=0 line doubles as the baseline.
+  const axis = showGrid
+    ? ticks.flatMap((tick, i) => {
+        const y = yFor(tick);
+        return [
+          <line
+            key={`grid-${i}`}
+            className={tick === 0 ? "gx-chart-axis-line" : "gx-chart-grid"}
+            x1={left}
+            x2={left + plotW}
+            y1={y}
+            y2={y}
+          />,
+          <text key={`ytick-${i}`} className="gx-chart-axis-label" x={left - 5} y={y + 3} textAnchor="end">
+            {formatTick(tick)}
+          </text>,
+        ];
+      })
+    : [];
+
+  const groupW = plotW / model.rows.length;
+  const xAt = (rowIndex: number): number => variant === "bar"
+    ? left + rowIndex * groupW + groupW / 2
+    : model.rows.length <= 1
+      ? left + plotW / 2
+      : left + rowIndex * (plotW / (model.rows.length - 1));
+
+  // X-axis category labels (Cartesian only).
+  const xLabels = !isPie
+    ? model.rows.map((row, rowIndex) => (
+        <text key={`x-${rowIndex}`} className="gx-chart-axis-label" x={xAt(rowIndex)} y={top + plotH + 13} textAnchor="middle">
+          {chartLabel(row, model.labelKey)}
+        </text>
+      ))
+    : [];
 
   const bars = variant === "bar"
     ? model.rows.flatMap((row, rowIndex) => {
-        const groupW = plotW / model.rows.length;
         let runningBottom = top + plotH;
         return model.seriesKeys.flatMap((key, seriesIndex) => {
           const value = Math.max(0, toNumber(row[key]));
-          const barHeight = max > 0 ? (value / max) * plotH : 0;
+          const barHeight = (value / scaleMax) * plotH;
+          if (barHeight <= 0) return [];
           let x: number;
           let y: number;
           let barWidth: number;
@@ -771,37 +841,24 @@ function ChartPrimitive({ node }: ProjectionViewProps) {
             x = left + rowIndex * groupW + groupW * 0.1 + seriesIndex * barWidth;
             y = top + plotH - barHeight;
           }
-          const elements: React.ReactNode[] = [];
-          if (barHeight > 0) {
-            elements.push(
-              <rect
-                key={`bar-${rowIndex}-${seriesIndex}`}
-                x={x}
-                y={y}
-                width={Math.max(1, barWidth * 0.9)}
-                height={barHeight}
-                fill={CHART_PALETTE[seriesIndex % CHART_PALETTE.length]}
-              />
-            );
-          }
-          if (seriesIndex === model.seriesKeys.length - 1) {
-            elements.push(
-              <text key={`barlbl-${rowIndex}`} x={left + rowIndex * groupW} y={top + plotH + 12} fontSize="9" opacity="0.7">
-                {chartLabel(row, model.labelKey)}
-              </text>
-            );
-          }
-          return elements;
+          return [
+            <rect
+              key={`bar-${rowIndex}-${seriesIndex}`}
+              x={x}
+              y={y}
+              width={Math.max(1, barWidth * 0.9)}
+              height={barHeight}
+              fill={chartColor(seriesIndex)}
+            >
+              <title>{`${chartLabel(row, model.labelKey)} · ${key}: ${formatTick(value)}`}</title>
+            </rect>,
+          ];
         });
       })
     : [];
 
   const linePoints = (seriesIndex: number) => model.rows
-    .map((row, rowIndex) => {
-      const x = model.rows.length <= 1 ? left + plotW / 2 : left + rowIndex * (plotW / (model.rows.length - 1));
-      const y = top + plotH - (max > 0 ? (toNumber(row[model.seriesKeys[seriesIndex]]) / max) * plotH : 0);
-      return `${x},${y}`;
-    })
+    .map((row, rowIndex) => `${xAt(rowIndex)},${yFor(toNumber(row[model.seriesKeys[seriesIndex]]))}`)
     .join(" ");
 
   const lines = variant === "line" || variant === "area"
@@ -815,33 +872,38 @@ function ChartPrimitive({ node }: ProjectionViewProps) {
             <polygon
               key={`area-${key}`}
               points={`${points} ${lastX},${top + plotH} ${firstX},${top + plotH}`}
-              fill={CHART_PALETTE[seriesIndex % CHART_PALETTE.length]}
+              fill={chartColor(seriesIndex)}
               opacity="0.3"
             />
           );
         }
         elements.push(
-          <polyline
-            key={`line-${key}`}
-            points={points}
-            fill="none"
-            stroke={CHART_PALETTE[seriesIndex % CHART_PALETTE.length]}
-            strokeWidth="2"
-          />
+          <polyline key={`line-${key}`} points={points} fill="none" stroke={chartColor(seriesIndex)} strokeWidth="2" />
         );
+        model.rows.forEach((row, rowIndex) => {
+          const value = toNumber(row[key]);
+          elements.push(
+            <circle key={`pt-${key}-${rowIndex}`} cx={xAt(rowIndex)} cy={yFor(value)} r="3" fill={chartColor(seriesIndex)}>
+              <title>{`${chartLabel(row, model.labelKey)} · ${key}: ${formatTick(value)}`}</title>
+            </circle>
+          );
+        });
         return elements;
       })
     : [];
 
   const scatter = variant === "scatter"
     ? model.rows.map((row, rowIndex) => {
-        const x = model.rows.length <= 1 ? left + plotW / 2 : left + rowIndex * (plotW / (model.rows.length - 1));
-        const y = top + plotH - (max > 0 ? (toNumber(row[model.seriesKeys[0]]) / max) * plotH : 0);
-        return <circle key={`pt-${rowIndex}`} cx={x} cy={y} r="4" fill={CHART_PALETTE[0]} />;
+        const value = toNumber(row[model.seriesKeys[0]]);
+        return (
+          <circle key={`pt-${rowIndex}`} cx={xAt(rowIndex)} cy={yFor(value)} r="4" fill={chartColor(0)}>
+            <title>{`${chartLabel(row, model.labelKey)}: ${formatTick(value)}`}</title>
+          </circle>
+        );
       })
     : [];
 
-  const pie = variant === "pie" || variant === "doughnut"
+  const pie = isPie
     ? (() => {
         const total = model.rows.reduce((acc, row) => acc + Math.max(0, toNumber(row[model.seriesKeys[0]])), 0);
         if (total <= 0) return [];
@@ -850,7 +912,7 @@ function ChartPrimitive({ node }: ProjectionViewProps) {
         const radius = Math.min(width, height) / 2 * 0.8;
         const innerRadius = variant === "doughnut" ? radius * 0.55 : 0;
         let angle = -Math.PI / 2;
-        const slices = model.rows.flatMap((row, rowIndex) => {
+        return model.rows.flatMap((row, rowIndex) => {
           const value = Math.max(0, toNumber(row[model.seriesKeys[0]]));
           if (value <= 0) return [];
           const sweep = (value / total) * Math.PI * 2;
@@ -871,13 +933,17 @@ function ChartPrimitive({ node }: ProjectionViewProps) {
                 return `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} L ${ix1} ${iy1} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${ix2} ${iy2} Z`;
               })()
             : `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
-          return <path key={`slice-${rowIndex}`} d={path} fill={CHART_PALETTE[rowIndex % CHART_PALETTE.length]} />;
+          const pct = Math.round((value / total) * 100);
+          return [
+            <path key={`slice-${rowIndex}`} d={path} fill={chartColor(rowIndex)}>
+              <title>{`${chartLabel(row, model.labelKey)}: ${formatTick(value)} (${pct}%)`}</title>
+            </path>,
+          ];
         });
-        return slices;
       })()
     : [];
 
-  const body = pie.length > 0 ? pie : [baseline, ...bars, ...lines, ...scatter];
+  const body = isPie ? pie : [...axis, ...bars, ...lines, ...scatter, ...xLabels];
 
   return (
     <div className="gx-chart">
@@ -888,7 +954,7 @@ function ChartPrimitive({ node }: ProjectionViewProps) {
         <div className="gx-chart-legend">
           {legendLabels.map((label, index) => (
             <span key={`${label}-${index}`} className="gx-chart-legend-item">
-              <span className="gx-chart-swatch" style={{ background: CHART_PALETTE[index % CHART_PALETTE.length] }} />
+              <span className="gx-chart-swatch" style={{ background: chartColor(index) }} />
               {label}
             </span>
           ))}
