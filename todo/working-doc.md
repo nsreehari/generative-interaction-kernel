@@ -241,9 +241,15 @@ observer. "Exec vs builder" was too coarse and omitted the runtime row entirely.
 | **AI** | **ACX** — AI coding agent authors the same artifacts | **AX** — autonomous agent acts on shared state |
 
 - **Observer (exec)** stands *outside* the grid and must be shown *both* planes to believe the claims.
-- **Crown-jewel claims are cross-cell (runtime row):** no parity drift (HX≡AX authority),
-  one shared state / no privileged channel, dual-loop (HX deterministic + AX semantic re-plan,
-  validate-or-fallback).
+- **Canonical moat:** a generative, collaborative workspace where humans and agents share one
+  evolving state. Agents may collaborate **inside the human interaction loop** or continue
+  autonomously **outside the interaction loop**, but every consequential action passes through
+  the same governed state authority. **Outside the interaction loop never means outside the
+  governance loop.**
+- **Crown-jewel claims are cross-cell (runtime row):** one shared state / no privileged mutation
+  channel; continuity of authority, policy, and trace as agents move inside/outside the interaction
+  loop; dual-loop operation (HX deterministic + AX semantic re-plan, validate-or-fallback); no
+  parity drift between the human and agent surfaces.
 
 **Vocabulary by register:**
 - **Authoring plane (DX + ACX):** manifest, blueprint, tier, lowering recipe, bundle, kernel,
@@ -253,11 +259,14 @@ observer. "Exec vs builder" was too coarse and omitted the runtime row entirely.
   timeline, approve). Never sees "blueprint."
 - **Runtime AX:** the *shared state graph / shadow tree*, capabilities, the six action verbs
   (`assign/derive/emit/invoke/route/confirm`), `trace`. Operates the bundle; never authors it.
-- **Observer (exec):** `intent → governed experience` + the claims (adaptive, deterministic,
-  auditable, symbiotic).
+  May collaborate synchronously in the workspace or continue asynchronously/headlessly, always
+  under the same authority and returning consequential decisions through governed state.
+- **Observer (exec):** humans + agents in one governed collaborative workspace; agents can leave
+  the screen, but cannot leave the governance boundary.
 
 "Governed experience" is the **HX face** of a *dual* runtime surface; its other face is a
-**governed agent surface (AX)** over the *same* state.
+**governed agent surface (AX)** over the *same* state. Together they form a persistent
+**governed collaborative workspace**, not merely an auditable generative UI.
 
 ---
 
@@ -275,23 +284,31 @@ authoring-plane tool. People buy the **runtime magic** first, then the tooling b
 **The 4 beats (sequenced argument, not a feature tour):**
 
 1. **Front Door — "Why now" + the wedge** (`samples-overview`, rewritten as the *Platform
-   Storyboard*). Message: agentic UIs are ungoverned/brittle; we built *the compiler & runtime
-   for governed generative interaction*; first wedge = SOC. Two dominant CTAs: **See the Runtime
-   (HX/AX)** → Hero 1; **See the Compiler (DX/ACX)** → Hero 2. Zero builder jargon.
+  Storyboard*). Message: AI has moved from answering questions to participating in work, but
+  today's human UI, agent runtime, and autonomous backend fragment state and accountability.
+  GIK is the compiler + runtime for **governed human-agent collaboration**: one evolving
+  workspace, shared authority, whether the agent is in the interaction loop or operating
+  autonomously. First wedge = SOC. After the SOC proof spine, two dominant CTAs:
+  **Experience the SOC Runtime** → Hero 1; **Author Governed Experiences** → Hero 2, with
+  `DX + ACX · Powered by the GIK Compiler` as the mechanism label. Zero builder jargon.
 2. **Runtime plane / the magic** (Hero 1 — Live Workspace : SOC). 3-pane: **HX** (rendered
-   analyst UI, `confirm`-gated "Isolate Host"), **AX** (live semantic shadow tree; agent proposes
-   `derive`/`route` against the graph, not pixels), **Trace/forensics** (the moat — every action
-   hits the pure reducer: `[Proposed by AI] → [Validated] → [Patched]`; show a hallucinated
-   proposal *rejected* by fallback). Takeaway: "AI never touches the screen; it proposes to the
-   kernel — the only auditable generative UI in security."
+  analyst UI, `confirm`-gated "Isolate Host"), **AX** (live semantic shadow tree; agent proposes
+  `derive`/`route` against the graph, not pixels), **Trace/forensics** (every action hits the
+  governed authority: `[Proposed by AI] → [Validated] → [Patched]`; show a hallucinated proposal
+  *rejected* by fallback). The scenario must also show continuity: the agent continues an
+  investigation asynchronously after the analyst leaves, then returns findings and a
+  confirmation-gated action to the same workspace. Takeaway: "Agents can leave the screen.
+  They cannot leave the governance boundary."
 3. **Authoring plane / the moat** (Hero 2 — Console). Tabs: **Blueprint Overview** (intent →
    [tiers] → bundle), **Lowering Recipes** (bounded taxonomy → layout mapping), **Surface
    Preview** (small-multiples: desktop war-room / mobile alert / copilot panel). Takeaway:
-   "Blueprints are closed declarative graphs, so ACX can author new domains safely and endlessly."
-4. **Transversality / scale** (Deployment Atlas). Prove medium-blindness via
-   **kernel → face → projection → transport**: `agent-host` (MCP tools), `control-host` (SSE live
-   runtime), `backend-host` (headless orchestration). Takeaway: "Same blueprint drives the
-   browser screen and runs headless in the backend — write once, govern everywhere."
+  "Blueprints are closed declarative graphs, so humans and AI coding agents can author new
+  governed domains as bounded, testable artifacts."
+4. **Transversality / scale** (Deployment Atlas). Prove that inside-loop and outside-loop work
+  retain the same state authority via **kernel → face → projection → transport**: `agent-host`
+  (MCP tools), `control-host` (SSE live runtime), `backend-host` (headless orchestration).
+  Takeaway: "The agent can continue beyond the screen without creating a shadow process — same
+  state, policy, authority, and trace everywhere."
 
 **IA principle:** every hero screen declares which cell(s) of D2 it serves; the pitch must
 cover the right column + bottom row, not just DX.
@@ -352,16 +369,20 @@ building TurboTax. Frame strictly as "same kernel, headless, a tax journey."
   pipeline demoted) and leave ADR-0001/0007/0013/0038 intact.
 
 ## Beat 1 — Front Door (Platform Storyboard)
-- **T2 — Rewrite `samples-overview` as the pitch storyboard:** why-now + category (*compiler &
-  runtime for governed generative interaction*) + SOC wedge; two dominant CTAs (**See the
-  Runtime** → Live Workspace; **See the Compiler** → Console). Speak `intent → governed
-  experience`; zero builder jargon. Retire stale console/workbench claims in `customerScript`.
+- **T2 — DONE (2026-07-15) — Rewrote `samples-overview` as the pitch storyboard:** pain → product contract → SOC
+  journey → trust proof → two demonstrations → expansion teaser. Lead with the governed
+  collaborative-workspace thesis and the inside/outside-interaction-loop continuity; then two
+  dominant CTAs (**Experience the SOC Runtime** → Live Workspace; **Author Governed Experiences**
+  → Console, powered by the GIK Compiler). Retired the stale sample catalog/customer script. Uses the host `HostThemeProvider`
+  semantic roles; host build passes, both routes work, and 375px mobile has no overflow.
 
 ## Beat 2 — Runtime-plane hero (Live Workspace : SOC) — was the "Workbench fork"
 - **T3 — Refocus `workbench` into Live Workspace : SOC** (fork RESOLVED = refocus, not retire).
   3-pane: **HX** rendered analyst UI (`confirm`-gated action) · **AX** live semantic shadow tree
   (agent proposes `derive`/`route` against the graph) · **Trace** forensics showing
-  `[Proposed] → [Validated] → [Patched]` incl. a *rejected* hallucinated proposal.
+  `[Proposed] → [Validated] → [Patched]` incl. a *rejected* hallucinated proposal. Add an
+  asynchronous continuation: the agent leaves the active human loop, continues under the same
+  authority, then returns governed findings/actions to the same workspace.
 
 ## Beat 3 — Authoring-plane hero (Console)
 - **T4 — Blueprint Overview tab:** lead with `intent → [tiers] → bundle` + rendered thumbnail +

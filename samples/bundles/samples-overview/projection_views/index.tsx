@@ -1,271 +1,268 @@
 import React from "react";
-import { Button, makeStyles, mergeClasses, shorthands, tokens } from "@fluentui/react-components";
+import { Button, makeStyles, shorthands, tokens } from "@fluentui/react-components";
 import type { ProjectionView } from "@gik/react";
 
 const useStyles = makeStyles({
-  page: { display: "grid", gap: tokens.spacingVerticalXL, color: "var(--text)" },
+  page: {
+    width: "100%",
+    minWidth: 0,
+    overflowX: "hidden",
+    color: "var(--text)",
+    backgroundColor: "var(--bg)",
+  },
+  inner: {
+    width: "100%",
+    maxWidth: "1180px",
+    margin: "0 auto",
+    paddingLeft: tokens.spacingHorizontalXL,
+    paddingRight: tokens.spacingHorizontalXL,
+    boxSizing: "border-box",
+  },
   hero: {
-    padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalXL}`,
-    borderRadius: tokens.borderRadiusXLarge,
-    backgroundImage: `radial-gradient(circle at top left, ${tokens.colorBrandBackground2} 0%, ${tokens.colorNeutralBackground3} 48%, ${tokens.colorNeutralBackground4} 100%)`,
-    ...shorthands.border(tokens.strokeWidthThin, "solid", tokens.colorNeutralStroke2),
-    boxShadow: tokens.shadow16,
+    minHeight: "560px",
+    display: "flex",
+    alignItems: "center",
+    paddingTop: "72px",
+    paddingBottom: "72px",
+    backgroundColor: "var(--panel)",
+    borderBottom: `${tokens.strokeWidthThin} solid var(--line)`,
   },
   heroGrid: {
     display: "grid",
-    gridTemplateColumns: "minmax(0, 1.8fr) minmax(260px, 1fr)",
-    gap: tokens.spacingHorizontalL,
-    alignItems: "start",
+    gridTemplateColumns: "minmax(0, 1.35fr) minmax(340px, 0.85fr)",
+    gap: "64px",
+    alignItems: "center",
+    "@media (max-width: 860px)": { gridTemplateColumns: "1fr", gap: tokens.spacingVerticalXXL },
   },
   eyebrow: {
-    letterSpacing: "0.12em",
-    textTransform: "uppercase",
-    fontSize: tokens.fontSizeBase100,
-    fontWeight: tokens.fontWeightBold,
+    marginBottom: tokens.spacingVerticalM,
     color: "var(--accent)",
-    marginBottom: tokens.spacingVerticalS,
+    fontSize: tokens.fontSizeBase200,
+    fontWeight: tokens.fontWeightBold,
+    letterSpacing: "0",
+    textTransform: "uppercase",
   },
   heroTitle: {
-    margin: `0 0 ${tokens.spacingVerticalS}`,
-    fontSize: tokens.fontSizeHero800,
-    lineHeight: 1.08,
-    maxWidth: "720px",
-  },
-  lead: {
-    margin: 0,
-    lineHeight: 1.65,
-    fontSize: tokens.fontSizeBase300,
     maxWidth: "760px",
+    margin: `0 0 ${tokens.spacingVerticalL}`,
+    fontSize: "56px",
+    lineHeight: 1.04,
+    fontWeight: tokens.fontWeightBold,
+    letterSpacing: "0",
+    "@media (max-width: 600px)": { fontSize: "38px" },
   },
-  sublead: {
-    margin: `${tokens.spacingVerticalM} 0 0`,
-    lineHeight: 1.62,
-    color: "var(--muted)",
-  },
-  ctaRow: { display: "flex", flexWrap: "wrap", gap: tokens.spacingHorizontalS, marginTop: tokens.spacingVerticalL },
-  button: {
-    borderRadius: tokens.borderRadiusCircular,
+  lead: { maxWidth: "720px", margin: 0, color: "var(--muted)", fontSize: tokens.fontSizeBase400, lineHeight: 1.55 },
+  contractLine: {
+    margin: `${tokens.spacingVerticalL} 0 0`,
+    paddingLeft: tokens.spacingHorizontalM,
+    borderLeft: "4px solid var(--line)",
+    fontSize: tokens.fontSizeBase400,
     fontWeight: tokens.fontWeightSemibold,
-    boxShadow: tokens.shadow4,
+    lineHeight: 1.4,
   },
-  statsColumn: { display: "grid", gap: tokens.spacingVerticalS },
-  statCard: {
-    padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalM}`,
-    borderRadius: tokens.borderRadiusLarge,
-    ...shorthands.border(tokens.strokeWidthThin, "solid", tokens.colorNeutralStroke2),
-    backgroundColor: tokens.colorNeutralBackground1,
-  },
-  statValue: { fontSize: tokens.fontSizeHero700, fontWeight: tokens.fontWeightBold, lineHeight: 1.15 },
-  grid: {
+  heroAction: { marginTop: tokens.spacingVerticalXL },
+  button: { minHeight: "42px", borderRadius: tokens.borderRadiusMedium, fontWeight: tokens.fontWeightSemibold },
+  contractPanel: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-    gap: tokens.spacingHorizontalL,
-  },
-  card: {
-    padding: `${tokens.spacingVerticalL} ${tokens.spacingHorizontalL}`,
-    borderRadius: tokens.borderRadiusXLarge,
+    gap: tokens.spacingVerticalM,
+    padding: tokens.spacingHorizontalXL,
+    backgroundColor: "var(--panel-2)",
     ...shorthands.border(tokens.strokeWidthThin, "solid", "var(--line)"),
-    backgroundImage: `linear-gradient(180deg, ${tokens.colorNeutralBackground1} 0%, ${tokens.colorNeutralBackground2} 100%)`,
-    boxShadow: tokens.shadow8,
+    borderRadius: tokens.borderRadiusMedium,
   },
-  section: {
-    padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalXL}`,
-    borderRadius: tokens.borderRadiusXLarge,
-    ...shorthands.border(tokens.strokeWidthThin, "solid", "var(--line)"),
+  contractHeader: { margin: 0, fontSize: tokens.fontSizeBase500 },
+  contractItem: {
+    display: "grid",
+    gridTemplateColumns: "34px minmax(0, 1fr)",
+    gap: tokens.spacingHorizontalM,
+    paddingTop: tokens.spacingVerticalM,
+    borderTop: `${tokens.strokeWidthThin} solid var(--line)`,
+  },
+  contractNumber: {
+    display: "grid",
+    placeItems: "center",
+    width: "32px",
+    height: "32px",
+    color: "var(--text)",
     backgroundColor: "var(--panel)",
-    boxShadow: tokens.shadow8,
+    ...shorthands.border(tokens.strokeWidthThin, "solid", "var(--line)"),
+    borderRadius: tokens.borderRadiusMedium,
+    fontWeight: tokens.fontWeightBold,
   },
-  sectionTitle: { marginTop: 0, marginBottom: tokens.spacingVerticalM, fontSize: tokens.fontSizeBase400 },
-  code: {
-    margin: 0,
-    padding: `${tokens.spacingVerticalL} ${tokens.spacingHorizontalL}`,
-    borderRadius: tokens.borderRadiusLarge,
-    backgroundColor: tokens.colorNeutralBackgroundInverted,
-    color: tokens.colorNeutralForegroundInverted,
-    whiteSpace: "pre-wrap",
-    fontSize: tokens.fontSizeBase200,
-    lineHeight: 1.45,
-    ...shorthands.border(tokens.strokeWidthThin, "solid", tokens.colorNeutralStrokeOnBrand2),
-  },
-  stepTitle: { margin: `0 0 ${tokens.spacingVerticalXS}` },
-  bodyText: { margin: 0, lineHeight: 1.5 },
-  laneGrid: { display: "grid", gap: tokens.spacingVerticalM },
-  lane: {
+  contractName: { margin: 0, fontWeight: tokens.fontWeightBold },
+  contractText: { margin: `${tokens.spacingVerticalXXS} 0 0`, color: "var(--muted)", lineHeight: 1.45 },
+  band: { paddingTop: "76px", paddingBottom: "76px", borderBottom: `${tokens.strokeWidthThin} solid var(--line)` },
+  alternateBand: { backgroundColor: "var(--panel-2)" },
+  sectionHeader: {
     display: "grid",
     gridTemplateColumns: "180px minmax(0, 1fr)",
-    gap: tokens.spacingHorizontalL,
-    alignItems: "start",
+    gap: tokens.spacingHorizontalXXL,
+    marginBottom: tokens.spacingVerticalXXL,
+    "@media (max-width: 700px)": { gridTemplateColumns: "1fr", gap: tokens.spacingVerticalS },
   },
-  laneLabel: {
-    padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalM}`,
-    borderRadius: tokens.borderRadiusLarge,
-    backgroundColor: tokens.colorBrandBackground2,
-    ...shorthands.border(tokens.strokeWidthThin, "solid", tokens.colorBrandStroke1),
-    color: tokens.colorBrandForeground2,
-    fontWeight: tokens.fontWeightSemibold,
+  sectionIndex: { color: "var(--accent)", fontWeight: tokens.fontWeightBold, textTransform: "uppercase" },
+  sectionTitle: {
+    maxWidth: "760px",
+    margin: 0,
+    fontSize: "36px",
+    lineHeight: 1.15,
+    letterSpacing: "0",
+    "@media (max-width: 600px)": { fontSize: "30px" },
   },
-  laneCards: {
+  fractureGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-    gap: tokens.spacingHorizontalM,
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: tokens.spacingHorizontalL,
+    "@media (max-width: 760px)": { gridTemplateColumns: "1fr" },
   },
-  flowCard: { minHeight: "116px" },
-  table: { width: "100%", borderCollapse: "collapse", fontSize: tokens.fontSizeBase200 },
-  cell: {
-    borderTopWidth: tokens.strokeWidthThin,
-    borderTopStyle: "solid",
-    borderTopColor: "var(--line)",
-    padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalS}`,
-    textAlign: "left",
-    verticalAlign: "top",
-  },
-  pill: {
-    display: "inline-block",
-    padding: `${tokens.spacingVerticalXXS} ${tokens.spacingHorizontalS}`,
-    borderRadius: tokens.borderRadiusCircular,
-    backgroundColor: tokens.colorBrandBackground2,
-    color: tokens.colorBrandForeground2,
-    fontSize: tokens.fontSizeBase100,
+  fractureItem: { paddingTop: tokens.spacingVerticalL, borderTop: "2px solid var(--line)" },
+  itemTitle: { margin: `0 0 ${tokens.spacingVerticalS}`, fontSize: tokens.fontSizeBase400 },
+  body: { margin: 0, color: "var(--muted)", fontSize: tokens.fontSizeBase300, lineHeight: 1.55 },
+  warningLine: {
+    maxWidth: "780px",
+    margin: `${tokens.spacingVerticalXXL} 0 0`,
+    fontSize: tokens.fontSizeBase500,
     fontWeight: tokens.fontWeightSemibold,
-    marginBottom: tokens.spacingVerticalS,
+    lineHeight: 1.4,
   },
-  strongParagraph: { margin: `0 0 ${tokens.spacingVerticalXS}`, lineHeight: 1.5 },
+  modeGrid: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) 80px minmax(0, 1fr)",
+    alignItems: "stretch",
+    gap: tokens.spacingHorizontalL,
+    "@media (max-width: 760px)": { gridTemplateColumns: "1fr" },
+  },
+  mode: {
+    padding: tokens.spacingHorizontalXL,
+    backgroundColor: "var(--panel)",
+    ...shorthands.border(tokens.strokeWidthThin, "solid", "var(--line)"),
+    borderRadius: tokens.borderRadiusMedium,
+  },
+  modeLabel: {
+    display: "inline-block",
+    marginBottom: tokens.spacingVerticalM,
+    padding: `${tokens.spacingVerticalXXS} ${tokens.spacingHorizontalS}`,
+    color: "var(--muted)",
+    backgroundColor: "var(--panel-2)",
+    ...shorthands.border(tokens.strokeWidthThin, "solid", "var(--line)"),
+    borderRadius: tokens.borderRadiusSmall,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  modeBridge: {
+    display: "grid",
+    placeItems: "center",
+    color: "var(--muted)",
+    fontSize: "28px",
+    fontWeight: tokens.fontWeightBold,
+    "@media (max-width: 760px)": { transform: "rotate(90deg)", minHeight: "48px" },
+  },
+  invariant: {
+    marginTop: tokens.spacingVerticalXL,
+    padding: `${tokens.spacingVerticalL} ${tokens.spacingHorizontalXL}`,
+    backgroundColor: "var(--panel)",
+    borderLeft: "4px solid var(--line)",
+    borderRadius: tokens.borderRadiusMedium,
+    fontWeight: tokens.fontWeightSemibold,
+    lineHeight: 1.5,
+  },
+  journey: {
+    display: "grid",
+    gridTemplateColumns: "repeat(6, minmax(150px, 1fr))",
+    gap: tokens.spacingHorizontalS,
+    overflowX: "auto",
+    paddingBottom: tokens.spacingVerticalS,
+  },
+  journeyStep: {
+    minWidth: "150px",
+    minHeight: "170px",
+    padding: tokens.spacingHorizontalM,
+    backgroundColor: "var(--panel)",
+    borderTop: "3px solid var(--line)",
+    borderRadius: tokens.borderRadiusMedium,
+  },
+  autonomousStep: { backgroundColor: "var(--panel-2)" },
+  approvalStep: { borderTopColor: "var(--accent)" },
+  stepNumber: { color: "var(--muted)", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightBold },
+  stepTitle: { margin: `${tokens.spacingVerticalS} 0`, fontSize: tokens.fontSizeBase300 },
+  stepText: { margin: 0, color: "var(--muted)", lineHeight: 1.45 },
+  trace: {
+    display: "grid",
+    gap: tokens.spacingVerticalXS,
+    marginTop: tokens.spacingVerticalXL,
+    padding: tokens.spacingHorizontalL,
+    color: "var(--text)",
+    backgroundColor: "var(--panel-2)",
+    ...shorthands.border(tokens.strokeWidthThin, "solid", "var(--line)"),
+    borderRadius: tokens.borderRadiusMedium,
+    fontFamily: "Consolas, monospace",
+    fontSize: tokens.fontSizeBase200,
+    lineHeight: 1.5,
+  },
+  traceRow: {
+    display: "grid",
+    gridTemplateColumns: "80px 130px minmax(0, 1fr)",
+    gap: tokens.spacingHorizontalM,
+    "@media (max-width: 600px)": { gridTemplateColumns: "1fr", gap: tokens.spacingVerticalXXS, paddingBottom: tokens.spacingVerticalS },
+  },
+  traceTime: { color: "var(--muted)" },
+  traceAccepted: { color: tokens.colorStatusSuccessForeground1 },
+  traceRejected: { color: tokens.colorStatusDangerForeground1 },
+  proofGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: tokens.spacingHorizontalL,
+    "@media (max-width: 700px)": { gridTemplateColumns: "1fr" },
+  },
+  proof: { paddingTop: tokens.spacingVerticalL, borderTop: "2px solid var(--line)" },
+  forkGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: tokens.spacingHorizontalXL,
+    "@media (max-width: 760px)": { gridTemplateColumns: "1fr" },
+  },
+  fork: {
+    display: "flex",
+    minHeight: "250px",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    padding: tokens.spacingHorizontalXL,
+    backgroundColor: "var(--panel)",
+    ...shorthands.border(tokens.strokeWidthThin, "solid", "var(--line)"),
+    borderRadius: tokens.borderRadiusMedium,
+  },
+  forkLabel: { color: "var(--accent)", fontWeight: tokens.fontWeightBold },
+  forkTitle: { margin: `${tokens.spacingVerticalS} 0`, fontSize: tokens.fontSizeBase600 },
+  forkText: { flexGrow: 1, margin: `0 0 ${tokens.spacingVerticalL}`, color: "var(--muted)", fontSize: tokens.fontSizeBase300, lineHeight: 1.55 },
+  expansion: {
+    paddingTop: "56px",
+    paddingBottom: "56px",
+    color: "var(--text)",
+    backgroundColor: "var(--panel-2)",
+    borderTop: "1px solid var(--line)",
+  },
+  expansionText: { maxWidth: "920px", margin: 0, fontSize: tokens.fontSizeBase500, lineHeight: 1.45, fontWeight: tokens.fontWeightSemibold },
 });
 
-const customerScript = `GenUI is a declarative interaction platform, and this sample set is the quickest way to understand its product surface.
-Start in the browser host: it mounts authored bundles and lets you move between focused experiences without changing infrastructure.
-
-Console is the operational view for profile governance: inspect profiles, validate them, preview them, and manage editable local copies beside read-only repo examples.
-
-Reactive Demo is the narrow proof that declarative state stays inspectable: you can see both the computed results and the dependency graph that produced them.
-
-Provider Authoring Demo shows the planning layer: consequence graphs, exploratory graphs, and step orchestration combined into a higher-level authoring workflow.
-
-Workbench is the studio view: shape an interaction, build a live session, inspect the lowered output, and iterate across the same runtime.
-
-Outside the browser, the other sample hosts show the remaining adoption boundaries: authoring tools only, one live runtime exposed to external clients, or direct kernel embedding inside backend services.`;
-
-const bundleLinks = [
-  { id: "samples-overview", label: "Stay On Overview" },
-  { id: "console", label: "Open Console" },
-  { id: "reactive-demo", label: "Open Reactive Demo" },
-  { id: "provider-authoring-demo", label: "Open Provider Authoring Demo" },
-  { id: "workbench", label: "Open Workbench" },
+const fractureItems = [
+  ["Human interface", "The analyst sees one version of the investigation, shaped by a static dashboard."],
+  ["Agent runtime", "The agent reasons over a separate context, with its own interpretation of state."],
+  ["Autonomous backend", "Headless work disappears into another process, leaving accountability to logs after the fact."],
 ];
 
-const browserBundles = [
-  {
-    name: "Console",
-    promise: "Profile governance and lifecycle",
-    summary: "Operational surface for inspecting profiles, validating them, previewing them, and managing browser-stored editable copies.",
-  },
-  {
-    name: "Reactive Demo",
-    promise: "Reactive state and graph explanation",
-    summary: "Explains how declarative computed state behaves by showing both derived values and the graph behind them.",
-  },
-  {
-    name: "Provider Authoring Demo",
-    promise: "Assisted profile authoring",
-    summary: "Shows how planning signals can be composed into a guided profile-and-recipe authoring experience.",
-  },
-  {
-    name: "Workbench",
-    promise: "Integrated studio",
-    summary: "The richest end-to-end sample: shape the interaction, run the session, and inspect the generated output in one place.",
-  },
+const journeySteps = [
+  ["Intent arrives", "Investigate this phishing alert.", "shared"],
+  ["Evidence assembles", "Trusted signals become one evolving analyst workspace.", "shared"],
+  ["Human + agent investigate", "Both participants work against the same governed state.", "shared"],
+  ["Analyst steps away", "The agent continues asynchronously under the same capabilities and policy.", "autonomous"],
+  ["Findings return", "New evidence and rationale re-enter the same workspace, fully attributed.", "autonomous"],
+  ["Action is governed", "Isolate Host requires human confirmation before execution.", "approval"],
 ];
 
-const browserLane = [
-  {
-    name: "Samples Overview",
-    emphasis: "Orientation",
-    summary: "Start here for the product brief, adoption map, and recommended entry points.",
-  },
-  {
-    name: "Console",
-    emphasis: "Operate",
-    summary: "Manage the profile lifecycle: inspect, validate, preview, and store local copies.",
-  },
-  {
-    name: "Reactive Demo",
-    emphasis: "Explain",
-    summary: "See how declarative state derives results and how its dependency graph stays inspectable.",
-  },
-  {
-    name: "Provider Authoring Demo",
-    emphasis: "Plan",
-    summary: "Use graph-driven signals to assemble an authoring workflow around profiles and recipes.",
-  },
-  {
-    name: "Workbench",
-    emphasis: "Build",
-    summary: "Work inside the studio-style flow: shape the interaction, run it, and inspect the output.",
-  },
-];
-
-const outwardLane = [
-  {
-    name: "agent-host",
-    emphasis: "Tools only",
-    summary: "Expose authoring and validation tools over MCP without a live runtime in the middle.",
-  },
-  {
-    name: "control-host",
-    emphasis: "Live runtime",
-    summary: "Expose one running system outward through SSE render stream and MCP projections.",
-  },
-  {
-    name: "backend-host",
-    emphasis: "Embed",
-    summary: "Drop the kernel directly into service code when UI hosting is not the concern.",
-  },
-];
-
-const hostShapes = [
-  {
-    name: "apps/host",
-    when: "You need a browser renderer/container for bundles.",
-    value: "One generic host that can run many browser sample bundles by id.",
-  },
-  {
-    name: "agent-host",
-    when: "You want authoring and validation tools only.",
-    value: "Stateless MCP surface with no live kernel runtime.",
-  },
-  {
-    name: "control-host",
-    when: "You want one authoritative runtime exposed outward.",
-    value: "One live runtime surfaced as SSE render stream plus agent/control MCP projections.",
-  },
-  {
-    name: "backend-host",
-    when: "You want kernel infrastructure inside service code.",
-    value: "Direct kernel embedding with backend orchestration and no browser shell.",
-  },
-];
-
-const personas = [
-  {
-    who: "Frontend / product engineer",
-    start: "Start with Samples Overview, then Console, then Workbench.",
-    reason: "This gives you the orientation first, then the operational view, then the richer studio-style experience.",
-  },
-  {
-    who: "Profile / recipe author",
-    start: "Start with Console, then Provider Authoring Demo.",
-    reason: "You see both the profile lifecycle and the higher-level planning seams around authoring decisions.",
-  },
-  {
-    who: "Platform / runtime engineer",
-    start: "Start with control-host, then backend-host.",
-    reason: "Those samples show live runtime hosting versus direct kernel embedding.",
-  },
-  {
-    who: "Copilot / agent integrator",
-    start: "Start with agent-host, then Provider Authoring Demo.",
-    reason: "You can separate authoring-tool exposure from any live runtime concerns.",
-  },
+const proofItems = [
+  ["One shared workspace", "Human and agent surfaces derive from the same evolving state. No shadow source of truth."],
+  ["Continuous governance", "The agent may leave the interaction loop, never the state, policy, authority, and trace boundary."],
+  ["Governed action", "The model proposes. The authority validates, rejects, or requires confirmation."],
+  ["Complete trace", "Every proposal, rejection, patch, approval, and autonomous continuation is attributable."],
 ];
 
 function openBundle(bundleId: string) {
@@ -274,173 +271,148 @@ function openBundle(bundleId: string) {
   window.location.assign(current.toString());
 }
 
+function scrollToJourney() {
+  document.getElementById("soc-journey")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 const SamplesOverviewView: ProjectionView = () => {
   const styles = useStyles();
+  const journeyClass = (mode: string) =>
+    `${styles.journeyStep} ${mode === "autonomous" ? styles.autonomousStep : mode === "approval" ? styles.approvalStep : ""}`;
+
   return (
-    <div className={styles.page}>
-      <section className={styles.hero}>
-        <div className={styles.heroGrid}>
+    <main className={styles.page}>
+      <section className={styles.hero} aria-labelledby="platform-storyboard-title">
+        <div className={`${styles.inner} ${styles.heroGrid}`}>
           <div>
-            <div className={styles.eyebrow}>GenUI Sample Portfolio</div>
-            <h2 className={styles.heroTitle}>
-              Declarative interaction, shown as a product surface instead of a code dump.
-            </h2>
+            <div className={styles.eyebrow}>Governed human-agent collaboration</div>
+            <h1 id="platform-storyboard-title" className={styles.heroTitle}>Humans and agents need one governed place to work.</h1>
             <p className={styles.lead}>
-              GenUI is easiest to understand when you see the same platform at a few deliberate boundaries:
-              browser rendering, profile operations, authoring guidance, live runtime hosting, and direct backend embedding.
+              AI now investigates, recommends, and acts. GIK gives humans and agents one evolving workspace where they can work
+              together or continue autonomously without fragmenting state, authority, or accountability.
             </p>
-            <p className={styles.sublead}>
-              Use this page when the right question is not “how is the repo wired?” but “what would I show an
-              external product engineer in the first five minutes?”
-            </p>
-            <div className={styles.ctaRow}>
-              <Button appearance="primary" className={styles.button} onClick={() => openBundle("samples-overview")}>
-                Start Here: Product Overview
-              </Button>
-              <Button appearance="secondary" className={styles.button} onClick={() => openBundle("console")}>
-                First Hands-On Stop: Console
-              </Button>
-              <Button appearance="secondary" className={styles.button} onClick={() => openBundle("workbench")}>
-                Deep Dive: Workbench
-              </Button>
-              <Button appearance="secondary" className={styles.button} onClick={() => openBundle("provider-authoring-demo")}>
-                Authoring Story
-              </Button>
-              <Button appearance="secondary" className={styles.button} onClick={() => openBundle("reactive-demo")}>
-                Reactive State Story
-              </Button>
+            <p className={styles.contractLine}>Agents can leave the screen. They cannot leave the governance boundary.</p>
+            <div className={styles.heroAction}>
+              <Button appearance="primary" className={styles.button} onClick={scrollToJourney}>See how it works</Button>
             </div>
           </div>
-          <div className={styles.statsColumn}>
-            <div className={styles.statCard}>
-              <div className={styles.eyebrow}>Browser samples</div>
-              <div className={styles.statValue}>5</div>
-              <div>Overview, Console, Reactive Demo, Provider Authoring Demo, Workbench</div>
-            </div>
-            <div className={styles.statCard}>
-              <div className={styles.eyebrow}>Other host shapes</div>
-              <div className={styles.statValue}>3</div>
-              <div>Agent-only, live runtime host, and backend embedding</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <h3 className={styles.sectionTitle}>1. 60-second customer script</h3>
-        <pre className={styles.code}>{customerScript}</pre>
-      </section>
-
-      <section className={styles.section}>
-        <h3 className={styles.sectionTitle}>Suggested walkthrough</h3>
-        <div className={styles.grid}>
-          <article className={styles.card}>
-            <div className={styles.pill}>Step 1</div>
-            <h4 className={styles.stepTitle}>Frame the product</h4>
-            <p className={styles.bodyText}>
-              Stay on this overview page to explain the platform boundary story before jumping into any specific sample.
-            </p>
-          </article>
-          <article className={styles.card}>
-            <div className={styles.pill}>Step 2</div>
-            <h4 className={styles.stepTitle}>Show the operational surface</h4>
-            <p className={styles.bodyText}>
-              Open Console to show profile governance, validation, preview, and local editable copies.
-            </p>
-          </article>
-          <article className={styles.card}>
-            <div className={styles.pill}>Step 3</div>
-            <h4 className={styles.stepTitle}>Choose the deeper proof</h4>
-            <p className={styles.bodyText}>
-              Use Workbench for the studio story, Provider Authoring Demo for planning, or Reactive Demo for inspectable derived state.
-            </p>
-          </article>
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <h3 className={styles.sectionTitle}>2. How the samples fit together</h3>
-        <div className={styles.laneGrid}>
-          <div className={styles.lane}>
-            <div className={styles.laneLabel}>Browser host lane</div>
-            <div className={styles.laneCards}>
-              {browserLane.map((item) => (
-                <article key={item.name} className={mergeClasses(styles.card, styles.flowCard)}>
-                  <div className={styles.pill}>{item.emphasis}</div>
-                  <h4 className={styles.stepTitle}>{item.name}</h4>
-                  <p className={styles.bodyText}>{item.summary}</p>
-                </article>
-              ))}
-            </div>
-          </div>
-          <div className={styles.lane}>
-            <div className={styles.laneLabel}>Outward host lane</div>
-            <div className={styles.laneCards}>
-              {outwardLane.map((item) => (
-                <article key={item.name} className={mergeClasses(styles.card, styles.flowCard)}>
-                  <div className={styles.pill}>{item.emphasis}</div>
-                  <h4 className={styles.stepTitle}>{item.name}</h4>
-                  <p className={styles.bodyText}>{item.summary}</p>
-                </article>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <h3 className={styles.sectionTitle}>Browser bundles</h3>
-        <div className={styles.grid}>
-          {browserBundles.map((bundle) => (
-            <article key={bundle.name} className={styles.card}>
-              <div className={styles.pill}>{bundle.promise}</div>
-              <h4 className={styles.stepTitle}>{bundle.name}</h4>
-              <p className={styles.bodyText}>{bundle.summary}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <h3 className={styles.sectionTitle}>Sample host shapes</h3>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th className={styles.cell}>Host</th>
-              <th className={styles.cell}>Choose it when</th>
-              <th className={styles.cell}>What it demonstrates</th>
-            </tr>
-          </thead>
-          <tbody>
-            {hostShapes.map((row) => (
-              <tr key={row.name}>
-                <td className={styles.cell}><strong>{row.name}</strong></td>
-                <td className={styles.cell}>{row.when}</td>
-                <td className={styles.cell}>{row.value}</td>
-              </tr>
+          <aside className={styles.contractPanel} aria-label="Platform contract">
+            <h2 className={styles.contractHeader}>The workspace contract</h2>
+            {[
+              ["Shared state", "One evolving source of truth for human and agent participants."],
+              ["Governed action", "Every consequential change crosses the same authority."],
+              ["Complete trace", "Interactive and autonomous work remain attributable."],
+            ].map(([name, text], index) => (
+              <div key={name} className={styles.contractItem}>
+                <span className={styles.contractNumber}>{index + 1}</span>
+                <div><p className={styles.contractName}>{name}</p><p className={styles.contractText}>{text}</p></div>
+              </div>
             ))}
-          </tbody>
-        </table>
-      </section>
-
-      <section className={styles.section}>
-        <h3 className={styles.sectionTitle}>3. Where a developer should start</h3>
-        <div className={styles.grid}>
-          {personas.map((persona) => (
-            <article key={persona.who} className={styles.card}>
-              <h4 className={styles.stepTitle}>{persona.who}</h4>
-              <p className={styles.strongParagraph}><strong>Start with:</strong> {persona.start}</p>
-              <p className={styles.bodyText}>{persona.reason}</p>
-            </article>
-          ))}
+          </aside>
         </div>
       </section>
-    </div>
+
+      <section className={styles.band} aria-labelledby="why-now-title">
+        <div className={styles.inner}>
+          <header className={styles.sectionHeader}>
+            <div className={styles.sectionIndex}>01 · Why now</div>
+            <h2 id="why-now-title" className={styles.sectionTitle}>AI has started doing the work. The systems around it have not caught up.</h2>
+          </header>
+          <div className={styles.fractureGrid}>
+            {fractureItems.map(([title, text]) => <article key={title} className={styles.fractureItem}><h3 className={styles.itemTitle}>{title}</h3><p className={styles.body}>{text}</p></article>)}
+          </div>
+          <p className={styles.warningLine}>A hallucinated answer is inconvenient. A hallucinated action is an incident.</p>
+        </div>
+      </section>
+
+      <section className={`${styles.band} ${styles.alternateBand}`} aria-labelledby="contract-title">
+        <div className={styles.inner}>
+          <header className={styles.sectionHeader}>
+            <div className={styles.sectionIndex}>02 · Product contract</div>
+            <h2 id="contract-title" className={styles.sectionTitle}>One workspace. Two participation modes. The same authority throughout.</h2>
+          </header>
+          <div className={styles.modeGrid}>
+            <article className={styles.mode}>
+              <div className={styles.modeLabel}>Inside the interaction loop</div>
+              <h3 className={styles.itemTitle}>Human and agent collaborate live</h3>
+              <p className={styles.body}>They inspect evidence, shape the investigation, and propose next steps through the same evolving workspace.</p>
+            </article>
+            <div className={styles.modeBridge} aria-hidden="true">↔</div>
+            <article className={styles.mode}>
+              <div className={styles.modeLabel}>Outside the interaction loop</div>
+              <h3 className={styles.itemTitle}>The agent continues autonomously</h3>
+              <p className={styles.body}>It monitors, invokes tools, derives findings, and prepares decisions without creating a second source of truth.</p>
+            </article>
+          </div>
+          <div className={styles.invariant}>
+            The invariant: both modes use the same state, capabilities, policy, authority, and trace. The AI may adapt the
+            experience and continue the work. It never becomes the authority.
+          </div>
+        </div>
+      </section>
+
+      <section id="soc-journey" className={styles.band} aria-labelledby="soc-journey-title">
+        <div className={styles.inner}>
+          <header className={styles.sectionHeader}>
+            <div className={styles.sectionIndex}>03 · SOC first</div>
+            <h2 id="soc-journey-title" className={styles.sectionTitle}>A phishing alert becomes a continuous, governed investigation.</h2>
+          </header>
+          <div className={styles.journey} aria-label="SOC investigation journey">
+            {journeySteps.map(([title, text, mode], index) => (
+              <article key={title} className={journeyClass(mode)}>
+                <div className={styles.stepNumber}>STEP {index + 1}</div><h3 className={styles.stepTitle}>{title}</h3><p className={styles.stepText}>{text}</p>
+              </article>
+            ))}
+          </div>
+          <div className={styles.trace} aria-label="Governed action trace">
+            <div className={styles.traceRow}><span className={styles.traceTime}>09:42:18</span><strong className={styles.traceAccepted}>PROPOSED</strong><span>Agent derives lateral-movement finding from trusted evidence</span></div>
+            <div className={styles.traceRow}><span className={styles.traceTime}>09:42:18</span><strong className={styles.traceAccepted}>VALIDATED</strong><span>Finding matches capability, schema, and investigation policy</span></div>
+            <div className={styles.traceRow}><span className={styles.traceTime}>09:44:03</span><strong className={styles.traceRejected}>REJECTED</strong><span>Unsupported containment target blocked; governed fallback preserved state</span></div>
+            <div className={styles.traceRow}><span className={styles.traceTime}>09:45:27</span><strong className={styles.traceAccepted}>CONFIRM</strong><span>Isolate Host returned to analyst for explicit approval</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section className={`${styles.band} ${styles.alternateBand}`} aria-labelledby="trust-title">
+        <div className={styles.inner}>
+          <header className={styles.sectionHeader}>
+            <div className={styles.sectionIndex}>04 · Why trust it</div>
+            <h2 id="trust-title" className={styles.sectionTitle}>Autonomy without a shadow system.</h2>
+          </header>
+          <div className={styles.proofGrid}>
+            {proofItems.map(([title, text]) => <article key={title} className={styles.proof}><h3 className={styles.itemTitle}>{title}</h3><p className={styles.body}>{text}</p></article>)}
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.band} aria-labelledby="proof-path-title">
+        <div className={styles.inner}>
+          <header className={styles.sectionHeader}>
+            <div className={styles.sectionIndex}>05 · Choose the proof</div>
+            <h2 id="proof-path-title" className={styles.sectionTitle}>Experience the collaboration, then inspect the physics behind it.</h2>
+          </header>
+          <div className={styles.forkGrid}>
+            <article className={styles.fork}>
+              <div className={styles.forkLabel}>Runtime · HX + AX</div><h3 className={styles.forkTitle}>Experience the SOC Runtime</h3>
+              <p className={styles.forkText}>Watch an analyst and agent share one workspace, continue across interactive and autonomous work, and return consequential actions through the same governance boundary.</p>
+              <Button appearance="primary" className={styles.button} onClick={() => openBundle("workbench")}>Open Live Workspace</Button>
+            </article>
+            <article className={styles.fork}>
+              <div className={styles.forkLabel}>DX + ACX · Powered by the GIK Compiler</div><h3 className={styles.forkTitle}>Author Governed Experiences</h3>
+              <p className={styles.forkText}>See humans and AI coding agents define governed domains as bounded, testable blueprints: intent to tiers to a runnable bundle.</p>
+              <Button appearance="secondary" className={styles.button} onClick={() => openBundle("console")}>Open Authoring Console</Button>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <footer className={styles.expansion}>
+        <div className={styles.inner}><p className={styles.expansionText}>SOC is the first high-stakes domain. The same governed substrate extends to document-heavy, policy-bound work and from interactive surfaces to headless execution.</p></div>
+      </footer>
+    </main>
   );
 };
 
-const projectionViews: Record<string, ProjectionView> = {
-  samplesOverview: SamplesOverviewView,
-};
+const projectionViews: Record<string, ProjectionView> = { samplesOverview: SamplesOverviewView };
 
 export default projectionViews;
