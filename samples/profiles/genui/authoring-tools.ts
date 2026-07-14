@@ -6,8 +6,8 @@ import {
   type InteractionSpec,
   type InteractionTaxonomy,
 } from "./interaction-model";
+import { genuiStructuralValidators } from "./family-schema";
 import type { PresentationSpec } from "./view-planner";
-import { validatePresentationSpec, PresentationValidationError } from "./family-schema";
 import type { AuthoringRegistry } from "../../../packages/profile/src/profile-core";
 import type { AuthoringReport } from "../../../packages/profile/src/profile-core";
 
@@ -19,18 +19,6 @@ const describeInteractions = () => {
     interaction: kind,
     facets: interactionTaxonomy[kind].map((facet) => ({ name: facet.name, role: facet.role, required: facet.required })),
   }));
-};
-
-const validatePresentationStructure = (spec: unknown): AuthoringReport => {
-  try {
-    validatePresentationSpec(spec);
-  } catch (error) {
-    if (error instanceof PresentationValidationError) {
-      return { ok: false, errors: [{ detail: error.message }], warnings: [] };
-    }
-    throw error;
-  }
-  return emptyReport();
 };
 
 const validatePresentationFacets = (spec: unknown): AuthoringReport => {
@@ -92,9 +80,7 @@ export const genuiAuthoringRegistry: AuthoringRegistry = {
   describe: {
     "interaction-catalog": () => describeInteractions() as unknown as Json,
   },
-  validators: {
-    "genui/presentation.schema.json": (args) => validatePresentationStructure(args.spec),
-  },
+  validators: genuiStructuralValidators,
   checks: {
     "presentation-facets": (args) => validatePresentationFacets(args.spec),
     "intent-spec": (args) => validateIntent(args.intent, args.interaction as unknown as InteractionSpec | undefined),
