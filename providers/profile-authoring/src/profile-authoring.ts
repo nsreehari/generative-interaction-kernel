@@ -1,4 +1,4 @@
-import type { ProfileArtifact, RecipeArtifactBase } from "../../../packages/profile/src/profile-core";
+import type { ProfileArtifact, RecipeArtifactBase } from "../../../profile/src/profile-core";
 import type { FlowRegistry } from "../../step-orchestrator/src/step-orchestrator";
 import type { StepFlowConfig } from "../../vendor/step-machine/types";
 

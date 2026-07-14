@@ -13,10 +13,10 @@ import type {
   AuthoringRegistry,
   AuthoringReport,
   Profile,
-} from "../../../packages/profile/src/profile-core";
-import { bindAuthoringTools } from "../../../packages/profile/src/authoring-runner";
+} from "../../../profile/src/profile-core";
+import { bindAuthoringTools } from "../../../profile/src/authoring-runner";
 
-export type { AuthoringRegistry, AuthoringReport } from "../../../packages/profile/src/profile-core";
+export type { AuthoringRegistry, AuthoringReport } from "../../../profile/src/profile-core";
 
 /**
  * Materialize a profile's declared authoring tools into `McpTool`s, binding each op to the supplied
