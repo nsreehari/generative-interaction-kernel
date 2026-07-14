@@ -239,6 +239,27 @@ function formatTemporalValue(prop: Record<string, unknown>, value: unknown): str
   return text;
 }
 
+// Grid width (1–12 columns) for a form field. Honors an explicit `colSpan` (clamped); otherwise
+// compact controls (numbers, selects, temporal) default to half width and text/textarea span full.
+function formFieldSpan(prop: Record<string, unknown>): number {
+  const raw = prop.colSpan;
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return Math.min(12, Math.max(1, Math.round(raw)));
+  }
+  const compact = prop.type === "number" || prop.type === "integer"
+    || isSelectField(prop) || isMultiSelect(prop)
+    || prop.format === "date" || prop.format === "time"
+    || prop.format === "date-time" || prop.format === "datetime";
+  return compact && !isTextareaField(prop) ? 6 : 12;
+}
+
+// Optional helper text shown under a field: JSON Schema `description`, or a plain `hint`.
+function fieldHint(prop: Record<string, unknown>): string {
+  if (typeof prop.description === "string") return prop.description;
+  if (typeof prop.hint === "string") return prop.hint;
+  return "";
+}
+
 const CHART_PALETTE = [
   "#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f",
   "#edc948", "#b07aa1", "#ff9da7", "#9c755f", "#bab0ac",
@@ -1324,18 +1345,23 @@ function Form({ node, emit }: ProjectionViewProps) {
 
   return (
     <form className="gx-col" onSubmit={submit}>
+      <div className="gx-form-grid">
       {Object.entries(props).map(([key, prop]) => {
         const field = prop ?? {};
         const title = String(field.title ?? key);
         const isRequired = required.includes(key);
         const current = values[key];
+        const disabled = field.readOnly === true || field.disabled === true;
+        const hint = fieldHint(field);
+        const cellClass = `gx-field-cell gx-col-span-${formFieldSpan(field)}`;
+        const hintNode = hint ? <span className="gx-field-hint">{hint}</span> : null;
 
         if (isJsonField(field)) {
           const rowsRaw = Number.parseInt(String(field.rows ?? 8), 10);
           const rows = Number.isFinite(rowsRaw) && rowsRaw > 0 ? rowsRaw : 8;
           const err = jsonErrors[key];
           return (
-            <label key={key} className="gx-field gx-json-field">
+            <label key={key} className={`${cellClass} gx-field gx-json-field`}>
               {field.title ? <span className="gx-field-label">{title}</span> : null}
               <textarea
                 className={err ? "gx-json-input invalid" : "gx-json-input"}
@@ -1344,22 +1370,26 @@ function Form({ node, emit }: ProjectionViewProps) {
                 value={jsonText[key] ?? ""}
                 placeholder={String(field.placeholder ?? "")}
                 required={isRequired}
+                readOnly={disabled}
                 onChange={(event) => setJsonField(key, event.target.value)}
               />
               {err ? <span className="gx-json-error" role="alert">{err}</span> : null}
+              {hintNode}
             </label>
           );
         }
 
         if (field.type === "boolean") {
           return (
-            <label key={key} className="gx-row" style={{ alignItems: "center" }}>
+            <label key={key} className={`${cellClass} gx-field-check`}>
               <input
                 type="checkbox"
                 checked={Boolean(current)}
+                disabled={disabled}
                 onChange={(event) => setField(key, event.target.checked)}
               />
               <span className="gx-field-label">{title}</span>
+              {hintNode}
             </label>
           );
         }
@@ -1368,18 +1398,20 @@ function Form({ node, emit }: ProjectionViewProps) {
           const selected = Array.isArray(current) ? current.map(String) : [];
           const options = toOptions(buildMultiOptions(field));
           return (
-            <label key={key} className="gx-field">
+            <label key={key} className={`${cellClass} gx-field`}>
               <span className="gx-field-label">{title}</span>
               <select
                 multiple
                 value={selected}
                 required={isRequired}
+                disabled={disabled}
                 onChange={(event) => setField(key, Array.from(event.target.selectedOptions).map((option) => option.value))}
               >
                 {options.map((option) => (
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
               </select>
+              {hintNode}
             </label>
           );
         }
@@ -1388,53 +1420,65 @@ function Form({ node, emit }: ProjectionViewProps) {
           const options = toOptions(buildFieldOptions(field) ?? []);
           const value = current == null ? "" : String(current);
           return (
-            <label key={key} className="gx-field">
+            <label key={key} className={`${cellClass} gx-field`}>
               <span className="gx-field-label">{title}</span>
-              <select value={value} required={isRequired} onChange={(event) => setField(key, event.target.value)}>
-                {isRequired ? null : <option value="">All</option>}
+              <select value={value} required={isRequired} disabled={disabled} onChange={(event) => setField(key, event.target.value)}>
+                {isRequired ? null : <option value="">{String(field.placeholder ?? "All")}</option>}
                 {options.map((option) => (
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
               </select>
+              {hintNode}
             </label>
           );
         }
 
         if (isTextareaField(field)) {
           return (
-            <label key={key} className="gx-field">
+            <label key={key} className={`${cellClass} gx-field`}>
               <span className="gx-field-label">{title}</span>
               <textarea
                 rows={Number.parseInt(String(field.rows ?? 4), 10) || 4}
                 value={current == null ? "" : String(current)}
                 placeholder={String(field.placeholder ?? "")}
                 required={isRequired}
+                readOnly={disabled}
+                minLength={typeof field.minLength === "number" ? field.minLength : undefined}
+                maxLength={typeof field.maxLength === "number" ? field.maxLength : undefined}
                 onChange={(event) => setField(key, event.target.value)}
               />
+              {hintNode}
             </label>
           );
         }
 
         const type = inputTypeFor(field);
+        const isText = type === "text";
         const value = type === "date" || type === "time" || type === "datetime-local"
           ? formatTemporalValue(field, current)
           : current == null ? "" : String(current);
         return (
-          <label key={key} className="gx-field">
+          <label key={key} className={`${cellClass} gx-field`}>
             <span className="gx-field-label">{title}</span>
             <input
               type={type}
               value={value}
               placeholder={String(field.placeholder ?? "")}
               required={isRequired}
+              readOnly={disabled}
               min={typeof field.minimum === "number" ? field.minimum : undefined}
               max={typeof field.maximum === "number" ? field.maximum : undefined}
               step={field.type === "integer" ? "1" : (field.type === "number" ? "any" : undefined)}
+              minLength={isText && typeof field.minLength === "number" ? field.minLength : undefined}
+              maxLength={isText && typeof field.maxLength === "number" ? field.maxLength : undefined}
+              pattern={isText && typeof field.pattern === "string" ? field.pattern : undefined}
               onChange={(event) => setField(key, coerceFieldValue(event.target.value, field))}
             />
+            {hintNode}
           </label>
         );
       })}
+      </div>
       {validation.checked && validation.errors.length > 0 ? (
         <div className="gx-form-errors" role="alert">
           {validation.errors.map((message, index) => (
