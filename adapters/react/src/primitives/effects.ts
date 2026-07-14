@@ -31,6 +31,8 @@ export interface EffectContext {
   args: Record<string, Json>;
   /** The triggering event payload (e.g. { id } from a list select). */
   payload: Record<string, Json>;
+  /** Identity of the human or agent that emitted the triggering event, when supplied. */
+  actorId?: string;
   store: StateModel;
 }
 
@@ -54,6 +56,7 @@ export function createEffectDispatcher(store: StateModel, handlers: EffectHandle
       set: setOp,
       args: effect.args ?? {},
       payload: effect.payload ?? {},
+      actorId: effect.actorId,
       store,
     };
     return handler(ctx);

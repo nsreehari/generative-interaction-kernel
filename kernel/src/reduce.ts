@@ -52,6 +52,10 @@ async function resolveValue(args: Record<string, Json> | undefined, c: DispatchC
   return null;
 }
 
+function traceDetail(c: DispatchCtx, detail: Record<string, unknown>): Record<string, unknown> {
+  return c.currentEvent.actorId ? { ...detail, actorId: c.currentEvent.actorId } : detail;
+}
+
 // The six closed action families. assign/derive/emit mutate store/queue directly; invoke/route/
 // confirm cross the Orchestrator/HITL seam (ADR-0009) — they push an OrchestratorEffect for the
 // kernel to route after the reduction, rather than writing a store op here.
@@ -60,7 +64,7 @@ async function dispatchAction(a: Action, c: DispatchCtx): Promise<void> {
     case "assign": {
       if (!a.target) break;
       c.ops.push({ op: "set", path: a.target, value: await resolveValue(a.args, c) });
-      c.traces.push({ event: "action", detail: { do: "assign", target: a.target } });
+      c.traces.push({ event: "action", detail: traceDetail(c, { do: "assign", target: a.target }) });
       break;
     }
     case "derive": {
@@ -68,7 +72,7 @@ async function dispatchAction(a: Action, c: DispatchCtx): Promise<void> {
       const e = a.args?.expr;
       const value = typeof e === "string" ? await c.expr.eval(e, c.data, c.bindings) : null;
       c.ops.push({ op: "set", path: a.target, value });
-      c.traces.push({ event: "action", detail: { do: "derive", target: a.target } });
+      c.traces.push({ event: "action", detail: traceDetail(c, { do: "derive", target: a.target }) });
       break;
     }
     case "emit": {
@@ -77,45 +81,51 @@ async function dispatchAction(a: Action, c: DispatchCtx): Promise<void> {
           node: c.currentEvent.node,
           name: a.event,
           payload: (a.args?.payload as Record<string, Json> | undefined) ?? c.currentEvent.payload,
+          actorId: c.currentEvent.actorId,
         });
       }
-      c.traces.push({ event: "action", detail: { do: "emit", event: a.event } });
+      c.traces.push({ event: "action", detail: traceDetail(c, { do: "emit", event: a.event }) });
       break;
     }
     case "invoke": {
       c.effects.push({
         kind: "invoke",
         node: c.currentEvent.node,
+        actorId: c.currentEvent.actorId,
         tool: typeof a.args?.tool === "string" ? a.args.tool : undefined,
         args: a.args ?? {},
         payload: c.currentEvent.payload,
       });
-      c.traces.push({ event: "effect", detail: { do: "invoke", tool: a.args?.tool } });
+      c.traces.push({ event: "effect", detail: traceDetail(c, { do: "invoke", tool: a.args?.tool }) });
       break;
     }
     case "route": {
       c.effects.push({
         kind: "route",
         node: c.currentEvent.node,
+        actorId: c.currentEvent.actorId,
+        tool: typeof a.args?.tool === "string" ? a.args.tool : undefined,
         to: a.args?.to ?? null,
         args: a.args ?? {},
         payload: c.currentEvent.payload,
       });
-      c.traces.push({ event: "effect", detail: { do: "route", to: a.args?.to } });
+      c.traces.push({ event: "effect", detail: traceDetail(c, { do: "route", to: a.args?.to }) });
       break;
     }
     case "confirm": {
       c.effects.push({
         kind: "confirm",
         node: c.currentEvent.node,
+        actorId: c.currentEvent.actorId,
+        tool: typeof a.args?.tool === "string" ? a.args.tool : undefined,
         args: a.args ?? {},
         payload: c.currentEvent.payload,
       });
-      c.traces.push({ event: "effect", detail: { do: "confirm" } });
+      c.traces.push({ event: "effect", detail: traceDetail(c, { do: "confirm" }) });
       break;
     }
     default: {
-      c.traces.push({ event: "action", detail: { do: a.do, unknown: true } });
+      c.traces.push({ event: "action", detail: traceDetail(c, { do: a.do, unknown: true }) });
     }
   }
 }
@@ -139,7 +149,7 @@ function reduceMachine(
 
     c.traces.push({
       event: "transition",
-      detail: { machine: m.id, from: current, to: target, on: event.name },
+      detail: traceDetail(c, { machine: m.id, from: current, to: target, on: event.name }),
     });
     c.ops.push({ op: "set", path: `${m.context}.state`, value: target });
 

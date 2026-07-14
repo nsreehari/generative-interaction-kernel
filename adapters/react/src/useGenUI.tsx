@@ -14,13 +14,13 @@ import type { ComponentRegistry } from "./registry";
 export interface GenUISource {
   getTree(): ResolvedNode | null;
   subscribe(listener: () => void): () => void;
-  emit(node: string, name: string, payload?: Record<string, unknown>): void | Promise<unknown>;
+  emit(node: string, name: string, payload?: Record<string, unknown>, actorId?: string): void | Promise<unknown>;
   start(): void | Promise<unknown>;
 }
 
 export function useGenUI(source: GenUISource): {
   tree: ResolvedNode | null;
-  emit: (node: string, name: string, payload?: Record<string, unknown>) => void;
+  emit: (node: string, name: string, payload?: Record<string, unknown>, actorId?: string) => void;
 } {
   const [tree, setTree] = useState<ResolvedNode | null>(() => source.getTree());
 
@@ -30,8 +30,8 @@ export function useGenUI(source: GenUISource): {
     return unsubscribe;
   }, [source]);
 
-  const emit = (node: string, name: string, payload?: Record<string, unknown>) => {
-    void source.emit(node, name, payload);
+  const emit = (node: string, name: string, payload?: Record<string, unknown>, actorId?: string) => {
+    void source.emit(node, name, payload, actorId);
   };
 
   return { tree, emit };

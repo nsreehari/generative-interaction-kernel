@@ -71,5 +71,6 @@ export function confirmOutcomeEvent(
     node: effect.node,
     name: confirmed ? CONFIRM_APPROVED_EVENT : CONFIRM_DISMISSED_EVENT,
     payload,
+    actorId: effect.actorId,
   };
 }
