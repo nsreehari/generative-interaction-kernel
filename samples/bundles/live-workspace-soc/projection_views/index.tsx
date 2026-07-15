@@ -364,6 +364,16 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit }) => {
     emit("reset", {}, "analyst-morgan");
   };
 
+  const advanceManually = () => {
+    if (autoPlay) {
+      setAutoPlay(false);
+      return;
+    }
+    if (nextAction && nextAction.event !== "approve") {
+      emit(nextAction.event, {}, nextAction.actorId);
+    }
+  };
+
   const spotlightClass = (focus: string) =>
     guide.focus === focus
       ? styles.spotlight
@@ -384,10 +394,10 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit }) => {
           <span className={`${styles.pill} ${styles.modePill}`}><PeopleTeam24Regular />{mode}</span>
           <Button appearance="subtle" icon={<ArrowReset24Regular />} aria-label="Reset scenario" onClick={reset} />
           <div className={styles.advanceMode} role="group" aria-label="Tour advance mode">
-            <Button appearance={autoPlay ? "subtle" : "primary"} aria-pressed={!autoPlay} onClick={() => setAutoPlay(false)}>Manual next</Button>
+            <Button appearance={autoPlay ? "subtle" : "primary"} aria-pressed={!autoPlay} disabled={!autoPlay && (!nextAction || nextAction.event === "approve")} onClick={advanceManually}>Manual next</Button>
             <Button appearance={autoPlay ? "primary" : "subtle"} aria-pressed={autoPlay} icon={<Play24Filled />} disabled={!nextAction || nextAction.event === "approve"} onClick={() => setAutoPlay(true)}>Auto next{autoPlay ? ` · ${autoTimer.remainingSeconds}` : ""}</Button>
           </div>
-          {!autoPlay && nextAction ? <Button appearance="primary" icon={<ChevronRight20Regular />} onClick={() => emit(nextAction.event, {}, nextAction.actorId)}>{nextAction.event === "approve" ? nextAction.label : `Next · ${nextAction.label}`}</Button> : null}
+          {!autoPlay && nextAction?.event === "approve" ? <Button appearance="primary" icon={<ChevronRight20Regular />} onClick={() => emit(nextAction.event, {}, nextAction.actorId)}>{nextAction.label}</Button> : null}
         </div>
       </header>
 
