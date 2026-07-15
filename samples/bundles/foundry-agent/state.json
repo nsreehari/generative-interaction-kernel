@@ -1,0 +1,14 @@
+{
+  "agent": {
+    "stage": "locked",
+    "key": "",
+    "agentId": "",
+    "agentName": "",
+    "authError": "",
+    "draft": "",
+    "reply": "",
+    "lastAsked": "",
+    "threadId": "",
+    "error": ""
+  }
+}

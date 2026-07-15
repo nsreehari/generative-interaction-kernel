@@ -41,6 +41,10 @@ jobs:
         env:
           # Serve under the project Pages path so asset URLs resolve.
           VITE_BASE: /generative-interaction-kernel/
+          # Absolute base URL of the deployed foundry-agent-proxy Azure Function. Set the
+          # `FOUNDRY_PROXY_BASE` repo variable (Settings > Secrets and variables > Actions > Variables)
+          # e.g. https://my-foundry-proxy.azurewebsites.net. The foundry-agent sample calls it at runtime.
+          VITE_FOUNDRY_PROXY_BASE: ${{ vars.FOUNDRY_PROXY_BASE }}
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
