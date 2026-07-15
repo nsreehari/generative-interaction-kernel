@@ -1,0 +1,224 @@
+{
+  "gik": "0.1",
+  "type": "document",
+  "payload": {
+    "root": {
+      "capability": "ui:screen",
+      "id": "foundry-agent-root",
+      "props": {
+        "title": "Foundry Agent",
+        "subtitle": "A static sample that calls an Azure AI Foundry agent through the BFF proxy. Credentials never live in the page — you supply a function key and agent id to unlock."
+      },
+      "edges": {
+        "children": [
+          {
+            "capability": "ui:panel",
+            "id": "agent-login",
+            "props": { "title": "Sign in", "variant": "rail" },
+            "edges": {
+              "gate": "agent.stage = 'locked'",
+              "children": [
+                {
+                  "capability": "ui:note",
+                  "id": "agent-login-note",
+                  "props": {
+                    "value": "Enter the Azure Function key and the Foundry agent id. They are verified against the proxy before the demo opens; nothing is stored or baked into the build.",
+                    "tone": "muted"
+                  }
+                },
+                {
+                  "capability": "ui:field",
+                  "id": "agent-key-field",
+                  "props": {
+                    "label": "Function key",
+                    "placeholder": "Paste your function key",
+                    "secret": true
+                  },
+                  "edges": {
+                    "read": { "value": "agent.key" },
+                    "on": {
+                      "input": [
+                        {
+                          "do": "assign",
+                          "target": "agent.key",
+                          "args": { "from": "$event.value" }
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "capability": "ui:field",
+                  "id": "agent-id-field",
+                  "props": {
+                    "label": "Agent ID",
+                    "placeholder": "asst_..."
+                  },
+                  "edges": {
+                    "read": { "value": "agent.agentId" },
+                    "on": {
+                      "input": [
+                        {
+                          "do": "assign",
+                          "target": "agent.agentId",
+                          "args": { "from": "$event.value" }
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "capability": "ui:alert",
+                  "id": "agent-auth-error",
+                  "props": { "label": "Sign-in", "level": "error" },
+                  "edges": {
+                    "gate": "agent.authError != ''",
+                    "read": { "value": "agent.authError" }
+                  }
+                },
+                {
+                  "capability": "ui:button",
+                  "id": "agent-unlock-btn",
+                  "props": { "label": "Unlock", "tone": "primary" },
+                  "edges": {
+                    "on": {
+                      "press": [
+                        {
+                          "do": "invoke",
+                          "args": { "tool": "verifyKey" }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "capability": "ui:panel",
+            "id": "agent-demo",
+            "props": { "title": "Ask the agent", "variant": "detail" },
+            "edges": {
+              "gate": "agent.stage = 'unlocked'",
+              "children": [
+                {
+                  "capability": "ui:alert",
+                  "id": "agent-connected",
+                  "props": { "label": "Connected agent", "level": "good" },
+                  "edges": {
+                    "read": { "value": "agent.agentName" }
+                  }
+                },
+                {
+                  "capability": "ui:field",
+                  "id": "agent-message-field",
+                  "props": {
+                    "label": "Message",
+                    "placeholder": "Ask the agent something..."
+                  },
+                  "edges": {
+                    "read": { "value": "agent.draft" },
+                    "on": {
+                      "input": [
+                        {
+                          "do": "assign",
+                          "target": "agent.draft",
+                          "args": { "from": "$event.value" }
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "capability": "ui:button",
+                  "id": "agent-ask-btn",
+                  "props": { "label": "Ask", "tone": "primary" },
+                  "edges": {
+                    "on": {
+                      "press": [
+                        {
+                          "do": "invoke",
+                          "args": { "tool": "askAgent" }
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "capability": "ui:alert",
+                  "id": "agent-request-error",
+                  "props": { "label": "Request", "level": "error" },
+                  "edges": {
+                    "gate": "agent.error != ''",
+                    "read": { "value": "agent.error" }
+                  }
+                },
+                {
+                  "capability": "ui:panel",
+                  "id": "agent-asked-panel",
+                  "props": { "title": "You asked", "variant": "inset" },
+                  "edges": {
+                    "gate": "agent.lastAsked != ''",
+                    "children": [
+                      {
+                        "capability": "ui:note",
+                        "id": "agent-asked-value",
+                        "props": { "tone": "muted" },
+                        "edges": {
+                          "read": { "value": "agent.lastAsked" }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "capability": "ui:panel",
+                  "id": "agent-reply-panel",
+                  "props": { "title": "Reply", "variant": "inset" },
+                  "edges": {
+                    "children": [
+                      {
+                        "capability": "ui:note",
+                        "id": "agent-reply-empty",
+                        "props": {
+                          "value": "Send a message to see the agent's reply.",
+                          "tone": "muted"
+                        },
+                        "edges": {
+                          "gate": "agent.reply = ''"
+                        }
+                      },
+                      {
+                        "capability": "ui:markdown",
+                        "id": "agent-reply-value",
+                        "edges": {
+                          "gate": "agent.reply != ''",
+                          "read": { "value": "agent.reply" }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "capability": "ui:button",
+                  "id": "agent-signout-btn",
+                  "props": { "label": "Sign out" },
+                  "edges": {
+                    "on": {
+                      "press": [
+                        {
+                          "do": "invoke",
+                          "args": { "tool": "signOut" }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
