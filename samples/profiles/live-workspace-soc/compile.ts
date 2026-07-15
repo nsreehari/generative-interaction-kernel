@@ -4,6 +4,7 @@ import {
   resolveProfileTemplateResource,
   traceProfile,
   type LayerRecipe,
+  type PresentationSpec,
   type StageTrace,
 } from "@gik/profile";
 
@@ -43,6 +44,10 @@ export const SOC_BLUEPRINT_SEED = {
 
 export function traceSocBlueprint(presentationContext = "war-room"): StageTrace[] {
   return traceProfile(socBlueprint, SOC_BLUEPRINT_SEED, { presentationContext });
+}
+
+export function compileSocPresentation(presentationContext = "war-room"): PresentationSpec {
+  return traceSocBlueprint(presentationContext)[1].output as PresentationSpec;
 }
 
 export function compileSocDocument(presentationContext = "war-room"): unknown {

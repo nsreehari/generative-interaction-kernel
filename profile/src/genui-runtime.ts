@@ -90,6 +90,7 @@ function buildRegionTokens(presentation: PresentationSpec, region: PresentationS
     region: {
       name: region.name,
       role: region.role,
+      group: region.group,
       priority: region.priority,
       disclosure: region.disclosure,
       presentation: region.presentation,
@@ -142,7 +143,7 @@ export function lowerPresentationWithRuntimeEmitter<TNode, TOutput>(
       arrangement: presentation.arrangement,
     };
     const container = presentationRuntimeProgramEmit(runtimeRecipe, "container", containerFacts);
-    const children: TNode[] = presentation.regions.map((region) => {
+    const children: TNode[] = presentation.regions.filter((region) => region.materialize !== false).map((region) => {
       const matchFacts: PresentationRuntimeFacts = {
         ...containerFacts,
         region: region.name,

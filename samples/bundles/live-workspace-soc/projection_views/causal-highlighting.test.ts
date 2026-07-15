@@ -38,6 +38,8 @@ test("participant statuses map to a stable presence vocabulary", () => {
 test("presentation contexts produce distinct substrate frames and disclosure", () => {
   const full = socPresentationSpec("full-substrate");
   const mobile = socPresentationSpec("priya-mobile");
+  const pager = socPresentationSpec("morgan-pager");
+  const correlation = socPresentationSpec("correlation-agent");
 
   assert.equal(full.frame, "shared");
   assert.equal(full.arrangement, "inspection");
@@ -46,4 +48,7 @@ test("presentation contexts produce distinct substrate frames and disclosure", (
   assert.equal(mobile.arrangement, "decision");
   assert.equal(mobile.regions.includes("exploration"), false);
   assert.equal(mobile.regions.includes("authorization"), true);
+  assert.deepEqual(mobile.regions, ["summary", "authorization", "response", "constraints", "hypothesis"]);
+  assert.deepEqual(pager.regions, ["summary", "hypothesis", "response"]);
+  assert.deepEqual(correlation.regions, ["summary", "intent", "constraints", "hypothesis", "agent-request", "exploration", "evidence", "causal-record"]);
 });

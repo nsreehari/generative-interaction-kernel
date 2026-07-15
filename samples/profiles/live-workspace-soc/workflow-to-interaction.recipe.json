@@ -16,7 +16,19 @@
         "emit": {
           "interaction": "soc-workspace",
           "subject": "Privileged access anomaly during payroll cutover",
-          "capabilities": ["next-act-timer"]
+          "capabilities": [
+            "summary",
+            "intent",
+            "constraints",
+            "hypothesis",
+            "exploration",
+            "evidence",
+            "agent-request",
+            "response",
+            "authorization",
+            "causal-record",
+            "next-act-timer"
+          ]
         }
       }
     ]
