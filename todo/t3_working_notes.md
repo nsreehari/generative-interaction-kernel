@@ -1,230 +1,397 @@
 # T3 — Live Workspace : SOC — working notes
 
 > Scope: **Beat 2** of the 4-Beat pitch IA (see `working-doc.md` D3). Build the runtime-plane hero:
-> a live SOC workspace where an analyst and a visible team of agents investigate one incident,
-> share one evolving state, cross policy boundaries, continue asynchronously, and return a
-> consequential decision to the human.
+> a mixed human-agent incident room where distinct participants act through one governed event
+> model, change one shared operational state, and leave one attributable causal record.
 >
-> Status: **IMPLEMENTED (2026-07-15).** Built as a new `live-workspace-soc` bundle; the existing
-> `workbench` remains unchanged and independently routable.
+> Status: **INTERACTION PLAN REVISION (2026-07-15).** The first `live-workspace-soc` implementation
+> remains a working baseline. The next iteration replaces its analyst-plus-agent-roster framing with
+> the mixed-team composition and scenario defined here. The existing `workbench` remains unchanged
+> and independently routable.
 
 ---
 
 ## 0. Product thesis
 
-The hero is not a layout and it is not an inspector. It is a **live collaboration** the audience
-can understand without knowing GIK:
+GIK is not primarily a UI generator, agent framework, or workflow engine. It is a shared
+interaction kernel for systems in which humans and agents participate together:
 
-> One incident. One evolving workspace. Several visible agents. One governed authority.
+> **Many actors. One state. Multiple views. Governed actions. Complete provenance.**
 
-The audience must see agents as participants, not infer them from a trace or watch a generic
-playlist advance. Each agent has an identity, role, current activity, contribution, and authority
-boundary. Their work changes the same evidence, hypotheses, and response plan the analyst sees.
-Governance appears at the moment it matters — attached to the proposal it validates, rejects, or
-holds for confirmation — rather than living only in a permanent diagnostics pane.
+For the demo audience, say it in operational language:
 
-## 1. Job of this bundle
+> **A mixed team of humans and agents can collaborate through one shared operational state, with
+> every contribution attributable and every consequential action governed.**
 
-Be the irrefutable, working proof of the product contract established in Beat 1:
+Humans and agents are peers in participation, but not necessarily in authority. Both use the same
+event path and affect the same state. Their roles determine what each may contribute, propose,
+recommend, authorize, or execute.
 
-- **Visible collaboration:** the analyst can see which agents are present, what each is doing,
-  what evidence each contributes, and when they disagree or converge.
-- **Shared state:** agent activity changes the operational workspace itself — evidence graph,
-  hypotheses, timeline, and response plan — not a separate chat transcript.
-- **Governed agency:** proposals carry visible authority receipts (`validated`, `rejected`,
-  `confirmation required`) at the point of action.
-- **Continuity:** the analyst can hand the investigation to the agent team, leave the active loop,
-  and return to the same workspace with state, policy, authority, and provenance intact.
+The demo must make that claim visible without requiring narration:
 
-We are not building a full SOC product. We are building one unusually convincing incident journey
-that exposes platform complexity through clear work, not through developer instrumentation.
+- **Bottom participant panels:** many distinct human and agent actors.
+- **Center workspace:** one shared operational state.
+- **Right journal/ledger:** durable causality and accountability.
+- **Top control panel:** presenter control only; it is not another participant.
 
-## 2. Experience architecture (not a fixed 3-pane requirement)
+## 1. Audience takeaway and proof boundary
 
-The desktop composition should feel like an operational incident room, with responsive regions
-chosen for legibility rather than symmetry:
+The audience should leave with one thought:
 
-1. **Incident command bar:** incident severity/status, current mode (`Collaborative` or
-  `Autonomous`), participating humans/agents, and the next consequential decision.
-2. **Shared investigation canvas (primary):** evidence, hypotheses, affected entities, and response
-  plan evolve in place. Agent contributions land as attributed changes on this shared surface.
-3. **Agent presence + activity:** a visible team roster and live activity stream. Named agents such
-  as **Triage**, **Identity**, **Endpoint**, and **Response** expose `working / waiting / blocked /
-  needs approval`, the capability or tool in use, and their latest contribution.
-4. **Contextual authority receipts:** validation, rejection, fallback, and confirmation appear next
-  to the affected proposal. A compact activity ledger or expandable forensic drawer preserves the
-  complete trace without making diagnostics one-third of the product.
-5. **Human command surface:** the analyst assigns/refines intent, inspects evidence, changes the
-  collaboration mode, and approves or rejects consequential actions. Controls are contextual, not
-  a generic form builder.
+> **GIK makes a mixed team behave like one coherent, governed system without erasing who acted,
+> what authority they had, or why the shared state changed.**
 
-Desktop may use a main canvas plus one activity rail. Mobile should use a single primary workspace
-with agent activity and forensics in tabs/drawers. The architecture must not require three panes.
+The demo must visibly prove:
 
-**Reconciling with the D3 "dual-face (HX + AX)" promise:** the shared canvas is the *merged* face
-of one state, not a rejection of the AX view. Keep AX provable via an explicit "agent's-eye view"
-toggle/inspector over the *same* graph (entities, capabilities, proposals, trace) rather than a
-permanent second column. The dual-face claim must be demonstrable on demand; it need not consume a
-third of the screen at rest.
+- two humans and two agents are distinct actors with different responsibilities and authority;
+- all four contribute through the same GIK event contract;
+- their actions converge on one shared incident state rather than separate chats or fixtures;
+- an action, its governed result, its state change, and its journal entry remain causally linked;
+- governance constrains humans as well as agents;
+- a consequential action requires the correct human role;
+- the final state is reconstructable from the attributable ledger.
 
-## 3. Build direction: new hero, workbench untouched
+The current implementation proves deterministic, attributable, governed multi-actor orchestration.
+It does **not yet** prove independently running remote clients, durable background agents, or
+disconnect/reconnect continuity. Do not describe those as completed until they are literal. A
+deterministic scenario remains acceptable for pitch reliability, but every visible participant
+action must still be a real attributable GIK event.
 
-Create a purpose-built `live-workspace-soc` bundle and route the Runtime CTA to it. Register it in
-`samples/bundles/registry.json` and repoint the `samples-overview` Runtime CTA (currently
-`openBundle("workbench")`) at the new id; leave `default` = `samples-overview` unchanged. T3 is
-strictly additive: do not rename, restyle, relocate, or remove anything under
-`samples/bundles/workbench`.
-Keep the existing bundle routable as a reference and regression baseline throughout the remaining
-pitch implementation. Decide whether to retire/remove it only in a separate cleanup task after all
-four beats are complete and validated.
+## 2. Fixed interaction architecture
 
-The old bundle may inform the implementation, but the new bundle must not import its private
-internals or make it a runtime dependency. Prefer existing shared packages; where no shared seam
-exists, implement the narrow capability in the new bundle and defer any deduplication/extraction
-until the cleanup phase.
+The next iteration uses one clear desktop composition:
 
-**Candidate mechanisms to reference and reimplement/reuse through existing shared APIs:**
-- `AgentPort` and the controller/transport-neutral emit contract.
-- Guest-kernel/session construction and capability registry pieces.
-- Trace normalization/rendering logic, redesigned as receipts + a forensic drawer.
-- Existing action grammar and reducer paths for `derive`, `invoke`, `route`, and `confirm`.
+```text
+┌────────────────────────────────────────────────────────────────────────────┐
+│ Incident header · Stage · Manual/Auto · Countdown · Reset                 │
+├──────────────────────────────────────────────────────┬─────────────────────┤
+│                                                      │ JOURNAL / LEDGER    │
+│                 SHARED WORKSPACE                     │                     │
+│                                                      │ attributable        │
+│ Intent · constraints · evidence · hypothesis         │ causal history      │
+│ proposal · authority · outcome                       │                     │
+│                                                      │                     │
+├────────────┬────────────┬────────────┬───────────────┤                     │
+│ Morgan     │ Priya      │ Identity   │ Response      │                     │
+│ Analyst    │ Commander  │ Agent      │ Agent         │                     │
+│ actions    │ actions    │ activity   │ activity      │                     │
+└────────────┴────────────┴────────────┴───────────────┴─────────────────────┘
+```
 
-**Do not carry forward by default:**
-- The fixed `300px | 1fr | 420px` shell.
-- Generic interaction/layout forms, JSON/session editors, profile selectors, region/facet tables,
-  and authoring-tour chrome.
-- `workbench.*`, `inspect`, or `wb:` names merely because they exist.
-- `agent-playlist.json` as the user-facing mental model. A deterministic scenario script may drive
-  the demo, but the UI must render persistent agent actors and their actual participation.
+### 2.1 Top control panel
 
-## 4. The governed SOC scenario
+The header is a compact presenter surface:
 
-The scenario is one coherent incident, not a feature tour:
+- incident identity, severity, status, and current scenario stage;
+- Manual next / Auto next with visible countdown;
+- reset;
+- current governance state (`Open`, `Policy blocked`, `Awaiting commander`, `Executed`);
+- optional shared-session health when transport-backed clients become real.
 
-**Act 1 — Assemble the team.** A suspicious identity event and lateral movement on Host-A open the
-workspace. The analyst sets the intent: "Establish scope, contain safely, preserve evidence."
-Triage, Identity, Endpoint, and Response agents visibly join with bounded roles and authority.
+It advances the demonstration. Domain actions must originate in the relevant participant panel,
+not in the header.
 
-**Act 2 — Investigate in parallel.** Identity correlates impossible travel; Endpoint finds a new
-remote service; Triage links both observations into a high-confidence hypothesis. Their activity,
-tool calls, and attributed evidence appear live while the shared graph/timeline updates. The analyst
-can inspect or redirect work without leaving the workspace.
+### 2.2 Shared workspace
 
-**Act 3 — Hit a real boundary.** Response proposes isolating a protected domain controller based on
-an incomplete correlation. Policy rejects the proposal and applies a safe fallback (increase
-telemetry + preserve evidence). The rejected proposal remains visible with the evidence used, the
-policy reason, and the fallback. Call this **policy-blocked overreach**, not a hallucination.
+The center is the visual and semantic center of gravity. It renders only shared operational state:
 
-**Act 4 — Hand off without losing control.** The analyst selects **Continue autonomously**. Presence
-changes from live collaboration to autonomous monitoring; simulated time advances; agents continue
-to contribute to the same evidence and timeline. The workspace explicitly shows that authority and
-trace remain active while the human is outside the interaction loop.
+- investigation intent;
+- active human-authored constraints;
+- attributed evidence;
+- current hypothesis and confidence;
+- proposed response and affected target;
+- inline policy, fallback, recommendation, confirmation, and execution receipts;
+- final incident outcome.
 
-**Act 5 — Governed return.** Agents converge on Host-A as the correct containment target. Response
-returns a confirmation-gated isolation proposal with its evidence chain and blast-radius summary.
-The analyst approves it; Host-A status changes to contained; every contribution and decision remains
-attributable.
+Every participant action must visibly alter, annotate, or attempt to alter this workspace. It must
+remain one coherent incident surface, not a collection of equally weighted dashboard cards.
 
-Pitch takeaway: **Agents can leave the screen. They cannot leave the governance boundary.**
+### 2.3 Participant strip
 
-## 5. Multi-agent model & state shape
+The bottom strip contains exactly four participant panels:
 
-**Every agent is "just another client."** Preserve the core thesis: no agent has a privileged
-mutation path. The four roles are distinct **actor identities** that emit through the same
-transport-neutral port the platform exposes to any client. The deterministic scenario runner acts
-as the orchestrator that advances each actor; it authors on their behalf but through the identical
-event path, so provenance (`actorId`) rides the event, not a side channel. This keeps the demo
-honest: swapping the runner for real over-the-wire agents changes nothing downstream.
+1. **Morgan · SOC Analyst** — intent, investigation direction, review, recommendation.
+2. **Priya · Incident Commander** — operational constraints and final authorization.
+3. **Identity Agent** — identity evidence and correlation.
+4. **Response Agent** — response planning, policy interaction, execution request.
 
-**Minimum viable shared-state shape** (illustrative, not final — pin during the Phase 0 spike):
+Each panel uses the same participant shell: identity, actor kind, role, status, current objective or
+responsibility, authority scope, latest action/result, and a short activity history. The common
+shell proves one actor model; the different contents preserve the difference between human
+judgment and agent work.
 
-- `incident`: id, title, severity, status (`triage → investigating → contained`), mode
-  (`collaborative | autonomous`).
-- `actors[]`: id, role (`triage/identity/endpoint/response/analyst`), kind (`human | agent`),
-  status (`working/waiting/blocked/needs-approval/idle`), currentActivity, authority scope.
-- `evidence[]`: id, sourceActorId, kind, summary, confidence, linkedEntityIds, timestamp.
-- `entities[]`: id, kind (`host/account/service`), label, riskState, protectedClass?.
-- `hypotheses[]`: id, statement, confidence, supportingEvidenceIds.
-- `proposals[]`: id, actorId, action verb + target, evidenceIds, authorityResult
-  (`validated | rejected+fallback | confirmation-required | approved | executed`), reason.
-- `timeline[]` / `trace[]`: append-only, attributable, the forensic spine.
+### 2.4 Right journal / ledger
 
-HX projects `evidence/entities/hypotheses/proposals/timeline`; AX projects
-`actors/entities/proposals/trace`. Both are views of this one graph — never parallel fixtures.
+The right pane is persistent on desktop and spans the workspace plus participant strip vertically.
+It has two modes:
+
+- **Journal (default):** readable entries answering who acted, what they did, what changed, and the
+  governance result.
+- **Ledger:** technical event details including actor ID/type, event/action, timestamp, revision,
+  authority, changed paths or operations, policy/confirmation outcome, and correlation/causation
+  identity.
+
+Selecting an entry should highlight both the originating participant panel and the affected object
+in the shared workspace. New actions should create a visible chain:
+
+```text
+participant → action → governed result → shared-state change → durable record
+```
+
+### 2.5 Responsive behavior
+
+- The shared workspace remains primary.
+- Participant panels become tabs or a horizontally scrollable strip.
+- The journal becomes a right-side drawer.
+- Do not stack four full participant panels and the entire ledger into one long mobile page.
+
+## 3. Participant panel contract
+
+Participant panels are activity and command surfaces, not four chat boxes. Chat may later become a
+projection, but it is not the collaboration architecture.
+
+### 3.1 Common participant shell
+
+Every panel shows:
+
+- name, role, and `HUMAN` or `AGENT` identity;
+- connection/activity state (`active`, `working`, `waiting`, `blocked`, `needs approval`, `idle`);
+- responsibility or current objective;
+- authority in domain language;
+- latest meaningful action and semantic result;
+- compact chronological history;
+- a transient highlight when that actor causes the current workspace or journal change.
+
+### 3.2 Human panels: intent, judgment, and authority
+
+Human panels contain contextual decisions rather than generic controls.
+
+**Morgan · SOC Analyst**
+
+- establishes incident intent;
+- redirects or challenges investigation;
+- reviews evidence;
+- recommends containment;
+- cannot authorize protected or consequential containment.
+
+**Priya · Incident Commander**
+
+- adds operational constraints;
+- reviews blast radius and policy results;
+- authorizes or rejects consequential action;
+- may transfer or revoke authority;
+- does not perform detailed evidence investigation.
+
+Only the currently available domain action should be prominent. An incoming request from an agent
+or another human appears in the responsible human's panel with its evidence and decision controls.
+
+### 3.3 Agent panels: objective, work, and bounded capability
+
+Agent panels show:
+
+- assigned objective;
+- current operation in readable language, with optional technical tool/capability detail;
+- latest attempted contribution and result (`committed`, `rejected`, `superseded`, `awaiting
+  validation`, `confirmation required`);
+- capabilities and explicit boundaries in domain language;
+- meaningful activity history.
+
+Agent panels should not normally contain product action buttons. Pause/resume and technical
+inspection may exist as secondary presenter or debugging affordances, visually separated from the
+agent's product surface.
+
+### 3.4 Cross-surface behavior
+
+When a participant acts:
+
+1. the participant panel shows the action or operation;
+2. the shared workspace changes or displays the rejection;
+3. the participant panel shows the semantic result;
+4. the journal appends an attributable entry;
+5. selecting any representation highlights the related participant, workspace object, and record.
+
+## 4. Revised governed SOC scenario
+
+The scenario remains one coherent incident, but now demonstrates mixed-team responsibility rather
+than an analyst supervising an agent roster.
+
+### Act 1 — Human intent and constraint
+
+Morgan establishes: **“Determine scope, contain safely, preserve evidence.”** The intent appears in
+shared state and Morgan's journal history.
+
+Priya adds: **“DC-01 supports an active payroll cutover. Do not disrupt it without commander
+authorization.”** The constraint appears in shared state and becomes part of subsequent authority
+evaluation.
+
+**Proof:** two distinct human actors contribute different semantic objects to one state.
+
+### Act 2 — Agent investigation
+
+Identity Agent contributes impossible-travel and privileged-token evidence. The shared hypothesis
+updates with attribution. Morgan reviews the result and may request validation of whether DC-01 is
+the compromised target or only the connection source.
+
+**Proof:** human direction and agent evidence share one event/state model; the human is an active
+collaborator, not an approval button at the end.
+
+### Act 3 — Governed agent overreach
+
+Response Agent proposes isolating DC-01. Policy rejects it because the evidence is incomplete, the
+asset is protected by Priya's constraint, and the agent lacks the required authority. The safe
+fallback increases telemetry and preserves evidence. The rejected proposal remains visible.
+
+**Proof:** governance is part of execution and can preserve useful work while refusing an action.
+
+### Act 4 — Governed human boundary
+
+New evidence identifies Host-A as the correct bounded target. Response Agent proposes Host-A
+isolation. Morgan recommends it but cannot authorize execution. If Morgan attempts authorization,
+GIK rejects the action because the analyst lacks commander authority.
+
+**Proof:** governance constrains humans and agents; participation does not imply authority.
+
+### Act 5 — Correct authority and execution
+
+Priya receives the evidence-backed request in her panel and authorizes Host-A isolation. Execution
+occurs as a separate attributable event. The shared workspace changes to `Contained`, all panels
+receive the outcome, and the journal records recommendation, authorization, and execution as
+distinct causal steps.
+
+**Proof:** mixed-team work converges on one governed decision with complete provenance.
+
+## 5. GIK model and state shape
+
+Every human and agent is an actor using the same transport-neutral emit contract. No actor receives
+a privileged mutation path. Provenance travels as `actorId` on the event and through effect,
+outcome, state, and trace.
+
+Target shared-state shape:
+
+- `incident`: identity, severity, status, stage, current governance state;
+- `actors[]`: ID, kind (`human | agent`), role, status, responsibility/objective, authority;
+- `intent`: human-authored objective and owner;
+- `constraints[]`: author, rule, affected entities, active status;
+- `evidence[]`: source actor, kind, summary, confidence, linked entities, timestamp;
+- `entities[]`: host/account/service identity, risk state, protected classification;
+- `hypothesis`: statement, confidence, supporting evidence;
+- `proposal`: author, action, target, evidence, blast radius, authority result, reason/fallback;
+- `recommendation`: recommending human and rationale;
+- `authorization`: requested role, approving/rejecting human, result;
+- `journal[]`: readable attributable causal entries;
+- `trace[]`: technical event/effect/outcome/state-operation record.
+
+The participant panels, shared workspace, journal, and technical ledger are projections of this one
+state and causal history. Never maintain parallel human, agent, or presenter fixtures.
 
 ## 6. Implementation principles
 
-1. **Real kernel events, deterministic scenario.** A scripted scenario is acceptable for demo
-  reliability, but every visible contribution must dispatch a real GIK event through schema,
-  authority, reducer, and trace. Do not paint fake success/rejection labels in the React view.
-2. **Agents are stateful actors, not toast messages.** Model agent identity, role, mode, current
-  activity, authority, and contributions in shared state. The scenario runner advances actors; it
-  does not replace them.
-3. **Two representations, one state.** HX presents operational evidence; AX presents agent-readable
-  entities/capabilities. They must derive from one state graph, not parallel demo fixtures.
-4. **Progressive disclosure for platform proof.** Show compact authority receipts inline; expose
-  full event payloads/state diffs in the forensic drawer for technical audiences.
-5. **Step-through first, autoplay second.** Let the presenter advance acts deliberately, with an
-  optional autoplay mode. Cause, authority decision, and state change must remain legible.
-6. **Honor host theming + reuse conventions.** Consume `HostThemeProvider` semantic variables
-  (`var(--bg)`, `var(--panel)`, `var(--accent)`, `var(--line)`, …); no hard-coded Fluent palette
-  colors (the T2 lesson). Prefer shared `@gik/*` packages over bundle-local reimplementation.
+1. **Real events, deterministic scenario.** Reliability may be scripted, but each visible actor
+   action must dispatch a real attributable GIK event through authority, reducer, effects, and
+   trace.
+2. **Same participation path, different authority.** Humans and agents share the event model; role
+   and policy determine allowed consequences.
+3. **One state, several projections.** Participant panels, workspace, journal, and ledger must not
+   carry independent copies of domain truth.
+4. **Domain language first.** Show “Can recommend containment,” not internal verbs such as
+   `invoke` or `confirm`; keep technical detail in Ledger mode.
+5. **Governance attached to work.** Rejection, fallback, recommendation, confirmation, and
+   execution receipts appear beside the affected proposal as well as in the ledger.
+6. **Presenter controls are outside the domain.** Manual/Auto/Reset advance the reliable demo but
+   do not impersonate Morgan, Priya, Identity, or Response.
+7. **Step-through first, autoplay second.** Cause, authority decision, and state change must remain
+   legible at every step.
+8. **Honor host theming and shared primitives.** Use semantic host variables and existing `@gik/*`
+   surfaces. Do not make agents visually futuristic or more important than humans.
 
-## 7. Risks to resolve before committing the UI architecture
+## 7. Gap from implemented baseline
 
-- **Rejection semantics:** verify whether the kernel can represent a policy rejection + fallback as
-  a first-class trace result. If not, add the smallest real kernel/trace capability needed.
-- **Confirmation lifecycle:** verify `confirm` supports pending → approved/rejected → executed, not
-  merely a static trace label.
-- **Multi-agent attribution:** determine whether actor identity/provenance already flows through
-  events. If absent, define it at the event/trace contract, not only in presentation state.
-- **Autonomous continuity:** prove the same state authority can be driven through the transport-
-  neutral agent port while no human action is occurring. The UI mode switch alone is insufficient.
-- **Scenario density:** four agents and five acts are enough complexity. Keep one incident and one
-  final decision so the audience sees orchestration rather than dashboard noise.
+The current `live-workspace-soc` baseline already provides:
 
-## 8. Phased delivery (discovery first)
+- one shared incident state;
+- attributable actor IDs through kernel events/effects/outcomes;
+- real `invoke`, `route`, and `confirm` paths;
+- rejection plus fallback, confirmation required, and executed outcomes;
+- presenter-controlled Manual/Auto progression with countdown;
+- a working forensic ledger and agent-oriented inspection;
+- responsive host integration.
 
-Sequence the build so the riskiest platform claims are proven before any UI polish:
+The next iteration must change or add:
 
-- **Phase 0 — Capability spike (resolves Section 7 risks):** in a throwaway harness, prove the
-  kernel can (a) carry `actorId` provenance on events, (b) represent a policy `rejected + fallback`
-  result as first-class trace, and (c) run the `confirm` lifecycle `pending → approved → executed`.
-  Where a primitive is missing, decide *build-the-smallest-real-thing* vs *narrow the scenario*
-  before committing the UI. No UI investment until these are answered.
-- **Phase 1 — Static incident room:** layout, actor roster, and shared canvas rendering seeded
-  state (no motion). Establishes legibility and theming.
-- **Phase 2 — One real agent event:** a single actor emits a real event that mutates shared state
-  and appears attributed in the timeline. Proves the wiring end-to-end.
-- **Phase 3 — Parallel multi-agent (Acts 1–2):** all four actors contribute concurrently.
-- **Phase 4 — Governance boundary (Act 3):** the policy-blocked overreach + fallback receipt.
-- **Phase 5 — Continuity + return (Acts 4–5):** autonomous handoff and the confirmation-gated
-  containment.
-- **Phase 6 — Presenter controls + polish:** stepping, autoplay/reset, forensic drawer, mobile.
+- replace four-agent roster emphasis with two humans plus two agents;
+- make Morgan and Priya first-class stateful actors with distinct authority;
+- move domain actions into the responsible participant panels;
+- add human-authored intent and operational constraints to shared state;
+- split recommendation, authorization, and execution into distinct events;
+- demonstrate an unauthorized human action being rejected;
+- replace the expandable ledger with a persistent right Journal/Ledger pane;
+- cross-highlight participant, workspace object, and ledger entry;
+- reshape the center into one coherent shared workspace;
+- update scenario events, state, effects, narration, and tests accordingly.
 
-Each phase should end green on `build:host` + Vitest so the hero is always demoable.
+Independent transport clients and disconnect/reconnect continuity are a later proof layer unless
+explicitly pulled into this iteration. Do not imply that the deterministic in-process scenario has
+already proven them.
 
-## 9. Acceptance criteria
+## 8. Delivery plan
 
-- [x] A new `live-workspace-soc` bundle opens from the Runtime CTA; the old `workbench` remains
-  unchanged and independently routable throughout T3 and the remaining pitch implementation.
-- [x] The analyst and at least four named agent roles are simultaneously visible with live status,
-  current activity, authority, and attributed contributions.
-- [x] Agent contributions mutate the same evidence/timeline/response state the analyst sees.
-- [x] A policy-blocked overreach produces a real rejection + fallback receipt beside the proposal
-  and in the full forensic ledger.
-- [x] Autonomous continuation visibly changes participation mode while preserving state authority,
-  provenance, and trace.
-- [x] The final containment action cannot execute until the analyst confirms it.
-- [x] The five-act scenario supports presenter-controlled stepping and optional autoplay/reset.
-- [x] Full trace/state detail is available on demand without dominating the default experience.
-- [x] Back-navigation returns to `samples-overview`.
-- [x] `npm run build:host` + Vitest pass; Playwright validates desktop/mobile layout, readable actor
-  activity, no horizontal overflow, and the complete scenario path.
+- **Phase 0 — Pin contracts:** define actor roles/authority, revised state shape, event names,
+  semantic outcomes, and the exact five-act state transitions.
+- **Phase 1 — Static composition:** implement header, shared workspace, four participant panels,
+  and persistent Journal/Ledger pane from seeded state.
+- **Phase 2 — Mixed-human events:** Morgan authors intent; Priya authors the protected-asset
+  constraint; both appear in shared state and journal.
+- **Phase 3 — Agent contribution:** Identity contributes real attributable evidence and updates the
+  shared hypothesis.
+- **Phase 4 — Dual governance boundary:** reject Response's DC-01 proposal and reject Morgan's
+  unauthorized execution attempt, preserving visible reasons and fallback.
+- **Phase 5 — Correct authority:** separate Morgan's recommendation, Priya's authorization, and the
+  execution result.
+- **Phase 6 — Causal interaction:** link/highlight participant actions, affected workspace objects,
+  and journal/ledger entries.
+- **Phase 7 — Presenter and responsive polish:** retain Manual/Auto/Reset, validate countdown,
+  desktop proportions, participant tabs/strip, journal drawer, and full scenario legibility.
 
-## 10. Deferred cleanup (not part of T3)
+Each phase ends green on focused tests, `npm run test:react`, `npm run test:samples`, and
+`npm run build:host` as applicable.
 
-After Beats 1–4 are complete, assess whether `workbench` still serves a useful developer/sample
-purpose. Only then choose explicitly to keep it, move it out of the pitch catalog, deprecate it, or
-remove it. That decision must include reference checks and regression validation; T3 does not
-pre-commit to retirement.
+## 9. Acceptance criteria for the revised interaction
+
+- [ ] The desktop first viewport clearly contains one header, one dominant shared workspace, four
+  participant panels, and one persistent right Journal/Ledger pane.
+- [ ] Morgan, Priya, Identity Agent, and Response Agent are simultaneously visible and structurally
+  recognizable as actors in one participant model.
+- [ ] Human panels emphasize responsibility, contextual judgment, and authority; agent panels
+  emphasize objective, current operation, contribution, capability, and boundary.
+- [ ] Morgan authors intent and Priya authors an operational constraint as separate attributable
+  events that update the same shared state.
+- [ ] Identity Agent contributes evidence through the same event path and updates the shared
+  hypothesis.
+- [ ] Response Agent's DC-01 proposal is rejected using Priya's active constraint, with a visible
+  reason and safe fallback.
+- [ ] Morgan can recommend Host-A containment but an attempted authorization by Morgan is rejected.
+- [ ] Priya alone can authorize the pending consequential action.
+- [ ] Recommendation, authorization, and execution are separate attributable ledger entries.
+- [ ] Every scenario action visibly links participant, shared-state effect or rejection, and
+  journal/ledger record.
+- [ ] Manual next advances exactly one domain action; Auto next shows countdown and stops at the
+  correct human decision boundary.
+- [ ] Mobile preserves the shared workspace, exposes participants as tabs/strip, and opens the
+  journal as a drawer without horizontal page overflow.
+- [ ] The old `workbench` remains untouched and independently routable.
+- [ ] Focused tests, React tests, sample tests, host build, and Playwright desktop/mobile journey
+  pass.
+
+## 10. Deferred proof and cleanup
+
+After the revised in-process interaction is convincing, decide whether the next proof must add:
+
+- two separate human browser clients;
+- independently running agent clients;
+- server-backed shared session and live transport synchronization;
+- disconnect/reconnect and replay continuity;
+- durable autonomous work while no human client is connected.
+
+Only claim these once they are literal. Separately, after Beats 1–4 are complete, assess whether
+`workbench` should remain a developer sample, move out of the pitch catalog, be deprecated, or be
+removed. T3 does not pre-commit to that cleanup.
