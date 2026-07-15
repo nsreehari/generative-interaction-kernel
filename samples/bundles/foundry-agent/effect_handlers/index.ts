@@ -33,6 +33,46 @@ async function errorMessage(res: Response): Promise<string> {
 }
 
 export const effects: EffectHandlerMap = {
+  // Fetch the agent ids this function key can see, via the proxy's transparent passthrough
+  // (GET /api/foundry/assistants). Populates agent.agentOptions so the document can offer a
+  // dropdown instead of a free-text agent id box.
+  async listAgents(ctx: EffectContext) {
+    const key = str(ctx.get("agent.key")).trim();
+    if (!key) {
+      return { ops: [setOp("agent.authError", "Enter a function key first.")] };
+    }
+    try {
+      const res = await fetch(`${proxyBase()}/api/foundry/assistants?api-version=2025-05-01`, {
+        method: "GET",
+        headers: { "x-functions-key": key },
+      });
+      if (res.status === 401 || res.status === 403) {
+        return { ops: [setOp("agent.authError", "That function key was rejected.")] };
+      }
+      if (!res.ok) {
+        const msg = await errorMessage(res);
+        return { ops: [setOp("agent.authError", msg || `Could not list agents (${res.status}).`)] };
+      }
+      const data = (await res.json()) as { data?: Array<{ id?: unknown; name?: unknown }> };
+      const options = (Array.isArray(data?.data) ? data.data : [])
+        .filter((a) => a && typeof a.id === "string")
+        .map((a) => {
+          const id = str(a.id);
+          const name = str(a.name);
+          return { value: id, label: name ? `${name} (${id})` : id };
+        });
+      if (options.length === 0) {
+        return { ops: [setOp("agent.authError", "No agents were returned for this key.")] };
+      }
+      const ops = [setOp("agent.authError", ""), setOp("agent.agentOptions", options)];
+      // Default the selection to the first agent when nothing is chosen yet.
+      if (!str(ctx.get("agent.agentId")).trim()) ops.push(setOp("agent.agentId", options[0].value));
+      return { ops };
+    } catch {
+      return { ops: [setOp("agent.authError", "Could not reach the agent proxy. Is it running?")] };
+    }
+  },
+
   // Smoke test: the proxy host rejects a bad key with 401/403; a valid key + resolvable agent id
   // returns 200 with the agent name, which unlocks the demo.
   async verifyKey(ctx: EffectContext) {
@@ -108,6 +148,7 @@ export const effects: EffectHandlerMap = {
       ops: [
         setOp("agent.stage", "locked"),
         setOp("agent.key", ""),
+        setOp("agent.agentOptions", []),
         setOp("agent.reply", ""),
         setOp("agent.lastAsked", ""),
         setOp("agent.threadId", ""),

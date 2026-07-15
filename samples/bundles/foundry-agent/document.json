@@ -22,7 +22,7 @@
                   "capability": "ui:note",
                   "id": "agent-login-note",
                   "props": {
-                    "value": "Enter the Azure Function key and the Foundry agent id. They are verified against the proxy before the demo opens; nothing is stored or baked into the build.",
+                    "value": "Paste your Azure Function key. Use \"List agents\" to fetch the agent ids the key can see and pick one, or type an agent id directly. Credentials are verified against the proxy before the demo opens; nothing is stored or baked into the build.",
                     "tone": "muted"
                   }
                 },
@@ -48,6 +48,39 @@
                   }
                 },
                 {
+                  "capability": "ui:button",
+                  "id": "agent-list-btn",
+                  "props": { "label": "List agents" },
+                  "edges": {
+                    "on": {
+                      "press": [
+                        {
+                          "do": "invoke",
+                          "args": { "tool": "listAgents" }
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "capability": "ui:select",
+                  "id": "agent-id-select",
+                  "props": { "label": "Agent ID" },
+                  "edges": {
+                    "gate": "$count(agent.agentOptions) > 0",
+                    "read": { "value": "agent.agentId", "options": "agent.agentOptions" },
+                    "on": {
+                      "change": [
+                        {
+                          "do": "assign",
+                          "target": "agent.agentId",
+                          "args": { "from": "$event.value" }
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
                   "capability": "ui:field",
                   "id": "agent-id-field",
                   "props": {
@@ -55,6 +88,7 @@
                     "placeholder": "asst_..."
                   },
                   "edges": {
+                    "gate": "$count(agent.agentOptions) = 0",
                     "read": { "value": "agent.agentId" },
                     "on": {
                       "input": [
