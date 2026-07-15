@@ -7,20 +7,32 @@
     "namespaces": ["soc"],
     "actions": ["assign", "derive", "emit", "invoke", "route", "confirm"],
     "capabilities": {
+      "ui:timer-button": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "emits": ["press"]
+      },
       "soc:workspace": {
         "propsSchema": { "type": "object", "additionalProperties": true },
-        "emits": ["parallel", "overreach", "autonomous", "requestContainment", "approve", "reset"]
+        "slots": ["children"],
+        "emits": [
+          "establishIntent", "addConstraint", "suggestExploration", "amendExploration",
+          "replanExploration", "commitPartialFindings", "proposeDc01", "completeCorrelation",
+          "proposeHostA", "reviseResponse", "calculateResponse", "recommendContainment",
+          "authorizeContainment", "executeContainment", "setPace", "setPresentationContext",
+          "finishAct", "reset"
+        ]
       }
     },
     "externals": {
       "projectionViews": {
+        "ui": { "from": "floor", "use": ["timer-button"] },
         "soc": { "from": "self" }
       },
       "effectHandlers": [
-        "parallelInvestigation",
-        "policyGuard",
-        "autonomousContinuation",
-        "requestContainment",
+        "establishIntent", "addConstraint", "suggestExploration", "amendExploration",
+        "replanExploration", "commitPartialFindings", "evaluateDc01Policy", "completeCorrelation",
+        "proposeHostA", "reviseResponse", "calculateResponse", "recommendContainment",
+        "authorizeContainment", "requestNextAct", "setPace", "setPresentationContext", "finishAct",
         "executeContainment",
         "resetScenario"
       ]

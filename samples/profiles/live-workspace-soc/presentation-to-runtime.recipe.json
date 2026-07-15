@@ -1,0 +1,78 @@
+{
+  "gik": "0.1",
+  "type": "lowering-recipe",
+  "payload": {
+    "id": "soc.presentation-to-runtime",
+    "from": "presentation",
+    "to": "runtime-doc",
+    "metadata": {
+      "executor": "lower-document",
+      "terminalVocabulary": "live-workspace-soc/1.0"
+    },
+    "program": [
+      {
+        "slot": "container",
+        "match": {},
+        "emit": {
+          "capability": "soc:workspace",
+          "read": {
+            "act": "soc.act",
+            "incident": "soc.incident",
+            "presenter": "soc.presenter",
+            "presentation": "soc.presentation",
+            "stage": "soc.stage",
+            "step": "soc.step",
+            "actors": "soc.actors",
+            "intent": "soc.intent",
+            "constraints": "soc.constraints",
+            "dataSources": "soc.dataSources",
+            "explorations": "soc.explorations",
+            "evidence": "soc.evidence",
+            "correlations": "soc.correlations",
+            "entities": "soc.entities",
+            "hypothesis": "soc.hypothesis",
+            "proposal": "soc.proposal",
+            "recommendation": "soc.recommendation",
+            "authorization": "soc.authorization",
+            "journal": "soc.journal"
+          },
+          "on": {
+            "establishIntent": [{ "do": "invoke", "args": { "tool": "establishIntent" } }],
+            "addConstraint": [{ "do": "invoke", "args": { "tool": "addConstraint" } }],
+            "suggestExploration": [{ "do": "invoke", "args": { "tool": "suggestExploration" } }],
+            "amendExploration": [{ "do": "invoke", "args": { "tool": "amendExploration" } }],
+            "replanExploration": [{ "do": "invoke", "args": { "tool": "replanExploration" } }],
+            "commitPartialFindings": [{ "do": "invoke", "args": { "tool": "commitPartialFindings" } }],
+            "proposeDc01": [{ "do": "route", "args": { "tool": "evaluateDc01Policy", "to": "isolate:DC-01" } }],
+            "completeCorrelation": [{ "do": "invoke", "args": { "tool": "completeCorrelation" } }],
+            "proposeHostA": [{ "do": "invoke", "args": { "tool": "proposeHostA" } }],
+            "reviseResponse": [{ "do": "invoke", "args": { "tool": "reviseResponse" } }],
+            "calculateResponse": [{ "do": "invoke", "args": { "tool": "calculateResponse" } }],
+            "recommendContainment": [{ "do": "invoke", "args": { "tool": "recommendContainment" } }],
+            "authorizeContainment": [{ "do": "confirm", "args": { "tool": "authorizeContainment", "title": "Authorize Host-A isolation", "message": "Authorize the evidence-backed, reversible isolation plan?", "confirmLabel": "Authorize", "danger": true } }],
+            "executeContainment": [{ "do": "invoke", "args": { "tool": "executeContainment" } }],
+            "setPace": [{ "do": "invoke", "args": { "tool": "setPace" } }],
+            "setPresentationContext": [{ "do": "invoke", "args": { "tool": "setPresentationContext" } }],
+            "finishAct": [{ "do": "invoke", "args": { "tool": "finishAct" } }],
+            "reset": [{ "do": "invoke", "args": { "tool": "resetScenario" } }]
+          }
+        }
+      },
+      {
+        "slot": "region",
+        "match": { "region": "next-act-timer" },
+        "emit": {
+          "capability": "ui:timer-button",
+          "props": { "label": "Next act", "tone": "primary", "showCountdown": true },
+          "read": {
+            "durationMs": "soc.presenter.durationMs",
+            "disabled": "soc.presenter.locked"
+          },
+          "on": {
+            "press": [{ "do": "invoke", "args": { "tool": "requestNextAct" } }]
+          }
+        }
+      }
+    ]
+  }
+}
