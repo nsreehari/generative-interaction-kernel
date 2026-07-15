@@ -36,3 +36,36 @@ test("floorStylesheet re-scopes every rule under a custom root", () => {
   assert.ok(css.includes(".app-scope .gx-form-grid"));
   assert.doesNotMatch(css, /\.gx-host\b/);
 });
+
+// Theme purity: the sheet must express color only through the ThemeProvider (semantic role vars +
+// Fluent tokens). The single allowed exception is the data-visualization categorical palette, whose
+// series colors are intentionally fixed and are named --gx-dataviz-* so nothing is anonymous.
+const COLOR_LITERAL = /#[0-9a-fA-F]{3,8}\b|\brgba?\([^)]*\)|\bhsla?\([^)]*\)/g;
+const DATAVIZ_DECLARATION = /^\s*--gx-dataviz-[a-z]+:\s*#[0-9a-fA-F]{3,8};\s*$/;
+
+test("shipped sheet has no literal colors outside the named data-viz palette", () => {
+  const offenders: string[] = [];
+  for (const line of FLOOR_STYLESHEET.split("\n")) {
+    if (!line.match(COLOR_LITERAL)) continue;
+    if (DATAVIZ_DECLARATION.test(line)) continue; // allow-listed data-viz palette line
+    offenders.push(line.trim());
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    `every color must be a role var / Fluent token; found literal color(s):\n${offenders.join("\n")}`
+  );
+});
+
+test("data-viz palette is named and chart slots reference it — nothing color-related is anonymous", () => {
+  const css = FLOOR_STYLESHEET;
+  for (const name of ["violet", "cyan", "magenta", "lime", "amber", "slate"]) {
+    assert.match(css, new RegExp(`--gx-dataviz-${name}:\\s*#[0-9a-fA-F]{3,8};`));
+  }
+  // Categorical slots reference the named palette, not raw hex.
+  assert.match(css, /--gx-chart-5:\s*var\(--gx-dataviz-violet\)/);
+  assert.match(css, /--gx-chart-10:\s*var\(--gx-dataviz-slate\)/);
+  // Primary slots follow the theme's semantic roles.
+  assert.match(css, /--gx-chart-1:\s*var\(--accent\)/);
+  assert.match(css, /--gx-chart-4:\s*var\(--bad\)/);
+});
