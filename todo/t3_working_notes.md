@@ -627,6 +627,23 @@ Journal/Ledger, and it does not mutate domain state or create journal entries. T
 each context's frame, arrangement, and visible semantic regions; do not create eight state fixtures
 or eight independently authored domain screens.
 
+Context lowering operates over canonical substrate facets rather than UI cards. The SOC taxonomy
+defines summary, intent, constraints, hypothesis, exploration, evidence, response, authorization,
+causal record, and presenter control. Presentation recipes decide each context's template and
+orientation, semantic reading order, priority, disclosure depth, omission, and materialization.
+
+Substrate facets use `materialize: false`: they remain explicit in the lowered Presentation tier
+and are interpreted by the specialized `soc:workspace` projection from canonical root state. The
+presenter timer remains a materialized child capability. This keeps adaptation inspectable without
+inventing duplicate runtime controls or changing substrate identity.
+
+Agent contexts use the general Presentation-tier `group` slot to form an explicit participation
+envelope: `context → shared-state → request → response → governed-result`. The agent view shows the
+scoped objective and authority, which substrate facets are shared, the current task envelope, the
+agent's latest contribution, and the kernel/journal outcome. Correlation and Response agents share
+this envelope while assigning different facets to each group; agent responses remain proposals
+until a governed result commits, rejects, supersedes, or waits for authorization.
+
 #### Runtime-document tier
 
 The terminal tier emits the runtime document consumed by the kernel:

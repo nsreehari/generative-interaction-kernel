@@ -58,6 +58,7 @@ export interface InteractionFacetView {
   readExpr?: Record<string, string>;
   on?: Record<string, Action[]>;
   presentation?: string;
+  materialize?: boolean;
 }
 
 export interface InteractionSpec {
@@ -121,9 +122,11 @@ export type PresentationEdits = {
 export interface PresentationRegion {
   name: string;
   role: FacetRole;
+  group?: string;
   priority: RegionPriority;
   disclosure: RegionDisclosure;
   presentation?: string;
+  materialize?: boolean;
   capability?: string;
   read?: Record<string, string>;
   readExpr?: Record<string, string>;
@@ -157,6 +160,7 @@ export interface RecipeMatch extends RuleFacts, Partial<LayerContext> {
   required?: boolean;
   priority?: RegionPriority;
   disclosure?: RegionDisclosure;
+  group?: string;
   index?: number;
   presentation?: string;
 }
@@ -171,7 +175,8 @@ export type TemplateRule = EmitRule<RecipeMatch, { template: string; layout: str
 export type OrderRule = EmitRule<RecipeMatch, { rank: number }>;
 export type PriorityRule = EmitRule<RecipeMatch, { priority: RegionPriority }>;
 export type DisclosureRule = EmitRule<RecipeMatch, { disclosure: RegionDisclosure }>;
-export type PresentationRule = EmitRule<RecipeMatch, { presentation?: string }>;
+export type GroupRule = EmitRule<RecipeMatch, { group: string }>;
+export type PresentationRule = EmitRule<RecipeMatch, { presentation?: string; materialize?: boolean }>;
 export type RationaleRule = EmitRule<RecipeMatch, { template: string }>;
 
 export type InteractionProgramSlot =
@@ -179,6 +184,7 @@ export type InteractionProgramSlot =
   | "rank"
   | "priority"
   | "disclosure"
+  | "group"
   | "presentation"
   | "rationale";
 
@@ -187,7 +193,8 @@ export type InteractionProgramRule =
   | ProgramRule<"rank", RecipeMatch, { rank: number }>
   | ProgramRule<"priority", RecipeMatch, { priority: RegionPriority }>
   | ProgramRule<"disclosure", RecipeMatch, { disclosure: RegionDisclosure }>
-  | ProgramRule<"presentation", RecipeMatch, { presentation?: string }>
+  | ProgramRule<"group", RecipeMatch, { group: string }>
+  | ProgramRule<"presentation", RecipeMatch, { presentation?: string; materialize?: boolean }>
   | ProgramRule<"rationale", RecipeMatch, { template: string }>;
 
 export interface InteractionToPresentationRecipe extends LayerRecipe {
@@ -300,9 +307,14 @@ export function interactionProgramEmit(
 ): { disclosure: RegionDisclosure } | undefined;
 export function interactionProgramEmit(
   recipe: InteractionToPresentationRecipe,
+  slot: "group",
+  facts: RecipeMatch
+): { group: string } | undefined;
+export function interactionProgramEmit(
+  recipe: InteractionToPresentationRecipe,
   slot: "presentation",
   facts: RecipeMatch
-): { presentation?: string } | undefined;
+): { presentation?: string; materialize?: boolean } | undefined;
 export function interactionProgramEmit(
   recipe: InteractionToPresentationRecipe,
   slot: "rationale",
@@ -512,6 +524,18 @@ function disclosureOf(
   return emit.disclosure;
 }
 
+function groupOf(
+  facet: Facet,
+  priority: RegionPriority,
+  disclosure: RegionDisclosure,
+  index: number,
+  spec: InteractionSpec,
+  ctx: LayerContext,
+  recipe: InteractionToPresentationRecipe
+): string | undefined {
+  return interactionProgramEmit(recipe, "group", regionFacts(facet, index, spec, ctx, recipe, { priority, disclosure }))?.group;
+}
+
 function rationaleFor(
   facet: Facet,
   priority: RegionPriority,
@@ -547,8 +571,8 @@ function defaultPresentation(
   spec: InteractionSpec,
   ctx: LayerContext,
   recipe: InteractionToPresentationRecipe
-): string | undefined {
-  return interactionProgramEmit(recipe, "presentation", regionFacts(facet, index, spec, ctx, recipe, { priority, disclosure }))?.presentation;
+): { presentation?: string; materialize?: boolean } | undefined {
+  return interactionProgramEmit(recipe, "presentation", regionFacts(facet, index, spec, ctx, recipe, { priority, disclosure }));
 }
 
 export function planPresentationWithRecipe(
@@ -573,6 +597,7 @@ export function planPresentationWithRecipe(
     const region: PresentationRegion = {
       name: facet.name,
       role: facet.role,
+      group: groupOf(facet, priority, disclosure, index, spec, ctx, plannerRecipe),
       priority,
       disclosure,
       capability: facetView?.capability,
@@ -582,8 +607,11 @@ export function planPresentationWithRecipe(
       on: facetView?.on,
       rationale: rationaleFor(facet, priority, disclosure, index, spec, ctx, plannerRecipe),
     };
-    const presentation = facetView?.presentation ?? defaultPresentation(facet, priority, disclosure, index, spec, ctx, plannerRecipe);
+    const presentationDefaults = defaultPresentation(facet, priority, disclosure, index, spec, ctx, plannerRecipe);
+    const presentation = facetView?.presentation ?? presentationDefaults?.presentation;
     if (presentation) region.presentation = presentation;
+    const materialize = facetView?.materialize ?? presentationDefaults?.materialize;
+    if (materialize !== undefined) region.materialize = materialize;
     return region;
   });
 

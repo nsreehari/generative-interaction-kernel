@@ -9,6 +9,7 @@ import runtimeRecipe from "./presentation-to-runtime.recipe.json" with { type: "
 import workflowRecipe from "./workflow-to-interaction.recipe.json" with { type: "json" };
 import {
   compileSocDocument,
+  compileSocPresentation,
   SOC_BLUEPRINT_CONTEXTS,
   socBlueprint,
   traceSocBlueprint,
@@ -54,9 +55,41 @@ test("presentation contexts own distinct inspectable projection contracts", () =
   assert.equal(mobile?.device, "mobile");
   assert.equal(mobile?.frame, "mobile");
   assert.equal(mobile?.arrangement, "decision");
-  assert.deepEqual(mobile?.regions, ["summary", "constraints", "hypothesis", "response", "authorization"]);
+  assert.deepEqual(mobile?.regions, ["summary", "authorization", "response", "constraints", "hypothesis"]);
   assert.equal(response?.device, "agent-console");
   assert.equal(response?.regions.includes("exploration"), false);
+});
+
+test("lowering recipes select, order, and disclose context facets without materializing them", () => {
+  for (const context of SOC_BLUEPRINT_CONTEXTS) {
+    const presentation = compileSocPresentation(context.id);
+    const substrateRegions = presentation.regions.filter((region) => region.materialize === false);
+    const visibleNames = substrateRegions.filter((region) => region.disclosure !== "omitted").map((region) => region.name);
+
+    assert.equal(presentation.arrangement, context.arrangement);
+    assert.deepEqual(visibleNames, context.regions);
+    assert.equal(substrateRegions.every((region) => region.materialize === false), true);
+  }
+
+  const mobile = compileSocPresentation("priya-mobile");
+  assert.deepEqual(
+    mobile.regions.filter((region) => region.disclosure !== "omitted" && region.materialize === false).map((region) => [region.name, region.priority, region.disclosure]),
+    [
+      ["summary", "supporting", "decision-summary"],
+      ["authorization", "critical", "decision-summary"],
+      ["response", "critical", "decision-summary"],
+      ["constraints", "supporting", "decision-summary"],
+      ["hypothesis", "supporting", "decision-summary"],
+    ]
+  );
+});
+
+test("agent contexts lower into context, state, request, response, and governed-result groups", () => {
+  for (const contextId of ["correlation-agent", "response-agent"]) {
+    const visible = compileSocPresentation(contextId).regions.filter((region) => region.disclosure !== "omitted" && region.materialize === false);
+    assert.deepEqual([...new Set(visible.map((region) => region.group))], ["context", "shared-state", "request", "response", "governed-result"]);
+    assert.equal(visible.find((region) => region.name === "agent-request")?.presentation, "agent-request");
+  }
 });
 
 test("the checked-in runtime document is the war-room blueprint output", () => {

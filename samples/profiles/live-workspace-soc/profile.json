@@ -54,6 +54,16 @@
       "taxonomy": {
         "inline": {
           "soc-workspace": [
+            { "name": "summary", "role": "situation", "required": true },
+            { "name": "intent", "role": "investigation-direction", "required": false },
+            { "name": "constraints", "role": "operational-boundary", "required": false },
+            { "name": "hypothesis", "role": "working-conclusion", "required": false },
+            { "name": "exploration", "role": "investigation-plan", "required": false },
+            { "name": "evidence", "role": "decision-support", "required": false },
+            { "name": "agent-request", "role": "task-envelope", "required": false },
+            { "name": "response", "role": "governed-action", "required": false },
+            { "name": "authorization", "role": "consequential-decision", "required": false },
+            { "name": "causal-record", "role": "provenance", "required": false },
             { "name": "next-act-timer", "role": "presenter-control", "required": true }
           ]
         }
@@ -102,13 +112,13 @@
       "presentationContexts": {
         "inline": [
           { "id": "full-substrate", "actor": "shared", "role": "technical-inspection", "device": "workstation", "task": "inspect-all", "disclosure": "complete", "layout": "console", "frame": "shared", "arrangement": "inspection", "regions": ["summary", "intent", "constraints", "hypothesis", "exploration", "evidence", "response", "authorization", "causal-record"] },
-          { "id": "war-room", "actor": "shared", "role": "incident-team", "device": "wall-display", "task": "coordinate", "disclosure": "operational", "layout": "war-room", "frame": "shared", "arrangement": "war-room", "regions": ["summary", "constraints", "hypothesis", "response", "authorization", "causal-record"] },
-          { "id": "priya-mobile", "actor": "human-priya", "role": "Incident Commander", "device": "mobile", "task": "authorize", "disclosure": "decision", "layout": "compact", "frame": "mobile", "arrangement": "decision", "regions": ["summary", "constraints", "hypothesis", "response", "authorization"] },
+          { "id": "war-room", "actor": "shared", "role": "incident-team", "device": "wall-display", "task": "coordinate", "disclosure": "operational", "layout": "war-room", "frame": "shared", "arrangement": "war-room", "regions": ["summary", "hypothesis", "response", "constraints", "authorization", "causal-record"] },
+          { "id": "priya-mobile", "actor": "human-priya", "role": "Incident Commander", "device": "mobile", "task": "authorize", "disclosure": "decision", "layout": "compact", "frame": "mobile", "arrangement": "decision", "regions": ["summary", "authorization", "response", "constraints", "hypothesis"] },
           { "id": "priya-laptop", "actor": "human-priya", "role": "Incident Commander", "device": "laptop", "task": "command", "disclosure": "evidence-summary", "layout": "command", "frame": "laptop", "arrangement": "command", "regions": ["summary", "constraints", "hypothesis", "evidence", "response", "authorization", "causal-record"] },
           { "id": "morgan-pager", "actor": "human-morgan", "role": "SOC Analyst", "device": "pager", "task": "triage", "disclosure": "urgent", "layout": "glanceable", "frame": "pager", "arrangement": "glanceable", "regions": ["summary", "hypothesis", "response"] },
-          { "id": "morgan-workstation", "actor": "human-morgan", "role": "SOC Analyst", "device": "workstation", "task": "investigate", "disclosure": "evidence", "layout": "investigation", "frame": "workstation", "arrangement": "investigation", "regions": ["summary", "intent", "constraints", "hypothesis", "exploration", "evidence", "response", "causal-record"] },
-          { "id": "correlation-agent", "actor": "agent-correlation", "role": "Evidence correlation", "device": "agent-console", "task": "correlate", "disclosure": "operation", "layout": "agent", "frame": "agent-console", "arrangement": "agent", "regions": ["summary", "intent", "constraints", "hypothesis", "exploration", "evidence", "causal-record"] },
-          { "id": "response-agent", "actor": "agent-response", "role": "Containment planning", "device": "agent-console", "task": "plan-response", "disclosure": "policy-and-execution", "layout": "agent", "frame": "agent-console", "arrangement": "agent", "regions": ["summary", "constraints", "hypothesis", "evidence", "response", "authorization", "causal-record"] }
+          { "id": "morgan-workstation", "actor": "human-morgan", "role": "SOC Analyst", "device": "workstation", "task": "investigate", "disclosure": "evidence", "layout": "investigation", "frame": "workstation", "arrangement": "investigation", "regions": ["summary", "intent", "constraints", "exploration", "evidence", "hypothesis", "response", "causal-record"] },
+          { "id": "correlation-agent", "actor": "agent-correlation", "role": "Evidence correlation", "device": "agent-console", "task": "correlate", "disclosure": "operation", "layout": "agent", "frame": "agent-console", "arrangement": "agent-correlation", "regions": ["summary", "intent", "constraints", "hypothesis", "agent-request", "exploration", "evidence", "causal-record"] },
+          { "id": "response-agent", "actor": "agent-response", "role": "Containment planning", "device": "agent-console", "task": "plan-response", "disclosure": "policy-and-execution", "layout": "agent", "frame": "agent-console", "arrangement": "agent-response", "regions": ["summary", "hypothesis", "evidence", "constraints", "agent-request", "response", "authorization", "causal-record"] }
         ]
       }
     },

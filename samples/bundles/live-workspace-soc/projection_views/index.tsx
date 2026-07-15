@@ -17,6 +17,7 @@ import {
 } from "@fluentui/react-icons";
 import type { ProjectionView } from "@gik/react";
 import {
+  compileSocPresentation,
   SOC_BLUEPRINT_CONTEXTS,
   socBlueprint,
   traceSocBlueprint,
@@ -51,7 +52,7 @@ interface Presentation {
   contexts: PresentationContext[];
 }
 
-type SubstrateRegion = "summary" | "intent" | "constraints" | "hypothesis" | "exploration" | "evidence" | "response" | "authorization" | "causal-record";
+type SubstrateRegion = "summary" | "intent" | "constraints" | "hypothesis" | "exploration" | "evidence" | "agent-request" | "response" | "authorization" | "causal-record";
 
 export interface SocPresentationSpec {
   frame: "shared" | "mobile" | "laptop" | "pager" | "workstation" | "agent-console";
@@ -62,10 +63,13 @@ export interface SocPresentationSpec {
 export function socPresentationSpec(contextId: string): SocPresentationSpec {
   const context = SOC_BLUEPRINT_CONTEXTS.find((item) => item.id === contextId) ?? SOC_BLUEPRINT_CONTEXTS.find((item) => item.id === "war-room");
   if (!context) throw new Error("The SOC blueprint must define a war-room presentation context");
+  const presentation = compileSocPresentation(context.id);
   return {
     frame: context.frame as SocPresentationSpec["frame"],
-    arrangement: context.arrangement as SocPresentationSpec["arrangement"],
-    regions: context.regions as SubstrateRegion[],
+    arrangement: presentation.arrangement as SocPresentationSpec["arrangement"],
+    regions: presentation.regions
+      .filter((region) => region.disclosure !== "omitted" && region.materialize === false)
+      .map((region) => region.name as SubstrateRegion),
   };
 }
 
@@ -266,6 +270,16 @@ const useStyles = makeStyles({
   framePager: { maxWidth: "540px", padding: tokens.spacingVerticalM, border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel)" },
   frameWorkstation: { maxWidth: "1100px" },
   frameAgent: { maxWidth: "920px", padding: tokens.spacingVerticalL, borderLeft: `3px solid var(--accent)`, backgroundColor: "color-mix(in srgb, var(--panel) 88%, transparent)" },
+  agentEnvelope: { display: "grid", gap: tokens.spacingVerticalM },
+  agentEnvelopeSection: { display: "grid", gridTemplateColumns: "150px minmax(0, 1fr)", border: `1px solid var(--line)`, backgroundColor: "var(--panel)", "@media (max-width: 680px)": { gridTemplateColumns: "1fr" } },
+  agentEnvelopeLabel: { display: "grid", alignContent: "start", gap: tokens.spacingVerticalXXS, padding: tokens.spacingVerticalM, borderRight: `1px solid var(--line)`, backgroundColor: "var(--panel-2)", "@media (max-width: 680px)": { borderRight: 0, borderBottom: `1px solid var(--line)` } },
+  agentEnvelopeStep: { color: "var(--accent)", fontFamily: tokens.fontFamilyMonospace, fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightBold, textTransform: "uppercase" },
+  agentEnvelopeBody: { minWidth: 0, display: "grid", gap: tokens.spacingVerticalS, padding: tokens.spacingVerticalM },
+  agentEnvelopeTitle: { margin: 0, fontSize: tokens.fontSizeBase300 },
+  agentEnvelopeText: { margin: 0, color: "var(--muted)", lineHeight: tokens.lineHeightBase300 },
+  agentEnvelopeMeta: { display: "flex", gap: tokens.spacingHorizontalXS, flexWrap: "wrap" },
+  agentEnvelopeChip: { padding: `${tokens.spacingVerticalXXS} ${tokens.spacingHorizontalS}`, border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusSmall, color: "var(--text)", fontFamily: tokens.fontFamilyMonospace, fontSize: tokens.fontSizeBase100 },
+  agentEnvelopeOutcome: { borderLeft: `4px solid var(--good)` },
   viewpointIdentity: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: tokens.spacingHorizontalM, paddingBottom: tokens.spacingVerticalS, borderBottom: `1px solid var(--line)` },
   viewpointName: { margin: 0, fontSize: tokens.fontSizeBase300 },
   viewpointDevice: { color: "var(--muted)", fontFamily: tokens.fontFamilyMonospace, fontSize: tokens.fontSizeBase100, textTransform: "uppercase" },
@@ -436,8 +450,24 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
     : presentationSpec.frame === "workstation" ? styles.frameWorkstation
     : presentationSpec.frame === "agent-console" ? styles.frameAgent
     : undefined;
+  const regionOrder = (...regions: SubstrateRegion[]) => Math.min(...regions.map((region) => {
+    const index = presentationSpec.regions.indexOf(region);
+    return index < 0 ? 50 : index;
+  }));
   const blueprintTrace = traceSocBlueprint(presentation.selectedContext);
   const blueprintContext = SOC_BLUEPRINT_CONTEXTS.find((item) => item.id === presentation.selectedContext) ?? SOC_BLUEPRINT_CONTEXTS[0];
+  const blueprintPresentation = blueprintTrace[1].output as { layout: string; arrangement: string; regions: Array<{ name: string; group?: string; priority: string; disclosure: string; presentation?: string; materialize?: boolean }> };
+  const blueprintRegions = blueprintPresentation.regions.filter((region) => region.disclosure !== "omitted" && region.presentation !== "presenter-control");
+  const selectedAgent = actors.find((actor) => actor.id === blueprintContext.actor);
+  const selectedAgentEntries = selectedAgent ? journal.filter((entry) => entry.actorId === selectedAgent.id) : [];
+  const latestAgentEntry = selectedAgentEntries.at(-1);
+  const agentRegions = (group: string) => blueprintRegions.filter((region) => region.group === group).map((region) => region.name);
+  const agentRequest = presentation.selectedContext === "correlation-agent"
+    ? explorations.at(-1)?.question ?? selectedAgent?.objective ?? "Awaiting an investigation task"
+    : proposal ? `Prepare and govern ${proposal.action} for ${proposal.target}` : selectedAgent?.objective ?? "Awaiting a response-planning task";
+  const agentResponse = presentation.selectedContext === "correlation-agent"
+    ? evidence.filter((item) => item.actorId === "agent-correlation").at(-1)?.summary ?? selectedAgent?.activity ?? "No evidence contribution submitted yet."
+    : proposal ? `${proposal.status}: ${proposal.action} for ${proposal.target}` : selectedAgent?.activity ?? "No response proposal submitted yet.";
   const blueprintResources = socBlueprint.resources;
   const blueprintStageSummaries = blueprintTrace.map((item) => {
     const output = item.output as Record<string, unknown>;
@@ -446,7 +476,8 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
     }
     if (item.toKind === "presentation") {
       const regions = Array.isArray(output.regions) ? output.regions : [];
-      return `layout=${String(output.layout)} · template-arrangement=${String(output.arrangement)}\nprojection-frame=${blueprintContext.frame} · projection-arrangement=${blueprintContext.arrangement}\nvisible-regions=${blueprintContext.regions.join(", ")}\ngeneric-runtime-facets=${regions.map((region) => String((region as { name?: string }).name)).join(", ")}`;
+      const visible = regions.filter((region) => (region as { disclosure?: string }).disclosure !== "omitted" && (region as { presentation?: string }).presentation !== "presenter-control");
+      return `layout=${String(output.layout)} · arrangement=${String(output.arrangement)}\nprojection-frame=${blueprintContext.frame}\nreading-order=${visible.map((region) => String((region as { name?: string }).name)).join(" → ")}\ngroups=${[...new Set(visible.map((region) => String((region as { group?: string }).group ?? "ungrouped")))].join(" → ")}\nfacet-policy=${visible.map((region) => { const facet = region as { name?: string; group?: string; priority?: string; disclosure?: string }; return `${facet.name}[${facet.group ?? "ungrouped"}/${facet.priority}/${facet.disclosure}]`; }).join(", ")}`;
     }
     const root = output.root as { capability?: string; edges?: { children?: unknown[] } } | undefined;
     return `root=${root?.capability ?? "unknown"}\nchildren=${root?.edges?.children?.length ?? 0} · terminal document matches bundle`;
@@ -587,8 +618,10 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
                   <div className={styles.blueprintContextField}>Task<span className={styles.blueprintContextValue}>{blueprintContext.task}</span></div>
                   <div className={styles.blueprintContextField}>Disclosure<span className={styles.blueprintContextValue}>{blueprintContext.disclosure}</span></div>
                   <div className={styles.blueprintContextField}>Layout<span className={styles.blueprintContextValue}>{blueprintContext.layout}</span></div>
-                  <div className={styles.blueprintContextField}>Arrangement<span className={styles.blueprintContextValue}>{blueprintContext.arrangement}</span></div>
-                  <div className={mergeClasses(styles.blueprintContextField, styles.blueprintContextRegions)}>Visible semantic regions<span className={styles.blueprintContextValue}>{blueprintContext.regions.join(" · ")}</span></div>
+                  <div className={styles.blueprintContextField}>Arrangement<span className={styles.blueprintContextValue}>{blueprintPresentation.arrangement}</span></div>
+                  <div className={mergeClasses(styles.blueprintContextField, styles.blueprintContextRegions)}>Lowered reading order<span className={styles.blueprintContextValue}>{blueprintRegions.map((region) => region.name).join(" → ")}</span></div>
+                  <div className={mergeClasses(styles.blueprintContextField, styles.blueprintContextRegions)}>Envelope sequence<span className={styles.blueprintContextValue}>{[...new Set(blueprintRegions.map((region) => region.group ?? "substrate"))].join(" → ")}</span></div>
+                  <div className={mergeClasses(styles.blueprintContextField, styles.blueprintContextRegions)}>Group / priority / disclosure<span className={styles.blueprintContextValue}>{blueprintRegions.map((region) => `${region.name}: ${region.group ?? "substrate"} / ${region.priority} / ${region.disclosure}`).join(" · ")}</span></div>
                 </div>
               </section>
 
@@ -615,14 +648,14 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
                 </div>
               </section>
             </> : <div className={mergeClasses(styles.contextProjection, projectionFrameClass)} data-soc-viewpoint={presentation.selectedContext}>
-            <header className={styles.viewpointIdentity}>
+            <header className={styles.viewpointIdentity} style={{ order: -2 }}>
               <div>
                 <div className={styles.eyebrow}>{selectedContext.audience}</div>
                 <h2 className={styles.viewpointName}>{selectedContext.label}</h2>
               </div>
               <span className={styles.viewpointDevice}>{presentationSpec.frame} · {presentationSpec.arrangement}</span>
             </header>
-            <header className={styles.sharedHeader}>
+            <header className={styles.sharedHeader} style={{ order: regionOrder("summary") }}>
               <div>
                 <div className={styles.eyebrow}>One governed operational state</div>
                 <h2 className={styles.sharedTitle}>Shared investigation</h2>
@@ -631,7 +664,61 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
               <span className={styles.pill}><DataTrending24Regular />{journal.length} attributable changes</span>
             </header>
 
-            {hasRegion("intent") || hasRegion("constraints") ? <div className={mergeClasses(styles.contextRow, hasRegion("intent") && hasRegion("constraints") ? undefined : styles.contextRowSingle)}>
+            {presentationSpec.frame === "agent-console" ? <div className={styles.agentEnvelope} aria-label="Agent participation envelope" style={{ order: 1 }}>
+              <section className={styles.agentEnvelopeSection} data-agent-envelope-group="context">
+                <div className={styles.agentEnvelopeLabel}><span className={styles.agentEnvelopeStep}>01 · Context</span><strong>Participation scope</strong></div>
+                <div className={styles.agentEnvelopeBody}>
+                  <h3 className={styles.agentEnvelopeTitle}>{selectedAgent?.name ?? blueprintContext.actor}</h3>
+                  <p className={styles.agentEnvelopeText}>{selectedAgent?.objective ?? "No objective assigned."}</p>
+                  <div className={styles.agentEnvelopeMeta}>
+                    <span className={styles.agentEnvelopeChip}>actor={blueprintContext.actor}</span>
+                    <span className={styles.agentEnvelopeChip}>role={blueprintContext.role}</span>
+                    <span className={styles.agentEnvelopeChip}>revision={presentation.revision}</span>
+                    <span className={styles.agentEnvelopeChip}>stage={stage}</span>
+                  </div>
+                  <p className={styles.agentEnvelopeText}>Authority: {selectedAgent?.authority ?? "No authority declared"}</p>
+                </div>
+              </section>
+
+              <section className={styles.agentEnvelopeSection} data-agent-envelope-group="shared-state">
+                <div className={styles.agentEnvelopeLabel}><span className={styles.agentEnvelopeStep}>02 · State</span><strong>Shared with agent</strong></div>
+                <div className={styles.agentEnvelopeBody}>
+                  <div className={styles.agentEnvelopeMeta}>{agentRegions("shared-state").map((region) => <span className={styles.agentEnvelopeChip} key={region}>{region}</span>)}</div>
+                  <p className={styles.agentEnvelopeText}>{hypothesis.statement} Confidence: {hypothesis.confidence}%.</p>
+                  {constraints[0] ? <p className={styles.agentEnvelopeText}>Constraint: {constraints[0].rule}</p> : null}
+                </div>
+              </section>
+
+              <section className={styles.agentEnvelopeSection} data-agent-envelope-group="request">
+                <div className={styles.agentEnvelopeLabel}><span className={styles.agentEnvelopeStep}>03 · Request</span><strong>Task envelope</strong></div>
+                <div className={styles.agentEnvelopeBody}>
+                  <h3 className={styles.agentEnvelopeTitle}>{blueprintContext.task}</h3>
+                  <p className={styles.agentEnvelopeText}>{agentRequest}</p>
+                  <div className={styles.agentEnvelopeMeta}>{agentRegions("request").map((region) => <span className={styles.agentEnvelopeChip} key={region}>{region}</span>)}</div>
+                </div>
+              </section>
+
+              <section className={styles.agentEnvelopeSection} data-agent-envelope-group="response">
+                <div className={styles.agentEnvelopeLabel}><span className={styles.agentEnvelopeStep}>04 · Response</span><strong>Agent contribution</strong></div>
+                <div className={styles.agentEnvelopeBody}>
+                  <p className={styles.agentEnvelopeText}>{agentResponse}</p>
+                  <div className={styles.agentEnvelopeMeta}>{agentRegions("response").map((region) => <span className={styles.agentEnvelopeChip} key={region}>{region}</span>)}</div>
+                </div>
+              </section>
+
+              <section className={mergeClasses(styles.agentEnvelopeSection, latestAgentEntry ? styles.agentEnvelopeOutcome : undefined)} data-agent-envelope-group="governed-result">
+                <div className={styles.agentEnvelopeLabel}><span className={styles.agentEnvelopeStep}>05 · Governed result</span><strong>Shared-state outcome</strong></div>
+                <div className={styles.agentEnvelopeBody}>
+                  <h3 className={styles.agentEnvelopeTitle}>{latestAgentEntry?.result ?? "No submitted result"}</h3>
+                  <p className={styles.agentEnvelopeText}>{latestAgentEntry?.summary ?? "The kernel has not committed or rejected a contribution from this agent yet."}</p>
+                  <div className={styles.agentEnvelopeMeta}>
+                    {agentRegions("governed-result").map((region) => <span className={styles.agentEnvelopeChip} key={region}>{region}</span>)}
+                    {latestAgentEntry?.affected.map((path) => <span className={styles.agentEnvelopeChip} key={path}>changed:{path}</span>)}
+                  </div>
+                </div>
+              </section>
+            </div> : <>
+            {hasRegion("intent") || hasRegion("constraints") ? <div style={{ order: regionOrder("intent", "constraints") }} className={mergeClasses(styles.contextRow, hasRegion("intent") && hasRegion("constraints") ? undefined : styles.contextRowSingle)}>
               {hasRegion("intent") ? <div data-soc-object-id="intent" className={mergeClasses(styles.contextBand, isCausallyAffected(selectedEntry, ["intent"]) ? styles.causalHighlight : undefined)}>
                 <div className={styles.contextLabel}>Morgan's intent</div>
                 <p className={mergeClasses(styles.contextText, !intent ? styles.emptyText : undefined)}>{intent?.statement ?? "Waiting for the analyst to establish intent"}</p>
@@ -642,7 +729,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
               </div> : null}
             </div> : null}
 
-            {hasRegion("hypothesis") ? <article data-soc-object-id="hypothesis" className={mergeClasses(styles.hypothesis, isCausallyAffected(selectedEntry, ["hypothesis", "corr-1", "Host-A"]) ? styles.causalHighlight : undefined)}>
+            {hasRegion("hypothesis") ? <article style={{ order: regionOrder("hypothesis") }} data-soc-object-id="hypothesis" className={mergeClasses(styles.hypothesis, isCausallyAffected(selectedEntry, ["hypothesis", "corr-1", "Host-A"]) ? styles.causalHighlight : undefined)}>
               <div className={styles.hypothesisTop}>
                 <div className={styles.hypothesisLabel}><BrainCircuit24Regular />Working hypothesis</div>
                 <div className={styles.confidence}>{hypothesis.confidence}%</div>
@@ -650,8 +737,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
               <p className={styles.hypothesisText}>{hypothesis.statement}</p>
             </article> : null}
 
-            {showInvestigation || showResponse ? <div className={mergeClasses(styles.split, showInvestigation && showResponse ? undefined : styles.splitSingle)}>
-              {showInvestigation ? <section className={styles.section}>
+            {showInvestigation ? <section style={{ order: regionOrder("exploration", "evidence") }} className={styles.section}>
                 <h3 className={styles.sectionTitle}><Sparkle24Regular />{hasRegion("exploration") ? "Exploration and evidence" : "Evidence summary"}</h3>
                 {hasRegion("exploration") && explorations.length > 0 ? <div className={styles.explorationList}>{explorations.map((item) => (
                   <article data-soc-object-id={item.id} key={item.id} className={mergeClasses(styles.exploration, item.status === "superseded" ? styles.explorationMuted : undefined, isCausallyAffected(selectedEntry, [item.id]) ? styles.causalHighlight : undefined)}>
@@ -665,9 +751,9 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
                     <p className={styles.evidenceText}>{item.summary}</p>
                   </article>
                 ))}</div> : null}
-              </section> : null}
+            </section> : null}
 
-              {showResponse ? <section className={styles.section}>
+            {showResponse ? <section style={{ order: regionOrder("response") }} className={styles.section}>
                 <h3 className={styles.sectionTitle}><ShieldLock24Regular />Governed response</h3>
                 {proposal ? <article data-soc-object-id={proposal.id} className={mergeClasses(styles.proposal, proposal.status === "rejected" ? styles.proposalRejected : undefined, proposal.status === "executed" ? styles.proposalExecuted : undefined, isCausallyAffected(selectedEntry, [proposal.id, "proposal-dc01", "proposal-host-a", "rec-1", "authorization", "DC-01", "Host-A"]) ? styles.causalHighlight : undefined)}>
                   <div className={styles.rowTop}><span className={styles.status}>{proposal.status}</span><span>{proposal.target}</span></div>
@@ -677,19 +763,19 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
                   {proposal.sequence ? <p className={styles.proposalText}>{proposal.sequence.join(" → ")}</p> : null}
                   {proposal.blastRadius ? <div className={styles.metrics}><span>Blast radius: {proposal.blastRadius}</span><span>Payroll: {proposal.payrollDependency}</span><span>{proposal.reversible ? "Reversible" : "Irreversible"}</span></div> : null}
                 </article> : <div className={styles.empty}>Response is holding until evidence supports a bounded action.</div>}
-              </section> : null}
-            </div> : null}
+            </section> : null}
 
-            {hasRegion("authorization") ? <section data-soc-object-id="authorization" className={mergeClasses(styles.contextBand, isCausallyAffected(selectedEntry, ["authorization", "rec-1", "Host-A"]) ? styles.causalHighlight : undefined)}>
+            {hasRegion("authorization") ? <section style={{ order: regionOrder("authorization") }} data-soc-object-id="authorization" className={mergeClasses(styles.contextBand, isCausallyAffected(selectedEntry, ["authorization", "rec-1", "Host-A"]) ? styles.causalHighlight : undefined)}>
               <div className={styles.contextLabel}>Commander authority</div>
               <p className={styles.contextText}>{authorization?.status === "pending" ? "Host-A isolation is ready for Incident Commander authorization." : authorization?.status === "authorized" ? "Containment has Incident Commander authorization." : "No consequential action is awaiting authorization."}</p>
               {authorization?.status === "pending" ? <Button appearance="primary" icon={<ShieldLock24Regular />} onClick={() => emit("authorizeContainment", {}, "human-priya")}>Authorize Host-A isolation</Button> : null}
             </section> : null}
 
-            {hasRegion("causal-record") ? <section className={styles.contextBand}>
+            {hasRegion("causal-record") ? <section style={{ order: regionOrder("causal-record") }} className={styles.contextBand}>
               <div className={styles.contextLabel}>Relevant causal record</div>
               <p className={styles.contextText}>{selectedEntry ? `${actorNames.get(selectedEntry.actorId) ?? selectedEntry.actorId}: ${selectedEntry.summary}` : "The first attributable action will appear here."}</p>
             </section> : null}
+            </>}
             </div>}
             </div>
           </section>
