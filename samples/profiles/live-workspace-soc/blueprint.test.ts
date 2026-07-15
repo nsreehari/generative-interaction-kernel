@@ -22,7 +22,7 @@ test("SOC blueprint owns one connected four-tier lowering chain", () => {
     ["workflow->interaction", "interaction->presentation", "presentation->runtime-doc"]
   );
   assert.equal(socBlueprint.resources.actors instanceof Array, true);
-  assert.equal((socBlueprint.resources.acts as unknown[]).length, 5);
+  assert.equal((socBlueprint.resources.acts as unknown[]).length, 14);
   assert.equal(SOC_BLUEPRINT_CONTEXTS.length, 8);
 });
 

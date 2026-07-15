@@ -24,11 +24,20 @@
       { "id": "agent-response", "name": "Response Agent", "kind": "Agent", "role": "Containment planning" }
     ],
     "socActs": [
-      { "id": 1, "title": "Human intent and constraint", "text": "Morgan establishes the investigation intent; Priya protects payroll continuity and DC-01." },
-      { "id": 2, "title": "Exploration and reorientation", "text": "Correlation suggests an exploration; Morgan amends its window, method, and safety scope." },
-      { "id": 3, "title": "Correlation and governed overreach", "text": "Policy rejects premature DC-01 isolation, applies a safe fallback, and evidence resolves Host-A." },
-      { "id": 4, "title": "Response refinement", "text": "Response proposes Host-A containment; Morgan revises the sequence and recommends the bounded plan." },
-      { "id": 5, "title": "Correct authority and execution", "text": "Priya authorizes the consequential action; Response executes it as a separate attributable event." }
+      { "id": 1, "title": "Morgan establishes investigation intent", "text": "Morgan commits the investigation goal to shared state." },
+      { "id": 2, "title": "Priya protects the payroll cutover", "text": "Priya adds the protected DC-01 operating constraint." },
+      { "id": 3, "title": "Correlation Agent suggests exploration", "text": "Correlation proposes a cross-source exploration." },
+      { "id": 4, "title": "Morgan narrows the exploration", "text": "Morgan amends its window, method, and safety scope." },
+      { "id": 5, "title": "Correlation Agent replans", "text": "Correlation accepts the amended passive exploration." },
+      { "id": 6, "title": "Correlation Agent commits partial findings", "text": "Correlation contributes attributed but incomplete evidence." },
+      { "id": 7, "title": "Response Agent proposes DC-01 isolation", "text": "Policy rejects the unsafe target and applies a fallback." },
+      { "id": 8, "title": "Correlation Agent resolves the origin", "text": "Evidence resolves Host-A as the execution origin." },
+      { "id": 9, "title": "Response Agent proposes bounded containment", "text": "Response proposes reversible Host-A containment." },
+      { "id": 10, "title": "Morgan revises the response", "text": "Morgan requires preservation and dependency verification." },
+      { "id": 11, "title": "Response Agent validates blast radius", "text": "Response verifies endpoint-only impact." },
+      { "id": 12, "title": "Morgan recommends containment", "text": "Morgan recommends without exceeding analyst authority." },
+      { "id": 13, "title": "Priya authorizes containment", "text": "Priya supplies Incident Commander authority." },
+      { "id": 14, "title": "Response Agent executes containment", "text": "Response executes only after a separate presenter advance." }
     ],
     "causalChain": [
       { "result": "Suggested", "text": "Correlation Agent proposes cross-source exploration." },
