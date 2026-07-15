@@ -1362,7 +1362,7 @@ function TextArea({ node, emit }: ProjectionViewProps) {
     <label className="gx-field">
       {p.str("label") ? <span className="gx-field-label">{p.str("label")}</span> : null}
       <textarea
-        rows={3}
+        rows={Number(node.props.rows ?? 3)}
         value={value}
         placeholder={p.str("placeholder")}
         onChange={(e) => {
@@ -1750,6 +1750,66 @@ function TimerButton({ node, emit }: ProjectionViewProps) {
     >
       {p.str("label")}{node.props.showCountdown !== false ? ` · ${timer.remainingSeconds}` : ""}
     </button>
+  );
+}
+
+function MathChallenge({ node, emit }: ProjectionViewProps) {
+  const p = readProps(node);
+  const operandA = Number(node.props.operandA ?? 3);
+  const operandB = Number(node.props.operandB ?? 7);
+  const expected = operandA + operandB;
+  const [answer, setAnswer] = React.useState("");
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const titleId = `${node.id}-title`;
+  const messageId = `${node.id}-message`;
+  const answered = answer.trim().length > 0;
+  const correct = answered && Number(answer) === expected;
+
+  React.useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  return (
+    <div
+      className="gx-challenge-backdrop"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      aria-describedby={messageId}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") emit("cancel", { reason: "escape" });
+      }}
+    >
+      <div className="gx-challenge-dialog">
+        <h2 id={titleId}>{p.str("title", "Confirm destructive action")}</h2>
+        <p id={messageId}>{p.str("message", "This action cannot be undone.")}</p>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (correct) emit("confirm", {});
+          }}
+        >
+          <label htmlFor={`${node.id}-answer`}>Solve to continue: <strong>{operandA} + {operandB} = ?</strong></label>
+          <input
+            ref={inputRef}
+            id={`${node.id}-answer`}
+            type="number"
+            inputMode="numeric"
+            value={answer}
+            aria-invalid={answered && !correct}
+            autoComplete="off"
+            onChange={(event) => setAnswer(event.target.value)}
+          />
+          <div className="gx-challenge-error" aria-live="polite">
+            {answered && !correct ? "Incorrect answer. Try again." : ""}
+          </div>
+          <div className="gx-challenge-actions">
+            <button className="gx-btn" type="button" onClick={() => emit("cancel", { reason: "button" })}>{p.str("cancelLabel", "Cancel")}</button>
+            <button className="gx-btn gx-btn-danger" type="submit" disabled={!correct}>{p.str("confirmLabel", "Delete")}</button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
 
@@ -2326,6 +2386,7 @@ export const FLOOR_COMPONENTS: Record<string, ProjectionView> = {
   form: Form,
   button: Button,
   "timer-button": TimerButton,
+  "math-challenge": MathChallenge,
   tabBar: TabBar,
   chips: Chips,
   searchbox: Searchbox,

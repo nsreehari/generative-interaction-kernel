@@ -3,7 +3,7 @@ import { test } from "vitest";
 
 import type { Json, PatchOp } from "@gik/kernel";
 import { createProfileBundle, stringifyProfileBundle } from "@gik/profile";
-import { buildProfilePreviewBundle, consoleEffects } from "./store";
+import { buildProfilePreviewBundle, manageBlueprintsEffects } from "./store";
 import { sampleProfileCatalog } from "../../catalog/profile-catalog";
 
 type JsonRecord = Record<string, Json>;
@@ -38,7 +38,7 @@ class MemoryStorage implements Storage {
 
 function createState(): Record<string, Json> {
   return {
-    console: {
+    manageBlueprints: {
       profiles: [],
       catalogStatus: "",
       selectedId: "",
@@ -190,12 +190,12 @@ function opRecord(ops: readonly PatchOp[] | undefined, path: string): JsonRecord
   return opValue(ops, path) as JsonRecord;
 }
 
-test("loadProfile marks repo sample entries as read-only and seeds the editor bundle", async () => {
+test("getBlueprint marks repo sample entries as read-only and seeds the editor bundle", async () => {
   const storage = new MemoryStorage();
   Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
 
   const state = createState();
-  const result = await consoleEffects.loadProfile({
+  const result = await manageBlueprintsEffects.getBlueprint({
     get: (path) => getPath(state, path),
     set: (path, value) => ({ op: "set", path, value }),
     args: {},
@@ -203,13 +203,13 @@ test("loadProfile marks repo sample entries as read-only and seeds the editor bu
     store: { get: (path: string) => getPath(state, path) } as never,
   });
 
-  assert.equal(opRecord(result?.ops, "console.profile").readonly, true);
-  assert.equal(typeof opRecord(result?.ops, "console.editor").bundleText, "string");
-  assert.match(String(opRecord(result?.ops, "console.editor").status), /read-only/i);
-  assert.equal(opValue(result?.ops, "console.selectedLayerId"), sampleProfileCatalog[0].artifact.payload.layers[0].id);
-  assert.equal(opValue(result?.ops, "console.selectedRecipeId"), "");
-  assert.equal((opRecord(result?.ops, "console.sourceInput") as JsonRecord).interaction, "investigate");
-  assert.equal((opRecord(result?.ops, "console.previewContext") as JsonRecord).surface, "desktop");
+  assert.equal(opRecord(result?.ops, "manageBlueprints.profile").readonly, true);
+  assert.equal(typeof opRecord(result?.ops, "manageBlueprints.editor").bundleText, "string");
+  assert.match(String(opRecord(result?.ops, "manageBlueprints.editor").status), /read-only/i);
+  assert.equal(opValue(result?.ops, "manageBlueprints.selectedLayerId"), sampleProfileCatalog[0].artifact.payload.layers[0].id);
+  assert.equal(opValue(result?.ops, "manageBlueprints.selectedRecipeId"), "");
+  assert.equal((opRecord(result?.ops, "manageBlueprints.sourceInput") as JsonRecord).interaction, "investigate");
+  assert.equal((opRecord(result?.ops, "manageBlueprints.previewContext") as JsonRecord).surface, "desktop");
 });
 
 test("layer vocabulary is derived from template metadata for both source and presentation layers", async () => {
@@ -217,18 +217,18 @@ test("layer vocabulary is derived from template metadata for both source and pre
   Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
 
   const sourceState = createState();
-  const liveCards = await consoleEffects.loadProfile({
+  const liveCards = await manageBlueprintsEffects.getBlueprint({
     get: (path) => getPath(sourceState, path),
     set: (path, value) => ({ op: "set", path, value }),
     args: {},
     payload: { id: "live-cards" },
     store: { get: (path: string) => getPath(sourceState, path) } as never,
   });
-  const liveCardsGroups = (opRecord(liveCards?.ops, "console.layerDetail").vocabulary as JsonRecord).groups as JsonRecord[];
+  const liveCardsGroups = (opRecord(liveCards?.ops, "manageBlueprints.layerDetail").vocabulary as JsonRecord).groups as JsonRecord[];
   assert.deepEqual(liveCardsGroups.map((group) => group.id), ["interactions", "roles", "context"]);
 
   const presentationState = createState();
-  const fourLayers = await consoleEffects.loadProfile({
+  const fourLayers = await manageBlueprintsEffects.getBlueprint({
     get: (path) => getPath(presentationState, path),
     set: (path, value) => ({ op: "set", path, value }),
     args: {},
@@ -237,23 +237,23 @@ test("layer vocabulary is derived from template metadata for both source and pre
   });
   applyOps(presentationState, fourLayers?.ops as PatchOp[] | undefined);
 
-  const presentationLayer = await consoleEffects.selectLayer({
+  const presentationLayer = await manageBlueprintsEffects.selectLayer({
     get: (path) => getPath(presentationState, path),
     set: (path, value) => ({ op: "set", path, value }),
     args: {},
     payload: { id: "presentation" },
     store: { get: (path: string) => getPath(presentationState, path) } as never,
   });
-  const presentationGroups = (opRecord(presentationLayer?.ops, "console.layerDetail").vocabulary as JsonRecord).groups as JsonRecord[];
+  const presentationGroups = (opRecord(presentationLayer?.ops, "manageBlueprints.layerDetail").vocabulary as JsonRecord).groups as JsonRecord[];
   assert.deepEqual(presentationGroups.map((group) => group.id), ["layouts", "presentations"]);
 });
 
-test("console inspector metadata drives workflow recipe labels and sample seeds", async () => {
+test("blueprint manager inspector metadata drives workflow recipe labels and sample seeds", async () => {
   const storage = new MemoryStorage();
   Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
 
   const state = createState();
-  const result = await consoleEffects.loadProfile({
+  const result = await manageBlueprintsEffects.getBlueprint({
     get: (path) => getPath(state, path),
     set: (path, value) => ({ op: "set", path, value }),
     args: {},
@@ -261,7 +261,7 @@ test("console inspector metadata drives workflow recipe labels and sample seeds"
     store: { get: (path: string) => getPath(state, path) } as never,
   });
 
-  const detail = opRecord(result?.ops, "console.layerDetail");
+  const detail = opRecord(result?.ops, "manageBlueprints.layerDetail");
   const seeds = detail.seeds as JsonRecord[];
   assert.equal((detail.outgoingRecipe as JsonRecord).kindLabel, "Workflow → Interaction");
   assert.equal((detail.outgoingRecipe as JsonRecord).tagline, "selects the interaction");
@@ -274,7 +274,7 @@ test("console inspector metadata drives workflow recipe labels and sample seeds"
   assert.equal(((seeds[0]?.payload as JsonRecord)?.workflow), "incident-triage");
 });
 
-test("$init hydrates the console catalog from localStorage on first load", async () => {
+test("$init migrates the legacy console catalog and hydrates local blueprints", async () => {
   const storage = new MemoryStorage();
   Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
 
@@ -297,7 +297,7 @@ test("$init hydrates the console catalog from localStorage on first load", async
   );
 
   const state = createState();
-  const result = await consoleEffects.$init?.({
+  const result = await manageBlueprintsEffects.$init?.({
     get: (path) => getPath(state, path),
     set: (path, value) => ({ op: "set", path, value }),
     args: {},
@@ -305,8 +305,9 @@ test("$init hydrates the console catalog from localStorage on first load", async
     store: { get: (path: string) => getPath(state, path) } as never,
   });
 
-  const rows = opValue(result?.ops, "console.profiles") as Array<Record<string, Json>>;
+  const rows = opValue(result?.ops, "manageBlueprints.profiles") as Array<Record<string, Json>>;
   assert.equal(rows.some((row) => row.id === localId && row.source === "local"), true);
+  assert.ok(storage.getItem("gik.manage-blueprints.profileBundles.v1"));
 });
 
 test("seedLocalDraft creates a visible local draft flow even when nothing was selected", async () => {
@@ -314,7 +315,7 @@ test("seedLocalDraft creates a visible local draft flow even when nothing was se
   Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
 
   const state = createState();
-  const result = await consoleEffects.seedLocalDraft({
+  const result = await manageBlueprintsEffects.seedLocalDraft({
     get: (path) => getPath(state, path),
     set: (path, value) => ({ op: "set", path, value }),
     args: {},
@@ -322,13 +323,13 @@ test("seedLocalDraft creates a visible local draft flow even when nothing was se
     store: { get: (path: string) => getPath(state, path) } as never,
   });
 
-  assert.equal(opValue(result?.ops, "console.selectedId"), "live-cards");
-  assert.equal(opValue(result?.ops, "console.tab"), "draft");
-  assert.equal(opRecord(result?.ops, "console.editor").id, "live-cards-local");
-  assert.match(String(opRecord(result?.ops, "console.editor").status), /New draft from/);
+  assert.equal(opValue(result?.ops, "manageBlueprints.selectedId"), "live-cards");
+  assert.equal(opValue(result?.ops, "manageBlueprints.tab"), "draft");
+  assert.equal(opRecord(result?.ops, "manageBlueprints.editor").id, "live-cards-local");
+  assert.match(String(opRecord(result?.ops, "manageBlueprints.editor").status), /New draft from/);
 });
 
-test("saveLocalProfile persists a local bundle and syncCatalog exposes it as editable", async () => {
+test("saveBlueprint persists a local bundle and listBlueprints exposes it as editable", async () => {
   const storage = new MemoryStorage();
   Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
 
@@ -347,12 +348,12 @@ test("saveLocalProfile persists a local bundle and syncCatalog exposes it as edi
   });
 
   const state = createState();
-  setPath(state, "console.selectedId", "live-cards");
-  setPath(state, "console.editor.id", localId);
-  setPath(state, "console.editor.bundleText", localText);
-  setPath(state, "console.editor.status", "draft");
+  setPath(state, "manageBlueprints.selectedId", "live-cards");
+  setPath(state, "manageBlueprints.editor.id", localId);
+  setPath(state, "manageBlueprints.editor.bundleText", localText);
+  setPath(state, "manageBlueprints.editor.status", "draft");
 
-  const saved = await consoleEffects.saveLocalProfile({
+  const saved = await manageBlueprintsEffects.saveBlueprint({
     get: (path) => getPath(state, path),
     set: (path, value) => ({ op: "set", path, value }),
     args: {},
@@ -361,31 +362,31 @@ test("saveLocalProfile persists a local bundle and syncCatalog exposes it as edi
   });
   applyOps(state, saved?.ops as PatchOp[] | undefined);
 
-  const raw = storage.getItem("gik.console.profileBundles.v1");
+  const raw = storage.getItem("gik.manage-blueprints.profileBundles.v1");
   assert.ok(raw, "saved profile should be written to localStorage");
   assert.ok(raw?.includes(localId));
-  assert.equal(opValue(saved?.ops, "console.selectedId"), localId);
-  assert.equal(opRecord(saved?.ops, "console.profile").readonly, false);
+  assert.equal(opValue(saved?.ops, "manageBlueprints.selectedId"), localId);
+  assert.equal(opRecord(saved?.ops, "manageBlueprints.profile").readonly, false);
 
-  const synced = await consoleEffects.syncCatalog({
+  const synced = await manageBlueprintsEffects.listBlueprints({
     get: (path) => getPath(state, path),
     set: (path, value) => ({ op: "set", path, value }),
     args: {},
     payload: {},
     store: { get: (path: string) => getPath(state, path) } as never,
   });
-  const rows = opValue(synced?.ops, "console.profiles") as Array<Record<string, Json>>;
+  const rows = opValue(synced?.ops, "manageBlueprints.profiles") as Array<Record<string, Json>>;
   assert.equal(rows.some((row) => row.id === localId && row.readonly === false && row.source === "local"), true);
 });
 
-test("deleteLocalProfile removes the stored local profile and clears the selection", async () => {
+test("deleteBlueprint removes the stored local profile and clears the selection", async () => {
   const storage = new MemoryStorage();
   Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
 
   const sample = sampleProfileCatalog[0];
   const localId = "live-cards-local";
   storage.setItem(
-    "gik.console.profileBundles.v1",
+    "gik.manage-blueprints.profileBundles.v1",
     JSON.stringify({
       [localId]: {
         ...createProfileBundle(
@@ -403,9 +404,19 @@ test("deleteLocalProfile removes the stored local profile and clears the selecti
   );
 
   const state = createState();
-  setPath(state, "console.selectedId", localId);
+  setPath(state, "manageBlueprints.selectedId", localId);
 
-  const result = await consoleEffects.deleteLocalProfile({
+  const requested = await manageBlueprintsEffects.requestDeleteBlueprint({
+    get: (path) => getPath(state, path),
+    set: (path, value) => ({ op: "set", path, value }),
+    args: {},
+    payload: {},
+    store: { get: (path: string) => getPath(state, path) } as never,
+  });
+  assert.equal(opRecord(requested?.ops, "manageBlueprints.deleteChallenge").open, true);
+  assert.match(String(opRecord(requested?.ops, "manageBlueprints.deleteChallenge").message), /cannot be undone/i);
+
+  const result = await manageBlueprintsEffects.deleteBlueprint({
     get: (path) => getPath(state, path),
     set: (path, value) => ({ op: "set", path, value }),
     args: {},
@@ -413,9 +424,9 @@ test("deleteLocalProfile removes the stored local profile and clears the selecti
     store: { get: (path: string) => getPath(state, path) } as never,
   });
 
-  assert.equal(storage.getItem("gik.console.profileBundles.v1"), "{}");
-  assert.equal(opValue(result?.ops, "console.selectedId"), "");
-  assert.match(String(opRecord(result?.ops, "console.editor").status), /Deleted local profile/);
+  assert.equal(storage.getItem("gik.manage-blueprints.profileBundles.v1"), "{}");
+  assert.equal(opValue(result?.ops, "manageBlueprints.selectedId"), "");
+  assert.match(String(opRecord(result?.ops, "manageBlueprints.editor").status), /Deleted local profile/);
 });
 
 test("selectLayer and selectRecipe update the focused detail models", async () => {
@@ -424,12 +435,12 @@ test("selectLayer and selectRecipe update the focused detail models", async () =
 
   const sample = sampleProfileCatalog[0];
   const state = createState();
-  setPath(state, "console.selectedId", sample.artifact.payload.id);
-  setPath(state, "console.selectedLayerId", sample.artifact.payload.layers[0].id);
-  setPath(state, "console.selectedRecipeId", sample.artifact.payload.recipes[0].id);
+  setPath(state, "manageBlueprints.selectedId", sample.artifact.payload.id);
+  setPath(state, "manageBlueprints.selectedLayerId", sample.artifact.payload.layers[0].id);
+  setPath(state, "manageBlueprints.selectedRecipeId", sample.artifact.payload.recipes[0].id);
 
   const selectedLayer = sample.artifact.payload.layers[1].id;
-  const layerResult = await consoleEffects.selectLayer({
+  const layerResult = await manageBlueprintsEffects.selectLayer({
     get: (path) => getPath(state, path),
     set: (path, value) => ({ op: "set", path, value }),
     args: {},
@@ -437,12 +448,12 @@ test("selectLayer and selectRecipe update the focused detail models", async () =
     store: { get: (path: string) => getPath(state, path) } as never,
   });
 
-  assert.equal(opValue(layerResult?.ops, "console.selectedLayerId"), selectedLayer);
-  assert.equal(opRecord(layerResult?.ops, "console.layerDetail").id, selectedLayer);
-  assert.equal(opValue(layerResult?.ops, "console.selectedRecipeId"), "");
+  assert.equal(opValue(layerResult?.ops, "manageBlueprints.selectedLayerId"), selectedLayer);
+  assert.equal(opRecord(layerResult?.ops, "manageBlueprints.layerDetail").id, selectedLayer);
+  assert.equal(opValue(layerResult?.ops, "manageBlueprints.selectedRecipeId"), "");
 
   const selectedRecipe = sample.artifact.payload.recipes[1].id;
-  const recipeResult = await consoleEffects.selectRecipe({
+  const recipeResult = await manageBlueprintsEffects.selectRecipe({
     get: (path) => getPath(state, path),
     set: (path, value) => ({ op: "set", path, value }),
     args: {},
@@ -450,10 +461,10 @@ test("selectLayer and selectRecipe update the focused detail models", async () =
     store: { get: (path: string) => getPath(state, path) } as never,
   });
 
-  assert.equal(opValue(recipeResult?.ops, "console.selectedLayerId"), sample.artifact.payload.recipes[1].from);
-  assert.equal(opValue(recipeResult?.ops, "console.selectedRecipeId"), selectedRecipe);
-  assert.equal(opRecord(recipeResult?.ops, "console.recipeDetail").id, selectedRecipe);
-  assert.equal((opRecord(recipeResult?.ops, "console.layerDetail").outgoingRecipe as JsonRecord).id, selectedRecipe);
+  assert.equal(opValue(recipeResult?.ops, "manageBlueprints.selectedLayerId"), sample.artifact.payload.recipes[1].from);
+  assert.equal(opValue(recipeResult?.ops, "manageBlueprints.selectedRecipeId"), selectedRecipe);
+  assert.equal(opRecord(recipeResult?.ops, "manageBlueprints.recipeDetail").id, selectedRecipe);
+  assert.equal((opRecord(recipeResult?.ops, "manageBlueprints.layerDetail").outgoingRecipe as JsonRecord).id, selectedRecipe);
 });
 
 test("configure preview for live-cards emits the frontend editable-table kind end-to-end", () => {

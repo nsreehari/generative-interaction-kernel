@@ -131,7 +131,7 @@ function ProfilePipelineCanvas({ node, emit }: ProjectionViewProps) {
   );
 }
 
-// Rebuild a runnable profile from the selected bundle's JSON text (console.artifacts.bundleText).
+// Rebuild a runnable profile from the selected bundle's JSON text (manageBlueprints.artifacts.bundleText).
 // Mirrors the store's proven load path (parse -> loadProfileBundle) so the leaves can run the SAME
 // engine (traceProfile) the store uses, but live and driven by in-component selections.
 function reconstructProfile(bundleText: string) {

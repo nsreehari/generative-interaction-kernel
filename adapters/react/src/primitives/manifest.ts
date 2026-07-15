@@ -73,6 +73,7 @@ export const PRIMITIVE_CAPABILITIES: Record<string, CapabilityDescriptor> = {
   "json-field": { propsSchema: anyProps, emits: ["save"], dataProp: "value" }, // single json textarea = one-field committed form, emits save {values}
   button: { propsSchema: anyProps, emits: ["press"] }, // label + tone + disabled
   "timer-button": { propsSchema: anyProps, emits: ["press"] }, // countdown button, emits press {reason}
+  "math-challenge": { propsSchema: anyProps, emits: ["confirm", "cancel"] }, // destructive confirmation gate
   tabBar: { propsSchema: anyProps, emits: ["select"] }, // active + options, emits select {value}
   chips: { propsSchema: anyProps, emits: ["remove"] }, // items + emits remove {value}
   searchbox: { propsSchema: anyProps, emits: ["submit"], dataProp: "value" }, // committed single-field search input
@@ -124,6 +125,7 @@ export const FLOOR_READ_KEYS: Record<string, string[]> = {
   textarea: ["value"],
   select: ["value", "options"],
   "timer-button": ["durationMs", "disabled"],
+  "math-challenge": ["message"],
   form: ["fields", "schema", "value", "data"],
   "json-field": ["value", "data"],
   searchbox: ["value"],

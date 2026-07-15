@@ -1,5 +1,93 @@
 {
   "overview": {
-    "audience": "external-developer"
+    "hero": {
+      "eyebrow": "Governed human-agent collaboration",
+      "title": "Humans and agents need one governed place to work.",
+      "lead": "AI now investigates, recommends, and acts. GIK gives mixed teams one evolving operational state without erasing identity, authority, or accountability.",
+      "contract": "Participation does not imply authority."
+    },
+    "invariants": [
+      { "title": "Many actors", "text": "Humans and agents contribute through one participation model while retaining distinct roles." },
+      { "title": "One state", "text": "Every surface projects the same evolving operational truth." },
+      { "title": "Governed action", "text": "Role and policy decide what may be proposed, authorized, or executed." },
+      { "title": "Complete provenance", "text": "Every contribution and consequence remains attributable." }
+    ],
+    "fractures": [
+      { "title": "Human interface", "text": "Operators see a partial view of the work, often disconnected from agent context." },
+      { "title": "Agent runtime", "text": "Agents reason and act through separate state and authority paths." },
+      { "title": "Retrospective logs", "text": "Accountability is reconstructed after the fact instead of governing the action itself." }
+    ],
+    "actors": [
+      { "id": "human-morgan", "name": "Morgan", "kind": "Human", "role": "SOC Analyst" },
+      { "id": "human-priya", "name": "Priya", "kind": "Human", "role": "Incident Commander" },
+      { "id": "agent-correlation", "name": "Correlation Agent", "kind": "Agent", "role": "Evidence correlation" },
+      { "id": "agent-response", "name": "Response Agent", "kind": "Agent", "role": "Containment planning" }
+    ],
+    "socActs": [
+      { "id": 1, "title": "Human intent and constraint", "text": "Morgan establishes the investigation intent; Priya protects payroll continuity and DC-01." },
+      { "id": 2, "title": "Exploration and reorientation", "text": "Correlation suggests an exploration; Morgan amends its window, method, and safety scope." },
+      { "id": 3, "title": "Correlation and governed overreach", "text": "Policy rejects premature DC-01 isolation, applies a safe fallback, and evidence resolves Host-A." },
+      { "id": 4, "title": "Response refinement", "text": "Response proposes Host-A containment; Morgan revises the sequence and recommends the bounded plan." },
+      { "id": 5, "title": "Correct authority and execution", "text": "Priya authorizes the consequential action; Response executes it as a separate attributable event." }
+    ],
+    "causalChain": [
+      { "result": "Suggested", "text": "Correlation Agent proposes cross-source exploration." },
+      { "result": "Amended", "text": "Morgan redirects the method while preserving the original revision." },
+      { "result": "Rejected + fallback", "text": "Policy blocks DC-01 isolation and preserves useful work safely." },
+      { "result": "Recommended", "text": "Morgan recommends the revised Host-A plan without exceeding analyst authority." },
+      { "result": "Authorized", "text": "Priya supplies the required Incident Commander authority." },
+      { "result": "Executed", "text": "Response Agent isolates Host-A and records the outcome." }
+    ],
+    "trustProof": [
+      { "title": "One operational truth", "text": "Participant panels, workspace, journal, and projections derive from the same revisioned substrate." },
+      { "title": "Authority stays explicit", "text": "Humans and agents share a participation path, but role and policy constrain both." },
+      { "title": "Governance changes outcomes", "text": "Unsafe work is rejected or redirected through fallback rather than merely logged." },
+      { "title": "Causality is reconstructable", "text": "Suggestion, amendment, evidence, recommendation, authorization, and execution remain distinct." }
+    ],
+    "proofPlanes": [
+      {
+        "id": "runtime",
+        "label": "Runtime · HX + AX",
+        "title": "Experience the SOC Runtime",
+        "text": "Watch two humans and two agents change one shared incident state through attributable, role-bounded actions.",
+        "bundle": "live-workspace-soc",
+        "plane": "runtime",
+        "button": "Open Runtime"
+      },
+      {
+        "id": "blueprint",
+        "label": "Blueprint · DX + ACX",
+        "title": "Inspect the Executable Blueprint",
+        "text": "Trace the same SOC intent through four tiers and three lowering recipes into the runtime document.",
+        "bundle": "live-workspace-soc",
+        "plane": "blueprint",
+        "button": "Open Blueprint"
+      }
+    ],
+    "expansion": {
+      "title": "The invariant travels beyond one domain and one screen.",
+      "domains": [
+        {
+          "id": "soc",
+          "label": "SOC · Protect",
+          "text": "Correlate evidence, reject unsafe containment, and require commander authority."
+        },
+        {
+          "id": "tax-prep",
+          "label": "Tax Prep · Optimize + comply",
+          "text": "Synthesize source documents, invalidate unsupported optimizations under current policy, recompute, and confirm before filing."
+        }
+      ],
+      "shared": ["Source-grounded provenance", "Validate or fallback", "Human confirmation", "Complete causal trace"],
+      "taxJourney": [
+        "Documents establish an initial tax position",
+        "An agent proposes an optimization with source and policy citations",
+        "A policy change invalidates part of the strategy",
+        "The kernel recomputes while the agent replans",
+        "Filing remains blocked behind human confirmation"
+      ],
+      "boundary": "Beat 4 proves remote, transported, and headless continuity. The current SOC runtime proves deterministic in-process collaboration; it does not prove durable remote clients or background agents.",
+      "status": "Domain + Deployment Atlas · forthcoming"
+    }
   }
 }
