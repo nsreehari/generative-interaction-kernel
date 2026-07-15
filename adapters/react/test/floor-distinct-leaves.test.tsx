@@ -90,6 +90,15 @@ test("actions leaf renders button row labels", () => {
   assert.match(markup, />Reject<\/button>/);
 });
 
+test("timer-button leaf renders its initial countdown", () => {
+  const markup = renderToStaticMarkup(renderNode(leaf("ui:timer-button", {
+    label: "Auto next",
+    durationMs: 3000,
+  }), registry, () => {}));
+
+  assert.match(markup, />Auto next · 3<\/button>/);
+});
+
 test("form leaf renders schema-driven fields and save shell", () => {
   const markup = renderToStaticMarkup(renderNode(leaf("ui:form", {
     fields: {
