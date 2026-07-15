@@ -270,16 +270,24 @@ observer. "Exec vs builder" was too coarse and omitted the runtime row entirely.
 
 ---
 
-## D3 — IA: "Two Heroes" + the 4-Beat pitch flow (AGREED)
+## D3 — IA: one canonical proof + the 4-Beat pitch flow (EVOLVED 2026-07-15)
 
-The host/bundles ARE the pitch deck. The Console is *not* the ultimate hero — it is the
-authoring-plane tool. People buy the **runtime magic** first, then the tooling behind it.
+The host/bundles ARE the pitch deck. The canonical SOC artifact now carries both the running
+experience and the executable semantic source that produces it. People see the **runtime magic**
+first, then reveal the Blueprint plane inside the same developer-console shell.
 
-**Two heroes, one per plane:**
-- **Runtime-plane hero — Live Workspace (SOC):** a purpose-built operational workspace. Proves
-  visible HX+AX collaboration, governed agency, deterministic authority, and trace forensics.
-- **Authoring-plane hero — Console:** proves blueprints are bounded, testable, and
-  machine-authorable (DX + ACX).
+**One canonical proof, two planes:**
+- **Runtime plane — Live Workspace (SOC):** a purpose-built operational workspace proving two
+  humans and two agents participating through one state, explicit authority, and attributable
+  causality.
+- **Blueprint plane — the same `live-workspace-soc` artifact:** reveals the real intent, four
+  tiers, three lowering recipes, eight projection contexts, blueprint resources, and terminal
+  runtime document. It proves bounded, testable compilation without maintaining explanatory
+  shadow data.
+
+`manage-blueprints` and `manage-bundles` are supporting engineering tools, not separate pitch
+heroes. The Blueprint plane is inspection, not a claim that the SOC runtime shell is a complete
+editing environment.
 
 **Governing implementation principle — shared implementation, sequenced proof:** the beat boundary
 is a presentation and completion boundary, not an artificial architecture boundary. Beat 2 first
@@ -293,32 +301,25 @@ other authoring-plane completeness that the live demonstration does not require.
 
 **The 4 beats (sequenced argument, not a feature tour):**
 
-1. **Front Door — "Why now" + the wedge** (`samples-overview`, rewritten as the *Platform
-  Storyboard*). Message: AI has moved from answering questions to participating in work, but
-  today's human UI, agent runtime, and autonomous backend fragment state and accountability.
-  GIK is the compiler + runtime for **governed human-agent collaboration**: one evolving
-  workspace, shared authority, whether the agent is in the interaction loop or operating
-  autonomously. First wedge = SOC. After the SOC proof spine, two dominant CTAs:
-  **Experience the SOC Runtime** → Hero 1; **Author Governed Experiences** → Hero 2, with
-  `DX + ACX · Powered by the GIK Compiler` as the mechanism label. Zero builder jargon.
-2. **Runtime plane / the magic** (Hero 1 — Live Workspace : SOC). A live incident workspace where
-  an analyst and a visible team of bounded agents investigate in parallel over one evolving state.
-  Agent identity, role, activity, tool use, evidence, and authority are explicit — not hidden in a
-  playlist or diagnostics pane. Governance appears beside the work: proposals are validated,
-  rejected with fallback, or held for human confirmation, with full trace/forensics available on
-  demand. The scenario also proves continuity: the team continues asynchronously after the analyst
-  leaves, then returns findings and a confirmation-gated action to the same workspace. Takeaway:
-  "Agents can leave the screen. They cannot leave the governance boundary."
-3. **Authoring plane / the moat** (Hero 2 — Console). Tabs: **Blueprint Overview** (intent →
-   [tiers] → bundle), **Lowering Recipes** (bounded taxonomy → layout mapping), **Surface
-   Preview** (small-multiples: desktop war-room / mobile alert / copilot panel). Takeaway:
-  "Blueprints are closed declarative graphs, so humans and AI coding agents can author new
-  governed domains as bounded, testable artifacts."
-4. **Transversality / scale** (Deployment Atlas). Prove that inside-loop and outside-loop work
-  retain the same state authority via **kernel → face → projection → transport**: `agent-host`
-  (MCP tools), `control-host` (SSE live runtime), `backend-host` (headless orchestration).
-  Takeaway: "The agent can continue beyond the screen without creating a shadow process — same
-  state, policy, authority, and trace everywhere."
+1. **Front Door — "Why now" + the wedge** (`samples-overview`, the Platform Storyboard). Message:
+  mixed human-agent work fragments state, authority, and accountability. Preview the canonical
+  payroll-cutover SOC journey, then open two dominant destinations into one artifact:
+  **Experience the SOC Runtime** and **Inspect the Executable Blueprint**. End with a light
+  SOC-versus-Tax expansion flash; do not imply that the SOC bundle proves remote continuity.
+2. **Runtime plane / the magic** (`live-workspace-soc&plane=runtime`). Morgan, Priya, Correlation
+  Agent, and Response Agent contribute through one operational state. Human amendment, policy
+  rejection with fallback, recommendation-only authority, commander authorization, execution,
+  and journal causality are literal events. Takeaway: "Participation does not imply authority."
+3. **Blueprint plane / the machinery** (`live-workspace-soc&plane=blueprint`). Reveal the actual
+  semantic blueprint and `traceProfile` outputs behind Beat 2: workflow → interaction →
+  presentation → runtime document, with one selected lowering recipe per adjacent tier and eight
+  contexts over one substrate. Takeaway: "The running experience is a compiled projection of a
+  bounded, testable semantic source."
+4. **Domain + Deployment Atlas / transversality.** Domain breadth uses Tax Prep as a light second
+  proof: multi-document synthesis, current policy, invalidated optimization, deterministic
+  recompute, agent replanning, and confirmation before filing. Medium breadth proves
+  **kernel → face → projection → transport** through MCP, SSE, and headless orchestration.
+  Takeaway: "Agents can leave the screen. They cannot leave the governance boundary."
 
 **IA principle:** every hero screen declares which cell(s) of D2 it serves; the pitch must
 cover the right column + bottom row, not just DX.
@@ -379,29 +380,24 @@ building TurboTax. Frame strictly as "same kernel, headless, a tax journey."
   pipeline demoted) and leave ADR-0001/0007/0013/0038 intact.
 
 ## Beat 1 — Front Door (Platform Storyboard)
-- **T2 — DONE (2026-07-15) — Rewrote `samples-overview` as the pitch storyboard:** pain → product contract → SOC
-  journey → trust proof → two demonstrations → expansion teaser. Lead with the governed
-  collaborative-workspace thesis and the inside/outside-interaction-loop continuity; then two
-  dominant CTAs (**Experience the SOC Runtime** → Live Workspace; **Author Governed Experiences**
-  → Console, powered by the GIK Compiler). Retired the stale sample catalog/customer script. Uses the host `HostThemeProvider`
-  semantic roles; host build passes, both routes work, and 375px mobile has no overflow.
+- **T2 — DONE v2 (2026-07-15) — Canonical Platform Storyboard:** pain → mixed-team invariant →
+  canonical five-act SOC preview → trust proof → Runtime/Blueprint planes of one artifact →
+  SOC-versus-Tax expansion flash. Story data lives in bundle state. Remote/headless continuity is
+  explicitly assigned to Beat 4 rather than claimed by the SOC runtime.
 
 ## Beat 2 — Runtime-plane hero (Live Workspace : SOC)
-- **T3 — DONE (2026-07-15) — Built the Live Workspace : SOC from the pitch outcome backward.** Created a purpose-built
-  runtime bundle where the analyst and named agents are visible participants in one investigation.
-  Leave the old `workbench` unchanged and routable through all pitch implementation; use it only as
-  a reference for proven kernel, transport, event, and trace mechanisms, without importing its
-  private internals. Show parallel agent contributions, a policy-blocked overreach with real
-  fallback, asynchronous continuation under the same authority, and a confirmation-gated return
-  to the human. Evaluate workbench retirement separately after all four beats are complete.
+- **T3 Runtime — DONE (2026-07-15):** two humans and two agents share one governed incident state.
+  The canonical payroll-cutover journey includes intent, constraint, exploration amendment,
+  policy-blocked DC-01 overreach with fallback, Host-A resolution, recommendation, commander
+  authorization, and separate execution. It proves deterministic in-process orchestration, not
+  remote clients or durable background agents. `workbench` remains unchanged and routable.
 
-## Beat 3 — Authoring-plane hero (Console)
-- **T4 — Blueprint Overview tab:** lead with `intent → [tiers] → bundle` + rendered thumbnail +
-  deterministic-fallback promise; demote id/version to a strip.
-- **T5 — Lowering Recipes tab:** the tier-by-tier lowering (bounded taxonomy → layout mapping)
-  as the defensibility story.
-- **T6 — Surface Preview tab (the aha):** small-multiples (desktop war-room / mobile alert /
-  copilot panel) + visible validate-or-fallback + trace.
+## Beat 3 — Blueprint plane (same SOC artifact)
+- **T3 Blueprint — DONE (2026-07-15):** the Runtime/Blueprint switch exposes the real SOC profile
+  load, three recipe executors, four tiers, eight presentation contexts, blueprint-owned resources,
+  and terminal-document equivalence. URL-addressable `plane` and `context` select projection only.
+- **Supporting tools:** `manage-blueprints` and `manage-bundles` remain engineering surfaces for
+  catalog/edit/validation workflows. Their product work is tracked separately from the pitch beat.
 
 ## Beat 4 — Domain + Deployment Atlas (transversality)
 - **T7 — Represent `kernel → face → projection → transport`** as a **Deployment Atlas** (medium
@@ -410,7 +406,9 @@ building TurboTax. Frame strictly as "same kernel, headless, a tax journey."
 - **T7a — Domain Atlas (domain transversality, per D3a):** a light *flash* of a second domain
   = **tax preparation** (multi-doc synthesis, current policy, optimization decisions) running on
   the same kernel/verbs/trace. Reuse SOC's forensics framing (validate-or-fallback, `confirm`-
-  gate, source+policy traceability). Flash, not a hero — do NOT build a full tax product.
+  gate, source+policy traceability). The minimum executable artifact should show a policy change
+  invalidating an optimization, deterministic recompute, agent replanning, and confirmation before
+  filing. Flash, not a hero — do NOT build a full tax product.
 
 ## Supporting
 - **T8 — Reframe sample blueprints by tier entry point** (briefing=interaction,

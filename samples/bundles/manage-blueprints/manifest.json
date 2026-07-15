@@ -2,9 +2,9 @@
   "gik": "0.1",
   "type": "manifest",
   "payload": {
-    "version": "genui-console/3.0",
+    "version": "gik-manage-blueprints/1.0",
     "expression": "jsonata",
-    "namespaces": ["console"],
+    "namespaces": ["manageBlueprints"],
     "actions": ["assign", "assignFrom", "derive", "invoke", "route", "confirm", "emit"],
     "capabilities": {
       "ui:screen": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"] },
@@ -19,9 +19,9 @@
       "ui:maplist": { "propsSchema": { "type": "object", "additionalProperties": true } },
       "ui:vocabulary": { "propsSchema": { "type": "object", "additionalProperties": true } },
       "ui:alert": { "propsSchema": { "type": "object", "additionalProperties": true } },
-      "console:profile-pipeline-canvas": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["selectNode", "selectEdge"] },
-      "console:pipeline-runner": { "propsSchema": { "type": "object", "additionalProperties": true } },
-      "console:lowering-recipe-runner": { "propsSchema": { "type": "object", "additionalProperties": true } },
+      "manage-blueprints:profile-pipeline-canvas": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["selectNode", "selectEdge"] },
+      "manage-blueprints:pipeline-runner": { "propsSchema": { "type": "object", "additionalProperties": true } },
+      "manage-blueprints:lowering-recipe-runner": { "propsSchema": { "type": "object", "additionalProperties": true } },
       "ui:list": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["select"] },
       "ui:table": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["rowSelect"] },
       "ui:field": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["input"] },
@@ -29,6 +29,7 @@
       "ui:json-field": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"] },
       "ui:select": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["change"] },
       "ui:button": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["press"] },
+      "ui:math-challenge": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["confirm", "cancel"] },
       "ui:textarea": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["input"] },
       "ui:tabBar": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["select"] },
       "ui:codeBlock": { "propsSchema": { "type": "object", "additionalProperties": true } },
@@ -37,18 +38,20 @@
     "externals": {
       "projectionViews": {
         "ui": { "from": "floor" },
-        "console": { "from": "self" }
+        "manage-blueprints": { "from": "self" }
       },
       "effectHandlers": [
-        "syncCatalog",
-        "loadProfile",
+        "listBlueprints",
+        "getBlueprint",
         "selectLayer",
         "selectRecipe",
         "validateProfile",
         "refreshPreview",
         "seedLocalDraft",
-        "saveLocalProfile",
-        "deleteLocalProfile"
+        "saveBlueprint",
+        "requestDeleteBlueprint",
+        "cancelDeleteBlueprint",
+        "deleteBlueprint"
       ]
     }
   }

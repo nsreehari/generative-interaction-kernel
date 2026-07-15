@@ -4,16 +4,16 @@
   "payload": {
     "root": {
       "capability": "ui:screen",
-      "id": "console-root",
+      "id": "manage-blueprints-root",
       "props": {
         "title": "Blueprints",
-        "subtitle": "Browse, inspect, and preview sample blueprints"
+        "subtitle": "Inspect repository blueprints and manage browser-local drafts"
       },
       "edges": {
         "children": [
           {
             "capability": "ui:row",
-            "id": "console-layout",
+            "id": "manage-blueprints-layout",
             "props": {
               "variant": "split"
             },
@@ -35,9 +35,9 @@
                           "tone": "info"
                         },
                         "edges": {
-                          "gate": "console.catalogStatus != ''",
+                          "gate": "manageBlueprints.catalogStatus != ''",
                           "read": {
-                            "value": "console.catalogStatus"
+                            "value": "manageBlueprints.catalogStatus"
                           }
                         }
                       },
@@ -53,7 +53,7 @@
                               {
                                 "do": "invoke",
                                 "args": {
-                                  "tool": "syncCatalog"
+                                  "tool": "listBlueprints"
                                 }
                               }
                             ]
@@ -71,15 +71,15 @@
                         },
                         "edges": {
                           "read": {
-                            "items": "console.profiles",
-                            "selectedId": "console.selectedId"
+                            "items": "manageBlueprints.profiles",
+                            "selectedId": "manageBlueprints.selectedId"
                           },
                           "on": {
                             "select": [
                               {
                                 "do": "invoke",
                                 "args": {
-                                  "tool": "loadProfile"
+                                  "tool": "getBlueprint"
                                 }
                               }
                             ]
@@ -105,7 +105,7 @@
                           "variant": "tab"
                         },
                         "edges": {
-                          "gate": "console.selectedId = ''",
+                          "gate": "manageBlueprints.selectedId = ''",
                           "children": [
                             {
                               "capability": "ui:note",
@@ -125,7 +125,7 @@
                           "variant": "detail-body"
                         },
                         "edges": {
-                          "gate": "console.selectedId != ''",
+                          "gate": "manageBlueprints.selectedId != ''",
                           "children": [
                             {
                               "capability": "ui:tabBar",
@@ -134,18 +134,19 @@
                                 "options": [
                                   { "value": "overview", "label": "Overview" },
                                   { "value": "layers", "label": "Tiers" },
-                                  { "value": "preview", "label": "Preview" }
+                                  { "value": "preview", "label": "Preview" },
+                                  { "value": "draft", "label": "Draft" }
                                 ]
                               },
                               "edges": {
                                 "read": {
-                                  "active": "console.tab"
+                                  "active": "manageBlueprints.tab"
                                 },
                                 "on": {
                                   "select": [
                                     {
                                       "do": "assign",
-                                      "target": "console.tab",
+                                      "target": "manageBlueprints.tab",
                                       "args": {
                                         "from": "$event.value"
                                       }
@@ -156,12 +157,88 @@
                             },
                             {
                               "capability": "ui:panel",
+                              "id": "draft-tab",
+                              "props": {
+                                "title": "Local blueprint draft",
+                                "variant": "tab"
+                              },
+                              "edges": {
+                                "gate": "manageBlueprints.tab = 'draft'",
+                                "children": [
+                                  {
+                                    "capability": "ui:note",
+                                    "id": "draft-status",
+                                    "props": { "tone": "info" },
+                                    "edges": { "read": { "value": "manageBlueprints.editor.status" } }
+                                  },
+                                  {
+                                    "capability": "ui:note",
+                                    "id": "draft-error",
+                                    "props": { "tone": "danger" },
+                                    "edges": {
+                                      "gate": "manageBlueprints.editor.error != ''",
+                                      "read": { "value": "manageBlueprints.editor.error" }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:field",
+                                    "id": "draft-id",
+                                    "props": { "label": "Local blueprint id" },
+                                    "edges": {
+                                      "read": { "value": "manageBlueprints.editor.id" },
+                                      "on": {
+                                        "input": [{ "do": "assign", "target": "manageBlueprints.editor.id", "args": { "from": "$event.value" } }]
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:textarea",
+                                    "id": "draft-json",
+                                    "props": { "label": "Blueprint bundle JSON", "rows": 20 },
+                                    "edges": {
+                                      "read": { "value": "manageBlueprints.editor.bundleText" },
+                                      "on": {
+                                        "input": [{ "do": "assign", "target": "manageBlueprints.editor.bundleText", "args": { "from": "$event.value" } }]
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:row",
+                                    "id": "draft-actions",
+                                    "edges": {
+                                      "children": [
+                                        {
+                                          "capability": "ui:button",
+                                          "id": "clone-blueprint",
+                                          "props": { "label": "Clone to local draft" },
+                                          "edges": { "on": { "press": [{ "do": "invoke", "args": { "tool": "seedLocalDraft" } }] } }
+                                        },
+                                        {
+                                          "capability": "ui:button",
+                                          "id": "save-blueprint",
+                                          "props": { "label": "Save blueprint", "tone": "primary" },
+                                          "edges": { "on": { "press": [{ "do": "invoke", "args": { "tool": "saveBlueprint" } }] } }
+                                        },
+                                        {
+                                          "capability": "ui:button",
+                                          "id": "delete-blueprint",
+                                          "props": { "label": "Delete local blueprint", "tone": "danger" },
+                                          "edges": { "on": { "press": [{ "do": "invoke", "args": { "tool": "requestDeleteBlueprint" } }] } }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "capability": "ui:panel",
                               "id": "overview-tab",
                               "props": {
                                 "variant": "tab"
                               },
                               "edges": {
-                                "gate": "console.tab = 'overview'",
+                                "gate": "manageBlueprints.tab = 'overview'",
                                 "children": [
                                   {
                                     "capability": "ui:panel",
@@ -180,7 +257,7 @@
                                           },
                                           "edges": {
                                             "read": {
-                                              "text": "console.profile.summary"
+                                              "text": "manageBlueprints.profile.summary"
                                             }
                                           }
                                         },
@@ -188,7 +265,7 @@
                                           "capability": "ui:property",
                                           "id": "profile-orientation-legend",
                                           "props": { "label": "Pipeline" },
-                                          "edges": { "read": { "value": "console.profile.legend" } }
+                                          "edges": { "read": { "value": "manageBlueprints.profile.legend" } }
                                         }
                                       ]
                                     }
@@ -211,31 +288,31 @@
                                                 "capability": "ui:property",
                                                 "id": "metric-profile-id",
                                                 "props": { "label": "Blueprint id" },
-                                                "edges": { "read": { "value": "console.profile.id" } }
+                                                "edges": { "read": { "value": "manageBlueprints.profile.id" } }
                                               },
                                               {
                                                 "capability": "ui:property",
                                                 "id": "metric-kind",
                                                 "props": { "label": "Kind" },
-                                                "edges": { "read": { "value": "console.profile.kind" } }
+                                                "edges": { "read": { "value": "manageBlueprints.profile.kind" } }
                                               },
                                               {
                                                 "capability": "ui:property",
                                                 "id": "metric-version",
                                                 "props": { "label": "Version" },
-                                                "edges": { "read": { "value": "console.profile.version" } }
+                                                "edges": { "read": { "value": "manageBlueprints.profile.version" } }
                                               },
                                               {
                                                 "capability": "ui:metric",
                                                 "id": "metric-layers",
                                                 "props": { "label": "Tiers" },
-                                                "edges": { "read": { "value": "console.profile.layerCount" } }
+                                                "edges": { "read": { "value": "manageBlueprints.profile.layerCount" } }
                                               },
                                               {
                                                 "capability": "ui:metric",
                                                 "id": "metric-recipes",
                                                 "props": { "label": "Lowering recipes" },
-                                                "edges": { "read": { "value": "console.profile.recipeCount" } }
+                                                "edges": { "read": { "value": "manageBlueprints.profile.recipeCount" } }
                                               }
                                             ]
                                           }
@@ -253,20 +330,20 @@
                                     "edges": {
                                       "children": [
                                         {
-                                          "capability": "console:profile-pipeline-canvas",
+                                          "capability": "manage-blueprints:profile-pipeline-canvas",
                                           "id": "profile-pipeline",
                                           "edges": {
                                             "read": {
-                                              "stateKey": "console.profile.id",
-                                              "nodes": "console.pipeline.nodes",
-                                              "selectedNodeId": "console.selectedLayerId",
-                                              "selectedEdgeId": "console.selectedRecipeId"
+                                              "stateKey": "manageBlueprints.profile.id",
+                                              "nodes": "manageBlueprints.pipeline.nodes",
+                                              "selectedNodeId": "manageBlueprints.selectedLayerId",
+                                              "selectedEdgeId": "manageBlueprints.selectedRecipeId"
                                             },
                                             "on": {
                                               "selectNode": [
                                                 {
                                                   "do": "assign",
-                                                  "target": "console.tab",
+                                                  "target": "manageBlueprints.tab",
                                                   "args": {
                                                     "from": "$event.tab"
                                                   }
@@ -281,7 +358,7 @@
                                               "selectEdge": [
                                                 {
                                                   "do": "assign",
-                                                  "target": "console.tab",
+                                                  "target": "manageBlueprints.tab",
                                                   "args": {
                                                     "from": "$event.tab"
                                                   }
@@ -309,7 +386,7 @@
                                 "variant": "tab"
                               },
                               "edges": {
-                                "gate": "console.tab = 'layers'",
+                                "gate": "manageBlueprints.tab = 'layers'",
                                 "children": [
                                   {
                                     "capability": "ui:col",
@@ -336,8 +413,8 @@
                                                 },
                                                 "edges": {
                                                   "read": {
-                                                    "items": "console.layers",
-                                                    "selectedId": "console.selectedLayerId"
+                                                    "items": "manageBlueprints.layers",
+                                                    "selectedId": "manageBlueprints.selectedLayerId"
                                                   },
                                                   "on": {
                                                     "select": [
@@ -377,13 +454,13 @@
                                                             "capability": "ui:property",
                                                             "id": "layer-detail-kind",
                                                             "props": { "label": "Tier" },
-                                                            "edges": { "read": { "value": "console.layerDetail.kind" } }
+                                                            "edges": { "read": { "value": "manageBlueprints.layerDetail.kind" } }
                                                           },
                                                           {
                                                             "capability": "ui:property",
                                                             "id": "layer-detail-stage",
                                                             "props": { "label": "Pipeline stage" },
-                                                            "edges": { "read": { "value": "console.layerDetail.stageLabel" } }
+                                                            "edges": { "read": { "value": "manageBlueprints.layerDetail.stageLabel" } }
                                                           }
                                                         ]
                                                       }
@@ -396,7 +473,7 @@
                                                       },
                                                       "edges": {
                                                         "read": {
-                                                          "text": "console.layerDetail.role"
+                                                          "text": "manageBlueprints.layerDetail.role"
                                                         }
                                                       }
                                                     }
@@ -411,7 +488,7 @@
                                                   "variant": "inset"
                                                 },
                                                 "edges": {
-                                                  "gate": "console.layerDetail.kind != ''",
+                                                  "gate": "manageBlueprints.layerDetail.kind != ''",
                                                   "children": [
                                                     {
                                                       "capability": "ui:note",
@@ -426,7 +503,7 @@
                                                       },
                                                       "edges": {
                                                         "read": {
-                                                          "groups": "console.layerDetail.vocabulary.groups"
+                                                          "groups": "manageBlueprints.layerDetail.vocabulary.groups"
                                                         }
                                                       }
                                                     }
@@ -441,7 +518,7 @@
                                                   "variant": "inset"
                                                 },
                                                 "edges": {
-                                                  "gate": "console.layerDetail.outgoingRecipe.id != ''",
+                                                  "gate": "manageBlueprints.layerDetail.outgoingRecipe.id != ''",
                                                   "children": [
                                                     {
                                                       "capability": "ui:row",
@@ -452,13 +529,13 @@
                                                             "capability": "ui:property",
                                                             "id": "layer-outgoing-recipe-kind",
                                                             "props": { "label": "Transformation" },
-                                                            "edges": { "read": { "value": "console.layerDetail.outgoingRecipe.kindLabel" } }
+                                                            "edges": { "read": { "value": "manageBlueprints.layerDetail.outgoingRecipe.kindLabel" } }
                                                           },
                                                           {
                                                             "capability": "ui:property",
                                                             "id": "layer-outgoing-recipe-tagline",
                                                             "props": { "label": "In plain terms" },
-                                                            "edges": { "read": { "value": "console.layerDetail.outgoingRecipe.tagline" } }
+                                                            "edges": { "read": { "value": "manageBlueprints.layerDetail.outgoingRecipe.tagline" } }
                                                           }
                                                         ]
                                                       }
@@ -471,7 +548,7 @@
                                                       },
                                                       "edges": {
                                                         "read": {
-                                                          "text": "console.layerDetail.outgoingRecipe.purpose"
+                                                          "text": "manageBlueprints.layerDetail.outgoingRecipe.purpose"
                                                         }
                                                       }
                                                     },
@@ -480,8 +557,8 @@
                                                       "id": "layer-outgoing-recipe-container",
                                                       "props": { "label": "Everything sits inside" },
                                                       "edges": {
-                                                        "gate": "console.layerDetail.outgoingRecipe.containerCapability != ''",
-                                                        "read": { "value": "console.layerDetail.outgoingRecipe.containerCapability" }
+                                                        "gate": "manageBlueprints.layerDetail.outgoingRecipe.containerCapability != ''",
+                                                        "read": { "value": "manageBlueprints.layerDetail.outgoingRecipe.containerCapability" }
                                                       }
                                                     },
                                                     {
@@ -497,9 +574,9 @@
                                                       },
                                                       "edges": {
                                                         "read": {
-                                                          "fromLabel": "console.layerDetail.outgoingRecipe.regionRuleFromLabel",
-                                                          "toLabel": "console.layerDetail.outgoingRecipe.regionRuleToLabel",
-                                                          "rows": "console.layerDetail.outgoingRecipe.regionRuleMappings"
+                                                          "fromLabel": "manageBlueprints.layerDetail.outgoingRecipe.regionRuleFromLabel",
+                                                          "toLabel": "manageBlueprints.layerDetail.outgoingRecipe.regionRuleToLabel",
+                                                          "rows": "manageBlueprints.layerDetail.outgoingRecipe.regionRuleMappings"
                                                         }
                                                       }
                                                     }
@@ -514,7 +591,7 @@
                                                   "variant": "inset"
                                                 },
                                                 "edges": {
-                                                  "gate": "console.layerDetail.outgoingRecipe.id != ''",
+                                                  "gate": "manageBlueprints.layerDetail.outgoingRecipe.id != ''",
                                                   "children": [
                                                     {
                                                       "capability": "ui:note",
@@ -522,15 +599,15 @@
                                                       "props": { "value": "Pick an interaction goal and see exactly what this tier produces when the live blueprint lowers it into the next stage.", "tone": "muted" }
                                                     },
                                                     {
-                                                      "capability": "console:lowering-recipe-runner",
+                                                      "capability": "manage-blueprints:lowering-recipe-runner",
                                                       "id": "layer-compute-runner",
                                                       "edges": {
                                                         "read": {
-                                                          "bundleText": "console.artifacts.bundleText",
-                                                          "layerId": "console.selectedLayerId",
-                                                          "seeds": "console.layerDetail.seeds",
-                                                          "subject": "console.sourceInput.subject",
-                                                          "surface": "console.previewContext.surface"
+                                                          "bundleText": "manageBlueprints.artifacts.bundleText",
+                                                          "layerId": "manageBlueprints.selectedLayerId",
+                                                          "seeds": "manageBlueprints.layerDetail.seeds",
+                                                          "subject": "manageBlueprints.sourceInput.subject",
+                                                          "surface": "manageBlueprints.previewContext.surface"
                                                         }
                                                       }
                                                     }
@@ -545,15 +622,15 @@
                                                   "variant": "inset"
                                                 },
                                                 "edges": {
-                                                  "gate": "console.layerDetail.outgoingRecipe.id = '' and console.layerDetail.incomingRecipe.id != ''",
+                                                  "gate": "manageBlueprints.layerDetail.outgoingRecipe.id = '' and manageBlueprints.layerDetail.incomingRecipe.id != ''",
                                                   "children": [
                                                     {
                                                       "capability": "ui:property",
                                                       "id": "terminal-runtime-container-capability",
                                                       "props": { "label": "Everything sits inside" },
                                                       "edges": {
-                                                        "gate": "console.layerDetail.incomingRecipe.containerCapability != ''",
-                                                        "read": { "value": "console.layerDetail.incomingRecipe.containerCapability" }
+                                                        "gate": "manageBlueprints.layerDetail.incomingRecipe.containerCapability != ''",
+                                                        "read": { "value": "manageBlueprints.layerDetail.incomingRecipe.containerCapability" }
                                                       }
                                                     },
                                                     {
@@ -569,9 +646,9 @@
                                                       },
                                                       "edges": {
                                                         "read": {
-                                                          "fromLabel": "console.layerDetail.incomingRecipe.regionRuleFromLabel",
-                                                          "toLabel": "console.layerDetail.incomingRecipe.regionRuleToLabel",
-                                                          "rows": "console.layerDetail.incomingRecipe.regionRuleMappings"
+                                                          "fromLabel": "manageBlueprints.layerDetail.incomingRecipe.regionRuleFromLabel",
+                                                          "toLabel": "manageBlueprints.layerDetail.incomingRecipe.regionRuleToLabel",
+                                                          "rows": "manageBlueprints.layerDetail.incomingRecipe.regionRuleMappings"
                                                         }
                                                       }
                                                     }
@@ -594,7 +671,7 @@
                                 "variant": "tab"
                               },
                               "edges": {
-                                "gate": "console.tab = 'preview'",
+                                "gate": "manageBlueprints.tab = 'preview'",
                                 "children": [
                                   {
                                     "capability": "ui:panel",
@@ -615,14 +692,14 @@
                                           },
                                           "edges": {
                                             "read": {
-                                              "fields": "console.sourceInputForm",
-                                              "value": "console.sourceInput"
+                                              "fields": "manageBlueprints.sourceInputForm",
+                                              "value": "manageBlueprints.sourceInput"
                                             },
                                             "on": {
                                               "save": [
                                                 {
                                                   "do": "assign",
-                                                  "target": "console.sourceInput",
+                                                  "target": "manageBlueprints.sourceInput",
                                                   "args": {
                                                     "from": "$event.values"
                                                   }
@@ -647,14 +724,14 @@
                                           },
                                           "edges": {
                                             "read": {
-                                              "fields": "console.previewContextForm",
-                                              "value": "console.previewContext"
+                                              "fields": "manageBlueprints.previewContextForm",
+                                              "value": "manageBlueprints.previewContext"
                                             },
                                             "on": {
                                               "save": [
                                                 {
                                                   "do": "assign",
-                                                  "target": "console.previewContext",
+                                                  "target": "manageBlueprints.previewContext",
                                                   "args": {
                                                     "from": "$event.values"
                                                   }
@@ -679,13 +756,13 @@
                                           "edges": {
                                             "children": [
                                               {
-                                                "capability": "console:pipeline-runner",
+                                                "capability": "manage-blueprints:pipeline-runner",
                                                 "id": "preview-pipeline-runner",
                                                 "edges": {
                                                   "read": {
-                                                    "bundleText": "console.artifacts.bundleText",
-                                                    "seed": "console.sourceInput",
-                                                    "ctx": "console.previewContext"
+                                                    "bundleText": "manageBlueprints.artifacts.bundleText",
+                                                    "seed": "manageBlueprints.sourceInput",
+                                                    "ctx": "manageBlueprints.previewContext"
                                                   }
                                                 }
                                               }
@@ -699,9 +776,9 @@
                                             "tone": "info"
                                           },
                                           "edges": {
-                                            "gate": "console.previewError != ''",
+                                            "gate": "manageBlueprints.previewError != ''",
                                             "read": {
-                                              "value": "console.previewError"
+                                              "value": "manageBlueprints.previewError"
                                             }
                                           }
                                         },
@@ -713,7 +790,7 @@
                                           },
                                           "edges": {
                                             "read": {
-                                              "bundle": "console.previewBundle"
+                                              "bundle": "manageBlueprints.previewBundle"
                                             }
                                           }
                                         }
@@ -744,8 +821,8 @@
                                           },
                                           "edges": {
                                             "read": {
-                                              "value": "console.validation.summary",
-                                              "level": "console.validation.level"
+                                              "value": "manageBlueprints.validation.summary",
+                                              "level": "manageBlueprints.validation.level"
                                             }
                                           }
                                         },
@@ -778,6 +855,24 @@
                         }
                       }
                     ]
+                  }
+                },
+                {
+                  "capability": "ui:math-challenge",
+                  "id": "delete-blueprint-challenge",
+                  "props": {
+                    "title": "Confirm blueprint deletion",
+                    "operandA": 4,
+                    "operandB": 5,
+                    "confirmLabel": "Delete blueprint"
+                  },
+                  "edges": {
+                    "gate": "manageBlueprints.deleteChallenge.open = true",
+                    "read": { "message": "manageBlueprints.deleteChallenge.message" },
+                    "on": {
+                      "confirm": [{ "do": "invoke", "args": { "tool": "deleteBlueprint" } }],
+                      "cancel": [{ "do": "invoke", "args": { "tool": "cancelDeleteBlueprint" } }]
+                    }
                   }
                 }
               ]

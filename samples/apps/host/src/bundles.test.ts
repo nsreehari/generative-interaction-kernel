@@ -8,6 +8,9 @@ test("host registry exposes the new sample bundles to the switcher", () => {
 
   assert.equal(DEFAULT_BUNDLE, "samples-overview");
   assert.equal(registry.has("samples-overview"), true);
+  assert.equal(registry.has("manage-blueprints"), true);
+  assert.equal(registry.has("manage-bundles"), true);
+  assert.equal(registry.has("console"), false);
   assert.equal(registry.has("reactive-demo"), true);
   assert.equal(registry.has("provider-authoring-demo"), true);
   assert.deepEqual(

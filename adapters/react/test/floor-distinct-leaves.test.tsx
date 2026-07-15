@@ -99,6 +99,19 @@ test("timer-button leaf renders its initial countdown", () => {
   assert.match(markup, />Auto next · 3<\/button>/);
 });
 
+test("math-challenge leaf renders an accessible deterministic confirmation gate", () => {
+  const markup = renderToStaticMarkup(renderNode(leaf("ui:math-challenge", {
+    message: "Delete local blueprint 'draft-one'?",
+    operandA: 4,
+    operandB: 5,
+  }), registry, () => {}));
+
+  assert.match(markup, /role="alertdialog"/);
+  assert.match(markup, /Delete local blueprint &#x27;draft-one&#x27;\?/);
+  assert.match(markup, /4 \+ 5 = \?/);
+  assert.match(markup, /type="submit" disabled=""/);
+});
+
 test("form leaf renders schema-driven fields and save shell", () => {
   const markup = renderToStaticMarkup(renderNode(leaf("ui:form", {
     fields: {

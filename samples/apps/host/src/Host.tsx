@@ -1,6 +1,6 @@
 // The ONE generic host app. There is no per-app shell anymore: this entry runs ANY bundle by id.
 // It publishes a runtime `BundleRegistry` (seeded from samples/bundles/registry.json), picks a bundle
-// (`?bundle=<id>`, defaulting to the console), and mounts it — a JSON leaf through the shared
+// (`?bundle=<id>`, defaulting to the samples overview), and mounts it — a JSON leaf through the shared
 // `BundleHost`, or an irreducibly-native composition through its `Root`. Swapping the id renders a
 // different app with zero code change here; registering a bundle at runtime makes it mountable live.
 

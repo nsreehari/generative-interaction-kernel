@@ -1,5 +1,5 @@
 {
-  "console": {
+  "manageBlueprints": {
     "profiles": [
       {
         "id": "live-cards",
@@ -188,6 +188,10 @@
     },
     "previewContext": { "surface": "desktop" },
     "previewBundle": null,
-    "previewError": ""
+    "previewError": "",
+    "deleteChallenge": {
+      "open": false,
+      "message": ""
+    }
   }
 }

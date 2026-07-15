@@ -1,6 +1,6 @@
-// The console's DOMAIN: types, seed data, pure validation, and its named effect handlers.
+// The blueprint manager's domain: types, seed data, validation, and named effect handlers.
 //
-// Under the "everything is JSON" model the console has no bespoke Orchestrator class. Its UI is a
+// Under the "everything is JSON" model the manager has no bespoke Orchestrator class. Its UI is a
 // JSON document composed from shared primitives; its consequential operations are registered
 // NATIVE effect handlers (create/save/validate/promote a profile) that the shared effect
 // dispatcher routes `invoke("<name>")` to. Each handler reads the live store (the kernel applies
@@ -38,7 +38,7 @@ import { setOp, type EffectContext, type EffectHandlerMap, type SerializableBund
 import { sampleProfileCatalog, type SampleProfileEntry } from "../../catalog/profile-catalog";
 import { demoDataFor } from "../workbench/bundles/demo/demo";
 
-export type ConsoleTab = "overview" | "layers" | "preview" | "draft";
+export type ManageBlueprintsTab = "overview" | "layers" | "preview" | "draft";
 
 interface PreviewInput {
   source: Record<string, unknown>;
@@ -173,20 +173,21 @@ type RecipeViewConfig = {
   containerCapability?: RecipeContainerCapabilityConfig;
 };
 
-type ConsoleInspectorConfig = {
+type ManageBlueprintsInspectorConfig = {
   layerPositions: Record<LayerPositionName, LayerPositionInspectorConfig>;
   stageLabelTemplate?: string;
   sampleSeeds: readonly SampleSeedConfig[];
   recipeViews: readonly RecipeViewConfig[];
 };
 
-type ConsoleSeed = {
+type BlueprintSeed = {
   id: string;
   label: string;
   payload: Record<string, unknown>;
 };
 
-const LOCAL_PROFILE_STORAGE_KEY = "gik.console.profileBundles.v1";
+const LOCAL_PROFILE_STORAGE_KEY = "gik.manage-blueprints.profileBundles.v1";
+const LEGACY_PROFILE_STORAGE_KEY = "gik.console.profileBundles.v1";
 const PREVIEW_SURFACES = ["desktop", "web", "mobile", "copilot", "teams"] as const;
 const DEFAULT_PREVIEW_CONTEXT_FORM: Record<string, Json> = {
   properties: {
@@ -414,31 +415,31 @@ function readStr(ctx: EffectContext, path: string, fallback = ""): string {
 }
 
 function readSelectedId(ctx: EffectContext): string {
-  return readStr(ctx, "console.selectedId");
+  return readStr(ctx, "manageBlueprints.selectedId");
 }
 
-function readTab(ctx: EffectContext): ConsoleTab {
-  const value = readStr(ctx, "console.tab", "overview");
+function readTab(ctx: EffectContext): ManageBlueprintsTab {
+  const value = readStr(ctx, "manageBlueprints.tab", "overview");
   return value === "overview" || value === "layers" || value === "preview" || value === "draft"
     ? value
     : "overview";
 }
 
 function readSelectedLayerId(ctx: EffectContext): string {
-  return readStr(ctx, "console.selectedLayerId");
+  return readStr(ctx, "manageBlueprints.selectedLayerId");
 }
 
 function readSelectedRecipeId(ctx: EffectContext): string {
-  return readStr(ctx, "console.selectedRecipeId");
+  return readStr(ctx, "manageBlueprints.selectedRecipeId");
 }
 
 function readSourceInput(ctx: EffectContext): Record<string, unknown> {
-  const raw = ctx.get("console.sourceInput");
+  const raw = ctx.get("manageBlueprints.sourceInput");
   return raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
 }
 
 function readPreviewContextValues(ctx: EffectContext): Record<string, unknown> {
-  const raw = ctx.get("console.previewContext");
+  const raw = ctx.get("manageBlueprints.previewContext");
   return raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
 }
 
@@ -598,7 +599,9 @@ function readStoredBundleMap(): { bundles: Record<string, ProfileArtifactBundle<
   const storage = profileStorage();
   if (!storage) return { bundles: {}, errors: [] };
 
-  const raw = storage.getItem(LOCAL_PROFILE_STORAGE_KEY);
+  const currentRaw = storage.getItem(LOCAL_PROFILE_STORAGE_KEY);
+  const legacyRaw = currentRaw ? null : storage.getItem(LEGACY_PROFILE_STORAGE_KEY);
+  const raw = currentRaw ?? legacyRaw;
   if (!raw) return { bundles: {}, errors: [] };
 
   try {
@@ -618,6 +621,13 @@ function readStoredBundleMap(): { bundles: Record<string, ProfileArtifactBundle<
         bundles[id] = normalizeBundleId(bundle, id);
       } catch (error) {
         errors.push(`Skipped stored profile '${id}': ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    if (!currentRaw && legacyRaw) {
+      try {
+        storage.setItem(LOCAL_PROFILE_STORAGE_KEY, JSON.stringify(bundles));
+      } catch (error) {
+        errors.push(`Loaded legacy blueprints but could not migrate them: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
     return { bundles, errors };
@@ -719,7 +729,7 @@ function layerDetailView(layer: LayerDefinition | undefined) {
   };
 }
 
-function consoleInspectorConfig(entry: CatalogEntry): ConsoleInspectorConfig {
+function manageBlueprintsInspectorConfig(entry: CatalogEntry): ManageBlueprintsInspectorConfig {
   const templateId = profileTemplateId(entry);
   if (!templateId) {
     return {
@@ -735,7 +745,7 @@ function consoleInspectorConfig(entry: CatalogEntry): ConsoleInspectorConfig {
     };
   }
   const template = resolveProfileTemplate(templateId);
-  return resolveNamedProfileTemplateFile(template, "consoleInspector") as unknown as ConsoleInspectorConfig;
+  return resolveNamedProfileTemplateFile(template, "consoleInspector") as unknown as ManageBlueprintsInspectorConfig;
 }
 
 function emptyRecipeDetailState() {
@@ -785,7 +795,7 @@ function recipeFamily(recipe: LayerRecipe): "workflow" | "planning" | "runtime" 
 function recipeViewConfig(entry: CatalogEntry, recipe: LayerRecipe): RecipeViewConfig | undefined {
   const family = recipeFamily(recipe);
   if (family === "unknown") return undefined;
-  return consoleInspectorConfig(entry).recipeViews.find((config) => config.match.family === family);
+  return manageBlueprintsInspectorConfig(entry).recipeViews.find((config) => config.match.family === family);
 }
 
 function ruleDisplayValue(rule: VocabularyProgramRule, config: RecipeRulePathConfig): string {
@@ -889,11 +899,11 @@ function layerPosition(entry: CatalogEntry, layerId: string): LayerPositionName 
 }
 
 function layerRole(entry: CatalogEntry, layerId: string): string {
-  return consoleInspectorConfig(entry).layerPositions[layerPosition(entry, layerId)].role;
+  return manageBlueprintsInspectorConfig(entry).layerPositions[layerPosition(entry, layerId)].role;
 }
 
 function layerRoleLabel(entry: CatalogEntry, layerId: string): string {
-  return consoleInspectorConfig(entry).layerPositions[layerPosition(entry, layerId)].label;
+  return manageBlueprintsInspectorConfig(entry).layerPositions[layerPosition(entry, layerId)].label;
 }
 
 function orderedLayerIds(entry: CatalogEntry): string[] {
@@ -910,7 +920,7 @@ function layerStageLabel(entry: CatalogEntry, layerId: string): string {
   const total = order.length;
   if (index < 0 || total === 0) return "";
   const positionLabel = layerRoleLabel(entry, layerId);
-  const template = consoleInspectorConfig(entry).stageLabelTemplate ?? "{label} · stage {index} of {total}";
+  const template = manageBlueprintsInspectorConfig(entry).stageLabelTemplate ?? "{label} · stage {index} of {total}";
   return template
     .replace("{label}", positionLabel)
     .replace("{index}", String(index + 1))
@@ -973,10 +983,10 @@ function defaultSeedPayload(entry: CatalogEntry): Record<string, unknown> {
 
 function seedSourceConfig(entry: CatalogEntry): SampleSeedConfig | undefined {
   const sourceLayer = entry.profile.stages[0]?.fromLayer ?? entry.artifact.payload.layers[0];
-  return consoleInspectorConfig(entry).sampleSeeds.find((config) => !config.match?.sourceKind || config.match.sourceKind === sourceLayer?.kind);
+  return manageBlueprintsInspectorConfig(entry).sampleSeeds.find((config) => !config.match?.sourceKind || config.match.sourceKind === sourceLayer?.kind);
 }
 
-function profileSampleSeeds(entry: CatalogEntry): ConsoleSeed[] {
+function profileSampleSeeds(entry: CatalogEntry): BlueprintSeed[] {
   const sourceConfig = seedSourceConfig(entry);
   if (!sourceConfig) return [];
   const defaults = defaultSeedPayload(entry);
@@ -1406,38 +1416,38 @@ function previewState(entry: SampleProfileEntry, input: PreviewInput) {
 
 function baseCatalogOps(snapshot: CatalogSnapshot) {
   return [
-    setOp("console.profiles", catalogRows(snapshot.entries) as unknown as Json),
-    setOp("console.catalogStatus", catalogStatus(snapshot)),
+    setOp("manageBlueprints.profiles", catalogRows(snapshot.entries) as unknown as Json),
+    setOp("manageBlueprints.catalogStatus", catalogStatus(snapshot)),
   ];
 }
 
 function clearSelectionOps(snapshot: CatalogSnapshot, message = "") {
   return [
     ...baseCatalogOps(snapshot),
-    setOp("console.selectedId", ""),
-    setOp("console.profile", EMPTY_PROFILE as unknown as Json),
-    setOp("console.pipeline", EMPTY_PIPELINE as unknown as Json),
-    setOp("console.layers", [] as unknown as Json),
-    setOp("console.selectedLayerId", ""),
-    setOp("console.layerDetail", EMPTY_LAYER_DETAIL as unknown as Json),
-    setOp("console.selectedRecipeId", ""),
-    setOp("console.recipeDetail", EMPTY_RECIPE_DETAIL as unknown as Json),
-    setOp("console.validation", EMPTY_VALIDATION as unknown as Json),
-    setOp("console.artifacts", { ...EMPTY_EDITOR, profileText: "", recipesText: "", resolvedText: "", bundleText: "" } as unknown as Json),
-    setOp("console.sourceInputForm", { properties: {} } as unknown as Json),
-    setOp("console.sourceInput", {} as unknown as Json),
-    setOp("console.previewContextForm", DEFAULT_PREVIEW_CONTEXT_FORM as unknown as Json),
-    setOp("console.previewContext", DEFAULT_PREVIEW_CONTEXT as unknown as Json),
-    setOp("console.previewBundle", null as unknown as Json),
-    setOp("console.previewError", message),
-    setOp("console.editor", { ...EMPTY_EDITOR, status: message || EMPTY_EDITOR.status } as unknown as Json),
+    setOp("manageBlueprints.selectedId", ""),
+    setOp("manageBlueprints.profile", EMPTY_PROFILE as unknown as Json),
+    setOp("manageBlueprints.pipeline", EMPTY_PIPELINE as unknown as Json),
+    setOp("manageBlueprints.layers", [] as unknown as Json),
+    setOp("manageBlueprints.selectedLayerId", ""),
+    setOp("manageBlueprints.layerDetail", EMPTY_LAYER_DETAIL as unknown as Json),
+    setOp("manageBlueprints.selectedRecipeId", ""),
+    setOp("manageBlueprints.recipeDetail", EMPTY_RECIPE_DETAIL as unknown as Json),
+    setOp("manageBlueprints.validation", EMPTY_VALIDATION as unknown as Json),
+    setOp("manageBlueprints.artifacts", { ...EMPTY_EDITOR, profileText: "", recipesText: "", resolvedText: "", bundleText: "" } as unknown as Json),
+    setOp("manageBlueprints.sourceInputForm", { properties: {} } as unknown as Json),
+    setOp("manageBlueprints.sourceInput", {} as unknown as Json),
+    setOp("manageBlueprints.previewContextForm", DEFAULT_PREVIEW_CONTEXT_FORM as unknown as Json),
+    setOp("manageBlueprints.previewContext", DEFAULT_PREVIEW_CONTEXT as unknown as Json),
+    setOp("manageBlueprints.previewBundle", null as unknown as Json),
+    setOp("manageBlueprints.previewError", message),
+    setOp("manageBlueprints.editor", { ...EMPTY_EDITOR, status: message || EMPTY_EDITOR.status } as unknown as Json),
   ];
 }
 
 function selectionOps(
   entry: CatalogEntry,
   input: PreviewInput,
-  tab: ConsoleTab,
+  tab: ManageBlueprintsTab,
   snapshot: CatalogSnapshot,
   selection?: { layerId?: string; recipeId?: string }
 ) {
@@ -1447,32 +1457,32 @@ function selectionOps(
   const recipeId = resolveRecipeId(entry, selection?.recipeId);
   return [
     ...baseCatalogOps(snapshot),
-    setOp("console.selectedId", entry.artifact.payload.id),
-    setOp("console.profile", profileState(entry) as unknown as Json),
-    setOp("console.pipeline", pipelineState(entry) as unknown as Json),
-    setOp("console.layers", layerRows(entry) as unknown as Json),
-    setOp("console.selectedLayerId", layerId),
-    setOp("console.layerDetail", layerDetailState(entry, layerId) as unknown as Json),
-    setOp("console.selectedRecipeId", recipeId),
-    setOp("console.recipeDetail", recipeDetailState(entry, recipeId) as unknown as Json),
-    setOp("console.validation", validation as unknown as Json),
-    setOp("console.artifacts", artifactState(entry) as unknown as Json),
-    setOp("console.sourceInputForm", sourceInputFormFor(entry) as unknown as Json),
-    setOp("console.previewContextForm", previewContextFormFor(entry) as unknown as Json),
-    setOp("console.previewBundle", preview.bundle as unknown as Json),
-    setOp("console.previewError", preview.error),
-    setOp("console.editor", editorState(entry) as unknown as Json),
-    setOp("console.tab", tab),
+    setOp("manageBlueprints.selectedId", entry.artifact.payload.id),
+    setOp("manageBlueprints.profile", profileState(entry) as unknown as Json),
+    setOp("manageBlueprints.pipeline", pipelineState(entry) as unknown as Json),
+    setOp("manageBlueprints.layers", layerRows(entry) as unknown as Json),
+    setOp("manageBlueprints.selectedLayerId", layerId),
+    setOp("manageBlueprints.layerDetail", layerDetailState(entry, layerId) as unknown as Json),
+    setOp("manageBlueprints.selectedRecipeId", recipeId),
+    setOp("manageBlueprints.recipeDetail", recipeDetailState(entry, recipeId) as unknown as Json),
+    setOp("manageBlueprints.validation", validation as unknown as Json),
+    setOp("manageBlueprints.artifacts", artifactState(entry) as unknown as Json),
+    setOp("manageBlueprints.sourceInputForm", sourceInputFormFor(entry) as unknown as Json),
+    setOp("manageBlueprints.previewContextForm", previewContextFormFor(entry) as unknown as Json),
+    setOp("manageBlueprints.previewBundle", preview.bundle as unknown as Json),
+    setOp("manageBlueprints.previewError", preview.error),
+    setOp("manageBlueprints.editor", editorState(entry) as unknown as Json),
+    setOp("manageBlueprints.tab", tab),
   ];
 }
 
-export const consoleEffects: EffectHandlerMap = {
+export const manageBlueprintsEffects: EffectHandlerMap = {
   $init() {
     const snapshot = loadCatalog();
     return { ops: baseCatalogOps(snapshot) };
   },
 
-  syncCatalog(ctx) {
+  listBlueprints(ctx) {
     const snapshot = loadCatalog();
     const selected = findEntry(readSelectedId(ctx), snapshot.entries);
     if (!selected) return { ops: baseCatalogOps(snapshot) };
@@ -1484,7 +1494,7 @@ export const consoleEffects: EffectHandlerMap = {
     };
   },
 
-  loadProfile(ctx) {
+  getBlueprint(ctx) {
     const snapshot = loadCatalog();
     const entry = findEntry(String(ctx.payload.id ?? ""), snapshot.entries);
     if (!entry) {
@@ -1498,8 +1508,8 @@ export const consoleEffects: EffectHandlerMap = {
     return {
       ops: [
         ...selectionOps(entry, input, "overview", snapshot),
-        setOp("console.sourceInput", sourceDefaults as unknown as Json),
-        setOp("console.previewContext", ctxDefaults as unknown as Json),
+        setOp("manageBlueprints.sourceInput", sourceDefaults as unknown as Json),
+        setOp("manageBlueprints.previewContext", ctxDefaults as unknown as Json),
       ],
     };
   },
@@ -1512,7 +1522,7 @@ export const consoleEffects: EffectHandlerMap = {
     return {
       ops: [
         ...baseCatalogOps(snapshot),
-        setOp("console.validation", validation as unknown as Json),
+        setOp("manageBlueprints.validation", validation as unknown as Json),
       ],
     };
   },
@@ -1550,9 +1560,9 @@ export const consoleEffects: EffectHandlerMap = {
     return {
       ops: [
         ...baseCatalogOps(snapshot),
-        setOp("console.previewBundle", preview.bundle as unknown as Json),
-        setOp("console.previewError", preview.error),
-        setOp("console.tab", "preview"),
+        setOp("manageBlueprints.previewBundle", preview.bundle as unknown as Json),
+        setOp("manageBlueprints.previewError", preview.error),
+        setOp("manageBlueprints.tab", "preview"),
       ],
     };
   },
@@ -1568,7 +1578,7 @@ export const consoleEffects: EffectHandlerMap = {
       ops: [
         ...selectionOps(selected, readPreviewInput(ctx), "draft", snapshot),
         setOp(
-          "console.editor",
+          "manageBlueprints.editor",
           {
             id: localId,
             bundleText: stringifyProfileBundle(draft),
@@ -1580,11 +1590,11 @@ export const consoleEffects: EffectHandlerMap = {
     };
   },
 
-  saveLocalProfile(ctx) {
+  saveBlueprint(ctx) {
     const snapshot = loadCatalog();
     try {
-      const rawId = readStr(ctx, "console.editor.id").trim();
-      const rawBundle = readStr(ctx, "console.editor.bundleText").trim();
+      const rawId = readStr(ctx, "manageBlueprints.editor.id").trim();
+      const rawBundle = readStr(ctx, "manageBlueprints.editor.bundleText").trim();
       if (!rawBundle) throw new Error("Blueprint bundle JSON is empty.");
 
       const parsed = parseProfileBundleJson<LayerRecipe>(rawBundle);
@@ -1611,7 +1621,7 @@ export const consoleEffects: EffectHandlerMap = {
         ops: [
           ...selectionOps(saved, readPreviewInput(ctx), "draft", fresh),
           setOp(
-            "console.editor",
+            "manageBlueprints.editor",
             {
               ...editorState(saved),
               status: `Saved local profile '${nextId}' to browser storage.`,
@@ -1625,21 +1635,47 @@ export const consoleEffects: EffectHandlerMap = {
         ops: [
           ...baseCatalogOps(snapshot),
           setOp(
-            "console.editor",
+            "manageBlueprints.editor",
             {
-              id: readStr(ctx, "console.editor.id"),
-              bundleText: readStr(ctx, "console.editor.bundleText"),
-              status: readStr(ctx, "console.editor.status", EMPTY_EDITOR.status),
+              id: readStr(ctx, "manageBlueprints.editor.id"),
+              bundleText: readStr(ctx, "manageBlueprints.editor.bundleText"),
+              status: readStr(ctx, "manageBlueprints.editor.status", EMPTY_EDITOR.status),
               error: error instanceof Error ? error.message : String(error),
             } as unknown as Json
           ),
-          setOp("console.tab", "draft"),
+          setOp("manageBlueprints.tab", "draft"),
         ],
       };
     }
   },
 
-  deleteLocalProfile(ctx) {
+  requestDeleteBlueprint(ctx) {
+    const snapshot = loadCatalog();
+    const selected = findEntry(readSelectedId(ctx), snapshot.entries);
+    if (!selected || selected.readonly || selected.source !== "local") {
+      return {
+        ops: [
+          ...baseCatalogOps(snapshot),
+          setOp("manageBlueprints.editor.error", "Only a local blueprint can be deleted."),
+          setOp("manageBlueprints.deleteChallenge", { open: false, message: "" }),
+          setOp("manageBlueprints.tab", "draft"),
+        ],
+      };
+    }
+    return {
+      outcome: "confirmation-required",
+      ops: [setOp("manageBlueprints.deleteChallenge", {
+        open: true,
+        message: `Delete local blueprint '${selected.artifact.payload.id}'? This cannot be undone.`,
+      })],
+    };
+  },
+
+  cancelDeleteBlueprint() {
+    return { outcome: "cancelled", ops: [setOp("manageBlueprints.deleteChallenge", { open: false, message: "" })] };
+  },
+
+  deleteBlueprint(ctx) {
     const snapshot = loadCatalog();
     const selected = findEntry(readSelectedId(ctx), snapshot.entries);
     if (!selected) {
@@ -1647,13 +1683,13 @@ export const consoleEffects: EffectHandlerMap = {
         ops: [
           ...baseCatalogOps(snapshot),
           setOp(
-            "console.editor",
+            "manageBlueprints.editor",
             {
               ...EMPTY_EDITOR,
               error: "Select a local blueprint before deleting it.",
             } as unknown as Json
           ),
-          setOp("console.tab", "draft"),
+          setOp("manageBlueprints.tab", "draft"),
         ],
       };
     }
@@ -1662,7 +1698,7 @@ export const consoleEffects: EffectHandlerMap = {
         ops: [
           ...selectionOps(selected, readPreviewInput(ctx), "draft", snapshot),
           setOp(
-            "console.editor",
+            "manageBlueprints.editor",
             {
               ...editorState(selected),
               error: "Repo sample blueprints are read-only and cannot be deleted from browser storage.",
@@ -1679,14 +1715,15 @@ export const consoleEffects: EffectHandlerMap = {
     return {
       ops: [
         ...clearSelectionOps(fresh, ""),
+        setOp("manageBlueprints.deleteChallenge", { open: false, message: "" }),
         setOp(
-          "console.editor",
+          "manageBlueprints.editor",
           {
             ...EMPTY_EDITOR,
             status: `Deleted local profile '${selected.artifact.payload.id}' from browser storage.`,
           } as unknown as Json
         ),
-        setOp("console.tab", "draft"),
+        setOp("manageBlueprints.tab", "draft"),
       ],
     };
   },

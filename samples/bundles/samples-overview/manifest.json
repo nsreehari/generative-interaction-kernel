@@ -2,34 +2,23 @@
   "gik": "0.1",
   "type": "manifest",
   "payload": {
-    "version": "samples-overview/1.0",
+    "version": "samples-overview/2.0",
     "expression": "jsonata",
     "namespaces": ["overview"],
-    "actions": ["assign", "emit"],
+    "actions": [],
     "capabilities": {
       "ui:screen": {
         "propsSchema": { "type": "object", "additionalProperties": true },
         "slots": ["children"]
       },
-      "ui:row": {
-        "propsSchema": { "type": "object", "additionalProperties": true },
-        "slots": ["children"]
-      },
-      "ui:panel": {
-        "propsSchema": { "type": "object", "additionalProperties": true },
-        "slots": ["children"]
-      },
-      "ui:note": {
-        "propsSchema": { "type": "object", "additionalProperties": true }
-      },
-      "demo:samplesOverview": {
+      "overview:platform-storyboard": {
         "propsSchema": { "type": "object", "additionalProperties": true }
       }
     },
     "externals": {
       "projectionViews": {
         "ui": { "from": "floor" },
-        "demo": { "from": "self" }
+        "overview": { "from": "self" }
       }
     }
   }

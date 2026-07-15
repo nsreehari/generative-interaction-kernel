@@ -127,10 +127,11 @@ const useStyles = makeStyles({
   },
   modeGrid: {
     display: "grid",
-    gridTemplateColumns: "minmax(0, 1fr) 80px minmax(0, 1fr)",
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
     alignItems: "stretch",
     gap: tokens.spacingHorizontalL,
-    "@media (max-width: 760px)": { gridTemplateColumns: "1fr" },
+    "@media (max-width: 900px)": { gridTemplateColumns: "repeat(2, minmax(0, 1fr))" },
+    "@media (max-width: 560px)": { gridTemplateColumns: "1fr" },
   },
   mode: {
     padding: tokens.spacingHorizontalXL,
@@ -167,7 +168,7 @@ const useStyles = makeStyles({
   },
   journey: {
     display: "grid",
-    gridTemplateColumns: "repeat(6, minmax(150px, 1fr))",
+    gridTemplateColumns: "repeat(5, minmax(180px, 1fr))",
     gap: tokens.spacingHorizontalS,
     overflowX: "auto",
     paddingBottom: tokens.spacingVerticalS,
@@ -241,33 +242,44 @@ const useStyles = makeStyles({
     borderTop: "1px solid var(--line)",
   },
   expansionText: { maxWidth: "920px", margin: 0, fontSize: tokens.fontSizeBase500, lineHeight: 1.45, fontWeight: tokens.fontWeightSemibold },
+  domainGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: tokens.spacingHorizontalXL,
+    marginTop: tokens.spacingVerticalXL,
+    "@media (max-width: 700px)": { gridTemplateColumns: "1fr" },
+  },
+  domain: { paddingTop: tokens.spacingVerticalL, borderTop: "3px solid var(--line)" },
+  sharedRail: { display: "flex", gap: tokens.spacingHorizontalS, flexWrap: "wrap", marginTop: tokens.spacingVerticalXL },
+  sharedTag: { padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`, border: "1px solid var(--line)", borderRadius: tokens.borderRadiusSmall, backgroundColor: "var(--panel)" },
+  boundary: { marginTop: tokens.spacingVerticalXL, color: "var(--muted)", lineHeight: 1.55 },
+  forthcoming: { display: "inline-block", marginTop: tokens.spacingVerticalM, color: "var(--accent)", fontWeight: tokens.fontWeightBold },
 });
 
-const fractureItems = [
-  ["Human interface", "The analyst sees one version of the investigation, shaped by a static dashboard."],
-  ["Agent runtime", "The agent reasons over a separate context, with its own interpretation of state."],
-  ["Autonomous backend", "Headless work disappears into another process, leaving accountability to logs after the fact."],
-];
+interface StoryItem { title: string; text: string }
+interface Actor { id: string; name: string; kind: string; role: string }
+interface SocAct extends StoryItem { id: number }
+interface CausalStep { result: string; text: string }
+interface ProofPlane extends StoryItem { id: string; label: string; bundle: string; plane: "runtime" | "blueprint"; button: string }
+interface Domain { id: string; label: string; text: string }
+interface Storyboard {
+  hero: { eyebrow: string; title: string; lead: string; contract: string };
+  invariants: StoryItem[];
+  fractures: StoryItem[];
+  actors: Actor[];
+  socActs: SocAct[];
+  causalChain: CausalStep[];
+  trustProof: StoryItem[];
+  proofPlanes: ProofPlane[];
+  expansion: { title: string; domains: Domain[]; shared: string[]; taxJourney: string[]; boundary: string; status: string };
+}
 
-const journeySteps = [
-  ["Intent arrives", "Investigate this phishing alert.", "shared"],
-  ["Evidence assembles", "Trusted signals become one evolving analyst workspace.", "shared"],
-  ["Human + agent investigate", "Both participants work against the same governed state.", "shared"],
-  ["Analyst steps away", "The agent continues asynchronously under the same capabilities and policy.", "autonomous"],
-  ["Findings return", "New evidence and rationale re-enter the same workspace, fully attributed.", "autonomous"],
-  ["Action is governed", "Isolate Host requires human confirmation before execution.", "approval"],
-];
-
-const proofItems = [
-  ["A single source of truth", "Human interface and agent context derive from the same evolving graph. There is no shadow state to sync or reconcile."],
-  ["Relentless continuity", "An agent can seamlessly transition from live collaboration to headless autonomy without leaving the governance boundary."],
-  ["Deterministic by design", "The AI proposes. A pure kernel evaluates the patch. Actions are executed, rejected, or routed to a human for confirmation."],
-  ["Forensic accountability", "Every hypothesis, rejection, state mutation, and approval is immutably traced back to a specific capability and policy."],
-];
-
-function openBundle(bundleId: string) {
+function openBundle(bundleId: string, plane?: string) {
   const current = new URL(window.location.href);
   current.searchParams.set("bundle", bundleId);
+  if (plane) current.searchParams.set("plane", plane);
+  else current.searchParams.delete("plane");
+  current.searchParams.delete("context");
   window.location.assign(current.toString());
 }
 
@@ -275,37 +287,29 @@ function scrollToJourney() {
   document.getElementById("soc-journey")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-const SamplesOverviewView: ProjectionView = () => {
+const PlatformStoryboardView: ProjectionView = ({ node }) => {
   const styles = useStyles();
-  const journeyClass = (mode: string) =>
-    `${styles.journeyStep} ${mode === "autonomous" ? styles.autonomousStep : mode === "approval" ? styles.approvalStep : ""}`;
+  const overview = node.props.overview as unknown as Storyboard;
 
   return (
     <main className={styles.page}>
       <section className={styles.hero} aria-labelledby="platform-storyboard-title">
         <div className={`${styles.inner} ${styles.heroGrid}`}>
           <div>
-            <div className={styles.eyebrow}>Governed human-agent collaboration</div>
-            <h1 id="platform-storyboard-title" className={styles.heroTitle}>Humans and agents need one governed place to work.</h1>
-            <p className={styles.lead}>
-              AI now investigates, recommends, and acts. The Generative Interaction Kernel gives humans and agents one evolving workspace where they can work
-              together or continue autonomously without fragmenting state, authority, or accountability.
-            </p>
-            <p className={styles.contractLine}>Agents can leave the screen. They cannot leave the governance boundary.</p>
+            <div className={styles.eyebrow}>{overview.hero.eyebrow}</div>
+            <h1 id="platform-storyboard-title" className={styles.heroTitle}>{overview.hero.title}</h1>
+            <p className={styles.lead}>{overview.hero.lead}</p>
+            <p className={styles.contractLine}>{overview.hero.contract}</p>
             <div className={styles.heroAction}>
               <Button appearance="primary" className={styles.button} onClick={scrollToJourney}>See how it works</Button>
             </div>
           </div>
           <aside className={styles.contractPanel} aria-label="Platform contract">
             <h2 className={styles.contractHeader}>The workspace contract</h2>
-            {[
-              ["Shared state", "One evolving source of truth for human and agent participants."],
-              ["Governed action", "Every consequential change crosses the same authority."],
-              ["Complete trace", "Interactive and autonomous work remain attributable."],
-            ].map(([name, text], index) => (
-              <div key={name} className={styles.contractItem}>
+            {overview.invariants.slice(1).map((item, index) => (
+              <div key={item.title} className={styles.contractItem}>
                 <span className={styles.contractNumber}>{index + 1}</span>
-                <div><p className={styles.contractName}>{name}</p><p className={styles.contractText}>{text}</p></div>
+                <div><p className={styles.contractName}>{item.title}</p><p className={styles.contractText}>{item.text}</p></div>
               </div>
             ))}
           </aside>
@@ -319,7 +323,7 @@ const SamplesOverviewView: ProjectionView = () => {
             <h2 id="why-now-title" className={styles.sectionTitle}>AI has started doing the work. The systems around it have not caught up.</h2>
           </header>
           <div className={styles.fractureGrid}>
-            {fractureItems.map(([title, text]) => <article key={title} className={styles.fractureItem}><h3 className={styles.itemTitle}>{title}</h3><p className={styles.body}>{text}</p></article>)}
+            {overview.fractures.map((item) => <article key={item.title} className={styles.fractureItem}><h3 className={styles.itemTitle}>{item.title}</h3><p className={styles.body}>{item.text}</p></article>)}
           </div>
           <p className={styles.warningLine}>A hallucinated answer is inconvenient. A hallucinated action is an incident.</p>
         </div>
@@ -329,24 +333,17 @@ const SamplesOverviewView: ProjectionView = () => {
         <div className={styles.inner}>
           <header className={styles.sectionHeader}>
             <div className={styles.sectionIndex}>02 · Product contract</div>
-            <h2 id="contract-title" className={styles.sectionTitle}>One workspace. Two participation modes. The same authority throughout.</h2>
+            <h2 id="contract-title" className={styles.sectionTitle}>Many participants. One operational truth. Authority stays explicit.</h2>
           </header>
           <div className={styles.modeGrid}>
-            <article className={styles.mode}>
-              <div className={styles.modeLabel}>Inside the interaction loop</div>
-              <h3 className={styles.itemTitle}>Human and agent collaborate live</h3>
-              <p className={styles.body}>They inspect evidence, shape the investigation, and propose next steps through the same evolving workspace.</p>
-            </article>
-            <div className={styles.modeBridge} aria-hidden="true">↔</div>
-            <article className={styles.mode}>
-              <div className={styles.modeLabel}>Outside the interaction loop</div>
-              <h3 className={styles.itemTitle}>The agent continues autonomously</h3>
-              <p className={styles.body}>It monitors, invokes tools, derives findings, and prepares decisions without creating a second source of truth.</p>
-            </article>
+            {overview.actors.map((actor) => <article key={actor.id} className={styles.mode}>
+              <div className={styles.modeLabel}>{actor.kind}</div>
+              <h3 className={styles.itemTitle}>{actor.name}</h3>
+              <p className={styles.body}>{actor.role}</p>
+            </article>)}
           </div>
           <div className={styles.invariant}>
-            The invariant: both modes use the same state, capabilities, policy, authority, and trace. The AI may adapt the
-            experience and continue the work. It never becomes the authority.
+            The invariant: all four contribute through one event and state model. Their roles determine who may investigate, recommend, authorize, or execute.
           </div>
         </div>
       </section>
@@ -355,20 +352,21 @@ const SamplesOverviewView: ProjectionView = () => {
         <div className={styles.inner}>
           <header className={styles.sectionHeader}>
             <div className={styles.sectionIndex}>03 · SOC first</div>
-            <h2 id="soc-journey-title" className={styles.sectionTitle}>A phishing alert becomes a continuous, governed investigation.</h2>
+            <h2 id="soc-journey-title" className={styles.sectionTitle}>A privileged-access anomaly becomes one governed mixed-team investigation.</h2>
           </header>
           <div className={styles.journey} aria-label="SOC investigation journey">
-            {journeySteps.map(([title, text, mode], index) => (
-              <article key={title} className={journeyClass(mode)}>
-                <div className={styles.stepNumber}>STEP {index + 1}</div><h3 className={styles.stepTitle}>{title}</h3><p className={styles.stepText}>{text}</p>
+            {overview.socActs.map((act) => (
+              <article key={act.id} className={`${styles.journeyStep} ${act.id === 5 ? styles.approvalStep : ""}`}>
+                <div className={styles.stepNumber}>ACT {act.id}</div><h3 className={styles.stepTitle}>{act.title}</h3><p className={styles.stepText}>{act.text}</p>
               </article>
             ))}
           </div>
           <div className={styles.trace} aria-label="Governed action trace">
-            <div className={styles.traceRow}><span className={styles.traceTime}>09:42:18</span><strong className={styles.traceAccepted}>PROPOSED</strong><span>Agent derives lateral-movement finding from trusted evidence</span></div>
-            <div className={styles.traceRow}><span className={styles.traceTime}>09:42:18</span><strong className={styles.traceAccepted}>VALIDATED</strong><span>Finding matches capability, schema, and investigation policy</span></div>
-            <div className={styles.traceRow}><span className={styles.traceTime}>09:44:03</span><strong className={styles.traceRejected}>REJECTED</strong><span>Unsupported containment target blocked; governed fallback preserved state</span></div>
-            <div className={styles.traceRow}><span className={styles.traceTime}>09:45:27</span><strong className={styles.traceAccepted}>CONFIRM</strong><span>Isolate Host returned to analyst for explicit approval</span></div>
+            {overview.causalChain.map((step, index) => <div className={styles.traceRow} key={step.result}>
+              <span className={styles.traceTime}>{String(index + 1).padStart(2, "0")}</span>
+              <strong className={step.result.startsWith("Rejected") ? styles.traceRejected : styles.traceAccepted}>{step.result.toUpperCase()}</strong>
+              <span>{step.text}</span>
+            </div>)}
           </div>
         </div>
       </section>
@@ -377,10 +375,10 @@ const SamplesOverviewView: ProjectionView = () => {
         <div className={styles.inner}>
           <header className={styles.sectionHeader}>
             <div className={styles.sectionIndex}>04 · Why trust it</div>
-            <h2 id="trust-title" className={styles.sectionTitle}>Autonomy without a shadow system.</h2>
+            <h2 id="trust-title" className={styles.sectionTitle}>Governance is attached to the work, not reconstructed afterward.</h2>
           </header>
           <div className={styles.proofGrid}>
-            {proofItems.map(([title, text]) => <article key={title} className={styles.proof}><h3 className={styles.itemTitle}>{title}</h3><p className={styles.body}>{text}</p></article>)}
+            {overview.trustProof.map((item) => <article key={item.title} className={styles.proof}><h3 className={styles.itemTitle}>{item.title}</h3><p className={styles.body}>{item.text}</p></article>)}
           </div>
         </div>
       </section>
@@ -388,31 +386,38 @@ const SamplesOverviewView: ProjectionView = () => {
       <section className={styles.band} aria-labelledby="proof-path-title">
         <div className={styles.inner}>
           <header className={styles.sectionHeader}>
-            <div className={styles.sectionIndex}>05 · Choose the proof</div>
-            <h2 id="proof-path-title" className={styles.sectionTitle}>Experience the collaboration, then inspect the physics behind it.</h2>
+            <div className={styles.sectionIndex}>05 · Enter the proof</div>
+            <h2 id="proof-path-title" className={styles.sectionTitle}>One governed system. Two proof planes.</h2>
           </header>
           <div className={styles.forkGrid}>
-            <article className={styles.fork}>
-              <div className={styles.forkLabel}>Runtime · HX + AX</div><h3 className={styles.forkTitle}>Experience the SOC Runtime</h3>
-              <p className={styles.forkText}>Watch an analyst and agent share one workspace, continue across interactive and autonomous work, and return consequential actions through the same governance boundary.</p>
-              <Button appearance="primary" className={styles.button} onClick={() => openBundle("live-workspace-soc")}>Open Live Workspace</Button>
-            </article>
-            <article className={styles.fork}>
-              <div className={styles.forkLabel}>DX + ACX · Powered by the GIK Compiler</div><h3 className={styles.forkTitle}>Author Governed Experiences</h3>
-              <p className={styles.forkText}>See humans and AI coding agents define governed domains as bounded, testable blueprints: intent to tiers to a runnable bundle.</p>
-              <Button appearance="secondary" className={styles.button} onClick={() => openBundle("console")}>Open Authoring Console</Button>
-            </article>
+            {overview.proofPlanes.map((proof, index) => <article className={styles.fork} key={proof.id}>
+              <div className={styles.forkLabel}>{proof.label}</div><h3 className={styles.forkTitle}>{proof.title}</h3>
+              <p className={styles.forkText}>{proof.text}</p>
+              <Button appearance={index === 0 ? "primary" : "secondary"} className={styles.button} onClick={() => openBundle(proof.bundle, proof.plane)}>{proof.button}</Button>
+            </article>)}
           </div>
         </div>
       </section>
 
       <footer className={styles.expansion}>
-        <div className={styles.inner}><p className={styles.expansionText}>SOC is the first high-stakes domain. The same governed substrate extends to document-heavy, policy-bound work and from interactive surfaces to headless execution.</p></div>
+        <div className={styles.inner}>
+          <p className={styles.expansionText}>{overview.expansion.title}</p>
+          <div className={styles.domainGrid}>
+            {overview.expansion.domains.map((domain) => <article className={styles.domain} key={domain.id}>
+              <div className={styles.eyebrow}>{domain.label}</div>
+              <p className={styles.body}>{domain.text}</p>
+              {domain.id === "tax-prep" ? <ol className={styles.body}>{overview.expansion.taxJourney.map((step) => <li key={step}>{step}</li>)}</ol> : null}
+            </article>)}
+          </div>
+          <div className={styles.sharedRail}>{overview.expansion.shared.map((item) => <span className={styles.sharedTag} key={item}>{item}</span>)}</div>
+          <p className={styles.boundary}>{overview.expansion.boundary}</p>
+          <span className={styles.forthcoming}>{overview.expansion.status}</span>
+        </div>
       </footer>
     </main>
   );
 };
 
-const projectionViews: Record<string, ProjectionView> = { samplesOverview: SamplesOverviewView };
+const projectionViews: Record<string, ProjectionView> = { "platform-storyboard": PlatformStoryboardView };
 
 export default projectionViews;

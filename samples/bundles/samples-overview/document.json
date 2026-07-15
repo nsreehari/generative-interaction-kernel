@@ -12,8 +12,13 @@
       "edges": {
         "children": [
           {
-            "capability": "demo:samplesOverview",
-            "id": "samples-overview-view"
+            "capability": "overview:platform-storyboard",
+            "id": "samples-overview-view",
+            "edges": {
+              "read": {
+                "overview": "overview"
+              }
+            }
           }
         ]
       }

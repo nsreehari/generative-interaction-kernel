@@ -17,6 +17,7 @@ import {
   socBlueprint,
   traceSocBlueprint,
 } from "../../../profiles/live-workspace-soc/compile";
+import { readSocNavigation, writeSocNavigation, type SocPlane } from "../navigation";
 
 interface Incident {
   id: string;
@@ -294,10 +295,13 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   const act = Number(node.props.act ?? 0);
   const stage = String(node.props.stage ?? "Incident opened");
   const [journalMode, setJournalMode] = React.useState<"journal" | "ledger">("journal");
-  const [consolePlane, setConsolePlane] = React.useState<"runtime" | "blueprint">("runtime");
+  const validContextIds = SOC_BLUEPRINT_CONTEXTS.map((item) => item.id);
+  const initialNavigationRef = React.useRef(readSocNavigation(window.location.search, validContextIds));
+  const [consolePlane, setConsolePlane] = React.useState<SocPlane>(initialNavigationRef.current.plane);
   const emitRef = React.useRef(emit);
   const processedTokenRef = React.useRef(0);
   const executionRequestedRef = React.useRef(false);
+  const initialContextAppliedRef = React.useRef(false);
   emitRef.current = emit;
 
   const latestEntry = journal[journal.length - 1];
@@ -321,6 +325,15 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
     const root = output.root as { capability?: string; edges?: { children?: unknown[] } } | undefined;
     return `root=${root?.capability ?? "unknown"}\nchildren=${root?.edges?.children?.length ?? 0} · terminal document matches bundle`;
   });
+
+  React.useEffect(() => {
+    if (initialContextAppliedRef.current) return;
+    initialContextAppliedRef.current = true;
+    const requestedContext = initialNavigationRef.current.context;
+    if (requestedContext && requestedContext !== presentation.selectedContext) {
+      emitRef.current("setPresentationContext", { contextId: requestedContext });
+    }
+  }, []);
 
   React.useEffect(() => {
     if (presenter.advanceToken === 0) {
@@ -356,6 +369,16 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
     processedTokenRef.current = 0;
     executionRequestedRef.current = false;
     emit("reset", {});
+  };
+
+  const selectPlane = (plane: SocPlane) => {
+    setConsolePlane(plane);
+    window.history.replaceState(null, "", writeSocNavigation(window.location.href, plane, presentation.selectedContext));
+  };
+
+  const selectContext = (contextId: string) => {
+    emit("setPresentationContext", { contextId });
+    window.history.replaceState(null, "", writeSocNavigation(window.location.href, consolePlane, contextId));
   };
 
   return (
@@ -402,14 +425,14 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
               </div>
               <div className={styles.consoleControls}>
                 <div className={styles.planeSwitch} role="group" aria-label="Console plane">
-                  <Button size="small" appearance={consolePlane === "runtime" ? "primary" : "subtle"} onClick={() => setConsolePlane("runtime")}>Runtime</Button>
-                  <Button size="small" appearance={consolePlane === "blueprint" ? "primary" : "subtle"} onClick={() => setConsolePlane("blueprint")}>Blueprint</Button>
+                  <Button size="small" appearance={consolePlane === "runtime" ? "primary" : "subtle"} onClick={() => selectPlane("runtime")}>Runtime</Button>
+                  <Button size="small" appearance={consolePlane === "blueprint" ? "primary" : "subtle"} onClick={() => selectPlane("blueprint")}>Blueprint</Button>
                 </div>
                 <Select
                   className={styles.contextSelect}
                   aria-label="Presentation context"
                   value={presentation.selectedContext}
-                  onChange={(_, data) => emit("setPresentationContext", { contextId: data.value })}
+                  onChange={(_, data) => selectContext(data.value)}
                 >
                   {presentation.contexts.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
                 </Select>
@@ -427,7 +450,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
                   <h2 className={styles.sharedTitle}>Intent to runnable bundle</h2>
                   <p className={styles.sharedSubhead}>The selected context runs through the same authored tiers and terminal document contract.</p>
                 </div>
-                <span className={styles.pill}><CheckmarkCircle20Regular />Profile and recipes validated</span>
+                <span className={styles.pill}><CheckmarkCircle20Regular />Blueprint and lowering recipes validated</span>
               </header>
 
               <div className={styles.contextMatrix} aria-label="Authored presentation contexts">

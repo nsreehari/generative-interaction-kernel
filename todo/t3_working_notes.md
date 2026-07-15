@@ -835,6 +835,9 @@ The broader architecture now runs through the repository's canonical `@gik/profi
 - the runtime console now has `Runtime` and `Blueprint` planes. The Blueprint plane renders the
   actual `traceProfile` outputs, recipe IDs/executors, authored contexts, and blueprint-owned
   resources rather than maintaining explanatory shadow data;
+- both planes and all eight presentation contexts are URL-addressable through `plane` and
+  `context` query parameters; invalid values fall back safely, and selection remains projection
+  state rather than incident state or journal activity;
 - profile loading, recipe lint, all-context lowering, runtime-document equivalence, bundle
   behavior, React floor contracts, host typecheck, and production build are covered by executable
   validation.

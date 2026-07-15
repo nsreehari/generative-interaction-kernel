@@ -1,10 +1,11 @@
 {
   "default": "samples-overview",
   "bundles": {
-    "console": { "kind": "json" },
+    "manage-blueprints": { "kind": "json" },
     "foundry-agent": { "kind": "json" },
     "live-workspace-soc": { "kind": "json" },
     "samples-overview": { "kind": "json" },
+    "manage-bundles": { "kind": "json" },
     "provider-authoring-demo": { "kind": "json" },
     "reactive-demo": { "kind": "json" },
     "workbench": { "kind": "json" }

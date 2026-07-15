@@ -331,6 +331,41 @@ ${root} .gx-btn-primary:hover {
 }
 ${root} .gx-btn-danger { border-color: var(--bad); color: var(--bad); }
 
+${root} .gx-challenge-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: grid;
+  place-items: center;
+  padding: var(--spacingVerticalXXL) var(--spacingHorizontalXXL);
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+}
+${root} .gx-challenge-dialog {
+  width: min(440px, 100%);
+  padding: var(--spacingVerticalXL) var(--spacingHorizontalXL);
+  border: var(--strokeWidthThin) solid var(--line);
+  border-top: 4px solid var(--bad);
+  border-radius: var(--borderRadiusMedium);
+  background: var(--panel);
+  box-shadow: var(--shadow64);
+}
+${root} .gx-challenge-dialog h2 { margin: 0 0 var(--spacingVerticalS); font-size: var(--fontSizeBase500); }
+${root} .gx-challenge-dialog p { margin: 0 0 var(--spacingVerticalL); color: var(--muted); }
+${root} .gx-challenge-dialog form { display: grid; gap: var(--spacingVerticalS); }
+${root} .gx-challenge-dialog input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--spacingVerticalS) var(--spacingHorizontalM);
+  border: var(--strokeWidthThin) solid var(--line);
+  border-radius: var(--borderRadiusMedium);
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+}
+${root} .gx-challenge-dialog input[aria-invalid="true"] { border-color: var(--bad); }
+${root} .gx-challenge-error { min-height: 1.25em; color: var(--bad); font-size: var(--fontSizeBase200); }
+${root} .gx-challenge-actions { display: flex; justify-content: flex-end; gap: var(--spacingHorizontalS); }
+
 ${root} .gx-tabs {
   display: flex;
   gap: var(--spacingHorizontalXXS);
