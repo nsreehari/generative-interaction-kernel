@@ -6,6 +6,9 @@
     "expression": "jsonata",
     "namespaces": ["agent"],
     "actions": ["assign", "invoke"],
+    "config": {
+      "proxyBase": "https://sz-foundry-proxy.azurewebsites.net"
+    },
     "capabilities": {
       "ui:screen": {
         "propsSchema": { "type": "object", "additionalProperties": true },
@@ -39,9 +42,9 @@
         "propsSchema": { "type": "object", "additionalProperties": true },
         "emits": ["input"]
       },
-      "ui:select": {
+      "agent:login": {
         "propsSchema": { "type": "object", "additionalProperties": true },
-        "emits": ["change"]
+        "emits": ["setKey", "setAgent", "verify"]
       },
       "ui:button": {
         "propsSchema": { "type": "object", "additionalProperties": true },
@@ -53,7 +56,8 @@
     },
     "externals": {
       "projectionViews": {
-        "ui": { "from": "floor" }
+        "ui": { "from": "floor" },
+        "agent": { "from": "self" }
       }
     }
   }
