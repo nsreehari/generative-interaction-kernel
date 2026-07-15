@@ -7,3 +7,4 @@ export * from "./components";
 export * from "./useGenUI";
 export * from "./primitives";
 export * from "./theme";
+export * from "./styles";
