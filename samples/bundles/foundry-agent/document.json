@@ -90,13 +90,12 @@
                   }
                 },
                 {
-                  "capability": "agent:ask",
+                  "capability": "ui:button",
                   "id": "agent-ask-btn",
-                  "props": { "label": "Ask" },
+                  "props": { "label": "Ask", "tone": "primary" },
                   "edges": {
-                    "read": { "replyRev": "agent.replyRev" },
                     "on": {
-                      "ask": [
+                      "press": [
                         {
                           "do": "invoke",
                           "args": { "tool": "askAgent" }

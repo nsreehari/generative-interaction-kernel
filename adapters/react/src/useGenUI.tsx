@@ -20,7 +20,7 @@ export interface GenUISource {
 
 export function useGenUI(source: GenUISource): {
   tree: ResolvedNode | null;
-  emit: (node: string, name: string, payload?: Record<string, unknown>, actorId?: string) => void;
+  emit: (node: string, name: string, payload?: Record<string, unknown>, actorId?: string) => void | Promise<unknown>;
 } {
   const [tree, setTree] = useState<ResolvedNode | null>(() => source.getTree());
 
@@ -30,9 +30,8 @@ export function useGenUI(source: GenUISource): {
     return unsubscribe;
   }, [source]);
 
-  const emit = (node: string, name: string, payload?: Record<string, unknown>, actorId?: string) => {
-    void source.emit(node, name, payload, actorId);
-  };
+  const emit = (node: string, name: string, payload?: Record<string, unknown>, actorId?: string) =>
+    source.emit(node, name, payload, actorId);
 
   return { tree, emit };
 }
