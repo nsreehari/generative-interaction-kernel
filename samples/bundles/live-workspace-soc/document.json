@@ -87,7 +87,7 @@
           {
             "capability": "ui:timer-button",
             "id": "next-act-timer-region",
-            "props": { "label": "Next act", "tone": "primary", "showCountdown": true },
+            "props": { "label": "Run act", "tone": "primary", "showCountdown": true },
             "edges": {
               "read": {
                 "durationMs": "soc.presenter.durationMs",
