@@ -5,6 +5,8 @@ import {
   ArrowReset24Regular,
   BrainCircuit24Regular,
   CheckmarkCircle20Regular,
+  ChevronDown20Regular,
+  ChevronUp20Regular,
   Clock20Regular,
   DataTrending24Regular,
   Person24Regular,
@@ -225,8 +227,8 @@ const useStyles = makeStyles({
   actDot: { width: "12px", height: "4px", backgroundColor: "var(--line)" },
   actDotDone: { backgroundColor: "var(--accent)" },
   layout: { minHeight: 0, height: "100%", display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(300px, 360px)", gridTemplateRows: "minmax(0, 1fr)", overflow: "hidden", "@media (max-width: 1040px)": { height: "auto", gridTemplateColumns: "1fr", gridTemplateRows: "auto", overflow: "visible" } },
-  workColumn: { minWidth: 0, minHeight: 0, height: "100%", display: "grid", gridTemplateRows: "minmax(0, 1fr) minmax(0, clamp(142px, 19vh, 174px))", padding: `clamp(18px, 3vw, 36px) clamp(16px, 3vw, 40px) 0`, overflow: "hidden", "@media (max-width: 1040px)": { height: "auto", display: "block", padding: `clamp(18px, 3vw, 36px) clamp(16px, 3vw, 40px) 0`, overflow: "visible" } },
-  shared: { minWidth: 0, minHeight: 0, display: "grid", gridTemplateRows: "auto minmax(0, 1fr)", border: `1px solid color-mix(in srgb, var(--accent) 24%, var(--line))`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "color-mix(in srgb, var(--accent) 7%, var(--panel))", boxShadow: "0 10px 28px color-mix(in srgb, var(--accent) 8%, transparent)", overflow: "hidden", "@media (max-width: 1040px)": { display: "block" } },
+  workColumn: { minWidth: 0, minHeight: 0, height: "100%", padding: `clamp(18px, 3vw, 36px) clamp(16px, 3vw, 40px)`, overflow: "hidden", "@media (max-width: 1040px)": { height: "auto", padding: `clamp(18px, 3vw, 36px) clamp(16px, 3vw, 40px)`, overflow: "visible" } },
+  shared: { minWidth: 0, minHeight: 0, height: "100%", display: "grid", gridTemplateRows: "auto minmax(0, 1fr)", border: `1px solid color-mix(in srgb, var(--accent) 24%, var(--line))`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "color-mix(in srgb, var(--accent) 7%, var(--panel))", boxShadow: "0 10px 28px color-mix(in srgb, var(--accent) 8%, transparent)", overflow: "hidden", "@media (max-width: 1040px)": { height: "auto", display: "block" } },
   consoleChrome: { display: "grid", gridTemplateColumns: "minmax(180px, 1fr) auto minmax(220px, auto)", alignItems: "center", gap: tokens.spacingHorizontalM, minHeight: "44px", padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`, borderBottom: `1px solid color-mix(in srgb, var(--accent) 22%, var(--line))`, backgroundColor: "color-mix(in srgb, var(--accent) 11%, var(--panel))", "@media (max-width: 760px)": { gridTemplateColumns: "1fr", alignItems: "start" } },
   consolePath: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalS, minWidth: 0, color: "var(--muted)", fontFamily: tokens.fontFamilyMonospace, fontSize: tokens.fontSizeBase100 },
   consoleLights: { display: "inline-flex", gap: "5px", flexShrink: 0 },
@@ -238,7 +240,7 @@ const useStyles = makeStyles({
   planeSwitch: { display: "inline-flex", padding: "2px", gap: "2px", border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel)" },
   contextMeta: { minWidth: 0, color: "var(--muted)", fontSize: tokens.fontSizeBase100, textAlign: "right", "@media (max-width: 760px)": { textAlign: "left" } },
   contextFocus: { display: "block", color: "var(--text)", overflowWrap: "anywhere" },
-  sharedViewport: { minHeight: 0, display: "grid", alignContent: "start", gap: tokens.spacingVerticalL, padding: `clamp(18px, 3vw, 32px)`, overflowY: "auto", "@media (max-width: 1040px)": { overflowY: "visible" } },
+  sharedViewport: { minHeight: 0, display: "grid", alignContent: "start", gap: tokens.spacingVerticalL, padding: `clamp(18px, 3vw, 32px)`, paddingBottom: "calc(clamp(18px, 3vw, 32px) + 50px)", scrollPaddingBottom: "50px", overflowY: "auto", "@media (max-width: 1040px)": { overflowY: "visible" } },
   blueprintIntro: { display: "flex", alignItems: "end", justifyContent: "space-between", gap: tokens.spacingHorizontalL, flexWrap: "wrap" },
   blueprintPipeline: { display: "grid", gap: tokens.spacingVerticalS },
   blueprintStage: { display: "grid", gridTemplateColumns: "minmax(150px, .42fr) minmax(0, 1fr)", border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, overflow: "hidden", "@media (max-width: 680px)": { gridTemplateColumns: "1fr" } },
@@ -296,7 +298,13 @@ const useStyles = makeStyles({
   proposalText: { margin: 0, color: "var(--muted)", lineHeight: tokens.lineHeightBase300 },
   fallback: { marginTop: tokens.spacingVerticalM, padding: tokens.spacingVerticalS, backgroundColor: "var(--panel-2)", borderRadius: tokens.borderRadiusMedium },
   metrics: { display: "flex", gap: tokens.spacingHorizontalM, flexWrap: "wrap", marginTop: tokens.spacingVerticalM, color: "var(--muted)", fontSize: tokens.fontSizeBase200 },
-  participants: { minWidth: 0, minHeight: 0, height: "100%", marginInline: `clamp(16px, 3vw, 40px)`, display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", border: `1px solid var(--line)`, borderBottom: 0, backgroundColor: "var(--panel)", overflowY: "auto", "@media (max-width: 880px)": { display: "flex", overflowX: "auto" }, "@media (max-width: 1040px)": { minHeight: "142px", height: "auto" } },
+  participantDrawer: { position: "fixed", left: "clamp(16px, 3vw, 40px)", right: "clamp(376px, 27vw, 410px)", bottom: tokens.spacingVerticalL, zIndex: 30, border: "1px solid color-mix(in srgb, #a15c00 34%, var(--line))", borderRadius: tokens.borderRadiusMedium, backgroundColor: "color-mix(in srgb, var(--panel) 96%, transparent)", boxShadow: "0 18px 48px rgba(15, 23, 42, .22)", backdropFilter: "blur(14px)", overflow: "hidden", "@media (max-width: 1040px)": { right: "64px" } },
+  participantDrawerToggle: { width: "100%", minHeight: "46px", display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) auto", alignItems: "center", gap: tokens.spacingHorizontalM, padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`, border: 0, borderLeft: "4px solid #a15c00", backgroundColor: "color-mix(in srgb, #f2c97d 24%, var(--panel))", color: "var(--text)", font: "inherit", textAlign: "left", cursor: "pointer", "&:hover": { backgroundColor: "color-mix(in srgb, #f2c97d 32%, var(--panel))" }, "&:focus-visible": { outline: "2px solid #a15c00", outlineOffset: "-2px" } },
+  participantDrawerTitle: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalS, fontWeight: tokens.fontWeightSemibold },
+  participantSummaries: { minWidth: 0, display: "flex", justifyContent: "center", gap: tokens.spacingHorizontalL, overflow: "hidden" },
+  participantSummary: { minWidth: 0, display: "inline-flex", alignItems: "center", gap: tokens.spacingHorizontalXS, color: "var(--muted)", fontSize: tokens.fontSizeBase100, whiteSpace: "nowrap" },
+  participantSummaryName: { color: "var(--text)", fontWeight: tokens.fontWeightSemibold },
+  participants: { minWidth: 0, maxHeight: "250px", display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", borderTop: `1px solid var(--line)`, backgroundColor: "var(--panel)", overflowY: "auto", "@media (max-width: 880px)": { display: "flex", overflowX: "auto" } },
   participant: { position: "relative", minWidth: 0, padding: tokens.spacingVerticalS, borderRight: `1px solid var(--line)`, "@media (max-width: 880px)": { minWidth: "245px" } },
   participantActive: { backgroundColor: "color-mix(in srgb, var(--accent) 9%, var(--panel))" },
   participantTop: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: tokens.spacingHorizontalS },
@@ -367,6 +375,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   const stage = String(node.props.stage ?? "Incident opened");
   const [journalMode, setJournalMode] = React.useState<"journal" | "ledger">("journal");
   const [selectedJournalId, setSelectedJournalId] = React.useState<string | null>(null);
+  const [participantsExpanded, setParticipantsExpanded] = React.useState(false);
   const validContextIds = SOC_BLUEPRINT_CONTEXTS.map((item) => item.id);
   const initialNavigationRef = React.useRef(readSocNavigation(window.location.search, validContextIds));
   const [consolePlane, setConsolePlane] = React.useState<SocPlane>(initialNavigationRef.current.plane);
@@ -606,25 +615,6 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
             </div>
           </section>
 
-          <section className={styles.participants} aria-label="Human and agent participants">
-            {actors.map((item) => {
-              const active = selectedEntry?.actorId === item.id;
-              const canAuthorize = item.id === "human-priya" && authorization?.status === "pending";
-              return <article data-soc-actor-id={item.id} key={item.id} className={mergeClasses(styles.participant, active ? styles.participantActive : undefined, active ? styles.causalHighlight : undefined)}>
-                <div className={styles.participantTop}>
-                  <div className={styles.participantIdentity}>
-                    <ParticipantPresenceIcon status={canAuthorize ? "input-awaited" : item.status} />
-                    <div className={styles.participantName}>{item.kind === "human" ? <Person24Regular /> : <Sparkle24Regular />}{item.name}</div>
-                  </div>
-                  <span className={styles.kind}>{item.kind.toUpperCase()}</span>
-                </div>
-                <div className={styles.role}>{item.role} · {canAuthorize ? "input awaited" : item.status.replaceAll("-", " ")}</div>
-                <p className={styles.activity}>{item.activity ?? item.objective}</p>
-                <div className={styles.authority}>{item.authority}</div>
-                {canAuthorize ? <Button className={styles.authorize} appearance="primary" icon={<ShieldLock24Regular />} onClick={() => emit("authorizeContainment", {}, "human-priya")}>Authorize Host-A isolation</Button> : null}
-              </article>;
-            })}
-          </section>
         </div>
 
         <aside className={styles.journalRail} aria-label="Journal and ledger">
@@ -653,6 +643,48 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
           </div>
         </aside>
       </div>
+
+      <section className={styles.participantDrawer} aria-label="Participant drawer">
+        <button
+          type="button"
+          className={styles.participantDrawerToggle}
+          aria-expanded={participantsExpanded}
+          aria-controls="soc-participants"
+          onClick={() => setParticipantsExpanded((expanded) => !expanded)}
+        >
+          <span className={styles.participantDrawerTitle}><Person24Regular />Participants</span>
+          <span className={styles.participantSummaries} aria-hidden="true">
+            {actors.map((item) => {
+              const canAuthorize = item.id === "human-priya" && authorization?.status === "pending";
+              return <span className={styles.participantSummary} key={item.id}>
+                <ParticipantPresenceIcon status={canAuthorize ? "input-awaited" : item.status} />
+                <span className={styles.participantSummaryName}>{item.name}</span>
+                <span>{canAuthorize ? "input awaited" : item.status.replaceAll("-", " ")}</span>
+              </span>;
+            })}
+          </span>
+          {participantsExpanded ? <ChevronDown20Regular /> : <ChevronUp20Regular />}
+        </button>
+        {participantsExpanded ? <div id="soc-participants" className={styles.participants} aria-label="Human and agent participants">
+            {actors.map((item) => {
+              const active = selectedEntry?.actorId === item.id;
+              const canAuthorize = item.id === "human-priya" && authorization?.status === "pending";
+              return <article data-soc-actor-id={item.id} key={item.id} className={mergeClasses(styles.participant, active ? styles.participantActive : undefined, active ? styles.causalHighlight : undefined)}>
+                <div className={styles.participantTop}>
+                  <div className={styles.participantIdentity}>
+                    <ParticipantPresenceIcon status={canAuthorize ? "input-awaited" : item.status} />
+                    <div className={styles.participantName}>{item.kind === "human" ? <Person24Regular /> : <Sparkle24Regular />}{item.name}</div>
+                  </div>
+                  <span className={styles.kind}>{item.kind.toUpperCase()}</span>
+                </div>
+                <div className={styles.role}>{item.role} · {canAuthorize ? "input awaited" : item.status.replaceAll("-", " ")}</div>
+                <p className={styles.activity}>{item.activity ?? item.objective}</p>
+                <div className={styles.authority}>{item.authority}</div>
+                {canAuthorize ? <Button className={styles.authorize} appearance="primary" icon={<ShieldLock24Regular />} onClick={() => emit("authorizeContainment", {}, "human-priya")}>Authorize Host-A isolation</Button> : null}
+              </article>;
+            })}
+          </div> : null}
+      </section>
     </main>
   );
 };
