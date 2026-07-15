@@ -278,6 +278,12 @@ const useStyles = makeStyles({
   blueprintStageBody: { minWidth: 0, display: "grid", gap: tokens.spacingVerticalXS, padding: tokens.spacingVerticalM },
   blueprintRecipe: { color: "var(--muted)", fontFamily: tokens.fontFamilyMonospace, fontSize: tokens.fontSizeBase100 },
   blueprintOutput: { margin: 0, color: "var(--text)", fontFamily: tokens.fontFamilyMonospace, fontSize: tokens.fontSizeBase100, lineHeight: tokens.lineHeightBase200, whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
+  blueprintContextContract: { display: "grid", gridTemplateColumns: "minmax(180px, .38fr) minmax(0, 1fr)", border: `1px solid var(--line)`, borderLeft: `4px solid var(--accent)`, backgroundColor: "var(--panel)", "@media (max-width: 680px)": { gridTemplateColumns: "1fr" } },
+  blueprintContextIdentity: { display: "grid", alignContent: "center", gap: tokens.spacingVerticalXXS, padding: tokens.spacingVerticalM, backgroundColor: "var(--panel-2)" },
+  blueprintContextBody: { minWidth: 0, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: tokens.spacingHorizontalM, padding: tokens.spacingVerticalM, "@media (max-width: 760px)": { gridTemplateColumns: "1fr" } },
+  blueprintContextField: { minWidth: 0, color: "var(--muted)", fontSize: tokens.fontSizeBase100 },
+  blueprintContextValue: { display: "block", marginTop: tokens.spacingVerticalXXS, color: "var(--text)", fontFamily: tokens.fontFamilyMonospace, overflowWrap: "anywhere" },
+  blueprintContextRegions: { gridColumn: "1 / -1" },
   blueprintResources: { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, overflow: "hidden", "@media (max-width: 760px)": { gridTemplateColumns: "repeat(2, minmax(0, 1fr))" } },
   blueprintResource: { padding: tokens.spacingVerticalM, borderRight: `1px solid var(--line)`, backgroundColor: "var(--panel-2)" },
   blueprintResourceValue: { display: "block", marginTop: tokens.spacingVerticalXXS, fontSize: tokens.fontSizeBase500, fontWeight: tokens.fontWeightBold },
@@ -440,7 +446,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
     }
     if (item.toKind === "presentation") {
       const regions = Array.isArray(output.regions) ? output.regions : [];
-      return `layout=${String(output.layout)} · arrangement=${String(output.arrangement)}\nregions=${regions.map((region) => String((region as { name?: string }).name)).join(", ")}`;
+      return `layout=${String(output.layout)} · template-arrangement=${String(output.arrangement)}\nprojection-frame=${blueprintContext.frame} · projection-arrangement=${blueprintContext.arrangement}\nvisible-regions=${blueprintContext.regions.join(", ")}\ngeneric-runtime-facets=${regions.map((region) => String((region as { name?: string }).name)).join(", ")}`;
     }
     const root = output.root as { capability?: string; edges?: { children?: unknown[] } } | undefined;
     return `root=${root?.capability ?? "unknown"}\nchildren=${root?.edges?.children?.length ?? 0} · terminal document matches bundle`;
@@ -568,6 +574,23 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
               <div className={styles.contextMatrix} aria-label="Authored presentation contexts">
                 {SOC_BLUEPRINT_CONTEXTS.map((item) => <span key={item.id} className={mergeClasses(styles.contextChip, item.id === blueprintContext.id ? styles.contextChipActive : undefined)}>{item.id}</span>)}
               </div>
+
+              <section className={styles.blueprintContextContract} aria-label="Selected projection contract">
+                <div className={styles.blueprintContextIdentity}>
+                  <span className={styles.blueprintKind}>Selected projection contract</span>
+                  <strong>{blueprintContext.id}</strong>
+                  <span>{blueprintContext.actor}</span>
+                </div>
+                <div className={styles.blueprintContextBody}>
+                  <div className={styles.blueprintContextField}>Role<span className={styles.blueprintContextValue}>{blueprintContext.role}</span></div>
+                  <div className={styles.blueprintContextField}>Device / frame<span className={styles.blueprintContextValue}>{blueprintContext.device} / {blueprintContext.frame}</span></div>
+                  <div className={styles.blueprintContextField}>Task<span className={styles.blueprintContextValue}>{blueprintContext.task}</span></div>
+                  <div className={styles.blueprintContextField}>Disclosure<span className={styles.blueprintContextValue}>{blueprintContext.disclosure}</span></div>
+                  <div className={styles.blueprintContextField}>Layout<span className={styles.blueprintContextValue}>{blueprintContext.layout}</span></div>
+                  <div className={styles.blueprintContextField}>Arrangement<span className={styles.blueprintContextValue}>{blueprintContext.arrangement}</span></div>
+                  <div className={mergeClasses(styles.blueprintContextField, styles.blueprintContextRegions)}>Visible semantic regions<span className={styles.blueprintContextValue}>{blueprintContext.regions.join(" · ")}</span></div>
+                </div>
+              </section>
 
               <section className={styles.blueprintPipeline} aria-label="Blueprint lowering trace">
                 {blueprintTrace.map((item, index) => <article className={styles.blueprintStage} key={`${item.fromLayerId}-${item.toLayerId}`}>

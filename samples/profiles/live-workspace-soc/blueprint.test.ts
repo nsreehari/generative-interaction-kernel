@@ -44,6 +44,21 @@ test("all presentation contexts lower the same substrate through every tier", ()
   }
 });
 
+test("presentation contexts own distinct inspectable projection contracts", () => {
+  const full = SOC_BLUEPRINT_CONTEXTS.find((context) => context.id === "full-substrate");
+  const mobile = SOC_BLUEPRINT_CONTEXTS.find((context) => context.id === "priya-mobile");
+  const response = SOC_BLUEPRINT_CONTEXTS.find((context) => context.id === "response-agent");
+
+  assert.equal(full?.frame, "shared");
+  assert.equal(full?.regions.includes("exploration"), true);
+  assert.equal(mobile?.device, "mobile");
+  assert.equal(mobile?.frame, "mobile");
+  assert.equal(mobile?.arrangement, "decision");
+  assert.deepEqual(mobile?.regions, ["summary", "constraints", "hypothesis", "response", "authorization"]);
+  assert.equal(response?.device, "agent-console");
+  assert.equal(response?.regions.includes("exploration"), false);
+});
+
 test("the checked-in runtime document is the war-room blueprint output", () => {
   assert.deepEqual(compileSocDocument("war-room"), runtimeDocument.payload);
 });
