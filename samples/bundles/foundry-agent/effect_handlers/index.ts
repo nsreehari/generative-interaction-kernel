@@ -39,7 +39,7 @@ export const effects: EffectHandlerMap = {
   async listAgents(ctx: EffectContext) {
     const key = str(ctx.get("agent.key")).trim();
     if (!key) {
-      return { ops: [setOp("agent.authError", "Enter a function key first.")] };
+      return { ops: [setOp("agent.authError", "Enter your access key first.")] };
     }
     try {
       const res = await fetch(`${proxyBase()}/api/foundry/assistants?api-version=2025-05-01`, {
@@ -47,11 +47,11 @@ export const effects: EffectHandlerMap = {
         headers: { "x-functions-key": key },
       });
       if (res.status === 401 || res.status === 403) {
-        return { ops: [setOp("agent.authError", "That function key was rejected.")] };
+        return { ops: [setOp("agent.authError", "That access key was rejected.")] };
       }
       if (!res.ok) {
         const msg = await errorMessage(res);
-        return { ops: [setOp("agent.authError", msg || `Could not list agents (${res.status}).`)] };
+        return { ops: [setOp("agent.authError", msg || "Couldn't load the agent list.")] };
       }
       const data = (await res.json()) as { data?: Array<{ id?: unknown; name?: unknown }> };
       const options = (Array.isArray(data?.data) ? data.data : [])
@@ -62,14 +62,14 @@ export const effects: EffectHandlerMap = {
           return { value: id, label: name ? `${name} (${id})` : id };
         });
       if (options.length === 0) {
-        return { ops: [setOp("agent.authError", "No agents were returned for this key.")] };
+        return { ops: [setOp("agent.authError", "No agents are available for this key.")] };
       }
       const ops = [setOp("agent.authError", ""), setOp("agent.agentOptions", options)];
       // Default the selection to the first agent when nothing is chosen yet.
       if (!str(ctx.get("agent.agentId")).trim()) ops.push(setOp("agent.agentId", options[0].value));
       return { ops };
     } catch {
-      return { ops: [setOp("agent.authError", "Could not reach the agent proxy. Is it running?")] };
+      return { ops: [setOp("agent.authError", "Couldn't reach the service. Please try again.")] };
     }
   },
 
@@ -79,7 +79,7 @@ export const effects: EffectHandlerMap = {
     const key = str(ctx.get("agent.key")).trim();
     const agentId = str(ctx.get("agent.agentId")).trim();
     if (!key || !agentId) {
-      return { ops: [setOp("agent.authError", "Enter both a function key and an agent id.")] };
+      return { ops: [setOp("agent.authError", "Enter your access key and choose an agent.")] };
     }
     try {
       const res = await fetch(`${proxyBase()}/api/agent/ping`, {
@@ -88,11 +88,11 @@ export const effects: EffectHandlerMap = {
         body: JSON.stringify({ agentId }),
       });
       if (res.status === 401 || res.status === 403) {
-        return { ops: [setOp("agent.authError", "That function key was rejected.")] };
+        return { ops: [setOp("agent.authError", "That access key was rejected.")] };
       }
       if (!res.ok) {
         const msg = await errorMessage(res);
-        return { ops: [setOp("agent.authError", msg || `Verification failed (${res.status}).`)] };
+        return { ops: [setOp("agent.authError", msg || "Couldn't sign in. Check your key and agent.")] };
       }
       const data = (await res.json()) as { agentName?: string };
       return {
@@ -103,7 +103,7 @@ export const effects: EffectHandlerMap = {
         ],
       };
     } catch {
-      return { ops: [setOp("agent.authError", "Could not reach the agent proxy. Is it running?")] };
+      return { ops: [setOp("agent.authError", "Couldn't reach the service. Please try again.")] };
     }
   },
 
@@ -125,7 +125,7 @@ export const effects: EffectHandlerMap = {
       });
       if (!res.ok) {
         const msg = await errorMessage(res);
-        return { ops: [setOp("agent.error", msg || `Request failed (${res.status}).`)] };
+        return { ops: [setOp("agent.error", msg || "Couldn't get a reply. Please try again.")] };
       }
       const data = (await res.json()) as { threadId?: string; reply?: string };
       return {
@@ -138,7 +138,7 @@ export const effects: EffectHandlerMap = {
         ],
       };
     } catch {
-      return { ops: [setOp("agent.error", "Could not reach the agent proxy.")] };
+      return { ops: [setOp("agent.error", "Couldn't reach the service. Please try again.")] };
     }
   },
 
