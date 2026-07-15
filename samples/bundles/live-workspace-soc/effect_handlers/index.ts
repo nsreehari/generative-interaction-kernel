@@ -42,6 +42,17 @@ function updateActor(
   });
 }
 
+function updateActors(
+  ctx: EffectContext,
+  updates: Record<string, { status: string; activity: string }>
+): Json[] {
+  return list(ctx, "soc.actors").map((value) => {
+    const current = value as RecordValue;
+    const update = updates[String(current.id)];
+    return update ? { ...current, ...update } : current;
+  });
+}
+
 function roleFor(ctx: EffectContext, actorId: string): string | undefined {
   const found = list(ctx, "soc.actors").find(
     (value) => (value as RecordValue).id === actorId
@@ -305,6 +316,7 @@ export const effects: EffectHandlerMap = {
           confidence: 97,
           evidenceIds: ["ev-1", "ev-2", "ev-3", "ev-4"],
         }),
+        setOp("soc.actors", updateActor(ctx, actorId, "complete", "Resolved Host-A as the execution origin")),
         setOp(
           "soc.journal",
           appendJournal(ctx, entry("j-08", "09:42:47", actorId, "validated", "Resolved Host-A as the execution origin", ["corr-1", "hypothesis", "Host-A"]))
@@ -330,6 +342,7 @@ export const effects: EffectHandlerMap = {
           status: "suggested",
           sequence: ["capture", "restrict", "isolate"],
         }),
+        setOp("soc.actors", updateActor(ctx, actorId, "input-awaited", "Bounded containment proposal awaiting human review")),
         setOp(
           "soc.journal",
           appendJournal(ctx, entry("j-09", "09:43:04", actorId, "suggested", "Suggested bounded Host-A containment", ["proposal-host-a"]))
@@ -375,6 +388,7 @@ export const effects: EffectHandlerMap = {
           reversible: true,
           evidenceReady: true,
         }),
+        setOp("soc.actors", updateActor(ctx, actorId, "waiting", "Response validated; waiting for commander authorization")),
         setOp(
           "soc.journal",
           appendJournal(ctx, entry("j-11", "09:43:35", actorId, "validated", "Verified endpoint-only blast radius and no payroll dependency", ["proposal-host-a", "Host-A"]))
@@ -401,6 +415,7 @@ export const effects: EffectHandlerMap = {
           requiredRole: "Incident Commander",
           status: "pending",
         }),
+        setOp("soc.actors", updateActor(ctx, "human-priya", "input-awaited", "Authorization decision required")),
         setOp(
           "soc.journal",
           appendJournal(ctx, entry("j-12", "09:43:48", actorId, "recommended", "Recommended Host-A isolation; commander authority required", ["rec-1", "proposal-host-a"]))
@@ -436,6 +451,10 @@ export const effects: EffectHandlerMap = {
           status: "authorized",
           actorId,
         }),
+        setOp("soc.actors", updateActors(ctx, {
+          "human-priya": { status: "active", activity: "Authorized evidence-backed containment" },
+          "agent-response": { status: "working", activity: "Executing authorized Host-A containment" },
+        })),
         setOp(
           "soc.journal",
           appendJournal(ctx, entry("j-13", "09:44:08", actorId, "authorized", "Authorized the evidence-backed Host-A isolation", ["authorization", "proposal-host-a"]))
@@ -464,6 +483,7 @@ export const effects: EffectHandlerMap = {
         setOp("soc.incident.governance", "Executed"),
         setOp("soc.proposal", { ...proposal, status: "executed", executedBy: actorId }),
         setOp("soc.entities", entities),
+        setOp("soc.actors", updateActor(ctx, actorId, "complete", "Host-A isolated under commander authorization")),
         setOp(
           "soc.journal",
           appendJournal(ctx, entry("j-14", "09:44:12", actorId, "executed", "Isolated Host-A under Priya's authorization", ["Host-A", "proposal-host-a"]))

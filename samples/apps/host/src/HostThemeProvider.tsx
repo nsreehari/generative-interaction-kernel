@@ -27,6 +27,13 @@ const HOST_THEME_CSS = `
 .gx-host .gx-screen-head h1 { font-size: var(--fontSizeBase400); margin: 0; }
 .gx-host .gx-screen-body { flex: 1; min-height: 0; display: flex; }
 
+.gx-host > .gx-switcher {
+  position: fixed;
+  right: var(--spacingHorizontalL);
+  bottom: var(--spacingVerticalL);
+  z-index: 1000;
+}
+
 .gx-host .gx-row { display: flex; gap: var(--spacingHorizontalM); }
 .gx-host .gx-row-split { flex: 1; min-height: 0; display: grid; grid-template-columns: 320px 1fr; width: 100%; }
 .gx-host .gx-row-split > * { min-width: 0; }

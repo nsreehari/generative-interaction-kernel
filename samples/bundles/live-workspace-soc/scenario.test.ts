@@ -83,8 +83,15 @@ test("mixed-team scenario preserves attributable steps and commander authority",
   await emit("calculateResponse", "agent-response");
   await emit("recommendContainment", "human-morgan");
 
+  const actorStatus = (actorId: string) => {
+    const actors = store.get("soc.actors") as Array<{ id: string; status: string }>;
+    return actors.find((actor) => actor.id === actorId)?.status;
+  };
   assert.equal((store.get("soc.proposal") as { target: string }).target, "Host-A");
   assert.equal((store.get("soc.authorization") as { status: string }).status, "pending");
+  assert.equal(actorStatus("agent-correlation"), "complete");
+  assert.equal(actorStatus("agent-response"), "waiting");
+  assert.equal(actorStatus("human-priya"), "input-awaited");
   assert.equal((store.get("soc.journal") as unknown[]).length, 12);
 
   await emit("authorizeContainment", "human-morgan");
@@ -92,9 +99,12 @@ test("mixed-team scenario preserves attributable steps and commander authority",
 
   await emit("authorizeContainment", "human-priya");
   assert.equal((store.get("soc.authorization") as { status: string; actorId: string }).actorId, "human-priya");
+  assert.equal(actorStatus("human-priya"), "active");
+  assert.equal(actorStatus("agent-response"), "working");
   await emit("executeContainment", "agent-response");
 
   assert.equal(store.get("soc.incident.status"), "Contained");
+  assert.equal(actorStatus("agent-response"), "complete");
   const journal = store.get("soc.journal") as Array<{ actorId: string; result: string }>;
   assert.deepEqual(journal.slice(-2).map(({ actorId, result }) => ({ actorId, result })), [
     { actorId: "human-priya", result: "authorized" },
