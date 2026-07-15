@@ -122,12 +122,12 @@ ${root} .gx-maplist-to { font-size: var(--fontSizeBase300); font-weight: var(--f
 ${root} .gx-maplist-arrow { color: var(--muted); font-size: var(--fontSizeBase300); }
 
 ${root} .gx-vocab { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--spacingHorizontalM); align-items: start; }
-${root} .gx-vocab-group { border: 1px solid var(--line); border-radius: 8px; padding: var(--spacingVerticalM) var(--spacingHorizontalM); background: var(--gx-subtle, rgba(127, 127, 127, 0.04)); }
+${root} .gx-vocab-group { border: 1px solid var(--line); border-radius: 8px; padding: var(--spacingVerticalM) var(--spacingHorizontalM); background: var(--gx-subtle, var(--panel-2)); }
 ${root} .gx-vocab-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: var(--spacingVerticalS); }
 ${root} .gx-vocab-label { font-size: var(--fontSizeBase100); color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: var(--fontWeightSemibold, 600); }
 ${root} .gx-vocab-note { font-size: var(--fontSizeBase100); color: var(--muted); font-style: italic; }
 ${root} .gx-vocab-terms { display: flex; flex-wrap: wrap; gap: var(--spacingHorizontalXS); }
-${root} .gx-vocab-term { font-family: var(--fontFamilyMonospace, monospace); font-size: var(--fontSizeBase200); background: var(--gx-card-bg, rgba(127, 127, 127, 0.12)); border: 1px solid var(--line); border-radius: 4px; padding: 2px 7px; }
+${root} .gx-vocab-term { font-family: var(--fontFamilyMonospace, monospace); font-size: var(--fontSizeBase200); background: var(--gx-card-bg, var(--field-bg)); border: 1px solid var(--line); border-radius: 4px; padding: 2px 7px; }
 ${root} .gx-vocab-empty { color: var(--muted); }
 
 ${root} .gx-list { list-style: none; margin: 0; padding: 0; }
@@ -199,19 +199,32 @@ ${root} .gx-table-editable .gx-cell-delete {
 }
 ${root} .gx-table-editable .gx-cell-delete:hover { color: var(--bad); }
 
-/* Chart series palette — primary series follow the theme's semantic roles; the rest fill out a
-   categorical set. Charts recolor with the theme instead of hardcoding hex in the component. */
+/* Data-visualization categorical palette — NOT theme roles. These named colors are chart *series*
+   colors chosen for categorical distinguishability; they intentionally stay fixed rather than
+   recoloring with the theme. They are the ONLY literal colors in this sheet, and they are named so
+   nothing color-related here is anonymous. */
+${root} {
+  --gx-dataviz-violet: #8b5cf6;
+  --gx-dataviz-cyan: #06b6d4;
+  --gx-dataviz-magenta: #ec4899;
+  --gx-dataviz-lime: #84cc16;
+  --gx-dataviz-amber: #f59e0b;
+  --gx-dataviz-slate: #64748b;
+}
+
+/* Chart series slots — 1-4 follow the theme's semantic roles (recolor with the theme); 5-10 draw
+   from the categorical data-viz palette above. No raw hex lives in the chart component. */
 ${root} {
   --gx-chart-1: var(--accent);
   --gx-chart-2: var(--good);
   --gx-chart-3: var(--warn);
   --gx-chart-4: var(--bad);
-  --gx-chart-5: #8b5cf6;
-  --gx-chart-6: #06b6d4;
-  --gx-chart-7: #ec4899;
-  --gx-chart-8: #84cc16;
-  --gx-chart-9: #f59e0b;
-  --gx-chart-10: #64748b;
+  --gx-chart-5: var(--gx-dataviz-violet);
+  --gx-chart-6: var(--gx-dataviz-cyan);
+  --gx-chart-7: var(--gx-dataviz-magenta);
+  --gx-chart-8: var(--gx-dataviz-lime);
+  --gx-chart-9: var(--gx-dataviz-amber);
+  --gx-chart-10: var(--gx-dataviz-slate);
 }
 ${root} .gx-chart { display: flex; flex-direction: column; gap: var(--spacingVerticalS); }
 ${root} .gx-chart-grid { stroke: var(--line); stroke-width: 1; opacity: 0.5; }
@@ -288,11 +301,11 @@ ${root} .gx-json-field textarea.gx-json-input {
   tab-size: 2;
 }
 ${root} .gx-json-field textarea.gx-json-input.invalid {
-  border-color: var(--colorPaletteRedBorder2, #d13438);
+  border-color: var(--colorPaletteRedBorder2, var(--bad));
 }
 ${root} .gx-json-error {
   font-size: var(--fontSizeBase100);
-  color: var(--colorPaletteRedForeground1, #d13438);
+  color: var(--colorPaletteRedForeground1, var(--bad));
 }
 ${root} .gx-form-errors { display: flex; flex-direction: column; gap: 2px; }
 
