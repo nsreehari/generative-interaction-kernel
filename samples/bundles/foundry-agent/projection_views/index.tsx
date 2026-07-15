@@ -1,4 +1,3 @@
-import React from "react";
 import {
   Button,
   Field,
@@ -11,94 +10,35 @@ import {
   makeStyles,
   tokens,
 } from "@fluentui/react-components";
-import type { ProjectionView } from "@gik/react";
-import manifest from "../manifest.json";
-
-// Same single source of truth the effect handlers use: the proxy base is declared once in the
-// bundle manifest (payload.config.proxyBase).
-const PROXY_BASE = String(manifest.payload.config.proxyBase).replace(/\/$/, "");
-
-interface AgentOption {
-  value: string;
-  label: string;
-}
+import { useAsyncEmit, type ProjectionView } from "@gik/react";
 
 const useStyles = makeStyles({
   stack: { display: "grid", gap: tokens.spacingVerticalM },
 });
 
-// The whole sign-in front door: fetches the agent list for the entered key (locally, with a spinner),
-// then lets the user pick an agent and continue. Only the durable bits — the key, the chosen agent
-// name, and the "verify" intent — are pushed to the store via `emit`; the transient list/loading state
-// lives in local React state.
+// The whole sign-in front door: the agent list is fetched by the `listAgents` invoke effect and
+// rendered from the store (agent.agentOptions / listed / listError), and the in-flight spinner rides
+// on the shared useAsyncEmit hook — the same pending path as the floor ui:button. Only durable intent
+// (the key, the chosen agent name, and "verify") crosses back to the store via `emit`.
 const FoundryLogin: ProjectionView = ({ node, emit }) => {
   const styles = useStyles();
   const key = String(node.props.key ?? "");
   const agentName = String(node.props.agentName ?? "");
   const authError = String(node.props.authError ?? "");
+  const listError = String(node.props.listError ?? "");
+  const listed = Boolean(node.props.listed);
+  const agentOptions = Array.isArray(node.props.agentOptions)
+    ? node.props.agentOptions.map((value) => String(value))
+    : [];
 
-  const [loading, setLoading] = React.useState(false);
-  const [listed, setListed] = React.useState(false);
-  const [listError, setListError] = React.useState("");
-  const [options, setOptions] = React.useState<AgentOption[]>([]);
-
-  // Drop any fetched list when the key changes so a stale list can't linger under a new key.
-  React.useEffect(() => {
-    setListed(false);
-    setListError("");
-    setOptions([]);
-  }, [key]);
+  // The agent list + loading come from the store (via the listAgents invoke) instead of local
+  // state, so this button shares the same useAsyncEmit pending path as the floor ui:button.
+  const { pending, run } = useAsyncEmit(emit);
 
   const hasKey = key.trim().length > 0;
   const hasAgent = agentName.trim().length > 0;
-  const showSelect = !loading && options.length > 0;
-  const showNoAgents = !loading && listed && options.length === 0 && listError === "";
-
-  async function listAgents(): Promise<void> {
-    const trimmed = key.trim();
-    if (!trimmed) return;
-    setLoading(true);
-    setListError("");
-    try {
-      // New Foundry Agent Service: agents are listed by NAME under /agents (api-version=v1),
-      // not the classic /assistants endpoint.
-      const res = await fetch(`${PROXY_BASE}/api/foundry/agents?api-version=v1`, {
-        method: "GET",
-        headers: { "x-functions-key": trimmed },
-      });
-      if (res.status === 401 || res.status === 403) {
-        setOptions([]);
-        setListError("That access key was rejected.");
-        setListed(true);
-        return;
-      }
-      if (!res.ok) {
-        setOptions([]);
-        setListError("Couldn't load the agent list.");
-        setListed(true);
-        return;
-      }
-      const data = (await res.json()) as {
-        data?: Array<{ name?: unknown; state?: unknown }>;
-      };
-      const opts: AgentOption[] = (Array.isArray(data?.data) ? data.data : [])
-        .filter((a) => a && typeof a.name === "string" && a.name.trim() !== "" && a.state !== "disabled")
-        .map((a) => {
-          const name = String(a.name);
-          return { value: name, label: name };
-        });
-      setOptions(opts);
-      setListed(true);
-      // Default to the first agent so the visible selection matches state and Continue can appear.
-      if (opts.length > 0 && agentName.trim() === "") emit("setAgent", { value: opts[0].value });
-    } catch {
-      setOptions([]);
-      setListError("Couldn't reach the service. Please try again.");
-      setListed(true);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const showSelect = !pending && agentOptions.length > 0;
+  const showNoAgents = !pending && listed && agentOptions.length === 0 && listError === "";
 
   return (
     <div className={styles.stack}>
@@ -114,19 +54,19 @@ const FoundryLogin: ProjectionView = ({ node, emit }) => {
       </Field>
 
       {hasKey && (
-        <Button onClick={() => void listAgents()} disabled={loading}>
+        <Button onClick={() => void run("listAgents")} disabled={pending}>
           List agents
         </Button>
       )}
 
-      {loading && <Spinner size="tiny" labelPosition="after" label="Loading agents…" />}
+      {pending && <Spinner size="tiny" labelPosition="after" label="Loading agents…" />}
 
       {showSelect && (
         <Field label="Agent">
           <Select value={agentName} onChange={(_event, data) => emit("setAgent", { value: data.value })}>
-            {options.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
+            {agentOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
               </option>
             ))}
           </Select>

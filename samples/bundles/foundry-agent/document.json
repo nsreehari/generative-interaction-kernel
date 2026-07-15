@@ -25,6 +25,9 @@
                     "read": {
                       "key": "agent.key",
                       "agentName": "agent.agentName",
+                      "agentOptions": "agent.agentOptions",
+                      "listed": "agent.listed",
+                      "listError": "agent.listError",
                       "authError": "agent.authError"
                     },
                     "on": {
@@ -33,6 +36,26 @@
                           "do": "assign",
                           "target": "agent.key",
                           "args": { "from": "$event.value" }
+                        },
+                        {
+                          "do": "assign",
+                          "target": "agent.agentName",
+                          "args": { "value": "" }
+                        },
+                        {
+                          "do": "assign",
+                          "target": "agent.agentOptions",
+                          "args": { "value": [] }
+                        },
+                        {
+                          "do": "assign",
+                          "target": "agent.listed",
+                          "args": { "value": false }
+                        },
+                        {
+                          "do": "assign",
+                          "target": "agent.listError",
+                          "args": { "value": "" }
                         }
                       ],
                       "setAgent": [
@@ -40,6 +63,12 @@
                           "do": "assign",
                           "target": "agent.agentName",
                           "args": { "from": "$event.value" }
+                        }
+                      ],
+                      "listAgents": [
+                        {
+                          "do": "invoke",
+                          "args": { "tool": "listAgents" }
                         }
                       ],
                       "verify": [

@@ -51,6 +51,35 @@ export const effects: EffectHandlerMap = {
     }
   },
 
+  // List the agents available for this key (new Foundry Agent Service, agents-by-name). Results are
+  // written to the store so the login view renders from state and a plain ui:button gets the spinner.
+  async listAgents(ctx: EffectContext) {
+    const key = str(ctx.get("agent.key")).trim();
+    if (!key) return { ops: [] };
+    try {
+      const names = await createFoundryProxy({ baseUrl: proxyBase(), key }).listAgents();
+      const ops = [
+        setOp("agent.listError", ""),
+        setOp("agent.listed", true),
+        setOp("agent.agentOptions", names),
+      ];
+      // Default-select the first agent so the Select matches state and Continue can appear.
+      if (names.length > 0 && str(ctx.get("agent.agentName")).trim() === "") {
+        ops.push(setOp("agent.agentName", names[0]));
+      }
+      return { ops };
+    } catch (error) {
+      const rejected = error instanceof FoundryProxyError && (error.status === 401 || error.status === 403);
+      return {
+        ops: [
+          setOp("agent.agentOptions", []),
+          setOp("agent.listed", true),
+          setOp("agent.listError", rejected ? "That access key was rejected." : "Couldn't load the agent list."),
+        ],
+      };
+    }
+  },
+
   // Post a message to the agent through the proxy, threading the conversation via conversationId.
   async askAgent(ctx: EffectContext) {
     const message = str(ctx.get("agent.draft")).trim();
@@ -90,6 +119,9 @@ export const effects: EffectHandlerMap = {
         setOp("agent.reply", ""),
         setOp("agent.lastAsked", ""),
         setOp("agent.conversationId", ""),
+        setOp("agent.agentOptions", []),
+        setOp("agent.listed", false),
+        setOp("agent.listError", ""),
         setOp("agent.error", ""),
         setOp("agent.authError", ""),
       ],
