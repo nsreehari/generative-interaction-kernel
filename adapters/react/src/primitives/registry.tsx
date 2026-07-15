@@ -23,6 +23,7 @@ import { GenUIRoot } from "../useGenUI";
 import { loadBundle, bundleSignature, type Bundle, type SerializableBundle } from "./bundle";
 import { useBundleRegistry, useProjectionProviderResolver } from "./bundle-registry";
 import { useGenUIFileServices } from "./fileServices";
+import { useCountdownTimer } from "./useCountdownTimer";
 
 interface Option {
   value: string;
@@ -1720,6 +1721,37 @@ function Button({ node, emit }: ProjectionViewProps) {
   );
 }
 
+function TimerButton({ node, emit }: ProjectionViewProps) {
+  const p = readProps(node);
+  const configuredDuration = Number(node.props.durationMs ?? node.props.duration ?? 3000);
+  const durationMs = Number.isFinite(configuredDuration) ? Math.max(250, configuredDuration) : 3000;
+  const disabled = p.bool("disabled");
+  const running = node.props.autoStart !== false && !disabled;
+  const timer = useCountdownTimer({
+    durationMs,
+    running,
+    onElapsed: () => {
+      emit("press", { reason: "timeout" });
+      timer.restart();
+    },
+  });
+
+  const press = () => {
+    emit("press", { reason: "manual" });
+    timer.restart();
+  };
+
+  return (
+    <button
+      className={`gx-btn gx-btn-${p.str("tone", "default")}`}
+      disabled={disabled}
+      onClick={press}
+    >
+      {p.str("label")}{node.props.showCountdown !== false ? ` · ${timer.remainingSeconds}` : ""}
+    </button>
+  );
+}
+
 function TabBar({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
   const active = p.str("active");
@@ -2292,6 +2324,7 @@ export const FLOOR_COMPONENTS: Record<string, ProjectionView> = {
   select: Select,
   form: Form,
   button: Button,
+  "timer-button": TimerButton,
   tabBar: TabBar,
   chips: Chips,
   searchbox: Searchbox,

@@ -72,6 +72,7 @@ export const PRIMITIVE_CAPABILITIES: Record<string, CapabilityDescriptor> = {
   form: { propsSchema: anyProps, emits: ["save"] }, // schema-ish committed form, emits save {values}
   "json-field": { propsSchema: anyProps, emits: ["save"], dataProp: "value" }, // single json textarea = one-field committed form, emits save {values}
   button: { propsSchema: anyProps, emits: ["press"] }, // label + tone + disabled
+  "timer-button": { propsSchema: anyProps, emits: ["press"] }, // countdown button, emits press {reason}
   tabBar: { propsSchema: anyProps, emits: ["select"] }, // active + options, emits select {value}
   chips: { propsSchema: anyProps, emits: ["remove"] }, // items + emits remove {value}
   searchbox: { propsSchema: anyProps, emits: ["submit"], dataProp: "value" }, // committed single-field search input

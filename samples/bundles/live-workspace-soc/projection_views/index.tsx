@@ -12,7 +12,7 @@ import {
   Play24Filled,
   ShieldLock24Regular,
 } from "@fluentui/react-icons";
-import type { ProjectionView } from "@gik/react";
+import { useCountdownTimer, type ProjectionView } from "@gik/react";
 
 interface Incident {
   id: string;
@@ -327,11 +327,16 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit }) => {
     return null;
   }, [act, proposal?.authorityResult]);
 
-  React.useEffect(() => {
-    if (!autoPlay || !nextAction || nextAction.event === "approve") return;
-    const timer = window.setTimeout(() => emitRef.current(nextAction.event, {}, nextAction.actorId), GUIDED_STEP_MS);
-    return () => window.clearTimeout(timer);
-  }, [autoPlay, nextAction]);
+  const autoTimer = useCountdownTimer({
+    durationMs: GUIDED_STEP_MS,
+    running: autoPlay && !!nextAction && nextAction.event !== "approve",
+    resetKey: nextAction ? `${nextAction.event}:${nextAction.actorId}` : "none",
+    onElapsed: () => {
+      if (nextAction && nextAction.event !== "approve") {
+        emitRef.current(nextAction.event, {}, nextAction.actorId);
+      }
+    },
+  });
 
   React.useEffect(() => {
     if (autoPlay && (!nextAction || nextAction.event === "approve")) setAutoPlay(false);
@@ -380,7 +385,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit }) => {
           <Button appearance="subtle" icon={<ArrowReset24Regular />} aria-label="Reset scenario" onClick={reset} />
           <div className={styles.advanceMode} role="group" aria-label="Tour advance mode">
             <Button appearance={autoPlay ? "subtle" : "primary"} aria-pressed={!autoPlay} onClick={() => setAutoPlay(false)}>Manual next</Button>
-            <Button appearance={autoPlay ? "primary" : "subtle"} aria-pressed={autoPlay} icon={<Play24Filled />} disabled={!nextAction || nextAction.event === "approve"} onClick={() => setAutoPlay(true)}>Auto next</Button>
+            <Button appearance={autoPlay ? "primary" : "subtle"} aria-pressed={autoPlay} icon={<Play24Filled />} disabled={!nextAction || nextAction.event === "approve"} onClick={() => setAutoPlay(true)}>Auto next{autoPlay ? ` · ${autoTimer.remainingSeconds}` : ""}</Button>
           </div>
           {!autoPlay && nextAction ? <Button appearance="primary" icon={<ChevronRight20Regular />} onClick={() => emit(nextAction.event, {}, nextAction.actorId)}>{nextAction.event === "approve" ? nextAction.label : `Next · ${nextAction.label}`}</Button> : null}
         </div>
