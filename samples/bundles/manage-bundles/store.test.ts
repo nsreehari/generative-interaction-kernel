@@ -42,7 +42,7 @@ function setPath(root: JsonRecord, path: string, value: Json): void {
 }
 
 function applyOps(state: JsonRecord, ops: readonly PatchOp[] | undefined): void {
-  for (const op of ops ?? []) if (op.op === "set") setPath(state, op.path, op.value);
+  for (const op of ops ?? []) if (op.op === "set") setPath(state, op.path, op.value ?? null);
 }
 
 function opValue(ops: readonly PatchOp[] | undefined, path: string): Json {
@@ -52,7 +52,7 @@ function opValue(ops: readonly PatchOp[] | undefined, path: string): Json {
 
 function context(state: JsonRecord, payload: JsonRecord = {}) {
   return {
-    get: (path: string) => getPath(state, path),
+    get: (path: string) => getPath(state, path) ?? null,
     set: (path: string, value: Json) => ({ op: "set" as const, path, value }),
     args: {},
     payload,
