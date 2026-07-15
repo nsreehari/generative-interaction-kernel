@@ -7,7 +7,7 @@
 //
 // All three talk to the BFF proxy (foundry-agent-proxy Azure Function) — never to Azure directly, so
 // the published static page holds no Azure credential. The user-supplied function key travels as the
-// `x-functions-key` header and the user-supplied agent id in the request body.
+// `x-functions-key` header and the user-supplied agent name in the request body.
 
 import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
 import manifest from "../manifest.json";
@@ -33,19 +33,19 @@ async function errorMessage(res: Response): Promise<string> {
 }
 
 export const effects: EffectHandlerMap = {
-  // Smoke test: the proxy host rejects a bad key with 401/403; a valid key + resolvable agent id
+  // Smoke test: the proxy host rejects a bad key with 401/403; a valid key + resolvable agent name
   // returns 200 with the agent name, which unlocks the demo.
   async verifyKey(ctx: EffectContext) {
     const key = str(ctx.get("agent.key")).trim();
-    const agentId = str(ctx.get("agent.agentId")).trim();
-    if (!key || !agentId) {
+    const agentName = str(ctx.get("agent.agentName")).trim();
+    if (!key || !agentName) {
       return { ops: [setOp("agent.authError", "Enter your access key and choose an agent.")] };
     }
     try {
       const res = await fetch(`${proxyBase()}/api/agent/ping`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-functions-key": key },
-        body: JSON.stringify({ agentId }),
+        body: JSON.stringify({ agentName }),
       });
       if (res.status === 401 || res.status === 403) {
         return { ops: [setOp("agent.authError", "That access key was rejected.")] };
@@ -58,7 +58,7 @@ export const effects: EffectHandlerMap = {
       return {
         ops: [
           setOp("agent.authError", ""),
-          setOp("agent.agentName", str(data?.agentName) || agentId),
+          setOp("agent.agentName", str(data?.agentName) || agentName),
           setOp("agent.stage", "unlocked"),
         ],
       };
@@ -67,38 +67,51 @@ export const effects: EffectHandlerMap = {
     }
   },
 
-  // Post a message to the agent through the proxy, threading the conversation via threadId.
+  // Post a message to the agent through the proxy, threading the conversation via conversationId.
+  // Every return bumps replyRev — the agent:ask view watches it to clear its in-flight spinner.
   async askAgent(ctx: EffectContext) {
+    const nextRev = (Number(ctx.get("agent.replyRev")) || 0) + 1;
     const message = str(ctx.get("agent.draft")).trim();
-    if (!message) return;
+    if (!message) return { ops: [setOp("agent.replyRev", nextRev)] };
     const key = str(ctx.get("agent.key")).trim();
-    const agentId = str(ctx.get("agent.agentId")).trim();
+    const agentName = str(ctx.get("agent.agentName")).trim();
     try {
       const res = await fetch(`${proxyBase()}/api/agent/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-functions-key": key },
         body: JSON.stringify({
           message,
-          agentId,
-          threadId: str(ctx.get("agent.threadId")) || undefined,
+          agentName,
+          conversationId: str(ctx.get("agent.conversationId")) || undefined,
         }),
       });
       if (!res.ok) {
         const msg = await errorMessage(res);
-        return { ops: [setOp("agent.error", msg || "Couldn't get a reply. Please try again.")] };
+        return {
+          ops: [
+            setOp("agent.replyRev", nextRev),
+            setOp("agent.error", msg || "Couldn't get a reply. Please try again."),
+          ],
+        };
       }
-      const data = (await res.json()) as { threadId?: string; reply?: string };
+      const data = (await res.json()) as { conversationId?: string; reply?: string };
       return {
         ops: [
+          setOp("agent.replyRev", nextRev),
           setOp("agent.error", ""),
           setOp("agent.lastAsked", message),
           setOp("agent.draft", ""),
-          setOp("agent.threadId", str(data?.threadId)),
+          setOp("agent.conversationId", str(data?.conversationId)),
           setOp("agent.reply", str(data?.reply)),
         ],
       };
     } catch {
-      return { ops: [setOp("agent.error", "Couldn't reach the service. Please try again.")] };
+      return {
+        ops: [
+          setOp("agent.replyRev", nextRev),
+          setOp("agent.error", "Couldn't reach the service. Please try again."),
+        ],
+      };
     }
   },
 
@@ -110,7 +123,7 @@ export const effects: EffectHandlerMap = {
         setOp("agent.key", ""),
         setOp("agent.reply", ""),
         setOp("agent.lastAsked", ""),
-        setOp("agent.threadId", ""),
+        setOp("agent.conversationId", ""),
         setOp("agent.error", ""),
         setOp("agent.authError", ""),
       ],

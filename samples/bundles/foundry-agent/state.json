@@ -2,13 +2,13 @@
   "agent": {
     "stage": "locked",
     "key": "",
-    "agentId": "",
     "agentName": "",
     "authError": "",
     "draft": "",
     "reply": "",
     "lastAsked": "",
-    "threadId": "",
+    "conversationId": "",
+    "replyRev": 0,
     "error": ""
   }
 }

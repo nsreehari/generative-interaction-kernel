@@ -24,7 +24,7 @@
                   "edges": {
                     "read": {
                       "key": "agent.key",
-                      "agentId": "agent.agentId",
+                      "agentName": "agent.agentName",
                       "authError": "agent.authError"
                     },
                     "on": {
@@ -38,7 +38,7 @@
                       "setAgent": [
                         {
                           "do": "assign",
-                          "target": "agent.agentId",
+                          "target": "agent.agentName",
                           "args": { "from": "$event.value" }
                         }
                       ],
@@ -90,12 +90,13 @@
                   }
                 },
                 {
-                  "capability": "ui:button",
+                  "capability": "agent:ask",
                   "id": "agent-ask-btn",
-                  "props": { "label": "Ask", "tone": "primary" },
+                  "props": { "label": "Ask" },
                   "edges": {
+                    "read": { "replyRev": "agent.replyRev" },
                     "on": {
-                      "press": [
+                      "ask": [
                         {
                           "do": "invoke",
                           "args": { "tool": "askAgent" }

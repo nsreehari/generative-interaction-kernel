@@ -28,13 +28,13 @@ const useStyles = makeStyles({
 });
 
 // The whole sign-in front door: fetches the agent list for the entered key (locally, with a spinner),
-// then lets the user pick an agent and continue. Only the durable bits — the key, the chosen agent id,
-// and the "verify" intent — are pushed to the store via `emit`; the transient list/loading state lives
-// in local React state.
+// then lets the user pick an agent and continue. Only the durable bits — the key, the chosen agent
+// name, and the "verify" intent — are pushed to the store via `emit`; the transient list/loading state
+// lives in local React state.
 const FoundryLogin: ProjectionView = ({ node, emit }) => {
   const styles = useStyles();
   const key = String(node.props.key ?? "");
-  const agentId = String(node.props.agentId ?? "");
+  const agentName = String(node.props.agentName ?? "");
   const authError = String(node.props.authError ?? "");
 
   const [loading, setLoading] = React.useState(false);
@@ -50,7 +50,7 @@ const FoundryLogin: ProjectionView = ({ node, emit }) => {
   }, [key]);
 
   const hasKey = key.trim().length > 0;
-  const hasAgent = agentId.trim().length > 0;
+  const hasAgent = agentName.trim().length > 0;
   const showSelect = !loading && options.length > 0;
   const showNoAgents = !loading && listed && options.length === 0 && listError === "";
 
@@ -60,7 +60,9 @@ const FoundryLogin: ProjectionView = ({ node, emit }) => {
     setLoading(true);
     setListError("");
     try {
-      const res = await fetch(`${PROXY_BASE}/api/foundry/assistants?api-version=2025-05-01`, {
+      // New Foundry Agent Service: agents are listed by NAME under /agents (api-version=v1),
+      // not the classic /assistants endpoint.
+      const res = await fetch(`${PROXY_BASE}/api/foundry/agents?api-version=v1`, {
         method: "GET",
         headers: { "x-functions-key": trimmed },
       });
@@ -76,18 +78,19 @@ const FoundryLogin: ProjectionView = ({ node, emit }) => {
         setListed(true);
         return;
       }
-      const data = (await res.json()) as { data?: Array<{ id?: unknown; name?: unknown }> };
+      const data = (await res.json()) as {
+        data?: Array<{ name?: unknown; state?: unknown }>;
+      };
       const opts: AgentOption[] = (Array.isArray(data?.data) ? data.data : [])
-        .filter((a) => a && typeof a.id === "string")
+        .filter((a) => a && typeof a.name === "string" && a.name.trim() !== "" && a.state !== "disabled")
         .map((a) => {
-          const id = String(a.id);
-          const name = typeof a.name === "string" ? a.name : "";
-          return { value: id, label: name ? `${name} (${id})` : id };
+          const name = String(a.name);
+          return { value: name, label: name };
         });
       setOptions(opts);
       setListed(true);
       // Default to the first agent so the visible selection matches state and Continue can appear.
-      if (opts.length > 0 && agentId.trim() === "") emit("setAgent", { value: opts[0].value });
+      if (opts.length > 0 && agentName.trim() === "") emit("setAgent", { value: opts[0].value });
     } catch {
       setOptions([]);
       setListError("Couldn't reach the service. Please try again.");
@@ -120,7 +123,7 @@ const FoundryLogin: ProjectionView = ({ node, emit }) => {
 
       {showSelect && (
         <Field label="Agent">
-          <Select value={agentId} onChange={(_event, data) => emit("setAgent", { value: data.value })}>
+          <Select value={agentName} onChange={(_event, data) => emit("setAgent", { value: data.value })}>
             {options.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -157,4 +160,36 @@ const FoundryLogin: ProjectionView = ({ node, emit }) => {
   );
 };
 
-export default { login: FoundryLogin };
+// The Ask button, with an in-flight spinner. The kernel dispatch is atomic (reducer ops + the
+// askAgent effect settle before a single re-render), so a store flag can't paint a "thinking"
+// state. Instead we hold `loading` in LOCAL React state: clicking flips it true (renders
+// immediately), and we clear it when the effect completes — signaled by a bumped `agent.replyRev`.
+const FoundryAsk: ProjectionView = ({ node, emit }) => {
+  const styles = useStyles();
+  const label = String(node.props.label ?? "Ask");
+  const replyRev = Number(node.props.replyRev ?? 0);
+  const [loading, setLoading] = React.useState(false);
+
+  // Each completed ask bumps replyRev; that's our cue to drop the spinner.
+  React.useEffect(() => {
+    setLoading(false);
+  }, [replyRev]);
+
+  return (
+    <div className={styles.stack}>
+      <Button
+        appearance="primary"
+        disabled={loading}
+        onClick={() => {
+          setLoading(true);
+          emit("ask");
+        }}
+      >
+        {label}
+      </Button>
+      {loading && <Spinner size="tiny" labelPosition="after" label="Thinking…" />}
+    </div>
+  );
+};
+
+export default { login: FoundryLogin, ask: FoundryAsk };

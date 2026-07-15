@@ -46,6 +46,10 @@
         "propsSchema": { "type": "object", "additionalProperties": true },
         "emits": ["setKey", "setAgent", "verify"]
       },
+      "agent:ask": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "emits": ["ask"]
+      },
       "ui:button": {
         "propsSchema": { "type": "object", "additionalProperties": true },
         "emits": ["press"]
