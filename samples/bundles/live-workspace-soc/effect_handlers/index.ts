@@ -1,198 +1,483 @@
-import { setOp, type EffectHandlerMap } from "@gik/react";
+import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
 import type { Json } from "@gik/kernel";
 
-const activeActors = [
-  { id: "agent-triage", name: "Triage", role: "Investigation lead", status: "working", activity: "Correlating identity and endpoint evidence", authority: "derive, invoke" },
-  { id: "agent-identity", name: "Identity", role: "Identity specialist", status: "working", activity: "Validating impossible-travel sequence", authority: "derive, invoke" },
-  { id: "agent-endpoint", name: "Endpoint", role: "Endpoint specialist", status: "working", activity: "Inspecting remote service creation", authority: "derive, invoke" },
-  { id: "agent-response", name: "Response", role: "Containment planner", status: "waiting", activity: "Waiting for confidence threshold", authority: "route, confirm" },
-] as const;
+import initialState from "../state.json";
 
-const evidence = [
-  { id: "ev-1", sourceActorId: "agent-identity", kind: "Identity", summary: "Impossible travel followed by privileged token issuance", confidence: 94, time: "09:41" },
-  { id: "ev-2", sourceActorId: "agent-endpoint", kind: "Endpoint", summary: "New remote service created on Host-A from DC-01", confidence: 88, time: "09:42" },
-  { id: "ev-3", sourceActorId: "agent-triage", kind: "Correlation", summary: "Signals align within a four-minute lateral-movement window", confidence: 91, time: "09:43" },
-] as const;
+type RecordValue = Record<string, Json>;
+const resetState = JSON.parse(JSON.stringify(initialState.soc)) as RecordValue;
 
-function appendLedger(current: Json, entry: Record<string, Json>): Json[] {
-  return [...(Array.isArray(current) ? current : []), entry] as Json[];
+function list(ctx: EffectContext, path: string): Json[] {
+  const value = ctx.get(path);
+  return Array.isArray(value) ? value : [];
 }
 
-const initialActors = activeActors.map((actor) => ({
-  ...actor,
-  status: "waiting",
-  activity: "Ready to join the investigation",
-}));
+function actor(ctx: EffectContext, fallback: string): string {
+  return ctx.actorId ?? fallback;
+}
+
+function entry(
+  id: string,
+  time: string,
+  actorId: string,
+  result: string,
+  summary: string,
+  affected: string[]
+): RecordValue {
+  return { id, time, actorId, result, summary, affected };
+}
+
+function appendJournal(ctx: EffectContext, next: RecordValue): Json[] {
+  return [...list(ctx, "soc.journal"), next];
+}
+
+function updateActor(
+  ctx: EffectContext,
+  actorId: string,
+  status: string,
+  activity: string
+): Json[] {
+  return list(ctx, "soc.actors").map((value) => {
+    const current = value as RecordValue;
+    return current.id === actorId ? { ...current, status, activity } : current;
+  });
+}
+
+function roleFor(ctx: EffectContext, actorId: string): string | undefined {
+  const found = list(ctx, "soc.actors").find(
+    (value) => (value as RecordValue).id === actorId
+  ) as RecordValue | undefined;
+  return typeof found?.role === "string" ? found.role : undefined;
+}
 
 export const effects: EffectHandlerMap = {
-  parallelInvestigation(ctx) {
+  requestNextAct(ctx) {
+    const presenter = ctx.get("soc.presenter") as RecordValue;
+    if (presenter.locked === true) return { outcome: "ignored" };
     return {
-      outcome: "validated",
-      detail: { contributionCount: 3 },
+      outcome: "requested",
+      ops: [setOp("soc.presenter", {
+        ...presenter,
+        locked: true,
+        advanceToken: Number(presenter.advanceToken ?? 0) + 1,
+      })],
+    };
+  },
+
+  setPace(ctx) {
+    const presenter = ctx.get("soc.presenter") as RecordValue;
+    const pace = ctx.payload.pace === "auto" ? "auto" : "manual";
+    return {
+      outcome: "updated",
+      ops: [setOp("soc.presenter", {
+        ...presenter,
+        pace,
+        durationMs: pace === "auto" ? 2000 : 120000,
+      })],
+    };
+  },
+
+  setPresentationContext(ctx) {
+    const presentation = ctx.get("soc.presentation") as RecordValue;
+    const contexts = Array.isArray(presentation.contexts) ? presentation.contexts : [];
+    const requested = typeof ctx.payload.contextId === "string" ? ctx.payload.contextId : "";
+    const exists = contexts.some((value) => (value as RecordValue).id === requested);
+    if (!exists || presentation.selectedContext === requested) return { outcome: "ignored" };
+    return {
+      outcome: "projected",
+      ops: [setOp("soc.presentation", {
+        ...presentation,
+        selectedContext: requested,
+        revision: Number(presentation.revision ?? 0) + 1,
+      })],
+    };
+  },
+
+  finishAct(ctx) {
+    const presenter = ctx.get("soc.presenter") as RecordValue;
+    const authorization = ctx.get("soc.authorization") as RecordValue | undefined;
+    const complete = ctx.get("soc.incident.status") === "Contained";
+    return {
+      outcome: "settled",
+      ops: [setOp("soc.presenter", {
+        ...presenter,
+        locked: complete || authorization?.status === "pending",
+      })],
+    };
+  },
+
+  establishIntent(ctx) {
+    const actorId = actor(ctx, "human-morgan");
+    return {
+      outcome: "committed",
+      ops: [
+        setOp("soc.act", 1),
+        setOp("soc.step", "intent-established"),
+        setOp("soc.stage", "Human intent and constraint"),
+        setOp("soc.intent", {
+          statement: "Determine the execution origin, contain safely, preserve evidence.",
+          actorId,
+        }),
+        setOp(
+          "soc.journal",
+          appendJournal(ctx, entry("j-01", "09:40:00", actorId, "committed", "Established investigation intent", ["intent"]))
+        ),
+      ],
+    };
+  },
+
+  addConstraint(ctx) {
+    const actorId = actor(ctx, "human-priya");
+    return {
+      outcome: "committed",
+      ops: [
+        setOp("soc.step", "constraint-added"),
+        setOp("soc.constraints", [{
+          id: "constraint-payroll",
+          actorId,
+          rule: "Do not disrupt DC-01 without commander authorization.",
+          affected: ["DC-01"],
+          active: true,
+        }]),
+        setOp("soc.incident.governance", "Protected constraint active"),
+        setOp(
+          "soc.journal",
+          appendJournal(ctx, entry("j-02", "09:40:18", actorId, "committed", "Protected the active payroll cutover", ["constraints", "DC-01"]))
+        ),
+      ],
+    };
+  },
+
+  suggestExploration(ctx) {
+    const actorId = actor(ctx, "agent-correlation");
+    return {
+      outcome: "suggested",
       ops: [
         setOp("soc.act", 2),
-        setOp("soc.stage", "Investigate in parallel"),
-        setOp("soc.actors", activeActors as unknown as Json),
-        setOp("soc.evidence", evidence as unknown as Json),
-        setOp("soc.hypothesis", {
-          statement: "A compromised privileged identity moved laterally from DC-01 to Host-A.",
-          confidence: 91,
-        }),
-        setOp("soc.ledger", appendLedger(ctx.get("soc.ledger"), {
-          time: "09:43:12",
-          actorId: ctx.actorId ?? "agent-triage",
-          result: "validated",
-          summary: "Three attributed findings committed to shared state",
-        })),
+        setOp("soc.step", "exploration-suggested"),
+        setOp("soc.stage", "Suggested exploration and human reorientation"),
+        setOp("soc.explorations", [{
+          id: "explore-1",
+          revision: 1,
+          actorId,
+          status: "suggested",
+          question: "Where did the privileged session execute?",
+          sources: ["identity", "pam", "endpoint", "network"],
+          windowMinutes: 60,
+          correlationKey: "source-ip+time",
+          safety: "standard queries",
+        }]),
+        setOp("soc.actors", updateActor(ctx, actorId, "needs-review", "Exploration suggested to Morgan")),
+        setOp(
+          "soc.journal",
+          appendJournal(ctx, entry("j-03", "09:41:00", actorId, "suggested", "Suggested cross-source correlation", ["explore-1"]))
+        ),
       ],
     };
   },
 
-  policyGuard(ctx) {
-    const actors = activeActors.map((actor) =>
-      actor.id === "agent-response"
-        ? { ...actor, status: "blocked", activity: "Unsafe containment proposal rejected by policy" }
-        : actor
-    );
-    return {
-      outcome: "rejected",
-      detail: { target: "DC-01", fallback: "increase-telemetry" },
-      ops: [
-        setOp("soc.act", 3),
-        setOp("soc.stage", "Governance says no"),
-        setOp("soc.actors", actors as unknown as Json),
-        setOp("soc.proposal", {
-          id: "proposal-dc01",
-          actorId: ctx.actorId ?? "agent-response",
-          action: "Isolate DC-01",
-          target: "DC-01",
-          authorityResult: "rejected+fallback",
-          reason: "Protected domain controller; evidence does not justify blast radius.",
-          fallback: "Increase telemetry and preserve volatile evidence.",
-        }),
-        setOp("soc.ledger", appendLedger(ctx.get("soc.ledger"), {
-          time: "09:44:03",
-          actorId: ctx.actorId ?? "agent-response",
-          result: "rejected",
-          summary: "Protected asset isolation blocked; safe fallback applied",
-        })),
-      ],
-    };
-  },
-
-  autonomousContinuation(ctx) {
-    const autonomousEvidence = [
-      ...evidence,
-      { id: "ev-4", sourceActorId: "agent-endpoint", kind: "Endpoint", summary: "Host-A beacon persisted while DC-01 indicators cleared", confidence: 97, time: "09:48" },
-    ];
-    const actors = activeActors.map((actor) => ({
-      ...actor,
-      status: "working",
-      activity: actor.id === "agent-response" ? "Recalculating containment target" : "Continuing under autonomous monitoring",
+  amendExploration(ctx) {
+    const actorId = actor(ctx, "human-morgan");
+    const superseded = list(ctx, "soc.explorations").map((value) => ({
+      ...(value as RecordValue),
+      status: "superseded",
     }));
     return {
-      outcome: "validated",
-      detail: { mode: "autonomous" },
+      outcome: "superseded",
       ops: [
-        setOp("soc.act", 4),
-        setOp("soc.stage", "Autonomous continuation"),
-        setOp("soc.mode", "Autonomous"),
-        setOp("soc.actors", actors as unknown as Json),
-        setOp("soc.evidence", autonomousEvidence as unknown as Json),
-        setOp("soc.hypothesis", {
-          statement: "Host-A is the compromised endpoint; DC-01 was a transient source, not the containment target.",
-          confidence: 97,
-        }),
-        setOp("soc.ledger", appendLedger(ctx.get("soc.ledger"), {
-          time: "09:48:29",
-          actorId: ctx.actorId ?? "analyst-morgan",
-          result: "mode-shift",
-          summary: "Agent team continued on the same governed state while analyst stepped away",
-        })),
+        setOp("soc.step", "exploration-amended"),
+        setOp("soc.explorations", [...superseded, {
+          id: "explore-2",
+          revision: 2,
+          actorId,
+          suggestedBy: "agent-correlation",
+          status: "accepted",
+          question: "Where did the privileged session execute?",
+          sources: ["identity", "pam", "endpoint", "network"],
+          windowMinutes: 15,
+          correlationKey: "token+session",
+          safety: "passive-only; preserve Host-A volatile evidence",
+          supersedes: "explore-1",
+        }]),
+        setOp(
+          "soc.journal",
+          appendJournal(ctx, entry("j-04", "09:41:18", actorId, "amended", "Narrowed the window and changed correlation to token/session identity", ["explore-1", "explore-2"]))
+        ),
       ],
     };
   },
 
-  requestContainment(ctx) {
-    const actors = activeActors.map((actor) =>
-      actor.id === "agent-response"
-        ? { ...actor, status: "needs-approval", activity: "Host-A isolation awaiting analyst confirmation" }
-        : { ...actor, status: "waiting", activity: "Evidence chain complete" }
-    );
+  replanExploration(ctx) {
+    const actorId = actor(ctx, "agent-correlation");
+    const explorations = list(ctx, "soc.explorations").map((value) => {
+      const current = value as RecordValue;
+      return current.id === "explore-2" ? { ...current, status: "running" } : current;
+    });
     return {
-      outcome: "confirmation-required",
-      detail: { target: "Host-A", confidence: 97 },
+      outcome: "replanned",
       ops: [
-        setOp("soc.act", 5),
-        setOp("soc.stage", "Governed return"),
-        setOp("soc.mode", "Collaborative"),
-        setOp("soc.actors", actors as unknown as Json),
+        setOp("soc.step", "exploration-running"),
+        setOp("soc.explorations", explorations),
+        setOp("soc.actors", updateActor(ctx, actorId, "working", "Running Morgan's amended passive correlation")),
+        setOp(
+          "soc.journal",
+          appendJournal(ctx, entry("j-05", "09:41:31", actorId, "replanned", "Replanned against the accepted exploration", ["explore-2"]))
+        ),
+      ],
+    };
+  },
+
+  commitPartialFindings(ctx) {
+    const actorId = actor(ctx, "agent-correlation");
+    const evidence = [
+      { id: "ev-1", actorId, source: "identity+pam", summary: "Impossible travel preceded privileged token issuance.", confidence: 94 },
+      { id: "ev-2", actorId, source: "endpoint+network", summary: "Host-A created a remote service while the session appeared to involve DC-01.", confidence: 82 },
+    ];
+    return {
+      outcome: "partial",
+      ops: [
+        setOp("soc.act", 3),
+        setOp("soc.step", "partial-findings"),
+        setOp("soc.stage", "Cross-source result and governed overreach"),
+        setOp("soc.evidence", evidence),
+        setOp("soc.hypothesis", {
+          statement: "The token path involves both DC-01 and Host-A; origin remains unresolved.",
+          confidence: 63,
+          evidenceIds: ["ev-1", "ev-2"],
+        }),
+        setOp(
+          "soc.journal",
+          appendJournal(ctx, entry("j-06", "09:42:06", actorId, "partial", "Committed attributed partial findings", ["evidence", "hypothesis"]))
+        ),
+      ],
+    };
+  },
+
+  evaluateDc01Policy(ctx) {
+    const actorId = actor(ctx, "agent-response");
+    return {
+      outcome: "rejected",
+      detail: { fallback: "increase-telemetry" },
+      ops: [
+        setOp("soc.step", "dc01-rejected"),
+        setOp("soc.incident.governance", "Policy blocked; fallback active"),
         setOp("soc.proposal", {
-          id: "proposal-host-a",
-          actorId: ctx.actorId ?? "agent-response",
-          action: "Isolate Host-A",
-          target: "Host-A",
-          authorityResult: "confirmation-required",
-          reason: "97% confidence; endpoint-only blast radius; evidence preserved.",
+          id: "proposal-dc01",
+          actorId,
+          action: "Isolate DC-01",
+          target: "DC-01",
+          status: "rejected",
+          reason: "Evidence is incomplete, DC-01 is protected, and Response lacks commander authority.",
+          fallback: "Increase DC-01 telemetry, restrict the compromised account, preserve Host-A evidence.",
+        }),
+        setOp("soc.entities", [
+          { id: "DC-01", kind: "domain-controller", criticality: "protected", dependency: "Active payroll cutover", state: "enhanced-telemetry" },
+          { id: "Host-A", kind: "admin-workstation", criticality: "non-critical", dependency: "No active payroll dependency", state: "evidence-preserved" },
+        ]),
+        setOp(
+          "soc.journal",
+          appendJournal(ctx, entry("j-07", "09:42:24", actorId, "rejected+fallback", "Blocked DC-01 isolation and applied safe fallback", ["proposal-dc01", "DC-01", "Host-A"]))
+        ),
+      ],
+    };
+  },
+
+  completeCorrelation(ctx) {
+    const actorId = actor(ctx, "agent-correlation");
+    const evidence = [
+      ...list(ctx, "soc.evidence"),
+      { id: "ev-3", actorId, source: "token+session", summary: "The privileged session was replayed from Host-A; DC-01 only brokered authentication.", confidence: 97 },
+      { id: "ev-4", actorId, source: "endpoint", summary: "Host-A continued beaconing after DC-01 indicators cleared.", confidence: 98 },
+    ];
+    return {
+      outcome: "validated",
+      ops: [
+        setOp("soc.step", "origin-resolved"),
+        setOp("soc.evidence", evidence),
+        setOp("soc.correlations", [{
+          id: "corr-1",
+          actorId,
+          evidenceIds: ["ev-1", "ev-2", "ev-3", "ev-4"],
+          relationship: "Host-A replayed the token; DC-01 brokered authentication",
+          strength: 97,
+        }]),
+        setOp("soc.hypothesis", {
+          statement: "Host-A is the compromised execution point; DC-01 is a protected dependency, not the containment target.",
+          confidence: 97,
           evidenceIds: ["ev-1", "ev-2", "ev-3", "ev-4"],
         }),
-        setOp("soc.ledger", appendLedger(ctx.get("soc.ledger"), {
-          time: "09:49:11",
-          actorId: ctx.actorId ?? "agent-response",
-          result: "confirmation-required",
-          summary: "Host-A isolation returned to analyst with complete evidence chain",
-        })),
+        setOp(
+          "soc.journal",
+          appendJournal(ctx, entry("j-08", "09:42:47", actorId, "validated", "Resolved Host-A as the execution origin", ["corr-1", "hypothesis", "Host-A"]))
+        ),
+      ],
+    };
+  },
+
+  proposeHostA(ctx) {
+    const actorId = actor(ctx, "agent-response");
+    return {
+      outcome: "suggested",
+      ops: [
+        setOp("soc.act", 4),
+        setOp("soc.step", "response-suggested"),
+        setOp("soc.stage", "Response suggestion and human reorientation"),
+        setOp("soc.proposal", {
+          id: "proposal-host-a",
+          revision: 1,
+          actorId,
+          action: "Capture volatile state, restrict network access, isolate Host-A",
+          target: "Host-A",
+          status: "suggested",
+          sequence: ["capture", "restrict", "isolate"],
+        }),
+        setOp(
+          "soc.journal",
+          appendJournal(ctx, entry("j-09", "09:43:04", actorId, "suggested", "Suggested bounded Host-A containment", ["proposal-host-a"]))
+        ),
+      ],
+    };
+  },
+
+  reviseResponse(ctx) {
+    const actorId = actor(ctx, "human-morgan");
+    const proposal = ctx.get("soc.proposal") as RecordValue;
+    return {
+      outcome: "superseded",
+      ops: [
+        setOp("soc.step", "response-revised"),
+        setOp("soc.proposal", {
+          ...proposal,
+          revision: 2,
+          status: "revised",
+          revisedBy: actorId,
+          sequence: ["preserve-forensics", "verify-payroll-dependency", "restrict", "isolate"],
+        }),
+        setOp(
+          "soc.journal",
+          appendJournal(ctx, entry("j-10", "09:43:19", actorId, "amended", "Required forensic preservation and payroll dependency verification first", ["proposal-host-a"]))
+        ),
+      ],
+    };
+  },
+
+  calculateResponse(ctx) {
+    const actorId = actor(ctx, "agent-response");
+    const proposal = ctx.get("soc.proposal") as RecordValue;
+    return {
+      outcome: "validated",
+      ops: [
+        setOp("soc.step", "response-validated"),
+        setOp("soc.proposal", {
+          ...proposal,
+          status: "ready-for-recommendation",
+          blastRadius: "Endpoint only",
+          payrollDependency: "None",
+          reversible: true,
+          evidenceReady: true,
+        }),
+        setOp(
+          "soc.journal",
+          appendJournal(ctx, entry("j-11", "09:43:35", actorId, "validated", "Verified endpoint-only blast radius and no payroll dependency", ["proposal-host-a", "Host-A"]))
+        ),
+      ],
+    };
+  },
+
+  recommendContainment(ctx) {
+    const actorId = actor(ctx, "human-morgan");
+    return {
+      outcome: "recommended",
+      ops: [
+        setOp("soc.step", "awaiting-commander"),
+        setOp("soc.incident.governance", "Awaiting commander"),
+        setOp("soc.recommendation", {
+          id: "rec-1",
+          actorId,
+          proposalId: "proposal-host-a",
+          rationale: "Host-A is the confirmed origin and can be isolated without payroll impact.",
+        }),
+        setOp("soc.authorization", {
+          proposalId: "proposal-host-a",
+          requiredRole: "Incident Commander",
+          status: "pending",
+        }),
+        setOp(
+          "soc.journal",
+          appendJournal(ctx, entry("j-12", "09:43:48", actorId, "recommended", "Recommended Host-A isolation; commander authority required", ["rec-1", "proposal-host-a"]))
+        ),
+      ],
+    };
+  },
+
+  authorizeContainment(ctx) {
+    const actorId = actor(ctx, "human-priya");
+    if (roleFor(ctx, actorId) !== "Incident Commander") {
+      return {
+        outcome: "rejected",
+        detail: { reason: "commander-authority-required" },
+        ops: [
+          setOp(
+            "soc.journal",
+            appendJournal(ctx, entry("j-auth-rejected", "09:44:00", actorId, "rejected", "Authorization rejected; Incident Commander authority required", ["authorization"]))
+          ),
+        ],
+      };
+    }
+    return {
+      outcome: "authorized",
+      ops: [
+        setOp("soc.act", 5),
+        setOp("soc.step", "authorized"),
+        setOp("soc.stage", "Correct authority and execution"),
+        setOp("soc.incident.governance", "Authorized"),
+        setOp("soc.authorization", {
+          proposalId: "proposal-host-a",
+          requiredRole: "Incident Commander",
+          status: "authorized",
+          actorId,
+        }),
+        setOp(
+          "soc.journal",
+          appendJournal(ctx, entry("j-13", "09:44:08", actorId, "authorized", "Authorized the evidence-backed Host-A isolation", ["authorization", "proposal-host-a"]))
+        ),
       ],
     };
   },
 
   executeContainment(ctx) {
-    const proposal = ctx.get("soc.proposal") as Record<string, Json> | undefined;
-    if (proposal?.authorityResult !== "confirmation-required") {
-      return {
-        outcome: "rejected",
-        detail: { reason: "no-confirmation-pending" },
-        ops: [
-          setOp("soc.ledger", appendLedger(ctx.get("soc.ledger"), {
-            time: "09:49:12",
-            actorId: ctx.actorId ?? "analyst-morgan",
-            result: "rejected",
-            summary: "Execution blocked because no confirmation-gated proposal was pending",
-          })),
-        ],
-      };
+    const authorization = ctx.get("soc.authorization") as RecordValue | undefined;
+    if (authorization?.status !== "authorized") {
+      return { outcome: "rejected", detail: { reason: "authorization-required" } };
     }
+    const actorId = actor(ctx, "agent-response");
+    const proposal = ctx.get("soc.proposal") as RecordValue;
+    const entities = list(ctx, "soc.entities").map((value) => {
+      const entity = value as RecordValue;
+      return entity.id === "Host-A" ? { ...entity, state: "isolated" } : entity;
+    });
     return {
       outcome: "executed",
-      detail: { target: "Host-A" },
       ops: [
-        setOp("soc.incident.status", "Contained"),
+        setOp("soc.step", "contained"),
         setOp("soc.stage", "Containment complete"),
-        setOp("soc.proposal", { ...proposal, authorityResult: "executed", approvedBy: ctx.actorId ?? "analyst-morgan" }),
-        setOp("soc.actors", activeActors.map((actor) => ({ ...actor, status: "idle", activity: "Investigation complete" })) as unknown as Json),
-        setOp("soc.ledger", appendLedger(ctx.get("soc.ledger"), {
-          time: "09:49:27",
-          actorId: ctx.actorId ?? "analyst-morgan",
-          result: "executed",
-          summary: "Host-A isolated after explicit analyst confirmation",
-        })),
+        setOp("soc.incident.status", "Contained"),
+        setOp("soc.incident.governance", "Executed"),
+        setOp("soc.proposal", { ...proposal, status: "executed", executedBy: actorId }),
+        setOp("soc.entities", entities),
+        setOp(
+          "soc.journal",
+          appendJournal(ctx, entry("j-14", "09:44:12", actorId, "executed", "Isolated Host-A under Priya's authorization", ["Host-A", "proposal-host-a"]))
+        ),
       ],
     };
   },
 
   resetScenario() {
     return {
-      ops: [
-        setOp("soc.act", 1),
-        setOp("soc.stage", "Assemble the team"),
-        setOp("soc.mode", "Collaborative"),
-        setOp("soc.incident.status", "Investigating"),
-        setOp("soc.actors", initialActors as unknown as Json),
-        setOp("soc.evidence", []),
-        setOp("soc.hypothesis", { statement: "Suspicious identity activity may be connected to lateral movement on Host-A.", confidence: 32 }),
-        setOp("soc.proposal", null),
-        setOp("soc.ledger", [{ time: "09:40:00", actorId: "analyst-morgan", result: "intent", summary: "Establish scope, contain safely, preserve evidence" }]),
-      ],
+      outcome: "reset",
+      ops: Object.entries(resetState).map(([key, value]) =>
+        setOp(`soc.${key}`, JSON.parse(JSON.stringify(value)) as Json)
+      ),
     };
   },
 };

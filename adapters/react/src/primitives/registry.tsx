@@ -1343,6 +1343,7 @@ function Field({ node, emit }: ProjectionViewProps) {
     <label className="gx-field">
       {p.str("label") ? <span className="gx-field-label">{p.str("label")}</span> : null}
       <input
+        {...(p.bool("secret") ? { type: "password" } : {})}
         value={value}
         placeholder={p.str("placeholder")}
         onChange={(e) => {

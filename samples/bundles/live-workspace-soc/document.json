@@ -7,20 +7,56 @@
       "id": "soc-workspace",
       "edges": {
         "on": {
-          "parallel": [
-            { "do": "invoke", "args": { "tool": "parallelInvestigation" } }
+          "establishIntent": [
+            { "do": "invoke", "args": { "tool": "establishIntent" } }
           ],
-          "overreach": [
-            { "do": "route", "args": { "tool": "policyGuard", "to": "isolate:DC-01" } }
+          "addConstraint": [
+            { "do": "invoke", "args": { "tool": "addConstraint" } }
           ],
-          "autonomous": [
-            { "do": "invoke", "args": { "tool": "autonomousContinuation" } }
+          "suggestExploration": [
+            { "do": "invoke", "args": { "tool": "suggestExploration" } }
           ],
-          "requestContainment": [
-            { "do": "confirm", "args": { "tool": "requestContainment", "title": "Contain Host-A", "message": "Return this evidence-backed isolation proposal to the analyst?", "danger": true } }
+          "amendExploration": [
+            { "do": "invoke", "args": { "tool": "amendExploration" } }
           ],
-          "approve": [
+          "replanExploration": [
+            { "do": "invoke", "args": { "tool": "replanExploration" } }
+          ],
+          "commitPartialFindings": [
+            { "do": "invoke", "args": { "tool": "commitPartialFindings" } }
+          ],
+          "proposeDc01": [
+            { "do": "route", "args": { "tool": "evaluateDc01Policy", "to": "isolate:DC-01" } }
+          ],
+          "completeCorrelation": [
+            { "do": "invoke", "args": { "tool": "completeCorrelation" } }
+          ],
+          "proposeHostA": [
+            { "do": "invoke", "args": { "tool": "proposeHostA" } }
+          ],
+          "reviseResponse": [
+            { "do": "invoke", "args": { "tool": "reviseResponse" } }
+          ],
+          "calculateResponse": [
+            { "do": "invoke", "args": { "tool": "calculateResponse" } }
+          ],
+          "recommendContainment": [
+            { "do": "invoke", "args": { "tool": "recommendContainment" } }
+          ],
+          "authorizeContainment": [
+            { "do": "confirm", "args": { "tool": "authorizeContainment", "title": "Authorize Host-A isolation", "message": "Authorize the evidence-backed, reversible isolation plan?", "confirmLabel": "Authorize", "danger": true } }
+          ],
+          "executeContainment": [
             { "do": "invoke", "args": { "tool": "executeContainment" } }
+          ],
+          "setPace": [
+            { "do": "invoke", "args": { "tool": "setPace" } }
+          ],
+          "setPresentationContext": [
+            { "do": "invoke", "args": { "tool": "setPresentationContext" } }
+          ],
+          "finishAct": [
+            { "do": "invoke", "args": { "tool": "finishAct" } }
           ],
           "reset": [
             { "do": "invoke", "args": { "tool": "resetScenario" } }
@@ -29,14 +65,42 @@
         "read": {
           "act": "soc.act",
           "incident": "soc.incident",
-          "mode": "soc.mode",
+          "presenter": "soc.presenter",
+          "presentation": "soc.presentation",
           "stage": "soc.stage",
+          "step": "soc.step",
           "actors": "soc.actors",
+          "intent": "soc.intent",
+          "constraints": "soc.constraints",
+          "dataSources": "soc.dataSources",
+          "explorations": "soc.explorations",
           "evidence": "soc.evidence",
+          "correlations": "soc.correlations",
+          "entities": "soc.entities",
           "hypothesis": "soc.hypothesis",
           "proposal": "soc.proposal",
-          "ledger": "soc.ledger"
-        }
+          "recommendation": "soc.recommendation",
+          "authorization": "soc.authorization",
+          "journal": "soc.journal"
+        },
+        "children": [
+          {
+            "capability": "ui:timer-button",
+            "id": "next-act-timer-region",
+            "props": { "label": "Next act", "tone": "primary", "showCountdown": true },
+            "edges": {
+              "read": {
+                "durationMs": "soc.presenter.durationMs",
+                "disabled": "soc.presenter.locked"
+              },
+              "on": {
+                "press": [
+                  { "do": "invoke", "args": { "tool": "requestNextAct" } }
+                ]
+              }
+            }
+          }
+        ]
       }
     }
   }

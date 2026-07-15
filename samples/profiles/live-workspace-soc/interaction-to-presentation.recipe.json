@@ -1,0 +1,40 @@
+{
+  "gik": "0.1",
+  "type": "lowering-recipe",
+  "payload": {
+    "id": "soc.interaction-to-presentation",
+    "from": "interaction",
+    "to": "presentation",
+    "metadata": {
+      "executor": "plan-presentation",
+      "descriptor": "actor + role + device + task + disclosure + layout"
+    },
+    "constrainedWhen": [
+      { "presentationContext": "priya-mobile" },
+      { "presentationContext": "morgan-pager" }
+    ],
+    "templates": [
+      { "name": "shared-console", "arrangement": "workspace" },
+      { "name": "decision-compact", "arrangement": "stack" },
+      { "name": "agent-console", "arrangement": "console" }
+    ],
+    "program": [
+      { "slot": "template", "match": { "presentationContext": "priya-mobile" }, "emit": { "template": "decision-compact", "layout": "priya_mobile" } },
+      { "slot": "template", "match": { "presentationContext": "morgan-pager" }, "emit": { "template": "decision-compact", "layout": "morgan_pager" } },
+      { "slot": "template", "match": { "presentationContext": "correlation-agent" }, "emit": { "template": "agent-console", "layout": "correlation_agent" } },
+      { "slot": "template", "match": { "presentationContext": "response-agent" }, "emit": { "template": "agent-console", "layout": "response_agent" } },
+      { "slot": "template", "match": { "presentationContext": "priya-laptop" }, "emit": { "template": "shared-console", "layout": "priya_command" } },
+      { "slot": "template", "match": { "presentationContext": "morgan-workstation" }, "emit": { "template": "shared-console", "layout": "morgan_investigation" } },
+      { "slot": "template", "match": { "presentationContext": "full-substrate" }, "emit": { "template": "shared-console", "layout": "full_substrate" } },
+      { "slot": "template", "match": {}, "emit": { "template": "shared-console", "layout": "war_room" } },
+      { "slot": "rank", "match": {}, "emit": { "rank": 0 } },
+      { "slot": "priority", "match": {}, "emit": { "priority": "primary" } },
+      { "slot": "disclosure", "match": {}, "emit": { "disclosure": "always" } },
+      { "slot": "presentation", "match": { "region": "next-act-timer" }, "emit": { "presentation": "presenter-control" } },
+      { "slot": "rationale", "match": { "presentationContext": "priya-mobile" }, "emit": { "template": "Commander context keeps consequential decisions glanceable." } },
+      { "slot": "rationale", "match": { "presentationContext": "morgan-pager" }, "emit": { "template": "Analyst pager context exposes only urgent findings and pending work." } },
+      { "slot": "rationale", "match": {}, "emit": { "template": "The specialized SOC workspace interprets one substrate for {{presentationContext}}." } }
+    ],
+    "cap": { "preserveRequired": true }
+  }
+}

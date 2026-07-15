@@ -123,6 +123,7 @@ export const FLOOR_READ_KEYS: Record<string, string[]> = {
   field: ["value"],
   textarea: ["value"],
   select: ["value", "options"],
+  "timer-button": ["durationMs", "disabled"],
   form: ["fields", "schema", "value", "data"],
   "json-field": ["value", "data"],
   searchbox: ["value"],

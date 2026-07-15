@@ -1,0 +1,115 @@
+{
+  "gik": "0.1",
+  "type": "profile",
+  "payload": {
+    "id": "live-workspace-soc",
+    "kind": "genui-profile",
+    "version": "1.0.0",
+    "profile-template": "genui",
+    "metadata": {
+      "productTerm": "semantic-blueprint",
+      "pitchBeat": "T3/Beat 3",
+      "bundleTarget": "live-workspace-soc",
+      "thesis": "Many actors. One state. Multiple views. Governed actions. Complete provenance."
+    },
+    "layers": [
+      {
+        "id": "workflow",
+        "kind": "workflow",
+        "schema": "genui/workflow.schema.json",
+        "description": "Five governed SOC acts containing attributable human and agent steps.",
+        "input": {
+          "properties": {
+            "workflow": { "title": "Workflow", "default": "governed-soc-investigation", "enum": ["governed-soc-investigation"] },
+            "subject": { "title": "Incident", "default": "Privileged access anomaly during payroll cutover" }
+          },
+          "required": ["workflow", "subject"]
+        }
+      },
+      {
+        "id": "interaction",
+        "kind": "interaction",
+        "schema": "genui/interaction.schema.json",
+        "description": "Actor, authority, provenance, semantic regions, and domain action vocabulary."
+      },
+      {
+        "id": "presentation",
+        "kind": "presentation",
+        "schema": "genui/presentation.schema.json",
+        "description": "Context-sensitive arrangement and disclosure over one shared substrate."
+      },
+      {
+        "id": "runtime-document",
+        "kind": "runtime-doc",
+        "schema": "genui/runtime-document.schema.json",
+        "description": "Kernel-ready SOC workspace capability, reads, events, and timer composition."
+      }
+    ],
+    "recipes": [
+      { "id": "soc.workflow-to-interaction", "from": "workflow", "to": "interaction" },
+      { "id": "soc.interaction-to-presentation", "from": "interaction", "to": "presentation" },
+      { "id": "soc.presentation-to-runtime", "from": "presentation", "to": "runtime-document" }
+    ],
+    "resources": {
+      "taxonomy": {
+        "inline": {
+          "soc-workspace": [
+            { "name": "next-act-timer", "role": "presenter-control", "required": true }
+          ]
+        }
+      },
+      "intent": {
+        "inline": {
+          "goal": "Determine the execution origin, contain it safely, preserve evidence, and do not disrupt the protected payroll cutover without Incident Commander authorization.",
+          "priorities": ["preserve-evidence", "payroll-continuity", "bounded-containment"],
+          "constraints": ["DC-01 is protected", "Priya authorizes consequential containment"]
+        }
+      },
+      "actors": {
+        "inline": [
+          { "id": "human-morgan", "kind": "human", "role": "SOC Analyst", "authority": ["direct-investigation", "recommend-containment"] },
+          { "id": "human-priya", "kind": "human", "role": "Incident Commander", "authority": ["constrain-operations", "authorize-containment"] },
+          { "id": "agent-correlation", "kind": "agent", "role": "Evidence correlation", "authority": ["suggest-exploration", "contribute-evidence"] },
+          { "id": "agent-response", "kind": "agent", "role": "Containment planning", "authority": ["propose-response", "execute-after-authorization"] }
+        ]
+      },
+      "authorityPolicy": {
+        "inline": {
+          "protectedTargets": ["DC-01"],
+          "consequentialActions": ["isolate"],
+          "requiredRole": "Incident Commander",
+          "participationDoesNotImplyAuthority": true
+        }
+      },
+      "acts": {
+        "inline": [
+          { "id": 1, "title": "Human intent and constraint", "steps": ["establishIntent", "addConstraint"] },
+          { "id": 2, "title": "Exploration and reorientation", "steps": ["suggestExploration", "amendExploration", "replanExploration"] },
+          { "id": 3, "title": "Correlation and governed overreach", "steps": ["commitPartialFindings", "proposeDc01", "completeCorrelation"] },
+          { "id": 4, "title": "Response refinement", "steps": ["proposeHostA", "reviseResponse", "calculateResponse", "recommendContainment"] },
+          { "id": 5, "title": "Correct authority and execution", "steps": ["authorizeContainment", "executeContainment"], "humanBoundary": "human-priya" }
+        ]
+      },
+      "presentationContexts": {
+        "inline": [
+          { "id": "full-substrate", "actor": "shared", "role": "technical-inspection", "device": "workstation", "task": "inspect-all", "disclosure": "complete", "layout": "console" },
+          { "id": "war-room", "actor": "shared", "role": "incident-team", "device": "wall-display", "task": "coordinate", "disclosure": "operational", "layout": "war-room" },
+          { "id": "priya-mobile", "actor": "human-priya", "role": "Incident Commander", "device": "mobile", "task": "authorize", "disclosure": "decision", "layout": "compact" },
+          { "id": "priya-laptop", "actor": "human-priya", "role": "Incident Commander", "device": "laptop", "task": "command", "disclosure": "evidence-summary", "layout": "command" },
+          { "id": "morgan-pager", "actor": "human-morgan", "role": "SOC Analyst", "device": "pager", "task": "triage", "disclosure": "urgent", "layout": "glanceable" },
+          { "id": "morgan-workstation", "actor": "human-morgan", "role": "SOC Analyst", "device": "workstation", "task": "investigate", "disclosure": "evidence", "layout": "investigation" },
+          { "id": "correlation-agent", "actor": "agent-correlation", "role": "Evidence correlation", "device": "agent-console", "task": "correlate", "disclosure": "operation", "layout": "agent" },
+          { "id": "response-agent", "actor": "agent-response", "role": "Containment planning", "device": "agent-console", "task": "plan-response", "disclosure": "policy-and-execution", "layout": "agent" }
+        ]
+      }
+    },
+    "authoring": {
+      "tools": [
+        { "id": "validateSocWorkflow", "op": "validate", "layer": "workflow", "agentSafe": true, "description": "Validate the governed SOC workflow source." },
+        { "id": "validateSocInteraction", "op": "validate", "layer": "interaction", "agentSafe": true, "description": "Validate actor and semantic interaction output." },
+        { "id": "validateSocPresentation", "op": "validate", "layer": "presentation", "agentSafe": true, "description": "Validate projection completeness before runtime lowering." },
+        { "id": "describeSocBlueprint", "op": "describe", "describe": "soc-blueprint", "agentSafe": true, "description": "Describe the SOC actors, authority, acts, and presentation contexts." }
+      ]
+    }
+  }
+}

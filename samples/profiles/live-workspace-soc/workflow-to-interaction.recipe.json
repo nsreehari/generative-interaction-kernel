@@ -1,0 +1,24 @@
+{
+  "gik": "0.1",
+  "type": "lowering-recipe",
+  "payload": {
+    "id": "soc.workflow-to-interaction",
+    "from": "workflow",
+    "to": "interaction",
+    "metadata": {
+      "executor": "select-interaction",
+      "preserves": ["intent", "actor", "authority", "provenance", "causal-step"]
+    },
+    "program": [
+      {
+        "slot": "interaction",
+        "match": { "workflow": "governed-soc-investigation" },
+        "emit": {
+          "interaction": "soc-workspace",
+          "subject": "Privileged access anomaly during payroll cutover",
+          "capabilities": ["next-act-timer"]
+        }
+      }
+    ]
+  }
+}

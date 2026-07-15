@@ -1,13 +1,14 @@
 # T3 — Live Workspace : SOC — working notes
 
-> Scope: **Beat 2** of the 4-Beat pitch IA (see `working-doc.md` D3). Build the runtime-plane hero:
-> a mixed human-agent incident room where distinct participants act through one governed event
-> model, change one shared operational state, and leave one attributable causal record.
+> Scope: **Beats 2 and 3** of the 4-Beat pitch IA (see `working-doc.md` D3). Build the runtime-plane
+> hero and expose the semantic blueprint that lowers into it: a mixed human-agent incident room
+> where distinct participants act through one governed event model, change one shared operational
+> state, and leave one attributable causal record.
 >
-> Status: **INTERACTION PLAN REVISION (2026-07-15).** The first `live-workspace-soc` implementation
-> remains a working baseline. The next iteration replaces its analyst-plus-agent-roster framing with
-> the mixed-team composition and scenario defined here. The existing `workbench` remains unchanged
-> and independently routable.
+> Status: **BEATS 2 AND 3 IMPLEMENTED AND VALIDATED (2026-07-15).** `live-workspace-soc` now mounts
+> the governed mixed-team runtime and reveals its executable four-tier semantic blueprint in the
+> same developer-console shell. The existing `workbench` remains unchanged and independently
+> routable.
 
 ---
 
@@ -818,6 +819,28 @@ The Beat 2 demonstration is ready when the runnable bundle makes one governed sh
 credible across its human, agent, device, and operational projections without duplicating domain
 truth. The same implementation should feed Beat 3's blueprint and lowering proof wherever
 practical, but Beat 3 authoring completeness does not gate the Beat 2 presentation.
+
+### 8.11 Implemented Beat 3 architecture (2026-07-15)
+
+The broader architecture now runs through the repository's canonical `@gik/profile` mechanism:
+
+- `samples/profiles/live-workspace-soc/profile.json` is the SOC semantic blueprint and owns the
+  intent, actor/authority vocabulary, five acts, taxonomy, and eight presentation descriptors;
+- three adjacent data recipes lower `workflow → interaction → presentation → runtime-doc` using
+  the standard `select-interaction`, `plan-presentation`, and `lower-document` executors;
+- the terminal war-room output is structurally identical to the checked-in
+  `samples/bundles/live-workspace-soc/document.json` runtime document;
+- all eight contexts execute the same tier chain over one source and one terminal capability
+  contract; context selection remains projection metadata and does not append to the Journal;
+- the runtime console now has `Runtime` and `Blueprint` planes. The Blueprint plane renders the
+  actual `traceProfile` outputs, recipe IDs/executors, authored contexts, and blueprint-owned
+  resources rather than maintaining explanatory shadow data;
+- profile loading, recipe lint, all-context lowering, runtime-document equivalence, bundle
+  behavior, React floor contracts, host typecheck, and production build are covered by executable
+  validation.
+
+The implementation does not claim remote multi-client continuity or independently durable agents.
+Those remain later transport/runtime proof layers rather than hidden assumptions in Beat 3.
 
 ## 9. Acceptance criteria for the revised interaction
 
