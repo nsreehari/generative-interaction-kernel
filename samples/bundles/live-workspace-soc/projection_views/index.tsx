@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Select, makeStyles, mergeClasses, shorthands, tokens } from "@fluentui/react-components";
+import { Button, Select, Spinner, makeStyles, mergeClasses, shorthands, tokens } from "@fluentui/react-components";
 import {
   ArrowLeft24Regular,
   ArrowReset24Regular,
@@ -8,8 +8,10 @@ import {
   Clock20Regular,
   DataTrending24Regular,
   Person24Regular,
+  QuestionCircle20Regular,
   ShieldLock24Regular,
   Sparkle24Regular,
+  WeatherMoon20Regular,
 } from "@fluentui/react-icons";
 import type { ProjectionView } from "@gik/react";
 import {
@@ -56,6 +58,32 @@ interface Actor {
   objective: string;
   authority: string;
   activity?: string;
+}
+
+type ParticipantPresence = "active" | "working" | "waiting" | "input-awaited" | "sleeping" | "complete";
+
+export function participantPresence(status: string): ParticipantPresence {
+  switch (status) {
+    case "working":
+    case "running":
+      return "working";
+    case "waiting":
+    case "queued":
+      return "waiting";
+    case "needs-review":
+    case "input-awaited":
+    case "awaiting-input":
+      return "input-awaited";
+    case "sleeping":
+    case "idle":
+      return "sleeping";
+    case "complete":
+    case "completed":
+    case "done":
+      return "complete";
+    default:
+      return "active";
+  }
 }
 
 interface Exploration {
@@ -156,11 +184,15 @@ const ACT_TITLES = [
 
 const useStyles = makeStyles({
   workspace: {
-    minHeight: "100vh",
+    height: "100dvh",
     minWidth: 0,
-    overflowX: "clip",
+    minHeight: 0,
+    display: "grid",
+    gridTemplateRows: "auto auto minmax(0, 1fr)",
+    overflow: "hidden",
     backgroundColor: "var(--bg)",
     color: "var(--text)",
+    "@media (max-width: 1040px)": { height: "auto", minHeight: "100dvh", display: "block", overflowY: "auto" },
   },
   commandBar: {
     position: "sticky",
@@ -190,9 +222,9 @@ const useStyles = makeStyles({
   actDots: { display: "flex", gap: tokens.spacingHorizontalXS },
   actDot: { width: "24px", height: "4px", backgroundColor: "var(--line)" },
   actDotDone: { backgroundColor: "var(--accent)" },
-  layout: { display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(300px, 360px)", minHeight: "calc(100vh - 117px)", "@media (max-width: 1040px)": { gridTemplateColumns: "1fr" } },
-  workColumn: { minWidth: 0, display: "grid", gridTemplateRows: "minmax(0, 1fr) auto" },
-  shared: { minWidth: 0, margin: `clamp(18px, 3vw, 36px) clamp(16px, 3vw, 40px)`, border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel)", overflow: "hidden" },
+  layout: { minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(300px, 360px)", overflow: "hidden", "@media (max-width: 1040px)": { gridTemplateColumns: "1fr", overflow: "visible" } },
+  workColumn: { minWidth: 0, minHeight: 0, display: "grid", gridTemplateRows: "minmax(0, 1fr) auto" },
+  shared: { minWidth: 0, minHeight: 0, display: "grid", gridTemplateRows: "auto minmax(0, 1fr)", margin: `clamp(18px, 3vw, 36px) clamp(16px, 3vw, 40px)`, border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel)", overflow: "hidden", "@media (max-width: 1040px)": { display: "block" } },
   consoleChrome: { display: "grid", gridTemplateColumns: "minmax(180px, 1fr) auto minmax(220px, auto)", alignItems: "center", gap: tokens.spacingHorizontalM, minHeight: "44px", padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`, borderBottom: `1px solid var(--line)`, backgroundColor: "var(--panel-2)", "@media (max-width: 760px)": { gridTemplateColumns: "1fr", alignItems: "start" } },
   consolePath: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalS, minWidth: 0, color: "var(--muted)", fontFamily: tokens.fontFamilyMonospace, fontSize: tokens.fontSizeBase100 },
   consoleLights: { display: "inline-flex", gap: "5px", flexShrink: 0 },
@@ -204,7 +236,7 @@ const useStyles = makeStyles({
   planeSwitch: { display: "inline-flex", padding: "2px", gap: "2px", border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel)" },
   contextMeta: { minWidth: 0, color: "var(--muted)", fontSize: tokens.fontSizeBase100, textAlign: "right", "@media (max-width: 760px)": { textAlign: "left" } },
   contextFocus: { display: "block", color: "var(--text)", overflowWrap: "anywhere" },
-  sharedViewport: { display: "grid", alignContent: "start", gap: tokens.spacingVerticalL, padding: `clamp(18px, 3vw, 32px)` },
+  sharedViewport: { minHeight: 0, display: "grid", alignContent: "start", gap: tokens.spacingVerticalL, padding: `clamp(18px, 3vw, 32px)`, overflowY: "auto", "@media (max-width: 1040px)": { overflowY: "visible" } },
   blueprintIntro: { display: "flex", alignItems: "end", justifyContent: "space-between", gap: tokens.spacingHorizontalL, flexWrap: "wrap" },
   blueprintPipeline: { display: "grid", gap: tokens.spacingVerticalS },
   blueprintStage: { display: "grid", gridTemplateColumns: "minmax(150px, .42fr) minmax(0, 1fr)", border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, overflow: "hidden", "@media (max-width: 680px)": { gridTemplateColumns: "1fr" } },
@@ -267,13 +299,18 @@ const useStyles = makeStyles({
   participantActive: { backgroundColor: "color-mix(in srgb, var(--accent) 9%, var(--panel))" },
   participantTop: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: tokens.spacingHorizontalS },
   participantName: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalXS, fontWeight: tokens.fontWeightSemibold },
+  participantIdentity: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalXS, minWidth: 0 },
+  presence: { width: "20px", height: "20px", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "var(--muted)" },
+  presenceWorking: { color: "var(--accent)" },
+  presenceAttention: { color: "var(--warning, #a15c00)" },
+  presenceComplete: { color: "var(--good)" },
   kind: { color: "var(--muted)", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightBold },
   role: { marginTop: tokens.spacingVerticalXXS, color: "var(--muted)", fontSize: tokens.fontSizeBase100 },
   activity: { minHeight: "38px", margin: `${tokens.spacingVerticalS} 0`, fontSize: tokens.fontSizeBase200, lineHeight: tokens.lineHeightBase200 },
   authority: { color: "var(--muted)", fontSize: tokens.fontSizeBase100 },
   authorize: { width: "100%", marginTop: tokens.spacingVerticalS },
   journalRail: { minWidth: 0, borderLeft: `1px solid var(--line)`, backgroundColor: "var(--panel)", "@media (max-width: 1040px)": { borderLeft: 0, borderTop: `1px solid var(--line)` } },
-  journalSticky: { position: "sticky", top: "117px", maxHeight: "calc(100vh - 117px)", display: "grid", gridTemplateRows: "auto minmax(0, 1fr)", "@media (max-width: 1040px)": { position: "relative", top: 0, maxHeight: "520px" } },
+  journalSticky: { height: "100%", minHeight: 0, display: "grid", gridTemplateRows: "auto minmax(0, 1fr)", "@media (max-width: 1040px)": { height: "520px" } },
   journalHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: tokens.spacingHorizontalS, padding: tokens.spacingVerticalM, borderBottom: `1px solid var(--line)` },
   journalTabs: { display: "inline-flex", gap: "2px", padding: "2px", backgroundColor: "var(--panel-2)", borderRadius: tokens.borderRadiusMedium },
   journalList: { overflowY: "auto", padding: tokens.spacingVerticalS },
@@ -290,6 +327,24 @@ function openOverview() {
   const url = new URL(window.location.href);
   url.searchParams.set("bundle", "samples-overview");
   window.location.href = url.toString();
+}
+
+function ParticipantPresenceIcon({ status }: { status: string }): React.ReactElement {
+  const styles = useStyles();
+  const presence = participantPresence(status);
+  const className = mergeClasses(
+    styles.presence,
+    presence === "working" ? styles.presenceWorking : undefined,
+    presence === "input-awaited" ? styles.presenceAttention : undefined,
+    presence === "complete" ? styles.presenceComplete : undefined
+  );
+
+  if (presence === "working") return <span className={className} title="Working"><Spinner size="tiny" /></span>;
+  if (presence === "waiting") return <span className={className} title="Waiting"><Clock20Regular /></span>;
+  if (presence === "input-awaited") return <span className={className} title="Input awaited"><QuestionCircle20Regular /></span>;
+  if (presence === "sleeping") return <span className={className} title="Sleeping"><WeatherMoon20Regular /></span>;
+  if (presence === "complete") return <span className={className} title="Complete"><CheckmarkCircle20Regular /></span>;
+  return <span className={className} title="Available"><CheckmarkCircle20Regular /></span>;
 }
 
 const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
@@ -566,10 +621,13 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
               const canAuthorize = item.id === "human-priya" && authorization?.status === "pending";
               return <article data-soc-actor-id={item.id} key={item.id} className={mergeClasses(styles.participant, active ? styles.participantActive : undefined, active ? styles.causalHighlight : undefined)}>
                 <div className={styles.participantTop}>
-                  <div className={styles.participantName}>{item.kind === "human" ? <Person24Regular /> : <Sparkle24Regular />}{item.name}</div>
+                  <div className={styles.participantIdentity}>
+                    <ParticipantPresenceIcon status={canAuthorize ? "input-awaited" : item.status} />
+                    <div className={styles.participantName}>{item.kind === "human" ? <Person24Regular /> : <Sparkle24Regular />}{item.name}</div>
+                  </div>
                   <span className={styles.kind}>{item.kind.toUpperCase()}</span>
                 </div>
-                <div className={styles.role}>{item.role} · {item.status}</div>
+                <div className={styles.role}>{item.role} · {canAuthorize ? "input awaited" : item.status.replaceAll("-", " ")}</div>
                 <p className={styles.activity}>{item.activity ?? item.objective}</p>
                 <div className={styles.authority}>{item.authority}</div>
                 {canAuthorize ? <Button className={styles.authorize} appearance="primary" icon={<ShieldLock24Regular />} onClick={() => emit("authorizeContainment", {}, "human-priya")}>Authorize Host-A isolation</Button> : null}

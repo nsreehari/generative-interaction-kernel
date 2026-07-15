@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { isCausallyAffected } from "./index";
+import { isCausallyAffected, participantPresence } from "./index";
 
 const entry = {
   id: "j-07",
@@ -24,4 +24,13 @@ test("aggregate workspace aliases match any represented causal object", () => {
     true
   );
   assert.equal(isCausallyAffected(undefined, ["proposal-dc01"]), false);
+});
+
+test("participant statuses map to a stable presence vocabulary", () => {
+  assert.equal(participantPresence("working"), "working");
+  assert.equal(participantPresence("waiting"), "waiting");
+  assert.equal(participantPresence("needs-review"), "input-awaited");
+  assert.equal(participantPresence("sleeping"), "sleeping");
+  assert.equal(participantPresence("complete"), "complete");
+  assert.equal(participantPresence("unexpected"), "active");
 });
