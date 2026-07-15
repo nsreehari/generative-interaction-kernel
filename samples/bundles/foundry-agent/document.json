@@ -7,7 +7,7 @@
       "id": "foundry-agent-root",
       "props": {
         "title": "Foundry Agent",
-        "subtitle": "A static sample that calls an Azure AI Foundry agent through the BFF proxy. Credentials never live in the page — you supply a function key and agent id to unlock."
+        "subtitle": "Sign in with your access key, pick an agent, and start a conversation."
       },
       "edges": {
         "children": [
@@ -22,7 +22,7 @@
                   "capability": "ui:note",
                   "id": "agent-login-note",
                   "props": {
-                    "value": "Paste your Azure Function key. Use \"List agents\" to fetch the agent ids the key can see and pick one, or type an agent id directly. Credentials are verified against the proxy before the demo opens; nothing is stored or baked into the build.",
+                    "value": "Enter your access key, then choose an agent from the list or enter its id.",
                     "tone": "muted"
                   }
                 },
@@ -30,8 +30,8 @@
                   "capability": "ui:field",
                   "id": "agent-key-field",
                   "props": {
-                    "label": "Function key",
-                    "placeholder": "Paste your function key",
+                    "label": "Access key",
+                    "placeholder": "Paste your access key",
                     "secret": true
                   },
                   "edges": {
@@ -104,7 +104,7 @@
                 {
                   "capability": "ui:alert",
                   "id": "agent-auth-error",
-                  "props": { "label": "Sign-in", "level": "error" },
+                  "props": { "label": "Couldn't sign in", "level": "error" },
                   "edges": {
                     "gate": "agent.authError != ''",
                     "read": { "value": "agent.authError" }
@@ -113,7 +113,7 @@
                 {
                   "capability": "ui:button",
                   "id": "agent-unlock-btn",
-                  "props": { "label": "Unlock", "tone": "primary" },
+                  "props": { "label": "Continue", "tone": "primary" },
                   "edges": {
                     "on": {
                       "press": [
@@ -138,7 +138,7 @@
                 {
                   "capability": "ui:alert",
                   "id": "agent-connected",
-                  "props": { "label": "Connected agent", "level": "good" },
+                  "props": { "label": "Connected to", "level": "good" },
                   "edges": {
                     "read": { "value": "agent.agentName" }
                   }
@@ -181,7 +181,7 @@
                 {
                   "capability": "ui:alert",
                   "id": "agent-request-error",
-                  "props": { "label": "Request", "level": "error" },
+                  "props": { "label": "Something went wrong", "level": "error" },
                   "edges": {
                     "gate": "agent.error != ''",
                     "read": { "value": "agent.error" }
