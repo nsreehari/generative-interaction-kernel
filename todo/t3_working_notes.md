@@ -72,7 +72,7 @@ The next iteration uses one clear desktop composition:
 │ proposal · authority · outcome                       │                     │
 │                                                      │                     │
 ├────────────┬────────────┬────────────┬───────────────┤                     │
-│ Morgan     │ Priya      │ Identity   │ Response      │                     │
+│ Morgan     │ Priya      │ Correlation│ Response      │                     │
 │ Analyst    │ Commander  │ Agent      │ Agent         │                     │
 │ actions    │ actions    │ activity   │ activity      │                     │
 └────────────┴────────────┴────────────┴───────────────┴─────────────────────┘
@@ -112,7 +112,7 @@ The bottom strip contains exactly four participant panels:
 
 1. **Morgan · SOC Analyst** — intent, investigation direction, review, recommendation.
 2. **Priya · Incident Commander** — operational constraints and final authorization.
-3. **Identity Agent** — identity evidence and correlation.
+3. **Correlation Agent** — cross-source exploration, evidence joining, and hypothesis revision.
 4. **Response Agent** — response planning, policy interaction, execution request.
 
 Each panel uses the same participant shell: identity, actor kind, role, status, current objective or
@@ -170,6 +170,7 @@ Human panels contain contextual decisions rather than generic controls.
 
 - establishes incident intent;
 - redirects or challenges investigation;
+- accepts or amends agent-suggested explorations;
 - reviews evidence;
 - recommends containment;
 - cannot authorize protected or consequential containment.
@@ -196,6 +197,11 @@ Agent panels show:
 - capabilities and explicit boundaries in domain language;
 - meaningful activity history.
 
+The Correlation Agent may suggest an exploration rather than immediately executing one. The
+suggestion must expose its question, sources, scope, method, expected value, and risk/cost so a
+human can accept or amend it. When amended, the agent visibly replans against the revised shared
+objective; it does not silently overwrite its previous suggestion.
+
 Agent panels should not normally contain product action buttons. Pause/resume and technical
 inspection may exist as secondary presenter or debugging affordances, visually separated from the
 agent's product surface.
@@ -213,12 +219,27 @@ When a participant acts:
 ## 4. Revised governed SOC scenario
 
 The scenario remains one coherent incident, but now demonstrates mixed-team responsibility rather
-than an analyst supervising an agent roster.
+than an analyst supervising an agent roster. The incident is a **privileged access anomaly during
+an active payroll cutover**. `DC-01` is a protected domain controller supporting payroll;
+`Host-A` is an administrator workstation that may be compromised. The team must identify the true
+execution point and contain it without disrupting payroll.
+
+Initial sources disagree just enough to require correlation:
+
+- identity logs show impossible travel;
+- privileged-access records show a new token issuance;
+- endpoint telemetry shows a remote service created on Host-A;
+- network flow makes the administrative connection appear to involve DC-01;
+- asset inventory and the change calendar establish DC-01's payroll criticality and show no
+  approved Host-A service change.
+
+Use exactly two collaborative refinement loops. More would make the demo feel like a scripted
+conversation rather than a legible operational proof.
 
 ### Act 1 — Human intent and constraint
 
-Morgan establishes: **“Determine scope, contain safely, preserve evidence.”** The intent appears in
-shared state and Morgan's journal history.
+Morgan establishes: **“Determine the execution origin, contain safely, preserve evidence.”** The
+intent appears in shared state and Morgan's journal history.
 
 Priya adds: **“DC-01 supports an active payroll cutover. Do not disrupt it without commander
 authorization.”** The constraint appears in shared state and becomes part of subsequent authority
@@ -226,28 +247,75 @@ evaluation.
 
 **Proof:** two distinct human actors contribute different semantic objects to one state.
 
-### Act 2 — Agent investigation
+### Act 2 — Suggested exploration and human reorientation
 
-Identity Agent contributes impossible-travel and privileged-token evidence. The shared hypothesis
-updates with attribution. Morgan reviews the result and may request validation of whether DC-01 is
-the compromised target or only the connection source.
+Correlation Agent examines the initial signals and suggests an exploration:
+
+> Correlate privileged-token issuance with remote-service creation and network sessions involving
+> DC-01 and Host-A.
+
+The proposed exploration uses identity, privileged-access, endpoint, and network data over a
+60-minute window, initially correlating by source IP and event time. It appears as a first-class
+shared object with status `suggested`.
+
+Morgan agrees with the direction but amends the method:
+
+- narrow the window to 15 minutes around token issuance;
+- correlate by token/session identity rather than source IP because DC-01 may broker
+  authentication;
+- use passive queries only;
+- preserve Host-A volatile evidence before deeper inspection.
+
+The original suggestion becomes `superseded`; the revised exploration becomes `accepted`.
+Correlation Agent visibly replans and executes the amended exploration.
 
 **Proof:** human direction and agent evidence share one event/state model; the human is an active
-collaborator, not an approval button at the end.
+collaborator who can refine an agent's proposed work without taking it over.
 
-### Act 3 — Governed agent overreach
+### Act 3 — Cross-source result and governed overreach
 
-Response Agent proposes isolating DC-01. Policy rejects it because the evidence is incomplete, the
+The revised correlation first commits partial findings:
+
+- the privileged token followed the impossible-travel sign-in;
+- the network session appears to involve DC-01;
+- a remote service appeared on Host-A with no corresponding approved change;
+- the token/session origin is not yet resolved.
+
+Response Agent prematurely proposes isolating DC-01 based on the apparent network source. Policy
+rejects it because the evidence is incomplete, the
 asset is protected by Priya's constraint, and the agent lacks the required authority. The safe
-fallback increases telemetry and preserves evidence. The rejected proposal remains visible.
+fallback increases DC-01 telemetry, restricts the compromised account, and preserves Host-A
+evidence. These fallback effects visibly change shared state; the rejected proposal remains
+visible.
+
+Correlation Agent then completes Morgan's amended exploration using the fallback telemetry:
+
+- the same token/session was replayed from Host-A;
+- DC-01 brokered authentication but did not originate the remote service;
+- DC-01 indicators clear after account restriction;
+- Host-A continues beaconing;
+- no approved change explains the Host-A service.
+
+The shared workspace preserves the source relationships and revises the hypothesis: **Host-A is
+the compromised execution point; DC-01 is a service dependency, not the containment target.**
 
 **Proof:** governance is part of execution and can preserve useful work while refusing an action.
 
-### Act 4 — Governed human boundary
+### Act 4 — Response suggestion and second human reorientation
 
-New evidence identifies Host-A as the correct bounded target. Response Agent proposes Host-A
-isolation. Morgan recommends it but cannot authorize execution. If Morgan attempts authorization,
-GIK rejects the action because the analyst lacks commander authority.
+Response Agent proposes: capture Host-A volatile state, restrict network access, then isolate it.
+Morgan agrees with the target but amends the sequence:
+
+> Preserve the forensic snapshot first and verify that payroll processing does not depend on
+> Host-A before isolation.
+
+Response Agent replans against asset inventory, payroll dependencies, active sessions, the change
+calendar, and containment policy. It returns a bounded plan: Host-A is non-critical, has no active
+payroll sessions, can be isolated reversibly, and has evidence preservation ready.
+
+Morgan recommends the revised plan but cannot authorize execution. The normal path shows
+`Commander authority required`; an optional technical proof may attempt Morgan authorization and
+record its rejection without making that contrived failure part of the main pitch journey.
 
 **Proof:** governance constrains humans and agents; participation does not imply authority.
 
@@ -272,7 +340,12 @@ Target shared-state shape:
 - `actors[]`: ID, kind (`human | agent`), role, status, responsibility/objective, authority;
 - `intent`: human-authored objective and owner;
 - `constraints[]`: author, rule, affected entities, active status;
+- `dataSources[]`: source identity, freshness, scope, and contribution status;
+- `explorations[]`: suggester, question, sources, scope, method, expected value, risk/cost, human
+  amendment, status (`suggested | accepted | superseded | running | completed`), and findings;
 - `evidence[]`: source actor, kind, summary, confidence, linked entities, timestamp;
+- `correlations[]`: linked evidence/source identities, relationship, strength, and supported or
+  weakened hypothesis;
 - `entities[]`: host/account/service identity, risk state, protected classification;
 - `hypothesis`: statement, confidence, supporting evidence;
 - `proposal`: author, action, target, evidence, blast radius, authority result, reason/fallback;
@@ -303,6 +376,11 @@ state and causal history. Never maintain parallel human, agent, or presenter fix
    legible at every step.
 8. **Honor host theming and shared primitives.** Use semantic host variables and existing `@gik/*`
    surfaces. Do not make agents visually futuristic or more important than humans.
+9. **Preserve revision history.** Suggestions and plans become `superseded`, never silently
+  overwritten. Suggestion, amendment, replanning, findings, recommendation, authorization, and
+  execution remain distinct causal events.
+10. **Bound the collaboration choreography.** Use exactly two visible refinement loops: one for
+   investigation and one for response planning.
 
 ## 7. Gap from implemented baseline
 
@@ -320,10 +398,15 @@ The next iteration must change or add:
 
 - replace four-agent roster emphasis with two humans plus two agents;
 - make Morgan and Priya first-class stateful actors with distinct authority;
+- replace Identity Agent with a cross-source Correlation Agent;
 - move domain actions into the responsible participant panels;
 - add human-authored intent and operational constraints to shared state;
+- add first-class exploration suggestions, amendments, replanning, and supersession;
+- model data sources and evidence correlations explicitly in shared state;
+- add the second response-plan refinement loop and blast-radius recalculation;
 - split recommendation, authorization, and execution into distinct events;
-- demonstrate an unauthorized human action being rejected;
+- expose Morgan's recommendation-only boundary and optionally demonstrate an unauthorized human
+  action being rejected in the technical proof path;
 - replace the expandable ledger with a persistent right Journal/Ledger pane;
 - cross-highlight participant, workspace object, and ledger entry;
 - reshape the center into one coherent shared workspace;
@@ -341,12 +424,13 @@ already proven them.
   and persistent Journal/Ledger pane from seeded state.
 - **Phase 2 — Mixed-human events:** Morgan authors intent; Priya authors the protected-asset
   constraint; both appear in shared state and journal.
-- **Phase 3 — Agent contribution:** Identity contributes real attributable evidence and updates the
-  shared hypothesis.
-- **Phase 4 — Dual governance boundary:** reject Response's DC-01 proposal and reject Morgan's
-  unauthorized execution attempt, preserving visible reasons and fallback.
-- **Phase 5 — Correct authority:** separate Morgan's recommendation, Priya's authorization, and the
-  execution result.
+- **Phase 3 — Exploration loop:** Correlation Agent suggests a cross-source exploration; Morgan
+  amends it; the original is superseded; the agent replans and executes the revision.
+- **Phase 4 — Correlation and governance:** commit incremental source findings, update the shared
+  hypothesis, reject Response's DC-01 proposal, and visibly apply safe fallback effects.
+- **Phase 5 — Response loop and correct authority:** Response suggests containment; Morgan revises
+  sequencing; Response recalculates blast radius; then separate recommendation, Priya
+  authorization, and execution.
 - **Phase 6 — Causal interaction:** link/highlight participant actions, affected workspace objects,
   and journal/ledger entries.
 - **Phase 7 — Presenter and responsive polish:** retain Manual/Auto/Reset, validate countdown,
@@ -359,19 +443,27 @@ Each phase ends green on focused tests, `npm run test:react`, `npm run test:samp
 
 - [ ] The desktop first viewport clearly contains one header, one dominant shared workspace, four
   participant panels, and one persistent right Journal/Ledger pane.
-- [ ] Morgan, Priya, Identity Agent, and Response Agent are simultaneously visible and structurally
+- [ ] Morgan, Priya, Correlation Agent, and Response Agent are simultaneously visible and structurally
   recognizable as actors in one participant model.
 - [ ] Human panels emphasize responsibility, contextual judgment, and authority; agent panels
   emphasize objective, current operation, contribution, capability, and boundary.
 - [ ] Morgan authors intent and Priya authors an operational constraint as separate attributable
   events that update the same shared state.
-- [ ] Identity Agent contributes evidence through the same event path and updates the shared
-  hypothesis.
+- [ ] Correlation Agent suggests an exploration across identity, privileged-access, endpoint, and
+  network data as a first-class shared object.
+- [ ] Morgan accepts the direction while amending time window, correlation key, and safety scope;
+  the original suggestion remains visible as superseded.
+- [ ] Correlation Agent visibly replans, executes the amended exploration, commits incremental
+  findings, and updates source relationships and the shared hypothesis.
 - [ ] Response Agent's DC-01 proposal is rejected using Priya's active constraint, with a visible
-  reason and safe fallback.
-- [ ] Morgan can recommend Host-A containment but an attempted authorization by Morgan is rejected.
+  reason and fallback effects that visibly change shared state.
+- [ ] Response Agent suggests Host-A containment; Morgan revises the operation sequence; Response
+  recalculates payroll dependency, blast radius, reversibility, and evidence readiness.
+- [ ] Morgan can recommend Host-A containment but cannot authorize it; optional technical proof can
+  record an attempted authorization as rejected.
 - [ ] Priya alone can authorize the pending consequential action.
-- [ ] Recommendation, authorization, and execution are separate attributable ledger entries.
+- [ ] Suggestion, amendment, replanning, findings, response revision, recommendation,
+  authorization, and execution are separate attributable ledger entries.
 - [ ] Every scenario action visibly links participant, shared-state effect or rejection, and
   journal/ledger record.
 - [ ] Manual next advances exactly one domain action; Auto next shows countdown and stops at the
