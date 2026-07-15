@@ -281,6 +281,16 @@ authoring-plane tool. People buy the **runtime magic** first, then the tooling b
 - **Authoring-plane hero — Console:** proves blueprints are bounded, testable, and
   machine-authorable (DX + ACX).
 
+**Governing implementation principle — shared implementation, sequenced proof:** the beat boundary
+is a presentation and completion boundary, not an artificial architecture boundary. Beat 2 first
+demonstrates the running governed SOC workspace; Beat 3 later reveals the blueprint, tiers,
+lowering recipes, and projections behind that experience. Beat 3 concerns are a **non-goal** for
+declaring the Beat 2 demonstration ready, but they are not an **anti-goal** while implementing it.
+Build shared artifacts once and preserve the natural compiler-to-runtime path wherever practical;
+do not bypass or contradict that path merely to keep the beats separate. Equally, do not block the
+Beat 2 runtime proof on broad compiler generalization, repository-wide terminology migration, or
+other authoring-plane completeness that the live demonstration does not require.
+
 **The 4 beats (sequenced argument, not a feature tour):**
 
 1. **Front Door — "Why now" + the wedge** (`samples-overview`, rewritten as the *Platform
