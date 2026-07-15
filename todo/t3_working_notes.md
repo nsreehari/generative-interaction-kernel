@@ -30,7 +30,8 @@ recommend, authorize, or execute.
 
 The demo must make that claim visible without requiring narration:
 
-- **Bottom participant panels:** many distinct human and agent actors.
+- **Floating participant drawer:** many distinct human and agent actors, with live status visible
+  while collapsed and complete participant surfaces available when expanded.
 - **Center workspace:** one shared operational state.
 - **Right journal/ledger:** durable causality and accountability.
 - **Top control panel:** presenter control only; it is not another participant.
@@ -115,9 +116,10 @@ The center is the visual and semantic center of gravity. It renders only shared 
 Every participant action must visibly alter, annotate, or attempt to alter this workspace. It must
 remain one coherent incident surface, not a collection of equally weighted dashboard cards.
 
-### 2.3 Participant strip
+### 2.3 Participant drawer
 
-The bottom strip contains exactly four participant panels:
+The floating bottom drawer contains exactly four participant panels without resizing the shared
+workspace. Its collapsed header preserves live participant status; expanding it reveals:
 
 1. **Morgan · SOC Analyst** — intent, investigation direction, review, recommendation.
 2. **Priya · Incident Commander** — operational constraints and final authorization.
@@ -131,7 +133,8 @@ judgment and agent work.
 
 ### 2.4 Right journal / ledger
 
-The right pane is persistent on desktop and spans the workspace plus participant strip vertically.
+The right pane is persistent on desktop and spans the workspace vertically. The shared scroller
+keeps a bottom safe area so the collapsed participant drawer does not cover its final content.
 It has two modes:
 
 - **Journal (default):** readable entries answering who acted, what they did, what changed, and the
@@ -618,8 +621,11 @@ Each context is a projection descriptor over one substrate:
 actor + role + device + task + disclosure + layout
 ```
 
-The selector changes presentation context without mutating domain state or creating journal
-entries. Do not create eight state fixtures or eight independently authored screens.
+The demo-level **View as** selector changes only the contextual projection inside the shared
+substrate preview. It does not replace or resize the presenter controls, participant drawer, or
+Journal/Ledger, and it does not mutate domain state or create journal entries. The blueprint owns
+each context's frame, arrangement, and visible semantic regions; do not create eight state fixtures
+or eight independently authored domain screens.
 
 #### Runtime-document tier
 
@@ -826,16 +832,18 @@ practical, but Beat 3 authoring completeness does not gate the Beat 2 presentati
 The broader architecture now runs through the repository's canonical `@gik/profile` mechanism:
 
 - `samples/profiles/live-workspace-soc/profile.json` is the SOC semantic blueprint and owns the
-  intent, actor/authority vocabulary, five acts, taxonomy, and eight presentation descriptors;
+  intent, actor/authority vocabulary, fourteen acts across five chapters, taxonomy, and eight
+  presentation descriptors, including each view's frame, arrangement, and visible regions;
 - three adjacent data recipes lower `workflow → interaction → presentation → runtime-doc` using
   the standard `select-interaction`, `plan-presentation`, and `lower-document` executors;
 - the terminal war-room output is structurally identical to the checked-in
   `samples/bundles/live-workspace-soc/document.json` runtime document;
 - all eight contexts execute the same tier chain over one source and one terminal capability
   contract; context selection remains projection metadata and does not append to the Journal;
-- the runtime console now has `Runtime` and `Blueprint` planes. The Blueprint plane renders the
-  actual `traceProfile` outputs, recipe IDs/executors, authored contexts, and blueprint-owned
-  resources rather than maintaining explanatory shadow data;
+- the shared substrate has two faces: `Live demo` renders its operational projection and
+  `Blueprint inspector` renders the actual `traceProfile` outputs, recipe IDs/executors, authored
+  contexts, and blueprint-owned resources. Switching faces changes only the shared surface; the
+  presenter header, act bar, participant drawer, and Journal/Ledger remain mounted and unchanged;
 - both planes and all eight presentation contexts are URL-addressable through `plane` and
   `context` query parameters; invalid values fall back safely, and selection remains projection
   state rather than incident state or journal activity;

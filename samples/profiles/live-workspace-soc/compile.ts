@@ -30,6 +30,9 @@ export const SOC_BLUEPRINT_CONTEXTS = (
     task: string;
     disclosure: string;
     layout: string;
+    frame: string;
+    arrangement: string;
+    regions: string[];
   }>
 );
 
