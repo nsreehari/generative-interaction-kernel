@@ -674,7 +674,7 @@ function Alert({ node }: ProjectionViewProps) {
 
   return (
     <div className="gx-panel-inset">
-      <div className="gx-row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+      <div className="gx-row gx-row-between">
         <div className="gx-metric">
           <strong className="gx-metric-value">{value}</strong>
           {label ? <span className="gx-metric-label">{label}</span> : null}
@@ -1811,11 +1811,11 @@ function Todo({ node, emit }: ProjectionViewProps) {
   };
 
   return (
-    <div className="gx-panel" style={{ display: "grid", gap: 8 }}>
-      <div style={{ display: "grid", gap: 6 }}>
+    <div className="gx-panel gx-stack">
+      <div className="gx-stack gx-stack-tight">
         {items.length === 0 ? <p className="gx-muted">Nothing here yet.</p> : null}
         {items.map((item, index) => (
-          <div key={`${index}-${item.text}`} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div key={`${index}-${item.text}`} className="gx-inline">
             <input
               type="checkbox"
               checked={item.done}
@@ -1827,7 +1827,7 @@ function Todo({ node, emit }: ProjectionViewProps) {
                 save(next);
               }}
             />
-            <span style={{ flex: 1, opacity: item.done ? 0.65 : 1, textDecoration: item.done ? "line-through" : "none" }}>
+            <span className={`gx-todo-text${item.done ? " is-done" : ""}`}>
               {item.text}
             </span>
             <button
@@ -2121,13 +2121,13 @@ function MultiFileUpload({ node, emit }: ProjectionViewProps) {
   };
 
   return (
-    <div className="gx-panel" style={{ display: "grid", gap: 12 }}>
+    <div className="gx-panel gx-stack gx-stack-loose">
       {filegroups.length > 0 ? (
-        <div style={{ display: "grid", gap: 8 }}>
+        <div className="gx-stack">
           {filegroups.map((group, groupIndex) => (
-            <div key={groupIndex} className="gx-panel" style={{ display: "grid", gap: 6 }}>
+            <div key={groupIndex} className="gx-panel gx-stack gx-stack-tight">
               {typeof group?.message === "string" && group.message.trim() ? <div>{group.message.trim()}</div> : null}
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <div className="gx-inline-wrap">
                 {(Array.isArray(group?.file_idxs) ? group.file_idxs : []).map((fileIndex) => {
                   const file = files[fileIndex];
                   if (!file) return null;
@@ -2145,7 +2145,7 @@ function MultiFileUpload({ node, emit }: ProjectionViewProps) {
       ) : null}
 
       {staged.length > 0 ? (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div className="gx-inline-wrap">
           {staged.map((file, index) => (
             <span key={`${file.name}-${file.size}-${file.lastModified}-${index}`}>
               {file.name} ({formatFileSize(file.size)})
@@ -2155,7 +2155,7 @@ function MultiFileUpload({ node, emit }: ProjectionViewProps) {
         </div>
       ) : null}
 
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <div className="gx-inline">
         <input
           ref={inputRef}
           type="file"
