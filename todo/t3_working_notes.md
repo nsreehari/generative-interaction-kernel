@@ -844,6 +844,9 @@ The broader architecture now runs through the repository's canonical `@gik/profi
   `Blueprint inspector` renders the actual `traceProfile` outputs, recipe IDs/executors, authored
   contexts, and blueprint-owned resources. Switching faces changes only the shared surface; the
   presenter header, act bar, participant drawer, and Journal/Ledger remain mounted and unchanged;
+- Blueprint inspector exposes the selected projection contract before the lowering trace: actor,
+  role, device/frame, task, disclosure, layout, arrangement, and visible semantic regions. The
+  presentation stage distinguishes those context-specific parameters from generic runtime facets;
 - both planes and all eight presentation contexts are URL-addressable through `plane` and
   `context` query parameters; invalid values fall back safely, and selection remains projection
   state rather than incident state or journal activity;
