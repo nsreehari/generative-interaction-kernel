@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, makeStyles, shorthands, tokens } from "@fluentui/react-components";
+import { Button, makeStyles, mergeClasses, shorthands, tokens } from "@fluentui/react-components";
 import {
   ArrowLeft24Regular,
   ArrowReset24Regular,
@@ -64,11 +64,13 @@ interface LedgerEntry {
   summary: string;
 }
 
+const GUIDED_STEP_MS = 3000;
+
 const useStyles = makeStyles({
   workspace: {
     minHeight: "100vh",
     minWidth: 0,
-    overflowX: "hidden",
+    overflowX: "clip",
     backgroundColor: "var(--bg)",
     color: "var(--text)",
   },
@@ -83,7 +85,7 @@ const useStyles = makeStyles({
     position: "sticky",
     top: 0,
     zIndex: 5,
-    "@media (max-width: 720px)": { gridTemplateColumns: "1fr", alignItems: "start" },
+    "@media (max-width: 720px)": { position: "relative", gridTemplateColumns: "1fr", alignItems: "start" },
   },
   commandIdentity: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalM, minWidth: 0 },
   backButton: { flexShrink: 0 },
@@ -103,6 +105,42 @@ const useStyles = makeStyles({
     overflowWrap: "anywhere",
   },
   commandMeta: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalS, flexWrap: "wrap" },
+  guide: {
+    position: "sticky",
+    top: "79px",
+    zIndex: 4,
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) auto",
+    gap: tokens.spacingHorizontalL,
+    alignItems: "center",
+    padding: `${tokens.spacingVerticalM} clamp(16px, 4vw, 52px)`,
+    borderBottom: `${tokens.strokeWidthThin} solid var(--line)`,
+    backgroundColor: "var(--panel-2)",
+    "@media (max-width: 720px)": { top: 0, gridTemplateColumns: "1fr", gap: tokens.spacingHorizontalS },
+  },
+  guideCopy: { minWidth: 0 },
+  guideKicker: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalXS, color: "var(--accent)", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightBold, textTransform: "uppercase" },
+  guideLiveDot: { width: "7px", height: "7px", borderRadius: "50%", backgroundColor: "var(--accent)", boxShadow: "0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent)" },
+  guideTitle: { margin: `${tokens.spacingVerticalXXS} 0`, fontSize: tokens.fontSizeBase300, fontWeight: tokens.fontWeightSemibold },
+  guideText: { margin: 0, color: "var(--muted)", lineHeight: tokens.lineHeightBase200 },
+  guideTarget: { color: "var(--text)", fontWeight: tokens.fontWeightSemibold },
+  guideSteps: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalXS, flexWrap: "wrap" },
+  guideStep: {
+    width: "28px",
+    height: "28px",
+    display: "grid",
+    placeItems: "center",
+    borderRadius: "50%",
+    border: `${tokens.strokeWidthThin} solid var(--line)`,
+    color: "var(--muted)",
+    fontSize: tokens.fontSizeBase100,
+    fontWeight: tokens.fontWeightBold,
+  },
+  guideStepDone: { backgroundColor: "var(--accent)", color: "var(--bg)", ...shorthands.borderColor("var(--accent)") },
+  guideStepCurrent: { color: "var(--accent)", ...shorthands.borderColor("var(--accent)"), outline: "2px solid var(--accent)", outlineOffset: "1px" },
+  guideProgressTrack: { gridColumn: "1 / -1", height: "3px", overflow: "hidden", backgroundColor: "var(--line)" },
+  guideProgress: { width: "100%", height: "100%", transformOrigin: "left", backgroundColor: "var(--accent)", transform: "scaleX(0)" },
+  guidePaused: { width: "100%", height: "100%", backgroundColor: "var(--accent)" },
   pill: {
     display: "inline-flex",
     alignItems: "center",
@@ -213,6 +251,26 @@ const useStyles = makeStyles({
   ledgerSummary: { marginTop: tokens.spacingVerticalXXS, color: "var(--muted)" },
   agentEye: { margin: 0, maxHeight: "320px", overflow: "auto", whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontFamily: tokens.fontFamilyMonospace, fontSize: tokens.fontSizeBase100 },
   empty: { padding: tokens.spacingVerticalXL, border: `${tokens.strokeWidthThin} dashed var(--line)`, borderRadius: tokens.borderRadiusMedium, color: "var(--muted)", textAlign: "center" },
+  spotlight: {
+    position: "relative",
+    outline: "2px solid var(--accent)",
+    outlineOffset: "3px",
+    boxShadow: "0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent)",
+  },
+  spotlightLabel: {
+    position: "absolute",
+    top: "-12px",
+    right: tokens.spacingHorizontalM,
+    zIndex: 2,
+    padding: `${tokens.spacingVerticalXXS} ${tokens.spacingHorizontalS}`,
+    borderRadius: tokens.borderRadiusMedium,
+    backgroundColor: "var(--accent)",
+    color: "var(--bg)",
+    fontSize: tokens.fontSizeBase100,
+    fontWeight: tokens.fontWeightBold,
+    textTransform: "uppercase",
+    boxShadow: tokens.shadow8,
+  },
 });
 
 function openOverview() {
@@ -235,7 +293,22 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit }) => {
   const [showLedger, setShowLedger] = React.useState(false);
   const [showAgentEye, setShowAgentEye] = React.useState(false);
   const [autoPlay, setAutoPlay] = React.useState(false);
+  const actorsRef = React.useRef<HTMLElement | null>(null);
+  const evidenceRef = React.useRef<HTMLElement | null>(null);
+  const proposalRef = React.useRef<HTMLElement | null>(null);
+  const responseRef = React.useRef<HTMLElement | null>(null);
+  const emitRef = React.useRef(emit);
+  emitRef.current = emit;
   const actorNames = new Map(actors.map((actor) => [actor.id, actor.name]));
+
+  const guide = React.useMemo(() => {
+    if (act === 1) return { title: "Ready to assemble the team", text: "Four bounded agents are waiting to join the same incident state.", target: "Watch Agent team", focus: "actors" };
+    if (act === 2) return { title: "Agents investigated in parallel", text: "Identity, Endpoint, and Triage contributed attributed evidence; confidence rose from 32% to 91%.", target: "Watch Evidence + Agent team", focus: "evidence" };
+    if (act === 3) return { title: "Governance blocked unsafe overreach", text: "Response proposed isolating DC-01. Policy rejected it and applied a safe fallback without losing the proposal.", target: "Watch Governed proposal", focus: "proposal" };
+    if (act === 4) return { title: "Agents continued beyond the screen", text: "The mode changed to Autonomous while the same evidence, actors, authority, and trace continued evolving.", target: "Watch mode + new evidence", focus: "evidence" };
+    if (proposal?.authorityResult === "confirmation-required") return { title: "Guided tour paused for the human", text: "The agents returned an evidence-backed Host-A proposal. Automation stops here because only the analyst can authorize containment.", target: "Your action: Approve Host-A isolation", focus: "response" };
+    return { title: "Containment completed under authority", text: "The analyst approved the bounded action; Host-A changed to Contained and the decision remains attributable.", target: "Watch final response receipt", focus: "response" };
+  }, [act, proposal?.authorityResult]);
 
   const nextAction = React.useMemo(() => {
     if (act === 1) return { label: "Assemble agent team", event: "parallel", actorId: "agent-triage" };
@@ -248,13 +321,28 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit }) => {
 
   React.useEffect(() => {
     if (!autoPlay || !nextAction || nextAction.event === "approve") return;
-    const timer = window.setTimeout(() => emit(nextAction.event, {}, nextAction.actorId), 1500);
+    const timer = window.setTimeout(() => emitRef.current(nextAction.event, {}, nextAction.actorId), GUIDED_STEP_MS);
     return () => window.clearTimeout(timer);
-  }, [autoPlay, emit, nextAction]);
+  }, [autoPlay, nextAction]);
 
   React.useEffect(() => {
     if (autoPlay && (!nextAction || nextAction.event === "approve")) setAutoPlay(false);
   }, [autoPlay, nextAction]);
+
+  React.useEffect(() => {
+    if (!autoPlay && act === 1) return;
+    const target = guide.focus === "actors" ? actorsRef.current : guide.focus === "evidence" ? evidenceRef.current : guide.focus === "proposal" ? proposalRef.current : responseRef.current;
+    target?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const spotlightAnimation = target?.animate(
+      [
+        { transform: "scale(1)", filter: "brightness(1)" },
+        { transform: "scale(1.012)", filter: "brightness(1.08)", offset: 0.45 },
+        { transform: "scale(1)", filter: "brightness(1)" },
+      ],
+      { duration: 900, easing: "ease-out" }
+    );
+    return () => spotlightAnimation?.cancel();
+  }, [act, guide.focus]);
 
   const reset = () => {
     setAutoPlay(false);
@@ -262,6 +350,11 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit }) => {
     setShowAgentEye(false);
     emit("reset", {}, "analyst-morgan");
   };
+
+  const spotlightClass = (focus: string) =>
+    guide.focus === focus
+      ? styles.spotlight
+      : undefined;
 
   return (
     <main className={styles.workspace}>
@@ -282,6 +375,20 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit }) => {
         </div>
       </header>
 
+      <section className={styles.guide} aria-live="polite" aria-label="Guided tour">
+        <div className={styles.guideCopy}>
+          <div className={styles.guideKicker}>{autoPlay ? <span className={styles.guideLiveDot} /> : null}{proposal?.authorityResult === "confirmation-required" ? "Paused at human boundary" : autoPlay ? "Guided autoplay · follow the highlight" : `Act ${Math.min(act, 5)} of 5`}</div>
+          <h2 className={styles.guideTitle}>{guide.title}</h2>
+          <p className={styles.guideText}>{guide.text} <span className={styles.guideTarget}>{guide.target}.</span></p>
+        </div>
+        <div className={styles.guideSteps} aria-label={`Act ${Math.min(act, 5)} of 5`}>
+          {[1, 2, 3, 4, 5].map((step) => <span key={step} className={`${styles.guideStep} ${step < act || proposal?.authorityResult === "executed" ? styles.guideStepDone : step === act ? styles.guideStepCurrent : ""}`}>{step < act || proposal?.authorityResult === "executed" ? "✓" : step}</span>)}
+        </div>
+        <div className={styles.guideProgressTrack} aria-hidden="true">
+          <div className={proposal?.authorityResult === "confirmation-required" ? styles.guidePaused : styles.guideProgress} style={proposal?.authorityResult === "confirmation-required" ? undefined : { transform: `scaleX(${Math.min(act, 5) / 5})` }} />
+        </div>
+      </section>
+
       <div className={styles.body}>
         <section className={styles.main} aria-label="Shared investigation">
           <header>
@@ -298,7 +405,8 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit }) => {
             <p className={styles.hypothesisText}>{hypothesis.statement}</p>
           </article>
 
-          <section aria-labelledby="evidence-heading">
+          <section ref={evidenceRef} className={spotlightClass("evidence")} aria-labelledby="evidence-heading">
+            {guide.focus === "evidence" ? <span className={styles.spotlightLabel}>Watch here</span> : null}
             <h2 id="evidence-heading" className={styles.sectionHeading}>Evidence converging now</h2>
             <p className={styles.sectionSubhead}>Each contribution is attributed to the agent that produced it.</p>
             <div className={styles.evidenceGrid}>
@@ -313,7 +421,8 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit }) => {
           </section>
 
           {proposal ? (
-            <section className={`${styles.proposal} ${proposal.authorityResult === "rejected+fallback" ? styles.proposalRejected : proposal.authorityResult === "executed" ? styles.proposalExecuted : styles.proposalPending}`} aria-label="Governed proposal">
+            <section ref={proposalRef} className={mergeClasses(styles.proposal, proposal.authorityResult === "rejected+fallback" ? styles.proposalRejected : proposal.authorityResult === "executed" ? styles.proposalExecuted : styles.proposalPending, spotlightClass("proposal"))} aria-label="Governed proposal">
+              {guide.focus === "proposal" ? <span className={styles.spotlightLabel}>Watch here</span> : null}
               <div className={styles.proposalTop}>
                 <span className={styles.actorAttribution}>{actorNames.get(proposal.actorId) ?? proposal.actorId}</span>
                 <span className={`${styles.proposalResult} ${proposal.authorityResult === "rejected+fallback" ? styles.rejectedResult : ""}`}>{proposal.authorityResult}</span>
@@ -325,7 +434,8 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit }) => {
             </section>
           ) : null}
 
-          <section className={styles.response} aria-label="Response plan">
+          <section ref={responseRef} className={mergeClasses(styles.response, spotlightClass("response"))} aria-label="Response plan">
+            {guide.focus === "response" ? <span className={styles.spotlightLabel}>{proposal?.authorityResult === "confirmation-required" ? "Your action" : "Watch here"}</span> : null}
             <div>
               <h2 className={styles.responseTitle}>{proposal?.authorityResult === "executed" ? `${incident.target} is contained` : proposal?.authorityResult === "confirmation-required" ? "Response requires your confirmation" : "Response is holding for sufficient evidence"}</h2>
               <p className={styles.responseText}>{proposal?.authorityResult === "executed" ? "The governed action completed and remains fully attributable." : "No containment action can execute without policy validation and the analyst's confirmation."}</p>
@@ -335,7 +445,8 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit }) => {
         </section>
 
         <aside className={styles.rail} aria-label="Agent team and governance">
-          <section className={styles.panel}>
+          <section ref={actorsRef} className={mergeClasses(styles.panel, spotlightClass("actors"))}>
+            {guide.focus === "actors" ? <span className={styles.spotlightLabel}>Watch here</span> : null}
             <div className={styles.panelHeader}><PeopleTeam24Regular />Agent team · {actors.filter((actor) => actor.status === "working").length} active</div>
             <div className={styles.actorList}>
               {actors.map((actor) => (
