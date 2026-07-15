@@ -11,7 +11,6 @@ import {
   PeopleTeam24Regular,
   Play24Filled,
   ShieldLock24Regular,
-  Stop24Filled,
 } from "@fluentui/react-icons";
 import type { ProjectionView } from "@gik/react";
 
@@ -105,6 +104,15 @@ const useStyles = makeStyles({
     overflowWrap: "anywhere",
   },
   commandMeta: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalS, flexWrap: "wrap" },
+  advanceMode: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "2px",
+    padding: "2px",
+    ...shorthands.border(tokens.strokeWidthThin, "solid", "var(--line)"),
+    borderRadius: tokens.borderRadiusMedium,
+    backgroundColor: "var(--panel-2)",
+  },
   guide: {
     position: "sticky",
     top: "79px",
@@ -370,14 +378,17 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit }) => {
           <span className={styles.pill}><ShieldLock24Regular />{incident.severity} · {incident.status}</span>
           <span className={`${styles.pill} ${styles.modePill}`}><PeopleTeam24Regular />{mode}</span>
           <Button appearance="subtle" icon={<ArrowReset24Regular />} aria-label="Reset scenario" onClick={reset} />
-          <Button appearance="secondary" icon={autoPlay ? <Stop24Filled /> : <Play24Filled />} onClick={() => setAutoPlay((value) => !value)}>{autoPlay ? "Pause tour" : "Guided autoplay"}</Button>
-          {nextAction ? <Button appearance="primary" icon={<ChevronRight20Regular />} onClick={() => emit(nextAction.event, {}, nextAction.actorId)}>{nextAction.label}</Button> : null}
+          <div className={styles.advanceMode} role="group" aria-label="Tour advance mode">
+            <Button appearance={autoPlay ? "subtle" : "primary"} aria-pressed={!autoPlay} onClick={() => setAutoPlay(false)}>Manual next</Button>
+            <Button appearance={autoPlay ? "primary" : "subtle"} aria-pressed={autoPlay} icon={<Play24Filled />} disabled={!nextAction || nextAction.event === "approve"} onClick={() => setAutoPlay(true)}>Auto next</Button>
+          </div>
+          {!autoPlay && nextAction ? <Button appearance="primary" icon={<ChevronRight20Regular />} onClick={() => emit(nextAction.event, {}, nextAction.actorId)}>{nextAction.event === "approve" ? nextAction.label : `Next · ${nextAction.label}`}</Button> : null}
         </div>
       </header>
 
       <section className={styles.guide} aria-live="polite" aria-label="Guided tour">
         <div className={styles.guideCopy}>
-          <div className={styles.guideKicker}>{autoPlay ? <span className={styles.guideLiveDot} /> : null}{proposal?.authorityResult === "confirmation-required" ? "Paused at human boundary" : autoPlay ? "Guided autoplay · follow the highlight" : `Act ${Math.min(act, 5)} of 5`}</div>
+          <div className={styles.guideKicker}>{autoPlay ? <span className={styles.guideLiveDot} /> : null}{proposal?.authorityResult === "confirmation-required" ? "Paused at human boundary" : autoPlay ? "Auto next · follow the highlight" : nextAction ? `Manual next · Act ${Math.min(act, 5)} of 5` : "Tour complete"}</div>
           <h2 className={styles.guideTitle}>{guide.title}</h2>
           <p className={styles.guideText}>{guide.text} <span className={styles.guideTarget}>{guide.target}.</span></p>
         </div>
