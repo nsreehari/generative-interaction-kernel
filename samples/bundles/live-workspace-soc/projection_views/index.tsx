@@ -111,6 +111,12 @@ interface JournalEntry {
   affected: string[];
 }
 
+export function isCausallyAffected(entry: JournalEntry | undefined, objectIds: readonly string[]): boolean {
+  if (!entry) return false;
+  const affected = new Set(entry.affected);
+  return objectIds.some((id) => affected.has(id));
+}
+
 interface ScenarioStep {
   event: string;
   actorId: string;
@@ -219,6 +225,14 @@ const useStyles = makeStyles({
   sharedSubhead: { margin: `${tokens.spacingVerticalXXS} 0 0`, color: "var(--muted)" },
   contextRow: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: tokens.spacingHorizontalM, "@media (max-width: 680px)": { gridTemplateColumns: "1fr" } },
   contextBand: { padding: tokens.spacingVerticalM, borderLeft: `3px solid var(--accent)`, backgroundColor: "var(--panel-2)" },
+  causalHighlight: {
+    outline: `2px solid var(--accent)`,
+    outlineOffset: "2px",
+    backgroundColor: "color-mix(in srgb, var(--accent) 12%, var(--panel))",
+    transitionProperty: "outline-color, background-color",
+    transitionDuration: tokens.durationNormal,
+    "@media (prefers-reduced-motion: reduce)": { transitionDuration: "0ms" },
+  },
   contextLabel: { color: "var(--muted)", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightBold, textTransform: "uppercase" },
   contextText: { margin: `${tokens.spacingVerticalXS} 0 0`, lineHeight: tokens.lineHeightBase300 },
   emptyText: { color: "var(--muted)", fontStyle: "italic" },
@@ -263,7 +277,7 @@ const useStyles = makeStyles({
   journalHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: tokens.spacingHorizontalS, padding: tokens.spacingVerticalM, borderBottom: `1px solid var(--line)` },
   journalTabs: { display: "inline-flex", gap: "2px", padding: "2px", backgroundColor: "var(--panel-2)", borderRadius: tokens.borderRadiusMedium },
   journalList: { overflowY: "auto", padding: tokens.spacingVerticalS },
-  journalEntry: { display: "grid", gridTemplateColumns: "48px minmax(0, 1fr)", gap: tokens.spacingHorizontalS, padding: tokens.spacingVerticalS, borderBottom: `1px solid var(--line)` },
+  journalEntry: { width: "100%", display: "grid", gridTemplateColumns: "48px minmax(0, 1fr)", gap: tokens.spacingHorizontalS, padding: tokens.spacingVerticalS, border: 0, borderBottom: `1px solid var(--line)`, backgroundColor: "transparent", color: "inherit", font: "inherit", textAlign: "left", cursor: "pointer", "&:focus-visible": { outline: `2px solid var(--accent)`, outlineOffset: "-2px" } },
   journalEntryActive: { backgroundColor: "color-mix(in srgb, var(--accent) 10%, transparent)" },
   journalTime: { color: "var(--muted)", fontFamily: tokens.fontFamilyMonospace, fontSize: tokens.fontSizeBase100 },
   journalResult: { color: "var(--accent)", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightBold, textTransform: "uppercase" },
@@ -295,6 +309,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   const act = Number(node.props.act ?? 0);
   const stage = String(node.props.stage ?? "Incident opened");
   const [journalMode, setJournalMode] = React.useState<"journal" | "ledger">("journal");
+  const [selectedJournalId, setSelectedJournalId] = React.useState<string | null>(null);
   const validContextIds = SOC_BLUEPRINT_CONTEXTS.map((item) => item.id);
   const initialNavigationRef = React.useRef(readSocNavigation(window.location.search, validContextIds));
   const [consolePlane, setConsolePlane] = React.useState<SocPlane>(initialNavigationRef.current.plane);
@@ -305,6 +320,9 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   emitRef.current = emit;
 
   const latestEntry = journal[journal.length - 1];
+  const selectedEntry = selectedJournalId
+    ? journal.find((item) => item.id === selectedJournalId) ?? latestEntry
+    : latestEntry;
   const actorNames = new Map(actors.map((item) => [item.id, item.name]));
   const actDisplay = Math.min(act + (act === 0 ? 1 : 0), 5);
   const selectedContext = presentation.contexts.find((item) => item.id === presentation.selectedContext) ?? presentation.contexts[0];
@@ -368,6 +386,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   const reset = () => {
     processedTokenRef.current = 0;
     executionRequestedRef.current = false;
+    setSelectedJournalId(null);
     emit("reset", {});
   };
 
@@ -490,17 +509,17 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
             </header>
 
             <div className={styles.contextRow}>
-              <div className={styles.contextBand}>
+              <div data-soc-object-id="intent" className={mergeClasses(styles.contextBand, isCausallyAffected(selectedEntry, ["intent"]) ? styles.causalHighlight : undefined)}>
                 <div className={styles.contextLabel}>Morgan's intent</div>
                 <p className={mergeClasses(styles.contextText, !intent ? styles.emptyText : undefined)}>{intent?.statement ?? "Waiting for the analyst to establish intent"}</p>
               </div>
-              <div className={styles.contextBand}>
+              <div data-soc-object-id="constraints" className={mergeClasses(styles.contextBand, isCausallyAffected(selectedEntry, ["constraints", "DC-01"]) ? styles.causalHighlight : undefined)}>
                 <div className={styles.contextLabel}>Priya's operating constraint</div>
                 <p className={mergeClasses(styles.contextText, constraints.length === 0 ? styles.emptyText : undefined)}>{constraints[0]?.rule ?? "Waiting for incident-command constraints"}</p>
               </div>
             </div>
 
-            <article className={styles.hypothesis}>
+            <article data-soc-object-id="hypothesis" className={mergeClasses(styles.hypothesis, isCausallyAffected(selectedEntry, ["hypothesis", "corr-1", "Host-A"]) ? styles.causalHighlight : undefined)}>
               <div className={styles.hypothesisTop}>
                 <div className={styles.hypothesisLabel}><BrainCircuit24Regular />Working hypothesis</div>
                 <div className={styles.confidence}>{hypothesis.confidence}%</div>
@@ -512,13 +531,13 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
               {showExploration ? <section className={styles.section}>
                 <h3 className={styles.sectionTitle}><Sparkle24Regular />Exploration and evidence</h3>
                 {explorations.length > 0 ? <div className={styles.explorationList}>{explorations.map((item) => (
-                  <article key={item.id} className={mergeClasses(styles.exploration, item.status === "superseded" ? styles.explorationMuted : undefined)}>
+                  <article data-soc-object-id={item.id} key={item.id} className={mergeClasses(styles.exploration, item.status === "superseded" ? styles.explorationMuted : undefined, isCausallyAffected(selectedEntry, [item.id]) ? styles.causalHighlight : undefined)}>
                     <div className={styles.rowTop}><strong>Revision {item.revision}</strong><span className={styles.status}>{item.status}</span></div>
                     <div className={styles.detailGrid}><span>{item.windowMinutes} minute window</span><span>{item.correlationKey}</span><span>{item.safety}</span></div>
                   </article>
                 ))}</div> : <div className={styles.empty}>No exploration proposed yet.</div>}
                 {evidence.length > 0 ? <div className={styles.evidenceList}>{evidence.map((item) => (
-                  <article className={styles.evidence} key={item.id}>
+                  <article data-soc-object-id={item.id} className={mergeClasses(styles.evidence, isCausallyAffected(selectedEntry, ["evidence", item.id]) ? styles.causalHighlight : undefined)} key={item.id}>
                     <div className={styles.evidenceMeta}><span>{item.source}</span><span>{item.confidence}%</span></div>
                     <p className={styles.evidenceText}>{item.summary}</p>
                   </article>
@@ -527,7 +546,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
 
               {showResponse ? <section className={styles.section}>
                 <h3 className={styles.sectionTitle}><ShieldLock24Regular />Governed response</h3>
-                {proposal ? <article className={mergeClasses(styles.proposal, proposal.status === "rejected" ? styles.proposalRejected : undefined, proposal.status === "executed" ? styles.proposalExecuted : undefined)}>
+                {proposal ? <article data-soc-object-id={proposal.id} className={mergeClasses(styles.proposal, proposal.status === "rejected" ? styles.proposalRejected : undefined, proposal.status === "executed" ? styles.proposalExecuted : undefined, isCausallyAffected(selectedEntry, [proposal.id, "proposal-dc01", "proposal-host-a", "rec-1", "authorization", "DC-01", "Host-A"]) ? styles.causalHighlight : undefined)}>
                   <div className={styles.rowTop}><span className={styles.status}>{proposal.status}</span><span>{proposal.target}</span></div>
                   <h4 className={styles.proposalTitle}>{proposal.action}</h4>
                   {proposal.reason ? <p className={styles.proposalText}>{proposal.reason}</p> : null}
@@ -543,9 +562,9 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
 
           <section className={styles.participants} aria-label="Human and agent participants">
             {actors.map((item) => {
-              const active = latestEntry?.actorId === item.id;
+              const active = selectedEntry?.actorId === item.id;
               const canAuthorize = item.id === "human-priya" && authorization?.status === "pending";
-              return <article key={item.id} className={mergeClasses(styles.participant, active ? styles.participantActive : undefined)}>
+              return <article data-soc-actor-id={item.id} key={item.id} className={mergeClasses(styles.participant, active ? styles.participantActive : undefined, active ? styles.causalHighlight : undefined)}>
                 <div className={styles.participantTop}>
                   <div className={styles.participantName}>{item.kind === "human" ? <Person24Regular /> : <Sparkle24Regular />}{item.name}</div>
                   <span className={styles.kind}>{item.kind.toUpperCase()}</span>
@@ -564,20 +583,21 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
             <header className={styles.journalHeader}>
               <div><div className={styles.eyebrow}>Causal record</div><strong>Journal / Ledger</strong></div>
               <div className={styles.journalTabs}>
+                {selectedJournalId ? <Button size="small" appearance="subtle" onClick={() => setSelectedJournalId(null)}>Latest</Button> : null}
                 <Button size="small" appearance={journalMode === "journal" ? "primary" : "subtle"} onClick={() => setJournalMode("journal")}>Journal</Button>
                 <Button size="small" appearance={journalMode === "ledger" ? "primary" : "subtle"} onClick={() => setJournalMode("ledger")}>Ledger</Button>
               </div>
             </header>
             <div className={styles.journalList}>
-              {journal.length === 0 ? <div className={styles.empty}><Clock20Regular /><p>The first attributable action will appear here.</p></div> : journal.map((item, index) => (
-                <article key={item.id} className={mergeClasses(styles.journalEntry, index === journal.length - 1 ? styles.journalEntryActive : undefined)}>
+              {journal.length === 0 ? <div className={styles.empty}><Clock20Regular /><p>The first attributable action will appear here.</p></div> : journal.map((item) => (
+                <button type="button" aria-pressed={selectedEntry?.id === item.id} aria-label={`${item.result}: ${item.summary}`} onClick={() => setSelectedJournalId(item.id)} key={item.id} className={mergeClasses(styles.journalEntry, selectedEntry?.id === item.id ? styles.journalEntryActive : undefined)}>
                   <span className={styles.journalTime}>{item.time}</span>
                   <div>
                     <div className={styles.journalResult}>{item.result} · {actorNames.get(item.actorId) ?? item.actorId}</div>
                     <div className={styles.journalSummary}>{item.summary}</div>
                     {journalMode === "ledger" ? <div className={styles.ledgerMeta}>actor={item.actorId}<br />affected={item.affected.join(", ")}</div> : null}
                   </div>
-                </article>
+                </button>
               ))}
               {incident.status === "Contained" ? <div className={styles.fallback}><CheckmarkCircle20Regular /> <strong>Host-A contained under commander authority.</strong></div> : null}
             </div>
