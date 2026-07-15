@@ -19,104 +19,30 @@
               "gate": "agent.stage = 'locked'",
               "children": [
                 {
-                  "capability": "ui:note",
-                  "id": "agent-login-note",
-                  "props": {
-                    "value": "Enter your access key, then choose an agent from the list or enter its id.",
-                    "tone": "muted"
-                  }
-                },
-                {
-                  "capability": "ui:field",
-                  "id": "agent-key-field",
-                  "props": {
-                    "label": "Access key",
-                    "placeholder": "Paste your access key",
-                    "secret": true
-                  },
+                  "capability": "agent:login",
+                  "id": "agent-login-view",
                   "edges": {
-                    "read": { "value": "agent.key" },
+                    "read": {
+                      "key": "agent.key",
+                      "agentId": "agent.agentId",
+                      "authError": "agent.authError"
+                    },
                     "on": {
-                      "input": [
+                      "setKey": [
                         {
                           "do": "assign",
                           "target": "agent.key",
                           "args": { "from": "$event.value" }
                         }
-                      ]
-                    }
-                  }
-                },
-                {
-                  "capability": "ui:button",
-                  "id": "agent-list-btn",
-                  "props": { "label": "List agents" },
-                  "edges": {
-                    "on": {
-                      "press": [
-                        {
-                          "do": "invoke",
-                          "args": { "tool": "listAgents" }
-                        }
-                      ]
-                    }
-                  }
-                },
-                {
-                  "capability": "ui:select",
-                  "id": "agent-id-select",
-                  "props": { "label": "Agent ID" },
-                  "edges": {
-                    "gate": "$count(agent.agentOptions) > 0",
-                    "read": { "value": "agent.agentId", "options": "agent.agentOptions" },
-                    "on": {
-                      "change": [
+                      ],
+                      "setAgent": [
                         {
                           "do": "assign",
                           "target": "agent.agentId",
                           "args": { "from": "$event.value" }
                         }
-                      ]
-                    }
-                  }
-                },
-                {
-                  "capability": "ui:field",
-                  "id": "agent-id-field",
-                  "props": {
-                    "label": "Agent ID",
-                    "placeholder": "asst_..."
-                  },
-                  "edges": {
-                    "gate": "$count(agent.agentOptions) = 0",
-                    "read": { "value": "agent.agentId" },
-                    "on": {
-                      "input": [
-                        {
-                          "do": "assign",
-                          "target": "agent.agentId",
-                          "args": { "from": "$event.value" }
-                        }
-                      ]
-                    }
-                  }
-                },
-                {
-                  "capability": "ui:alert",
-                  "id": "agent-auth-error",
-                  "props": { "label": "Couldn't sign in", "level": "error" },
-                  "edges": {
-                    "gate": "agent.authError != ''",
-                    "read": { "value": "agent.authError" }
-                  }
-                },
-                {
-                  "capability": "ui:button",
-                  "id": "agent-unlock-btn",
-                  "props": { "label": "Continue", "tone": "primary" },
-                  "edges": {
-                    "on": {
-                      "press": [
+                      ],
+                      "verify": [
                         {
                           "do": "invoke",
                           "args": { "tool": "verifyKey" }
