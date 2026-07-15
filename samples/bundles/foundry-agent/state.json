@@ -8,6 +8,9 @@
     "reply": "",
     "lastAsked": "",
     "conversationId": "",
+    "agentOptions": [],
+    "listed": false,
+    "listError": "",
     "error": ""
   }
 }
