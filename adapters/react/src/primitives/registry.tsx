@@ -24,6 +24,7 @@ import { loadBundle, bundleSignature, type Bundle, type SerializableBundle } fro
 import { useBundleRegistry, useProjectionProviderResolver } from "./bundle-registry";
 import { useGenUIFileServices } from "./fileServices";
 import { useCountdownTimer } from "./useCountdownTimer";
+import { useAsyncEmit } from "./useAsyncEmit";
 
 interface Option {
   value: string;
@@ -1711,12 +1712,18 @@ function Selection({ node, emit }: ProjectionViewProps) {
 
 function Button({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
+  // Every button awaits its own dispatch: if the press triggers an async invoke, the emit promise
+  // resolves only after that effect settles, so we get an in-flight spinner for free. The 120ms
+  // delay keeps trivial synchronous presses (pure state changes) from flashing the spinner.
+  const { pending, run } = useAsyncEmit(emit, { delayMs: 120 });
   return (
     <button
       className={`gx-btn gx-btn-${p.str("tone", "default")}`}
-      disabled={p.bool("disabled")}
-      onClick={() => emit("press", {})}
+      disabled={p.bool("disabled") || pending}
+      aria-busy={pending || undefined}
+      onClick={() => void run("press", {})}
     >
+      {pending ? <span className="gx-btn-spinner" aria-hidden="true" /> : null}
       {p.str("label")}
     </button>
   );

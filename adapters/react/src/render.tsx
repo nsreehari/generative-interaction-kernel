@@ -11,7 +11,7 @@ export type EmitFn = (
   name: string,
   payload?: Record<string, unknown>,
   actorId?: string
-) => void;
+) => void | Promise<unknown>;
 
 export function renderNode(
   node: ResolvedNode,

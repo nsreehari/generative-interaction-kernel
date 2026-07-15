@@ -7,3 +7,4 @@ export * from "./registry";
 export * from "./host";
 export * from "./playground";
 export * from "./useCountdownTimer";
+export * from "./useAsyncEmit";

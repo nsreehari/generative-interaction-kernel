@@ -7,7 +7,7 @@ import type { ProjectionViewImport, ResolvedNode } from "../../../kernel/src/typ
 export interface ProjectionViewProps {
   node: ResolvedNode;
   /** Emit a behavior event for this node (node id is already bound). */
-  emit: (name: string, payload?: Record<string, unknown>, actorId?: string) => void;
+  emit: (name: string, payload?: Record<string, unknown>, actorId?: string) => void | Promise<unknown>;
   children: ReactNode;
 }
 

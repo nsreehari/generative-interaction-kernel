@@ -330,6 +330,18 @@ ${root} .gx-btn-primary:hover {
   border-color: var(--colorBrandBackgroundHover);
 }
 ${root} .gx-btn-danger { border-color: var(--bad); color: var(--bad); }
+${root} .gx-btn-spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: var(--spacingHorizontalXS);
+  vertical-align: -0.15em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: gx-btn-spin 0.6s linear infinite;
+}
+@keyframes gx-btn-spin { to { transform: rotate(360deg); } }
 
 ${root} .gx-challenge-backdrop {
   position: fixed;

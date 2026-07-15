@@ -160,36 +160,4 @@ const FoundryLogin: ProjectionView = ({ node, emit }) => {
   );
 };
 
-// The Ask button, with an in-flight spinner. The kernel dispatch is atomic (reducer ops + the
-// askAgent effect settle before a single re-render), so a store flag can't paint a "thinking"
-// state. Instead we hold `loading` in LOCAL React state: clicking flips it true (renders
-// immediately), and we clear it when the effect completes — signaled by a bumped `agent.replyRev`.
-const FoundryAsk: ProjectionView = ({ node, emit }) => {
-  const styles = useStyles();
-  const label = String(node.props.label ?? "Ask");
-  const replyRev = Number(node.props.replyRev ?? 0);
-  const [loading, setLoading] = React.useState(false);
-
-  // Each completed ask bumps replyRev; that's our cue to drop the spinner.
-  React.useEffect(() => {
-    setLoading(false);
-  }, [replyRev]);
-
-  return (
-    <div className={styles.stack}>
-      <Button
-        appearance="primary"
-        disabled={loading}
-        onClick={() => {
-          setLoading(true);
-          emit("ask");
-        }}
-      >
-        {label}
-      </Button>
-      {loading && <Spinner size="tiny" labelPosition="after" label="Thinking…" />}
-    </div>
-  );
-};
-
-export default { login: FoundryLogin, ask: FoundryAsk };
+export default { login: FoundryLogin };
