@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { isCausallyAffected, participantPresence } from "./index";
+import { isCausallyAffected, participantPresence, socPresentationSpec } from "./index";
 
 const entry = {
   id: "j-07",
@@ -33,4 +33,17 @@ test("participant statuses map to a stable presence vocabulary", () => {
   assert.equal(participantPresence("sleeping"), "sleeping");
   assert.equal(participantPresence("complete"), "complete");
   assert.equal(participantPresence("unexpected"), "active");
+});
+
+test("presentation contexts produce distinct substrate frames and disclosure", () => {
+  const full = socPresentationSpec("full-substrate");
+  const mobile = socPresentationSpec("priya-mobile");
+
+  assert.equal(full.frame, "shared");
+  assert.equal(full.arrangement, "inspection");
+  assert.equal(full.regions.includes("exploration"), true);
+  assert.equal(mobile.frame, "mobile");
+  assert.equal(mobile.arrangement, "decision");
+  assert.equal(mobile.regions.includes("exploration"), false);
+  assert.equal(mobile.regions.includes("authorization"), true);
 });

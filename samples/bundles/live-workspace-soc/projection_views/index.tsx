@@ -51,6 +51,24 @@ interface Presentation {
   contexts: PresentationContext[];
 }
 
+type SubstrateRegion = "summary" | "intent" | "constraints" | "hypothesis" | "exploration" | "evidence" | "response" | "authorization" | "causal-record";
+
+export interface SocPresentationSpec {
+  frame: "shared" | "mobile" | "laptop" | "pager" | "workstation" | "agent-console";
+  arrangement: "war-room" | "inspection" | "decision" | "command" | "glanceable" | "investigation" | "agent";
+  regions: SubstrateRegion[];
+}
+
+export function socPresentationSpec(contextId: string): SocPresentationSpec {
+  const context = SOC_BLUEPRINT_CONTEXTS.find((item) => item.id === contextId) ?? SOC_BLUEPRINT_CONTEXTS.find((item) => item.id === "war-room");
+  if (!context) throw new Error("The SOC blueprint must define a war-room presentation context");
+  return {
+    frame: context.frame as SocPresentationSpec["frame"],
+    arrangement: context.arrangement as SocPresentationSpec["arrangement"],
+    regions: context.regions as SubstrateRegion[],
+  };
+}
+
 interface Actor {
   id: string;
   kind: "human" | "agent";
@@ -217,6 +235,9 @@ const useStyles = makeStyles({
   eyebrow: { color: "var(--muted)", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightBold, textTransform: "uppercase" },
   title: { margin: 0, fontSize: tokens.fontSizeBase400, lineHeight: tokens.lineHeightBase400, overflowWrap: "anywhere" },
   controls: { display: "flex", alignItems: "center", justifyContent: "flex-end", gap: tokens.spacingHorizontalS, flexWrap: "wrap", "@media (max-width: 880px)": { justifyContent: "flex-start" } },
+  demoMode: { display: "inline-flex", padding: "2px", gap: "2px", border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel-2)" },
+  viewpointControl: { display: "inline-flex", alignItems: "center", gap: tokens.spacingHorizontalXS },
+  viewpointLabel: { color: "var(--muted)", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightBold, textTransform: "uppercase" },
   pill: { display: "inline-flex", alignItems: "center", gap: tokens.spacingHorizontalXS, minHeight: "30px", padding: `0 ${tokens.spacingHorizontalS}`, border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel-2)", fontSize: tokens.fontSizeBase200, fontWeight: tokens.fontWeightSemibold },
   pace: { display: "inline-flex", padding: "2px", gap: "2px", border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel-2)" },
   timerSlot: { minWidth: "118px", "& > button": { width: "100%", minHeight: "32px" } },
@@ -229,18 +250,25 @@ const useStyles = makeStyles({
   layout: { minHeight: 0, height: "100%", display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(300px, 360px)", gridTemplateRows: "minmax(0, 1fr)", overflow: "hidden", "@media (max-width: 1040px)": { height: "auto", gridTemplateColumns: "1fr", gridTemplateRows: "auto", overflow: "visible" } },
   workColumn: { minWidth: 0, minHeight: 0, height: "100%", padding: `clamp(18px, 3vw, 36px) clamp(16px, 3vw, 40px)`, overflow: "hidden", "@media (max-width: 1040px)": { height: "auto", padding: `clamp(18px, 3vw, 36px) clamp(16px, 3vw, 40px)`, overflow: "visible" } },
   shared: { minWidth: 0, minHeight: 0, height: "100%", display: "grid", gridTemplateRows: "auto minmax(0, 1fr)", border: `1px solid color-mix(in srgb, var(--accent) 24%, var(--line))`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "color-mix(in srgb, var(--accent) 7%, var(--panel))", boxShadow: "0 10px 28px color-mix(in srgb, var(--accent) 8%, transparent)", overflow: "hidden", "@media (max-width: 1040px)": { height: "auto", display: "block" } },
-  consoleChrome: { display: "grid", gridTemplateColumns: "minmax(180px, 1fr) auto minmax(220px, auto)", alignItems: "center", gap: tokens.spacingHorizontalM, minHeight: "44px", padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`, borderBottom: `1px solid color-mix(in srgb, var(--accent) 22%, var(--line))`, backgroundColor: "color-mix(in srgb, var(--accent) 11%, var(--panel))", "@media (max-width: 760px)": { gridTemplateColumns: "1fr", alignItems: "start" } },
+  consoleChrome: { display: "grid", gridTemplateColumns: "minmax(180px, 1fr) minmax(220px, auto)", alignItems: "center", gap: tokens.spacingHorizontalM, minHeight: "44px", padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`, borderBottom: `1px solid color-mix(in srgb, var(--accent) 22%, var(--line))`, backgroundColor: "color-mix(in srgb, var(--accent) 11%, var(--panel))", "@media (max-width: 760px)": { gridTemplateColumns: "1fr", alignItems: "start" } },
   consolePath: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalS, minWidth: 0, color: "var(--muted)", fontFamily: tokens.fontFamilyMonospace, fontSize: tokens.fontSizeBase100 },
   consoleLights: { display: "inline-flex", gap: "5px", flexShrink: 0 },
   consoleLight: { width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "var(--line)" },
   consoleLightLive: { backgroundColor: "var(--good)" },
   consoleUri: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   contextSelect: { minWidth: "190px" },
-  consoleControls: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalS, flexWrap: "wrap" },
-  planeSwitch: { display: "inline-flex", padding: "2px", gap: "2px", border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel)" },
   contextMeta: { minWidth: 0, color: "var(--muted)", fontSize: tokens.fontSizeBase100, textAlign: "right", "@media (max-width: 760px)": { textAlign: "left" } },
   contextFocus: { display: "block", color: "var(--text)", overflowWrap: "anywhere" },
   sharedViewport: { minHeight: 0, display: "grid", alignContent: "start", gap: tokens.spacingVerticalL, padding: `clamp(18px, 3vw, 32px)`, paddingBottom: "calc(clamp(18px, 3vw, 32px) + 50px)", scrollPaddingBottom: "50px", overflowY: "auto", "@media (max-width: 1040px)": { overflowY: "visible" } },
+  contextProjection: { width: "100%", minWidth: 0, display: "grid", alignContent: "start", gap: tokens.spacingVerticalL, margin: "0 auto" },
+  frameMobile: { maxWidth: "430px", padding: tokens.spacingVerticalL, border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusLarge, backgroundColor: "var(--panel)", boxShadow: "0 16px 38px rgba(15, 23, 42, .16)" },
+  frameLaptop: { maxWidth: "920px", padding: tokens.spacingVerticalL, border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel)" },
+  framePager: { maxWidth: "540px", padding: tokens.spacingVerticalM, border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel)" },
+  frameWorkstation: { maxWidth: "1100px" },
+  frameAgent: { maxWidth: "920px", padding: tokens.spacingVerticalL, borderLeft: `3px solid var(--accent)`, backgroundColor: "color-mix(in srgb, var(--panel) 88%, transparent)" },
+  viewpointIdentity: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: tokens.spacingHorizontalM, paddingBottom: tokens.spacingVerticalS, borderBottom: `1px solid var(--line)` },
+  viewpointName: { margin: 0, fontSize: tokens.fontSizeBase300 },
+  viewpointDevice: { color: "var(--muted)", fontFamily: tokens.fontFamilyMonospace, fontSize: tokens.fontSizeBase100, textTransform: "uppercase" },
   blueprintIntro: { display: "flex", alignItems: "end", justifyContent: "space-between", gap: tokens.spacingHorizontalL, flexWrap: "wrap" },
   blueprintPipeline: { display: "grid", gap: tokens.spacingVerticalS },
   blueprintStage: { display: "grid", gridTemplateColumns: "minmax(150px, .42fr) minmax(0, 1fr)", border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, overflow: "hidden", "@media (max-width: 680px)": { gridTemplateColumns: "1fr" } },
@@ -260,6 +288,7 @@ const useStyles = makeStyles({
   sharedTitle: { margin: 0, fontSize: tokens.fontSizeBase500 },
   sharedSubhead: { margin: `${tokens.spacingVerticalXXS} 0 0`, color: "var(--muted)" },
   contextRow: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: tokens.spacingHorizontalM, "@media (max-width: 680px)": { gridTemplateColumns: "1fr" } },
+  contextRowSingle: { gridTemplateColumns: "minmax(0, 1fr)" },
   contextBand: { padding: tokens.spacingVerticalM, borderLeft: `3px solid var(--accent)`, backgroundColor: "var(--panel-2)" },
   causalHighlight: {
     outline: `2px solid var(--accent)`,
@@ -391,8 +420,16 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   const actorNames = new Map(actors.map((item) => [item.id, item.name]));
   const actDisplay = Math.min(act + 1, ACT_TITLES.length);
   const selectedContext = presentation.contexts.find((item) => item.id === presentation.selectedContext) ?? presentation.contexts[0];
-  const showExploration = !["priya-mobile", "priya-laptop", "response-agent"].includes(presentation.selectedContext);
-  const showResponse = !["morgan-pager", "morgan-workstation", "correlation-agent"].includes(presentation.selectedContext);
+  const presentationSpec = socPresentationSpec(presentation.selectedContext);
+  const hasRegion = (region: SubstrateRegion) => presentationSpec.regions.includes(region);
+  const showInvestigation = hasRegion("exploration") || hasRegion("evidence");
+  const showResponse = hasRegion("response");
+  const projectionFrameClass = presentationSpec.frame === "mobile" ? styles.frameMobile
+    : presentationSpec.frame === "laptop" ? styles.frameLaptop
+    : presentationSpec.frame === "pager" ? styles.framePager
+    : presentationSpec.frame === "workstation" ? styles.frameWorkstation
+    : presentationSpec.frame === "agent-console" ? styles.frameAgent
+    : undefined;
   const blueprintTrace = traceSocBlueprint(presentation.selectedContext);
   const blueprintContext = SOC_BLUEPRINT_CONTEXTS.find((item) => item.id === presentation.selectedContext) ?? SOC_BLUEPRINT_CONTEXTS[0];
   const blueprintResources = socBlueprint.resources;
@@ -466,6 +503,21 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
           </div>
         </div>
         <div className={styles.controls}>
+          <div className={styles.demoMode} role="group" aria-label="Demo mode">
+            <Button size="small" appearance={consolePlane === "runtime" ? "primary" : "subtle"} onClick={() => selectPlane("runtime")}>Live demo</Button>
+            <Button size="small" appearance={consolePlane === "blueprint" ? "primary" : "subtle"} onClick={() => selectPlane("blueprint")}>Blueprint inspector</Button>
+          </div>
+          <label className={styles.viewpointControl}>
+            <span className={styles.viewpointLabel}>View as</span>
+            <Select
+              className={styles.contextSelect}
+              aria-label="View shared substrate as"
+              value={presentation.selectedContext}
+              onChange={(_, data) => selectContext(data.value)}
+            >
+              {presentation.contexts.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+            </Select>
+          </label>
           <span className={styles.pill}><ShieldLock24Regular />{incident.severity} · {incident.status}</span>
           <span className={styles.pill}>{incident.governance}</span>
           <div className={styles.pace} role="group" aria-label="Presenter pace">
@@ -496,20 +548,6 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
                   <i className={mergeClasses(styles.consoleLight, styles.consoleLightLive)} />
                 </span>
                 <span className={styles.consoleUri}>{consolePlane === "runtime" ? "shared" : "blueprint"}://soc/{consolePlane === "runtime" ? incident.id.toLowerCase() : "live-workspace-soc/profile.json"}</span>
-              </div>
-              <div className={styles.consoleControls}>
-                <div className={styles.planeSwitch} role="group" aria-label="Console plane">
-                  <Button size="small" appearance={consolePlane === "runtime" ? "primary" : "subtle"} onClick={() => selectPlane("runtime")}>Runtime</Button>
-                  <Button size="small" appearance={consolePlane === "blueprint" ? "primary" : "subtle"} onClick={() => selectPlane("blueprint")}>Blueprint</Button>
-                </div>
-                <Select
-                  className={styles.contextSelect}
-                  aria-label="Presentation context"
-                  value={presentation.selectedContext}
-                  onChange={(_, data) => selectContext(data.value)}
-                >
-                  {presentation.contexts.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-                </Select>
               </div>
               <div className={styles.contextMeta}>
                 {consolePlane === "runtime" ? `projection r${presentation.revision} · ${selectedContext.audience}` : "4 tiers · 3 lowering recipes"}
@@ -553,7 +591,14 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
                   <div className={styles.blueprintResource}>Authority rule<span className={styles.blueprintResourceValue}>{String((blueprintResources.authorityPolicy as { requiredRole: string }).requiredRole)}</span></div>
                 </div>
               </section>
-            </> : <>
+            </> : <div className={mergeClasses(styles.contextProjection, projectionFrameClass)} data-soc-viewpoint={presentation.selectedContext}>
+            <header className={styles.viewpointIdentity}>
+              <div>
+                <div className={styles.eyebrow}>{selectedContext.audience}</div>
+                <h2 className={styles.viewpointName}>{selectedContext.label}</h2>
+              </div>
+              <span className={styles.viewpointDevice}>{presentationSpec.frame} · {presentationSpec.arrangement}</span>
+            </header>
             <header className={styles.sharedHeader}>
               <div>
                 <div className={styles.eyebrow}>One governed operational state</div>
@@ -563,35 +608,35 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
               <span className={styles.pill}><DataTrending24Regular />{journal.length} attributable changes</span>
             </header>
 
-            <div className={styles.contextRow}>
-              <div data-soc-object-id="intent" className={mergeClasses(styles.contextBand, isCausallyAffected(selectedEntry, ["intent"]) ? styles.causalHighlight : undefined)}>
+            {hasRegion("intent") || hasRegion("constraints") ? <div className={mergeClasses(styles.contextRow, hasRegion("intent") && hasRegion("constraints") ? undefined : styles.contextRowSingle)}>
+              {hasRegion("intent") ? <div data-soc-object-id="intent" className={mergeClasses(styles.contextBand, isCausallyAffected(selectedEntry, ["intent"]) ? styles.causalHighlight : undefined)}>
                 <div className={styles.contextLabel}>Morgan's intent</div>
                 <p className={mergeClasses(styles.contextText, !intent ? styles.emptyText : undefined)}>{intent?.statement ?? "Waiting for the analyst to establish intent"}</p>
-              </div>
-              <div data-soc-object-id="constraints" className={mergeClasses(styles.contextBand, isCausallyAffected(selectedEntry, ["constraints", "DC-01"]) ? styles.causalHighlight : undefined)}>
+              </div> : null}
+              {hasRegion("constraints") ? <div data-soc-object-id="constraints" className={mergeClasses(styles.contextBand, isCausallyAffected(selectedEntry, ["constraints", "DC-01"]) ? styles.causalHighlight : undefined)}>
                 <div className={styles.contextLabel}>Priya's operating constraint</div>
                 <p className={mergeClasses(styles.contextText, constraints.length === 0 ? styles.emptyText : undefined)}>{constraints[0]?.rule ?? "Waiting for incident-command constraints"}</p>
-              </div>
-            </div>
+              </div> : null}
+            </div> : null}
 
-            <article data-soc-object-id="hypothesis" className={mergeClasses(styles.hypothesis, isCausallyAffected(selectedEntry, ["hypothesis", "corr-1", "Host-A"]) ? styles.causalHighlight : undefined)}>
+            {hasRegion("hypothesis") ? <article data-soc-object-id="hypothesis" className={mergeClasses(styles.hypothesis, isCausallyAffected(selectedEntry, ["hypothesis", "corr-1", "Host-A"]) ? styles.causalHighlight : undefined)}>
               <div className={styles.hypothesisTop}>
                 <div className={styles.hypothesisLabel}><BrainCircuit24Regular />Working hypothesis</div>
                 <div className={styles.confidence}>{hypothesis.confidence}%</div>
               </div>
               <p className={styles.hypothesisText}>{hypothesis.statement}</p>
-            </article>
+            </article> : null}
 
-            <div className={mergeClasses(styles.split, showExploration && showResponse ? undefined : styles.splitSingle)}>
-              {showExploration ? <section className={styles.section}>
-                <h3 className={styles.sectionTitle}><Sparkle24Regular />Exploration and evidence</h3>
-                {explorations.length > 0 ? <div className={styles.explorationList}>{explorations.map((item) => (
+            {showInvestigation || showResponse ? <div className={mergeClasses(styles.split, showInvestigation && showResponse ? undefined : styles.splitSingle)}>
+              {showInvestigation ? <section className={styles.section}>
+                <h3 className={styles.sectionTitle}><Sparkle24Regular />{hasRegion("exploration") ? "Exploration and evidence" : "Evidence summary"}</h3>
+                {hasRegion("exploration") && explorations.length > 0 ? <div className={styles.explorationList}>{explorations.map((item) => (
                   <article data-soc-object-id={item.id} key={item.id} className={mergeClasses(styles.exploration, item.status === "superseded" ? styles.explorationMuted : undefined, isCausallyAffected(selectedEntry, [item.id]) ? styles.causalHighlight : undefined)}>
                     <div className={styles.rowTop}><strong>Revision {item.revision}</strong><span className={styles.status}>{item.status}</span></div>
                     <div className={styles.detailGrid}><span>{item.windowMinutes} minute window</span><span>{item.correlationKey}</span><span>{item.safety}</span></div>
                   </article>
-                ))}</div> : <div className={styles.empty}>No exploration proposed yet.</div>}
-                {evidence.length > 0 ? <div className={styles.evidenceList}>{evidence.map((item) => (
+                ))}</div> : hasRegion("exploration") ? <div className={styles.empty}>No exploration proposed yet.</div> : null}
+                {hasRegion("evidence") && evidence.length > 0 ? <div className={styles.evidenceList}>{evidence.map((item) => (
                   <article data-soc-object-id={item.id} className={mergeClasses(styles.evidence, isCausallyAffected(selectedEntry, ["evidence", item.id]) ? styles.causalHighlight : undefined)} key={item.id}>
                     <div className={styles.evidenceMeta}><span>{item.source}</span><span>{item.confidence}%</span></div>
                     <p className={styles.evidenceText}>{item.summary}</p>
@@ -610,8 +655,19 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
                   {proposal.blastRadius ? <div className={styles.metrics}><span>Blast radius: {proposal.blastRadius}</span><span>Payroll: {proposal.payrollDependency}</span><span>{proposal.reversible ? "Reversible" : "Irreversible"}</span></div> : null}
                 </article> : <div className={styles.empty}>Response is holding until evidence supports a bounded action.</div>}
               </section> : null}
-            </div>
-            </>}
+            </div> : null}
+
+            {hasRegion("authorization") ? <section data-soc-object-id="authorization" className={mergeClasses(styles.contextBand, isCausallyAffected(selectedEntry, ["authorization", "rec-1", "Host-A"]) ? styles.causalHighlight : undefined)}>
+              <div className={styles.contextLabel}>Commander authority</div>
+              <p className={styles.contextText}>{authorization?.status === "pending" ? "Host-A isolation is ready for Incident Commander authorization." : authorization?.status === "authorized" ? "Containment has Incident Commander authorization." : "No consequential action is awaiting authorization."}</p>
+              {authorization?.status === "pending" ? <Button appearance="primary" icon={<ShieldLock24Regular />} onClick={() => emit("authorizeContainment", {}, "human-priya")}>Authorize Host-A isolation</Button> : null}
+            </section> : null}
+
+            {hasRegion("causal-record") ? <section className={styles.contextBand}>
+              <div className={styles.contextLabel}>Relevant causal record</div>
+              <p className={styles.contextText}>{selectedEntry ? `${actorNames.get(selectedEntry.actorId) ?? selectedEntry.actorId}: ${selectedEntry.summary}` : "The first attributable action will appear here."}</p>
+            </section> : null}
+            </div>}
             </div>
           </section>
 
