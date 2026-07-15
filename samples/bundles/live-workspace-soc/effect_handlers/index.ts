@@ -141,6 +141,7 @@ export const effects: EffectHandlerMap = {
     return {
       outcome: "committed",
       ops: [
+        setOp("soc.act", 2),
         setOp("soc.step", "constraint-added"),
         setOp("soc.constraints", [{
           id: "constraint-payroll",
@@ -163,7 +164,7 @@ export const effects: EffectHandlerMap = {
     return {
       outcome: "suggested",
       ops: [
-        setOp("soc.act", 2),
+        setOp("soc.act", 3),
         setOp("soc.step", "exploration-suggested"),
         setOp("soc.stage", "Suggested exploration and human reorientation"),
         setOp("soc.explorations", [{
@@ -195,6 +196,7 @@ export const effects: EffectHandlerMap = {
     return {
       outcome: "superseded",
       ops: [
+        setOp("soc.act", 4),
         setOp("soc.step", "exploration-amended"),
         setOp("soc.explorations", [...superseded, {
           id: "explore-2",
@@ -226,6 +228,7 @@ export const effects: EffectHandlerMap = {
     return {
       outcome: "replanned",
       ops: [
+        setOp("soc.act", 5),
         setOp("soc.step", "exploration-running"),
         setOp("soc.explorations", explorations),
         setOp("soc.actors", updateActor(ctx, actorId, "working", "Running Morgan's amended passive correlation")),
@@ -246,7 +249,7 @@ export const effects: EffectHandlerMap = {
     return {
       outcome: "partial",
       ops: [
-        setOp("soc.act", 3),
+        setOp("soc.act", 6),
         setOp("soc.step", "partial-findings"),
         setOp("soc.stage", "Cross-source result and governed overreach"),
         setOp("soc.evidence", evidence),
@@ -269,6 +272,7 @@ export const effects: EffectHandlerMap = {
       outcome: "rejected",
       detail: { fallback: "increase-telemetry" },
       ops: [
+        setOp("soc.act", 7),
         setOp("soc.step", "dc01-rejected"),
         setOp("soc.incident.governance", "Policy blocked; fallback active"),
         setOp("soc.proposal", {
@@ -302,6 +306,7 @@ export const effects: EffectHandlerMap = {
     return {
       outcome: "validated",
       ops: [
+        setOp("soc.act", 8),
         setOp("soc.step", "origin-resolved"),
         setOp("soc.evidence", evidence),
         setOp("soc.correlations", [{
@@ -330,7 +335,7 @@ export const effects: EffectHandlerMap = {
     return {
       outcome: "suggested",
       ops: [
-        setOp("soc.act", 4),
+        setOp("soc.act", 9),
         setOp("soc.step", "response-suggested"),
         setOp("soc.stage", "Response suggestion and human reorientation"),
         setOp("soc.proposal", {
@@ -357,6 +362,7 @@ export const effects: EffectHandlerMap = {
     return {
       outcome: "superseded",
       ops: [
+        setOp("soc.act", 10),
         setOp("soc.step", "response-revised"),
         setOp("soc.proposal", {
           ...proposal,
@@ -379,6 +385,7 @@ export const effects: EffectHandlerMap = {
     return {
       outcome: "validated",
       ops: [
+        setOp("soc.act", 11),
         setOp("soc.step", "response-validated"),
         setOp("soc.proposal", {
           ...proposal,
@@ -402,6 +409,7 @@ export const effects: EffectHandlerMap = {
     return {
       outcome: "recommended",
       ops: [
+        setOp("soc.act", 12),
         setOp("soc.step", "awaiting-commander"),
         setOp("soc.incident.governance", "Awaiting commander"),
         setOp("soc.recommendation", {
@@ -438,10 +446,11 @@ export const effects: EffectHandlerMap = {
         ],
       };
     }
+    const presenter = ctx.get("soc.presenter") as RecordValue;
     return {
       outcome: "authorized",
       ops: [
-        setOp("soc.act", 5),
+        setOp("soc.act", 13),
         setOp("soc.step", "authorized"),
         setOp("soc.stage", "Correct authority and execution"),
         setOp("soc.incident.governance", "Authorized"),
@@ -453,8 +462,9 @@ export const effects: EffectHandlerMap = {
         }),
         setOp("soc.actors", updateActors(ctx, {
           "human-priya": { status: "active", activity: "Authorized evidence-backed containment" },
-          "agent-response": { status: "working", activity: "Executing authorized Host-A containment" },
+          "agent-response": { status: "waiting", activity: "Authorized; waiting for presenter to run containment" },
         })),
+        setOp("soc.presenter", { ...presenter, locked: false }),
         setOp(
           "soc.journal",
           appendJournal(ctx, entry("j-13", "09:44:08", actorId, "authorized", "Authorized the evidence-backed Host-A isolation", ["authorization", "proposal-host-a"]))
@@ -477,6 +487,7 @@ export const effects: EffectHandlerMap = {
     return {
       outcome: "executed",
       ops: [
+        setOp("soc.act", 14),
         setOp("soc.step", "contained"),
         setOp("soc.stage", "Containment complete"),
         setOp("soc.incident.status", "Contained"),

@@ -63,7 +63,7 @@
         "match": { "region": "next-act-timer" },
         "emit": {
           "capability": "ui:timer-button",
-          "props": { "label": "Run act", "tone": "primary", "showCountdown": true },
+          "props": { "label": "Next act", "tone": "primary", "showCountdown": true },
           "read": {
             "durationMs": "soc.presenter.durationMs",
             "disabled": "soc.presenter.locked"

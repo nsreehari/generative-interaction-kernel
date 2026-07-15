@@ -150,36 +150,38 @@ interface ScenarioStep {
   actorId: string;
 }
 
-const STEP_DELAY_MS = 760;
-const ACT_STEPS: Record<number, ScenarioStep[]> = {
-  0: [
-    { event: "establishIntent", actorId: "human-morgan" },
-    { event: "addConstraint", actorId: "human-priya" },
-  ],
-  1: [
-    { event: "suggestExploration", actorId: "agent-correlation" },
-    { event: "amendExploration", actorId: "human-morgan" },
-    { event: "replanExploration", actorId: "agent-correlation" },
-  ],
-  2: [
-    { event: "commitPartialFindings", actorId: "agent-correlation" },
-    { event: "proposeDc01", actorId: "agent-response" },
-    { event: "completeCorrelation", actorId: "agent-correlation" },
-  ],
-  3: [
-    { event: "proposeHostA", actorId: "agent-response" },
-    { event: "reviseResponse", actorId: "human-morgan" },
-    { event: "calculateResponse", actorId: "agent-response" },
-    { event: "recommendContainment", actorId: "human-morgan" },
-  ],
+const ACT_DELAY_MS = 760;
+const PRESENTER_ACTS: Record<number, ScenarioStep> = {
+  0: { event: "establishIntent", actorId: "human-morgan" },
+  1: { event: "addConstraint", actorId: "human-priya" },
+  2: { event: "suggestExploration", actorId: "agent-correlation" },
+  3: { event: "amendExploration", actorId: "human-morgan" },
+  4: { event: "replanExploration", actorId: "agent-correlation" },
+  5: { event: "commitPartialFindings", actorId: "agent-correlation" },
+  6: { event: "proposeDc01", actorId: "agent-response" },
+  7: { event: "completeCorrelation", actorId: "agent-correlation" },
+  8: { event: "proposeHostA", actorId: "agent-response" },
+  9: { event: "reviseResponse", actorId: "human-morgan" },
+  10: { event: "calculateResponse", actorId: "agent-response" },
+  11: { event: "recommendContainment", actorId: "human-morgan" },
+  13: { event: "executeContainment", actorId: "agent-response" },
 };
 
 const ACT_TITLES = [
-  "Human intent and constraint",
-  "Exploration and reorientation",
-  "Correlation and governed overreach",
-  "Response refinement",
-  "Correct authority and execution",
+  "Morgan establishes investigation intent",
+  "Priya protects the payroll cutover",
+  "Correlation Agent suggests exploration",
+  "Morgan narrows the exploration",
+  "Correlation Agent replans",
+  "Correlation Agent commits partial findings",
+  "Response Agent proposes DC-01 isolation",
+  "Correlation Agent resolves the origin",
+  "Response Agent proposes bounded containment",
+  "Morgan revises the response",
+  "Response Agent validates blast radius",
+  "Morgan recommends containment",
+  "Priya authorizes containment",
+  "Response Agent executes containment",
 ];
 
 const useStyles = makeStyles({
@@ -220,11 +222,11 @@ const useStyles = makeStyles({
   actNumber: { color: "var(--accent)", fontWeight: tokens.fontWeightBold, textTransform: "uppercase", fontSize: tokens.fontSizeBase100 },
   actTitle: { margin: 0, fontWeight: tokens.fontWeightSemibold },
   actDots: { display: "flex", gap: tokens.spacingHorizontalXS },
-  actDot: { width: "24px", height: "4px", backgroundColor: "var(--line)" },
+  actDot: { width: "12px", height: "4px", backgroundColor: "var(--line)" },
   actDotDone: { backgroundColor: "var(--accent)" },
-  layout: { minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(300px, 360px)", overflow: "hidden", "@media (max-width: 1040px)": { gridTemplateColumns: "1fr", overflow: "visible" } },
-  workColumn: { minWidth: 0, minHeight: 0, display: "grid", gridTemplateRows: "minmax(0, 1fr) auto" },
-  shared: { minWidth: 0, minHeight: 0, display: "grid", gridTemplateRows: "auto minmax(0, 1fr)", margin: `clamp(18px, 3vw, 36px) clamp(16px, 3vw, 40px)`, border: `1px solid color-mix(in srgb, var(--accent) 24%, var(--line))`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "color-mix(in srgb, var(--accent) 7%, var(--panel))", boxShadow: "0 10px 28px color-mix(in srgb, var(--accent) 8%, transparent)", overflow: "hidden", "@media (max-width: 1040px)": { display: "block" } },
+  layout: { minHeight: 0, height: "100%", display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(300px, 360px)", gridTemplateRows: "minmax(0, 1fr)", overflow: "hidden", "@media (max-width: 1040px)": { height: "auto", gridTemplateColumns: "1fr", gridTemplateRows: "auto", overflow: "visible" } },
+  workColumn: { minWidth: 0, minHeight: 0, height: "100%", display: "grid", gridTemplateRows: "minmax(0, 1fr) minmax(0, clamp(142px, 19vh, 174px))", padding: `clamp(18px, 3vw, 36px) clamp(16px, 3vw, 40px) 0`, overflow: "hidden", "@media (max-width: 1040px)": { height: "auto", display: "block", padding: `clamp(18px, 3vw, 36px) clamp(16px, 3vw, 40px) 0`, overflow: "visible" } },
+  shared: { minWidth: 0, minHeight: 0, display: "grid", gridTemplateRows: "auto minmax(0, 1fr)", border: `1px solid color-mix(in srgb, var(--accent) 24%, var(--line))`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "color-mix(in srgb, var(--accent) 7%, var(--panel))", boxShadow: "0 10px 28px color-mix(in srgb, var(--accent) 8%, transparent)", overflow: "hidden", "@media (max-width: 1040px)": { display: "block" } },
   consoleChrome: { display: "grid", gridTemplateColumns: "minmax(180px, 1fr) auto minmax(220px, auto)", alignItems: "center", gap: tokens.spacingHorizontalM, minHeight: "44px", padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`, borderBottom: `1px solid color-mix(in srgb, var(--accent) 22%, var(--line))`, backgroundColor: "color-mix(in srgb, var(--accent) 11%, var(--panel))", "@media (max-width: 760px)": { gridTemplateColumns: "1fr", alignItems: "start" } },
   consolePath: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalS, minWidth: 0, color: "var(--muted)", fontFamily: tokens.fontFamilyMonospace, fontSize: tokens.fontSizeBase100 },
   consoleLights: { display: "inline-flex", gap: "5px", flexShrink: 0 },
@@ -294,8 +296,8 @@ const useStyles = makeStyles({
   proposalText: { margin: 0, color: "var(--muted)", lineHeight: tokens.lineHeightBase300 },
   fallback: { marginTop: tokens.spacingVerticalM, padding: tokens.spacingVerticalS, backgroundColor: "var(--panel-2)", borderRadius: tokens.borderRadiusMedium },
   metrics: { display: "flex", gap: tokens.spacingHorizontalM, flexWrap: "wrap", marginTop: tokens.spacingVerticalM, color: "var(--muted)", fontSize: tokens.fontSizeBase200 },
-  participants: { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", borderTop: `1px solid var(--line)`, backgroundColor: "var(--panel)", "@media (max-width: 880px)": { display: "flex", overflowX: "auto" } },
-  participant: { position: "relative", minWidth: 0, padding: tokens.spacingVerticalM, borderRight: `1px solid var(--line)`, "@media (max-width: 880px)": { minWidth: "245px" } },
+  participants: { minWidth: 0, minHeight: 0, height: "100%", marginInline: `clamp(16px, 3vw, 40px)`, display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", border: `1px solid var(--line)`, borderBottom: 0, backgroundColor: "var(--panel)", overflowY: "auto", "@media (max-width: 880px)": { display: "flex", overflowX: "auto" }, "@media (max-width: 1040px)": { minHeight: "142px", height: "auto" } },
+  participant: { position: "relative", minWidth: 0, padding: tokens.spacingVerticalS, borderRight: `1px solid var(--line)`, "@media (max-width: 880px)": { minWidth: "245px" } },
   participantActive: { backgroundColor: "color-mix(in srgb, var(--accent) 9%, var(--panel))" },
   participantTop: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: tokens.spacingHorizontalS },
   participantName: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalXS, fontWeight: tokens.fontWeightSemibold },
@@ -370,7 +372,6 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   const [consolePlane, setConsolePlane] = React.useState<SocPlane>(initialNavigationRef.current.plane);
   const emitRef = React.useRef(emit);
   const processedTokenRef = React.useRef(0);
-  const executionRequestedRef = React.useRef(false);
   const initialContextAppliedRef = React.useRef(false);
   emitRef.current = emit;
 
@@ -379,7 +380,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
     ? journal.find((item) => item.id === selectedJournalId) ?? latestEntry
     : latestEntry;
   const actorNames = new Map(actors.map((item) => [item.id, item.name]));
-  const actDisplay = Math.min(act + (act === 0 ? 1 : 0), 5);
+  const actDisplay = Math.min(act + 1, ACT_TITLES.length);
   const selectedContext = presentation.contexts.find((item) => item.id === presentation.selectedContext) ?? presentation.contexts[0];
   const showExploration = !["priya-mobile", "priya-laptop", "response-agent"].includes(presentation.selectedContext);
   const showResponse = !["morgan-pager", "morgan-workstation", "correlation-agent"].includes(presentation.selectedContext);
@@ -415,32 +416,22 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
     }
     if (presenter.advanceToken === processedTokenRef.current) return;
     processedTokenRef.current = presenter.advanceToken;
-    const steps = ACT_STEPS[act] ?? [];
-    const timers = steps.map((step, index) => window.setTimeout(() => {
-      emitRef.current(step.event, {}, step.actorId);
-    }, index * STEP_DELAY_MS));
-    timers.push(window.setTimeout(() => {
+    const nextAct = PRESENTER_ACTS[act];
+    if (!nextAct) return;
+    const actionTimer = window.setTimeout(() => {
+      emitRef.current(nextAct.event, {}, nextAct.actorId);
+    }, 0);
+    const finishTimer = window.setTimeout(() => {
       emitRef.current("finishAct", {});
-    }, steps.length * STEP_DELAY_MS + 120));
-    return () => timers.forEach(window.clearTimeout);
+    }, ACT_DELAY_MS);
+    return () => {
+      window.clearTimeout(actionTimer);
+      window.clearTimeout(finishTimer);
+    };
   }, [presenter.advanceToken]);
-
-  React.useEffect(() => {
-    if (authorization?.status !== "authorized") {
-      executionRequestedRef.current = false;
-      return;
-    }
-    if (executionRequestedRef.current) return;
-    executionRequestedRef.current = true;
-    const timer = window.setTimeout(() => {
-      emitRef.current("executeContainment", {}, "agent-response");
-    }, STEP_DELAY_MS);
-    return () => window.clearTimeout(timer);
-  }, [authorization?.status]);
 
   const reset = () => {
     processedTokenRef.current = 0;
-    executionRequestedRef.current = false;
     setSelectedJournalId(null);
     emit("reset", {});
   };
@@ -478,8 +469,8 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
       </header>
 
       <section className={styles.actBar} aria-live="polite">
-        <div className={styles.actNumber}>{incident.status === "Contained" ? "Journey complete" : `Act ${actDisplay} of 5`}</div>
-        <p className={styles.actTitle}>{stage === "Incident opened" ? ACT_TITLES[0] : stage}</p>
+        <div className={styles.actNumber}>{incident.status === "Contained" ? "Journey complete" : `Act ${actDisplay} of ${ACT_TITLES.length}`}</div>
+        <p className={styles.actTitle}>{incident.status === "Contained" ? stage : ACT_TITLES[act]}</p>
         <div className={styles.actDots} aria-hidden="true">
           {ACT_TITLES.map((_, index) => <span key={index} className={mergeClasses(styles.actDot, index < act || incident.status === "Contained" ? styles.actDotDone : undefined)} />)}
         </div>

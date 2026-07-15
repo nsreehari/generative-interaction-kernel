@@ -17,7 +17,7 @@
         "id": "workflow",
         "kind": "workflow",
         "schema": "genui/workflow.schema.json",
-        "description": "Five governed SOC acts containing attributable human and agent steps.",
+        "description": "Fourteen governed SOC acts, each containing one attributable human or agent action.",
         "input": {
           "properties": {
             "workflow": { "title": "Workflow", "default": "governed-soc-investigation", "enum": ["governed-soc-investigation"] },
@@ -83,11 +83,20 @@
       },
       "acts": {
         "inline": [
-          { "id": 1, "title": "Human intent and constraint", "steps": ["establishIntent", "addConstraint"] },
-          { "id": 2, "title": "Exploration and reorientation", "steps": ["suggestExploration", "amendExploration", "replanExploration"] },
-          { "id": 3, "title": "Correlation and governed overreach", "steps": ["commitPartialFindings", "proposeDc01", "completeCorrelation"] },
-          { "id": 4, "title": "Response refinement", "steps": ["proposeHostA", "reviseResponse", "calculateResponse", "recommendContainment"] },
-          { "id": 5, "title": "Correct authority and execution", "steps": ["authorizeContainment", "executeContainment"], "humanBoundary": "human-priya" }
+          { "id": 1, "chapter": 1, "title": "Morgan establishes investigation intent", "steps": ["establishIntent"] },
+          { "id": 2, "chapter": 1, "title": "Priya protects the payroll cutover", "steps": ["addConstraint"] },
+          { "id": 3, "chapter": 2, "title": "Correlation Agent suggests exploration", "steps": ["suggestExploration"] },
+          { "id": 4, "chapter": 2, "title": "Morgan narrows the exploration", "steps": ["amendExploration"] },
+          { "id": 5, "chapter": 2, "title": "Correlation Agent replans", "steps": ["replanExploration"] },
+          { "id": 6, "chapter": 3, "title": "Correlation Agent commits partial findings", "steps": ["commitPartialFindings"] },
+          { "id": 7, "chapter": 3, "title": "Response Agent proposes DC-01 isolation", "steps": ["proposeDc01"] },
+          { "id": 8, "chapter": 3, "title": "Correlation Agent resolves the origin", "steps": ["completeCorrelation"] },
+          { "id": 9, "chapter": 4, "title": "Response Agent proposes bounded containment", "steps": ["proposeHostA"] },
+          { "id": 10, "chapter": 4, "title": "Morgan revises the response", "steps": ["reviseResponse"] },
+          { "id": 11, "chapter": 4, "title": "Response Agent validates blast radius", "steps": ["calculateResponse"] },
+          { "id": 12, "chapter": 4, "title": "Morgan recommends containment", "steps": ["recommendContainment"] },
+          { "id": 13, "chapter": 5, "title": "Priya authorizes containment", "steps": ["authorizeContainment"], "humanBoundary": "human-priya" },
+          { "id": 14, "chapter": 5, "title": "Response Agent executes containment", "steps": ["executeContainment"] }
         ]
       },
       "presentationContexts": {

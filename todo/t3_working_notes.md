@@ -85,7 +85,7 @@ The header is a compact presenter surface:
 
 - incident identity, severity, status, and current scenario stage;
 - Manual/Auto pace selector plus one mode-aware `Next act` timer button;
-- visible act title, `Act n of 5`, and countdown on that button;
+- visible act title, `Act n of 14`, and countdown on that button;
 - reset;
 - current governance state (`Open`, `Policy blocked`, `Awaiting commander`, `Executed`);
 - optional shared-session health when transport-backed clients become real.
@@ -95,9 +95,10 @@ for the following act after the current act settles. Manual pace uses a long del
 minutes) so the presenter normally clicks; Auto pace uses a short delay (initially two seconds).
 The pace selector changes the duration rather than introducing a second advance button.
 
-The header advances narrative acts, not raw domain steps. Each act still executes distinct real
-actor-attributed events in a short deterministic sequence. Consequential human decisions remain
-in the responsible participant panel, not in the header; the act timer pauses at those boundaries.
+The header advances one attributable action per act. Every click or timer expiry produces at most
+one domain event and one journal entry, giving the presenter a pause between contributions.
+Consequential human decisions remain in the responsible participant panel; the timer pauses for
+Priya's authorization, then the presenter explicitly advances the separate execution act.
 
 ### 2.2 Shared workspace
 
@@ -380,9 +381,9 @@ state and causal history. Never maintain parallel human, agent, or presenter fix
    execution receipts appear beside the affected proposal as well as in the ledger.
 6. **Presenter controls are outside the domain.** Manual/Auto/Reset advance the reliable demo but
   do not impersonate Morgan, Priya, Correlation, or Response.
-7. **Acts for presentation, steps for causality.** The visible presenter control advances one
-  narrative act. Each act unfolds as a deterministic sequence of distinct actor-attributed steps,
-  preserving the cause, authority decision, state change, and journal entry for each contribution.
+7. **One attributable action per presenter act.** The visible presenter control advances exactly
+  one actor-attributed domain event and journal entry. Narrative chapters remain metadata rather
+  than hidden batches, preserving presenter control over every cause, decision, and state change.
 8. **Honor host theming and shared primitives.** Use semantic host variables and existing `@gik/*`
    surfaces. Do not make agents visually futuristic or more important than humans.
 9. **Preserve revision history.** Suggestions and plans become `superseded`, never silently
