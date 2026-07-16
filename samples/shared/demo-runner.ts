@@ -206,6 +206,10 @@ export function composeDemoRunnerManifest<T extends BundleManifest>(manifest: T)
     propsSchema: { type: "object", additionalProperties: true },
     emits: ["press"],
   };
+  composed.capabilities["fluent:toggle"] = {
+    propsSchema: { type: "object", additionalProperties: true },
+    emits: ["toggle"],
+  };
   const workspace = composed.capabilities["soc:workspace"];
   if (!workspace) throw new Error("Demo runner requires a workspace capability");
   workspace.emits = [...new Set([
@@ -225,6 +229,7 @@ export function composeDemoRunnerManifest<T extends BundleManifest>(manifest: T)
   composed.externals.projectionViews = {
     ...(composed.externals.projectionViews ?? {}),
     ui: { from: "floor", use: ["timer-button"] },
+    fluent: { from: "fluent", use: ["toggle"] },
   };
   return composed;
 }
@@ -277,6 +282,23 @@ export function composeDemoRunnerDocument<T extends RuntimeDocument>(
   };
   edges.children = [
     ...(edges.children ?? []),
+    {
+      capability: "fluent:toggle",
+      id: "presenter-pace-toggle-region",
+      props: {
+        onValue: "auto",
+        offValue: "manual",
+        onLabel: "Auto",
+        offLabel: "Manual",
+        minWidth: 72,
+      },
+      edges: {
+        read: { value: `${namespace}.presenter.pace` },
+        on: {
+          toggle: [{ do: "invoke", args: { tool: "setPace" } }],
+        },
+      },
+    },
     {
       capability: bindings.timerCapability ?? "ui:timer-button",
       id: bindings.timerRegionId ?? "next-act-timer-region",

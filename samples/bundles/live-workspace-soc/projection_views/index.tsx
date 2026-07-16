@@ -274,9 +274,8 @@ const useStyles = makeStyles({
   viewpointControl: { display: "inline-flex", alignItems: "center", gap: tokens.spacingHorizontalXS },
   viewpointLabel: { color: "var(--muted)", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightBold, textTransform: "uppercase" },
   pill: { display: "inline-flex", alignItems: "center", gap: tokens.spacingHorizontalXS, minHeight: "30px", padding: `0 ${tokens.spacingHorizontalS}`, border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel-2)", fontSize: tokens.fontSizeBase200, fontWeight: tokens.fontWeightSemibold },
-  pace: { display: "inline-flex", padding: "2px", gap: "2px", border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel-2)" },
-  timerSlot: { minWidth: "118px", paddingRight: tokens.spacingHorizontalS, "& > button": { width: "100%", minHeight: "32px" } },
-  timerSlotCompact: { minWidth: "54px", paddingLeft: tokens.spacingHorizontalXS, "& .gx-timer-label": { display: "none" }, "& .gx-timer-separator": { display: "none" }, "& > button": { minWidth: "46px", width: "auto", paddingLeft: tokens.spacingHorizontalS, paddingRight: tokens.spacingHorizontalS } },
+  runnerFloorControls: { minWidth: "118px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: tokens.spacingHorizontalS, paddingRight: tokens.spacingHorizontalS, "& > button": { minHeight: "32px" }, "& .gx-btn": { minWidth: "118px" } },
+  runnerFloorControlsCompact: { minWidth: "54px", paddingLeft: tokens.spacingHorizontalXS, "& .gx-fluent-toggle": { display: "none" }, "& .gx-timer-label": { display: "none" }, "& .gx-timer-separator": { display: "none" }, "& .gx-btn": { minWidth: "46px", width: "auto", paddingLeft: tokens.spacingHorizontalS, paddingRight: tokens.spacingHorizontalS } },
   actBar: { minWidth: 0, display: "grid", gap: tokens.spacingVerticalXXS },
   actNumber: { color: "var(--accent)", fontWeight: tokens.fontWeightBold, textTransform: "uppercase", fontSize: tokens.fontSizeBase100 },
   actTitle: { margin: 0, fontWeight: tokens.fontWeightSemibold },
@@ -661,13 +660,9 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
             </Select>
           </label> : null}
           {runnerExpanded ? <div className={styles.runnerControls}>
-            <div className={styles.pace} role="group" aria-label="Presenter pace">
-              <Button size="small" appearance={presenter.pace === "manual" ? "primary" : "subtle"} onClick={() => emit("setPace", { pace: "manual" })}>Manual</Button>
-              <Button size="small" appearance={presenter.pace === "auto" ? "primary" : "subtle"} onClick={() => emit("setPace", { pace: "auto" })}>Auto</Button>
-            </div>
             <Button appearance="subtle" icon={<ArrowReset24Regular />} aria-label="Reset scenario" disabled={activeAgentId !== null} onClick={reset} />
           </div> : null}
-          <div className={mergeClasses(styles.timerSlot, !runnerExpanded ? styles.timerSlotCompact : undefined)}>{children}</div>
+          <div className={mergeClasses(styles.runnerFloorControls, !runnerExpanded ? styles.runnerFloorControlsCompact : undefined)}>{children}</div>
         </div>
       </aside> : null}
 
