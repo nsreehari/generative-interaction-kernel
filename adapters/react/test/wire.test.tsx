@@ -15,7 +15,7 @@ import {
   Kernel,
   KernelTransportHost,
   createInMemoryTransportPair,
-} from "../../../kernel/src/index";
+} from "@gik/kernel";
 import { GenUIRoot } from "../src/useGenUI";
 import { liveCardsRegistry } from "../src/components";
 

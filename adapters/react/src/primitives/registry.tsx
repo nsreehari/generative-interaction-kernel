@@ -8,8 +8,7 @@
 
 import React from "react";
 import "@xyflow/react/dist/style.css";
-import { unwrap } from "../../../../kernel/src/index";
-import type { Json, ResolvedNode } from "../../../../kernel/src/types";
+import { unwrap, type Json, type ResolvedNode } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import {
   buildRegistryFromImports,

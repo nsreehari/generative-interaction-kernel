@@ -8,8 +8,7 @@ import { fileURLToPath } from "node:url";
 import { createElement, Fragment, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { InMemoryStateModel, Kernel } from "../../../kernel/src/index";
-import type { ResolvedNode } from "../../../kernel/src/types";
+import { InMemoryStateModel, Kernel, type ResolvedNode } from "@gik/kernel";
 import { GenUIController } from "../src/controller";
 import { renderNode } from "../src/render";
 import { buildRegistryFromImports } from "../src/registry";

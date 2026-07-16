@@ -9,7 +9,7 @@
 // edges that bind data into named props. `emits` documents the events a primitive raises so
 // documents can wire `on` handlers to them.
 
-import type { CapabilityDescriptor, Enveloped, ManifestPayload } from "../../../../kernel/src/index";
+import type { CapabilityDescriptor, Enveloped, ManifestPayload } from "@gik/kernel";
 
 const anyProps = { type: "object", additionalProperties: true } as const;
 

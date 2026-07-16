@@ -1,7 +1,7 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { Json } from "../../../kernel/src/types";
+import type { Json } from "@gik/kernel";
 
 import { renderNode } from "../src/render";
 import { buildRegistryFromImports } from "../src/registry";

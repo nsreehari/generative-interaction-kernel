@@ -47,7 +47,8 @@
   },
   "dependencies": {
     "@gik/component-infinite-canvas": "0.1.0",
-    "@gik/evaluators": "0.1.0"
+    "@gik/evaluators": "0.1.0",
+    "@gik/kernel": "0.1.0"
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --sourcemap --clean --tsconfig tsconfig.json",

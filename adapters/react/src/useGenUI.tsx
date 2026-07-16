@@ -2,7 +2,7 @@
 // the transport-backed GIKClient) and renders its resolved tree.
 
 import { useEffect, useState, type ReactNode } from "react";
-import type { ResolvedNode } from "../../../kernel/src/types";
+import type { ResolvedNode } from "@gik/kernel";
 import { renderNode } from "./render";
 import type { ComponentRegistry } from "./registry";
 
