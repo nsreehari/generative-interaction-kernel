@@ -25,6 +25,11 @@
       { "id": "agent-correlation", "kind": "agent", "name": "Correlation Agent", "role": "Evidence correlation", "status": "waiting", "objective": "Resolve the execution origin across trusted sources", "authority": "May query, correlate, and contribute findings" },
       { "id": "agent-response", "kind": "agent", "name": "Response Agent", "role": "Containment planning", "status": "waiting", "objective": "Prepare a bounded and reversible response", "authority": "May propose and execute only after authorization" }
     ],
+    "agentProviders": {
+      "agent-correlation": { "mode": "mock", "status": "ready", "agentName": "SOC-Correlation-Agent", "conversationId": "", "responseId": "", "lastProvider": "mock", "fallbackReason": "" },
+      "agent-response": { "mode": "mock", "status": "ready", "agentName": "SOC-Response-Agent", "conversationId": "", "responseId": "", "lastProvider": "mock", "fallbackReason": "" }
+    },
+    "foundry": { "required": false, "key": "", "agentNames": [] },
     "intent": null,
     "constraints": [],
     "dataSources": [

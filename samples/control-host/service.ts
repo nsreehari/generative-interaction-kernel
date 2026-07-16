@@ -73,6 +73,62 @@ const rollbackDocument = {
   },
 };
 
+const continuityManifest = {
+  version: "continuity-sample/1",
+  namespaces: ["continuity"],
+  capabilities: {
+    workflow: {},
+    status: { dataProp: "value" },
+  },
+};
+
+const continuityDocument = {
+  gik: "0.1",
+  type: "document",
+  payload: {
+    root: {
+      capability: "workflow",
+      id: "continuity-workflow",
+      edges: {
+        children: [
+          {
+            capability: "status",
+            id: "continuity-status",
+            edges: { read: { value: "continuity.job.status", result: "continuity.job.result" } },
+          },
+          {
+            capability: "workflow",
+            id: "continuity-controller",
+            edges: {
+              on: {
+                queue: [
+                  { do: "assign", target: "continuity.job.status", args: { value: "queued" } },
+                  { do: "assign", target: "continuity.job.result", args: { value: "" } },
+                  { do: "assign", target: "continuity.job.requestedBy", args: { value: "mcp-control" } },
+                  { do: "assign", target: "continuity.job.completedBy", args: { value: "" } },
+                ],
+                complete: [
+                  { do: "assign", target: "continuity.job.status", args: { value: "completed" } },
+                  {
+                    do: "assign",
+                    target: "continuity.job.result",
+                    args: { value: "background-analysis-ready" },
+                  },
+                  {
+                    do: "assign",
+                    target: "continuity.job.completedBy",
+                    args: { value: "background-worker" },
+                  },
+                ],
+              },
+            },
+          },
+        ],
+      },
+    },
+  },
+};
+
 const rollbackOrchestrator: Orchestrator = {
   async invoke(effect: OrchestratorEffect) {
     if (effect.tool !== "charge") return;
@@ -88,7 +144,7 @@ const rollbackOrchestrator: Orchestrator = {
   },
 };
 
-type DemoMode = "live-cards" | "rollback";
+export type DemoMode = "live-cards" | "rollback" | "continuity";
 export interface ControlHostOptions {
   demo?: DemoMode;
   port?: number;
@@ -96,7 +152,15 @@ export interface ControlHostOptions {
 }
 
 function createRuntime(demo: DemoMode) {
-  return demo === "rollback"
+  return demo === "continuity"
+    ? {
+        manifest: continuityManifest,
+        document: continuityDocument,
+        state: new InMemoryStateModel(continuityManifest.namespaces),
+        orchestrator: undefined,
+        tickerEvent: null,
+      }
+    : demo === "rollback"
     ? {
         manifest: rollbackManifest,
         document: rollbackDocument,

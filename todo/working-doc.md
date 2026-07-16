@@ -400,9 +400,12 @@ building TurboTax. Frame strictly as "same kernel, headless, a tax journey."
   catalog/edit/validation workflows. Their product work is tracked separately from the pitch beat.
 
 ## Beat 4 — Domain + Deployment Atlas (transversality)
-- **T7 — Represent `kernel → face → projection → transport`** as a **Deployment Atlas** (medium
-  transversality): `agent-host` (MCP tools), `control-host` (SSE live runtime), `backend-host`
-  (headless). Prove the core runs detached from the UI shell — "same blueprint, headless."
+- **T7 phase 1 — DONE (2026-07-15):** the `control-host` continuity mode and transport-only
+  background worker prove `kernel → face → projection → transport` across MCP and SSE. MCP queues
+  work, the renderer disconnects, the headless worker observes and completes through HTTP MCP, and
+  SSE resume replays the two missed revisions from the same authority. Requester/completer
+  attribution remains in shared state. This proves transport-isolated continuation, not durable
+  recovery after the authority process restarts; persistence and the visual Deployment Atlas remain.
 - **T7a — Domain Atlas (domain transversality, per D3a):** a light *flash* of a second domain
   = **tax preparation** (multi-doc synthesis, current policy, optimization decisions) running on
   the same kernel/verbs/trace. Reuse SOC's forensics framing (validate-or-fallback, `confirm`-

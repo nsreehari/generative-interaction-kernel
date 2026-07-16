@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Select, Spinner, makeStyles, mergeClasses, shorthands, tokens } from "@fluentui/react-components";
+import { Button, Input, Select, Spinner, makeStyles, mergeClasses, shorthands, tokens } from "@fluentui/react-components";
 import {
   ArrowLeft24Regular,
   ArrowReset24Regular,
@@ -84,6 +84,16 @@ interface Actor {
   activity?: string;
 }
 
+interface AgentProvider {
+  mode: "mock" | "live";
+  status: string;
+  agentName: string;
+  conversationId: string;
+  responseId: string;
+  lastProvider: "mock" | "live";
+  fallbackReason: string;
+}
+
 type ParticipantPresence = "active" | "working" | "waiting" | "input-awaited" | "sleeping" | "complete";
 
 export function participantPresence(status: string): ParticipantPresence {
@@ -161,6 +171,11 @@ interface JournalEntry {
   result: string;
   summary: string;
   affected: string[];
+  provider?: "mock" | "live";
+  agentName?: string;
+  conversationId?: string;
+  responseId?: string;
+  fallbackReason?: string;
 }
 
 export function isCausallyAffected(entry: JournalEntry | undefined, objectIds: readonly string[]): boolean {
@@ -347,13 +362,13 @@ const useStyles = makeStyles({
   proposalText: { margin: 0, color: "var(--muted)", lineHeight: tokens.lineHeightBase300 },
   fallback: { marginTop: tokens.spacingVerticalM, padding: tokens.spacingVerticalS, backgroundColor: "var(--panel-2)", borderRadius: tokens.borderRadiusMedium },
   metrics: { display: "flex", gap: tokens.spacingHorizontalM, flexWrap: "wrap", marginTop: tokens.spacingVerticalM, color: "var(--muted)", fontSize: tokens.fontSizeBase200 },
-  participantDrawer: { position: "fixed", left: "clamp(16px, 3vw, 40px)", right: "clamp(376px, 27vw, 410px)", bottom: tokens.spacingVerticalL, zIndex: 30, border: "1px solid color-mix(in srgb, #a15c00 34%, var(--line))", borderRadius: tokens.borderRadiusMedium, backgroundColor: "color-mix(in srgb, var(--panel) 96%, transparent)", boxShadow: "0 18px 48px rgba(15, 23, 42, .22)", backdropFilter: "blur(14px)", overflow: "hidden", "@media (max-width: 1040px)": { right: "64px" } },
-  participantDrawerToggle: { width: "100%", minHeight: "46px", display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) auto", alignItems: "center", gap: tokens.spacingHorizontalM, padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`, border: 0, borderLeft: "4px solid #a15c00", backgroundColor: "color-mix(in srgb, #f2c97d 24%, var(--panel))", color: "var(--text)", font: "inherit", textAlign: "left", cursor: "pointer", "&:hover": { backgroundColor: "color-mix(in srgb, #f2c97d 32%, var(--panel))" }, "&:focus-visible": { outline: "2px solid #a15c00", outlineOffset: "-2px" } },
+  participantDrawer: { position: "fixed", left: "clamp(16px, 3vw, 40px)", right: "clamp(376px, 27vw, 410px)", bottom: tokens.spacingVerticalL, zIndex: 30, border: "1px solid color-mix(in srgb, #a15c00 34%, var(--line))", borderRadius: tokens.borderRadiusMedium, backgroundColor: "color-mix(in srgb, var(--panel) 96%, transparent)", boxShadow: "0 18px 48px rgba(15, 23, 42, .22)", backdropFilter: "blur(14px)", overflow: "hidden", "@media (max-width: 1040px)": { right: "64px" }, "@media (max-width: 620px)": { left: "16px", right: "16px", bottom: "16px" } },
+  participantDrawerToggle: { width: "100%", minHeight: "46px", display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) auto", alignItems: "center", gap: tokens.spacingHorizontalM, padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`, border: 0, borderLeft: "4px solid #a15c00", backgroundColor: "color-mix(in srgb, #f2c97d 24%, var(--panel))", color: "var(--text)", font: "inherit", textAlign: "left", cursor: "pointer", "&:hover": { backgroundColor: "color-mix(in srgb, #f2c97d 32%, var(--panel))" }, "&:focus-visible": { outline: "2px solid #a15c00", outlineOffset: "-2px" }, "@media (max-width: 620px)": { gridTemplateColumns: "minmax(0, 1fr) auto" } },
   participantDrawerTitle: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalS, fontWeight: tokens.fontWeightSemibold },
-  participantSummaries: { minWidth: 0, display: "flex", justifyContent: "center", gap: tokens.spacingHorizontalL, overflow: "hidden" },
+  participantSummaries: { minWidth: 0, display: "flex", justifyContent: "center", gap: tokens.spacingHorizontalL, overflow: "hidden", "@media (max-width: 620px)": { display: "none" } },
   participantSummary: { minWidth: 0, display: "inline-flex", alignItems: "center", gap: tokens.spacingHorizontalXS, color: "var(--muted)", fontSize: tokens.fontSizeBase100, whiteSpace: "nowrap" },
   participantSummaryName: { color: "var(--text)", fontWeight: tokens.fontWeightSemibold },
-  participants: { minWidth: 0, maxHeight: "250px", display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", borderTop: `1px solid var(--line)`, backgroundColor: "var(--panel)", overflowY: "auto", "@media (max-width: 880px)": { display: "flex", overflowX: "auto" } },
+  participants: { minWidth: 0, maxHeight: "280px", display: "grid", gridTemplateColumns: "minmax(0, .85fr) minmax(0, .85fr) minmax(0, 1.15fr) minmax(0, 1.15fr)", borderTop: `1px solid var(--line)`, backgroundColor: "var(--panel)", overflowY: "auto", "@media (max-width: 880px)": { display: "flex", overflowX: "auto" } },
   participant: { position: "relative", minWidth: 0, padding: tokens.spacingVerticalS, borderRight: `1px solid var(--line)`, "@media (max-width: 880px)": { minWidth: "245px" } },
   participantActive: { backgroundColor: "color-mix(in srgb, var(--accent) 9%, var(--panel))" },
   participantTop: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: tokens.spacingHorizontalS },
@@ -367,6 +382,11 @@ const useStyles = makeStyles({
   role: { marginTop: tokens.spacingVerticalXXS, color: "var(--muted)", fontSize: tokens.fontSizeBase100 },
   activity: { minHeight: "38px", margin: `${tokens.spacingVerticalS} 0`, fontSize: tokens.fontSizeBase200, lineHeight: tokens.lineHeightBase200 },
   authority: { color: "var(--muted)", fontSize: tokens.fontSizeBase100 },
+  providerControls: { display: "grid", gap: tokens.spacingVerticalXS, marginTop: tokens.spacingVerticalS, paddingTop: tokens.spacingVerticalS, borderTop: `1px solid var(--line)` },
+  providerHeader: { display: "grid", gap: tokens.spacingVerticalXS },
+  providerMode: { width: "100%", display: "flex", padding: "2px", gap: "2px", border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel-2)", "& > button": { flex: 1 } },
+  providerName: { color: "var(--muted)", fontFamily: tokens.fontFamilyMonospace, fontSize: tokens.fontSizeBase100, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  providerStatus: { color: "var(--muted)", fontSize: tokens.fontSizeBase100, overflowWrap: "anywhere" },
   authorize: { width: "100%", marginTop: tokens.spacingVerticalS },
   journalRail: { minWidth: 0, borderLeft: `1px solid var(--line)`, backgroundColor: "var(--panel)", "@media (max-width: 1040px)": { borderLeft: 0, borderTop: `1px solid var(--line)` } },
   journalSticky: { height: "100%", minHeight: 0, display: "grid", gridTemplateRows: "auto minmax(0, 1fr)", "@media (max-width: 1040px)": { height: "520px" } },
@@ -412,6 +432,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   const presenter = node.props.presenter as unknown as Presenter;
   const presentation = node.props.presentation as unknown as Presentation;
   const actors = (node.props.actors ?? []) as unknown as Actor[];
+  const agentProviders = (node.props.agentProviders ?? {}) as unknown as Record<string, AgentProvider>;
   const explorations = (node.props.explorations ?? []) as unknown as Exploration[];
   const evidence = (node.props.evidence ?? []) as unknown as Evidence[];
   const hypothesis = node.props.hypothesis as unknown as Hypothesis;
@@ -425,6 +446,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   const [journalMode, setJournalMode] = React.useState<"journal" | "ledger">("journal");
   const [selectedJournalId, setSelectedJournalId] = React.useState<string | null>(null);
   const [participantsExpanded, setParticipantsExpanded] = React.useState(false);
+  const [activeAgentId, setActiveAgentId] = React.useState<string | null>(null);
   const validContextIds = SOC_BLUEPRINT_CONTEXTS.map((item) => item.id);
   const initialNavigationRef = React.useRef(readSocNavigation(window.location.search, validContextIds));
   const [consolePlane, setConsolePlane] = React.useState<SocPlane>(initialNavigationRef.current.plane);
@@ -501,15 +523,24 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
     processedTokenRef.current = presenter.advanceToken;
     const nextAct = PRESENTER_ACTS[act];
     if (!nextAct) return;
-    const actionTimer = window.setTimeout(() => {
-      emitRef.current(nextAct.event, {}, nextAct.actorId);
-    }, 0);
-    const finishTimer = window.setTimeout(() => {
-      emitRef.current("finishAct", {});
-    }, ACT_DELAY_MS);
+    let cancelled = false;
+    let finishTimer: number | undefined;
+    void (async () => {
+      if (nextAct.actorId.startsWith("agent-")) setActiveAgentId(nextAct.actorId);
+      try {
+        await Promise.resolve(emitRef.current(nextAct.event, {}, nextAct.actorId));
+      } finally {
+        if (!cancelled) setActiveAgentId(null);
+      }
+      if (cancelled) return;
+      await new Promise<void>((resolve) => {
+        finishTimer = window.setTimeout(resolve, ACT_DELAY_MS);
+      });
+      if (!cancelled) await Promise.resolve(emitRef.current("finishAct", {}));
+    })();
     return () => {
-      window.clearTimeout(actionTimer);
-      window.clearTimeout(finishTimer);
+      cancelled = true;
+      if (finishTimer !== undefined) window.clearTimeout(finishTimer);
     };
   }, [presenter.advanceToken]);
 
@@ -562,7 +593,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
             <Button size="small" appearance={presenter.pace === "auto" ? "primary" : "subtle"} onClick={() => emit("setPace", { pace: "auto" })}>Auto</Button>
           </div>
           <div className={styles.timerSlot}>{children}</div>
-          <Button appearance="subtle" icon={<ArrowReset24Regular />} aria-label="Reset scenario" onClick={reset} />
+          <Button appearance="subtle" icon={<ArrowReset24Regular />} aria-label="Reset scenario" disabled={activeAgentId !== null} onClick={reset} />
         </div>
       </header>
 
@@ -799,7 +830,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
                   <div>
                     <div className={styles.journalResult}>{item.result} · {actorNames.get(item.actorId) ?? item.actorId}</div>
                     <div className={styles.journalSummary}>{item.summary}</div>
-                    {journalMode === "ledger" ? <div className={styles.ledgerMeta}>actor={item.actorId}<br />affected={item.affected.join(", ")}</div> : null}
+                    {journalMode === "ledger" ? <div className={styles.ledgerMeta}>actor={item.actorId}<br />affected={item.affected.join(", ")}{item.provider ? <><br />provider={item.provider} · agent={item.agentName}{item.conversationId ? <><br />conversation={item.conversationId} · response={item.responseId}</> : null}{item.fallbackReason ? <><br />fallback={item.fallbackReason}</> : null}</> : null}</div> : null}
                   </div>
                 </button>
               ))}
@@ -821,10 +852,11 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
           <span className={styles.participantSummaries} aria-hidden="true">
             {actors.map((item) => {
               const canAuthorize = item.id === "human-priya" && authorization?.status === "pending";
+              const status = activeAgentId === item.id ? "working" : canAuthorize ? "input-awaited" : item.status;
               return <span className={styles.participantSummary} key={item.id}>
-                <ParticipantPresenceIcon status={canAuthorize ? "input-awaited" : item.status} />
+                <ParticipantPresenceIcon status={status} />
                 <span className={styles.participantSummaryName}>{item.name}</span>
-                <span>{canAuthorize ? "input awaited" : item.status.replaceAll("-", " ")}</span>
+                <span>{activeAgentId === item.id ? "thinking" : canAuthorize ? "input awaited" : item.status.replaceAll("-", " ")}</span>
               </span>;
             })}
           </span>
@@ -834,17 +866,28 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
             {actors.map((item) => {
               const active = selectedEntry?.actorId === item.id;
               const canAuthorize = item.id === "human-priya" && authorization?.status === "pending";
+              const status = activeAgentId === item.id ? "working" : canAuthorize ? "input-awaited" : item.status;
               return <article data-soc-actor-id={item.id} key={item.id} className={mergeClasses(styles.participant, active ? styles.participantActive : undefined, active ? styles.causalHighlight : undefined)}>
                 <div className={styles.participantTop}>
                   <div className={styles.participantIdentity}>
-                    <ParticipantPresenceIcon status={canAuthorize ? "input-awaited" : item.status} />
+                    <ParticipantPresenceIcon status={status} />
                     <div className={styles.participantName}>{item.kind === "human" ? <Person24Regular /> : <Sparkle24Regular />}{item.name}</div>
                   </div>
                   <span className={styles.kind}>{item.kind.toUpperCase()}</span>
                 </div>
-                <div className={styles.role}>{item.role} · {canAuthorize ? "input awaited" : item.status.replaceAll("-", " ")}</div>
+                <div className={styles.role}>{item.role} · {activeAgentId === item.id ? "thinking" : canAuthorize ? "input awaited" : item.status.replaceAll("-", " ")}</div>
                 <p className={styles.activity}>{item.activity ?? item.objective}</p>
                 <div className={styles.authority}>{item.authority}</div>
+                {item.kind === "agent" && agentProviders[item.id] ? <div className={styles.providerControls}>
+                  <div className={styles.providerHeader}>
+                    <span className={styles.providerName} title={agentProviders[item.id].agentName}>{agentProviders[item.id].agentName}</span>
+                    <div className={styles.providerMode} role="group" aria-label={`${item.name} provider`}>
+                      <Button size="small" appearance={agentProviders[item.id].mode === "mock" ? "primary" : "subtle"} onClick={() => { emit("setAgentMode", { agentId: item.id, mode: "mock" }, item.id); }}>Mock</Button>
+                      <Button size="small" appearance={agentProviders[item.id].mode === "live" ? "primary" : "subtle"} onClick={() => { emit("setAgentMode", { agentId: item.id, mode: "live" }, item.id); }}>Live</Button>
+                    </div>
+                  </div>
+                  <div className={styles.providerStatus}>{agentProviders[item.id].status}{agentProviders[item.id].fallbackReason ? ` · ${agentProviders[item.id].fallbackReason}` : agentProviders[item.id].conversationId ? ` · conversation active` : ""}</div>
+                </div> : null}
                 {canAuthorize ? <Button className={styles.authorize} appearance="primary" icon={<ShieldLock24Regular />} onClick={() => emit("authorizeContainment", {}, "human-priya")}>Authorize Host-A isolation</Button> : null}
               </article>;
             })}

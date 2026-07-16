@@ -1,7 +1,19 @@
 import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
-import type { Json } from "@gik/kernel";
+import type { Json, OrchestratorResult, PatchOp } from "@gik/kernel";
 
+import { createFoundryProxy } from "../../../shared/foundry-proxy";
+import manifest from "../manifest.json";
 import initialState from "../state.json";
+import { getSocFoundryKey } from "../live-credentials";
+import {
+  buildAgentMessage,
+  createSocAgentContract,
+  type AgentValidationIssue,
+  type CorrelationReply,
+  type ResponseReply,
+  type SocAgentOperation,
+  type SocAgentReply,
+} from "../live-agent";
 
 type RecordValue = Record<string, Json>;
 const resetState = JSON.parse(JSON.stringify(initialState.soc)) as RecordValue;
@@ -60,7 +72,165 @@ function roleFor(ctx: EffectContext, actorId: string): string | undefined {
   return typeof found?.role === "string" ? found.role : undefined;
 }
 
-export const effects: EffectHandlerMap = {
+interface ProviderRecord extends RecordValue {
+  mode: "mock" | "live";
+  status: string;
+  agentName: string;
+  conversationId: string;
+}
+
+const LIVE_OPERATIONS: Record<string, { actorId: "agent-correlation" | "agent-response"; operation: SocAgentOperation }> = {
+  suggestExploration: { actorId: "agent-correlation", operation: "suggest-exploration" },
+  replanExploration: { actorId: "agent-correlation", operation: "replan-exploration" },
+  commitPartialFindings: { actorId: "agent-correlation", operation: "commit-partial-findings" },
+  completeCorrelation: { actorId: "agent-correlation", operation: "complete-correlation" },
+  evaluateDc01Policy: { actorId: "agent-response", operation: "assess-policy-candidate" },
+  proposeHostA: { actorId: "agent-response", operation: "propose-contained-response" },
+  calculateResponse: { actorId: "agent-response", operation: "validate-response" },
+};
+
+function providers(ctx: EffectContext): Record<string, ProviderRecord> {
+  return ctx.get("soc.agentProviders") as unknown as Record<string, ProviderRecord>;
+}
+
+function incidentContext(ctx: EffectContext): Record<string, unknown> {
+  return {
+    incident: ctx.get("soc.incident"),
+    intent: ctx.get("soc.intent"),
+    constraints: ctx.get("soc.constraints"),
+    dataSources: ctx.get("soc.dataSources"),
+    explorations: ctx.get("soc.explorations"),
+    evidence: ctx.get("soc.evidence"),
+    entities: ctx.get("soc.entities"),
+    hypothesis: ctx.get("soc.hypothesis"),
+    proposal: ctx.get("soc.proposal"),
+  };
+}
+
+function assertKnownReferences(ctx: EffectContext, reply: SocAgentReply): void {
+  const knownEntities = new Set(list(ctx, "soc.entities").map((value) => String((value as RecordValue).id)));
+  const knownEvidence = new Set(list(ctx, "soc.evidence").map((value) => String((value as RecordValue).id)));
+  const entityIds = "entityIds" in reply
+    ? [...reply.entityIds, ...reply.findings.flatMap((finding) => finding.entityIds)]
+    : [reply.proposal.targetEntityId].filter(Boolean);
+  const evidenceIds = "evidenceIds" in reply
+    ? [...reply.evidenceIds, ...reply.findings.flatMap((finding) => finding.evidenceIds)]
+    : reply.proposal.evidenceIds;
+  if (entityIds.some((id) => !knownEntities.has(id))) throw new Error("Agent response referenced an unknown entity.");
+  if (evidenceIds.some((id) => !knownEvidence.has(id))) throw new Error("Agent response referenced unknown evidence.");
+}
+
+function replaceSet(ops: PatchOp[], path: string, update: (value: Json) => Json): PatchOp[] {
+  return ops.map((op) => op.op === "set" && op.path === path && op.value !== undefined
+    ? { ...op, value: update(op.value) }
+    : op);
+}
+
+function lowerLiveReply(result: OrchestratorResult, operation: SocAgentOperation, reply: SocAgentReply): OrchestratorResult {
+  let ops = result.ops ?? [];
+  if (operation === "suggest-exploration" && "exploration" in reply) {
+    ops = replaceSet(ops, "soc.explorations", (value) => (value as Json[]).map((item) => ({
+      ...(item as RecordValue),
+      question: reply.exploration.objective || reply.exploration.queries[0] || (item as RecordValue).question,
+      safety: reply.exploration.constraints.join("; ") || (item as RecordValue).safety,
+    })));
+  }
+  if (operation === "replan-exploration" && "exploration" in reply) {
+    ops = replaceSet(ops, "soc.explorations", (value) => (value as Json[]).map((item) => ({
+      ...(item as RecordValue),
+      question: reply.exploration.objective || (item as RecordValue).question,
+    })));
+  }
+  if ((operation === "commit-partial-findings" || operation === "complete-correlation") && "findings" in reply) {
+    ops = replaceSet(ops, "soc.evidence", (value) => {
+      const evidence = value as Json[];
+      const offset = Math.max(0, evidence.length - reply.findings.length);
+      return evidence.map((item, index) => {
+      const finding = index >= offset ? reply.findings[index - offset] : undefined;
+      return finding ? { ...(item as RecordValue), summary: finding.statement, confidence: Math.round(finding.confidence * 100) } : item;
+      });
+    });
+    ops = replaceSet(ops, "soc.hypothesis", (value) => ({
+      ...(value as RecordValue),
+      statement: reply.summary || (value as RecordValue).statement,
+      confidence: Math.round(reply.confidence * 100),
+    }));
+  }
+  if (operation === "assess-policy-candidate" && "assessment" in reply) {
+    ops = replaceSet(ops, "soc.proposal", (value) => ({
+      ...(value as RecordValue),
+      liveAssessment: reply.summary,
+    }));
+  }
+  if (operation === "propose-contained-response" && "proposal" in reply) {
+    ops = replaceSet(ops, "soc.proposal", (value) => ({
+      ...(value as RecordValue),
+      action: reply.proposal.objective || (value as RecordValue).action,
+      sequence: reply.proposal.sequence.length > 0 ? reply.proposal.sequence : (value as RecordValue).sequence,
+    }));
+  }
+  if (operation === "validate-response" && "proposal" in reply) {
+    ops = replaceSet(ops, "soc.proposal", (value) => ({
+      ...(value as RecordValue),
+      blastRadius: reply.proposal.blastRadius || (value as RecordValue).blastRadius,
+      reversible: reply.proposal.reversible,
+      evidenceReady: reply.proposal.evidenceReady,
+      operationalDependencies: reply.proposal.operationalDependencies,
+    }));
+  }
+  return { ...result, ops };
+}
+
+function annotateProvider(
+  result: OrchestratorResult,
+  ctx: EffectContext,
+  actorId: string,
+  provider: ProviderRecord,
+  used: "mock" | "live",
+  fallbackReason: string,
+  conversationId = "",
+  responseId = "",
+  validationAttempts = 0,
+  repaired = false
+): OrchestratorResult {
+  const currentProvider = providers(ctx)[actorId] ?? provider;
+  const nextProvider: ProviderRecord = {
+    ...provider,
+    mode: currentProvider.mode,
+    status: fallbackReason ? "fallback" : "ready",
+    conversationId: conversationId || provider.conversationId,
+    responseId,
+    lastProvider: used,
+    fallbackReason,
+    validationAttempts,
+    repaired,
+  };
+  let ops = result.ops ?? [];
+  ops = replaceSet(ops, "soc.journal", (value) => {
+    const journal = value as Json[];
+    const latest = journal.at(-1) as RecordValue | undefined;
+    if (!latest || latest.actorId !== actorId) return value;
+    return [...journal.slice(0, -1), {
+      ...latest,
+      provider: used,
+      agentName: provider.agentName,
+      conversationId: conversationId || provider.conversationId,
+      responseId,
+      fallbackReason,
+      validationAttempts,
+      repaired,
+    }];
+  });
+  return {
+    ...result,
+    ops: [
+      ...ops,
+      setOp(`soc.agentProviders.${actorId}`, nextProvider),
+    ],
+  };
+}
+
+const deterministicEffects: EffectHandlerMap = {
   requestNextAct(ctx) {
     const presenter = ctx.get("soc.presenter") as RecordValue;
     if (presenter.locked === true) return { outcome: "ignored" };
@@ -513,4 +683,176 @@ export const effects: EffectHandlerMap = {
   },
 };
 
+export function createSocEffects(
+  fetchImpl: typeof globalThis.fetch = globalThis.fetch,
+  accessKey: () => string = getSocFoundryKey
+): EffectHandlerMap {
+  const wrapped: EffectHandlerMap = { ...deterministicEffects };
+
+  wrapped.setAgentMode = async (ctx) => {
+    const actorId = typeof ctx.payload.agentId === "string" ? ctx.payload.agentId : "";
+    const mode = ctx.payload.mode === "live" ? "live" : "mock";
+    const currentProviders = providers(ctx);
+    const provider = currentProviders[actorId];
+    if (!provider || !["agent-correlation", "agent-response"].includes(actorId)) {
+      return { outcome: "rejected", detail: { reason: "unknown-agent" } };
+    }
+    if (mode === "mock") {
+      const accessRequired = Object.entries(currentProviders).some(([id, current]) => id !== actorId && current.mode === "live");
+      return {
+        outcome: "updated",
+        ops: [
+          setOp(`soc.agentProviders.${actorId}`, { ...provider, mode, status: "ready", lastProvider: "mock", fallbackReason: "" }),
+          setOp("soc.foundry.required", accessRequired),
+        ],
+      };
+    }
+
+    const key = accessKey().trim();
+    if (!key) {
+      return {
+        outcome: "fallback",
+        ops: [
+          setOp(`soc.agentProviders.${actorId}`, { ...provider, mode, status: "fallback", fallbackReason: "Access key required for Live mode." }),
+          setOp("soc.foundry.required", true),
+        ],
+      };
+    }
+    try {
+      await createFoundryProxy({ baseUrl: manifest.payload.config.proxyBase, key, fetch: fetchImpl }).ping(provider.agentName);
+      return {
+        outcome: "updated",
+        ops: [
+          setOp(`soc.agentProviders.${actorId}`, { ...provider, mode, status: "ready", fallbackReason: "" }),
+          setOp("soc.foundry.required", true),
+        ],
+      };
+    } catch (error) {
+      return {
+        outcome: "fallback",
+        ops: [
+          setOp(`soc.agentProviders.${actorId}`, { ...provider, mode, status: "fallback", fallbackReason: error instanceof Error ? error.message : "Foundry agent is unavailable." }),
+          setOp("soc.foundry.required", true),
+        ],
+      };
+    }
+  };
+
+  wrapped.acceptSocFoundryAccess = (ctx) => {
+    const key = typeof ctx.payload.key === "string" ? ctx.payload.key.trim() : "";
+    const agentNames = Array.isArray(ctx.payload.agentNames)
+      ? ctx.payload.agentNames.filter((value): value is string => typeof value === "string")
+      : [];
+    const nextProviders = Object.fromEntries(Object.entries(providers(ctx)).map(([id, provider]) => [id, provider.mode === "live"
+      ? { ...provider, status: agentNames.includes(provider.agentName) ? "ready" : "fallback", fallbackReason: agentNames.includes(provider.agentName) ? "" : `${provider.agentName} is not available for this key.` }
+      : provider]));
+    return {
+      outcome: "updated",
+      ops: [
+        setOp("soc.foundry.key", key),
+        setOp("soc.foundry.agentNames", agentNames),
+        setOp("soc.agentProviders", nextProviders),
+      ],
+    };
+  };
+
+  wrapped.clearSocFoundryAccess = () => ({
+    outcome: "updated",
+    ops: [
+      setOp("soc.foundry.key", ""),
+      setOp("soc.foundry.agentNames", []),
+    ],
+  });
+
+  for (const [handlerName, live] of Object.entries(LIVE_OPERATIONS)) {
+    const deterministic = deterministicEffects[handlerName];
+    wrapped[handlerName] = async (ctx) => {
+      const provider = providers(ctx)[live.actorId];
+      const capturedMode = provider?.mode === "live" ? "live" : "mock";
+      if (capturedMode === "mock") {
+        const result = await deterministic(ctx) as OrchestratorResult | void;
+        return annotateProvider(result ?? {}, ctx, live.actorId, provider, "mock", "");
+      }
+
+      const key = accessKey().trim();
+      let conversationId = provider.conversationId;
+      let responseId = "";
+      let validationAttempts = 0;
+      try {
+        if (!key) throw new Error("Access key required for Live mode.");
+        const proxy = createFoundryProxy({
+          baseUrl: manifest.payload.config.proxyBase,
+          key,
+          fetch: fetchImpl,
+        });
+        const contract = createSocAgentContract(live.operation);
+        let response = await proxy.chat({
+          message: buildAgentMessage(live.operation, incidentContext(ctx)),
+          agentName: provider.agentName,
+          conversationId: provider.conversationId || undefined,
+          instructions: contract.instructions,
+        });
+        conversationId = response.conversationId;
+        responseId = response.responseId;
+        validationAttempts = 1;
+        let validation = contract.validate(response.reply);
+        let issues: AgentValidationIssue[] = validation.ok ? [] : validation.issues;
+        if (validation.ok) {
+          try {
+            assertKnownReferences(ctx, validation.value);
+          } catch (error) {
+            issues = [{ path: "$", code: "unknown-reference", message: error instanceof Error ? error.message : "Response contains an unknown reference." }];
+          }
+        }
+
+        if (issues.length > 0) {
+          response = await proxy.chat({
+            message: contract.buildCorrectionPrompt(issues),
+            agentName: provider.agentName,
+            conversationId,
+            instructions: contract.instructions,
+          });
+          conversationId = response.conversationId;
+          responseId = response.responseId;
+          validationAttempts = 2;
+          validation = contract.validate(response.reply);
+          issues = validation.ok ? [] : validation.issues;
+          if (validation.ok) {
+            try {
+              assertKnownReferences(ctx, validation.value);
+            } catch (error) {
+              issues = [{ path: "$", code: "unknown-reference", message: error instanceof Error ? error.message : "Response contains an unknown reference." }];
+            }
+          }
+        }
+
+        if (!validation.ok || issues.length > 0) {
+          throw new Error(`Live response failed validation after correction: ${issues.map((issue) => `${issue.path}: ${issue.message}`).join("; ")}`);
+        }
+        const reply = validation.value;
+        const result = await deterministic(ctx) as OrchestratorResult | void;
+        const lowered = lowerLiveReply(result ?? {}, live.operation, reply);
+        return annotateProvider(lowered, ctx, live.actorId, provider, "live", "", conversationId, responseId, validationAttempts, validationAttempts > 1);
+      } catch (error) {
+        const result = await deterministic(ctx) as OrchestratorResult | void;
+        return annotateProvider(
+          result ?? {},
+          ctx,
+          live.actorId,
+          provider,
+          "mock",
+          error instanceof Error ? error.message : "Live response failed validation.",
+          conversationId,
+          responseId,
+          validationAttempts,
+          false
+        );
+      }
+    };
+  }
+
+  return wrapped;
+}
+
+export const effects = createSocEffects();
 export default effects;

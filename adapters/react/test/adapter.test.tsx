@@ -87,8 +87,9 @@ test("gated node is absent from markup until selected, then appears", async () =
 
 test("event wiring: a component's handler calls emit with the right name/payload", () => {
   const calls: Array<{ name: string; payload?: Record<string, unknown> }> = [];
-  const emit = (name: string, payload?: Record<string, unknown>) =>
+  const emit = (name: string, payload?: Record<string, unknown>) => {
     calls.push({ name, payload });
+  };
 
   const btn = ActionButton({
     node: { capability: "actions", id: "btn", props: { label: "Approve" }, visible: true, fallback: false, children: [] },

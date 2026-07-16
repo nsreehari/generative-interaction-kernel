@@ -5,10 +5,11 @@
 > where distinct participants act through one governed event model, change one shared operational
 > state, and leave one attributable causal record.
 >
-> Status: **BEATS 2 AND 3 IMPLEMENTED AND VALIDATED (2026-07-15).** `live-workspace-soc` now mounts
+> Status: **BEATS 2 AND 3 IMPLEMENTED AND VALIDATED (2026-07-16).** `live-workspace-soc` now mounts
 > the governed mixed-team runtime and reveals its executable four-tier semantic blueprint in the
-> same developer-console shell. The existing `workbench` remains unchanged and independently
-> routable.
+> same developer-console shell. Correlation and Response independently support deterministic Mock
+> behavior or named Foundry agents through the browser-safe proxy. The existing `workbench` remains
+> unchanged and independently routable.
 
 ---
 
@@ -53,11 +54,19 @@ The demo must visibly prove:
 - a consequential action requires the correct human role;
 - the final state is reconstructable from the attributable ledger.
 
-The current implementation proves deterministic, attributable, governed multi-actor orchestration.
-It does **not yet** prove independently running remote clients, durable background agents, or
-disconnect/reconnect continuity. Do not describe those as completed until they are literal. A
-deterministic scenario remains acceptable for pitch reliability, but every visible participant
-action must still be a real attributable GIK event.
+The current T3 implementation proves attributable, governed multi-actor orchestration in both a
+deterministic Mock/Mock mode and independent Live/Mock, Mock/Live, or Live/Live provider modes.
+Named Foundry agents generate typed proposals; strict validation and local lowering convert accepted
+responses into canonical SOC operations. When a response fails its operation-specific shape or
+known-reference validation, the calling effect sends one correction prompt with the concrete issues
+and expected shape in the same Foundry conversation, then validates the complete repaired response.
+No invalid response reaches lowering. Exhausted repair, unavailable credentials, and proxy errors
+fall back visibly to the deterministic provider. Provider choice never changes actor identity,
+authority, policy evaluation, authorization, or execution semantics.
+
+T3 itself does **not** prove independently running remote clients, durable background agents, or
+disconnect/reconnect continuity. Those are separate T7 transport proofs and must not be inferred
+from the live provider toggle.
 
 ## 2. Fixed interaction architecture
 
@@ -217,6 +226,16 @@ objective; it does not silently overwrite its previous suggestion.
 Agent panels should not normally contain product action buttons. Pause/resume and technical
 inspection may exist as secondary presenter or debugging affordances, visually separated from the
 agent's product surface.
+
+Each agent panel also exposes an independent `Mock / Live` provider control. `Live` resolves the
+fixed Foundry names `SOC-Correlation-Agent` and `SOC-Response-Agent`; each retains its own Foundry
+conversation. A shared Foundry access gate persists the access key in browser `localStorage`, lists
+the agents available to that key, and publishes the key and agent names into the active bundle's
+in-memory store. The SOC shell imports that gate from the Foundry-agent bundle and activates it only
+while at least one participant agent uses Live mode. Switching mode affects the next turn. An
+in-flight turn retains its captured provider attribution. Live turns record validation-attempt and
+repair provenance without persisting invalid response content. Reset restores Mock/Mock with empty
+conversations.
 
 ### 3.4 Cross-surface behavior
 

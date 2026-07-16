@@ -72,7 +72,9 @@ test("todo leaf emits committed items on add", () => {
   const markup = renderToStaticMarkup(renderNode(leaf("ui:todo", {
     items: [{ text: "Ship slice", done: false }],
     actionLabel: "Add",
-  }), registry, (nodeId, name, payload) => calls.push({ nodeId, name, payload })));
+  }), registry, (nodeId, name, payload) => {
+    calls.push({ nodeId, name, payload });
+  }));
 
   assert.match(markup, /Ship slice/);
   assert.match(markup, />Add<\/button>/);
@@ -178,7 +180,9 @@ test("selection leaf emits select {value}", () => {
       },
       value: "open",
     }),
-    emit: (name: string, payload?: Record<string, unknown>) => calls.push({ name, payload }),
+    emit: (name: string, payload?: Record<string, unknown>) => {
+      calls.push({ name, payload });
+    },
     children: [],
   });
 

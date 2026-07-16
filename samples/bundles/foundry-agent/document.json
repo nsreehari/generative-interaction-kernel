@@ -7,80 +7,26 @@
       "id": "foundry-agent-root",
       "props": {
         "title": "Foundry Agent",
-        "subtitle": "Sign in with your access key, pick an agent, and start a conversation."
+        "subtitle": "Choose an available agent and start a conversation."
       },
       "edges": {
         "children": [
           {
-            "capability": "ui:panel",
-            "id": "agent-login",
-            "props": { "title": "Sign in", "variant": "rail" },
+            "capability": "agent:access-modal",
+            "id": "foundry-access-gate",
+            "props": {
+              "required": true,
+              "proxyBaseUrl": "https://sz-foundry-proxy.azurewebsites.net"
+            },
             "edges": {
-              "gate": "agent.stage = 'locked'",
-              "children": [
-                {
-                  "capability": "agent:login",
-                  "id": "agent-login-view",
-                  "edges": {
-                    "read": {
-                      "key": "agent.key",
-                      "agentName": "agent.agentName",
-                      "agentOptions": "agent.agentOptions",
-                      "listed": "agent.listed",
-                      "listError": "agent.listError",
-                      "authError": "agent.authError"
-                    },
-                    "on": {
-                      "setKey": [
-                        {
-                          "do": "assign",
-                          "target": "agent.key",
-                          "args": { "from": "$event.value" }
-                        },
-                        {
-                          "do": "assign",
-                          "target": "agent.agentName",
-                          "args": { "value": "" }
-                        },
-                        {
-                          "do": "assign",
-                          "target": "agent.agentOptions",
-                          "args": { "value": [] }
-                        },
-                        {
-                          "do": "assign",
-                          "target": "agent.listed",
-                          "args": { "value": false }
-                        },
-                        {
-                          "do": "assign",
-                          "target": "agent.listError",
-                          "args": { "value": "" }
-                        }
-                      ],
-                      "setAgent": [
-                        {
-                          "do": "assign",
-                          "target": "agent.agentName",
-                          "args": { "from": "$event.value" }
-                        }
-                      ],
-                      "listAgents": [
-                        {
-                          "do": "invoke",
-                          "args": { "tool": "listAgents" }
-                        }
-                      ],
-                      "verify": [
-                        {
-                          "do": "invoke",
-                          "args": { "tool": "verifyKey" }
-                        }
-                      ]
-                    }
-                  }
-                }
-              ]
+              "on": {
+                "accessResolved": [
+                  { "do": "invoke", "args": { "tool": "acceptFoundryAccess" } }
+                ],
+                "accessCleared": [
+                  { "do": "invoke", "args": { "tool": "clearFoundryAccess" } }
+                ]
+              }
             }
           },
           {
@@ -88,8 +34,22 @@
             "id": "agent-demo",
             "props": { "title": "Ask the agent", "variant": "detail" },
             "edges": {
-              "gate": "agent.stage = 'unlocked'",
               "children": [
+                {
+                  "capability": "agent:agent-selector",
+                  "id": "agent-selector",
+                  "edges": {
+                    "read": {
+                      "agentName": "agent.agentName",
+                      "agentOptions": "agent.agentOptions"
+                    },
+                    "on": {
+                      "select": [
+                        { "do": "assign", "target": "agent.agentName", "args": { "from": "$event.value" } }
+                      ]
+                    }
+                  }
+                },
                 {
                   "capability": "ui:alert",
                   "id": "agent-connected",

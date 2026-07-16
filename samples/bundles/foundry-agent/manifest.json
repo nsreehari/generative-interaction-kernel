@@ -42,9 +42,13 @@
         "propsSchema": { "type": "object", "additionalProperties": true },
         "emits": ["input"]
       },
-      "agent:login": {
+      "agent:access-modal": {
         "propsSchema": { "type": "object", "additionalProperties": true },
-        "emits": ["setKey", "setAgent", "listAgents", "verify"]
+        "emits": ["accessResolved", "accessCleared"]
+      },
+      "agent:agent-selector": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "emits": ["select"]
       },
       "ui:button": {
         "propsSchema": { "type": "object", "additionalProperties": true },
@@ -58,7 +62,8 @@
       "projectionViews": {
         "ui": { "from": "floor" },
         "agent": { "from": "self" }
-      }
+      },
+      "effectHandlers": ["acceptFoundryAccess", "clearFoundryAccess", "askAgent", "signOut"]
     }
   }
 }
