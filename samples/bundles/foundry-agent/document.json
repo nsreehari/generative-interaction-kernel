@@ -30,9 +30,9 @@
             }
           },
           {
-            "capability": "ui:panel",
+            "capability": "agent:ask-page",
             "id": "agent-demo",
-            "props": { "title": "Ask the agent", "variant": "detail" },
+            "props": { "title": "Ask the agent" },
             "edges": {
               "children": [
                 {

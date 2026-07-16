@@ -30,6 +30,21 @@ import {
 const useStyles = makeStyles({
   stack: { display: "grid", gap: tokens.spacingVerticalM },
   actions: { paddingTop: tokens.spacingVerticalM },
+  askPage: {
+    width: "min(calc(100% - 32px), 760px)",
+    marginInline: "auto",
+    paddingBlock: tokens.spacingVerticalXXL,
+    display: "grid",
+    gap: tokens.spacingVerticalL,
+    alignContent: "start",
+    minWidth: 0,
+  },
+  askPageTitle: {
+    margin: 0,
+    fontSize: tokens.fontSizeBase300,
+    textTransform: "uppercase",
+    color: tokens.colorNeutralForeground3,
+  },
 });
 
 const discoveries = new Map<string, Promise<string[]>>();
@@ -199,7 +214,19 @@ const FoundryAgentSelector: ProjectionView = ({ node, emit }) => {
   );
 };
 
+const FoundryAskPage: ProjectionView = ({ node, children }) => {
+  const styles = useStyles();
+  const title = String(node.props.title ?? "Ask the agent");
+  return (
+    <main className={styles.askPage}>
+      <h2 className={styles.askPageTitle}>{title}</h2>
+      {children}
+    </main>
+  );
+};
+
 export default {
   "access-modal": FoundryAccessModal,
   "agent-selector": FoundryAgentSelector,
+  "ask-page": FoundryAskPage,
 };
