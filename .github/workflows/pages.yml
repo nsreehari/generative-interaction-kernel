@@ -2,7 +2,8 @@ name: Deploy host to GitHub Pages
 
 on:
   push:
-    branches: [master]
+    tags:
+      - "pages-v*"
   workflow_dispatch:
 
 permissions:
