@@ -34,7 +34,9 @@ jobs:
       - name: Build host (samples/apps/host)
         # Build the workspace packages first so non-aliased barrels (e.g. @gik/kernel,
         # resolved via the workspace's dist/) exist before the host bundles them.
-        run: npm run build:public-packages && npm run build:host
+        run: |
+          npm run build:public-packages || npm run build:public-packages
+          npm run build:host
         env:
           # Serve under the project Pages path so asset URLs resolve.
           VITE_BASE: /gik/
