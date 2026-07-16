@@ -5,15 +5,12 @@ on:
     branches: [master]
   workflow_dispatch:
 
-# Allow the deploy job to publish to Pages via OIDC.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
-# One in-flight Pages deploy at a time; let a newer run supersede an older one.
+# One in-flight publish at a time; let a newer run supersede an older one.
 concurrency:
-  group: pages
+  group: publish-gik-pages
   cancel-in-progress: true
 
 jobs:
@@ -40,27 +37,32 @@ jobs:
         run: npm run build:public-packages && npm run build:host
         env:
           # Serve under the project Pages path so asset URLs resolve.
-          VITE_BASE: /generative-interaction-kernel/
+          VITE_BASE: /gik/
           # Absolute base URL of the deployed foundry-agent-proxy Azure Function. Set the
           # `FOUNDRY_PROXY_BASE` repo variable (Settings > Secrets and variables > Actions > Variables)
           # e.g. https://my-foundry-proxy.azurewebsites.net. The foundry-agent sample calls it at runtime.
           VITE_FOUNDRY_PROXY_BASE: ${{ vars.FOUNDRY_PROXY_BASE }}
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Checkout public Pages repository
+        uses: actions/checkout@v5
         with:
-          path: samples/apps/host/dist
+          repository: nsreehari/gik
+          ssh-key: ${{ secrets.GIK_DEPLOY_KEY }}
+          path: _pages
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Publish dist
+        shell: bash
+        run: |
+          find _pages -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a samples/apps/host/dist/. _pages/
+          touch _pages/.nojekyll
+          cd _pages
+          git add --all
+          if git diff --cached --quiet; then
+            echo "Published output is unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Deploy ${GITHUB_REPOSITORY}@${GITHUB_SHA}"
+          git push origin HEAD:main
