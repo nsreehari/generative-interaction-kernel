@@ -50,6 +50,10 @@
         "propsSchema": { "type": "object", "additionalProperties": true },
         "emits": ["select"]
       },
+      "agent:ask-page": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "slots": ["children"]
+      },
       "ui:button": {
         "propsSchema": { "type": "object", "additionalProperties": true },
         "emits": ["press"]
