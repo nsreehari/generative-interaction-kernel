@@ -2,6 +2,36 @@ import React from "react";
 import { Switch, ToggleButton } from "@fluentui/react-components";
 import { readProps, type ProjectionView, type ProjectionViewProps } from "@gik/react";
 
+export interface FluentSwitchControlProps {
+  checked: boolean;
+  onLabel: string;
+  offLabel: string;
+  onToggle: (checked: boolean) => void;
+  disabled?: boolean;
+  ariaLabel?: string;
+}
+
+export function FluentSwitchControl({
+  checked,
+  onLabel,
+  offLabel,
+  onToggle,
+  disabled = false,
+  ariaLabel,
+}: FluentSwitchControlProps): React.ReactElement {
+  return (
+    <Switch
+      className="gx-fluent-switch"
+      checked={checked}
+      disabled={disabled}
+      label={checked ? onLabel : offLabel}
+      labelPosition="after"
+      aria-label={ariaLabel}
+      onChange={(_, data) => onToggle(data.checked)}
+    />
+  );
+}
+
 function readToggleState(node: ProjectionViewProps["node"]): {
   checked: boolean;
   label: string;
@@ -26,15 +56,14 @@ const FluentSwitch: ProjectionView = ({ node, emit }) => {
   const props = readProps(node);
   const state = readToggleState(node);
   return (
-    <Switch
-      className="gx-fluent-switch"
+    <FluentSwitchControl
       checked={state.checked}
       disabled={props.bool("disabled")}
-      label={state.label}
-      labelPosition="after"
-      onChange={(_, data) => emit("toggle", {
-        checked: data.checked,
-        value: data.checked ? state.onValue : state.offValue,
+      onLabel={props.str("onLabel", props.str("label"))}
+      offLabel={props.str("offLabel", props.str("label"))}
+      onToggle={(checked) => emit("toggle", {
+        checked,
+        value: checked ? state.onValue : state.offValue,
       })}
     />
   );
