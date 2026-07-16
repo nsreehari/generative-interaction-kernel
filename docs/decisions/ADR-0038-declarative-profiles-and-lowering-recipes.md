@@ -104,7 +104,7 @@ reviewed, diffed, and stored independently of handwritten TypeScript.
 - The generic profile machinery (`@gik/profile`) gains explicit profile and recipe contracts,
   validators/lints, GenUI interpreters, and template-driven authoring/runtime helpers. (2026-07-13:
   this superseded the former single `interaction/` source tree; later cleanup folded the GenUI
-  executable semantics into `@gik/profile` and left declarative assets under `profile-templates/*`.)
+  executable semantics into `@gik/profile` and left declarative assets under `profile/profile-templates/*`.)
 - The workbench pivots to a profile-first model.
 - Existing ADRs that described profile translation in terms of `binding` need refinement, not
   reversal.

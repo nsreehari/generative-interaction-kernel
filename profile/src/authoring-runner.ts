@@ -1,6 +1,5 @@
 import type { Json } from "../../kernel/src/index";
-import { evalAsyncJsonata } from "../../shared/libs/evaluators";
-import { runDeclarativeValidators } from "../../shared/libs/validators";
+import { evalAsyncJsonata, runDeclarativeValidators } from "@gik/evaluators";
 import { structuralValidatorForLayer } from "./profile-core";
 import type {
   AuthoringRegistry,

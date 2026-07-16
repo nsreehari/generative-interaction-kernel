@@ -4,7 +4,7 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
 
-import { evalAsyncJsonata } from "../../../shared/libs/evaluators";
+import { evalAsyncJsonata } from "@gik/evaluators";
 import { ReactiveStateModel } from "../src/reactive-state-model";
 import { extractDeps } from "../src/jsonata-deps";
 

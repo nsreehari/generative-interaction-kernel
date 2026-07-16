@@ -1,7 +1,7 @@
 import React from "react";
 import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
+import { evalAsyncJsonata } from "@gik/evaluators";
 import { readProps, type ProjectionView } from "@gik/react";
-import { evalAsyncJsonata } from "../../../../shared/libs/evaluators";
 
 import {
   computedGraphToMermaid,

@@ -1,7 +1,6 @@
 import type { Json } from "../../kernel/src/index";
 import documentSchemaJson from "../../schemas/document.schema.json" with { type: "json" };
-import { executeSyncJsonataSteps } from "../../shared/libs/evaluators";
-import { runDeclarativeValidators } from "../../shared/libs/validators";
+import { executeSyncJsonataSteps, runDeclarativeValidators } from "@gik/evaluators";
 import {
   buildStructuralValidatorsForTemplate,
   type StructuralSchemaValidatorRef,

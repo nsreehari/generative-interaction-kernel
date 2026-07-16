@@ -1,7 +1,7 @@
 {
   "name": "gik",
   "version": "0.1.0",
-  "description": "Batteries-included entry point for the Generative Interaction Kernel — re-exports the core @gik/* packages (kernel, react, agentface, controlface, transports).",
+  "description": "Batteries-included entry point for the Generative Interaction Kernel — re-exports the core @gik/* packages (kernel, evaluators, react, agentface, controlface, transports).",
   "license": "MIT",
   "author": "nsreehari",
   "type": "module",
@@ -36,6 +36,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "dependencies": {
+    "@gik/evaluators": "0.1.0",
     "@gik/kernel": "0.1.0",
     "@gik/react": "0.1.0",
     "@gik/agentface": "0.1.0",

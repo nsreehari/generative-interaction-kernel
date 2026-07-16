@@ -75,7 +75,8 @@ test("validatePresentation (op:validate) runs structural then the facet-survival
     liveCardsIToP,
     liveCardsProfile.resources.taxonomy as unknown as InteractionTaxonomy
   );
-  assert.equal(report("validatePresentation", { spec }).ok, true);
+  const validReport = report("validatePresentation", { spec });
+  assert.equal(validReport.ok, true, JSON.stringify(validReport, null, 2));
 
   const dropped = { ...spec, regions: spec.regions.filter((r) => r.name !== "summary") };
   const droppedReport = report("validatePresentation", { spec: dropped });

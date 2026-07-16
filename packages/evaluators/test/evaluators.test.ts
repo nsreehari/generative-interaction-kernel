@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { evalAsyncJsonata, evalSyncJsonata, executeSyncJsonataSteps } from "../evaluators";
+import { evalAsyncJsonata, evalSyncJsonata, executeSyncJsonataSteps } from "../src";
 
 test("evalSyncJsonata evaluates JSONata against JSON input", () => {
   const result = evalSyncJsonata("items[name='b'].value", {

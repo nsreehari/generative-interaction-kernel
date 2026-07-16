@@ -1,5 +1,8 @@
-import { JsonataExpressionProvider, SyncJsonataExpressionProvider } from "../../kernel/src/providers";
-import type { Json } from "../../kernel/src/types";
+import {
+  JsonataExpressionProvider,
+  SyncJsonataExpressionProvider,
+  type Json,
+} from "@gik/kernel";
 
 const syncJsonataEvaluator = new SyncJsonataExpressionProvider({ safe: true });
 const asyncJsonataEvaluator = new JsonataExpressionProvider();
