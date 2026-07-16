@@ -945,8 +945,11 @@ with the shared workspace. A dedicated mobile composition is outside the T3 pitc
 
 Remote and durable continuity are owned by T7 rather than T3. T7 phase 1 now proves a detached SSE
 renderer, MCP-driven work through a transport-only headless worker, and revision replay on reconnect
-against one in-memory authority. T7's next phase owns durable state and revision history, durable
-queue semantics, and recovery across an authority-process restart. T3 makes none of those claims.
+against one in-memory authority. That remains a protocol fixture. T7's product work is now a real
+migration of Demo Boards to public GIK packages, reusing its hosted persistence, queue, MCP, and SSE
+infrastructure while replacing bespoke interaction authority without permanent dual truth. The
+migrated application's ordinary continuity behavior becomes Beat 4 evidence. T3 makes none of
+those remote or durable claims.
 
 After Beats 1-4 are complete, separately assess whether `workbench` should remain a developer
 sample, move out of the pitch catalog, be deprecated, or be removed. T3 does not pre-commit to that
