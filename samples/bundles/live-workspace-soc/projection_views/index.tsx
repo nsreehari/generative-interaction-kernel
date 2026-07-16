@@ -15,6 +15,7 @@ import {
   WeatherMoon20Regular,
 } from "@fluentui/react-icons";
 import type { ProjectionView } from "@gik/react";
+import { GrowingContainer } from "../../../../adapters/react/src/primitives/registry";
 import {
   compileSocPresentation,
   SOC_BLUEPRINT_CONTEXTS,
@@ -256,20 +257,21 @@ const useStyles = makeStyles({
     top: 0,
     zIndex: 10,
     display: "grid",
-    gridTemplateColumns: "minmax(320px, 1fr) auto",
+    gridTemplateColumns: "minmax(0, 1fr)",
+    gridTemplateRows: "auto auto",
     alignItems: "center",
     gap: tokens.spacingHorizontalL,
     minHeight: "68px",
     padding: `${tokens.spacingVerticalS} clamp(16px, 3vw, 40px)`,
     borderBottom: `1px solid var(--line)`,
     backgroundColor: "var(--panel)",
-    "@media (max-width: 880px)": { position: "relative", gridTemplateColumns: "1fr" },
+    "@media (max-width: 880px)": { position: "relative" },
   },
   identity: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalM, minWidth: 0 },
   identityCopy: { minWidth: 0 },
   eyebrow: { color: "var(--muted)", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightBold, textTransform: "uppercase" },
   title: { margin: 0, fontSize: tokens.fontSizeBase400, lineHeight: tokens.lineHeightBase400, overflowWrap: "anywhere" },
-  controls: { display: "flex", alignItems: "center", justifyContent: "flex-end", gap: tokens.spacingHorizontalS, flexWrap: "wrap", "@media (max-width: 880px)": { justifyContent: "flex-start" } },
+  controls: { width: "100%", display: "flex", alignItems: "center", justifyContent: "flex-start", gap: tokens.spacingHorizontalS, flexWrap: "wrap" },
   demoMode: { display: "inline-flex", padding: "2px", gap: "2px", border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel-2)" },
   viewpointControl: { display: "inline-flex", alignItems: "center", gap: tokens.spacingHorizontalXS },
   viewpointLabel: { color: "var(--muted)", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightBold, textTransform: "uppercase" },
@@ -286,7 +288,8 @@ const useStyles = makeStyles({
   contextSelect: { minWidth: "190px" },
   contextMeta: { minWidth: 0, color: "var(--muted)", fontSize: tokens.fontSizeBase100, textAlign: "right", "@media (max-width: 760px)": { textAlign: "left" } },
   contextFocus: { display: "block", color: "var(--text)", overflowWrap: "anywhere" },
-  sharedViewport: { minHeight: 0, display: "grid", alignContent: "start", gap: tokens.spacingVerticalL, padding: `clamp(18px, 3vw, 32px)`, paddingBottom: "calc(clamp(18px, 3vw, 32px) + 50px)", scrollPaddingBottom: "50px", overflowY: "auto", "@media (max-width: 1040px)": { overflowY: "visible" } },
+  sharedViewport: { minHeight: 0, padding: `clamp(18px, 3vw, 32px)`, paddingBottom: "calc(clamp(18px, 3vw, 32px) + 50px)", scrollPaddingBottom: "50px" },
+  sharedViewportContent: { display: "grid", alignContent: "start", gap: tokens.spacingVerticalL },
   contextProjection: { width: "100%", minWidth: 0, display: "grid", alignContent: "start", gap: tokens.spacingVerticalL, margin: "0 auto" },
   frameMobile: { maxWidth: "430px", padding: tokens.spacingVerticalL, border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusLarge, backgroundColor: "var(--panel)", boxShadow: "0 16px 38px rgba(15, 23, 42, .16)" },
   frameLaptop: { maxWidth: "920px", padding: tokens.spacingVerticalL, border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel)" },
@@ -400,7 +403,7 @@ const useStyles = makeStyles({
   journalSticky: { height: "100%", minHeight: 0, display: "grid", gridTemplateRows: "auto minmax(0, 1fr)", "@media (max-width: 1040px)": { height: "520px" } },
   journalHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: tokens.spacingHorizontalS, padding: tokens.spacingVerticalM, borderBottom: `1px solid var(--line)` },
   journalTabs: { display: "inline-flex", gap: "2px", padding: "2px", backgroundColor: "var(--panel-2)", borderRadius: tokens.borderRadiusMedium },
-  journalList: { overflowY: "auto", padding: tokens.spacingVerticalS },
+  journalList: { padding: tokens.spacingVerticalS },
   journalEntry: { width: "100%", display: "grid", gridTemplateColumns: "48px minmax(0, 1fr)", gap: tokens.spacingHorizontalS, padding: tokens.spacingVerticalS, border: 0, borderBottom: `1px solid var(--line)`, backgroundColor: "transparent", color: "inherit", font: "inherit", textAlign: "left", cursor: "pointer", "&:focus-visible": { outline: `2px solid var(--accent)`, outlineOffset: "-2px" } },
   journalEntryActive: { backgroundColor: "color-mix(in srgb, var(--accent) 10%, transparent)" },
   journalTime: { color: "var(--muted)", fontFamily: tokens.fontFamilyMonospace, fontSize: tokens.fontSizeBase100 },
@@ -595,7 +598,8 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
                 <span className={styles.contextFocus}>{consolePlane === "runtime" ? selectedContext.focus : `${blueprintContext.role} · ${blueprintContext.device} · ${blueprintContext.task}`}</span>
               </div>
             </header>
-            <div className={styles.sharedViewport}>
+            <GrowingContainer className={styles.sharedViewport} ariaLabel="Shared substrate content">
+            <div className={styles.sharedViewportContent}>
             {consolePlane === "blueprint" ? <>
               <header className={styles.blueprintIntro}>
                 <div>
@@ -781,6 +785,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
             </>}
             </div>}
             </div>
+            </GrowingContainer>
           </section>
 
         </div>
@@ -795,7 +800,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
                 <Button size="small" appearance={journalMode === "ledger" ? "primary" : "subtle"} onClick={() => setJournalMode("ledger")}>Ledger</Button>
               </div>
             </header>
-            <div className={styles.journalList}>
+            <GrowingContainer className={styles.journalList} ariaLabel="Journal timeline">
               {timelineItems.length === 0 ? <div className={styles.empty}><Clock20Regular /><p>The first attributable action will appear here.</p></div> : timelineItems.map((item) => (
                 <button type="button" aria-pressed={selectedTimelineItem?.id === item.id} aria-label={`${item.status}: ${item.title}`} onClick={() => selectTimelineItem(item)} key={item.id} className={mergeClasses(styles.journalEntry, selectedTimelineItem?.id === item.id ? styles.journalEntryActive : undefined)}>
                   <span className={styles.journalTime}>{item.timestamp ?? `#${item.sequence ?? "-"}`}</span>
@@ -807,7 +812,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
                 </button>
               ))}
               {incident.status === "Contained" ? <div className={styles.fallback}><CheckmarkCircle20Regular /> <strong>Host-A contained under commander authority.</strong></div> : null}
-            </div>
+            </GrowingContainer>
           </div>
         </aside>
       </div>

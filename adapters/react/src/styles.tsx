@@ -24,6 +24,11 @@ ${root} .gx-muted { color: var(--muted); }
 ${root} .gx-row { display: flex; gap: var(--spacingHorizontalM); }
 ${root} .gx-row-between { justify-content: space-between; align-items: center; }
 ${root} .gx-col { display: flex; flex-direction: column; gap: var(--spacingVerticalM); }
+${root} .gx-growing-container {
+  width: 100%; height: 100%; min-width: 0; min-height: 0; max-width: 100%; max-height: 100%;
+  overflow: auto; overscroll-behavior: contain;
+}
+${root} .gx-growing-container-content { min-width: 0; min-height: 100%; }
 ${root} .gx-wrap { flex-wrap: wrap; }
 ${root} .gx-stack { display: grid; gap: var(--spacingVerticalS); }
 ${root} .gx-stack-tight { gap: var(--spacingVerticalXS); }

@@ -37,6 +37,20 @@ test("property leaf renders a labelled value and dash-fills a blank value", () =
   assert.match(blank, /class="gx-property-value"[^>]*>—</);
 });
 
+test("growing container composes children inside the floor-owned scroll viewport", () => {
+  const child = leaf("ui:text", { value: "Latest activity" });
+  const container = {
+    ...leaf("ui:growing-container", { ariaLabel: "Activity stream", followEnd: "always" }),
+    children: [child],
+  };
+  const markup = renderToStaticMarkup(renderNode(container, registry, () => {}));
+  assert.match(markup, /class="gx-growing-container"/);
+  assert.match(markup, /role="region"/);
+  assert.match(markup, /aria-label="Activity stream"/);
+  assert.match(markup, /class="gx-growing-container-content"/);
+  assert.match(markup, /Latest activity/);
+});
+
 test("maplist leaf renders directional from → to rows with an optional header", () => {
   const markup = render("ui:maplist", {
     fromLabel: "kind",
