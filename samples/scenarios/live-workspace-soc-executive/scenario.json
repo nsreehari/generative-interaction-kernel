@@ -8,7 +8,7 @@
     "pace": {
       "manualDurationMs": 120000,
       "autoDurationMs": 2000,
-      "default": "manual"
+      "default": "auto"
     },
     "steps": [
       { "id": "intent", "title": "Set the investigation objective", "kind": "dispatch", "command": "establishIntent", "actorRef": { "namespace": "soc", "kind": "actor", "id": "human-morgan", "relation": "origin" }, "focusRefs": [{ "namespace": "soc", "kind": "record", "id": "intent", "relation": "affected" }], "waitAfterMs": 450 },

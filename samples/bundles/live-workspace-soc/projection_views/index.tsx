@@ -16,6 +16,7 @@ import {
 } from "@fluentui/react-icons";
 import type { ProjectionView } from "@gik/react";
 import { GrowingContainer } from "../../../../adapters/react/src/primitives/registry";
+import { FluentSwitchControl } from "../../fluent/projection_views/index";
 import {
   compileSocPresentation,
   SOC_BLUEPRINT_CONTEXTS,
@@ -272,7 +273,7 @@ const useStyles = makeStyles({
   eyebrow: { color: "var(--muted)", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightBold, textTransform: "uppercase" },
   title: { margin: 0, fontSize: tokens.fontSizeBase400, lineHeight: tokens.lineHeightBase400, overflowWrap: "anywhere" },
   controls: { width: "100%", display: "flex", alignItems: "center", justifyContent: "flex-start", gap: tokens.spacingHorizontalS, flexWrap: "wrap" },
-  demoMode: { display: "inline-flex", padding: "2px", gap: "2px", border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel-2)" },
+  workspaceModeSwitch: { minWidth: "150px" },
   viewpointControl: { display: "inline-flex", alignItems: "center", gap: tokens.spacingHorizontalXS },
   viewpointLabel: { color: "var(--muted)", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightBold, textTransform: "uppercase" },
   pill: { display: "inline-flex", alignItems: "center", gap: tokens.spacingHorizontalXS, minHeight: "30px", padding: `0 ${tokens.spacingHorizontalS}`, border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel-2)", fontSize: tokens.fontSizeBase200, fontWeight: tokens.fontWeightSemibold },
@@ -395,7 +396,7 @@ const useStyles = makeStyles({
   authority: { color: "var(--muted)", fontSize: tokens.fontSizeBase100 },
   providerControls: { display: "grid", gap: tokens.spacingVerticalXS, marginTop: tokens.spacingVerticalS, paddingTop: tokens.spacingVerticalS, borderTop: `1px solid var(--line)` },
   providerHeader: { display: "grid", gap: tokens.spacingVerticalXS },
-  providerMode: { width: "100%", display: "flex", padding: "2px", gap: "2px", border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel-2)", "& > button": { flex: 1 } },
+  providerMode: { minWidth: "92px" },
   providerName: { color: "var(--muted)", fontFamily: tokens.fontFamilyMonospace, fontSize: tokens.fontSizeBase100, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
   providerStatus: { color: "var(--muted)", fontSize: tokens.fontSizeBase100, overflowWrap: "anywhere" },
   authorize: { width: "100%", marginTop: tokens.spacingVerticalS },
@@ -560,9 +561,14 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
           </div>
         </div>
         <div className={styles.controls}>
-          <div className={styles.demoMode} role="group" aria-label="Workspace mode">
-            <Button size="small" appearance={consolePlane === "runtime" ? "primary" : "subtle"} onClick={() => selectPlane("runtime")}>Live workspace</Button>
-            <Button size="small" appearance={consolePlane === "blueprint" ? "primary" : "subtle"} onClick={() => selectPlane("blueprint")}>Blueprint inspector</Button>
+          <div className={styles.workspaceModeSwitch}>
+            <FluentSwitchControl
+              checked={consolePlane === "blueprint"}
+              offLabel="Live inspector"
+              onLabel="Blueprint inspector"
+              ariaLabel="Workspace inspector mode"
+              onToggle={(checked) => selectPlane(checked ? "blueprint" : "runtime")}
+            />
           </div>
           <label className={styles.viewpointControl}>
             <span className={styles.viewpointLabel}>View as</span>
@@ -858,9 +864,14 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
                 {item.kind === "agent" && agentProviders[item.id] ? <div className={styles.providerControls}>
                   <div className={styles.providerHeader}>
                     <span className={styles.providerName} title={agentProviders[item.id].agentName}>{agentProviders[item.id].agentName}</span>
-                    <div className={styles.providerMode} role="group" aria-label={`${item.name} provider`}>
-                      <Button size="small" appearance={agentProviders[item.id].mode === "mock" ? "primary" : "subtle"} onClick={() => { emit("setAgentMode", { agentId: item.id, mode: "mock" }, item.id); }}>Mock</Button>
-                      <Button size="small" appearance={agentProviders[item.id].mode === "live" ? "primary" : "subtle"} onClick={() => { emit("setAgentMode", { agentId: item.id, mode: "live" }, item.id); }}>Live</Button>
+                    <div className={styles.providerMode}>
+                      <FluentSwitchControl
+                        checked={agentProviders[item.id].mode === "live"}
+                        offLabel="Mock"
+                        onLabel="Live"
+                        ariaLabel={`${item.name} provider mode`}
+                        onToggle={(checked) => emit("setAgentMode", { agentId: item.id, mode: checked ? "live" : "mock" }, item.id)}
+                      />
                     </div>
                   </div>
                   <div className={styles.providerStatus}>{agentProviders[item.id].status}{agentProviders[item.id].fallbackReason ? ` · ${agentProviders[item.id].fallbackReason}` : agentProviders[item.id].conversationId ? ` · conversation active` : ""}</div>

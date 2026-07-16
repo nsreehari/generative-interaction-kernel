@@ -7,6 +7,7 @@ import { t3ScenarioPlan } from "./compile";
 test("T3 compiles as a scenario targeting the SOC organism Blueprint", () => {
   assert.equal(t3ScenarioPlan.id, "live-workspace-soc-t3");
   assert.equal(t3ScenarioPlan.targetBlueprintId, "live-workspace-soc");
+  assert.equal(t3ScenarioPlan.pace.default, "auto");
   assert.equal(t3ScenarioPlan.steps.length, 14);
   assert.equal(new Set(t3ScenarioPlan.steps.map((step) => step.id)).size, 14);
 });

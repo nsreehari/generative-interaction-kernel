@@ -31,7 +31,7 @@ function demoRuntimes(scenarioPlan: ScenarioPlan = t3ScenarioPlan) {
   shared.apply([{ op: "set", path: "demo", value: {
     enabled: true,
     act: 0,
-    presenter: { pace: "manual", durationMs: 120000, locked: false, advanceToken: 0 },
+    presenter: { pace: "auto", durationMs: 2000, locked: false, advanceToken: 0 },
     request: null,
     ack: null,
     commands: {},

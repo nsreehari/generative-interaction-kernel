@@ -49,6 +49,15 @@ test("demo runner expands, collapses, and brokers semantic timeline focus", asyn
   const runner = page.getByLabel("Scenario runner");
   const runnerToggle = runner.getByRole("button").first();
   await expect(runnerToggle).toHaveAttribute("aria-expanded", "true");
+  await expect(runner.getByRole("button", { name: "Auto" })).toHaveAttribute("aria-pressed", "true");
+  const inspectorSwitch = page.getByRole("switch", { name: "Workspace inspector mode" });
+  await expect(inspectorSwitch).not.toBeChecked();
+  await inspectorSwitch.click();
+  await expect(page.getByRole("heading", { name: "Intent to runnable bundle" })).toBeVisible();
+  await expect(inspectorSwitch).toBeChecked();
+  await inspectorSwitch.click();
+  await expect(page.getByRole("heading", { name: "Shared investigation" })).toBeVisible();
+  await expect(inspectorSwitch).not.toBeChecked();
   await expect(page).toHaveScreenshot("soc-demo-expanded-desktop.png");
 
   await advance(page, 2);
@@ -59,6 +68,8 @@ test("demo runner expands, collapses, and brokers semantic timeline focus", asyn
   await expect(page.locator('[data-soc-object-id="intent"]')).toHaveCSS("outline-style", "solid");
   await page.getByRole("button", { name: "Participants" }).click();
   await expect(page.locator('[data-soc-actor-id="human-morgan"]')).toHaveCSS("outline-style", "solid");
+  await expect(page.getByRole("switch", { name: "Correlation Agent provider mode" })).not.toBeChecked();
+  await expect(page.getByRole("switch", { name: "Response Agent provider mode" })).not.toBeChecked();
 
   await runnerToggle.click();
   await expect(runnerToggle).toHaveAttribute("aria-expanded", "false");
