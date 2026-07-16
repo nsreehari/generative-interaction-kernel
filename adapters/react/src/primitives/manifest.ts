@@ -35,6 +35,7 @@ export const PRIMITIVE_CAPABILITIES: Record<string, CapabilityDescriptor> = {
   row: { propsSchema: anyProps, slots: ["children"] }, // horizontal stack
   col: { propsSchema: anyProps, slots: ["children"] }, // vertical stack
   panel: { propsSchema: anyProps, slots: ["children"] }, // titled/variant container
+  "growing-container": { propsSchema: anyProps, slots: ["children"] }, // fills parent, owns overflow, follows appended content
 
   // --- Text / status ---
   text: { propsSchema: anyProps }, // value + variant (title|subtitle|body|caption|code|muted)

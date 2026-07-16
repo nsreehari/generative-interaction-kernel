@@ -13,6 +13,14 @@ async function assertNoHorizontalOverflow(page: Page): Promise<void> {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 }
 
+async function assertPinnedToEnd(page: Page, label: string): Promise<void> {
+  const container = page.getByRole("region", { name: label });
+  await expect(container).toBeVisible();
+  expect(await container.evaluate((element) =>
+    element.scrollHeight - element.scrollTop - element.clientHeight <= 2
+  )).toBe(true);
+}
+
 async function advance(page: Page, expectedAct: number): Promise<void> {
   await page.getByRole("button", { name: /Next act/ }).click();
   await expect(page.getByText(`Act ${expectedAct} of 14`, { exact: true })).toBeVisible();
@@ -66,6 +74,8 @@ test("executive demo reaches the governed human gate on a 390px viewport", async
   for (let act = 2; act <= 13; act += 1) await advance(page, act);
   await expect(page.getByText("Require commander authorization", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Authorize Host-A isolation" })).toBeVisible();
+  await assertPinnedToEnd(page, "Shared substrate content");
+  await assertPinnedToEnd(page, "Journal timeline");
   await assertNoHorizontalOverflow(page);
   await expect(page).toHaveScreenshot("soc-demo-human-gate-mobile.png");
 });
