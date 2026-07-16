@@ -84,10 +84,8 @@
       { "slot": "priority", "match": { "presentationContext": "correlation-agent", "region": "evidence" }, "emit": { "priority": "primary" } },
       { "slot": "priority", "match": { "presentationContext": "response-agent", "region": "response" }, "emit": { "priority": "primary" } },
       { "slot": "priority", "match": { "presentationContext": "response-agent", "region": "authorization" }, "emit": { "priority": "primary" } },
-      { "slot": "priority", "match": { "region": "next-act-timer" }, "emit": { "priority": "control" } },
       { "slot": "priority", "match": {}, "emit": { "priority": "supporting" } },
 
-      { "slot": "disclosure", "match": { "region": "next-act-timer" }, "emit": { "disclosure": "control" } },
       { "slot": "disclosure", "match": { "presentationContext": "full-substrate", "region": "agent-request" }, "emit": { "disclosure": "omitted" } },
       { "slot": "disclosure", "match": { "presentationContext": "war-room", "region": "agent-request" }, "emit": { "disclosure": "omitted" } },
       { "slot": "disclosure", "match": { "presentationContext": "priya-mobile", "region": "agent-request" }, "emit": { "disclosure": "omitted" } },
@@ -142,7 +140,6 @@
       { "slot": "group", "match": { "presentationContext": "response-agent", "region": "causal-record" }, "emit": { "group": "governed-result" } },
       { "slot": "group", "match": {}, "emit": { "group": "substrate" } },
 
-      { "slot": "presentation", "match": { "region": "next-act-timer" }, "emit": { "presentation": "presenter-control" } },
       { "slot": "presentation", "match": { "region": "agent-request" }, "emit": { "presentation": "agent-request", "materialize": false } },
       { "slot": "presentation", "match": {}, "emit": { "presentation": "substrate-region", "materialize": false } },
       { "slot": "rationale", "match": { "presentationContext": "priya-mobile" }, "emit": { "template": "Commander context keeps consequential decisions glanceable." } },

@@ -12,10 +12,8 @@
 //   - "native-root" : an irreducibly-native composition (the workbench) whose root.ts re-exports a
 //                     React `Root` the host mounts directly. No JSON trio.
 //
-// NOTE: there is no standalone `inspect` top-level bundle. Standalone it was only a seeded, guest-less
-// demo shell (the floor-only scaffold from ADR-0032, since removed). The inspector does real work only
-// embedded in the workbench composition (`bundles/workbench/bundles/inspect/inspect.ts`), driven by the
-// live guest through the `inspectSnapshot` cross-kernel bridge.
+// NOTE: there is no standalone `inspect` top-level bundle. Workbench guest and inspector subtrees share
+// one kernel; its native `inspectSnapshot` projection bridge is not a general cross-kernel embed pattern.
 
 import {
   bundleFromJson,
@@ -28,6 +26,7 @@ import {
 } from "@gik/react";
 import type React from "react";
 import registry from "../../../bundles/registry.json";
+import { demoCatalog, resolveDemoComposition } from "../../../scenarios/catalog";
 
 type BundleKind = "json" | "native-root";
 type Registry = { default: string; bundles: Record<string, { kind: BundleKind }> };
@@ -39,9 +38,8 @@ const REGISTRY = registry as Registry;
 const rawManifests = import.meta.glob("../../../bundles/*/manifest.json", { eager: true, import: "default" });
 const rawDocuments = import.meta.glob("../../../bundles/*/document.json", { eager: true, import: "default" });
 const rawStates = import.meta.glob("../../../bundles/*/state.json", { eager: true, import: "default" });
-const rawEffectHandlers = import.meta.glob("../../../bundles/*/effect_handlers/index.{ts,tsx}", {
+const rawEffectHandlerModules = import.meta.glob("../../../bundles/*/effect_handlers/index.{ts,tsx}", {
   eager: true,
-  import: "default",
 });
 const rawProjectionViews = import.meta.glob("../../../bundles/*/projection_views/index.{ts,tsx}", {
   eager: true,
@@ -62,7 +60,9 @@ function byBundleId<T>(glob: Record<string, T>): Record<string, T> {
 const manifests = byBundleId(rawManifests);
 const documents = byBundleId(rawDocuments);
 const states = byBundleId(rawStates);
-const effectHandlers = byBundleId(rawEffectHandlers) as Record<string, EffectHandlerMap>;
+const effectHandlerModules = byBundleId(rawEffectHandlerModules) as Record<string, {
+  default: EffectHandlerMap;
+}>;
 const projectionViews = byBundleId(rawProjectionViews) as Record<string, Record<string, ProjectionView>>;
 const roots = byBundleId(rawRoots) as Record<string, { Root?: React.ComponentType }>;
 
@@ -77,8 +77,9 @@ export function resolveBundleProjectionViews(id: string): Record<string, Project
 /** Build the runtime registry, SEEDED with every on-disk bundle declared in registry.json plus the
  *  floor's embeddable platform apps (registered `listable: false`, so they are `embed`-only, not switcher
  *  rows). The returned registry is mutable — runtime code may register/unregister further bundles. */
-export function createHostRegistry(): BundleRegistry {
+export function createHostRegistry(demoId?: string | null): BundleRegistry {
   const reg = createBundleRegistry();
+  const demoComposition = demoId ? resolveDemoComposition(demoId) : undefined;
   for (const [id, entry] of Object.entries(REGISTRY.bundles)) {
     if (entry.kind === "native-root") {
       const Root = roots[id]?.Root;
@@ -88,14 +89,27 @@ export function createHostRegistry(): BundleRegistry {
       reg.registerBundle(id, { kind: "native-root", Root });
       continue;
     }
-    const native: BundleNative = {
-      effectHandlers: effectHandlers[id],
-      projectionViews: projectionViews[id],
-    };
     reg.registerBundle(id, {
       kind: "bundle",
-      make: () =>
-        bundleFromJson({ manifest: manifests[id], document: documents[id], state: states[id] }, native),
+      make: () => {
+        const manifest = structuredClone(manifests[id]);
+        const document = structuredClone(documents[id]);
+        const state = structuredClone(states[id]) as Record<string, unknown>;
+        const effectModule = effectHandlerModules[id];
+        if (id === "demo-runner" && demoComposition) {
+          state.runner = {
+            plan: demoComposition.scenarioPlan,
+            catalog: demoCatalog.entries,
+            entry: demoComposition.entry,
+          };
+        }
+        const native: BundleNative = {
+          effectHandlers: effectModule?.default,
+          projectionViews: projectionViews[id],
+        };
+        return bundleFromJson({ manifest, document, state }, native);
+      },
+      listable: id === "demo-runner" ? false : undefined,
     });
   }
   // Platform apps: embeddable bundles the floor itself provides, not owned by any single json bundle.

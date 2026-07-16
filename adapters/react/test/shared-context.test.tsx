@@ -6,7 +6,7 @@ import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import { GenUIController, SharedContextStore } from "../src/index";
-import { Kernel, authorDocument, node, assignFrom, envelope, type ResolvedNode } from "@gik/kernel";
+import { Kernel, authorDocument, node, assignFrom, envelope, reaction, type ResolvedNode } from "@gik/kernel";
 
 const manifest = envelope("manifest", {
   version: "shared-context-test/1",
@@ -74,4 +74,26 @@ test("a reader runtime re-resolves when a writer runtime updates the shared cont
   assert.ok(notifications >= 1, "the shared store notified on the write");
   const after = findById(readerCtl.getTree()!, "label");
   assert.equal(after?.props.text, "hello", "reader's tree reflects the writer's context write");
+});
+
+test("external context synchronization settles reader reactions", async () => {
+  const shared = SharedContextStore.create(["shared"]);
+  const reader = new Kernel(
+    manifest,
+    authorDocument(
+      node("board", "root", {
+        react: [reaction("shared.title", [assignFrom("shared.observed", "shared.title")])],
+      }),
+      { manifest: "shared-context-test/1" }
+    ),
+    { contexts: { shared } }
+  );
+  const readerCtl = new GenUIController(reader);
+  await readerCtl.start();
+  await readerCtl.resync();
+
+  shared.apply([{ op: "set", path: "shared.title", value: "from-writer" }]);
+  await readerCtl.resync();
+
+  assert.equal(shared.get("shared.observed"), "from-writer");
 });

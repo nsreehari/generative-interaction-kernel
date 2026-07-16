@@ -26,8 +26,7 @@
             "agent-request",
             "response",
             "authorization",
-            "causal-record",
-            "next-act-timer"
+            "causal-record"
           ]
         }
       }

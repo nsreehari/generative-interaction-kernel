@@ -49,29 +49,42 @@
           "executeContainment": [
             { "do": "invoke", "args": { "tool": "executeContainment" } }
           ],
-          "setPace": [
-            { "do": "invoke", "args": { "tool": "setPace" } }
-          ],
           "setPresentationContext": [
             { "do": "invoke", "args": { "tool": "setPresentationContext" } }
           ],
           "setAgentMode": [
             { "do": "invoke", "args": { "tool": "setAgentMode" } }
           ],
-          "finishAct": [
-            { "do": "invoke", "args": { "tool": "finishAct" } }
-          ],
           "reset": [
             { "do": "invoke", "args": { "tool": "resetScenario" } }
+          ],
+          "selectTimeline": [
+            { "do": "assign", "target": "demo.selection", "args": { "from": "$event.selection" } }
+          ],
+          "clearTimelineSelection": [
+            { "do": "assign", "target": "demo.selection", "args": { "value": null } }
           ]
         },
+        "react": [
+          { "when": "demo.commands.establishIntent", "run": [{ "do": "emit", "event": "establishIntent" }] },
+          { "when": "demo.commands.addConstraint", "run": [{ "do": "emit", "event": "addConstraint" }] },
+          { "when": "demo.commands.suggestExploration", "run": [{ "do": "emit", "event": "suggestExploration" }] },
+          { "when": "demo.commands.amendExploration", "run": [{ "do": "emit", "event": "amendExploration" }] },
+          { "when": "demo.commands.replanExploration", "run": [{ "do": "emit", "event": "replanExploration" }] },
+          { "when": "demo.commands.commitPartialFindings", "run": [{ "do": "emit", "event": "commitPartialFindings" }] },
+          { "when": "demo.commands.proposeDc01", "run": [{ "do": "emit", "event": "proposeDc01" }] },
+          { "when": "demo.commands.completeCorrelation", "run": [{ "do": "emit", "event": "completeCorrelation" }] },
+          { "when": "demo.commands.proposeHostA", "run": [{ "do": "emit", "event": "proposeHostA" }] },
+          { "when": "demo.commands.reviseResponse", "run": [{ "do": "emit", "event": "reviseResponse" }] },
+          { "when": "demo.commands.calculateResponse", "run": [{ "do": "emit", "event": "calculateResponse" }] },
+          { "when": "demo.commands.recommendContainment", "run": [{ "do": "emit", "event": "recommendContainment" }] },
+          { "when": "demo.commands.executeContainment", "run": [{ "do": "emit", "event": "executeContainment" }] },
+          { "when": "demo.commands.reset", "run": [{ "do": "emit", "event": "reset" }] }
+        ],
         "read": {
-          "act": "soc.act",
           "incident": "soc.incident",
-          "presenter": "soc.presenter",
           "presentation": "soc.presentation",
           "stage": "soc.stage",
-          "step": "soc.step",
           "actors": "soc.actors",
           "agentProviders": "soc.agentProviders",
           "intent": "soc.intent",
@@ -85,24 +98,17 @@
           "proposal": "soc.proposal",
           "recommendation": "soc.recommendation",
           "authorization": "soc.authorization",
-          "journal": "soc.journal"
+          "journal": "soc.journal",
+          "demoEnabled": "demo.enabled",
+          "demoTimeline": "demo.timeline",
+          "demoSelection": "demo.selection"
         },
         "children": [
           {
-            "capability": "ui:timer-button",
-            "id": "next-act-timer-region",
-            "props": { "label": "Next act", "tone": "primary", "showCountdown": true },
-            "edges": {
-              "read": {
-                "durationMs": "soc.presenter.durationMs",
-                "disabled": "soc.presenter.locked"
-              },
-              "on": {
-                "press": [
-                  { "do": "invoke", "args": { "tool": "requestNextAct" } }
-                ]
-              }
-            }
+            "capability": "ui:embed",
+            "id": "demo-runner-region",
+            "props": { "app": "demo-runner", "unframed": true },
+            "edges": { "gate": "demo.enabled = true" }
           },
           {
             "capability": "foundry:access-modal",

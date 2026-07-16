@@ -9,12 +9,14 @@ import { makeStyles, tokens } from "@fluentui/react-components";
 import {
   BundleHost,
   BundleRegistryProvider,
+  SharedContextStore,
   sampleProfileComponents,
   useBundleRegistry,
   useRegistryIds,
 } from "@gik/react";
 import { createHostRegistry, DEFAULT_BUNDLE, resolveBundleProjectionViews } from "./bundles";
 import { switcherBundle } from "../../../bundles/approot/switcher/switcher";
+import { resolveDemoComposition } from "../../../scenarios/catalog";
 
 const useStyles = makeStyles({
   unknownBundle: {
@@ -25,28 +27,51 @@ const useStyles = makeStyles({
 
 export function Host(): React.ReactElement {
   // One registry for the life of the app; every BundleHost and every `embed props.app` resolves it.
-  const registry = React.useMemo(() => createHostRegistry(), []);
+  const demoId = new URLSearchParams(window.location.search).get("demo");
+  const registry = React.useMemo(() => createHostRegistry(demoId), [demoId]);
+  const contexts = React.useMemo<Record<string, SharedContextStore>>(() => {
+    if (!demoId) return {} as Record<string, SharedContextStore>;
+    const demo = SharedContextStore.create(["demo"]);
+    const { scenarioPlan } = resolveDemoComposition(demoId);
+    const pace = scenarioPlan.pace.default;
+    demo.apply([{ op: "set", path: "demo", value: {
+      enabled: true,
+      act: 0,
+      presenter: {
+        pace,
+        durationMs: pace === "auto" ? scenarioPlan.pace.autoDurationMs : scenarioPlan.pace.manualDurationMs,
+        locked: false,
+        advanceToken: 0,
+      },
+      request: null,
+      ack: null,
+      commands: {},
+      timeline: [],
+      selection: null,
+    } }]);
+    return { demo };
+  }, [demoId]);
   const resolveProvider = React.useCallback(
     (from: string) => (from === "profile" ? sampleProfileComponents : resolveBundleProjectionViews(from)),
     []
   );
   return (
     <BundleRegistryProvider registry={registry} resolveProvider={resolveProvider}>
-      <HostView />
+      <HostView contexts={contexts} />
     </BundleRegistryProvider>
   );
 }
 
-function HostView(): React.ReactElement {
+function HostView({ contexts }: { contexts: Record<string, SharedContextStore> }): React.ReactElement {
   const styles = useStyles();
   const registry = useBundleRegistry();
   const id = new URLSearchParams(window.location.search).get("bundle") ?? DEFAULT_BUNDLE;
   const entry = registry?.get(id);
   const mounted = React.useMemo(() => {
     if (entry?.kind === "native-root") return <entry.Root />;
-    if (entry?.kind === "bundle") return <BundleHost bundle={entry.make()} />;
+    if (entry?.kind === "bundle") return <BundleHost bundle={entry.make()} contexts={contexts} />;
     return <p className={styles.unknownBundle}>Unknown bundle: {id}</p>;
-  }, [entry, id, styles.unknownBundle]);
+  }, [contexts, entry, id, styles.unknownBundle]);
 
   // The switcher is itself a bundle, mounted through the same host as an overlay — so host chrome
   // rides the ambient, host-owned theme. Its list reacts to runtime register/unregister.

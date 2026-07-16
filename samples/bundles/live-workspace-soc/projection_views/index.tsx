@@ -2,7 +2,6 @@ import React from "react";
 import { Button, Input, Select, Spinner, makeStyles, mergeClasses, shorthands, tokens } from "@fluentui/react-components";
 import {
   ArrowLeft24Regular,
-  ArrowReset24Regular,
   BrainCircuit24Regular,
   CheckmarkCircle20Regular,
   ChevronDown20Regular,
@@ -16,12 +15,22 @@ import {
   WeatherMoon20Regular,
 } from "@fluentui/react-icons";
 import type { ProjectionView } from "@gik/react";
+import { GrowingContainer } from "../../../../adapters/react/src/primitives/registry";
+import { FluentSwitchControl } from "../../fluent/projection_views/index";
 import {
   compileSocPresentation,
   SOC_BLUEPRINT_CONTEXTS,
   socBlueprint,
   traceSocBlueprint,
 } from "../../../profiles/live-workspace-soc/compile";
+import {
+  selectionContainsFocus,
+  selectionFromTimelineItem,
+  type DemoSelection,
+  type FocusTarget,
+  type FocusRef,
+  type TimelineItem,
+} from "../../../shared/demo-runner";
 import { readSocNavigation, writeSocNavigation, type SocPlane } from "../navigation";
 
 interface Incident {
@@ -30,13 +39,6 @@ interface Incident {
   severity: string;
   status: string;
   governance: string;
-}
-
-interface Presenter {
-  pace: "manual" | "auto";
-  durationMs: number;
-  locked: boolean;
-  advanceToken: number;
 }
 
 interface PresentationContext {
@@ -164,7 +166,7 @@ interface Authorization {
   actorId?: string;
 }
 
-interface JournalEntry {
+export interface JournalEntry {
   id: string;
   time: string;
   actorId: string;
@@ -178,50 +180,66 @@ interface JournalEntry {
   fallbackReason?: string;
 }
 
+function socFocusRef(kind: FocusRef["kind"], id: string, relation?: FocusRef["relation"]): FocusRef {
+  return { namespace: "soc", kind, id, relation };
+}
+
+export function socJournalTimelineItem(entry: JournalEntry): TimelineItem {
+  const actorRef = socFocusRef("actor", entry.actorId, "origin");
+  return {
+    id: entry.id,
+    source: "organism",
+    title: entry.result,
+    summary: entry.summary,
+    status: entry.result,
+    operationRecordId: entry.id,
+    timestamp: entry.time,
+    actorRef,
+    focusRefs: [
+      actorRef,
+      ...entry.affected.map((id) => socFocusRef("record", id, "affected")),
+    ],
+  };
+}
+
+export function socJournalSelection(entry: JournalEntry | undefined): DemoSelection | undefined {
+  return entry ? selectionFromTimelineItem(socJournalTimelineItem(entry)) : undefined;
+}
+
 export function isCausallyAffected(entry: JournalEntry | undefined, objectIds: readonly string[]): boolean {
-  if (!entry) return false;
-  const affected = new Set(entry.affected);
-  return objectIds.some((id) => affected.has(id));
+  return selectionContainsFocus(
+    socJournalSelection(entry),
+    objectIds.map((id) => socFocusRef("record", id))
+  );
 }
 
-interface ScenarioStep {
-  event: string;
-  actorId: string;
+export function isActorSelected(entry: JournalEntry | undefined, actorId: string): boolean {
+  return selectionContainsFocus(
+    socJournalSelection(entry),
+    [socFocusRef("actor", actorId)]
+  );
 }
 
-const ACT_DELAY_MS = 760;
-const PRESENTER_ACTS: Record<number, ScenarioStep> = {
-  0: { event: "establishIntent", actorId: "human-morgan" },
-  1: { event: "addConstraint", actorId: "human-priya" },
-  2: { event: "suggestExploration", actorId: "agent-correlation" },
-  3: { event: "amendExploration", actorId: "human-morgan" },
-  4: { event: "replanExploration", actorId: "agent-correlation" },
-  5: { event: "commitPartialFindings", actorId: "agent-correlation" },
-  6: { event: "proposeDc01", actorId: "agent-response" },
-  7: { event: "completeCorrelation", actorId: "agent-correlation" },
-  8: { event: "proposeHostA", actorId: "agent-response" },
-  9: { event: "reviseResponse", actorId: "human-morgan" },
-  10: { event: "calculateResponse", actorId: "agent-response" },
-  11: { event: "recommendContainment", actorId: "human-morgan" },
-  13: { event: "executeContainment", actorId: "agent-response" },
-};
-
-const ACT_TITLES = [
-  "Morgan establishes investigation intent",
-  "Priya protects the payroll cutover",
-  "Correlation Agent suggests exploration",
-  "Morgan narrows the exploration",
-  "Correlation Agent replans",
-  "Correlation Agent commits partial findings",
-  "Response Agent proposes DC-01 isolation",
-  "Correlation Agent resolves the origin",
-  "Response Agent proposes bounded containment",
-  "Morgan revises the response",
-  "Response Agent validates blast radius",
-  "Morgan recommends containment",
-  "Priya authorizes containment",
-  "Response Agent executes containment",
+export const SOC_FOCUS_TARGETS: FocusTarget[] = [
+  ...["intent", "constraints", "hypothesis", "exploration", "evidence", "proposal-dc01", "proposal-host-a", "rec-1", "authorization", "DC-01", "Host-A"].map((id) => ({
+    ref: socFocusRef("record", id),
+    regionId: id,
+    behavior: "highlight" as const,
+  })),
+  ...["human-morgan", "human-priya", "agent-correlation", "agent-response"].map((id) => ({
+    ref: socFocusRef("actor", id),
+    regionId: `participant:${id}`,
+    behavior: "select" as const,
+  })),
 ];
+
+export function selectionTargetsRecord(selection: DemoSelection | undefined, objectIds: readonly string[]): boolean {
+  return selectionContainsFocus(selection, objectIds.map((id) => socFocusRef("record", id)));
+}
+
+export function selectionTargetsActor(selection: DemoSelection | undefined, actorId: string): boolean {
+  return selectionContainsFocus(selection, [socFocusRef("actor", actorId)]);
+}
 
 const useStyles = makeStyles({
   workspace: {
@@ -229,7 +247,7 @@ const useStyles = makeStyles({
     minWidth: 0,
     minHeight: 0,
     display: "grid",
-    gridTemplateRows: "auto auto minmax(0, 1fr)",
+    gridTemplateRows: "auto minmax(0, 1fr)",
     overflow: "hidden",
     backgroundColor: "var(--bg)",
     color: "var(--text)",
@@ -240,32 +258,25 @@ const useStyles = makeStyles({
     top: 0,
     zIndex: 10,
     display: "grid",
-    gridTemplateColumns: "minmax(320px, 1fr) auto",
+    gridTemplateColumns: "minmax(0, 1fr)",
+    gridTemplateRows: "auto auto",
     alignItems: "center",
     gap: tokens.spacingHorizontalL,
     minHeight: "68px",
     padding: `${tokens.spacingVerticalS} clamp(16px, 3vw, 40px)`,
     borderBottom: `1px solid var(--line)`,
     backgroundColor: "var(--panel)",
-    "@media (max-width: 880px)": { position: "relative", gridTemplateColumns: "1fr" },
+    "@media (max-width: 880px)": { position: "relative" },
   },
   identity: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalM, minWidth: 0 },
   identityCopy: { minWidth: 0 },
   eyebrow: { color: "var(--muted)", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightBold, textTransform: "uppercase" },
   title: { margin: 0, fontSize: tokens.fontSizeBase400, lineHeight: tokens.lineHeightBase400, overflowWrap: "anywhere" },
-  controls: { display: "flex", alignItems: "center", justifyContent: "flex-end", gap: tokens.spacingHorizontalS, flexWrap: "wrap", "@media (max-width: 880px)": { justifyContent: "flex-start" } },
-  demoMode: { display: "inline-flex", padding: "2px", gap: "2px", border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel-2)" },
+  controls: { width: "100%", display: "flex", alignItems: "center", justifyContent: "flex-start", gap: tokens.spacingHorizontalS, flexWrap: "wrap" },
+  workspaceModeSwitch: { minWidth: "150px" },
   viewpointControl: { display: "inline-flex", alignItems: "center", gap: tokens.spacingHorizontalXS },
   viewpointLabel: { color: "var(--muted)", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightBold, textTransform: "uppercase" },
   pill: { display: "inline-flex", alignItems: "center", gap: tokens.spacingHorizontalXS, minHeight: "30px", padding: `0 ${tokens.spacingHorizontalS}`, border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel-2)", fontSize: tokens.fontSizeBase200, fontWeight: tokens.fontWeightSemibold },
-  pace: { display: "inline-flex", padding: "2px", gap: "2px", border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel-2)" },
-  timerSlot: { minWidth: "118px", "& > button": { width: "100%", minHeight: "32px" } },
-  actBar: { display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) auto", alignItems: "center", gap: tokens.spacingHorizontalM, padding: `${tokens.spacingVerticalS} clamp(16px, 3vw, 40px)`, borderBottom: `1px solid var(--line)`, backgroundColor: "var(--panel-2)", "@media (max-width: 620px)": { gridTemplateColumns: "1fr" } },
-  actNumber: { color: "var(--accent)", fontWeight: tokens.fontWeightBold, textTransform: "uppercase", fontSize: tokens.fontSizeBase100 },
-  actTitle: { margin: 0, fontWeight: tokens.fontWeightSemibold },
-  actDots: { display: "flex", gap: tokens.spacingHorizontalXS },
-  actDot: { width: "12px", height: "4px", backgroundColor: "var(--line)" },
-  actDotDone: { backgroundColor: "var(--accent)" },
   layout: { minHeight: 0, height: "100%", display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(300px, 360px)", gridTemplateRows: "minmax(0, 1fr)", overflow: "hidden", "@media (max-width: 1040px)": { height: "auto", gridTemplateColumns: "1fr", gridTemplateRows: "auto", overflow: "visible" } },
   workColumn: { minWidth: 0, minHeight: 0, height: "100%", padding: `clamp(18px, 3vw, 36px) clamp(16px, 3vw, 40px)`, overflow: "hidden", "@media (max-width: 1040px)": { height: "auto", padding: `clamp(18px, 3vw, 36px) clamp(16px, 3vw, 40px)`, overflow: "visible" } },
   shared: { minWidth: 0, minHeight: 0, height: "100%", display: "grid", gridTemplateRows: "auto minmax(0, 1fr)", border: `1px solid color-mix(in srgb, var(--accent) 24%, var(--line))`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "color-mix(in srgb, var(--accent) 7%, var(--panel))", boxShadow: "0 10px 28px color-mix(in srgb, var(--accent) 8%, transparent)", overflow: "hidden", "@media (max-width: 1040px)": { height: "auto", display: "block" } },
@@ -278,7 +289,8 @@ const useStyles = makeStyles({
   contextSelect: { minWidth: "190px" },
   contextMeta: { minWidth: 0, color: "var(--muted)", fontSize: tokens.fontSizeBase100, textAlign: "right", "@media (max-width: 760px)": { textAlign: "left" } },
   contextFocus: { display: "block", color: "var(--text)", overflowWrap: "anywhere" },
-  sharedViewport: { minHeight: 0, display: "grid", alignContent: "start", gap: tokens.spacingVerticalL, padding: `clamp(18px, 3vw, 32px)`, paddingBottom: "calc(clamp(18px, 3vw, 32px) + 50px)", scrollPaddingBottom: "50px", overflowY: "auto", "@media (max-width: 1040px)": { overflowY: "visible" } },
+  sharedViewport: { minHeight: 0, padding: `clamp(18px, 3vw, 32px)`, paddingBottom: "calc(clamp(18px, 3vw, 32px) + 50px)", scrollPaddingBottom: "50px" },
+  sharedViewportContent: { display: "grid", alignContent: "start", gap: tokens.spacingVerticalL },
   contextProjection: { width: "100%", minWidth: 0, display: "grid", alignContent: "start", gap: tokens.spacingVerticalL, margin: "0 auto" },
   frameMobile: { maxWidth: "430px", padding: tokens.spacingVerticalL, border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusLarge, backgroundColor: "var(--panel)", boxShadow: "0 16px 38px rgba(15, 23, 42, .16)" },
   frameLaptop: { maxWidth: "920px", padding: tokens.spacingVerticalL, border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel)" },
@@ -384,7 +396,7 @@ const useStyles = makeStyles({
   authority: { color: "var(--muted)", fontSize: tokens.fontSizeBase100 },
   providerControls: { display: "grid", gap: tokens.spacingVerticalXS, marginTop: tokens.spacingVerticalS, paddingTop: tokens.spacingVerticalS, borderTop: `1px solid var(--line)` },
   providerHeader: { display: "grid", gap: tokens.spacingVerticalXS },
-  providerMode: { width: "100%", display: "flex", padding: "2px", gap: "2px", border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel-2)", "& > button": { flex: 1 } },
+  providerMode: { minWidth: "92px" },
   providerName: { color: "var(--muted)", fontFamily: tokens.fontFamilyMonospace, fontSize: tokens.fontSizeBase100, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
   providerStatus: { color: "var(--muted)", fontSize: tokens.fontSizeBase100, overflowWrap: "anywhere" },
   authorize: { width: "100%", marginTop: tokens.spacingVerticalS },
@@ -392,7 +404,7 @@ const useStyles = makeStyles({
   journalSticky: { height: "100%", minHeight: 0, display: "grid", gridTemplateRows: "auto minmax(0, 1fr)", "@media (max-width: 1040px)": { height: "520px" } },
   journalHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: tokens.spacingHorizontalS, padding: tokens.spacingVerticalM, borderBottom: `1px solid var(--line)` },
   journalTabs: { display: "inline-flex", gap: "2px", padding: "2px", backgroundColor: "var(--panel-2)", borderRadius: tokens.borderRadiusMedium },
-  journalList: { overflowY: "auto", padding: tokens.spacingVerticalS },
+  journalList: { padding: tokens.spacingVerticalS },
   journalEntry: { width: "100%", display: "grid", gridTemplateColumns: "48px minmax(0, 1fr)", gap: tokens.spacingHorizontalS, padding: tokens.spacingVerticalS, border: 0, borderBottom: `1px solid var(--line)`, backgroundColor: "transparent", color: "inherit", font: "inherit", textAlign: "left", cursor: "pointer", "&:focus-visible": { outline: `2px solid var(--accent)`, outlineOffset: "-2px" } },
   journalEntryActive: { backgroundColor: "color-mix(in srgb, var(--accent) 10%, transparent)" },
   journalTime: { color: "var(--muted)", fontFamily: tokens.fontFamilyMonospace, fontSize: tokens.fontSizeBase100 },
@@ -429,7 +441,6 @@ function ParticipantPresenceIcon({ status }: { status: string }): React.ReactEle
 const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   const styles = useStyles();
   const incident = node.props.incident as unknown as Incident;
-  const presenter = node.props.presenter as unknown as Presenter;
   const presentation = node.props.presentation as unknown as Presentation;
   const actors = (node.props.actors ?? []) as unknown as Actor[];
   const agentProviders = (node.props.agentProviders ?? {}) as unknown as Record<string, AgentProvider>;
@@ -439,19 +450,19 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   const proposal = (node.props.proposal ?? null) as unknown as Proposal | null;
   const authorization = (node.props.authorization ?? null) as unknown as Authorization | null;
   const journal = (node.props.journal ?? []) as unknown as JournalEntry[];
+  const demoEnabled = node.props.demoEnabled === true;
+  const demoTimeline = (node.props.demoTimeline ?? []) as unknown as TimelineItem[];
+  const demoSelection = (node.props.demoSelection ?? undefined) as unknown as DemoSelection | undefined;
   const intent = node.props.intent as unknown as { statement: string } | null;
   const constraints = (node.props.constraints ?? []) as unknown as Array<{ rule: string }>;
-  const act = Number(node.props.act ?? 0);
   const stage = String(node.props.stage ?? "Incident opened");
   const [journalMode, setJournalMode] = React.useState<"journal" | "ledger">("journal");
   const [selectedJournalId, setSelectedJournalId] = React.useState<string | null>(null);
   const [participantsExpanded, setParticipantsExpanded] = React.useState(false);
-  const [activeAgentId, setActiveAgentId] = React.useState<string | null>(null);
   const validContextIds = SOC_BLUEPRINT_CONTEXTS.map((item) => item.id);
   const initialNavigationRef = React.useRef(readSocNavigation(window.location.search, validContextIds));
   const [consolePlane, setConsolePlane] = React.useState<SocPlane>(initialNavigationRef.current.plane);
   const emitRef = React.useRef(emit);
-  const processedTokenRef = React.useRef(0);
   const initialContextAppliedRef = React.useRef(false);
   emitRef.current = emit;
 
@@ -459,8 +470,13 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   const selectedEntry = selectedJournalId
     ? journal.find((item) => item.id === selectedJournalId) ?? latestEntry
     : latestEntry;
+  const organismTimeline = journal.map(socJournalTimelineItem);
+  const timelineItems = demoEnabled ? demoTimeline : organismTimeline;
+  const selectedTimelineItem = demoSelection
+    ? timelineItems.find((item) => item.id === demoSelection.itemId)
+    : selectedEntry ? socJournalTimelineItem(selectedEntry) : timelineItems.at(-1);
+  const activeSelection = demoSelection ?? (selectedTimelineItem ? selectionFromTimelineItem(selectedTimelineItem) : undefined);
   const actorNames = new Map(actors.map((item) => [item.id, item.name]));
-  const actDisplay = Math.min(act + 1, ACT_TITLES.length);
   const selectedContext = presentation.contexts.find((item) => item.id === presentation.selectedContext) ?? presentation.contexts[0];
   const presentationSpec = socPresentationSpec(presentation.selectedContext);
   const hasRegion = (region: SubstrateRegion) => presentationSpec.regions.includes(region);
@@ -514,42 +530,6 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
     }
   }, []);
 
-  React.useEffect(() => {
-    if (presenter.advanceToken === 0) {
-      processedTokenRef.current = 0;
-      return;
-    }
-    if (presenter.advanceToken === processedTokenRef.current) return;
-    processedTokenRef.current = presenter.advanceToken;
-    const nextAct = PRESENTER_ACTS[act];
-    if (!nextAct) return;
-    let cancelled = false;
-    let finishTimer: number | undefined;
-    void (async () => {
-      if (nextAct.actorId.startsWith("agent-")) setActiveAgentId(nextAct.actorId);
-      try {
-        await Promise.resolve(emitRef.current(nextAct.event, {}, nextAct.actorId));
-      } finally {
-        if (!cancelled) setActiveAgentId(null);
-      }
-      if (cancelled) return;
-      await new Promise<void>((resolve) => {
-        finishTimer = window.setTimeout(resolve, ACT_DELAY_MS);
-      });
-      if (!cancelled) await Promise.resolve(emitRef.current("finishAct", {}));
-    })();
-    return () => {
-      cancelled = true;
-      if (finishTimer !== undefined) window.clearTimeout(finishTimer);
-    };
-  }, [presenter.advanceToken]);
-
-  const reset = () => {
-    processedTokenRef.current = 0;
-    setSelectedJournalId(null);
-    emit("reset", {});
-  };
-
   const selectPlane = (plane: SocPlane) => {
     setConsolePlane(plane);
     window.history.replaceState(null, "", writeSocNavigation(window.location.href, plane, presentation.selectedContext));
@@ -558,6 +538,16 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   const selectContext = (contextId: string) => {
     emit("setPresentationContext", { contextId });
     window.history.replaceState(null, "", writeSocNavigation(window.location.href, consolePlane, contextId));
+  };
+
+  const selectTimelineItem = (item: TimelineItem) => {
+    if (demoEnabled) emit("selectTimeline", { selection: selectionFromTimelineItem(item) });
+    else setSelectedJournalId(item.operationRecordId ?? item.id);
+  };
+
+  const clearTimelineSelection = () => {
+    if (demoEnabled) emit("clearTimelineSelection", {});
+    else setSelectedJournalId(null);
   };
 
   return (
@@ -571,9 +561,14 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
           </div>
         </div>
         <div className={styles.controls}>
-          <div className={styles.demoMode} role="group" aria-label="Demo mode">
-            <Button size="small" appearance={consolePlane === "runtime" ? "primary" : "subtle"} onClick={() => selectPlane("runtime")}>Live demo</Button>
-            <Button size="small" appearance={consolePlane === "blueprint" ? "primary" : "subtle"} onClick={() => selectPlane("blueprint")}>Blueprint inspector</Button>
+          <div className={styles.workspaceModeSwitch}>
+            <FluentSwitchControl
+              checked={consolePlane === "blueprint"}
+              offLabel="Live inspector"
+              onLabel="Blueprint inspector"
+              ariaLabel="Workspace inspector mode"
+              onToggle={(checked) => selectPlane(checked ? "blueprint" : "runtime")}
+            />
           </div>
           <label className={styles.viewpointControl}>
             <span className={styles.viewpointLabel}>View as</span>
@@ -588,22 +583,9 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
           </label>
           <span className={styles.pill}><ShieldLock24Regular />{incident.severity} · {incident.status}</span>
           <span className={styles.pill}>{incident.governance}</span>
-          <div className={styles.pace} role="group" aria-label="Presenter pace">
-            <Button size="small" appearance={presenter.pace === "manual" ? "primary" : "subtle"} onClick={() => emit("setPace", { pace: "manual" })}>Manual</Button>
-            <Button size="small" appearance={presenter.pace === "auto" ? "primary" : "subtle"} onClick={() => emit("setPace", { pace: "auto" })}>Auto</Button>
-          </div>
-          <div className={styles.timerSlot}>{children}</div>
-          <Button appearance="subtle" icon={<ArrowReset24Regular />} aria-label="Reset scenario" disabled={activeAgentId !== null} onClick={reset} />
         </div>
       </header>
-
-      <section className={styles.actBar} aria-live="polite">
-        <div className={styles.actNumber}>{incident.status === "Contained" ? "Journey complete" : `Act ${actDisplay} of ${ACT_TITLES.length}`}</div>
-        <p className={styles.actTitle}>{incident.status === "Contained" ? stage : ACT_TITLES[act]}</p>
-        <div className={styles.actDots} aria-hidden="true">
-          {ACT_TITLES.map((_, index) => <span key={index} className={mergeClasses(styles.actDot, index < act || incident.status === "Contained" ? styles.actDotDone : undefined)} />)}
-        </div>
-      </section>
+      {children}
 
       <div className={styles.layout}>
         <div className={styles.workColumn}>
@@ -622,7 +604,8 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
                 <span className={styles.contextFocus}>{consolePlane === "runtime" ? selectedContext.focus : `${blueprintContext.role} · ${blueprintContext.device} · ${blueprintContext.task}`}</span>
               </div>
             </header>
-            <div className={styles.sharedViewport}>
+            <GrowingContainer className={styles.sharedViewport} ariaLabel="Shared substrate content">
+            <div className={styles.sharedViewportContent}>
             {consolePlane === "blueprint" ? <>
               <header className={styles.blueprintIntro}>
                 <div>
@@ -673,7 +656,6 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
                 <h3 className={styles.sectionTitle}>Blueprint-owned resources</h3>
                 <div className={styles.blueprintResources}>
                   <div className={styles.blueprintResource}>Actors<span className={styles.blueprintResourceValue}>{(blueprintResources.actors as unknown[]).length}</span></div>
-                  <div className={styles.blueprintResource}>Narrative acts<span className={styles.blueprintResourceValue}>{(blueprintResources.acts as unknown[]).length}</span></div>
                   <div className={styles.blueprintResource}>Projection contexts<span className={styles.blueprintResourceValue}>{SOC_BLUEPRINT_CONTEXTS.length}</span></div>
                   <div className={styles.blueprintResource}>Authority rule<span className={styles.blueprintResourceValue}>{String((blueprintResources.authorityPolicy as { requiredRole: string }).requiredRole)}</span></div>
                 </div>
@@ -750,17 +732,17 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
               </section>
             </div> : <>
             {hasRegion("intent") || hasRegion("constraints") ? <div style={{ order: regionOrder("intent", "constraints") }} className={mergeClasses(styles.contextRow, hasRegion("intent") && hasRegion("constraints") ? undefined : styles.contextRowSingle)}>
-              {hasRegion("intent") ? <div data-soc-object-id="intent" className={mergeClasses(styles.contextBand, isCausallyAffected(selectedEntry, ["intent"]) ? styles.causalHighlight : undefined)}>
+              {hasRegion("intent") ? <div data-soc-object-id="intent" className={mergeClasses(styles.contextBand, selectionTargetsRecord(activeSelection, ["intent"]) ? styles.causalHighlight : undefined)}>
                 <div className={styles.contextLabel}>Morgan's intent</div>
                 <p className={mergeClasses(styles.contextText, !intent ? styles.emptyText : undefined)}>{intent?.statement ?? "Waiting for the analyst to establish intent"}</p>
               </div> : null}
-              {hasRegion("constraints") ? <div data-soc-object-id="constraints" className={mergeClasses(styles.contextBand, isCausallyAffected(selectedEntry, ["constraints", "DC-01"]) ? styles.causalHighlight : undefined)}>
+              {hasRegion("constraints") ? <div data-soc-object-id="constraints" className={mergeClasses(styles.contextBand, selectionTargetsRecord(activeSelection, ["constraints", "DC-01"]) ? styles.causalHighlight : undefined)}>
                 <div className={styles.contextLabel}>Priya's operating constraint</div>
                 <p className={mergeClasses(styles.contextText, constraints.length === 0 ? styles.emptyText : undefined)}>{constraints[0]?.rule ?? "Waiting for incident-command constraints"}</p>
               </div> : null}
             </div> : null}
 
-            {hasRegion("hypothesis") ? <article style={{ order: regionOrder("hypothesis") }} data-soc-object-id="hypothesis" className={mergeClasses(styles.hypothesis, isCausallyAffected(selectedEntry, ["hypothesis", "corr-1", "Host-A"]) ? styles.causalHighlight : undefined)}>
+            {hasRegion("hypothesis") ? <article style={{ order: regionOrder("hypothesis") }} data-soc-object-id="hypothesis" className={mergeClasses(styles.hypothesis, selectionTargetsRecord(activeSelection, ["hypothesis", "corr-1", "Host-A"]) ? styles.causalHighlight : undefined)}>
               <div className={styles.hypothesisTop}>
                 <div className={styles.hypothesisLabel}><BrainCircuit24Regular />Working hypothesis</div>
                 <div className={styles.confidence}>{hypothesis.confidence}%</div>
@@ -771,13 +753,13 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
             {showInvestigation ? <section style={{ order: regionOrder("exploration", "evidence") }} className={styles.section}>
                 <h3 className={styles.sectionTitle}><Sparkle24Regular />{hasRegion("exploration") ? "Exploration and evidence" : "Evidence summary"}</h3>
                 {hasRegion("exploration") && explorations.length > 0 ? <div className={styles.explorationList}>{explorations.map((item) => (
-                  <article data-soc-object-id={item.id} key={item.id} className={mergeClasses(styles.exploration, item.status === "superseded" ? styles.explorationMuted : undefined, isCausallyAffected(selectedEntry, [item.id]) ? styles.causalHighlight : undefined)}>
+                  <article data-soc-object-id={item.id} key={item.id} className={mergeClasses(styles.exploration, item.status === "superseded" ? styles.explorationMuted : undefined, selectionTargetsRecord(activeSelection, [item.id]) ? styles.causalHighlight : undefined)}>
                     <div className={styles.rowTop}><strong>Revision {item.revision}</strong><span className={styles.status}>{item.status}</span></div>
                     <div className={styles.detailGrid}><span>{item.windowMinutes} minute window</span><span>{item.correlationKey}</span><span>{item.safety}</span></div>
                   </article>
                 ))}</div> : hasRegion("exploration") ? <div className={styles.empty}>No exploration proposed yet.</div> : null}
                 {hasRegion("evidence") && evidence.length > 0 ? <div className={styles.evidenceList}>{evidence.map((item) => (
-                  <article data-soc-object-id={item.id} className={mergeClasses(styles.evidence, isCausallyAffected(selectedEntry, ["evidence", item.id]) ? styles.causalHighlight : undefined)} key={item.id}>
+                  <article data-soc-object-id={item.id} className={mergeClasses(styles.evidence, selectionTargetsRecord(activeSelection, ["evidence", item.id]) ? styles.causalHighlight : undefined)} key={item.id}>
                     <div className={styles.evidenceMeta}><span>{item.source}</span><span>{item.confidence}%</span></div>
                     <p className={styles.evidenceText}>{item.summary}</p>
                   </article>
@@ -786,7 +768,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
 
             {showResponse ? <section style={{ order: regionOrder("response") }} className={styles.section}>
                 <h3 className={styles.sectionTitle}><ShieldLock24Regular />Governed response</h3>
-                {proposal ? <article data-soc-object-id={proposal.id} className={mergeClasses(styles.proposal, proposal.status === "rejected" ? styles.proposalRejected : undefined, proposal.status === "executed" ? styles.proposalExecuted : undefined, isCausallyAffected(selectedEntry, [proposal.id, "proposal-dc01", "proposal-host-a", "rec-1", "authorization", "DC-01", "Host-A"]) ? styles.causalHighlight : undefined)}>
+                {proposal ? <article data-soc-object-id={proposal.id} className={mergeClasses(styles.proposal, proposal.status === "rejected" ? styles.proposalRejected : undefined, proposal.status === "executed" ? styles.proposalExecuted : undefined, selectionTargetsRecord(activeSelection, [proposal.id, "proposal-dc01", "proposal-host-a", "rec-1", "authorization", "DC-01", "Host-A"]) ? styles.causalHighlight : undefined)}>
                   <div className={styles.rowTop}><span className={styles.status}>{proposal.status}</span><span>{proposal.target}</span></div>
                   <h4 className={styles.proposalTitle}>{proposal.action}</h4>
                   {proposal.reason ? <p className={styles.proposalText}>{proposal.reason}</p> : null}
@@ -796,7 +778,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
                 </article> : <div className={styles.empty}>Response is holding until evidence supports a bounded action.</div>}
             </section> : null}
 
-            {hasRegion("authorization") ? <section style={{ order: regionOrder("authorization") }} data-soc-object-id="authorization" className={mergeClasses(styles.contextBand, isCausallyAffected(selectedEntry, ["authorization", "rec-1", "Host-A"]) ? styles.causalHighlight : undefined)}>
+            {hasRegion("authorization") ? <section style={{ order: regionOrder("authorization") }} data-soc-object-id="authorization" className={mergeClasses(styles.contextBand, selectionTargetsRecord(activeSelection, ["authorization", "rec-1", "Host-A"]) ? styles.causalHighlight : undefined)}>
               <div className={styles.contextLabel}>Commander authority</div>
               <p className={styles.contextText}>{authorization?.status === "pending" ? "Host-A isolation is ready for Incident Commander authorization." : authorization?.status === "authorized" ? "Containment has Incident Commander authorization." : "No consequential action is awaiting authorization."}</p>
               {authorization?.status === "pending" ? <Button appearance="primary" icon={<ShieldLock24Regular />} onClick={() => emit("authorizeContainment", {}, "human-priya")}>Authorize Host-A isolation</Button> : null}
@@ -804,11 +786,12 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
 
             {hasRegion("causal-record") ? <section style={{ order: regionOrder("causal-record") }} className={styles.contextBand}>
               <div className={styles.contextLabel}>Relevant causal record</div>
-              <p className={styles.contextText}>{selectedEntry ? `${actorNames.get(selectedEntry.actorId) ?? selectedEntry.actorId}: ${selectedEntry.summary}` : "The first attributable action will appear here."}</p>
+              <p className={styles.contextText}>{selectedTimelineItem ? `${selectedTimelineItem.actorRef ? actorNames.get(selectedTimelineItem.actorRef.id) ?? selectedTimelineItem.actorRef.id : selectedTimelineItem.source}: ${selectedTimelineItem.summary}` : "The first attributable action will appear here."}</p>
             </section> : null}
             </>}
             </div>}
             </div>
+            </GrowingContainer>
           </section>
 
         </div>
@@ -818,24 +801,24 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
             <header className={styles.journalHeader}>
               <div><div className={styles.eyebrow}>Causal record</div><strong>Journal / Ledger</strong></div>
               <div className={styles.journalTabs}>
-                {selectedJournalId ? <Button size="small" appearance="subtle" onClick={() => setSelectedJournalId(null)}>Latest</Button> : null}
+                {(demoSelection || selectedJournalId) ? <Button size="small" appearance="subtle" onClick={clearTimelineSelection}>Latest</Button> : null}
                 <Button size="small" appearance={journalMode === "journal" ? "primary" : "subtle"} onClick={() => setJournalMode("journal")}>Journal</Button>
                 <Button size="small" appearance={journalMode === "ledger" ? "primary" : "subtle"} onClick={() => setJournalMode("ledger")}>Ledger</Button>
               </div>
             </header>
-            <div className={styles.journalList}>
-              {journal.length === 0 ? <div className={styles.empty}><Clock20Regular /><p>The first attributable action will appear here.</p></div> : journal.map((item) => (
-                <button type="button" aria-pressed={selectedEntry?.id === item.id} aria-label={`${item.result}: ${item.summary}`} onClick={() => setSelectedJournalId(item.id)} key={item.id} className={mergeClasses(styles.journalEntry, selectedEntry?.id === item.id ? styles.journalEntryActive : undefined)}>
-                  <span className={styles.journalTime}>{item.time}</span>
+            <GrowingContainer className={styles.journalList} ariaLabel="Journal timeline">
+              {timelineItems.length === 0 ? <div className={styles.empty}><Clock20Regular /><p>The first attributable action will appear here.</p></div> : timelineItems.map((item) => (
+                <button type="button" aria-pressed={selectedTimelineItem?.id === item.id} aria-label={`${item.status}: ${item.title}`} onClick={() => selectTimelineItem(item)} key={item.id} className={mergeClasses(styles.journalEntry, selectedTimelineItem?.id === item.id ? styles.journalEntryActive : undefined)}>
+                  <span className={styles.journalTime}>{item.timestamp ?? `#${item.sequence ?? "-"}`}</span>
                   <div>
-                    <div className={styles.journalResult}>{item.result} · {actorNames.get(item.actorId) ?? item.actorId}</div>
+                    <div className={styles.journalResult}>{item.source} · {item.status}{item.actorRef ? ` · ${actorNames.get(item.actorRef.id) ?? item.actorRef.id}` : ""}</div>
                     <div className={styles.journalSummary}>{item.summary}</div>
-                    {journalMode === "ledger" ? <div className={styles.ledgerMeta}>actor={item.actorId}<br />affected={item.affected.join(", ")}{item.provider ? <><br />provider={item.provider} · agent={item.agentName}{item.conversationId ? <><br />conversation={item.conversationId} · response={item.responseId}</> : null}{item.fallbackReason ? <><br />fallback={item.fallbackReason}</> : null}</> : null}</div> : null}
+                    {journalMode === "ledger" ? <div className={styles.ledgerMeta}>item={item.scenarioStepId ?? item.operationRecordId ?? item.id}<br />focus={item.focusRefs.map((ref) => `${ref.kind}:${ref.id}`).join(", ")}{item.correlationId ? <><br />correlation={item.correlationId}</> : null}</div> : null}
                   </div>
                 </button>
               ))}
               {incident.status === "Contained" ? <div className={styles.fallback}><CheckmarkCircle20Regular /> <strong>Host-A contained under commander authority.</strong></div> : null}
-            </div>
+            </GrowingContainer>
           </div>
         </aside>
       </div>
@@ -852,11 +835,11 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
           <span className={styles.participantSummaries} aria-hidden="true">
             {actors.map((item) => {
               const canAuthorize = item.id === "human-priya" && authorization?.status === "pending";
-              const status = activeAgentId === item.id ? "working" : canAuthorize ? "input-awaited" : item.status;
+              const status = canAuthorize ? "input-awaited" : item.status;
               return <span className={styles.participantSummary} key={item.id}>
                 <ParticipantPresenceIcon status={status} />
                 <span className={styles.participantSummaryName}>{item.name}</span>
-                <span>{activeAgentId === item.id ? "thinking" : canAuthorize ? "input awaited" : item.status.replaceAll("-", " ")}</span>
+                <span>{canAuthorize ? "input awaited" : item.status.replaceAll("-", " ")}</span>
               </span>;
             })}
           </span>
@@ -864,9 +847,9 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
         </button>
         {participantsExpanded ? <div id="soc-participants" className={styles.participants} aria-label="Human and agent participants">
             {actors.map((item) => {
-              const active = selectedEntry?.actorId === item.id;
+              const active = selectionTargetsActor(activeSelection, item.id);
               const canAuthorize = item.id === "human-priya" && authorization?.status === "pending";
-              const status = activeAgentId === item.id ? "working" : canAuthorize ? "input-awaited" : item.status;
+              const status = canAuthorize ? "input-awaited" : item.status;
               return <article data-soc-actor-id={item.id} key={item.id} className={mergeClasses(styles.participant, active ? styles.participantActive : undefined, active ? styles.causalHighlight : undefined)}>
                 <div className={styles.participantTop}>
                   <div className={styles.participantIdentity}>
@@ -875,15 +858,20 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
                   </div>
                   <span className={styles.kind}>{item.kind.toUpperCase()}</span>
                 </div>
-                <div className={styles.role}>{item.role} · {activeAgentId === item.id ? "thinking" : canAuthorize ? "input awaited" : item.status.replaceAll("-", " ")}</div>
+                <div className={styles.role}>{item.role} · {canAuthorize ? "input awaited" : item.status.replaceAll("-", " ")}</div>
                 <p className={styles.activity}>{item.activity ?? item.objective}</p>
                 <div className={styles.authority}>{item.authority}</div>
                 {item.kind === "agent" && agentProviders[item.id] ? <div className={styles.providerControls}>
                   <div className={styles.providerHeader}>
                     <span className={styles.providerName} title={agentProviders[item.id].agentName}>{agentProviders[item.id].agentName}</span>
-                    <div className={styles.providerMode} role="group" aria-label={`${item.name} provider`}>
-                      <Button size="small" appearance={agentProviders[item.id].mode === "mock" ? "primary" : "subtle"} onClick={() => { emit("setAgentMode", { agentId: item.id, mode: "mock" }, item.id); }}>Mock</Button>
-                      <Button size="small" appearance={agentProviders[item.id].mode === "live" ? "primary" : "subtle"} onClick={() => { emit("setAgentMode", { agentId: item.id, mode: "live" }, item.id); }}>Live</Button>
+                    <div className={styles.providerMode}>
+                      <FluentSwitchControl
+                        checked={agentProviders[item.id].mode === "live"}
+                        offLabel="Mock"
+                        onLabel="Live"
+                        ariaLabel={`${item.name} provider mode`}
+                        onToggle={(checked) => emit("setAgentMode", { agentId: item.id, mode: checked ? "live" : "mock" }, item.id)}
+                      />
                     </div>
                   </div>
                   <div className={styles.providerStatus}>{agentProviders[item.id].status}{agentProviders[item.id].fallbackReason ? ` · ${agentProviders[item.id].fallbackReason}` : agentProviders[item.id].conversationId ? ` · conversation active` : ""}</div>

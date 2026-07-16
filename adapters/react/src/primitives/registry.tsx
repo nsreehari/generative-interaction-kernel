@@ -20,7 +20,12 @@ import {
 import { readProps } from "../props";
 import { GenUIRoot } from "../useGenUI";
 import { loadBundle, bundleSignature, type Bundle, type SerializableBundle } from "./bundle";
-import { useBundleRegistry, useProjectionProviderResolver } from "./bundle-registry";
+import {
+  useBundleContexts,
+  useBundleContextSync,
+  useBundleRegistry,
+  useProjectionProviderResolver,
+} from "./bundle-registry";
 import { useGenUIFileServices } from "./fileServices";
 import { useCountdownTimer } from "./useCountdownTimer";
 import { useAsyncEmit } from "./useAsyncEmit";
@@ -621,6 +626,81 @@ function Col({ node, children }: ProjectionViewProps) {
       {children}
     </div>
   );
+}
+
+export type GrowingContainerFollowEnd = "always" | "when-at-end" | "off";
+
+export interface GrowingContainerProps {
+  children?: React.ReactNode;
+  className?: string;
+  followEnd?: GrowingContainerFollowEnd;
+  ariaLabel?: string;
+}
+
+export function GrowingContainer({
+  children,
+  className,
+  followEnd = "always",
+  ariaLabel,
+}: GrowingContainerProps): React.ReactElement {
+  const viewportRef = React.useRef<HTMLDivElement>(null);
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  const pinnedToEndRef = React.useRef(true);
+
+  const scrollToEnd = React.useCallback(() => {
+    const viewport = viewportRef.current;
+    if (viewport) viewport.scrollTop = viewport.scrollHeight;
+  }, []);
+
+  React.useLayoutEffect(() => {
+    const viewport = viewportRef.current;
+    const content = contentRef.current;
+    if (!viewport || !content || followEnd === "off") return;
+    const observer = new ResizeObserver(() => {
+      if (followEnd === "always" || pinnedToEndRef.current) scrollToEnd();
+    });
+    observer.observe(content);
+    scrollToEnd();
+    return () => observer.disconnect();
+  }, [followEnd, scrollToEnd]);
+
+  const onScroll = () => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    pinnedToEndRef.current = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight <= 8;
+  };
+
+  return (
+    <div
+      ref={viewportRef}
+      className={["gx-growing-container", className].filter(Boolean).join(" ")}
+      role={ariaLabel ? "region" : undefined}
+      aria-label={ariaLabel}
+      onScroll={onScroll}
+      style={{
+        boxSizing: "border-box",
+        width: "100%",
+        height: "100%",
+        minWidth: 0,
+        minHeight: 0,
+        maxWidth: "100%",
+        maxHeight: "100%",
+        overflow: "auto",
+        overscrollBehavior: "contain",
+      }}
+    >
+      <div ref={contentRef} className="gx-growing-container-content" style={{ minWidth: 0, minHeight: "100%" }}>{children}</div>
+    </div>
+  );
+}
+
+function GrowingContainerPrimitive({ node, children }: ProjectionViewProps) {
+  const p = readProps(node);
+  const requestedFollowEnd = p.str("followEnd", "always");
+  const followEnd: GrowingContainerFollowEnd = requestedFollowEnd === "off" || requestedFollowEnd === "when-at-end"
+    ? requestedFollowEnd
+    : "always";
+  return <GrowingContainer followEnd={followEnd} ariaLabel={p.str("ariaLabel") || undefined}>{children}</GrowingContainer>;
 }
 
 function Panel({ node, children }: ProjectionViewProps) {
@@ -1730,6 +1810,7 @@ function Button({ node, emit }: ProjectionViewProps) {
 
 function TimerButton({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
+  const label = p.str("label");
   const configuredDuration = Number(node.props.durationMs ?? node.props.duration ?? 3000);
   const durationMs = Number.isFinite(configuredDuration) ? Math.max(250, configuredDuration) : 3000;
   const disabled = p.bool("disabled");
@@ -1752,9 +1833,14 @@ function TimerButton({ node, emit }: ProjectionViewProps) {
     <button
       className={`gx-btn gx-btn-${p.str("tone", "default")}`}
       disabled={disabled}
+      aria-label={`${label}, ${timer.remainingSeconds} seconds remaining`}
       onClick={press}
     >
-      {p.str("label")}{node.props.showCountdown !== false ? ` · ${timer.remainingSeconds}` : ""}
+      <span className="gx-timer-label">{label}</span>
+      {node.props.showCountdown !== false ? <>
+        <span className="gx-timer-separator" aria-hidden="true"> · </span>
+        <span className="gx-timer-count">{timer.remainingSeconds}</span>
+      </> : null}
     </button>
   );
 }
@@ -2319,6 +2405,7 @@ function Embed({ node }: ProjectionViewProps) {
   const inline = p.obj<SerializableBundle | null>("bundle", null);
   const registry = useBundleRegistry();
   const resolveProvider = useProjectionProviderResolver();
+  const contexts = useBundleContexts();
   const sig = appName ? `app:${appName}` : bundleSignature(inline);
   // Resolve the source bundle once per signature: a registered app by name (bundle-kind), else the
   // inline JSON bundle from state. Building it inside the memo keeps the factory from re-running.
@@ -2328,9 +2415,10 @@ function Embed({ node }: ProjectionViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sig]);
   const controller = React.useMemo(
-    () => (bundle ? loadBundle(bundle) : null),
+    () => (bundle ? loadBundle(bundle, contexts) : null),
     [sig] // eslint-disable-line react-hooks/exhaustive-deps
   );
+  useBundleContextSync(controller, contexts);
   // Every embedded bundle — a named app or an inline JSON bundle — resolves its `alias:name`
   // capabilities through its own manifest `externals.projectionViews` (the floor via the `floor`
   // provider, its own projection views via `self`).
@@ -2343,7 +2431,7 @@ function Embed({ node }: ProjectionViewProps) {
   );
   if (!controller || !renderRegistry) return <p className="gx-muted">{p.str("emptyText", "Nothing to preview.")}</p>;
   return (
-    <div className="gx-bundle">
+    <div className={p.bool("unframed") ? undefined : "gx-bundle"}>
       <GenUIRoot source={controller} registry={renderRegistry} />
     </div>
   );
@@ -2360,6 +2448,7 @@ export const FLOOR_COMPONENTS: Record<string, ProjectionView> = {
   row: Row,
   col: Col,
   panel: Panel,
+  "growing-container": GrowingContainerPrimitive,
   text: Text,
   heading: Heading,
   note: Note,
