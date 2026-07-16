@@ -1,0 +1,30 @@
+{
+  "gik": "0.1",
+  "type": "scenario-blueprint",
+  "payload": {
+    "id": "live-workspace-soc-executive",
+    "targetBlueprintId": "live-workspace-soc",
+    "title": "SOC executive walkthrough",
+    "pace": {
+      "manualDurationMs": 120000,
+      "autoDurationMs": 2000,
+      "default": "manual"
+    },
+    "steps": [
+      { "id": "intent", "title": "Set the investigation objective", "kind": "dispatch", "command": "establishIntent", "actorRef": { "namespace": "soc", "kind": "actor", "id": "human-morgan", "relation": "origin" }, "waitAfterMs": 450 },
+      { "id": "constraint", "title": "Protect payroll continuity", "kind": "dispatch", "command": "addConstraint", "actorRef": { "namespace": "soc", "kind": "actor", "id": "human-priya", "relation": "origin" }, "waitAfterMs": 450 },
+      { "id": "explore", "title": "Ask the correlation agent for a safe path", "kind": "dispatch", "command": "suggestExploration", "actorRef": { "namespace": "soc", "kind": "actor", "id": "agent-correlation", "relation": "origin" }, "waitAfterMs": 450 },
+      { "id": "redirect", "title": "Narrow the investigation", "kind": "dispatch", "command": "amendExploration", "actorRef": { "namespace": "soc", "kind": "actor", "id": "human-morgan", "relation": "origin" }, "waitAfterMs": 450 },
+      { "id": "replan", "title": "Replan against the human amendment", "kind": "dispatch", "command": "replanExploration", "actorRef": { "namespace": "soc", "kind": "actor", "id": "agent-correlation", "relation": "origin" }, "waitAfterMs": 450 },
+      { "id": "partial", "title": "Commit attributable partial findings", "kind": "dispatch", "command": "commitPartialFindings", "actorRef": { "namespace": "soc", "kind": "actor", "id": "agent-correlation", "relation": "origin" }, "waitAfterMs": 450 },
+      { "id": "blocked", "title": "Block the unsafe containment proposal", "kind": "dispatch", "command": "proposeDc01", "actorRef": { "namespace": "soc", "kind": "actor", "id": "agent-response", "relation": "origin" }, "waitAfterMs": 450 },
+      { "id": "origin", "title": "Resolve the execution origin", "kind": "dispatch", "command": "completeCorrelation", "actorRef": { "namespace": "soc", "kind": "actor", "id": "agent-correlation", "relation": "origin" }, "waitAfterMs": 450 },
+      { "id": "bounded", "title": "Propose bounded containment", "kind": "dispatch", "command": "proposeHostA", "actorRef": { "namespace": "soc", "kind": "actor", "id": "agent-response", "relation": "origin" }, "waitAfterMs": 450 },
+      { "id": "revise", "title": "Refine the response sequence", "kind": "dispatch", "command": "reviseResponse", "actorRef": { "namespace": "soc", "kind": "actor", "id": "human-morgan", "relation": "origin" }, "waitAfterMs": 450 },
+      { "id": "validate", "title": "Validate blast radius and reversibility", "kind": "dispatch", "command": "calculateResponse", "actorRef": { "namespace": "soc", "kind": "actor", "id": "agent-response", "relation": "origin" }, "waitAfterMs": 450 },
+      { "id": "recommend", "title": "Submit the governed recommendation", "kind": "dispatch", "command": "recommendContainment", "actorRef": { "namespace": "soc", "kind": "actor", "id": "human-morgan", "relation": "origin" }, "waitAfterMs": 450 },
+      { "id": "authorize", "title": "Require commander authorization", "kind": "human-gate", "humanBoundary": { "namespace": "soc", "kind": "actor", "id": "human-priya", "relation": "authorized" } },
+      { "id": "execute", "title": "Execute only after authorization", "kind": "dispatch", "command": "executeContainment", "actorRef": { "namespace": "soc", "kind": "actor", "id": "agent-response", "relation": "origin" }, "waitAfterMs": 450 }
+    ]
+  }
+}

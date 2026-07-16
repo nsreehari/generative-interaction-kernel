@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import socProfile from "../../profiles/live-workspace-soc/profile.json" with { type: "json" };
+import t3Scenario from "../../scenarios/live-workspace-soc-t3/scenario.json" with { type: "json" };
 import overviewState from "./state.json" with { type: "json" };
 
 const overview = overviewState.overview;
 const resources = socProfile.payload.resources;
 const canonicalActors = resources.actors.inline;
-const canonicalActs = resources.acts.inline;
+const canonicalActs = t3Scenario.payload.steps;
 
 test("overview SOC summary stays aligned with the canonical blueprint", () => {
   assert.deepEqual(
@@ -16,7 +17,7 @@ test("overview SOC summary stays aligned with the canonical blueprint", () => {
   );
   assert.deepEqual(
     overview.socActs.map((act) => ({ id: act.id, title: act.title })),
-    canonicalActs.map((act) => ({ id: act.id, title: act.title }))
+    canonicalActs.map((act, index) => ({ id: index + 1, title: act.title }))
   );
 });
 

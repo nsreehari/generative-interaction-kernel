@@ -676,12 +676,37 @@ const deterministicEffects: EffectHandlerMap = {
   resetScenario() {
     return {
       outcome: "reset",
-      ops: Object.entries(resetState).map(([key, value]) =>
-        setOp(`soc.${key}`, JSON.parse(JSON.stringify(value)) as Json)
-      ),
+      ops: [
+        ...Object.entries(resetState).map(([key, value]) =>
+          setOp(`soc.${key}`, JSON.parse(JSON.stringify(value)) as Json)
+        ),
+        setOp("soc.act", 0),
+        setOp("soc.step", "ready"),
+        setOp("soc.presenter", {
+          pace: "manual",
+          durationMs: 120000,
+          locked: false,
+          advanceToken: 0,
+        }),
+      ],
     };
   },
 };
+
+const RUNNER_EFFECT_NAMES = new Set([
+  "requestNextAct",
+  "setPace",
+  "finishAct",
+  "resetScenario",
+]);
+
+export const demoRunnerEffects = Object.fromEntries(
+  Object.entries(deterministicEffects).filter(([name]) => RUNNER_EFFECT_NAMES.has(name))
+) as EffectHandlerMap;
+
+export const socOrganismEffects = Object.fromEntries(
+  Object.entries(deterministicEffects).filter(([name]) => !RUNNER_EFFECT_NAMES.has(name))
+) as EffectHandlerMap;
 
 export function createSocEffects(
   fetchImpl: typeof globalThis.fetch = globalThis.fetch,
@@ -854,5 +879,16 @@ export function createSocEffects(
   return wrapped;
 }
 
-export const effects = createSocEffects();
+export function createSocOrganismEffects(
+  fetchImpl: typeof globalThis.fetch = globalThis.fetch,
+  accessKey: () => string = getSocFoundryKey
+): EffectHandlerMap {
+  const effects = createSocEffects(fetchImpl, accessKey);
+  return Object.fromEntries(
+    Object.entries(effects).filter(([name]) => !RUNNER_EFFECT_NAMES.has(name))
+  ) as EffectHandlerMap;
+}
+
+export const demoEffects = createSocEffects();
+export const effects = createSocOrganismEffects();
 export default effects;

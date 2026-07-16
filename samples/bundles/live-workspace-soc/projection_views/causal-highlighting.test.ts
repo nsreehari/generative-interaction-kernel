@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { isCausallyAffected, participantPresence, socPresentationSpec } from "./index";
+import {
+  isActorSelected,
+  isCausallyAffected,
+  participantPresence,
+  socJournalSelection,
+  socPresentationSpec,
+} from "./index";
 
 const entry = {
   id: "j-07",
@@ -24,6 +30,21 @@ test("aggregate workspace aliases match any represented causal object", () => {
     true
   );
   assert.equal(isCausallyAffected(undefined, ["proposal-dc01"]), false);
+});
+
+test("journal entries lower to generic semantic focus selections", () => {
+  assert.deepEqual(socJournalSelection(entry), {
+    source: "organism",
+    itemId: "j-07",
+    focusRefs: [
+      { namespace: "soc", kind: "actor", id: "agent-response", relation: "origin" },
+      { namespace: "soc", kind: "record", id: "proposal-dc01", relation: "affected" },
+      { namespace: "soc", kind: "record", id: "DC-01", relation: "affected" },
+      { namespace: "soc", kind: "record", id: "Host-A", relation: "affected" },
+    ],
+  });
+  assert.equal(isActorSelected(entry, "agent-response"), true);
+  assert.equal(isActorSelected(entry, "human-priya"), false);
 });
 
 test("participant statuses map to a stable presence vocabulary", () => {

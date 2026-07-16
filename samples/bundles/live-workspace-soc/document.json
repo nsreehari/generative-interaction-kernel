@@ -49,29 +49,17 @@
           "executeContainment": [
             { "do": "invoke", "args": { "tool": "executeContainment" } }
           ],
-          "setPace": [
-            { "do": "invoke", "args": { "tool": "setPace" } }
-          ],
           "setPresentationContext": [
             { "do": "invoke", "args": { "tool": "setPresentationContext" } }
           ],
           "setAgentMode": [
             { "do": "invoke", "args": { "tool": "setAgentMode" } }
-          ],
-          "finishAct": [
-            { "do": "invoke", "args": { "tool": "finishAct" } }
-          ],
-          "reset": [
-            { "do": "invoke", "args": { "tool": "resetScenario" } }
           ]
         },
         "read": {
-          "act": "soc.act",
           "incident": "soc.incident",
-          "presenter": "soc.presenter",
           "presentation": "soc.presentation",
           "stage": "soc.stage",
-          "step": "soc.step",
           "actors": "soc.actors",
           "agentProviders": "soc.agentProviders",
           "intent": "soc.intent",
@@ -88,22 +76,6 @@
           "journal": "soc.journal"
         },
         "children": [
-          {
-            "capability": "ui:timer-button",
-            "id": "next-act-timer-region",
-            "props": { "label": "Next act", "tone": "primary", "showCountdown": true },
-            "edges": {
-              "read": {
-                "durationMs": "soc.presenter.durationMs",
-                "disabled": "soc.presenter.locked"
-              },
-              "on": {
-                "press": [
-                  { "do": "invoke", "args": { "tool": "requestNextAct" } }
-                ]
-              }
-            }
-          },
           {
             "capability": "foundry:access-modal",
             "id": "foundry-access-gate-region",

@@ -16,12 +16,9 @@
         "emit": {
           "capability": "soc:workspace",
           "read": {
-            "act": "soc.act",
             "incident": "soc.incident",
-            "presenter": "soc.presenter",
             "presentation": "soc.presentation",
             "stage": "soc.stage",
-            "step": "soc.step",
             "actors": "soc.actors",
             "agentProviders": "soc.agentProviders",
             "intent": "soc.intent",
@@ -52,26 +49,8 @@
             "recommendContainment": [{ "do": "invoke", "args": { "tool": "recommendContainment" } }],
             "authorizeContainment": [{ "do": "confirm", "args": { "tool": "authorizeContainment", "title": "Authorize Host-A isolation", "message": "Authorize the evidence-backed, reversible isolation plan?", "confirmLabel": "Authorize", "danger": true } }],
             "executeContainment": [{ "do": "invoke", "args": { "tool": "executeContainment" } }],
-            "setPace": [{ "do": "invoke", "args": { "tool": "setPace" } }],
             "setPresentationContext": [{ "do": "invoke", "args": { "tool": "setPresentationContext" } }],
-            "setAgentMode": [{ "do": "invoke", "args": { "tool": "setAgentMode" } }],
-            "finishAct": [{ "do": "invoke", "args": { "tool": "finishAct" } }],
-            "reset": [{ "do": "invoke", "args": { "tool": "resetScenario" } }]
-          }
-        }
-      },
-      {
-        "slot": "region",
-        "match": { "region": "next-act-timer" },
-        "emit": {
-          "capability": "ui:timer-button",
-          "props": { "label": "Next act", "tone": "primary", "showCountdown": true },
-          "read": {
-            "durationMs": "soc.presenter.durationMs",
-            "disabled": "soc.presenter.locked"
-          },
-          "on": {
-            "press": [{ "do": "invoke", "args": { "tool": "requestNextAct" } }]
+            "setAgentMode": [{ "do": "invoke", "args": { "tool": "setAgentMode" } }]
           }
         }
       }

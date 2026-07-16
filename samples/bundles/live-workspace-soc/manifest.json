@@ -8,10 +8,6 @@
     "actions": ["assign", "derive", "emit", "invoke", "route", "confirm"],
     "config": { "proxyBase": "https://sz-foundry-proxy.azurewebsites.net" },
     "capabilities": {
-      "ui:timer-button": {
-        "propsSchema": { "type": "object", "additionalProperties": true },
-        "emits": ["press"]
-      },
       "foundry:access-modal": {
         "propsSchema": { "type": "object", "additionalProperties": true },
         "emits": ["accessResolved", "accessCleared"]
@@ -23,14 +19,12 @@
           "establishIntent", "addConstraint", "suggestExploration", "amendExploration",
           "replanExploration", "commitPartialFindings", "proposeDc01", "completeCorrelation",
           "proposeHostA", "reviseResponse", "calculateResponse", "recommendContainment",
-          "authorizeContainment", "executeContainment", "setPace", "setPresentationContext",
-          "setAgentMode", "finishAct", "reset"
+          "authorizeContainment", "executeContainment", "setPresentationContext", "setAgentMode"
         ]
       }
     },
     "externals": {
       "projectionViews": {
-        "ui": { "from": "floor", "use": ["timer-button"] },
         "foundry": { "from": "foundry-agent", "use": ["access-modal"] },
         "soc": { "from": "self" }
       },
@@ -38,9 +32,8 @@
         "establishIntent", "addConstraint", "suggestExploration", "amendExploration",
         "replanExploration", "commitPartialFindings", "evaluateDc01Policy", "completeCorrelation",
         "proposeHostA", "reviseResponse", "calculateResponse", "recommendContainment",
-        "authorizeContainment", "requestNextAct", "setPace", "setPresentationContext", "finishAct",
-        "setAgentMode", "acceptSocFoundryAccess", "clearSocFoundryAccess", "executeContainment",
-        "resetScenario"
+        "authorizeContainment", "setPresentationContext", "setAgentMode",
+        "acceptSocFoundryAccess", "clearSocFoundryAccess", "executeContainment"
       ]
     }
   }

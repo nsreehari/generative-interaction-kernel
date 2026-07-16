@@ -6,6 +6,8 @@ import {
   BrainCircuit24Regular,
   CheckmarkCircle20Regular,
   ChevronDown20Regular,
+  ChevronLeft20Regular,
+  ChevronRight20Regular,
   ChevronUp20Regular,
   Clock20Regular,
   DataTrending24Regular,
@@ -22,6 +24,16 @@ import {
   socBlueprint,
   traceSocBlueprint,
 } from "../../../profiles/live-workspace-soc/compile";
+import { demoCatalog, resolveDemoComposition } from "../../../scenarios/catalog";
+import {
+  nextScenarioStep,
+  selectionContainsFocus,
+  selectionFromTimelineItem,
+  writeDemoNavigation,
+  type DemoSelection,
+  type FocusRef,
+  type TimelineItem,
+} from "../../../shared/demo-runner";
 import { readSocNavigation, writeSocNavigation, type SocPlane } from "../navigation";
 
 interface Incident {
@@ -164,7 +176,7 @@ interface Authorization {
   actorId?: string;
 }
 
-interface JournalEntry {
+export interface JournalEntry {
   id: string;
   time: string;
   actorId: string;
@@ -178,50 +190,45 @@ interface JournalEntry {
   fallbackReason?: string;
 }
 
+function socFocusRef(kind: FocusRef["kind"], id: string, relation?: FocusRef["relation"]): FocusRef {
+  return { namespace: "soc", kind, id, relation };
+}
+
+export function socJournalTimelineItem(entry: JournalEntry): TimelineItem {
+  const actorRef = socFocusRef("actor", entry.actorId, "origin");
+  return {
+    id: entry.id,
+    source: "organism",
+    title: entry.result,
+    summary: entry.summary,
+    status: entry.result,
+    operationRecordId: entry.id,
+    timestamp: entry.time,
+    actorRef,
+    focusRefs: [
+      actorRef,
+      ...entry.affected.map((id) => socFocusRef("record", id, "affected")),
+    ],
+  };
+}
+
+export function socJournalSelection(entry: JournalEntry | undefined): DemoSelection | undefined {
+  return entry ? selectionFromTimelineItem(socJournalTimelineItem(entry)) : undefined;
+}
+
 export function isCausallyAffected(entry: JournalEntry | undefined, objectIds: readonly string[]): boolean {
-  if (!entry) return false;
-  const affected = new Set(entry.affected);
-  return objectIds.some((id) => affected.has(id));
+  return selectionContainsFocus(
+    socJournalSelection(entry),
+    objectIds.map((id) => socFocusRef("record", id))
+  );
 }
 
-interface ScenarioStep {
-  event: string;
-  actorId: string;
+export function isActorSelected(entry: JournalEntry | undefined, actorId: string): boolean {
+  return selectionContainsFocus(
+    socJournalSelection(entry),
+    [socFocusRef("actor", actorId)]
+  );
 }
-
-const ACT_DELAY_MS = 760;
-const PRESENTER_ACTS: Record<number, ScenarioStep> = {
-  0: { event: "establishIntent", actorId: "human-morgan" },
-  1: { event: "addConstraint", actorId: "human-priya" },
-  2: { event: "suggestExploration", actorId: "agent-correlation" },
-  3: { event: "amendExploration", actorId: "human-morgan" },
-  4: { event: "replanExploration", actorId: "agent-correlation" },
-  5: { event: "commitPartialFindings", actorId: "agent-correlation" },
-  6: { event: "proposeDc01", actorId: "agent-response" },
-  7: { event: "completeCorrelation", actorId: "agent-correlation" },
-  8: { event: "proposeHostA", actorId: "agent-response" },
-  9: { event: "reviseResponse", actorId: "human-morgan" },
-  10: { event: "calculateResponse", actorId: "agent-response" },
-  11: { event: "recommendContainment", actorId: "human-morgan" },
-  13: { event: "executeContainment", actorId: "agent-response" },
-};
-
-const ACT_TITLES = [
-  "Morgan establishes investigation intent",
-  "Priya protects the payroll cutover",
-  "Correlation Agent suggests exploration",
-  "Morgan narrows the exploration",
-  "Correlation Agent replans",
-  "Correlation Agent commits partial findings",
-  "Response Agent proposes DC-01 isolation",
-  "Correlation Agent resolves the origin",
-  "Response Agent proposes bounded containment",
-  "Morgan revises the response",
-  "Response Agent validates blast radius",
-  "Morgan recommends containment",
-  "Priya authorizes containment",
-  "Response Agent executes containment",
-];
 
 const useStyles = makeStyles({
   workspace: {
@@ -229,7 +236,7 @@ const useStyles = makeStyles({
     minWidth: 0,
     minHeight: 0,
     display: "grid",
-    gridTemplateRows: "auto auto minmax(0, 1fr)",
+    gridTemplateRows: "auto minmax(0, 1fr)",
     overflow: "hidden",
     backgroundColor: "var(--bg)",
     color: "var(--text)",
@@ -254,13 +261,23 @@ const useStyles = makeStyles({
   eyebrow: { color: "var(--muted)", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightBold, textTransform: "uppercase" },
   title: { margin: 0, fontSize: tokens.fontSizeBase400, lineHeight: tokens.lineHeightBase400, overflowWrap: "anywhere" },
   controls: { display: "flex", alignItems: "center", justifyContent: "flex-end", gap: tokens.spacingHorizontalS, flexWrap: "wrap", "@media (max-width: 880px)": { justifyContent: "flex-start" } },
+  runnerDrawer: { position: "fixed", top: tokens.spacingVerticalM, right: "clamp(16px, 3vw, 40px)", zIndex: 40, border: "1px solid rgba(126, 91, 45, .3)", borderRadius: tokens.borderRadiusMedium, backgroundColor: "rgba(255, 235, 202, .58)", boxShadow: "0 16px 42px rgba(92, 65, 30, .16)", backdropFilter: "blur(12px) saturate(120%)", overflow: "hidden", transitionProperty: "width", transitionDuration: tokens.durationNormal, transitionTimingFunction: tokens.curveEasyEase },
+  runnerDrawerCollapsed: { width: "auto" },
+  runnerDrawerExpanded: { width: "min(1320px, calc(100vw - 80px))" },
+  runnerDrawerHeader: { minHeight: "64px", display: "grid", gridTemplateColumns: "auto minmax(260px, 1fr) minmax(250px, auto) auto auto", alignItems: "center", gap: tokens.spacingHorizontalM, paddingRight: tokens.spacingHorizontalS, backgroundColor: "transparent" },
+  runnerDrawerHeaderCollapsed: { gridTemplateColumns: "auto auto", gap: 0 },
+  runnerDrawerToggle: { alignSelf: "stretch", minWidth: 0, display: "inline-flex", alignItems: "center", gap: tokens.spacingHorizontalS, padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`, border: 0, backgroundColor: "transparent", color: "var(--text)", font: "inherit", textAlign: "left", cursor: "pointer", "&:hover": { backgroundColor: "color-mix(in srgb, var(--accent) 18%, transparent)" }, "&:focus-visible": { outline: "2px solid var(--accent)", outlineOffset: "-2px" } },
+  runnerCollapsedAct: { whiteSpace: "nowrap", fontSize: tokens.fontSizeBase200, fontWeight: tokens.fontWeightSemibold },
+  runnerDrawerTitle: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalS, fontWeight: tokens.fontWeightSemibold },
+  runnerControls: { display: "flex", alignItems: "center", justifyContent: "flex-end", gap: tokens.spacingHorizontalS, whiteSpace: "nowrap" },
   demoMode: { display: "inline-flex", padding: "2px", gap: "2px", border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel-2)" },
   viewpointControl: { display: "inline-flex", alignItems: "center", gap: tokens.spacingHorizontalXS },
   viewpointLabel: { color: "var(--muted)", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightBold, textTransform: "uppercase" },
   pill: { display: "inline-flex", alignItems: "center", gap: tokens.spacingHorizontalXS, minHeight: "30px", padding: `0 ${tokens.spacingHorizontalS}`, border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel-2)", fontSize: tokens.fontSizeBase200, fontWeight: tokens.fontWeightSemibold },
   pace: { display: "inline-flex", padding: "2px", gap: "2px", border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel-2)" },
-  timerSlot: { minWidth: "118px", "& > button": { width: "100%", minHeight: "32px" } },
-  actBar: { display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) auto", alignItems: "center", gap: tokens.spacingHorizontalM, padding: `${tokens.spacingVerticalS} clamp(16px, 3vw, 40px)`, borderBottom: `1px solid var(--line)`, backgroundColor: "var(--panel-2)", "@media (max-width: 620px)": { gridTemplateColumns: "1fr" } },
+  timerSlot: { minWidth: "118px", paddingRight: tokens.spacingHorizontalS, "& > button": { width: "100%", minHeight: "32px" } },
+  timerSlotCompact: { minWidth: "54px", paddingLeft: tokens.spacingHorizontalXS, "& .gx-timer-label": { display: "none" }, "& .gx-timer-separator": { display: "none" }, "& > button": { minWidth: "46px", width: "auto", paddingLeft: tokens.spacingHorizontalS, paddingRight: tokens.spacingHorizontalS } },
+  actBar: { minWidth: 0, display: "grid", gap: tokens.spacingVerticalXXS },
   actNumber: { color: "var(--accent)", fontWeight: tokens.fontWeightBold, textTransform: "uppercase", fontSize: tokens.fontSizeBase100 },
   actTitle: { margin: 0, fontWeight: tokens.fontWeightSemibold },
   actDots: { display: "flex", gap: tokens.spacingHorizontalXS },
@@ -428,8 +445,15 @@ function ParticipantPresenceIcon({ status }: { status: string }): React.ReactEle
 
 const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   const styles = useStyles();
+  const requestedDemoId = new URLSearchParams(window.location.search).get("demo");
+  const runnerEnabled = requestedDemoId !== null;
   const incident = node.props.incident as unknown as Incident;
-  const presenter = node.props.presenter as unknown as Presenter;
+  const presenter = (node.props.presenter ?? {
+    pace: "manual",
+    durationMs: 120000,
+    locked: false,
+    advanceToken: 0,
+  }) as unknown as Presenter;
   const presentation = node.props.presentation as unknown as Presentation;
   const actors = (node.props.actors ?? []) as unknown as Actor[];
   const agentProviders = (node.props.agentProviders ?? {}) as unknown as Record<string, AgentProvider>;
@@ -445,10 +469,14 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   const stage = String(node.props.stage ?? "Incident opened");
   const [journalMode, setJournalMode] = React.useState<"journal" | "ledger">("journal");
   const [selectedJournalId, setSelectedJournalId] = React.useState<string | null>(null);
+  const [runnerExpanded, setRunnerExpanded] = React.useState(true);
   const [participantsExpanded, setParticipantsExpanded] = React.useState(false);
   const [activeAgentId, setActiveAgentId] = React.useState<string | null>(null);
   const validContextIds = SOC_BLUEPRINT_CONTEXTS.map((item) => item.id);
   const initialNavigationRef = React.useRef(readSocNavigation(window.location.search, validContextIds));
+  const demoComposition = resolveDemoComposition(requestedDemoId);
+  const scenarioPlan = demoComposition.scenarioPlan;
+  const actTitles = scenarioPlan.steps.map((step) => step.title);
   const [consolePlane, setConsolePlane] = React.useState<SocPlane>(initialNavigationRef.current.plane);
   const emitRef = React.useRef(emit);
   const processedTokenRef = React.useRef(0);
@@ -460,7 +488,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
     ? journal.find((item) => item.id === selectedJournalId) ?? latestEntry
     : latestEntry;
   const actorNames = new Map(actors.map((item) => [item.id, item.name]));
-  const actDisplay = Math.min(act + 1, ACT_TITLES.length);
+  const actDisplay = Math.min(act + 1, actTitles.length);
   const selectedContext = presentation.contexts.find((item) => item.id === presentation.selectedContext) ?? presentation.contexts[0];
   const presentationSpec = socPresentationSpec(presentation.selectedContext);
   const hasRegion = (region: SubstrateRegion) => presentationSpec.regions.includes(region);
@@ -515,26 +543,31 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   }, []);
 
   React.useEffect(() => {
+    if (!runnerEnabled) return;
     if (presenter.advanceToken === 0) {
       processedTokenRef.current = 0;
       return;
     }
     if (presenter.advanceToken === processedTokenRef.current) return;
     processedTokenRef.current = presenter.advanceToken;
-    const nextAct = PRESENTER_ACTS[act];
-    if (!nextAct) return;
+    const nextAct = nextScenarioStep(scenarioPlan, {
+      stepIndex: act,
+      advanceToken: presenter.advanceToken,
+    });
+    if (!nextAct || nextAct.kind !== "dispatch" || !nextAct.command) return;
+    const actorId = nextAct.actorRef?.id;
     let cancelled = false;
     let finishTimer: number | undefined;
     void (async () => {
-      if (nextAct.actorId.startsWith("agent-")) setActiveAgentId(nextAct.actorId);
+      if (actorId?.startsWith("agent-")) setActiveAgentId(actorId);
       try {
-        await Promise.resolve(emitRef.current(nextAct.event, {}, nextAct.actorId));
+        await Promise.resolve(emitRef.current(nextAct.command!, {}, actorId));
       } finally {
         if (!cancelled) setActiveAgentId(null);
       }
       if (cancelled) return;
       await new Promise<void>((resolve) => {
-        finishTimer = window.setTimeout(resolve, ACT_DELAY_MS);
+        finishTimer = window.setTimeout(resolve, nextAct.waitAfterMs ?? 0);
       });
       if (!cancelled) await Promise.resolve(emitRef.current("finishAct", {}));
     })();
@@ -542,7 +575,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
       cancelled = true;
       if (finishTimer !== undefined) window.clearTimeout(finishTimer);
     };
-  }, [presenter.advanceToken]);
+  }, [presenter.advanceToken, runnerEnabled]);
 
   const reset = () => {
     processedTokenRef.current = 0;
@@ -560,6 +593,11 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
     window.history.replaceState(null, "", writeSocNavigation(window.location.href, consolePlane, contextId));
   };
 
+  const selectDemo = (demoId: string) => {
+    const entry = resolveDemoComposition(demoId).entry;
+    window.location.assign(writeDemoNavigation(window.location.href, entry));
+  };
+
   return (
     <main className={styles.workspace}>
       <header className={styles.commandBar}>
@@ -571,8 +609,8 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
           </div>
         </div>
         <div className={styles.controls}>
-          <div className={styles.demoMode} role="group" aria-label="Demo mode">
-            <Button size="small" appearance={consolePlane === "runtime" ? "primary" : "subtle"} onClick={() => selectPlane("runtime")}>Live demo</Button>
+          <div className={styles.demoMode} role="group" aria-label="Workspace mode">
+            <Button size="small" appearance={consolePlane === "runtime" ? "primary" : "subtle"} onClick={() => selectPlane("runtime")}>Live workspace</Button>
             <Button size="small" appearance={consolePlane === "blueprint" ? "primary" : "subtle"} onClick={() => selectPlane("blueprint")}>Blueprint inspector</Button>
           </div>
           <label className={styles.viewpointControl}>
@@ -588,22 +626,50 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
           </label>
           <span className={styles.pill}><ShieldLock24Regular />{incident.severity} · {incident.status}</span>
           <span className={styles.pill}>{incident.governance}</span>
-          <div className={styles.pace} role="group" aria-label="Presenter pace">
-            <Button size="small" appearance={presenter.pace === "manual" ? "primary" : "subtle"} onClick={() => emit("setPace", { pace: "manual" })}>Manual</Button>
-            <Button size="small" appearance={presenter.pace === "auto" ? "primary" : "subtle"} onClick={() => emit("setPace", { pace: "auto" })}>Auto</Button>
-          </div>
-          <div className={styles.timerSlot}>{children}</div>
-          <Button appearance="subtle" icon={<ArrowReset24Regular />} aria-label="Reset scenario" disabled={activeAgentId !== null} onClick={reset} />
         </div>
       </header>
 
-      <section className={styles.actBar} aria-live="polite">
-        <div className={styles.actNumber}>{incident.status === "Contained" ? "Journey complete" : `Act ${actDisplay} of ${ACT_TITLES.length}`}</div>
-        <p className={styles.actTitle}>{incident.status === "Contained" ? stage : ACT_TITLES[act]}</p>
-        <div className={styles.actDots} aria-hidden="true">
-          {ACT_TITLES.map((_, index) => <span key={index} className={mergeClasses(styles.actDot, index < act || incident.status === "Contained" ? styles.actDotDone : undefined)} />)}
+      {runnerEnabled ? <aside className={mergeClasses(styles.runnerDrawer, runnerExpanded ? styles.runnerDrawerExpanded : styles.runnerDrawerCollapsed)} aria-label="Scenario runner">
+        <div className={mergeClasses(styles.runnerDrawerHeader, !runnerExpanded ? styles.runnerDrawerHeaderCollapsed : undefined)}>
+          <button
+            type="button"
+            className={styles.runnerDrawerToggle}
+            aria-expanded={runnerExpanded}
+            onClick={() => setRunnerExpanded((expanded) => !expanded)}
+          >
+            {runnerExpanded ? <ChevronRight20Regular /> : <ChevronLeft20Regular />}
+            {runnerExpanded
+              ? <span className={styles.runnerDrawerTitle}><DataTrending24Regular />Scenario runner</span>
+              : <span className={styles.runnerCollapsedAct}>Act {actDisplay} of {actTitles.length}</span>}
+          </button>
+          {runnerExpanded ? <section className={styles.actBar} aria-live="polite">
+            <div className={styles.actNumber}>{incident.status === "Contained" ? "Journey complete" : `Act ${actDisplay} of ${actTitles.length}`}</div>
+            <p className={styles.actTitle}>{incident.status === "Contained" ? stage : actTitles[act]}</p>
+            <div className={styles.actDots} aria-hidden="true">
+              {actTitles.map((_, index) => <span key={index} className={mergeClasses(styles.actDot, index < act || incident.status === "Contained" ? styles.actDotDone : undefined)} />)}
+            </div>
+          </section> : null}
+          {runnerExpanded ? <label className={styles.viewpointControl}>
+            <span className={styles.viewpointLabel}>Demo</span>
+            <Select
+              className={styles.contextSelect}
+              aria-label="Select demo Blueprint"
+              value={demoComposition.entry.id}
+              onChange={(_, data) => selectDemo(data.value)}
+            >
+              {demoCatalog.entries.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}
+            </Select>
+          </label> : null}
+          {runnerExpanded ? <div className={styles.runnerControls}>
+            <div className={styles.pace} role="group" aria-label="Presenter pace">
+              <Button size="small" appearance={presenter.pace === "manual" ? "primary" : "subtle"} onClick={() => emit("setPace", { pace: "manual" })}>Manual</Button>
+              <Button size="small" appearance={presenter.pace === "auto" ? "primary" : "subtle"} onClick={() => emit("setPace", { pace: "auto" })}>Auto</Button>
+            </div>
+            <Button appearance="subtle" icon={<ArrowReset24Regular />} aria-label="Reset scenario" disabled={activeAgentId !== null} onClick={reset} />
+          </div> : null}
+          <div className={mergeClasses(styles.timerSlot, !runnerExpanded ? styles.timerSlotCompact : undefined)}>{children}</div>
         </div>
-      </section>
+      </aside> : null}
 
       <div className={styles.layout}>
         <div className={styles.workColumn}>
@@ -673,7 +739,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
                 <h3 className={styles.sectionTitle}>Blueprint-owned resources</h3>
                 <div className={styles.blueprintResources}>
                   <div className={styles.blueprintResource}>Actors<span className={styles.blueprintResourceValue}>{(blueprintResources.actors as unknown[]).length}</span></div>
-                  <div className={styles.blueprintResource}>Narrative acts<span className={styles.blueprintResourceValue}>{(blueprintResources.acts as unknown[]).length}</span></div>
+                  {runnerEnabled ? <div className={styles.blueprintResource}>Scenario acts<span className={styles.blueprintResourceValue}>{scenarioPlan.steps.length}</span></div> : null}
                   <div className={styles.blueprintResource}>Projection contexts<span className={styles.blueprintResourceValue}>{SOC_BLUEPRINT_CONTEXTS.length}</span></div>
                   <div className={styles.blueprintResource}>Authority rule<span className={styles.blueprintResourceValue}>{String((blueprintResources.authorityPolicy as { requiredRole: string }).requiredRole)}</span></div>
                 </div>
@@ -864,7 +930,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
         </button>
         {participantsExpanded ? <div id="soc-participants" className={styles.participants} aria-label="Human and agent participants">
             {actors.map((item) => {
-              const active = selectedEntry?.actorId === item.id;
+              const active = isActorSelected(selectedEntry, item.id);
               const canAuthorize = item.id === "human-priya" && authorization?.status === "pending";
               const status = activeAgentId === item.id ? "working" : canAuthorize ? "input-awaited" : item.status;
               return <article data-soc-actor-id={item.id} key={item.id} className={mergeClasses(styles.participant, active ? styles.participantActive : undefined, active ? styles.causalHighlight : undefined)}>

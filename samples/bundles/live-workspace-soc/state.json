@@ -1,8 +1,5 @@
 {
   "soc": {
-    "act": 0,
-    "step": "ready",
-    "presenter": { "pace": "manual", "durationMs": 120000, "locked": false, "advanceToken": 0 },
     "presentation": {
       "selectedContext": "war-room",
       "revision": 0,
