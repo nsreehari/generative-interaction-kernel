@@ -10,6 +10,7 @@
 
 import {
   InMemoryStateModel,
+  CompositeStateModel,
   Kernel,
   bufferSink,
   unwrap,
@@ -18,6 +19,7 @@ import {
   type Enveloped,
   type Json,
   type ManifestPayload,
+  type StateModel,
 } from "@gik/kernel";
 import { GenUIController } from "../controller";
 import { createEffectDispatcher, type EffectHandlerMap } from "./effects";
@@ -157,16 +159,21 @@ function applyBundleInit(bundle: Bundle, state: InMemoryStateModel): void {
 /**
  * Stand up a runtime for a bundle, exposing BOTH the controller and its state model. Most hosts want
  * only the controller (`loadBundle`); the state is exposed for the rare host that must bridge two
- * bundles across kernel boundaries (e.g. the workbench chrome reading its state to drive a guest) —
- * an irreducibly native seam the closed action grammar can't express.
+ * bundles across kernel boundaries through an explicit host-owned integration.
  */
-export function loadBundleRuntime(bundle: Bundle): BundleRuntime {
+export function loadBundleRuntime(
+  bundle: Bundle,
+  contexts?: Record<string, StateModel>
+): BundleRuntime {
   assertExternalsSatisfied(bundle);
   const state = seedState(bundle.manifest, bundle.state);
   applyBundleInit(bundle, state);
-  const orchestrator = createEffectDispatcher(state, bundle.effectHandlers ?? {});
+  const runtimeState = contexts && Object.keys(contexts).length > 0
+    ? new CompositeStateModel(state, contexts)
+    : state;
+  const orchestrator = createEffectDispatcher(runtimeState, bundle.effectHandlers ?? {});
   const kernel = new Kernel(bundle.manifest, bundle.document, {
-    state,
+    state: runtimeState,
     orchestrator,
     sink: bufferSink().sink,
   });
@@ -174,8 +181,8 @@ export function loadBundleRuntime(bundle: Bundle): BundleRuntime {
 }
 
 /** Stand up a runtime for a bundle and return its controller. */
-export function loadBundle(bundle: Bundle): GenUIController {
-  return loadBundleRuntime(bundle).controller;
+export function loadBundle(bundle: Bundle, contexts?: Record<string, StateModel>): GenUIController {
+  return loadBundleRuntime(bundle, contexts).controller;
 }
 
 /** A stable signature so an embedded bundle only rebuilds when its JSON actually changes. */

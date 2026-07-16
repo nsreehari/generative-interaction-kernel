@@ -11,6 +11,8 @@
 // name — it never tears an existing instance down.
 
 import React from "react";
+import type { StateModel } from "@gik/kernel";
+import type { GenUIController } from "../controller";
 import type { ProviderResolver } from "../registry";
 import type { Bundle } from "./bundle";
 
@@ -83,6 +85,8 @@ export function createBundleRegistry(): BundleRegistry {
 
 const BundleRegistryContext = React.createContext<BundleRegistry | null>(null);
 const ProjectionProviderResolverContext = React.createContext<ProviderResolver | null>(null);
+export type BundleContextBindings = Record<string, StateModel>;
+const BundleContextsContext = React.createContext<BundleContextBindings>({});
 
 /** Publish the registry that the host switcher and every `embed props.app` resolve against. */
 export function BundleRegistryProvider({
@@ -111,6 +115,41 @@ export function useBundleRegistry(): BundleRegistry | null {
 /** An optional host-owned provider resolver for bundle imports beyond `floor` / `self`. */
 export function useProjectionProviderResolver(): ProviderResolver | null {
   return React.useContext(ProjectionProviderResolverContext);
+}
+
+/** Context namespace stores inherited by a BundleHost and every nested `ui:embed`. */
+export function BundleContextsProvider({
+  contexts,
+  children,
+}: {
+  contexts: BundleContextBindings;
+  children: React.ReactNode;
+}): React.ReactElement {
+  return <BundleContextsContext.Provider value={contexts}>{children}</BundleContextsContext.Provider>;
+}
+
+export function useBundleContexts(): BundleContextBindings {
+  return React.useContext(BundleContextsContext);
+}
+
+/** Reconcile a runtime whenever an observable shared context is written by any sibling runtime. */
+export function useBundleContextSync(
+  controller: GenUIController | null | undefined,
+  contexts: BundleContextBindings
+): void {
+  React.useEffect(() => {
+    if (!controller) return;
+    const stores = [...new Set(Object.values(contexts))];
+    const unsubscribes = stores.map((store) => {
+      const observable = store as StateModel & { subscribe?: (listener: () => void) => () => void };
+      return observable.subscribe?.(() => {
+        void controller.resync();
+      });
+    });
+    return () => {
+      for (const unsubscribe of unsubscribes) unsubscribe?.();
+    };
+  }, [controller, contexts]);
 }
 
 const EMPTY_IDS: readonly string[] = [];

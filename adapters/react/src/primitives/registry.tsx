@@ -20,7 +20,12 @@ import {
 import { readProps } from "../props";
 import { GenUIRoot } from "../useGenUI";
 import { loadBundle, bundleSignature, type Bundle, type SerializableBundle } from "./bundle";
-import { useBundleRegistry, useProjectionProviderResolver } from "./bundle-registry";
+import {
+  useBundleContexts,
+  useBundleContextSync,
+  useBundleRegistry,
+  useProjectionProviderResolver,
+} from "./bundle-registry";
 import { useGenUIFileServices } from "./fileServices";
 import { useCountdownTimer } from "./useCountdownTimer";
 import { useAsyncEmit } from "./useAsyncEmit";
@@ -2325,6 +2330,7 @@ function Embed({ node }: ProjectionViewProps) {
   const inline = p.obj<SerializableBundle | null>("bundle", null);
   const registry = useBundleRegistry();
   const resolveProvider = useProjectionProviderResolver();
+  const contexts = useBundleContexts();
   const sig = appName ? `app:${appName}` : bundleSignature(inline);
   // Resolve the source bundle once per signature: a registered app by name (bundle-kind), else the
   // inline JSON bundle from state. Building it inside the memo keeps the factory from re-running.
@@ -2334,9 +2340,10 @@ function Embed({ node }: ProjectionViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sig]);
   const controller = React.useMemo(
-    () => (bundle ? loadBundle(bundle) : null),
+    () => (bundle ? loadBundle(bundle, contexts) : null),
     [sig] // eslint-disable-line react-hooks/exhaustive-deps
   );
+  useBundleContextSync(controller, contexts);
   // Every embedded bundle — a named app or an inline JSON bundle — resolves its `alias:name`
   // capabilities through its own manifest `externals.projectionViews` (the floor via the `floor`
   // provider, its own projection views via `self`).
@@ -2349,7 +2356,7 @@ function Embed({ node }: ProjectionViewProps) {
   );
   if (!controller || !renderRegistry) return <p className="gx-muted">{p.str("emptyText", "Nothing to preview.")}</p>;
   return (
-    <div className="gx-bundle">
+    <div className={p.bool("unframed") ? undefined : "gx-bundle"}>
       <GenUIRoot source={controller} registry={renderRegistry} />
     </div>
   );
