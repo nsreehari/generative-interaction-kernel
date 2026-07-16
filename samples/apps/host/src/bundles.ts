@@ -12,10 +12,8 @@
 //   - "native-root" : an irreducibly-native composition (the workbench) whose root.ts re-exports a
 //                     React `Root` the host mounts directly. No JSON trio.
 //
-// NOTE: there is no standalone `inspect` top-level bundle. Standalone it was only a seeded, guest-less
-// demo shell (the floor-only scaffold from ADR-0032, since removed). The inspector does real work only
-// embedded in the workbench composition (`bundles/workbench/bundles/inspect/inspect.ts`), driven by the
-// live guest through the `inspectSnapshot` cross-kernel bridge.
+// NOTE: there is no standalone `inspect` top-level bundle. Workbench guest and inspector subtrees share
+// one kernel; its native `inspectSnapshot` projection bridge is not a general cross-kernel embed pattern.
 
 import {
   bundleFromJson,
@@ -28,12 +26,7 @@ import {
 } from "@gik/react";
 import type React from "react";
 import registry from "../../../bundles/registry.json";
-import { resolveDemoComposition } from "../../../scenarios/catalog";
-import {
-  composeDemoRunnerDocument,
-  composeDemoRunnerManifest,
-  composeDemoRunnerState,
-} from "../../../shared/demo-runner";
+import { demoCatalog, resolveDemoComposition } from "../../../scenarios/catalog";
 
 type BundleKind = "json" | "native-root";
 type Registry = { default: string; bundles: Record<string, { kind: BundleKind }> };
@@ -69,7 +62,6 @@ const documents = byBundleId(rawDocuments);
 const states = byBundleId(rawStates);
 const effectHandlerModules = byBundleId(rawEffectHandlerModules) as Record<string, {
   default: EffectHandlerMap;
-  demoEffects?: EffectHandlerMap;
 }>;
 const projectionViews = byBundleId(rawProjectionViews) as Record<string, Record<string, ProjectionView>>;
 const roots = byBundleId(rawRoots) as Record<string, { Root?: React.ComponentType }>;
@@ -97,31 +89,27 @@ export function createHostRegistry(demoId?: string | null): BundleRegistry {
       reg.registerBundle(id, { kind: "native-root", Root });
       continue;
     }
-    const composeRunner = demoComposition?.entry.bundleId === id;
     reg.registerBundle(id, {
       kind: "bundle",
       make: () => {
-        const manifest = structuredClone(manifests[id]) as { payload: Parameters<typeof composeDemoRunnerManifest>[0] };
-        const document = structuredClone(documents[id]) as { payload: Parameters<typeof composeDemoRunnerDocument>[0] };
-        let state = structuredClone(states[id]) as Record<string, unknown>;
+        const manifest = structuredClone(manifests[id]);
+        const document = structuredClone(documents[id]);
+        const state = structuredClone(states[id]) as Record<string, unknown>;
         const effectModule = effectHandlerModules[id];
-        if (composeRunner && demoComposition) {
-          manifest.payload = composeDemoRunnerManifest(manifest.payload);
-          document.payload = composeDemoRunnerDocument(
-            document.payload,
-            demoComposition.scenarioPlan,
-            { stateNamespace: "soc" }
-          );
-          state = composeDemoRunnerState(state, demoComposition.scenarioPlan, "soc");
+        if (id === "demo-runner" && demoComposition) {
+          state.runner = {
+            plan: demoComposition.scenarioPlan,
+            catalog: demoCatalog.entries,
+            entry: demoComposition.entry,
+          };
         }
         const native: BundleNative = {
-          effectHandlers: composeRunner
-            ? effectModule?.demoEffects ?? effectModule?.default
-            : effectModule?.default,
+          effectHandlers: effectModule?.default,
           projectionViews: projectionViews[id],
         };
         return bundleFromJson({ manifest, document, state }, native);
       },
+      listable: id === "demo-runner" ? false : undefined,
     });
   }
   // Platform apps: embeddable bundles the floor itself provides, not owned by any single json bundle.

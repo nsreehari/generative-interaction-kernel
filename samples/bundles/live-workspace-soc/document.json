@@ -54,8 +54,27 @@
           ],
           "setAgentMode": [
             { "do": "invoke", "args": { "tool": "setAgentMode" } }
+          ],
+          "reset": [
+            { "do": "invoke", "args": { "tool": "resetScenario" } }
           ]
         },
+        "react": [
+          { "when": "demo.commands.establishIntent", "run": [{ "do": "emit", "event": "establishIntent" }] },
+          { "when": "demo.commands.addConstraint", "run": [{ "do": "emit", "event": "addConstraint" }] },
+          { "when": "demo.commands.suggestExploration", "run": [{ "do": "emit", "event": "suggestExploration" }] },
+          { "when": "demo.commands.amendExploration", "run": [{ "do": "emit", "event": "amendExploration" }] },
+          { "when": "demo.commands.replanExploration", "run": [{ "do": "emit", "event": "replanExploration" }] },
+          { "when": "demo.commands.commitPartialFindings", "run": [{ "do": "emit", "event": "commitPartialFindings" }] },
+          { "when": "demo.commands.proposeDc01", "run": [{ "do": "emit", "event": "proposeDc01" }] },
+          { "when": "demo.commands.completeCorrelation", "run": [{ "do": "emit", "event": "completeCorrelation" }] },
+          { "when": "demo.commands.proposeHostA", "run": [{ "do": "emit", "event": "proposeHostA" }] },
+          { "when": "demo.commands.reviseResponse", "run": [{ "do": "emit", "event": "reviseResponse" }] },
+          { "when": "demo.commands.calculateResponse", "run": [{ "do": "emit", "event": "calculateResponse" }] },
+          { "when": "demo.commands.recommendContainment", "run": [{ "do": "emit", "event": "recommendContainment" }] },
+          { "when": "demo.commands.executeContainment", "run": [{ "do": "emit", "event": "executeContainment" }] },
+          { "when": "demo.commands.reset", "run": [{ "do": "emit", "event": "reset" }] }
+        ],
         "read": {
           "incident": "soc.incident",
           "presentation": "soc.presentation",
@@ -76,6 +95,12 @@
           "journal": "soc.journal"
         },
         "children": [
+          {
+            "capability": "ui:embed",
+            "id": "demo-runner-region",
+            "props": { "app": "demo-runner", "unframed": true },
+            "edges": { "gate": "demo.enabled = true" }
+          },
           {
             "capability": "foundry:access-modal",
             "id": "foundry-access-gate-region",

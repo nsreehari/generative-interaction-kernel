@@ -5,12 +5,16 @@
     "version": "live-workspace-soc/1.0",
     "expression": "jsonata",
     "namespaces": ["soc"],
+    "contexts": ["demo"],
     "actions": ["assign", "derive", "emit", "invoke", "route", "confirm"],
     "config": { "proxyBase": "https://sz-foundry-proxy.azurewebsites.net" },
     "capabilities": {
       "foundry:access-modal": {
         "propsSchema": { "type": "object", "additionalProperties": true },
         "emits": ["accessResolved", "accessCleared"]
+      },
+      "ui:embed": {
+        "propsSchema": { "type": "object", "additionalProperties": true }
       },
       "soc:workspace": {
         "propsSchema": { "type": "object", "additionalProperties": true },
@@ -19,13 +23,14 @@
           "establishIntent", "addConstraint", "suggestExploration", "amendExploration",
           "replanExploration", "commitPartialFindings", "proposeDc01", "completeCorrelation",
           "proposeHostA", "reviseResponse", "calculateResponse", "recommendContainment",
-          "authorizeContainment", "executeContainment", "setPresentationContext", "setAgentMode"
+          "authorizeContainment", "executeContainment", "setPresentationContext", "setAgentMode", "reset"
         ]
       }
     },
     "externals": {
       "projectionViews": {
         "foundry": { "from": "foundry-agent", "use": ["access-modal"] },
+        "ui": { "from": "floor", "use": ["embed"] },
         "soc": { "from": "self" }
       },
       "effectHandlers": [
@@ -33,7 +38,7 @@
         "replanExploration", "commitPartialFindings", "evaluateDc01Policy", "completeCorrelation",
         "proposeHostA", "reviseResponse", "calculateResponse", "recommendContainment",
         "authorizeContainment", "setPresentationContext", "setAgentMode",
-        "acceptSocFoundryAccess", "clearSocFoundryAccess", "executeContainment"
+        "acceptSocFoundryAccess", "clearSocFoundryAccess", "executeContainment", "resetScenario"
       ]
     }
   }
