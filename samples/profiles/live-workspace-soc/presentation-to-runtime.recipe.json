@@ -23,6 +23,7 @@
             "stage": "soc.stage",
             "step": "soc.step",
             "actors": "soc.actors",
+            "agentProviders": "soc.agentProviders",
             "intent": "soc.intent",
             "constraints": "soc.constraints",
             "dataSources": "soc.dataSources",
@@ -53,6 +54,7 @@
             "executeContainment": [{ "do": "invoke", "args": { "tool": "executeContainment" } }],
             "setPace": [{ "do": "invoke", "args": { "tool": "setPace" } }],
             "setPresentationContext": [{ "do": "invoke", "args": { "tool": "setPresentationContext" } }],
+            "setAgentMode": [{ "do": "invoke", "args": { "tool": "setAgentMode" } }],
             "finishAct": [{ "do": "invoke", "args": { "tool": "finishAct" } }],
             "reset": [{ "do": "invoke", "args": { "tool": "resetScenario" } }]
           }

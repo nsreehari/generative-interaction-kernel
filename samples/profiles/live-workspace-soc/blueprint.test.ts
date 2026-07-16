@@ -92,6 +92,22 @@ test("agent contexts lower into context, state, request, response, and governed-
   }
 });
 
-test("the checked-in runtime document is the war-room blueprint output", () => {
-  assert.deepEqual(compileSocDocument("war-room"), runtimeDocument.payload);
+test("the runtime shell preserves the war-room blueprint output and adds only its Foundry access gate", () => {
+  const runtime = structuredClone(runtimeDocument.payload);
+  const children = runtime.root.edges.children;
+  const accessGateIndex = children.findIndex((child) => child.id === "foundry-access-gate-region");
+  assert.notEqual(accessGateIndex, -1);
+  assert.deepEqual(children.splice(accessGateIndex, 1), [{
+    capability: "foundry:access-modal",
+    id: "foundry-access-gate-region",
+    props: { proxyBaseUrl: "https://sz-foundry-proxy.azurewebsites.net" },
+    edges: {
+      read: { required: "soc.foundry.required" },
+      on: {
+        accessResolved: [{ do: "invoke", args: { tool: "acceptSocFoundryAccess" } }],
+        accessCleared: [{ do: "invoke", args: { tool: "clearSocFoundryAccess" } }],
+      },
+    },
+  }]);
+  assert.deepEqual(compileSocDocument("war-room"), runtime);
 });

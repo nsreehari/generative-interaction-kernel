@@ -1,5 +1,11 @@
 import {
   Button,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
   Field,
   Input,
   MessageBar,
@@ -10,94 +16,190 @@ import {
   makeStyles,
   tokens,
 } from "@fluentui/react-components";
-import { useAsyncEmit, type ProjectionView } from "@gik/react";
+import { type ProjectionView } from "@gik/react";
+import * as React from "react";
+
+import { createFoundryProxy, FoundryProxyError } from "../../../shared/foundry-proxy";
+import {
+  FOUNDRY_ACCESS_CHANGE_EVENT,
+  clearFoundryAccessKey,
+  getFoundryAccessKey,
+  setFoundryAccessKey,
+} from "../access-storage";
 
 const useStyles = makeStyles({
   stack: { display: "grid", gap: tokens.spacingVerticalM },
+  actions: { paddingTop: tokens.spacingVerticalM },
 });
 
-// The whole sign-in front door: the agent list is fetched by the `listAgents` invoke effect and
-// rendered from the store (agent.agentOptions / listed / listError), and the in-flight spinner rides
-// on the shared useAsyncEmit hook — the same pending path as the floor ui:button. Only durable intent
-// (the key, the chosen agent name, and "verify") crosses back to the store via `emit`.
-const FoundryLogin: ProjectionView = ({ node, emit }) => {
+const discoveries = new Map<string, Promise<string[]>>();
+
+function discoverAgents(proxyBaseUrl: string, key: string): Promise<string[]> {
+  const discoveryKey = `${proxyBaseUrl}\n${key}`;
+  const existing = discoveries.get(discoveryKey);
+  if (existing) return existing;
+  const request = createFoundryProxy({ baseUrl: proxyBaseUrl, key }).listAgents()
+    .finally(() => discoveries.delete(discoveryKey));
+  discoveries.set(discoveryKey, request);
+  return request;
+}
+
+function accessError(error: unknown): string {
+  if (error instanceof FoundryProxyError && (error.status === 401 || error.status === 403)) {
+    return "That access key was rejected.";
+  }
+  return error instanceof FoundryProxyError && error.message
+    ? error.message
+    : "Couldn't load the available agents. Please try again.";
+}
+
+const FoundryAccessModal: ProjectionView = ({ node, emit }) => {
   const styles = useStyles();
-  const key = String(node.props.key ?? "");
+  const required = Boolean(node.props.required);
+  const proxyBaseUrl = String(node.props.proxyBaseUrl ?? "").replace(/\/$/, "");
+  const [enteredKey, setEnteredKey] = React.useState("");
+  const [status, setStatus] = React.useState<"idle" | "checking" | "required">("idle");
+  const [error, setError] = React.useState("");
+  const [accessRevision, setAccessRevision] = React.useState(0);
+  const emitRef = React.useRef(emit);
+  emitRef.current = emit;
+
+  React.useEffect(() => {
+    const accessChanged = (event: Event) => {
+      const available = Boolean((event as CustomEvent<{ available?: boolean }>).detail?.available);
+      if (!available) setAccessRevision((revision) => revision + 1);
+    };
+    const storageChanged = (event: StorageEvent) => {
+      if (event.key === "gik.foundry-agent.access-key") setAccessRevision((revision) => revision + 1);
+    };
+    globalThis.addEventListener?.(FOUNDRY_ACCESS_CHANGE_EVENT, accessChanged);
+    globalThis.addEventListener?.("storage", storageChanged);
+    return () => {
+      globalThis.removeEventListener?.(FOUNDRY_ACCESS_CHANGE_EVENT, accessChanged);
+      globalThis.removeEventListener?.("storage", storageChanged);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (!required) {
+      setStatus("idle");
+      setError("");
+      return;
+    }
+    const storedKey = getFoundryAccessKey().trim();
+    if (!storedKey) {
+      setStatus("required");
+      emitRef.current("accessCleared", {});
+      return;
+    }
+
+    let cancelled = false;
+    setStatus("checking");
+    setError("");
+    void discoverAgents(proxyBaseUrl, storedKey).then(
+      (agentNames) => {
+        if (cancelled) return;
+        setEnteredKey("");
+        setStatus("idle");
+        emitRef.current("accessResolved", { key: storedKey, agentNames });
+      },
+      (reason) => {
+        if (cancelled) return;
+        clearFoundryAccessKey();
+        emitRef.current("accessCleared", {});
+        setError(accessError(reason));
+        setStatus("required");
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [required, proxyBaseUrl, accessRevision]);
+
+  const continueWithKey = async () => {
+    const key = enteredKey.trim();
+    if (!key) return;
+    setStatus("checking");
+    setError("");
+    try {
+      const agentNames = await discoverAgents(proxyBaseUrl, key);
+      setFoundryAccessKey(key);
+      setEnteredKey("");
+      setStatus("idle");
+      emit("accessResolved", { key, agentNames });
+    } catch (reason) {
+      clearFoundryAccessKey();
+      emit("accessCleared", {});
+      setError(accessError(reason));
+      setStatus("required");
+    }
+  };
+
+  return (
+    <Dialog open={required && status !== "idle"} modalType="alert">
+      <DialogSurface aria-label="Foundry access required">
+        <DialogBody>
+          <DialogTitle>Connect to Foundry</DialogTitle>
+          <DialogContent className={styles.stack}>
+            {status === "checking" ? (
+              <Spinner labelPosition="after" label="Checking access and loading agents..." />
+            ) : (
+              <>
+                <Text>Enter your access key to continue.</Text>
+                <Field label="Access key">
+                  <Input
+                    type="password"
+                    autoFocus
+                    value={enteredKey}
+                    placeholder="Paste your access key"
+                    onChange={(_event, data) => setEnteredKey(data.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") void continueWithKey();
+                    }}
+                  />
+                </Field>
+                {error !== "" ? (
+                  <MessageBar intent="error">
+                    <MessageBarBody>{error}</MessageBarBody>
+                  </MessageBar>
+                ) : null}
+              </>
+            )}
+          </DialogContent>
+          {status !== "checking" ? (
+            <DialogActions className={styles.actions}>
+              <Button appearance="primary" disabled={enteredKey.trim() === ""} onClick={() => void continueWithKey()}>
+                Continue
+              </Button>
+            </DialogActions>
+          ) : null}
+        </DialogBody>
+      </DialogSurface>
+    </Dialog>
+  );
+};
+
+const FoundryAgentSelector: ProjectionView = ({ node, emit }) => {
   const agentName = String(node.props.agentName ?? "");
-  const authError = String(node.props.authError ?? "");
-  const listError = String(node.props.listError ?? "");
-  const listed = Boolean(node.props.listed);
   const agentOptions = Array.isArray(node.props.agentOptions)
     ? node.props.agentOptions.map((value) => String(value))
     : [];
 
-  // The agent list + loading come from the store (via the listAgents invoke) instead of local
-  // state, so this button shares the same useAsyncEmit pending path as the floor ui:button.
-  const { pending, run } = useAsyncEmit(emit);
-
-  const hasKey = key.trim().length > 0;
-  const hasAgent = agentName.trim().length > 0;
-  const showSelect = !pending && agentOptions.length > 0;
-  const showNoAgents = !pending && listed && agentOptions.length === 0 && listError === "";
-
   return (
-    <div className={styles.stack}>
-      <Text>Enter your access key, then choose an agent to continue.</Text>
-
-      <Field label="Access key">
-        <Input
-          type="password"
-          value={key}
-          placeholder="Paste your access key"
-          onChange={(_event, data) => emit("setKey", { value: data.value })}
-        />
-      </Field>
-
-      {hasKey && (
-        <Button onClick={() => void run("listAgents")} disabled={pending}>
-          List agents
-        </Button>
-      )}
-
-      {pending && <Spinner size="tiny" labelPosition="after" label="Loading agents…" />}
-
-      {showSelect && (
-        <Field label="Agent">
-          <Select value={agentName} onChange={(_event, data) => emit("setAgent", { value: data.value })}>
-            {agentOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      )}
-
-      {showNoAgents && (
-        <MessageBar intent="warning">
-          <MessageBarBody>No agents are available for this key.</MessageBarBody>
-        </MessageBar>
-      )}
-
-      {listError !== "" && (
-        <MessageBar intent="error">
-          <MessageBarBody>{listError}</MessageBarBody>
-        </MessageBar>
-      )}
-
-      {authError !== "" && (
-        <MessageBar intent="error">
-          <MessageBarBody>{authError}</MessageBarBody>
-        </MessageBar>
-      )}
-
-      {hasAgent && (
-        <Button appearance="primary" onClick={() => emit("verify")}>
-          Continue
-        </Button>
-      )}
-    </div>
+    <Field label="Agent">
+      <Select
+        value={agentName}
+        disabled={agentOptions.length === 0}
+        onChange={(_event, data) => emit("select", { value: data.value })}
+      >
+        {agentOptions.length === 0 ? <option value="">No agents available</option> : null}
+        {agentOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+      </Select>
+    </Field>
   );
 };
 
-export default { login: FoundryLogin };
+export default {
+  "access-modal": FoundryAccessModal,
+  "agent-selector": FoundryAgentSelector,
+};

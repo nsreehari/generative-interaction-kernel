@@ -69,6 +69,11 @@ const roots = byBundleId(rawRoots) as Record<string, { Root?: React.ComponentTyp
 /** The bundle the host mounts when no `?bundle=<id>` is given. */
 export const DEFAULT_BUNDLE = REGISTRY.default;
 
+/** Resolve a bundle's native projection views for another bundle's manifest import. */
+export function resolveBundleProjectionViews(id: string): Record<string, ProjectionView> | undefined {
+  return projectionViews[id];
+}
+
 /** Build the runtime registry, SEEDED with every on-disk bundle declared in registry.json plus the
  *  floor's embeddable platform apps (registered `listable: false`, so they are `embed`-only, not switcher
  *  rows). The returned registry is mutable — runtime code may register/unregister further bundles. */

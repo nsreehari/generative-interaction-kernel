@@ -38,6 +38,7 @@
     "dev:backend-host": "tsx samples/backend-host/order-service.ts",
     "dev:mcp": "tsx samples/agent-host/mcp-service.ts",
     "dev:controlface": "tsx samples/control-host/service.ts",
+    "dev:continuity-worker": "tsx samples/control-host/continuity-worker.ts",
     "dev:gik": "tsx samples/gik-meta/quickstart.ts",
     "dev:console": "npm run dev:host",
     "build:console": "npm run build:host",

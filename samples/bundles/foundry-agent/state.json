@@ -1,16 +1,12 @@
 {
   "agent": {
-    "stage": "locked",
     "key": "",
     "agentName": "",
-    "authError": "",
     "draft": "",
     "reply": "",
     "lastAsked": "",
     "conversationId": "",
     "agentOptions": [],
-    "listed": false,
-    "listError": "",
     "error": ""
   }
 }

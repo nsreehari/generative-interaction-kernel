@@ -11,6 +11,7 @@
 
 import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
 import { createFoundryProxy, FoundryProxyError } from "../../../shared/foundry-proxy";
+import { clearFoundryAccessKey } from "../access-storage";
 import manifest from "../manifest.json";
 
 /** The Foundry proxy base URL is declared once in the bundle manifest (payload.config.proxyBase). */
@@ -23,61 +24,31 @@ function str(value: unknown): string {
 }
 
 export const effects: EffectHandlerMap = {
-  // Smoke test: the proxy host rejects a bad key with 401/403; a valid key + resolvable agent name
-  // returns 200 with the agent name, which unlocks the demo.
-  async verifyKey(ctx: EffectContext) {
-    const key = str(ctx.get("agent.key")).trim();
-    const agentName = str(ctx.get("agent.agentName")).trim();
-    if (!key || !agentName) {
-      return { ops: [setOp("agent.authError", "Enter your access key and choose an agent.")] };
-    }
-    try {
-      const verifiedAgentName = await createFoundryProxy({ baseUrl: proxyBase(), key }).ping(agentName);
-      return {
-        ops: [
-          setOp("agent.authError", ""),
-          setOp("agent.agentName", verifiedAgentName),
-          setOp("agent.stage", "unlocked"),
-        ],
-      };
-    } catch (error) {
-      if (error instanceof FoundryProxyError && (error.status === 401 || error.status === 403)) {
-        return { ops: [setOp("agent.authError", "That access key was rejected.")] };
-      }
-      if (error instanceof FoundryProxyError) {
-        return { ops: [setOp("agent.authError", error.message || "Couldn't sign in. Check your key and agent.")] };
-      }
-      return { ops: [setOp("agent.authError", "Couldn't reach the service. Please try again.")] };
-    }
+  acceptFoundryAccess(ctx: EffectContext) {
+    const key = str(ctx.payload.key).trim();
+    const agentNames = Array.isArray(ctx.payload.agentNames)
+      ? ctx.payload.agentNames.filter((value): value is string => typeof value === "string")
+      : [];
+    const currentAgent = str(ctx.get("agent.agentName"));
+    return {
+      ops: [
+        setOp("agent.key", key),
+        setOp("agent.agentOptions", agentNames),
+        setOp("agent.agentName", agentNames.includes(currentAgent) ? currentAgent : agentNames[0] ?? ""),
+        setOp("agent.error", ""),
+      ],
+    };
   },
 
-  // List the agents available for this key (new Foundry Agent Service, agents-by-name). Results are
-  // written to the store so the login view renders from state and a plain ui:button gets the spinner.
-  async listAgents(ctx: EffectContext) {
-    const key = str(ctx.get("agent.key")).trim();
-    if (!key) return { ops: [] };
-    try {
-      const names = await createFoundryProxy({ baseUrl: proxyBase(), key }).listAgents();
-      const ops = [
-        setOp("agent.listError", ""),
-        setOp("agent.listed", true),
-        setOp("agent.agentOptions", names),
-      ];
-      // Default-select the first agent so the Select matches state and Continue can appear.
-      if (names.length > 0 && str(ctx.get("agent.agentName")).trim() === "") {
-        ops.push(setOp("agent.agentName", names[0]));
-      }
-      return { ops };
-    } catch (error) {
-      const rejected = error instanceof FoundryProxyError && (error.status === 401 || error.status === 403);
-      return {
-        ops: [
-          setOp("agent.agentOptions", []),
-          setOp("agent.listed", true),
-          setOp("agent.listError", rejected ? "That access key was rejected." : "Couldn't load the agent list."),
-        ],
-      };
-    }
+  clearFoundryAccess() {
+    return {
+      ops: [
+        setOp("agent.key", ""),
+        setOp("agent.agentName", ""),
+        setOp("agent.agentOptions", []),
+        setOp("agent.conversationId", ""),
+      ],
+    };
   },
 
   // Post a message to the agent through the proxy, threading the conversation via conversationId.
@@ -110,20 +81,17 @@ export const effects: EffectHandlerMap = {
     }
   },
 
-  // Lock the demo again and drop the key + conversation from state.
   signOut() {
+    clearFoundryAccessKey();
     return {
       ops: [
-        setOp("agent.stage", "locked"),
         setOp("agent.key", ""),
+        setOp("agent.agentName", ""),
         setOp("agent.reply", ""),
         setOp("agent.lastAsked", ""),
         setOp("agent.conversationId", ""),
         setOp("agent.agentOptions", []),
-        setOp("agent.listed", false),
-        setOp("agent.listError", ""),
         setOp("agent.error", ""),
-        setOp("agent.authError", ""),
       ],
     };
   },

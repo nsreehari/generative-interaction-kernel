@@ -89,6 +89,7 @@ export default defineWorkspace([
       environment: "node",
       include: [
         "samples/control-host/**/*.test.ts",
+        "samples/shared/**/*.test.ts",
         "samples/profiles/**/*.test.ts",
         "samples/apps/host/**/*.test.ts",
         "samples/bundles/**/*.test.ts",

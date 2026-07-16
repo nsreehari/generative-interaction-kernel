@@ -13,7 +13,7 @@ import {
   useBundleRegistry,
   useRegistryIds,
 } from "@gik/react";
-import { createHostRegistry, DEFAULT_BUNDLE } from "./bundles";
+import { createHostRegistry, DEFAULT_BUNDLE, resolveBundleProjectionViews } from "./bundles";
 import { switcherBundle } from "../../../bundles/approot/switcher/switcher";
 
 const useStyles = makeStyles({
@@ -27,7 +27,7 @@ export function Host(): React.ReactElement {
   // One registry for the life of the app; every BundleHost and every `embed props.app` resolves it.
   const registry = React.useMemo(() => createHostRegistry(), []);
   const resolveProvider = React.useCallback(
-    (from: string) => (from === "profile" ? sampleProfileComponents : undefined),
+    (from: string) => (from === "profile" ? sampleProfileComponents : resolveBundleProjectionViews(from)),
     []
   );
   return (
