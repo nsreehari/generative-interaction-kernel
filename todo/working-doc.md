@@ -405,7 +405,12 @@ building TurboTax. Frame strictly as "same kernel, headless, a tax journey."
   work, the renderer disconnects, the headless worker observes and completes through HTTP MCP, and
   SSE resume replays the two missed revisions from the same authority. Requester/completer
   attribution remains in shared state. This proves transport-isolated continuation, not durable
-  recovery after the authority process restarts; persistence and the visual Deployment Atlas remain.
+  recovery after the authority process restarts. It remains a protocol fixture, not the target app.
+- **T7 migration — PLANNED (2026-07-16):** migrate `demo-boards-ns-code` and
+  `demo-boards-frontend` to consume public GIK packages as a real application migration. Reuse the
+  existing hosted runtime, persistence, queue runner, MCP, SSE, and domain processing where mature;
+  replace the bespoke interaction authority incrementally without permanent dual truth. Beat 4
+  continuity is acceptance evidence from the functioning migrated application, not a separate demo.
 - **T7a — Domain Atlas (domain transversality, per D3a):** a light *flash* of a second domain
   = **tax preparation** (multi-doc synthesis, current policy, optimization decisions) running on
   the same kernel/verbs/trace. Reuse SOC's forensics framing (validate-or-fallback, `confirm`-
