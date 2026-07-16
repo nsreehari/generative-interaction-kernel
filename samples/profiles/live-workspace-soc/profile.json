@@ -17,7 +17,7 @@
         "id": "workflow",
         "kind": "workflow",
         "schema": "genui/workflow.schema.json",
-        "description": "Fourteen governed SOC acts, each containing one attributable human or agent action.",
+        "description": "Governed SOC operational semantics independent of any demonstration sequence.",
         "input": {
           "properties": {
             "workflow": { "title": "Workflow", "default": "governed-soc-investigation", "enum": ["governed-soc-investigation"] },
@@ -42,7 +42,7 @@
         "id": "runtime-document",
         "kind": "runtime-doc",
         "schema": "genui/runtime-document.schema.json",
-        "description": "Kernel-ready SOC workspace capability, reads, events, and timer composition."
+        "description": "Kernel-ready SOC workspace capability, reads, and governed domain events."
       }
     ],
     "recipes": [
@@ -63,8 +63,7 @@
             { "name": "agent-request", "role": "task-envelope", "required": false },
             { "name": "response", "role": "governed-action", "required": false },
             { "name": "authorization", "role": "consequential-decision", "required": false },
-            { "name": "causal-record", "role": "provenance", "required": false },
-            { "name": "next-act-timer", "role": "presenter-control", "required": true }
+            { "name": "causal-record", "role": "provenance", "required": false }
           ]
         }
       },
@@ -91,24 +90,6 @@
           "participationDoesNotImplyAuthority": true
         }
       },
-      "acts": {
-        "inline": [
-          { "id": 1, "chapter": 1, "title": "Morgan establishes investigation intent", "steps": ["establishIntent"] },
-          { "id": 2, "chapter": 1, "title": "Priya protects the payroll cutover", "steps": ["addConstraint"] },
-          { "id": 3, "chapter": 2, "title": "Correlation Agent suggests exploration", "steps": ["suggestExploration"] },
-          { "id": 4, "chapter": 2, "title": "Morgan narrows the exploration", "steps": ["amendExploration"] },
-          { "id": 5, "chapter": 2, "title": "Correlation Agent replans", "steps": ["replanExploration"] },
-          { "id": 6, "chapter": 3, "title": "Correlation Agent commits partial findings", "steps": ["commitPartialFindings"] },
-          { "id": 7, "chapter": 3, "title": "Response Agent proposes DC-01 isolation", "steps": ["proposeDc01"] },
-          { "id": 8, "chapter": 3, "title": "Correlation Agent resolves the origin", "steps": ["completeCorrelation"] },
-          { "id": 9, "chapter": 4, "title": "Response Agent proposes bounded containment", "steps": ["proposeHostA"] },
-          { "id": 10, "chapter": 4, "title": "Morgan revises the response", "steps": ["reviseResponse"] },
-          { "id": 11, "chapter": 4, "title": "Response Agent validates blast radius", "steps": ["calculateResponse"] },
-          { "id": 12, "chapter": 4, "title": "Morgan recommends containment", "steps": ["recommendContainment"] },
-          { "id": 13, "chapter": 5, "title": "Priya authorizes containment", "steps": ["authorizeContainment"], "humanBoundary": "human-priya" },
-          { "id": 14, "chapter": 5, "title": "Response Agent executes containment", "steps": ["executeContainment"] }
-        ]
-      },
       "presentationContexts": {
         "inline": [
           { "id": "full-substrate", "actor": "shared", "role": "technical-inspection", "device": "workstation", "task": "inspect-all", "disclosure": "complete", "layout": "console", "frame": "shared", "arrangement": "inspection", "regions": ["summary", "intent", "constraints", "hypothesis", "exploration", "evidence", "response", "authorization", "causal-record"] },
@@ -127,7 +108,7 @@
         { "id": "validateSocWorkflow", "op": "validate", "layer": "workflow", "agentSafe": true, "description": "Validate the governed SOC workflow source." },
         { "id": "validateSocInteraction", "op": "validate", "layer": "interaction", "agentSafe": true, "description": "Validate actor and semantic interaction output." },
         { "id": "validateSocPresentation", "op": "validate", "layer": "presentation", "agentSafe": true, "description": "Validate projection completeness before runtime lowering." },
-        { "id": "describeSocBlueprint", "op": "describe", "describe": "soc-blueprint", "agentSafe": true, "description": "Describe the SOC actors, authority, acts, and presentation contexts." }
+        { "id": "describeSocBlueprint", "op": "describe", "describe": "soc-blueprint", "agentSafe": true, "description": "Describe the SOC actors, authority, operational semantics, and presentation contexts." }
       ]
     }
   }

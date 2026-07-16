@@ -1,5 +1,6 @@
 import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
 import type { Json, OrchestratorResult, PatchOp } from "@gik/kernel";
+import type { TimelineItem } from "../../../shared/demo-runner";
 
 import { createFoundryProxy } from "../../../shared/foundry-proxy";
 import manifest from "../manifest.json";
@@ -231,32 +232,6 @@ function annotateProvider(
 }
 
 const deterministicEffects: EffectHandlerMap = {
-  requestNextAct(ctx) {
-    const presenter = ctx.get("soc.presenter") as RecordValue;
-    if (presenter.locked === true) return { outcome: "ignored" };
-    return {
-      outcome: "requested",
-      ops: [setOp("soc.presenter", {
-        ...presenter,
-        locked: true,
-        advanceToken: Number(presenter.advanceToken ?? 0) + 1,
-      })],
-    };
-  },
-
-  setPace(ctx) {
-    const presenter = ctx.get("soc.presenter") as RecordValue;
-    const pace = ctx.payload.pace === "auto" ? "auto" : "manual";
-    return {
-      outcome: "updated",
-      ops: [setOp("soc.presenter", {
-        ...presenter,
-        pace,
-        durationMs: pace === "auto" ? 2000 : 120000,
-      })],
-    };
-  },
-
   setPresentationContext(ctx) {
     const presentation = ctx.get("soc.presentation") as RecordValue;
     const contexts = Array.isArray(presentation.contexts) ? presentation.contexts : [];
@@ -273,26 +248,11 @@ const deterministicEffects: EffectHandlerMap = {
     };
   },
 
-  finishAct(ctx) {
-    const presenter = ctx.get("soc.presenter") as RecordValue;
-    const authorization = ctx.get("soc.authorization") as RecordValue | undefined;
-    const complete = ctx.get("soc.incident.status") === "Contained";
-    return {
-      outcome: "settled",
-      ops: [setOp("soc.presenter", {
-        ...presenter,
-        locked: complete || authorization?.status === "pending",
-      })],
-    };
-  },
-
   establishIntent(ctx) {
     const actorId = actor(ctx, "human-morgan");
     return {
       outcome: "committed",
       ops: [
-        setOp("soc.act", 1),
-        setOp("soc.step", "intent-established"),
         setOp("soc.stage", "Human intent and constraint"),
         setOp("soc.intent", {
           statement: "Determine the execution origin, contain safely, preserve evidence.",
@@ -311,8 +271,6 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "committed",
       ops: [
-        setOp("soc.act", 2),
-        setOp("soc.step", "constraint-added"),
         setOp("soc.constraints", [{
           id: "constraint-payroll",
           actorId,
@@ -334,8 +292,6 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "suggested",
       ops: [
-        setOp("soc.act", 3),
-        setOp("soc.step", "exploration-suggested"),
         setOp("soc.stage", "Suggested exploration and human reorientation"),
         setOp("soc.explorations", [{
           id: "explore-1",
@@ -366,8 +322,6 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "superseded",
       ops: [
-        setOp("soc.act", 4),
-        setOp("soc.step", "exploration-amended"),
         setOp("soc.explorations", [...superseded, {
           id: "explore-2",
           revision: 2,
@@ -398,8 +352,6 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "replanned",
       ops: [
-        setOp("soc.act", 5),
-        setOp("soc.step", "exploration-running"),
         setOp("soc.explorations", explorations),
         setOp("soc.actors", updateActor(ctx, actorId, "working", "Running Morgan's amended passive correlation")),
         setOp(
@@ -419,8 +371,6 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "partial",
       ops: [
-        setOp("soc.act", 6),
-        setOp("soc.step", "partial-findings"),
         setOp("soc.stage", "Cross-source result and governed overreach"),
         setOp("soc.evidence", evidence),
         setOp("soc.hypothesis", {
@@ -442,8 +392,6 @@ const deterministicEffects: EffectHandlerMap = {
       outcome: "rejected",
       detail: { fallback: "increase-telemetry" },
       ops: [
-        setOp("soc.act", 7),
-        setOp("soc.step", "dc01-rejected"),
         setOp("soc.incident.governance", "Policy blocked; fallback active"),
         setOp("soc.proposal", {
           id: "proposal-dc01",
@@ -476,8 +424,6 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "validated",
       ops: [
-        setOp("soc.act", 8),
-        setOp("soc.step", "origin-resolved"),
         setOp("soc.evidence", evidence),
         setOp("soc.correlations", [{
           id: "corr-1",
@@ -505,8 +451,6 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "suggested",
       ops: [
-        setOp("soc.act", 9),
-        setOp("soc.step", "response-suggested"),
         setOp("soc.stage", "Response suggestion and human reorientation"),
         setOp("soc.proposal", {
           id: "proposal-host-a",
@@ -532,8 +476,6 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "superseded",
       ops: [
-        setOp("soc.act", 10),
-        setOp("soc.step", "response-revised"),
         setOp("soc.proposal", {
           ...proposal,
           revision: 2,
@@ -555,8 +497,6 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "validated",
       ops: [
-        setOp("soc.act", 11),
-        setOp("soc.step", "response-validated"),
         setOp("soc.proposal", {
           ...proposal,
           status: "ready-for-recommendation",
@@ -579,8 +519,6 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "recommended",
       ops: [
-        setOp("soc.act", 12),
-        setOp("soc.step", "awaiting-commander"),
         setOp("soc.incident.governance", "Awaiting commander"),
         setOp("soc.recommendation", {
           id: "rec-1",
@@ -616,12 +554,33 @@ const deterministicEffects: EffectHandlerMap = {
         ],
       };
     }
-    const presenter = ctx.get("soc.presenter") as RecordValue;
+    const demoRequest = ctx.get("demo.request") as RecordValue | undefined;
+    const timeline = ctx.get("demo.timeline");
+    const correlationId = String(demoRequest?.correlationId ?? "");
+    const completedTimeline = Array.isArray(timeline) ? (timeline as unknown as TimelineItem[]).map((item) =>
+      item.source === "scenario" && item.correlationId === correlationId
+        ? { ...item, status: "complete" as const, summary: "Human authorization completed" }
+        : item
+    ) : [];
+    const authorizationItem: TimelineItem = {
+      id: "organism:j-13",
+      source: "organism",
+      title: "authorized",
+      summary: "Authorized the evidence-backed Host-A isolation",
+      status: "authorized",
+      operationRecordId: "j-13",
+      timestamp: "09:44:08",
+      actorRef: { namespace: "soc", kind: "actor", id: actorId, relation: "origin" },
+      focusRefs: [
+        { namespace: "soc", kind: "actor", id: actorId, relation: "origin" },
+        { namespace: "soc", kind: "record", id: "authorization", relation: "affected" },
+        { namespace: "soc", kind: "record", id: "proposal-host-a", relation: "affected" },
+      ],
+      correlationId,
+    };
     return {
       outcome: "authorized",
       ops: [
-        setOp("soc.act", 13),
-        setOp("soc.step", "authorized"),
         setOp("soc.stage", "Correct authority and execution"),
         setOp("soc.incident.governance", "Authorized"),
         setOp("soc.authorization", {
@@ -634,7 +593,10 @@ const deterministicEffects: EffectHandlerMap = {
           "human-priya": { status: "active", activity: "Authorized evidence-backed containment" },
           "agent-response": { status: "waiting", activity: "Authorized; waiting for presenter to run containment" },
         })),
-        setOp("soc.presenter", { ...presenter, locked: false }),
+        ...(ctx.get("demo.enabled") === true && demoRequest?.command === "$human-gate" ? [
+          setOp("demo.timeline", [...completedTimeline, authorizationItem] as unknown as Json),
+          setOp("demo.ack", { token: demoRequest.token ?? 0, command: "$human-gate" }),
+        ] : []),
         setOp(
           "soc.journal",
           appendJournal(ctx, entry("j-13", "09:44:08", actorId, "authorized", "Authorized the evidence-backed Host-A isolation", ["authorization", "proposal-host-a"]))
@@ -657,8 +619,6 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "executed",
       ops: [
-        setOp("soc.act", 14),
-        setOp("soc.step", "contained"),
         setOp("soc.stage", "Containment complete"),
         setOp("soc.incident.status", "Contained"),
         setOp("soc.incident.governance", "Executed"),
@@ -676,12 +636,16 @@ const deterministicEffects: EffectHandlerMap = {
   resetScenario() {
     return {
       outcome: "reset",
-      ops: Object.entries(resetState).map(([key, value]) =>
-        setOp(`soc.${key}`, JSON.parse(JSON.stringify(value)) as Json)
-      ),
+      ops: [
+        ...Object.entries(resetState).map(([key, value]) =>
+          setOp(`soc.${key}`, JSON.parse(JSON.stringify(value)) as Json)
+        ),
+      ],
     };
   },
 };
+
+export const socOrganismEffects = deterministicEffects;
 
 export function createSocEffects(
   fetchImpl: typeof globalThis.fetch = globalThis.fetch,
@@ -851,8 +815,74 @@ export function createSocEffects(
     };
   }
 
+  const commandHandlers: Record<string, string> = {
+    establishIntent: "establishIntent",
+    addConstraint: "addConstraint",
+    suggestExploration: "suggestExploration",
+    amendExploration: "amendExploration",
+    replanExploration: "replanExploration",
+    commitPartialFindings: "commitPartialFindings",
+    proposeDc01: "evaluateDc01Policy",
+    completeCorrelation: "completeCorrelation",
+    proposeHostA: "proposeHostA",
+    reviseResponse: "reviseResponse",
+    calculateResponse: "calculateResponse",
+    recommendContainment: "recommendContainment",
+    executeContainment: "executeContainment",
+    $reset: "resetScenario",
+  };
+  for (const [command, handlerName] of Object.entries(commandHandlers)) {
+    const handler = wrapped[handlerName];
+    if (!handler) continue;
+    wrapped[handlerName] = async (ctx) => {
+      const result = await handler(ctx) as OrchestratorResult | void;
+      const request = ctx.get("demo.request") as RecordValue | undefined;
+      if (request?.command !== command || typeof request.token !== "number") return result;
+      const timelineValue = ctx.get("demo.timeline");
+      const timeline = Array.isArray(timelineValue) ? timelineValue as unknown as TimelineItem[] : [];
+      const journalOp = result?.ops?.find((op) => op.path === "soc.journal" && Array.isArray(op.value));
+      const journal = Array.isArray(journalOp?.value) ? journalOp.value : [];
+      const journalEntry = journal.at(-1) as RecordValue | undefined;
+      const organismItem: TimelineItem | undefined = command !== "$reset" && journalEntry ? {
+        id: `organism:${String(journalEntry.id)}`,
+        source: "organism",
+        title: String(journalEntry.result ?? "committed"),
+        summary: String(journalEntry.summary ?? ""),
+        status: String(journalEntry.result ?? "committed"),
+        operationRecordId: String(journalEntry.id ?? ""),
+        timestamp: String(journalEntry.time ?? ""),
+        actorRef: { namespace: "soc", kind: "actor", id: String(journalEntry.actorId ?? ""), relation: "origin" },
+        focusRefs: [
+          { namespace: "soc", kind: "actor", id: String(journalEntry.actorId ?? ""), relation: "origin" },
+          ...(Array.isArray(journalEntry.affected) ? journalEntry.affected : []).map((id) => ({
+            namespace: "soc",
+            kind: "record" as const,
+            id: String(id),
+            relation: "affected" as const,
+          })),
+        ],
+        correlationId: String(request.correlationId ?? ""),
+      } : undefined;
+      return {
+        ...(result ?? {}),
+        ops: [
+          ...(result?.ops ?? []),
+          setOp("demo.ack", { token: request.token, command }),
+          ...(organismItem ? [setOp("demo.timeline", [...timeline, organismItem] as unknown as Json)] : []),
+        ],
+      };
+    };
+  }
+
   return wrapped;
 }
 
-export const effects = createSocEffects();
+export function createSocOrganismEffects(
+  fetchImpl: typeof globalThis.fetch = globalThis.fetch,
+  accessKey: () => string = getSocFoundryKey
+): EffectHandlerMap {
+  return createSocEffects(fetchImpl, accessKey);
+}
+
+export const effects = createSocOrganismEffects();
 export default effects;

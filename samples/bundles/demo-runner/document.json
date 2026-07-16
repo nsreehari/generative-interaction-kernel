@@ -1,0 +1,55 @@
+{
+  "gik": "0.1",
+  "type": "document",
+  "payload": {
+    "root": {
+      "capability": "demo:runner",
+      "id": "demo-runner",
+      "edges": {
+        "read": {
+          "demo": "demo",
+          "plan": "runner.plan",
+          "catalog": "runner.catalog",
+          "entry": "runner.entry"
+        },
+        "on": {
+          "reset": [{ "do": "invoke", "args": { "tool": "resetDemo" } }],
+          "finishAct": [{ "do": "invoke", "args": { "tool": "finishAct" } }]
+        },
+        "children": [
+          {
+            "capability": "fluent:toggle",
+            "id": "presenter-pace-toggle-region",
+            "props": {
+              "onValue": "auto",
+              "offValue": "manual",
+              "onLabel": "Auto",
+              "offLabel": "Manual",
+              "minWidth": 72
+            },
+            "edges": {
+              "read": { "value": "demo.presenter.pace" },
+              "on": {
+                "toggle": [{ "do": "invoke", "args": { "tool": "setPace" } }]
+              }
+            }
+          },
+          {
+            "capability": "ui:timer-button",
+            "id": "next-act-timer-region",
+            "props": { "label": "Next act", "tone": "primary", "showCountdown": true },
+            "edges": {
+              "read": {
+                "durationMs": "demo.presenter.durationMs",
+                "disabled": "demo.presenter.locked"
+              },
+              "on": {
+                "press": [{ "do": "invoke", "args": { "tool": "requestNextAct" } }]
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

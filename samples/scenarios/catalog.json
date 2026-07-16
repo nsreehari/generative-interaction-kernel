@@ -1,0 +1,23 @@
+{
+  "default": "soc-t3",
+  "entries": [
+    {
+      "id": "soc-t3",
+      "label": "Governed SOC investigation",
+      "scenarioBlueprintId": "live-workspace-soc-t3",
+      "targetBlueprintId": "live-workspace-soc",
+      "bundleId": "live-workspace-soc",
+      "defaultContext": "war-room",
+      "requiredTimelineSources": ["scenario", "organism"]
+    },
+    {
+      "id": "soc-executive",
+      "label": "SOC executive walkthrough",
+      "scenarioBlueprintId": "live-workspace-soc-executive",
+      "targetBlueprintId": "live-workspace-soc",
+      "bundleId": "live-workspace-soc",
+      "defaultContext": "war-room",
+      "requiredTimelineSources": ["scenario", "organism"]
+    }
+  ]
+}

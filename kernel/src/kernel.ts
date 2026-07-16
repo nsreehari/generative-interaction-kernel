@@ -164,6 +164,26 @@ export class Kernel {
     return { rev: this.rev, ops };
   }
 
+  /**
+   * Settle standing reactions after state changed outside this kernel, such as through a shared
+   * context written by a sibling runtime. The first synchronization establishes a baseline without
+   * firing; subsequent changes run the same reaction/effect cascade as an ordinary dispatch.
+   */
+  async syncExternal(): Promise<Patch> {
+    if (!this.reactionsSeeded) {
+      await this.seedReactionBaseline();
+      return { rev: this.rev, ops: [] };
+    }
+    const ops: PatchOp[] = [];
+    const fired: OrchestratorEffect[] = [];
+    await this.runReactions(ops, 0, fired);
+    if (ops.length > 0 || fired.length > 0) {
+      this.rev += 1;
+      for (const effect of fired) this.effectLog.push({ rev: this.rev, seq: this.effectSeq++, effect });
+    }
+    return { rev: this.rev, ops };
+  }
+
   private async settle(
     event: GIKEvent,
     acc: PatchOp[],
