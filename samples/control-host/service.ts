@@ -41,7 +41,7 @@ import { McpHttpServer } from "@gik/transport-mcp-http";
 
 const fx = (name: string) =>
   JSON.parse(
-    readFileSync(fileURLToPath(new URL(`../../schemas/fixtures/${name}`, import.meta.url)), "utf8")
+    readFileSync(fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url)), "utf8")
   );
 
 const manifest = fx("live-cards.manifest.json");

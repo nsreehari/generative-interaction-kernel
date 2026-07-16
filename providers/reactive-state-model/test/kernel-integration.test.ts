@@ -20,7 +20,7 @@ import {
   type ManifestPayload,
   type ResolvedNode,
 } from "../../../kernel/src/index";
-import { evalAsyncJsonata } from "../../../shared/libs/evaluators";
+import { evalAsyncJsonata } from "@gik/evaluators";
 import { ReactiveStateModel } from "../src/reactive-state-model";
 
 const manifestPayload: ManifestPayload = {

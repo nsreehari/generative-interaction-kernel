@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { runDeclarativeValidators } from "../validators";
+import { runDeclarativeValidators } from "../src";
 
 test("runDeclarativeValidators accepts legacy jsonata forms and explicit special validators", () => {
   const report = runDeclarativeValidators([

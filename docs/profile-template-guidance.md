@@ -38,7 +38,7 @@ but they should move only through an explicit resource seam, not implicit templa
 ## Current Boundary
 
 The executable GenUI interpreter now lives in `@gik/profile`, and the template-owned data lives in
-`profile-templates/*`.
+`profile/profile-templates/*` and is exposed through the `@gik/profile` template resource APIs.
 
 That means further cleanup should follow one rule:
 

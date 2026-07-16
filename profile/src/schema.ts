@@ -1,7 +1,7 @@
 import layerSchemaJson from "../../schemas/layer.schema.json" with { type: "json" };
 import profileSchemaJson from "../../schemas/profile.schema.json" with { type: "json" };
 import loweringRecipeSchemaJson from "../../schemas/lowering-recipe.schema.json" with { type: "json" };
-import { runDeclarativeValidators } from "../../shared/libs/validators";
+import { runDeclarativeValidators } from "@gik/evaluators";
 import {
   applyProfileTemplate,
   resolveProfile,

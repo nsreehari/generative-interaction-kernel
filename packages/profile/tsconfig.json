@@ -6,6 +6,6 @@
     "../../kernel/src",
     "../../shared/libs",
     "../../schemas",
-    "../../profile-templates"
+    "../../profile/profile-templates"
   ]
 }

@@ -47,9 +47,11 @@
             "recommendation"
           ]
         },
+        "group": { "type": "string", "minLength": 1 },
         "priority": { "enum": ["primary", "secondary", "tertiary"] },
         "disclosure": { "enum": ["always", "collapsed", "on-demand"] },
         "presentation": { "type": "string", "minLength": 1 },
+        "materialize": { "type": "boolean" },
         "capability": { "type": "string", "minLength": 1 },
         "props": {
           "type": "object",

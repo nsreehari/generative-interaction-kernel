@@ -4,7 +4,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-import { PRIMITIVE_CAPABILITIES, FLOOR_READ_KEYS, FLOOR_ALIAS } from "../../adapters/react/src/primitives/manifest";
+import { PRIMITIVE_CAPABILITIES, FLOOR_READ_KEYS, FLOOR_ALIAS } from "@gik/react";
 
 // --- SAMPLE guardrail: do these profiles' lowering recipes obey the floor contract? -----------
 //

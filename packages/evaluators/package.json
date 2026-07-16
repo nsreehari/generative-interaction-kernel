@@ -1,22 +1,20 @@
 {
-  "name": "@gik/profile",
+  "name": "@gik/evaluators",
   "version": "0.1.0",
-  "description": "Profile and lowering base types for GIK (Task -> Domain -> Interaction -> UI).",
+  "description": "Shared JSONata evaluators and declarative validators for the Generative Interaction Kernel.",
   "license": "MIT",
   "author": "nsreehari",
   "keywords": [
     "gik",
-    "generative-ui",
-    "declarative-ui",
-    "profile",
-    "lowering",
-    "dsl"
+    "jsonata",
+    "evaluation",
+    "validation"
   ],
   "homepage": "https://github.com/nsreehari/generative-interaction-kernel#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nsreehari/generative-interaction-kernel.git",
-    "directory": "packages/profile"
+    "directory": "packages/evaluators"
   },
   "bugs": {
     "url": "https://github.com/nsreehari/generative-interaction-kernel/issues"
@@ -40,10 +38,11 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "@gik/evaluators": "0.1.0"
+    "@gik/kernel": "0.1.0",
+    "ajv": "^8.17.1"
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --sourcemap --clean --tsconfig tsconfig.json",
-    "prepack": "node ../../scripts/sync-public-docs.mjs packages/profile"
+    "prepack": "node ../../scripts/sync-public-docs.mjs packages/evaluators"
   }
 }

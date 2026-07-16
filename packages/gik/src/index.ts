@@ -11,6 +11,7 @@
  *   const k = new kernel.Kernel(config);
  */
 export * as kernel from "@gik/kernel";
+export * as evaluators from "@gik/evaluators";
 export * as react from "@gik/react";
 export * as agentface from "@gik/agentface";
 export * as controlface from "@gik/controlface";

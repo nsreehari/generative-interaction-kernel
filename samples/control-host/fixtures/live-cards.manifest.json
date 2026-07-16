@@ -1,0 +1,66 @@
+{
+  "gik": "0.1",
+  "type": "manifest",
+  "payload": {
+    "version": "live-cards/1.0",
+    "expression": "jsonata",
+    "namespaces": ["card_data", "requires", "fetched_sources", "computed_values"],
+    "actions": ["assign", "derive", "invoke", "emit", "route", "confirm"],
+    "externals": {
+      "projectionViews": {
+        "ui": { "from": "profile" }
+      }
+    },
+    "capabilities": {
+      "ui:board": {
+        "propsSchema": { "type": "object", "properties": { "title": { "type": "string" } } },
+        "slots": ["children"]
+      },
+      "ui:metric": {
+        "propsSchema": {
+          "type": "object",
+          "required": ["label"],
+          "properties": { "label": { "type": "string" }, "value": { "type": ["number", "string"] } }
+        }
+      },
+      "ui:chart": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "dataProp": "data"
+      },
+      "ui:markdown": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "dataProp": "value"
+      },
+      "ui:todo": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "emits": ["save"],
+        "dataProp": "items"
+      },
+      "ui:selection": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "emits": ["select"],
+        "dataProp": "options"
+      },
+      "ui:searchbox": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "emits": ["submit"],
+        "dataProp": "value"
+      },
+      "ui:table": {
+        "propsSchema": {
+          "type": "object",
+          "properties": { "columns": { "type": "array", "items": { "type": "string" } } }
+        },
+        "emits": ["rowSelect"],
+        "dataProp": "rows"
+      },
+      "ui:actions": {
+        "propsSchema": {
+          "type": "object",
+          "properties": { "label": { "type": "string" } }
+        },
+        "emits": ["tap"]
+      }
+    }
+  }
+}

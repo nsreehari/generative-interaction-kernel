@@ -523,7 +523,7 @@ performed, use this mapping:
 |---|---|
 | semantic blueprint | `profile.json` / profile envelope |
 | blueprint sample | `samples/profiles/*` |
-| blueprint template | `profile-templates/*` and `profile-template` reference |
+| blueprint template | `profile/profile-templates/*` and `profile-template` reference |
 | tiers | `layers` |
 | blueprint schema | `schemas/profile.schema.json` |
 | lowering recipe | `schemas/lowering-recipe.schema.json` and recipe JSON files |
