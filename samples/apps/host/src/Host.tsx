@@ -25,7 +25,8 @@ const useStyles = makeStyles({
 
 export function Host(): React.ReactElement {
   // One registry for the life of the app; every BundleHost and every `embed props.app` resolves it.
-  const registry = React.useMemo(() => createHostRegistry(), []);
+  const demoId = new URLSearchParams(window.location.search).get("demo");
+  const registry = React.useMemo(() => createHostRegistry(demoId), [demoId]);
   const resolveProvider = React.useCallback(
     (from: string) => (from === "profile" ? sampleProfileComponents : resolveBundleProjectionViews(from)),
     []

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { lintLoweringRecipe, type LayerRecipeArtifact } from "@gik/profile";
+import { composeDemoRunnerDocument } from "../../shared/demo-runner";
+import { t3ScenarioPlan } from "../../scenarios/live-workspace-soc-t3/compile";
 
 import runtimeDocument from "../../bundles/live-workspace-soc/document.json" with { type: "json" };
 import manifest from "../../bundles/live-workspace-soc/manifest.json" with { type: "json" };
@@ -23,7 +25,8 @@ test("SOC blueprint owns one connected four-tier lowering chain", () => {
     ["workflow->interaction", "interaction->presentation", "presentation->runtime-doc"]
   );
   assert.equal(socBlueprint.resources.actors instanceof Array, true);
-  assert.equal((socBlueprint.resources.acts as unknown[]).length, 14);
+  assert.equal("acts" in socBlueprint.resources, false);
+  assert.equal(t3ScenarioPlan.steps.length, 14);
   assert.equal(SOC_BLUEPRINT_CONTEXTS.length, 8);
 });
 
@@ -92,7 +95,7 @@ test("agent contexts lower into context, state, request, response, and governed-
   }
 });
 
-test("the runtime shell preserves the war-room blueprint output and adds only its Foundry access gate", () => {
+test("the base runtime preserves the organism Blueprint output and adds only its Foundry gate", () => {
   const runtime = structuredClone(runtimeDocument.payload);
   const children = runtime.root.edges.children;
   const accessGateIndex = children.findIndex((child) => child.id === "foundry-access-gate-region");
@@ -110,4 +113,11 @@ test("the runtime shell preserves the war-room blueprint output and adds only it
     },
   }]);
   assert.deepEqual(compileSocDocument("war-room"), runtime);
+  const demo = composeDemoRunnerDocument(
+    compileSocDocument("war-room") as typeof runtime,
+    t3ScenarioPlan,
+    { stateNamespace: "soc" }
+  );
+  assert.equal(demo.root.edges.children?.some((child) => child.capability === "ui:timer-button"), true);
+  assert.equal("presenter" in (demo.root.edges.read ?? {}), true);
 });

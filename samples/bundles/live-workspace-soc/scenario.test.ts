@@ -1,14 +1,42 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { bundleFromJson, loadBundleRuntime } from "@gik/react";
+import {
+  composeDemoRunnerDocument,
+  composeDemoRunnerManifest,
+  composeDemoRunnerState,
+} from "../../shared/demo-runner";
+import { t3ScenarioPlan } from "../../scenarios/live-workspace-soc-t3/compile";
 
 import document from "./document.json";
-import effects, { createSocEffects } from "./effect_handlers/index";
+import effects, {
+  createSocEffects,
+  demoRunnerEffects,
+  socOrganismEffects,
+} from "./effect_handlers/index";
 import manifest from "./manifest.json";
 import state from "./state.json";
 
 function runtime(effectHandlers = effects) {
-  return loadBundleRuntime(bundleFromJson({ manifest, document, state }, { effectHandlers }));
+  return loadBundleRuntime(bundleFromJson({
+    manifest: structuredClone(manifest),
+    document: structuredClone(document),
+    state: structuredClone(state),
+  }, { effectHandlers }));
+}
+
+function demoRuntime(effectHandlers = createSocEffects()) {
+  return loadBundleRuntime(bundleFromJson({
+    manifest: {
+      ...manifest,
+      payload: composeDemoRunnerManifest(manifest.payload),
+    },
+    document: {
+      ...document,
+      payload: composeDemoRunnerDocument(document.payload, t3ScenarioPlan, { stateNamespace: "soc" }),
+    },
+    state: composeDemoRunnerState(state, t3ScenarioPlan, "soc"),
+  }, { effectHandlers }));
 }
 
 function foundryFetch(reply: Record<string, unknown> | string): typeof fetch {
@@ -56,8 +84,21 @@ const correlationReply = {
   recommendedNextStep: "Run passive correlation",
 };
 
+test("SOC organism and demo runner expose independent effect surfaces", () => {
+  assert.deepEqual(Object.keys(demoRunnerEffects).sort(), [
+    "finishAct",
+    "requestNextAct",
+    "resetScenario",
+    "setPace",
+  ]);
+  assert.equal("establishIntent" in socOrganismEffects, true);
+  assert.equal("authorizeContainment" in socOrganismEffects, true);
+  assert.equal("requestNextAct" in socOrganismEffects, false);
+  assert.equal("setPace" in socOrganismEffects, false);
+});
+
 test("presenter pace changes one timer and suppresses duplicate act requests", async () => {
-  const { controller, state: store } = runtime();
+  const { controller, state: store } = demoRuntime();
   await controller.start();
   const emit = (name: string, payload: Record<string, unknown> = {}) =>
     controller.emit("soc-workspace", name, payload);
@@ -190,7 +231,6 @@ test("live Correlation Agent lowers validated output and records its conversatio
 test("SOC requests Foundry access only while a participant agent uses Live mode", async () => {
   const { controller, state: store } = runtime(createSocEffects(foundryFetch(correlationReply), () => ""));
   await controller.start();
-  await controller.emit("soc-workspace", "reset", {});
 
   assert.equal(store.get("soc.foundry.required"), false);
   await controller.emit("soc-workspace", "setAgentMode", { agentId: "agent-correlation", mode: "live" });
