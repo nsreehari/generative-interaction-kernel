@@ -10,6 +10,7 @@ export class GenUIController {
   private tree: ResolvedNode | null = null;
   private lastPatch: Patch | null = null;
   private readonly listeners = new Set<TreeListener>();
+  private operation: Promise<void> = Promise.resolve();
 
   /**
    * @param kernel the kernel this controller drives.
@@ -25,8 +26,11 @@ export class GenUIController {
 
   /** Seed machine state and produce the first resolved tree. */
   async start(): Promise<ResolvedNode> {
-    this.kernel.init();
-    return this.refresh();
+    return this.enqueue(async () => {
+      this.kernel.init();
+      this.lastPatch = await this.kernel.syncExternal();
+      return this.refresh();
+    });
   }
 
   getTree(): ResolvedNode | null {
@@ -49,13 +53,15 @@ export class GenUIController {
     payload?: Record<string, unknown>,
     actorId?: string
   ): Promise<ResolvedNode> {
-    this.lastPatch = await this.kernel.dispatch({
-      node,
-      name,
-      payload: payload as Record<string, never> | undefined,
-      actorId,
+    return this.enqueue(async () => {
+      this.lastPatch = await this.kernel.dispatch({
+        node,
+        name,
+        payload: payload as Record<string, never> | undefined,
+        actorId,
+      });
+      return this.refresh();
     });
-    return this.refresh();
   }
 
   /**
@@ -64,7 +70,19 @@ export class GenUIController {
    * so its rendered tree must catch up even though it dispatched nothing itself.
    */
   async resync(): Promise<ResolvedNode> {
-    return this.refresh();
+    return this.enqueue(async () => {
+      this.lastPatch = await this.kernel.syncExternal();
+      return this.refresh();
+    });
+  }
+
+  private enqueue<T>(operation: () => Promise<T>): Promise<T> {
+    const next = this.operation.then(operation, operation);
+    this.operation = next.then(
+      () => undefined,
+      () => undefined
+    );
+    return next;
   }
 
   private async refresh(): Promise<ResolvedNode> {
