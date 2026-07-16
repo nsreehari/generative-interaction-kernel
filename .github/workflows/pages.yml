@@ -3,7 +3,7 @@ name: Deploy host to GitHub Pages
 on:
   push:
     tags:
-      - "pages-v*"
+      - "samples-v*"
   workflow_dispatch:
 
 permissions:
