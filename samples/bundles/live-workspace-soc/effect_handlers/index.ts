@@ -246,7 +246,7 @@ const deterministicEffects: EffectHandlerMap = {
 
   setPace(ctx) {
     const presenter = ctx.get("soc.presenter") as RecordValue;
-    const pace = ctx.payload.pace === "auto" ? "auto" : "manual";
+    const pace = (ctx.payload.pace ?? ctx.payload.value) === "auto" ? "auto" : "manual";
     return {
       outcome: "updated",
       ops: [setOp("soc.presenter", {

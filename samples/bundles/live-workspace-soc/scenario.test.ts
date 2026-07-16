@@ -103,7 +103,10 @@ test("presenter pace changes one timer and suppresses duplicate act requests", a
   const emit = (name: string, payload: Record<string, unknown> = {}) =>
     controller.emit("soc-workspace", name, payload);
 
-  await emit("setPace", { pace: "auto" });
+  await controller.emit("presenter-pace-toggle-region", "toggle", {
+    pressed: true,
+    value: "auto",
+  });
   assert.deepEqual(store.get("soc.presenter"), {
     pace: "auto",
     durationMs: 2000,

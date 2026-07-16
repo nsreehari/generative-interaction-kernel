@@ -119,5 +119,6 @@ test("the base runtime preserves the organism Blueprint output and adds only its
     { stateNamespace: "soc" }
   );
   assert.equal(demo.root.edges.children?.some((child) => child.capability === "ui:timer-button"), true);
+  assert.equal(demo.root.edges.children?.some((child) => child.capability === "fluent:toggle"), true);
   assert.equal("presenter" in (demo.root.edges.read ?? {}), true);
 });
