@@ -819,8 +819,8 @@ for manual advance, timeout advance, restart, mode change, and duplicate suppres
   authorization boundary.
 11. **Add causal interaction.** Cross-highlight the originating participant, affected workspace
    object, and Journal/Ledger entry.
-12. **Polish and validate.** Complete responsive participant tabs/strip, journal drawer, desktop
-   proportions, scenario legibility, tests, builds, and desktop/mobile browser journeys.
+12. **Polish and validate.** Complete the laptop-first floating participant drawer, desktop
+  proportions, scenario legibility, focused tests, production build, and browser journey.
 
 ### 8.10 Validation gates
 
@@ -837,7 +837,7 @@ validate all of the following:
 - actor, causation, authority, result, and changed paths remain attributable through the ledger;
 - focused tests pass after each slice;
 - `npm run test:react`, `npm run test:samples`, and `npm run build:host` pass as applicable;
-- Playwright validates the full scenario at desktop and mobile viewports.
+- browser validation covers the laptop-first runtime and Blueprint journeys.
 
 The Beat 2 demonstration is ready when the runnable bundle makes one governed shared substrate
 credible across its human, agent, device, and operational projections without duplicating domain
@@ -874,55 +874,61 @@ The broader architecture now runs through the repository's canonical `@gik/profi
 The implementation does not claim remote multi-client continuity or independently durable agents.
 Those remain later transport/runtime proof layers rather than hidden assumptions in Beat 3.
 
-## 9. Acceptance criteria for the revised interaction
+## 9. Acceptance criteria - closed 2026-07-16
 
-- [ ] The desktop first viewport clearly contains one header, one dominant shared workspace, four
-  participant panels, and one persistent right Journal/Ledger pane.
-- [ ] Morgan, Priya, Correlation Agent, and Response Agent are simultaneously visible and structurally
-  recognizable as actors in one participant model.
-- [ ] Human panels emphasize responsibility, contextual judgment, and authority; agent panels
-  emphasize objective, current operation, contribution, capability, and boundary.
-- [ ] Morgan authors intent and Priya authors an operational constraint as separate attributable
+The original four-always-open-panel and mobile participant-strip requirements were superseded by
+the laptop-first floating participant drawer. The collapsed drawer keeps all four actors and their
+live status visible; expanding it reveals their complete participant surfaces without competing
+with the shared workspace. A dedicated mobile composition is outside the T3 pitch boundary.
+
+- [x] The laptop-first viewport contains one header, one dominant shared workspace, a floating
+  participant drawer, and one persistent right Journal/Ledger pane.
+- [x] Morgan, Priya, Correlation Agent, and Response Agent are simultaneously recognizable as
+  actors in one participant model through the collapsed status row and expanded drawer.
+- [x] Human surfaces emphasize responsibility, contextual judgment, and authority; agent surfaces
+  emphasize objective, current operation, contribution, capability, boundary, and provider state.
+- [x] Morgan authors intent and Priya authors an operational constraint as separate attributable
   events that update the same shared state.
-- [ ] Correlation Agent suggests an exploration across identity, privileged-access, endpoint, and
+- [x] Correlation Agent suggests an exploration across identity, privileged-access, endpoint, and
   network data as a first-class shared object.
-- [ ] Morgan accepts the direction while amending time window, correlation key, and safety scope;
+- [x] Morgan accepts the direction while amending time window, correlation key, and safety scope;
   the original suggestion remains visible as superseded.
-- [ ] Correlation Agent visibly replans, executes the amended exploration, commits incremental
+- [x] Correlation Agent visibly replans, executes the amended exploration, commits incremental
   findings, and updates source relationships and the shared hypothesis.
-- [ ] Response Agent's DC-01 proposal is rejected using Priya's active constraint, with a visible
+- [x] Response Agent's DC-01 proposal is rejected using Priya's active constraint, with a visible
   reason and fallback effects that visibly change shared state.
-- [ ] Response Agent suggests Host-A containment; Morgan revises the operation sequence; Response
+- [x] Response Agent suggests Host-A containment; Morgan revises the operation sequence; Response
   recalculates payroll dependency, blast radius, reversibility, and evidence readiness.
-- [ ] Morgan can recommend Host-A containment but cannot authorize it; optional technical proof can
-  record an attempted authorization as rejected.
-- [ ] Priya alone can authorize the pending consequential action.
-- [ ] Suggestion, amendment, replanning, findings, response revision, recommendation,
+- [x] Morgan can recommend Host-A containment but cannot authorize it; Priya alone can authorize
+  the pending consequential action.
+- [x] Suggestion, amendment, replanning, findings, response revision, recommendation,
   authorization, and execution are separate attributable ledger entries.
-- [ ] Every scenario action visibly links participant, shared-state effect or rejection, and
+- [x] Every scenario action visibly links participant, shared-state effect or rejection, and
   journal/ledger record.
-- [ ] One `Next act` timer button serves both paces: click advances immediately, timeout advances
+- [x] One `Next act` timer button serves both paces: click advances immediately, timeout advances
   at the configured duration, and either path resets the timer for the following act.
-- [ ] Advancing an act produces separate actor-attributed step events and journal entries rather
+- [x] Advancing an act produces separate actor-attributed step events and journal entries rather
   than one batch mutation; duplicate click/timeout dispatch is prevented while the act runs.
-- [ ] Manual pace uses the long presenter delay, Auto pace uses the short delay, and the timer
+- [x] Manual pace uses the long presenter delay, Auto pace uses the short delay, and the timer
   pauses at Priya's human authorization boundary.
-- [ ] Mobile preserves the shared workspace, exposes participants as tabs/strip, and opens the
-  journal as a drawer without horizontal page overflow.
-- [ ] The old `workbench` remains untouched and independently routable.
-- [ ] Focused tests, React tests, sample tests, host build, and Playwright desktop/mobile journey
-  pass.
+- [x] Runtime and Blueprint are two faces of only the shared surface; the presenter, participant
+  drawer, and Journal/Ledger remain stable while plane or context changes.
+- [x] All eight contexts lower one semantic substrate into context-specific templates, ordering,
+  priority, disclosure, omission, grouping, and materialization without mutating incident state.
+- [x] Agent projections expose context, scoped shared state, request, response, and governed result;
+  agent output remains distinct from the canonical state outcome.
+- [x] The old `workbench` remains untouched and independently routable.
+- [x] Focused profile, lowering, scenario, React-floor, and sample tests pass; host diagnostics,
+  production build, and laptop browser journeys are validated. Repository-wide typecheck remains
+  blocked by unrelated adapter and `manage-bundles` errors and is not a T3 closure gate.
 
 ## 10. Deferred proof and cleanup
 
-After the revised in-process interaction is convincing, decide whether the next proof must add:
+Remote and durable continuity are owned by T7 rather than T3. T7 phase 1 now proves a detached SSE
+renderer, MCP-driven work through a transport-only headless worker, and revision replay on reconnect
+against one in-memory authority. T7's next phase owns durable state and revision history, durable
+queue semantics, and recovery across an authority-process restart. T3 makes none of those claims.
 
-- two separate human browser clients;
-- independently running agent clients;
-- server-backed shared session and live transport synchronization;
-- disconnect/reconnect and replay continuity;
-- durable autonomous work while no human client is connected.
-
-Only claim these once they are literal. Separately, after Beats 1–4 are complete, assess whether
-`workbench` should remain a developer sample, move out of the pitch catalog, be deprecated, or be
-removed. T3 does not pre-commit to that cleanup.
+After Beats 1-4 are complete, separately assess whether `workbench` should remain a developer
+sample, move out of the pitch catalog, be deprecated, or be removed. T3 does not pre-commit to that
+cleanup.
