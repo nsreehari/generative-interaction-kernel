@@ -2,12 +2,9 @@ import React from "react";
 import { Button, Input, Select, Spinner, makeStyles, mergeClasses, shorthands, tokens } from "@fluentui/react-components";
 import {
   ArrowLeft24Regular,
-  ArrowReset24Regular,
   BrainCircuit24Regular,
   CheckmarkCircle20Regular,
   ChevronDown20Regular,
-  ChevronLeft20Regular,
-  ChevronRight20Regular,
   ChevronUp20Regular,
   Clock20Regular,
   DataTrending24Regular,
@@ -24,12 +21,9 @@ import {
   socBlueprint,
   traceSocBlueprint,
 } from "../../../profiles/live-workspace-soc/compile";
-import { demoCatalog, resolveDemoComposition } from "../../../scenarios/catalog";
 import {
-  nextScenarioStep,
   selectionContainsFocus,
   selectionFromTimelineItem,
-  writeDemoNavigation,
   type DemoSelection,
   type FocusRef,
   type TimelineItem,
@@ -42,13 +36,6 @@ interface Incident {
   severity: string;
   status: string;
   governance: string;
-}
-
-interface Presenter {
-  pace: "manual" | "auto";
-  durationMs: number;
-  locked: boolean;
-  advanceToken: number;
 }
 
 interface PresentationContext {
@@ -261,27 +248,10 @@ const useStyles = makeStyles({
   eyebrow: { color: "var(--muted)", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightBold, textTransform: "uppercase" },
   title: { margin: 0, fontSize: tokens.fontSizeBase400, lineHeight: tokens.lineHeightBase400, overflowWrap: "anywhere" },
   controls: { display: "flex", alignItems: "center", justifyContent: "flex-end", gap: tokens.spacingHorizontalS, flexWrap: "wrap", "@media (max-width: 880px)": { justifyContent: "flex-start" } },
-  runnerDrawer: { position: "fixed", top: tokens.spacingVerticalM, right: "clamp(16px, 3vw, 40px)", zIndex: 40, border: "1px solid rgba(126, 91, 45, .3)", borderRadius: tokens.borderRadiusMedium, backgroundColor: "rgba(255, 235, 202, .58)", boxShadow: "0 16px 42px rgba(92, 65, 30, .16)", backdropFilter: "blur(12px) saturate(120%)", overflow: "hidden", transitionProperty: "width", transitionDuration: tokens.durationNormal, transitionTimingFunction: tokens.curveEasyEase },
-  runnerDrawerCollapsed: { width: "auto" },
-  runnerDrawerExpanded: { width: "min(1320px, calc(100vw - 80px))" },
-  runnerDrawerHeader: { minHeight: "64px", display: "grid", gridTemplateColumns: "auto minmax(260px, 1fr) minmax(250px, auto) auto auto", alignItems: "center", gap: tokens.spacingHorizontalM, paddingRight: tokens.spacingHorizontalS, backgroundColor: "transparent" },
-  runnerDrawerHeaderCollapsed: { gridTemplateColumns: "auto auto", gap: 0 },
-  runnerDrawerToggle: { alignSelf: "stretch", minWidth: 0, display: "inline-flex", alignItems: "center", gap: tokens.spacingHorizontalS, padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`, border: 0, backgroundColor: "transparent", color: "var(--text)", font: "inherit", textAlign: "left", cursor: "pointer", "&:hover": { backgroundColor: "color-mix(in srgb, var(--accent) 18%, transparent)" }, "&:focus-visible": { outline: "2px solid var(--accent)", outlineOffset: "-2px" } },
-  runnerCollapsedAct: { whiteSpace: "nowrap", fontSize: tokens.fontSizeBase200, fontWeight: tokens.fontWeightSemibold },
-  runnerDrawerTitle: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalS, fontWeight: tokens.fontWeightSemibold },
-  runnerControls: { display: "flex", alignItems: "center", justifyContent: "flex-end", gap: tokens.spacingHorizontalS, whiteSpace: "nowrap" },
   demoMode: { display: "inline-flex", padding: "2px", gap: "2px", border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel-2)" },
   viewpointControl: { display: "inline-flex", alignItems: "center", gap: tokens.spacingHorizontalXS },
   viewpointLabel: { color: "var(--muted)", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightBold, textTransform: "uppercase" },
   pill: { display: "inline-flex", alignItems: "center", gap: tokens.spacingHorizontalXS, minHeight: "30px", padding: `0 ${tokens.spacingHorizontalS}`, border: `1px solid var(--line)`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "var(--panel-2)", fontSize: tokens.fontSizeBase200, fontWeight: tokens.fontWeightSemibold },
-  runnerFloorControls: { minWidth: "118px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: tokens.spacingHorizontalS, paddingRight: tokens.spacingHorizontalS, "& > button": { minHeight: "32px" }, "& .gx-btn": { minWidth: "118px" } },
-  runnerFloorControlsCompact: { minWidth: "54px", paddingLeft: tokens.spacingHorizontalXS, "& .gx-fluent-toggle": { display: "none" }, "& .gx-timer-label": { display: "none" }, "& .gx-timer-separator": { display: "none" }, "& .gx-btn": { minWidth: "46px", width: "auto", paddingLeft: tokens.spacingHorizontalS, paddingRight: tokens.spacingHorizontalS } },
-  actBar: { minWidth: 0, display: "grid", gap: tokens.spacingVerticalXXS },
-  actNumber: { color: "var(--accent)", fontWeight: tokens.fontWeightBold, textTransform: "uppercase", fontSize: tokens.fontSizeBase100 },
-  actTitle: { margin: 0, fontWeight: tokens.fontWeightSemibold },
-  actDots: { display: "flex", gap: tokens.spacingHorizontalXS },
-  actDot: { width: "12px", height: "4px", backgroundColor: "var(--line)" },
-  actDotDone: { backgroundColor: "var(--accent)" },
   layout: { minHeight: 0, height: "100%", display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(300px, 360px)", gridTemplateRows: "minmax(0, 1fr)", overflow: "hidden", "@media (max-width: 1040px)": { height: "auto", gridTemplateColumns: "1fr", gridTemplateRows: "auto", overflow: "visible" } },
   workColumn: { minWidth: 0, minHeight: 0, height: "100%", padding: `clamp(18px, 3vw, 36px) clamp(16px, 3vw, 40px)`, overflow: "hidden", "@media (max-width: 1040px)": { height: "auto", padding: `clamp(18px, 3vw, 36px) clamp(16px, 3vw, 40px)`, overflow: "visible" } },
   shared: { minWidth: 0, minHeight: 0, height: "100%", display: "grid", gridTemplateRows: "auto minmax(0, 1fr)", border: `1px solid color-mix(in srgb, var(--accent) 24%, var(--line))`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "color-mix(in srgb, var(--accent) 7%, var(--panel))", boxShadow: "0 10px 28px color-mix(in srgb, var(--accent) 8%, transparent)", overflow: "hidden", "@media (max-width: 1040px)": { height: "auto", display: "block" } },
@@ -444,15 +414,7 @@ function ParticipantPresenceIcon({ status }: { status: string }): React.ReactEle
 
 const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   const styles = useStyles();
-  const requestedDemoId = new URLSearchParams(window.location.search).get("demo");
-  const runnerEnabled = requestedDemoId !== null;
   const incident = node.props.incident as unknown as Incident;
-  const presenter = (node.props.presenter ?? {
-    pace: "manual",
-    durationMs: 120000,
-    locked: false,
-    advanceToken: 0,
-  }) as unknown as Presenter;
   const presentation = node.props.presentation as unknown as Presentation;
   const actors = (node.props.actors ?? []) as unknown as Actor[];
   const agentProviders = (node.props.agentProviders ?? {}) as unknown as Record<string, AgentProvider>;
@@ -464,21 +426,14 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   const journal = (node.props.journal ?? []) as unknown as JournalEntry[];
   const intent = node.props.intent as unknown as { statement: string } | null;
   const constraints = (node.props.constraints ?? []) as unknown as Array<{ rule: string }>;
-  const act = Number(node.props.act ?? 0);
   const stage = String(node.props.stage ?? "Incident opened");
   const [journalMode, setJournalMode] = React.useState<"journal" | "ledger">("journal");
   const [selectedJournalId, setSelectedJournalId] = React.useState<string | null>(null);
-  const [runnerExpanded, setRunnerExpanded] = React.useState(true);
   const [participantsExpanded, setParticipantsExpanded] = React.useState(false);
-  const [activeAgentId, setActiveAgentId] = React.useState<string | null>(null);
   const validContextIds = SOC_BLUEPRINT_CONTEXTS.map((item) => item.id);
   const initialNavigationRef = React.useRef(readSocNavigation(window.location.search, validContextIds));
-  const demoComposition = resolveDemoComposition(requestedDemoId);
-  const scenarioPlan = demoComposition.scenarioPlan;
-  const actTitles = scenarioPlan.steps.map((step) => step.title);
   const [consolePlane, setConsolePlane] = React.useState<SocPlane>(initialNavigationRef.current.plane);
   const emitRef = React.useRef(emit);
-  const processedTokenRef = React.useRef(0);
   const initialContextAppliedRef = React.useRef(false);
   emitRef.current = emit;
 
@@ -487,7 +442,6 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
     ? journal.find((item) => item.id === selectedJournalId) ?? latestEntry
     : latestEntry;
   const actorNames = new Map(actors.map((item) => [item.id, item.name]));
-  const actDisplay = Math.min(act + 1, actTitles.length);
   const selectedContext = presentation.contexts.find((item) => item.id === presentation.selectedContext) ?? presentation.contexts[0];
   const presentationSpec = socPresentationSpec(presentation.selectedContext);
   const hasRegion = (region: SubstrateRegion) => presentationSpec.regions.includes(region);
@@ -541,47 +495,6 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
     }
   }, []);
 
-  React.useEffect(() => {
-    if (!runnerEnabled) return;
-    if (presenter.advanceToken === 0) {
-      processedTokenRef.current = 0;
-      return;
-    }
-    if (presenter.advanceToken === processedTokenRef.current) return;
-    processedTokenRef.current = presenter.advanceToken;
-    const nextAct = nextScenarioStep(scenarioPlan, {
-      stepIndex: act,
-      advanceToken: presenter.advanceToken,
-    });
-    if (!nextAct || nextAct.kind !== "dispatch" || !nextAct.command) return;
-    const actorId = nextAct.actorRef?.id;
-    let cancelled = false;
-    let finishTimer: number | undefined;
-    void (async () => {
-      if (actorId?.startsWith("agent-")) setActiveAgentId(actorId);
-      try {
-        await Promise.resolve(emitRef.current(nextAct.command!, {}, actorId));
-      } finally {
-        if (!cancelled) setActiveAgentId(null);
-      }
-      if (cancelled) return;
-      await new Promise<void>((resolve) => {
-        finishTimer = window.setTimeout(resolve, nextAct.waitAfterMs ?? 0);
-      });
-      if (!cancelled) await Promise.resolve(emitRef.current("finishAct", {}));
-    })();
-    return () => {
-      cancelled = true;
-      if (finishTimer !== undefined) window.clearTimeout(finishTimer);
-    };
-  }, [presenter.advanceToken, runnerEnabled]);
-
-  const reset = () => {
-    processedTokenRef.current = 0;
-    setSelectedJournalId(null);
-    emit("reset", {});
-  };
-
   const selectPlane = (plane: SocPlane) => {
     setConsolePlane(plane);
     window.history.replaceState(null, "", writeSocNavigation(window.location.href, plane, presentation.selectedContext));
@@ -590,11 +503,6 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   const selectContext = (contextId: string) => {
     emit("setPresentationContext", { contextId });
     window.history.replaceState(null, "", writeSocNavigation(window.location.href, consolePlane, contextId));
-  };
-
-  const selectDemo = (demoId: string) => {
-    const entry = resolveDemoComposition(demoId).entry;
-    window.location.assign(writeDemoNavigation(window.location.href, entry));
   };
 
   return (
@@ -627,44 +535,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
           <span className={styles.pill}>{incident.governance}</span>
         </div>
       </header>
-
-      {runnerEnabled ? <aside className={mergeClasses(styles.runnerDrawer, runnerExpanded ? styles.runnerDrawerExpanded : styles.runnerDrawerCollapsed)} aria-label="Scenario runner">
-        <div className={mergeClasses(styles.runnerDrawerHeader, !runnerExpanded ? styles.runnerDrawerHeaderCollapsed : undefined)}>
-          <button
-            type="button"
-            className={styles.runnerDrawerToggle}
-            aria-expanded={runnerExpanded}
-            onClick={() => setRunnerExpanded((expanded) => !expanded)}
-          >
-            {runnerExpanded ? <ChevronRight20Regular /> : <ChevronLeft20Regular />}
-            {runnerExpanded
-              ? <span className={styles.runnerDrawerTitle}><DataTrending24Regular />Scenario runner</span>
-              : <span className={styles.runnerCollapsedAct}>Act {actDisplay} of {actTitles.length}</span>}
-          </button>
-          {runnerExpanded ? <section className={styles.actBar} aria-live="polite">
-            <div className={styles.actNumber}>{incident.status === "Contained" ? "Journey complete" : `Act ${actDisplay} of ${actTitles.length}`}</div>
-            <p className={styles.actTitle}>{incident.status === "Contained" ? stage : actTitles[act]}</p>
-            <div className={styles.actDots} aria-hidden="true">
-              {actTitles.map((_, index) => <span key={index} className={mergeClasses(styles.actDot, index < act || incident.status === "Contained" ? styles.actDotDone : undefined)} />)}
-            </div>
-          </section> : null}
-          {runnerExpanded ? <label className={styles.viewpointControl}>
-            <span className={styles.viewpointLabel}>Demo</span>
-            <Select
-              className={styles.contextSelect}
-              aria-label="Select demo Blueprint"
-              value={demoComposition.entry.id}
-              onChange={(_, data) => selectDemo(data.value)}
-            >
-              {demoCatalog.entries.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}
-            </Select>
-          </label> : null}
-          {runnerExpanded ? <div className={styles.runnerControls}>
-            <Button appearance="subtle" icon={<ArrowReset24Regular />} aria-label="Reset scenario" disabled={activeAgentId !== null} onClick={reset} />
-          </div> : null}
-          <div className={mergeClasses(styles.runnerFloorControls, !runnerExpanded ? styles.runnerFloorControlsCompact : undefined)}>{children}</div>
-        </div>
-      </aside> : null}
+      {children}
 
       <div className={styles.layout}>
         <div className={styles.workColumn}>
@@ -734,7 +605,6 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
                 <h3 className={styles.sectionTitle}>Blueprint-owned resources</h3>
                 <div className={styles.blueprintResources}>
                   <div className={styles.blueprintResource}>Actors<span className={styles.blueprintResourceValue}>{(blueprintResources.actors as unknown[]).length}</span></div>
-                  {runnerEnabled ? <div className={styles.blueprintResource}>Scenario acts<span className={styles.blueprintResourceValue}>{scenarioPlan.steps.length}</span></div> : null}
                   <div className={styles.blueprintResource}>Projection contexts<span className={styles.blueprintResourceValue}>{SOC_BLUEPRINT_CONTEXTS.length}</span></div>
                   <div className={styles.blueprintResource}>Authority rule<span className={styles.blueprintResourceValue}>{String((blueprintResources.authorityPolicy as { requiredRole: string }).requiredRole)}</span></div>
                 </div>
@@ -913,11 +783,11 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
           <span className={styles.participantSummaries} aria-hidden="true">
             {actors.map((item) => {
               const canAuthorize = item.id === "human-priya" && authorization?.status === "pending";
-              const status = activeAgentId === item.id ? "working" : canAuthorize ? "input-awaited" : item.status;
+              const status = canAuthorize ? "input-awaited" : item.status;
               return <span className={styles.participantSummary} key={item.id}>
                 <ParticipantPresenceIcon status={status} />
                 <span className={styles.participantSummaryName}>{item.name}</span>
-                <span>{activeAgentId === item.id ? "thinking" : canAuthorize ? "input awaited" : item.status.replaceAll("-", " ")}</span>
+                <span>{canAuthorize ? "input awaited" : item.status.replaceAll("-", " ")}</span>
               </span>;
             })}
           </span>
@@ -927,7 +797,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
             {actors.map((item) => {
               const active = isActorSelected(selectedEntry, item.id);
               const canAuthorize = item.id === "human-priya" && authorization?.status === "pending";
-              const status = activeAgentId === item.id ? "working" : canAuthorize ? "input-awaited" : item.status;
+              const status = canAuthorize ? "input-awaited" : item.status;
               return <article data-soc-actor-id={item.id} key={item.id} className={mergeClasses(styles.participant, active ? styles.participantActive : undefined, active ? styles.causalHighlight : undefined)}>
                 <div className={styles.participantTop}>
                   <div className={styles.participantIdentity}>
@@ -936,7 +806,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
                   </div>
                   <span className={styles.kind}>{item.kind.toUpperCase()}</span>
                 </div>
-                <div className={styles.role}>{item.role} · {activeAgentId === item.id ? "thinking" : canAuthorize ? "input awaited" : item.status.replaceAll("-", " ")}</div>
+                <div className={styles.role}>{item.role} · {canAuthorize ? "input awaited" : item.status.replaceAll("-", " ")}</div>
                 <p className={styles.activity}>{item.activity ?? item.objective}</p>
                 <div className={styles.authority}>{item.authority}</div>
                 {item.kind === "agent" && agentProviders[item.id] ? <div className={styles.providerControls}>

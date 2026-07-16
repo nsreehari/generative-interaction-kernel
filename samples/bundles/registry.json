@@ -3,6 +3,7 @@
   "bundles": {
     "manage-blueprints": { "kind": "json" },
     "foundry-agent": { "kind": "json" },
+    "demo-runner": { "kind": "json" },
     "live-workspace-soc": { "kind": "json" },
     "samples-overview": { "kind": "json" },
     "manage-bundles": { "kind": "json" },

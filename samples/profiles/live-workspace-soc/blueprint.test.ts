@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { lintLoweringRecipe, type LayerRecipeArtifact } from "@gik/profile";
-import { composeDemoRunnerDocument } from "../../shared/demo-runner";
 import { t3ScenarioPlan } from "../../scenarios/live-workspace-soc-t3/compile";
 
 import runtimeDocument from "../../bundles/live-workspace-soc/document.json" with { type: "json" };
@@ -95,9 +94,17 @@ test("agent contexts lower into context, state, request, response, and governed-
   }
 });
 
-test("the base runtime preserves the organism Blueprint output and adds only its Foundry gate", () => {
+test("the base runtime preserves the organism Blueprint output behind host integration edges", () => {
   const runtime = structuredClone(runtimeDocument.payload);
   const children = runtime.root.edges.children;
+  const runnerIndex = children.findIndex((child) => child.id === "demo-runner-region");
+  assert.notEqual(runnerIndex, -1);
+  assert.deepEqual(children.splice(runnerIndex, 1), [{
+    capability: "ui:embed",
+    id: "demo-runner-region",
+    props: { app: "demo-runner", unframed: true },
+    edges: { gate: "demo.enabled = true" },
+  }]);
   const accessGateIndex = children.findIndex((child) => child.id === "foundry-access-gate-region");
   assert.notEqual(accessGateIndex, -1);
   assert.deepEqual(children.splice(accessGateIndex, 1), [{
@@ -112,13 +119,8 @@ test("the base runtime preserves the organism Blueprint output and adds only its
       },
     },
   }]);
+  assert.equal(runtime.root.edges.react.length, 14);
+  delete runtime.root.edges.react;
+  delete runtime.root.edges.on.reset;
   assert.deepEqual(compileSocDocument("war-room"), runtime);
-  const demo = composeDemoRunnerDocument(
-    compileSocDocument("war-room") as typeof runtime,
-    t3ScenarioPlan,
-    { stateNamespace: "soc" }
-  );
-  assert.equal(demo.root.edges.children?.some((child) => child.capability === "ui:timer-button"), true);
-  assert.equal(demo.root.edges.children?.some((child) => child.capability === "fluent:toggle"), true);
-  assert.equal("presenter" in (demo.root.edges.read ?? {}), true);
 });

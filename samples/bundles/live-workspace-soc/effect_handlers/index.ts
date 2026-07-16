@@ -231,32 +231,6 @@ function annotateProvider(
 }
 
 const deterministicEffects: EffectHandlerMap = {
-  requestNextAct(ctx) {
-    const presenter = ctx.get("soc.presenter") as RecordValue;
-    if (presenter.locked === true) return { outcome: "ignored" };
-    return {
-      outcome: "requested",
-      ops: [setOp("soc.presenter", {
-        ...presenter,
-        locked: true,
-        advanceToken: Number(presenter.advanceToken ?? 0) + 1,
-      })],
-    };
-  },
-
-  setPace(ctx) {
-    const presenter = ctx.get("soc.presenter") as RecordValue;
-    const pace = (ctx.payload.pace ?? ctx.payload.value) === "auto" ? "auto" : "manual";
-    return {
-      outcome: "updated",
-      ops: [setOp("soc.presenter", {
-        ...presenter,
-        pace,
-        durationMs: pace === "auto" ? 2000 : 120000,
-      })],
-    };
-  },
-
   setPresentationContext(ctx) {
     const presentation = ctx.get("soc.presentation") as RecordValue;
     const contexts = Array.isArray(presentation.contexts) ? presentation.contexts : [];
@@ -273,26 +247,11 @@ const deterministicEffects: EffectHandlerMap = {
     };
   },
 
-  finishAct(ctx) {
-    const presenter = ctx.get("soc.presenter") as RecordValue;
-    const authorization = ctx.get("soc.authorization") as RecordValue | undefined;
-    const complete = ctx.get("soc.incident.status") === "Contained";
-    return {
-      outcome: "settled",
-      ops: [setOp("soc.presenter", {
-        ...presenter,
-        locked: complete || authorization?.status === "pending",
-      })],
-    };
-  },
-
   establishIntent(ctx) {
     const actorId = actor(ctx, "human-morgan");
     return {
       outcome: "committed",
       ops: [
-        setOp("soc.act", 1),
-        setOp("soc.step", "intent-established"),
         setOp("soc.stage", "Human intent and constraint"),
         setOp("soc.intent", {
           statement: "Determine the execution origin, contain safely, preserve evidence.",
@@ -311,8 +270,6 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "committed",
       ops: [
-        setOp("soc.act", 2),
-        setOp("soc.step", "constraint-added"),
         setOp("soc.constraints", [{
           id: "constraint-payroll",
           actorId,
@@ -334,8 +291,6 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "suggested",
       ops: [
-        setOp("soc.act", 3),
-        setOp("soc.step", "exploration-suggested"),
         setOp("soc.stage", "Suggested exploration and human reorientation"),
         setOp("soc.explorations", [{
           id: "explore-1",
@@ -366,8 +321,6 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "superseded",
       ops: [
-        setOp("soc.act", 4),
-        setOp("soc.step", "exploration-amended"),
         setOp("soc.explorations", [...superseded, {
           id: "explore-2",
           revision: 2,
@@ -398,8 +351,6 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "replanned",
       ops: [
-        setOp("soc.act", 5),
-        setOp("soc.step", "exploration-running"),
         setOp("soc.explorations", explorations),
         setOp("soc.actors", updateActor(ctx, actorId, "working", "Running Morgan's amended passive correlation")),
         setOp(
@@ -419,8 +370,6 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "partial",
       ops: [
-        setOp("soc.act", 6),
-        setOp("soc.step", "partial-findings"),
         setOp("soc.stage", "Cross-source result and governed overreach"),
         setOp("soc.evidence", evidence),
         setOp("soc.hypothesis", {
@@ -442,8 +391,6 @@ const deterministicEffects: EffectHandlerMap = {
       outcome: "rejected",
       detail: { fallback: "increase-telemetry" },
       ops: [
-        setOp("soc.act", 7),
-        setOp("soc.step", "dc01-rejected"),
         setOp("soc.incident.governance", "Policy blocked; fallback active"),
         setOp("soc.proposal", {
           id: "proposal-dc01",
@@ -476,8 +423,6 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "validated",
       ops: [
-        setOp("soc.act", 8),
-        setOp("soc.step", "origin-resolved"),
         setOp("soc.evidence", evidence),
         setOp("soc.correlations", [{
           id: "corr-1",
@@ -505,8 +450,6 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "suggested",
       ops: [
-        setOp("soc.act", 9),
-        setOp("soc.step", "response-suggested"),
         setOp("soc.stage", "Response suggestion and human reorientation"),
         setOp("soc.proposal", {
           id: "proposal-host-a",
@@ -532,8 +475,6 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "superseded",
       ops: [
-        setOp("soc.act", 10),
-        setOp("soc.step", "response-revised"),
         setOp("soc.proposal", {
           ...proposal,
           revision: 2,
@@ -555,8 +496,6 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "validated",
       ops: [
-        setOp("soc.act", 11),
-        setOp("soc.step", "response-validated"),
         setOp("soc.proposal", {
           ...proposal,
           status: "ready-for-recommendation",
@@ -579,8 +518,6 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "recommended",
       ops: [
-        setOp("soc.act", 12),
-        setOp("soc.step", "awaiting-commander"),
         setOp("soc.incident.governance", "Awaiting commander"),
         setOp("soc.recommendation", {
           id: "rec-1",
@@ -616,12 +553,10 @@ const deterministicEffects: EffectHandlerMap = {
         ],
       };
     }
-    const presenter = ctx.get("soc.presenter") as RecordValue;
+    const demoPresenter = ctx.get("demo.presenter") as RecordValue | undefined;
     return {
       outcome: "authorized",
       ops: [
-        setOp("soc.act", 13),
-        setOp("soc.step", "authorized"),
         setOp("soc.stage", "Correct authority and execution"),
         setOp("soc.incident.governance", "Authorized"),
         setOp("soc.authorization", {
@@ -634,7 +569,10 @@ const deterministicEffects: EffectHandlerMap = {
           "human-priya": { status: "active", activity: "Authorized evidence-backed containment" },
           "agent-response": { status: "waiting", activity: "Authorized; waiting for presenter to run containment" },
         })),
-        setOp("soc.presenter", { ...presenter, locked: false }),
+        ...(ctx.get("demo.enabled") === true ? [
+          setOp("demo.act", 13),
+          setOp("demo.presenter", { ...(demoPresenter ?? {}), locked: false }),
+        ] : []),
         setOp(
           "soc.journal",
           appendJournal(ctx, entry("j-13", "09:44:08", actorId, "authorized", "Authorized the evidence-backed Host-A isolation", ["authorization", "proposal-host-a"]))
@@ -657,8 +595,6 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "executed",
       ops: [
-        setOp("soc.act", 14),
-        setOp("soc.step", "contained"),
         setOp("soc.stage", "Containment complete"),
         setOp("soc.incident.status", "Contained"),
         setOp("soc.incident.governance", "Executed"),
@@ -680,33 +616,12 @@ const deterministicEffects: EffectHandlerMap = {
         ...Object.entries(resetState).map(([key, value]) =>
           setOp(`soc.${key}`, JSON.parse(JSON.stringify(value)) as Json)
         ),
-        setOp("soc.act", 0),
-        setOp("soc.step", "ready"),
-        setOp("soc.presenter", {
-          pace: "manual",
-          durationMs: 120000,
-          locked: false,
-          advanceToken: 0,
-        }),
       ],
     };
   },
 };
 
-const RUNNER_EFFECT_NAMES = new Set([
-  "requestNextAct",
-  "setPace",
-  "finishAct",
-  "resetScenario",
-]);
-
-export const demoRunnerEffects = Object.fromEntries(
-  Object.entries(deterministicEffects).filter(([name]) => RUNNER_EFFECT_NAMES.has(name))
-) as EffectHandlerMap;
-
-export const socOrganismEffects = Object.fromEntries(
-  Object.entries(deterministicEffects).filter(([name]) => !RUNNER_EFFECT_NAMES.has(name))
-) as EffectHandlerMap;
+export const socOrganismEffects = deterministicEffects;
 
 export function createSocEffects(
   fetchImpl: typeof globalThis.fetch = globalThis.fetch,
@@ -876,6 +791,39 @@ export function createSocEffects(
     };
   }
 
+  const commandHandlers: Record<string, string> = {
+    establishIntent: "establishIntent",
+    addConstraint: "addConstraint",
+    suggestExploration: "suggestExploration",
+    amendExploration: "amendExploration",
+    replanExploration: "replanExploration",
+    commitPartialFindings: "commitPartialFindings",
+    proposeDc01: "evaluateDc01Policy",
+    completeCorrelation: "completeCorrelation",
+    proposeHostA: "proposeHostA",
+    reviseResponse: "reviseResponse",
+    calculateResponse: "calculateResponse",
+    recommendContainment: "recommendContainment",
+    executeContainment: "executeContainment",
+    $reset: "resetScenario",
+  };
+  for (const [command, handlerName] of Object.entries(commandHandlers)) {
+    const handler = wrapped[handlerName];
+    if (!handler) continue;
+    wrapped[handlerName] = async (ctx) => {
+      const result = await handler(ctx) as OrchestratorResult | void;
+      const request = ctx.get("demo.request") as RecordValue | undefined;
+      if (request?.command !== command || typeof request.token !== "number") return result;
+      return {
+        ...(result ?? {}),
+        ops: [
+          ...(result?.ops ?? []),
+          setOp("demo.ack", { token: request.token, command }),
+        ],
+      };
+    };
+  }
+
   return wrapped;
 }
 
@@ -883,12 +831,8 @@ export function createSocOrganismEffects(
   fetchImpl: typeof globalThis.fetch = globalThis.fetch,
   accessKey: () => string = getSocFoundryKey
 ): EffectHandlerMap {
-  const effects = createSocEffects(fetchImpl, accessKey);
-  return Object.fromEntries(
-    Object.entries(effects).filter(([name]) => !RUNNER_EFFECT_NAMES.has(name))
-  ) as EffectHandlerMap;
+  return createSocEffects(fetchImpl, accessKey);
 }
 
-export const demoEffects = createSocEffects();
 export const effects = createSocOrganismEffects();
 export default effects;

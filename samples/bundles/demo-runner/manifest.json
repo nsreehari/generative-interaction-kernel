@@ -1,0 +1,34 @@
+{
+  "gik": "0.1",
+  "type": "manifest",
+  "payload": {
+    "version": "demo-runner/1.0",
+    "expression": "jsonata",
+    "namespaces": ["runner"],
+    "contexts": ["demo"],
+    "actions": ["assign", "derive", "emit", "invoke"],
+    "capabilities": {
+      "demo:runner": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "slots": ["children"],
+        "emits": ["reset", "finishAct"]
+      },
+      "ui:timer-button": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "emits": ["press"]
+      },
+      "fluent:toggle": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "emits": ["toggle"]
+      }
+    },
+    "externals": {
+      "projectionViews": {
+        "demo": { "from": "self" },
+        "ui": { "from": "floor", "use": ["timer-button"] },
+        "fluent": { "from": "fluent", "use": ["toggle"] }
+      },
+      "effectHandlers": ["requestNextAct", "setPace", "finishAct", "resetDemo"]
+    }
+  }
+}
