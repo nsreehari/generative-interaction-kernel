@@ -8,7 +8,7 @@
 // so the whole surface stays JSON — no bespoke React, no effect handlers, and it composes via the
 // same bundle-in-bundle mechanism the console already uses.
 
-import { assign, authorDocument, node, type DocNode } from "../../../../kernel/src/index";
+import { assign, authorDocument, node, type DocNode } from "@gik/kernel";
 import { bundleManifest } from "./manifest";
 import type { SerializableBundle } from "./bundle";
 

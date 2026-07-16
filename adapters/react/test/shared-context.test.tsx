@@ -6,7 +6,7 @@ import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import { GenUIController, SharedContextStore } from "../src/index";
-import { Kernel, authorDocument, node, assignFrom, envelope, type ResolvedNode } from "../../../kernel/src/index";
+import { Kernel, authorDocument, node, assignFrom, envelope, type ResolvedNode } from "@gik/kernel";
 
 const manifest = envelope("manifest", {
   version: "shared-context-test/1",

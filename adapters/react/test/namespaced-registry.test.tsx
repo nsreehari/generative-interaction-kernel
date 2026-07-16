@@ -5,7 +5,7 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
 import { createElement } from "react";
-import type { ProjectionViewImport } from "../../../kernel/src/types";
+import type { ProjectionViewImport } from "@gik/kernel";
 import {
   buildRegistryFromImports,
   splitCapabilityRef,

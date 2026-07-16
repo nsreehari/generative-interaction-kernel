@@ -3,7 +3,7 @@
 // capability, or a capability with no registered component, uses the fallback view).
 
 import { createElement, type ReactNode } from "react";
-import type { ResolvedNode } from "../../../kernel/src/types";
+import type { ResolvedNode } from "@gik/kernel";
 import type { ComponentRegistry } from "./registry";
 
 export type EmitFn = (

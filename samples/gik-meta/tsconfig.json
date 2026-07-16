@@ -16,31 +16,7 @@
     ],
     "types": [
       "node"
-    ],
-    "baseUrl": ".",
-    "paths": {
-      "gik": [
-        "../../packages/gik/src/index.ts"
-      ],
-      "@gik/kernel": [
-        "../../packages/kernel/src/index.ts"
-      ],
-      "@gik/react": [
-        "../../packages/react/src/index.ts"
-      ],
-      "@gik/agentface": [
-        "../../packages/agentface/src/index.ts"
-      ],
-      "@gik/controlface": [
-        "../../packages/controlface/src/index.ts"
-      ],
-      "@gik/transport-http-sse": [
-        "../../packages/transport-http-sse/src/index.ts"
-      ],
-      "@gik/transport-mcp-http": [
-        "../../packages/transport-mcp-http/src/index.ts"
-      ]
-    }
+    ]
   },
   "include": [
     "."

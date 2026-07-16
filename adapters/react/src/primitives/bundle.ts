@@ -18,7 +18,7 @@ import {
   type Enveloped,
   type Json,
   type ManifestPayload,
-} from "../../../../kernel/src/index";
+} from "@gik/kernel";
 import { GenUIController } from "../controller";
 import { createEffectDispatcher, type EffectHandlerMap } from "./effects";
 import type { ProjectionView } from "../registry";

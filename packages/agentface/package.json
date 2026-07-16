@@ -40,6 +40,9 @@
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
+  "dependencies": {
+    "@gik/controlface": "0.1.0"
+  },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --sourcemap --clean --tsconfig tsconfig.json",
     "prepack": "node ../../scripts/sync-public-docs.mjs packages/agentface"
