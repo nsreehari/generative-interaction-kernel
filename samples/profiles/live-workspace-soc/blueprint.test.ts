@@ -122,5 +122,10 @@ test("the base runtime preserves the organism Blueprint output behind host integ
   assert.equal(runtime.root.edges.react.length, 14);
   delete runtime.root.edges.react;
   delete runtime.root.edges.on.reset;
+  delete runtime.root.edges.on.selectTimeline;
+  delete runtime.root.edges.on.clearTimelineSelection;
+  delete runtime.root.edges.read.demoEnabled;
+  delete runtime.root.edges.read.demoTimeline;
+  delete runtime.root.edges.read.demoSelection;
   assert.deepEqual(compileSocDocument("war-room"), runtime);
 });

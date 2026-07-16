@@ -3,10 +3,13 @@ import { test } from "vitest";
 
 import {
   validateDemoCatalog,
+  validateDemoComposition,
+  type DemoCatalogEntry,
+  type OrganismDemoContract,
   writeDemoNavigation,
   type ScenarioPlan,
 } from "../shared/demo-runner";
-import { demoCatalog, resolveDemoComposition } from "./catalog";
+import { demoCatalog, resolveDemoComposition, socDemoContract } from "./catalog";
 
 test("demo catalog resolves a validated scenario and organism composition", () => {
   const composition = resolveDemoComposition("soc-t3");
@@ -16,6 +19,9 @@ test("demo catalog resolves a validated scenario and organism composition", () =
   const executive = resolveDemoComposition("soc-executive");
   assert.equal(executive.scenarioPlan.id, "live-workspace-soc-executive");
   assert.equal(executive.scenarioPlan.steps[0].title, "Set the investigation objective");
+  for (const composition of [resolveDemoComposition("soc-t3"), executive]) {
+    assert.doesNotThrow(() => validateDemoComposition(composition.entry, composition.scenarioPlan, socDemoContract));
+  }
 });
 
 test("demo navigation atomically selects the composition bundle and context", () => {
@@ -54,4 +60,37 @@ test("demo catalog rejects a scenario and organism target mismatch", () => {
     ),
     /targets 'organism-b'.*targets 'organism-a'/
   );
+});
+
+test("composition validation rejects unsupported scenario requirements", () => {
+  const entry: DemoCatalogEntry = {
+    id: "demo-a",
+    label: "Demo A",
+    scenarioBlueprintId: "scenario-a",
+    targetBlueprintId: "live-workspace-soc",
+    bundleId: "live-workspace-soc",
+    defaultContext: "war-room",
+    requiredTimelineSources: ["scenario", "organism"],
+  };
+  const scenario: ScenarioPlan = {
+    id: "scenario-a",
+    targetBlueprintId: "live-workspace-soc",
+    title: "Scenario A",
+    pace: { manualDurationMs: 1000, autoDurationMs: 100, default: "manual" },
+    steps: [{ id: "step-a", title: "Step A", kind: "dispatch", command: "establishIntent", actorRef: { namespace: "soc", kind: "actor", id: "human-morgan" } }],
+  };
+  const rejects = (mutateEntry: (value: DemoCatalogEntry) => void, mutateScenario: (value: ScenarioPlan) => void, mutateContract: (value: OrganismDemoContract) => void, message: RegExp) => {
+    const nextEntry = structuredClone(entry);
+    const nextScenario = structuredClone(scenario);
+    const nextContract = structuredClone(socDemoContract);
+    mutateEntry(nextEntry);
+    mutateScenario(nextScenario);
+    mutateContract(nextContract);
+    assert.throws(() => validateDemoComposition(nextEntry, nextScenario, nextContract), message);
+  };
+  rejects(() => {}, (value) => { value.steps[0].command = "unknown"; }, () => {}, /Unsupported scenario command/);
+  rejects(() => {}, (value) => { value.steps[0].actorRef!.id = "unknown"; }, () => {}, /Unsupported scenario actor/);
+  rejects((value) => { value.defaultContext = "unknown"; }, () => {}, () => {}, /Unsupported presentation context/);
+  rejects(() => {}, (value) => { value.steps[0].focusRefs = [{ namespace: "soc", kind: "cell", id: "intent" }]; }, (value) => { value.focusKinds = value.focusKinds.filter((kind) => kind !== "cell"); }, /Unsupported focus kind/);
+  rejects(() => {}, () => {}, (value) => { value.timelineSources = ["scenario"]; }, /Unsupported timeline source/);
 });

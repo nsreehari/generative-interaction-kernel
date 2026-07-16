@@ -11,7 +11,7 @@
       "default": "manual"
     },
     "steps": [
-      { "id": "act-01", "title": "Morgan establishes investigation intent", "kind": "dispatch", "command": "establishIntent", "actorRef": { "namespace": "soc", "kind": "actor", "id": "human-morgan", "relation": "origin" }, "waitAfterMs": 760 },
+      { "id": "act-01", "title": "Morgan establishes investigation intent", "kind": "dispatch", "command": "establishIntent", "actorRef": { "namespace": "soc", "kind": "actor", "id": "human-morgan", "relation": "origin" }, "focusRefs": [{ "namespace": "soc", "kind": "record", "id": "intent", "relation": "affected" }], "waitAfterMs": 760 },
       { "id": "act-02", "title": "Priya protects the payroll cutover", "kind": "dispatch", "command": "addConstraint", "actorRef": { "namespace": "soc", "kind": "actor", "id": "human-priya", "relation": "origin" }, "waitAfterMs": 760 },
       { "id": "act-03", "title": "Correlation Agent suggests exploration", "kind": "dispatch", "command": "suggestExploration", "actorRef": { "namespace": "soc", "kind": "actor", "id": "agent-correlation", "relation": "origin" }, "waitAfterMs": 760 },
       { "id": "act-04", "title": "Morgan narrows the exploration", "kind": "dispatch", "command": "amendExploration", "actorRef": { "namespace": "soc", "kind": "actor", "id": "human-morgan", "relation": "origin" }, "waitAfterMs": 760 },

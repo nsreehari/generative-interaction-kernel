@@ -11,7 +11,7 @@
       "default": "manual"
     },
     "steps": [
-      { "id": "intent", "title": "Set the investigation objective", "kind": "dispatch", "command": "establishIntent", "actorRef": { "namespace": "soc", "kind": "actor", "id": "human-morgan", "relation": "origin" }, "waitAfterMs": 450 },
+      { "id": "intent", "title": "Set the investigation objective", "kind": "dispatch", "command": "establishIntent", "actorRef": { "namespace": "soc", "kind": "actor", "id": "human-morgan", "relation": "origin" }, "focusRefs": [{ "namespace": "soc", "kind": "record", "id": "intent", "relation": "affected" }], "waitAfterMs": 450 },
       { "id": "constraint", "title": "Protect payroll continuity", "kind": "dispatch", "command": "addConstraint", "actorRef": { "namespace": "soc", "kind": "actor", "id": "human-priya", "relation": "origin" }, "waitAfterMs": 450 },
       { "id": "explore", "title": "Ask the correlation agent for a safe path", "kind": "dispatch", "command": "suggestExploration", "actorRef": { "namespace": "soc", "kind": "actor", "id": "agent-correlation", "relation": "origin" }, "waitAfterMs": 450 },
       { "id": "redirect", "title": "Narrow the investigation", "kind": "dispatch", "command": "amendExploration", "actorRef": { "namespace": "soc", "kind": "actor", "id": "human-morgan", "relation": "origin" }, "waitAfterMs": 450 },

@@ -29,6 +29,13 @@ export interface DemoSelection {
   focusRefs: FocusRef[];
 }
 
+export interface FocusTarget {
+  ref: FocusRef;
+  regionId: string;
+  behavior: "highlight" | "select" | "reveal" | "center" | "dim-others";
+  priority?: number;
+}
+
 export interface ScenarioStep {
   id: string;
   title: string;
@@ -37,6 +44,16 @@ export interface ScenarioStep {
   actorRef?: FocusRef;
   waitAfterMs?: number;
   humanBoundary?: FocusRef;
+  focusRefs?: FocusRef[];
+}
+
+export interface OrganismDemoContract {
+  blueprintId: string;
+  commands: string[];
+  actors: string[];
+  presentationContexts: string[];
+  focusKinds: FocusKind[];
+  timelineSources: TimelineItem["source"][];
 }
 
 export interface ScenarioPlan {
@@ -64,6 +81,7 @@ export interface DemoCatalogEntry {
   targetBlueprintId: string;
   bundleId: string;
   defaultContext?: string;
+  requiredTimelineSources?: TimelineItem["source"][];
 }
 
 export interface DemoCatalog {
@@ -127,6 +145,46 @@ export function selectionContainsFocus(
   return selection.focusRefs.some((candidate) =>
     targets.some((target) => focusRefMatches(candidate, target))
   );
+}
+
+export function resolveFocusTargets(
+  selection: DemoSelection | undefined,
+  targets: readonly FocusTarget[]
+): FocusTarget[] {
+  if (!selection) return [];
+  return targets
+    .filter((target) => selectionContainsFocus(selection, [target.ref]))
+    .sort((left, right) => (right.priority ?? 0) - (left.priority ?? 0));
+}
+
+export function validateDemoComposition(
+  entry: DemoCatalogEntry,
+  scenario: ScenarioPlan,
+  organism: OrganismDemoContract
+): void {
+  if (scenario.targetBlueprintId !== organism.blueprintId || entry.targetBlueprintId !== organism.blueprintId) {
+    throw new Error(`Demo '${entry.id}' targets an incompatible organism`);
+  }
+  const commands = new Set(organism.commands);
+  const actors = new Set(organism.actors);
+  const contexts = new Set(organism.presentationContexts);
+  const focusKinds = new Set(organism.focusKinds);
+  const timelineSources = new Set(organism.timelineSources);
+  for (const step of scenario.steps) {
+    if (step.command && !commands.has(step.command)) throw new Error(`Unsupported scenario command '${step.command}'`);
+    for (const actor of [step.actorRef, step.humanBoundary]) {
+      if (actor && !actors.has(actor.id)) throw new Error(`Unsupported scenario actor '${actor.id}'`);
+    }
+    for (const focus of [step.actorRef, step.humanBoundary, ...(step.focusRefs ?? [])]) {
+      if (focus && !focusKinds.has(focus.kind)) throw new Error(`Unsupported focus kind '${focus.kind}'`);
+    }
+  }
+  if (entry.defaultContext && !contexts.has(entry.defaultContext)) {
+    throw new Error(`Unsupported presentation context '${entry.defaultContext}'`);
+  }
+  for (const source of entry.requiredTimelineSources ?? []) {
+    if (!timelineSources.has(source)) throw new Error(`Unsupported timeline source '${source}'`);
+  }
 }
 
 export function validateDemoCatalog(

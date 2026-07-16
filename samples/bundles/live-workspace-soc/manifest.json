@@ -23,7 +23,8 @@
           "establishIntent", "addConstraint", "suggestExploration", "amendExploration",
           "replanExploration", "commitPartialFindings", "proposeDc01", "completeCorrelation",
           "proposeHostA", "reviseResponse", "calculateResponse", "recommendContainment",
-          "authorizeContainment", "executeContainment", "setPresentationContext", "setAgentMode", "reset"
+          "authorizeContainment", "executeContainment", "setPresentationContext", "setAgentMode", "reset",
+          "selectTimeline", "clearTimelineSelection"
         ]
       }
     },
