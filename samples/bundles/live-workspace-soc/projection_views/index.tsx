@@ -25,6 +25,7 @@ import {
   selectionContainsFocus,
   selectionFromTimelineItem,
   type DemoSelection,
+  type FocusTarget,
   type FocusRef,
   type TimelineItem,
 } from "../../../shared/demo-runner";
@@ -215,6 +216,27 @@ export function isActorSelected(entry: JournalEntry | undefined, actorId: string
     socJournalSelection(entry),
     [socFocusRef("actor", actorId)]
   );
+}
+
+export const SOC_FOCUS_TARGETS: FocusTarget[] = [
+  ...["intent", "constraints", "hypothesis", "exploration", "evidence", "proposal-dc01", "proposal-host-a", "rec-1", "authorization", "DC-01", "Host-A"].map((id) => ({
+    ref: socFocusRef("record", id),
+    regionId: id,
+    behavior: "highlight" as const,
+  })),
+  ...["human-morgan", "human-priya", "agent-correlation", "agent-response"].map((id) => ({
+    ref: socFocusRef("actor", id),
+    regionId: `participant:${id}`,
+    behavior: "select" as const,
+  })),
+];
+
+export function selectionTargetsRecord(selection: DemoSelection | undefined, objectIds: readonly string[]): boolean {
+  return selectionContainsFocus(selection, objectIds.map((id) => socFocusRef("record", id)));
+}
+
+export function selectionTargetsActor(selection: DemoSelection | undefined, actorId: string): boolean {
+  return selectionContainsFocus(selection, [socFocusRef("actor", actorId)]);
 }
 
 const useStyles = makeStyles({
@@ -424,6 +446,9 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   const proposal = (node.props.proposal ?? null) as unknown as Proposal | null;
   const authorization = (node.props.authorization ?? null) as unknown as Authorization | null;
   const journal = (node.props.journal ?? []) as unknown as JournalEntry[];
+  const demoEnabled = node.props.demoEnabled === true;
+  const demoTimeline = (node.props.demoTimeline ?? []) as unknown as TimelineItem[];
+  const demoSelection = (node.props.demoSelection ?? undefined) as unknown as DemoSelection | undefined;
   const intent = node.props.intent as unknown as { statement: string } | null;
   const constraints = (node.props.constraints ?? []) as unknown as Array<{ rule: string }>;
   const stage = String(node.props.stage ?? "Incident opened");
@@ -441,6 +466,12 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   const selectedEntry = selectedJournalId
     ? journal.find((item) => item.id === selectedJournalId) ?? latestEntry
     : latestEntry;
+  const organismTimeline = journal.map(socJournalTimelineItem);
+  const timelineItems = demoEnabled ? demoTimeline : organismTimeline;
+  const selectedTimelineItem = demoSelection
+    ? timelineItems.find((item) => item.id === demoSelection.itemId)
+    : selectedEntry ? socJournalTimelineItem(selectedEntry) : timelineItems.at(-1);
+  const activeSelection = demoSelection ?? (selectedTimelineItem ? selectionFromTimelineItem(selectedTimelineItem) : undefined);
   const actorNames = new Map(actors.map((item) => [item.id, item.name]));
   const selectedContext = presentation.contexts.find((item) => item.id === presentation.selectedContext) ?? presentation.contexts[0];
   const presentationSpec = socPresentationSpec(presentation.selectedContext);
@@ -503,6 +534,16 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   const selectContext = (contextId: string) => {
     emit("setPresentationContext", { contextId });
     window.history.replaceState(null, "", writeSocNavigation(window.location.href, consolePlane, contextId));
+  };
+
+  const selectTimelineItem = (item: TimelineItem) => {
+    if (demoEnabled) emit("selectTimeline", { selection: selectionFromTimelineItem(item) });
+    else setSelectedJournalId(item.operationRecordId ?? item.id);
+  };
+
+  const clearTimelineSelection = () => {
+    if (demoEnabled) emit("clearTimelineSelection", {});
+    else setSelectedJournalId(null);
   };
 
   return (
@@ -681,17 +722,17 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
               </section>
             </div> : <>
             {hasRegion("intent") || hasRegion("constraints") ? <div style={{ order: regionOrder("intent", "constraints") }} className={mergeClasses(styles.contextRow, hasRegion("intent") && hasRegion("constraints") ? undefined : styles.contextRowSingle)}>
-              {hasRegion("intent") ? <div data-soc-object-id="intent" className={mergeClasses(styles.contextBand, isCausallyAffected(selectedEntry, ["intent"]) ? styles.causalHighlight : undefined)}>
+              {hasRegion("intent") ? <div data-soc-object-id="intent" className={mergeClasses(styles.contextBand, selectionTargetsRecord(activeSelection, ["intent"]) ? styles.causalHighlight : undefined)}>
                 <div className={styles.contextLabel}>Morgan's intent</div>
                 <p className={mergeClasses(styles.contextText, !intent ? styles.emptyText : undefined)}>{intent?.statement ?? "Waiting for the analyst to establish intent"}</p>
               </div> : null}
-              {hasRegion("constraints") ? <div data-soc-object-id="constraints" className={mergeClasses(styles.contextBand, isCausallyAffected(selectedEntry, ["constraints", "DC-01"]) ? styles.causalHighlight : undefined)}>
+              {hasRegion("constraints") ? <div data-soc-object-id="constraints" className={mergeClasses(styles.contextBand, selectionTargetsRecord(activeSelection, ["constraints", "DC-01"]) ? styles.causalHighlight : undefined)}>
                 <div className={styles.contextLabel}>Priya's operating constraint</div>
                 <p className={mergeClasses(styles.contextText, constraints.length === 0 ? styles.emptyText : undefined)}>{constraints[0]?.rule ?? "Waiting for incident-command constraints"}</p>
               </div> : null}
             </div> : null}
 
-            {hasRegion("hypothesis") ? <article style={{ order: regionOrder("hypothesis") }} data-soc-object-id="hypothesis" className={mergeClasses(styles.hypothesis, isCausallyAffected(selectedEntry, ["hypothesis", "corr-1", "Host-A"]) ? styles.causalHighlight : undefined)}>
+            {hasRegion("hypothesis") ? <article style={{ order: regionOrder("hypothesis") }} data-soc-object-id="hypothesis" className={mergeClasses(styles.hypothesis, selectionTargetsRecord(activeSelection, ["hypothesis", "corr-1", "Host-A"]) ? styles.causalHighlight : undefined)}>
               <div className={styles.hypothesisTop}>
                 <div className={styles.hypothesisLabel}><BrainCircuit24Regular />Working hypothesis</div>
                 <div className={styles.confidence}>{hypothesis.confidence}%</div>
@@ -702,13 +743,13 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
             {showInvestigation ? <section style={{ order: regionOrder("exploration", "evidence") }} className={styles.section}>
                 <h3 className={styles.sectionTitle}><Sparkle24Regular />{hasRegion("exploration") ? "Exploration and evidence" : "Evidence summary"}</h3>
                 {hasRegion("exploration") && explorations.length > 0 ? <div className={styles.explorationList}>{explorations.map((item) => (
-                  <article data-soc-object-id={item.id} key={item.id} className={mergeClasses(styles.exploration, item.status === "superseded" ? styles.explorationMuted : undefined, isCausallyAffected(selectedEntry, [item.id]) ? styles.causalHighlight : undefined)}>
+                  <article data-soc-object-id={item.id} key={item.id} className={mergeClasses(styles.exploration, item.status === "superseded" ? styles.explorationMuted : undefined, selectionTargetsRecord(activeSelection, [item.id]) ? styles.causalHighlight : undefined)}>
                     <div className={styles.rowTop}><strong>Revision {item.revision}</strong><span className={styles.status}>{item.status}</span></div>
                     <div className={styles.detailGrid}><span>{item.windowMinutes} minute window</span><span>{item.correlationKey}</span><span>{item.safety}</span></div>
                   </article>
                 ))}</div> : hasRegion("exploration") ? <div className={styles.empty}>No exploration proposed yet.</div> : null}
                 {hasRegion("evidence") && evidence.length > 0 ? <div className={styles.evidenceList}>{evidence.map((item) => (
-                  <article data-soc-object-id={item.id} className={mergeClasses(styles.evidence, isCausallyAffected(selectedEntry, ["evidence", item.id]) ? styles.causalHighlight : undefined)} key={item.id}>
+                  <article data-soc-object-id={item.id} className={mergeClasses(styles.evidence, selectionTargetsRecord(activeSelection, ["evidence", item.id]) ? styles.causalHighlight : undefined)} key={item.id}>
                     <div className={styles.evidenceMeta}><span>{item.source}</span><span>{item.confidence}%</span></div>
                     <p className={styles.evidenceText}>{item.summary}</p>
                   </article>
@@ -717,7 +758,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
 
             {showResponse ? <section style={{ order: regionOrder("response") }} className={styles.section}>
                 <h3 className={styles.sectionTitle}><ShieldLock24Regular />Governed response</h3>
-                {proposal ? <article data-soc-object-id={proposal.id} className={mergeClasses(styles.proposal, proposal.status === "rejected" ? styles.proposalRejected : undefined, proposal.status === "executed" ? styles.proposalExecuted : undefined, isCausallyAffected(selectedEntry, [proposal.id, "proposal-dc01", "proposal-host-a", "rec-1", "authorization", "DC-01", "Host-A"]) ? styles.causalHighlight : undefined)}>
+                {proposal ? <article data-soc-object-id={proposal.id} className={mergeClasses(styles.proposal, proposal.status === "rejected" ? styles.proposalRejected : undefined, proposal.status === "executed" ? styles.proposalExecuted : undefined, selectionTargetsRecord(activeSelection, [proposal.id, "proposal-dc01", "proposal-host-a", "rec-1", "authorization", "DC-01", "Host-A"]) ? styles.causalHighlight : undefined)}>
                   <div className={styles.rowTop}><span className={styles.status}>{proposal.status}</span><span>{proposal.target}</span></div>
                   <h4 className={styles.proposalTitle}>{proposal.action}</h4>
                   {proposal.reason ? <p className={styles.proposalText}>{proposal.reason}</p> : null}
@@ -727,7 +768,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
                 </article> : <div className={styles.empty}>Response is holding until evidence supports a bounded action.</div>}
             </section> : null}
 
-            {hasRegion("authorization") ? <section style={{ order: regionOrder("authorization") }} data-soc-object-id="authorization" className={mergeClasses(styles.contextBand, isCausallyAffected(selectedEntry, ["authorization", "rec-1", "Host-A"]) ? styles.causalHighlight : undefined)}>
+            {hasRegion("authorization") ? <section style={{ order: regionOrder("authorization") }} data-soc-object-id="authorization" className={mergeClasses(styles.contextBand, selectionTargetsRecord(activeSelection, ["authorization", "rec-1", "Host-A"]) ? styles.causalHighlight : undefined)}>
               <div className={styles.contextLabel}>Commander authority</div>
               <p className={styles.contextText}>{authorization?.status === "pending" ? "Host-A isolation is ready for Incident Commander authorization." : authorization?.status === "authorized" ? "Containment has Incident Commander authorization." : "No consequential action is awaiting authorization."}</p>
               {authorization?.status === "pending" ? <Button appearance="primary" icon={<ShieldLock24Regular />} onClick={() => emit("authorizeContainment", {}, "human-priya")}>Authorize Host-A isolation</Button> : null}
@@ -735,7 +776,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
 
             {hasRegion("causal-record") ? <section style={{ order: regionOrder("causal-record") }} className={styles.contextBand}>
               <div className={styles.contextLabel}>Relevant causal record</div>
-              <p className={styles.contextText}>{selectedEntry ? `${actorNames.get(selectedEntry.actorId) ?? selectedEntry.actorId}: ${selectedEntry.summary}` : "The first attributable action will appear here."}</p>
+              <p className={styles.contextText}>{selectedTimelineItem ? `${selectedTimelineItem.actorRef ? actorNames.get(selectedTimelineItem.actorRef.id) ?? selectedTimelineItem.actorRef.id : selectedTimelineItem.source}: ${selectedTimelineItem.summary}` : "The first attributable action will appear here."}</p>
             </section> : null}
             </>}
             </div>}
@@ -749,19 +790,19 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
             <header className={styles.journalHeader}>
               <div><div className={styles.eyebrow}>Causal record</div><strong>Journal / Ledger</strong></div>
               <div className={styles.journalTabs}>
-                {selectedJournalId ? <Button size="small" appearance="subtle" onClick={() => setSelectedJournalId(null)}>Latest</Button> : null}
+                {(demoSelection || selectedJournalId) ? <Button size="small" appearance="subtle" onClick={clearTimelineSelection}>Latest</Button> : null}
                 <Button size="small" appearance={journalMode === "journal" ? "primary" : "subtle"} onClick={() => setJournalMode("journal")}>Journal</Button>
                 <Button size="small" appearance={journalMode === "ledger" ? "primary" : "subtle"} onClick={() => setJournalMode("ledger")}>Ledger</Button>
               </div>
             </header>
             <div className={styles.journalList}>
-              {journal.length === 0 ? <div className={styles.empty}><Clock20Regular /><p>The first attributable action will appear here.</p></div> : journal.map((item) => (
-                <button type="button" aria-pressed={selectedEntry?.id === item.id} aria-label={`${item.result}: ${item.summary}`} onClick={() => setSelectedJournalId(item.id)} key={item.id} className={mergeClasses(styles.journalEntry, selectedEntry?.id === item.id ? styles.journalEntryActive : undefined)}>
-                  <span className={styles.journalTime}>{item.time}</span>
+              {timelineItems.length === 0 ? <div className={styles.empty}><Clock20Regular /><p>The first attributable action will appear here.</p></div> : timelineItems.map((item) => (
+                <button type="button" aria-pressed={selectedTimelineItem?.id === item.id} aria-label={`${item.status}: ${item.title}`} onClick={() => selectTimelineItem(item)} key={item.id} className={mergeClasses(styles.journalEntry, selectedTimelineItem?.id === item.id ? styles.journalEntryActive : undefined)}>
+                  <span className={styles.journalTime}>{item.timestamp ?? `#${item.sequence ?? "-"}`}</span>
                   <div>
-                    <div className={styles.journalResult}>{item.result} · {actorNames.get(item.actorId) ?? item.actorId}</div>
+                    <div className={styles.journalResult}>{item.source} · {item.status}{item.actorRef ? ` · ${actorNames.get(item.actorRef.id) ?? item.actorRef.id}` : ""}</div>
                     <div className={styles.journalSummary}>{item.summary}</div>
-                    {journalMode === "ledger" ? <div className={styles.ledgerMeta}>actor={item.actorId}<br />affected={item.affected.join(", ")}{item.provider ? <><br />provider={item.provider} · agent={item.agentName}{item.conversationId ? <><br />conversation={item.conversationId} · response={item.responseId}</> : null}{item.fallbackReason ? <><br />fallback={item.fallbackReason}</> : null}</> : null}</div> : null}
+                    {journalMode === "ledger" ? <div className={styles.ledgerMeta}>item={item.scenarioStepId ?? item.operationRecordId ?? item.id}<br />focus={item.focusRefs.map((ref) => `${ref.kind}:${ref.id}`).join(", ")}{item.correlationId ? <><br />correlation={item.correlationId}</> : null}</div> : null}
                   </div>
                 </button>
               ))}
@@ -795,7 +836,7 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
         </button>
         {participantsExpanded ? <div id="soc-participants" className={styles.participants} aria-label="Human and agent participants">
             {actors.map((item) => {
-              const active = isActorSelected(selectedEntry, item.id);
+              const active = selectionTargetsActor(activeSelection, item.id);
               const canAuthorize = item.id === "human-priya" && authorization?.status === "pending";
               const status = canAuthorize ? "input-awaited" : item.status;
               return <article data-soc-actor-id={item.id} key={item.id} className={mergeClasses(styles.participant, active ? styles.participantActive : undefined, active ? styles.causalHighlight : undefined)}>

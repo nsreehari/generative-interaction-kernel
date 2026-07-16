@@ -46,6 +46,8 @@ export function Host(): React.ReactElement {
       request: null,
       ack: null,
       commands: {},
+      timeline: [],
+      selection: null,
     } }]);
     return { demo };
   }, [demoId]);

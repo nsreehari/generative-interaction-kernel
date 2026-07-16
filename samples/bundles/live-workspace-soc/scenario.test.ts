@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { bundleFromJson, loadBundleRuntime, SharedContextStore } from "@gik/react";
 import { t3ScenarioPlan } from "../../scenarios/live-workspace-soc-t3/compile";
+import { socExecutiveScenarioPlan } from "../../scenarios/live-workspace-soc-executive/compile";
+import { selectionFromTimelineItem, type ScenarioPlan, type TimelineItem } from "../../shared/demo-runner";
+import { selectionTargetsActor, selectionTargetsRecord } from "./projection_views/index";
 
 import document from "./document.json";
 import effects, {
@@ -23,7 +26,7 @@ function runtime(effectHandlers = effects) {
   }, { effectHandlers }));
 }
 
-function demoRuntimes() {
+function demoRuntimes(scenarioPlan: ScenarioPlan = t3ScenarioPlan) {
   const shared = SharedContextStore.create(["demo"]);
   shared.apply([{ op: "set", path: "demo", value: {
     enabled: true,
@@ -32,6 +35,8 @@ function demoRuntimes() {
     request: null,
     ack: null,
     commands: {},
+    timeline: [],
+    selection: null,
   } }]);
   const contexts = { demo: shared };
   const soc = loadBundleRuntime(bundleFromJson({
@@ -40,7 +45,7 @@ function demoRuntimes() {
     state: structuredClone(state),
   }, { effectHandlers: createSocEffects() }), contexts);
   const runnerSeed = structuredClone(runnerState) as Record<string, unknown>;
-  runnerSeed.runner = { plan: t3ScenarioPlan, catalog: [], entry: null };
+  runnerSeed.runner = { plan: scenarioPlan, catalog: [], entry: null };
   const runner = loadBundleRuntime(bundleFromJson({
     manifest: structuredClone(runnerManifest),
     document: structuredClone(runnerDocument),
@@ -134,10 +139,70 @@ test("runner command mailbox advances only after the SOC effect acknowledges it"
   await soc.controller.resync();
   assert.deepEqual(shared.get("demo.ack"), { token: 1, command: "establishIntent" });
   assert.equal(soc.state.get("soc.intent.statement"), "Determine the execution origin, contain safely, preserve evidence.");
+  const correlated = shared.get("demo.timeline") as unknown as TimelineItem[];
+  assert.deepEqual(correlated.map((item) => item.source), ["scenario", "organism"]);
+  assert.equal(correlated[0].correlationId, correlated[1].correlationId);
   await runner.controller.resync();
   await runner.controller.emit("demo-runner", "finishAct");
   assert.equal(shared.get("demo.act"), 1);
   assert.equal(shared.get("demo.presenter.locked"), false);
+});
+
+test("executive scenario uses the same runner timeline and semantic focus broker", async () => {
+  const { shared, soc, runner } = demoRuntimes(socExecutiveScenarioPlan);
+  await soc.controller.start();
+  await runner.controller.start();
+
+  for (const [index, step] of socExecutiveScenarioPlan.steps.slice(0, 12).entries()) {
+    await runner.controller.emit("next-act-timer-region", "press", { reason: "manual" });
+    assert.equal(shared.get("demo.presenter.locked"), true);
+    await soc.controller.resync();
+    const request = shared.get("demo.request") as { token: number; command: string };
+    assert.deepEqual(shared.get("demo.ack"), { token: request.token, command: step.command });
+    await runner.controller.resync();
+    await runner.controller.emit("demo-runner", "finishAct");
+    assert.equal(shared.get("demo.act"), index + 1);
+  }
+
+  const timelineBeforeGate = shared.get("demo.timeline") as unknown as TimelineItem[];
+  assert.equal(timelineBeforeGate[0].title, "Set the investigation objective");
+  assert.equal(timelineBeforeGate.length, 24);
+  for (let index = 0; index < timelineBeforeGate.length; index += 2) {
+    assert.deepEqual(timelineBeforeGate.slice(index, index + 2).map((item) => item.source), ["scenario", "organism"]);
+    assert.equal(timelineBeforeGate[index].correlationId, timelineBeforeGate[index + 1].correlationId);
+  }
+
+  const selection = selectionFromTimelineItem(timelineBeforeGate[0]);
+  await soc.controller.emit("soc-workspace", "selectTimeline", { selection });
+  assert.deepEqual(shared.get("demo.selection"), selection);
+  assert.equal(selectionTargetsActor(selection, "human-morgan"), true);
+  assert.equal(selectionTargetsRecord(selection, ["intent"]), true);
+  assert.equal(selectionTargetsRecord(selection, ["authorization"]), false);
+
+  await runner.controller.emit("next-act-timer-region", "press", { reason: "manual" });
+  assert.equal((shared.get("demo.request") as { command: string }).command, "$human-gate");
+  assert.equal(shared.get("demo.act"), 12);
+  await soc.controller.emit("soc-workspace", "authorizeContainment", {}, "human-priya");
+  const gateRequest = shared.get("demo.request") as { token: number };
+  assert.deepEqual(shared.get("demo.ack"), { token: gateRequest.token, command: "$human-gate" });
+  await runner.controller.resync();
+  await runner.controller.emit("demo-runner", "finishAct");
+  assert.equal(shared.get("demo.act"), 13);
+
+  await runner.controller.emit("next-act-timer-region", "press", { reason: "manual" });
+  await soc.controller.resync();
+  await runner.controller.resync();
+  await runner.controller.emit("demo-runner", "finishAct");
+  assert.equal(shared.get("demo.act"), 14);
+  assert.equal(shared.get("demo.presenter.locked"), true);
+  assert.equal(soc.state.get("soc.incident.status"), "Contained");
+
+  const completedTimeline = shared.get("demo.timeline") as unknown as TimelineItem[];
+  assert.equal(completedTimeline.length, 28);
+  const gateScenario = completedTimeline.find((item) => item.scenarioStepId === "authorize");
+  const gateOrganism = completedTimeline.find((item) => item.operationRecordId === "j-13");
+  assert.equal(gateScenario?.status, "complete");
+  assert.equal(gateScenario?.correlationId, gateOrganism?.correlationId);
 });
 
 test("presentation context changes projection metadata without changing the causal journal", async () => {

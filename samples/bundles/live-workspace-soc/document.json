@@ -57,6 +57,12 @@
           ],
           "reset": [
             { "do": "invoke", "args": { "tool": "resetScenario" } }
+          ],
+          "selectTimeline": [
+            { "do": "assign", "target": "demo.selection", "args": { "from": "$event.selection" } }
+          ],
+          "clearTimelineSelection": [
+            { "do": "assign", "target": "demo.selection", "args": { "value": null } }
           ]
         },
         "react": [
@@ -92,7 +98,10 @@
           "proposal": "soc.proposal",
           "recommendation": "soc.recommendation",
           "authorization": "soc.authorization",
-          "journal": "soc.journal"
+          "journal": "soc.journal",
+          "demoEnabled": "demo.enabled",
+          "demoTimeline": "demo.timeline",
+          "demoSelection": "demo.selection"
         },
         "children": [
           {

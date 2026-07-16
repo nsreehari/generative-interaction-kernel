@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import { resolveFocusTargets, selectionFromTimelineItem, type TimelineItem } from "../../../shared/demo-runner";
 
 import {
+  SOC_FOCUS_TARGETS,
   isActorSelected,
   isCausallyAffected,
   participantPresence,
@@ -45,6 +47,32 @@ test("journal entries lower to generic semantic focus selections", () => {
   });
   assert.equal(isActorSelected(entry, "agent-response"), true);
   assert.equal(isActorSelected(entry, "human-priya"), false);
+});
+
+test("scenario and organism selections resolve through the same SOC focus targets", () => {
+  const scenarioItem: TimelineItem = {
+    id: "scenario:intent",
+    source: "scenario",
+    title: "Set intent",
+    summary: "Dispatch intent",
+    status: "complete",
+    actorRef: { namespace: "soc", kind: "actor", id: "human-morgan", relation: "origin" },
+    focusRefs: [
+      { namespace: "soc", kind: "actor", id: "human-morgan", relation: "origin" },
+      { namespace: "soc", kind: "record", id: "intent", relation: "affected" },
+    ],
+  };
+  const organismSelection = socJournalSelection({
+    ...entry,
+    id: "j-intent",
+    actorId: "human-morgan",
+    affected: ["intent"],
+  });
+  const regionIds = (selection: ReturnType<typeof selectionFromTimelineItem> | undefined) =>
+    resolveFocusTargets(selection, SOC_FOCUS_TARGETS).map((target) => target.regionId).sort();
+
+  assert.deepEqual(regionIds(selectionFromTimelineItem(scenarioItem)), ["intent", "participant:human-morgan"]);
+  assert.deepEqual(regionIds(organismSelection), ["intent", "participant:human-morgan"]);
 });
 
 test("participant statuses map to a stable presence vocabulary", () => {

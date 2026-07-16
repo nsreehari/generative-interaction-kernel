@@ -1,5 +1,6 @@
 import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
 import type { Json, OrchestratorResult, PatchOp } from "@gik/kernel";
+import type { TimelineItem } from "../../../shared/demo-runner";
 
 import { createFoundryProxy } from "../../../shared/foundry-proxy";
 import manifest from "../manifest.json";
@@ -553,7 +554,30 @@ const deterministicEffects: EffectHandlerMap = {
         ],
       };
     }
-    const demoPresenter = ctx.get("demo.presenter") as RecordValue | undefined;
+    const demoRequest = ctx.get("demo.request") as RecordValue | undefined;
+    const timeline = ctx.get("demo.timeline");
+    const correlationId = String(demoRequest?.correlationId ?? "");
+    const completedTimeline = Array.isArray(timeline) ? (timeline as unknown as TimelineItem[]).map((item) =>
+      item.source === "scenario" && item.correlationId === correlationId
+        ? { ...item, status: "complete" as const, summary: "Human authorization completed" }
+        : item
+    ) : [];
+    const authorizationItem: TimelineItem = {
+      id: "organism:j-13",
+      source: "organism",
+      title: "authorized",
+      summary: "Authorized the evidence-backed Host-A isolation",
+      status: "authorized",
+      operationRecordId: "j-13",
+      timestamp: "09:44:08",
+      actorRef: { namespace: "soc", kind: "actor", id: actorId, relation: "origin" },
+      focusRefs: [
+        { namespace: "soc", kind: "actor", id: actorId, relation: "origin" },
+        { namespace: "soc", kind: "record", id: "authorization", relation: "affected" },
+        { namespace: "soc", kind: "record", id: "proposal-host-a", relation: "affected" },
+      ],
+      correlationId,
+    };
     return {
       outcome: "authorized",
       ops: [
@@ -569,9 +593,9 @@ const deterministicEffects: EffectHandlerMap = {
           "human-priya": { status: "active", activity: "Authorized evidence-backed containment" },
           "agent-response": { status: "waiting", activity: "Authorized; waiting for presenter to run containment" },
         })),
-        ...(ctx.get("demo.enabled") === true ? [
-          setOp("demo.act", 13),
-          setOp("demo.presenter", { ...(demoPresenter ?? {}), locked: false }),
+        ...(ctx.get("demo.enabled") === true && demoRequest?.command === "$human-gate" ? [
+          setOp("demo.timeline", [...completedTimeline, authorizationItem] as unknown as Json),
+          setOp("demo.ack", { token: demoRequest.token ?? 0, command: "$human-gate" }),
         ] : []),
         setOp(
           "soc.journal",
@@ -814,11 +838,37 @@ export function createSocEffects(
       const result = await handler(ctx) as OrchestratorResult | void;
       const request = ctx.get("demo.request") as RecordValue | undefined;
       if (request?.command !== command || typeof request.token !== "number") return result;
+      const timelineValue = ctx.get("demo.timeline");
+      const timeline = Array.isArray(timelineValue) ? timelineValue as unknown as TimelineItem[] : [];
+      const journalOp = result?.ops?.find((op) => op.path === "soc.journal" && Array.isArray(op.value));
+      const journal = Array.isArray(journalOp?.value) ? journalOp.value : [];
+      const journalEntry = journal.at(-1) as RecordValue | undefined;
+      const organismItem: TimelineItem | undefined = command !== "$reset" && journalEntry ? {
+        id: `organism:${String(journalEntry.id)}`,
+        source: "organism",
+        title: String(journalEntry.result ?? "committed"),
+        summary: String(journalEntry.summary ?? ""),
+        status: String(journalEntry.result ?? "committed"),
+        operationRecordId: String(journalEntry.id ?? ""),
+        timestamp: String(journalEntry.time ?? ""),
+        actorRef: { namespace: "soc", kind: "actor", id: String(journalEntry.actorId ?? ""), relation: "origin" },
+        focusRefs: [
+          { namespace: "soc", kind: "actor", id: String(journalEntry.actorId ?? ""), relation: "origin" },
+          ...(Array.isArray(journalEntry.affected) ? journalEntry.affected : []).map((id) => ({
+            namespace: "soc",
+            kind: "record" as const,
+            id: String(id),
+            relation: "affected" as const,
+          })),
+        ],
+        correlationId: String(request.correlationId ?? ""),
+      } : undefined;
       return {
         ...(result ?? {}),
         ops: [
           ...(result?.ops ?? []),
           setOp("demo.ack", { token: request.token, command }),
+          ...(organismItem ? [setOp("demo.timeline", [...timeline, organismItem] as unknown as Json)] : []),
         ],
       };
     };

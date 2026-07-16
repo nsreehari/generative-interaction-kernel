@@ -7,7 +7,8 @@
       "scenarioBlueprintId": "live-workspace-soc-t3",
       "targetBlueprintId": "live-workspace-soc",
       "bundleId": "live-workspace-soc",
-      "defaultContext": "war-room"
+      "defaultContext": "war-room",
+      "requiredTimelineSources": ["scenario", "organism"]
     },
     {
       "id": "soc-executive",
@@ -15,7 +16,8 @@
       "scenarioBlueprintId": "live-workspace-soc-executive",
       "targetBlueprintId": "live-workspace-soc",
       "bundleId": "live-workspace-soc",
-      "defaultContext": "war-room"
+      "defaultContext": "war-room",
+      "requiredTimelineSources": ["scenario", "organism"]
     }
   ]
 }
