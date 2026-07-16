@@ -31,6 +31,8 @@
     "test:providers": "vitest run --project providers",
     "test:sse": "vitest run --project sse",
     "test:samples": "vitest run --project samples",
+    "test:parity:soc": "playwright test --config playwright.soc.config.ts",
+    "test:parity:soc:update": "playwright test --config playwright.soc.config.ts --update-snapshots",
     "test:mcp": "vitest run --project mcp",
     "test:vitest": "vitest run",
     "dev:workbench": "vite samples/apps/host --open /?bundle=workbench",
@@ -59,6 +61,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/node": "^20.14.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
