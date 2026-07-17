@@ -113,7 +113,10 @@
             "id": "soc-substrate-chrome",
             "edges": {
               "read": {
-                "incident": "soc.incident"
+                "incident": "soc.incident",
+                "presentation": "soc.presentation",
+                "journal": "soc.journal",
+                "facet": "soc.presentation.regionFacets.summary"
               },
               "children": [
                 {
@@ -126,13 +129,6 @@
                       "frame": "soc.presentation.frame"
                     },
                     "children": [
-                      {
-                        "capability": "soc:viewpoint-header",
-                        "id": "soc-viewpoint-header",
-                        "edges": {
-                          "read": { "presentation": "soc.presentation", "journal": "soc.journal", "facet": "soc.presentation.regionFacets.summary" }
-                        }
-                      },
                       {
                         "capability": "soc:presentation-layout",
                         "id": "soc-presentation-layout",

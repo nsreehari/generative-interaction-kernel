@@ -265,6 +265,30 @@ test("presentation context changes projection metadata without changing the caus
     group: "investigation",
     presentation: "collection",
   });
+
+  await controller.emit("soc-workspace", "setPresentationContext", {
+    contextId: "investigation-board",
+  });
+  const board = store.get("soc.presentation") as typeof presentation;
+  assert.equal(board.selectedContext, "investigation-board");
+  assert.equal(board.revision, 2);
+  assert.equal(board.frame, "shared");
+  assert.equal(board.arrangement, "kanban");
+  assert.equal(board.regionFacets.summary.visible, false);
+  assert.deepEqual(
+    ["intent", "constraints", "hypothesis", "exploration", "evidence", "response", "authorization", "causal-record"]
+      .map((region) => [region, board.regionFacets[region].rank, board.regionFacets[region].group]),
+    [
+      ["intent", 0, "kanban-frame"],
+      ["constraints", 1, "kanban-frame"],
+      ["hypothesis", 2, "kanban-explore"],
+      ["exploration", 3, "kanban-explore"],
+      ["evidence", 4, "kanban-establish"],
+      ["response", 5, "kanban-decide"],
+      ["authorization", 6, "kanban-decide"],
+      ["causal-record", 7, "kanban-record"],
+    ],
+  );
   assert.deepEqual(store.get("soc.journal"), journalBefore);
 });
 

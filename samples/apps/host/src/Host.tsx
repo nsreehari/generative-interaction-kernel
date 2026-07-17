@@ -37,22 +37,26 @@ export function Host(): React.ReactElement {
     const next: Record<string, SharedContextStore> = {};
     const target = registry.get(targetId);
     const targetState = target?.kind === "bundle" ? target.make().state : undefined;
+    const harness = harnessId ? registry.get(harnessId) : undefined;
+    const harnessState = harness?.kind === "bundle" ? harness.make().state : undefined;
     const inspection = targetState?.inspection && typeof targetState.inspection === "object"
       ? structuredClone(targetState.inspection)
       : { participants: [] };
     if (demoId || harnessId || presentationContext) {
       const control = SharedContextStore.create(["control"]);
-      control.apply([{ op: "set", path: "control", value: {
+      const controlSeed = harnessState?.control && typeof harnessState.control === "object"
+        ? structuredClone(harnessState.control)
+        : {
         request: null,
         receipt: null,
         commands: {},
-        inspection,
         presentationContext: null,
         participantConfigurationRequest: null,
         agentModeRequest: null,
         authorizationRequest: null,
-        ui: { activeTab: "journal", harnessExpanded: true, journalMode: "journal", selectedJournalId: null },
-      } }]);
+      };
+      controlSeed.inspection = inspection;
+      control.apply([{ op: "set", path: "control", value: controlSeed }]);
       next.control = control;
     }
     if (demoId) {

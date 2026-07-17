@@ -48,7 +48,10 @@
                   "id": "soc-substrate-chrome",
                   "capability": "soc:substrate-chrome",
                   "read": {
-                    "incident": "soc.incident"
+                    "incident": "soc.incident",
+                    "presentation": "soc.presentation",
+                    "journal": "soc.journal",
+                    "facet": "soc.presentation.regionFacets.summary"
                   },
                   "children": [
                     {
@@ -60,11 +63,6 @@
                         "frame": "soc.presentation.frame"
                       },
                       "children": [
-                        {
-                          "id": "soc-viewpoint-header",
-                          "capability": "soc:viewpoint-header",
-                          "read": { "presentation": "soc.presentation", "journal": "soc.journal", "facet": "soc.presentation.regionFacets.summary" }
-                        },
                         {
                           "id": "soc-presentation-layout",
                           "capability": "soc:presentation-layout",

@@ -30,13 +30,13 @@ export interface PresentationRegionFacet {
   priority: "critical" | "primary" | "supporting";
   disclosure: "status" | "summary" | "detail" | "omitted";
   concern: "orientation" | "guardrails" | "investigation" | "delegation" | "response" | "governance" | "provenance";
-  group: "orientation" | "guardrails" | "investigation" | "response" | "governance" | "provenance" | "context" | "shared-state" | "request" | "governed-result";
+  group: "orientation" | "guardrails" | "investigation" | "response" | "governance" | "provenance" | "context" | "shared-state" | "request" | "governed-result" | "kanban-frame" | "kanban-explore" | "kanban-establish" | "kanban-decide" | "kanban-record";
   presentation: "brief" | "finding" | "collection" | "decision" | "audit" | "agent-request";
 }
 
 export interface SocPresentationSpec {
   frame: "shared" | "mobile" | "laptop" | "pager" | "workstation" | "agent-console";
-  arrangement: "war-room" | "inspection" | "decision" | "command" | "glanceable" | "investigation" | "agent-correlation" | "agent-response";
+  arrangement: "war-room" | "inspection" | "kanban" | "decision" | "command" | "glanceable" | "investigation" | "agent-correlation" | "agent-response";
   regions: SubstrateRegion[];
 }
 
