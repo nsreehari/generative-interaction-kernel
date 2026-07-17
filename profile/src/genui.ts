@@ -223,11 +223,13 @@ export interface WorkflowToInteractionRecipe extends LayerRecipe {
 }
 
 export interface RuntimeNodeRecipeFields {
+  id?: string;
   capability?: string;
   props?: Record<string, Json>;
   read?: Record<string, string>;
   readExpr?: Record<string, string>;
   on?: Record<string, Action[]>;
+  children?: RuntimeNodeRecipeFields[];
 }
 
 export interface PresentationRuntimeFacts extends RecipeMatch {
@@ -678,6 +680,10 @@ function lintPresentationToRuntimeRecipe(
       });
     }
   };
+  const checkNode = (node: RuntimeNodeRecipeFields, label: string) => {
+    checkCapability(node.capability, label);
+    node.children?.forEach((child, index) => checkNode(child, `${label} child ${index}`));
+  };
 
   for (const rule of recipe.program) {
     const key = `${rule.slot}:${JSON.stringify(rule.match)}`;
@@ -688,7 +694,7 @@ function lintPresentationToRuntimeRecipe(
       });
     }
     seen.add(key);
-    checkCapability(rule.emit.capability, `${rule.slot} rule ${key}`);
+    checkNode(rule.emit, `${rule.slot} rule ${key}`);
   }
 }
 

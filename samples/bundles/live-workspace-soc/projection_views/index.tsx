@@ -16,7 +16,6 @@ import {
 } from "@fluentui/react-icons";
 import type { ProjectionView } from "@gik/react";
 import { GrowingContainer } from "../../../../adapters/react/src/primitives/registry";
-import { FluentSwitchControl } from "../../fluent/projection_views/index";
 import {
   compileSocPresentation,
   SOC_BLUEPRINT_CONTEXTS,
@@ -438,7 +437,203 @@ function ParticipantPresenceIcon({ status }: { status: string }): React.ReactEle
   return <span className={className} title="Available"><CheckmarkCircle20Regular /></span>;
 }
 
-const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
+const WorkspaceShell: ProjectionView = ({ children }) => {
+  const styles = useStyles();
+  return <main className={styles.workspace}>{children}</main>;
+};
+
+const WorkspaceHeader: ProjectionView = ({ node, emit, children }) => {
+  const styles = useStyles();
+  const incident = node.props.incident as unknown as Incident;
+  const presentation = node.props.presentation as unknown as Presentation;
+  const consolePlane = String(node.props.consolePlane ?? "runtime") as SocPlane;
+  const validContextIds = SOC_BLUEPRINT_CONTEXTS.map((item) => item.id);
+  const initialNavigationRef = React.useRef(readSocNavigation(window.location.search, validContextIds));
+  const emitRef = React.useRef(emit);
+  const skipNavigationSyncRef = React.useRef(true);
+  emitRef.current = emit;
+
+  React.useEffect(() => {
+    const requested = initialNavigationRef.current;
+    if (requested.context && requested.context !== presentation.selectedContext) {
+      emitRef.current("setPresentationContext", { contextId: requested.context });
+    }
+    if (requested.plane !== consolePlane) {
+      emitRef.current("setConsolePlane", { plane: requested.plane });
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (skipNavigationSyncRef.current) {
+      skipNavigationSyncRef.current = false;
+      return;
+    }
+    window.history.replaceState(null, "", writeSocNavigation(window.location.href, consolePlane, presentation.selectedContext));
+  }, [consolePlane, presentation.selectedContext]);
+
+  return (
+    <header className={styles.commandBar}>
+      <div className={styles.identity}>
+        <Button appearance="subtle" icon={<ArrowLeft24Regular />} aria-label="Return to overview" onClick={openOverview} />
+        <div className={styles.identityCopy}>
+          <div className={styles.eyebrow}>{incident.id} · Live Workspace : SOC</div>
+          <h1 className={styles.title}>{incident.title}</h1>
+        </div>
+      </div>
+      <div className={styles.controls}>
+        <div className={styles.workspaceModeSwitch}>{children}</div>
+        <label className={styles.viewpointControl}>
+          <span className={styles.viewpointLabel}>View as</span>
+          <Select
+            className={styles.contextSelect}
+            aria-label="View shared substrate as"
+            value={presentation.selectedContext}
+            onChange={(_, data) => emit("setPresentationContext", { contextId: data.value })}
+          >
+            {presentation.contexts.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+          </Select>
+        </label>
+        <span className={styles.pill}><ShieldLock24Regular />{incident.severity} · {incident.status}</span>
+        <span className={styles.pill}>{incident.governance}</span>
+      </div>
+    </header>
+  );
+};
+
+const Participants: ProjectionView = ({ node, emit, children }) => {
+  const styles = useStyles();
+  const actors = (node.props.actors ?? []) as unknown as Actor[];
+  const agentProviders = (node.props.agentProviders ?? {}) as unknown as Record<string, AgentProvider>;
+  const authorization = (node.props.authorization ?? null) as unknown as Authorization | null;
+  const journal = (node.props.journal ?? []) as unknown as JournalEntry[];
+  const demoSelection = (node.props.demoSelection ?? undefined) as unknown as DemoSelection | undefined;
+  const selectedJournalId = typeof node.props.selectedJournalId === "string" ? node.props.selectedJournalId : null;
+  const participantsExpanded = node.props.expanded === true;
+  const selectedEntry = selectedJournalId
+    ? journal.find((item) => item.id === selectedJournalId) ?? journal.at(-1)
+    : journal.at(-1);
+  const activeSelection = demoSelection ?? socJournalSelection(selectedEntry);
+  const providerSwitches = React.Children.toArray(children);
+  let providerSwitchIndex = 0;
+
+  return (
+    <section className={styles.participantDrawer} aria-label="Participant drawer">
+      <button
+        type="button"
+        className={styles.participantDrawerToggle}
+        aria-expanded={participantsExpanded}
+        aria-controls="soc-participants"
+        onClick={() => emit("toggleDrawer", { expanded: !participantsExpanded })}
+      >
+        <span className={styles.participantDrawerTitle}><Person24Regular />Participants</span>
+        <span className={styles.participantSummaries} aria-hidden="true">
+          {actors.map((item) => {
+            const canAuthorize = item.id === "human-priya" && authorization?.status === "pending";
+            const status = canAuthorize ? "input-awaited" : item.status;
+            return <span className={styles.participantSummary} key={item.id}>
+              <ParticipantPresenceIcon status={status} />
+              <span className={styles.participantSummaryName}>{item.name}</span>
+              <span>{canAuthorize ? "input awaited" : item.status.replaceAll("-", " ")}</span>
+            </span>;
+          })}
+        </span>
+        {participantsExpanded ? <ChevronDown20Regular /> : <ChevronUp20Regular />}
+      </button>
+      {participantsExpanded ? <div id="soc-participants" className={styles.participants} aria-label="Human and agent participants">
+        {actors.map((item) => {
+          const active = selectionTargetsActor(activeSelection, item.id);
+          const canAuthorize = item.id === "human-priya" && authorization?.status === "pending";
+          const status = canAuthorize ? "input-awaited" : item.status;
+          const providerSwitch = item.kind === "agent" ? providerSwitches[providerSwitchIndex++] : undefined;
+          return <article data-soc-actor-id={item.id} key={item.id} className={mergeClasses(styles.participant, active ? styles.participantActive : undefined, active ? styles.causalHighlight : undefined)}>
+            <div className={styles.participantTop}>
+              <div className={styles.participantIdentity}>
+                <ParticipantPresenceIcon status={status} />
+                <div className={styles.participantName}>{item.kind === "human" ? <Person24Regular /> : <Sparkle24Regular />}{item.name}</div>
+              </div>
+              <span className={styles.kind}>{item.kind.toUpperCase()}</span>
+            </div>
+            <div className={styles.role}>{item.role} · {canAuthorize ? "input awaited" : item.status.replaceAll("-", " ")}</div>
+            <p className={styles.activity}>{item.activity ?? item.objective}</p>
+            <div className={styles.authority}>{item.authority}</div>
+            {item.kind === "agent" && agentProviders[item.id] ? <div className={styles.providerControls}>
+              <div className={styles.providerHeader}>
+                <span className={styles.providerName} title={agentProviders[item.id].agentName}>{agentProviders[item.id].agentName}</span>
+                <div className={styles.providerMode}>{providerSwitch}</div>
+              </div>
+              <div className={styles.providerStatus}>{agentProviders[item.id].status}{agentProviders[item.id].fallbackReason ? ` · ${agentProviders[item.id].fallbackReason}` : agentProviders[item.id].conversationId ? " · conversation active" : ""}</div>
+            </div> : null}
+            {canAuthorize ? <Button className={styles.authorize} appearance="primary" icon={<ShieldLock24Regular />} onClick={() => emit("authorizeContainment", {}, "human-priya")}>Authorize Host-A isolation</Button> : null}
+          </article>;
+        })}
+      </div> : null}
+    </section>
+  );
+};
+
+const JournalRail: ProjectionView = ({ node, emit }) => {
+  const styles = useStyles();
+  const incident = node.props.incident as unknown as Incident;
+  const actors = (node.props.actors ?? []) as unknown as Actor[];
+  const journal = (node.props.journal ?? []) as unknown as JournalEntry[];
+  const demoEnabled = node.props.demoEnabled === true;
+  const demoTimeline = (node.props.demoTimeline ?? []) as unknown as TimelineItem[];
+  const demoSelection = (node.props.demoSelection ?? undefined) as unknown as DemoSelection | undefined;
+  const selectedJournalId = typeof node.props.selectedJournalId === "string" ? node.props.selectedJournalId : null;
+  const journalMode = node.props.journalMode === "ledger" ? "ledger" : "journal";
+  const latestEntry = journal.at(-1);
+  const selectedEntry = selectedJournalId
+    ? journal.find((item) => item.id === selectedJournalId) ?? latestEntry
+    : latestEntry;
+  const timelineItems = demoEnabled ? demoTimeline : journal.map(socJournalTimelineItem);
+  const visibleTimelineItems = journalMode === "journal"
+    ? timelineItems.filter((item) => item.source === "organism")
+    : timelineItems;
+  const selectedTimelineItem = demoSelection
+    ? timelineItems.find((item) => item.id === demoSelection.itemId)
+    : selectedEntry ? socJournalTimelineItem(selectedEntry) : timelineItems.at(-1);
+  const actorNames = new Map(actors.map((item) => [item.id, item.name]));
+
+  const selectTimelineItem = (item: TimelineItem) => {
+    if (demoEnabled) emit("selectTimeline", { selection: selectionFromTimelineItem(item) });
+    else emit("selectJournal", { id: item.operationRecordId ?? item.id });
+  };
+
+  const clearTimelineSelection = () => {
+    if (demoEnabled) emit("clearTimelineSelection", {});
+    else emit("selectJournal", { id: null });
+  };
+
+  return (
+    <aside className={styles.journalRail} aria-label="Journal and ledger">
+      <div className={styles.journalSticky}>
+        <header className={styles.journalHeader}>
+          <div><div className={styles.eyebrow}>Causal record</div><strong>Journal / Ledger</strong></div>
+          <div className={styles.journalTabs}>
+            {(demoSelection || selectedJournalId) ? <Button size="small" appearance="subtle" onClick={clearTimelineSelection}>Latest</Button> : null}
+            <Button size="small" appearance={journalMode === "journal" ? "primary" : "subtle"} onClick={() => emit("setJournalMode", { mode: "journal" })}>Journal</Button>
+            <Button size="small" appearance={journalMode === "ledger" ? "primary" : "subtle"} onClick={() => emit("setJournalMode", { mode: "ledger" })}>Ledger</Button>
+          </div>
+        </header>
+        <GrowingContainer className={styles.journalList} ariaLabel="Journal timeline">
+          {visibleTimelineItems.length === 0 ? <div className={styles.empty}><Clock20Regular /><p>The first attributable action will appear here.</p></div> : visibleTimelineItems.map((item) => (
+            <button type="button" aria-pressed={selectedTimelineItem?.id === item.id} aria-label={`${item.status}: ${item.title}`} onClick={() => selectTimelineItem(item)} key={item.id} className={mergeClasses(styles.journalEntry, selectedTimelineItem?.id === item.id ? styles.journalEntryActive : undefined)}>
+              <span className={styles.journalTime}>{item.timestamp ?? `#${item.sequence ?? "-"}`}</span>
+              <div>
+                <div className={styles.journalResult}>{journalMode === "ledger" ? `${item.source === "scenario" ? "Scenario instruction" : "SOC outcome"} · ` : ""}{item.status}{item.actorRef ? ` · ${actorNames.get(item.actorRef.id) ?? item.actorRef.id}` : ""}</div>
+                <div className={styles.journalSummary}>{item.summary}</div>
+                {journalMode === "ledger" ? <div className={styles.ledgerMeta}>item={item.scenarioStepId ?? item.operationRecordId ?? item.id}<br />focus={item.focusRefs.map((ref) => `${ref.kind}:${ref.id}`).join(", ")}{item.correlationId ? <><br />correlation={item.correlationId}</> : null}</div> : null}
+              </div>
+            </button>
+          ))}
+          {incident.status === "Contained" ? <div className={styles.fallback}><CheckmarkCircle20Regular /> <strong>Host-A contained under commander authority.</strong></div> : null}
+        </GrowingContainer>
+      </div>
+    </aside>
+  );
+};
+
+const LiveWorkspaceSocBody: ProjectionView = ({ node, emit, children }) => {
   const styles = useStyles();
   const incident = node.props.incident as unknown as Incident;
   const presentation = node.props.presentation as unknown as Presentation;
@@ -456,15 +651,8 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
   const intent = node.props.intent as unknown as { statement: string } | null;
   const constraints = (node.props.constraints ?? []) as unknown as Array<{ rule: string }>;
   const stage = String(node.props.stage ?? "Incident opened");
-  const [journalMode, setJournalMode] = React.useState<"journal" | "ledger">("journal");
-  const [selectedJournalId, setSelectedJournalId] = React.useState<string | null>(null);
-  const [participantsExpanded, setParticipantsExpanded] = React.useState(false);
-  const validContextIds = SOC_BLUEPRINT_CONTEXTS.map((item) => item.id);
-  const initialNavigationRef = React.useRef(readSocNavigation(window.location.search, validContextIds));
-  const [consolePlane, setConsolePlane] = React.useState<SocPlane>(initialNavigationRef.current.plane);
-  const emitRef = React.useRef(emit);
-  const initialContextAppliedRef = React.useRef(false);
-  emitRef.current = emit;
+  const consolePlane = String(node.props.consolePlane ?? "runtime") as SocPlane;
+  const selectedJournalId = typeof node.props.selectedJournalId === "string" ? node.props.selectedJournalId : null;
 
   const latestEntry = journal[journal.length - 1];
   const selectedEntry = selectedJournalId
@@ -521,72 +709,8 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
     return `root=${root?.capability ?? "unknown"}\nchildren=${root?.edges?.children?.length ?? 0} · terminal document matches bundle`;
   });
 
-  React.useEffect(() => {
-    if (initialContextAppliedRef.current) return;
-    initialContextAppliedRef.current = true;
-    const requestedContext = initialNavigationRef.current.context;
-    if (requestedContext && requestedContext !== presentation.selectedContext) {
-      emitRef.current("setPresentationContext", { contextId: requestedContext });
-    }
-  }, []);
-
-  const selectPlane = (plane: SocPlane) => {
-    setConsolePlane(plane);
-    window.history.replaceState(null, "", writeSocNavigation(window.location.href, plane, presentation.selectedContext));
-  };
-
-  const selectContext = (contextId: string) => {
-    emit("setPresentationContext", { contextId });
-    window.history.replaceState(null, "", writeSocNavigation(window.location.href, consolePlane, contextId));
-  };
-
-  const selectTimelineItem = (item: TimelineItem) => {
-    if (demoEnabled) emit("selectTimeline", { selection: selectionFromTimelineItem(item) });
-    else setSelectedJournalId(item.operationRecordId ?? item.id);
-  };
-
-  const clearTimelineSelection = () => {
-    if (demoEnabled) emit("clearTimelineSelection", {});
-    else setSelectedJournalId(null);
-  };
-
   return (
-    <main className={styles.workspace}>
-      <header className={styles.commandBar}>
-        <div className={styles.identity}>
-          <Button appearance="subtle" icon={<ArrowLeft24Regular />} aria-label="Return to overview" onClick={openOverview} />
-          <div className={styles.identityCopy}>
-            <div className={styles.eyebrow}>{incident.id} · Live Workspace : SOC</div>
-            <h1 className={styles.title}>{incident.title}</h1>
-          </div>
-        </div>
-        <div className={styles.controls}>
-          <div className={styles.workspaceModeSwitch}>
-            <FluentSwitchControl
-              checked={consolePlane === "blueprint"}
-              offLabel="Live inspector"
-              onLabel="Blueprint inspector"
-              ariaLabel="Workspace inspector mode"
-              onToggle={(checked) => selectPlane(checked ? "blueprint" : "runtime")}
-            />
-          </div>
-          <label className={styles.viewpointControl}>
-            <span className={styles.viewpointLabel}>View as</span>
-            <Select
-              className={styles.contextSelect}
-              aria-label="View shared substrate as"
-              value={presentation.selectedContext}
-              onChange={(_, data) => selectContext(data.value)}
-            >
-              {presentation.contexts.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-            </Select>
-          </label>
-          <span className={styles.pill}><ShieldLock24Regular />{incident.severity} · {incident.status}</span>
-          <span className={styles.pill}>{incident.governance}</span>
-        </div>
-      </header>
-      {children}
-
+    <>
       <div className={styles.layout}>
         <div className={styles.workColumn}>
           <section className={styles.shared} aria-label="Shared incident substrate">
@@ -796,93 +920,16 @@ const LiveWorkspaceSoc: ProjectionView = ({ node, emit, children }) => {
 
         </div>
 
-        <aside className={styles.journalRail} aria-label="Journal and ledger">
-          <div className={styles.journalSticky}>
-            <header className={styles.journalHeader}>
-              <div><div className={styles.eyebrow}>Causal record</div><strong>Journal / Ledger</strong></div>
-              <div className={styles.journalTabs}>
-                {(demoSelection || selectedJournalId) ? <Button size="small" appearance="subtle" onClick={clearTimelineSelection}>Latest</Button> : null}
-                <Button size="small" appearance={journalMode === "journal" ? "primary" : "subtle"} onClick={() => setJournalMode("journal")}>Journal</Button>
-                <Button size="small" appearance={journalMode === "ledger" ? "primary" : "subtle"} onClick={() => setJournalMode("ledger")}>Ledger</Button>
-              </div>
-            </header>
-            <GrowingContainer className={styles.journalList} ariaLabel="Journal timeline">
-              {timelineItems.length === 0 ? <div className={styles.empty}><Clock20Regular /><p>The first attributable action will appear here.</p></div> : timelineItems.map((item) => (
-                <button type="button" aria-pressed={selectedTimelineItem?.id === item.id} aria-label={`${item.status}: ${item.title}`} onClick={() => selectTimelineItem(item)} key={item.id} className={mergeClasses(styles.journalEntry, selectedTimelineItem?.id === item.id ? styles.journalEntryActive : undefined)}>
-                  <span className={styles.journalTime}>{item.timestamp ?? `#${item.sequence ?? "-"}`}</span>
-                  <div>
-                    <div className={styles.journalResult}>{item.source} · {item.status}{item.actorRef ? ` · ${actorNames.get(item.actorRef.id) ?? item.actorRef.id}` : ""}</div>
-                    <div className={styles.journalSummary}>{item.summary}</div>
-                    {journalMode === "ledger" ? <div className={styles.ledgerMeta}>item={item.scenarioStepId ?? item.operationRecordId ?? item.id}<br />focus={item.focusRefs.map((ref) => `${ref.kind}:${ref.id}`).join(", ")}{item.correlationId ? <><br />correlation={item.correlationId}</> : null}</div> : null}
-                  </div>
-                </button>
-              ))}
-              {incident.status === "Contained" ? <div className={styles.fallback}><CheckmarkCircle20Regular /> <strong>Host-A contained under commander authority.</strong></div> : null}
-            </GrowingContainer>
-          </div>
-        </aside>
+        {children}
       </div>
-
-      <section className={styles.participantDrawer} aria-label="Participant drawer">
-        <button
-          type="button"
-          className={styles.participantDrawerToggle}
-          aria-expanded={participantsExpanded}
-          aria-controls="soc-participants"
-          onClick={() => setParticipantsExpanded((expanded) => !expanded)}
-        >
-          <span className={styles.participantDrawerTitle}><Person24Regular />Participants</span>
-          <span className={styles.participantSummaries} aria-hidden="true">
-            {actors.map((item) => {
-              const canAuthorize = item.id === "human-priya" && authorization?.status === "pending";
-              const status = canAuthorize ? "input-awaited" : item.status;
-              return <span className={styles.participantSummary} key={item.id}>
-                <ParticipantPresenceIcon status={status} />
-                <span className={styles.participantSummaryName}>{item.name}</span>
-                <span>{canAuthorize ? "input awaited" : item.status.replaceAll("-", " ")}</span>
-              </span>;
-            })}
-          </span>
-          {participantsExpanded ? <ChevronDown20Regular /> : <ChevronUp20Regular />}
-        </button>
-        {participantsExpanded ? <div id="soc-participants" className={styles.participants} aria-label="Human and agent participants">
-            {actors.map((item) => {
-              const active = selectionTargetsActor(activeSelection, item.id);
-              const canAuthorize = item.id === "human-priya" && authorization?.status === "pending";
-              const status = canAuthorize ? "input-awaited" : item.status;
-              return <article data-soc-actor-id={item.id} key={item.id} className={mergeClasses(styles.participant, active ? styles.participantActive : undefined, active ? styles.causalHighlight : undefined)}>
-                <div className={styles.participantTop}>
-                  <div className={styles.participantIdentity}>
-                    <ParticipantPresenceIcon status={status} />
-                    <div className={styles.participantName}>{item.kind === "human" ? <Person24Regular /> : <Sparkle24Regular />}{item.name}</div>
-                  </div>
-                  <span className={styles.kind}>{item.kind.toUpperCase()}</span>
-                </div>
-                <div className={styles.role}>{item.role} · {canAuthorize ? "input awaited" : item.status.replaceAll("-", " ")}</div>
-                <p className={styles.activity}>{item.activity ?? item.objective}</p>
-                <div className={styles.authority}>{item.authority}</div>
-                {item.kind === "agent" && agentProviders[item.id] ? <div className={styles.providerControls}>
-                  <div className={styles.providerHeader}>
-                    <span className={styles.providerName} title={agentProviders[item.id].agentName}>{agentProviders[item.id].agentName}</span>
-                    <div className={styles.providerMode}>
-                      <FluentSwitchControl
-                        checked={agentProviders[item.id].mode === "live"}
-                        offLabel="Mock"
-                        onLabel="Live"
-                        ariaLabel={`${item.name} provider mode`}
-                        onToggle={(checked) => emit("setAgentMode", { agentId: item.id, mode: checked ? "live" : "mock" }, item.id)}
-                      />
-                    </div>
-                  </div>
-                  <div className={styles.providerStatus}>{agentProviders[item.id].status}{agentProviders[item.id].fallbackReason ? ` · ${agentProviders[item.id].fallbackReason}` : agentProviders[item.id].conversationId ? ` · conversation active` : ""}</div>
-                </div> : null}
-                {canAuthorize ? <Button className={styles.authorize} appearance="primary" icon={<ShieldLock24Regular />} onClick={() => emit("authorizeContainment", {}, "human-priya")}>Authorize Host-A isolation</Button> : null}
-              </article>;
-            })}
-          </div> : null}
-      </section>
-    </main>
+    </>
   );
 };
 
-export default { workspace: LiveWorkspaceSoc };
+export default {
+  "workspace-shell": WorkspaceShell,
+  header: WorkspaceHeader,
+  journal: JournalRail,
+  participants: Participants,
+  "workspace-body": LiveWorkspaceSocBody,
+};

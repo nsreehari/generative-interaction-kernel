@@ -654,8 +654,10 @@ export function createSocEffects(
   const wrapped: EffectHandlerMap = { ...deterministicEffects };
 
   wrapped.setAgentMode = async (ctx) => {
-    const actorId = typeof ctx.payload.agentId === "string" ? ctx.payload.agentId : "";
-    const mode = ctx.payload.mode === "live" ? "live" : "mock";
+    const actorId = typeof ctx.payload.agentId === "string"
+      ? ctx.payload.agentId
+      : typeof ctx.payload.name === "string" ? ctx.payload.name : "";
+    const mode = ctx.payload.mode === "live" || ctx.payload.value === "live" ? "live" : "mock";
     const currentProviders = providers(ctx);
     const provider = currentProviders[actorId];
     if (!provider || !["agent-correlation", "agent-response"].includes(actorId)) {

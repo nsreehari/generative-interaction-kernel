@@ -3,9 +3,76 @@
   "type": "document",
   "payload": {
     "root": {
-      "capability": "soc:workspace",
-      "id": "soc-workspace",
+      "capability": "soc:workspace-shell",
+      "id": "soc-workspace-shell",
       "edges": {
+        "children": [
+          {
+            "capability": "soc:header",
+            "id": "soc-header",
+            "edges": {
+              "read": {
+                "incident": "soc.incident",
+                "presentation": "soc.presentation",
+                "consolePlane": "soc.consolePlane"
+              },
+              "on": {
+                "setPresentationContext": [
+                  { "do": "invoke", "args": { "tool": "setPresentationContext" } }
+                ],
+                "setConsolePlane": [
+                  { "do": "assign", "target": "soc.consolePlane", "args": { "from": "$event.plane" } }
+                ]
+              },
+              "children": [
+                {
+                  "capability": "fluent:switch",
+                  "id": "soc-inspector-mode",
+                  "props": {
+                    "offLabel": "Live inspector",
+                    "onLabel": "Blueprint inspector",
+                    "offValue": "runtime",
+                    "onValue": "blueprint",
+                    "ariaLabel": "Workspace inspector mode"
+                  },
+                  "edges": {
+                    "read": { "value": "soc.consolePlane" },
+                    "on": {
+                      "toggle": [
+                        { "do": "assign", "target": "soc.consolePlane", "args": { "from": "$event.value" } }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "capability": "ui:embed",
+            "id": "demo-runner-region",
+            "props": { "app": "demo-runner", "unframed": true },
+            "edges": { "gate": "demo.enabled = true" }
+          },
+          {
+            "capability": "foundry:access-modal",
+            "id": "foundry-access-gate-region",
+            "props": { "proxyBaseUrl": "https://sz-foundry-proxy.azurewebsites.net" },
+            "edges": {
+              "read": { "required": "soc.foundry.required" },
+              "on": {
+                "accessResolved": [
+                  { "do": "invoke", "args": { "tool": "acceptSocFoundryAccess" } }
+                ],
+                "accessCleared": [
+                  { "do": "invoke", "args": { "tool": "clearSocFoundryAccess" } }
+                ]
+              }
+            }
+          },
+          {
+            "capability": "soc:workspace-body",
+            "id": "soc-workspace",
+            "edges": {
         "on": {
           "establishIntent": [
             { "do": "invoke", "args": { "tool": "establishIntent" } }
@@ -63,6 +130,9 @@
           ],
           "clearTimelineSelection": [
             { "do": "assign", "target": "demo.selection", "args": { "value": null } }
+          ],
+          "selectJournal": [
+            { "do": "assign", "target": "soc.ui.selectedJournalId", "args": { "from": "$event.id" } }
           ]
         },
         "react": [
@@ -99,31 +169,101 @@
           "recommendation": "soc.recommendation",
           "authorization": "soc.authorization",
           "journal": "soc.journal",
+          "consolePlane": "soc.consolePlane",
+          "selectedJournalId": "soc.ui.selectedJournalId",
           "demoEnabled": "demo.enabled",
           "demoTimeline": "demo.timeline",
           "demoSelection": "demo.selection"
         },
         "children": [
           {
-            "capability": "ui:embed",
-            "id": "demo-runner-region",
-            "props": { "app": "demo-runner", "unframed": true },
-            "edges": { "gate": "demo.enabled = true" }
-          },
-          {
-            "capability": "foundry:access-modal",
-            "id": "foundry-access-gate-region",
-            "props": { "proxyBaseUrl": "https://sz-foundry-proxy.azurewebsites.net" },
+            "capability": "soc:journal",
+            "id": "soc-journal-region",
             "edges": {
-              "read": { "required": "soc.foundry.required" },
+              "read": {
+                "incident": "soc.incident",
+                "actors": "soc.actors",
+                "journal": "soc.journal",
+                "journalMode": "soc.ui.journalMode",
+                "selectedJournalId": "soc.ui.selectedJournalId",
+                "demoEnabled": "demo.enabled",
+                "demoTimeline": "demo.timeline",
+                "demoSelection": "demo.selection"
+              },
               "on": {
-                "accessResolved": [
-                  { "do": "invoke", "args": { "tool": "acceptSocFoundryAccess" } }
+                "setJournalMode": [
+                  { "do": "assign", "target": "soc.ui.journalMode", "args": { "from": "$event.mode" } }
                 ],
-                "accessCleared": [
-                  { "do": "invoke", "args": { "tool": "clearSocFoundryAccess" } }
+                "selectTimeline": [
+                  { "do": "assign", "target": "demo.selection", "args": { "from": "$event.selection" } }
+                ],
+                "clearTimelineSelection": [
+                  { "do": "assign", "target": "demo.selection", "args": { "value": null } }
+                ],
+                "selectJournal": [
+                  { "do": "assign", "target": "soc.ui.selectedJournalId", "args": { "from": "$event.id" } }
                 ]
               }
+            }
+          }
+        ]
+        }
+          },
+          {
+            "capability": "soc:participants",
+            "id": "soc-participants-region",
+            "edges": {
+              "read": {
+                "actors": "soc.actors",
+                "agentProviders": "soc.agentProviders",
+                "authorization": "soc.authorization",
+                "journal": "soc.journal",
+                "demoSelection": "demo.selection",
+                "selectedJournalId": "soc.ui.selectedJournalId",
+                "expanded": "soc.ui.participantsExpanded"
+              },
+              "on": {
+                "toggleDrawer": [
+                  { "do": "assign", "target": "soc.ui.participantsExpanded", "args": { "from": "$event.expanded" } }
+                ],
+                "authorizeContainment": [
+                  { "do": "confirm", "args": { "tool": "authorizeContainment", "title": "Authorize Host-A isolation", "message": "Authorize the evidence-backed, reversible isolation plan?", "confirmLabel": "Authorize", "danger": true } }
+                ]
+              },
+              "children": [
+                {
+                  "capability": "fluent:switch",
+                  "id": "correlation-agent-provider-mode",
+                  "props": {
+                    "name": "agent-correlation",
+                    "offLabel": "Mock",
+                    "onLabel": "Live",
+                    "offValue": "mock",
+                    "onValue": "live",
+                    "ariaLabel": "Correlation Agent provider mode"
+                  },
+                  "edges": {
+                    "readExpr": { "value": "$lookup(soc.agentProviders, 'agent-correlation').mode" },
+                    "on": { "toggle": [{ "do": "invoke", "args": { "tool": "setAgentMode" } }] }
+                  }
+                },
+                {
+                  "capability": "fluent:switch",
+                  "id": "response-agent-provider-mode",
+                  "props": {
+                    "name": "agent-response",
+                    "offLabel": "Mock",
+                    "onLabel": "Live",
+                    "offValue": "mock",
+                    "onValue": "live",
+                    "ariaLabel": "Response Agent provider mode"
+                  },
+                  "edges": {
+                    "readExpr": { "value": "$lookup(soc.agentProviders, 'agent-response').mode" },
+                    "on": { "toggle": [{ "do": "invoke", "args": { "tool": "setAgentMode" } }] }
+                  }
+                }
+              ]
             }
           }
         ]

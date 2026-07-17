@@ -16,7 +16,29 @@
       "ui:embed": {
         "propsSchema": { "type": "object", "additionalProperties": true }
       },
-      "soc:workspace": {
+      "fluent:switch": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "emits": ["toggle"]
+      },
+      "soc:workspace-shell": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "slots": ["children"]
+      },
+      "soc:header": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "slots": ["children"],
+        "emits": ["setPresentationContext", "setConsolePlane"]
+      },
+      "soc:participants": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "slots": ["children"],
+        "emits": ["toggleDrawer", "authorizeContainment"]
+      },
+      "soc:journal": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "emits": ["setJournalMode", "selectTimeline", "clearTimelineSelection", "selectJournal"]
+      },
+      "soc:workspace-body": {
         "propsSchema": { "type": "object", "additionalProperties": true },
         "slots": ["children"],
         "emits": [
@@ -24,13 +46,14 @@
           "replanExploration", "commitPartialFindings", "proposeDc01", "completeCorrelation",
           "proposeHostA", "reviseResponse", "calculateResponse", "recommendContainment",
           "authorizeContainment", "executeContainment", "setPresentationContext", "setAgentMode", "reset",
-          "selectTimeline", "clearTimelineSelection"
+          "selectTimeline", "clearTimelineSelection", "selectJournal"
         ]
       }
     },
     "externals": {
       "projectionViews": {
         "foundry": { "from": "foundry-agent", "use": ["access-modal"] },
+        "fluent": { "from": "fluent", "use": ["switch"] },
         "ui": { "from": "floor", "use": ["embed"] },
         "soc": { "from": "self" }
       },

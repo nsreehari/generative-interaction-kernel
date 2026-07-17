@@ -1,5 +1,11 @@
 {
   "soc": {
+    "consolePlane": "runtime",
+    "ui": {
+      "journalMode": "journal",
+      "participantsExpanded": false,
+      "selectedJournalId": null
+    },
     "presentation": {
       "selectedContext": "war-room",
       "revision": 0,

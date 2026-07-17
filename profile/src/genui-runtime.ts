@@ -126,6 +126,24 @@ function runtimeFieldsToNodeOptions<TNode>(
   return options;
 }
 
+function authoredRuntimeChildren<TNode>(
+  source: RuntimeNodeRecipeFields | undefined,
+  tokens: Record<string, unknown>,
+  emitter: RuntimeEmitter<TNode, unknown, RuntimeEmitterNodeOptions<TNode>>,
+  parentId: string
+): TNode[] {
+  return (source?.children ?? []).map((child, index) => {
+    if (!child.capability) {
+      throw new Error(`Runtime recipe child '${parentId}[${index}]' is missing a capability`);
+    }
+    const id = child.id ?? `${parentId}-child-${index + 1}`;
+    const options = runtimeFieldsToNodeOptions<TNode>(child, tokens);
+    const children = authoredRuntimeChildren(child, tokens, emitter, id);
+    if (children.length > 0) options.children = children;
+    return emitter.node(child.capability, id, options);
+  });
+}
+
 export function lowerPresentationWithRuntimeEmitter<TNode, TOutput>(
   recipe: LayerRecipe,
   emitter: RuntimeEmitter<TNode, TOutput, RuntimeEmitterNodeOptions<TNode>>
@@ -143,6 +161,7 @@ export function lowerPresentationWithRuntimeEmitter<TNode, TOutput>(
       arrangement: presentation.arrangement,
     };
     const container = presentationRuntimeProgramEmit(runtimeRecipe, "container", containerFacts);
+    const containerTokens = buildContainerTokens(presentation);
     const children: TNode[] = presentation.regions.filter((region) => region.materialize !== false).map((region) => {
       const matchFacts: PresentationRuntimeFacts = {
         ...containerFacts,
@@ -192,9 +211,13 @@ export function lowerPresentationWithRuntimeEmitter<TNode, TOutput>(
       return emitter.node(capability, `${region.name}-region`, options);
     });
 
-    const root = emitter.node(container?.capability ?? source.interaction, source.interaction, {
-      ...runtimeFieldsToNodeOptions<TNode>(container, buildContainerTokens(presentation)),
-      children,
+    const rootId = container?.id ?? source.interaction;
+    const root = emitter.node(container?.capability ?? source.interaction, rootId, {
+      ...runtimeFieldsToNodeOptions<TNode>(container, containerTokens),
+      children: [
+        ...authoredRuntimeChildren(container, containerTokens, emitter as RuntimeEmitter<TNode, unknown, RuntimeEmitterNodeOptions<TNode>>, rootId),
+        ...children,
+      ],
     });
     return emitter.output(root);
   };

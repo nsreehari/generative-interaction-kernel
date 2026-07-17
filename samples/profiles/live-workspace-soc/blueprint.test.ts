@@ -43,7 +43,9 @@ test("all presentation contexts lower the same substrate through every tier", ()
     assert.equal(trace.length, 3);
     assert.equal((trace[0].output as { interaction: string }).interaction, "soc-workspace");
     assert.equal((trace[1].output as { source: { subject: string } }).source.subject, "Privileged access anomaly during payroll cutover");
-    assert.equal((trace[2].output as { root: { capability: string } }).root.capability, "soc:workspace");
+    const runtime = trace[2].output as { root: { capability: string; edges: { children: unknown[] } } };
+    assert.equal(runtime.root.capability, "soc:workspace-shell");
+    assert.equal(runtime.root.edges.children.length, 3);
   }
 });
 
@@ -119,13 +121,27 @@ test("the base runtime preserves the organism Blueprint output behind host integ
       },
     },
   }]);
-  assert.equal(runtime.root.edges.react.length, 14);
-  delete runtime.root.edges.react;
-  delete runtime.root.edges.on.reset;
-  delete runtime.root.edges.on.selectTimeline;
-  delete runtime.root.edges.on.clearTimelineSelection;
-  delete runtime.root.edges.read.demoEnabled;
-  delete runtime.root.edges.read.demoTimeline;
-  delete runtime.root.edges.read.demoSelection;
+  const body = children.find((child) => child.id === "soc-workspace");
+  assert.ok(body);
+  assert.equal(body.edges.react.length, 14);
+  delete body.edges.react;
+  delete body.edges.on.reset;
+  delete body.edges.on.selectTimeline;
+  delete body.edges.on.clearTimelineSelection;
+  delete body.edges.read.demoEnabled;
+  delete body.edges.read.demoTimeline;
+  delete body.edges.read.demoSelection;
+
+  const journal = body.edges.children.find((child) => child.id === "soc-journal-region");
+  assert.ok(journal);
+  delete journal.edges.on.selectTimeline;
+  delete journal.edges.on.clearTimelineSelection;
+  delete journal.edges.read.demoEnabled;
+  delete journal.edges.read.demoTimeline;
+  delete journal.edges.read.demoSelection;
+
+  const participants = children.find((child) => child.id === "soc-participants-region");
+  assert.ok(participants);
+  delete participants.edges.read.demoSelection;
   assert.deepEqual(compileSocDocument("war-room"), runtime);
 });
