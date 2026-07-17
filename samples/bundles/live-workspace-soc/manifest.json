@@ -32,15 +32,11 @@
       },
       "soc:substrate-chrome": {
         "propsSchema": { "type": "object", "additionalProperties": true },
-        "slots": ["children"],
-        "emits": ["setPresentationContext"]
+        "slots": ["children"]
       },
       "soc:runtime-projection": {
         "propsSchema": { "type": "object", "additionalProperties": true },
         "slots": ["children"]
-      },
-      "soc:viewpoint-header": {
-        "propsSchema": { "type": "object", "additionalProperties": true }
       },
       "soc:presentation-layout": {
         "propsSchema": { "type": "object", "additionalProperties": true },

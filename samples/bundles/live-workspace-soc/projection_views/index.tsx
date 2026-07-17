@@ -14,7 +14,6 @@ import { PresentationLayout } from "./PresentationLayout";
 import { RuntimeProjection } from "./RuntimeProjection";
 import { RegionSurface } from "./RegionSurface";
 import { SubstrateChrome } from "./SubstrateChrome";
-import { ViewpointHeader } from "./ViewpointHeader";
 import { WorkspaceHeader } from "./WorkspaceHeader";
 import { WorkspaceShell } from "./WorkspaceShell";
 
@@ -28,7 +27,6 @@ export default {
   "substrate-chrome": SubstrateChrome,
   "runtime-projection": RuntimeProjection,
   "region-surface": RegionSurface,
-  "viewpoint-header": ViewpointHeader,
   "presentation-layout": PresentationLayout,
   "intent-region": IntentRegion,
   "constraints-region": ConstraintsRegion,

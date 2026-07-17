@@ -20,6 +20,7 @@
       "contexts": [
         { "id": "full-substrate", "label": "Full substrate", "audience": "Technical inspection", "focus": "All shared operational and causal state" },
         { "id": "war-room", "label": "War room", "audience": "Shared team", "focus": "Incident, hypothesis, response, and authority" },
+        { "id": "investigation-board", "label": "Investigation board", "audience": "Shared team", "focus": "Investigation lifecycle from framing through causal record" },
         { "id": "priya-mobile", "label": "Priya · Mobile", "audience": "Incident Commander", "focus": "Decision, constraint, blast radius, and authorization" },
         { "id": "priya-laptop", "label": "Priya · Laptop", "audience": "Incident Commander", "focus": "Command view, evidence summary, and journal context" },
         { "id": "morgan-pager", "label": "Morgan · Pager", "audience": "SOC Analyst", "focus": "Urgent findings, recommendation, and incident status" },

@@ -26,7 +26,7 @@ test("SOC blueprint owns one connected four-tier lowering chain", () => {
   assert.equal(socBlueprint.resources.actors instanceof Array, true);
   assert.equal("acts" in socBlueprint.resources, false);
   assert.equal(t3ScenarioPlan.steps.length, 14);
-  assert.equal(SOC_BLUEPRINT_CONTEXTS.length, 8);
+  assert.equal(SOC_BLUEPRINT_CONTEXTS.length, 9);
 });
 
 test("SOC recipes lint against the bundle terminal capability vocabulary", () => {
@@ -70,11 +70,14 @@ test("all presentation contexts lower the same substrate through every tier", ()
 
 test("presentation contexts own distinct inspectable projection contracts", () => {
   const full = SOC_BLUEPRINT_CONTEXTS.find((context) => context.id === "full-substrate");
+  const board = SOC_BLUEPRINT_CONTEXTS.find((context) => context.id === "investigation-board");
   const mobile = SOC_BLUEPRINT_CONTEXTS.find((context) => context.id === "priya-mobile");
   const response = SOC_BLUEPRINT_CONTEXTS.find((context) => context.id === "response-agent");
 
   assert.equal(full?.frame, "shared");
   assert.equal(full?.regions.includes("exploration"), true);
+  assert.equal(board?.arrangement, "kanban");
+  assert.deepEqual(board?.regions, ["intent", "constraints", "hypothesis", "exploration", "evidence", "response", "authorization", "causal-record"]);
   assert.equal(mobile?.device, "mobile");
   assert.equal(mobile?.frame, "mobile");
   assert.equal(mobile?.arrangement, "decision");
@@ -104,6 +107,21 @@ test("lowering recipes select, order, and disclose context facets without materi
       ["response", "critical", "summary"],
       ["constraints", "supporting", "summary"],
       ["hypothesis", "supporting", "status"],
+    ]
+  );
+
+  const board = compileSocPresentation("investigation-board");
+  assert.deepEqual(
+    board.regions.filter((region) => region.disclosure !== "omitted" && region.materialize === false).map((region) => [region.name, region.group]),
+    [
+      ["intent", "kanban-frame"],
+      ["constraints", "kanban-frame"],
+      ["hypothesis", "kanban-explore"],
+      ["exploration", "kanban-explore"],
+      ["evidence", "kanban-establish"],
+      ["response", "kanban-decide"],
+      ["authorization", "kanban-decide"],
+      ["causal-record", "kanban-record"],
     ]
   );
 });
@@ -149,6 +167,12 @@ test("substrate chrome owns only the organism runtime projection", () => {
   assert.ok(body);
   const chrome = body.edges.children[0];
   assert.equal(chrome.capability, "soc:substrate-chrome");
+  assert.deepEqual(chrome.edges.read, {
+    incident: "soc.incident",
+    presentation: "soc.presentation",
+    journal: "soc.journal",
+    facet: "soc.presentation.regionFacets.summary",
+  });
   assert.deepEqual(
     chrome.edges.children.map((child) => [child.capability, child.edges.gate]),
     [
@@ -172,7 +196,6 @@ test("the runtime projection owns ordered document-gated context views", () => {
   assert.deepEqual(
     runtimeProjection.edges.children.map((child) => [child.capability, child.edges.gate]),
     [
-      ["soc:viewpoint-header", undefined],
       ["soc:presentation-layout", undefined],
     ]
   );

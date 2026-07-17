@@ -103,13 +103,19 @@ export const ControlHarnessShell: ProjectionView = ({ node, emit, children }) =>
             value={presentation.contexts.find((item) => item.id === presentation.selectedContext)?.label ?? ""}
             selectedOptions={[presentation.selectedContext]}
             onOpenChange={(_, data) => setPresentationOpen(data.open)}
-            onOptionSelect={(_, data) => {
-              if (!data.optionValue) return;
-              setPresentationOpen(false);
-              emit("setPresentationContext", { contextId: data.optionValue });
-            }}
           >
-            {presentation.contexts.map((item) => <Option key={item.id} value={item.id}>{item.label}</Option>)}
+            {presentation.contexts.map((item) => (
+              <Option
+                key={item.id}
+                value={item.id}
+                onClick={() => {
+                  setPresentationOpen(false);
+                  emit("setPresentationContext", { contextId: item.id });
+                }}
+              >
+                {item.label}
+              </Option>
+            ))}
           </Dropdown>
         </label>
       </div>
