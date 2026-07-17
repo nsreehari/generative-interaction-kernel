@@ -55,15 +55,18 @@ function readToggleState(node: ProjectionViewProps["node"]): {
 const FluentSwitch: ProjectionView = ({ node, emit }) => {
   const props = readProps(node);
   const state = readToggleState(node);
+  const name = props.str("name");
   return (
     <FluentSwitchControl
       checked={state.checked}
       disabled={props.bool("disabled")}
       onLabel={props.str("onLabel", props.str("label"))}
       offLabel={props.str("offLabel", props.str("label"))}
+      ariaLabel={props.str("ariaLabel") || undefined}
       onToggle={(checked) => emit("toggle", {
         checked,
         value: checked ? state.onValue : state.offValue,
+        ...(name ? { name } : {}),
       })}
     />
   );

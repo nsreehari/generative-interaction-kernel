@@ -62,10 +62,18 @@ test("demo runner expands, collapses, and brokers semantic timeline focus", asyn
 
   await advance(page, 2);
   await page.getByLabel("View shared substrate as").selectOption("full-substrate");
+  await expect(page.getByText("Established investigation intent", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Set the investigation objective/ })).toHaveCount(0);
+  await expect(page.getByText(/organism/i)).toHaveCount(0);
+  await page.getByRole("button", { name: "Ledger" }).click();
   const scenarioEntry = page.getByRole("button", { name: /Set the investigation objective/ });
+  await expect(page.getByText(/Scenario instruction · complete · Morgan/i)).toBeVisible();
+  await expect(page.getByText(/SOC outcome · committed · Morgan/i)).toBeVisible();
   await scenarioEntry.click();
   await expect(scenarioEntry).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator('[data-soc-object-id="intent"]')).toHaveCSS("outline-style", "solid");
+  await page.getByRole("button", { name: "Journal" }).click();
+  await expect(scenarioEntry).toHaveCount(0);
   await page.getByRole("button", { name: "Participants" }).click();
   await expect(page.locator('[data-soc-actor-id="human-morgan"]')).toHaveCSS("outline-style", "solid");
   await expect(page.getByRole("switch", { name: "Correlation Agent provider mode" })).not.toBeChecked();
