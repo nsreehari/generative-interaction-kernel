@@ -20,32 +20,7 @@
             {
               "id": "soc-header",
               "capability": "soc:header",
-              "read": {
-                "incident": "soc.incident",
-                "presentation": "soc.presentation",
-                "consolePlane": "soc.consolePlane"
-              },
-              "on": {
-                "setPresentationContext": [{ "do": "invoke", "args": { "tool": "setPresentationContext" } }],
-                "setConsolePlane": [{ "do": "assign", "target": "soc.consolePlane", "args": { "from": "$event.plane" } }]
-              },
-              "children": [
-                {
-                  "id": "soc-inspector-mode",
-                  "capability": "fluent:switch",
-                  "props": {
-                    "offLabel": "Live inspector",
-                    "onLabel": "Blueprint inspector",
-                    "offValue": "runtime",
-                    "onValue": "blueprint",
-                    "ariaLabel": "Workspace inspector mode"
-                  },
-                  "read": { "value": "soc.consolePlane" },
-                  "on": {
-                    "toggle": [{ "do": "assign", "target": "soc.consolePlane", "args": { "from": "$event.value" } }]
-                  }
-                }
-              ]
+              "read": { "incident": "soc.incident" }
             },
             {
               "id": "soc-workspace",
@@ -78,7 +53,26 @@
                     "presentation": "soc.presentation",
                     "consolePlane": "soc.consolePlane"
                   },
+                  "on": {
+                    "setPresentationContext": [{ "do": "invoke", "args": { "tool": "setPresentationContext" } }],
+                    "setConsolePlane": [{ "do": "assign", "target": "soc.consolePlane", "args": { "from": "$event.plane" } }]
+                  },
                   "children": [
+                    {
+                      "id": "soc-inspector-mode",
+                      "capability": "fluent:switch",
+                      "props": {
+                        "offLabel": "Live inspector",
+                        "onLabel": "Blueprint inspector",
+                        "offValue": "runtime",
+                        "onValue": "blueprint",
+                        "ariaLabel": "Workspace inspector mode"
+                      },
+                      "read": { "value": "soc.consolePlane" },
+                      "on": {
+                        "toggle": [{ "do": "assign", "target": "soc.consolePlane", "args": { "from": "$event.value" } }]
+                      }
+                    },
                     {
                       "id": "soc-blueprint-inspector",
                       "capability": "soc:blueprint-inspector",

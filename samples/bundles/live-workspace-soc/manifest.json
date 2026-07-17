@@ -25,9 +25,7 @@
         "slots": ["children"]
       },
       "soc:header": {
-        "propsSchema": { "type": "object", "additionalProperties": true },
-        "slots": ["children"],
-        "emits": ["setPresentationContext", "setConsolePlane"]
+        "propsSchema": { "type": "object", "additionalProperties": true }
       },
       "soc:participants": {
         "propsSchema": { "type": "object", "additionalProperties": true },
@@ -51,7 +49,8 @@
       },
       "soc:substrate-chrome": {
         "propsSchema": { "type": "object", "additionalProperties": true },
-        "slots": ["children"]
+        "slots": ["children"],
+        "emits": ["setPresentationContext", "setConsolePlane"]
       },
       "soc:blueprint-inspector": {
         "propsSchema": { "type": "object", "additionalProperties": true }
