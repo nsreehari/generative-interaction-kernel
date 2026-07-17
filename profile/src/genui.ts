@@ -65,6 +65,7 @@ export interface InteractionSpec {
   interaction: InteractionKind;
   subject: string;
   capabilities?: string[];
+  parts?: InteractionPart[];
   intent?: { goal?: string; [k: string]: unknown };
   data?: Record<string, string>;
   facetViews?: Record<string, InteractionFacetView>;
@@ -86,11 +87,22 @@ export interface Facet {
   name: string;
   role: FacetRole;
   required: boolean;
+  concern?: string;
+}
+
+export interface InteractionPart extends Facet {
+  concern: string;
+  dataDependencies?: string[];
+  participants?: string[];
+  actions?: string[];
+  authority?: string[];
+  causalTargets?: string[];
 }
 
 export type InteractionTaxonomy = Record<string, Facet[]>;
 
 export function resolveFacets(spec: InteractionSpec, taxonomy: InteractionTaxonomy): Facet[] {
+  if (spec.parts?.length) return spec.parts;
   const facets = taxonomy[spec.interaction] ?? [];
   if (spec.capabilities?.length) {
     const byName = new Map(facets.map((facet) => [facet.name, facet]));
@@ -122,6 +134,7 @@ export type PresentationEdits = {
 export interface PresentationRegion {
   name: string;
   role: FacetRole;
+  concern?: string;
   group?: string;
   priority: RegionPriority;
   disclosure: RegionDisclosure;
@@ -214,7 +227,7 @@ export type WorkflowProgramSlot = "interaction";
 export type WorkflowToInteractionRule = ProgramRule<
   "interaction",
   RecipeMatch,
-  { interaction: string; subject?: string; capabilities?: string[] }
+  { interaction: string; subject?: string; capabilities?: string[]; parts?: InteractionPart[] }
 >;
 
 export interface WorkflowToInteractionRecipe extends LayerRecipe {
@@ -344,7 +357,7 @@ export function workflowProgramEmit(
   recipe: WorkflowToInteractionRecipe,
   slot: "interaction",
   facts: RecipeMatch
-): { interaction: string; subject?: string; capabilities?: string[] } | undefined;
+): { interaction: string; subject?: string; capabilities?: string[]; parts?: InteractionPart[] } | undefined;
 export function workflowProgramEmit(
   recipe: WorkflowToInteractionRecipe,
   slot: WorkflowProgramSlot,
@@ -607,6 +620,7 @@ export function planPresentationWithRecipe(
     const region: PresentationRegion = {
       name: facet.name,
       role: facet.role,
+      concern: facet.concern,
       group: groupOf(facet, priority, disclosure, index, spec, ctx, plannerRecipe),
       priority,
       disclosure,

@@ -83,10 +83,9 @@ export const Participants: ProjectionView = ({ node, emit, children }) => {
           return <article data-soc-actor-id={item.id} key={item.id} className={mergeClasses(styles.participant, active ? styles.participantActive : undefined, active ? styles.causalHighlight : undefined)}>
             <div className={styles.participantTop}>
               <div className={styles.participantIdentity}>
-                <ParticipantPresenceIcon status={status} />
                 <div className={styles.participantName}>{item.kind === "human" ? <Person24Regular /> : <Sparkle24Regular />}{item.name}</div>
               </div>
-              <span className={styles.kind}>{item.kind.toUpperCase()}</span>
+                <ParticipantPresenceIcon status={status} />
             </div>
             <div className={styles.role}>{item.role} · {canAuthorize ? "input awaited" : item.status.replaceAll("-", " ")}</div>
             <p className={styles.activity}>{item.activity ?? item.objective}</p>

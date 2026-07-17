@@ -22,12 +22,21 @@ const resetState = JSON.parse(JSON.stringify(initialState.soc)) as RecordValue;
 
 function presentationContract(contextId: string): RecordValue {
   const presentation = compileSocPresentation(contextId);
+  const substrateRegions = presentation.regions.filter((region) => region.materialize === false);
+  const visibleRegions = substrateRegions.filter((region) => region.disclosure !== "omitted");
   return {
     frame: presentation.frame ?? "shared",
     arrangement: presentation.arrangement,
-    regions: presentation.regions
-      .filter((region) => region.disclosure !== "omitted" && region.materialize === false)
-      .map((region) => region.name),
+    regions: visibleRegions.map((region) => region.name),
+    regionFacets: Object.fromEntries(substrateRegions.map((region) => [region.name, {
+      visible: region.disclosure !== "omitted",
+      rank: region.disclosure === "omitted" ? 50 : visibleRegions.indexOf(region),
+      priority: region.priority,
+      disclosure: region.disclosure,
+      concern: region.concern ?? "substrate",
+      group: region.group ?? "substrate",
+      presentation: region.presentation ?? "substrate-region",
+    }])),
   };
 }
 

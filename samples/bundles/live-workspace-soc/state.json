@@ -12,6 +12,18 @@
       "frame": "shared",
       "arrangement": "war-room",
       "regions": ["summary", "hypothesis", "response", "constraints", "authorization", "causal-record"],
+      "regionFacets": {
+        "summary": { "visible": true, "rank": 0, "priority": "supporting", "disclosure": "summary", "concern": "orientation", "group": "orientation", "presentation": "substrate-region" },
+        "intent": { "visible": false, "rank": 50, "priority": "supporting", "disclosure": "omitted", "concern": "guardrails", "group": "guardrails", "presentation": "substrate-region" },
+        "constraints": { "visible": true, "rank": 3, "priority": "supporting", "disclosure": "summary", "concern": "guardrails", "group": "guardrails", "presentation": "substrate-region" },
+        "hypothesis": { "visible": true, "rank": 1, "priority": "primary", "disclosure": "summary", "concern": "orientation", "group": "orientation", "presentation": "substrate-region" },
+        "exploration": { "visible": false, "rank": 50, "priority": "supporting", "disclosure": "omitted", "concern": "investigation", "group": "investigation", "presentation": "substrate-region" },
+        "evidence": { "visible": false, "rank": 50, "priority": "supporting", "disclosure": "omitted", "concern": "investigation", "group": "investigation", "presentation": "substrate-region" },
+        "agent-request": { "visible": false, "rank": 50, "priority": "supporting", "disclosure": "omitted", "concern": "delegation", "group": "request", "presentation": "agent-request" },
+        "response": { "visible": true, "rank": 2, "priority": "primary", "disclosure": "summary", "concern": "response", "group": "response", "presentation": "substrate-region" },
+        "authorization": { "visible": true, "rank": 4, "priority": "supporting", "disclosure": "summary", "concern": "governance", "group": "governance", "presentation": "substrate-region" },
+        "causal-record": { "visible": true, "rank": 5, "priority": "supporting", "disclosure": "summary", "concern": "provenance", "group": "provenance", "presentation": "substrate-region" }
+      },
       "contexts": [
         { "id": "full-substrate", "label": "Full substrate", "audience": "Technical inspection", "focus": "All shared operational and causal state" },
         { "id": "war-room", "label": "War room", "audience": "Shared team", "focus": "Incident, hypothesis, response, and authority" },

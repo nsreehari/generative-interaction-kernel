@@ -16,17 +16,17 @@
         "emit": {
           "interaction": "soc-workspace",
           "subject": "Privileged access anomaly during payroll cutover",
-          "capabilities": [
-            "summary",
-            "intent",
-            "constraints",
-            "hypothesis",
-            "exploration",
-            "evidence",
-            "agent-request",
-            "response",
-            "authorization",
-            "causal-record"
+          "parts": [
+            { "name": "summary", "role": "situation", "required": true, "concern": "orientation", "dataDependencies": ["soc.incident", "soc.journal"], "participants": ["human-morgan", "human-priya", "agent-correlation", "agent-response"], "causalTargets": ["soc.journal"] },
+            { "name": "intent", "role": "investigation-direction", "required": false, "concern": "guardrails", "dataDependencies": ["soc.intent"], "participants": ["human-morgan", "human-priya"], "actions": ["establishIntent"], "causalTargets": ["soc.intent"] },
+            { "name": "constraints", "role": "operational-boundary", "required": false, "concern": "guardrails", "dataDependencies": ["soc.constraints"], "participants": ["human-priya", "human-morgan", "agent-correlation", "agent-response"], "actions": ["addConstraint"], "authority": ["constrain-operations"], "causalTargets": ["soc.constraints"] },
+            { "name": "hypothesis", "role": "working-conclusion", "required": false, "concern": "orientation", "dataDependencies": ["soc.hypothesis"], "participants": ["human-morgan", "agent-correlation"], "causalTargets": ["soc.hypothesis"] },
+            { "name": "exploration", "role": "investigation-plan", "required": false, "concern": "investigation", "dataDependencies": ["soc.explorations"], "participants": ["human-morgan", "agent-correlation"], "actions": ["suggestExploration", "amendExploration", "replanExploration"], "authority": ["direct-investigation", "suggest-exploration"], "causalTargets": ["soc.explorations"] },
+            { "name": "evidence", "role": "decision-support", "required": false, "concern": "investigation", "dataDependencies": ["soc.evidence"], "participants": ["human-morgan", "agent-correlation", "agent-response"], "actions": ["commitPartialFindings", "completeCorrelation"], "authority": ["contribute-evidence"], "causalTargets": ["soc.evidence", "soc.hypothesis"] },
+            { "name": "agent-request", "role": "task-envelope", "required": false, "concern": "delegation", "dataDependencies": ["soc.agentProviders", "soc.explorations", "soc.proposal"], "participants": ["human-morgan", "agent-correlation", "agent-response"], "causalTargets": ["soc.journal"] },
+            { "name": "response", "role": "governed-action", "required": false, "concern": "response", "dataDependencies": ["soc.proposal"], "participants": ["human-morgan", "human-priya", "agent-response"], "actions": ["proposeHostA", "reviseResponse", "calculateResponse", "recommendContainment", "executeContainment"], "authority": ["recommend-containment", "propose-response", "execute-after-authorization"], "causalTargets": ["soc.proposal"] },
+            { "name": "authorization", "role": "consequential-decision", "required": false, "concern": "governance", "dataDependencies": ["soc.authorization", "soc.proposal"], "participants": ["human-priya", "human-morgan", "agent-response"], "actions": ["authorizeContainment"], "authority": ["authorize-containment"], "causalTargets": ["soc.authorization", "soc.proposal"] },
+            { "name": "causal-record", "role": "provenance", "required": false, "concern": "provenance", "dataDependencies": ["soc.journal"], "participants": ["human-morgan", "human-priya", "agent-correlation", "agent-response"], "causalTargets": ["soc.journal"] }
           ]
         }
       }
