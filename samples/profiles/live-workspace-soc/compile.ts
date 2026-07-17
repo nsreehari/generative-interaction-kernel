@@ -46,8 +46,8 @@ export function traceSocBlueprint(presentationContext = "war-room"): StageTrace[
   return traceProfile(socBlueprint, SOC_BLUEPRINT_SEED, { presentationContext });
 }
 
-export function compileSocPresentation(presentationContext = "war-room"): PresentationSpec {
-  return traceSocBlueprint(presentationContext)[1].output as PresentationSpec;
+export function compileSocPresentation(presentationContext = "war-room"): PresentationSpec & { frame?: string } {
+  return traceSocBlueprint(presentationContext)[1].output as PresentationSpec & { frame?: string };
 }
 
 export function compileSocDocument(presentationContext = "war-room"): unknown {

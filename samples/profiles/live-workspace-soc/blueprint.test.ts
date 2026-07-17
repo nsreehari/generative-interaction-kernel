@@ -70,6 +70,7 @@ test("lowering recipes select, order, and disclose context facets without materi
     const substrateRegions = presentation.regions.filter((region) => region.materialize === false);
     const visibleNames = substrateRegions.filter((region) => region.disclosure !== "omitted").map((region) => region.name);
 
+    assert.equal(presentation.frame, context.frame);
     assert.equal(presentation.arrangement, context.arrangement);
     assert.deepEqual(visibleNames, context.regions);
     assert.equal(substrateRegions.every((region) => region.materialize === false), true);
@@ -106,6 +107,29 @@ test("the workspace body owns substrate chrome with document-gated inspector fac
     [
       ["soc:blueprint-inspector", "soc.consolePlane = 'blueprint'"],
       ["soc:runtime-projection", "soc.consolePlane = 'runtime'"],
+    ]
+  );
+});
+
+test("the runtime projection owns ordered document-gated context views", () => {
+  const body = runtimeDocument.payload.root.edges.children.find((child) => child.id === "soc-workspace");
+  assert.ok(body);
+  const chrome = body.edges.children.find((child) => child.id === "soc-substrate-chrome");
+  assert.ok(chrome);
+  const runtimeProjection = chrome.edges.children.find((child) => child.id === "soc-runtime-projection");
+  assert.ok(runtimeProjection);
+  assert.deepEqual(runtimeProjection.props, { frame: "shared" });
+  assert.deepEqual(runtimeProjection.edges.read, {
+    presentation: "soc.presentation",
+    frame: "soc.presentation.frame",
+  });
+  assert.deepEqual(
+    runtimeProjection.edges.children.map((child) => [child.capability, child.edges.gate]),
+    [
+      ["soc:viewpoint-header", undefined],
+      ["soc:shared-summary", undefined],
+      ["soc:agent-envelope", "soc.presentation.selectedContext = 'correlation-agent' or soc.presentation.selectedContext = 'response-agent'"],
+      ["soc:operational-view", "soc.presentation.selectedContext != 'correlation-agent' and soc.presentation.selectedContext != 'response-agent'"],
     ]
   );
 });
@@ -147,9 +171,11 @@ test("the base runtime preserves the organism Blueprint output behind host integ
   assert.ok(chrome);
   const runtimeProjection = chrome.edges.children.find((child) => child.id === "soc-runtime-projection");
   assert.ok(runtimeProjection);
-  delete runtimeProjection.edges.read.demoEnabled;
-  delete runtimeProjection.edges.read.demoTimeline;
-  delete runtimeProjection.edges.read.demoSelection;
+  const operationalView = runtimeProjection.edges.children.find((child) => child.id === "soc-operational-view");
+  assert.ok(operationalView);
+  delete operationalView.edges.read.demoEnabled;
+  delete operationalView.edges.read.demoTimeline;
+  delete operationalView.edges.read.demoSelection;
 
   const journal = body.edges.children.find((child) => child.id === "soc-journal-region");
   assert.ok(journal);

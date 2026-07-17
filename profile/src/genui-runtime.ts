@@ -87,6 +87,7 @@ function buildRegionTokens(presentation: PresentationSpec, region: PresentationS
     presentation: {
       layout: presentation.layout,
       arrangement: presentation.arrangement,
+      frame: presentation.frame,
     },
     region: {
       name: region.name,
@@ -110,6 +111,7 @@ function buildContainerTokens(presentation: PresentationSpec): Record<string, un
     presentation: {
       layout: presentation.layout,
       arrangement: presentation.arrangement,
+      frame: presentation.frame,
     },
   };
 }
@@ -161,6 +163,7 @@ export function lowerPresentationWithRuntimeEmitter<TNode, TOutput>(
       subject: source.subject,
       layout: presentation.layout,
       arrangement: presentation.arrangement,
+      frame: presentation.frame,
     };
     const container = presentationRuntimeProgramEmit(runtimeRecipe, "container", containerFacts);
     const containerTokens = buildContainerTokens(presentation);

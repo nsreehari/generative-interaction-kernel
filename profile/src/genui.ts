@@ -138,6 +138,7 @@ export interface PresentationRegion {
 export interface PresentationSpec {
   layout: string;
   arrangement: LayoutArrangement;
+  frame?: string;
   regions: PresentationRegion[];
   source: InteractionSpec;
 }
@@ -171,7 +172,7 @@ export interface TemplateDefinition {
   maxRegions?: number;
 }
 
-export type TemplateRule = EmitRule<RecipeMatch, { template: string; layout: string }>;
+export type TemplateRule = EmitRule<RecipeMatch, { template: string; layout: string; frame?: string }>;
 export type OrderRule = EmitRule<RecipeMatch, { rank: number }>;
 export type PriorityRule = EmitRule<RecipeMatch, { priority: RegionPriority }>;
 export type DisclosureRule = EmitRule<RecipeMatch, { disclosure: RegionDisclosure }>;
@@ -189,7 +190,7 @@ export type InteractionProgramSlot =
   | "rationale";
 
 export type InteractionProgramRule =
-  | ProgramRule<"template", RecipeMatch, { template: string; layout: string }>
+  | ProgramRule<"template", RecipeMatch, { template: string; layout: string; frame?: string }>
   | ProgramRule<"rank", RecipeMatch, { rank: number }>
   | ProgramRule<"priority", RecipeMatch, { priority: RegionPriority }>
   | ProgramRule<"disclosure", RecipeMatch, { disclosure: RegionDisclosure }>
@@ -237,6 +238,7 @@ export interface PresentationRuntimeFacts extends RecipeMatch {
   subject?: string;
   layout?: string;
   arrangement?: LayoutArrangement;
+  frame?: string;
 }
 
 export type PresentationRuntimeProgramSlot = "container" | "region";
@@ -427,7 +429,7 @@ function selectTemplate(
   spec: InteractionSpec,
   ctx: LayerContext,
   recipe: InteractionToPresentationRecipe
-): { template: LayoutTemplate; layout: string } {
+): { template: LayoutTemplate; layout: string; frame?: string } {
   const templates = asTemplateRecord(recipe.templates);
   const facts: RecipeMatch = {
     ...ctx,
@@ -450,6 +452,11 @@ function selectTemplate(
       interaction: spec.interaction,
       subject: spec.subject,
     }),
+    frame: match.frame ? renderTemplate(match.frame, {
+      ...ctx,
+      interaction: spec.interaction,
+      subject: spec.subject,
+    }) : undefined,
   };
 }
 
@@ -588,7 +595,7 @@ export function planPresentationWithRecipe(
   if (!plannerRecipe) {
     throw new Error(`Recipe '${recipe.id}' does not carry presentation planning data`);
   }
-  const { template, layout } = selectTemplate(spec, ctx, plannerRecipe);
+  const { template, layout, frame } = selectTemplate(spec, ctx, plannerRecipe);
   const facets = resolveFacets(spec, taxonomy);
   const ordered = orderByRank(facets, (facet, index) => orderRankOf(facet, index, spec, ctx, plannerRecipe));
   const chosen = capOrderedItems(ordered, template.maxRegions, plannerRecipe.cap.preserveRequired, (facet) => facet.required);
@@ -621,6 +628,7 @@ export function planPresentationWithRecipe(
   return {
     layout,
     arrangement: template.arrangement,
+    frame,
     regions,
     source: spec,
   };
