@@ -217,9 +217,15 @@ test("presentation context changes projection metadata without changing the caus
   const presentation = store.get("soc.presentation") as {
     selectedContext: string;
     revision: number;
+    frame: string;
+    arrangement: string;
+    regions: string[];
   };
   assert.equal(presentation.selectedContext, "priya-laptop");
   assert.equal(presentation.revision, 1);
+  assert.equal(presentation.frame, "laptop");
+  assert.equal(presentation.arrangement, "command");
+  assert.deepEqual(presentation.regions, ["summary", "constraints", "hypothesis", "evidence", "response", "authorization", "causal-record"]);
   assert.deepEqual(store.get("soc.journal"), journalBefore);
 });
 

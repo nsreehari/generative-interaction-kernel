@@ -16,6 +16,9 @@ export interface PresentationContext {
 export interface Presentation {
   selectedContext: string;
   revision: number;
+  frame: SocPresentationSpec["frame"];
+  arrangement: SocPresentationSpec["arrangement"];
+  regions: SubstrateRegion[];
   contexts: PresentationContext[];
 }
 

@@ -89,24 +89,63 @@
                       "id": "soc-runtime-projection",
                       "capability": "soc:runtime-projection",
                       "gate": "soc.consolePlane = 'runtime'",
+                      "props": { "frame": "{{presentation.frame}}" },
                       "read": {
-                        "incident": "soc.incident",
                         "presentation": "soc.presentation",
-                        "stage": "soc.stage",
-                        "actors": "soc.actors",
-                        "intent": "soc.intent",
-                        "constraints": "soc.constraints",
-                        "explorations": "soc.explorations",
-                        "evidence": "soc.evidence",
-                        "hypothesis": "soc.hypothesis",
-                        "proposal": "soc.proposal",
-                        "authorization": "soc.authorization",
-                        "journal": "soc.journal",
-                        "selectedJournalId": "soc.ui.selectedJournalId"
+                        "frame": "soc.presentation.frame"
                       },
-                      "on": {
-                        "authorizeContainment": [{ "do": "confirm", "args": { "tool": "authorizeContainment", "title": "Authorize Host-A isolation", "message": "Authorize the evidence-backed, reversible isolation plan?", "confirmLabel": "Authorize", "danger": true } }]
-                      }
+                      "children": [
+                        {
+                          "id": "soc-viewpoint-header",
+                          "capability": "soc:viewpoint-header",
+                          "read": { "presentation": "soc.presentation" }
+                        },
+                        {
+                          "id": "soc-shared-summary",
+                          "capability": "soc:shared-summary",
+                          "read": {
+                            "presentation": "soc.presentation",
+                            "journal": "soc.journal"
+                          }
+                        },
+                        {
+                          "id": "soc-agent-envelope",
+                          "capability": "soc:agent-envelope",
+                          "gate": "soc.presentation.selectedContext = 'correlation-agent' or soc.presentation.selectedContext = 'response-agent'",
+                          "read": {
+                            "presentation": "soc.presentation",
+                            "stage": "soc.stage",
+                            "actors": "soc.actors",
+                            "constraints": "soc.constraints",
+                            "explorations": "soc.explorations",
+                            "evidence": "soc.evidence",
+                            "hypothesis": "soc.hypothesis",
+                            "proposal": "soc.proposal",
+                            "journal": "soc.journal"
+                          }
+                        },
+                        {
+                          "id": "soc-operational-view",
+                          "capability": "soc:operational-view",
+                          "gate": "soc.presentation.selectedContext != 'correlation-agent' and soc.presentation.selectedContext != 'response-agent'",
+                          "read": {
+                            "presentation": "soc.presentation",
+                            "actors": "soc.actors",
+                            "intent": "soc.intent",
+                            "constraints": "soc.constraints",
+                            "explorations": "soc.explorations",
+                            "evidence": "soc.evidence",
+                            "hypothesis": "soc.hypothesis",
+                            "proposal": "soc.proposal",
+                            "authorization": "soc.authorization",
+                            "journal": "soc.journal",
+                            "selectedJournalId": "soc.ui.selectedJournalId"
+                          },
+                          "on": {
+                            "authorizeContainment": [{ "do": "confirm", "args": { "tool": "authorizeContainment", "title": "Authorize Host-A isolation", "message": "Authorize the evidence-backed, reversible isolation plan?", "confirmLabel": "Authorize", "danger": true } }]
+                          }
+                        }
+                      ]
                     }
                   ]
                 },

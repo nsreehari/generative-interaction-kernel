@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { resolveFocusTargets, selectionFromTimelineItem, type TimelineItem } from "../../../shared/demo-runner";
+import { compileSocPresentation } from "../../../profiles/live-workspace-soc/compile";
 
 import {
   SOC_FOCUS_TARGETS,
@@ -8,8 +9,18 @@ import {
   isCausallyAffected,
   participantPresence,
   socJournalSelection,
-  socPresentationSpec,
 } from "./index";
+
+function presentationContract(contextId: string) {
+  const presentation = compileSocPresentation(contextId);
+  return {
+    frame: presentation.frame,
+    arrangement: presentation.arrangement,
+    regions: presentation.regions
+      .filter((region) => region.disclosure !== "omitted" && region.materialize === false)
+      .map((region) => region.name),
+  };
+}
 
 const entry = {
   id: "j-07",
@@ -85,10 +96,10 @@ test("participant statuses map to a stable presence vocabulary", () => {
 });
 
 test("presentation contexts produce distinct substrate frames and disclosure", () => {
-  const full = socPresentationSpec("full-substrate");
-  const mobile = socPresentationSpec("priya-mobile");
-  const pager = socPresentationSpec("morgan-pager");
-  const correlation = socPresentationSpec("correlation-agent");
+  const full = presentationContract("full-substrate");
+  const mobile = presentationContract("priya-mobile");
+  const pager = presentationContract("morgan-pager");
+  const correlation = presentationContract("correlation-agent");
 
   assert.equal(full.frame, "shared");
   assert.equal(full.arrangement, "inspection");

@@ -1,4 +1,3 @@
-import { compileSocPresentation, SOC_BLUEPRINT_CONTEXTS } from "../../../profiles/live-workspace-soc/compile";
 import {
   selectionContainsFocus,
   selectionFromTimelineItem,
@@ -7,20 +6,7 @@ import {
   type FocusTarget,
   type TimelineItem,
 } from "../../../shared/demo-runner";
-import type { JournalEntry, ParticipantPresence, SocPresentationSpec } from "./types";
-
-export function socPresentationSpec(contextId: string): SocPresentationSpec {
-  const context = SOC_BLUEPRINT_CONTEXTS.find((item) => item.id === contextId) ?? SOC_BLUEPRINT_CONTEXTS.find((item) => item.id === "war-room");
-  if (!context) throw new Error("The SOC blueprint must define a war-room presentation context");
-  const presentation = compileSocPresentation(context.id);
-  return {
-    frame: context.frame as SocPresentationSpec["frame"],
-    arrangement: presentation.arrangement as SocPresentationSpec["arrangement"],
-    regions: presentation.regions
-      .filter((region) => region.disclosure !== "omitted" && region.materialize === false)
-      .map((region) => region.name as SocPresentationSpec["regions"][number]),
-  };
-}
+import type { JournalEntry, ParticipantPresence } from "./types";
 
 export function participantPresence(status: string): ParticipantPresence {
   switch (status) {

@@ -3,6 +3,7 @@ import type { Json, OrchestratorResult, PatchOp } from "@gik/kernel";
 import type { TimelineItem } from "../../../shared/demo-runner";
 
 import { createFoundryProxy } from "../../../shared/foundry-proxy";
+import { compileSocPresentation } from "../../../profiles/live-workspace-soc/compile";
 import manifest from "../manifest.json";
 import initialState from "../state.json";
 import { getSocFoundryKey } from "../live-credentials";
@@ -18,6 +19,17 @@ import {
 
 type RecordValue = Record<string, Json>;
 const resetState = JSON.parse(JSON.stringify(initialState.soc)) as RecordValue;
+
+function presentationContract(contextId: string): RecordValue {
+  const presentation = compileSocPresentation(contextId);
+  return {
+    frame: presentation.frame ?? "shared",
+    arrangement: presentation.arrangement,
+    regions: presentation.regions
+      .filter((region) => region.disclosure !== "omitted" && region.materialize === false)
+      .map((region) => region.name),
+  };
+}
 
 function list(ctx: EffectContext, path: string): Json[] {
   const value = ctx.get(path);
@@ -244,6 +256,7 @@ const deterministicEffects: EffectHandlerMap = {
         ...presentation,
         selectedContext: requested,
         revision: Number(presentation.revision ?? 0) + 1,
+        ...presentationContract(requested),
       })],
     };
   },

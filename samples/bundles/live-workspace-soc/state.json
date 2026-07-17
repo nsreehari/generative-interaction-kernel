@@ -9,6 +9,9 @@
     "presentation": {
       "selectedContext": "war-room",
       "revision": 0,
+      "frame": "shared",
+      "arrangement": "war-room",
+      "regions": ["summary", "hypothesis", "response", "constraints", "authorization", "causal-record"],
       "contexts": [
         { "id": "full-substrate", "label": "Full substrate", "audience": "Technical inspection", "focus": "All shared operational and causal state" },
         { "id": "war-room", "label": "War room", "audience": "Shared team", "focus": "Incident, hypothesis, response, and authority" },
