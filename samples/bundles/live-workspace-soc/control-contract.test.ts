@@ -1,0 +1,53 @@
+import assert from "node:assert/strict";
+import { test } from "vitest";
+import { bundleFromJson, loadBundleRuntime } from "@gik/react";
+import { createHeadlessControlRuntime } from "../../shared/control-runtime";
+import { socControlContract } from "./control-contract";
+import document from "./document.json";
+import effects from "./effect_handlers";
+import manifest from "./manifest.json";
+import state from "./state.json";
+
+function headlessSoc() {
+  const runtime = loadBundleRuntime(bundleFromJson({
+    manifest: structuredClone(manifest),
+    document: structuredClone(document),
+    state: structuredClone(state),
+  }, { effectHandlers: effects }));
+  return createHeadlessControlRuntime(runtime, socControlContract);
+}
+
+test("headless control dispatch executes the organism and returns its receipt", async () => {
+  const control = headlessSoc();
+  const receipt = await control.dispatch({
+    id: "headless:establish-intent:1",
+    targetBlueprintId: "live-workspace-soc",
+    token: 1,
+    command: "establishIntent",
+    actorId: "human-morgan",
+  });
+
+  assert.equal(receipt.status, "completed");
+  assert.equal(receipt.outcome, "committed");
+  assert.equal(receipt.result?.actorId, "human-morgan");
+  assert.equal((control.snapshot().soc as Record<string, unknown>).stage, "Human intent and constraint");
+});
+
+test("headless control rejects incompatible blueprints and unknown commands", async () => {
+  const control = headlessSoc();
+  const incompatible = await control.dispatch({
+    id: "headless:wrong:1",
+    targetBlueprintId: "other-organism",
+    token: 1,
+    command: "establishIntent",
+  });
+  const unsupported = await control.dispatch({
+    id: "headless:unknown:2",
+    targetBlueprintId: "live-workspace-soc",
+    token: 2,
+    command: "unknown",
+  });
+
+  assert.equal(incompatible.outcome, "incompatible-blueprint");
+  assert.equal(unsupported.outcome, "unsupported-command");
+});

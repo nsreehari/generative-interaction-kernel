@@ -1,5 +1,5 @@
 import React from "react";
-import { Switch, ToggleButton } from "@fluentui/react-components";
+import { Dropdown, Option, Switch, ToggleButton } from "@fluentui/react-components";
 import { readProps, type ProjectionView, type ProjectionViewProps } from "@gik/react";
 
 export interface FluentSwitchControlProps {
@@ -95,7 +95,48 @@ const FluentToggle: ProjectionView = ({ node, emit }) => {
   );
 };
 
+const FluentDropdown: ProjectionView = ({ node, emit }) => {
+  const props = readProps(node);
+  const [open, setOpen] = React.useState(false);
+  const options = Array.isArray(node.props.options)
+    ? node.props.options.flatMap((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+      const value = String(item.value ?? item.id ?? "");
+      if (!value) return [];
+      return [{ value, label: String(item.label ?? value), disabled: item.disabled === true }];
+    })
+    : [];
+  const value = props.str("value");
+  const selected = options.find((option) => option.value === value);
+
+  return (
+    <Dropdown
+      className="gx-fluent-dropdown"
+      open={open}
+      button={{
+        onPointerDown: (event) => {
+          if (event.button === 0 && !open) setOpen(true);
+        },
+      }}
+      onOpenChange={(_, data) => setOpen(data.open)}
+      aria-label={props.str("ariaLabel") || undefined}
+      placeholder={props.str("placeholder") || undefined}
+      value={selected?.label ?? ""}
+      selectedOptions={value ? [value] : []}
+      onOptionSelect={(_, data) => {
+        if (!data.optionValue) return;
+        const option = options.find((candidate) => candidate.value === data.optionValue);
+        setOpen(false);
+        emit("select", { value: data.optionValue, label: option?.label ?? data.optionText });
+      }}
+    >
+      {options.map((option) => <Option key={option.value} value={option.value} disabled={option.disabled}>{option.label}</Option>)}
+    </Dropdown>
+  );
+};
+
 const projectionViews: Record<string, ProjectionView> = {
+  dropdown: FluentDropdown,
   switch: FluentSwitch,
   toggle: FluentToggle,
 };

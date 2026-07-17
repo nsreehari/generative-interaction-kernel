@@ -34,6 +34,7 @@ test("host projection imports can resolve another bundle by id", () => {
   const foundryViews = resolveBundleProjectionViews("foundry-agent");
   assert.equal(typeof foundryViews?.["access-modal"], "function");
   const fluentViews = resolveBundleProjectionViews("fluent");
+  assert.equal(typeof fluentViews?.dropdown, "function");
   assert.equal(typeof fluentViews?.switch, "function");
   assert.equal(typeof fluentViews?.toggle, "function");
   assert.equal(resolveBundleProjectionViews("missing-bundle"), undefined);

@@ -41,8 +41,7 @@
                 "authorizeContainment": [{ "do": "confirm", "args": { "tool": "authorizeContainment", "title": "Authorize Host-A isolation", "message": "Authorize the evidence-backed, reversible isolation plan?", "confirmLabel": "Authorize", "danger": true } }],
                 "executeContainment": [{ "do": "invoke", "args": { "tool": "executeContainment" } }],
                 "setPresentationContext": [{ "do": "invoke", "args": { "tool": "setPresentationContext" } }],
-                "setAgentMode": [{ "do": "invoke", "args": { "tool": "setAgentMode" } }],
-                "selectJournal": [{ "do": "assign", "target": "soc.ui.selectedJournalId", "args": { "from": "$event.id" } }]
+                "setAgentMode": [{ "do": "invoke", "args": { "tool": "setAgentMode" } }]
               },
               "children": [
                 {
@@ -51,38 +50,13 @@
                   "read": {
                     "incident": "soc.incident",
                     "presentation": "soc.presentation",
-                    "consolePlane": "soc.consolePlane"
-                  },
-                  "on": {
-                    "setPresentationContext": [{ "do": "invoke", "args": { "tool": "setPresentationContext" } }],
-                    "setConsolePlane": [{ "do": "assign", "target": "soc.consolePlane", "args": { "from": "$event.plane" } }]
+                    "journal": "soc.journal",
+                    "facet": "soc.presentation.regionFacets.summary"
                   },
                   "children": [
                     {
-                      "id": "soc-inspector-mode",
-                      "capability": "fluent:switch",
-                      "props": {
-                        "offLabel": "Live inspector",
-                        "onLabel": "Blueprint inspector",
-                        "offValue": "runtime",
-                        "onValue": "blueprint",
-                        "ariaLabel": "Workspace inspector mode"
-                      },
-                      "read": { "value": "soc.consolePlane" },
-                      "on": {
-                        "toggle": [{ "do": "assign", "target": "soc.consolePlane", "args": { "from": "$event.value" } }]
-                      }
-                    },
-                    {
-                      "id": "soc-blueprint-inspector",
-                      "capability": "soc:blueprint-inspector",
-                      "gate": "soc.consolePlane = 'blueprint'",
-                      "read": { "presentation": "soc.presentation" }
-                    },
-                    {
                       "id": "soc-runtime-projection",
                       "capability": "soc:runtime-projection",
-                      "gate": "soc.consolePlane = 'runtime'",
                       "props": { "frame": "{{presentation.frame}}" },
                       "read": {
                         "presentation": "soc.presentation",
@@ -90,18 +64,11 @@
                       },
                       "children": [
                         {
-                          "id": "soc-viewpoint-header",
-                          "capability": "soc:viewpoint-header",
-                          "read": { "presentation": "soc.presentation", "journal": "soc.journal" }
-                        },
-                        {
                           "id": "soc-presentation-layout",
                           "capability": "soc:presentation-layout",
                           "read": {
                             "presentation": "soc.presentation",
-                            "actors": "soc.actors",
-                            "journal": "soc.journal",
-                            "selectedJournalId": "soc.ui.selectedJournalId"
+                            "actors": "soc.actors"
                           },
                           "children": [
                             {
@@ -242,67 +209,6 @@
                       ]
                     }
                   ]
-                },
-                {
-                  "id": "soc-journal-region",
-                  "capability": "soc:journal",
-                  "read": {
-                    "incident": "soc.incident",
-                    "actors": "soc.actors",
-                    "journal": "soc.journal",
-                    "journalMode": "soc.ui.journalMode",
-                    "selectedJournalId": "soc.ui.selectedJournalId"
-                  },
-                  "on": {
-                    "setJournalMode": [{ "do": "assign", "target": "soc.ui.journalMode", "args": { "from": "$event.mode" } }],
-                    "selectJournal": [{ "do": "assign", "target": "soc.ui.selectedJournalId", "args": { "from": "$event.id" } }]
-                  }
-                }
-              ]
-            },
-            {
-              "id": "soc-participants-region",
-              "capability": "soc:participants",
-              "read": {
-                "actors": "soc.actors",
-                "agentProviders": "soc.agentProviders",
-                "authorization": "soc.authorization",
-                "journal": "soc.journal",
-                "selectedJournalId": "soc.ui.selectedJournalId",
-                "expanded": "soc.ui.participantsExpanded"
-              },
-              "on": {
-                "toggleDrawer": [{ "do": "assign", "target": "soc.ui.participantsExpanded", "args": { "from": "$event.expanded" } }],
-                "authorizeContainment": [{ "do": "confirm", "args": { "tool": "authorizeContainment", "title": "Authorize Host-A isolation", "message": "Authorize the evidence-backed, reversible isolation plan?", "confirmLabel": "Authorize", "danger": true } }]
-              },
-              "children": [
-                {
-                  "id": "correlation-agent-provider-mode",
-                  "capability": "fluent:switch",
-                  "props": {
-                    "name": "agent-correlation",
-                    "offLabel": "Mock",
-                    "onLabel": "Live",
-                    "offValue": "mock",
-                    "onValue": "live",
-                    "ariaLabel": "Correlation Agent provider mode"
-                  },
-                  "readExpr": { "value": "$lookup(soc.agentProviders, 'agent-correlation').mode" },
-                  "on": { "toggle": [{ "do": "invoke", "args": { "tool": "setAgentMode" } }] }
-                },
-                {
-                  "id": "response-agent-provider-mode",
-                  "capability": "fluent:switch",
-                  "props": {
-                    "name": "agent-response",
-                    "offLabel": "Mock",
-                    "onLabel": "Live",
-                    "offValue": "mock",
-                    "onValue": "live",
-                    "ariaLabel": "Response Agent provider mode"
-                  },
-                  "readExpr": { "value": "$lookup(soc.agentProviders, 'agent-response').mode" },
-                  "on": { "toggle": [{ "do": "invoke", "args": { "tool": "setAgentMode" } }] }
                 }
               ]
             }

@@ -1,5 +1,3 @@
-import { BlueprintInspector } from "./BlueprintInspector";
-import { JournalRail } from "./JournalRail";
 import { LiveWorkspaceSocBody } from "./LiveWorkspaceSocBody";
 import {
   AuthorizationRegion,
@@ -12,38 +10,23 @@ import {
   IntentRegion,
   ResponseRegion,
 } from "./OperationalRegions";
-import { Participants } from "./Participants";
 import { PresentationLayout } from "./PresentationLayout";
 import { RuntimeProjection } from "./RuntimeProjection";
 import { RegionSurface } from "./RegionSurface";
 import { SubstrateChrome } from "./SubstrateChrome";
-import { ViewpointHeader } from "./ViewpointHeader";
 import { WorkspaceHeader } from "./WorkspaceHeader";
 import { WorkspaceShell } from "./WorkspaceShell";
 
-export {
-  SOC_FOCUS_TARGETS,
-  isActorSelected,
-  isCausallyAffected,
-  participantPresence,
-  selectionTargetsActor,
-  selectionTargetsRecord,
-  socJournalSelection,
-  socJournalTimelineItem,
-} from "./helpers";
+export * from "./helpers";
 export type { JournalEntry, SocPresentationSpec } from "./types";
 
 export default {
   "workspace-shell": WorkspaceShell,
   header: WorkspaceHeader,
-  journal: JournalRail,
-  participants: Participants,
   "workspace-body": LiveWorkspaceSocBody,
   "substrate-chrome": SubstrateChrome,
-  "blueprint-inspector": BlueprintInspector,
   "runtime-projection": RuntimeProjection,
   "region-surface": RegionSurface,
-  "viewpoint-header": ViewpointHeader,
   "presentation-layout": PresentationLayout,
   "intent-region": IntentRegion,
   "constraints-region": ConstraintsRegion,
