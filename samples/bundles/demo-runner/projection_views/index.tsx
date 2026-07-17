@@ -21,6 +21,7 @@ interface DemoState {
   } | null;
   ack?: {
     token: number;
+    command: string;
   } | null;
 }
 
@@ -54,7 +55,7 @@ const DemoRunner: ProjectionView = ({ node, emit, children }) => {
   const catalog = (node.props.catalog ?? []) as unknown as DemoCatalogEntry[];
   const entry = node.props.entry as unknown as DemoCatalogEntry;
   const [expanded, setExpanded] = React.useState(true);
-  const processedAckRef = React.useRef(0);
+  const processedAckRef = React.useRef("");
   const act = Number(demo.act ?? 0);
   const complete = act >= plan.steps.length;
   const displayAct = Math.min(act + 1, plan.steps.length);
@@ -62,14 +63,15 @@ const DemoRunner: ProjectionView = ({ node, emit, children }) => {
   React.useEffect(() => {
     const request = demo.request;
     const ack = demo.ack;
-    if (!request || request.command === "$reset" || !ack || ack.token !== request.token) return;
-    if (processedAckRef.current === ack.token) return;
-    processedAckRef.current = ack.token;
+    if (!request || request.command === "$reset" || !ack || ack.token !== request.token || ack.command !== request.command) return;
+    const ackKey = `${ack.token}:${ack.command}`;
+    if (processedAckRef.current === ackKey) return;
+    processedAckRef.current = ackKey;
     const timer = window.setTimeout(() => {
       void emit("finishAct", {});
     }, request.waitAfterMs ?? 0);
     return () => window.clearTimeout(timer);
-  }, [demo.ack?.token, demo.request?.token]);
+  }, [demo.ack?.token, demo.ack?.command, demo.request?.token, demo.request?.command]);
 
   const selectDemo = (id: string) => {
     const selected = catalog.find((item) => item.id === id);
@@ -77,7 +79,7 @@ const DemoRunner: ProjectionView = ({ node, emit, children }) => {
   };
 
   const reset = () => {
-    processedAckRef.current = 0;
+    processedAckRef.current = "";
     emit("reset", {});
   };
 

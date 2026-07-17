@@ -153,52 +153,56 @@ test("executive scenario uses the same runner timeline and semantic focus broker
   await soc.controller.start();
   await runner.controller.start();
 
-  for (const [index, step] of socExecutiveScenarioPlan.steps.slice(0, 12).entries()) {
+  for (const [index, step] of socExecutiveScenarioPlan.steps.slice(0, 3).entries()) {
     await runner.controller.emit("next-act-timer-region", "press", { reason: "manual" });
     assert.equal(shared.get("demo.presenter.locked"), true);
-    await soc.controller.resync();
-    const request = shared.get("demo.request") as { token: number; command: string };
-    assert.deepEqual(shared.get("demo.ack"), { token: request.token, command: step.command });
-    await runner.controller.resync();
-    await runner.controller.emit("demo-runner", "finishAct");
+    for (const command of step.commands ?? []) {
+      await soc.controller.resync();
+      const request = shared.get("demo.request") as { token: number; command: string };
+      assert.equal(request.command, command);
+      assert.deepEqual(shared.get("demo.ack"), { token: request.token, command });
+      await runner.controller.resync();
+      await runner.controller.emit("demo-runner", "finishAct");
+    }
     assert.equal(shared.get("demo.act"), index + 1);
   }
 
   const timelineBeforeGate = shared.get("demo.timeline") as unknown as TimelineItem[];
-  assert.equal(timelineBeforeGate[0].title, "Set the investigation objective");
-  assert.equal(timelineBeforeGate.length, 24);
-  for (let index = 0; index < timelineBeforeGate.length; index += 2) {
-    assert.deepEqual(timelineBeforeGate.slice(index, index + 2).map((item) => item.source), ["scenario", "organism"]);
-    assert.equal(timelineBeforeGate[index].correlationId, timelineBeforeGate[index + 1].correlationId);
+  assert.equal(timelineBeforeGate[0].title, "Frame the protected business objective");
+  assert.equal(timelineBeforeGate.length, 15);
+  assert.equal(timelineBeforeGate.filter((item) => item.source === "scenario").length, 3);
+  assert.equal(timelineBeforeGate.filter((item) => item.source === "organism").length, 12);
+  for (const organismItem of timelineBeforeGate.filter((item) => item.source === "organism")) {
+    assert.ok(timelineBeforeGate.some((item) => item.source === "scenario" && item.correlationId === organismItem.correlationId));
   }
 
   const selection = selectionFromTimelineItem(timelineBeforeGate[0]);
   await soc.controller.emit("soc-workspace", "selectTimeline", { selection });
   assert.deepEqual(shared.get("demo.selection"), selection);
-  assert.equal(selectionTargetsActor(selection, "human-morgan"), true);
   assert.equal(selectionTargetsRecord(selection, ["intent"]), true);
+  assert.equal(selectionTargetsRecord(selection, ["constraints"]), true);
   assert.equal(selectionTargetsRecord(selection, ["authorization"]), false);
 
   await runner.controller.emit("next-act-timer-region", "press", { reason: "manual" });
   assert.equal((shared.get("demo.request") as { command: string }).command, "$human-gate");
-  assert.equal(shared.get("demo.act"), 12);
+  assert.equal(shared.get("demo.act"), 3);
   await soc.controller.emit("soc-workspace", "authorizeContainment", {}, "human-priya");
   const gateRequest = shared.get("demo.request") as { token: number };
   assert.deepEqual(shared.get("demo.ack"), { token: gateRequest.token, command: "$human-gate" });
   await runner.controller.resync();
   await runner.controller.emit("demo-runner", "finishAct");
-  assert.equal(shared.get("demo.act"), 13);
+  assert.equal(shared.get("demo.act"), 4);
 
   await runner.controller.emit("next-act-timer-region", "press", { reason: "manual" });
   await soc.controller.resync();
   await runner.controller.resync();
   await runner.controller.emit("demo-runner", "finishAct");
-  assert.equal(shared.get("demo.act"), 14);
+  assert.equal(shared.get("demo.act"), 5);
   assert.equal(shared.get("demo.presenter.locked"), true);
   assert.equal(soc.state.get("soc.incident.status"), "Contained");
 
   const completedTimeline = shared.get("demo.timeline") as unknown as TimelineItem[];
-  assert.equal(completedTimeline.length, 28);
+  assert.equal(completedTimeline.length, 19);
   const gateScenario = completedTimeline.find((item) => item.scenarioStepId === "authorize");
   const gateOrganism = completedTimeline.find((item) => item.operationRecordId === "j-13");
   assert.equal(gateScenario?.status, "complete");

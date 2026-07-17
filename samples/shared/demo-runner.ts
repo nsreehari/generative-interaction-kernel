@@ -41,6 +41,7 @@ export interface ScenarioStep {
   title: string;
   kind: "dispatch" | "human-gate";
   command?: string;
+  commands?: string[];
   actorRef?: FocusRef;
   waitAfterMs?: number;
   humanBoundary?: FocusRef;
@@ -105,8 +106,12 @@ export function compileScenarioBlueprint(artifact: ScenarioBlueprintArtifact): S
     if (!step.id.trim() || !step.title.trim()) {
       throw new Error("Scenario steps require id and title");
     }
-    if (step.kind === "dispatch" && !step.command?.trim()) {
-      throw new Error(`Dispatched scenario step '${step.id}' requires a command`);
+    const commands = step.commands?.filter((command) => command.trim()) ?? [];
+    if (step.kind === "dispatch" && !step.command?.trim() && commands.length === 0) {
+      throw new Error(`Dispatched scenario step '${step.id}' requires a command or commands`);
+    }
+    if (step.command?.trim() && commands.length > 0) {
+      throw new Error(`Dispatched scenario step '${step.id}' cannot declare both command and commands`);
     }
     if (step.kind === "human-gate" && !step.humanBoundary) {
       throw new Error(`Human-gate scenario step '${step.id}' requires a human boundary`);
@@ -121,6 +126,10 @@ export function compileScenarioBlueprint(artifact: ScenarioBlueprintArtifact): S
 export function nextScenarioStep(plan: ScenarioPlan, cursor: ScenarioCursor): ScenarioStep | undefined {
   if (cursor.advanceToken <= 0) return undefined;
   return plan.steps[cursor.stepIndex];
+}
+
+export function scenarioStepCommands(step: ScenarioStep): string[] {
+  return step.commands?.length ? step.commands.filter((command) => command.trim()) : step.command?.trim() ? [step.command] : [];
 }
 
 export function selectionFromTimelineItem(item: TimelineItem): DemoSelection {
@@ -171,7 +180,9 @@ export function validateDemoComposition(
   const focusKinds = new Set(organism.focusKinds);
   const timelineSources = new Set(organism.timelineSources);
   for (const step of scenario.steps) {
-    if (step.command && !commands.has(step.command)) throw new Error(`Unsupported scenario command '${step.command}'`);
+    for (const command of scenarioStepCommands(step)) {
+      if (!commands.has(command)) throw new Error(`Unsupported scenario command '${command}'`);
+    }
     for (const actor of [step.actorRef, step.humanBoundary]) {
       if (actor && !actors.has(actor.id)) throw new Error(`Unsupported scenario actor '${actor.id}'`);
     }

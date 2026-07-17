@@ -1,6 +1,6 @@
 import { setOp, type EffectHandlerMap } from "@gik/react";
 import type { Json } from "@gik/kernel";
-import type { ScenarioPlan, ScenarioStep, TimelineItem } from "../../../shared/demo-runner";
+import { scenarioStepCommands, type ScenarioPlan, type ScenarioStep, type TimelineItem } from "../../../shared/demo-runner";
 
 type RecordValue = Record<string, Json>;
 
@@ -29,11 +29,12 @@ const effects: EffectHandlerMap = {
     if (!step || presenter.locked === true) return { outcome: "ignored" };
     const token = Number(presenter.advanceToken ?? 0) + 1;
     const correlationId = `${plan(ctx).id}:${step.id}:${token}`;
+    const commands = scenarioStepCommands(step);
     const scenarioItem: TimelineItem = {
       id: `scenario:${correlationId}`,
       source: "scenario",
       title: step.title,
-      summary: step.kind === "human-gate" ? "Awaiting governed human authorization" : `Dispatch ${step.command}`,
+      summary: step.kind === "human-gate" ? "Awaiting governed human authorization" : commands.length > 1 ? `Dispatch ${commands.length} stitched operations` : `Dispatch ${commands[0]}`,
       status: step.kind === "human-gate" ? "awaiting-human" : "requested",
       scenarioStepId: step.id,
       sequence: act + 1,
@@ -45,15 +46,17 @@ const effects: EffectHandlerMap = {
       setOp("demo.presenter", { ...presenter, locked: true, advanceToken: token }),
       setOp("demo.timeline", [...timeline(ctx), scenarioItem] as unknown as Json),
     ];
-    if (step.kind === "dispatch" && step.command) {
+    if (step.kind === "dispatch" && commands[0]) {
       ops.push(setOp("demo.request", {
         token,
-        command: step.command,
+        command: commands[0],
+        commands,
+        commandIndex: 0,
         actorId: step.actorRef?.id ?? "",
         waitAfterMs: step.waitAfterMs ?? 0,
         correlationId,
       }));
-      ops.push(setOp(`demo.commands.${step.command}`, token));
+      ops.push(setOp(`demo.commands.${commands[0]}`, token));
     } else if (step.kind === "human-gate") {
       ops.push(setOp("demo.request", {
         token,
@@ -84,7 +87,23 @@ const effects: EffectHandlerMap = {
     const presenter = record(ctx.get("demo.presenter"));
     const request = record(ctx.get("demo.request"));
     const ack = record(ctx.get("demo.ack"));
-    if (request.command === "$reset" || request.token !== ack.token) return { outcome: "ignored" };
+    if (request.command === "$reset" || request.token !== ack.token || request.command !== ack.command) return { outcome: "ignored" };
+    const commands = Array.isArray(request.commands) ? request.commands.map(String) : [String(request.command ?? "")];
+    const commandIndex = Number(request.commandIndex ?? 0);
+    const nextCommand = commands[commandIndex + 1];
+    if (nextCommand) {
+      return {
+        outcome: "continued",
+        ops: [
+          setOp("demo.request", {
+            ...request,
+            command: nextCommand,
+            commandIndex: commandIndex + 1,
+          }),
+          setOp(`demo.commands.${nextCommand}`, request.token),
+        ],
+      };
+    }
     const nextAct = Math.min(Number(ctx.get("demo.act") ?? 0) + 1, plan(ctx).steps.length);
     const correlationId = String(request.correlationId ?? "");
     const nextTimeline = timeline(ctx).map((item) => item.correlationId === correlationId && item.source === "scenario"

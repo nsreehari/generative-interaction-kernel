@@ -18,7 +18,8 @@ test("demo catalog resolves a validated scenario and organism composition", () =
   assert.equal(resolveDemoComposition("unknown").entry.id, demoCatalog.default);
   const executive = resolveDemoComposition("soc-executive");
   assert.equal(executive.scenarioPlan.id, "live-workspace-soc-executive");
-  assert.equal(executive.scenarioPlan.steps[0].title, "Set the investigation objective");
+  assert.equal(executive.scenarioPlan.steps.length, 5);
+  assert.equal(executive.scenarioPlan.steps[0].title, "Frame the protected business objective");
   for (const composition of [resolveDemoComposition("soc-t3"), executive]) {
     assert.doesNotThrow(() => validateDemoComposition(composition.entry, composition.scenarioPlan, socDemoContract));
   }
