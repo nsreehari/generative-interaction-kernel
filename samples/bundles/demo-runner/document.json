@@ -8,15 +8,34 @@
       "edges": {
         "read": {
           "demo": "demo",
+          "receipt": "control.receipt",
           "plan": "runner.plan",
           "catalog": "runner.catalog",
-          "entry": "runner.entry"
+          "entry": "runner.entry",
+          "selectedDemoId": "runner.selectedDemoId"
         },
         "on": {
           "reset": [{ "do": "invoke", "args": { "tool": "resetDemo" } }],
           "finishAct": [{ "do": "invoke", "args": { "tool": "finishAct" } }]
         },
         "children": [
+          {
+            "capability": "fluent:dropdown",
+            "id": "demo-blueprint-dropdown-region",
+            "props": {
+              "ariaLabel": "Select demo Blueprint",
+              "placeholder": "Select a demo"
+            },
+            "edges": {
+              "read": {
+                "value": "runner.entry.id",
+                "options": "runner.catalog"
+              },
+              "on": {
+                "select": [{ "do": "invoke", "args": { "tool": "selectDemo" } }]
+              }
+            }
+          },
           {
             "capability": "fluent:toggle",
             "id": "presenter-pace-toggle-region",

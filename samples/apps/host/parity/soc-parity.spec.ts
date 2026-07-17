@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const standaloneUrl = "/?bundle=live-workspace-soc&context=war-room&plane=runtime";
-const demoUrl = "/?bundle=live-workspace-soc&demo=soc-executive&context=war-room&plane=runtime";
+const standaloneUrl = "/?bundle=live-workspace-soc";
+const demoUrl = "/?bundle=live-workspace-soc&demo=soc-executive&gik=1";
 
 async function stabilize(page: Page): Promise<void> {
   await page.getByRole("heading", { name: "Privileged access anomaly during payroll cutover" }).waitFor();
@@ -75,7 +75,7 @@ test("demo runner expands, collapses, and brokers semantic timeline focus", asyn
   await expect(page.locator('[data-soc-region="intent"]')).toHaveCSS("outline-style", "solid");
   await page.getByRole("button", { name: "Journal" }).click();
   await expect(scenarioEntry).toHaveCount(0);
-  await page.getByRole("button", { name: "Participants" }).click();
+  await page.getByRole("tab", { name: "Participants" }).click();
   await expect(page.locator('[data-soc-actor-id="human-morgan"]')).toHaveCSS("outline-style", "solid");
   await expect(page.getByRole("switch", { name: "Correlation Agent provider mode" })).not.toBeChecked();
   await expect(page.getByRole("switch", { name: "Response Agent provider mode" })).not.toBeChecked();

@@ -1,11 +1,11 @@
 import {
   selectionContainsFocus,
   selectionFromTimelineItem,
-  type DemoSelection,
+  type ControlSelection,
   type FocusRef,
   type FocusTarget,
   type TimelineItem,
-} from "../../../shared/demo-runner";
+} from "../../../shared/control-focus";
 import type { JournalEntry, ParticipantPresence } from "./types";
 
 export function participantPresence(status: string): ParticipantPresence {
@@ -54,7 +54,7 @@ export function socJournalTimelineItem(entry: JournalEntry): TimelineItem {
   };
 }
 
-export function socJournalSelection(entry: JournalEntry | undefined): DemoSelection | undefined {
+export function socJournalSelection(entry: JournalEntry | undefined): ControlSelection | undefined {
   return entry ? selectionFromTimelineItem(socJournalTimelineItem(entry)) : undefined;
 }
 
@@ -85,10 +85,10 @@ export const SOC_FOCUS_TARGETS: FocusTarget[] = [
   })),
 ];
 
-export function selectionTargetsRecord(selection: DemoSelection | undefined, objectIds: readonly string[]): boolean {
+export function selectionTargetsRecord(selection: ControlSelection | undefined, objectIds: readonly string[]): boolean {
   return selectionContainsFocus(selection, objectIds.map((id) => socFocusRef("record", id)));
 }
 
-export function selectionTargetsActor(selection: DemoSelection | undefined, actorId: string): boolean {
+export function selectionTargetsActor(selection: ControlSelection | undefined, actorId: string): boolean {
   return selectionContainsFocus(selection, [socFocusRef("actor", actorId)]);
 }

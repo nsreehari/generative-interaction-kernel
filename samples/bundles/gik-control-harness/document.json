@@ -1,0 +1,75 @@
+{
+  "gik": "0.1",
+  "type": "document",
+  "payload": {
+    "root": {
+      "capability": "harness:shell",
+      "id": "gik-control-harness",
+      "edges": {
+        "read": {
+          "presentation": "soc.presentation",
+          "activeTab": "control.ui.activeTab",
+          "expanded": "control.ui.harnessExpanded"
+        },
+        "on": {
+          "selectTab": [{ "do": "assign", "target": "control.ui.activeTab", "args": { "from": "$event.tab" } }],
+          "toggleHarness": [{ "do": "assign", "target": "control.ui.harnessExpanded", "args": { "from": "$event.expanded" } }],
+          "setPresentationContext": [{ "do": "assign", "target": "control.presentationContext", "args": { "from": "$event.contextId" } }]
+        },
+        "children": [
+          {
+            "capability": "harness:blueprint-inspector",
+            "id": "control-blueprint-inspector",
+            "edges": { "read": { "presentation": "soc.presentation" } }
+          },
+          {
+            "capability": "harness:journal",
+            "id": "control-journal",
+            "edges": {
+              "read": {
+                "incident": "soc.incident",
+                "actors": "soc.actors",
+                "journal": "soc.journal",
+                "journalMode": "control.ui.journalMode",
+                "selectedJournalId": "control.ui.selectedJournalId",
+                "demoEnabled": "demo.enabled",
+                "demoTimeline": "demo.timeline",
+                "demoSelection": "demo.selection"
+              },
+              "on": {
+                "setJournalMode": [{ "do": "assign", "target": "control.ui.journalMode", "args": { "from": "$event.mode" } }],
+                "selectTimeline": [{ "do": "assign", "target": "demo.selection", "args": { "from": "$event.selection" } }],
+                "clearTimelineSelection": [{ "do": "assign", "target": "demo.selection", "args": { "value": null } }],
+                "selectJournal": [{ "do": "assign", "target": "control.ui.selectedJournalId", "args": { "from": "$event.id" } }]
+              }
+            }
+          },
+          {
+            "capability": "harness:participants",
+            "id": "control-participants",
+            "edges": {
+              "read": {
+                "participants": "control.inspection.participants",
+                "selection": "demo.selection"
+              },
+              "on": {
+                "configureParticipant": [{ "do": "assign", "target": "control.participantConfigurationRequest", "args": { "from": "$event" } }]
+              }
+            }
+          },
+          {
+            "capability": "harness:participants",
+            "id": "control-participant-status",
+            "props": { "compact": true },
+            "edges": {
+              "read": {
+                "participants": "control.inspection.participants",
+                "selection": "demo.selection"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

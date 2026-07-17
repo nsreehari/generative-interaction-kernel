@@ -2,11 +2,11 @@ import React from "react";
 import { Button, mergeClasses } from "@fluentui/react-components";
 import { CheckmarkCircle20Regular, Clock20Regular } from "@fluentui/react-icons";
 import type { ProjectionView } from "@gik/react";
-import { GrowingContainer } from "../../../../adapters/react/src/primitives/registry";
-import { selectionFromTimelineItem, type DemoSelection, type TimelineItem } from "../../../shared/demo-runner";
-import { socJournalTimelineItem } from "./helpers";
-import { useStyles } from "./styles";
-import type { Actor, Incident, JournalEntry } from "./types";
+import { GrowingContainer } from "../../../../../adapters/react/src/primitives/registry";
+import { selectionFromTimelineItem, type DemoSelection, type TimelineItem } from "../../../../shared/demo-runner";
+import { socJournalTimelineItem } from "../../../live-workspace-soc/projection_views/helpers";
+import { useStyles } from "../../../live-workspace-soc/projection_views/styles";
+import type { Actor, Incident, JournalEntry } from "../../../live-workspace-soc/projection_views/types";
 
 export const JournalRail: ProjectionView = ({ node, emit }) => {
   const styles = useStyles();

@@ -10,7 +10,7 @@ Import controls through a manifest alias:
 {
   "externals": {
     "projectionViews": {
-      "fluent": { "from": "fluent", "use": ["switch", "toggle"] }
+      "fluent": { "from": "fluent", "use": ["dropdown", "switch", "toggle"] }
     }
   }
 }
@@ -20,3 +20,6 @@ Both `fluent:switch` and `fluent:toggle` accept `value`, `onValue`, `offValue`, 
 `offLabel`, and `disabled`. `fluent:toggle` also accepts a CSS `minWidth` number or string so labels
 can change without shifting adjacent controls. Both emit `toggle` with the next
 `{ "checked": boolean, "value": string }`.
+
+`fluent:dropdown` accepts `value`, `options` (`{ value, label, disabled? }[]`), `placeholder`, and
+`ariaLabel`. It emits `select` with `{ "value": string, "label": string }`.

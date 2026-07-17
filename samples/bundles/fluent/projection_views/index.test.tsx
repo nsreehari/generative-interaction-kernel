@@ -25,7 +25,7 @@ function leaf(capability: string, value: string, extraProps: Record<string, Json
 }
 
 const registry = buildRegistryFromImports(
-  { fluent: { from: "fluent", use: ["switch", "toggle"] } },
+  { fluent: { from: "fluent", use: ["dropdown", "switch", "toggle"] } },
   (from) => from === "fluent" ? fluentViews : undefined,
   floorFallback
 );
@@ -50,4 +50,24 @@ test("fluent:toggle renders the pressed-button variant with declarative stable w
   assert.match(markup, /aria-pressed="true"/);
   assert.match(markup, /min-width:72px/);
   assert.match(markup, />Auto<\/button>/);
+});
+
+test("fluent:dropdown renders declarative options and the selected label", () => {
+  const markup = renderToStaticMarkup(renderNode(
+    leaf("fluent:dropdown", "soc-t3", {
+      ariaLabel: "Select demo Blueprint",
+      options: [
+        { value: "soc-t3", label: "Governed SOC investigation" },
+        { value: "soc-executive", label: "SOC executive walkthrough" },
+      ],
+    }),
+    registry,
+    () => {}
+  ));
+
+  assert.match(markup, /class="[^"]*gx-fluent-dropdown/);
+  assert.match(markup, /role="combobox"/);
+  assert.match(markup, /aria-label="Select demo Blueprint"/);
+  assert.match(markup, /Governed SOC investigation/);
+  assert.match(markup, /SOC executive walkthrough/);
 });
