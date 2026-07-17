@@ -179,7 +179,7 @@
                         "capability": "soc:viewpoint-header",
                         "id": "soc-viewpoint-header",
                         "edges": {
-                          "read": { "presentation": "soc.presentation", "journal": "soc.journal" }
+                          "read": { "presentation": "soc.presentation", "journal": "soc.journal", "facet": "soc.presentation.regionFacets.summary" }
                         }
                       },
                       {

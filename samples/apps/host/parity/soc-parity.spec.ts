@@ -56,7 +56,7 @@ test("demo runner expands, collapses, and brokers semantic timeline focus", asyn
   await expect(page.getByRole("heading", { name: "Intent to runnable bundle" })).toBeVisible();
   await expect(inspectorSwitch).toBeChecked();
   await inspectorSwitch.click();
-  await expect(page.getByRole("heading", { name: "Shared investigation" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "War room" })).toBeVisible();
   await expect(inspectorSwitch).not.toBeChecked();
   await expect(page).toHaveScreenshot("soc-demo-expanded-desktop.png");
 
@@ -72,7 +72,7 @@ test("demo runner expands, collapses, and brokers semantic timeline focus", asyn
   await expect(page.getByText(/SOC outcome · committed · Morgan/i)).toBeVisible();
   await organismEntry.click();
   await expect(organismEntry).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator('[data-soc-object-id="intent"]')).toHaveCSS("outline-style", "solid");
+  await expect(page.locator('[data-soc-region="intent"]')).toHaveCSS("outline-style", "solid");
   await page.getByRole("button", { name: "Journal" }).click();
   await expect(scenarioEntry).toHaveCount(0);
   await page.getByRole("button", { name: "Participants" }).click();
