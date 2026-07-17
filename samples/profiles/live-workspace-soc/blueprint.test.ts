@@ -164,17 +164,14 @@ test("the runtime projection owns ordered document-gated context views", () => {
   );
   const layout = runtimeProjection.edges.children.find((child) => child.id === "soc-presentation-layout");
   assert.ok(layout);
-  assert.deepEqual(layout.edges.children.map((child) => child.capability), [
-    "soc:intent-region",
-    "soc:constraints-region",
-    "soc:hypothesis-region",
-    "soc:exploration-region",
-    "soc:evidence-region",
-    "soc:agent-request-region",
-    "soc:response-region",
-    "soc:authorization-region",
-    "soc:causal-record-region",
-  ]);
+  const regions = ["intent", "constraints", "hypothesis", "exploration", "evidence", "agent-request", "response", "authorization", "causal-record"];
+  assert.deepEqual(layout.edges.children.map((child) => child.capability), regions.map(() => "soc:region-surface"));
+  for (const region of regions) {
+    const surface = layout.edges.children.find((child) => child.id === `soc-${region}-surface`);
+    assert.ok(surface);
+    assert.deepEqual(surface.props?.region, region);
+    assert.deepEqual(surface.edges.children.map((child) => child.capability), [`soc:${region}-region`]);
+  }
 });
 
 test("the base runtime preserves the organism Blueprint output behind host integration edges", () => {

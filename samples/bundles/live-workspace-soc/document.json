@@ -197,86 +197,160 @@
                           },
                           "children": [
                             {
-                              "capability": "soc:intent-region",
-                              "id": "soc-intent-region",
+                              "capability": "soc:region-surface",
+                              "id": "soc-intent-surface",
+                              "props": { "region": "intent", "title": "Investigation intent", "focusTargets": ["intent"] },
                               "edges": {
                                 "gate": "$lookup(soc.presentation.regionFacets, 'intent').visible = true",
-                                "read": { "facet": "soc.presentation.regionFacets.intent", "intent": "soc.intent" }
+                                "read": { "facet": "soc.presentation.regionFacets.intent" },
+                                "children": [
+                                  {
+                                    "capability": "soc:intent-region",
+                                    "id": "soc-intent-region",
+                                    "edges": { "read": { "intent": "soc.intent" } }
+                                  }
+                                ]
                               }
                             },
                             {
-                              "capability": "soc:constraints-region",
-                              "id": "soc-constraints-region",
+                              "capability": "soc:region-surface",
+                              "id": "soc-constraints-surface",
+                              "props": { "region": "constraints", "title": "Operating constraints", "focusTargets": ["constraints", "DC-01"] },
                               "edges": {
                                 "gate": "$lookup(soc.presentation.regionFacets, 'constraints').visible = true",
-                                "read": { "facet": "soc.presentation.regionFacets.constraints", "constraints": "soc.constraints" }
+                                "read": { "facet": "soc.presentation.regionFacets.constraints" },
+                                "children": [
+                                  {
+                                    "capability": "soc:constraints-region",
+                                    "id": "soc-constraints-region",
+                                    "edges": { "read": { "constraints": "soc.constraints" } }
+                                  }
+                                ]
                               }
                             },
                             {
-                              "capability": "soc:hypothesis-region",
-                              "id": "soc-hypothesis-region",
+                              "capability": "soc:region-surface",
+                              "id": "soc-hypothesis-surface",
+                              "props": { "region": "hypothesis", "title": "Working hypothesis", "metricSuffix": "%", "focusTargets": ["hypothesis", "corr-1", "Host-A"] },
                               "edges": {
                                 "gate": "$lookup(soc.presentation.regionFacets, 'hypothesis').visible = true",
-                                "read": { "facet": "soc.presentation.regionFacets.hypothesis", "hypothesis": "soc.hypothesis" }
+                                "read": { "facet": "soc.presentation.regionFacets.hypothesis", "metricValue": "soc.hypothesis.confidence" },
+                                "children": [
+                                  {
+                                    "capability": "soc:hypothesis-region",
+                                    "id": "soc-hypothesis-region",
+                                    "edges": { "read": { "hypothesis": "soc.hypothesis" } }
+                                  }
+                                ]
                               }
                             },
                             {
-                              "capability": "soc:exploration-region",
-                              "id": "soc-exploration-region",
+                              "capability": "soc:region-surface",
+                              "id": "soc-exploration-surface",
+                              "props": { "region": "exploration", "title": "Exploration" },
                               "edges": {
                                 "gate": "$lookup(soc.presentation.regionFacets, 'exploration').visible = true",
-                                "read": { "facet": "soc.presentation.regionFacets.exploration", "explorations": "soc.explorations" }
+                                "read": { "facet": "soc.presentation.regionFacets.exploration" },
+                                "children": [
+                                  {
+                                    "capability": "soc:exploration-region",
+                                    "id": "soc-exploration-region",
+                                    "edges": { "read": { "explorations": "soc.explorations" } }
+                                  }
+                                ]
                               }
                             },
                             {
-                              "capability": "soc:evidence-region",
-                              "id": "soc-evidence-region",
+                              "capability": "soc:region-surface",
+                              "id": "soc-evidence-surface",
+                              "props": { "region": "evidence", "title": "Evidence" },
                               "edges": {
                                 "gate": "$lookup(soc.presentation.regionFacets, 'evidence').visible = true",
-                                "read": { "facet": "soc.presentation.regionFacets.evidence", "evidence": "soc.evidence" }
+                                "read": { "facet": "soc.presentation.regionFacets.evidence" },
+                                "children": [
+                                  {
+                                    "capability": "soc:evidence-region",
+                                    "id": "soc-evidence-region",
+                                    "edges": { "read": { "evidence": "soc.evidence" } }
+                                  }
+                                ]
                               }
                             },
                             {
-                              "capability": "soc:agent-request-region",
-                              "id": "soc-agent-request-region",
+                              "capability": "soc:region-surface",
+                              "id": "soc-agent-request-surface",
+                              "props": { "region": "agent-request", "title": "Agent request" },
                               "edges": {
                                 "gate": "$lookup(soc.presentation.regionFacets, 'agent-request').visible = true",
-                                "read": {
-                                  "presentation": "soc.presentation",
-                                  "actors": "soc.actors",
-                                  "explorations": "soc.explorations",
-                                  "proposal": "soc.proposal"
-                                },
-                                "readExpr": { "facet": "$lookup(soc.presentation.regionFacets, 'agent-request')" }
+                                "readExpr": { "facet": "$lookup(soc.presentation.regionFacets, 'agent-request')" },
+                                "children": [
+                                  {
+                                    "capability": "soc:agent-request-region",
+                                    "id": "soc-agent-request-region",
+                                    "edges": {
+                                      "read": {
+                                        "presentation": "soc.presentation",
+                                        "actors": "soc.actors",
+                                        "explorations": "soc.explorations",
+                                        "proposal": "soc.proposal"
+                                      }
+                                    }
+                                  }
+                                ]
                               }
                             },
                             {
-                              "capability": "soc:response-region",
-                              "id": "soc-response-region",
+                              "capability": "soc:region-surface",
+                              "id": "soc-response-surface",
+                              "props": { "region": "response", "title": "Governed response", "focusTargets": ["proposal-dc01", "proposal-host-a", "rec-1", "authorization", "DC-01", "Host-A"] },
                               "edges": {
                                 "gate": "$lookup(soc.presentation.regionFacets, 'response').visible = true",
-                                "read": { "facet": "soc.presentation.regionFacets.response", "proposal": "soc.proposal" }
+                                "read": { "facet": "soc.presentation.regionFacets.response" },
+                                "children": [
+                                  {
+                                    "capability": "soc:response-region",
+                                    "id": "soc-response-region",
+                                    "edges": { "read": { "proposal": "soc.proposal" } }
+                                  }
+                                ]
                               }
                             },
                             {
-                              "capability": "soc:authorization-region",
-                              "id": "soc-authorization-region",
+                              "capability": "soc:region-surface",
+                              "id": "soc-authorization-surface",
+                              "props": { "region": "authorization", "title": "Commander authority", "focusTargets": ["authorization", "rec-1", "Host-A"] },
                               "edges": {
                                 "gate": "$lookup(soc.presentation.regionFacets, 'authorization').visible = true",
-                                "read": { "facet": "soc.presentation.regionFacets.authorization", "authorization": "soc.authorization" },
-                                "on": {
-                                  "authorizeContainment": [
-                                    { "do": "confirm", "args": { "tool": "authorizeContainment", "title": "Authorize Host-A isolation", "message": "Authorize the evidence-backed, reversible isolation plan?", "confirmLabel": "Authorize", "danger": true } }
-                                  ]
-                                }
+                                "read": { "facet": "soc.presentation.regionFacets.authorization" },
+                                "children": [
+                                  {
+                                    "capability": "soc:authorization-region",
+                                    "id": "soc-authorization-region",
+                                    "edges": {
+                                      "read": { "authorization": "soc.authorization" },
+                                      "on": {
+                                        "authorizeContainment": [
+                                          { "do": "confirm", "args": { "tool": "authorizeContainment", "title": "Authorize Host-A isolation", "message": "Authorize the evidence-backed, reversible isolation plan?", "confirmLabel": "Authorize", "danger": true } }
+                                        ]
+                                      }
+                                    }
+                                  }
+                                ]
                               }
                             },
                             {
-                              "capability": "soc:causal-record-region",
-                              "id": "soc-causal-record-region",
+                              "capability": "soc:region-surface",
+                              "id": "soc-causal-record-surface",
+                              "props": { "region": "causal-record", "title": "Relevant causal record" },
                               "edges": {
                                 "gate": "$lookup(soc.presentation.regionFacets, 'causal-record').visible = true",
-                                "readExpr": { "facet": "$lookup(soc.presentation.regionFacets, 'causal-record')" }
+                                "readExpr": { "facet": "$lookup(soc.presentation.regionFacets, 'causal-record')" },
+                                "children": [
+                                  {
+                                    "capability": "soc:causal-record-region",
+                                    "id": "soc-causal-record-region"
+                                  }
+                                ]
                               }
                             }
                           ]
