@@ -26,7 +26,7 @@ function presentationContract(contextId: string) {
       disclosure: region.disclosure,
       concern: region.concern ?? "substrate",
       group: region.group ?? "substrate",
-      presentation: region.presentation ?? "substrate-region",
+      presentation: region.presentation ?? "brief",
     }])),
   };
 }
@@ -125,5 +125,6 @@ test("presentation contexts produce distinct substrate frames and disclosure", (
   assert.deepEqual(correlation.regions, ["summary", "intent", "constraints", "hypothesis", "agent-request", "exploration", "evidence", "causal-record"]);
   assert.equal(correlation.regionFacets.evidence.group, "response");
   assert.equal(correlation.regionFacets.evidence.concern, "investigation");
+  assert.equal(correlation.regionFacets.evidence.presentation, "collection");
   assert.equal(correlation.regionFacets["agent-request"].presentation, "agent-request");
 });

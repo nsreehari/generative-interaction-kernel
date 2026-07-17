@@ -120,6 +120,22 @@ test("human contexts lower regions into stable operational groups", () => {
   ]);
 });
 
+test("presentation lowering assigns semantic visual archetypes", () => {
+  const full = compileSocPresentation("full-substrate").regions;
+  assert.deepEqual(full.map((region) => [region.name, region.presentation]), [
+    ["summary", "brief"],
+    ["intent", "brief"],
+    ["constraints", "brief"],
+    ["hypothesis", "finding"],
+    ["exploration", "collection"],
+    ["evidence", "collection"],
+    ["agent-request", "agent-request"],
+    ["response", "decision"],
+    ["authorization", "decision"],
+    ["causal-record", "audit"],
+  ]);
+});
+
 test("agent contexts lower into context, state, request, response, and governed-result groups", () => {
   for (const contextId of ["correlation-agent", "response-agent"]) {
     const visible = compileSocPresentation(contextId).regions.filter((region) => region.disclosure !== "omitted" && region.materialize === false);

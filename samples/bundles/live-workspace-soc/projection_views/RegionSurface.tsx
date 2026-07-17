@@ -34,12 +34,33 @@ export const RegionSurface: ProjectionView = ({ node, children }) => {
   const metricValue = node.props.metricValue;
   const metricSuffix = String(node.props.metricSuffix ?? "");
   const Icon = icons[region as keyof typeof icons];
+  const priorityClasses = {
+    supporting: styles.regionPrioritySupporting,
+    primary: styles.regionPriorityPrimary,
+    critical: styles.regionPriorityCritical,
+  };
+  const presentationClasses = {
+    brief: styles.regionPresentationBrief,
+    finding: styles.regionPresentationFinding,
+    collection: styles.regionPresentationCollection,
+    decision: styles.regionPresentationDecision,
+    audit: styles.regionPresentationAudit,
+    "agent-request": styles.regionPresentationAgentRequest,
+  };
+  const disclosureClasses = {
+    status: styles.regionDisclosureStatus,
+    summary: styles.regionDisclosureSummary,
+    detail: styles.regionDisclosureDetail,
+    omitted: styles.regionDisclosureOmitted,
+  };
 
   return (
     <section
       className={mergeClasses(
         styles.regionSurface,
-        styles[`regionPriority${facet.priority[0].toUpperCase()}${facet.priority.slice(1)}` as keyof typeof styles],
+        priorityClasses[facet.priority],
+        presentationClasses[facet.presentation],
+        disclosureClasses[facet.disclosure],
         selectionTargetsRecord(activeSelection, focusTargets) ? styles.causalHighlight : undefined,
       )}
       data-soc-region={region}

@@ -152,8 +152,17 @@
       { "slot": "group", "match": { "region": "causal-record" }, "emit": { "group": "provenance" } },
       { "slot": "group", "match": {}, "emit": { "group": "substrate" } },
 
+      { "slot": "presentation", "match": { "region": "summary" }, "emit": { "presentation": "brief", "materialize": false } },
+      { "slot": "presentation", "match": { "region": "intent" }, "emit": { "presentation": "brief", "materialize": false } },
+      { "slot": "presentation", "match": { "region": "constraints" }, "emit": { "presentation": "brief", "materialize": false } },
+      { "slot": "presentation", "match": { "region": "hypothesis" }, "emit": { "presentation": "finding", "materialize": false } },
+      { "slot": "presentation", "match": { "region": "exploration" }, "emit": { "presentation": "collection", "materialize": false } },
+      { "slot": "presentation", "match": { "region": "evidence" }, "emit": { "presentation": "collection", "materialize": false } },
       { "slot": "presentation", "match": { "region": "agent-request" }, "emit": { "presentation": "agent-request", "materialize": false } },
-      { "slot": "presentation", "match": {}, "emit": { "presentation": "substrate-region", "materialize": false } },
+      { "slot": "presentation", "match": { "region": "response" }, "emit": { "presentation": "decision", "materialize": false } },
+      { "slot": "presentation", "match": { "region": "authorization" }, "emit": { "presentation": "decision", "materialize": false } },
+      { "slot": "presentation", "match": { "region": "causal-record" }, "emit": { "presentation": "audit", "materialize": false } },
+      { "slot": "presentation", "match": {}, "emit": { "presentation": "brief", "materialize": false } },
       { "slot": "rationale", "match": { "presentationContext": "priya-mobile" }, "emit": { "template": "Commander context keeps consequential decisions glanceable." } },
       { "slot": "rationale", "match": { "presentationContext": "morgan-pager" }, "emit": { "template": "Analyst pager context exposes only urgent findings and pending work." } },
       { "slot": "rationale", "match": {}, "emit": { "template": "The specialized SOC workspace interprets one substrate for {{presentationContext}}." } }

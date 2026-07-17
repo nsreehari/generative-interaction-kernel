@@ -92,7 +92,7 @@
                         {
                           "id": "soc-viewpoint-header",
                           "capability": "soc:viewpoint-header",
-                          "read": { "presentation": "soc.presentation", "journal": "soc.journal" }
+                          "read": { "presentation": "soc.presentation", "journal": "soc.journal", "facet": "soc.presentation.regionFacets.summary" }
                         },
                         {
                           "id": "soc-presentation-layout",

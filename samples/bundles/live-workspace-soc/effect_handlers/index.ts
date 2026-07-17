@@ -27,7 +27,6 @@ function presentationContract(contextId: string): RecordValue {
   return {
     frame: presentation.frame ?? "shared",
     arrangement: presentation.arrangement,
-    regions: visibleRegions.map((region) => region.name),
     regionFacets: Object.fromEntries(substrateRegions.map((region) => [region.name, {
       visible: region.disclosure !== "omitted",
       rank: region.disclosure === "omitted" ? 50 : visibleRegions.indexOf(region),
@@ -35,7 +34,7 @@ function presentationContract(contextId: string): RecordValue {
       disclosure: region.disclosure,
       concern: region.concern ?? "substrate",
       group: region.group ?? "substrate",
-      presentation: region.presentation ?? "substrate-region",
+      presentation: region.presentation ?? "brief",
     }])),
   };
 }

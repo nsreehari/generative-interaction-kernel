@@ -18,7 +18,6 @@ export interface Presentation {
   revision: number;
   frame: SocPresentationSpec["frame"];
   arrangement: SocPresentationSpec["arrangement"];
-  regions: SubstrateRegion[];
   regionFacets: Record<SubstrateRegion, PresentationRegionFacet>;
   contexts: PresentationContext[];
 }
@@ -32,7 +31,7 @@ export interface PresentationRegionFacet {
   disclosure: "status" | "summary" | "detail" | "omitted";
   concern: "orientation" | "guardrails" | "investigation" | "delegation" | "response" | "governance" | "provenance";
   group: "orientation" | "guardrails" | "investigation" | "response" | "governance" | "provenance" | "context" | "shared-state" | "request" | "governed-result";
-  presentation: "substrate-region" | "agent-request";
+  presentation: "brief" | "finding" | "collection" | "decision" | "audit" | "agent-request";
 }
 
 export interface SocPresentationSpec {
