@@ -260,7 +260,7 @@ interface StoryItem { title: string; text: string }
 interface Actor { id: string; name: string; kind: string; role: string }
 interface SocAct extends StoryItem { id: number }
 interface CausalStep { result: string; text: string }
-interface ProofPlane extends StoryItem { id: string; label: string; bundle: string; plane: "runtime" | "blueprint"; button: string }
+interface ProofPlane extends StoryItem { id: string; label: string; bundle: string; gik: boolean; button: string }
 interface Domain { id: string; label: string; text: string }
 interface Storyboard {
   hero: { eyebrow: string; title: string; lead: string; contract: string };
@@ -274,11 +274,12 @@ interface Storyboard {
   expansion: { title: string; domains: Domain[]; shared: string[]; taxJourney: string[]; boundary: string; status: string };
 }
 
-function openBundle(bundleId: string, plane?: string) {
+function openBundle(bundleId: string, gik: boolean) {
   const current = new URL(window.location.href);
   current.searchParams.set("bundle", bundleId);
-  if (plane) current.searchParams.set("plane", plane);
-  else current.searchParams.delete("plane");
+  if (gik) current.searchParams.set("gik", "1");
+  else current.searchParams.delete("gik");
+  current.searchParams.delete("plane");
   current.searchParams.delete("context");
   window.location.assign(current.toString());
 }
@@ -393,7 +394,7 @@ const PlatformStoryboardView: ProjectionView = ({ node }) => {
             {overview.proofPlanes.map((proof, index) => <article className={styles.fork} key={proof.id}>
               <div className={styles.forkLabel}>{proof.label}</div><h3 className={styles.forkTitle}>{proof.title}</h3>
               <p className={styles.forkText}>{proof.text}</p>
-              <Button appearance={index === 0 ? "primary" : "secondary"} className={styles.button} onClick={() => openBundle(proof.bundle, proof.plane)}>{proof.button}</Button>
+              <Button appearance={index === 0 ? "primary" : "secondary"} className={styles.button} onClick={() => openBundle(proof.bundle, proof.gik)}>{proof.button}</Button>
             </article>)}
           </div>
         </div>

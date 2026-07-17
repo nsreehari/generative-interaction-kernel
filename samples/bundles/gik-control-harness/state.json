@@ -1,0 +1,15 @@
+{
+  "control": {
+    "ui": {
+      "activeTab": "journal",
+      "harnessExpanded": true,
+      "journalMode": "journal",
+      "selectedJournalId": null
+    },
+    "inspection": { "participants": [] },
+    "presentationContext": null,
+    "participantConfigurationRequest": null,
+    "agentModeRequest": null,
+    "authorizationRequest": null
+  }
+}

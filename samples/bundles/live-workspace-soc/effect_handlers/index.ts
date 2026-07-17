@@ -1,12 +1,13 @@
 import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
 import type { Json, OrchestratorResult, PatchOp } from "@gik/kernel";
-import type { TimelineItem } from "../../../shared/demo-runner";
 
 import { createFoundryProxy } from "../../../shared/foundry-proxy";
 import { compileSocPresentation } from "../../../profiles/live-workspace-soc/compile";
+import { projectSocParticipants } from "../inspection";
 import manifest from "../manifest.json";
 import initialState from "../state.json";
 import { getSocFoundryKey } from "../live-credentials";
+import type { Actor, AgentProvider } from "../projection_views/types";
 import {
   buildAgentMessage,
   createSocAgentContract,
@@ -19,6 +20,7 @@ import {
 
 type RecordValue = Record<string, Json>;
 const resetState = JSON.parse(JSON.stringify(initialState.soc)) as RecordValue;
+const resetInspection = JSON.parse(JSON.stringify(initialState.inspection)) as RecordValue;
 
 function presentationContract(contextId: string): RecordValue {
   const presentation = compileSocPresentation(contextId);
@@ -112,6 +114,31 @@ const LIVE_OPERATIONS: Record<string, { actorId: "agent-correlation" | "agent-re
 
 function providers(ctx: EffectContext): Record<string, ProviderRecord> {
   return ctx.get("soc.agentProviders") as unknown as Record<string, ProviderRecord>;
+}
+
+function inspectionParticipants(
+  actors: Json[],
+  providerRecords: Record<string, ProviderRecord>,
+): Json {
+  return projectSocParticipants(
+    actors as unknown as Actor[],
+    providerRecords as unknown as Record<string, AgentProvider>,
+  ) as unknown as Json;
+}
+
+function participantOps(ctx: EffectContext, actors: Json[]): PatchOp[] {
+  return [
+    setOp("soc.actors", actors),
+    setOp("control.inspection.participants", inspectionParticipants(actors, providers(ctx))),
+  ];
+}
+
+function providerOps(ctx: EffectContext, actorId: string, provider: ProviderRecord): PatchOp[] {
+  const nextProviders = { ...providers(ctx), [actorId]: provider };
+  return [
+    setOp(`soc.agentProviders.${actorId}`, provider),
+    setOp("control.inspection.participants", inspectionParticipants(list(ctx, "soc.actors"), nextProviders)),
+  ];
 }
 
 function incidentContext(ctx: EffectContext): Record<string, unknown> {
@@ -246,7 +273,7 @@ function annotateProvider(
     ...result,
     ops: [
       ...ops,
-      setOp(`soc.agentProviders.${actorId}`, nextProvider),
+      ...providerOps(ctx, actorId, nextProvider),
     ],
   };
 }
@@ -255,7 +282,11 @@ const deterministicEffects: EffectHandlerMap = {
   setPresentationContext(ctx) {
     const presentation = ctx.get("soc.presentation") as RecordValue;
     const contexts = Array.isArray(presentation.contexts) ? presentation.contexts : [];
-    const requested = typeof ctx.payload.contextId === "string" ? ctx.payload.contextId : "";
+    const requested = typeof ctx.payload.contextId === "string"
+      ? ctx.payload.contextId
+      : typeof ctx.get("control.presentationContext") === "string"
+        ? String(ctx.get("control.presentationContext"))
+        : "";
     const exists = contexts.some((value) => (value as RecordValue).id === requested);
     if (!exists || presentation.selectedContext === requested) return { outcome: "ignored" };
     return {
@@ -325,7 +356,7 @@ const deterministicEffects: EffectHandlerMap = {
           correlationKey: "source-ip+time",
           safety: "standard queries",
         }]),
-        setOp("soc.actors", updateActor(ctx, actorId, "needs-review", "Exploration suggested to Morgan")),
+        ...participantOps(ctx, updateActor(ctx, actorId, "needs-review", "Exploration suggested to Morgan")),
         setOp(
           "soc.journal",
           appendJournal(ctx, entry("j-03", "09:41:00", actorId, "suggested", "Suggested cross-source correlation", ["explore-1"]))
@@ -374,7 +405,7 @@ const deterministicEffects: EffectHandlerMap = {
       outcome: "replanned",
       ops: [
         setOp("soc.explorations", explorations),
-        setOp("soc.actors", updateActor(ctx, actorId, "working", "Running Morgan's amended passive correlation")),
+        ...participantOps(ctx, updateActor(ctx, actorId, "working", "Running Morgan's amended passive correlation")),
         setOp(
           "soc.journal",
           appendJournal(ctx, entry("j-05", "09:41:31", actorId, "replanned", "Replanned against the accepted exploration", ["explore-2"]))
@@ -458,7 +489,7 @@ const deterministicEffects: EffectHandlerMap = {
           confidence: 97,
           evidenceIds: ["ev-1", "ev-2", "ev-3", "ev-4"],
         }),
-        setOp("soc.actors", updateActor(ctx, actorId, "complete", "Resolved Host-A as the execution origin")),
+        ...participantOps(ctx, updateActor(ctx, actorId, "complete", "Resolved Host-A as the execution origin")),
         setOp(
           "soc.journal",
           appendJournal(ctx, entry("j-08", "09:42:47", actorId, "validated", "Resolved Host-A as the execution origin", ["corr-1", "hypothesis", "Host-A"]))
@@ -482,7 +513,7 @@ const deterministicEffects: EffectHandlerMap = {
           status: "suggested",
           sequence: ["capture", "restrict", "isolate"],
         }),
-        setOp("soc.actors", updateActor(ctx, actorId, "input-awaited", "Bounded containment proposal awaiting human review")),
+        ...participantOps(ctx, updateActor(ctx, actorId, "input-awaited", "Bounded containment proposal awaiting human review")),
         setOp(
           "soc.journal",
           appendJournal(ctx, entry("j-09", "09:43:04", actorId, "suggested", "Suggested bounded Host-A containment", ["proposal-host-a"]))
@@ -526,7 +557,7 @@ const deterministicEffects: EffectHandlerMap = {
           reversible: true,
           evidenceReady: true,
         }),
-        setOp("soc.actors", updateActor(ctx, actorId, "waiting", "Response validated; waiting for commander authorization")),
+        ...participantOps(ctx, updateActor(ctx, actorId, "waiting", "Response validated; waiting for commander authorization")),
         setOp(
           "soc.journal",
           appendJournal(ctx, entry("j-11", "09:43:35", actorId, "validated", "Verified endpoint-only blast radius and no payroll dependency", ["proposal-host-a", "Host-A"]))
@@ -552,7 +583,7 @@ const deterministicEffects: EffectHandlerMap = {
           requiredRole: "Incident Commander",
           status: "pending",
         }),
-        setOp("soc.actors", updateActor(ctx, "human-priya", "input-awaited", "Authorization decision required")),
+        ...participantOps(ctx, updateActor(ctx, "human-priya", "input-awaited", "Authorization decision required")),
         setOp(
           "soc.journal",
           appendJournal(ctx, entry("j-12", "09:43:48", actorId, "recommended", "Recommended Host-A isolation; commander authority required", ["rec-1", "proposal-host-a"]))
@@ -562,7 +593,8 @@ const deterministicEffects: EffectHandlerMap = {
   },
 
   authorizeContainment(ctx) {
-    const actorId = actor(ctx, "human-priya");
+    const authorizationRequest = ctx.get("control.authorizationRequest") as RecordValue | undefined;
+    const actorId = actor(ctx, typeof authorizationRequest?.actorId === "string" ? authorizationRequest.actorId : "human-priya");
     if (roleFor(ctx, actorId) !== "Incident Commander") {
       return {
         outcome: "rejected",
@@ -575,30 +607,7 @@ const deterministicEffects: EffectHandlerMap = {
         ],
       };
     }
-    const demoRequest = ctx.get("demo.request") as RecordValue | undefined;
-    const timeline = ctx.get("demo.timeline");
-    const correlationId = String(demoRequest?.correlationId ?? "");
-    const completedTimeline = Array.isArray(timeline) ? (timeline as unknown as TimelineItem[]).map((item) =>
-      item.source === "scenario" && item.correlationId === correlationId
-        ? { ...item, status: "complete" as const, summary: "Human authorization completed" }
-        : item
-    ) : [];
-    const authorizationItem: TimelineItem = {
-      id: "organism:j-13",
-      source: "organism",
-      title: "authorized",
-      summary: "Authorized the evidence-backed Host-A isolation",
-      status: "authorized",
-      operationRecordId: "j-13",
-      timestamp: "09:44:08",
-      actorRef: { namespace: "soc", kind: "actor", id: actorId, relation: "origin" },
-      focusRefs: [
-        { namespace: "soc", kind: "actor", id: actorId, relation: "origin" },
-        { namespace: "soc", kind: "record", id: "authorization", relation: "affected" },
-        { namespace: "soc", kind: "record", id: "proposal-host-a", relation: "affected" },
-      ],
-      correlationId,
-    };
+    const controlRequest = ctx.get("control.request") as RecordValue | undefined;
     return {
       outcome: "authorized",
       ops: [
@@ -610,13 +619,26 @@ const deterministicEffects: EffectHandlerMap = {
           status: "authorized",
           actorId,
         }),
-        setOp("soc.actors", updateActors(ctx, {
+        ...participantOps(ctx, updateActors(ctx, {
           "human-priya": { status: "active", activity: "Authorized evidence-backed containment" },
           "agent-response": { status: "waiting", activity: "Authorized; waiting for presenter to run containment" },
         })),
-        ...(ctx.get("demo.enabled") === true && demoRequest?.command === "$human-gate" ? [
-          setOp("demo.timeline", [...completedTimeline, authorizationItem] as unknown as Json),
-          setOp("demo.ack", { token: demoRequest.token ?? 0, command: "$human-gate" }),
+        ...(controlRequest?.command === "$human-gate" && typeof controlRequest.token === "number" ? [
+          setOp("control.receipt", {
+            requestId: String(controlRequest.id ?? controlRequest.correlationId ?? controlRequest.token),
+            token: controlRequest.token,
+            command: "$human-gate",
+            status: "completed",
+            outcome: "authorized",
+            result: {
+              id: "j-13",
+              actorId,
+              result: "authorized",
+              summary: "Authorized the evidence-backed Host-A isolation",
+              affected: ["authorization", "proposal-host-a"],
+              time: "09:44:08",
+            },
+          }),
         ] : []),
         setOp(
           "soc.journal",
@@ -645,7 +667,7 @@ const deterministicEffects: EffectHandlerMap = {
         setOp("soc.incident.governance", "Executed"),
         setOp("soc.proposal", { ...proposal, status: "executed", executedBy: actorId }),
         setOp("soc.entities", entities),
-        setOp("soc.actors", updateActor(ctx, actorId, "complete", "Host-A isolated under commander authorization")),
+        ...participantOps(ctx, updateActor(ctx, actorId, "complete", "Host-A isolated under commander authorization")),
         setOp(
           "soc.journal",
           appendJournal(ctx, entry("j-14", "09:44:12", actorId, "executed", "Isolated Host-A under Priya's authorization", ["Host-A", "proposal-host-a"]))
@@ -661,6 +683,7 @@ const deterministicEffects: EffectHandlerMap = {
         ...Object.entries(resetState).map(([key, value]) =>
           setOp(`soc.${key}`, JSON.parse(JSON.stringify(value)) as Json)
         ),
+        setOp("control.inspection", JSON.parse(JSON.stringify(resetInspection)) as Json),
       ],
     };
   },
@@ -675,10 +698,17 @@ export function createSocEffects(
   const wrapped: EffectHandlerMap = { ...deterministicEffects };
 
   wrapped.setAgentMode = async (ctx) => {
+    const controlRequest = ctx.get("control.agentModeRequest") as RecordValue | undefined;
+    const participantRequest = ctx.get("control.participantConfigurationRequest") as RecordValue | undefined;
     const actorId = typeof ctx.payload.agentId === "string"
       ? ctx.payload.agentId
-      : typeof ctx.payload.name === "string" ? ctx.payload.name : "";
-    const mode = ctx.payload.mode === "live" || ctx.payload.value === "live" ? "live" : "mock";
+      : typeof ctx.payload.name === "string"
+        ? ctx.payload.name
+        : typeof controlRequest?.name === "string"
+          ? controlRequest.name
+          : typeof participantRequest?.participantId === "string" ? participantRequest.participantId : "";
+    const requestedValue = ctx.payload.mode ?? ctx.payload.value ?? controlRequest?.value ?? participantRequest?.value;
+    const mode = requestedValue === "live" ? "live" : "mock";
     const currentProviders = providers(ctx);
     const provider = currentProviders[actorId];
     if (!provider || !["agent-correlation", "agent-response"].includes(actorId)) {
@@ -689,7 +719,7 @@ export function createSocEffects(
       return {
         outcome: "updated",
         ops: [
-          setOp(`soc.agentProviders.${actorId}`, { ...provider, mode, status: "ready", lastProvider: "mock", fallbackReason: "" }),
+          ...providerOps(ctx, actorId, { ...provider, mode, status: "ready", lastProvider: "mock", fallbackReason: "" }),
           setOp("soc.foundry.required", accessRequired),
         ],
       };
@@ -700,7 +730,7 @@ export function createSocEffects(
       return {
         outcome: "fallback",
         ops: [
-          setOp(`soc.agentProviders.${actorId}`, { ...provider, mode, status: "fallback", fallbackReason: "Access key required for Live mode." }),
+          ...providerOps(ctx, actorId, { ...provider, mode, status: "fallback", fallbackReason: "Access key required for Live mode." }),
           setOp("soc.foundry.required", true),
         ],
       };
@@ -710,7 +740,7 @@ export function createSocEffects(
       return {
         outcome: "updated",
         ops: [
-          setOp(`soc.agentProviders.${actorId}`, { ...provider, mode, status: "ready", fallbackReason: "" }),
+          ...providerOps(ctx, actorId, { ...provider, mode, status: "ready", fallbackReason: "" }),
           setOp("soc.foundry.required", true),
         ],
       };
@@ -718,7 +748,7 @@ export function createSocEffects(
       return {
         outcome: "fallback",
         ops: [
-          setOp(`soc.agentProviders.${actorId}`, { ...provider, mode, status: "fallback", fallbackReason: error instanceof Error ? error.message : "Foundry agent is unavailable." }),
+          ...providerOps(ctx, actorId, { ...provider, mode, status: "fallback", fallbackReason: error instanceof Error ? error.message : "Foundry agent is unavailable." }),
           setOp("soc.foundry.required", true),
         ],
       };
@@ -739,6 +769,7 @@ export function createSocEffects(
         setOp("soc.foundry.key", key),
         setOp("soc.foundry.agentNames", agentNames),
         setOp("soc.agentProviders", nextProviders),
+        setOp("control.inspection.participants", inspectionParticipants(list(ctx, "soc.actors"), nextProviders)),
       ],
     };
   };
@@ -859,39 +890,23 @@ export function createSocEffects(
     if (!handler) continue;
     wrapped[handlerName] = async (ctx) => {
       const result = await handler(ctx) as OrchestratorResult | void;
-      const request = ctx.get("demo.request") as RecordValue | undefined;
+      const request = ctx.get("control.request") as RecordValue | undefined;
       if (request?.command !== command || typeof request.token !== "number") return result;
-      const timelineValue = ctx.get("demo.timeline");
-      const timeline = Array.isArray(timelineValue) ? timelineValue as unknown as TimelineItem[] : [];
       const journalOp = result?.ops?.find((op) => op.path === "soc.journal" && Array.isArray(op.value));
       const journal = Array.isArray(journalOp?.value) ? journalOp.value : [];
       const journalEntry = journal.at(-1) as RecordValue | undefined;
-      const organismItem: TimelineItem | undefined = command !== "$reset" && journalEntry ? {
-        id: `organism:${String(journalEntry.id)}`,
-        source: "organism",
-        title: String(journalEntry.result ?? "committed"),
-        summary: String(journalEntry.summary ?? ""),
-        status: String(journalEntry.result ?? "committed"),
-        operationRecordId: String(journalEntry.id ?? ""),
-        timestamp: String(journalEntry.time ?? ""),
-        actorRef: { namespace: "soc", kind: "actor", id: String(journalEntry.actorId ?? ""), relation: "origin" },
-        focusRefs: [
-          { namespace: "soc", kind: "actor", id: String(journalEntry.actorId ?? ""), relation: "origin" },
-          ...(Array.isArray(journalEntry.affected) ? journalEntry.affected : []).map((id) => ({
-            namespace: "soc",
-            kind: "record" as const,
-            id: String(id),
-            relation: "affected" as const,
-          })),
-        ],
-        correlationId: String(request.correlationId ?? ""),
-      } : undefined;
       return {
         ...(result ?? {}),
         ops: [
           ...(result?.ops ?? []),
-          setOp("demo.ack", { token: request.token, command }),
-          ...(organismItem ? [setOp("demo.timeline", [...timeline, organismItem] as unknown as Json)] : []),
+          setOp("control.receipt", {
+            requestId: String(request.id ?? request.correlationId ?? request.token),
+            token: request.token,
+            command,
+            status: "completed",
+            outcome: String(result?.outcome ?? "completed"),
+            ...(command !== "$reset" && journalEntry ? { result: journalEntry } : {}),
+          }),
         ],
       };
     };

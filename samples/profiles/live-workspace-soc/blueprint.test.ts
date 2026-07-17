@@ -64,7 +64,7 @@ test("all presentation contexts lower the same substrate through every tier", ()
     assert.equal((trace[1].output as { source: { subject: string } }).source.subject, "Privileged access anomaly during payroll cutover");
     const runtime = trace[2].output as { root: { capability: string; edges: { children: unknown[] } } };
     assert.equal(runtime.root.capability, "soc:workspace-shell");
-    assert.equal(runtime.root.edges.children.length, 3);
+    assert.equal(runtime.root.edges.children.length, 2);
   }
 });
 
@@ -144,7 +144,7 @@ test("agent contexts lower into context, state, request, response, and governed-
   }
 });
 
-test("substrate chrome owns projection controls and document-gated inspector faces", () => {
+test("substrate chrome owns only the organism runtime projection", () => {
   const body = runtimeDocument.payload.root.edges.children.find((child) => child.id === "soc-workspace");
   assert.ok(body);
   const chrome = body.edges.children[0];
@@ -152,9 +152,7 @@ test("substrate chrome owns projection controls and document-gated inspector fac
   assert.deepEqual(
     chrome.edges.children.map((child) => [child.capability, child.edges.gate]),
     [
-      ["fluent:switch", undefined],
-      ["soc:blueprint-inspector", "soc.consolePlane = 'blueprint'"],
-      ["soc:runtime-projection", "soc.consolePlane = 'runtime'"],
+      ["soc:runtime-projection", undefined],
     ]
   );
 });
@@ -193,14 +191,8 @@ test("the runtime projection owns ordered document-gated context views", () => {
 test("the base runtime preserves the organism Blueprint output behind host integration edges", () => {
   const runtime = structuredClone(runtimeDocument.payload);
   const children = runtime.root.edges.children;
-  const runnerIndex = children.findIndex((child) => child.id === "demo-runner-region");
-  assert.notEqual(runnerIndex, -1);
-  assert.deepEqual(children.splice(runnerIndex, 1), [{
-    capability: "ui:embed",
-    id: "demo-runner-region",
-    props: { app: "demo-runner", unframed: true },
-    edges: { gate: "demo.enabled = true" },
-  }]);
+  assert.equal(children.some((child) => child.id === "demo-runner-region"), false);
+  assert.equal(children.some((child) => child.id === "soc-participants-region"), false);
   const accessGateIndex = children.findIndex((child) => child.id === "foundry-access-gate-region");
   assert.notEqual(accessGateIndex, -1);
   assert.deepEqual(children.splice(accessGateIndex, 1), [{
@@ -217,32 +209,8 @@ test("the base runtime preserves the organism Blueprint output behind host integ
   }]);
   const body = children.find((child) => child.id === "soc-workspace");
   assert.ok(body);
-  assert.equal(body.edges.react.length, 14);
+  assert.equal(body.edges.react.length, 18);
   delete body.edges.react;
   delete body.edges.on.reset;
-  delete body.edges.on.selectTimeline;
-  delete body.edges.on.clearTimelineSelection;
-
-  const chrome = body.edges.children.find((child) => child.id === "soc-substrate-chrome");
-  assert.ok(chrome);
-  const runtimeProjection = chrome.edges.children.find((child) => child.id === "soc-runtime-projection");
-  assert.ok(runtimeProjection);
-  const presentationLayout = runtimeProjection.edges.children.find((child) => child.id === "soc-presentation-layout");
-  assert.ok(presentationLayout);
-  delete presentationLayout.edges.read.demoEnabled;
-  delete presentationLayout.edges.read.demoTimeline;
-  delete presentationLayout.edges.read.demoSelection;
-
-  const journal = body.edges.children.find((child) => child.id === "soc-journal-region");
-  assert.ok(journal);
-  delete journal.edges.on.selectTimeline;
-  delete journal.edges.on.clearTimelineSelection;
-  delete journal.edges.read.demoEnabled;
-  delete journal.edges.read.demoTimeline;
-  delete journal.edges.read.demoSelection;
-
-  const participants = children.find((child) => child.id === "soc-participants-region");
-  assert.ok(participants);
-  delete participants.edges.read.demoSelection;
   assert.deepEqual(compileSocDocument("war-room"), runtime);
 });

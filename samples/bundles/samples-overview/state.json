@@ -60,7 +60,7 @@
         "title": "Experience the SOC Runtime",
         "text": "Watch two humans and two agents change one shared incident state through attributable, role-bounded actions.",
         "bundle": "live-workspace-soc",
-        "plane": "runtime",
+        "gik": false,
         "button": "Open Runtime"
       },
       {
@@ -69,7 +69,7 @@
         "title": "Inspect the Executable Blueprint",
         "text": "Trace the same SOC intent through four tiers and three lowering recipes into the runtime document.",
         "bundle": "live-workspace-soc",
-        "plane": "blueprint",
+        "gik": true,
         "button": "Open Blueprint"
       }
     ],

@@ -5,20 +5,13 @@
     "version": "live-workspace-soc/1.0",
     "expression": "jsonata",
     "namespaces": ["soc"],
-    "contexts": ["demo"],
+    "contexts": ["control", "soc"],
     "actions": ["assign", "derive", "emit", "invoke", "route", "confirm"],
     "config": { "proxyBase": "https://sz-foundry-proxy.azurewebsites.net" },
     "capabilities": {
       "foundry:access-modal": {
         "propsSchema": { "type": "object", "additionalProperties": true },
         "emits": ["accessResolved", "accessCleared"]
-      },
-      "ui:embed": {
-        "propsSchema": { "type": "object", "additionalProperties": true }
-      },
-      "fluent:switch": {
-        "propsSchema": { "type": "object", "additionalProperties": true },
-        "emits": ["toggle"]
       },
       "soc:workspace-shell": {
         "propsSchema": { "type": "object", "additionalProperties": true },
@@ -27,15 +20,6 @@
       "soc:header": {
         "propsSchema": { "type": "object", "additionalProperties": true }
       },
-      "soc:participants": {
-        "propsSchema": { "type": "object", "additionalProperties": true },
-        "slots": ["children"],
-        "emits": ["toggleDrawer", "authorizeContainment"]
-      },
-      "soc:journal": {
-        "propsSchema": { "type": "object", "additionalProperties": true },
-        "emits": ["setJournalMode", "selectTimeline", "clearTimelineSelection", "selectJournal"]
-      },
       "soc:workspace-body": {
         "propsSchema": { "type": "object", "additionalProperties": true },
         "slots": ["children"],
@@ -43,17 +27,13 @@
           "establishIntent", "addConstraint", "suggestExploration", "amendExploration",
           "replanExploration", "commitPartialFindings", "proposeDc01", "completeCorrelation",
           "proposeHostA", "reviseResponse", "calculateResponse", "recommendContainment",
-          "authorizeContainment", "executeContainment", "setPresentationContext", "setAgentMode", "reset",
-          "selectTimeline", "clearTimelineSelection", "selectJournal"
+          "authorizeContainment", "executeContainment", "setPresentationContext", "setAgentMode", "reset"
         ]
       },
       "soc:substrate-chrome": {
         "propsSchema": { "type": "object", "additionalProperties": true },
         "slots": ["children"],
-        "emits": ["setPresentationContext", "setConsolePlane"]
-      },
-      "soc:blueprint-inspector": {
-        "propsSchema": { "type": "object", "additionalProperties": true }
+        "emits": ["setPresentationContext"]
       },
       "soc:runtime-projection": {
         "propsSchema": { "type": "object", "additionalProperties": true },
@@ -102,8 +82,6 @@
     "externals": {
       "projectionViews": {
         "foundry": { "from": "foundry-agent", "use": ["access-modal"] },
-        "fluent": { "from": "fluent", "use": ["switch"] },
-        "ui": { "from": "floor", "use": ["embed"] },
         "soc": { "from": "self" }
       },
       "effectHandlers": [

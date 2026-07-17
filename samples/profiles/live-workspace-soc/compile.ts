@@ -42,14 +42,14 @@ export const SOC_BLUEPRINT_SEED = {
   subject: "Privileged access anomaly during payroll cutover",
 };
 
-export function traceSocBlueprint(presentationContext = "war-room"): StageTrace[] {
+export function traceSocBlueprint(presentationContext = "full-substrate"): StageTrace[] {
   return traceProfile(socBlueprint, SOC_BLUEPRINT_SEED, { presentationContext });
 }
 
-export function compileSocPresentation(presentationContext = "war-room"): PresentationSpec & { frame?: string } {
+export function compileSocPresentation(presentationContext = "full-substrate"): PresentationSpec & { frame?: string } {
   return traceSocBlueprint(presentationContext)[1].output as PresentationSpec & { frame?: string };
 }
 
-export function compileSocDocument(presentationContext = "war-room"): unknown {
+export function compileSocDocument(presentationContext = "full-substrate"): unknown {
   return traceSocBlueprint(presentationContext).at(-1)?.output;
 }
