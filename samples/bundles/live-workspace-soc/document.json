@@ -179,63 +179,107 @@
                         "capability": "soc:viewpoint-header",
                         "id": "soc-viewpoint-header",
                         "edges": {
-                          "read": { "presentation": "soc.presentation" }
+                          "read": { "presentation": "soc.presentation", "journal": "soc.journal" }
                         }
                       },
                       {
-                        "capability": "soc:shared-summary",
-                        "id": "soc-shared-summary",
+                        "capability": "soc:presentation-layout",
+                        "id": "soc-presentation-layout",
                         "edges": {
-                          "read": {
-                            "presentation": "soc.presentation",
-                            "journal": "soc.journal"
-                          }
-                        }
-                      },
-                      {
-                        "capability": "soc:agent-envelope",
-                        "id": "soc-agent-envelope",
-                        "edges": {
-                          "gate": "soc.presentation.selectedContext = 'correlation-agent' or soc.presentation.selectedContext = 'response-agent'",
-                          "read": {
-                            "presentation": "soc.presentation",
-                            "stage": "soc.stage",
-                            "actors": "soc.actors",
-                            "constraints": "soc.constraints",
-                            "explorations": "soc.explorations",
-                            "evidence": "soc.evidence",
-                            "hypothesis": "soc.hypothesis",
-                            "proposal": "soc.proposal",
-                            "journal": "soc.journal"
-                          }
-                        }
-                      },
-                      {
-                        "capability": "soc:operational-view",
-                        "id": "soc-operational-view",
-                        "edges": {
-                          "gate": "soc.presentation.selectedContext != 'correlation-agent' and soc.presentation.selectedContext != 'response-agent'",
                           "read": {
                             "presentation": "soc.presentation",
                             "actors": "soc.actors",
-                            "intent": "soc.intent",
-                            "constraints": "soc.constraints",
-                            "explorations": "soc.explorations",
-                            "evidence": "soc.evidence",
-                            "hypothesis": "soc.hypothesis",
-                            "proposal": "soc.proposal",
-                            "authorization": "soc.authorization",
                             "journal": "soc.journal",
                             "selectedJournalId": "soc.ui.selectedJournalId",
                             "demoEnabled": "demo.enabled",
                             "demoTimeline": "demo.timeline",
                             "demoSelection": "demo.selection"
                           },
-                          "on": {
-                            "authorizeContainment": [
-                              { "do": "confirm", "args": { "tool": "authorizeContainment", "title": "Authorize Host-A isolation", "message": "Authorize the evidence-backed, reversible isolation plan?", "confirmLabel": "Authorize", "danger": true } }
-                            ]
-                          }
+                          "children": [
+                            {
+                              "capability": "soc:intent-region",
+                              "id": "soc-intent-region",
+                              "edges": {
+                                "gate": "$lookup(soc.presentation.regionFacets, 'intent').visible = true",
+                                "read": { "facet": "soc.presentation.regionFacets.intent", "intent": "soc.intent" }
+                              }
+                            },
+                            {
+                              "capability": "soc:constraints-region",
+                              "id": "soc-constraints-region",
+                              "edges": {
+                                "gate": "$lookup(soc.presentation.regionFacets, 'constraints').visible = true",
+                                "read": { "facet": "soc.presentation.regionFacets.constraints", "constraints": "soc.constraints" }
+                              }
+                            },
+                            {
+                              "capability": "soc:hypothesis-region",
+                              "id": "soc-hypothesis-region",
+                              "edges": {
+                                "gate": "$lookup(soc.presentation.regionFacets, 'hypothesis').visible = true",
+                                "read": { "facet": "soc.presentation.regionFacets.hypothesis", "hypothesis": "soc.hypothesis" }
+                              }
+                            },
+                            {
+                              "capability": "soc:exploration-region",
+                              "id": "soc-exploration-region",
+                              "edges": {
+                                "gate": "$lookup(soc.presentation.regionFacets, 'exploration').visible = true",
+                                "read": { "facet": "soc.presentation.regionFacets.exploration", "explorations": "soc.explorations" }
+                              }
+                            },
+                            {
+                              "capability": "soc:evidence-region",
+                              "id": "soc-evidence-region",
+                              "edges": {
+                                "gate": "$lookup(soc.presentation.regionFacets, 'evidence').visible = true",
+                                "read": { "facet": "soc.presentation.regionFacets.evidence", "evidence": "soc.evidence" }
+                              }
+                            },
+                            {
+                              "capability": "soc:agent-request-region",
+                              "id": "soc-agent-request-region",
+                              "edges": {
+                                "gate": "$lookup(soc.presentation.regionFacets, 'agent-request').visible = true",
+                                "read": {
+                                  "presentation": "soc.presentation",
+                                  "actors": "soc.actors",
+                                  "explorations": "soc.explorations",
+                                  "proposal": "soc.proposal"
+                                },
+                                "readExpr": { "facet": "$lookup(soc.presentation.regionFacets, 'agent-request')" }
+                              }
+                            },
+                            {
+                              "capability": "soc:response-region",
+                              "id": "soc-response-region",
+                              "edges": {
+                                "gate": "$lookup(soc.presentation.regionFacets, 'response').visible = true",
+                                "read": { "facet": "soc.presentation.regionFacets.response", "proposal": "soc.proposal" }
+                              }
+                            },
+                            {
+                              "capability": "soc:authorization-region",
+                              "id": "soc-authorization-region",
+                              "edges": {
+                                "gate": "$lookup(soc.presentation.regionFacets, 'authorization').visible = true",
+                                "read": { "facet": "soc.presentation.regionFacets.authorization", "authorization": "soc.authorization" },
+                                "on": {
+                                  "authorizeContainment": [
+                                    { "do": "confirm", "args": { "tool": "authorizeContainment", "title": "Authorize Host-A isolation", "message": "Authorize the evidence-backed, reversible isolation plan?", "confirmLabel": "Authorize", "danger": true } }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "soc:causal-record-region",
+                              "id": "soc-causal-record-region",
+                              "edges": {
+                                "gate": "$lookup(soc.presentation.regionFacets, 'causal-record').visible = true",
+                                "readExpr": { "facet": "$lookup(soc.presentation.regionFacets, 'causal-record')" }
+                              }
+                            }
+                          ]
                         }
                       }
                     ]

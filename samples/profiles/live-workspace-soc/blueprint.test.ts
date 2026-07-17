@@ -41,7 +41,26 @@ test("all presentation contexts lower the same substrate through every tier", ()
   for (const context of SOC_BLUEPRINT_CONTEXTS) {
     const trace = traceSocBlueprint(context.id);
     assert.equal(trace.length, 3);
-    assert.equal((trace[0].output as { interaction: string }).interaction, "soc-workspace");
+    const interaction = trace[0].output as {
+      interaction: string;
+      parts: Array<{ name: string; concern: string; participants?: string[]; authority?: string[] }>;
+    };
+    assert.equal(interaction.interaction, "soc-workspace");
+    assert.deepEqual(interaction.parts.map((part) => part.name), [
+      "summary",
+      "intent",
+      "constraints",
+      "hypothesis",
+      "exploration",
+      "evidence",
+      "agent-request",
+      "response",
+      "authorization",
+      "causal-record",
+    ]);
+    assert.equal(interaction.parts.find((part) => part.name === "authorization")?.concern, "governance");
+    assert.deepEqual(interaction.parts.find((part) => part.name === "authorization")?.authority, ["authorize-containment"]);
+    assert.equal(interaction.parts.find((part) => part.name === "evidence")?.participants?.includes("agent-correlation"), true);
     assert.equal((trace[1].output as { source: { subject: string } }).source.subject, "Privileged access anomaly during payroll cutover");
     const runtime = trace[2].output as { root: { capability: string; edges: { children: unknown[] } } };
     assert.equal(runtime.root.capability, "soc:workspace-shell");
@@ -80,13 +99,25 @@ test("lowering recipes select, order, and disclose context facets without materi
   assert.deepEqual(
     mobile.regions.filter((region) => region.disclosure !== "omitted" && region.materialize === false).map((region) => [region.name, region.priority, region.disclosure]),
     [
-      ["summary", "supporting", "decision-summary"],
-      ["authorization", "critical", "decision-summary"],
-      ["response", "critical", "decision-summary"],
-      ["constraints", "supporting", "decision-summary"],
-      ["hypothesis", "supporting", "decision-summary"],
+      ["summary", "supporting", "status"],
+      ["authorization", "critical", "summary"],
+      ["response", "critical", "summary"],
+      ["constraints", "supporting", "summary"],
+      ["hypothesis", "supporting", "status"],
     ]
   );
+});
+
+test("human contexts lower regions into stable operational groups", () => {
+  const warRoom = compileSocPresentation("war-room").regions.filter((region) => region.disclosure !== "omitted" && region.materialize === false);
+  assert.deepEqual(warRoom.map((region) => [region.name, region.concern, region.group]), [
+    ["summary", "orientation", "orientation"],
+    ["hypothesis", "orientation", "orientation"],
+    ["response", "response", "response"],
+    ["constraints", "guardrails", "guardrails"],
+    ["authorization", "governance", "governance"],
+    ["causal-record", "provenance", "provenance"],
+  ]);
 });
 
 test("agent contexts lower into context, state, request, response, and governed-result groups", () => {
@@ -128,11 +159,22 @@ test("the runtime projection owns ordered document-gated context views", () => {
     runtimeProjection.edges.children.map((child) => [child.capability, child.edges.gate]),
     [
       ["soc:viewpoint-header", undefined],
-      ["soc:shared-summary", undefined],
-      ["soc:agent-envelope", "soc.presentation.selectedContext = 'correlation-agent' or soc.presentation.selectedContext = 'response-agent'"],
-      ["soc:operational-view", "soc.presentation.selectedContext != 'correlation-agent' and soc.presentation.selectedContext != 'response-agent'"],
+      ["soc:presentation-layout", undefined],
     ]
   );
+  const layout = runtimeProjection.edges.children.find((child) => child.id === "soc-presentation-layout");
+  assert.ok(layout);
+  assert.deepEqual(layout.edges.children.map((child) => child.capability), [
+    "soc:intent-region",
+    "soc:constraints-region",
+    "soc:hypothesis-region",
+    "soc:exploration-region",
+    "soc:evidence-region",
+    "soc:agent-request-region",
+    "soc:response-region",
+    "soc:authorization-region",
+    "soc:causal-record-region",
+  ]);
 });
 
 test("the base runtime preserves the organism Blueprint output behind host integration edges", () => {
@@ -172,11 +214,11 @@ test("the base runtime preserves the organism Blueprint output behind host integ
   assert.ok(chrome);
   const runtimeProjection = chrome.edges.children.find((child) => child.id === "soc-runtime-projection");
   assert.ok(runtimeProjection);
-  const operationalView = runtimeProjection.edges.children.find((child) => child.id === "soc-operational-view");
-  assert.ok(operationalView);
-  delete operationalView.edges.read.demoEnabled;
-  delete operationalView.edges.read.demoTimeline;
-  delete operationalView.edges.read.demoSelection;
+  const presentationLayout = runtimeProjection.edges.children.find((child) => child.id === "soc-presentation-layout");
+  assert.ok(presentationLayout);
+  delete presentationLayout.edges.read.demoEnabled;
+  delete presentationLayout.edges.read.demoTimeline;
+  delete presentationLayout.edges.read.demoSelection;
 
   const journal = body.edges.children.find((child) => child.id === "soc-journal-region");
   assert.ok(journal);

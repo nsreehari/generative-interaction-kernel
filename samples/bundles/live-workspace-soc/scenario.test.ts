@@ -224,12 +224,39 @@ test("presentation context changes projection metadata without changing the caus
     frame: string;
     arrangement: string;
     regions: string[];
+    regionFacets: Record<string, {
+      visible: boolean;
+      rank: number;
+      priority: string;
+      disclosure: string;
+      concern: string;
+      group: string;
+      presentation: string;
+    }>;
   };
   assert.equal(presentation.selectedContext, "priya-laptop");
   assert.equal(presentation.revision, 1);
   assert.equal(presentation.frame, "laptop");
   assert.equal(presentation.arrangement, "command");
   assert.deepEqual(presentation.regions, ["summary", "constraints", "hypothesis", "evidence", "response", "authorization", "causal-record"]);
+  assert.deepEqual(presentation.regionFacets.authorization, {
+    visible: true,
+    rank: 5,
+    priority: "supporting",
+    disclosure: "summary",
+    concern: "governance",
+    group: "governance",
+    presentation: "substrate-region",
+  });
+  assert.deepEqual(presentation.regionFacets.exploration, {
+    visible: false,
+    rank: 50,
+    priority: "supporting",
+    disclosure: "omitted",
+    concern: "investigation",
+    group: "investigation",
+    presentation: "substrate-region",
+  });
   assert.deepEqual(store.get("soc.journal"), journalBefore);
 });
 

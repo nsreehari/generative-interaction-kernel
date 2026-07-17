@@ -70,6 +70,7 @@ export function lowerWorkflow(recipe: LayerRecipe): (workflow: WorkflowSpec) => 
       interaction: selected.interaction,
       subject: selected.subject ?? workflow.subject,
       capabilities: selected.capabilities ?? workflow.capabilities,
+      parts: selected.parts,
       intent: workflow.intent,
       data: workflow.data,
       facetViews: workflow.facetViews,

@@ -62,15 +62,37 @@
       "soc:viewpoint-header": {
         "propsSchema": { "type": "object", "additionalProperties": true }
       },
-      "soc:shared-summary": {
+      "soc:presentation-layout": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "slots": ["children"]
+      },
+      "soc:intent-region": {
         "propsSchema": { "type": "object", "additionalProperties": true }
       },
-      "soc:agent-envelope": {
+      "soc:constraints-region": {
         "propsSchema": { "type": "object", "additionalProperties": true }
       },
-      "soc:operational-view": {
+      "soc:hypothesis-region": {
+        "propsSchema": { "type": "object", "additionalProperties": true }
+      },
+      "soc:exploration-region": {
+        "propsSchema": { "type": "object", "additionalProperties": true }
+      },
+      "soc:evidence-region": {
+        "propsSchema": { "type": "object", "additionalProperties": true }
+      },
+      "soc:agent-request-region": {
+        "propsSchema": { "type": "object", "additionalProperties": true }
+      },
+      "soc:response-region": {
+        "propsSchema": { "type": "object", "additionalProperties": true }
+      },
+      "soc:authorization-region": {
         "propsSchema": { "type": "object", "additionalProperties": true },
         "emits": ["authorizeContainment"]
+      },
+      "soc:causal-record-region": {
+        "propsSchema": { "type": "object", "additionalProperties": true }
       }
     },
     "externals": {

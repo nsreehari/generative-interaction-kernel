@@ -19,14 +19,25 @@ export interface Presentation {
   frame: SocPresentationSpec["frame"];
   arrangement: SocPresentationSpec["arrangement"];
   regions: SubstrateRegion[];
+  regionFacets: Record<SubstrateRegion, PresentationRegionFacet>;
   contexts: PresentationContext[];
 }
 
 export type SubstrateRegion = "summary" | "intent" | "constraints" | "hypothesis" | "exploration" | "evidence" | "agent-request" | "response" | "authorization" | "causal-record";
 
+export interface PresentationRegionFacet {
+  visible: boolean;
+  rank: number;
+  priority: "critical" | "primary" | "supporting";
+  disclosure: "status" | "summary" | "detail" | "omitted";
+  concern: "orientation" | "guardrails" | "investigation" | "delegation" | "response" | "governance" | "provenance";
+  group: "orientation" | "guardrails" | "investigation" | "response" | "governance" | "provenance" | "context" | "shared-state" | "request" | "governed-result";
+  presentation: "substrate-region" | "agent-request";
+}
+
 export interface SocPresentationSpec {
   frame: "shared" | "mobile" | "laptop" | "pager" | "workstation" | "agent-console";
-  arrangement: "war-room" | "inspection" | "decision" | "command" | "glanceable" | "investigation" | "agent";
+  arrangement: "war-room" | "inspection" | "decision" | "command" | "glanceable" | "investigation" | "agent-correlation" | "agent-response";
   regions: SubstrateRegion[];
 }
 

@@ -13,12 +13,21 @@ import {
 
 function presentationContract(contextId: string) {
   const presentation = compileSocPresentation(contextId);
+  const substrateRegions = presentation.regions.filter((region) => region.materialize === false);
+  const visibleRegions = substrateRegions.filter((region) => region.disclosure !== "omitted");
   return {
     frame: presentation.frame,
     arrangement: presentation.arrangement,
-    regions: presentation.regions
-      .filter((region) => region.disclosure !== "omitted" && region.materialize === false)
-      .map((region) => region.name),
+    regions: visibleRegions.map((region) => region.name),
+    regionFacets: Object.fromEntries(substrateRegions.map((region) => [region.name, {
+      visible: region.disclosure !== "omitted",
+      rank: region.disclosure === "omitted" ? 50 : visibleRegions.indexOf(region),
+      priority: region.priority,
+      disclosure: region.disclosure,
+      concern: region.concern ?? "substrate",
+      group: region.group ?? "substrate",
+      presentation: region.presentation ?? "substrate-region",
+    }])),
   };
 }
 
@@ -109,6 +118,12 @@ test("presentation contexts produce distinct substrate frames and disclosure", (
   assert.equal(mobile.regions.includes("exploration"), false);
   assert.equal(mobile.regions.includes("authorization"), true);
   assert.deepEqual(mobile.regions, ["summary", "authorization", "response", "constraints", "hypothesis"]);
+  assert.equal(mobile.regionFacets.authorization.visible, true);
+  assert.equal(mobile.regionFacets.authorization.priority, "critical");
+  assert.equal(mobile.regionFacets.evidence.visible, false);
   assert.deepEqual(pager.regions, ["summary", "hypothesis", "response"]);
   assert.deepEqual(correlation.regions, ["summary", "intent", "constraints", "hypothesis", "agent-request", "exploration", "evidence", "causal-record"]);
+  assert.equal(correlation.regionFacets.evidence.group, "response");
+  assert.equal(correlation.regionFacets.evidence.concern, "investigation");
+  assert.equal(correlation.regionFacets["agent-request"].presentation, "agent-request");
 });

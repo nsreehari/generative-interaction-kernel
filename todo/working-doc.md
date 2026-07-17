@@ -1,5 +1,114 @@
 Updated todo list
 
+# Detour 4 — Declarative SOC projection composition (AGREED 2026-07-17)
+
+## Governing boundary
+
+**The document owns composition; the projector owns materialization.**
+
+The current `soc:runtime-projection` document node composes two coarse context views while
+`OperationalView.tsx` and `AgentEnvelope.tsx` recover presentation decisions during React
+rendering. Detour 4 replaces those monoliths with document-composed semantic leaves. A leaf
+reads only the shared state and lowered presentation facet it materializes, emits only its own
+events, and never selects contexts, discovers siblings, calculates semantic order, or invokes
+the Blueprint compiler.
+
+Target runtime composition:
+
+```
+soc:runtime-projection
+  soc:viewpoint-header
+  soc:presentation-layout
+    soc:summary-region
+    soc:intent-region
+    soc:constraints-region
+    soc:hypothesis-region
+    soc:exploration-region
+    soc:evidence-region
+    soc:agent-request-region
+    soc:response-region
+    soc:authorization-region
+    soc:causal-record-region
+```
+
+`RuntimeProjection` remains the presentation-frame boundary. `PresentationLayout` materializes
+the lowered arrangement. The runtime document owns the complete leaf set, visibility gates,
+state reads, event bindings, and stable node identities.
+
+## Presentation contract
+
+Interaction lowering owns the stable semantic parts and their meaning: identity, role,
+semantic concern, data dependencies, participants, actions, authority, and causal targets.
+Presentation lowering projects those parts for a context; it does not invent their domain
+meaning. It owns selection, `rank`, `priority`, `disclosure`, presentation `group`, frame,
+arrangement, and materializer variant. Runtime lowering owns concrete capabilities, gates,
+reads, events, children, and stable identities.
+
+Presentation lowering already computes `rank`, `priority`, `disclosure`, `group`,
+`presentation`, and `materialize`, but runtime state currently collapses those facets to an
+ordered array of region names. Preserve an addressable facet for every region so document gates
+and leaves can consume the lowered decisions directly. During migration, retain the ordered
+`regions` list for compatibility and add `regionFacets`; remove the reduced list only after the
+monolithic views are gone.
+
+Each runtime facet owns:
+
+- `visible`: document composition gate derived from disclosure/materialization
+- `rank`: semantic and accessible reading order
+- `priority`: critical / primary / supporting emphasis
+- `disclosure`: normalized leaf density (status / summary / detail / omitted)
+- `concern`: stable Interaction-owned semantic concern
+- `group`: context-specific Presentation grouping, including agent
+  envelope groups where the selected arrangement requires them
+- `presentation`: leaf materializer variant selected by lowering
+
+Frame and arrangement remain derived from the selected presentation context. Context switching
+must recompute the complete presentation contract without changing operational or causal state.
+
+## Visual grammar
+
+All contexts project the same substrate through a stable operational narrative:
+
+1. **Orientation** — incident posture, current hypothesis, confidence, latest meaningful change.
+2. **Guardrails** — human intent, protected constraints, and authority boundaries.
+3. **Investigation** — exploration history and evidence.
+4. **Response** — proposed action, target, blast radius, reversibility, and readiness.
+5. **Decision** — authorization state and consequential action.
+6. **Provenance** — relevant causal record.
+
+Arrangements weight that grammar rather than inventing unrelated screens:
+
+- `war-room`: hypothesis and response dominate; constraint and authorization form a decision rail.
+- `inspection`: complete grouped substrate with provenance.
+- `decision`: commander decision object first, response second, rationale below.
+- `command`: response and authorization primary, evidence and constraints supporting.
+- `glanceable`: posture, hypothesis, and response status only.
+- `investigation`: exploration and evidence dominate while the tested hypothesis remains visible.
+- agent arrangements: context → shared state → request → contribution → governed result.
+
+## Lowering responsibilities
+
+The workflow-to-interaction lowering recipe owns the stable semantic parts. The
+interaction-to-presentation lowering recipe owns frame, arrangement, visibility, rank,
+priority, presentation grouping, disclosure, and presentation variant. The presentation-to-runtime lowering
+recipe emits the static complete leaf tree with document gates and reads bound to addressable
+facets. React translates those lowered semantics into layout, density, emphasis, and controls;
+it does not reconstruct them from `selectedContext`.
+
+## Implementation sequence
+
+1. [x] Preserve lowered per-region facets in runtime presentation state and context switching.
+2. [x] Normalize human-region groups and per-region disclosure in presentation lowering.
+3. [x] Add `soc:presentation-layout` and the human semantic leaf capabilities.
+4. [x] Compose human leaves, gates, reads, events, and identities in presentation-to-runtime lowering.
+5. [x] Establish and visually validate war-room, decision, and investigation arrangements.
+6. [x] Add inspection, command, glanceable, and agent arrangements.
+7. [x] Delete `OperationalView` and `AgentEnvelope`, including render-time Blueprint tracing.
+8. [x] Validate all eight contexts behaviorally and at desktop/mobile widths, with representative screenshots.
+
+Scope rule: preserve exact SOC operational behavior, attribution, authority, demo sequencing,
+and causal focus while changing projection composition.
+
 Let me gather the missing context: the samples-overview bundle, the workbench bundle, the apps/host bundle structure, and the GIK public docs.   
 
 Read [](file:///c%3A/Users/sreenaga/ADO/ai-tool-evolver/generative-interaction-kernel/samples/bundles)

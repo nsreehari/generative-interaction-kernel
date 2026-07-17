@@ -1,11 +1,20 @@
-import { AgentEnvelope } from "./AgentEnvelope";
 import { BlueprintInspector } from "./BlueprintInspector";
 import { JournalRail } from "./JournalRail";
 import { LiveWorkspaceSocBody } from "./LiveWorkspaceSocBody";
-import { OperationalView } from "./OperationalView";
+import {
+  AuthorizationRegion,
+  AgentRequestRegion,
+  CausalRecordRegion,
+  ConstraintsRegion,
+  EvidenceRegion,
+  ExplorationRegion,
+  HypothesisRegion,
+  IntentRegion,
+  ResponseRegion,
+} from "./OperationalRegions";
 import { Participants } from "./Participants";
+import { PresentationLayout } from "./PresentationLayout";
 import { RuntimeProjection } from "./RuntimeProjection";
-import { SharedSummary } from "./SharedSummary";
 import { SubstrateChrome } from "./SubstrateChrome";
 import { ViewpointHeader } from "./ViewpointHeader";
 import { WorkspaceHeader } from "./WorkspaceHeader";
@@ -33,7 +42,14 @@ export default {
   "blueprint-inspector": BlueprintInspector,
   "runtime-projection": RuntimeProjection,
   "viewpoint-header": ViewpointHeader,
-  "shared-summary": SharedSummary,
-  "agent-envelope": AgentEnvelope,
-  "operational-view": OperationalView,
+  "presentation-layout": PresentationLayout,
+  "intent-region": IntentRegion,
+  "constraints-region": ConstraintsRegion,
+  "hypothesis-region": HypothesisRegion,
+  "exploration-region": ExplorationRegion,
+  "evidence-region": EvidenceRegion,
+  "agent-request-region": AgentRequestRegion,
+  "response-region": ResponseRegion,
+  "authorization-region": AuthorizationRegion,
+  "causal-record-region": CausalRecordRegion,
 };
