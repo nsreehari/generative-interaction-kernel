@@ -228,6 +228,7 @@ export interface RuntimeNodeRecipeFields {
   props?: Record<string, Json>;
   read?: Record<string, string>;
   readExpr?: Record<string, string>;
+  gate?: string;
   on?: Record<string, Action[]>;
   children?: RuntimeNodeRecipeFields[];
 }

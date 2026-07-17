@@ -43,6 +43,7 @@ type RuntimeEmitterNodeOptions<TNode> = {
   props?: Record<string, Json>;
   read?: Record<string, string>;
   readExpr?: Record<string, string>;
+  gate?: string;
   on?: Record<string, Action[]>;
   children?: TNode[];
 };
@@ -122,6 +123,7 @@ function runtimeFieldsToNodeOptions<TNode>(
   if (source.props) options.props = resolveTemplatedValue(source.props, tokens) as Record<string, Json>;
   if (source.read) options.read = resolveTemplatedValue(source.read, tokens) as Record<string, string>;
   if (source.readExpr) options.readExpr = resolveTemplatedValue(source.readExpr, tokens) as Record<string, string>;
+  if (source.gate !== undefined) options.gate = resolveTemplatedValue(source.gate, tokens) as string;
   if (source.on) options.on = resolveTemplatedValue(source.on, tokens) as Record<string, Action[]>;
   return options;
 }
