@@ -50,27 +50,6 @@
             {
               "id": "soc-workspace",
               "capability": "soc:workspace-body",
-              "read": {
-                "incident": "soc.incident",
-                "presentation": "soc.presentation",
-                "stage": "soc.stage",
-                "actors": "soc.actors",
-                "agentProviders": "soc.agentProviders",
-                "intent": "soc.intent",
-                "constraints": "soc.constraints",
-                "dataSources": "soc.dataSources",
-                "explorations": "soc.explorations",
-                "evidence": "soc.evidence",
-                "correlations": "soc.correlations",
-                "entities": "soc.entities",
-                "hypothesis": "soc.hypothesis",
-                "proposal": "soc.proposal",
-                "recommendation": "soc.recommendation",
-                "authorization": "soc.authorization",
-                "journal": "soc.journal",
-                "consolePlane": "soc.consolePlane",
-                "selectedJournalId": "soc.ui.selectedJournalId"
-              },
               "on": {
                 "establishIntent": [{ "do": "invoke", "args": { "tool": "establishIntent" } }],
                 "addConstraint": [{ "do": "invoke", "args": { "tool": "addConstraint" } }],
@@ -91,6 +70,46 @@
                 "selectJournal": [{ "do": "assign", "target": "soc.ui.selectedJournalId", "args": { "from": "$event.id" } }]
               },
               "children": [
+                {
+                  "id": "soc-substrate-chrome",
+                  "capability": "soc:substrate-chrome",
+                  "read": {
+                    "incident": "soc.incident",
+                    "presentation": "soc.presentation",
+                    "consolePlane": "soc.consolePlane"
+                  },
+                  "children": [
+                    {
+                      "id": "soc-blueprint-inspector",
+                      "capability": "soc:blueprint-inspector",
+                      "gate": "soc.consolePlane = 'blueprint'",
+                      "read": { "presentation": "soc.presentation" }
+                    },
+                    {
+                      "id": "soc-runtime-projection",
+                      "capability": "soc:runtime-projection",
+                      "gate": "soc.consolePlane = 'runtime'",
+                      "read": {
+                        "incident": "soc.incident",
+                        "presentation": "soc.presentation",
+                        "stage": "soc.stage",
+                        "actors": "soc.actors",
+                        "intent": "soc.intent",
+                        "constraints": "soc.constraints",
+                        "explorations": "soc.explorations",
+                        "evidence": "soc.evidence",
+                        "hypothesis": "soc.hypothesis",
+                        "proposal": "soc.proposal",
+                        "authorization": "soc.authorization",
+                        "journal": "soc.journal",
+                        "selectedJournalId": "soc.ui.selectedJournalId"
+                      },
+                      "on": {
+                        "authorizeContainment": [{ "do": "confirm", "args": { "tool": "authorizeContainment", "title": "Authorize Host-A isolation", "message": "Authorize the evidence-backed, reversible isolation plan?", "confirmLabel": "Authorize", "danger": true } }]
+                      }
+                    }
+                  ]
+                },
                 {
                   "id": "soc-journal-region",
                   "capability": "soc:journal",

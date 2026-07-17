@@ -96,6 +96,20 @@ test("agent contexts lower into context, state, request, response, and governed-
   }
 });
 
+test("the workspace body owns substrate chrome with document-gated inspector faces", () => {
+  const body = runtimeDocument.payload.root.edges.children.find((child) => child.id === "soc-workspace");
+  assert.ok(body);
+  const chrome = body.edges.children[0];
+  assert.equal(chrome.capability, "soc:substrate-chrome");
+  assert.deepEqual(
+    chrome.edges.children.map((child) => [child.capability, child.edges.gate]),
+    [
+      ["soc:blueprint-inspector", "soc.consolePlane = 'blueprint'"],
+      ["soc:runtime-projection", "soc.consolePlane = 'runtime'"],
+    ]
+  );
+});
+
 test("the base runtime preserves the organism Blueprint output behind host integration edges", () => {
   const runtime = structuredClone(runtimeDocument.payload);
   const children = runtime.root.edges.children;
@@ -128,9 +142,14 @@ test("the base runtime preserves the organism Blueprint output behind host integ
   delete body.edges.on.reset;
   delete body.edges.on.selectTimeline;
   delete body.edges.on.clearTimelineSelection;
-  delete body.edges.read.demoEnabled;
-  delete body.edges.read.demoTimeline;
-  delete body.edges.read.demoSelection;
+
+  const chrome = body.edges.children.find((child) => child.id === "soc-substrate-chrome");
+  assert.ok(chrome);
+  const runtimeProjection = chrome.edges.children.find((child) => child.id === "soc-runtime-projection");
+  assert.ok(runtimeProjection);
+  delete runtimeProjection.edges.read.demoEnabled;
+  delete runtimeProjection.edges.read.demoTimeline;
+  delete runtimeProjection.edges.read.demoSelection;
 
   const journal = body.edges.children.find((child) => child.id === "soc-journal-region");
   assert.ok(journal);

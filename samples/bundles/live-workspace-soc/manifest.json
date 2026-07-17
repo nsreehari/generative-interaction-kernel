@@ -48,6 +48,17 @@
           "authorizeContainment", "executeContainment", "setPresentationContext", "setAgentMode", "reset",
           "selectTimeline", "clearTimelineSelection", "selectJournal"
         ]
+      },
+      "soc:substrate-chrome": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "slots": ["children"]
+      },
+      "soc:blueprint-inspector": {
+        "propsSchema": { "type": "object", "additionalProperties": true }
+      },
+      "soc:runtime-projection": {
+        "propsSchema": { "type": "object", "additionalProperties": true },
+        "emits": ["authorizeContainment"]
       }
     },
     "externals": {
