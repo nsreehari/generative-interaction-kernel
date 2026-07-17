@@ -57,6 +57,8 @@ Adapting an experience to context usually means forking logic, which lets meanin
 
 For GenUI profiles, that adaptive projection is best understood as a declared lowering chain: the profile names its layers, and its recipes describe how one layer lowers into the next. The semantics stay stable because the recipes reshape arrangement and materialization, not the underlying interaction meaning.
 
+**The document owns composition; the projector owns materialization.** Capability topology, node-local data bindings, gates, and event wiring remain explicit in the resolved document. A projection view materializes one resolved node and arranges its already-resolved children; it does not resolve or instantiate other capabilities behind the document's back. Reusable composites expand into ordinary document nodes before interpretation, keeping composition inspectable, schema-validatable, auditable, and portable across projectors. In short: no hidden topology in projection code.
+
 ### 10. The Dual-Loop SLA (Deterministic Loop vs. Semantic Loop)
 Throughput and responsiveness must never depend on model latency, in any medium.
 **The GIK Principle:** Direct actions run through the Kernel's local deterministic reducer and settle immediately, while generative planning runs on a separate semantic loop that proposes structural change asynchronously behind a deterministic contract; on timeout, the deterministic path wins. AI changes the system's *adaptivity*, never its *latency* or *safety*.
