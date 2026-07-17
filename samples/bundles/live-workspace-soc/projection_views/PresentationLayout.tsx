@@ -1,17 +1,50 @@
-import { createContext, useContext, type ReactNode } from "react";
+import React, { Children, createContext, useContext, type ComponentType, type ReactElement, type ReactNode } from "react";
 import { mergeClasses } from "@fluentui/react-components";
 import type { ProjectionView } from "@gik/react";
-import {
-  selectionFromTimelineItem,
-  type DemoSelection,
-  type TimelineItem,
-} from "../../../shared/demo-runner";
-import { socJournalTimelineItem } from "./helpers";
+import type { ControlSelection, TimelineItem } from "../../../shared/control-focus";
 import { useStyles } from "./styles";
-import type { Actor, JournalEntry, Presentation } from "./types";
+import type { Actor, Presentation, PresentationRegionFacet } from "./types";
+
+const kanbanColumns: Array<{ group: PresentationRegionFacet["group"]; title: string }> = [
+  { group: "kanban-frame", title: "Frame" },
+  { group: "kanban-explore", title: "Explore" },
+  { group: "kanban-establish", title: "Establish" },
+  { group: "kanban-decide", title: "Decide" },
+  { group: "kanban-record", title: "Record" },
+];
+
+interface ArrangementLayoutProps {
+  children: ReactNode;
+  styles: ReturnType<typeof useStyles>;
+}
+
+function FlowLayout({ children }: ArrangementLayoutProps) {
+  return children;
+}
+
+function KanbanLayout({ children, styles }: ArrangementLayoutProps) {
+  const groupedChildren = Children.toArray(children).map((child) => {
+    const element = child as ReactElement<{ node: { props: { facet: PresentationRegionFacet } } }>;
+    return { child, group: element.props.node.props.facet.group };
+  });
+
+  return <div className={styles.kanbanBoard} aria-label="Investigation board">
+    {kanbanColumns.map((column) => {
+      const titleId = `soc-${column.group}`;
+      return <section className={styles.kanbanColumn} aria-labelledby={titleId} key={column.group}>
+        <h3 className={styles.kanbanColumnTitle} id={titleId}>{column.title}</h3>
+        <div className={styles.kanbanCards}>{groupedChildren.filter((item) => item.group === column.group).map((item) => item.child)}</div>
+      </section>;
+    })}
+  </div>;
+}
+
+const arrangementLayouts: Partial<Record<Presentation["arrangement"], ComponentType<ArrangementLayoutProps>>> = {
+  kanban: KanbanLayout,
+};
 
 interface PresentationMaterialization {
-  activeSelection?: DemoSelection;
+  activeSelection?: ControlSelection;
   actorNames: Map<string, string>;
   selectedTimelineItem?: TimelineItem;
 }
@@ -28,24 +61,10 @@ export const PresentationLayout: ProjectionView = ({ node, children }) => {
   const styles = useStyles();
   const presentation = node.props.presentation as unknown as Presentation;
   const actors = (node.props.actors ?? []) as unknown as Actor[];
-  const journal = (node.props.journal ?? []) as unknown as JournalEntry[];
-  const selectedJournalId = typeof node.props.selectedJournalId === "string" ? node.props.selectedJournalId : null;
-  const demoEnabled = node.props.demoEnabled === true;
-  const demoTimeline = (node.props.demoTimeline ?? []) as unknown as TimelineItem[];
-  const demoSelection = (node.props.demoSelection ?? undefined) as unknown as DemoSelection | undefined;
-  const latestEntry = journal.at(-1);
-  const selectedEntry = selectedJournalId
-    ? journal.find((item) => item.id === selectedJournalId) ?? latestEntry
-    : latestEntry;
-  const organismTimeline = journal.map(socJournalTimelineItem);
-  const timelineItems = demoEnabled ? demoTimeline : organismTimeline;
-  const selectedTimelineItem = demoSelection
-    ? timelineItems.find((item) => item.id === demoSelection.itemId)
-    : selectedEntry ? socJournalTimelineItem(selectedEntry) : timelineItems.at(-1);
-  const activeSelection = demoSelection ?? (selectedTimelineItem ? selectionFromTimelineItem(selectedTimelineItem) : undefined);
   const arrangementClasses: Record<Presentation["arrangement"], string> = {
     "war-room": styles.arrangementWarRoom,
     inspection: styles.arrangementInspection,
+    kanban: styles.arrangementKanban,
     decision: styles.arrangementDecision,
     command: styles.arrangementCommand,
     glanceable: styles.arrangementGlanceable,
@@ -55,10 +74,9 @@ export const PresentationLayout: ProjectionView = ({ node, children }) => {
   };
 
   const value: PresentationMaterialization = {
-    activeSelection,
     actorNames: new Map(actors.map((item) => [item.id, item.name])),
-    selectedTimelineItem,
   };
+  const ArrangementLayout = arrangementLayouts[presentation.arrangement] ?? FlowLayout;
 
   return (
     <PresentationMaterializationContext.Provider value={value}>
@@ -66,7 +84,7 @@ export const PresentationLayout: ProjectionView = ({ node, children }) => {
         className={mergeClasses(styles.presentationLayout, arrangementClasses[presentation.arrangement])}
         data-soc-arrangement={presentation.arrangement}
       >
-        {children as ReactNode}
+        <ArrangementLayout styles={styles}>{children as ReactNode}</ArrangementLayout>
       </div>
     </PresentationMaterializationContext.Provider>
   );

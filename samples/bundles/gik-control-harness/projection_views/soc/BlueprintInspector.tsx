@@ -5,9 +5,9 @@ import {
   SOC_BLUEPRINT_CONTEXTS,
   socBlueprint,
   traceSocBlueprint,
-} from "../../../profiles/live-workspace-soc/compile";
-import { useStyles } from "./styles";
-import type { Presentation } from "./types";
+} from "../../../../profiles/live-workspace-soc/compile";
+import { useStyles } from "../../../live-workspace-soc/projection_views/styles";
+import type { Presentation } from "../../../live-workspace-soc/projection_views/types";
 
 export const BlueprintInspector: ProjectionView = ({ node }) => {
   const styles = useStyles();

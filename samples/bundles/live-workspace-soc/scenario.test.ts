@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import type { Json } from "@gik/kernel";
 import { bundleFromJson, loadBundleRuntime, SharedContextStore } from "@gik/react";
 import { t3ScenarioPlan } from "../../scenarios/live-workspace-soc-t3/compile";
 import { socExecutiveScenarioPlan } from "../../scenarios/live-workspace-soc-executive/compile";
 import { selectionFromTimelineItem, type ScenarioPlan, type TimelineItem } from "../../shared/demo-runner";
-import { selectionTargetsActor, selectionTargetsRecord } from "./projection_views/index";
+import { selectionTargetsActor, selectionTargetsRecord } from "./projection_views";
 
 import document from "./document.json";
 import effects, {
@@ -27,18 +28,20 @@ function runtime(effectHandlers = effects) {
 }
 
 function demoRuntimes(scenarioPlan: ScenarioPlan = t3ScenarioPlan) {
-  const shared = SharedContextStore.create(["demo"]);
+  const shared = SharedContextStore.create(["demo", "control"]);
   shared.apply([{ op: "set", path: "demo", value: {
     enabled: true,
     act: 0,
     presenter: { pace: "auto", durationMs: 2000, locked: false, advanceToken: 0 },
     request: null,
-    ack: null,
-    commands: {},
     timeline: [],
     selection: null,
+  } }, { op: "set", path: "control", value: {
+    request: null,
+    receipt: null,
+    commands: {},
   } }]);
-  const contexts = { demo: shared };
+  const contexts = { demo: shared, control: shared };
   const soc = loadBundleRuntime(bundleFromJson({
     manifest: structuredClone(manifest),
     document: structuredClone(document),
@@ -104,6 +107,7 @@ test("SOC organism and demo runner expose independent effect surfaces", () => {
     "finishAct",
     "requestNextAct",
     "resetDemo",
+    "selectDemo",
     "setPace",
   ]);
   assert.equal("establishIntent" in socOrganismEffects, true);
@@ -135,15 +139,17 @@ test("runner command mailbox advances only after the SOC effect acknowledges it"
     locked: true,
     advanceToken: 1,
   });
-  assert.equal(shared.get("demo.ack"), null);
+  assert.equal(shared.get("control.receipt"), null);
   await soc.controller.resync();
-  assert.deepEqual(shared.get("demo.ack"), { token: 1, command: "establishIntent" });
+  assert.deepEqual(shared.get("control.receipt.token"), 1);
+  assert.deepEqual(shared.get("control.receipt.command"), "establishIntent");
+  assert.deepEqual(shared.get("control.receipt.status"), "completed");
   assert.equal(soc.state.get("soc.intent.statement"), "Determine the execution origin, contain safely, preserve evidence.");
+  await runner.controller.resync();
+  await runner.controller.emit("demo-runner", "finishAct");
   const correlated = shared.get("demo.timeline") as unknown as TimelineItem[];
   assert.deepEqual(correlated.map((item) => item.source), ["scenario", "organism"]);
   assert.equal(correlated[0].correlationId, correlated[1].correlationId);
-  await runner.controller.resync();
-  await runner.controller.emit("demo-runner", "finishAct");
   assert.equal(shared.get("demo.act"), 1);
   assert.equal(shared.get("demo.presenter.locked"), false);
 });
@@ -160,7 +166,9 @@ test("executive scenario uses the same runner timeline and semantic focus broker
       await soc.controller.resync();
       const request = shared.get("demo.request") as { token: number; command: string };
       assert.equal(request.command, command);
-      assert.deepEqual(shared.get("demo.ack"), { token: request.token, command });
+      assert.equal(shared.get("control.receipt.token"), request.token);
+      assert.equal(shared.get("control.receipt.command"), command);
+      assert.equal(shared.get("control.receipt.status"), "completed");
       await runner.controller.resync();
       await runner.controller.emit("demo-runner", "finishAct");
     }
@@ -177,7 +185,7 @@ test("executive scenario uses the same runner timeline and semantic focus broker
   }
 
   const selection = selectionFromTimelineItem(timelineBeforeGate[0]);
-  await soc.controller.emit("soc-workspace", "selectTimeline", { selection });
+  shared.apply([{ op: "set", path: "demo.selection", value: selection as unknown as Json }]);
   assert.deepEqual(shared.get("demo.selection"), selection);
   assert.equal(selectionTargetsRecord(selection, ["intent"]), true);
   assert.equal(selectionTargetsRecord(selection, ["constraints"]), true);
@@ -188,7 +196,9 @@ test("executive scenario uses the same runner timeline and semantic focus broker
   assert.equal(shared.get("demo.act"), 3);
   await soc.controller.emit("soc-workspace", "authorizeContainment", {}, "human-priya");
   const gateRequest = shared.get("demo.request") as { token: number };
-  assert.deepEqual(shared.get("demo.ack"), { token: gateRequest.token, command: "$human-gate" });
+  assert.equal(shared.get("control.receipt.token"), gateRequest.token);
+  assert.equal(shared.get("control.receipt.command"), "$human-gate");
+  assert.equal(shared.get("control.receipt.status"), "completed");
   await runner.controller.resync();
   await runner.controller.emit("demo-runner", "finishAct");
   assert.equal(shared.get("demo.act"), 4);
@@ -223,7 +233,6 @@ test("presentation context changes projection metadata without changing the caus
     revision: number;
     frame: string;
     arrangement: string;
-    regions: string[];
     regionFacets: Record<string, {
       visible: boolean;
       rank: number;
@@ -238,7 +247,6 @@ test("presentation context changes projection metadata without changing the caus
   assert.equal(presentation.revision, 1);
   assert.equal(presentation.frame, "laptop");
   assert.equal(presentation.arrangement, "command");
-  assert.deepEqual(presentation.regions, ["summary", "constraints", "hypothesis", "evidence", "response", "authorization", "causal-record"]);
   assert.deepEqual(presentation.regionFacets.authorization, {
     visible: true,
     rank: 5,
@@ -246,7 +254,7 @@ test("presentation context changes projection metadata without changing the caus
     disclosure: "summary",
     concern: "governance",
     group: "governance",
-    presentation: "substrate-region",
+    presentation: "decision",
   });
   assert.deepEqual(presentation.regionFacets.exploration, {
     visible: false,
@@ -255,8 +263,32 @@ test("presentation context changes projection metadata without changing the caus
     disclosure: "omitted",
     concern: "investigation",
     group: "investigation",
-    presentation: "substrate-region",
+    presentation: "collection",
   });
+
+  await controller.emit("soc-workspace", "setPresentationContext", {
+    contextId: "investigation-board",
+  });
+  const board = store.get("soc.presentation") as typeof presentation;
+  assert.equal(board.selectedContext, "investigation-board");
+  assert.equal(board.revision, 2);
+  assert.equal(board.frame, "shared");
+  assert.equal(board.arrangement, "kanban");
+  assert.equal(board.regionFacets.summary.visible, false);
+  assert.deepEqual(
+    ["intent", "constraints", "hypothesis", "exploration", "evidence", "response", "authorization", "causal-record"]
+      .map((region) => [region, board.regionFacets[region].rank, board.regionFacets[region].group]),
+    [
+      ["intent", 0, "kanban-frame"],
+      ["constraints", 1, "kanban-frame"],
+      ["hypothesis", 2, "kanban-explore"],
+      ["exploration", 3, "kanban-explore"],
+      ["evidence", 4, "kanban-establish"],
+      ["response", 5, "kanban-decide"],
+      ["authorization", 6, "kanban-decide"],
+      ["causal-record", 7, "kanban-record"],
+    ],
+  );
   assert.deepEqual(store.get("soc.journal"), journalBefore);
 });
 

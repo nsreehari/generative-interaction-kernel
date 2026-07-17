@@ -17,23 +17,33 @@ Target runtime composition:
 
 ```
 soc:runtime-projection
-  soc:viewpoint-header
+  soc:viewpoint-header [materializes summary/orientation]
   soc:presentation-layout
-    soc:summary-region
-    soc:intent-region
-    soc:constraints-region
-    soc:hypothesis-region
-    soc:exploration-region
-    soc:evidence-region
-    soc:agent-request-region
-    soc:response-region
-    soc:authorization-region
-    soc:causal-record-region
+    soc:region-surface [brief]
+      soc:intent-region
+    soc:region-surface [brief]
+      soc:constraints-region
+    soc:region-surface [finding]
+      soc:hypothesis-region
+    soc:region-surface [collection]
+      soc:exploration-region
+    soc:region-surface [collection]
+      soc:evidence-region
+    soc:region-surface [agent-request]
+      soc:agent-request-region
+    soc:region-surface [decision]
+      soc:response-region
+    soc:region-surface [decision]
+      soc:authorization-region
+    soc:region-surface [audit]
+      soc:causal-record-region
 ```
 
-`RuntimeProjection` remains the presentation-frame boundary. `PresentationLayout` materializes
-the lowered arrangement. The runtime document owns the complete leaf set, visibility gates,
-state reads, event bindings, and stable node identities.
+`RuntimeProjection` remains the presentation-frame boundary. `ViewpointHeader` is the compact
+materializer for the Interaction-owned summary part. `PresentationLayout` materializes the
+lowered arrangement, while each `RegionSurface` materializes archetype, priority, and disclosure
+around one body-only semantic leaf. The runtime document owns the complete leaf set, visibility
+gates, state reads, event bindings, and stable node identities.
 
 ## Presentation contract
 
@@ -44,12 +54,10 @@ meaning. It owns selection, `rank`, `priority`, `disclosure`, presentation `grou
 arrangement, and materializer variant. Runtime lowering owns concrete capabilities, gates,
 reads, events, children, and stable identities.
 
-Presentation lowering already computes `rank`, `priority`, `disclosure`, `group`,
-`presentation`, and `materialize`, but runtime state currently collapses those facets to an
-ordered array of region names. Preserve an addressable facet for every region so document gates
-and leaves can consume the lowered decisions directly. During migration, retain the ordered
-`regions` list for compatibility and add `regionFacets`; remove the reduced list only after the
-monolithic views are gone.
+Presentation lowering computes `rank`, `priority`, `disclosure`, `group`, `presentation`, and
+`materialize`. Runtime state preserves one addressable facet for every region so document gates
+and surfaces consume those lowered decisions directly; the migration-only ordered `regions` list
+has been removed.
 
 Each runtime facet owns:
 
@@ -105,6 +113,9 @@ it does not reconstruct them from `selectedContext`.
 6. [x] Add inspection, command, glanceable, and agent arrangements.
 7. [x] Delete `OperationalView` and `AgentEnvelope`, including render-time Blueprint tracing.
 8. [x] Validate all eight contexts behaviorally and at desktop/mobile widths, with representative screenshots.
+9. [x] Standardize semantic leaves through lowered `soc:region-surface` wrappers.
+10. [x] Assign and materialize `brief`, `finding`, `collection`, `decision`, `audit`, and `agent-request` archetypes.
+11. [x] Materialize summary through `ViewpointHeader` and remove the duplicate runtime `regions` list.
 
 Scope rule: preserve exact SOC operational behavior, attribution, authority, demo sequencing,
 and causal focus while changing projection composition.

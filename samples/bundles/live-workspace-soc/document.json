@@ -15,12 +15,6 @@
             }
           },
           {
-            "capability": "ui:embed",
-            "id": "demo-runner-region",
-            "props": { "app": "demo-runner", "unframed": true },
-            "edges": { "gate": "demo.enabled = true" }
-          },
-          {
             "capability": "foundry:access-modal",
             "id": "foundry-access-gate-region",
             "props": { "proxyBaseUrl": "https://sz-foundry-proxy.azurewebsites.net" },
@@ -91,32 +85,27 @@
           ],
           "reset": [
             { "do": "invoke", "args": { "tool": "resetScenario" } }
-          ],
-          "selectTimeline": [
-            { "do": "assign", "target": "demo.selection", "args": { "from": "$event.selection" } }
-          ],
-          "clearTimelineSelection": [
-            { "do": "assign", "target": "demo.selection", "args": { "value": null } }
-          ],
-          "selectJournal": [
-            { "do": "assign", "target": "soc.ui.selectedJournalId", "args": { "from": "$event.id" } }
           ]
         },
         "react": [
-          { "when": "demo.commands.establishIntent", "run": [{ "do": "emit", "event": "establishIntent" }] },
-          { "when": "demo.commands.addConstraint", "run": [{ "do": "emit", "event": "addConstraint" }] },
-          { "when": "demo.commands.suggestExploration", "run": [{ "do": "emit", "event": "suggestExploration" }] },
-          { "when": "demo.commands.amendExploration", "run": [{ "do": "emit", "event": "amendExploration" }] },
-          { "when": "demo.commands.replanExploration", "run": [{ "do": "emit", "event": "replanExploration" }] },
-          { "when": "demo.commands.commitPartialFindings", "run": [{ "do": "emit", "event": "commitPartialFindings" }] },
-          { "when": "demo.commands.proposeDc01", "run": [{ "do": "emit", "event": "proposeDc01" }] },
-          { "when": "demo.commands.completeCorrelation", "run": [{ "do": "emit", "event": "completeCorrelation" }] },
-          { "when": "demo.commands.proposeHostA", "run": [{ "do": "emit", "event": "proposeHostA" }] },
-          { "when": "demo.commands.reviseResponse", "run": [{ "do": "emit", "event": "reviseResponse" }] },
-          { "when": "demo.commands.calculateResponse", "run": [{ "do": "emit", "event": "calculateResponse" }] },
-          { "when": "demo.commands.recommendContainment", "run": [{ "do": "emit", "event": "recommendContainment" }] },
-          { "when": "demo.commands.executeContainment", "run": [{ "do": "emit", "event": "executeContainment" }] },
-          { "when": "demo.commands.reset", "run": [{ "do": "emit", "event": "reset" }] }
+          { "when": "control.commands.establishIntent", "run": [{ "do": "emit", "event": "establishIntent" }] },
+          { "when": "control.commands.addConstraint", "run": [{ "do": "emit", "event": "addConstraint" }] },
+          { "when": "control.commands.suggestExploration", "run": [{ "do": "emit", "event": "suggestExploration" }] },
+          { "when": "control.commands.amendExploration", "run": [{ "do": "emit", "event": "amendExploration" }] },
+          { "when": "control.commands.replanExploration", "run": [{ "do": "emit", "event": "replanExploration" }] },
+          { "when": "control.commands.commitPartialFindings", "run": [{ "do": "emit", "event": "commitPartialFindings" }] },
+          { "when": "control.commands.proposeDc01", "run": [{ "do": "emit", "event": "proposeDc01" }] },
+          { "when": "control.commands.completeCorrelation", "run": [{ "do": "emit", "event": "completeCorrelation" }] },
+          { "when": "control.commands.proposeHostA", "run": [{ "do": "emit", "event": "proposeHostA" }] },
+          { "when": "control.commands.reviseResponse", "run": [{ "do": "emit", "event": "reviseResponse" }] },
+          { "when": "control.commands.calculateResponse", "run": [{ "do": "emit", "event": "calculateResponse" }] },
+          { "when": "control.commands.recommendContainment", "run": [{ "do": "emit", "event": "recommendContainment" }] },
+          { "when": "control.commands.executeContainment", "run": [{ "do": "emit", "event": "executeContainment" }] },
+          { "when": "control.commands.reset", "run": [{ "do": "emit", "event": "reset" }] },
+          { "when": "control.presentationContext", "run": [{ "do": "emit", "event": "setPresentationContext" }] },
+          { "when": "control.agentModeRequest", "run": [{ "do": "emit", "event": "setAgentMode" }] },
+          { "when": "control.participantConfigurationRequest", "run": [{ "do": "emit", "event": "setAgentMode" }] },
+          { "when": "control.authorizationRequest", "run": [{ "do": "emit", "event": "authorizeContainment" }] }
         ],
         "children": [
           {
@@ -126,74 +115,27 @@
               "read": {
                 "incident": "soc.incident",
                 "presentation": "soc.presentation",
-                "consolePlane": "soc.consolePlane"
-              },
-              "on": {
-                "setPresentationContext": [
-                  { "do": "invoke", "args": { "tool": "setPresentationContext" } }
-                ],
-                "setConsolePlane": [
-                  { "do": "assign", "target": "soc.consolePlane", "args": { "from": "$event.plane" } }
-                ]
+                "journal": "soc.journal",
+                "facet": "soc.presentation.regionFacets.summary"
               },
               "children": [
-                {
-                  "capability": "fluent:switch",
-                  "id": "soc-inspector-mode",
-                  "props": {
-                    "offLabel": "Live inspector",
-                    "onLabel": "Blueprint inspector",
-                    "offValue": "runtime",
-                    "onValue": "blueprint",
-                    "ariaLabel": "Workspace inspector mode"
-                  },
-                  "edges": {
-                    "read": { "value": "soc.consolePlane" },
-                    "on": {
-                      "toggle": [
-                        { "do": "assign", "target": "soc.consolePlane", "args": { "from": "$event.value" } }
-                      ]
-                    }
-                  }
-                },
-                {
-                  "capability": "soc:blueprint-inspector",
-                  "id": "soc-blueprint-inspector",
-                  "edges": {
-                    "gate": "soc.consolePlane = 'blueprint'",
-                    "read": { "presentation": "soc.presentation" }
-                  }
-                },
                 {
                   "capability": "soc:runtime-projection",
                   "id": "soc-runtime-projection",
                   "props": { "frame": "shared" },
                   "edges": {
-                    "gate": "soc.consolePlane = 'runtime'",
                     "read": {
                       "presentation": "soc.presentation",
                       "frame": "soc.presentation.frame"
                     },
                     "children": [
                       {
-                        "capability": "soc:viewpoint-header",
-                        "id": "soc-viewpoint-header",
-                        "edges": {
-                          "read": { "presentation": "soc.presentation", "journal": "soc.journal" }
-                        }
-                      },
-                      {
                         "capability": "soc:presentation-layout",
                         "id": "soc-presentation-layout",
                         "edges": {
                           "read": {
                             "presentation": "soc.presentation",
-                            "actors": "soc.actors",
-                            "journal": "soc.journal",
-                            "selectedJournalId": "soc.ui.selectedJournalId",
-                            "demoEnabled": "demo.enabled",
-                            "demoTimeline": "demo.timeline",
-                            "demoSelection": "demo.selection"
+                            "actors": "soc.actors"
                           },
                           "children": [
                             {
@@ -361,96 +303,9 @@
                 }
               ]
             }
-          },
-          {
-            "capability": "soc:journal",
-            "id": "soc-journal-region",
-            "edges": {
-              "read": {
-                "incident": "soc.incident",
-                "actors": "soc.actors",
-                "journal": "soc.journal",
-                "journalMode": "soc.ui.journalMode",
-                "selectedJournalId": "soc.ui.selectedJournalId",
-                "demoEnabled": "demo.enabled",
-                "demoTimeline": "demo.timeline",
-                "demoSelection": "demo.selection"
-              },
-              "on": {
-                "setJournalMode": [
-                  { "do": "assign", "target": "soc.ui.journalMode", "args": { "from": "$event.mode" } }
-                ],
-                "selectTimeline": [
-                  { "do": "assign", "target": "demo.selection", "args": { "from": "$event.selection" } }
-                ],
-                "clearTimelineSelection": [
-                  { "do": "assign", "target": "demo.selection", "args": { "value": null } }
-                ],
-                "selectJournal": [
-                  { "do": "assign", "target": "soc.ui.selectedJournalId", "args": { "from": "$event.id" } }
-                ]
-              }
-            }
           }
         ]
         }
-          },
-          {
-            "capability": "soc:participants",
-            "id": "soc-participants-region",
-            "edges": {
-              "read": {
-                "actors": "soc.actors",
-                "agentProviders": "soc.agentProviders",
-                "authorization": "soc.authorization",
-                "journal": "soc.journal",
-                "demoSelection": "demo.selection",
-                "selectedJournalId": "soc.ui.selectedJournalId",
-                "expanded": "soc.ui.participantsExpanded"
-              },
-              "on": {
-                "toggleDrawer": [
-                  { "do": "assign", "target": "soc.ui.participantsExpanded", "args": { "from": "$event.expanded" } }
-                ],
-                "authorizeContainment": [
-                  { "do": "confirm", "args": { "tool": "authorizeContainment", "title": "Authorize Host-A isolation", "message": "Authorize the evidence-backed, reversible isolation plan?", "confirmLabel": "Authorize", "danger": true } }
-                ]
-              },
-              "children": [
-                {
-                  "capability": "fluent:switch",
-                  "id": "correlation-agent-provider-mode",
-                  "props": {
-                    "name": "agent-correlation",
-                    "offLabel": "Mock",
-                    "onLabel": "Live",
-                    "offValue": "mock",
-                    "onValue": "live",
-                    "ariaLabel": "Correlation Agent provider mode"
-                  },
-                  "edges": {
-                    "readExpr": { "value": "$lookup(soc.agentProviders, 'agent-correlation').mode" },
-                    "on": { "toggle": [{ "do": "invoke", "args": { "tool": "setAgentMode" } }] }
-                  }
-                },
-                {
-                  "capability": "fluent:switch",
-                  "id": "response-agent-provider-mode",
-                  "props": {
-                    "name": "agent-response",
-                    "offLabel": "Mock",
-                    "onLabel": "Live",
-                    "offValue": "mock",
-                    "onValue": "live",
-                    "ariaLabel": "Response Agent provider mode"
-                  },
-                  "edges": {
-                    "readExpr": { "value": "$lookup(soc.agentProviders, 'agent-response').mode" },
-                    "on": { "toggle": [{ "do": "invoke", "args": { "tool": "setAgentMode" } }] }
-                  }
-                }
-              ]
-            }
           }
         ]
       }

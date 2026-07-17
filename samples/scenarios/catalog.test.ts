@@ -25,16 +25,17 @@ test("demo catalog resolves a validated scenario and organism composition", () =
   }
 });
 
-test("demo navigation atomically selects the composition bundle and context", () => {
+test("demo navigation changes only the selected demo", () => {
   const url = writeDemoNavigation(
-    "https://example.test/?bundle=samples-overview&plane=blueprint",
+    "https://example.test/?bundle=live-workspace-soc&gik=1&presentation=operator-focus",
     resolveDemoComposition("soc-t3").entry
   );
   const parsed = new URL(url);
   assert.equal(parsed.searchParams.get("demo"), "soc-t3");
   assert.equal(parsed.searchParams.get("bundle"), "live-workspace-soc");
-  assert.equal(parsed.searchParams.get("context"), "war-room");
-  assert.equal(parsed.searchParams.has("plane"), false);
+  assert.equal(parsed.searchParams.get("gik"), "1");
+  assert.equal(parsed.searchParams.get("presentation"), "operator-focus");
+  assert.deepEqual([...parsed.searchParams.keys()], ["bundle", "gik", "presentation", "demo"]);
 });
 
 test("demo catalog rejects a scenario and organism target mismatch", () => {

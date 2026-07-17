@@ -1,40 +1,18 @@
-export type FocusKind = "actor" | "cell" | "token" | "entity" | "record" | "region" | "action";
+import type { FocusKind, FocusRef, TimelineItem } from "./control-focus";
 
-export interface FocusRef {
-  namespace: string;
-  kind: FocusKind;
-  id: string;
-  relation?: "origin" | "affected" | "produced" | "consumed" | "authorized" | "observed";
-}
-
-export interface TimelineItem {
-  id: string;
-  source: "scenario" | "organism";
-  title: string;
-  summary: string;
-  status: string;
-  focusRefs: FocusRef[];
-  scenarioStepId?: string;
-  operationRecordId?: string;
-  actorRef?: FocusRef;
-  sequence?: number;
-  timestamp?: string;
-  detailFields?: Array<{ label: string; value: string }>;
-  correlationId?: string;
-}
-
-export interface DemoSelection {
-  source: TimelineItem["source"];
-  itemId: string;
-  focusRefs: FocusRef[];
-}
-
-export interface FocusTarget {
-  ref: FocusRef;
-  regionId: string;
-  behavior: "highlight" | "select" | "reveal" | "center" | "dim-others";
-  priority?: number;
-}
+export {
+  focusRefMatches,
+  resolveFocusTargets,
+  selectionContainsFocus,
+  selectionFromTimelineItem,
+} from "./control-focus";
+export type {
+  ControlSelection as DemoSelection,
+  FocusKind,
+  FocusRef,
+  FocusTarget,
+  TimelineItem,
+} from "./control-focus";
 
 export interface ScenarioStep {
   id: string;
@@ -132,40 +110,6 @@ export function scenarioStepCommands(step: ScenarioStep): string[] {
   return step.commands?.length ? step.commands.filter((command) => command.trim()) : step.command?.trim() ? [step.command] : [];
 }
 
-export function selectionFromTimelineItem(item: TimelineItem): DemoSelection {
-  return {
-    source: item.source,
-    itemId: item.id,
-    focusRefs: [...item.focusRefs],
-  };
-}
-
-export function focusRefMatches(candidate: FocusRef, target: FocusRef): boolean {
-  return candidate.namespace === target.namespace
-    && candidate.kind === target.kind
-    && candidate.id === target.id;
-}
-
-export function selectionContainsFocus(
-  selection: DemoSelection | undefined,
-  targets: readonly FocusRef[]
-): boolean {
-  if (!selection) return false;
-  return selection.focusRefs.some((candidate) =>
-    targets.some((target) => focusRefMatches(candidate, target))
-  );
-}
-
-export function resolveFocusTargets(
-  selection: DemoSelection | undefined,
-  targets: readonly FocusTarget[]
-): FocusTarget[] {
-  if (!selection) return [];
-  return targets
-    .filter((target) => selectionContainsFocus(selection, [target.ref]))
-    .sort((left, right) => (right.priority ?? 0) - (left.priority ?? 0));
-}
-
 export function validateDemoComposition(
   entry: DemoCatalogEntry,
   scenario: ScenarioPlan,
@@ -228,9 +172,5 @@ export function resolveDemoEntry(catalog: DemoCatalog, requestedId?: string | nu
 export function writeDemoNavigation(url: string, entry: DemoCatalogEntry): string {
   const next = new URL(url);
   next.searchParams.set("demo", entry.id);
-  next.searchParams.set("bundle", entry.bundleId);
-  if (entry.defaultContext) next.searchParams.set("context", entry.defaultContext);
-  else next.searchParams.delete("context");
-  next.searchParams.delete("plane");
   return next.toString();
 }

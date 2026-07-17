@@ -21,12 +21,12 @@ test("overview SOC summary stays aligned with the canonical blueprint", () => {
   );
 });
 
-test("overview proof planes open the same SOC artifact", () => {
+test("overview proof links open the same SOC artifact with optional GIK controls", () => {
   assert.deepEqual(
-    overview.proofPlanes.map(({ bundle, plane }) => ({ bundle, plane })),
+    overview.proofPlanes.map(({ bundle, gik }) => ({ bundle, gik })),
     [
-      { bundle: "live-workspace-soc", plane: "runtime" },
-      { bundle: "live-workspace-soc", plane: "blueprint" },
+      { bundle: "live-workspace-soc", gik: false },
+      { bundle: "live-workspace-soc", gik: true },
     ]
   );
 });

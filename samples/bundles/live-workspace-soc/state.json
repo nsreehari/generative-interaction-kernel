@@ -1,32 +1,26 @@
 {
   "soc": {
-    "consolePlane": "runtime",
-    "ui": {
-      "journalMode": "journal",
-      "participantsExpanded": false,
-      "selectedJournalId": null
-    },
     "presentation": {
-      "selectedContext": "war-room",
+      "selectedContext": "full-substrate",
       "revision": 0,
       "frame": "shared",
-      "arrangement": "war-room",
-      "regions": ["summary", "hypothesis", "response", "constraints", "authorization", "causal-record"],
+      "arrangement": "inspection",
       "regionFacets": {
-        "summary": { "visible": true, "rank": 0, "priority": "supporting", "disclosure": "summary", "concern": "orientation", "group": "orientation", "presentation": "substrate-region" },
-        "intent": { "visible": false, "rank": 50, "priority": "supporting", "disclosure": "omitted", "concern": "guardrails", "group": "guardrails", "presentation": "substrate-region" },
-        "constraints": { "visible": true, "rank": 3, "priority": "supporting", "disclosure": "summary", "concern": "guardrails", "group": "guardrails", "presentation": "substrate-region" },
-        "hypothesis": { "visible": true, "rank": 1, "priority": "primary", "disclosure": "summary", "concern": "orientation", "group": "orientation", "presentation": "substrate-region" },
-        "exploration": { "visible": false, "rank": 50, "priority": "supporting", "disclosure": "omitted", "concern": "investigation", "group": "investigation", "presentation": "substrate-region" },
-        "evidence": { "visible": false, "rank": 50, "priority": "supporting", "disclosure": "omitted", "concern": "investigation", "group": "investigation", "presentation": "substrate-region" },
+        "summary": { "visible": true, "rank": 0, "priority": "supporting", "disclosure": "detail", "concern": "orientation", "group": "orientation", "presentation": "brief" },
+        "intent": { "visible": true, "rank": 1, "priority": "supporting", "disclosure": "detail", "concern": "guardrails", "group": "guardrails", "presentation": "brief" },
+        "constraints": { "visible": true, "rank": 2, "priority": "supporting", "disclosure": "detail", "concern": "guardrails", "group": "guardrails", "presentation": "brief" },
+        "hypothesis": { "visible": true, "rank": 3, "priority": "supporting", "disclosure": "detail", "concern": "orientation", "group": "orientation", "presentation": "finding" },
+        "exploration": { "visible": true, "rank": 4, "priority": "supporting", "disclosure": "detail", "concern": "investigation", "group": "investigation", "presentation": "collection" },
+        "evidence": { "visible": true, "rank": 5, "priority": "supporting", "disclosure": "detail", "concern": "investigation", "group": "investigation", "presentation": "collection" },
         "agent-request": { "visible": false, "rank": 50, "priority": "supporting", "disclosure": "omitted", "concern": "delegation", "group": "request", "presentation": "agent-request" },
-        "response": { "visible": true, "rank": 2, "priority": "primary", "disclosure": "summary", "concern": "response", "group": "response", "presentation": "substrate-region" },
-        "authorization": { "visible": true, "rank": 4, "priority": "supporting", "disclosure": "summary", "concern": "governance", "group": "governance", "presentation": "substrate-region" },
-        "causal-record": { "visible": true, "rank": 5, "priority": "supporting", "disclosure": "summary", "concern": "provenance", "group": "provenance", "presentation": "substrate-region" }
+        "response": { "visible": true, "rank": 6, "priority": "supporting", "disclosure": "detail", "concern": "response", "group": "response", "presentation": "decision" },
+        "authorization": { "visible": true, "rank": 7, "priority": "supporting", "disclosure": "detail", "concern": "governance", "group": "governance", "presentation": "decision" },
+        "causal-record": { "visible": true, "rank": 8, "priority": "supporting", "disclosure": "detail", "concern": "provenance", "group": "provenance", "presentation": "audit" }
       },
       "contexts": [
         { "id": "full-substrate", "label": "Full substrate", "audience": "Technical inspection", "focus": "All shared operational and causal state" },
         { "id": "war-room", "label": "War room", "audience": "Shared team", "focus": "Incident, hypothesis, response, and authority" },
+        { "id": "investigation-board", "label": "Investigation board", "audience": "Shared team", "focus": "Investigation lifecycle from framing through causal record" },
         { "id": "priya-mobile", "label": "Priya · Mobile", "audience": "Incident Commander", "focus": "Decision, constraint, blast radius, and authorization" },
         { "id": "priya-laptop", "label": "Priya · Laptop", "audience": "Incident Commander", "focus": "Command view, evidence summary, and journal context" },
         { "id": "morgan-pager", "label": "Morgan · Pager", "audience": "SOC Analyst", "focus": "Urgent findings, recommendation, and incident status" },
@@ -69,5 +63,13 @@
     "recommendation": null,
     "authorization": null,
     "journal": []
+  },
+  "inspection": {
+    "participants": [
+      { "id": "human-morgan", "kind": "human", "name": "Morgan", "role": "SOC Analyst", "status": "active", "capabilities": ["Can direct investigation and recommend containment"], "focusRef": { "namespace": "soc", "kind": "actor", "id": "human-morgan" } },
+      { "id": "human-priya", "kind": "human", "name": "Priya", "role": "Incident Commander", "status": "active", "capabilities": ["Can authorize protected containment"], "focusRef": { "namespace": "soc", "kind": "actor", "id": "human-priya" } },
+      { "id": "agent-correlation", "kind": "agent", "name": "Correlation Agent", "role": "Evidence correlation", "status": "waiting", "capabilities": ["Can query, correlate, and contribute findings"], "focusRef": { "namespace": "soc", "kind": "actor", "id": "agent-correlation" }, "settings": [{ "id": "provider-mode", "kind": "toggle", "label": "provider mode", "value": "mock", "offLabel": "Mock", "offValue": "mock", "onLabel": "Live", "onValue": "live", "status": "ready" }] },
+      { "id": "agent-response", "kind": "agent", "name": "Response Agent", "role": "Containment planning", "status": "waiting", "capabilities": ["Can propose and execute only after authorization"], "focusRef": { "namespace": "soc", "kind": "actor", "id": "agent-response" }, "settings": [{ "id": "provider-mode", "kind": "toggle", "label": "provider mode", "value": "mock", "offLabel": "Mock", "offValue": "mock", "onLabel": "Live", "onValue": "live", "status": "ready" }] }
+    ]
   }
 }

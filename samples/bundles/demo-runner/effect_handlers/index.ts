@@ -1,6 +1,7 @@
 import { setOp, type EffectHandlerMap } from "@gik/react";
 import type { Json } from "@gik/kernel";
 import { scenarioStepCommands, type ScenarioPlan, type ScenarioStep, type TimelineItem } from "../../../shared/demo-runner";
+import type { ControlReceipt } from "../../../shared/control-runtime";
 
 type RecordValue = Record<string, Json>;
 
@@ -47,7 +48,9 @@ const effects: EffectHandlerMap = {
       setOp("demo.timeline", [...timeline(ctx), scenarioItem] as unknown as Json),
     ];
     if (step.kind === "dispatch" && commands[0]) {
-      ops.push(setOp("demo.request", {
+      const request = {
+        id: correlationId,
+        targetBlueprintId: plan(ctx).targetBlueprintId,
         token,
         command: commands[0],
         commands,
@@ -55,16 +58,22 @@ const effects: EffectHandlerMap = {
         actorId: step.actorRef?.id ?? "",
         waitAfterMs: step.waitAfterMs ?? 0,
         correlationId,
-      }));
-      ops.push(setOp(`demo.commands.${commands[0]}`, token));
+      };
+      ops.push(setOp("demo.request", request));
+      ops.push(setOp("control.request", request));
+      ops.push(setOp(`control.commands.${commands[0]}`, token));
     } else if (step.kind === "human-gate") {
-      ops.push(setOp("demo.request", {
+      const request = {
+        id: correlationId,
+        targetBlueprintId: plan(ctx).targetBlueprintId,
         token,
         command: "$human-gate",
         actorId: step.humanBoundary?.id ?? "",
         waitAfterMs: step.waitAfterMs ?? 0,
         correlationId,
-      }));
+      };
+      ops.push(setOp("demo.request", request));
+      ops.push(setOp("control.request", request));
     }
     return { outcome: step.kind === "human-gate" ? "awaiting-human" : "requested", ops };
   },
@@ -83,11 +92,34 @@ const effects: EffectHandlerMap = {
     };
   },
 
+  selectDemo(ctx) {
+    const value = String(ctx.payload.value ?? "");
+    return value
+      ? { outcome: "selected", ops: [setOp("runner.selectedDemoId", value)] }
+      : { outcome: "ignored" };
+  },
+
   finishAct(ctx) {
     const presenter = record(ctx.get("demo.presenter"));
     const request = record(ctx.get("demo.request"));
-    const ack = record(ctx.get("demo.ack"));
-    if (request.command === "$reset" || request.token !== ack.token || request.command !== ack.command) return { outcome: "ignored" };
+    const receipt = record(ctx.get("control.receipt")) as unknown as ControlReceipt;
+    if (request.command === "$reset" || request.token !== receipt.token || request.command !== receipt.command || receipt.status !== "completed") return { outcome: "ignored" };
+    const result = record(receipt.result as Json);
+    const resultItem: TimelineItem | undefined = Object.keys(result).length > 0 ? {
+      id: `organism:${String(result.id ?? receipt.requestId)}`,
+      source: "organism",
+      title: String(result.result ?? receipt.outcome ?? "completed"),
+      summary: String(result.summary ?? ""),
+      status: String(result.result ?? receipt.status),
+      operationRecordId: String(result.id ?? ""),
+      timestamp: String(result.time ?? ""),
+      actorRef: { namespace: "soc", kind: "actor", id: String(result.actorId ?? ""), relation: "origin" },
+      focusRefs: [
+        { namespace: "soc", kind: "actor", id: String(result.actorId ?? ""), relation: "origin" },
+        ...(Array.isArray(result.affected) ? result.affected : []).map((id) => ({ namespace: "soc", kind: "record" as const, id: String(id), relation: "affected" as const })),
+      ],
+      correlationId: String(request.correlationId ?? ""),
+    } : undefined;
     const commands = Array.isArray(request.commands) ? request.commands.map(String) : [String(request.command ?? "")];
     const commandIndex = Number(request.commandIndex ?? 0);
     const nextCommand = commands[commandIndex + 1];
@@ -95,12 +127,14 @@ const effects: EffectHandlerMap = {
       return {
         outcome: "continued",
         ops: [
+          ...(resultItem ? [setOp("demo.timeline", [...timeline(ctx), resultItem] as unknown as Json)] : []),
           setOp("demo.request", {
             ...request,
             command: nextCommand,
             commandIndex: commandIndex + 1,
           }),
-          setOp(`demo.commands.${nextCommand}`, request.token),
+          setOp("control.request", { ...request, command: nextCommand, commandIndex: commandIndex + 1 }),
+          setOp(`control.commands.${nextCommand}`, request.token),
         ],
       };
     }
@@ -109,6 +143,7 @@ const effects: EffectHandlerMap = {
     const nextTimeline = timeline(ctx).map((item) => item.correlationId === correlationId && item.source === "scenario"
       ? { ...item, status: "complete", summary: "Scenario step completed" }
       : item);
+    if (resultItem) nextTimeline.push(resultItem);
     return {
       outcome: "settled",
       ops: [
@@ -134,8 +169,9 @@ const effects: EffectHandlerMap = {
           locked: false,
           advanceToken: token,
         }),
-        setOp("demo.request", { token, command: "$reset", actorId: "", waitAfterMs: 0 }),
-        setOp("demo.commands.reset", token),
+        setOp("demo.request", { id: `${scenario.id}:reset:${token}`, targetBlueprintId: scenario.targetBlueprintId, token, command: "$reset", actorId: "", waitAfterMs: 0 }),
+        setOp("control.request", { id: `${scenario.id}:reset:${token}`, targetBlueprintId: scenario.targetBlueprintId, token, command: "$reset", actorId: "", waitAfterMs: 0 }),
+        setOp("control.commands.reset", token),
         setOp("demo.timeline", []),
         setOp("demo.selection", null),
       ],
