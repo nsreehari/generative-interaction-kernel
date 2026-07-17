@@ -23,7 +23,7 @@ async function assertPinnedToEnd(page: Page, label: string): Promise<void> {
 
 async function advance(page: Page, expectedAct: number): Promise<void> {
   await page.getByRole("button", { name: /Next act/ }).click();
-  await expect(page.getByText(`Act ${expectedAct} of 14`, { exact: true })).toBeVisible();
+  await expect(page.getByText(`Act ${expectedAct} of 5`, { exact: true })).toBeVisible();
 }
 
 test("standalone SOC preserves desktop and mobile workspace parity", async ({ page }) => {
@@ -63,14 +63,15 @@ test("demo runner expands, collapses, and brokers semantic timeline focus", asyn
   await advance(page, 2);
   await page.getByLabel("View shared substrate as").selectOption("full-substrate");
   await expect(page.getByText("Established investigation intent", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Set the investigation objective/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Frame the protected business objective/ })).toHaveCount(0);
   await expect(page.getByText(/organism/i)).toHaveCount(0);
   await page.getByRole("button", { name: "Ledger" }).click();
-  const scenarioEntry = page.getByRole("button", { name: /Set the investigation objective/ });
-  await expect(page.getByText(/Scenario instruction · complete · Morgan/i)).toBeVisible();
+  const scenarioEntry = page.getByRole("button", { name: /Frame the protected business objective/ });
+  const organismEntry = page.getByRole("region", { name: "Journal timeline" }).getByRole("button").filter({ hasText: "Established investigation intent" });
+  await expect(page.getByText(/Scenario instruction · complete/i)).toBeVisible();
   await expect(page.getByText(/SOC outcome · committed · Morgan/i)).toBeVisible();
-  await scenarioEntry.click();
-  await expect(scenarioEntry).toHaveAttribute("aria-pressed", "true");
+  await organismEntry.click();
+  await expect(organismEntry).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator('[data-soc-object-id="intent"]')).toHaveCSS("outline-style", "solid");
   await page.getByRole("button", { name: "Journal" }).click();
   await expect(scenarioEntry).toHaveCount(0);
@@ -90,8 +91,8 @@ test("executive demo reaches the governed human gate on a 390px viewport", async
   await stabilize(page);
   await assertNoHorizontalOverflow(page);
 
-  for (let act = 2; act <= 13; act += 1) await advance(page, act);
-  await expect(page.getByText("Require commander authorization", { exact: true })).toBeVisible();
+  for (let act = 2; act <= 4; act += 1) await advance(page, act);
+  await expect(page.getByText("Commander reviews the consequential decision", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Authorize Host-A isolation" })).toBeVisible();
   await assertPinnedToEnd(page, "Shared substrate content");
   await assertPinnedToEnd(page, "Journal timeline");
