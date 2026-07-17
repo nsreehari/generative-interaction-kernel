@@ -97,7 +97,7 @@ test("agent contexts lower into context, state, request, response, and governed-
   }
 });
 
-test("the workspace body owns substrate chrome with document-gated inspector faces", () => {
+test("substrate chrome owns projection controls and document-gated inspector faces", () => {
   const body = runtimeDocument.payload.root.edges.children.find((child) => child.id === "soc-workspace");
   assert.ok(body);
   const chrome = body.edges.children[0];
@@ -105,6 +105,7 @@ test("the workspace body owns substrate chrome with document-gated inspector fac
   assert.deepEqual(
     chrome.edges.children.map((child) => [child.capability, child.edges.gate]),
     [
+      ["fluent:switch", undefined],
       ["soc:blueprint-inspector", "soc.consolePlane = 'blueprint'"],
       ["soc:runtime-projection", "soc.consolePlane = 'runtime'"],
     ]
