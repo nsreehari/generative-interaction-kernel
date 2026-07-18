@@ -68,7 +68,8 @@
                           "capability": "soc:presentation-layout",
                           "read": {
                             "presentation": "soc.presentation",
-                            "actors": "soc.actors"
+                            "actors": "soc.actors",
+                            "selection": "demo.selection"
                           },
                           "children": [
                             {

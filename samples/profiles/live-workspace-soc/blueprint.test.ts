@@ -232,7 +232,7 @@ test("the base runtime preserves the organism Blueprint output behind host integ
   }]);
   const body = children.find((child) => child.id === "soc-workspace");
   assert.ok(body);
-  assert.equal(body.edges.react.length, 18);
+  assert.equal(body.edges.react.length, 19);
   delete body.edges.react;
   delete body.edges.on.reset;
   assert.deepEqual(compileSocDocument("war-room"), runtime);

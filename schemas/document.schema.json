@@ -67,6 +67,7 @@
       "description": "A declarative reaction: when the `when` expression's value changes, run the closed-grammar `run` actions (a state-triggered effect; the standing analogue of an event handler).",
       "properties": {
         "when": { "$ref": "#/definitions/expr" },
+        "runInitially": { "type": "boolean", "default": false, "description": "Run once when the initially observed value is non-null." },
         "run": {
           "type": "array",
           "items": { "$ref": "#/definitions/action" }

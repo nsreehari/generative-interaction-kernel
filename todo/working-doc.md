@@ -17,33 +17,33 @@ Target runtime composition:
 
 ```
 soc:runtime-projection
-  soc:viewpoint-header [materializes summary/orientation]
-  soc:presentation-layout
-    soc:region-surface [brief]
-      soc:intent-region
-    soc:region-surface [brief]
-      soc:constraints-region
-    soc:region-surface [finding]
-      soc:hypothesis-region
-    soc:region-surface [collection]
-      soc:exploration-region
-    soc:region-surface [collection]
-      soc:evidence-region
-    soc:region-surface [agent-request]
-      soc:agent-request-region
-    soc:region-surface [decision]
-      soc:response-region
-    soc:region-surface [decision]
-      soc:authorization-region
-    soc:region-surface [audit]
-      soc:causal-record-region
+  soc:substrate-chrome [materializes summary/orientation and owns native scrolling]
+    soc:presentation-layout
+      soc:region-surface [brief]
+        soc:intent-region
+      soc:region-surface [brief]
+        soc:constraints-region
+      soc:region-surface [finding]
+        soc:hypothesis-region
+      soc:region-surface [collection]
+        soc:exploration-region
+      soc:region-surface [collection]
+        soc:evidence-region
+      soc:region-surface [agent-request]
+        soc:agent-request-region
+      soc:region-surface [decision]
+        soc:response-region
+      soc:region-surface [decision]
+        soc:authorization-region
+      soc:region-surface [audit]
+        soc:causal-record-region
 ```
 
-`RuntimeProjection` remains the presentation-frame boundary. `ViewpointHeader` is the compact
-materializer for the Interaction-owned summary part. `PresentationLayout` materializes the
-lowered arrangement, while each `RegionSurface` materializes archetype, priority, and disclosure
-around one body-only semantic leaf. The runtime document owns the complete leaf set, visibility
-gates, state reads, event bindings, and stable node identities.
+`RuntimeProjection` remains the presentation-frame boundary. `SubstrateChrome` materializes the
+Interaction-owned summary and owns the native scroll viewport around `PresentationLayout`.
+`PresentationLayout` materializes the lowered arrangement, while each `RegionSurface` materializes
+archetype, priority, and disclosure around one body-only semantic leaf. The runtime document owns
+the complete leaf set, visibility gates, state reads, event bindings, and stable node identities.
 
 ## Presentation contract
 
@@ -112,10 +112,17 @@ it does not reconstruct them from `selectedContext`.
 5. [x] Establish and visually validate war-room, decision, and investigation arrangements.
 6. [x] Add inspection, command, glanceable, and agent arrangements.
 7. [x] Delete `OperationalView` and `AgentEnvelope`, including render-time Blueprint tracing.
-8. [x] Validate all eight contexts behaviorally and at desktop/mobile widths, with representative screenshots.
+8. [x] Validate all nine contexts behaviorally and at desktop/mobile widths, with representative screenshots.
 9. [x] Standardize semantic leaves through lowered `soc:region-surface` wrappers.
 10. [x] Assign and materialize `brief`, `finding`, `collection`, `decision`, `audit`, and `agent-request` archetypes.
-11. [x] Materialize summary through `ViewpointHeader` and remove the duplicate runtime `regions` list.
+11. [x] Consolidate summary and native viewport ownership in `SubstrateChrome` and remove the duplicate runtime `regions` list.
+
+Completion follow-up (2026-07-18): the reusable control harness now consumes only the neutral
+`control.inspection` contract; the SOC organism owns participant, presentation, Blueprint,
+timeline, and status adaptation. Opt-in, null-safe initial reactions synchronize host-seeded
+presentation and request mailboxes without changing default standing-reaction behavior. The
+ninth `investigation-board` context has dedicated desktop/mobile parity coverage, including
+responsive stage flow and narrow-viewport space for the fixed harness context strip.
 
 Scope rule: preserve exact SOC operational behavior, attribution, authority, demo sequencing,
 and causal focus while changing projection composition.

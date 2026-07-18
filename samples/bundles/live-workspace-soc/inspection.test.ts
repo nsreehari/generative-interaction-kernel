@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { mapSocParticipantStatus, projectSocParticipants } from "./inspection";
-import type { Actor, AgentProvider } from "./projection_views/types";
+import initialState from "./state.json";
+import { mapSocParticipantStatus, projectSocInspection, projectSocParticipants } from "./inspection";
+import type { Actor, AgentProvider, Incident, JournalEntry, Presentation } from "./projection_views/types";
 
 test("SOC participant statuses lower to the neutral inspection vocabulary", () => {
   assert.equal(mapSocParticipantStatus("active"), "active");
@@ -46,4 +47,23 @@ test("SOC projects human and agent data into neutral participants and settings",
     status: "error",
     message: "Unavailable",
   }]);
+});
+
+test("SOC publishes presentation, blueprint, and timeline through neutral inspection", () => {
+  const soc = initialState.soc;
+  const inspection = projectSocInspection(
+    soc.actors as Actor[],
+    soc.agentProviders as unknown as Record<string, AgentProvider>,
+    soc.presentation as unknown as Presentation,
+    soc.journal as JournalEntry[],
+    soc.incident as Incident,
+  );
+
+  assert.equal(inspection.presentation?.selectedContext, "full-substrate");
+  assert.equal(inspection.presentation?.contexts.length, 9);
+  assert.equal(inspection.blueprint?.selectedContext, "full-substrate");
+  assert.equal(inspection.blueprint?.stages.length, 3);
+  assert.equal(inspection.blueprint?.resources.find((item) => item.label === "Projection contexts")?.value, "9");
+  assert.deepEqual(inspection.timeline, []);
+  assert.equal(inspection.status, null);
 });

@@ -88,6 +88,7 @@
           ]
         },
         "react": [
+          { "when": "$string(soc)", "runInitially": true, "run": [{ "do": "invoke", "args": { "tool": "syncInspection" } }] },
           { "when": "control.commands.establishIntent", "run": [{ "do": "emit", "event": "establishIntent" }] },
           { "when": "control.commands.addConstraint", "run": [{ "do": "emit", "event": "addConstraint" }] },
           { "when": "control.commands.suggestExploration", "run": [{ "do": "emit", "event": "suggestExploration" }] },
@@ -102,10 +103,10 @@
           { "when": "control.commands.recommendContainment", "run": [{ "do": "emit", "event": "recommendContainment" }] },
           { "when": "control.commands.executeContainment", "run": [{ "do": "emit", "event": "executeContainment" }] },
           { "when": "control.commands.reset", "run": [{ "do": "emit", "event": "reset" }] },
-          { "when": "control.presentationContext", "run": [{ "do": "emit", "event": "setPresentationContext" }] },
-          { "when": "control.agentModeRequest", "run": [{ "do": "emit", "event": "setAgentMode" }] },
-          { "when": "control.participantConfigurationRequest", "run": [{ "do": "emit", "event": "setAgentMode" }] },
-          { "when": "control.authorizationRequest", "run": [{ "do": "emit", "event": "authorizeContainment" }] }
+          { "when": "control.presentationContext", "runInitially": true, "run": [{ "do": "emit", "event": "setPresentationContext" }] },
+          { "when": "control.agentModeRequest", "runInitially": true, "run": [{ "do": "emit", "event": "setAgentMode" }] },
+          { "when": "control.participantConfigurationRequest", "runInitially": true, "run": [{ "do": "emit", "event": "setAgentMode" }] },
+          { "when": "control.authorizationRequest", "runInitially": true, "run": [{ "do": "emit", "event": "authorizeContainment" }] }
         ],
         "children": [
           {
@@ -135,7 +136,8 @@
                         "edges": {
                           "read": {
                             "presentation": "soc.presentation",
-                            "actors": "soc.actors"
+                            "actors": "soc.actors",
+                            "selection": "demo.selection"
                           },
                           "children": [
                             {

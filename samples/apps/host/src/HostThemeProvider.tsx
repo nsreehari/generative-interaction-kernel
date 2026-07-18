@@ -26,6 +26,9 @@ const HOST_THEME_CSS = `
 }
 .gx-host .gx-screen-head h1 { font-size: var(--fontSizeBase400); margin: 0; }
 .gx-host .gx-screen-body { flex: 1; min-height: 0; display: flex; }
+@media (max-width: 700px) {
+  .gx-host:has([aria-label="Harness context"]) main { padding-top: 56px; }
+}
 
 .gx-host > .gx-switcher {
   position: fixed;

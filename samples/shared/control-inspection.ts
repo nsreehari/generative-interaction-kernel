@@ -44,8 +44,51 @@ export interface ParticipantConfigurationRequest {
   value: string;
 }
 
+export interface InspectionPresentationContext {
+  id: string;
+  label: string;
+  audience?: string;
+  focus?: string;
+}
+
+export interface InspectionPresentation {
+  selectedContext: string;
+  contexts: InspectionPresentationContext[];
+}
+
+export interface BlueprintInspectionField {
+  label: string;
+  value: string;
+}
+
+export interface BlueprintInspectionStage {
+  kind: string;
+  tier: string;
+  recipe: string;
+  summary: string;
+}
+
+export interface BlueprintInspection {
+  title: string;
+  description: string;
+  status: string;
+  contextIds: string[];
+  selectedContext: string;
+  fields: BlueprintInspectionField[];
+  stages: BlueprintInspectionStage[];
+  resources: BlueprintInspectionField[];
+}
+
+export interface InspectionStatus {
+  kind: "success" | "info" | "warning" | "error";
+  message: string;
+}
+
 export interface OrganismInspection {
   participants: InspectionParticipant[];
+  presentation?: InspectionPresentation;
+  blueprint?: BlueprintInspection;
   timeline?: TimelineItem[];
+  status?: InspectionStatus | null;
   selection?: ControlSelection | null;
 }
