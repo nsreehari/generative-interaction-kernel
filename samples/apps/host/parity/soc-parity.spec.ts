@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 const standaloneUrl = "/?bundle=live-workspace-soc";
 const demoUrl = "/?bundle=live-workspace-soc&demo=soc-executive&gik=1";
+const investigationBoardUrl = "/?bundle=live-workspace-soc&gik=1&presentation=investigation-board";
 
 async function stabilize(page: Page): Promise<void> {
   await page.getByRole("heading", { name: "Privileged access anomaly during payroll cutover" }).waitFor();
@@ -41,6 +42,24 @@ test("standalone SOC preserves desktop and mobile workspace parity", async ({ pa
   await expect(page).toHaveScreenshot("soc-standalone-mobile.png");
 });
 
+test("investigation board preserves desktop columns and mobile stage flow", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(investigationBoardUrl);
+  await stabilize(page);
+  await expect(page.getByRole("combobox", { name: "Select presentation context" })).toHaveText("Investigation board");
+  await expect(page.locator('[data-soc-arrangement="kanban"]')).toBeVisible();
+  await expect(page.getByLabel("Investigation board").getByRole("region")).toHaveCount(5);
+  await assertNoHorizontalOverflow(page);
+  await expect(page).toHaveScreenshot("soc-investigation-board-desktop.png");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await stabilize(page);
+  await expect(page.getByRole("combobox", { name: "Select presentation context" })).toHaveText("Investigation board");
+  await assertNoHorizontalOverflow(page);
+  await expect(page).toHaveScreenshot("soc-investigation-board-mobile.png");
+});
+
 test("demo runner expands, collapses, and brokers semantic timeline focus", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(demoUrl);
@@ -48,20 +67,20 @@ test("demo runner expands, collapses, and brokers semantic timeline focus", asyn
 
   const runner = page.getByLabel("Scenario runner");
   const runnerToggle = runner.getByRole("button").first();
+  await expect(runnerToggle).toHaveAttribute("aria-expanded", "false");
+  await runnerToggle.click();
   await expect(runnerToggle).toHaveAttribute("aria-expanded", "true");
   await expect(runner.getByRole("button", { name: "Auto" })).toHaveAttribute("aria-pressed", "true");
-  const inspectorSwitch = page.getByRole("switch", { name: "Workspace inspector mode" });
-  await expect(inspectorSwitch).not.toBeChecked();
-  await inspectorSwitch.click();
+  await page.getByRole("button", { name: "Expand control harness" }).click();
+  await page.getByRole("tab", { name: "Blueprint" }).click();
   await expect(page.getByRole("heading", { name: "Intent to runnable bundle" })).toBeVisible();
-  await expect(inspectorSwitch).toBeChecked();
-  await inspectorSwitch.click();
-  await expect(page.getByRole("heading", { name: "War room" })).toBeVisible();
-  await expect(inspectorSwitch).not.toBeChecked();
+  const journalTab = page.getByRole("tab", { name: "Journal / Ledger" });
+  await journalTab.click();
+  await expect(journalTab).toHaveAttribute("aria-selected", "true");
   await expect(page).toHaveScreenshot("soc-demo-expanded-desktop.png");
 
   await advance(page, 2);
-  await page.getByLabel("View shared substrate as").selectOption("full-substrate");
+  await expect(page.getByRole("combobox", { name: "Select presentation context" })).toHaveText("Full substrate");
   await expect(page.getByText("Established investigation intent", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: /Frame the protected business objective/ })).toHaveCount(0);
   await expect(page.getByText(/organism/i)).toHaveCount(0);
@@ -76,7 +95,7 @@ test("demo runner expands, collapses, and brokers semantic timeline focus", asyn
   await page.getByRole("button", { name: "Journal" }).click();
   await expect(scenarioEntry).toHaveCount(0);
   await page.getByRole("tab", { name: "Participants" }).click();
-  await expect(page.locator('[data-soc-actor-id="human-morgan"]')).toHaveCSS("outline-style", "solid");
+  await expect(page.locator('article[data-participant-id="human-morgan"]')).toHaveCSS("outline-style", "solid");
   await expect(page.getByRole("switch", { name: "Correlation Agent provider mode" })).not.toBeChecked();
   await expect(page.getByRole("switch", { name: "Response Agent provider mode" })).not.toBeChecked();
 
@@ -91,10 +110,12 @@ test("executive demo reaches the governed human gate on a 390px viewport", async
   await stabilize(page);
   await assertNoHorizontalOverflow(page);
 
+  await page.getByRole("button", { name: "Expand scenario runner" }).click();
+  await page.getByRole("button", { name: "Expand control harness" }).click();
+
   for (let act = 2; act <= 4; act += 1) await advance(page, act);
   await expect(page.getByText("Commander reviews the consequential decision", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Authorize Host-A isolation" })).toBeVisible();
-  await assertPinnedToEnd(page, "Shared substrate content");
   await assertPinnedToEnd(page, "Journal timeline");
   await assertNoHorizontalOverflow(page);
   await expect(page).toHaveScreenshot("soc-demo-human-gate-mobile.png");

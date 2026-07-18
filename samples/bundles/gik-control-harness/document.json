@@ -7,7 +7,7 @@
       "id": "gik-control-harness",
       "edges": {
         "read": {
-          "presentation": "soc.presentation",
+          "presentation": "control.inspection.presentation",
           "activeTab": "control.ui.activeTab",
           "expanded": "control.ui.harnessExpanded"
         },
@@ -20,16 +20,16 @@
           {
             "capability": "harness:blueprint-inspector",
             "id": "control-blueprint-inspector",
-            "edges": { "read": { "presentation": "soc.presentation" } }
+            "edges": { "read": { "blueprint": "control.inspection.blueprint" } }
           },
           {
             "capability": "harness:journal",
             "id": "control-journal",
             "edges": {
               "read": {
-                "incident": "soc.incident",
-                "actors": "soc.actors",
-                "journal": "soc.journal",
+                "participants": "control.inspection.participants",
+                "timeline": "control.inspection.timeline",
+                "status": "control.inspection.status",
                 "journalMode": "control.ui.journalMode",
                 "selectedJournalId": "control.ui.selectedJournalId",
                 "demoEnabled": "demo.enabled",

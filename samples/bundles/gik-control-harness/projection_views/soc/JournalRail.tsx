@@ -4,32 +4,31 @@ import { CheckmarkCircle20Regular, Clock20Regular } from "@fluentui/react-icons"
 import type { ProjectionView } from "@gik/react";
 import { GrowingContainer } from "../../../../../adapters/react/src/primitives/registry";
 import { selectionFromTimelineItem, type DemoSelection, type TimelineItem } from "../../../../shared/demo-runner";
-import { socJournalTimelineItem } from "../../../live-workspace-soc/projection_views/helpers";
+import type { InspectionParticipant, InspectionStatus } from "../../../../shared/control-inspection";
 import { useStyles } from "../../../live-workspace-soc/projection_views/styles";
-import type { Actor, Incident, JournalEntry } from "../../../live-workspace-soc/projection_views/types";
 
 export const JournalRail: ProjectionView = ({ node, emit }) => {
   const styles = useStyles();
-  const incident = node.props.incident as unknown as Incident;
-  const actors = (node.props.actors ?? []) as unknown as Actor[];
-  const journal = (node.props.journal ?? []) as unknown as JournalEntry[];
+  const participants = (node.props.participants ?? []) as unknown as InspectionParticipant[];
+  const timeline = (node.props.timeline ?? []) as unknown as TimelineItem[];
+  const status = node.props.status as unknown as InspectionStatus | null | undefined;
   const demoEnabled = node.props.demoEnabled === true;
   const demoTimeline = (node.props.demoTimeline ?? []) as unknown as TimelineItem[];
   const demoSelection = (node.props.demoSelection ?? undefined) as unknown as DemoSelection | undefined;
   const selectedJournalId = typeof node.props.selectedJournalId === "string" ? node.props.selectedJournalId : null;
   const journalMode = node.props.journalMode === "ledger" ? "ledger" : "journal";
-  const latestEntry = journal.at(-1);
+  const latestEntry = timeline.at(-1);
   const selectedEntry = selectedJournalId
-    ? journal.find((item) => item.id === selectedJournalId) ?? latestEntry
+    ? timeline.find((item) => item.operationRecordId === selectedJournalId || item.id === selectedJournalId) ?? latestEntry
     : latestEntry;
-  const timelineItems = demoEnabled ? demoTimeline : journal.map(socJournalTimelineItem);
+  const timelineItems = demoEnabled ? demoTimeline : timeline;
   const visibleTimelineItems = journalMode === "journal"
     ? timelineItems.filter((item) => item.source === "organism")
     : timelineItems;
   const selectedTimelineItem = demoSelection
     ? timelineItems.find((item) => item.id === demoSelection.itemId)
-    : selectedEntry ? socJournalTimelineItem(selectedEntry) : timelineItems.at(-1);
-  const actorNames = new Map(actors.map((item) => [item.id, item.name]));
+    : selectedEntry ?? timelineItems.at(-1);
+  const actorNames = new Map(participants.map((item) => [item.id, item.name]));
 
   const selectTimelineItem = (item: TimelineItem) => {
     if (demoEnabled) emit("selectTimeline", { selection: selectionFromTimelineItem(item) });
@@ -63,7 +62,7 @@ export const JournalRail: ProjectionView = ({ node, emit }) => {
               </div>
             </button>
           ))}
-          {incident.status === "Contained" ? <div className={styles.fallback}><CheckmarkCircle20Regular /> <strong>Host-A contained under commander authority.</strong></div> : null}
+          {status?.kind === "success" ? <div className={styles.fallback}><CheckmarkCircle20Regular /> <strong>{status.message}</strong></div> : null}
         </GrowingContainer>
       </div>
     </aside>

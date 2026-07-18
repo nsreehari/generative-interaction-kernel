@@ -61,6 +61,8 @@ export interface Action {
 export interface Reaction {
   /** Expression over state; the reaction fires when its evaluated value changes. */
   when: string;
+  /** Run once when the initial value is non-null, for pre-seeded mailbox/request state. */
+  runInitially?: boolean;
   /** Closed-grammar actions to run on change. */
   run: Action[];
 }

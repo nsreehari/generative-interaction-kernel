@@ -61,6 +61,7 @@ export const PresentationLayout: ProjectionView = ({ node, children }) => {
   const styles = useStyles();
   const presentation = node.props.presentation as unknown as Presentation;
   const actors = (node.props.actors ?? []) as unknown as Actor[];
+  const activeSelection = node.props.selection as unknown as ControlSelection | undefined;
   const arrangementClasses: Record<Presentation["arrangement"], string> = {
     "war-room": styles.arrangementWarRoom,
     inspection: styles.arrangementInspection,
@@ -74,6 +75,7 @@ export const PresentationLayout: ProjectionView = ({ node, children }) => {
   };
 
   const value: PresentationMaterialization = {
+    activeSelection,
     actorNames: new Map(actors.map((item) => [item.id, item.name])),
   };
   const ArrangementLayout = arrangementLayouts[presentation.arrangement] ?? FlowLayout;

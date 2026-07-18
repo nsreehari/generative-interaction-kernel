@@ -84,7 +84,7 @@
         "establishIntent", "addConstraint", "suggestExploration", "amendExploration",
         "replanExploration", "commitPartialFindings", "evaluateDc01Policy", "completeCorrelation",
         "proposeHostA", "reviseResponse", "calculateResponse", "recommendContainment",
-        "authorizeContainment", "setPresentationContext", "setAgentMode",
+        "authorizeContainment", "setPresentationContext", "setAgentMode", "syncInspection",
         "acceptSocFoundryAccess", "clearSocFoundryAccess", "executeContainment", "resetScenario"
       ]
     }

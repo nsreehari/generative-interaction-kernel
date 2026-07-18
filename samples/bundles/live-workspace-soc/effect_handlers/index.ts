@@ -3,11 +3,11 @@ import type { Json, OrchestratorResult, PatchOp } from "@gik/kernel";
 
 import { createFoundryProxy } from "../../../shared/foundry-proxy";
 import { compileSocPresentation } from "../../../profiles/live-workspace-soc/compile";
-import { projectSocParticipants } from "../inspection";
+import { projectSocInspection, projectSocParticipants } from "../inspection";
 import manifest from "../manifest.json";
 import initialState from "../state.json";
 import { getSocFoundryKey } from "../live-credentials";
-import type { Actor, AgentProvider } from "../projection_views/types";
+import type { Actor, AgentProvider, Incident, JournalEntry, Presentation } from "../projection_views/types";
 import {
   buildAgentMessage,
   createSocAgentContract,
@@ -279,6 +279,19 @@ function annotateProvider(
 }
 
 const deterministicEffects: EffectHandlerMap = {
+  syncInspection(ctx) {
+    return {
+      outcome: "projected",
+      ops: [setOp("control.inspection", projectSocInspection(
+        list(ctx, "soc.actors") as unknown as Actor[],
+        providers(ctx) as unknown as Record<string, AgentProvider>,
+        ctx.get("soc.presentation") as unknown as Presentation,
+        list(ctx, "soc.journal") as unknown as JournalEntry[],
+        ctx.get("soc.incident") as unknown as Incident,
+      ) as unknown as Json)],
+    };
+  },
+
   setPresentationContext(ctx) {
     const presentation = ctx.get("soc.presentation") as RecordValue;
     const contexts = Array.isArray(presentation.contexts) ? presentation.contexts : [];

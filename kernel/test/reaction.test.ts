@@ -11,6 +11,7 @@ import {
   node,
   assignFrom,
   invoke,
+  InMemoryStateModel,
   reaction,
   envelope,
 } from "../src/index";
@@ -66,6 +67,39 @@ test("an effectful reaction fires once per change, never on an unchanged write o
 
   await k.dispatch(setN(9)); // 5 -> 9: fires
   assert.equal(calls, 2);
+});
+
+test("an opted-in reaction consumes pre-seeded mailbox state once", async () => {
+  let calls = 0;
+  const orchestrator: Orchestrator = {
+    async invoke(_effect: OrchestratorEffect) {
+      calls += 1;
+    },
+  };
+  const initial = reaction("n", [invoke("consumeMailbox")], { runInitially: true });
+  const state = new InMemoryStateModel(manifest.namespaces);
+  state.apply([{ op: "set", path: "n", value: 7 }]);
+  const k = new Kernel(manifestMsg, docWith(initial), { orchestrator, state });
+
+  await k.syncExternal();
+  assert.equal(calls, 1);
+
+  await k.syncExternal();
+  assert.equal(calls, 1);
+});
+
+test("an opted-in reaction ignores an initially empty mailbox", async () => {
+  let calls = 0;
+  const initial = reaction("n", [invoke("consumeMailbox")], { runInitially: true });
+  const state = new InMemoryStateModel(manifest.namespaces);
+  state.apply([{ op: "set", path: "n", value: null }]);
+  const k = new Kernel(manifestMsg, docWith(initial), {
+    orchestrator: { async invoke() { calls += 1; } },
+    state,
+  });
+
+  await k.syncExternal();
+  assert.equal(calls, 0);
 });
 
 test("reactions cascade: a reaction's write triggers a downstream reaction", async () => {

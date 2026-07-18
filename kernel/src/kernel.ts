@@ -172,7 +172,14 @@ export class Kernel {
   async syncExternal(): Promise<Patch> {
     if (!this.reactionsSeeded) {
       await this.seedReactionBaseline();
-      return { rev: this.rev, ops: [] };
+      const ops: PatchOp[] = [];
+      const fired: OrchestratorEffect[] = [];
+      await this.runInitialReactions(ops, 0, fired);
+      if (ops.length > 0 || fired.length > 0) {
+        this.rev += 1;
+        for (const effect of fired) this.effectLog.push({ rev: this.rev, seq: this.effectSeq++, effect });
+      }
+      return { rev: this.rev, ops };
     }
     const ops: PatchOp[] = [];
     const fired: OrchestratorEffect[] = [];
@@ -269,6 +276,27 @@ export class Kernel {
       this.reactionBaseline.set(key, await this.expr.eval(reaction.when, snapshot));
     }
     this.reactionsSeeded = true;
+  }
+
+  private async runInitialReactions(
+    acc: PatchOp[],
+    depth: number,
+    journal: OrchestratorEffect[]
+  ): Promise<void> {
+    for (const { nodeId, reaction } of this.reactions()) {
+      if (!reaction.runInitially) continue;
+      const value = await this.expr.eval(reaction.when, this.store.snapshot());
+      if (value === null || value === undefined) continue;
+      const result = await reduceActions(this.store, nodeId, reaction.run, this.expr, this.predicateExpr, {
+        when: value,
+      });
+      this.store.apply(result.ops);
+      acc.push(...result.ops);
+      for (const trace of result.traces) this.sink?.(trace);
+      await this.runEffects(result.effects, acc, depth + 1, journal);
+      for (const event of result.emitted) await this.settle(event, acc, depth + 1, journal);
+    }
+    await this.runReactions(acc, depth, journal);
   }
 
   // Fire every reaction whose `when` value changed, cascading until the document quiesces. Folds into

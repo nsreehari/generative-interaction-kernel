@@ -69,8 +69,8 @@ export function guarded(action: Action, guard: string): Action {
  * standing analogue of an `on` handler). Pure standing derivations stay `computed`; use a reaction for
  * effectful bodies (`invoke`) or cross-cell writes.
  */
-export function reaction(when: string, run: Action[]): Reaction {
-  return { when, run };
+export function reaction(when: string, run: Action[], options: { runInitially?: boolean } = {}): Reaction {
+  return { when, run, ...options };
 }
 
 // --- Node + document constructors -------------------------------------------------

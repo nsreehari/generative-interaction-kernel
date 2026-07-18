@@ -289,6 +289,8 @@ test("presentation context changes projection metadata without changing the caus
       ["causal-record", 7, "kanban-record"],
     ],
   );
+  assert.equal(store.get("control.inspection.presentation.selectedContext"), "investigation-board");
+  assert.equal(store.get("control.inspection.blueprint.selectedContext"), "investigation-board");
   assert.deepEqual(store.get("soc.journal"), journalBefore);
 });
 
