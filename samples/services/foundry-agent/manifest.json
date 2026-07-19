@@ -1,0 +1,19 @@
+{
+  "id": "foundry-agent",
+  "version": "1",
+  "title": "Foundry agent",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "endpoint": { "type": "string", "minLength": 1 },
+      "agent": { "type": "string", "minLength": 1 },
+      "credentialRef": { "type": "string", "minLength": 1 }
+    },
+    "required": ["endpoint", "credentialRef"]
+  },
+  "executionModes": ["immediate", "queued"],
+  "subjects": ["cell", "substrate-agent", "chat", "task"],
+  "requiresHostCapabilities": ["foundry-executor", "credential-resolver"],
+  "supports": { "stream": true, "cancel": true, "probe": true }
+}

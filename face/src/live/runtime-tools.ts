@@ -33,6 +33,25 @@ export function runtimeTools(face: ControlFace): McpTool[] {
       agentSafe: true,
     },
     {
+      name: "describeServiceKinds",
+      description: "List trusted service kinds, their configuration schemas, and host capability availability.",
+      inputSchema: obj({}),
+      handler: () => face.describeServiceKinds(),
+      agentSafe: true,
+    },
+    {
+      name: "listServiceRequests",
+      description: "List QueueFace request status and redacted execution provenance.",
+      inputSchema: obj({}),
+      handler: () => face.listServiceRequests(),
+    },
+    {
+      name: "probeService",
+      description: "Probe one materialized QueueFace provider by provider id.",
+      inputSchema: obj({ providerId: { type: "string" } }, ["providerId"]),
+      handler: (a) => face.probeService(String(a.providerId)),
+    },
+    {
       name: "emit",
       description: "Drive the kernel with a GIK event and return the resulting patch (also broadcast to render clients).",
       inputSchema: obj({ event: any }, ["event"]),

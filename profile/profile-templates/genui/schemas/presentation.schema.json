@@ -11,6 +11,7 @@
     "arrangement": {
       "enum": ["stack", "narrative", "split", "grid", "dashboard", "wizard"]
     },
+    "frame": { "type": "string", "minLength": 1 },
     "regions": {
       "type": "array",
       "items": { "$ref": "#/definitions/region" }
@@ -31,6 +32,7 @@
       "additionalProperties": false,
       "properties": {
         "name": { "type": "string", "minLength": 1 },
+        "concern": { "type": "string", "minLength": 1 },
         "role": {
           "enum": [
             "summary",

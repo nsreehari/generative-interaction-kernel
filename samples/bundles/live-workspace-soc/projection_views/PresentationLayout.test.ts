@@ -43,8 +43,7 @@ test("kanban arrangement renders lowered region groups as investigation columns"
   }));
   const markup = renderToStaticMarkup(createElement(
     PresentationLayout,
-    { node, emit: () => {} },
-    cards,
+    { node, emit: () => {}, children: cards },
   ));
 
   assert.match(markup, /aria-label="Investigation board"/);

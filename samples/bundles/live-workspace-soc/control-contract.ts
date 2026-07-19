@@ -13,6 +13,7 @@ const commands = [
   "reviseResponse",
   "calculateResponse",
   "recommendContainment",
+  "authorizeContainment",
   "executeContainment",
   "$reset",
 ] as const;

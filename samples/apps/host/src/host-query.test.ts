@@ -1,12 +1,22 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { canonicalizeHostUrl, readHostQuery, writePresentationNavigation } from "./host-query";
+import {
+  canonicalizeHostUrl,
+  readHostQuery,
+  resolvePresentationContext,
+  writePresentationNavigation,
+} from "./host-query";
 
-test("host query enables GIK controls only for the canonical flag forms", () => {
+test("host query enables GIK controls for any non-zero value", () => {
+  assert.equal(readHostQuery("?bundle=live-workspace-soc").harnessId, null);
   assert.equal(readHostQuery("?bundle=live-workspace-soc&gik").harnessId, "gik-control-harness");
   assert.equal(readHostQuery("?bundle=live-workspace-soc&gik=1").harnessId, "gik-control-harness");
+  assert.equal(readHostQuery("?bundle=live-workspace-soc&gik=-1").harnessId, "gik-control-harness");
+  assert.equal(readHostQuery("?bundle=live-workspace-soc&gik=enabled").harnessId, "gik-control-harness");
   assert.equal(readHostQuery("?bundle=live-workspace-soc&gik=0").harnessId, null);
+  assert.equal(readHostQuery("?bundle=live-workspace-soc&gik=00").harnessId, null);
+  assert.equal(readHostQuery("?bundle=live-workspace-soc&gik=0.0").harnessId, null);
 });
 
 test("host query canonicalizes legacy controls and redundant presentation state", () => {
@@ -32,4 +42,20 @@ test("presentation navigation stores only non-default presentation state", () =>
     ),
     "https://example.test/?bundle=live-workspace-soc&demo=soc-t3&gik=1"
   );
+});
+
+test("presentation resolution prefers a valid request, then full substrate, then the first context", () => {
+  assert.equal(
+    resolvePresentationContext("war-room", ["full-substrate", "war-room"]),
+    "war-room"
+  );
+  assert.equal(
+    resolvePresentationContext(null, ["full-substrate", "war-room"]),
+    "full-substrate"
+  );
+  assert.equal(
+    resolvePresentationContext("unknown", ["portfolio-overview", "portfolio-advisor"]),
+    "portfolio-overview"
+  );
+  assert.equal(resolvePresentationContext(null, []), null);
 });

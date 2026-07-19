@@ -31,6 +31,8 @@ import {
   type TransportProvider,
 } from "../../../kernel/src/index";
 import { checkpoint, compensate, effectsSince, getState, getTree, restore } from "./ops";
+import type { QueueFace, ServiceProbeResult, ServiceRequestRecord } from "../services/queueface";
+import type { ServiceKindDescription, ServiceKindRegistry } from "../services/service-kinds";
 
 export interface ControlFaceOptions {
   /** Pre-seeded state model for the kernel (namespaces already populated). */
@@ -39,6 +41,10 @@ export interface ControlFaceOptions {
   orchestrator?: Orchestrator;
   /** Optional trace sink for resolve/action/effect events. */
   sink?: TraceSink;
+  /** Shared trusted service-kind registry projected by this ControlFace. */
+  serviceKinds?: ServiceKindRegistry;
+  /** Optional QueueFace whose requests and probes this ControlFace may inspect. */
+  queueFace?: QueueFace;
 }
 
 export class ControlFace implements TransportBroker {
@@ -46,6 +52,8 @@ export class ControlFace implements TransportBroker {
   // transport. Render transports bind through `attach`; drive goes through `emit`.
   private readonly kernel: Kernel;
   private readonly broker: KernelTransportHost;
+  private readonly serviceKinds?: ServiceKindRegistry;
+  private readonly queueFace?: QueueFace;
 
   constructor(
     manifest: Enveloped<ManifestPayload>,
@@ -58,6 +66,8 @@ export class ControlFace implements TransportBroker {
       ...(opts.sink ? { sink: opts.sink } : {}),
     });
     this.broker = new KernelTransportHost(manifest, document, this.kernel);
+    this.serviceKinds = opts.serviceKinds;
+    this.queueFace = opts.queueFace;
   }
 
   /**
@@ -95,6 +105,19 @@ export class ControlFace implements TransportBroker {
 
   compensate(effects: OrchestratorEffect[]): Promise<Patch> {
     return compensate(this.kernel, effects);
+  }
+
+  describeServiceKinds(): ServiceKindDescription[] {
+    return this.serviceKinds?.describe() ?? [];
+  }
+
+  listServiceRequests(): Promise<ServiceRequestRecord[]> {
+    return this.queueFace?.listRequests() ?? Promise.resolve([]);
+  }
+
+  probeService(providerId: string): Promise<ServiceProbeResult> {
+    if (!this.queueFace) throw new Error("ControlFace has no QueueFace attached");
+    return this.queueFace.probe(providerId);
   }
 
   /** Detach every connection (the caller owns any server lifecycle). */

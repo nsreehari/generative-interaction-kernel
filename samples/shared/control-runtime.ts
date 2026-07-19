@@ -55,6 +55,9 @@ export function createHeadlessControlRuntime(
       if (!descriptor) {
         return { requestId: request.id, token: request.token, command: request.command, status: "rejected", outcome: "unsupported-command" };
       }
+      if (contract.humanGates.includes(request.command)) {
+        return { requestId: request.id, token: request.token, command: request.command, status: "rejected", outcome: "human-authorization-required" };
+      }
       try {
         runtime.state.apply([{ op: "set", path: "control.request", value: request as unknown as Json }]);
         await runtime.controller.emit(descriptor.nodeId, descriptor.event, request.payload ?? {}, request.actorId);

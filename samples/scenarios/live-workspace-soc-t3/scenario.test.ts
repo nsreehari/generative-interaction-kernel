@@ -19,6 +19,7 @@ test("T3 preserves act order and the Priya human boundary", () => {
     id: "act-13",
     title: "Priya authorizes containment",
     kind: "human-gate",
+    command: "authorizeContainment",
     humanBoundary: {
       namespace: "soc",
       kind: "actor",

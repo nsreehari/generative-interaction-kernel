@@ -1,0 +1,18 @@
+{
+  "id": "copilot-agent",
+  "version": "1",
+  "title": "Copilot agent",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "model": { "type": "string", "minLength": 1 },
+      "workspaceRef": { "type": "string", "minLength": 1 }
+    },
+    "required": ["model"]
+  },
+  "executionModes": ["immediate", "queued"],
+  "subjects": ["cell", "substrate-agent", "chat", "task"],
+  "requiresHostCapabilities": ["copilot-executor", "workspace-resolver"],
+  "supports": { "stream": true, "cancel": true, "probe": true }
+}

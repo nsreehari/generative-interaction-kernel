@@ -9,6 +9,8 @@ interface HarnessPresentation {
   contexts: Array<{ id: string; label: string }>;
 }
 
+const EMPTY_PRESENTATION: HarnessPresentation = { selectedContext: "", contexts: [] };
+
 const useStyles = makeStyles({
   harness: {
     transitionProperty: "box-shadow",
@@ -60,7 +62,8 @@ export const ControlHarnessShell: ProjectionView = ({ node, emit, children }) =>
   const styles = useStyles();
   const harnessRef = React.useRef<HTMLElement>(null);
   const [presentationOpen, setPresentationOpen] = React.useState(false);
-  const presentation = node.props.presentation as unknown as HarnessPresentation;
+  const presentation = node.props.presentation as unknown as HarnessPresentation | null
+    ?? EMPTY_PRESENTATION;
   const requestedTab = String(node.props.activeTab ?? "journal");
   const activeTab = requestedTab === "blueprint" || requestedTab === "participants" ? requestedTab : "journal";
   const expanded = node.props.expanded !== false;

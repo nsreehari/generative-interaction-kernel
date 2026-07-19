@@ -365,7 +365,7 @@ observer. "Exec vs builder" was too coarse and omitted the runtime row entirely.
 |  | **Authoring plane** (fixes the physics) | **Runtime plane** (moves within it) |
 |---|---|---|
 | **Human** | **DX** — developer authors manifests + blueprints | **HX/UX** — operator/analyst uses the rendered experience |
-| **AI** | **ACX** — AI coding agent authors the same artifacts | **AX** — autonomous agent acts on shared state |
+| **AI** | **ACX** — authoring agent defines, tests, and proves governed artifacts | **AX** — autonomous agent acts on shared state |
 
 - **Observer (exec)** stands *outside* the grid and must be shown *both* planes to believe the claims.
 - **Canonical moat:** a generative, collaborative workspace where humans and agents share one
@@ -380,8 +380,12 @@ observer. "Exec vs builder" was too coarse and omitted the runtime row entirely.
 
 **Vocabulary by register:**
 - **Authoring plane (DX + ACX):** manifest, blueprint, tier, lowering recipe, bundle, kernel,
-  validation. Constraint from ACX: artifacts must be **machine-authorable** — the closed
-  grammar + schema validation is what lets an AI coder author safely.
+  validation, simulation, execution, and materialization for authoring verification. **ACX means
+  Agent Authoring Experience**; it is not a synonym for AI coding, static generation, pure tooling,
+  or a lightweight design-time phase. Artifacts must be **machine-authorable**, and an authoring
+  agent may exercise the full live AX execution, service, effect, and materialization paths to prove
+  its work. DX and ACX identify the authoring actor and purpose; pure/live and immediate/queued are
+  independent implementation choices.
 - **Runtime HX/UX:** the *rendered experience*; speaks `intent` + the domain (evidence,
   timeline, approve). Never sees "blueprint."
 - **Runtime AX:** the *shared state graph / shadow tree*, capabilities, the six action verbs
@@ -394,6 +398,153 @@ observer. "Exec vs builder" was too coarse and omitted the runtime row entirely.
 "Governed experience" is the **HX face** of a *dual* runtime surface; its other face is a
 **governed agent surface (AX)** over the *same* state. Together they form a persistent
 **governed collaborative workspace**, not merely an auditable generative UI.
+
+### D2a — External services and QueueFace (AGREED 2026-07-19)
+
+External services use one pluggable adapter contract across their complete ACX and AX lifecycle.
+An adapter may contribute one operation or a federated catalog (for example an MCP server whose
+tools have independent schemas), and may support discovery, inspection, validation, simulation,
+probe, execution, status, and cancellation. ACX may use the complete live AX execution and
+materialization path when an authoring agent needs behavioral proof; lifecycle labels do not imply
+that ACX is pure, static, immediate, or lightweight.
+
+#### Final ownership model
+
+The host registers only trusted **service kinds** and the factories capable of executing them, for
+example `copilot-agent`, `foundry-agent`, `deterministic-agent`, and `mcp`. It does not maintain an
+application-level catalog of every model, workspace, endpoint, agent, or configured service
+instance. A host manifest says which kinds it supports and supplies runtime policy, credential
+resolution, process/network sandboxing, queue infrastructure, resource limits, cancellation, and
+secret redaction.
+
+The Blueprint brings the concrete service configuration required by its behavior. A named service
+declaration contains a kind, supported operations, and kind-specific data such as a Copilot model,
+packaged workspace resource, Foundry endpoint, Foundry agent id/name, session/thread scope, tool
+restrictions, timeout, and fallback policy. A single cell may instead carry the same declaration
+inline; named declarations exist only to remove repetition when multiple cells or substrate agents
+share one configuration. Profiles lower these declarations into the Bundle manifest unchanged.
+
+Blueprints may carry endpoints and credential *references*, but never literal keys, tokens, or
+passwords. A `credentialRef` is authorized and resolved by the host at execution time and is never
+copied into Bundle state, queue messages, browser JavaScript, logs, catalog snapshots, or
+provenance. Endpoint/audience restrictions prevent a Blueprint from combining an arbitrary
+endpoint with a privileged credential reference. Managed identity is preferred for Foundry.
+
+#### Compact contracts
+
+- `ServiceKindFactory`: trusted host implementation with a kind id, configuration schema,
+  validation, discovery/probe, and lazy `create` support.
+- `ServiceDeclaration`: Blueprint-owned `{ kind, config, operations }`, either named or inline.
+- `ServiceUse`: `{ service | inline, operation, contract }` attached to a cell or substrate-agent
+  operation.
+- `ServiceSubject`: identifies `cell`, `substrate-agent`, `chat`, or `task` scope without creating
+  separate service runtimes for those lanes.
+- `ServiceRequestRecord`: stable request/correlation/idempotency identity, Blueprint and state
+  revisions, attempts, timestamps, resolved kind, provider-native session/thread provenance, and
+  terminal result/error state.
+
+QueueFace normally registers kinds, loads Blueprint declarations, validates them, and lazily
+materializes scoped adapters. Direct adapter registration remains only as a low-level test or
+integration seam. Cache scope (`per-invocation`, `per-cell`, `per-blueprint`, or `per-session`)
+controls provider-native continuity; it is not host service-instance registration.
+
+#### Lanes, services, and execution
+
+Copilot Agent and Foundry Agent are peer services. Chat, task execution, substrate-agent work, and
+inline-cell work are execution lanes/scopes. Portfolio analysis, strategy generation, SOC
+correlation, and response planning are domain operations. A physical target is a Copilot
+workspace/model/session, Foundry endpoint/agent/thread, or MCP server/tool. These identities remain
+separate in configuration and provenance.
+
+An `ExecutionRef` or queue lane controls where/how a worker runs; the Blueprint service declaration
+selects Copilot versus Foundry inside that worker. Queue messages carry stable Blueprint id and
+revision, service reference, operation, subject, input, and correlation metadata. Workers resolve
+the declaration from that Blueprint revision; provider endpoints and credentials are not copied
+into queue messages. Immediate and queued execution use the same request and settlement contracts.
+
+Provider output is untrusted data. Contracts perform strict structural and semantic validation,
+known-reference checks, and an explicitly bounded correction policy before settlement. External
+agents cannot return arbitrary GIK patches, events, authorization, or execution. Domain-owned
+settlement preserves local policy and human gates. Deterministic execution may be selected as an
+offline service or used as an explicit, visible fallback; live-to-deterministic fallback is never
+silent.
+
+#### Implementation plan
+
+1. Replace the ambiguous operation-only `ServiceRequirement` model with `ServiceKindFactory`,
+   `ServiceDeclaration`, `ServiceUse`, and `ServiceSubject`; update Profile/Manifest schemas and
+   lowering while preserving the existing Kernel `invoke` vocabulary.
+2. Evolve QueueFace from normal instance-first registration to host kind registration, Blueprint
+   declaration loading, configuration/policy validation, lazy materialization, scoped caching, and
+   Blueprint-revision-aware immediate/queued requests. Keep direct adapter registration only as a
+   low-level compatibility seam.
+3. Extend `CellDefinition` with optional named or inline service use. Extend substrate-agent
+   operations with the same service-use shape. Both feed one QueueFace lifecycle and differ only in
+   subject, continuity, input snapshot, and settlement target.
+4. Implement a reusable `foundry-agent` kind over the existing Foundry proxy/client behavior:
+   discovery, probe, managed identity or host credential resolution, agent/thread execution, tool
+   loop, cancellation, conversation/response provenance, strict validation, and bounded repair.
+5. Implement a reusable `copilot-agent` kind with Blueprint-selected model, packaged workspace
+   resources, native session policy, timeout/tool policy, streaming callbacks, and cancellation.
+   Browser hosts advertise it only when an injected server/worker executor is available; they do
+   not spawn Copilot locally or pretend to support it.
+6. Correct portfolio migration: remove `VITE_PORTFOLIO_INTELLIGENCE_ENDPOINT`, the invented generic
+   portfolio HTTP protocol, portfolio-specific host routing, and manual instance bindings. Keep the
+   portfolio contracts and human gate; declare analysis/strategy services in the Blueprint and
+   attach uses to their cells. Use declarative deterministic simulation for offline tests.
+7. Migrate SOC's seven app-local live wrappers to QueueFace service uses while preserving exact
+   operation contracts, one repair attempt, known-reference validation, canonical deterministic
+   settlement, visible fallback, policy enforcement, human authorization, and journal provenance.
+   Remove credential material from `soc.foundry.key`; agent participants may select different
+   service declarations independently.
+8. Migrate the standalone `foundry-agent` sample to the same service kind for discovery, probe,
+   chat, continuity, and normalized receipts instead of calling the proxy directly from product
+   effect handlers.
+9. Project supported kinds, kind configuration schemas, Blueprint declarations, validation/probe
+   results, assurance, request status, and redacted provenance through ACX, ControlFace, and
+   AgentFace. ACX and AX use the same declarations and factories.
+10. Add coverage for named/inline services, per-cell model differences, Blueprint-specific Foundry
+    endpoints, unsupported kinds, configuration validation, credential-reference policy, lazy
+    scopes, cell/substrate subjects, Blueprint-revision queue resolution, Copilot/Foundry
+    substitution, SOC policy preservation, portfolio human gating, and absence of secrets from
+    state/queues/provenance.
+
+#### Sample service-kind plugins
+
+The sample host discovers reusable service-kind plugins under `samples/services/<kind>/`, initially
+`deterministic-agent`, `foundry-agent`, `copilot-agent`, `mcp`, and `http-service`. Each folder owns a
+portable `manifest.json` (kind id/version, config schema, supported subjects and execution modes,
+lifecycle capabilities, and required host capabilities), an `index.ts` exporting the trusted
+`ServiceKindFactory`, and focused tests. Domain prompts, contracts, settlement, and policy stay with
+their Blueprint/Profile; do not create domain-specific kinds such as `portfolio-foundry-agent`.
+
+`samples/services/registry.json` explicitly admits the kinds enabled by the sample host. A build-time
+module glob supplies implementations, but file presence alone never authorizes executable code.
+Registration populates one shared `ServiceKindRegistry`: QueueFace consumes it for validation,
+materialization, execution, and cancellation; ControlFace projects the same registry for supported
+kinds, config schemas, host capability gaps, Blueprint declaration status, probe results, queue
+state, assurance, and redacted provenance. AgentFace receives only the policy-approved operational
+subset. There is no parallel ControlFace registry.
+
+A registered kind may be unavailable in a particular deployment when required host capabilities
+are absent. For example, a static browser host can understand `copilot-agent` while reporting that
+execution requires an injected `process-executor` and `workspace-resolver`; a queue worker can make
+the same declaration executable. The kind registry therefore distinguishes understood from
+currently executable without inventing configured host service instances.
+
+Use `http-service`, not `url-service`: it models a policy-controlled HTTP/OpenAPI execution contract,
+not merely an address. It remains suitable for ordinary external APIs but is not a lowest-common-
+denominator replacement for richer Copilot, Foundry, or MCP lifecycle semantics. Mature reusable
+plugins may later move to `@gik/service-*` packages while these sample folders become thin
+registrations; that package split is not required for the initial implementation.
+
+#### Explicit non-goals
+
+Do not add a host service-instance registry, one host entry per model/agent, provider SDK details in
+cells, literal Blueprint credentials, new Kernel action verbs, separate QueueFace implementations
+for cells and substrate agents, or another portfolio-specific HTTP protocol. Do not force Copilot
+and Foundry to have identical internals: they share the lifecycle contract while retaining native
+workspace/session versus endpoint/agent/thread behavior.
 
 ---
 

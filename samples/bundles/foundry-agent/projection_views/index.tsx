@@ -19,7 +19,7 @@ import {
 import { type ProjectionView } from "@gik/react";
 import * as React from "react";
 
-import { createFoundryProxy, FoundryProxyError } from "../../../shared/foundry-proxy";
+import { discoverFoundryAgents } from "../services";
 import {
   FOUNDRY_ACCESS_CHANGE_EVENT,
   clearFoundryAccessKey,
@@ -53,17 +53,20 @@ function discoverAgents(proxyBaseUrl: string, key: string): Promise<string[]> {
   const discoveryKey = `${proxyBaseUrl}\n${key}`;
   const existing = discoveries.get(discoveryKey);
   if (existing) return existing;
-  const request = createFoundryProxy({ baseUrl: proxyBaseUrl, key }).listAgents()
+  const request = discoverFoundryAgents(proxyBaseUrl, key)
     .finally(() => discoveries.delete(discoveryKey));
   discoveries.set(discoveryKey, request);
   return request;
 }
 
 function accessError(error: unknown): string {
-  if (error instanceof FoundryProxyError && (error.status === 401 || error.status === 403)) {
+  const status = typeof error === "object" && error && "status" in error
+    ? Number((error as { status?: unknown }).status)
+    : 0;
+  if (status === 401 || status === 403) {
     return "That access key was rejected.";
   }
-  return error instanceof FoundryProxyError && error.message
+  return error instanceof Error && error.message
     ? error.message
     : "Couldn't load the available agents. Please try again.";
 }

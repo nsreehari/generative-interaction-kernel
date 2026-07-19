@@ -23,7 +23,7 @@
       { "id": "act-10", "title": "Morgan revises the response", "kind": "dispatch", "command": "reviseResponse", "actorRef": { "namespace": "soc", "kind": "actor", "id": "human-morgan", "relation": "origin" }, "waitAfterMs": 760 },
       { "id": "act-11", "title": "Response Agent validates blast radius", "kind": "dispatch", "command": "calculateResponse", "actorRef": { "namespace": "soc", "kind": "actor", "id": "agent-response", "relation": "origin" }, "waitAfterMs": 760 },
       { "id": "act-12", "title": "Morgan recommends containment", "kind": "dispatch", "command": "recommendContainment", "actorRef": { "namespace": "soc", "kind": "actor", "id": "human-morgan", "relation": "origin" }, "waitAfterMs": 760 },
-      { "id": "act-13", "title": "Priya authorizes containment", "kind": "human-gate", "humanBoundary": { "namespace": "soc", "kind": "actor", "id": "human-priya", "relation": "authorized" } },
+      { "id": "act-13", "title": "Priya authorizes containment", "kind": "human-gate", "command": "authorizeContainment", "humanBoundary": { "namespace": "soc", "kind": "actor", "id": "human-priya", "relation": "authorized" } },
       { "id": "act-14", "title": "Response Agent executes containment", "kind": "dispatch", "command": "executeContainment", "actorRef": { "namespace": "soc", "kind": "actor", "id": "agent-response", "relation": "origin" }, "waitAfterMs": 760 }
     ]
   }

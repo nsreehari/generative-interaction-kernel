@@ -1,7 +1,8 @@
 import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
-import type { Json, OrchestratorResult, PatchOp } from "@gik/kernel";
+import type { Json, OrchestratorResult, PatchOp, ServiceDeclaration } from "@gik/kernel";
 
-import { createFoundryProxy } from "../../../shared/foundry-proxy";
+import { bindServiceUseSync, QueueFace, ServiceKindRegistry } from "@gik/controlface";
+import { createFoundryAgentKind } from "../../../services/foundry-agent";
 import { compileSocPresentation } from "../../../profiles/live-workspace-soc/compile";
 import { projectSocInspection, projectSocParticipants } from "../inspection";
 import manifest from "../manifest.json";
@@ -709,6 +710,70 @@ export function createSocEffects(
   accessKey: () => string = getSocFoundryKey
 ): EffectHandlerMap {
   const wrapped: EffectHandlerMap = { ...deterministicEffects };
+  const declarations = manifest.payload.externals.services as Record<string, ServiceDeclaration>;
+  const serviceKinds = new ServiceKindRegistry({
+    hostCapabilities: ["foundry-executor", "credential-resolver"],
+    resolveCredential: async (reference) => {
+      if (reference !== "foundry-agent/access-key") throw new Error(`Unknown credential reference '${reference}'`);
+      const key = accessKey().trim();
+      if (!key) throw new Error("Access key required for Live mode.");
+      return key;
+    },
+    authorizeEndpoint: (kind, endpoint) =>
+      kind === "foundry-agent" && endpoint.origin === "https://sz-foundry-proxy.azurewebsites.net",
+  });
+  serviceKinds.register(createFoundryAgentKind(fetchImpl));
+  const serviceIdByActor = {
+    "agent-correlation": "correlation-agent",
+    "agent-response": "response-agent",
+  } as const;
+  const serviceQueues = new Map<string, { queueFace: QueueFace; providerId: string }>();
+  const queueFor = (actorId: keyof typeof serviceIdByActor) => {
+    const existing = serviceQueues.get(actorId);
+    if (existing) return existing;
+    const serviceId = serviceIdByActor[actorId];
+    const queueFace = new QueueFace();
+    const binding = bindServiceUseSync(queueFace, serviceKinds, declarations, {
+      service: serviceId,
+      operation: "chat",
+      contract: "soc-agent-reply/v1",
+    }, {
+      blueprintId: "live-workspace-soc",
+      blueprintRevision: manifest.payload.version,
+      invoke: `${actorId}:chat`,
+      subject: { kind: "substrate-agent", blueprintId: "live-workspace-soc", actorId },
+    });
+    const created = { queueFace, providerId: binding.providerId };
+    serviceQueues.set(actorId, created);
+    return created;
+  };
+  const chat = async (
+    actorId: keyof typeof serviceIdByActor,
+    input: Record<string, Json>
+  ): Promise<{ conversationId: string; responseId: string; reply: string }> => {
+    const serviceId = serviceIdByActor[actorId];
+    const record = await queueFor(actorId).queueFace.submit({
+      service: serviceId,
+      operation: "chat",
+      input,
+      subject: { kind: "substrate-agent", blueprintId: "live-workspace-soc", actorId },
+    });
+    if (record.status !== "completed" || !record.result?.output
+      || typeof record.result.output !== "object" || Array.isArray(record.result.output)) {
+      throw new Error(record.error || "Foundry agent request failed.");
+    }
+    const output = record.result.output as Record<string, Json>;
+    if (typeof output.conversationId !== "string"
+      || typeof output.responseId !== "string"
+      || typeof output.reply !== "string") {
+      throw new Error("Foundry agent returned an invalid chat response.");
+    }
+    return {
+      conversationId: output.conversationId,
+      responseId: output.responseId,
+      reply: output.reply,
+    };
+  };
 
   wrapped.setAgentMode = async (ctx) => {
     const controlRequest = ctx.get("control.agentModeRequest") as RecordValue | undefined;
@@ -749,7 +814,9 @@ export function createSocEffects(
       };
     }
     try {
-      await createFoundryProxy({ baseUrl: manifest.payload.config.proxyBase, key, fetch: fetchImpl }).ping(provider.agentName);
+      await queueFor(actorId as keyof typeof serviceIdByActor).queueFace.probe(
+        queueFor(actorId as keyof typeof serviceIdByActor).providerId
+      );
       return {
         outcome: "updated",
         ops: [
@@ -769,7 +836,6 @@ export function createSocEffects(
   };
 
   wrapped.acceptSocFoundryAccess = (ctx) => {
-    const key = typeof ctx.payload.key === "string" ? ctx.payload.key.trim() : "";
     const agentNames = Array.isArray(ctx.payload.agentNames)
       ? ctx.payload.agentNames.filter((value): value is string => typeof value === "string")
       : [];
@@ -779,7 +845,6 @@ export function createSocEffects(
     return {
       outcome: "updated",
       ops: [
-        setOp("soc.foundry.key", key),
         setOp("soc.foundry.agentNames", agentNames),
         setOp("soc.agentProviders", nextProviders),
         setOp("control.inspection.participants", inspectionParticipants(list(ctx, "soc.actors"), nextProviders)),
@@ -790,7 +855,6 @@ export function createSocEffects(
   wrapped.clearSocFoundryAccess = () => ({
     outcome: "updated",
     ops: [
-      setOp("soc.foundry.key", ""),
       setOp("soc.foundry.agentNames", []),
     ],
   });
@@ -811,16 +875,11 @@ export function createSocEffects(
       let validationAttempts = 0;
       try {
         if (!key) throw new Error("Access key required for Live mode.");
-        const proxy = createFoundryProxy({
-          baseUrl: manifest.payload.config.proxyBase,
-          key,
-          fetch: fetchImpl,
-        });
         const contract = createSocAgentContract(live.operation);
-        let response = await proxy.chat({
+        let response = await chat(live.actorId, {
           message: buildAgentMessage(live.operation, incidentContext(ctx)),
           agentName: provider.agentName,
-          conversationId: provider.conversationId || undefined,
+          conversationId: provider.conversationId || null,
           instructions: contract.instructions,
         });
         conversationId = response.conversationId;
@@ -837,7 +896,7 @@ export function createSocEffects(
         }
 
         if (issues.length > 0) {
-          response = await proxy.chat({
+          response = await chat(live.actorId, {
             message: contract.buildCorrectionPrompt(issues),
             agentName: provider.agentName,
             conversationId,

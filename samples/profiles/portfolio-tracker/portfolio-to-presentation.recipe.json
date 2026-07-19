@@ -1,0 +1,10 @@
+{
+  "gik": "0.1",
+  "type": "lowering-recipe",
+  "payload": {
+    "id": "portfolio.to-presentation",
+    "from": "portfolio",
+    "to": "portfolio-presentation",
+    "metadata": { "executor": "portfolio-to-presentation" }
+  }
+}

@@ -4,12 +4,15 @@ import { test } from "vitest";
 import {
   validateDemoCatalog,
   validateDemoComposition,
+  validateDemoTargetBundleContract,
   type DemoCatalogEntry,
   type OrganismDemoContract,
   writeDemoNavigation,
   type ScenarioPlan,
 } from "../shared/demo-runner";
-import { demoCatalog, resolveDemoComposition, socDemoContract } from "./catalog";
+import portfolioDocument from "../bundles/portfolio-tracker/document.json" with { type: "json" };
+import portfolioManifest from "../bundles/portfolio-tracker/manifest.json" with { type: "json" };
+import { demoCatalog, resolveDemoComposition } from "../shared/demo-catalog";
 
 test("demo catalog resolves a validated scenario and organism composition", () => {
   const composition = resolveDemoComposition("soc-t3");
@@ -21,7 +24,11 @@ test("demo catalog resolves a validated scenario and organism composition", () =
   assert.equal(executive.scenarioPlan.steps.length, 5);
   assert.equal(executive.scenarioPlan.steps[0].title, "Frame the protected business objective");
   for (const composition of [resolveDemoComposition("soc-t3"), executive]) {
-    assert.doesNotThrow(() => validateDemoComposition(composition.entry, composition.scenarioPlan, socDemoContract));
+    assert.doesNotThrow(() => validateDemoComposition(
+      composition.entry,
+      composition.scenarioPlan,
+      composition.demoContract
+    ));
   }
 });
 
@@ -50,6 +57,17 @@ test("demo catalog rejects a scenario and organism target mismatch", () => {
     () => validateDemoCatalog(
       {
         default: "demo-a",
+        targets: {
+          "organism-b": {
+            commands: [{ command: "start", nodeId: "root", event: "start" }],
+            humanGates: [],
+            observableOutcomes: [],
+            actors: [],
+            presentationContexts: [],
+            focusKinds: [],
+            timelineSources: [],
+          },
+        },
         entries: [{
           id: "demo-a",
           label: "Demo A",
@@ -81,6 +99,7 @@ test("composition validation rejects unsupported scenario requirements", () => {
     pace: { manualDurationMs: 1000, autoDurationMs: 100, default: "manual" },
     steps: [{ id: "step-a", title: "Step A", kind: "dispatch", command: "establishIntent", actorRef: { namespace: "soc", kind: "actor", id: "human-morgan" } }],
   };
+  const socDemoContract = resolveDemoComposition("soc-t3").demoContract;
   const rejects = (mutateEntry: (value: DemoCatalogEntry) => void, mutateScenario: (value: ScenarioPlan) => void, mutateContract: (value: OrganismDemoContract) => void, message: RegExp) => {
     const nextEntry = structuredClone(entry);
     const nextScenario = structuredClone(scenario);
@@ -95,4 +114,73 @@ test("composition validation rejects unsupported scenario requirements", () => {
   rejects((value) => { value.defaultContext = "unknown"; }, () => {}, () => {}, /Unsupported presentation context/);
   rejects(() => {}, (value) => { value.steps[0].focusRefs = [{ namespace: "soc", kind: "cell", id: "intent" }]; }, (value) => { value.focusKinds = value.focusKinds.filter((kind) => kind !== "cell"); }, /Unsupported focus kind/);
   rejects(() => {}, () => {}, (value) => { value.timelineSources = ["scenario"]; }, /Unsupported timeline source/);
+  rejects(() => {}, (value) => { value.steps[0].command = "authorizeContainment"; }, () => {}, /cannot be dispatched automatically/);
+  rejects(() => {}, (value) => {
+    value.steps[0] = {
+      id: "step-a",
+      title: "Step A",
+      kind: "human-gate",
+      command: "establishIntent",
+      humanBoundary: { namespace: "soc", kind: "actor", id: "human-priya" },
+    };
+  }, () => {}, /is not a human gate/);
+});
+
+test("demo catalog rejects malformed target contracts", () => {
+  const scenario: ScenarioPlan = {
+    id: "scenario-a",
+    targetBlueprintId: "organism-a",
+    title: "Scenario A",
+    pace: { manualDurationMs: 1000, autoDurationMs: 100, default: "manual" },
+    steps: [{ id: "step-a", title: "Step A", kind: "dispatch", command: "start" }],
+  };
+  const catalog = {
+    default: "demo-a",
+    targets: {
+      "organism-a": {
+        commands: [{ command: "start", nodeId: "root", event: "" }],
+        humanGates: [],
+        observableOutcomes: [],
+        actors: [],
+        presentationContexts: [],
+        focusKinds: [],
+        timelineSources: [],
+      },
+    },
+    entries: [{
+      id: "demo-a",
+      label: "Demo A",
+      scenarioBlueprintId: "scenario-a",
+      targetBlueprintId: "organism-a",
+      bundleId: "bundle-a",
+    }],
+  };
+  assert.throws(
+    () => validateDemoCatalog(catalog, new Map([[scenario.id, scenario]])),
+    /invalid command descriptor/
+  );
+});
+
+test("demo target mappings must reference declared Bundle node events", () => {
+  const target = structuredClone(demoCatalog.targets["portfolio-tracker"]);
+  target.commands[0].event = "missing-event";
+  assert.throws(
+    () => validateDemoTargetBundleContract(
+      "portfolio-tracker",
+      target,
+      portfolioManifest.payload,
+      portfolioDocument.payload
+    ),
+    /unknown event 'missing-event'/
+  );
+});
+
+test("host demo resolution accepts bundle-scoped IDs and zero-based indices", () => {
+  assert.equal(resolveDemoComposition("portfolio-intelligence-rebalance", "portfolio-tracker").entry.id, "portfolio-intelligence-rebalance");
+  assert.equal(resolveDemoComposition("0", "portfolio-tracker").entry.id, "portfolio-baseline");
+  assert.equal(resolveDemoComposition("1", "portfolio-tracker").entry.id, "portfolio-dynamic-ticker");
+  assert.equal(resolveDemoComposition("2", "portfolio-tracker").entry.id, "portfolio-intelligence-rebalance");
+  assert.equal(resolveDemoComposition("999", "portfolio-tracker").entry.id, "portfolio-baseline");
+  assert.equal(resolveDemoComposition("wrong", "portfolio-tracker").entry.id, "portfolio-baseline");
+  assert.equal(resolveDemoComposition("portfolio-baseline", "live-workspace-soc").entry.id, "soc-t3");
 });

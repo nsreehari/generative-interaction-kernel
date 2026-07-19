@@ -71,3 +71,41 @@ test("loadBundleRuntime: applies a synchronous $init effect before the kernel st
   const runtime = loadBundleRuntime(bundle);
   assert.equal(runtime.state.get("app.ready"), true);
 });
+
+test("loadBundleRuntime: composes bundle service orchestration inside host policy", async () => {
+  const order: string[] = [];
+  const bundle = bundleFromJson(
+    {
+      manifest: manifestWith(undefined),
+      document: {
+        ...emptyDocument,
+        payload: {
+          root: {
+            ...emptyDocument.payload.root,
+            edges: { on: { run: [{ do: "invoke", args: { tool: "work" } }] } },
+          },
+        },
+      },
+    },
+    {
+      wrapOrchestrator: (fallback) => ({
+        invoke: async (effect) => {
+          order.push("bundle");
+          return fallback.invoke!(effect);
+        },
+      }),
+    }
+  );
+
+  const runtime = loadBundleRuntime(bundle, {
+    wrapOrchestrator: (fallback) => ({
+      invoke: async (effect) => {
+        order.push("host");
+        return fallback.invoke!(effect);
+      },
+    }),
+  });
+  await runtime.controller.emit("root", "run");
+
+  assert.deepEqual(order, ["host", "bundle"]);
+});

@@ -5,7 +5,7 @@
 // executors live in the GenUI flavor package (@gik/profile-genui). Any profile family can reuse
 // this core by supplying its own recipe types and registering executors.
 
-import type { Json } from "../../kernel/src/index";
+import type { Json, ServiceDeclaration, ServiceRequirement } from "../../kernel/src/index";
 
 /** A generic per-run context bag threaded through every profile stage. Profile families may
  *  document preferred keys, but the core treats context as plain data rather than a hardcoded,
@@ -61,6 +61,9 @@ export interface Profile {
    *  profile family reads pre-loaded data instead of importing it, and a profile can override a
    *  family default by declaring its own. */
   resources?: Record<string, ResourceRef>;
+  /** Logical external services required by this semantic profile/Blueprint. Lowering carries the
+   *  same data into `manifest.externals.services`; hosts supply all physical provider bindings. */
+  services?: Record<string, ServiceRequirement | ServiceDeclaration>;
   /** Optional declarative authoring surface: the tools this profile projects from its layers and
    *  recipes. Data only — the core never interprets it; a face engine materializes it into tools. */
   authoring?: ProfileAuthoring;
@@ -182,6 +185,8 @@ export interface ResolvedProfile<TRecipe extends RecipeBase = RecipeBase> {
   /** Named data resources resolved from the profile's `resources` declaration (empty when none).
    *  Available to stage executors via the resolved profile they receive. */
   resources: Record<string, Json>;
+  /** Logical service requirements preserved for lowering into runtime manifests. */
+  services: Record<string, ServiceRequirement | ServiceDeclaration>;
 }
 
 export interface RecipeLintWarning {
@@ -295,7 +300,8 @@ export function resolveProfile<TRecipe extends RecipeBase>(
   }
 
   const resources = resolveResources(artifact, resolveResource);
-  return { artifact, layersById, recipesById, stages, resources };
+  const services = structuredClone(artifact.payload.services ?? {});
+  return { artifact, layersById, recipesById, stages, resources, services };
 }
 
 /**

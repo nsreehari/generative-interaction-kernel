@@ -9,6 +9,7 @@
     "samples-overview": { "kind": "json" },
     "manage-bundles": { "kind": "json" },
     "provider-authoring-demo": { "kind": "json" },
+    "portfolio-tracker": { "kind": "json" },
     "reactive-demo": { "kind": "json" },
     "workbench": { "kind": "json" }
   }

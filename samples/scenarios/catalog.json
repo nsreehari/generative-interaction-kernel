@@ -1,5 +1,49 @@
 {
   "default": "soc-t3",
+  "targets": {
+    "live-workspace-soc": {
+      "commands": [
+        { "command": "establishIntent", "nodeId": "soc-workspace", "event": "establishIntent" },
+        { "command": "addConstraint", "nodeId": "soc-workspace", "event": "addConstraint" },
+        { "command": "suggestExploration", "nodeId": "soc-workspace", "event": "suggestExploration" },
+        { "command": "amendExploration", "nodeId": "soc-workspace", "event": "amendExploration" },
+        { "command": "replanExploration", "nodeId": "soc-workspace", "event": "replanExploration" },
+        { "command": "commitPartialFindings", "nodeId": "soc-workspace", "event": "commitPartialFindings" },
+        { "command": "proposeDc01", "nodeId": "soc-workspace", "event": "proposeDc01" },
+        { "command": "completeCorrelation", "nodeId": "soc-workspace", "event": "completeCorrelation" },
+        { "command": "proposeHostA", "nodeId": "soc-workspace", "event": "proposeHostA" },
+        { "command": "reviseResponse", "nodeId": "soc-workspace", "event": "reviseResponse" },
+        { "command": "calculateResponse", "nodeId": "soc-workspace", "event": "calculateResponse" },
+        { "command": "recommendContainment", "nodeId": "soc-workspace", "event": "recommendContainment" },
+        { "command": "authorizeContainment", "nodeId": "soc-workspace", "event": "authorizeContainment" },
+        { "command": "executeContainment", "nodeId": "soc-workspace", "event": "executeContainment" },
+        { "command": "$reset", "nodeId": "soc-workspace", "event": "reset" }
+      ],
+      "humanGates": ["authorizeContainment"],
+      "observableOutcomes": ["soc.journal", "soc.actors", "soc.authorization", "soc.incident"],
+      "actors": ["human-morgan", "human-priya", "agent-correlation", "agent-response"],
+      "presentationContexts": ["full-substrate", "war-room", "priya-mobile", "priya-laptop", "morgan-pager", "morgan-workstation", "correlation-agent", "response-agent"],
+      "focusKinds": ["actor", "cell", "token", "entity", "record", "region", "action"],
+      "timelineSources": ["scenario", "organism"]
+    },
+    "portfolio-tracker": {
+      "commands": [
+        { "command": "setHoldings", "nodeId": "portfolio-tracker", "event": "setHoldings" },
+        { "command": "upsertHolding", "nodeId": "portfolio-tracker", "event": "upsertHolding" },
+        { "command": "removeHolding", "nodeId": "portfolio-tracker", "event": "removeHolding" },
+        { "command": "refreshPrices", "nodeId": "portfolio-tracker", "event": "refreshPrices" },
+        { "command": "requestIntelligence", "nodeId": "portfolio-tracker", "event": "requestIntelligence" },
+        { "command": "calculateStrategies", "nodeId": "portfolio-tracker", "event": "calculateStrategies" },
+        { "command": "applyRecommendation", "nodeId": "rebalance-comparison", "event": "apply" }
+      ],
+      "humanGates": ["applyRecommendation"],
+      "observableOutcomes": ["portfolio.holdings", "portfolio.quotes", "portfolio.positions", "portfolio.summary", "portfolio.intelligence", "portfolio.recommendation"],
+      "actors": ["human-investor", "agent-market-data", "agent-portfolio-intelligence"],
+      "presentationContexts": ["portfolio-overview", "portfolio-advisor"],
+      "focusKinds": ["actor", "cell", "token", "record", "region", "action"],
+      "timelineSources": ["scenario"]
+    }
+  },
   "entries": [
     {
       "id": "soc-t3",
@@ -18,6 +62,33 @@
       "bundleId": "live-workspace-soc",
       "defaultContext": "war-room",
       "requiredTimelineSources": ["scenario", "organism"]
+    },
+    {
+      "id": "portfolio-baseline",
+      "label": "Portfolio baseline valuation",
+      "scenarioBlueprintId": "portfolio-tracker-baseline",
+      "targetBlueprintId": "portfolio-tracker",
+      "bundleId": "portfolio-tracker",
+      "defaultContext": "portfolio-overview",
+      "requiredTimelineSources": ["scenario"]
+    },
+    {
+      "id": "portfolio-dynamic-ticker",
+      "label": "Portfolio dynamic ticker",
+      "scenarioBlueprintId": "portfolio-tracker-dynamic-ticker",
+      "targetBlueprintId": "portfolio-tracker",
+      "bundleId": "portfolio-tracker",
+      "defaultContext": "portfolio-overview",
+      "requiredTimelineSources": ["scenario"]
+    },
+    {
+      "id": "portfolio-intelligence-rebalance",
+      "label": "Portfolio intelligence and rebalance",
+      "scenarioBlueprintId": "portfolio-tracker-intelligence-rebalance",
+      "targetBlueprintId": "portfolio-tracker",
+      "bundleId": "portfolio-tracker",
+      "defaultContext": "portfolio-advisor",
+      "requiredTimelineSources": ["scenario"]
     }
   ]
 }
