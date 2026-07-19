@@ -8,7 +8,7 @@
 
 import React from "react";
 import { GenUIRoot } from "../useGenUI";
-import { loadBundle, type Bundle } from "./bundle";
+import { loadBundle, type Bundle, type LoadBundleOptions } from "./bundle";
 import { buildBundleRegistry } from "./registry";
 import {
   BundleContextsProvider,
@@ -22,16 +22,22 @@ export function BundleHost({
   bundle,
   fileServices,
   contexts = {},
+  wrapOrchestrator,
 }: {
   bundle: Bundle;
   /** Optional host-level file helpers consumed by `multi-file-upload` / file-link leaves. */
   fileServices?: GenUIFileServices;
   /** Shared namespace stores inherited by this bundle and any nested `ui:embed` runtimes. */
   contexts?: BundleContextBindings;
+  /** Optional host-owned service or policy wrapper around the bundle's native dispatcher. */
+  wrapOrchestrator?: LoadBundleOptions["wrapOrchestrator"];
 }): React.ReactElement {
   const resolveProvider = useProjectionProviderResolver();
   // Build the runtime once for the life of the host.
-  const controller = React.useMemo(() => loadBundle(bundle, contexts), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const controller = React.useMemo(
+    () => loadBundle(bundle, { contexts, wrapOrchestrator }),
+    [] // eslint-disable-line react-hooks/exhaustive-deps
+  );
   useBundleContextSync(controller, contexts);
   // Namespaced model: resolve every `alias:name` through the manifest `externals.projectionViews` (the
   // floor is the `floor` provider, the bundle's own projection views are `self`). Nothing is ambient.

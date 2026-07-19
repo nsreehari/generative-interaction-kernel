@@ -1,0 +1,14 @@
+{
+  "portfolio": {
+    "holdings": {},
+    "quotes": {},
+    "positions": {},
+    "summary": { "marketValue": 0, "costBasis": 0, "gainLoss": 0 },
+    "intelligence": null,
+    "strategies": {},
+    "recommendation": null,
+    "investorProfile": null,
+    "appliedRecommendation": null,
+    "presentationContext": "portfolio-overview"
+  }
+}

@@ -6,7 +6,7 @@ import { authoringTools } from "../pure/authoring-tools";
 import { controlFaceTools } from "./controlface";
 import type { ControlFace } from "../live/controlface";
 
-const AGENT_SAFE_RUNTIME = ["getState", "getTree"] as const;
+const AGENT_SAFE_RUNTIME = ["getState", "getTree", "describeServiceKinds"] as const;
 
 // Agent-safety is a property of each tool (`McpTool.agentSafe`), so the projection is a uniform
 // predicate filter that also covers profile-contributed tools. AGENTFACE_ALLOWLIST stays exported

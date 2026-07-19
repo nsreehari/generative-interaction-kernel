@@ -5,11 +5,15 @@ import { bundleFromJson, loadBundleRuntime } from "@gik/react";
 import { FOUNDRY_ACCESS_STORAGE_KEY } from "./access-storage";
 import document from "./document.json";
 import effects from "./effect_handlers/index";
+import { wrapOrchestrator } from "./services";
 import manifest from "./manifest.json";
 import state from "./state.json";
 
 function runtime() {
-  return loadBundleRuntime(bundleFromJson({ manifest, document, state }, { effectHandlers: effects }));
+  return loadBundleRuntime(bundleFromJson(
+    { manifest, document, state },
+    { effectHandlers: effects, wrapOrchestrator }
+  ));
 }
 
 function installLocalStorage() {
@@ -39,7 +43,7 @@ test("access resolution populates the ask page and selects an available agent", 
     agentNames: ["Agent One", "Agent Two"],
   });
 
-  assert.equal(store.get("agent.key"), "access-key");
+  assert.equal(store.get("agent.key"), null);
   assert.deepEqual(store.get("agent.agentOptions"), ["Agent One", "Agent Two"]);
   assert.equal(store.get("agent.agentName"), "Agent One");
 
@@ -60,8 +64,40 @@ test("sign out clears persistent access and resets the ask session", async () =>
   await controller.emit("agent-signout-btn", "press", {});
 
   assert.equal(values.has(FOUNDRY_ACCESS_STORAGE_KEY), false);
-  assert.equal(store.get("agent.key"), "");
+  assert.equal(store.get("agent.key"), null);
   assert.equal(store.get("agent.agentName"), "");
   assert.deepEqual(store.get("agent.agentOptions"), []);
   assert.equal(store.get("agent.conversationId"), "");
+});
+
+test("chat resolves the host credential without copying it into Kernel state", async () => {
+  const values = installLocalStorage();
+  values.set(FOUNDRY_ACCESS_STORAGE_KEY, "access-key");
+  const originalFetch = globalThis.fetch;
+  let request: RequestInit | undefined;
+  globalThis.fetch = async (_input, init) => {
+    request = init;
+    return new Response(JSON.stringify({
+      conversationId: "conversation-1",
+      responseId: "response-1",
+      reply: "Hello from Foundry",
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  try {
+    const { controller, state: store } = runtime();
+    await controller.start();
+    await controller.emit("foundry-access-gate", "accessResolved", {
+      key: "access-key",
+      agentNames: ["Agent One"],
+    });
+    await controller.emit("agent-message-field", "input", { value: "Hello" });
+    await controller.emit("agent-ask-btn", "press", {}, "human-user");
+
+    assert.equal((request?.headers as Record<string, string>)["x-functions-key"], "access-key");
+    assert.equal(store.get("agent.reply"), "Hello from Foundry");
+    assert.equal(store.get("agent.conversationId"), "conversation-1");
+    assert.equal(store.get("agent.key"), null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

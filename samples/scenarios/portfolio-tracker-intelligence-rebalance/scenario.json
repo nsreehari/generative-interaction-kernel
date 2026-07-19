@@ -1,0 +1,16 @@
+{
+  "gik": "0.1",
+  "type": "scenario-blueprint",
+  "payload": {
+    "id": "portfolio-tracker-intelligence-rebalance",
+    "targetBlueprintId": "portfolio-tracker",
+    "title": "Agent intelligence and governed rebalance",
+    "pace": { "manualDurationMs": 90000, "autoDurationMs": 1900, "default": "manual" },
+    "steps": [
+      { "id": "act-01", "title": "Load NVDA and JNJ with an investor profile", "kind": "dispatch", "command": "setHoldings", "payload": { "holdings": [{ "ticker": "NVDA", "quantity": 18, "costBasis": 138 }, { "ticker": "JNJ", "quantity": 12, "costBasis": 149 }], "investorProfile": { "riskTolerance": "moderate", "horizonYears": 8, "objective": "growth-with-drawdown-control" } }, "actorRef": { "namespace": "portfolio", "kind": "actor", "id": "human-investor", "relation": "origin" } },
+      { "id": "act-02", "title": "Portfolio Intelligence Agent assesses the portfolio", "kind": "dispatch", "command": "requestIntelligence", "actorRef": { "namespace": "portfolio", "kind": "actor", "id": "agent-portfolio-intelligence", "relation": "origin" }, "focusRefs": [{ "namespace": "portfolio", "kind": "cell", "id": "portfolio-intelligence", "relation": "affected" }] },
+      { "id": "act-03", "title": "Calculate conservative and growth strategies", "kind": "dispatch", "command": "calculateStrategies", "actorRef": { "namespace": "portfolio", "kind": "actor", "id": "agent-portfolio-intelligence", "relation": "origin" }, "focusRefs": [{ "namespace": "portfolio", "kind": "cell", "id": "rebalance-comparison", "relation": "affected" }] },
+      { "id": "act-04", "title": "Investor applies the proposed rebalance", "kind": "human-gate", "command": "applyRecommendation", "humanBoundary": { "namespace": "portfolio", "kind": "actor", "id": "human-investor", "relation": "authorized" }, "focusRefs": [{ "namespace": "portfolio", "kind": "record", "id": "appliedRecommendation", "relation": "affected" }] }
+    ]
+  }
+}

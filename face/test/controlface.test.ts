@@ -35,6 +35,7 @@ import {
   controlFaceTools,
   runtimeTools,
 } from "../src/index";
+import { ServiceKindRegistry } from "../src/services/service-kinds";
 
 const fx = (name: string) =>
   JSON.parse(
@@ -211,6 +212,35 @@ test("controlface read ops observe live state without a transport", async () => 
   host.stop();
 });
 
+test("ControlFace projects the shared service-kind registry", () => {
+  const serviceKinds = new ServiceKindRegistry();
+  serviceKinds.register({
+    manifest: {
+      id: "deterministic-agent",
+      version: "1",
+      configSchema: { type: "object" },
+      executionModes: ["immediate"],
+      subjects: ["cell"],
+    },
+    create: () => ({
+      provider: { id: "deterministic", version: "1" },
+      discover: async () => ({ provider: { id: "deterministic", version: "1" }, revision: "1", discoveredAt: "now", capabilities: [] }),
+      execute: async () => ({ output: {} }),
+    }),
+  });
+  const face = new ControlFace(manifest, document, { state: seededState(), serviceKinds });
+
+  assert.deepEqual(face.describeServiceKinds().map(({ manifest: kind }) => kind.id), ["deterministic-agent"]);
+  const agentNames = agentFaceProjection(face).map((tool) => tool.name);
+  const controlNames = controlFaceTools(face).map((tool) => tool.name);
+  assert.ok(agentNames.includes("describeServiceKinds"));
+  assert.equal(agentNames.includes("listServiceRequests"), false);
+  assert.equal(agentNames.includes("probeService"), false);
+  assert.ok(controlNames.includes("listServiceRequests"));
+  assert.ok(controlNames.includes("probeService"));
+  face.stop();
+});
+
 test("AgentFace is the ControlFace catalog filtered to the allowlist (projection is real)", () => {
   const face = new ControlFace(manifest, document, { state: seededState() });
   const full = controlFaceTools(face).map((t) => t.name);
@@ -222,7 +252,7 @@ test("AgentFace is the ControlFace catalog filtered to the allowlist (projection
   for (const name of authoringTools.map((t) => t.name)) assert.ok(projection.includes(name));
   assert.ok(projection.includes("getState") && projection.includes("getTree"));
   // ...but never the live drive/lifecycle tools — those stay control-plane-only.
-  for (const name of ["emit", "checkpoint", "restore", "effectsSince", "compensate"]) {
+  for (const name of ["emit", "checkpoint", "restore", "effectsSince", "compensate", "listServiceRequests", "probeService"]) {
     assert.equal(AGENTFACE_ALLOWLIST.has(name), false, `${name} leaked to agents`);
     assert.equal(projection.includes(name), false, `${name} leaked to agents`);
     assert.ok(full.includes(name), `${name} missing from control catalog`);

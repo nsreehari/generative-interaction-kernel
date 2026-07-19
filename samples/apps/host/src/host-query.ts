@@ -7,9 +7,21 @@ export interface HostQuery {
   presentationContext: string | null;
 }
 
+export function resolvePresentationContext(
+  requested: string | null | undefined,
+  available: readonly string[]
+): string | null {
+  if (requested && available.includes(requested)) return requested;
+  if (available.includes(DEFAULT_PRESENTATION_CONTEXT)) return DEFAULT_PRESENTATION_CONTEXT;
+  return available[0] ?? null;
+}
+
 function isGikEnabled(params: URLSearchParams): boolean {
   const value = params.get("gik");
-  return value === "" || value === "1";
+  if (value === null) return false;
+  if (value === "") return true;
+  const numeric = Number(value);
+  return !Number.isFinite(numeric) || numeric !== 0;
 }
 
 export function readHostQuery(search: string): HostQuery {
@@ -21,9 +33,7 @@ export function readHostQuery(search: string): HostQuery {
     harnessId: isGikEnabled(params) || params.get("harness") === "gik-control-harness" || params.has("plane")
       ? "gik-control-harness"
       : null,
-    presentationContext: requestedPresentation && requestedPresentation !== DEFAULT_PRESENTATION_CONTEXT
-      ? requestedPresentation
-      : null,
+    presentationContext: requestedPresentation || null,
   };
 }
 

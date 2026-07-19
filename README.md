@@ -47,6 +47,12 @@ If you are deciding what to consume:
 
 Run `npm run dev:host` in [generative-interaction-kernel](.) and switch bundles from the host overlay, or open one directly:
 
+### Live portfolio intelligence
+
+The portfolio tracker routes `analyze` and `propose-strategies` through QueueFace. Its Blueprint declares a `deterministic-agent` service for offline execution and attaches the operations to the producing cells. Live deployments replace that declaration with a host-supported kind such as `foundry-agent`; endpoints, model/agent selection, and credential references belong to the Blueprint declaration, while the host authorizes kinds, endpoint origins, and credential resolution.
+
+The endpoint accepts `POST` JSON containing `service`, `version`, `operation`, `input`, and `correlationId`, and returns `{ "output": ... }`. The proxy owns credentials and model/provider configuration; do not expose provider secrets through Vite environment variables. A configured live endpoint is never silently replaced by the deterministic provider when a request fails.
+
 - `/?bundle=reactive-demo` — reactive computed cells + inferred dependency graph
 - `/?bundle=provider-authoring-demo` — consequence graph + exploratory frontier + orchestrated profile/recipe authoring
 - `/?bundle=workbench` — the larger live authoring workbench

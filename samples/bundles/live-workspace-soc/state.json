@@ -41,7 +41,7 @@
       "agent-correlation": { "mode": "mock", "status": "ready", "agentName": "SOC-Correlation-Agent", "conversationId": "", "responseId": "", "lastProvider": "mock", "fallbackReason": "" },
       "agent-response": { "mode": "mock", "status": "ready", "agentName": "SOC-Response-Agent", "conversationId": "", "responseId": "", "lastProvider": "mock", "fallbackReason": "" }
     },
-    "foundry": { "required": false, "key": "", "agentNames": [] },
+    "foundry": { "required": false, "agentNames": [] },
     "intent": null,
     "constraints": [],
     "dataSources": [

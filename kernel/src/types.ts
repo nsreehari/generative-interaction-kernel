@@ -162,6 +162,46 @@ export interface ProjectionViewImport {
   use?: string[]; // optional whitelist of capability names borrowed under this alias
 }
 
+/** A logical external-service contract required by an authored artifact. Physical providers,
+ * endpoints, credentials, queues, and executor bindings are host-owned and never appear here. */
+export type ServiceScope = "per-invocation" | "per-cell" | "per-blueprint" | "per-session";
+
+export interface ServiceDeclaration {
+  /** Host-registered executable kind, for example `copilot-agent` or `foundry-agent`. */
+  kind: string;
+  /** Contract version or compatible version range understood by the host's service resolver. */
+  version: string;
+  /** Operations this configured Blueprint service may invoke. */
+  operations: string[];
+  /** Kind-specific, schema-validated configuration. Literal credentials are forbidden. */
+  config?: Json;
+  /** Provider-native adapter/session reuse policy. */
+  scope?: ServiceScope;
+}
+
+/** @deprecated Migration shape for operation-only manifests created before service kinds. */
+export interface ServiceRequirement {
+  version: string;
+  operations: string[];
+  kind?: string;
+  config?: Json;
+  scope?: ServiceScope;
+}
+
+export type ServiceUse = {
+  operation: string;
+  contract: string;
+} & (
+  | { service: string; inline?: never }
+  | { service?: never; inline: ServiceDeclaration }
+);
+
+export type ServiceSubject =
+  | { kind: "cell"; blueprintId: string; cellId: string }
+  | { kind: "substrate-agent"; blueprintId: string; actorId: string }
+  | { kind: "chat"; blueprintId: string; turnId: string }
+  | { kind: "task"; blueprintId: string; taskId: string };
+
 /**
  * The bundle's outward dependency contract: everything it needs from the host to run. Grouping
  * these in one place makes the "what does this bundle require?" question answerable by reading a
@@ -172,6 +212,8 @@ export interface ExternalsSpec {
   projectionViews?: Record<string, ProjectionViewImport>;
   /** Names of effect handlers the host must supply for this bundle's `invoke` actions. */
   effectHandlers?: string[];
+  /** Logical service requirements resolved to provider adapters by the outer host. */
+  services?: Record<string, ServiceRequirement | ServiceDeclaration>;
 }
 
 export interface ManifestPayload {
@@ -187,7 +229,7 @@ export interface ManifestPayload {
   contexts?: string[];
   actions?: string[];
   capabilities: Record<string, CapabilityDescriptor>;
-  /** Outward dependency contract: imported component providers + required external effect handlers. */
+  /** Outward dependency contract: imported components, effect handlers, and logical services. */
   externals?: ExternalsSpec;
 }
 

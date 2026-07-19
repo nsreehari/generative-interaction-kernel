@@ -6,6 +6,7 @@ export * from "./schema";
 export * from "./bundle";
 export * from "./templates";
 export * from "./authoring-runner";
+export * from "./cells";
 export * from "./genui";
 export * from "./genui-runtime";
 export * from "./genui-authoring";

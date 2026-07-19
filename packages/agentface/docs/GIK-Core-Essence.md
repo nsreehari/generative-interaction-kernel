@@ -22,8 +22,15 @@ This layering matters because it answers three common questions precisely:
 
 ### 2. The Two Planes of Human-Agent Symbiosis
 The GIK governs two distinct pairings of Humans and AI, cleanly separating those who *build* a system from those who *operate within* it:
-*   **The Authoring Plane (DX & ACX — Developer & AI Coder Experience):** Human Developers and AI Coding Agents work together to define the `Manifests` (the closed vocabulary of capabilities) and author the `Documents` (the graphs that wire them). Logic and grammar are formulated here.
+*   **The Authoring Plane (DX & ACX — Developer Experience & Agent Authoring Experience):** Human developers and authoring agents define, inspect, test, and refine the artifacts that govern an experience, including `Manifests` (the closed vocabulary of capabilities) and `Documents` (the graphs that wire them). Logic and grammar are formulated here.
 *   **The Runtime Plane (HX & AX — Human & AI Agent Experience):** Human operators and AI Agents co-exist inside the running system, acting on shared state simultaneously. A human operator may be an end user of an app, an analyst on a console, or an engineer at a control surface; the AI Agent is any autonomous actor working alongside them.
+
+ACX describes the complete experience of an agent authoring and proving governed artifacts; it is
+not shorthand for static generation, pure validation, or a lightweight design-time phase. An
+authoring agent may need discovery, inspection, validation, simulation, and a full live run through
+the same execution, service, effect, and materialization paths used by AX to establish that its work
+actually behaves correctly. DX and ACX identify the authoring actor and experience, while pure/live
+and immediate/queued describe implementation and execution choices within that experience.
 
 ### 3. The Closed Action Grammar Binds the Runtime Plane
 Every runtime actor needs authority to act, and open protocols grant it by letting the actor emit arbitrary code or invent capabilities on the fly, which erases the security boundary.

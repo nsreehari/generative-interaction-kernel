@@ -56,6 +56,7 @@ const effects: EffectHandlerMap = {
         commands,
         commandIndex: 0,
         actorId: step.actorRef?.id ?? "",
+        payload: step.payload ?? {},
         waitAfterMs: step.waitAfterMs ?? 0,
         correlationId,
       };
@@ -68,6 +69,8 @@ const effects: EffectHandlerMap = {
         targetBlueprintId: plan(ctx).targetBlueprintId,
         token,
         command: "$human-gate",
+        commands,
+        commandIndex: 0,
         actorId: step.humanBoundary?.id ?? "",
         waitAfterMs: step.waitAfterMs ?? 0,
         correlationId,

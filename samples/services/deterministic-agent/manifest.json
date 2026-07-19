@@ -1,0 +1,13 @@
+{
+  "id": "deterministic-agent",
+  "version": "1",
+  "title": "Deterministic agent",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": { "handler": { "type": "string", "minLength": 1 } },
+    "required": ["handler"]
+  },
+  "executionModes": ["immediate", "queued"],
+  "subjects": ["cell", "substrate-agent", "chat", "task"]
+}

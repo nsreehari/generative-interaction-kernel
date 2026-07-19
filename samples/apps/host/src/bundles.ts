@@ -22,11 +22,12 @@ import {
   type BundleNative,
   type BundleRegistry,
   type EffectHandlerMap,
+  type LoadBundleOptions,
   type ProjectionView,
 } from "@gik/react";
 import type React from "react";
 import registry from "../../../bundles/registry.json";
-import { demoCatalog, resolveDemoComposition } from "../../../scenarios/catalog";
+import { demoCatalog, resolveDemoComposition } from "../../../shared/demo-catalog";
 
 type BundleKind = "json" | "native-root";
 type Registry = { default: string; bundles: Record<string, { kind: BundleKind }> };
@@ -45,6 +46,7 @@ const rawProjectionViews = import.meta.glob("../../../bundles/*/projection_views
   eager: true,
   import: "default",
 });
+const rawServiceModules = import.meta.glob("../../../bundles/*/services/index.{ts,tsx}", { eager: true });
 const rawRoots = import.meta.glob("../../../bundles/*/root.{ts,tsx}", { eager: true });
 
 /** Re-key a Vite glob (keyed by file path) by the bundle folder id the file lives under. */
@@ -64,6 +66,9 @@ const effectHandlerModules = byBundleId(rawEffectHandlerModules) as Record<strin
   default: EffectHandlerMap;
 }>;
 const projectionViews = byBundleId(rawProjectionViews) as Record<string, Record<string, ProjectionView>>;
+const serviceModules = byBundleId(rawServiceModules) as Record<string, {
+  wrapOrchestrator?: LoadBundleOptions["wrapOrchestrator"];
+}>;
 const roots = byBundleId(rawRoots) as Record<string, { Root?: React.ComponentType }>;
 
 /** The bundle the host mounts when no `?bundle=<id>` is given. */
@@ -77,9 +82,9 @@ export function resolveBundleProjectionViews(id: string): Record<string, Project
 /** Build the runtime registry, SEEDED with every on-disk bundle declared in registry.json plus the
  *  floor's embeddable platform apps (registered `listable: false`, so they are `embed`-only, not switcher
  *  rows). The returned registry is mutable — runtime code may register/unregister further bundles. */
-export function createHostRegistry(demoId?: string | null): BundleRegistry {
+export function createHostRegistry(demoId?: string | null, targetBundleId?: string | null): BundleRegistry {
   const reg = createBundleRegistry();
-  const demoComposition = demoId ? resolveDemoComposition(demoId) : undefined;
+  const demoComposition = demoId ? resolveDemoComposition(demoId, targetBundleId) : undefined;
   for (const [id, entry] of Object.entries(REGISTRY.bundles)) {
     if (entry.kind === "native-root") {
       const Root = roots[id]?.Root;
@@ -106,6 +111,7 @@ export function createHostRegistry(demoId?: string | null): BundleRegistry {
         const native: BundleNative = {
           effectHandlers: effectModule?.default,
           projectionViews: projectionViews[id],
+          wrapOrchestrator: serviceModules[id]?.wrapOrchestrator,
         };
         return bundleFromJson({ manifest, document, state }, native);
       },

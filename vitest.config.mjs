@@ -39,6 +39,13 @@ export default defineConfig({
       },
       {
         test: {
+          name: "profile",
+          environment: "node",
+          include: ["profile/test/**/*.test.ts"],
+        },
+      },
+      {
+        test: {
           name: "react",
           environment: "node",
           include: ["adapters/react/test/**/*.test.tsx"],

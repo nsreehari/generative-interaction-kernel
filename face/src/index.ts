@@ -4,6 +4,8 @@ export * from "./pure/capability";
 export * from "./pure/profile-tools";
 export * from "./tool-surface";
 export * from "./pure/authoring-tools";
+export * from "./services/queueface";
+export * from "./services/service-kinds";
 export * from "./live/runtime-tools";
 export * from "./live/ops";
 export * from "./live/controlface";

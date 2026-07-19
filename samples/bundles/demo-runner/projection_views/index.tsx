@@ -27,9 +27,9 @@ interface DemoState {
 
 const useStyles = makeStyles({
   runnerDrawer: {
-    position: "fixed", bottom: 0, left: 0, zIndex: 40, boxSizing: "border-box",
-    border: "1px solid rgba(126, 91, 45, .38)", borderBottom: 0, borderLeft: 0,
-    borderRadius: `0 ${tokens.borderRadiusMedium} 0 0`,
+    position: "relative", zIndex: 40, width: "100%", boxSizing: "border-box",
+    border: "1px solid rgba(126, 91, 45, .38)", borderBottom: 0, borderLeft: 0, borderRight: 0,
+    borderRadius: `${tokens.borderRadiusMedium} ${tokens.borderRadiusMedium} 0 0`,
     backgroundColor: "rgba(255, 239, 211, .78)",
     backgroundImage: "linear-gradient(100deg, rgba(255, 255, 255, .42), rgba(255, 255, 255, .08) 42%, rgba(186, 120, 28, .06))",
     boxShadow: "0 -4px 8px rgba(92, 65, 30, .12), 0 -12px 28px rgba(92, 65, 30, .1)",
@@ -42,14 +42,27 @@ const useStyles = makeStyles({
     "@media (prefers-reduced-motion: reduce)": { transitionDuration: "0ms" },
   },
   collapsed: { maxWidth: "100vw" },
-  expanded: { borderRight: 0, borderRadius: `${tokens.borderRadiusMedium} ${tokens.borderRadiusMedium} 0 0` },
+  expanded: { borderRadius: `${tokens.borderRadiusMedium} ${tokens.borderRadiusMedium} 0 0` },
   header: { minHeight: "64px", display: "grid", gridTemplateColumns: "auto minmax(220px, 1fr) minmax(240px, 320px) auto auto", alignItems: "center", gap: tokens.spacingHorizontalM, padding: `0 ${tokens.spacingHorizontalM} 0 0`, backgroundColor: "transparent", "@media (max-width: 900px)": { gridTemplateColumns: "auto minmax(160px, 1fr) auto auto" } },
   headerCollapsed: { gridTemplateColumns: "auto minmax(0, 1fr) auto", paddingRight: tokens.spacingHorizontalXS },
   toggle: { alignSelf: "stretch", minWidth: "48px", borderRadius: 0, paddingLeft: tokens.spacingHorizontalM, paddingRight: tokens.spacingHorizontalM, justifyContent: "flex-start", color: "var(--text)", "&:hover": { backgroundColor: "color-mix(in srgb, var(--accent) 18%, transparent)" } },
   title: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalS, fontWeight: tokens.fontWeightSemibold },
   actBar: { minWidth: 0, display: "grid", gap: tokens.spacingVerticalXXS },
   actNumber: { color: "var(--muted)", fontSize: tokens.fontSizeBase100, textTransform: "uppercase", fontWeight: tokens.fontWeightSemibold },
-  actTitle: { margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: tokens.fontSizeBase300, fontWeight: tokens.fontWeightSemibold },
+  actTitle: {
+    margin: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    fontSize: tokens.fontSizeBase300,
+    fontWeight: tokens.fontWeightSemibold,
+    "@media (max-width: 600px)": {
+      display: "-webkit-box",
+      whiteSpace: "normal",
+      WebkitBoxOrient: "vertical",
+      WebkitLineClamp: 2,
+    },
+  },
   dots: { display: "flex", gap: tokens.spacingHorizontalXS },
   dot: { width: "12px", height: "4px", backgroundColor: "var(--line)" },
   dotDone: { backgroundColor: "var(--accent)" },
@@ -217,21 +230,10 @@ const DemoRunner: ProjectionView = ({ node, emit, children }) => {
   };
 
   const toggleExpanded = () => {
-    const drawer = drawerRef.current;
-    const startWidth = drawer?.getBoundingClientRect().width;
-    const nextExpanded = !expanded;
-    if (drawer && startWidth !== undefined && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      const endWidth = nextExpanded ? document.documentElement.clientWidth : Math.min(440, document.documentElement.clientWidth);
-      drawer.getAnimations().forEach((animation) => animation.cancel());
-      drawer.animate(
-        [{ width: `${startWidth}px` }, { width: `${endWidth}px` }],
-        { duration: 220, easing: "cubic-bezier(.33, 0, .1, 1)" },
-      );
-    }
-    setExpanded(nextExpanded);
+    setExpanded((value) => !value);
   };
 
-  return <aside ref={drawerRef} className={mergeClasses(styles.runnerDrawer, expanded ? styles.expanded : styles.collapsed)} style={{ right: expanded ? 0 : undefined, width: expanded ? "100%" : "min(440px, 100%)" }} aria-label="Scenario runner">
+  return <aside ref={drawerRef} className={mergeClasses(styles.runnerDrawer, expanded ? styles.expanded : styles.collapsed)} aria-label="Scenario runner">
     <div className={mergeClasses(styles.header, !expanded ? styles.headerCollapsed : undefined)}>
       <Button
         appearance="subtle"
@@ -246,7 +248,7 @@ const DemoRunner: ProjectionView = ({ node, emit, children }) => {
       </Button>
       <section className={styles.actBar} aria-live="polite">
         <div className={styles.actNumber}>{complete ? "Journey complete" : `Act ${displayAct} of ${plan.steps.length}`}</div>
-        <p className={styles.actTitle}>{complete ? "Containment complete" : plan.steps[act]?.title}</p>
+        <p className={styles.actTitle}>{complete ? `${plan.title} complete` : plan.steps[act]?.title}</p>
         <div className={styles.dots} aria-hidden="true">
           {plan.steps.map((step, index) => <span key={step.id} className={mergeClasses(styles.dot, index < act || complete ? styles.dotDone : undefined)} />)}
         </div>

@@ -51,3 +51,17 @@ test("headless control rejects incompatible blueprints and unknown commands", as
   assert.equal(incompatible.outcome, "incompatible-blueprint");
   assert.equal(unsupported.outcome, "unsupported-command");
 });
+
+test("headless control rejects human-gated commands instead of dispatching them", async () => {
+  const control = headlessSoc();
+  const receipt = await control.dispatch({
+    id: "headless:authorize:1",
+    targetBlueprintId: "live-workspace-soc",
+    token: 1,
+    command: "authorizeContainment",
+    actorId: "human-priya",
+  });
+
+  assert.equal(receipt.status, "rejected");
+  assert.equal(receipt.outcome, "human-authorization-required");
+});

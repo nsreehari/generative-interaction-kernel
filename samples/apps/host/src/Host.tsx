@@ -8,22 +8,46 @@ import React from "react";
 import { makeStyles, tokens } from "@fluentui/react-components";
 import {
   BundleHost,
+  BundleContextsProvider,
   BundleRegistryProvider,
+  GenUIRoot,
   SharedContextStore,
+  buildBundleRegistry,
+  loadBundle,
   sampleProfileComponents,
+  type Bundle,
+  useBundleContextSync,
   useBundleRegistry,
+  useProjectionProviderResolver,
   useRegistryIds,
 } from "@gik/react";
 import { createHostRegistry, DEFAULT_BUNDLE, resolveBundleProjectionViews } from "./bundles";
 import { createHostCompositionBundle } from "./host-composition";
-import { canonicalizeHostUrl, readHostQuery, writePresentationNavigation } from "./host-query";
+import {
+  canonicalizeHostUrl,
+  readHostQuery,
+  resolvePresentationContext,
+  writePresentationNavigation,
+} from "./host-query";
 import { switcherBundle } from "../../../bundles/approot/switcher/switcher";
-import { resolveDemoComposition } from "../../../scenarios/catalog";
+import { resolveDemoComposition } from "../../../shared/demo-catalog";
+import { dispatchDemoControlRequest, withDemoHumanGate } from "../../../bundles/demo-runner/control-bridge";
+import type { ControlRequest, OrganismControlContract } from "../../../shared/control-runtime";
 
 const useStyles = makeStyles({
   unknownBundle: {
     padding: tokens.spacingHorizontalXXL,
     color: "var(--text)",
+  },
+  demoComposition: {
+    height: "100vh",
+    display: "grid",
+    gridTemplateRows: "minmax(0, 1fr) auto",
+    overflow: "hidden",
+    "& > main": {
+      minHeight: 0,
+      overflowY: "auto",
+    },
   },
 });
 
@@ -32,36 +56,57 @@ export function Host(): React.ReactElement {
   const query = readHostQuery(window.location.search);
   const targetId = query.targetId ?? DEFAULT_BUNDLE;
   const { demoId, harnessId, presentationContext } = query;
-  const registry = React.useMemo(() => createHostRegistry(demoId), [demoId]);
+  const registry = React.useMemo(() => createHostRegistry(demoId, targetId), [demoId, targetId]);
+  const demoComposition = React.useMemo(
+    () => demoId ? resolveDemoComposition(demoId, targetId) : undefined,
+    [demoId, targetId]
+  );
+  const resolvedPresentationContext = resolvePresentationContext(
+    presentationContext,
+    demoComposition?.demoContract.presentationContexts ?? []
+  );
   const contexts = React.useMemo<Record<string, SharedContextStore>>(() => {
     const next: Record<string, SharedContextStore> = {};
     const target = registry.get(targetId);
     const targetState = target?.kind === "bundle" ? target.make().state : undefined;
     const harness = harnessId ? registry.get(harnessId) : undefined;
     const harnessState = harness?.kind === "bundle" ? harness.make().state : undefined;
-    const inspection = targetState?.inspection && typeof targetState.inspection === "object"
+    const inspection = targetState?.inspection
+      && typeof targetState.inspection === "object"
+      && !Array.isArray(targetState.inspection)
       ? structuredClone(targetState.inspection)
       : { participants: [] };
-    if (demoId || harnessId || presentationContext) {
-      const control = SharedContextStore.create(["control"]);
-      const controlSeed = harnessState?.control && typeof harnessState.control === "object"
-        ? structuredClone(harnessState.control)
-        : {
-        request: null,
-        receipt: null,
-        commands: {},
-        presentationContext: null,
-        participantConfigurationRequest: null,
-        agentModeRequest: null,
-        authorizationRequest: null,
+    if (!("presentation" in inspection) && demoComposition) {
+      inspection.presentation = {
+        selectedContext: resolvedPresentationContext ?? "",
+        contexts: demoComposition.demoContract.presentationContexts.map((id) => ({ id, label: id })),
       };
-      controlSeed.inspection = inspection;
+    }
+    if (demoId || harnessId || resolvedPresentationContext) {
+      const control = SharedContextStore.create(["control"]);
+      const controlSeed = {
+        ...(harnessState?.control
+        && typeof harnessState.control === "object"
+        && !Array.isArray(harnessState.control)
+          ? structuredClone(harnessState.control)
+          : {
+            request: null,
+            receipt: null,
+            commands: {},
+            presentationContext: resolvedPresentationContext,
+            participantConfigurationRequest: null,
+            agentModeRequest: null,
+            authorizationRequest: null,
+          }),
+        inspection,
+        presentationContext: resolvedPresentationContext,
+      };
       control.apply([{ op: "set", path: "control", value: controlSeed }]);
       next.control = control;
     }
-    if (demoId) {
+    if (demoId && demoComposition) {
       const demo = SharedContextStore.create(["demo"]);
-      const { scenarioPlan } = resolveDemoComposition(demoId);
+      const { scenarioPlan } = demoComposition;
       const pace = scenarioPlan.pace.default;
       demo.apply([{ op: "set", path: "demo", value: {
         enabled: true,
@@ -89,7 +134,7 @@ export function Host(): React.ReactElement {
       }
     }
     return next;
-  }, [demoId, harnessId, presentationContext, registry, targetId]);
+  }, [demoComposition, demoId, harnessId, registry, resolvedPresentationContext, targetId]);
   React.useEffect(() => {
     const canonicalUrl = canonicalizeHostUrl(window.location.href);
     if (canonicalUrl !== window.location.href) window.history.replaceState(null, "", canonicalUrl);
@@ -104,11 +149,13 @@ export function Host(): React.ReactElement {
       if (url !== window.location.href) window.history.replaceState(null, "", url);
     };
     const unsubscribe = control.subscribe(syncQuery);
-    if (presentationContext && control.get("control.presentationContext") !== presentationContext) {
-      control.apply([{ op: "set", path: "control.presentationContext", value: presentationContext }]);
+    if (resolvedPresentationContext
+      && control.get("control.presentationContext") !== resolvedPresentationContext) {
+      control.apply([{ op: "set", path: "control.presentationContext", value: resolvedPresentationContext }]);
     }
+    syncQuery();
     return unsubscribe;
-  }, [contexts, presentationContext]);
+  }, [contexts, resolvedPresentationContext]);
   const resolveProvider = React.useCallback(
     (from: string) => (from === "profile" ? sampleProfileComponents : resolveBundleProjectionViews(from)),
     []
@@ -138,6 +185,21 @@ function HostView({
   const mounted = React.useMemo(() => {
     if (entry?.kind === "native-root") return <entry.Root />;
     if (entry?.kind === "bundle") {
+      if (demoId) {
+        const runner = registry?.get("demo-runner");
+        const harness = harnessId ? registry?.get(harnessId) : undefined;
+        if (runner?.kind !== "bundle") return <p className={styles.unknownBundle}>Demo runner is unavailable.</p>;
+        const { controlContract } = resolveDemoComposition(demoId, id);
+        return (
+          <DemoHostComposition
+            contexts={contexts}
+            controlContract={controlContract}
+            target={entry.make()}
+            harness={harness?.kind === "bundle" ? harness.make() : null}
+            runner={runner.make()}
+          />
+        );
+      }
       const bundle = harnessId || demoId
         ? createHostCompositionBundle(id, harnessId, demoId ? "demo-runner" : null)
         : entry.make();
@@ -153,7 +215,79 @@ function HostView({
   return (
     <>
       {mounted}
-      <BundleHost bundle={switcher} />
+      {demoId ? null : <BundleHost bundle={switcher} />}
     </>
+  );
+}
+
+function DemoHostComposition({
+  contexts,
+  controlContract,
+  target,
+  harness,
+  runner,
+}: {
+  contexts: Record<string, SharedContextStore>;
+  controlContract: OrganismControlContract;
+  target: Bundle;
+  harness: Bundle | null;
+  runner: Bundle;
+}): React.ReactElement {
+  const styles = useStyles();
+  return (
+    <div className={`gx-host-composition ${styles.demoComposition}`}>
+      <DemoTargetHost bundle={target} contexts={contexts} controlContract={controlContract} />
+      {harness ? <BundleHost bundle={harness} contexts={contexts} /> : null}
+      <BundleHost bundle={runner} contexts={contexts} />
+    </div>
+  );
+}
+
+function DemoTargetHost({
+  bundle,
+  contexts,
+  controlContract,
+}: {
+  bundle: Bundle;
+  contexts: Record<string, SharedContextStore>;
+  controlContract: OrganismControlContract;
+}): React.ReactElement {
+  const resolveProvider = useProjectionProviderResolver();
+  const controller = React.useMemo(() => loadBundle(bundle, {
+    contexts,
+  }), [bundle, contexts]);
+  useBundleContextSync(controller, contexts);
+  const registry = React.useMemo(
+    () => buildBundleRegistry(bundle, resolveProvider ?? undefined),
+    [bundle, resolveProvider]
+  );
+  const processed = React.useRef(new Set<string>());
+  const targetHandlesControl = bundle.document.payload.root.edges?.react?.some(
+    (reaction) => typeof reaction.when === "string" && reaction.when.startsWith("control.commands.")
+  ) ?? false;
+  const source = React.useMemo(
+    () => contexts.control ? withDemoHumanGate(controller, contexts.control, controlContract) : controller,
+    [contexts.control, controlContract, controller]
+  );
+  React.useEffect(() => {
+    const control = contexts.control;
+    if (!control || targetHandlesControl) return;
+    const dispatch = () => {
+      const request = control.get("control.request") as unknown as ControlRequest | null;
+      if (!request || request.command === "$human-gate") return;
+      const key = `${request.id}:${request.commandIndex ?? 0}:${request.command}`;
+      if (processed.current.has(key)) return;
+      processed.current.add(key);
+      void dispatchDemoControlRequest(controller, control, controlContract, request);
+    };
+    const unsubscribe = control.subscribe(dispatch);
+    dispatch();
+    return unsubscribe;
+  }, [contexts, controlContract, controller, targetHandlesControl]);
+
+  return (
+    <BundleContextsProvider contexts={contexts}>
+      <GenUIRoot source={source} registry={registry} />
+    </BundleContextsProvider>
   );
 }

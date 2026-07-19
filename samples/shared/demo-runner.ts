@@ -1,4 +1,5 @@
 import type { FocusKind, FocusRef, TimelineItem } from "./control-focus";
+import type { DocNode, DocumentPayload, ManifestPayload } from "@gik/kernel";
 
 export {
   focusRefMatches,
@@ -20,6 +21,7 @@ export interface ScenarioStep {
   kind: "dispatch" | "human-gate";
   command?: string;
   commands?: string[];
+  payload?: Record<string, import("@gik/kernel").Json>;
   actorRef?: FocusRef;
   waitAfterMs?: number;
   humanBoundary?: FocusRef;
@@ -29,6 +31,7 @@ export interface ScenarioStep {
 export interface OrganismDemoContract {
   blueprintId: string;
   commands: string[];
+  humanGates: string[];
   actors: string[];
   presentationContexts: string[];
   focusKinds: FocusKind[];
@@ -65,7 +68,18 @@ export interface DemoCatalogEntry {
 
 export interface DemoCatalog {
   default: string;
+  targets: Record<string, DemoTargetCatalogEntry>;
   entries: DemoCatalogEntry[];
+}
+
+export interface DemoTargetCatalogEntry {
+  commands: Array<{ command: string; nodeId: string; event: string }>;
+  humanGates: string[];
+  observableOutcomes: string[];
+  actors: string[];
+  presentationContexts: string[];
+  focusKinds: FocusKind[];
+  timelineSources: TimelineItem["source"][];
 }
 
 export interface ScenarioCursor {
@@ -91,8 +105,13 @@ export function compileScenarioBlueprint(artifact: ScenarioBlueprintArtifact): S
     if (step.command?.trim() && commands.length > 0) {
       throw new Error(`Dispatched scenario step '${step.id}' cannot declare both command and commands`);
     }
-    if (step.kind === "human-gate" && !step.humanBoundary) {
-      throw new Error(`Human-gate scenario step '${step.id}' requires a human boundary`);
+    if (step.kind === "human-gate") {
+      if (!step.humanBoundary) {
+        throw new Error(`Human-gate scenario step '${step.id}' requires a human boundary`);
+      }
+      if (!step.command?.trim() || commands.length > 0) {
+        throw new Error(`Human-gate scenario step '${step.id}' requires exactly one command`);
+      }
     }
     if (stepIds.has(step.id)) throw new Error(`Duplicate scenario step id '${step.id}'`);
     stepIds.add(step.id);
@@ -119,6 +138,7 @@ export function validateDemoComposition(
     throw new Error(`Demo '${entry.id}' targets an incompatible organism`);
   }
   const commands = new Set(organism.commands);
+  const humanGates = new Set(organism.humanGates);
   const actors = new Set(organism.actors);
   const contexts = new Set(organism.presentationContexts);
   const focusKinds = new Set(organism.focusKinds);
@@ -126,6 +146,12 @@ export function validateDemoComposition(
   for (const step of scenario.steps) {
     for (const command of scenarioStepCommands(step)) {
       if (!commands.has(command)) throw new Error(`Unsupported scenario command '${command}'`);
+      if (step.kind === "human-gate" && !humanGates.has(command)) {
+        throw new Error(`Scenario command '${command}' is not a human gate`);
+      }
+      if (step.kind === "dispatch" && humanGates.has(command)) {
+        throw new Error(`Human-gated command '${command}' cannot be dispatched automatically`);
+      }
     }
     for (const actor of [step.actorRef, step.humanBoundary]) {
       if (actor && !actors.has(actor.id)) throw new Error(`Unsupported scenario actor '${actor.id}'`);
@@ -146,6 +172,14 @@ export function validateDemoCatalog(
   catalog: DemoCatalog,
   scenarioPlans: ReadonlyMap<string, ScenarioPlan>
 ): DemoCatalog {
+  if (!catalog || typeof catalog !== "object" || Array.isArray(catalog)) {
+    throw new Error("Demo catalog must be an object");
+  }
+  if (!catalog.targets || typeof catalog.targets !== "object" || Array.isArray(catalog.targets)) {
+    throw new Error("Demo catalog targets must be an object");
+  }
+  for (const [targetId, target] of Object.entries(catalog.targets)) validateDemoTarget(targetId, target);
+  if (!Array.isArray(catalog.entries)) throw new Error("Demo catalog entries must be an array");
   if (catalog.entries.length === 0) throw new Error("Demo catalog must contain at least one entry");
   const entryIds = new Set<string>();
   for (const entry of catalog.entries) {
@@ -158,15 +192,111 @@ export function validateDemoCatalog(
         `Demo '${entry.id}' targets '${entry.targetBlueprintId}', but scenario '${scenario.id}' targets '${scenario.targetBlueprintId}'`
       );
     }
+    if (!catalog.targets[entry.targetBlueprintId]) {
+      throw new Error(`Demo '${entry.id}' references unknown target '${entry.targetBlueprintId}'`);
+    }
   }
   if (!entryIds.has(catalog.default)) throw new Error(`Unknown default demo '${catalog.default}'`);
   return structuredClone(catalog);
 }
 
-export function resolveDemoEntry(catalog: DemoCatalog, requestedId?: string | null): DemoCatalogEntry {
-  return catalog.entries.find((entry) => entry.id === requestedId)
-    ?? catalog.entries.find((entry) => entry.id === catalog.default)
-    ?? catalog.entries[0];
+function validateDemoTarget(targetId: string, target: DemoTargetCatalogEntry): void {
+  if (!targetId.trim()) throw new Error("Demo target id is required");
+  if (!target || typeof target !== "object" || Array.isArray(target)) {
+    throw new Error(`Demo target '${targetId}' must be an object`);
+  }
+  const arrays: Array<[keyof DemoTargetCatalogEntry, unknown]> = [
+    ["commands", target.commands],
+    ["humanGates", target.humanGates],
+    ["observableOutcomes", target.observableOutcomes],
+    ["actors", target.actors],
+    ["presentationContexts", target.presentationContexts],
+    ["focusKinds", target.focusKinds],
+    ["timelineSources", target.timelineSources],
+  ];
+  for (const [field, value] of arrays) {
+    if (!Array.isArray(value)) throw new Error(`Demo target '${targetId}' requires '${field}'`);
+  }
+  if (target.commands.length === 0) throw new Error(`Demo target '${targetId}' requires at least one command`);
+  const commandNames = new Set<string>();
+  for (const descriptor of target.commands) {
+    if (!descriptor || typeof descriptor !== "object"
+      || !descriptor.command?.trim() || !descriptor.nodeId?.trim() || !descriptor.event?.trim()) {
+      throw new Error(`Demo target '${targetId}' has an invalid command descriptor`);
+    }
+    if (commandNames.has(descriptor.command)) {
+      throw new Error(`Demo target '${targetId}' has duplicate command '${descriptor.command}'`);
+    }
+    commandNames.add(descriptor.command);
+  }
+  const validateStrings = (field: string, values: unknown[]) => {
+    if (values.some((value) => typeof value !== "string" || !value.trim())) {
+      throw new Error(`Demo target '${targetId}' has an invalid '${field}' entry`);
+    }
+    if (new Set(values).size !== values.length) {
+      throw new Error(`Demo target '${targetId}' has duplicate '${field}' entries`);
+    }
+  };
+  validateStrings("humanGates", target.humanGates);
+  validateStrings("observableOutcomes", target.observableOutcomes);
+  validateStrings("actors", target.actors);
+  validateStrings("presentationContexts", target.presentationContexts);
+  validateStrings("focusKinds", target.focusKinds);
+  validateStrings("timelineSources", target.timelineSources);
+  for (const gate of target.humanGates) {
+    if (!commandNames.has(gate)) {
+      throw new Error(`Demo target '${targetId}' human gate '${gate}' has no command descriptor`);
+    }
+  }
+}
+
+export function validateDemoTargetBundleContract(
+  targetId: string,
+  target: DemoTargetCatalogEntry,
+  manifest: ManifestPayload,
+  document: DocumentPayload
+): void {
+  const nodes = new Map<string, DocNode>();
+  const visit = (node: DocNode) => {
+    nodes.set(node.id, node);
+    for (const child of node.edges?.children ?? []) visit(child);
+  };
+  visit(document.root);
+
+  for (const descriptor of target.commands) {
+    const node = nodes.get(descriptor.nodeId);
+    if (!node) {
+      throw new Error(`Demo target '${targetId}' command '${descriptor.command}' references unknown node '${descriptor.nodeId}'`);
+    }
+    if (!node.edges?.on?.[descriptor.event]) {
+      throw new Error(`Demo target '${targetId}' command '${descriptor.command}' references unknown event '${descriptor.event}' on node '${descriptor.nodeId}'`);
+    }
+    if (!manifest.capabilities[node.capability]?.emits?.includes(descriptor.event)) {
+      throw new Error(`Demo target '${targetId}' event '${descriptor.event}' is not emitted by capability '${node.capability}'`);
+    }
+  }
+}
+
+export function resolveDemoEntry(
+  catalog: DemoCatalog,
+  requestedId?: string | null,
+  bundleId?: string | null
+): DemoCatalogEntry {
+  const entries = bundleId
+    ? catalog.entries.filter((entry) => entry.bundleId === bundleId)
+    : catalog.entries;
+  if (entries.length === 0) {
+    throw new Error(`No demos are registered for Bundle '${bundleId}'`);
+  }
+  const exact = entries.find((entry) => entry.id === requestedId);
+  if (exact) return exact;
+  if (requestedId && /^\d+$/.test(requestedId)) {
+    const indexed = entries[Number(requestedId)];
+    if (indexed) return indexed;
+  }
+  return bundleId
+    ? entries[0]
+    : entries.find((entry) => entry.id === catalog.default) ?? entries[0];
 }
 
 export function writeDemoNavigation(url: string, entry: DemoCatalogEntry): string {

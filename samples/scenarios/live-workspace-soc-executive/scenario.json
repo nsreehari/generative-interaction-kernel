@@ -44,7 +44,7 @@
         ],
         "waitAfterMs": 450
       },
-      { "id": "authorize", "title": "Commander reviews the consequential decision", "kind": "human-gate", "humanBoundary": { "namespace": "soc", "kind": "actor", "id": "human-priya", "relation": "authorized" } },
+      { "id": "authorize", "title": "Commander reviews the consequential decision", "kind": "human-gate", "command": "authorizeContainment", "humanBoundary": { "namespace": "soc", "kind": "actor", "id": "human-priya", "relation": "authorized" } },
       { "id": "execute", "title": "Execute the authorized, reversible containment", "kind": "dispatch", "command": "executeContainment", "actorRef": { "namespace": "soc", "kind": "actor", "id": "agent-response", "relation": "origin" }, "waitAfterMs": 450 }
     ]
   }

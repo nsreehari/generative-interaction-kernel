@@ -374,7 +374,7 @@ test("SOC requests Foundry access only while a participant agent uses Live mode"
     key: "access-key",
     agentNames: ["SOC-Correlation-Agent", "SOC-Response-Agent"],
   });
-  assert.equal(store.get("soc.foundry.key"), "access-key");
+  assert.equal(store.get("soc.foundry.key"), null);
   assert.deepEqual(store.get("soc.foundry.agentNames"), ["SOC-Correlation-Agent", "SOC-Response-Agent"]);
   const providers = store.get("soc.agentProviders") as Record<string, { status: string }>;
   assert.equal(providers["agent-correlation"].status, "ready");

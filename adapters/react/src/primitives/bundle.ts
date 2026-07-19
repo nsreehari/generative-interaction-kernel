@@ -19,6 +19,7 @@ import {
   type Enveloped,
   type Json,
   type ManifestPayload,
+  type Orchestrator,
   type StateModel,
 } from "@gik/kernel";
 import { GenUIController } from "../controller";
@@ -41,12 +42,15 @@ export interface Bundle extends SerializableBundle {
   effectHandlers?: EffectHandlerMap;
   /** EXTRA capability -> component, layered over the shared floor when this bundle renders. */
   projectionViews?: Record<string, ProjectionView>;
+  /** Optional bundle-native service composition around its effect dispatcher. */
+  wrapOrchestrator?: LoadBundleOptions["wrapOrchestrator"];
 }
 
 /** The native code a JSON bundle attaches when it loads: named effects and/or extra components. */
 export interface BundleNative {
   effectHandlers?: EffectHandlerMap;
   projectionViews?: Record<string, ProjectionView>;
+  wrapOrchestrator?: LoadBundleOptions["wrapOrchestrator"];
 }
 
 function isEnvelope(value: unknown, type: "manifest" | "document"): boolean {
@@ -87,6 +91,7 @@ export function bundleFromJson(json: unknown, native: BundleNative = {}): Bundle
     state: b.state,
     effectHandlers: native.effectHandlers,
     projectionViews: native.projectionViews,
+    wrapOrchestrator: native.wrapOrchestrator,
   };
 }
 
@@ -136,6 +141,11 @@ export interface BundleRuntime {
   state: InMemoryStateModel;
 }
 
+export interface LoadBundleOptions {
+  contexts?: Record<string, StateModel>;
+  wrapOrchestrator?: (fallback: Orchestrator, state: StateModel) => Orchestrator;
+}
+
 function applyBundleInit(bundle: Bundle, state: InMemoryStateModel): void {
   const init = bundle.effectHandlers?.[BUNDLE_INIT_EFFECT];
   if (!init) return;
@@ -163,15 +173,21 @@ function applyBundleInit(bundle: Bundle, state: InMemoryStateModel): void {
  */
 export function loadBundleRuntime(
   bundle: Bundle,
-  contexts?: Record<string, StateModel>
+  contextsOrOptions?: Record<string, StateModel> | LoadBundleOptions
 ): BundleRuntime {
   assertExternalsSatisfied(bundle);
+  const options = contextsOrOptions && ("contexts" in contextsOrOptions || "wrapOrchestrator" in contextsOrOptions)
+    ? contextsOrOptions as LoadBundleOptions
+    : { contexts: contextsOrOptions as Record<string, StateModel> | undefined };
+  const contexts = options.contexts;
   const state = seedState(bundle.manifest, bundle.state);
   applyBundleInit(bundle, state);
   const runtimeState = contexts && Object.keys(contexts).length > 0
     ? new CompositeStateModel(state, contexts)
     : state;
-  const orchestrator = createEffectDispatcher(runtimeState, bundle.effectHandlers ?? {});
+  const fallback = createEffectDispatcher(runtimeState, bundle.effectHandlers ?? {});
+  const bundleOrchestrator = bundle.wrapOrchestrator?.(fallback, runtimeState) ?? fallback;
+  const orchestrator = options.wrapOrchestrator?.(bundleOrchestrator, runtimeState) ?? bundleOrchestrator;
   const kernel = new Kernel(bundle.manifest, bundle.document, {
     state: runtimeState,
     orchestrator,
@@ -181,8 +197,11 @@ export function loadBundleRuntime(
 }
 
 /** Stand up a runtime for a bundle and return its controller. */
-export function loadBundle(bundle: Bundle, contexts?: Record<string, StateModel>): GenUIController {
-  return loadBundleRuntime(bundle, contexts).controller;
+export function loadBundle(
+  bundle: Bundle,
+  contextsOrOptions?: Record<string, StateModel> | LoadBundleOptions
+): GenUIController {
+  return loadBundleRuntime(bundle, contextsOrOptions).controller;
 }
 
 /** A stable signature so an embedded bundle only rebuilds when its JSON actually changes. */
