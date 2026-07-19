@@ -59,3 +59,18 @@ test("presentation resolution prefers a valid request, then full substrate, then
   );
   assert.equal(resolvePresentationContext(null, []), null);
 });
+
+test("presentation resolution prefers a demo's declared default context over full substrate", () => {
+  assert.equal(
+    resolvePresentationContext(null, ["portfolio-overview", "portfolio-advisor"], "portfolio-advisor"),
+    "portfolio-advisor"
+  );
+  assert.equal(
+    resolvePresentationContext("portfolio-overview", ["portfolio-overview", "portfolio-advisor"], "portfolio-advisor"),
+    "portfolio-overview"
+  );
+  assert.equal(
+    resolvePresentationContext(null, ["full-substrate", "war-room"], "unknown-context"),
+    "full-substrate"
+  );
+});

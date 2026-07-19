@@ -63,7 +63,8 @@ export function Host(): React.ReactElement {
   );
   const resolvedPresentationContext = resolvePresentationContext(
     presentationContext,
-    demoComposition?.demoContract.presentationContexts ?? []
+    demoComposition?.demoContract.presentationContexts ?? [],
+    demoComposition?.entry.defaultContext
   );
   const contexts = React.useMemo<Record<string, SharedContextStore>>(() => {
     const next: Record<string, SharedContextStore> = {};

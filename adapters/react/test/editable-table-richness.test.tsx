@@ -35,6 +35,24 @@ test("editable-table derives columns from the union of keys across ragged rows",
   assert.match(markup, /<th>amount<\/th>/i);
 });
 
+test("editable-table renders schema-defined columns when rows are empty", () => {
+  const markup = render({
+    spec: {
+      schema: {
+        properties: {
+          ticker: { type: "string" },
+          quantity: { type: "number" },
+          costBasis: { type: "number" },
+        },
+      },
+    },
+    rows: [],
+  });
+  assert.match(markup, /<th>ticker<\/th>/i);
+  assert.match(markup, /<th>quantity<\/th>/i);
+  assert.match(markup, /<th>costBasis<\/th>/i);
+});
+
 test("editable-table renders themed table + inputs (no inline styles)", () => {
   const markup = render({ rows: [{ name: "Budget", amount: 3 }] });
   assert.match(markup, /class="gx-table gx-table-editable"/);

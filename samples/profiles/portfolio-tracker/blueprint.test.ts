@@ -35,6 +35,19 @@ describe("portfolio-tracker Blueprint", () => {
     );
   });
 
+  it("lowers the empty holdings editor with an explicit row schema", () => {
+    const holdings = compilePortfolioDocument().root.edges?.children?.find((node) => node.id === "holdings");
+    expect(holdings?.props?.spec).toEqual({
+      schema: {
+        properties: {
+          ticker: { type: "string" },
+          quantity: { type: "number" },
+          costBasis: { type: "number" },
+        },
+      },
+    });
+  });
+
   it("produces the portfolio Bundle document", () => {
     expect(compilePortfolioDocument()).toEqual(bundleDocument.payload);
   });
