@@ -94,6 +94,11 @@ export interface ServiceExecutionResult {
 export interface ServiceAdapterContext {
   signal?: AbortSignal;
   effect?: OrchestratorEffect;
+  /** Resolved guardrail/output policy for this binding (see `ServiceBinding.outputPolicy`).
+   * Adapters MAY use this to request tool-level correctness (e.g. a provider's own
+   * structured-output / JSON-schema generation mode) instead of relying solely on
+   * post-hoc guardrail validation. Guardrail enforcement still runs regardless. */
+  outputPolicy?: ServiceOutputPolicy;
 }
 
 export interface ServiceAdapter {
@@ -181,7 +186,6 @@ export class InMemoryServiceRequestStore implements ServiceRequestStore {
     return [...this.records.values()].map((record) => structuredClone(record));
   }
 }
-
 export interface QueueFaceOptions {
   store?: ServiceRequestStore;
   now?: () => Date;
@@ -430,7 +434,7 @@ export class QueueFace {
     };
     await this.store.put(running);
     try {
-      const result = await adapter.execute(running.request, { signal: controller.signal, effect });
+      const result = await adapter.execute(running.request, { signal: controller.signal, effect, outputPolicy: binding.outputPolicy });
       const settled = await this.settleWithGuardrails(running, result, binding.outputPolicy, controller, effect);
       await this.store.put(settled);
       return settled;
@@ -497,7 +501,7 @@ export class QueueFace {
           : running.request;
         const retrying: ServiceRequestRecord = { ...violated, request: nextRequest };
         await this.store.put(retrying);
-        const nextResult = await adapter.execute(nextRequest, { signal: controller.signal, effect });
+        const nextResult = await adapter.execute(nextRequest, { signal: controller.signal, effect, outputPolicy: policy });
         return this.settleWithGuardrails(retrying, nextResult, policy, controller, effect);
       }
     }
