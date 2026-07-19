@@ -5,6 +5,7 @@ import type { OrchestratorEffect } from "../../kernel/src/index";
 import {
   QueueFace,
   type ServiceAdapter,
+  type ServiceBinding,
   type ServiceCatalogSnapshot,
 } from "../src/index";
 
@@ -129,4 +130,110 @@ test("cancels accepted queued requests without executing them", async () => {
   assert.equal((await queueFace.cancel("cancel-1")).status, "cancelled");
   assert.equal((await queueFace.runNext())?.status, "cancelled");
   assert.equal(executions, 0);
+});
+
+function bindWithPolicy(queueFace: QueueFace, outputPolicy: ServiceBinding["outputPolicy"]): void {
+  queueFace.bind({
+    service: "portfolio-intelligence",
+    version: "1.0.0",
+    operation: "analyze",
+    providerId: "test-provider",
+    capabilityId: "analyze",
+    invoke: "analyzePortfolio",
+    mode: "immediate",
+    outputPolicy,
+  });
+}
+
+test("settles completed when guardrails pass, and surfaces warning-level issues on the result", async () => {
+  const queueFace = new QueueFace({ idFactory: () => "guardrail-ok" });
+  queueFace.registerAdapter(createAdapter(async () => ({ output: { weight: 0.4 } })));
+  bindWithPolicy(queueFace, {
+    guardrails: [
+      { kind: "jsonata", expr: "data.weight <= 1", message: "weight must not exceed 1" },
+      { kind: "jsonata", expr: "data.weight >= 0.5", message: "weight looks low", level: "warning" },
+    ],
+  });
+
+  const record = await queueFace.submit({ service: "portfolio-intelligence", operation: "analyze" });
+  assert.equal(record.status, "completed");
+  assert.deepEqual(record.result?.detail?.guardrailWarnings, [{ detail: "weight looks low" }]);
+});
+
+test("fails a request whose output violates an error-level guardrail with no retry policy", async () => {
+  const queueFace = new QueueFace({ idFactory: () => "guardrail-fail" });
+  queueFace.registerAdapter(createAdapter(async () => ({ output: { weight: 1.4 } })));
+  bindWithPolicy(queueFace, {
+    guardrails: [{ kind: "jsonata", expr: "data.weight <= 1", message: "weight must not exceed 1" }],
+  });
+
+  const record = await queueFace.submit({ service: "portfolio-intelligence", operation: "analyze" });
+  assert.equal(record.status, "failed");
+  assert.match(record.error ?? "", /guardrail violation \(fail\)/);
+  assert.deepEqual(record.guardrailViolations, [{ detail: "weight must not exceed 1" }]);
+});
+
+test("retries on guardrail violation until the provider self-corrects, bounded by onViolation.maxAttempts", async () => {
+  let calls = 0;
+  const queueFace = new QueueFace({ idFactory: () => "guardrail-retry" });
+  queueFace.registerAdapter(createAdapter(async () => {
+    calls += 1;
+    return { output: { weight: calls < 3 ? 1.4 : 0.9 } };
+  }));
+  bindWithPolicy(queueFace, {
+    guardrails: [{ kind: "jsonata", expr: "data.weight <= 1", message: "weight must not exceed 1" }],
+    onViolation: { action: "retry", maxAttempts: 3 },
+  });
+
+  const record = await queueFace.submit({ service: "portfolio-intelligence", operation: "analyze" });
+  assert.equal(record.status, "completed");
+  assert.equal(calls, 3);
+  assert.equal(record.guardrailAttempts, 2);
+});
+
+test("threads guardrail issues into a correction-prompt re-invocation via eventPayload", async () => {
+  const queueFace = new QueueFace({ idFactory: () => "guardrail-correction" });
+  queueFace.registerAdapter(createAdapter(async (request) => {
+    const corrected = Boolean(request.eventPayload?.guardrailCorrection);
+    return { output: { weight: corrected ? 0.9 : 1.4 } };
+  }));
+  bindWithPolicy(queueFace, {
+    guardrails: [{ kind: "jsonata", expr: "data.weight <= 1", message: "weight must not exceed 1" }],
+    onViolation: { action: "correction-prompt", maxAttempts: 2 },
+  });
+
+  const record = await queueFace.submit({ service: "portfolio-intelligence", operation: "analyze" });
+  assert.equal(record.status, "completed");
+  assert.deepEqual(record.result?.output, { weight: 0.9 });
+});
+
+test("caps guardrail retries at the host's maxGuardrailAttempts regardless of a larger policy maxAttempts", async () => {
+  let calls = 0;
+  const queueFace = new QueueFace({ idFactory: () => "guardrail-cap", maxGuardrailAttempts: 2 });
+  queueFace.registerAdapter(createAdapter(async () => {
+    calls += 1;
+    return { output: { weight: 1.4 } };
+  }));
+  bindWithPolicy(queueFace, {
+    guardrails: [{ kind: "jsonata", expr: "data.weight <= 1", message: "weight must not exceed 1" }],
+    onViolation: { action: "retry", maxAttempts: 10 },
+  });
+
+  const record = await queueFace.submit({ service: "portfolio-intelligence", operation: "analyze" });
+  assert.equal(record.status, "failed");
+  assert.equal(calls, 2);
+  assert.equal(record.guardrailAttempts, 2);
+});
+
+test("marks fallback as a distinct, visible terminal outcome", async () => {
+  const queueFace = new QueueFace({ idFactory: () => "guardrail-fallback" });
+  queueFace.registerAdapter(createAdapter(async () => ({ output: { weight: 1.4 } })));
+  bindWithPolicy(queueFace, {
+    guardrails: [{ kind: "jsonata", expr: "data.weight <= 1", message: "weight must not exceed 1" }],
+    onViolation: { action: "fallback" },
+  });
+
+  const record = await queueFace.submit({ service: "portfolio-intelligence", operation: "analyze" });
+  assert.equal(record.status, "failed");
+  assert.match(record.error ?? "", /guardrail violation \(fallback\)/);
 });

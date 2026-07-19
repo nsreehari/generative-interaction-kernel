@@ -1,4 +1,4 @@
-import type { Json } from "@gik/kernel";
+import type { GuardrailRule, Json } from "@gik/kernel";
 
 export const PORTFOLIO_INTELLIGENCE_SERVICE = "portfolio-intelligence";
 export const PORTFOLIO_INTELLIGENCE_VERSION = "1";
@@ -150,3 +150,31 @@ export function parsePortfolioStrategies(value: unknown): PortfolioStrategiesRes
     provider: value.provider,
   };
 }
+
+// QueueFace-enforced guardrails for the two operations above (ADR-0040). These run against the raw
+// provider response before settlement, ahead of the local `parsePortfolioIntelligence`/
+// `parsePortfolioStrategies` narrowing above, which remains the authoritative shape used to build
+// state ops. The `ajv-schema` rules reuse the same output schemas the settlement parsers are
+// written against; the `jsonata` rules cover cross-field checks (a dynamic-keyed weight sum, a
+// cross-reference between `recommendation.selected` and the returned `strategies`) that are
+// straightforward to author declaratively but awkward to express as a single JSON Schema.
+export const portfolioIntelligenceGuardrails: readonly GuardrailRule[] = [
+  { kind: "ajv-schema", schema: portfolioIntelligenceOutputSchema as unknown as Json, message: "Portfolio intelligence response is invalid" },
+];
+
+export const portfolioStrategiesGuardrails: readonly GuardrailRule[] = [
+  { kind: "ajv-schema", schema: portfolioStrategiesOutputSchema as unknown as Json, message: "Portfolio strategies response is invalid" },
+  {
+    kind: "jsonata",
+    expr: "$count(data.strategies.*[$abs($sum(targetWeights.*) - 1) > 0.001]) = 0",
+    message: "Every strategy's target weights must total 1",
+    code: "target-weights-sum",
+  },
+  {
+    kind: "jsonata",
+    expr: "$exists($lookup(data.strategies, data.recommendation.selected))",
+    message: "Portfolio recommendation must select a returned strategy",
+    code: "recommendation-selects-known-strategy",
+  },
+];
+

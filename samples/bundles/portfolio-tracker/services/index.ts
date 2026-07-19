@@ -13,13 +13,15 @@ import {
   type ServiceRequestInput,
 } from "@gik/controlface";
 import { createSampleServiceKindRegistry } from "../../../services";
-import manifest from "../manifest.json" with { type: "json" };
+import { PORTFOLIO_SERVICES } from "../../../profiles/portfolio-tracker/compile";
 import {
   PORTFOLIO_ANALYZE,
   PORTFOLIO_INTELLIGENCE_SERVICE,
   PORTFOLIO_PROPOSE_STRATEGIES,
   parsePortfolioIntelligence,
   parsePortfolioStrategies,
+  portfolioIntelligenceGuardrails,
+  portfolioStrategiesGuardrails,
   type PortfolioServiceInput,
 } from "../service-contract";
 
@@ -143,6 +145,10 @@ export function createPortfolioQueueFace(
         service: PORTFOLIO_INTELLIGENCE_SERVICE,
         operation: PORTFOLIO_ANALYZE,
         contract: "portfolio-intelligence/v1",
+        policyOverride: {
+          guardrails: portfolioIntelligenceGuardrails,
+          onViolation: { action: "fail" },
+        },
       },
       invoke: "requestIntelligence",
       settle: settleIntelligence,
@@ -152,6 +158,10 @@ export function createPortfolioQueueFace(
         service: PORTFOLIO_INTELLIGENCE_SERVICE,
         operation: PORTFOLIO_PROPOSE_STRATEGIES,
         contract: "portfolio-strategies/v1",
+        policyOverride: {
+          guardrails: portfolioStrategiesGuardrails,
+          onViolation: { action: "fail" },
+        },
       },
       invoke: "calculateStrategies",
       settle: settleStrategies,
@@ -169,7 +179,7 @@ export function createPortfolioQueueFace(
   return queueFace;
 }
 
-const declarations = manifest.payload.externals.services as Record<string, ServiceDeclaration>;
+const declarations = PORTFOLIO_SERVICES as Record<string, ServiceDeclaration>;
 
 export const wrapOrchestrator: NonNullable<LoadBundleOptions["wrapOrchestrator"]> = (fallback, state) => {
   const queueFace = createPortfolioQueueFace(state, declarations);
