@@ -4,11 +4,21 @@ export interface FoundryProxyOptions {
   fetch?: typeof globalThis.fetch;
 }
 
+export interface FoundryChatResponseSchema {
+  name: string;
+  schema: Record<string, unknown>;
+  strict?: boolean;
+}
+
 export interface FoundryChatRequest {
   message: string;
   agentName: string;
   conversationId?: string;
   instructions?: string;
+  /** Requests Structured Outputs (Responses API `text.format`) so the model itself is
+   * constrained to emit JSON matching this schema, rather than relying solely on
+   * post-hoc validation of a free-text reply. */
+  responseSchema?: FoundryChatResponseSchema;
 }
 
 export interface FoundryChatResponse {
@@ -83,6 +93,7 @@ export function createFoundryProxy(options: FoundryProxyOptions) {
         agentName: request.agentName,
         conversationId: request.conversationId || undefined,
         instructions: request.instructions || undefined,
+        responseSchema: request.responseSchema || undefined,
       });
       const body = (await response.json()) as Partial<FoundryChatResponse>;
       if (typeof body.conversationId !== "string" || typeof body.responseId !== "string" || typeof body.reply !== "string") {

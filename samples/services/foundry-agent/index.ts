@@ -1,11 +1,11 @@
-import type { Json, ServiceDeclaration } from "../../../kernel/src/index";
+import type { GuardrailRule, Json, ServiceDeclaration } from "../../../kernel/src/index";
 import {
 	serviceConfig,
 	type ServiceAdapter,
 	type ServiceKindFactory,
 	type ServiceKindManifest,
 } from "@gik/controlface";
-import { createFoundryProxy } from "../../shared/foundry-proxy";
+import { createFoundryProxy, type FoundryChatResponseSchema } from "../../shared/foundry-proxy";
 import manifestJson from "./manifest.json";
 
 const manifest = manifestJson as ServiceKindManifest;
@@ -14,6 +14,21 @@ function record(value: Json | undefined): Record<string, Json> {
 	if (!value || typeof value !== "object" || Array.isArray(value)) return {};
 	return value as Record<string, Json>;
 }
+
+/** Finds the `ajv-schema` guardrail (if any) declared for this operation's output policy and turns
+ * it into a Responses API Structured Outputs request. This lets the model itself be constrained to
+ * emit schema-conformant JSON — the tool-level correctness the provider already supports — rather
+ * than relying only on post-hoc guardrail validation of a free-text reply. Guardrail enforcement
+ * still runs afterward regardless (it also covers cross-field checks a JSON Schema can't express). */
+function responseSchemaFor(operation: string, guardrails: readonly GuardrailRule[] | undefined): FoundryChatResponseSchema | undefined {
+	const rule = guardrails?.find((candidate): candidate is Extract<GuardrailRule, { kind: "ajv-schema" }> =>
+		typeof candidate === "object" && !Array.isArray(candidate) && candidate.kind === "ajv-schema"
+	);
+	if (!rule) return undefined;
+	const name = operation.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64) || "response";
+	return { name, schema: rule.schema as Record<string, unknown>, strict: true };
+}
+
 
 export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): ServiceKindFactory {
 	return {
@@ -80,7 +95,7 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 				await (await client()).ping(agentName);
 				return { ok: true, detail: { agentName } as Record<string, Json> };
 			},
-			execute: async (request) => {
+			execute: async (request, context) => {
 				const input = record(request.input);
 				const agentName = configuredAgent || String(input.agentName ?? "");
 				if (!agentName) throw new Error("foundry-agent requires config.agent or input.agentName");
@@ -94,6 +109,7 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 						agentName,
 						conversationId: typeof input.conversationId === "string" ? input.conversationId : undefined,
 						instructions: typeof input.instructions === "string" ? input.instructions : undefined,
+						responseSchema: responseSchemaFor(request.operation, context.outputPolicy?.guardrails),
 					}) as unknown as Json,
 				};
 			},
