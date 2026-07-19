@@ -274,3 +274,57 @@ test("rejects literal credentials while allowing credential references", async (
   assert.equal(rejected.ok, false);
   assert.match(rejected.errors?.join(" ") ?? "", /Literal credentials/);
 });
+
+test("resolves output policy most-specific-wins: use override beats declaration beats kind default", async () => {
+  const kindDefault = { onViolation: { action: "retry" as const, maxAttempts: 1 } };
+  const registry = new ServiceKindRegistry({
+    hostCapabilities: ["process-executor", "workspace-resolver"],
+  });
+  registry.register({
+    ...copilotFactory([]),
+    defaultOutputPolicy: (operation) => (operation === "analyze" ? kindDefault : undefined),
+  });
+  const queueFace = new QueueFace();
+
+  const declaredPolicy = { guardrails: [{ kind: "jsonata" as const, expr: "data.ok = true", message: "must be ok" }] };
+  const bindingFromDeclaration = await bindServiceUse(queueFace, registry, {
+    analysis: { ...declaration("gpt-5.4"), operationPolicies: { analyze: declaredPolicy } },
+  }, {
+    service: "analysis",
+    operation: "analyze",
+    contract: "portfolio-analysis-v1",
+  }, {
+    blueprintId: "portfolio",
+    blueprintRevision: "7",
+    invoke: "requestIntelligence",
+  });
+  // Declaration supplies guardrails (kind default has none); kind default's onViolation carries
+  // through because the declaration didn't specify its own.
+  assert.deepEqual(bindingFromDeclaration.outputPolicy, {
+    guardrails: declaredPolicy.guardrails,
+    onViolation: kindDefault.onViolation,
+  });
+
+  const registry2 = new ServiceKindRegistry({
+    hostCapabilities: ["process-executor", "workspace-resolver"],
+  });
+  registry2.register({
+    ...copilotFactory([]),
+    defaultOutputPolicy: () => kindDefault,
+  });
+  const queueFace2 = new QueueFace();
+  const overrideOnViolation = { action: "fail" as const };
+  const bindingWithOverride = await bindServiceUse(queueFace2, registry2, {
+    analysis: declaration("gpt-5.4"),
+  }, {
+    service: "analysis",
+    operation: "analyze",
+    contract: "portfolio-analysis-v1",
+    policyOverride: { onViolation: overrideOnViolation },
+  }, {
+    blueprintId: "portfolio",
+    blueprintRevision: "7",
+    invoke: "requestIntelligence",
+  });
+  assert.deepEqual(bindingWithOverride.outputPolicy?.onViolation, overrideOnViolation);
+});

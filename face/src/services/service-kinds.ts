@@ -1,5 +1,12 @@
 import Ajv, { type ValidateFunction } from "ajv";
-import type { Json, ServiceDeclaration, ServiceScope, ServiceSubject, ServiceUse } from "../../../kernel/src/index";
+import type {
+  Json,
+  ServiceDeclaration,
+  ServiceOutputPolicy,
+  ServiceScope,
+  ServiceSubject,
+  ServiceUse,
+} from "../../../kernel/src/index";
 import type {
   QueueFace,
   ServiceAdapter,
@@ -45,6 +52,33 @@ export interface ServiceKindFactory {
     declaration: ServiceDeclaration,
     context: ServiceKindContext
   ): ServiceAdapter | Promise<ServiceAdapter>;
+  /** Kind-wide default guardrail/output policy for an operation, inherited by every Blueprint that
+   * uses this kind unless it declares its own `operationPolicies` entry or a `ServiceUse.policyOverride`. */
+  defaultOutputPolicy?(operation: string): ServiceOutputPolicy | undefined;
+}
+
+/** Merges resolved output policy from least to most specific: kind default, Blueprint-declared
+ * per-operation policy, single-call-site override. A defined field on a more specific layer wins
+ * outright over the same field on a less specific layer (no field-by-field guardrail merging). */
+export function mergeOutputPolicy(
+  ...layers: readonly (ServiceOutputPolicy | Partial<ServiceOutputPolicy> | undefined)[]
+): ServiceOutputPolicy | undefined {
+  let guardrails: ServiceOutputPolicy["guardrails"];
+  let onViolation: ServiceOutputPolicy["onViolation"];
+  let found = false;
+  for (const layer of layers) {
+    if (!layer) continue;
+    if (layer.guardrails !== undefined) {
+      guardrails = layer.guardrails;
+      found = true;
+    }
+    if (layer.onViolation !== undefined) {
+      onViolation = layer.onViolation;
+      found = true;
+    }
+  }
+  if (!found) return undefined;
+  return { ...(guardrails !== undefined ? { guardrails } : {}), ...(onViolation !== undefined ? { onViolation } : {}) };
 }
 
 export interface ServiceKindDescription {
@@ -131,6 +165,11 @@ export class ServiceKindRegistry {
 
   has(kind: string): boolean {
     return this.factories.has(kind);
+  }
+
+  /** The service kind's own default guardrail/output policy for an operation, if it declares one. */
+  defaultOutputPolicy(kind: string, operation: string): ServiceOutputPolicy | undefined {
+    return this.factories.get(kind)?.defaultOutputPolicy?.(operation);
   }
 
   describe(): ServiceKindDescription[] {
@@ -291,6 +330,11 @@ export async function bindServiceUse(
     subject: options.subject,
     mapRequest: options.mapRequest,
     mapResult: options.mapResult,
+    outputPolicy: mergeOutputPolicy(
+      registry.defaultOutputPolicy(resolved.declaration.kind, use.operation),
+      resolved.declaration.operationPolicies?.[use.operation],
+      use.policyOverride
+    ),
   };
   queueFace.bind(binding);
   return binding;
@@ -324,6 +368,11 @@ export function bindServiceUseSync(
     subject: options.subject,
     mapRequest: options.mapRequest,
     mapResult: options.mapResult,
+    outputPolicy: mergeOutputPolicy(
+      registry.defaultOutputPolicy(resolved.declaration.kind, use.operation),
+      resolved.declaration.operationPolicies?.[use.operation],
+      use.policyOverride
+    ),
   };
   queueFace.bind(binding);
   return binding;

@@ -1,8 +1,10 @@
+import { runDeclarativeValidators } from "@gik/evaluators";
 import type {
   Json,
   Orchestrator,
   OrchestratorEffect,
   OrchestratorResult,
+  ServiceOutputPolicy,
   ServiceRequirement,
   ServiceSubject,
 } from "../../../kernel/src/index";
@@ -128,6 +130,9 @@ export interface ServiceBinding {
   blueprintRevision?: string;
   serviceRef?: string;
   subject?: ServiceSubject;
+  /** Resolved guardrail/output policy (kind default, Blueprint declaration, call-site override, in
+   * that priority) enforced by `QueueFace` after each successful adapter execution. */
+  outputPolicy?: ServiceOutputPolicy;
   mapRequest?: (effect: OrchestratorEffect) => ServiceRequestInput;
   mapResult?: (result: ServiceExecutionResult, effect: OrchestratorEffect) => OrchestratorResult;
 }
@@ -148,6 +153,10 @@ export interface ServiceRequestRecord {
   updatedAt: string;
   result?: ServiceExecutionResult;
   error?: string;
+  /** Re-invocation count driven by guardrail violation policy, distinct from transport-level `attempts`. */
+  guardrailAttempts?: number;
+  /** The most recent guardrail evaluation's `"error"`-level issues, if any were ever raised. */
+  guardrailViolations?: readonly { detail: string; code?: string; node?: string }[];
 }
 
 export interface ServiceRequestStore {
@@ -178,6 +187,9 @@ export interface QueueFaceOptions {
   now?: () => Date;
   idFactory?: () => string;
   maxAttempts?: number;
+  /** Hard ceiling on guardrail-driven retry/correction re-invocations, independent of and always
+   * enforced regardless of any larger `maxAttempts` a policy's `onViolation` action declares. */
+  maxGuardrailAttempts?: number;
 }
 
 export interface ServiceSatisfactionReport {
@@ -203,6 +215,7 @@ export class QueueFace {
   private readonly now: () => Date;
   private readonly idFactory: () => string;
   private readonly maxAttempts: number;
+  private readonly maxGuardrailAttempts: number;
   private nextId = 0;
 
   constructor(options: QueueFaceOptions = {}) {
@@ -210,6 +223,7 @@ export class QueueFace {
     this.now = options.now ?? (() => new Date());
     this.idFactory = options.idFactory ?? (() => `service-${this.now().getTime().toString(36)}-${++this.nextId}`);
     this.maxAttempts = Math.max(1, Math.floor(options.maxAttempts ?? 3));
+    this.maxGuardrailAttempts = Math.max(1, Math.floor(options.maxGuardrailAttempts ?? 3));
   }
 
   registerAdapter(adapter: ServiceAdapter): void {
@@ -405,7 +419,7 @@ export class QueueFace {
   }
 
   private async execute(record: ServiceRequestRecord, effect?: OrchestratorEffect): Promise<ServiceRequestRecord> {
-    const { adapter } = this.resolve(record.request.service, record.request.operation);
+    const { adapter, binding } = this.resolve(record.request.service, record.request.operation);
     const controller = new AbortController();
     this.controllers.set(record.request.id, controller);
     const running: ServiceRequestRecord = {
@@ -417,14 +431,9 @@ export class QueueFace {
     await this.store.put(running);
     try {
       const result = await adapter.execute(running.request, { signal: controller.signal, effect });
-      const completed: ServiceRequestRecord = {
-        ...running,
-        status: "completed",
-        result,
-        updatedAt: this.now().toISOString(),
-      };
-      await this.store.put(completed);
-      return completed;
+      const settled = await this.settleWithGuardrails(running, result, binding.outputPolicy, controller, effect);
+      await this.store.put(settled);
+      return settled;
     } catch (error) {
       const retry = running.mode === "queued" && running.attempts < this.maxAttempts;
       const failed: ServiceRequestRecord = {
@@ -440,4 +449,69 @@ export class QueueFace {
       this.controllers.delete(record.request.id);
     }
   }
+
+  /** Evaluates the resolved output policy's guardrails against a successful adapter result and
+   * applies `onViolation` (fail / bounded retry / bounded correction-prompt / fallback) before the
+   * request is allowed to settle as `"completed"`. A declaration with no guardrails behaves exactly
+   * as before this policy layer existed. */
+  private async settleWithGuardrails(
+    running: ServiceRequestRecord,
+    result: ServiceExecutionResult,
+    policy: ServiceOutputPolicy | undefined,
+    controller: AbortController,
+    effect?: OrchestratorEffect
+  ): Promise<ServiceRequestRecord> {
+    if (!policy?.guardrails || policy.guardrails.length === 0) {
+      return { ...running, status: "completed", result, updatedAt: this.now().toISOString() };
+    }
+
+    const report = runDeclarativeValidators(policy.guardrails, (result.output ?? null) as Json, {});
+    if (report.ok) {
+      const detail = report.warnings.length
+        ? { ...(result.detail ?? {}), guardrailWarnings: report.warnings }
+        : result.detail;
+      return { ...running, status: "completed", result: { ...result, detail }, updatedAt: this.now().toISOString() };
+    }
+
+    const action = policy.onViolation ?? { action: "fail" };
+    const guardrailAttempts = (running.guardrailAttempts ?? 0) + 1;
+    const violated: ServiceRequestRecord = {
+      ...running,
+      guardrailAttempts,
+      guardrailViolations: report.errors,
+      updatedAt: this.now().toISOString(),
+    };
+
+    if (action.action === "retry" || action.action === "correction-prompt") {
+      const ceiling = Math.min(action.maxAttempts ?? 2, this.maxGuardrailAttempts);
+      if (guardrailAttempts < ceiling) {
+        const { adapter } = this.resolve(running.request.service, running.request.operation);
+        const nextRequest: ServiceRequest = action.action === "correction-prompt"
+          ? {
+              ...running.request,
+              eventPayload: {
+                ...(running.request.eventPayload ?? {}),
+                guardrailCorrection: { issues: report.errors },
+              },
+            }
+          : running.request;
+        const retrying: ServiceRequestRecord = { ...violated, request: nextRequest };
+        await this.store.put(retrying);
+        const nextResult = await adapter.execute(nextRequest, { signal: controller.signal, effect });
+        return this.settleWithGuardrails(retrying, nextResult, policy, controller, effect);
+      }
+    }
+
+    const reason = action.action === "fallback"
+      ? "fallback"
+      : action.action === "fail"
+        ? "fail"
+        : `exhausted ${action.action}`;
+    return {
+      ...violated,
+      status: "failed",
+      error: `guardrail violation (${reason}): ${report.errors.map((issue) => issue.detail).join("; ")}`,
+    };
+  }
 }
+

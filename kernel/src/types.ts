@@ -166,6 +166,61 @@ export interface ProjectionViewImport {
  * endpoints, credentials, queues, and executor bindings are host-owned and never appear here. */
 export type ServiceScope = "per-invocation" | "per-cell" | "per-blueprint" | "per-session";
 
+/** Severity of a single guardrail rule: `"error"` blocks settlement and triggers `onViolation`;
+ * `"warning"` is recorded on the settled result but never blocks. */
+export type GuardrailLevel = "error" | "warning";
+
+/** A single declarative guardrail rule authored as data. Mirrors the `@gik/evaluators` declarative
+ * validator shape (the same engine already used for authored-input validation) so a Blueprint
+ * author uses one vocabulary for both. `jsonata` evaluates a boolean expression against the
+ * provider's output; `ajv-schema` checks output shape against a JSON Schema; `typedef` checks the
+ * output's basic JS type. */
+export type GuardrailRule =
+  | readonly [string, string?]
+  | {
+      kind?: "jsonata";
+      expr: string;
+      message?: string;
+      level?: GuardrailLevel;
+      code?: string;
+      node?: string;
+    }
+  | {
+      kind: "ajv-schema";
+      schema: Json;
+      refs?: readonly { schema: Json; key?: string }[];
+      message?: string;
+      level?: GuardrailLevel;
+      code?: string;
+      node?: string;
+    }
+  | {
+      kind: "typedef";
+      type: string | readonly string[];
+      message?: string;
+      level?: GuardrailLevel;
+      code?: string;
+      node?: string;
+    };
+
+/** What QueueFace does when a service response fails one or more `"error"`-level guardrails.
+ * `maxAttempts` (where present) is always additionally capped by the host; a Blueprint cannot
+ * author an unbounded call loop. */
+export type GuardrailViolationAction =
+  | { action: "fail" }
+  | { action: "retry"; maxAttempts?: number }
+  | { action: "correction-prompt"; maxAttempts?: number }
+  | { action: "fallback" };
+
+/** A Blueprint- or kind-authored output policy: the guardrails a service response must satisfy and
+ * what to do when it doesn't. Resolved per operation, most-specific wins: a `ServiceUse.policyOverride`
+ * beats a `ServiceDeclaration.operationPolicies` entry, which beats a service kind's own
+ * `defaultOutputPolicy`. */
+export interface ServiceOutputPolicy {
+  guardrails?: readonly GuardrailRule[];
+  onViolation?: GuardrailViolationAction;
+}
+
 export interface ServiceDeclaration {
   /** Host-registered executable kind, for example `copilot-agent` or `foundry-agent`. */
   kind: string;
@@ -177,6 +232,8 @@ export interface ServiceDeclaration {
   config?: Json;
   /** Provider-native adapter/session reuse policy. */
   scope?: ServiceScope;
+  /** Per-operation output guardrails and violation policy, overriding the service kind's default. */
+  operationPolicies?: Record<string, ServiceOutputPolicy>;
 }
 
 /** @deprecated Migration shape for operation-only manifests created before service kinds. */
@@ -191,6 +248,8 @@ export interface ServiceRequirement {
 export type ServiceUse = {
   operation: string;
   contract: string;
+  /** Overrides the resolved guardrail/output policy for this single call site only. */
+  policyOverride?: Partial<ServiceOutputPolicy>;
 } & (
   | { service: string; inline?: never }
   | { service?: never; inline: ServiceDeclaration }
