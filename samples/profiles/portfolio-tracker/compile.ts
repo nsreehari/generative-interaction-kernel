@@ -101,7 +101,20 @@ const executors: Record<string, StageExecutor<LayerRecipe>> = {
           children: presentation.cells.map((cell) => ({
             id: cell.id,
             capability: cell.capability,
-            props: { label: cell.id },
+            props: {
+              label: cell.id,
+              ...(cell.id === "holdings" ? {
+                spec: {
+                  schema: {
+                    properties: {
+                      ticker: { type: "string" },
+                      quantity: { type: "number" },
+                      costBasis: { type: "number" },
+                    },
+                  },
+                },
+              } : {}),
+            },
             edges: {
               ...(cell.capability.startsWith("portfolio:")
                 ? { read: { value: cell.readPath } }

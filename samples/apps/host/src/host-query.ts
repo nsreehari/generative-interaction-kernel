@@ -9,9 +9,11 @@ export interface HostQuery {
 
 export function resolvePresentationContext(
   requested: string | null | undefined,
-  available: readonly string[]
+  available: readonly string[],
+  preferredDefault?: string | null
 ): string | null {
   if (requested && available.includes(requested)) return requested;
+  if (preferredDefault && available.includes(preferredDefault)) return preferredDefault;
   if (available.includes(DEFAULT_PRESENTATION_CONTEXT)) return DEFAULT_PRESENTATION_CONTEXT;
   return available[0] ?? null;
 }

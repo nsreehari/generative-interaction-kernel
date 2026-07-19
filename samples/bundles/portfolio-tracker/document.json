@@ -19,7 +19,7 @@
           "setPresentationContext": [{ "do": "invoke", "args": { "tool": "setPresentationContext" } }]
         },
         "children": [
-          { "id": "holdings", "capability": "ui:editable-table", "props": { "label": "holdings" }, "edges": { "readExpr": { "rows": "$each(portfolio.holdings, function($value) { $value })" }, "on": { "save": [{ "do": "invoke", "args": { "tool": "saveHoldings" } }] } } },
+          { "id": "holdings", "capability": "ui:editable-table", "props": { "label": "holdings", "spec": { "schema": { "properties": { "ticker": { "type": "string" }, "quantity": { "type": "number" }, "costBasis": { "type": "number" } } } } }, "edges": { "readExpr": { "rows": "$each(portfolio.holdings, function($value) { $value })" }, "on": { "save": [{ "do": "invoke", "args": { "tool": "saveHoldings" } }] } } },
           { "id": "market-prices", "capability": "ui:table", "props": { "label": "market-prices" }, "edges": { "readExpr": { "rows": "$each(portfolio.quotes, function($value) { $value })" } } },
           { "id": "positions", "capability": "ui:table", "props": { "label": "positions" }, "edges": { "readExpr": { "rows": "$each(portfolio.positions, function($value) { $value })" } } },
           { "id": "summary", "capability": "portfolio:summary", "props": { "label": "summary" }, "edges": { "read": { "value": "portfolio.summary" } } },
