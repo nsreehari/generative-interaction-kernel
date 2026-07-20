@@ -40,7 +40,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --sourcemap --clean --tsconfig tsconfig.json",
+    "build": "tsup src/index.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
     "prepack": "node ../../scripts/sync-public-docs.mjs packages/transport-mcp-http"
   }
 }

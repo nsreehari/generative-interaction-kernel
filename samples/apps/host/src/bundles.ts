@@ -19,7 +19,11 @@ import {
   declarativeServiceOrchestrator,
 } from "../../../shared/service-runtime";
 
-type Registry = { default: string; blueprints: string[] };
+type Registry = {
+  default: string;
+  blueprints: string[];
+  nativeFrom?: Record<string, string>;
+};
 const REGISTRY = registry as Registry;
 const HOST_INFRASTRUCTURE_BUNDLES = ["demo-runner", "gik-control-harness"] as const;
 
@@ -84,10 +88,11 @@ export function createHostRegistry(demoId?: string | null, targetBlueprintId?: s
       make: () => {
         const runtime = openSampleBlueprint(id);
         const { manifest, document, state } = runtime;
-        const effectModule = effectHandlerModules[id];
+        const nativeId = REGISTRY.nativeFrom?.[id] ?? id;
+        const effectModule = effectHandlerModules[nativeId];
         const native: BundleNative = {
           effectHandlers: effectModule?.default,
-          projectionViews: projectionViews[id],
+          projectionViews: projectionViews[nativeId],
           wrapOrchestrator: declarativeServiceOrchestrator(runtime, browserServiceRegistryOptions),
         };
         return bundleFromJson({ manifest, document, state }, native);

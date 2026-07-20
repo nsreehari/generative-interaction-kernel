@@ -69,5 +69,5 @@ test("fluent:dropdown renders declarative options and the selected label", () =>
   assert.match(markup, /role="combobox"/);
   assert.match(markup, /aria-label="Select demo Blueprint"/);
   assert.match(markup, /Governed SOC investigation/);
-  assert.match(markup, /SOC executive walkthrough/);
+  assert.doesNotMatch(markup, /SOC executive walkthrough/);
 });

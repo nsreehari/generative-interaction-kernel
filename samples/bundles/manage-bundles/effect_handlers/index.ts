@@ -1,1 +1,1 @@
-export { manageBundlesEffects as default } from "../store";
+export { manageBundlesEffects as default } from "./store";

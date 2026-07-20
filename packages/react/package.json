@@ -51,7 +51,7 @@
     "@gik/kernel": "0.1.0"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --sourcemap --clean --tsconfig tsconfig.json",
+    "build": "tsup src/index.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
     "prepack": "node ../../scripts/sync-public-docs.mjs packages/react"
   }
 }

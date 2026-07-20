@@ -1,3 +1,5 @@
+import type { CellDefinition, ExecutableCellTopology } from "@gik/profile";
+
 export type ConsequenceNodeKind = "source" | "compute" | "effect" | "materialize";
 
 export interface ConsequenceNode {
@@ -113,4 +115,38 @@ function reachableFrom(edges: readonly ConsequenceEdge[], roots: readonly string
 
 function unique(values: readonly string[]): string[] {
   return [...new Set(values)];
+}
+
+export interface ConsequenceGraphFromTopologyOptions {
+  classify?: (cell: CellDefinition) => ConsequenceNodeKind;
+}
+
+/** Derive an inspection graph from compiled organism topology without making it an execution authority. */
+export function consequenceGraphFromTopology(
+  topology: ExecutableCellTopology,
+  options: ConsequenceGraphFromTopologyOptions = {}
+): ConsequenceGraphDefinition {
+  const classify = options.classify ?? classifyCell;
+  const dependencies = new Map<string, Set<string>>();
+  for (const edge of topology.edges) {
+    const current = dependencies.get(edge.consumerCellId) ?? new Set<string>();
+    current.add(edge.providerCellId);
+    dependencies.set(edge.consumerCellId, current);
+  }
+
+  return {
+    id: topology.id,
+    nodes: Object.fromEntries(topology.cells.map((cell) => [cell.id, {
+      id: cell.id,
+      kind: classify(cell),
+      ...(dependencies.has(cell.id) ? { dependsOn: [...dependencies.get(cell.id)!].sort() } : {}),
+    }])),
+  };
+}
+
+function classifyCell(cell: CellDefinition): ConsequenceNodeKind {
+  if (cell.service) return "effect";
+  if ((cell.requires?.length ?? 0) === 0) return "source";
+  if ((cell.provides?.length ?? 0) === 0) return "materialize";
+  return "compute";
 }

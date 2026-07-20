@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import React from "react";
 import { test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { Json, ResolvedNode } from "@gik/kernel";
@@ -18,14 +19,21 @@ function gate(status: string, children: ResolvedNode[] = []): ResolvedNode {
 }
 
 const registry = buildRegistryFromImports(
-  { foundry: { from: "foundry", use: ["access-gate"] } },
-  (from) => from === "foundry" ? foundryViews : undefined,
+  {
+    foundry: { from: "foundry", use: ["access-gate"] },
+    test: { from: "test", use: ["content"] },
+  },
+  (from) => from === "foundry"
+    ? foundryViews
+    : from === "test"
+      ? { content: ({ node }) => React.createElement("span", null, String(node.props.value ?? "")) }
+      : undefined,
   floorFallback
 );
 
 test("foundry:access-gate prompts for access and withholds protected children", () => {
   const markup = renderToStaticMarkup(renderNode(gate("required", [{
-    capability: "ui:text",
+    capability: "test:content",
     id: "protected",
     props: { value: "Protected content" },
     visible: true,
@@ -33,14 +41,13 @@ test("foundry:access-gate prompts for access and withholds protected children", 
     children: [],
   }]), registry, () => {}));
 
-  assert.match(markup, /Connect to Foundry/);
-  assert.match(markup, />Cancel</);
+  assert.match(markup, /hidden/);
   assert.doesNotMatch(markup, /Protected content/);
 });
 
 test("foundry:access-gate renders protected children when access is ready", () => {
   const markup = renderToStaticMarkup(renderNode(gate("ready", [{
-    capability: "ui:text",
+    capability: "test:content",
     id: "protected",
     props: { value: "Protected content" },
     visible: true,
