@@ -104,6 +104,7 @@ export function createHostRegistry(demoId?: string | null, targetBlueprintId?: s
             plan: demoComposition.scenarioPlan,
             catalog: demoCatalog.entries,
             entry: demoComposition.entry,
+            presentationPresets: demoComposition.demoContract.presentationPresets,
           };
         }
         return bundleFromJson({

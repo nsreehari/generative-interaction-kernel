@@ -40,6 +40,9 @@ function demoRuntimes(scenarioPlan: ScenarioPlan = t3ScenarioPlan) {
     request: null,
     receipt: null,
     commands: {},
+    inspection: { presentation: { selectedContext: "full-substrate" } },
+    presentationContext: { id: "full-substrate", arrangement: "inspection" },
+    presentationPresetId: "full-substrate",
   } }]);
   const contexts = { demo: shared, control: shared };
   const soc = loadBundleRuntime(bundleFromJson({
@@ -48,7 +51,15 @@ function demoRuntimes(scenarioPlan: ScenarioPlan = t3ScenarioPlan) {
     state: structuredClone(state),
   }, { effectHandlers: createSocEffects() }), contexts);
   const runnerSeed = structuredClone(runnerState) as Record<string, unknown>;
-  runnerSeed.runner = { plan: scenarioPlan, catalog: [], entry: null };
+  runnerSeed.runner = {
+    plan: scenarioPlan,
+    catalog: [],
+    entry: null,
+    presentationPresets: [
+      { id: "full-substrate", label: "Full substrate", context: { id: "full-substrate", arrangement: "inspection" } },
+      { id: "war-room", label: "War room", context: { id: "war-room", arrangement: "war-room" } },
+    ],
+  };
   const runner = loadBundleRuntime(bundleFromJson({
     manifest: structuredClone(runnerManifest),
     document: structuredClone(runnerDocument),
@@ -109,11 +120,23 @@ test("SOC organism and demo runner expose independent effect surfaces", () => {
     "resetDemo",
     "selectDemo",
     "setPace",
+    "setPresentationContext",
   ]);
   assert.equal("establishIntent" in socOrganismEffects, true);
   assert.equal("authorizeContainment" in socOrganismEffects, true);
   assert.equal("requestNextAct" in socOrganismEffects, false);
   assert.equal("setPace" in socOrganismEffects, false);
+});
+
+test("demo runner selects and publishes a named presentation context", async () => {
+  const { shared, runner } = demoRuntimes();
+  await runner.controller.start();
+
+  await runner.controller.emit("presentation-context-dropdown-region", "select", { value: "war-room" });
+
+  assert.equal(shared.get("control.presentationPresetId"), "war-room");
+  assert.deepEqual(shared.get("control.presentationContext"), { id: "war-room", arrangement: "war-room" });
+  assert.equal(shared.get("control.inspection.presentation.selectedContext"), "war-room");
 });
 
 test("runner command mailbox advances only after the SOC effect acknowledges it", async () => {

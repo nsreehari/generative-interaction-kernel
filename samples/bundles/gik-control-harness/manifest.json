@@ -8,7 +8,7 @@
     "contexts": ["soc", "control", "demo"],
     "actions": ["assign"],
     "capabilities": {
-      "harness:shell": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"], "emits": ["selectTab", "toggleHarness", "setPresentationContext"] },
+      "harness:shell": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"], "emits": ["selectTab", "toggleHarness"] },
       "harness:blueprint-inspector": { "propsSchema": { "type": "object", "additionalProperties": true } },
       "harness:journal": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["setJournalMode", "selectTimeline", "clearTimelineSelection", "selectJournal"] },
       "harness:participants": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["configureParticipant"] }

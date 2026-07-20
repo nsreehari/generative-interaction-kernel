@@ -39,7 +39,12 @@ function demoRuntimes() {
     wrapOrchestrator: declarativeServiceOrchestrator(portfolioRuntime),
   });
   const runnerSeed = structuredClone(runnerState) as Record<string, unknown>;
-  runnerSeed.runner = { plan: portfolioBaselineScenarioPlan, catalog: [], entry: null };
+  runnerSeed.runner = {
+    plan: portfolioBaselineScenarioPlan,
+    catalog: [],
+    entry: null,
+    presentationPresets: portfolioBaselineComposition.demoContract.presentationPresets,
+  };
   const runner = loadBundleRuntime(bundleFromJson({
     manifest: structuredClone(runnerManifest),
     document: structuredClone(runnerDocument),
