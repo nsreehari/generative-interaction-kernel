@@ -227,6 +227,7 @@ test("presentation context changes projection metadata without changing the caus
   await controller.emit("soc-workspace", "setPresentationContext", {
     contextId: "priya-laptop",
   });
+  await controller.settle();
 
   const presentation = store.get("soc.presentation") as {
     selectedContext: string;
@@ -269,6 +270,7 @@ test("presentation context changes projection metadata without changing the caus
   await controller.emit("soc-workspace", "setPresentationContext", {
     contextId: "investigation-board",
   });
+  await controller.settle();
   const board = store.get("soc.presentation") as typeof presentation;
   assert.equal(board.selectedContext, "investigation-board");
   assert.equal(board.revision, 2);

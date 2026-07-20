@@ -23,8 +23,9 @@ language. Everything here is normative; the case schema (`conformance-case.schem
    (throw / exception / error `Result` — whatever the host language uses for a rejected document).
    No steps run.
 5. **`expectInitialResolve`.** Assert on the resolved tree after `init`, before any event.
-6. **Steps.** For each step, dispatch `event`, then assert `expectPatch` (if present) against the
-   returned patch and `expectResolve` (if present) against the freshly resolved tree.
+6. **Steps.** For each step, dispatch `event`, then assert `expectPatch` against the initiating patch,
+  `expectSettledPatch` against a detached invocation's terminal patch, and `expectResolve` against
+  the freshly resolved tree when those expectations are present.
 
 A case MAY also declare an `orchestrator` script (see below) to exercise deferred effects.
 

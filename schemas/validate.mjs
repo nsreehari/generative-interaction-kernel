@@ -14,6 +14,7 @@ const readJson = (p) => JSON.parse(readFileSync(join(here, p), "utf8"));const sc
   "manifest.schema.json",
   "document.schema.json",
   "patch.schema.json",
+  "progress.schema.json",
   "event.schema.json",
   "trace.schema.json",
   "envelope.schema.json",
@@ -41,6 +42,7 @@ const check = (label, validate, data) => {
 const vManifest = ajv.getSchema(byId("manifest.schema.json"));
 const vDocument = ajv.getSchema(byId("document.schema.json"));
 const vPatch = ajv.getSchema(byId("patch.schema.json"));
+const vProgress = ajv.getSchema(byId("progress.schema.json"));
 const vEvent = ajv.getSchema(byId("event.schema.json"));
 const vEnvelope = ajv.getSchema(byId("envelope.schema.json"));
 
@@ -48,18 +50,21 @@ const manifest = readJson("fixtures/live-cards.manifest.json");
 const document = readJson("fixtures/example.document.json");
 const event = readJson("fixtures/example.event.json");
 const expectedPatch = readJson("fixtures/expected.patch.json");
+const progress = readJson("fixtures/example.progress.json");
 
 console.log("Per-message schema validation:");
 check("manifest fixture -> manifest.schema", vManifest, manifest);
 check("document fixture -> document.schema", vDocument, document);
 check("event fixture    -> event.schema", vEvent, event);
 check("patch fixture    -> patch.schema", vPatch, expectedPatch);
+check("progress fixture -> progress.schema", vProgress, progress);
 
 console.log("\nEnvelope (oneOf) validation:");
 check("manifest -> envelope", vEnvelope, manifest);
 check("document -> envelope", vEnvelope, document);
 check("event    -> envelope", vEnvelope, event);
 check("patch    -> envelope", vEnvelope, expectedPatch);
+check("progress -> envelope", vEnvelope, progress);
 
 // Golden reduction contract: the event on `table-orders` (rowSelect) resolves the node's
 // on.rowSelect assign edge, writing $event.id into card_data.selected. Any conforming kernel

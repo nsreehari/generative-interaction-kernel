@@ -43,6 +43,7 @@ interface ResolveExpect {
 interface Step {
   event: { node: string; name: string; payload?: Record<string, Json> };
   expectPatch?: { rev: number; ops: PatchOp[] };
+  expectSettledPatch?: { rev: number; ops: PatchOp[] };
   expectResolve?: ResolveExpect[];
 }
 
@@ -143,8 +144,13 @@ for (const file of files) {
     if (c.expectInitialResolve) assertResolve(await kernel.resolve(), c.expectInitialResolve);
 
     for (const step of c.steps ?? []) {
+      const published: Array<{ rev: number; ops: PatchOp[] }> = [];
+      const unsubscribe = kernel.subscribePatches((patch) => published.push(patch));
       const patch = await kernel.dispatch(step.event);
       if (step.expectPatch) assert.deepEqual(patch, step.expectPatch);
+      await kernel.whenIdle();
+      if (step.expectSettledPatch) assert.deepEqual(published.at(-1), step.expectSettledPatch);
+      unsubscribe();
       if (step.expectResolve) assertResolve(await kernel.resolve(), step.expectResolve);
     }
   });

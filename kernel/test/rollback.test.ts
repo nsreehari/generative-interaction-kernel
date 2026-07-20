@@ -56,6 +56,7 @@ test("checkpoint captures an immutable snapshot; later dispatch does not mutate 
   assert.equal(cp.rev, 0);
 
   await k.dispatch({ node: "btn-charge", name: "tap" });
+  await k.whenIdle();
 
   // The live state advanced...
   assert.equal((k.state() as any).card_data.status, "charged");
@@ -71,12 +72,13 @@ test("restore rolls pure state to a checkpoint and touches nothing else (usable 
   const forward = await k.dispatch({ node: "btn-charge", name: "tap" });
   assert.equal(forward.rev, 1);
   assert.equal((k.state() as any).card_data.status, "charged");
+  await k.whenIdle();
   assert.equal((k.state() as any).payments.receipt, "ch_1");
 
-  const patch = k.restore(cp);
+  const patch = await k.restore(cp);
 
   // Pure STATE is fully reverted — each namespace overwritten with its checkpoint value.
-  assert.equal(patch.rev, 2, "the rollback itself is a new rev");
+  assert.equal(patch.rev, 3, "invocation settlement and rollback each allocate a rev");
   assert.deepEqual((k.state() as any).card_data, {});
   assert.deepEqual((k.state() as any).payments, {});
 });
@@ -86,6 +88,7 @@ test("effectsSince reports fired effects in causal order, tagged with rev + seq 
   k.init();
   const cp = k.checkpoint();
   await k.dispatch({ node: "btn-charge", name: "tap" });
+  await k.whenIdle();
 
   const since = k.effectsSince(cp.rev);
   assert.equal(since.length, 1);
@@ -114,15 +117,16 @@ test("compensate routes effects in the order the host supplies; the host owns th
   k.init();
   const cp = k.checkpoint();
   await k.dispatch({ node: "btn-charge", name: "tap" });
+  await k.whenIdle();
 
-  k.restore(cp);
+  await k.restore(cp);
   // The host reverses the array itself for LIFO undo — the kernel does not pre-reverse.
   const toUndo = k.effectsSince(cp.rev).map((e) => e.effect).reverse();
   const patch = await k.compensate(toUndo);
 
   assert.deepEqual(compensated.map((e) => e.tool), ["charge"]);
   assert.equal((k.state() as any).payments.refunded, true);
-  assert.equal(patch.rev, 3, "state rollback (rev 2) + compensation (rev 3) are distinct revs");
+  assert.equal(patch.rev, 4, "settlement, rollback, and compensation are distinct revs");
 });
 
 test("an unhandled compensation is traced, never silently pretended-away", async () => {
@@ -132,8 +136,9 @@ test("an unhandled compensation is traced, never silently pretended-away", async
   k.init();
   const cp = k.checkpoint();
   await k.dispatch({ node: "btn-charge", name: "tap" });
+  await k.whenIdle();
 
-  k.restore(cp);
+  await k.restore(cp);
   await k.compensate(k.effectsSince(cp.rev).map((e) => e.effect));
 
   const unhandled = traces.find((t) => (t.detail as any)?.compensate && (t.detail as any)?.unhandled);
@@ -145,13 +150,14 @@ test("a host with its own substrate ignores effects: restore alone round-trips s
   k.init();
   const before = k.checkpoint();
   await k.dispatch({ node: "btn-charge", name: "tap" });
+  await k.whenIdle();
   const after = k.checkpoint();
 
   // Ping-pong purely on state, never touching the effect journal (git-style rev usage).
-  k.restore(before);
+  await k.restore(before);
   assert.deepEqual((k.state() as any).card_data, {});
-  k.restore(after);
+  await k.restore(after);
   assert.equal((k.state() as any).card_data.status, "charged");
-  k.restore(before);
+  await k.restore(before);
   assert.deepEqual((k.state() as any).card_data, {});
 });

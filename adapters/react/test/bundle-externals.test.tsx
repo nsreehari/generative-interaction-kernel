@@ -89,9 +89,9 @@ test("loadBundleRuntime: composes bundle service orchestration inside host polic
     },
     {
       wrapOrchestrator: (fallback) => ({
-        invoke: async (effect) => {
+        invoke: async (effect, control) => {
           order.push("bundle");
-          return fallback.invoke!(effect);
+          return fallback.invoke!(effect, control);
         },
       }),
     }
@@ -99,13 +99,14 @@ test("loadBundleRuntime: composes bundle service orchestration inside host polic
 
   const runtime = loadBundleRuntime(bundle, {
     wrapOrchestrator: (fallback) => ({
-      invoke: async (effect) => {
+      invoke: async (effect, control) => {
         order.push("host");
-        return fallback.invoke!(effect);
+        return fallback.invoke!(effect, control);
       },
     }),
   });
   await runtime.controller.emit("root", "run");
+  await Promise.resolve();
 
   assert.deepEqual(order, ["host", "bundle"]);
 });

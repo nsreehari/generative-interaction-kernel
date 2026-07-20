@@ -54,6 +54,7 @@ test("access request discovers agents through the host and selects an available 
     const { controller, state: store } = runtime();
     await controller.start();
     await controller.emit("foundry-access-gate", "accessRequested", {});
+    await controller.settle();
 
     assert.equal(store.get("agent.key"), null);
     assert.equal(store.get("agent.accessStatus"), "ready");
@@ -73,6 +74,7 @@ test("sign out resets the ask session and returns access state to required", asy
   const { controller, state: store } = runtime();
   await controller.start();
   await controller.emit("agent-signout-btn", "press", {});
+  await controller.settle();
 
   assert.equal(values.has(FOUNDRY_ACCESS_STORAGE_KEY), true);
   assert.equal(store.get("agent.key"), null);
@@ -105,8 +107,10 @@ test("chat resolves the host credential without copying it into Kernel state", a
     const { controller, state: store } = runtime();
     await controller.start();
     await controller.emit("foundry-access-gate", "accessRequested", {});
+    await controller.settle();
     await controller.emit("agent-message-field", "input", { value: "Hello" });
     await controller.emit("agent-ask-btn", "press", {}, "human-user");
+    await controller.settle();
 
     assert.equal((request?.headers as Record<string, string>)["x-functions-key"], "access-key");
     assert.equal(JSON.parse(String(request?.body)).responseSchema, undefined);
@@ -130,6 +134,7 @@ test("missing access settles as required without invoking the proxy", async () =
     const { controller, state: store } = runtime();
     await controller.start();
     await controller.emit("foundry-access-gate", "accessRequested", {});
+    await controller.settle();
 
     assert.equal(calls, 0);
     assert.equal(store.get("agent.accessStatus"), "required");
@@ -151,6 +156,7 @@ test("rejected access is cleared and settles back to required", async () => {
     const { controller, state: store } = runtime();
     await controller.start();
     await controller.emit("foundry-access-gate", "accessRequested", {});
+    await controller.settle();
 
     assert.equal(values.has(FOUNDRY_ACCESS_STORAGE_KEY), false);
     assert.equal(store.get("agent.accessStatus"), "required");
@@ -177,8 +183,10 @@ test("chat failures settle into application error state", async () => {
     const { controller, state: store } = runtime();
     await controller.start();
     await controller.emit("foundry-access-gate", "accessRequested", {});
+    await controller.settle();
     await controller.emit("agent-message-field", "input", { value: "Hello" });
     await controller.emit("agent-ask-btn", "press", {}, "human-user");
+    await controller.settle();
 
     assert.equal(store.get("agent.accessStatus"), "ready");
     assert.equal(store.get("agent.error"), "Provider unavailable");

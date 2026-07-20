@@ -59,13 +59,13 @@ test("rollback demo mode serves checkpoint -> emit -> effectsSince -> restore ->
     rev: number;
     ops: Array<{ path: string }>;
   };
-  assert.equal(rollback.rev, 2);
+  assert.equal(rollback.rev, 3);
   assert.ok(rollback.ops.some((op) => op.path === "card_data"));
   assert.ok(rollback.ops.some((op) => op.path === "payments"));
 
   const compensation = (await call("compensate", { effects: fired.map((e) => e.effect).reverse() })).result
     .structuredContent as { rev: number; ops: Array<{ path: string; value?: unknown }> };
-  assert.equal(compensation.rev, 3);
+  assert.equal(compensation.rev, 4);
   assert.ok(compensation.ops.some((op) => op.path === "payments.refunded" && op.value === true));
 
   await host.stop();
