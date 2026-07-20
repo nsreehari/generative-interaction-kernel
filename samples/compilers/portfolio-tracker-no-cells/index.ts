@@ -118,7 +118,7 @@ const executors: Record<string, StageExecutor<LayerRecipe>> = {
             edges: {
               ...(cell.capability.startsWith("portfolio:")
                 ? { read: { value: cell.readPath } }
-                : { readExpr: { rows: `$each(${cell.readPath}, function($value) { $value })` } }),
+                : { readExpr: { rows: `[${cell.readPath}.*]` } }),
               ...(cell.id === "holdings"
                 ? { on: { save: [{ do: "invoke", args: { tool: "saveHoldings" } }] } }
                 : cell.id === "rebalance-comparison"

@@ -147,10 +147,10 @@
             "capability": "ui:editable-table",
             "provides": ["holding:$TICKER"],
             "props": { "label": "holdings", "spec": { "schema": { "properties": { "ticker": { "type": "string" }, "quantity": { "type": "number" }, "costBasis": { "type": "number" } } } } },
-            "edges": { "readExpr": { "rows": "$each(portfolio.holdings, function($value) { $value })" }, "on": { "save": [{ "do": "invoke", "args": { "tool": "saveHoldings" } }] } }
+            "edges": { "readExpr": { "rows": "[portfolio.holdings.*]" }, "on": { "save": [{ "do": "invoke", "args": { "tool": "saveHoldings" } }] } }
           },
-          { "id": "market-prices", "capability": "ui:table", "requires": ["holding:$TICKER"], "provides": ["quote:$TICKER"], "props": { "label": "market-prices" }, "edges": { "readExpr": { "rows": "$each(portfolio.quotes, function($value) { $value })" } } },
-          { "id": "positions", "capability": "ui:table", "requires": ["holding:$TICKER", "quote:$TICKER"], "provides": ["position:$TICKER"], "props": { "label": "positions" }, "edges": { "readExpr": { "rows": "$each(portfolio.positions, function($value) { $value })" } } },
+          { "id": "market-prices", "capability": "ui:table", "requires": ["holding:$TICKER"], "provides": ["quote:$TICKER"], "props": { "label": "market-prices" }, "edges": { "readExpr": { "rows": "[portfolio.quotes.*]" } } },
+          { "id": "positions", "capability": "ui:table", "requires": ["holding:$TICKER", "quote:$TICKER"], "provides": ["position:$TICKER"], "props": { "label": "positions" }, "edges": { "readExpr": { "rows": "[portfolio.positions.*]" } } },
           { "id": "summary", "capability": "portfolio:summary", "requires": ["position:$TICKER"], "provides": ["portfolio-summary"], "props": { "label": "summary" }, "edges": { "read": { "value": "portfolio.summary" } } },
           { "id": "portfolio-intelligence", "capability": "portfolio:narrative", "requires": ["portfolio-summary", "position:$TICKER", "investor-profile"], "provides": ["portfolio-intelligence"], "service": { "service": "portfolio-intelligence", "operation": "analyze", "contract": "portfolio-intelligence/v1" }, "props": { "label": "portfolio-intelligence" }, "edges": { "read": { "value": "portfolio.intelligence" } } },
           { "id": "conservative-rebalance", "capability": "portfolio:narrative", "requires": ["position:$TICKER", "portfolio-summary", "portfolio-intelligence", "investor-profile"], "provides": ["rebalance-conservative"], "props": { "label": "conservative-rebalance" }, "edges": { "read": { "value": "portfolio.strategies.conservative" } } },
