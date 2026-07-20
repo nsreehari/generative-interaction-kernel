@@ -4,12 +4,12 @@
 import React from "react";
 import {
   buildRegistryFromImports,
+  readProps,
   type ProjectionViewProps,
   type ComponentRegistry,
   type ProviderMap,
-} from "./registry";
-import { readProps } from "./props";
-import { FLOOR_COMPONENTS } from "./primitives/registry";
+} from "@gik/react";
+import { FLOOR_COMPONENTS } from "./index";
 
 export function Board({ node, children }: ProjectionViewProps) {
   const title = readProps(node).str("title");

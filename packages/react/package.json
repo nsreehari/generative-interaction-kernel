@@ -41,13 +41,10 @@
     "registry": "https://registry.npmjs.org/"
   },
   "peerDependencies": {
-    "@fluentui/react-components": "^9.74.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "dependencies": {
-    "@gik/component-infinite-canvas": "0.1.0",
-    "@gik/evaluators": "0.1.0",
     "@gik/kernel": "0.1.0"
   },
   "scripts": {

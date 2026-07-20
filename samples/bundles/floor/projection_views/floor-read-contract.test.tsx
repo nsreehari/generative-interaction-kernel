@@ -1,7 +1,7 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
 
-import { PRIMITIVE_CAPABILITIES, FLOOR_READ_KEYS } from "../src/primitives/manifest";
+import { PRIMITIVE_CAPABILITIES, FLOOR_READ_KEYS } from "./capabilities";
 
 // --- PLATFORM guardrail for the floor read-key contract ---------------------------------------
 //

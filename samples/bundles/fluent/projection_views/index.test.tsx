@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { Json } from "@gik/kernel";
-import { buildRegistryFromImports, floorFallback, renderNode } from "@gik/react";
+import { FallbackView, buildRegistryFromImports, renderNode } from "@gik/react";
 
 import fluentViews from "./index";
 
@@ -27,7 +27,7 @@ function leaf(capability: string, value: string, extraProps: Record<string, Json
 const registry = buildRegistryFromImports(
   { fluent: { from: "fluent", use: ["dropdown", "switch", "toggle"] } },
   (from) => from === "fluent" ? fluentViews : undefined,
-  floorFallback
+  FallbackView
 );
 
 test("fluent:switch renders the track-and-thumb switch with value-derived state", () => {

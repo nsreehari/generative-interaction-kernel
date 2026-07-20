@@ -1,10 +1,9 @@
-// The platform floor: shared primitive vocabulary + effect dispatcher + bundle model + host.
-export * from "./manifest";
+// Generic bundle, effect, and provider infrastructure for React projection hosts.
 export * from "./effects";
 export * from "./bundle";
 export * from "./bundle-registry";
 export * from "./registry";
 export * from "./host";
-export * from "./playground";
+export * from "./fileServices";
 export * from "./useCountdownTimer";
 export * from "./useAsyncEmit";

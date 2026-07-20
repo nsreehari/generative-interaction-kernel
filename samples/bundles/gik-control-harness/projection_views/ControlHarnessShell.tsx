@@ -2,7 +2,7 @@ import React from "react";
 import { Button, Tab, TabList, makeStyles, tokens } from "@fluentui/react-components";
 import { ChevronLeft20Regular, ChevronRight20Regular } from "@fluentui/react-icons";
 import type { ProjectionView } from "@gik/react";
-import { GrowingContainer } from "../../../../adapters/react/src/primitives/registry";
+import { GrowingContainer } from "../../floor/projection_views";
 
 const useStyles = makeStyles({
   harness: {

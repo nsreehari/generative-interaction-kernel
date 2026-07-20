@@ -9,21 +9,19 @@ import { createElement, Fragment, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { InMemoryStateModel, Kernel, type ResolvedNode } from "@gik/kernel";
-import { GenUIController } from "../src/controller";
-import { renderNode } from "../src/render";
-import { buildRegistryFromImports } from "../src/registry";
+import { GenUIController, buildRegistryFromImports, renderNode } from "@gik/react";
 import {
   ActionButton,
   Board,
   FallbackView,
   Table,
   liveCardsRegistry,
-} from "../src/components";
+} from "./profile";
 
 const fx = (name: string) =>
   JSON.parse(
     readFileSync(
-      fileURLToPath(new URL(`../../../schemas/fixtures/${name}`, import.meta.url)),
+      fileURLToPath(new URL(`../../../../schemas/fixtures/${name}`, import.meta.url)),
       "utf8"
     )
   );

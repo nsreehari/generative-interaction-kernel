@@ -1,7 +1,7 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
 
-import { floorStylesheet, FLOOR_STYLESHEET } from "../src/styles";
+import { floorStylesheet, FLOOR_STYLESHEET } from "./styles";
 
 test("floor stylesheet ships the leaf design-system classes", () => {
   const css = FLOOR_STYLESHEET;

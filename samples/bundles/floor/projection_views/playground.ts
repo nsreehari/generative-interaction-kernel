@@ -9,8 +9,8 @@
 // same bundle-in-bundle mechanism the console already uses.
 
 import { assign, authorDocument, node, type DocNode } from "@gik/kernel";
-import { bundleManifest } from "./manifest";
-import type { SerializableBundle } from "./bundle";
+import type { SerializableBundle } from "@gik/react";
+import { bundleManifest } from "./capabilities";
 
 export type PlaygroundMode = "preview" | "interactive";
 

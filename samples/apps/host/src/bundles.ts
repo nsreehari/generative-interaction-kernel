@@ -5,12 +5,12 @@
 import {
   bundleFromJson,
   createBundleRegistry,
-  playgroundApp,
   type BundleNative,
   type BundleRegistry,
   type EffectHandlerMap,
   type ProjectionView,
 } from "@gik/react";
+import { playgroundApp } from "../../../bundles/floor/projection_views/playground";
 import registry from "../../../profiles/registry.json";
 import { demoCatalog, resolveDemoComposition } from "../../../shared/demo-catalog";
 import { hasSampleBlueprint, openSampleBlueprint } from "../../../shared/blueprints";

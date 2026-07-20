@@ -16,13 +16,13 @@ import {
   KernelTransportHost,
   createInMemoryTransportPair,
 } from "@gik/kernel";
-import { GenUIRoot } from "../src/useGenUI";
-import { liveCardsRegistry } from "../src/components";
+import { GenUIRoot } from "@gik/react";
+import { liveCardsRegistry } from "./profile";
 
 const fx = (name: string) =>
   JSON.parse(
     readFileSync(
-      fileURLToPath(new URL(`../../../schemas/fixtures/${name}`, import.meta.url)),
+      fileURLToPath(new URL(`../../../../schemas/fixtures/${name}`, import.meta.url)),
       "utf8"
     )
   );

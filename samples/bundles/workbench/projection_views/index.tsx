@@ -14,11 +14,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { makeStyles, mergeClasses, shorthands, tokens } from "@fluentui/react-components";
 import {
   GenUIRoot,
-  liveCardsRegistry,
   readProps,
   type ProjectionView,
   type ProjectionViewProps,
 } from "@gik/react";
+import { liveCardsRegistry } from "../../floor/projection_views/profile";
 import { editableRegions, facetsAsItems } from "./libs/edits";
 import { checkAuthoredProfile, parseAuthoredSession } from "./libs/authoring";
 import type { Json } from "@gik/kernel";
