@@ -107,3 +107,32 @@ test("runDeclarativeValidators can evaluate JSONata against the raw value root",
   assert.deepEqual(report.errors, []);
   assert.deepEqual(report.warnings, []);
 });
+
+test("runDeclarativeValidators can validate that a value is a full JSONata expression", () => {
+  const report = runDeclarativeValidators([
+    { kind: "jsonata-expression", mode: "full", message: "expression invalid" },
+  ], "function($x){ $x * 2 }(21)");
+
+  assert.equal(report.ok, true);
+  assert.deepEqual(report.errors, []);
+  assert.deepEqual(report.warnings, []);
+});
+
+test("runDeclarativeValidators can validate that a value stays within the safe JSONata subset", () => {
+  const report = runDeclarativeValidators([
+    { kind: "jsonata-expression", mode: "safe", message: "expression invalid" },
+  ], "function($x){ $x * 2 }(21)");
+
+  assert.equal(report.ok, false);
+  assert.equal(report.errors.length, 1);
+  assert.match(report.errors[0].detail, /^expression invalid: /);
+});
+
+test("runDeclarativeValidators rejects jsonata-expression candidates that are not strings", () => {
+  const report = runDeclarativeValidators([
+    { kind: "jsonata-expression", message: "expression invalid" },
+  ], { expr: "count > 0" });
+
+  assert.equal(report.ok, false);
+  assert.deepEqual(report.errors, [{ detail: "expression invalid: expected string" }]);
+});

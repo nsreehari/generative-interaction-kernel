@@ -24,7 +24,7 @@ const profile: Profile = {
           name: { type: "string" },
         },
         required: ["kind"],
-        validators: [{ expression: '$exists(name) = false or $length(name) > 0', detail: 'spec.name must be non-empty when provided' }],
+        validators: [{ kind: "jsonata", expr: '$exists(name) = false or $length(name) > 0', message: 'spec.name must be non-empty when provided' }],
       },
     },
     { id: "view", kind: "view" },
@@ -130,7 +130,7 @@ test("validate routes inline warning-level form validators into warnings", () =>
           ...layer,
           input: {
             ...(layer.input as Record<string, unknown>),
-            validators: [{ expression: "$exists(name)", detail: "name should be provided", level: "warning", code: "missing-name" }],
+            validators: [{ kind: "jsonata", expr: "$exists(name)", message: "name should be provided", level: "warning", code: "missing-name", node: "spec" }],
           },
         }),
   };

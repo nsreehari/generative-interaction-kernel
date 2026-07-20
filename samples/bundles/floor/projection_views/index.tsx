@@ -71,8 +71,10 @@ interface FormSchema {
   required?: string[];
   // Declarative validators. Legacy JSONata shorthands (`[expr, message]`, `{ expr, message }`) still
   // normalize to `{ kind: "jsonata", ... }`. Explicit validator objects may also use
-  // `{ kind: "ajv-schema", schema, message? }` or
-  // `{ kind: "typedef", type, message? }`. JSONata validators run with the SAFE subset.
+  // `{ kind: "ajv-schema", schema, message? }`,
+  // `{ kind: "typedef", type, message? }`, or
+  // `{ kind: "jsonata-expression", mode?: "full" | "safe", message? }`.
+  // Runtime JSONata validators run with the SAFE subset.
   validators?: unknown;
 }
 
