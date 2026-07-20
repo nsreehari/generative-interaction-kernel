@@ -1,5 +1,5 @@
 import type { BlueprintInspection, InspectionParticipant, OrganismInspection, ParticipantStatus } from "../../shared/control-inspection";
-import { SOC_BLUEPRINT_CONTEXTS, socBlueprint, traceSocBlueprint } from "../../profiles/live-workspace-soc/compile";
+import { SOC_BLUEPRINT_PRESENTATION_PRESETS, socBlueprint, traceSocBlueprint } from "../../profiles/live-workspace-soc/compile";
 import { socJournalTimelineItem } from "./projection_views/helpers";
 import type { Actor, AgentProvider, Incident, JournalEntry, Presentation } from "./projection_views/types";
 
@@ -66,7 +66,7 @@ export function projectSocParticipants(
 
 export function projectSocBlueprint(selectedContext: string): BlueprintInspection {
   const trace = traceSocBlueprint(selectedContext);
-  const context = SOC_BLUEPRINT_CONTEXTS.find((item) => item.id === selectedContext) ?? SOC_BLUEPRINT_CONTEXTS[0];
+  const context = SOC_BLUEPRINT_PRESENTATION_PRESETS.find((item) => item.id === selectedContext) ?? SOC_BLUEPRINT_PRESENTATION_PRESETS[0];
   const presentation = trace[1].output as { arrangement: string; regions: Array<{ name: string; group?: string; priority: string; disclosure: string }> };
   const visibleRegions = presentation.regions.filter((region) => region.disclosure !== "omitted");
   const summaries = trace.map((item) => {
@@ -85,7 +85,7 @@ export function projectSocBlueprint(selectedContext: string): BlueprintInspectio
     title: "Intent to runnable bundle",
     description: "The selected context runs through the organism's authored tiers and terminal document contract.",
     status: "Blueprint and lowering recipes validated",
-    contextIds: SOC_BLUEPRINT_CONTEXTS.map((item) => item.id),
+    contextIds: SOC_BLUEPRINT_PRESENTATION_PRESETS.map((item) => item.id),
     selectedContext: context.id,
     fields: [
       { label: "Role", value: context.role },
@@ -105,7 +105,7 @@ export function projectSocBlueprint(selectedContext: string): BlueprintInspectio
     })),
     resources: [
       { label: "Actors", value: String((socBlueprint.resources.actors as unknown[]).length) },
-      { label: "Projection contexts", value: String(SOC_BLUEPRINT_CONTEXTS.length) },
+      { label: "Projection presets", value: String(SOC_BLUEPRINT_PRESENTATION_PRESETS.length) },
       { label: "Authority rule", value: String((socBlueprint.resources.authorityPolicy as { requiredRole: string }).requiredRole) },
     ],
   };

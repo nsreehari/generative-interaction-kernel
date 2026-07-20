@@ -23,8 +23,8 @@ export const socBlueprint = loadProfile<LayerRecipe>(
   resolveProfileTemplate
 );
 
-export const SOC_BLUEPRINT_CONTEXTS = (
-  socBlueprint.resources.presentationContexts as Array<{
+export const SOC_BLUEPRINT_PRESENTATION_PRESETS = (
+  socBlueprint.resources.presentationPresets as Array<{
     id: string;
     actor: string;
     role: string;
@@ -57,13 +57,13 @@ export type SocPresentationContext = {
 };
 
 function defaultSocPresentationContext(): SocPresentationContext {
-  return SOC_BLUEPRINT_CONTEXTS.find((context) => context.id === "full-substrate") ?? SOC_BLUEPRINT_CONTEXTS[0];
+  return SOC_BLUEPRINT_PRESENTATION_PRESETS.find((context) => context.id === "full-substrate") ?? SOC_BLUEPRINT_PRESENTATION_PRESETS[0];
 }
 
 function resolveSocPresentationContext(context?: string | SocPresentationContext): SocPresentationContext {
   if (!context) return defaultSocPresentationContext();
   if (typeof context === "string") {
-    return SOC_BLUEPRINT_CONTEXTS.find((item) => item.id === context) ?? defaultSocPresentationContext();
+    return SOC_BLUEPRINT_PRESENTATION_PRESETS.find((item) => item.id === context) ?? defaultSocPresentationContext();
   }
   return context;
 }

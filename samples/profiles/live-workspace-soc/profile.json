@@ -197,7 +197,7 @@
           "participationDoesNotImplyAuthority": true
         }
       },
-      "presentationContexts": {
+      "presentationPresets": {
         "inline": [
           {
             "id": "full-substrate",
