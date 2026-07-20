@@ -1,6 +1,6 @@
 {
-  "name": "orchestrator: an invoke effect fetches data and drives a machine to ready in one dispatch",
-  "description": "Pressing Load runs an `invoke` effect (tool fetchOrders) and moves the orders machine idle -> loading. The scripted Orchestrator returns the fetched rows plus a `resolved` follow-up event, which advances loading -> ready. All of it settles inside one dispatch, so a single rev carries: the loading write, the fetched-data write, then the ready write, in that contractual order.",
+  "name": "orchestrator: an invoke effect settles in a later patch",
+  "description": "Pressing Load commits idle -> loading in the initiating patch. The scripted Orchestrator then returns fetched rows plus a `resolved` follow-up event, which advances loading -> ready in a later terminal patch.",
   "manifest": {
     "gik": "0.1",
     "type": "manifest",
@@ -83,7 +83,12 @@
       "expectPatch": {
         "rev": 1,
         "ops": [
-          { "op": "set", "path": "orders.state", "value": "loading" },
+          { "op": "set", "path": "orders.state", "value": "loading" }
+        ]
+      },
+      "expectSettledPatch": {
+        "rev": 2,
+        "ops": [
           { "op": "set", "path": "fetched.orders", "value": [{ "id": "order-42", "amount": 100 }] },
           { "op": "set", "path": "orders.state", "value": "ready" }
         ]

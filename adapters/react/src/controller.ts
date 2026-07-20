@@ -76,6 +76,14 @@ export class GenUIController {
     });
   }
 
+  /** Wait for detached invocations to settle, then refresh the resolved tree. */
+  async settle(): Promise<ResolvedNode> {
+    return this.enqueue(async () => {
+      await this.kernel.whenIdle();
+      return this.refresh();
+    });
+  }
+
   private enqueue<T>(operation: () => Promise<T>): Promise<T> {
     const next = this.operation.then(operation, operation);
     this.operation = next.then(

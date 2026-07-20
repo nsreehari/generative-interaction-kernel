@@ -35,6 +35,7 @@ export interface RecordedEffect {
   rev: number;
   seq: number;
   effect: OrchestratorEffect;
+  invocationId?: InvocationId;
 }
 
 export interface GIKEvent {
@@ -150,6 +151,38 @@ export interface OrchestratorResult {
   outcome?: string;
   /** Structured, serializable context for the settlement receipt. */
   detail?: Record<string, Json>;
+}
+
+export type InvocationId = string;
+
+export interface OrchestratorProgress {
+  name: string;
+  detail?: Record<string, Json>;
+}
+
+export interface InvocationProgress {
+  invocationId: InvocationId;
+  seq: number;
+  node: string;
+  effect: "invoke";
+  tool?: string;
+  actorId?: string;
+  name: string;
+  detail?: Record<string, Json>;
+}
+
+export interface InvocationControl {
+  readonly id: InvocationId;
+  readonly signal: AbortSignal;
+  emitProgress(progress: OrchestratorProgress): Promise<void>;
+  emit(result?: OrchestratorResult): Promise<void>;
+}
+
+export class InvocationClosedError extends Error {
+  constructor(id: InvocationId) {
+    super(`GenUI kernel: invocation ${id} is closed`);
+    this.name = "InvocationClosedError";
+  }
 }
 
 /**
@@ -347,6 +380,12 @@ export interface PatchMessage {
   payload: Patch;
 }
 
+export interface ProgressMessage {
+  gik: typeof GIK_VERSION;
+  type: "progress";
+  payload: InvocationProgress;
+}
+
 export interface EventMessage {
   gik: typeof GIK_VERSION;
   type: "event";
@@ -363,6 +402,7 @@ export type GIKMessage =
   | ManifestMessage
   | DocumentMessage
   | PatchMessage
+  | ProgressMessage
   | EventMessage
   | TraceMessage;
 

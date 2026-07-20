@@ -17,7 +17,7 @@ Every message:
 Transport-agnostic — it rides WebSocket, SSE, stdio, or in-proc. Transport is the
 `TransportProvider`'s concern, not the protocol's.
 
-## The five messages
+## The six messages
 
 ### 1. `manifest` — capability vocabulary (the meta-DSL, on the wire)
 
@@ -71,13 +71,25 @@ The `render` edge is implicit in `capability`. Actions in `on` reference the clo
 }}
 ```
 
-### 4. `event` — interaction (renderer → kernel)
+### 4. `progress` — live invocation observations (kernel → renderer)
+
+```json
+{ "type": "progress", "payload": {
+  "invocationId": "inv-42", "seq": 3, "node": "chat", "effect": "invoke",
+  "tool": "ask", "name": "tool-started", "detail": { "tool": "search" }
+}}
+```
+
+Progress is ordered within one invocation, live-only, and non-authoritative. It does not mutate
+state, allocate a revision, enter the patch log, or replay after reconnect.
+
+### 5. `event` — interaction (renderer → kernel)
 
 ```json
 { "type": "event", "payload": { "node": "<id>", "name": "<event>", "payload": {} } }
 ```
 
-### 5. `trace` — observability (kernel → sink)
+### 6. `trace` — observability (kernel → sink)
 
 ```json
 { "type": "trace", "payload": {
@@ -88,8 +100,9 @@ The `render` edge is implicit in `capability`. Actions in `on` reference the clo
 
 ## Protocol invariants
 
-1. **Documents and patches are the only things that cross into a renderer.** A renderer needs no
-   domain logic — it materializes a document and applies patches.
+1. **Documents, patches, and live progress cross into a renderer.** A renderer needs no domain
+  logic: it materializes a document, applies authoritative patches, and may observe transient
+  progress without applying it to the state replica.
 2. **Events are the only thing that cross back.** Renderers **never patch the store directly** —
    they emit events; the kernel reduces → emits patches. This preserves *validate-before-commit*
    and the *pure-reducer law* across the wire. (See
@@ -98,7 +111,7 @@ The `render` edge is implicit in `capability`. Actions in `on` reference the clo
    patches. `rev` provides ordering + optimistic concurrency.
 4. **A document is valid only against a declared `manifest` version.** The manifest binds source,
    validator, renderer, and orchestrator to one contract.
-5. **Transport- and placement-agnostic.** The same five messages work whether the kernel runs
+5. **Transport- and placement-agnostic.** The same six messages work whether the kernel runs
    server-side (thin renderers) or embedded (in-proc bus). See
    [ADR-0005](decisions/ADR-0005-kernel-placement.md).
 
@@ -115,9 +128,12 @@ sequenceDiagram
   K->>R: document + patch (initial state)
   R->>K: event (user interaction)
   K->>K: reduce (edges + machines)
-  K->>O: invoke (durable action)
-  O-->>K: event + delta
-  K->>R: patch
+  K->>R: initiating patch
+  K->>O: controlled invoke
+  O-->>K: progress (zero or more)
+  K-->>R: progress
+  O-->>K: terminal event + delta
+  K->>R: terminal patch
 ```
 
 ## Conformance targets
@@ -129,7 +145,7 @@ sequenceDiagram
 
 ## Planned first artifact
 
-Pin the five messages as **normative, versioned JSON Schemas** plus a **golden conformance
+Pin the six messages as **normative, versioned JSON Schemas** plus a **golden conformance
 fixture** (one manifest, one document, one event, the expected patch). Every kernel, renderer, and
 orchestrator is then written *against* those schemas and verified by the fixture. Built and green in
 the repo `schemas/` directory.
@@ -158,21 +174,23 @@ upholding the protocol invariant.
 `invoke`/`confirm`/`route` are effectful, so the pure reducer only *records* them; the kernel
 runs them against an **Orchestrator** provider after reduction (see
 [ADR-0009](decisions/ADR-0009-orchestrator-effects.md)). The Orchestrator owns time and I/O and
-returns store `ops` and/or follow-up `event`s, which the kernel applies and **settles within the same
-dispatch** — one `event` in, one `rev` out, regardless of fan-out. **Async data is modeled as machine
-states** (`idle → loading → ready`): the triggering event moves the machine to `loading`; the
-Orchestrator's follow-up event moves it to `ready`. The default `NullOrchestrator` performs nothing,
-so a document referencing tools runs harmlessly before wiring exists. `emit` stays internal to the
-reducer's queue; only `invoke`/`confirm`/`route` cross the Orchestrator boundary.
+returns store `ops` and/or follow-up `event`s. `confirm` and `route` retain one-shot settlement in the
+initiating dispatch. A controlled `invoke` begins only after the initiating patch commits, may emit
+live progress without changing state, and applies its terminal result in one later revision. **Async
+data is modeled as machine states** (`idle → loading → ready`): the triggering event moves the machine
+to `loading`; the terminal follow-up event moves it to `ready`. The default `NullOrchestrator`
+performs nothing, so a document referencing tools runs harmlessly before wiring exists. `emit` stays
+internal to the reducer's queue; only `invoke`/`confirm`/`route` cross the Orchestrator boundary.
 
 ## Reference transport (the wire, exercised)
 
 A `TransportProvider` seam (`kernel/transport.ts`; see
-[ADR-0010](decisions/ADR-0010-transport-seam.md)) carries the five messages as **GIK envelopes**
+[ADR-0010](decisions/ADR-0010-transport-seam.md)) carries the six messages as **GIK envelopes**
 across a boundary — `send(message)` / `subscribe(listener)`, nothing kernel-specific. A
 `KernelTransportHost` binds a kernel to a transport: on `start()` it publishes `manifest → document →`
-init `patch`, then for each inbound `event` it dispatches and sends back the resulting `patch`
-(inbound dispatch is serialized so `rev` stays monotonic; non-`event` messages are ignored). A
+init `patch`, then broadcasts initiating and terminal patches plus live progress for each inbound
+`event` (mutation and outbound delivery are serialized so `rev` and per-invocation ordering stay
+monotonic; non-`event` inbound messages are ignored). A
 reference `createInMemoryTransportPair()` exercises the full *serialize → deliver → deserialize* loop
 headlessly, proving ADR-0004 (protocol, not SDK) without a network. Concrete network bindings
 (SSE/WebSocket/stdio) reuse this exact seam.
@@ -182,20 +200,22 @@ headlessly, proving ADR-0004 (protocol, not SDK) without a network. Concrete net
 The renderer-side half is a `GIKClient` (`kernel/client.ts`; see
 [ADR-0011](decisions/ADR-0011-client-runtime.md)) that never sees the kernel. It consumes `manifest`
 (→ builds its registry + an empty replica for the declared namespaces), `document` (→ the tree to
-interpret), and each `patch` (→ applied to the replica), then runs the **pure interpreter**
+interpret), each `patch` (→ applied to the replica), and live `progress` (→ subscriber notification
+without replica mutation), then runs the **pure interpreter**
 (`resolveNode`) locally and notifies subscribers; it emits `event`s back over the transport. The
 read/write split is explicit: the **authoritative reducer stays on the host**, while **interpret + a
 state replica live on the client** (reads are pure and safe to duplicate; writes are not). Initial
 sync uses `Kernel.baseline()` — a rev-0 patch carrying the *full* state snapshot — so a fresh client
 reconstructs a complete replica from one patch, then stays current via incremental patches.
 
-Reconnection is handled beneath the five messages (see
+Reconnection is handled beneath the six messages (see
 [ADR-0012](decisions/ADR-0012-reconnection.md)): the host is a **broker** that broadcasts each patch
 to every attached connection and keeps a bounded **patch log**. A client attaches with an optional
 `fromRev`; if the host still holds the patches after it, only those deltas are **replayed** (the
 client keeps its replica), otherwise the client is **full-resynced** (`manifest → document →`
 full-snapshot patch at the current rev). No new GIK message is introduced — the client conveys its
-`rev` through the transport, and patch application is idempotent.
+`rev` through the transport, and patch application is idempotent. Progress is live-only and is not
+added to the replay log.
 
 ## Reference authoring (agents compose documents)
 
@@ -214,7 +234,7 @@ degrades gracefully instead of crashing.
 
 The first *concrete* transport binding lives in `transports/http-sse/` (see
 [ADR-0014](decisions/ADR-0014-http-sse-transport.md)), deliberately outside the portable kernel core.
-SSE carries host → client messages (`manifest`/`document`/`patch`/`trace`) over `GET {path}/stream`;
+SSE carries host → client messages (`manifest`/`document`/`patch`/`progress`/`trace`) over `GET {path}/stream`;
 the single client → host message (`event`) is an ordinary `POST {path}/event`. The stream returns a
 session id in the `X-GIK-Session` header which the client echoes on its POSTs for correlation — no new
 GIK message. Reconnection rides the query string: `GET {path}/stream?fromRev=N` maps onto the broker's

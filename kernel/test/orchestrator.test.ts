@@ -1,13 +1,12 @@
 // Phase 3 kernel tests: the Orchestrator seam. invoke/confirm/route become
-// real effects the kernel runs after reduction; their results (store deltas and
-// follow-up events) settle within the same dispatch. Async data is modeled as
-// machine states (idle -> loading -> ready).
+// real effects the kernel runs after reduction. Confirm and route settle inline;
+// invoke commits an initiating patch and later publishes its terminal result.
 
 import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import { Kernel } from "../src/index";
-import { bufferSink, type Orchestrator, type OrchestratorEffect } from "../src/index";
+import { bufferSink, type Orchestrator, type OrchestratorEffect, type Patch } from "../src/index";
 
 const manifest = {
   version: "orchestration-test/1",
@@ -72,6 +71,8 @@ test("invoke: async fetch settles as store delta + machine transition (idle->loa
   };
 
   const k = new Kernel(manifest as any, asyncDoc as any, { orchestrator });
+  const patches: Patch[] = [];
+  k.subscribePatches((published) => patches.push(published));
   k.init();
   assert.deepEqual((k.state() as any).computed_values.orders, { state: "idle" });
 
@@ -81,15 +82,22 @@ test("invoke: async fetch settles as store delta + machine transition (idle->loa
     actorId: "agent-endpoint",
   });
 
-  // Settled ops within one dispatch: loading (emit) -> orders written (invoke) -> ready (resolved).
+  // The initiating patch commits before the external invocation runs.
   assert.deepEqual(patch.ops, [
     { op: "set", path: "computed_values.orders.state", value: "loading" },
-    { op: "set", path: "fetched_sources.orders", value: [{ id: "order-42" }] },
-    { op: "set", path: "computed_values.orders.state", value: "ready" },
   ]);
+  assert.equal(patch.rev, 1);
+
+  await k.whenIdle();
+  assert.deepEqual(patches[1], {
+    rev: 2,
+    ops: [
+      { op: "set", path: "fetched_sources.orders", value: [{ id: "order-42" }] },
+      { op: "set", path: "computed_values.orders.state", value: "ready" },
+    ],
+  });
   assert.deepEqual((k.state() as any).computed_values.orders, { state: "ready" });
   assert.deepEqual((k.state() as any).fetched_sources.orders, [{ id: "order-42" }]);
-  assert.equal(patch.rev, 1, "one dispatch is one rev regardless of fan-out");
   assert.equal(invocations[0]?.actorId, "agent-endpoint");
 });
 

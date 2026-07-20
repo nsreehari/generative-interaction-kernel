@@ -196,8 +196,12 @@ export class ControlFace implements TransportBroker {
     return checkpoint(this.kernel);
   }
 
-  restore(cp: Checkpoint): Patch {
+  restore(cp: Checkpoint): Promise<Patch> {
     return restore(this.kernel, cp);
+  }
+
+  whenIdle(): Promise<void> {
+    return this.broker.whenIdle();
   }
 
   effectsSince(rev: number): RecordedEffect[] {

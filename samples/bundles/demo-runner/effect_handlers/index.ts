@@ -1,6 +1,6 @@
 import { setOp, type EffectHandlerMap } from "@gik/react";
 import type { Json } from "@gik/kernel";
-import { scenarioStepCommands, type ScenarioPlan, type ScenarioStep, type TimelineItem } from "../../../shared/demo-runner";
+import { scenarioStepCommands, type PresentationPreset, type ScenarioPlan, type ScenarioStep, type TimelineItem } from "../../../shared/demo-runner";
 import type { ControlReceipt } from "../../../shared/control-runtime";
 
 type RecordValue = Record<string, Json>;
@@ -99,6 +99,24 @@ const effects: EffectHandlerMap = {
     const value = String(ctx.payload.value ?? "");
     return value
       ? { outcome: "selected", ops: [setOp("runner.selectedDemoId", value)] }
+      : { outcome: "ignored" };
+  },
+
+  setPresentationContext(ctx) {
+    const value = String(ctx.payload.value ?? "");
+    const presets = ctx.get("runner.presentationPresets");
+    const preset = Array.isArray(presets)
+      ? (presets as unknown as PresentationPreset[]).find((candidate) => candidate.id === value)
+      : undefined;
+    return preset
+      ? {
+          outcome: "selected",
+          ops: [
+            setOp("control.presentationPresetId", preset.id),
+            setOp("control.presentationContext", preset.context),
+            setOp("control.inspection.presentation.selectedContext", preset.id),
+          ],
+        }
       : { outcome: "ignored" };
   },
 

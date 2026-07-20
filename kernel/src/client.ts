@@ -7,7 +7,14 @@ import {
   type ExpressionProvider,
   type StateModel,
 } from "./providers";
-import { envelope, type DocumentPayload, type GIKMessage, type Json, type ResolvedNode } from "./types";
+import {
+  envelope,
+  type DocumentPayload,
+  type GIKMessage,
+  type InvocationProgress,
+  type Json,
+  type ResolvedNode,
+} from "./types";
 import type { TransportProvider } from "./transport";
 
 export interface GIKClientOptions {
@@ -35,6 +42,7 @@ export class GIKClient {
   private tree: ResolvedNode | null = null;
   private rev = -1;
   private readonly listeners = new Set<() => void>();
+  private readonly progressListeners = new Set<(progress: InvocationProgress) => void>();
   private unsubscribe?: () => void;
 
   constructor(
@@ -84,6 +92,11 @@ export class GIKClient {
     return () => this.listeners.delete(listener);
   }
 
+  subscribeProgress(listener: (progress: InvocationProgress) => void): () => void {
+    this.progressListeners.add(listener);
+    return () => this.progressListeners.delete(listener);
+  }
+
   emit(node: string, name: string, payload?: Record<string, Json>, actorId?: string): void | Promise<void> {
     return this.transport.send(envelope("event", { node, name, payload, actorId }));
   }
@@ -110,6 +123,10 @@ export class GIKClient {
         this.store?.apply(message.payload.ops);
         this.rev = message.payload.rev;
         await this.reresolve();
+        return;
+      }
+      case "progress": {
+        for (const listener of this.progressListeners) listener(message.payload);
         return;
       }
       default:

@@ -24,15 +24,18 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
     await portfolio.controller.emit(blueprintId, "setHoldings", {
       holdings: [{ ticker: "AAPL", quantity: 8, costBasis: 178 }],
     }, "human-investor");
+    await portfolio.controller.settle();
     expect(portfolio.state.get("portfolio.positions.AAPL")).toMatchObject({ ticker: "AAPL", quantity: 8 });
 
     await portfolio.controller.emit(blueprintId, "upsertHolding", {
       holding: { ticker: "GOOG", quantity: 4, costBasis: 165 },
     }, "human-investor");
+    await portfolio.controller.settle();
     expect(portfolio.state.get("portfolio.quotes.GOOG")).toMatchObject({ ticker: "GOOG" });
     expect(portfolio.state.get("portfolio.positions.GOOG")).toMatchObject({ ticker: "GOOG", quantity: 4 });
 
     await portfolio.controller.emit(blueprintId, "removeHolding", { ticker: "AAPL" }, "human-investor");
+    await portfolio.controller.settle();
     expect(portfolio.state.get("portfolio.holdings.AAPL")).toBeNull();
     expect(portfolio.state.get("portfolio.positions.AAPL")).toBeNull();
     expect(portfolio.state.get("portfolio.positions.GOOG")).not.toBeNull();
@@ -48,12 +51,14 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
       ],
       investorProfile: { riskTolerance: "moderate", horizonYears: 8 },
     }, "human-investor");
+    await portfolio.controller.settle();
     await portfolio.controller.emit(
       blueprintId,
       "requestIntelligence",
       {},
       "agent-portfolio-intelligence"
     );
+    await portfolio.controller.settle();
     expect(portfolio.state.get("portfolio.intelligence")).toMatchObject({
       provider: "portfolio-intelligence-deterministic",
       risks: ["single-name concentration", "market-price volatility"],
@@ -65,11 +70,13 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
       {},
       "agent-portfolio-intelligence"
     );
+    await portfolio.controller.settle();
     expect(portfolio.state.get("portfolio.strategies.conservative")).toMatchObject({ id: "conservative" });
     expect(portfolio.state.get("portfolio.strategies.growth")).toMatchObject({ id: "growth" });
     expect(portfolio.state.get("portfolio.recommendation.status")).toBe("proposed");
 
     await portfolio.controller.emit("rebalance-comparison", "apply", {}, "human-investor");
+    await portfolio.controller.settle();
     expect(portfolio.state.get("portfolio.appliedRecommendation")).toMatchObject({
       status: "applied",
       actorId: "human-investor",
@@ -78,30 +85,35 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
       status: "applied",
       actorId: "human-investor",
     });
-    await expect(portfolio.controller.emit(
+    await portfolio.controller.emit(
       "rebalance-comparison",
       "apply",
       {},
       "human-investor"
-    )).rejects.toThrow("A proposed recommendation is required");
+    );
+    await expect(portfolio.controller.settle()).rejects.toThrow("A proposed recommendation is required");
   });
 
   it("rejects recommendation application without a proposal or attributed actor", async () => {
     const portfolio = runtime(blueprintId);
 
-    await expect(portfolio.controller.emit(
+    await portfolio.controller.emit(
       "rebalance-comparison",
       "apply",
       {},
       "human-investor"
-    )).rejects.toThrow("A proposed recommendation is required");
+    );
+    await expect(portfolio.controller.settle()).rejects.toThrow("A proposed recommendation is required");
 
     await portfolio.controller.emit(blueprintId, "requestIntelligence", {}, "agent-portfolio-intelligence");
+    await portfolio.controller.settle();
     await portfolio.controller.emit(blueprintId, "calculateStrategies", {}, "agent-portfolio-intelligence");
-    await expect(portfolio.controller.emit(
+    await portfolio.controller.settle();
+    await portfolio.controller.emit(
       "rebalance-comparison",
       "apply"
-    )).rejects.toThrow("requires an attributed actor");
+    );
+    await expect(portfolio.controller.settle()).rejects.toThrow("requires an attributed actor");
     expect(portfolio.state.get("portfolio.appliedRecommendation")).toBeNull();
     expect(portfolio.state.get("portfolio.recommendation.status")).toBe("proposed");
   });
@@ -115,6 +127,7 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
     }));
 
     await portfolio.controller.emit(blueprintId, "setHoldings", { holdings }, "human-investor");
+    await portfolio.controller.settle();
 
     expect(Object.keys(portfolio.state.get("portfolio.holdings") as object)).toHaveLength(250);
     expect(portfolio.state.get("portfolio.quotes.TICK249")).toMatchObject({ ticker: "TICK249" });

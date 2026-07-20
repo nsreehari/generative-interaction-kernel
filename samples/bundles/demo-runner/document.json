@@ -12,7 +12,8 @@
           "plan": "runner.plan",
           "catalog": "runner.catalog",
           "entry": "runner.entry",
-          "selectedDemoId": "runner.selectedDemoId"
+          "selectedDemoId": "runner.selectedDemoId",
+          "presentationPresetId": "control.presentationPresetId"
         },
         "on": {
           "reset": [{ "do": "invoke", "args": { "tool": "resetDemo" } }],
@@ -33,6 +34,23 @@
               },
               "on": {
                 "select": [{ "do": "invoke", "args": { "tool": "selectDemo" } }]
+              }
+            }
+          },
+          {
+            "capability": "fluent:dropdown",
+            "id": "presentation-context-dropdown-region",
+            "props": {
+              "ariaLabel": "Select presentation context",
+              "placeholder": "Select a presentation"
+            },
+            "edges": {
+              "read": {
+                "value": "control.presentationPresetId",
+                "options": "runner.presentationPresets"
+              },
+              "on": {
+                "select": [{ "do": "invoke", "args": { "tool": "setPresentationContext" } }]
               }
             }
           },

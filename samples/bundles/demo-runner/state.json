@@ -2,6 +2,7 @@
   "runner": {
     "plan": null,
     "catalog": [],
-    "entry": null
+    "entry": null,
+    "presentationPresets": []
   }
 }
