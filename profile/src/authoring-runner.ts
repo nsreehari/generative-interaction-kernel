@@ -104,17 +104,7 @@ const validateFormNode = (
 
   if (value !== undefined && Array.isArray(schema.validators)) {
     const report = runDeclarativeValidators(
-      (schema.validators as unknown[])
-        .filter(isRecord)
-        .map((decl) => ({
-          kind: "jsonata" as const,
-          expr: typeof decl.expression === "string" ? decl.expression : "",
-          message: typeof decl.detail === "string" ? decl.detail : `${label} failed validation`,
-          level: decl.level === "warning" ? "warning" : "error",
-          ...(typeof decl.code === "string" ? { code: decl.code } : (decl.level === "warning" ? { code: "validator-warning" } : {})),
-          ...(typeof decl.node === "string" ? { node: decl.node } : (decl.level === "warning" ? { node: label } : {})),
-        }))
-        .filter((decl) => decl.expr.length > 0),
+      schema.validators as unknown[],
       (value ?? null) as Json,
       {
         bindings: {

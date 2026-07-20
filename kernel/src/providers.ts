@@ -138,6 +138,27 @@ export interface JsonataProviderOptions {
   safe?: boolean;
 }
 
+export interface JsonataExpressionValidationResult {
+  ok: boolean;
+  error?: string;
+}
+
+export function validateJsonataExpression(
+  expr: string,
+  opts: JsonataProviderOptions = {}
+): JsonataExpressionValidationResult {
+  try {
+    const compiled = jsonataSync(expr);
+    if (opts.safe) denyUnsafe(compiled.ast(), expr);
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 export class JsonataExpressionProvider implements ExpressionProvider {
   private cache = new Map<string, Compiled>();
   private readonly safe: boolean;

@@ -1,6 +1,6 @@
 import Ajv, { type ValidateFunction } from "ajv";
 
-import { evalSyncJsonata } from "./evaluators";
+import { evalSyncJsonata, validateJsonataExpression, type JsonataExpressionValidationMode } from "./evaluators";
 
 type DeclarativeTypeName =
   | "json"
@@ -45,6 +45,15 @@ interface AjvSchemaDeclarativeValidator {
   node?: string;
 }
 
+interface JsonataExpressionDeclarativeValidator {
+  kind: "jsonata-expression";
+  mode: JsonataExpressionValidationMode;
+  message: string;
+  level: DeclarativeValidatorLevel;
+  code?: string;
+  node?: string;
+}
+
 interface TypeDefDeclarativeValidator {
   kind: "typedef";
   type: DeclarativeTypeName | readonly DeclarativeTypeName[];
@@ -57,12 +66,14 @@ interface TypeDefDeclarativeValidator {
 type DeclarativeValidator =
   | JsonataDeclarativeValidator
   | AjvSchemaDeclarativeValidator
+  | JsonataExpressionDeclarativeValidator
   | TypeDefDeclarativeValidator;
 
 type DeclarativeValidatorInput =
   | [string, string?]
   | { kind?: "jsonata"; expr: string; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
   | { kind: "ajv-schema"; schema: Record<string, unknown>; refs?: readonly { schema: Record<string, unknown>; key?: string }[]; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
+  | { kind: "jsonata-expression"; mode?: JsonataExpressionValidationMode; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
   | { kind: "typedef"; type: DeclarativeTypeName | readonly DeclarativeTypeName[]; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string };
 
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
@@ -184,6 +195,16 @@ function normalizeDeclarativeValidators(raw: unknown): DeclarativeValidator[] {
         }
         continue;
       }
+      if (candidate.kind === "jsonata-expression") {
+        out.push({
+          kind: "jsonata-expression",
+          mode: candidate.mode === "safe" ? "safe" : "full",
+          message: typeof candidate.message === "string" ? candidate.message : "Invalid JSONata expression",
+          level: candidate.level === "warning" ? "warning" : "error",
+          ...issueMetadata(candidate),
+        });
+        continue;
+      }
       const expr = typeof candidate.expr === "string" ? candidate.expr.trim() : "";
       if (expr) {
         out.push({
@@ -232,6 +253,23 @@ export function runDeclarativeValidators(
     if (validator.kind === "typedef") {
       if (!matchesType(validator.type, value)) {
         pushIssue(validator, validator.message ? `${validator.message}: expected ${typeLabel(validator.type)}` : `expected ${typeLabel(validator.type)}`);
+      }
+      continue;
+    }
+
+    if (validator.kind === "jsonata-expression") {
+      if (typeof value !== "string") {
+        pushIssue(validator, validator.message ? `${validator.message}: expected string` : "expected string");
+        continue;
+      }
+      const result = validateJsonataExpression(value, { mode: validator.mode });
+      if (!result.ok) {
+        pushIssue(
+          validator,
+          result.error && result.error.length > 0
+            ? `${validator.message}: ${result.error}`
+            : validator.message
+        );
       }
       continue;
     }

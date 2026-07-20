@@ -1,8 +1,9 @@
 import {
   JsonataExpressionProvider,
   SyncJsonataExpressionProvider,
+  validateJsonataExpression as validateJsonataExpressionKernel,
   type Json,
-} from "@gik/kernel";
+} from "../../kernel/src/index";
 
 const syncJsonataEvaluator = new SyncJsonataExpressionProvider({ safe: true });
 const asyncJsonataEvaluator = new JsonataExpressionProvider();
@@ -85,4 +86,22 @@ export function executeSyncJsonataSteps(input: ExecuteSyncJsonataStepsInput): Ex
 
 export async function evalAsyncJsonata(expr: string, data: Json, bindings: Record<string, Json> = {}): Promise<Json> {
   return toPlainJson(await asyncJsonataEvaluator.eval(expr, data, bindings));
+}
+
+export type JsonataExpressionValidationMode = "full" | "safe";
+
+export type ValidateJsonataExpressionOptions = {
+  mode?: JsonataExpressionValidationMode;
+};
+
+export type ValidateJsonataExpressionResult = {
+  ok: boolean;
+  error?: string;
+};
+
+export function validateJsonataExpression(
+  expr: string,
+  options: ValidateJsonataExpressionOptions = {}
+): ValidateJsonataExpressionResult {
+  return validateJsonataExpressionKernel(expr, { safe: options.mode === "safe" });
 }

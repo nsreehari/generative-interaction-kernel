@@ -32,8 +32,9 @@
               "items": { "type": "string" },
               "validators": [
                 {
-                  "expression": "($allowed := $lookup($catalog, 'interaction-catalog')[interaction = $root.spec.interaction].facets.name; $count($allowed) = 0 or $count($[$not($ in $allowed)]) = 0)",
-                  "detail": "one or more capabilities are not taxonomy facets of this interaction; they become synthesized detail facets",
+                  "kind": "jsonata",
+                  "expr": "($allowed := $lookup($catalog, 'interaction-catalog')[interaction = $root.spec.interaction].facets.name; $count($allowed) = 0 or $count($[$not($ in $allowed)]) = 0)",
+                  "message": "one or more capabilities are not taxonomy facets of this interaction; they become synthesized detail facets",
                   "level": "warning",
                   "code": "synthesized-facet"
                 }
@@ -47,8 +48,9 @@
               "placeholder": "{ }",
               "validators": [
                 {
-                  "expression": "($allowed := $count($root.spec.capabilities) > 0 ? $root.spec.capabilities : $lookup($catalog, 'interaction-catalog')[interaction = $root.spec.interaction].facets.name; $count($allowed) = 0 or $count($keys($)[$not($ in $allowed)]) = 0)",
-                  "detail": "one or more data bindings target no facet of this interaction",
+                  "kind": "jsonata",
+                  "expr": "($allowed := $count($root.spec.capabilities) > 0 ? $root.spec.capabilities : $lookup($catalog, 'interaction-catalog')[interaction = $root.spec.interaction].facets.name; $count($allowed) = 0 or $count($keys($)[$not($ in $allowed)]) = 0)",
+                  "message": "one or more data bindings target no facet of this interaction",
                   "level": "warning",
                   "code": "data-for-unknown-facet"
                 }
@@ -60,8 +62,9 @@
               "additionalProperties": { "type": "object" },
               "validators": [
                 {
-                  "expression": "($allowed := $count($root.spec.capabilities) > 0 ? $root.spec.capabilities : $lookup($catalog, 'interaction-catalog')[interaction = $root.spec.interaction].facets.name; $count($allowed) = 0 or $count($keys($)[$not($ in $allowed)]) = 0)",
-                  "detail": "one or more facetViews entries target no facet of this interaction",
+                  "kind": "jsonata",
+                  "expr": "($allowed := $count($root.spec.capabilities) > 0 ? $root.spec.capabilities : $lookup($catalog, 'interaction-catalog')[interaction = $root.spec.interaction].facets.name; $count($allowed) = 0 or $count($keys($)[$not($ in $allowed)]) = 0)",
+                  "message": "one or more facetViews entries target no facet of this interaction",
                   "level": "warning",
                   "code": "view-for-unknown-facet"
                 }
