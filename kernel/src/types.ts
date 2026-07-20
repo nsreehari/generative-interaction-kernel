@@ -245,6 +245,7 @@ export interface ServiceOperationDeclaration {
   request?: ServiceDataStage;
   response?: ServiceDataStage;
   settlement: ServiceSettlementStage;
+  failureSettlement?: ServiceSettlementStage;
   onViolation?: GuardrailViolationAction;
 }
 

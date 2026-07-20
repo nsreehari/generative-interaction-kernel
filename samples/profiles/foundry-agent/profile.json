@@ -26,19 +26,25 @@
             "edges": {
               "children": [
                 {
-                  "capability": "agent:access-modal",
+                  "capability": "foundry:access-gate",
                   "id": "foundry-access-gate",
-                  "props": {
-                    "required": true,
-                    "proxyBaseUrl": "https://sz-foundry-proxy.azurewebsites.net"
-                  },
                   "edges": {
+                    "read": {
+                      "status": "agent.accessStatus",
+                      "error": "agent.accessError"
+                    },
                     "on": {
-                      "accessResolved": [
+                      "accessRequested": [
                         {
                           "do": "invoke",
                           "args": {
-                            "tool": "acceptFoundryAccess"
+                            "tool": "beginFoundryAccess"
+                          }
+                        },
+                        {
+                          "do": "invoke",
+                          "args": {
+                            "tool": "discoverAgents"
                           }
                         }
                       ],
@@ -50,17 +56,16 @@
                           }
                         }
                       ]
-                    }
-                  }
-                },
-                {
-                  "capability": "agent:ask-page",
-                  "id": "agent-demo",
-                  "props": {
-                    "title": "Ask the agent"
-                  },
-                  "edges": {
+                    },
                     "children": [
+                      {
+                        "capability": "agent:ask-page",
+                        "id": "agent-demo",
+                        "props": {
+                          "title": "Ask the agent"
+                        },
+                        "edges": {
+                          "children": [
                       {
                         "capability": "agent:agent-selector",
                         "id": "agent-selector",
@@ -120,7 +125,7 @@
                         }
                       },
                       {
-                        "capability": "agent:sign-out-button",
+                        "capability": "ui:button",
                         "id": "agent-ask-btn",
                         "props": {
                           "label": "Ask",
@@ -212,7 +217,7 @@
                         }
                       },
                       {
-                        "capability": "ui:button",
+                        "capability": "agent:sign-out-button",
                         "id": "agent-signout-btn",
                         "props": {
                           "label": "Sign out"
@@ -228,6 +233,9 @@
                               }
                             ]
                           }
+                        }
+                      }
+                          ]
                         }
                       }
                     ]
@@ -275,6 +283,32 @@
             },
             "settlement": {
               "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'agent.error','value':''},{'op':'set','path':'agent.lastAsked','value':$trim(state.agent.draft)},{'op':'set','path':'agent.draft','value':''},{'op':'set','path':'agent.conversationId','value':response.conversationId},{'op':'set','path':'agent.reply','value':response.reply}],'detail':{'provider':'foundry-agent','responseId':response.responseId,'conversationId':response.conversationId}}" }
+            },
+            "failureSettlement": {
+              "transform": { "kind": "jsonata", "expr": "($access := error.message = 'Foundry access is required' or error.status = 401 or error.status = 403; {'ops':[{'op':'set','path':'agent.error','value':$access ? '' : error.message},{'op':'set','path':'agent.accessStatus','value':$access ? 'required' : state.agent.accessStatus},{'op':'set','path':'agent.accessError','value':$access ? (error.status = 401 or error.status = 403 ? 'That access key was rejected.' : 'Foundry access is required.') : state.agent.accessError}]})" }
+            },
+            "onViolation": { "action": "fail" }
+          },
+          "discoverAgents": {
+            "operation": "discover",
+            "contract": "foundry-agent-list/v1",
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "message": "Foundry returned an invalid agent list",
+                  "schema": {
+                    "type": "array",
+                    "items": { "type": "string", "minLength": 1 }
+                  }
+                }
+              ]
+            },
+            "settlement": {
+              "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'agent.agentOptions','value':response},{'op':'set','path':'agent.agentName','value':$count(response) > 0 ? response[0] : ''},{'op':'set','path':'agent.accessStatus','value':$count(response) > 0 ? 'ready' : 'empty'},{'op':'set','path':'agent.accessError','value':''}]}" }
+            },
+            "failureSettlement": {
+              "transform": { "kind": "jsonata", "expr": "($rejected := error.status = 401 or error.status = 403; $missing := error.message = 'Foundry access is required'; $unconfigured := $contains(error.message, 'Invalid service') or $contains(error.message, 'Unsupported service kind') or $contains(error.message, 'requires host capabilities'); {'ops':[{'op':'set','path':'agent.agentOptions','value':[]},{'op':'set','path':'agent.agentName','value':''},{'op':'set','path':'agent.accessStatus','value':($rejected or $missing) ? 'required' : ($unconfigured ? 'unconfigured' : 'error')},{'op':'set','path':'agent.accessError','value':$rejected ? 'That access key was rejected.' : ($missing ? 'Foundry access is required.' : error.message)}]})" }
             },
             "onViolation": { "action": "fail" }
           }
@@ -365,14 +399,17 @@
             "input"
           ]
         },
-        "agent:access-modal": {
+        "foundry:access-gate": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           },
           "emits": [
-            "accessResolved",
+            "accessRequested",
             "accessCleared"
+          ],
+          "slots": [
+            "children"
           ]
         },
         "agent:agent-selector": {
@@ -425,16 +462,24 @@
           },
           "agent": {
             "from": "self"
+          },
+          "foundry": {
+            "from": "foundry",
+            "use": [
+              "access-gate"
+            ]
           }
         },
         "effectHandlers": [
-          "acceptFoundryAccess",
+          "beginFoundryAccess",
           "clearFoundryAccess",
           "signOut"
         ]
       },
       "state": {
         "agent": {
+          "accessStatus": "checking",
+          "accessError": "",
           "agentName": "",
           "draft": "",
           "reply": "",

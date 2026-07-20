@@ -78,6 +78,19 @@ test("host executes immediate operations and owns declarative settlement", async
   assert.deepEqual(await host.invoke(effect), { ops: [{ op: "set", path: "work.answer", value: { ticker: "MSFT" } }] });
 });
 
+test("host applies declarative failure settlement with structured error detail", async () => {
+  const unavailable = Object.assign(new Error("provider unavailable"), { status: 503 });
+  const host = createHost(async () => { throw unavailable; }, {
+    failureSettlement: {
+      transform: { kind: "jsonata", expr: "{'ops':[{'op':'set','path':'work.error','value':error.message}],'detail':{'status':error.status}}" },
+    },
+  });
+  assert.deepEqual(await host.invoke(effect), {
+    ops: [{ op: "set", path: "work.error", value: "provider unavailable" }],
+    detail: { status: 503 },
+  });
+});
+
 test("host validates provider output and retries within its ceiling", async () => {
   let calls = 0;
   const host = createHost(async (): Promise<ServiceExecutionResult> => {

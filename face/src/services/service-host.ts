@@ -93,6 +93,16 @@ function asSettlement(value: Json): OrchestratorResult {
   return mapped as unknown as OrchestratorResult;
 }
 
+function errorDetail(error: unknown): Record<string, Json> {
+  if (!(error instanceof Error)) return { message: String(error) };
+  const detail: Record<string, Json> = { name: error.name, message: error.message };
+  for (const field of ["status", "code"] as const) {
+    const value = (error as Error & Record<typeof field, unknown>)[field];
+    if (typeof value === "string" || typeof value === "number") detail[field] = value;
+  }
+  return detail;
+}
+
 /** Default host runner for Blueprint-declared services. It is the only layer that materializes
  * adapters, evaluates transforms, validates provider output, and owns request lifecycle. */
 export class DefaultServiceHost implements ServiceHost {
@@ -149,9 +159,20 @@ export class DefaultServiceHost implements ServiceHost {
       const record = await this.enqueue(effect);
       return { outcome: record.status, detail: { requestId: record.request.id } };
     }
-    const record = await this.createRecord(resolved, effect, "immediate");
-    const completed = await this.execute(record, resolved, effect);
+    let completed: ServiceRequestRecord;
+    try {
+      const record = await this.createRecord(resolved, effect, "immediate");
+      completed = await this.execute(record, resolved, effect);
+    } catch (error) {
+      if (resolved.operation.failureSettlement) {
+        return this.settleFailureError(resolved.operation, error, effect);
+      }
+      throw error;
+    }
     if (completed.status !== "completed" || !completed.result) {
+      if (resolved.operation.failureSettlement) {
+        return this.settleFailure(resolved.operation, completed, effect);
+      }
       throw new Error(completed.error ?? `Service request '${completed.request.id}' ${completed.status}`);
     }
     return this.settle(resolved.operation, completed.result, effect);
@@ -283,6 +304,7 @@ export class DefaultServiceHost implements ServiceHost {
         ...running,
         status: retry ? "accepted" : running.mode === "queued" ? "dead-lettered" : "failed",
         error: error instanceof Error ? error.message : String(error),
+        errorDetail: errorDetail(error),
         updatedAt: this.now().toISOString(),
       };
       await this.store.put(failed);
@@ -361,6 +383,31 @@ export class DefaultServiceHost implements ServiceHost {
       state: this.options.state.snapshot(),
       effect,
       response: result.output,
+    }));
+  }
+
+  private async settleFailure(
+    operation: ServiceOperationDeclaration,
+    record: ServiceRequestRecord,
+    effect: OrchestratorEffect
+  ): Promise<OrchestratorResult> {
+    return asSettlement(await this.evaluate(operation.failureSettlement!.transform.expr, {
+      state: this.options.state.snapshot(),
+      effect,
+      request: record.request,
+      error: record.errorDetail ?? { message: record.error ?? "Service request failed" },
+    }));
+  }
+
+  private async settleFailureError(
+    operation: ServiceOperationDeclaration,
+    error: unknown,
+    effect: OrchestratorEffect
+  ): Promise<OrchestratorResult> {
+    return asSettlement(await this.evaluate(operation.failureSettlement!.transform.expr, {
+      state: this.options.state.snapshot(),
+      effect,
+      error: errorDetail(error),
     }));
   }
 }

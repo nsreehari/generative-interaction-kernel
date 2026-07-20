@@ -134,6 +134,7 @@ export interface ServiceRequestRecord {
   updatedAt: string;
   result?: ServiceExecutionResult;
   error?: string;
+  errorDetail?: Record<string, Json>;
   /** Re-invocation count driven by guardrail violation policy, distinct from transport-level `attempts`. */
   guardrailAttempts?: number;
   /** The most recent guardrail evaluation's `"error"`-level issues, if any were ever raised. */

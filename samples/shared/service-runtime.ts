@@ -12,7 +12,7 @@ import {
   createSampleServiceKindRegistry,
   type SampleServiceRegistryOptions,
 } from "../services";
-import { getFoundryAccessKey } from "../services/foundry-agent";
+import { clearFoundryAccessKey, getFoundryAccessKey } from "./foundry-access";
 
 const FOUNDRY_CREDENTIAL_REF = "foundry-agent/access-key";
 const FOUNDRY_ORIGIN = "https://sz-foundry-proxy.azurewebsites.net";
@@ -24,6 +24,10 @@ export const browserServiceRegistryOptions: SampleServiceRegistryOptions = {
     const key = getFoundryAccessKey().trim();
     if (!key) throw new Error("Foundry access is required");
     return key;
+  },
+  clearCredential: (reference) => {
+    if (reference !== FOUNDRY_CREDENTIAL_REF) throw new Error(`Unknown credential reference '${reference}'`);
+    clearFoundryAccessKey();
   },
   authorizeEndpoint: (kind, endpoint) => kind === "foundry-agent" && endpoint.origin === FOUNDRY_ORIGIN,
 };

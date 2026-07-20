@@ -33,6 +33,7 @@ export interface ServiceKindContext {
   hostCapabilities: ReadonlySet<string>;
   identity?: BlueprintServiceIdentity;
   resolveCredential?: (reference: string) => Promise<unknown>;
+  clearCredential?: (reference: string) => void | Promise<void>;
   authorizeEndpoint?: (kind: string, endpoint: URL) => boolean | Promise<boolean>;
   execute?: (request: unknown) => Promise<unknown>;
 }
