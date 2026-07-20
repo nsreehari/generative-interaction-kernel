@@ -120,7 +120,7 @@
                         }
                       },
                       {
-                        "capability": "ui:button",
+                        "capability": "agent:sign-out-button",
                         "id": "agent-ask-btn",
                         "props": {
                           "label": "Ask",
@@ -243,35 +243,47 @@
       "assistant": {
         "kind": "foundry-agent",
         "version": "1",
-        "operations": [
-          "chat"
-        ],
+        "operations": {
+          "askAgent": {
+            "operation": "chat",
+            "contract": "foundry-chat/v1",
+            "subject": {
+              "kind": "chat",
+              "blueprintId": "foundry-agent",
+              "turnId": "current"
+            },
+            "request": {
+              "transform": { "kind": "jsonata", "expr": "{'message':$trim(state.agent.draft),'agentName':$trim(state.agent.agentName),'conversationId':state.agent.conversationId = '' ? null : state.agent.conversationId}" }
+            },
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "message": "Foundry agent returned an invalid chat response",
+                  "schema": {
+                    "type": "object",
+                    "required": ["conversationId", "responseId", "reply"],
+                    "properties": {
+                      "conversationId": { "type": "string" },
+                      "responseId": { "type": "string", "minLength": 1 },
+                      "reply": { "type": "string" }
+                    },
+                    "additionalProperties": true
+                  }
+                }
+              ]
+            },
+            "settlement": {
+              "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'agent.error','value':''},{'op':'set','path':'agent.lastAsked','value':$trim(state.agent.draft)},{'op':'set','path':'agent.draft','value':''},{'op':'set','path':'agent.conversationId','value':response.conversationId},{'op':'set','path':'agent.reply','value':response.reply}],'detail':{'provider':'foundry-agent','responseId':response.responseId,'conversationId':response.conversationId}}" }
+            },
+            "onViolation": { "action": "fail" }
+          }
+        },
         "config": {
           "endpoint": "https://sz-foundry-proxy.azurewebsites.net",
           "credentialRef": "foundry-agent/access-key"
         },
-        "scope": "per-session",
-        "operationPolicies": {
-          "chat": {
-            "guardrails": [
-              {
-                "kind": "ajv-schema",
-                "message": "Foundry agent returned an invalid chat response",
-                "schema": {
-                  "type": "object",
-                  "required": ["conversationId", "responseId", "reply"],
-                  "properties": {
-                    "conversationId": { "type": "string" },
-                    "responseId": { "type": "string", "minLength": 1 },
-                    "reply": { "type": "string" }
-                  },
-                  "additionalProperties": true
-                }
-              }
-            ],
-            "onViolation": { "action": "fail" }
-          }
-        }
+        "scope": "per-session"
       }
     },
     "runtime": {
@@ -381,6 +393,15 @@
             "children"
           ]
         },
+        "agent:sign-out-button": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "press"
+          ]
+        },
         "ui:button": {
           "propsSchema": {
             "type": "object",
@@ -410,23 +431,6 @@
           "acceptFoundryAccess",
           "clearFoundryAccess",
           "signOut"
-        ],
-        "serviceBindings": [
-          {
-            "invoke": "askAgent",
-            "use": {
-              "service": "assistant",
-              "operation": "chat",
-              "contract": "foundry-chat/v1"
-            },
-            "subject": {
-              "kind": "chat",
-              "blueprintId": "foundry-agent",
-              "turnId": "current"
-            },
-            "request": "{'input': {'message': $trim(state.agent.draft), 'agentName': $trim(state.agent.agentName), 'conversationId': state.agent.conversationId = '' ? null : state.agent.conversationId}, 'actorId': effect.actorId}",
-            "result": "{'ops': [{'op':'set','path':'agent.error','value':''}, {'op':'set','path':'agent.lastAsked','value':$trim(state.agent.draft)}, {'op':'set','path':'agent.draft','value':''}, {'op':'set','path':'agent.conversationId','value':result.output.conversationId}, {'op':'set','path':'agent.reply','value':result.output.reply}], 'detail': {'provider':'foundry-agent','responseId':result.output.responseId,'conversationId':result.output.conversationId}}"
-          }
         ]
       },
       "state": {

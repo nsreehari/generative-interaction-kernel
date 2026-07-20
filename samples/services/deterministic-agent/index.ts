@@ -32,13 +32,14 @@ export function createDeterministicAgentKind(
     create: (declaration: ServiceDeclaration): ServiceAdapter => {
       const handlerId = String(serviceConfig(declaration).handler);
       const handler = handlers[handlerId];
+      const operations = [...new Set(Object.values(declaration.operations).map(({ operation }) => operation))];
       return {
         provider: { id: `deterministic-agent:${handlerId}`, version: manifest.version },
         discover: async () => ({
           provider: { id: `deterministic-agent:${handlerId}`, version: manifest.version },
           revision: manifest.version,
           discoveredAt: new Date().toISOString(),
-          capabilities: declaration.operations.map((operation) => ({
+          capabilities: operations.map((operation) => ({
             id: operation,
             operation,
             name: operation,
@@ -47,7 +48,7 @@ export function createDeterministicAgentKind(
             assurance: "declared-and-locally-validated",
           })),
         }),
-        validate: async (request) => declaration.operations.includes(request.operation)
+        validate: async (request) => operations.includes(request.operation)
           ? { ok: true }
           : { ok: false, errors: [`Operation '${request.operation}' is not declared`] },
         execute: async (request) => ({

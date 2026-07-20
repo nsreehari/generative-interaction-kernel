@@ -1,6 +1,6 @@
 # ADR-0041 — Blueprint-first application hosting; ControlFace owns runtime opening
 
-**Status:** Accepted — 2026-07-20
+**Status:** Accepted — 2026-07-20; amended 2026-07-20
 
 ## Context
 
@@ -41,9 +41,11 @@ with the Blueprint's runtime declaration and service declarations to create an i
 definition. The kernel still receives exactly one manifest, one document, and one state model; this
 decision changes how those inputs are obtained, not the kernel grammar or protocol.
 
-Application selection therefore uses Blueprint identity through the single short selector (for
-example, `b=portfolio-tracker`). The application host does not accept `bundle` or `blueprint`
-selectors. Ordinary Bundles are inspected and previewed inside the `manage-bundles` Blueprint rather
+Application selection therefore uses Blueprint identity through the single canonical short selector
+(for example, `b=portfolio-tracker`). During migration the application host may parse the legacy
+`bundle` query key, but it immediately canonicalizes that input to `b`; generated links, persisted
+navigation, and documentation use only `b`. The host does not interpret the value as a Bundle
+identity. Ordinary Bundles are inspected and previewed inside the `manage-bundles` Blueprint rather
 than becoming a second top-level hosting path.
 
 ### ControlFace owns opening and lowering lifecycle
@@ -157,6 +159,8 @@ belongs to the Bundle manager.
   not receive this authority unless a future projection explicitly and safely exposes a subset.
 - Application hosts select Blueprints explicitly and render the returned runtime. Adapter-internal
   Bundle materialization does not change the application identity.
+- Compatibility parsing of a legacy `bundle=<blueprint-id>` URL is allowed only as an input migration
+  aid and must canonicalize to `b=<blueprint-id>`; it does not restore Bundle-first hosting.
 - Existing Bundle-first applications migrate incrementally. During migration, direct Bundle hosting
   is legacy/low-level behavior, not a second recommended application model.
 - Tests open the Blueprint through ControlFace and exercise the resulting runtime; synchronization

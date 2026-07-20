@@ -203,7 +203,7 @@ export type GuardrailRule =
       node?: string;
     };
 
-/** What QueueFace does when a service response fails one or more `"error"`-level guardrails.
+/** What the service host does when a response fails one or more `"error"`-level guardrails.
  * `maxAttempts` (where present) is always additionally capped by the host; a Blueprint cannot
  * author an unbounded call loop. */
 export type GuardrailViolationAction =
@@ -221,19 +221,44 @@ export interface ServiceOutputPolicy {
   onViolation?: GuardrailViolationAction;
 }
 
+export interface ServiceTransform {
+  kind: "jsonata";
+  expr: string;
+}
+
+export interface ServiceDataStage {
+  transform?: ServiceTransform;
+  validators?: readonly GuardrailRule[];
+}
+
+export interface ServiceSettlementStage {
+  transform: ServiceTransform;
+}
+
+/** One Blueprint invocation backed by a configured service kind. The map key containing this
+ * declaration is the document `invoke` tool name; `operation` is the provider operation. */
+export interface ServiceOperationDeclaration {
+  operation: string;
+  contract: string;
+  mode?: "immediate" | "queued";
+  subject?: ServiceSubject;
+  request?: ServiceDataStage;
+  response?: ServiceDataStage;
+  settlement: ServiceSettlementStage;
+  onViolation?: GuardrailViolationAction;
+}
+
 export interface ServiceDeclaration {
   /** Host-registered executable kind, for example `copilot-agent` or `foundry-agent`. */
   kind: string;
   /** Contract version or compatible version range understood by the host's service resolver. */
   version: string;
-  /** Operations this configured Blueprint service may invoke. */
-  operations: string[];
+  /** Blueprint invoke name -> complete declarative service operation. */
+  operations: Record<string, ServiceOperationDeclaration>;
   /** Kind-specific, schema-validated configuration. Literal credentials are forbidden. */
   config?: Json;
   /** Provider-native adapter/session reuse policy. */
   scope?: ServiceScope;
-  /** Per-operation output guardrails and violation policy, overriding the service kind's default. */
-  operationPolicies?: Record<string, ServiceOutputPolicy>;
 }
 
 /** @deprecated Migration shape for operation-only manifests created before service kinds. */
@@ -255,18 +280,6 @@ export type ServiceUse = {
   | { service?: never; inline: ServiceDeclaration }
 );
 
-/** Declarative mapping between a document `invoke` and one Blueprint service operation.
- * Expressions receive `{ state, effect }` for requests and `{ state, effect, result }` for
- * settlement. The host evaluates and validates them; Blueprints never supply callbacks. */
-export interface DeclarativeServiceBinding {
-  invoke: string;
-  use: ServiceUse;
-  mode?: "immediate" | "queued";
-  request?: string;
-  result?: string;
-  subject?: ServiceSubject;
-}
-
 export type ServiceSubject =
   | { kind: "cell"; blueprintId: string; cellId: string }
   | { kind: "substrate-agent"; blueprintId: string; actorId: string }
@@ -285,8 +298,6 @@ export interface ExternalsSpec {
   effectHandlers?: string[];
   /** Logical service requirements resolved to provider adapters by the outer host. */
   services?: Record<string, ServiceRequirement | ServiceDeclaration>;
-  /** Blueprint-authored service invocation and settlement mappings. */
-  serviceBindings?: DeclarativeServiceBinding[];
 }
 
 export interface ManifestPayload {

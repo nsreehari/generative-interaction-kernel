@@ -1,239 +1,113 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import type { OrchestratorEffect } from "../../kernel/src/index";
+import { InMemoryStateModel, JsonataExpressionProvider, type ServiceDeclaration } from "../../kernel/src/index";
 import {
+  DefaultServiceHost,
   QueueFace,
+  ServiceKindRegistry,
   type ServiceAdapter,
-  type ServiceBinding,
-  type ServiceCatalogSnapshot,
+  type ServiceExecutionResult,
 } from "../src/index";
 
-const catalog: ServiceCatalogSnapshot = {
-  provider: { id: "test-provider", version: "1.0.0" },
-  revision: "1",
-  discoveredAt: "2026-07-19T00:00:00.000Z",
-  capabilities: [{
-    id: "analyze",
-    operation: "analyze",
-    version: "1.0.0",
-    inputSchema: { type: "object" },
-    outputSchema: { type: "object" },
-    assurance: "declared-and-locally-validated",
-    supports: { validate: true, simulate: true, cancel: true },
-  }],
-};
-
-function createAdapter(execute: ServiceAdapter["execute"]): ServiceAdapter {
-  return {
-    provider: catalog.provider,
-    discover: async () => catalog,
-    validate: async (request) => ({ ok: request.input !== undefined }),
-    simulate: async () => ({ output: { recommendation: "hold" } }),
-    probe: async () => ({ ok: true }),
-    execute,
+function createHost(
+  execute: ServiceAdapter["execute"],
+  operation: Partial<ServiceDeclaration["operations"][string]> = {},
+  options: { maxAttempts?: number; maxGuardrailAttempts?: number } = {}
+): DefaultServiceHost {
+  const registry = new ServiceKindRegistry();
+  registry.register({
+    manifest: {
+      id: "deterministic-agent",
+      version: "1",
+      configSchema: {},
+      executionModes: ["immediate", "queued"],
+      subjects: ["cell"],
+      supports: { probe: true, simulate: true, cancel: true },
+    },
+    create: () => ({
+      provider: { id: "deterministic:test", version: "1" },
+      discover: async () => ({ provider: { id: "deterministic:test", version: "1" }, revision: "1", discoveredAt: "now", capabilities: [] }),
+      validate: async (request) => ({ ok: request.input !== undefined }),
+      simulate: async () => ({ output: { recommendation: "hold" } }),
+      probe: async () => ({ ok: true }),
+      execute,
+    }),
+  });
+  const declarations: Record<string, ServiceDeclaration> = {
+    analysis: {
+      kind: "deterministic-agent",
+      version: "1",
+      operations: {
+        analyzePortfolio: {
+          operation: "analyze",
+          contract: "portfolio-analysis/v1",
+          request: { transform: { kind: "jsonata", expr: "effect.args" } },
+          settlement: { transform: { kind: "jsonata", expr: "{'ops':[{'op':'set','path':'work.answer','value':response}]}" } },
+          ...operation,
+        },
+      },
+    },
   };
-}
-
-function bind(queueFace: QueueFace, mode: "immediate" | "queued" = "immediate"): void {
-  queueFace.bind({
-    service: "portfolio-intelligence",
-    version: "1.0.0",
-    operation: "analyze",
-    providerId: "test-provider",
-    capabilityId: "analyze",
-    invoke: "analyzePortfolio",
-    mode,
+  return new DefaultServiceHost({
+    blueprintId: "portfolio",
+    blueprintRevision: "1",
+    declarations,
+    registry,
+    state: new InMemoryStateModel(["work"]),
+    expression: new JsonataExpressionProvider({ safe: true }),
+    idFactory: () => "request-1",
+    ...options,
   });
 }
 
-test("registers, describes, and checks logical service requirements", async () => {
-  const queueFace = new QueueFace();
-  queueFace.registerAdapter(createAdapter(async () => ({ output: {} })));
-  bind(queueFace);
+const effect = { kind: "invoke" as const, node: "portfolio", tool: "analyzePortfolio", args: { ticker: "MSFT" }, actorId: "author" };
 
-  assert.deepEqual(queueFace.satisfies({
-    "portfolio-intelligence": { version: "1.0.0", operations: ["analyze"] },
-  }), { ok: true, missing: [], incompatible: [] });
-  assert.equal(queueFace.satisfies({
-    "portfolio-intelligence": { version: "2.0.0", operations: ["analyze", "rebalance"] },
-  }).ok, false);
-
-  const description = await queueFace.describeServices();
-  assert.equal(description.providers[0].capabilities[0].id, "analyze");
-  assert.equal(description.bindings[0].service, "portfolio-intelligence");
+test("QueueFace delegates queued lifecycle to the shared host", async () => {
+  const host = createHost(async (request) => ({ output: request.input }), { mode: "queued" });
+  const queue = new QueueFace(host);
+  const accepted = await queue.submit(effect);
+  assert.equal(accepted.status, "accepted");
+  assert.deepEqual(accepted.request.input, { ticker: "MSFT" });
+  assert.equal((await host.runNext())?.status, "completed");
+  assert.equal((await queue.getRequest("request-1"))?.attempts, 1);
 });
 
-test("supports validation, simulation, probing, and immediate execution", async () => {
-  const queueFace = new QueueFace({ idFactory: () => "request-1" });
-  queueFace.registerAdapter(createAdapter(async (request) => ({
-    output: { received: request.input ?? null },
-  })));
-  bind(queueFace);
-
-  const input = { service: "portfolio-intelligence", operation: "analyze", input: { ticker: "MSFT" } };
-  assert.deepEqual(await queueFace.validate(input), { ok: true });
-  assert.deepEqual(await queueFace.simulate(input), { output: { recommendation: "hold" } });
-  assert.deepEqual(await queueFace.probe("test-provider"), { ok: true });
-
-  const record = await queueFace.submit(input);
-  assert.equal(record.status, "completed");
-  assert.deepEqual(record.result?.output, { received: { ticker: "MSFT" } });
-  assert.equal((await queueFace.getRequest("request-1"))?.attempts, 1);
+test("host executes immediate operations and owns declarative settlement", async () => {
+  const host = createHost(async (request) => ({ output: request.input }));
+  assert.deepEqual(await host.invoke(effect), { ops: [{ op: "set", path: "work.answer", value: { ticker: "MSFT" } }] });
 });
 
-test("retries queued work and dead-letters it at the attempt limit", async () => {
-  const queueFace = new QueueFace({ maxAttempts: 2, idFactory: () => "queued-1" });
-  queueFace.registerAdapter(createAdapter(async () => { throw new Error("provider unavailable"); }));
-  bind(queueFace, "queued");
+test("host validates provider output and retries within its ceiling", async () => {
+  let calls = 0;
+  const host = createHost(async (): Promise<ServiceExecutionResult> => {
+    calls += 1;
+    return { output: { weight: calls < 2 ? 1.4 : 0.9 } };
+  }, {
+    response: { validators: [{ kind: "jsonata", expr: "data.weight <= 1", message: "weight must not exceed 1" }] },
+    onViolation: { action: "retry", maxAttempts: 5 },
+  }, { maxGuardrailAttempts: 2 });
+  await host.invoke(effect);
+  assert.equal(calls, 2);
+  assert.equal((await host.listRequests())[0]?.guardrailAttempts, 1);
+});
 
-  assert.equal((await queueFace.submit({
-    service: "portfolio-intelligence",
-    operation: "analyze",
-  })).status, "accepted");
-  assert.equal((await queueFace.runNext())?.status, "accepted");
-  const terminal = await queueFace.runNext();
+test("host dead-letters queued transport failures at the configured limit", async () => {
+  const host = createHost(async () => { throw new Error("provider unavailable"); }, { mode: "queued" }, { maxAttempts: 2 });
+  const queue = new QueueFace(host);
+  await queue.submit(effect);
+  assert.equal((await host.runNext())?.status, "accepted");
+  const terminal = await host.runNext();
   assert.equal(terminal?.status, "dead-lettered");
   assert.equal(terminal?.attempts, 2);
-  assert.equal(await queueFace.runNext(), undefined);
 });
 
-test("routes existing invoke effects through the bound service", async () => {
-  const queueFace = new QueueFace({ idFactory: () => "invoke-1" });
-  queueFace.registerAdapter(createAdapter(async () => ({
-    orchestratorResult: { outcome: "analyzed", detail: { source: "service" } },
-  })));
-  bind(queueFace);
-
-  const effect: OrchestratorEffect = {
-    kind: "invoke",
-    node: "portfolio",
-    tool: "analyzePortfolio",
-    args: { ticker: "MSFT" },
-  };
-  assert.deepEqual(await queueFace.createOrchestrator().invoke?.(effect), {
-    outcome: "analyzed",
-    detail: { source: "service" },
-  });
-});
-
-test("cancels accepted queued requests without executing them", async () => {
+test("QueueFace cancellation prevents accepted work from executing", async () => {
   let executions = 0;
-  const queueFace = new QueueFace({ idFactory: () => "cancel-1" });
-  queueFace.registerAdapter(createAdapter(async () => {
-    executions += 1;
-    return { output: {} };
-  }));
-  bind(queueFace, "queued");
-
-  await queueFace.submit({ service: "portfolio-intelligence", operation: "analyze" });
-  assert.equal((await queueFace.cancel("cancel-1")).status, "cancelled");
-  assert.equal((await queueFace.runNext())?.status, "cancelled");
+  const host = createHost(async () => { executions += 1; return { output: {} }; }, { mode: "queued" });
+  const queue = new QueueFace(host);
+  await queue.submit(effect);
+  assert.equal((await queue.cancel("request-1")).status, "cancelled");
+  assert.equal((await host.runNext())?.status, "cancelled");
   assert.equal(executions, 0);
-});
-
-function bindWithPolicy(queueFace: QueueFace, outputPolicy: ServiceBinding["outputPolicy"]): void {
-  queueFace.bind({
-    service: "portfolio-intelligence",
-    version: "1.0.0",
-    operation: "analyze",
-    providerId: "test-provider",
-    capabilityId: "analyze",
-    invoke: "analyzePortfolio",
-    mode: "immediate",
-    outputPolicy,
-  });
-}
-
-test("settles completed when guardrails pass, and surfaces warning-level issues on the result", async () => {
-  const queueFace = new QueueFace({ idFactory: () => "guardrail-ok" });
-  queueFace.registerAdapter(createAdapter(async () => ({ output: { weight: 0.4 } })));
-  bindWithPolicy(queueFace, {
-    guardrails: [
-      { kind: "jsonata", expr: "data.weight <= 1", message: "weight must not exceed 1" },
-      { kind: "jsonata", expr: "data.weight >= 0.5", message: "weight looks low", level: "warning" },
-    ],
-  });
-
-  const record = await queueFace.submit({ service: "portfolio-intelligence", operation: "analyze" });
-  assert.equal(record.status, "completed");
-  assert.deepEqual(record.result?.detail?.guardrailWarnings, [{ detail: "weight looks low" }]);
-});
-
-test("fails a request whose output violates an error-level guardrail with no retry policy", async () => {
-  const queueFace = new QueueFace({ idFactory: () => "guardrail-fail" });
-  queueFace.registerAdapter(createAdapter(async () => ({ output: { weight: 1.4 } })));
-  bindWithPolicy(queueFace, {
-    guardrails: [{ kind: "jsonata", expr: "data.weight <= 1", message: "weight must not exceed 1" }],
-  });
-
-  const record = await queueFace.submit({ service: "portfolio-intelligence", operation: "analyze" });
-  assert.equal(record.status, "failed");
-  assert.match(record.error ?? "", /guardrail violation \(fail\)/);
-  assert.deepEqual(record.guardrailViolations, [{ detail: "weight must not exceed 1" }]);
-});
-
-test("retries on guardrail violation until the provider self-corrects, bounded by onViolation.maxAttempts", async () => {
-  let calls = 0;
-  const queueFace = new QueueFace({ idFactory: () => "guardrail-retry" });
-  queueFace.registerAdapter(createAdapter(async () => {
-    calls += 1;
-    return { output: { weight: calls < 3 ? 1.4 : 0.9 } };
-  }));
-  bindWithPolicy(queueFace, {
-    guardrails: [{ kind: "jsonata", expr: "data.weight <= 1", message: "weight must not exceed 1" }],
-    onViolation: { action: "retry", maxAttempts: 3 },
-  });
-
-  const record = await queueFace.submit({ service: "portfolio-intelligence", operation: "analyze" });
-  assert.equal(record.status, "completed");
-  assert.equal(calls, 3);
-  assert.equal(record.guardrailAttempts, 2);
-});
-
-test("threads guardrail issues into a correction-prompt re-invocation via eventPayload", async () => {
-  const queueFace = new QueueFace({ idFactory: () => "guardrail-correction" });
-  queueFace.registerAdapter(createAdapter(async (request) => {
-    const corrected = Boolean(request.eventPayload?.guardrailCorrection);
-    return { output: { weight: corrected ? 0.9 : 1.4 } };
-  }));
-  bindWithPolicy(queueFace, {
-    guardrails: [{ kind: "jsonata", expr: "data.weight <= 1", message: "weight must not exceed 1" }],
-    onViolation: { action: "correction-prompt", maxAttempts: 2 },
-  });
-
-  const record = await queueFace.submit({ service: "portfolio-intelligence", operation: "analyze" });
-  assert.equal(record.status, "completed");
-  assert.deepEqual(record.result?.output, { weight: 0.9 });
-});
-
-test("caps guardrail retries at the host's maxGuardrailAttempts regardless of a larger policy maxAttempts", async () => {
-  let calls = 0;
-  const queueFace = new QueueFace({ idFactory: () => "guardrail-cap", maxGuardrailAttempts: 2 });
-  queueFace.registerAdapter(createAdapter(async () => {
-    calls += 1;
-    return { output: { weight: 1.4 } };
-  }));
-  bindWithPolicy(queueFace, {
-    guardrails: [{ kind: "jsonata", expr: "data.weight <= 1", message: "weight must not exceed 1" }],
-    onViolation: { action: "retry", maxAttempts: 10 },
-  });
-
-  const record = await queueFace.submit({ service: "portfolio-intelligence", operation: "analyze" });
-  assert.equal(record.status, "failed");
-  assert.equal(calls, 2);
-  assert.equal(record.guardrailAttempts, 2);
-});
-
-test("marks fallback as a distinct, visible terminal outcome", async () => {
-  const queueFace = new QueueFace({ idFactory: () => "guardrail-fallback" });
-  queueFace.registerAdapter(createAdapter(async () => ({ output: { weight: 1.4 } })));
-  bindWithPolicy(queueFace, {
-    guardrails: [{ kind: "jsonata", expr: "data.weight <= 1", message: "weight must not exceed 1" }],
-    onViolation: { action: "fallback" },
-  });
-
-  const record = await queueFace.submit({ service: "portfolio-intelligence", operation: "analyze" });
-  assert.equal(record.status, "failed");
-  assert.match(record.error ?? "", /guardrail violation \(fallback\)/);
 });

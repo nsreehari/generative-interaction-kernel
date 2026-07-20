@@ -16,6 +16,7 @@ import { test } from "vitest";
 import {
   GIKClient,
   InMemoryStateModel,
+  JsonataExpressionProvider,
   type Checkpoint,
   type Orchestrator,
   type OrchestratorEffect,
@@ -28,6 +29,7 @@ import { SseTransportServer } from "../../transports/http-sse/src/index";
 import {
   AGENTFACE_ALLOWLIST,
   ControlFace,
+  DefaultServiceHost,
   type ControlFaceOptions,
   agentFaceProjection,
   authoringTools,
@@ -296,7 +298,15 @@ test("ControlFace projects the shared service-kind registry", () => {
       execute: async () => ({ output: {} }),
     }),
   });
-  const face = new ControlFace(manifest, document, { state: seededState(), serviceKinds });
+  const serviceHost = new DefaultServiceHost({
+    blueprintId: "test",
+    blueprintRevision: "1",
+    declarations: {},
+    registry: serviceKinds,
+    state: seededState(),
+    expression: new JsonataExpressionProvider({ safe: true }),
+  });
+  const face = new ControlFace(manifest, document, { state: seededState(), serviceHost });
 
   assert.deepEqual(face.describeServiceKinds().map(({ manifest: kind }) => kind.id), ["deterministic-agent"]);
   const agentNames = agentFaceProjection(face).map((tool) => tool.name);

@@ -1,12 +1,10 @@
 // Provider contracts and in-memory reference implementations.
 // These are the pluggable seams; the kernel depends only on the interfaces.
 
-// Vendored JSONata (canonical v2.2.1) — a UMD copy default-imported so it loads under both
-// Node (tsx) and the browser (Vite), with no external npm dependency and no Node `require`.
-// @ts-ignore -- vendored CommonJS bundle ships no type declarations.
-import jsonataFactory from "./vendor/jsonata.cjs";
-// @ts-ignore -- generated CommonJS sync port ships no type declarations.
-import jsonataSyncFactory from "./vendor/jsonata-sync.cjs";
+// Vendored JSONata (canonical v2.2.1). The wrappers normalize Node's CommonJS default and
+// Vite's browser UMD global before the canonical and sync bundles can overwrite one another.
+import jsonataFactory from "./vendor/jsonata-runtime";
+import jsonataSyncFactory from "./vendor/jsonata-sync-runtime";
 import type {
   Json,
   PatchOp,

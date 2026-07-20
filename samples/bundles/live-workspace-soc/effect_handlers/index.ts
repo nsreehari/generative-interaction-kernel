@@ -1,13 +1,8 @@
 import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
-import type { Json, OrchestratorResult, PatchOp, ServiceDeclaration } from "@gik/kernel";
-
-import { bindServiceUseSync, QueueFace, ServiceKindRegistry } from "@gik/controlface";
-import { createFoundryAgentKind } from "../../../services/foundry-agent";
+import type { Json, OrchestratorResult, PatchOp } from "@gik/kernel";
 import { compileSocPresentation } from "../../../profiles/live-workspace-soc/compile";
+import profile from "../../../profiles/live-workspace-soc/profile.json";
 import { projectSocInspection, projectSocParticipants } from "../inspection";
-import manifest from "../manifest.json";
-import initialState from "../state.json";
-import { getSocFoundryKey } from "../live-credentials";
 import type { Actor, AgentProvider, Incident, JournalEntry, Presentation } from "../projection_views/types";
 import {
   buildAgentMessage,
@@ -20,8 +15,9 @@ import {
 } from "../live-agent";
 
 type RecordValue = Record<string, Json>;
-const resetState = JSON.parse(JSON.stringify(initialState.soc)) as RecordValue;
-const resetInspection = JSON.parse(JSON.stringify(initialState.inspection)) as RecordValue;
+const profileState = profile.payload.runtime.state as unknown as RecordValue;
+const resetState = JSON.parse(JSON.stringify(profileState.soc)) as RecordValue;
+const resetInspection = JSON.parse(JSON.stringify(profileState.inspection)) as RecordValue;
 
 function presentationContract(contextId: string): RecordValue {
   const presentation = compileSocPresentation(contextId);
@@ -706,76 +702,12 @@ const deterministicEffects: EffectHandlerMap = {
 export const socOrganismEffects = deterministicEffects;
 
 export function createSocEffects(
-  fetchImpl: typeof globalThis.fetch = globalThis.fetch,
-  accessKey: () => string = getSocFoundryKey
+  _fetchImpl: typeof globalThis.fetch = globalThis.fetch,
+  _accessKey: () => string = () => ""
 ): EffectHandlerMap {
   const wrapped: EffectHandlerMap = { ...deterministicEffects };
-  const declarations = manifest.payload.externals.services as Record<string, ServiceDeclaration>;
-  const serviceKinds = new ServiceKindRegistry({
-    hostCapabilities: ["foundry-executor", "credential-resolver"],
-    resolveCredential: async (reference) => {
-      if (reference !== "foundry-agent/access-key") throw new Error(`Unknown credential reference '${reference}'`);
-      const key = accessKey().trim();
-      if (!key) throw new Error("Access key required for Live mode.");
-      return key;
-    },
-    authorizeEndpoint: (kind, endpoint) =>
-      kind === "foundry-agent" && endpoint.origin === "https://sz-foundry-proxy.azurewebsites.net",
-  });
-  serviceKinds.register(createFoundryAgentKind(fetchImpl));
-  const serviceIdByActor = {
-    "agent-correlation": "correlation-agent",
-    "agent-response": "response-agent",
-  } as const;
-  const serviceQueues = new Map<string, { queueFace: QueueFace; providerId: string }>();
-  const queueFor = (actorId: keyof typeof serviceIdByActor) => {
-    const existing = serviceQueues.get(actorId);
-    if (existing) return existing;
-    const serviceId = serviceIdByActor[actorId];
-    const queueFace = new QueueFace();
-    const binding = bindServiceUseSync(queueFace, serviceKinds, declarations, {
-      service: serviceId,
-      operation: "chat",
-      contract: "soc-agent-reply/v1",
-    }, {
-      blueprintId: "live-workspace-soc",
-      blueprintRevision: manifest.payload.version,
-      invoke: `${actorId}:chat`,
-      subject: { kind: "substrate-agent", blueprintId: "live-workspace-soc", actorId },
-    });
-    const created = { queueFace, providerId: binding.providerId };
-    serviceQueues.set(actorId, created);
-    return created;
-  };
-  const chat = async (
-    actorId: keyof typeof serviceIdByActor,
-    input: Record<string, Json>
-  ): Promise<{ conversationId: string; responseId: string; reply: string }> => {
-    const serviceId = serviceIdByActor[actorId];
-    const record = await queueFor(actorId).queueFace.submit({
-      service: serviceId,
-      operation: "chat",
-      input,
-      subject: { kind: "substrate-agent", blueprintId: "live-workspace-soc", actorId },
-    });
-    if (record.status !== "completed" || !record.result?.output
-      || typeof record.result.output !== "object" || Array.isArray(record.result.output)) {
-      throw new Error(record.error || "Foundry agent request failed.");
-    }
-    const output = record.result.output as Record<string, Json>;
-    if (typeof output.conversationId !== "string"
-      || typeof output.responseId !== "string"
-      || typeof output.reply !== "string") {
-      throw new Error("Foundry agent returned an invalid chat response.");
-    }
-    return {
-      conversationId: output.conversationId,
-      responseId: output.responseId,
-      reply: output.reply,
-    };
-  };
 
-  wrapped.setAgentMode = async (ctx) => {
+  wrapped.setAgentMode = (ctx) => {
     const controlRequest = ctx.get("control.agentModeRequest") as RecordValue | undefined;
     const participantRequest = ctx.get("control.participantConfigurationRequest") as RecordValue | undefined;
     const actorId = typeof ctx.payload.agentId === "string"
@@ -785,159 +717,56 @@ export function createSocEffects(
         : typeof controlRequest?.name === "string"
           ? controlRequest.name
           : typeof participantRequest?.participantId === "string" ? participantRequest.participantId : "";
-    const requestedValue = ctx.payload.mode ?? ctx.payload.value ?? controlRequest?.value ?? participantRequest?.value;
-    const mode = requestedValue === "live" ? "live" : "mock";
+    const requested = ctx.payload.mode ?? ctx.payload.value ?? controlRequest?.value ?? participantRequest?.value;
+    const mode: ProviderRecord["mode"] = requested === "live" ? "live" : "mock";
     const currentProviders = providers(ctx);
     const provider = currentProviders[actorId];
     if (!provider || !["agent-correlation", "agent-response"].includes(actorId)) {
       return { outcome: "rejected", detail: { reason: "unknown-agent" } };
     }
-    if (mode === "mock") {
-      const accessRequired = Object.entries(currentProviders).some(([id, current]) => id !== actorId && current.mode === "live");
-      return {
-        outcome: "updated",
-        ops: [
-          ...providerOps(ctx, actorId, { ...provider, mode, status: "ready", lastProvider: "mock", fallbackReason: "" }),
-          setOp("soc.foundry.required", accessRequired),
-        ],
-      };
-    }
-
-    const key = accessKey().trim();
-    if (!key) {
-      return {
-        outcome: "fallback",
-        ops: [
-          ...providerOps(ctx, actorId, { ...provider, mode, status: "fallback", fallbackReason: "Access key required for Live mode." }),
-          setOp("soc.foundry.required", true),
-        ],
-      };
-    }
-    try {
-      await queueFor(actorId as keyof typeof serviceIdByActor).queueFace.probe(
-        queueFor(actorId as keyof typeof serviceIdByActor).providerId
-      );
-      return {
-        outcome: "updated",
-        ops: [
-          ...providerOps(ctx, actorId, { ...provider, mode, status: "ready", fallbackReason: "" }),
-          setOp("soc.foundry.required", true),
-        ],
-      };
-    } catch (error) {
-      return {
-        outcome: "fallback",
-        ops: [
-          ...providerOps(ctx, actorId, { ...provider, mode, status: "fallback", fallbackReason: error instanceof Error ? error.message : "Foundry agent is unavailable." }),
-          setOp("soc.foundry.required", true),
-        ],
-      };
-    }
-  };
-
-  wrapped.acceptSocFoundryAccess = (ctx) => {
-    const agentNames = Array.isArray(ctx.payload.agentNames)
-      ? ctx.payload.agentNames.filter((value): value is string => typeof value === "string")
-      : [];
-    const nextProviders = Object.fromEntries(Object.entries(providers(ctx)).map(([id, provider]) => [id, provider.mode === "live"
-      ? { ...provider, status: agentNames.includes(provider.agentName) ? "ready" : "fallback", fallbackReason: agentNames.includes(provider.agentName) ? "" : `${provider.agentName} is not available for this key.` }
-      : provider]));
+    const liveUnavailable = mode === "live";
+    const next = {
+      ...provider,
+      mode,
+      status: liveUnavailable ? "fallback" : "ready",
+      lastProvider: "mock",
+      fallbackReason: liveUnavailable ? "Live SOC execution must be supplied by the host service runner." : "",
+    };
+    const accessRequired = mode === "live"
+      || Object.entries(currentProviders).some(([id, current]) => id !== actorId && current.mode === "live");
     return {
-      outcome: "updated",
+      outcome: liveUnavailable ? "fallback" : "updated",
       ops: [
-        setOp("soc.foundry.agentNames", agentNames),
-        setOp("soc.agentProviders", nextProviders),
-        setOp("control.inspection.participants", inspectionParticipants(list(ctx, "soc.actors"), nextProviders)),
+        ...providerOps(ctx, actorId, next),
+        setOp("soc.foundry.required", accessRequired),
       ],
     };
   };
 
-  wrapped.clearSocFoundryAccess = () => ({
+  wrapped.acceptSocFoundryAccess = (ctx) => ({
     outcome: "updated",
     ops: [
-      setOp("soc.foundry.agentNames", []),
+      setOp("soc.foundry.agentNames", Array.isArray(ctx.payload.agentNames)
+        ? ctx.payload.agentNames.filter((value): value is string => typeof value === "string")
+        : []),
     ],
   });
+  wrapped.clearSocFoundryAccess = () => ({ outcome: "updated", ops: [setOp("soc.foundry.agentNames", [])] });
 
   for (const [handlerName, live] of Object.entries(LIVE_OPERATIONS)) {
     const deterministic = deterministicEffects[handlerName];
     wrapped[handlerName] = async (ctx) => {
       const provider = providers(ctx)[live.actorId];
-      const capturedMode = provider?.mode === "live" ? "live" : "mock";
-      if (capturedMode === "mock") {
-        const result = await deterministic(ctx) as OrchestratorResult | void;
-        return annotateProvider(result ?? {}, ctx, live.actorId, provider, "mock", "");
-      }
-
-      const key = accessKey().trim();
-      let conversationId = provider.conversationId;
-      let responseId = "";
-      let validationAttempts = 0;
-      try {
-        if (!key) throw new Error("Access key required for Live mode.");
-        const contract = createSocAgentContract(live.operation);
-        let response = await chat(live.actorId, {
-          message: buildAgentMessage(live.operation, incidentContext(ctx)),
-          agentName: provider.agentName,
-          conversationId: provider.conversationId || null,
-          instructions: contract.instructions,
-        });
-        conversationId = response.conversationId;
-        responseId = response.responseId;
-        validationAttempts = 1;
-        let validation = contract.validate(response.reply);
-        let issues: AgentValidationIssue[] = validation.ok ? [] : validation.issues;
-        if (validation.ok) {
-          try {
-            assertKnownReferences(ctx, validation.value);
-          } catch (error) {
-            issues = [{ path: "$", code: "unknown-reference", message: error instanceof Error ? error.message : "Response contains an unknown reference." }];
-          }
-        }
-
-        if (issues.length > 0) {
-          response = await chat(live.actorId, {
-            message: contract.buildCorrectionPrompt(issues),
-            agentName: provider.agentName,
-            conversationId,
-            instructions: contract.instructions,
-          });
-          conversationId = response.conversationId;
-          responseId = response.responseId;
-          validationAttempts = 2;
-          validation = contract.validate(response.reply);
-          issues = validation.ok ? [] : validation.issues;
-          if (validation.ok) {
-            try {
-              assertKnownReferences(ctx, validation.value);
-            } catch (error) {
-              issues = [{ path: "$", code: "unknown-reference", message: error instanceof Error ? error.message : "Response contains an unknown reference." }];
-            }
-          }
-        }
-
-        if (!validation.ok || issues.length > 0) {
-          throw new Error(`Live response failed validation after correction: ${issues.map((issue) => `${issue.path}: ${issue.message}`).join("; ")}`);
-        }
-        const reply = validation.value;
-        const result = await deterministic(ctx) as OrchestratorResult | void;
-        const lowered = lowerLiveReply(result ?? {}, live.operation, reply);
-        return annotateProvider(lowered, ctx, live.actorId, provider, "live", "", conversationId, responseId, validationAttempts, validationAttempts > 1);
-      } catch (error) {
-        const result = await deterministic(ctx) as OrchestratorResult | void;
-        return annotateProvider(
-          result ?? {},
-          ctx,
-          live.actorId,
-          provider,
-          "mock",
-          error instanceof Error ? error.message : "Live response failed validation.",
-          conversationId,
-          responseId,
-          validationAttempts,
-          false
-        );
-      }
+      const result = await deterministic(ctx) as OrchestratorResult | void;
+      const liveRequested = provider?.mode === "live";
+      return annotateProvider(
+        result ?? {},
+        ctx,
+        live.actorId,
+        provider,
+        "mock",
+        liveRequested ? "Live SOC execution must be supplied by the host service runner." : ""
+      );
     };
   }
 
@@ -983,15 +812,14 @@ export function createSocEffects(
       };
     };
   }
-
   return wrapped;
 }
 
 export function createSocOrganismEffects(
-  fetchImpl: typeof globalThis.fetch = globalThis.fetch,
-  accessKey: () => string = getSocFoundryKey
+  _fetchImpl: typeof globalThis.fetch = globalThis.fetch,
+  _accessKey: () => string = () => ""
 ): EffectHandlerMap {
-  return createSocEffects(fetchImpl, accessKey);
+  return createSocEffects();
 }
 
 export const effects = createSocOrganismEffects();

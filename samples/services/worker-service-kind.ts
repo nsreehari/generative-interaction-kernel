@@ -22,7 +22,9 @@ export function createWorkerServiceKind(manifest: ServiceKindManifest): ServiceK
     validate: (_declaration, context) => context.execute
       ? { ok: true }
       : { ok: false, errors: [`Service kind '${manifest.id}' requires a host executor`] },
-    create: (declaration, context): ServiceAdapter => ({
+    create: (declaration, context): ServiceAdapter => {
+      const operations = [...new Set(Object.values(declaration.operations).map(({ operation }) => operation))];
+      return ({
       provider: {
         id: `${manifest.id}:${context.identity?.serviceId ?? "anonymous"}`,
         version: manifest.version,
@@ -36,7 +38,7 @@ export function createWorkerServiceKind(manifest: ServiceKindManifest): ServiceK
         },
         revision: manifest.version,
         discoveredAt: new Date().toISOString(),
-        capabilities: declaration.operations.map((operation) => ({
+        capabilities: operations.map((operation) => ({
           id: operation,
           operation,
           version: declaration.version,
@@ -49,7 +51,7 @@ export function createWorkerServiceKind(manifest: ServiceKindManifest): ServiceK
           },
         })),
       }),
-      validate: async (request) => declaration.operations.includes(request.operation)
+      validate: async (request) => operations.includes(request.operation)
         ? { ok: true }
         : { ok: false, errors: [`Operation '${request.operation}' is not declared`] },
       execute: async (request) => ({
@@ -64,6 +66,7 @@ export function createWorkerServiceKind(manifest: ServiceKindManifest): ServiceK
           idempotencyKey: request.idempotencyKey,
         }) as Json,
       }),
-    }),
+      });
+    },
   };
 }

@@ -3,6 +3,25 @@
   "$id": "https://genui.dev/schemas/profile.schema.json",
   "title": "GenUI Profile",
   "type": "object",
+  "$defs": {
+    "serviceTransform": {
+      "type": "object",
+      "required": ["kind", "expr"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "const": "jsonata" },
+        "expr": { "type": "string", "minLength": 1 }
+      }
+    },
+    "serviceDataStage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "transform": { "$ref": "#/$defs/serviceTransform" },
+        "validators": { "type": "array", "items": { "type": "object" } }
+      }
+    }
+  },
   "required": ["gik", "type", "payload"],
   "additionalProperties": false,
   "properties": {
@@ -84,25 +103,31 @@
                   "kind": { "type": "string", "minLength": 1 },
                   "version": { "type": "string", "minLength": 1 },
                   "operations": {
-                    "type": "array",
-                    "minItems": 1,
-                    "uniqueItems": true,
-                    "items": { "type": "string", "minLength": 1 }
-                  },
-                  "config": {},
-                  "scope": { "enum": ["per-invocation", "per-cell", "per-blueprint", "per-session"] },
-                  "operationPolicies": {
                     "type": "object",
+                    "minProperties": 1,
                     "additionalProperties": {
                       "type": "object",
-                      "required": ["guardrails"],
+                      "required": ["operation", "contract", "settlement"],
+                      "additionalProperties": false,
                       "properties": {
-                        "guardrails": { "type": "array" },
+                        "operation": { "type": "string", "minLength": 1 },
+                        "contract": { "type": "string", "minLength": 1 },
+                        "mode": { "enum": ["immediate", "queued"] },
+                        "subject": { "type": "object" },
+                        "request": { "$ref": "#/$defs/serviceDataStage" },
+                        "response": { "$ref": "#/$defs/serviceDataStage" },
+                        "settlement": {
+                          "type": "object",
+                          "required": ["transform"],
+                          "additionalProperties": false,
+                          "properties": { "transform": { "$ref": "#/$defs/serviceTransform" } }
+                        },
                         "onViolation": { "type": "object" }
-                      },
-                      "additionalProperties": false
+                      }
                     }
-                  }
+                  },
+                  "config": {},
+                  "scope": { "enum": ["per-invocation", "per-cell", "per-blueprint", "per-session"] }
                 }
               }
             ]
@@ -121,32 +146,7 @@
             "externals": {
               "type": "object",
               "properties": {
-                "serviceBindings": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "required": ["invoke", "use"],
-                    "additionalProperties": false,
-                    "properties": {
-                      "invoke": { "type": "string", "minLength": 1 },
-                      "use": {
-                        "type": "object",
-                        "required": ["service", "operation", "contract"],
-                        "additionalProperties": false,
-                        "properties": {
-                          "service": { "type": "string", "minLength": 1 },
-                          "operation": { "type": "string", "minLength": 1 },
-                          "contract": { "type": "string", "minLength": 1 },
-                          "policyOverride": { "type": "object" }
-                        }
-                      },
-                      "mode": { "enum": ["immediate", "queued"] },
-                      "request": { "type": "string", "minLength": 1 },
-                      "result": { "type": "string", "minLength": 1 },
-                      "subject": { "type": "object" }
-                    }
-                  }
-                }
+                "serviceBindings": false
               },
               "additionalProperties": true
             },

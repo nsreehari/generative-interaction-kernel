@@ -43,7 +43,7 @@ export function readHostQuery(search: string): HostQuery {
   const params = new URLSearchParams(search);
   const requestedPresentation = params.get("presentation") ?? params.get("presentationContext");
   return {
-    targetId: params.get("bundle"),
+    targetId: params.get("b") ?? params.get("bundle"),
     demoId: params.get("demo"),
     harnessId: isGikEnabled(params) || params.get("harness") === "gik-control-harness" || params.has("plane")
       ? "gik-control-harness"
@@ -56,6 +56,9 @@ export function canonicalizeHostUrl(href: string): string {
   const url = new URL(href);
   const params = url.searchParams;
   const legacyPresentation = params.get("presentationContext");
+  const legacyTarget = params.get("bundle");
+
+  if (legacyTarget && !params.has("b")) params.set("b", legacyTarget);
 
   if ((params.get("harness") === "gik-control-harness" || params.has("plane")) && !params.has("gik")) {
     params.set("gik", "1");
@@ -64,6 +67,7 @@ export function canonicalizeHostUrl(href: string): string {
 
   params.delete("harness");
   params.delete("plane");
+  params.delete("bundle");
   params.delete("context");
   params.delete("presentationContext");
   if (params.get("presentation") === DEFAULT_PRESENTATION_CONTEXT) params.delete("presentation");
