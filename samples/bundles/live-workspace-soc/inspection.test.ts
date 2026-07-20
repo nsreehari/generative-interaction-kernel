@@ -67,7 +67,7 @@ test("SOC publishes presentation, blueprint, and timeline through neutral inspec
   assert.equal(inspection.presentation?.contexts.length, 9);
   assert.equal(inspection.blueprint?.selectedContext, "full-substrate");
   assert.equal(inspection.blueprint?.stages.length, 3);
-  assert.equal(inspection.blueprint?.resources.find((item) => item.label === "Projection contexts")?.value, "9");
+  assert.equal(inspection.blueprint?.resources.find((item) => item.label === "Projection presets")?.value, "9");
   assert.deepEqual(inspection.timeline, []);
   assert.equal(inspection.status, null);
 });
