@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import { unwrap } from "@gik/kernel";
 import { lintLoweringRecipe, type LayerRecipeArtifact } from "@gik/profile";
 import { t3ScenarioPlan } from "../../scenarios/live-workspace-soc-t3/compile";
+import { openSampleBlueprint } from "../../shared/blueprints";
 
-import runtimeDocument from "../../bundles/live-workspace-soc/document.json" with { type: "json" };
-import manifest from "../../bundles/live-workspace-soc/manifest.json" with { type: "json" };
 import interactionRecipe from "./interaction-to-presentation.recipe.json" with { type: "json" };
 import runtimeRecipe from "./presentation-to-runtime.recipe.json" with { type: "json" };
 import workflowRecipe from "./workflow-to-interaction.recipe.json" with { type: "json" };
@@ -17,6 +17,9 @@ import {
 } from "./compile";
 
 const recipeArtifacts = [workflowRecipe, interactionRecipe, runtimeRecipe] as LayerRecipeArtifact[];
+const runtime = openSampleBlueprint("live-workspace-soc");
+const runtimeDocument = unwrap(runtime.document);
+const manifest = unwrap(runtime.manifest);
 
 test("SOC blueprint owns one connected four-tier lowering chain", () => {
   assert.deepEqual(
@@ -30,7 +33,7 @@ test("SOC blueprint owns one connected four-tier lowering chain", () => {
 });
 
 test("SOC recipes lint against the bundle terminal capability vocabulary", () => {
-  const capabilities = manifest.payload.capabilities;
+  const capabilities = manifest.capabilities;
   assert.deepEqual(
     recipeArtifacts.flatMap((artifact) => lintLoweringRecipe(artifact, capabilities)),
     []
@@ -163,7 +166,7 @@ test("agent contexts lower into context, state, request, response, and governed-
 });
 
 test("substrate chrome owns only the organism runtime projection", () => {
-  const body = runtimeDocument.payload.root.edges.children.find((child) => child.id === "soc-workspace");
+  const body = runtimeDocument.root.edges.children.find((child) => child.id === "soc-workspace");
   assert.ok(body);
   const chrome = body.edges.children[0];
   assert.equal(chrome.capability, "soc:substrate-chrome");
@@ -182,7 +185,7 @@ test("substrate chrome owns only the organism runtime projection", () => {
 });
 
 test("the runtime projection owns ordered document-gated context views", () => {
-  const body = runtimeDocument.payload.root.edges.children.find((child) => child.id === "soc-workspace");
+  const body = runtimeDocument.root.edges.children.find((child) => child.id === "soc-workspace");
   assert.ok(body);
   const chrome = body.edges.children.find((child) => child.id === "soc-substrate-chrome");
   assert.ok(chrome);
@@ -211,14 +214,14 @@ test("the runtime projection owns ordered document-gated context views", () => {
   }
 });
 
-test("the base runtime preserves the organism Blueprint output behind host integration edges", () => {
-  const runtime = structuredClone(runtimeDocument.payload);
-  const children = runtime.root.edges.children;
+test("the Blueprint output includes the Foundry access gate without host document patches", () => {
+  const document = structuredClone(runtimeDocument);
+  const children = document.root.edges.children;
   assert.equal(children.some((child) => child.id === "demo-runner-region"), false);
   assert.equal(children.some((child) => child.id === "soc-participants-region"), false);
   const accessGateIndex = children.findIndex((child) => child.id === "foundry-access-gate-region");
   assert.notEqual(accessGateIndex, -1);
-  assert.deepEqual(children.splice(accessGateIndex, 1), [{
+  assert.deepEqual(children[accessGateIndex], {
     capability: "foundry:access-modal",
     id: "foundry-access-gate-region",
     props: { proxyBaseUrl: "https://sz-foundry-proxy.azurewebsites.net" },
@@ -229,11 +232,9 @@ test("the base runtime preserves the organism Blueprint output behind host integ
         accessCleared: [{ do: "invoke", args: { tool: "clearSocFoundryAccess" } }],
       },
     },
-  }]);
+  });
   const body = children.find((child) => child.id === "soc-workspace");
   assert.ok(body);
   assert.equal(body.edges.react.length, 19);
-  delete body.edges.react;
-  delete body.edges.on.reset;
-  assert.deepEqual(compileSocDocument("war-room"), runtime);
+  assert.deepEqual(compileSocDocument("war-room"), runtimeDocument);
 });

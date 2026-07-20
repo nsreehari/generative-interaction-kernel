@@ -1,27 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { bundleFromJson, loadBundleRuntime } from "@gik/react";
-import type { ServiceDeclaration } from "@gik/kernel";
-import document from "./document.json" with { type: "json" };
 import effects from "./effect_handlers/index";
-import manifest from "./manifest.json" with { type: "json" };
-import state from "./state.json" with { type: "json" };
-import { createPortfolioQueueFace } from "./services";
+import { openSampleBlueprint } from "../../shared/blueprints";
+import { declarativeServiceOrchestrator } from "../../shared/service-runtime";
 
 function runtime() {
+  const blueprintRuntime = openSampleBlueprint("portfolio-tracker");
   return loadBundleRuntime(bundleFromJson({
-    manifest: structuredClone(manifest),
-    document: structuredClone(document),
-    state: structuredClone(state),
+    manifest: blueprintRuntime.manifest,
+    document: blueprintRuntime.document,
+    state: blueprintRuntime.state,
   }, { effectHandlers: effects }), {
-    wrapOrchestrator: (fallback, runtimeState) =>
-      createPortfolioQueueFace(
-        runtimeState,
-        manifest.payload.externals.services as Record<string, ServiceDeclaration>
-      ).createOrchestrator(fallback),
+    wrapOrchestrator: declarativeServiceOrchestrator(blueprintRuntime),
   });
 }
 
-describe("portfolio-tracker Bundle", () => {
+describe("portfolio-tracker Blueprint runtime", () => {
   it("maintains keyed quotes, positions, and summary as tickers change", async () => {
     const portfolio = runtime();
 

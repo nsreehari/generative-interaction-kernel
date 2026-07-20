@@ -7,8 +7,6 @@ import {
   type SerializableBundle,
 } from "@gik/react";
 
-import registryJson from "../registry.json";
-
 const LOCAL_BUNDLE_STORAGE_KEY = "gik.manage-bundles.bundles.v1";
 const BUNDLE_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -52,7 +50,6 @@ function byBundleId(glob: Record<string, unknown>): Record<string, unknown> {
 const manifests = byBundleId(rawManifests);
 const documents = byBundleId(rawDocuments);
 const states = byBundleId(rawStates);
-const registeredBundles = (registryJson as { bundles: Record<string, { kind: string }> }).bundles;
 
 function getStorage(): Storage | null {
   if (typeof globalThis === "undefined" || !("localStorage" in globalThis)) return null;
@@ -99,9 +96,9 @@ function writeStoredBundleMap(bundles: Record<string, SerializableBundle>): void
 }
 
 function repositoryEntries(): CatalogEntry[] {
-  return Object.entries(registeredBundles)
-    .filter(([, entry]) => entry.kind === "json")
-    .flatMap(([id]) => {
+  return Object.keys(manifests)
+    .sort()
+    .flatMap((id) => {
       if (!manifests[id] || !documents[id] || !isRecord(states[id])) return [];
       try {
         return [{

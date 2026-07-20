@@ -3,9 +3,14 @@ import { test } from "vitest";
 
 import socProfile from "../../profiles/live-workspace-soc/profile.json" with { type: "json" };
 import t3Scenario from "../../scenarios/live-workspace-soc-t3/scenario.json" with { type: "json" };
-import overviewState from "./state.json" with { type: "json" };
+import { openSampleBlueprint } from "../../shared/blueprints";
 
-const overview = overviewState.overview;
+const overview = openSampleBlueprint("samples-overview").state.overview as unknown as {
+  actors: Array<{ id: string }>;
+  socActs: Array<{ id: number; title: string }>;
+  proofPlanes: Array<{ blueprint: string; gik: boolean }>;
+  expansion: { domains: Array<{ id: string }>; status: string; boundary: string };
+};
 const resources = socProfile.payload.resources;
 const canonicalActors = resources.actors.inline;
 const canonicalActs = t3Scenario.payload.steps;
@@ -23,10 +28,10 @@ test("overview SOC summary stays aligned with the canonical blueprint", () => {
 
 test("overview proof links open the same SOC artifact with optional GIK controls", () => {
   assert.deepEqual(
-    overview.proofPlanes.map(({ bundle, gik }) => ({ bundle, gik })),
+    overview.proofPlanes.map(({ blueprint, gik }) => ({ blueprint, gik })),
     [
-      { bundle: "live-workspace-soc", gik: false },
-      { bundle: "live-workspace-soc", gik: true },
+      { blueprint: "live-workspace-soc", gik: false },
+      { blueprint: "live-workspace-soc", gik: true },
     ]
   );
 });

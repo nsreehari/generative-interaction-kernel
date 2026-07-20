@@ -7,8 +7,7 @@ import {
   tracePortfolioBlueprint,
 } from "./compile";
 
-import bundleDocument from "../../bundles/portfolio-tracker/document.json" with { type: "json" };
-import bundleManifest from "../../bundles/portfolio-tracker/manifest.json" with { type: "json" };
+import { openSampleBlueprint } from "../../shared/blueprints";
 
 describe("portfolio-tracker Blueprint", () => {
   it("resolves the KISS cell composition", () => {
@@ -48,11 +47,13 @@ describe("portfolio-tracker Blueprint", () => {
     });
   });
 
-  it("produces the portfolio Bundle document", () => {
-    expect(compilePortfolioDocument()).toEqual(bundleDocument.payload);
-  });
-
-  it("lowers logical service requirements into the Bundle manifest", () => {
-    expect(bundleManifest.payload.externals.services).toEqual(PORTFOLIO_SERVICES);
+  it("opens one runtime from the authored Blueprint", () => {
+    const runtime = openSampleBlueprint("portfolio-tracker");
+    expect(runtime.document).toMatchObject({ type: "document", payload: compilePortfolioDocument() });
+    expect(runtime.manifest).toMatchObject({
+      type: "manifest",
+      payload: { externals: { services: PORTFOLIO_SERVICES } },
+    });
+    expect(runtime.state.portfolio).toMatchObject({ holdings: {}, positions: {} });
   });
 });

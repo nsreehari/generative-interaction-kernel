@@ -1,10 +1,10 @@
 import type { Json, ServiceDeclaration } from "../../../kernel/src/index";
 import {
   serviceConfig,
-  type ServiceAdapter,
   type ServiceKindFactory,
   type ServiceKindManifest,
-} from "@gik/controlface";
+} from "../../../face/src/services/service-kinds";
+import type { ServiceAdapter } from "../../../face/src/services/queueface";
 
 import manifestJson from "./manifest.json";
 

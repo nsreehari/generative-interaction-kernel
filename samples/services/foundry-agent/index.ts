@@ -1,10 +1,10 @@
 import type { GuardrailRule, Json, ServiceDeclaration } from "../../../kernel/src/index";
 import {
 	serviceConfig,
-	type ServiceAdapter,
 	type ServiceKindFactory,
 	type ServiceKindManifest,
-} from "@gik/controlface";
+} from "../../../face/src/services/service-kinds";
+import type { ServiceAdapter } from "../../../face/src/services/queueface";
 import { createFoundryProxy, type FoundryChatResponseSchema } from "../../shared/foundry-proxy";
 import manifestJson from "./manifest.json";
 
@@ -22,11 +22,24 @@ function record(value: Json | undefined): Record<string, Json> {
  * still runs afterward regardless (it also covers cross-field checks a JSON Schema can't express). */
 function responseSchemaFor(operation: string, guardrails: readonly GuardrailRule[] | undefined): FoundryChatResponseSchema | undefined {
 	const rule = guardrails?.find((candidate): candidate is Extract<GuardrailRule, { kind: "ajv-schema" }> =>
-		typeof candidate === "object" && !Array.isArray(candidate) && candidate.kind === "ajv-schema"
+		candidate !== null && typeof candidate === "object" && !Array.isArray(candidate)
+		&& "kind" in candidate && candidate.kind === "ajv-schema"
 	);
 	if (!rule) return undefined;
 	const name = operation.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64) || "response";
 	return { name, schema: rule.schema as Record<string, unknown>, strict: true };
+}
+
+/** Accepts an explicit responseSchema passed by the caller through `request.input`. Useful when
+ * one binding/operation (e.g. a generic "chat" operation shared across several logical
+ * sub-operations) needs a different Structured Outputs schema per call rather than one fixed
+ * schema per declared operation. */
+function inputResponseSchema(input: Record<string, Json>): FoundryChatResponseSchema | undefined {
+	const candidate = input.responseSchema;
+	if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return undefined;
+	const { name, schema, strict } = candidate as Record<string, Json>;
+	if (typeof name !== "string" || !schema || typeof schema !== "object" || Array.isArray(schema)) return undefined;
+	return { name, schema: schema as Record<string, unknown>, strict: strict !== false };
 }
 
 
@@ -109,7 +122,7 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 						agentName,
 						conversationId: typeof input.conversationId === "string" ? input.conversationId : undefined,
 						instructions: typeof input.instructions === "string" ? input.instructions : undefined,
-						responseSchema: responseSchemaFor(request.operation, context.outputPolicy?.guardrails),
+						responseSchema: inputResponseSchema(input) ?? responseSchemaFor(request.operation, context.outputPolicy?.guardrails),
 					}) as unknown as Json,
 				};
 			},
@@ -119,3 +132,9 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 }
 
 export const foundryAgentKind = createFoundryAgentKind();
+
+export async function discoverFoundryAgents(endpoint: string, key: string): Promise<string[]> {
+	return (await createFoundryProxy({ baseUrl: endpoint, key })).listAgents();
+}
+
+export * from "./access-storage";

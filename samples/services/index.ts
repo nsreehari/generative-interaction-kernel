@@ -1,8 +1,12 @@
-import { ServiceKindRegistry, type ServiceKindFactory } from "@gik/controlface";
+import { ServiceKindRegistry, type ServiceKindFactory } from "../../face/src/services/service-kinds";
 
 import { copilotAgentKind } from "./copilot-agent";
 import { createDeterministicAgentKind, type DeterministicServiceHandler } from "./deterministic-agent";
 import { foundryAgentKind } from "./foundry-agent";
+import {
+  DETERMINISTIC_PORTFOLIO_PROVIDER,
+  portfolioIntelligenceHandler,
+} from "./portfolio-intelligence";
 import { httpServiceKind } from "./http-service";
 import { mcpServiceKind } from "./mcp";
 import catalogJson from "./registry.json";
@@ -32,7 +36,10 @@ export function createSampleServiceKindRegistry(
 
   for (const kind of enabled) {
     const factory = kind === "deterministic-agent"
-      ? createDeterministicAgentKind(options.deterministicHandlers ?? {})
+      ? createDeterministicAgentKind({
+          [DETERMINISTIC_PORTFOLIO_PROVIDER]: portfolioIntelligenceHandler,
+          ...options.deterministicHandlers,
+        })
       : factories[kind];
     if (!factory) throw new Error(`Enabled sample service kind '${kind}' has no implementation`);
     registry.register(factory);
@@ -41,4 +48,5 @@ export function createSampleServiceKindRegistry(
 }
 
 export * from "./deterministic-agent";
+export * from "./portfolio-intelligence";
 export * from "./worker-service-kind";

@@ -1,18 +1,24 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "vitest";
 import { bundleFromJson, loadBundleRuntime } from "@gik/react";
+import { openSampleBlueprint } from "../../shared/blueprints";
 
-import { FOUNDRY_ACCESS_STORAGE_KEY } from "./access-storage";
-import document from "./document.json";
+import { FOUNDRY_ACCESS_STORAGE_KEY } from "../../services/foundry-agent";
 import effects from "./effect_handlers/index";
-import { wrapOrchestrator } from "./services";
-import manifest from "./manifest.json";
-import state from "./state.json";
+import {
+  browserServiceRegistryOptions,
+  declarativeServiceOrchestrator,
+} from "../../shared/service-runtime";
 
 function runtime() {
+  const blueprintRuntime = openSampleBlueprint("foundry-agent");
+  const { manifest, document, state } = blueprintRuntime;
   return loadBundleRuntime(bundleFromJson(
     { manifest, document, state },
-    { effectHandlers: effects, wrapOrchestrator }
+    {
+      effectHandlers: effects,
+      wrapOrchestrator: declarativeServiceOrchestrator(blueprintRuntime, browserServiceRegistryOptions),
+    }
   ));
 }
 

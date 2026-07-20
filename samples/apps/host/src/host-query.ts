@@ -1,7 +1,7 @@
 export const DEFAULT_PRESENTATION_CONTEXT = "full-substrate";
 
 export interface HostQuery {
-  targetId: string | null;
+  blueprintId: string | null;
   demoId: string | null;
   harnessId: string | null;
   presentationContext: string | null;
@@ -30,7 +30,7 @@ export function readHostQuery(search: string): HostQuery {
   const params = new URLSearchParams(search);
   const requestedPresentation = params.get("presentation") ?? params.get("presentationContext");
   return {
-    targetId: params.get("bundle"),
+    blueprintId: params.get("b"),
     demoId: params.get("demo"),
     harnessId: isGikEnabled(params) || params.get("harness") === "gik-control-harness" || params.has("plane")
       ? "gik-control-harness"
@@ -53,6 +53,8 @@ export function canonicalizeHostUrl(href: string): string {
   params.delete("plane");
   params.delete("context");
   params.delete("presentationContext");
+  params.delete("blueprint");
+  params.delete("bundle");
   if (params.get("presentation") === DEFAULT_PRESENTATION_CONTEXT) params.delete("presentation");
 
   return url.toString();

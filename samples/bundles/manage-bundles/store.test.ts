@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import type { Json, PatchOp } from "@gik/kernel";
-import initialState from "./state.json";
+import { openSampleBlueprint } from "../../shared/blueprints";
 import { manageBundlesEffects, manageBundlesStorageKey } from "./store";
 
 type JsonRecord = Record<string, Json>;
+const initialState = openSampleBlueprint("manage-bundles").state;
 
 class MemoryStorage implements Storage {
   private readonly values = new Map<string, string>();

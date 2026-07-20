@@ -6,7 +6,7 @@
 // effects run) and returns store deltas.
 //
 import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
-import { clearFoundryAccessKey } from "../access-storage";
+import { clearFoundryAccessKey } from "../../../services/foundry-agent";
 
 function str(value: unknown): string {
   return typeof value === "string" ? value : value == null ? "" : String(value);

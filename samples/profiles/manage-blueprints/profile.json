@@ -1,0 +1,1549 @@
+{
+  "gik": "0.1",
+  "type": "profile",
+  "payload": {
+    "id": "manage-blueprints",
+    "kind": "runtime-blueprint",
+    "version": "1.0",
+    "layers": [
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document",
+        "description": "Authored terminal document for this hosted Blueprint."
+      }
+    ],
+    "recipes": [],
+    "resources": {
+      "document": {
+        "inline": {
+          "root": {
+            "capability": "ui:screen",
+            "id": "manage-blueprints-root",
+            "props": {
+              "title": "Blueprints",
+              "subtitle": "Inspect repository blueprints and manage browser-local drafts"
+            },
+            "edges": {
+              "children": [
+                {
+                  "capability": "ui:row",
+                  "id": "manage-blueprints-layout",
+                  "props": {
+                    "variant": "split"
+                  },
+                  "edges": {
+                    "children": [
+                      {
+                        "capability": "ui:panel",
+                        "id": "list-rail",
+                        "props": {
+                          "title": "Catalog",
+                          "variant": "rail"
+                        },
+                        "edges": {
+                          "children": [
+                            {
+                              "capability": "ui:note",
+                              "id": "catalog-status",
+                              "props": {
+                                "tone": "info"
+                              },
+                              "edges": {
+                                "gate": "manageBlueprints.catalogStatus != ''",
+                                "read": {
+                                  "value": "manageBlueprints.catalogStatus"
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:button",
+                              "id": "sync-catalog",
+                              "props": {
+                                "label": "Refresh catalog"
+                              },
+                              "edges": {
+                                "on": {
+                                  "press": [
+                                    {
+                                      "do": "invoke",
+                                      "args": {
+                                        "tool": "listBlueprints"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:list",
+                              "id": "profile-list",
+                              "props": {
+                                "idKey": "id",
+                                "primaryKey": "id",
+                                "badgeKey": "access",
+                                "valueKey": "version"
+                              },
+                              "edges": {
+                                "read": {
+                                  "items": "manageBlueprints.profiles",
+                                  "selectedId": "manageBlueprints.selectedId"
+                                },
+                                "on": {
+                                  "select": [
+                                    {
+                                      "do": "invoke",
+                                      "args": {
+                                        "tool": "getBlueprint"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "capability": "ui:panel",
+                        "id": "detail",
+                        "props": {
+                          "title": "Selected Blueprint",
+                          "variant": "detail"
+                        },
+                        "edges": {
+                          "children": [
+                            {
+                              "capability": "ui:panel",
+                              "id": "empty-state",
+                              "props": {
+                                "variant": "tab"
+                              },
+                              "edges": {
+                                "gate": "manageBlueprints.selectedId = ''",
+                                "children": [
+                                  {
+                                    "capability": "ui:note",
+                                    "id": "empty-hint",
+                                    "props": {
+                                      "tone": "muted",
+                                      "value": "Select a blueprint on the left to inspect its tiers and preview."
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "capability": "ui:panel",
+                              "id": "detail-body",
+                              "props": {
+                                "variant": "detail-body"
+                              },
+                              "edges": {
+                                "gate": "manageBlueprints.selectedId != ''",
+                                "children": [
+                                  {
+                                    "capability": "ui:tabBar",
+                                    "id": "detail-tabs",
+                                    "props": {
+                                      "options": [
+                                        {
+                                          "value": "overview",
+                                          "label": "Overview"
+                                        },
+                                        {
+                                          "value": "layers",
+                                          "label": "Tiers"
+                                        },
+                                        {
+                                          "value": "preview",
+                                          "label": "Preview"
+                                        },
+                                        {
+                                          "value": "draft",
+                                          "label": "Draft"
+                                        }
+                                      ]
+                                    },
+                                    "edges": {
+                                      "read": {
+                                        "active": "manageBlueprints.tab"
+                                      },
+                                      "on": {
+                                        "select": [
+                                          {
+                                            "do": "assign",
+                                            "target": "manageBlueprints.tab",
+                                            "args": {
+                                              "from": "$event.value"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:panel",
+                                    "id": "draft-tab",
+                                    "props": {
+                                      "title": "Local blueprint draft",
+                                      "variant": "tab"
+                                    },
+                                    "edges": {
+                                      "gate": "manageBlueprints.tab = 'draft'",
+                                      "children": [
+                                        {
+                                          "capability": "ui:note",
+                                          "id": "draft-status",
+                                          "props": {
+                                            "tone": "info"
+                                          },
+                                          "edges": {
+                                            "read": {
+                                              "value": "manageBlueprints.editor.status"
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:note",
+                                          "id": "draft-error",
+                                          "props": {
+                                            "tone": "danger"
+                                          },
+                                          "edges": {
+                                            "gate": "manageBlueprints.editor.error != ''",
+                                            "read": {
+                                              "value": "manageBlueprints.editor.error"
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:field",
+                                          "id": "draft-id",
+                                          "props": {
+                                            "label": "Local blueprint id"
+                                          },
+                                          "edges": {
+                                            "read": {
+                                              "value": "manageBlueprints.editor.id"
+                                            },
+                                            "on": {
+                                              "input": [
+                                                {
+                                                  "do": "assign",
+                                                  "target": "manageBlueprints.editor.id",
+                                                  "args": {
+                                                    "from": "$event.value"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:textarea",
+                                          "id": "draft-json",
+                                          "props": {
+                                            "label": "Blueprint bundle JSON",
+                                            "rows": 20
+                                          },
+                                          "edges": {
+                                            "read": {
+                                              "value": "manageBlueprints.editor.bundleText"
+                                            },
+                                            "on": {
+                                              "input": [
+                                                {
+                                                  "do": "assign",
+                                                  "target": "manageBlueprints.editor.bundleText",
+                                                  "args": {
+                                                    "from": "$event.value"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:row",
+                                          "id": "draft-actions",
+                                          "edges": {
+                                            "children": [
+                                              {
+                                                "capability": "ui:button",
+                                                "id": "clone-blueprint",
+                                                "props": {
+                                                  "label": "Clone to local draft"
+                                                },
+                                                "edges": {
+                                                  "on": {
+                                                    "press": [
+                                                      {
+                                                        "do": "invoke",
+                                                        "args": {
+                                                          "tool": "seedLocalDraft"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "capability": "ui:button",
+                                                "id": "save-blueprint",
+                                                "props": {
+                                                  "label": "Save blueprint",
+                                                  "tone": "primary"
+                                                },
+                                                "edges": {
+                                                  "on": {
+                                                    "press": [
+                                                      {
+                                                        "do": "invoke",
+                                                        "args": {
+                                                          "tool": "saveBlueprint"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "capability": "ui:button",
+                                                "id": "delete-blueprint",
+                                                "props": {
+                                                  "label": "Delete local blueprint",
+                                                  "tone": "danger"
+                                                },
+                                                "edges": {
+                                                  "on": {
+                                                    "press": [
+                                                      {
+                                                        "do": "invoke",
+                                                        "args": {
+                                                          "tool": "requestDeleteBlueprint"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:panel",
+                                    "id": "overview-tab",
+                                    "props": {
+                                      "variant": "tab"
+                                    },
+                                    "edges": {
+                                      "gate": "manageBlueprints.tab = 'overview'",
+                                      "children": [
+                                        {
+                                          "capability": "ui:panel",
+                                          "id": "profile-orientation-panel",
+                                          "props": {
+                                            "title": "What this blueprint is",
+                                            "variant": "inset"
+                                          },
+                                          "edges": {
+                                            "children": [
+                                              {
+                                                "capability": "ui:narrative",
+                                                "id": "profile-orientation-summary",
+                                                "props": {
+                                                  "emptyMessage": "Select a blueprint to see how it lowers a goal into a UI."
+                                                },
+                                                "edges": {
+                                                  "read": {
+                                                    "text": "manageBlueprints.profile.summary"
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "capability": "ui:property",
+                                                "id": "profile-orientation-legend",
+                                                "props": {
+                                                  "label": "Pipeline"
+                                                },
+                                                "edges": {
+                                                  "read": {
+                                                    "value": "manageBlueprints.profile.legend"
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:panel",
+                                          "id": "profile-summary-panel",
+                                          "props": {
+                                            "title": "Basic info",
+                                            "variant": "inset"
+                                          },
+                                          "edges": {
+                                            "children": [
+                                              {
+                                                "capability": "ui:row",
+                                                "id": "profile-summary",
+                                                "edges": {
+                                                  "children": [
+                                                    {
+                                                      "capability": "ui:property",
+                                                      "id": "metric-profile-id",
+                                                      "props": {
+                                                        "label": "Blueprint id"
+                                                      },
+                                                      "edges": {
+                                                        "read": {
+                                                          "value": "manageBlueprints.profile.id"
+                                                        }
+                                                      }
+                                                    },
+                                                    {
+                                                      "capability": "ui:property",
+                                                      "id": "metric-kind",
+                                                      "props": {
+                                                        "label": "Kind"
+                                                      },
+                                                      "edges": {
+                                                        "read": {
+                                                          "value": "manageBlueprints.profile.kind"
+                                                        }
+                                                      }
+                                                    },
+                                                    {
+                                                      "capability": "ui:property",
+                                                      "id": "metric-version",
+                                                      "props": {
+                                                        "label": "Version"
+                                                      },
+                                                      "edges": {
+                                                        "read": {
+                                                          "value": "manageBlueprints.profile.version"
+                                                        }
+                                                      }
+                                                    },
+                                                    {
+                                                      "capability": "ui:metric",
+                                                      "id": "metric-layers",
+                                                      "props": {
+                                                        "label": "Tiers"
+                                                      },
+                                                      "edges": {
+                                                        "read": {
+                                                          "value": "manageBlueprints.profile.layerCount"
+                                                        }
+                                                      }
+                                                    },
+                                                    {
+                                                      "capability": "ui:metric",
+                                                      "id": "metric-recipes",
+                                                      "props": {
+                                                        "label": "Lowering recipes"
+                                                      },
+                                                      "edges": {
+                                                        "read": {
+                                                          "value": "manageBlueprints.profile.recipeCount"
+                                                        }
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:panel",
+                                          "id": "pipeline-panel",
+                                          "props": {
+                                            "title": "Pipeline",
+                                            "variant": "inset"
+                                          },
+                                          "edges": {
+                                            "children": [
+                                              {
+                                                "capability": "manage-blueprints:profile-pipeline-canvas",
+                                                "id": "profile-pipeline",
+                                                "edges": {
+                                                  "read": {
+                                                    "stateKey": "manageBlueprints.profile.id",
+                                                    "nodes": "manageBlueprints.pipeline.nodes",
+                                                    "selectedNodeId": "manageBlueprints.selectedLayerId",
+                                                    "selectedEdgeId": "manageBlueprints.selectedRecipeId"
+                                                  },
+                                                  "on": {
+                                                    "selectNode": [
+                                                      {
+                                                        "do": "assign",
+                                                        "target": "manageBlueprints.tab",
+                                                        "args": {
+                                                          "from": "$event.tab"
+                                                        }
+                                                      },
+                                                      {
+                                                        "do": "invoke",
+                                                        "args": {
+                                                          "tool": "selectLayer"
+                                                        }
+                                                      }
+                                                    ],
+                                                    "selectEdge": [
+                                                      {
+                                                        "do": "assign",
+                                                        "target": "manageBlueprints.tab",
+                                                        "args": {
+                                                          "from": "$event.tab"
+                                                        }
+                                                      },
+                                                      {
+                                                        "do": "invoke",
+                                                        "args": {
+                                                          "tool": "selectRecipe"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:panel",
+                                    "id": "layers-tab",
+                                    "props": {
+                                      "variant": "tab"
+                                    },
+                                    "edges": {
+                                      "gate": "manageBlueprints.tab = 'layers'",
+                                      "children": [
+                                        {
+                                          "capability": "ui:col",
+                                          "id": "layers-layout",
+                                          "edges": {
+                                            "children": [
+                                              {
+                                                "capability": "ui:panel",
+                                                "id": "layers-list-panel",
+                                                "props": {
+                                                  "title": "Tiers",
+                                                  "variant": "inset"
+                                                },
+                                                "edges": {
+                                                  "children": [
+                                                    {
+                                                      "capability": "ui:list",
+                                                      "id": "layers-list",
+                                                      "props": {
+                                                        "idKey": "id",
+                                                        "primaryKey": "id",
+                                                        "secondaryKey": "roleLabel",
+                                                        "valueKey": "schema"
+                                                      },
+                                                      "edges": {
+                                                        "read": {
+                                                          "items": "manageBlueprints.layers",
+                                                          "selectedId": "manageBlueprints.selectedLayerId"
+                                                        },
+                                                        "on": {
+                                                          "select": [
+                                                            {
+                                                              "do": "invoke",
+                                                              "args": {
+                                                                "tool": "selectLayer"
+                                                              }
+                                                            }
+                                                          ]
+                                                        }
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              {
+                                                "capability": "ui:col",
+                                                "id": "layer-detail-col",
+                                                "edges": {
+                                                  "children": [
+                                                    {
+                                                      "capability": "ui:panel",
+                                                      "id": "layer-detail-panel",
+                                                      "props": {
+                                                        "title": "Selected tier",
+                                                        "variant": "inset"
+                                                      },
+                                                      "edges": {
+                                                        "children": [
+                                                          {
+                                                            "capability": "ui:row",
+                                                            "id": "layer-detail-metrics",
+                                                            "edges": {
+                                                              "children": [
+                                                                {
+                                                                  "capability": "ui:property",
+                                                                  "id": "layer-detail-kind",
+                                                                  "props": {
+                                                                    "label": "Tier"
+                                                                  },
+                                                                  "edges": {
+                                                                    "read": {
+                                                                      "value": "manageBlueprints.layerDetail.kind"
+                                                                    }
+                                                                  }
+                                                                },
+                                                                {
+                                                                  "capability": "ui:property",
+                                                                  "id": "layer-detail-stage",
+                                                                  "props": {
+                                                                    "label": "Pipeline stage"
+                                                                  },
+                                                                  "edges": {
+                                                                    "read": {
+                                                                      "value": "manageBlueprints.layerDetail.stageLabel"
+                                                                    }
+                                                                  }
+                                                                }
+                                                              ]
+                                                            }
+                                                          },
+                                                          {
+                                                            "capability": "ui:narrative",
+                                                            "id": "layer-detail-role",
+                                                            "props": {
+                                                              "emptyMessage": "Select a tier to see what it represents."
+                                                            },
+                                                            "edges": {
+                                                              "read": {
+                                                                "text": "manageBlueprints.layerDetail.role"
+                                                              }
+                                                            }
+                                                          }
+                                                        ]
+                                                      }
+                                                    },
+                                                    {
+                                                      "capability": "ui:panel",
+                                                      "id": "layer-vocabulary-panel",
+                                                      "props": {
+                                                        "title": "Vocabulary it speaks",
+                                                        "variant": "inset"
+                                                      },
+                                                      "edges": {
+                                                        "gate": "manageBlueprints.layerDetail.kind != ''",
+                                                        "children": [
+                                                          {
+                                                            "capability": "ui:note",
+                                                            "id": "layer-vocabulary-caption",
+                                                            "props": {
+                                                              "value": "The closed set of terms this tier works with — every branch above is phrased in these words.",
+                                                              "tone": "muted"
+                                                            }
+                                                          },
+                                                          {
+                                                            "capability": "ui:vocabulary",
+                                                            "id": "layer-vocabulary",
+                                                            "props": {
+                                                              "emptyText": "This tier has no derived vocabulary."
+                                                            },
+                                                            "edges": {
+                                                              "read": {
+                                                                "groups": "manageBlueprints.layerDetail.vocabulary.groups"
+                                                              }
+                                                            }
+                                                          }
+                                                        ]
+                                                      }
+                                                    },
+                                                    {
+                                                      "capability": "ui:panel",
+                                                      "id": "layer-outgoing-recipe-header",
+                                                      "props": {
+                                                        "title": "Lowers into the next tier",
+                                                        "variant": "inset"
+                                                      },
+                                                      "edges": {
+                                                        "gate": "manageBlueprints.layerDetail.outgoingRecipe.id != ''",
+                                                        "children": [
+                                                          {
+                                                            "capability": "ui:row",
+                                                            "id": "layer-outgoing-recipe-header-metrics",
+                                                            "edges": {
+                                                              "children": [
+                                                                {
+                                                                  "capability": "ui:property",
+                                                                  "id": "layer-outgoing-recipe-kind",
+                                                                  "props": {
+                                                                    "label": "Transformation"
+                                                                  },
+                                                                  "edges": {
+                                                                    "read": {
+                                                                      "value": "manageBlueprints.layerDetail.outgoingRecipe.kindLabel"
+                                                                    }
+                                                                  }
+                                                                },
+                                                                {
+                                                                  "capability": "ui:property",
+                                                                  "id": "layer-outgoing-recipe-tagline",
+                                                                  "props": {
+                                                                    "label": "In plain terms"
+                                                                  },
+                                                                  "edges": {
+                                                                    "read": {
+                                                                      "value": "manageBlueprints.layerDetail.outgoingRecipe.tagline"
+                                                                    }
+                                                                  }
+                                                                }
+                                                              ]
+                                                            }
+                                                          },
+                                                          {
+                                                            "capability": "ui:narrative",
+                                                            "id": "layer-outgoing-recipe-summary",
+                                                            "props": {
+                                                              "emptyMessage": "No lowering-recipe summary available."
+                                                            },
+                                                            "edges": {
+                                                              "read": {
+                                                                "text": "manageBlueprints.layerDetail.outgoingRecipe.purpose"
+                                                              }
+                                                            }
+                                                          },
+                                                          {
+                                                            "capability": "ui:property",
+                                                            "id": "layer-outgoing-recipe-container",
+                                                            "props": {
+                                                              "label": "Everything sits inside"
+                                                            },
+                                                            "edges": {
+                                                              "gate": "manageBlueprints.layerDetail.outgoingRecipe.containerCapability != ''",
+                                                              "read": {
+                                                                "value": "manageBlueprints.layerDetail.outgoingRecipe.containerCapability"
+                                                              }
+                                                            }
+                                                          },
+                                                          {
+                                                            "capability": "ui:note",
+                                                            "id": "layer-outgoing-recipe-region-caption",
+                                                            "props": {
+                                                              "value": "How each region inside the result is handled by this lowering:",
+                                                              "tone": "muted"
+                                                            }
+                                                          },
+                                                          {
+                                                            "capability": "ui:maplist",
+                                                            "id": "layer-outgoing-recipe-region-map",
+                                                            "props": {
+                                                              "emptyText": "No per-region rules authored."
+                                                            },
+                                                            "edges": {
+                                                              "read": {
+                                                                "fromLabel": "manageBlueprints.layerDetail.outgoingRecipe.regionRuleFromLabel",
+                                                                "toLabel": "manageBlueprints.layerDetail.outgoingRecipe.regionRuleToLabel",
+                                                                "rows": "manageBlueprints.layerDetail.outgoingRecipe.regionRuleMappings"
+                                                              }
+                                                            }
+                                                          }
+                                                        ]
+                                                      }
+                                                    },
+                                                    {
+                                                      "capability": "ui:panel",
+                                                      "id": "layer-compute-panel",
+                                                      "props": {
+                                                        "title": "Watch it lower — run this tier",
+                                                        "variant": "inset"
+                                                      },
+                                                      "edges": {
+                                                        "gate": "manageBlueprints.layerDetail.outgoingRecipe.id != ''",
+                                                        "children": [
+                                                          {
+                                                            "capability": "ui:note",
+                                                            "id": "layer-compute-caption",
+                                                            "props": {
+                                                              "value": "Pick an interaction goal and see exactly what this tier produces when the live blueprint lowers it into the next stage.",
+                                                              "tone": "muted"
+                                                            }
+                                                          },
+                                                          {
+                                                            "capability": "manage-blueprints:lowering-recipe-runner",
+                                                            "id": "layer-compute-runner",
+                                                            "edges": {
+                                                              "read": {
+                                                                "bundleText": "manageBlueprints.artifacts.bundleText",
+                                                                "layerId": "manageBlueprints.selectedLayerId",
+                                                                "seeds": "manageBlueprints.layerDetail.seeds",
+                                                                "subject": "manageBlueprints.sourceInput.subject",
+                                                                "surface": "manageBlueprints.previewContext.surface"
+                                                              }
+                                                            }
+                                                          }
+                                                        ]
+                                                      }
+                                                    },
+                                                    {
+                                                      "capability": "ui:panel",
+                                                      "id": "terminal-runtime-components-panel",
+                                                      "props": {
+                                                        "title": "How each region is handled",
+                                                        "variant": "inset"
+                                                      },
+                                                      "edges": {
+                                                        "gate": "manageBlueprints.layerDetail.outgoingRecipe.id = '' and manageBlueprints.layerDetail.incomingRecipe.id != ''",
+                                                        "children": [
+                                                          {
+                                                            "capability": "ui:property",
+                                                            "id": "terminal-runtime-container-capability",
+                                                            "props": {
+                                                              "label": "Everything sits inside"
+                                                            },
+                                                            "edges": {
+                                                              "gate": "manageBlueprints.layerDetail.incomingRecipe.containerCapability != ''",
+                                                              "read": {
+                                                                "value": "manageBlueprints.layerDetail.incomingRecipe.containerCapability"
+                                                              }
+                                                            }
+                                                          },
+                                                          {
+                                                            "capability": "ui:note",
+                                                            "id": "terminal-runtime-map-caption",
+                                                            "props": {
+                                                              "value": "This is a terminal tier. Each region that reaches it is bound by these rules:",
+                                                              "tone": "muted"
+                                                            }
+                                                          },
+                                                          {
+                                                            "capability": "ui:maplist",
+                                                            "id": "terminal-runtime-components-map",
+                                                            "props": {
+                                                              "emptyText": "No incoming rules derived."
+                                                            },
+                                                            "edges": {
+                                                              "read": {
+                                                                "fromLabel": "manageBlueprints.layerDetail.incomingRecipe.regionRuleFromLabel",
+                                                                "toLabel": "manageBlueprints.layerDetail.incomingRecipe.regionRuleToLabel",
+                                                                "rows": "manageBlueprints.layerDetail.incomingRecipe.regionRuleMappings"
+                                                              }
+                                                            }
+                                                          }
+                                                        ]
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:panel",
+                                    "id": "preview-tab",
+                                    "props": {
+                                      "variant": "tab"
+                                    },
+                                    "edges": {
+                                      "gate": "manageBlueprints.tab = 'preview'",
+                                      "children": [
+                                        {
+                                          "capability": "ui:panel",
+                                          "id": "preview-panel",
+                                          "props": {
+                                            "title": "Preview",
+                                            "variant": "inset"
+                                          },
+                                          "edges": {
+                                            "children": [
+                                              {
+                                                "capability": "ui:form",
+                                                "id": "source-input-form",
+                                                "props": {
+                                                  "title": "Tier inputs",
+                                                  "saveLabel": "Apply & refresh",
+                                                  "discardLabel": "Reset"
+                                                },
+                                                "edges": {
+                                                  "read": {
+                                                    "fields": "manageBlueprints.sourceInputForm",
+                                                    "value": "manageBlueprints.sourceInput"
+                                                  },
+                                                  "on": {
+                                                    "save": [
+                                                      {
+                                                        "do": "assign",
+                                                        "target": "manageBlueprints.sourceInput",
+                                                        "args": {
+                                                          "from": "$event.values"
+                                                        }
+                                                      },
+                                                      {
+                                                        "do": "invoke",
+                                                        "args": {
+                                                          "tool": "refreshPreview"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "capability": "ui:form",
+                                                "id": "preview-ctx-form",
+                                                "props": {
+                                                  "title": "Context params",
+                                                  "saveLabel": "Apply & refresh",
+                                                  "discardLabel": "Reset"
+                                                },
+                                                "edges": {
+                                                  "read": {
+                                                    "fields": "manageBlueprints.previewContextForm",
+                                                    "value": "manageBlueprints.previewContext"
+                                                  },
+                                                  "on": {
+                                                    "save": [
+                                                      {
+                                                        "do": "assign",
+                                                        "target": "manageBlueprints.previewContext",
+                                                        "args": {
+                                                          "from": "$event.values"
+                                                        }
+                                                      },
+                                                      {
+                                                        "do": "invoke",
+                                                        "args": {
+                                                          "tool": "refreshPreview"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "capability": "ui:panel",
+                                                "id": "preview-waterfall-panel",
+                                                "props": {
+                                                  "title": "Watch it lower — stage by stage",
+                                                  "variant": "inset"
+                                                },
+                                                "edges": {
+                                                  "children": [
+                                                    {
+                                                      "capability": "manage-blueprints:pipeline-runner",
+                                                      "id": "preview-pipeline-runner",
+                                                      "edges": {
+                                                        "read": {
+                                                          "bundleText": "manageBlueprints.artifacts.bundleText",
+                                                          "seed": "manageBlueprints.sourceInput",
+                                                          "ctx": "manageBlueprints.previewContext"
+                                                        }
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              {
+                                                "capability": "ui:note",
+                                                "id": "preview-error",
+                                                "props": {
+                                                  "tone": "info"
+                                                },
+                                                "edges": {
+                                                  "gate": "manageBlueprints.previewError != ''",
+                                                  "read": {
+                                                    "value": "manageBlueprints.previewError"
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "capability": "ui:embed",
+                                                "id": "preview-mount",
+                                                "props": {
+                                                  "emptyText": "Nothing to preview yet."
+                                                },
+                                                "edges": {
+                                                  "read": {
+                                                    "bundle": "manageBlueprints.previewBundle"
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:panel",
+                                    "id": "detail-footer",
+                                    "props": {
+                                      "variant": "footer"
+                                    },
+                                    "edges": {
+                                      "children": [
+                                        {
+                                          "capability": "ui:row",
+                                          "id": "detail-footer-row",
+                                          "edges": {
+                                            "children": [
+                                              {
+                                                "capability": "ui:alert",
+                                                "id": "validation-status",
+                                                "props": {
+                                                  "label": "Validation"
+                                                },
+                                                "edges": {
+                                                  "read": {
+                                                    "value": "manageBlueprints.validation.summary",
+                                                    "level": "manageBlueprints.validation.level"
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "capability": "ui:button",
+                                                "id": "validate-btn",
+                                                "props": {
+                                                  "label": "Re-run validation"
+                                                },
+                                                "edges": {
+                                                  "on": {
+                                                    "press": [
+                                                      {
+                                                        "do": "invoke",
+                                                        "args": {
+                                                          "tool": "validateProfile"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "capability": "ui:math-challenge",
+                        "id": "delete-blueprint-challenge",
+                        "props": {
+                          "title": "Confirm blueprint deletion",
+                          "operandA": 4,
+                          "operandB": 5,
+                          "confirmLabel": "Delete blueprint"
+                        },
+                        "edges": {
+                          "gate": "manageBlueprints.deleteChallenge.open = true",
+                          "read": {
+                            "message": "manageBlueprints.deleteChallenge.message"
+                          },
+                          "on": {
+                            "confirm": [
+                              {
+                                "do": "invoke",
+                                "args": {
+                                  "tool": "deleteBlueprint"
+                                }
+                              }
+                            ],
+                            "cancel": [
+                              {
+                                "do": "invoke",
+                                "args": {
+                                  "tool": "cancelDeleteBlueprint"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "runtime": {
+      "expression": "jsonata",
+      "namespaces": [
+        "manageBlueprints"
+      ],
+      "actions": [
+        "assign",
+        "assignFrom",
+        "derive",
+        "invoke",
+        "route",
+        "confirm",
+        "emit"
+      ],
+      "capabilities": {
+        "ui:screen": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "ui:row": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "ui:col": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "ui:panel": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "ui:text": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "ui:note": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "ui:narrative": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "ui:metric": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "ui:property": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "ui:maplist": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "ui:vocabulary": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "ui:alert": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "manage-blueprints:profile-pipeline-canvas": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "selectNode",
+            "selectEdge"
+          ]
+        },
+        "manage-blueprints:pipeline-runner": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "manage-blueprints:lowering-recipe-runner": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "ui:list": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "select"
+          ]
+        },
+        "ui:table": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "rowSelect"
+          ]
+        },
+        "ui:field": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "input"
+          ]
+        },
+        "ui:form": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "save"
+          ]
+        },
+        "ui:json-field": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "save"
+          ]
+        },
+        "ui:select": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "change"
+          ]
+        },
+        "ui:button": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "press"
+          ]
+        },
+        "ui:math-challenge": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "confirm",
+            "cancel"
+          ]
+        },
+        "ui:textarea": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "input"
+          ]
+        },
+        "ui:tabBar": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "select"
+          ]
+        },
+        "ui:codeBlock": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "ui:embed": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "externals": {
+        "projectionViews": {
+          "ui": {
+            "from": "floor"
+          },
+          "manage-blueprints": {
+            "from": "self"
+          }
+        },
+        "effectHandlers": [
+          "listBlueprints",
+          "getBlueprint",
+          "selectLayer",
+          "selectRecipe",
+          "validateProfile",
+          "refreshPreview",
+          "seedLocalDraft",
+          "saveBlueprint",
+          "requestDeleteBlueprint",
+          "cancelDeleteBlueprint",
+          "deleteBlueprint"
+        ]
+      },
+      "state": {
+        "manageBlueprints": {
+          "profiles": [
+            {
+              "id": "live-cards",
+              "kind": "genui-profile",
+              "version": "0.1.0",
+              "layers": 3,
+              "recipes": 2,
+              "source": "repo",
+              "readonly": true,
+              "access": "read-only"
+            },
+            {
+              "id": "briefing",
+              "kind": "briefing-profile",
+              "version": "0.1.0",
+              "layers": 3,
+              "recipes": 2,
+              "source": "repo",
+              "readonly": true,
+              "access": "read-only"
+            }
+          ],
+          "catalogStatus": "",
+          "selectedId": "",
+          "profile": {
+            "id": "",
+            "kind": "",
+            "version": "",
+            "source": "",
+            "readonly": true,
+            "layerCount": 0,
+            "recipeCount": 0,
+            "summary": "",
+            "legend": ""
+          },
+          "pipeline": {
+            "nodes": []
+          },
+          "layers": [],
+          "selectedLayerId": "",
+          "layerDetail": {
+            "id": "",
+            "kind": "",
+            "schema": "",
+            "description": "",
+            "role": "",
+            "stageLabel": "",
+            "seeds": [],
+            "vocabulary": {
+              "groups": []
+            },
+            "loweringExamples": {
+              "columns": [],
+              "rows": []
+            },
+            "outgoingRecipe": {
+              "id": "",
+              "kind": "",
+              "kindLabel": "",
+              "purpose": "",
+              "tagline": "",
+              "from": "",
+              "to": "",
+              "summary": "",
+              "constrainedWhenText": "",
+              "containerCapability": "",
+              "fallbackCapability": "",
+              "fromLayer": {
+                "id": "",
+                "kind": "",
+                "schema": "",
+                "description": ""
+              },
+              "toLayer": {
+                "id": "",
+                "kind": "",
+                "schema": "",
+                "description": ""
+              },
+              "regionRuleFromLabel": "",
+              "regionRuleToLabel": "",
+              "regionRuleMappings": [],
+              "ruleGroups": [],
+              "templates": [],
+              "templateMappings": [],
+              "regionMappings": [],
+              "capabilityMappings": [],
+              "runtimeRules": [],
+              "runtimeCapabilities": []
+            },
+            "incomingRecipe": {
+              "id": "",
+              "kind": "",
+              "kindLabel": "",
+              "purpose": "",
+              "tagline": "",
+              "from": "",
+              "to": "",
+              "summary": "",
+              "constrainedWhenText": "",
+              "containerCapability": "",
+              "fallbackCapability": "",
+              "fromLayer": {
+                "id": "",
+                "kind": "",
+                "schema": "",
+                "description": ""
+              },
+              "toLayer": {
+                "id": "",
+                "kind": "",
+                "schema": "",
+                "description": ""
+              },
+              "regionRuleFromLabel": "",
+              "regionRuleToLabel": "",
+              "regionRuleMappings": [],
+              "ruleGroups": [],
+              "templates": [],
+              "templateMappings": [],
+              "regionMappings": [],
+              "capabilityMappings": [],
+              "runtimeRules": [],
+              "runtimeCapabilities": []
+            }
+          },
+          "selectedRecipeId": "",
+          "recipeDetail": {
+            "id": "",
+            "kind": "",
+            "kindLabel": "",
+            "from": "",
+            "to": "",
+            "summary": "",
+            "constrainedWhenText": "",
+            "containerCapability": "",
+            "fallbackCapability": "",
+            "fromLayer": {
+              "id": "",
+              "kind": "",
+              "schema": "",
+              "description": ""
+            },
+            "toLayer": {
+              "id": "",
+              "kind": "",
+              "schema": "",
+              "description": ""
+            },
+            "ruleGroups": [],
+            "templates": [],
+            "templateMappings": [],
+            "regionMappings": [],
+            "capabilityMappings": [],
+            "runtimeRules": [],
+            "runtimeCapabilities": []
+          },
+          "validation": {
+            "status": "unknown",
+            "level": "unknown",
+            "summary": "Not validated yet.",
+            "errors": [],
+            "warnings": [],
+            "errorsText": "Select a profile to validate.",
+            "warningsText": ""
+          },
+          "artifacts": {
+            "profileText": "",
+            "recipesText": "",
+            "resolvedText": "",
+            "bundleText": ""
+          },
+          "editor": {
+            "id": "",
+            "bundleText": "",
+            "status": "Select a profile, or create a local draft to start editing.",
+            "error": ""
+          },
+          "tab": "overview",
+          "sourceInputForm": {
+            "properties": {}
+          },
+          "sourceInput": {},
+          "previewContextForm": {
+            "properties": {
+              "surface": {
+                "title": "Surface",
+                "default": "desktop",
+                "enum": [
+                  "desktop",
+                  "web",
+                  "mobile",
+                  "copilot",
+                  "teams"
+                ]
+              }
+            },
+            "required": [
+              "surface"
+            ]
+          },
+          "previewContext": {
+            "surface": "desktop"
+          },
+          "previewBundle": null,
+          "previewError": "",
+          "deleteChallenge": {
+            "open": false,
+            "message": ""
+          }
+        }
+      }
+    }
+  }
+}

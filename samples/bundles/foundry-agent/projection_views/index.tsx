@@ -19,13 +19,13 @@ import {
 import { type ProjectionView } from "@gik/react";
 import * as React from "react";
 
-import { discoverFoundryAgents } from "../services";
+import { discoverFoundryAgents } from "../../../services/foundry-agent";
 import {
   FOUNDRY_ACCESS_CHANGE_EVENT,
   clearFoundryAccessKey,
   getFoundryAccessKey,
   setFoundryAccessKey,
-} from "../access-storage";
+} from "../../../services/foundry-agent";
 
 const useStyles = makeStyles({
   stack: { display: "grid", gap: tokens.spacingVerticalM },

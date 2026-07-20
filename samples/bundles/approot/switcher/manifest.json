@@ -20,7 +20,7 @@
       }
     },
     "capabilities": {
-      "host:bundleSwitcher": {
+      "host:applicationSwitcher": {
         "propsSchema": {
           "type": "object",
           "additionalProperties": true

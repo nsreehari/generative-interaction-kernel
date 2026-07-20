@@ -61,7 +61,6 @@ export interface DemoCatalogEntry {
   label: string;
   scenarioBlueprintId: string;
   targetBlueprintId: string;
-  bundleId: string;
   defaultContext?: string;
   requiredTimelineSources?: TimelineItem["source"][];
 }
@@ -280,13 +279,13 @@ export function validateDemoTargetBundleContract(
 export function resolveDemoEntry(
   catalog: DemoCatalog,
   requestedId?: string | null,
-  bundleId?: string | null
+  targetBlueprintId?: string | null
 ): DemoCatalogEntry {
-  const entries = bundleId
-    ? catalog.entries.filter((entry) => entry.bundleId === bundleId)
+  const entries = targetBlueprintId
+    ? catalog.entries.filter((entry) => entry.targetBlueprintId === targetBlueprintId)
     : catalog.entries;
   if (entries.length === 0) {
-    throw new Error(`No demos are registered for Bundle '${bundleId}'`);
+    throw new Error(`No demos are registered for Blueprint '${targetBlueprintId}'`);
   }
   const exact = entries.find((entry) => entry.id === requestedId);
   if (exact) return exact;
@@ -294,7 +293,7 @@ export function resolveDemoEntry(
     const indexed = entries[Number(requestedId)];
     if (indexed) return indexed;
   }
-  return bundleId
+  return targetBlueprintId
     ? entries[0]
     : entries.find((entry) => entry.id === catalog.default) ?? entries[0];
 }

@@ -1,9 +1,9 @@
 import type { Json, ServiceDeclaration } from "../../kernel/src/index";
 import type {
-  ServiceAdapter,
   ServiceKindFactory,
   ServiceKindManifest,
-} from "@gik/controlface";
+} from "../../face/src/services/service-kinds";
+import type { ServiceAdapter } from "../../face/src/services/queueface";
 
 export interface WorkerServiceInvocation {
   kind: string;

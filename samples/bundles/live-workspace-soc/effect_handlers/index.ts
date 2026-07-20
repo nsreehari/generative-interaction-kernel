@@ -1,17 +1,17 @@
 import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
-import type { Json, OrchestratorResult, PatchOp, ServiceDeclaration } from "@gik/kernel";
+import { unwrap, type Json, type OrchestratorResult, type PatchOp, type ServiceDeclaration } from "@gik/kernel";
 
 import { bindServiceUseSync, QueueFace, ServiceKindRegistry } from "@gik/controlface";
 import { createFoundryAgentKind } from "../../../services/foundry-agent";
 import { compileSocPresentation } from "../../../profiles/live-workspace-soc/compile";
+import { openSampleBlueprint } from "../../../shared/blueprints";
 import { projectSocInspection, projectSocParticipants } from "../inspection";
-import manifest from "../manifest.json";
-import initialState from "../state.json";
 import { getSocFoundryKey } from "../live-credentials";
 import type { Actor, AgentProvider, Incident, JournalEntry, Presentation } from "../projection_views/types";
 import {
   buildAgentMessage,
   createSocAgentContract,
+  agentResponseSchema,
   type AgentValidationIssue,
   type CorrelationReply,
   type ResponseReply,
@@ -20,6 +20,9 @@ import {
 } from "../live-agent";
 
 type RecordValue = Record<string, Json>;
+const socRuntime = openSampleBlueprint("live-workspace-soc");
+const manifest = unwrap(socRuntime.manifest);
+const initialState = socRuntime.state;
 const resetState = JSON.parse(JSON.stringify(initialState.soc)) as RecordValue;
 const resetInspection = JSON.parse(JSON.stringify(initialState.inspection)) as RecordValue;
 
@@ -710,7 +713,7 @@ export function createSocEffects(
   accessKey: () => string = getSocFoundryKey
 ): EffectHandlerMap {
   const wrapped: EffectHandlerMap = { ...deterministicEffects };
-  const declarations = manifest.payload.externals.services as Record<string, ServiceDeclaration>;
+  const declarations = manifest.externals?.services as Record<string, ServiceDeclaration>;
   const serviceKinds = new ServiceKindRegistry({
     hostCapabilities: ["foundry-executor", "credential-resolver"],
     resolveCredential: async (reference) => {
@@ -739,7 +742,7 @@ export function createSocEffects(
       contract: "soc-agent-reply/v1",
     }, {
       blueprintId: "live-workspace-soc",
-      blueprintRevision: manifest.payload.version,
+      blueprintRevision: manifest.version,
       invoke: `${actorId}:chat`,
       subject: { kind: "substrate-agent", blueprintId: "live-workspace-soc", actorId },
     });
@@ -876,11 +879,13 @@ export function createSocEffects(
       try {
         if (!key) throw new Error("Access key required for Live mode.");
         const contract = createSocAgentContract(live.operation);
+        const responseSchema = agentResponseSchema(live.operation) as unknown as Json;
         let response = await chat(live.actorId, {
           message: buildAgentMessage(live.operation, incidentContext(ctx)),
           agentName: provider.agentName,
           conversationId: provider.conversationId || null,
           instructions: contract.instructions,
+          responseSchema,
         });
         conversationId = response.conversationId;
         responseId = response.responseId;
@@ -901,6 +906,7 @@ export function createSocEffects(
             agentName: provider.agentName,
             conversationId,
             instructions: contract.instructions,
+            responseSchema,
           });
           conversationId = response.conversationId;
           responseId = response.responseId;

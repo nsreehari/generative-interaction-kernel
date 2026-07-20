@@ -43,9 +43,11 @@ If you are deciding what to consume:
 - consume **controlface** or **agentface** when you want a bounded surface over an already-running runtime;
 - add a **transport** only when that surface must cross a process/network boundary.
 
-## Sample bundles
+## Sample applications
 
-Run `npm run dev:host` in [generative-interaction-kernel](.) and switch bundles from the host overlay, or open one directly:
+Run `npm run dev:host` in [generative-interaction-kernel](.) and select a hosted Blueprint with
+`/?b=<id>`. The default is `samples-overview`; the application switcher lists the approved Blueprint
+catalog. Open `/?b=manage-bundles` to inspect and preview ordinary Bundle artifacts.
 
 ### Live portfolio intelligence
 
@@ -53,9 +55,11 @@ The portfolio tracker routes `analyze` and `propose-strategies` through QueueFac
 
 The endpoint accepts `POST` JSON containing `service`, `version`, `operation`, `input`, and `correlationId`, and returns `{ "output": ... }`. The proxy owns credentials and model/provider configuration; do not expose provider secrets through Vite environment variables. A configured live endpoint is never silently replaced by the deterministic provider when a request fails.
 
-- `/?bundle=reactive-demo` — reactive computed cells + inferred dependency graph
-- `/?bundle=provider-authoring-demo` — consequence graph + exploratory frontier + orchestrated profile/recipe authoring
-- `/?bundle=workbench` — the larger live authoring workbench
+- `/?b=portfolio-tracker` — live portfolio intelligence
+- `/?b=live-workspace-soc` — governed SOC collaboration
+- `/?b=foundry-agent` — Foundry-backed agent conversation
+- `/?b=manage-blueprints` — Blueprint catalog and authoring
+- `/?b=manage-bundles` — Bundle artifact catalog and preview
 
 ## Status
 
