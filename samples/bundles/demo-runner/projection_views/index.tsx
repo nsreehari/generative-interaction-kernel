@@ -43,7 +43,7 @@ const useStyles = makeStyles({
   },
   collapsed: { maxWidth: "100vw" },
   expanded: { borderRadius: `${tokens.borderRadiusMedium} ${tokens.borderRadiusMedium} 0 0` },
-  header: { minHeight: "64px", display: "grid", gridTemplateColumns: "auto minmax(220px, 1fr) minmax(240px, 320px) auto auto", alignItems: "center", gap: tokens.spacingHorizontalM, padding: `0 ${tokens.spacingHorizontalM} 0 0`, backgroundColor: "transparent", "@media (max-width: 900px)": { gridTemplateColumns: "auto minmax(160px, 1fr) auto auto" } },
+  header: { minHeight: "64px", display: "grid", gridTemplateColumns: "auto minmax(220px, 1fr) minmax(420px, 560px) auto auto", alignItems: "center", gap: tokens.spacingHorizontalM, padding: `0 ${tokens.spacingHorizontalM} 0 0`, backgroundColor: "transparent", "@media (max-width: 1100px)": { gridTemplateColumns: "auto minmax(160px, 1fr) auto auto" } },
   headerCollapsed: { gridTemplateColumns: "auto minmax(0, 1fr) auto", paddingRight: tokens.spacingHorizontalXS },
   toggle: { alignSelf: "stretch", minWidth: "48px", borderRadius: 0, paddingLeft: tokens.spacingHorizontalM, paddingRight: tokens.spacingHorizontalM, justifyContent: "flex-start", color: "var(--text)", "&:hover": { backgroundColor: "color-mix(in srgb, var(--accent) 18%, transparent)" } },
   title: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalS, fontWeight: tokens.fontWeightSemibold },
@@ -66,9 +66,9 @@ const useStyles = makeStyles({
   dots: { display: "flex", gap: tokens.spacingHorizontalXS },
   dot: { width: "12px", height: "4px", backgroundColor: "var(--line)" },
   dotDone: { backgroundColor: "var(--accent)" },
-  field: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalS, "@media (max-width: 900px)": { display: "none" } },
+  field: { display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", alignItems: "center", gap: tokens.spacingHorizontalS, "@media (max-width: 1100px)": { display: "none" } },
   demoDropdown: {
-    minWidth: "260px",
+    minWidth: 0,
     "& .gx-fluent-dropdown": {
       backgroundColor: "transparent",
       boxShadow: "none",
@@ -203,7 +203,8 @@ const DemoRunner: ProjectionView = ({ node, emit, children }) => {
   const displayAct = Math.min(act + 1, plan.steps.length);
   const controls = React.Children.toArray(children);
   const demoDropdown = controls[0];
-  const floorControls = controls.slice(1);
+  const presentationDropdown = controls[1];
+  const floorControls = controls.slice(2);
 
   React.useEffect(() => {
     const request = demo.request;
@@ -255,6 +256,7 @@ const DemoRunner: ProjectionView = ({ node, emit, children }) => {
       </section>
       {expanded ? <div className={styles.field}>
         <div className={styles.demoDropdown}>{demoDropdown}</div>
+        <div className={styles.demoDropdown}>{presentationDropdown}</div>
       </div> : null}
       {expanded ? <div className={styles.controls}>
         <Button appearance="subtle" icon={<ArrowReset24Regular />} aria-label="Reset scenario" disabled={demo.presenter.locked} onClick={reset} />

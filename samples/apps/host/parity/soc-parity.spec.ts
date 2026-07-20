@@ -46,7 +46,7 @@ test("investigation board preserves desktop columns and mobile stage flow", asyn
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(investigationBoardUrl);
   await stabilize(page);
-  await expect(page.getByRole("combobox", { name: "Select presentation context" })).toHaveText("Investigation board");
+  await expect(page.getByRole("combobox", { name: "Select presentation context" })).toHaveCount(0);
   await expect(page.locator('[data-soc-arrangement="kanban"]')).toBeVisible();
   await expect(page.getByLabel("Investigation board").getByRole("region")).toHaveCount(5);
   await assertNoHorizontalOverflow(page);
@@ -55,7 +55,7 @@ test("investigation board preserves desktop columns and mobile stage flow", asyn
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
   await stabilize(page);
-  await expect(page.getByRole("combobox", { name: "Select presentation context" })).toHaveText("Investigation board");
+  await expect(page.getByRole("combobox", { name: "Select presentation context" })).toHaveCount(0);
   await assertNoHorizontalOverflow(page);
   await expect(page).toHaveScreenshot("soc-investigation-board-mobile.png");
 });
