@@ -14,7 +14,11 @@
         "on": {
           "selectTab": [{ "do": "assign", "target": "control.ui.activeTab", "args": { "from": "$event.tab" } }],
           "toggleHarness": [{ "do": "assign", "target": "control.ui.harnessExpanded", "args": { "from": "$event.expanded" } }],
-          "setPresentationContext": [{ "do": "assign", "target": "control.presentationContext", "args": { "from": "$event.contextId" } }]
+          "setPresentationContext": [
+            { "do": "assign", "target": "control.presentationPresetId", "args": { "from": "$event.contextId" } },
+            { "do": "assign", "target": "control.presentationContext", "args": { "from": "$event.context" } },
+            { "do": "assign", "target": "control.inspection.presentation.selectedContext", "args": { "from": "$event.contextId" } }
+          ]
         },
         "children": [
           {

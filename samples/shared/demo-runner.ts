@@ -1,5 +1,5 @@
 import type { FocusKind, FocusRef, TimelineItem } from "./control-focus";
-import type { DocNode, DocumentPayload, ManifestPayload } from "@gik/kernel";
+import type { DocNode, DocumentPayload, Json, ManifestPayload } from "@gik/kernel";
 
 export {
   focusRefMatches,
@@ -33,9 +33,17 @@ export interface OrganismDemoContract {
   commands: string[];
   humanGates: string[];
   actors: string[];
-  presentationContexts: string[];
+  presentationPresets: PresentationPreset[];
   focusKinds: FocusKind[];
   timelineSources: TimelineItem["source"][];
+}
+
+export interface PresentationPreset {
+  id: string;
+  label?: string;
+  audience?: string;
+  focus?: string;
+  context: Record<string, Json>;
 }
 
 export interface ScenarioPlan {
@@ -76,7 +84,7 @@ export interface DemoTargetCatalogEntry {
   humanGates: string[];
   observableOutcomes: string[];
   actors: string[];
-  presentationContexts: string[];
+  presentationPresets: PresentationPreset[];
   focusKinds: FocusKind[];
   timelineSources: TimelineItem["source"][];
 }
@@ -139,7 +147,7 @@ export function validateDemoComposition(
   const commands = new Set(organism.commands);
   const humanGates = new Set(organism.humanGates);
   const actors = new Set(organism.actors);
-  const contexts = new Set(organism.presentationContexts);
+  const contexts = new Set(organism.presentationPresets.map((preset) => preset.id));
   const focusKinds = new Set(organism.focusKinds);
   const timelineSources = new Set(organism.timelineSources);
   for (const step of scenario.steps) {
@@ -209,7 +217,6 @@ function validateDemoTarget(targetId: string, target: DemoTargetCatalogEntry): v
     ["humanGates", target.humanGates],
     ["observableOutcomes", target.observableOutcomes],
     ["actors", target.actors],
-    ["presentationContexts", target.presentationContexts],
     ["focusKinds", target.focusKinds],
     ["timelineSources", target.timelineSources],
   ];
@@ -239,9 +246,27 @@ function validateDemoTarget(targetId: string, target: DemoTargetCatalogEntry): v
   validateStrings("humanGates", target.humanGates);
   validateStrings("observableOutcomes", target.observableOutcomes);
   validateStrings("actors", target.actors);
-  validateStrings("presentationContexts", target.presentationContexts);
   validateStrings("focusKinds", target.focusKinds);
   validateStrings("timelineSources", target.timelineSources);
+  if (!Array.isArray(target.presentationPresets) || target.presentationPresets.length === 0) {
+    throw new Error(`Demo target '${targetId}' requires 'presentationPresets'`);
+  }
+  const presetIds = new Set<string>();
+  for (const preset of target.presentationPresets) {
+    if (!preset || typeof preset !== "object" || Array.isArray(preset)) {
+      throw new Error(`Demo target '${targetId}' has an invalid 'presentationPresets' entry`);
+    }
+    if (typeof preset.id !== "string" || !preset.id.trim()) {
+      throw new Error(`Demo target '${targetId}' has an invalid presentation preset id`);
+    }
+    if (presetIds.has(preset.id)) {
+      throw new Error(`Demo target '${targetId}' has duplicate presentation preset '${preset.id}'`);
+    }
+    if (!preset.context || typeof preset.context !== "object" || Array.isArray(preset.context)) {
+      throw new Error(`Demo target '${targetId}' preset '${preset.id}' requires an object context`);
+    }
+    presetIds.add(preset.id);
+  }
   for (const gate of target.humanGates) {
     if (!commandNames.has(gate)) {
       throw new Error(`Demo target '${targetId}' human gate '${gate}' has no command descriptor`);

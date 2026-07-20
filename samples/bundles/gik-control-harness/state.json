@@ -14,6 +14,7 @@
       "status": null
     },
     "presentationContext": null,
+    "presentationPresetId": null,
     "participantConfigurationRequest": null,
     "agentModeRequest": null,
     "authorizationRequest": null

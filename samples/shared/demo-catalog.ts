@@ -50,7 +50,7 @@ function demoContract(blueprintId: string, target: DemoTargetCatalogEntry): Orga
     commands: target.commands.map(({ command }) => command),
     humanGates: target.humanGates,
     actors: target.actors,
-    presentationContexts: target.presentationContexts,
+    presentationPresets: target.presentationPresets,
     focusKinds: target.focusKinds,
     timelineSources: target.timelineSources,
   };
