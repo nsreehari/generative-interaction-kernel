@@ -55,3 +55,47 @@ test("validate:false bypasses the props boundary", () => {
   const doc = board([node("metric", "m1", { props: { label: "CPU", value: "high" } })]);
   assert.doesNotThrow(() => new Kernel(manifestMsg(), doc, { validate: false }));
 });
+
+test("a list-like dataProp readExpr must be bracket-wrapped to preserve singleton arrays", () => {
+  const doc = authorDocument(node("board", "root", {
+    children: [node("table", "t1", { readExpr: { rows: 'local.quotes.{ "ticker": ticker, "price": price }' } })],
+  }), { manifest: "props-test/1" });
+  const manifest = envelope("manifest", {
+    version: "props-test/1",
+    namespaces: ["local"],
+    capabilities: {
+      board: { slots: ["children"] },
+      table: {
+        propsSchema: {
+          type: "object",
+          properties: { rows: { type: "array" } },
+          additionalProperties: true,
+        },
+        dataProp: "rows",
+      },
+    },
+  });
+  assert.throws(() => new Kernel(manifest, doc), ValidationError);
+});
+
+test("a list-like dataProp readExpr may be bracket-wrapped to preserve singleton arrays", () => {
+  const doc = authorDocument(node("board", "root", {
+    children: [node("table", "t1", { readExpr: { rows: '[local.quotes.{ "ticker": ticker, "price": price }]' } })],
+  }), { manifest: "props-test/1" });
+  const manifest = envelope("manifest", {
+    version: "props-test/1",
+    namespaces: ["local"],
+    capabilities: {
+      board: { slots: ["children"] },
+      table: {
+        propsSchema: {
+          type: "object",
+          properties: { rows: { type: "array" } },
+          additionalProperties: true,
+        },
+        dataProp: "rows",
+      },
+    },
+  });
+  assert.doesNotThrow(() => new Kernel(manifest, doc));
+});

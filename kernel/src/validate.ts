@@ -56,12 +56,34 @@ export function validateDocumentProps(
   }
 }
 
+const LIST_LIKE_DATA_PROPS = new Set(["rows", "items", "options", "groups", "buttons"]);
+
+function isBracketWrappedArrayExpr(expr: string): boolean {
+  const trimmed = expr.trim();
+  return trimmed.startsWith("[") && trimmed.endsWith("]");
+}
+
+function schemaExpectsArrayProp(schema: object | undefined, prop: string): boolean {
+  if (!schema || typeof schema !== "object" || Array.isArray(schema)) return false;
+  const properties = (schema as { properties?: Record<string, unknown> }).properties;
+  const propSchema = properties?.[prop];
+  if (!propSchema || typeof propSchema !== "object" || Array.isArray(propSchema)) return false;
+  const type = (propSchema as { type?: unknown }).type;
+  return type === "array" || (Array.isArray(type) && type.includes("array"));
+}
+
+function requiresBracketWrappedReadExpr(descriptor: CapabilityDescriptor | undefined, prop: string): boolean {
+  if (!descriptor || descriptor.dataProp !== prop) return false;
+  return LIST_LIKE_DATA_PROPS.has(prop) || schemaExpectsArrayProp(descriptor.propsSchema, prop);
+}
+
 function validateNodeProps(
   node: DocNode,
   caps: Record<string, CapabilityDescriptor>,
   errors: string[]
 ): void {
-  const schema = caps[node.capability]?.propsSchema;
+  const descriptor = caps[node.capability];
+  const schema = descriptor?.propsSchema;
   if (schema) {
     const validate = propsValidator(schema);
     if (!validate(node.props ?? {})) {
@@ -74,6 +96,13 @@ function validateNodeProps(
         if (e.keyword === "required" && missing !== undefined && dynamic.has(missing)) continue;
         errors.push(`${node.id} (${node.capability})${e.instancePath} ${e.message}`);
       }
+    }
+  }
+  for (const [prop, expr] of Object.entries(node.edges?.readExpr ?? {})) {
+    if (requiresBracketWrappedReadExpr(descriptor, prop) && !isBracketWrappedArrayExpr(expr)) {
+      errors.push(
+        `${node.id} (${node.capability}) readExpr.${prop} must use bracket-wrapped JSONata to materialize an array result`
+      );
     }
   }
   for (const child of node.edges?.children ?? []) validateNodeProps(child, caps, errors);
