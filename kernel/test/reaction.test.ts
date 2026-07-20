@@ -60,12 +60,15 @@ test("an effectful reaction fires once per change, never on an unchanged write o
   const k = new Kernel(manifestMsg, docWith(reaction("n", [invoke("onChanged")])), { orchestrator });
 
   await k.dispatch(setN(5)); // 0 -> 5: fires
+  await k.whenIdle();
   assert.equal(calls, 1);
 
   await k.dispatch(setN(5)); // unchanged: does NOT fire
+  await k.whenIdle();
   assert.equal(calls, 1);
 
   await k.dispatch(setN(9)); // 5 -> 9: fires
+  await k.whenIdle();
   assert.equal(calls, 2);
 });
 
@@ -82,9 +85,11 @@ test("an opted-in reaction consumes pre-seeded mailbox state once", async () => 
   const k = new Kernel(manifestMsg, docWith(initial), { orchestrator, state });
 
   await k.syncExternal();
+  await k.whenIdle();
   assert.equal(calls, 1);
 
   await k.syncExternal();
+  await k.whenIdle();
   assert.equal(calls, 1);
 });
 

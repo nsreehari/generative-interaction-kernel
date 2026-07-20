@@ -66,9 +66,9 @@ export function declarativeServiceOrchestrator(
     const declarations = (unwrap(runtime.manifest).externals?.services ?? {}) as Record<string, ServiceDeclaration>;
     const serviceInvokes = new Set(Object.values(declarations).flatMap((declaration) => Object.keys(declaration.operations)));
     return {
-      invoke: (effect) => effect.kind === "invoke" && typeof effect.tool === "string" && serviceInvokes.has(effect.tool)
+      invoke: (effect, control) => effect.kind === "invoke" && typeof effect.tool === "string" && serviceInvokes.has(effect.tool)
         ? host.invoke(effect)
-        : fallback?.invoke?.(effect) ?? Promise.resolve(),
+        : fallback?.invoke?.(effect, control) ?? Promise.resolve(),
       confirm: fallback?.confirm?.bind(fallback),
       route: fallback?.route?.bind(fallback),
       compensate: fallback?.compensate?.bind(fallback),

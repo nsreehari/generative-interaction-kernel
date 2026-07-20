@@ -2,11 +2,12 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://genui.dev/gik/0.1/envelope.schema.json",
   "title": "GIK message envelope",
-  "description": "Any GIK message: exactly one of the five message types. Requires the five message schemas to be loaded (resolved by $id).",
+  "description": "Any GIK message: exactly one of the six message types. Requires the six message schemas to be loaded (resolved by $id).",
   "oneOf": [
     { "$ref": "https://genui.dev/gik/0.1/manifest.schema.json" },
     { "$ref": "https://genui.dev/gik/0.1/document.schema.json" },
     { "$ref": "https://genui.dev/gik/0.1/patch.schema.json" },
+    { "$ref": "https://genui.dev/gik/0.1/progress.schema.json" },
     { "$ref": "https://genui.dev/gik/0.1/event.schema.json" },
     { "$ref": "https://genui.dev/gik/0.1/trace.schema.json" }
   ]

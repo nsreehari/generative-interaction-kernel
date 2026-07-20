@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://genui.dev/gik/0.1/progress.schema.json",
+  "title": "GIK invocation progress message",
+  "description": "A live-only, non-authoritative observation emitted while an invocation is active.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["gik", "type", "payload"],
+  "properties": {
+    "gik": { "const": "0.1" },
+    "type": { "const": "progress" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["invocationId", "seq", "node", "effect", "name"],
+      "properties": {
+        "invocationId": { "type": "string", "minLength": 1 },
+        "seq": { "type": "integer", "minimum": 0 },
+        "node": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_-]*$" },
+        "effect": { "const": "invoke" },
+        "tool": { "type": "string" },
+        "actorId": { "type": "string" },
+        "name": { "type": "string", "minLength": 1 },
+        "detail": { "type": "object" }
+      }
+    }
+  }
+}

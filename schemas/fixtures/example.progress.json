@@ -1,0 +1,15 @@
+{
+  "gik": "0.1",
+  "type": "progress",
+  "payload": {
+    "invocationId": "inv-42",
+    "seq": 3,
+    "node": "chat",
+    "effect": "invoke",
+    "tool": "ask",
+    "name": "tool-started",
+    "detail": {
+      "tool": "search"
+    }
+  }
+}

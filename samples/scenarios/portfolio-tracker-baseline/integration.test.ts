@@ -83,8 +83,11 @@ describe("portfolio demo-runner composition", () => {
       ],
       investorProfile: { riskTolerance: "moderate", horizonYears: 8 },
     });
+    await portfolio.controller.settle();
     await portfolio.controller.emit("portfolio-tracker", "requestIntelligence");
+    await portfolio.controller.settle();
     await portfolio.controller.emit("portfolio-tracker", "calculateStrategies");
+    await portfolio.controller.settle();
     const request: ControlRequest = {
       id: "portfolio-apply:1",
       targetBlueprintId: "portfolio-tracker",
@@ -96,10 +99,12 @@ describe("portfolio demo-runner composition", () => {
     shared.apply([{ op: "set", path: "control.request", value: request }]);
 
     const source = withDemoHumanGate(portfolio.controller, shared, portfolioControlContract);
-    await expect(source.emit("rebalance-comparison", "apply", {})).rejects.toThrow("attributed actor");
+    await source.emit("rebalance-comparison", "apply", {});
+    await expect(portfolio.controller.settle()).rejects.toThrow("attributed actor");
     expect(shared.get("control.receipt")).toBeNull();
 
     await source.emit("rebalance-comparison", "apply", {}, "human-investor");
+    await portfolio.controller.settle();
 
     expect(portfolio.state.get("portfolio.appliedRecommendation")).toMatchObject({
       status: "applied",

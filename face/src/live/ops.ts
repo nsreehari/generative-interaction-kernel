@@ -32,7 +32,7 @@ export function checkpoint(kernel: Kernel): Checkpoint {
 }
 
 /** Restore pure state to a prior checkpoint; backward and forward are the same operation. */
-export function restore(kernel: Kernel, cp: Checkpoint): Patch {
+export function restore(kernel: Kernel, cp: Checkpoint): Promise<Patch> {
   return kernel.restore(cp);
 }
 

@@ -104,6 +104,7 @@ test("the Kernel fulfils an invoke through a flow and applies its result to the 
   kernel.init();
 
   await kernel.dispatch({ node: "btn", name: "tap" });
+  await kernel.whenIdle();
   assert.equal((kernel.state() as Record<string, unknown>).result, 10, "invoke ran the flow and applied its result");
 
   const tree = (await kernel.resolve()) as ResolvedNode;

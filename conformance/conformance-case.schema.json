@@ -94,6 +94,15 @@
               "ops": { "type": "array", "items": { "$ref": "#/definitions/op" } }
             }
           },
+          "expectSettledPatch": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["rev", "ops"],
+            "properties": {
+              "rev": { "type": "integer", "minimum": 0 },
+              "ops": { "type": "array", "items": { "$ref": "#/definitions/op" } }
+            }
+          },
           "expectResolve": {
             "type": "array",
             "items": { "$ref": "#/definitions/resolveExpectation" }

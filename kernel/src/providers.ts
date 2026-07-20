@@ -7,6 +7,7 @@ import jsonataFactory from "./vendor/jsonata-runtime";
 import jsonataSyncFactory from "./vendor/jsonata-sync-runtime";
 import type {
   Json,
+  InvocationControl,
   PatchOp,
   ManifestPayload,
   CapabilityDescriptor,
@@ -281,7 +282,7 @@ export class ManifestRegistry implements CapabilityRegistry {
 // are traced and produce no store change.
 
 export interface Orchestrator {
-  invoke?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>;
+  invoke?(effect: OrchestratorEffect, control: InvocationControl): Promise<OrchestratorResult | void>;
   confirm?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>;
   route?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>;
   /**

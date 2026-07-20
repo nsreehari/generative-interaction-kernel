@@ -46,6 +46,7 @@ rejected options were set aside, and the consequences.
 | [0039](ADR-0039-sync-expression-evaluation.md) | Platform JSONata is pure — a single canonical engine version, no divergent sync build | Accepted |
 | [0040](ADR-0040-external-services-and-queueface.md) | External services as one adapter contract — host execution, Blueprint-owned operations, Face projections | Accepted (amended) |
 | [0041](ADR-0041-blueprint-first-hosting-and-controlface-lowering.md) | Blueprint-first application hosting — ControlFace owns runtime opening and lowering lifecycle | Accepted (amended) |
+| [0042](ADR-0042-controlled-invocation-progress.md) | Controlled invocation progress with terminal settlement | Proposed |
 
 ## Format
 
