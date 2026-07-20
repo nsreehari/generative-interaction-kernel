@@ -57,7 +57,7 @@ test("access resolution populates the ask page and selects an available agent", 
   assert.equal(store.get("agent.agentName"), "Agent Two");
 });
 
-test("sign out clears persistent access and resets the ask session", async () => {
+test("sign out resets the ask session without reading host credentials", async () => {
   const values = installLocalStorage();
   values.set(FOUNDRY_ACCESS_STORAGE_KEY, "access-key");
   const { controller, state: store } = runtime();
@@ -69,7 +69,7 @@ test("sign out clears persistent access and resets the ask session", async () =>
 
   await controller.emit("agent-signout-btn", "press", {});
 
-  assert.equal(values.has(FOUNDRY_ACCESS_STORAGE_KEY), false);
+  assert.equal(values.has(FOUNDRY_ACCESS_STORAGE_KEY), true);
   assert.equal(store.get("agent.key"), null);
   assert.equal(store.get("agent.agentName"), "");
   assert.deepEqual(store.get("agent.agentOptions"), []);

@@ -78,6 +78,7 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 		const endpoint = String(config.endpoint);
 		const credentialRef = String(config.credentialRef);
 		const configuredAgent = typeof config.agent === "string" ? config.agent : "";
+		const operations = [...new Set(Object.values(declaration.operations).map(({ operation }) => operation))];
 		const client = async () => createFoundryProxy({
 			baseUrl: endpoint,
 			key: String(await context.resolveCredential!(credentialRef)),
@@ -90,7 +91,7 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 				provider: { id: providerId, version: manifest.version, title: manifest.title },
 				revision: manifest.version,
 				discoveredAt: new Date().toISOString(),
-				capabilities: declaration.operations.map((operation) => ({
+				capabilities: operations.map((operation) => ({
 					id: operation,
 					operation,
 					version: declaration.version,
@@ -99,7 +100,7 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 					supports: { validate: true },
 				})),
 			}),
-			validate: (request) => declaration.operations.includes(request.operation)
+			validate: (request) => operations.includes(request.operation)
 				? { ok: true }
 				: { ok: false, errors: [`Operation '${request.operation}' is not declared`] },
 			probe: async () => {
@@ -122,7 +123,7 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 						agentName,
 						conversationId: typeof input.conversationId === "string" ? input.conversationId : undefined,
 						instructions: typeof input.instructions === "string" ? input.instructions : undefined,
-						responseSchema: inputResponseSchema(input) ?? responseSchemaFor(request.operation, context.outputPolicy?.guardrails),
+						responseSchema: inputResponseSchema(input) ?? responseSchemaFor(request.operation, context.responseValidators),
 					}) as unknown as Json,
 				};
 			},

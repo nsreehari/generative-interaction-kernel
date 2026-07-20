@@ -31,8 +31,9 @@ import {
   type TransportProvider,
 } from "../../../kernel/src/index";
 import { checkpoint, compensate, effectsSince, getState, getTree, restore } from "./ops";
-import type { QueueFace, ServiceProbeResult, ServiceRequestRecord } from "../services/queueface";
-import type { ServiceKindDescription, ServiceKindRegistry } from "../services/service-kinds";
+import type { ServiceProbeResult, ServiceRequestRecord } from "../services/queueface";
+import type { ServiceHost } from "../services/service-host";
+import type { ServiceKindDescription } from "../services/service-kinds";
 import type { ResolvedProfile } from "../../../profile/src/index";
 
 export interface BlueprintRuntime {
@@ -64,10 +65,8 @@ export interface ControlFaceOptions {
   orchestrator?: Orchestrator;
   /** Optional trace sink for resolve/action/effect events. */
   sink?: TraceSink;
-  /** Shared trusted service-kind registry projected by this ControlFace. */
-  serviceKinds?: ServiceKindRegistry;
-  /** Optional QueueFace whose requests and probes this ControlFace may inspect. */
-  queueFace?: QueueFace;
+  /** Shared host service capability projected by ControlFace and QueueFace. */
+  serviceHost?: ServiceHost;
 }
 
 export class ControlFace implements TransportBroker {
@@ -116,8 +115,7 @@ export class ControlFace implements TransportBroker {
   // transport. Render transports bind through `attach`; drive goes through `emit`.
   private readonly kernel: Kernel;
   private readonly broker: KernelTransportHost;
-  private readonly serviceKinds?: ServiceKindRegistry;
-  private readonly queueFace?: QueueFace;
+  private readonly serviceHost?: ServiceHost;
 
   constructor(
     manifest: Enveloped<ManifestPayload>,
@@ -130,8 +128,7 @@ export class ControlFace implements TransportBroker {
       ...(opts.sink ? { sink: opts.sink } : {}),
     });
     this.broker = new KernelTransportHost(manifest, document, this.kernel);
-    this.serviceKinds = opts.serviceKinds;
-    this.queueFace = opts.queueFace;
+    this.serviceHost = opts.serviceHost;
   }
 
   /**
@@ -172,16 +169,16 @@ export class ControlFace implements TransportBroker {
   }
 
   describeServiceKinds(): ServiceKindDescription[] {
-    return this.serviceKinds?.describe() ?? [];
+    return this.serviceHost?.describeKinds() ?? [];
   }
 
   listServiceRequests(): Promise<ServiceRequestRecord[]> {
-    return this.queueFace?.listRequests() ?? Promise.resolve([]);
+    return this.serviceHost?.listRequests() ?? Promise.resolve([]);
   }
 
-  probeService(providerId: string): Promise<ServiceProbeResult> {
-    if (!this.queueFace) throw new Error("ControlFace has no QueueFace attached");
-    return this.queueFace.probe(providerId);
+  probeService(serviceId: string): Promise<ServiceProbeResult> {
+    if (!this.serviceHost) throw new Error("ControlFace has no ServiceHost attached");
+    return this.serviceHost.probeService(serviceId);
   }
 
   /** Detach every connection (the caller owns any server lifecycle). */

@@ -44,8 +44,8 @@ rejected options were set aside, and the consequences.
 | [0037](ADR-0037-face-projections-and-transport-boundary.md) | Face package with pure/live strata; projections own policy, transports stay agnostic | Accepted |
 | [0038](ADR-0038-declarative-profiles-and-lowering-recipes.md) | Declarative profiles — layers plus data-driven lowering recipes | Accepted |
 | [0039](ADR-0039-sync-expression-evaluation.md) | Platform JSONata is pure — a single canonical engine version, no divergent sync build | Accepted |
-| [0040](ADR-0040-external-services-and-queueface.md) | External services as one adapter contract — host-trusted kinds, Blueprint-owned declarations, QueueFace lifecycle | Accepted |
-| [0041](ADR-0041-blueprint-first-hosting-and-controlface-lowering.md) | Blueprint-first application hosting — ControlFace owns runtime opening and lowering lifecycle | Accepted |
+| [0040](ADR-0040-external-services-and-queueface.md) | External services as one adapter contract — host execution, Blueprint-owned operations, Face projections | Accepted (amended) |
+| [0041](ADR-0041-blueprint-first-hosting-and-controlface-lowering.md) | Blueprint-first application hosting — ControlFace owns runtime opening and lowering lifecycle | Accepted (amended) |
 
 ## Format
 

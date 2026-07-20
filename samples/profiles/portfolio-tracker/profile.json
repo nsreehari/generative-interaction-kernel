@@ -18,89 +18,95 @@
       "portfolio-intelligence": {
         "kind": "deterministic-agent",
         "version": "1",
-        "operations": ["analyze", "propose-strategies"],
-        "config": { "handler": "portfolio-intelligence-deterministic" },
-        "scope": "per-blueprint",
-        "operationPolicies": {
-          "analyze": {
-            "guardrails": [
-              {
-                "kind": "ajv-schema",
-                "message": "Portfolio intelligence response is invalid",
-                "schema": {
-                  "type": "object",
-                  "required": ["summary", "observations", "risks", "evidence", "investorProfile", "provider"],
-                  "properties": {
-                    "summary": { "type": "string", "minLength": 1 },
-                    "observations": { "type": "array", "items": { "type": "string" } },
-                    "risks": { "type": "array", "items": { "type": "string" } },
-                    "evidence": { "type": "array", "items": { "type": "string" } },
-                    "investorProfile": {},
-                    "provider": { "type": "string", "minLength": 1 }
-                  },
-                  "additionalProperties": false
+        "operations": {
+          "requestIntelligence": {
+            "operation": "analyze",
+            "contract": "portfolio-intelligence/v1",
+            "request": {
+              "transform": { "kind": "jsonata", "expr": "{'positions':state.portfolio.positions,'summary':state.portfolio.summary,'investorProfile':state.portfolio.investorProfile}" }
+            },
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "message": "Portfolio intelligence response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": ["summary", "observations", "risks", "evidence", "investorProfile", "provider"],
+                    "properties": {
+                      "summary": { "type": "string", "minLength": 1 },
+                      "observations": { "type": "array", "items": { "type": "string" } },
+                      "risks": { "type": "array", "items": { "type": "string" } },
+                      "evidence": { "type": "array", "items": { "type": "string" } },
+                      "investorProfile": {},
+                      "provider": { "type": "string", "minLength": 1 }
+                    },
+                    "additionalProperties": false
+                  }
                 }
-              }
-            ],
+              ]
+            },
+            "settlement": {
+              "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':response}],'detail':{'provider':response.provider}}" }
+            },
             "onViolation": { "action": "fail" }
           },
-          "propose-strategies": {
-            "guardrails": [
-              {
-                "kind": "ajv-schema",
-                "message": "Portfolio strategies response is invalid",
-                "schema": {
-                  "type": "object",
-                  "required": ["strategies", "recommendation", "provider"],
-                  "properties": {
-                    "strategies": {
-                      "type": "object",
-                      "minProperties": 1,
-                      "additionalProperties": {
+          "calculateStrategies": {
+            "operation": "propose-strategies",
+            "contract": "portfolio-strategies/v1",
+            "request": {
+              "transform": { "kind": "jsonata", "expr": "{'positions':state.portfolio.positions,'summary':state.portfolio.summary,'investorProfile':state.portfolio.investorProfile,'intelligence':state.portfolio.intelligence}" }
+            },
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "message": "Portfolio strategies response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": ["strategies", "recommendation", "provider"],
+                    "properties": {
+                      "strategies": {
                         "type": "object",
-                        "required": ["id", "rationale", "targetWeights"],
+                        "minProperties": 1,
+                        "additionalProperties": {
+                          "type": "object",
+                          "required": ["id", "rationale", "targetWeights"],
+                          "properties": {
+                            "id": { "type": "string", "minLength": 1 },
+                            "rationale": { "type": "string", "minLength": 1 },
+                            "targetWeights": { "type": "object", "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 } }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "recommendation": {
+                        "type": "object",
+                        "required": ["selected", "reason", "status"],
                         "properties": {
-                          "id": { "type": "string", "minLength": 1 },
-                          "rationale": { "type": "string", "minLength": 1 },
-                          "targetWeights": {
-                            "type": "object",
-                            "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 }
-                          }
+                          "selected": { "type": "string", "minLength": 1 },
+                          "reason": { "type": "string", "minLength": 1 },
+                          "status": { "const": "proposed" }
                         },
                         "additionalProperties": false
-                      }
-                    },
-                    "recommendation": {
-                      "type": "object",
-                      "required": ["selected", "reason", "status"],
-                      "properties": {
-                        "selected": { "type": "string", "minLength": 1 },
-                        "reason": { "type": "string", "minLength": 1 },
-                        "status": { "const": "proposed" }
                       },
-                      "additionalProperties": false
+                      "provider": { "type": "string", "minLength": 1 }
                     },
-                    "provider": { "type": "string", "minLength": 1 }
-                  },
-                  "additionalProperties": false
-                }
-              },
-              {
-                "kind": "jsonata",
-                "expr": "$count(data.strategies.*[$abs($sum(targetWeights.*) - 1) > 0.001]) = 0",
-                "message": "Every strategy's target weights must total 1",
-                "code": "target-weights-sum"
-              },
-              {
-                "kind": "jsonata",
-                "expr": "$exists($lookup(data.strategies, data.recommendation.selected))",
-                "message": "Portfolio recommendation must select a returned strategy",
-                "code": "recommendation-selects-known-strategy"
-              }
-            ],
+                    "additionalProperties": false
+                  }
+                },
+                { "kind": "jsonata", "expr": "$count(data.strategies.*[$abs($sum(targetWeights.*) - 1) > 0.001]) = 0", "message": "Every strategy's target weights must total 1", "code": "target-weights-sum" },
+                { "kind": "jsonata", "expr": "$exists($lookup(data.strategies, data.recommendation.selected))", "message": "Portfolio recommendation must select a returned strategy", "code": "recommendation-selects-known-strategy" }
+              ]
+            },
+            "settlement": {
+              "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'portfolio.strategies','value':response.strategies},{'op':'set','path':'portfolio.recommendation','value':response.recommendation}],'detail':{'provider':response.provider}}" }
+            },
             "onViolation": { "action": "fail" }
           }
-        }
+        },
+        "config": { "handler": "portfolio-intelligence-deterministic" },
+        "scope": "per-blueprint"
       }
     },
     "runtime": {
@@ -121,29 +127,7 @@
           "ui": { "from": "floor" },
           "portfolio": { "from": "self" }
         },
-        "effectHandlers": ["setHoldings", "upsertHolding", "removeHolding", "refreshPrices", "applyRecommendation", "saveHoldings", "setPresentationContext"],
-        "serviceBindings": [
-          {
-            "invoke": "requestIntelligence",
-            "use": {
-              "service": "portfolio-intelligence",
-              "operation": "analyze",
-              "contract": "portfolio-intelligence/v1"
-            },
-            "request": "{'input': {'positions':state.portfolio.positions,'summary':state.portfolio.summary,'investorProfile':state.portfolio.investorProfile},'actorId':effect.actorId}",
-            "result": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':result.output}],'detail':{'provider':result.output.provider}}"
-          },
-          {
-            "invoke": "calculateStrategies",
-            "use": {
-              "service": "portfolio-intelligence",
-              "operation": "propose-strategies",
-              "contract": "portfolio-strategies/v1"
-            },
-            "request": "{'input': {'positions':state.portfolio.positions,'summary':state.portfolio.summary,'investorProfile':state.portfolio.investorProfile,'intelligence':state.portfolio.intelligence},'actorId':effect.actorId}",
-            "result": "{'ops':[{'op':'set','path':'portfolio.strategies','value':result.output.strategies},{'op':'set','path':'portfolio.recommendation','value':result.output.recommendation}],'detail':{'provider':result.output.provider}}"
-          }
-        ]
+        "effectHandlers": ["setHoldings", "upsertHolding", "removeHolding", "refreshPrices", "applyRecommendation", "saveHoldings", "setPresentationContext"]
       },
       "state": {
         "portfolio": {

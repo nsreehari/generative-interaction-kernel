@@ -341,7 +341,7 @@ test("mixed-team scenario preserves attributable steps and commander authority",
   ]);
 });
 
-test("live Correlation Agent lowers validated output and records its conversation", async () => {
+test("live Correlation Agent requests fall back without Bundle-side provider execution", async () => {
   const { controller, state: store } = runtime(createSocEffects(foundryFetch(correlationReply), () => "test-key"));
   await controller.start();
 
@@ -354,11 +354,11 @@ test("live Correlation Agent lowers validated output and records its conversatio
   const exploration = (store.get("soc.explorations") as Array<{ question: string }>)[0];
   const provider = (store.get("soc.agentProviders") as Record<string, { lastProvider: string; conversationId: string }>)["agent-correlation"];
   const journal = store.get("soc.journal") as Array<{ provider: string; responseId: string }>;
-  assert.equal(exploration.question, "Trace the privileged execution origin");
-  assert.equal(provider.lastProvider, "live");
-  assert.equal(provider.conversationId, "conv-live");
-  assert.equal(journal.at(-1)?.provider, "live");
-  assert.equal(journal.at(-1)?.responseId, "resp-live");
+  assert.equal(exploration.question, "Where did the privileged session execute?");
+  assert.equal(provider.lastProvider, "mock");
+  assert.equal(provider.conversationId, "");
+  assert.equal(journal.at(-1)?.provider, "mock");
+  assert.equal(journal.at(-1)?.responseId, "");
   assert.equal(JSON.stringify(store.get("soc")).includes("test-key"), false);
 });
 
@@ -377,7 +377,7 @@ test("SOC requests Foundry access only while a participant agent uses Live mode"
   assert.equal(store.get("soc.foundry.key"), null);
   assert.deepEqual(store.get("soc.foundry.agentNames"), ["SOC-Correlation-Agent", "SOC-Response-Agent"]);
   const providers = store.get("soc.agentProviders") as Record<string, { status: string }>;
-  assert.equal(providers["agent-correlation"].status, "ready");
+  assert.equal(providers["agent-correlation"].status, "fallback");
 
   await controller.emit("soc-workspace", "setAgentMode", { agentId: "agent-correlation", mode: "mock" });
   assert.equal(store.get("soc.foundry.required"), false);
@@ -393,11 +393,11 @@ test("invalid live output falls back visibly to the canonical Mock turn", async 
   assert.equal(provider.mode, "live");
   assert.equal(provider.status, "fallback");
   assert.equal(provider.lastProvider, "mock");
-  assert.match(provider.fallbackReason, /JSON object/);
+  assert.match(provider.fallbackReason, /host service runner/);
   assert.equal((store.get("soc.explorations") as Array<{ question: string }>)[0].question, "Where did the privileged session execute?");
 });
 
-test("invalid live output is repaired once in the same conversation before lowering", async () => {
+test("Bundle does not run provider correction loops", async () => {
   const requests: Array<Record<string, unknown>> = [];
   const fetch = sequencedFoundryFetch(["not-json", correlationReply], requests);
   const { controller, state: store } = runtime(createSocEffects(fetch, () => "test-key"));
@@ -405,20 +405,16 @@ test("invalid live output is repaired once in the same conversation before lower
   await controller.emit("soc-workspace", "setAgentMode", { agentId: "agent-correlation", mode: "live" });
   await controller.emit("soc-workspace", "suggestExploration", {}, "agent-correlation");
 
-  assert.equal(requests.length, 2);
-  assert.equal(requests[1].conversationId, "conv-repair");
-  assert.match(String(requests[1].message), /Validation errors:/);
-  assert.match(String(requests[1].message), /json-object-required/);
-  assert.match(String(requests[1].message), /Expected shape:/);
+  assert.equal(requests.length, 0);
   const provider = (store.get("soc.agentProviders") as Record<string, { lastProvider: string; validationAttempts: number; repaired: boolean; responseId: string }>) ["agent-correlation"];
-  assert.equal(provider.lastProvider, "live");
-  assert.equal(provider.validationAttempts, 2);
-  assert.equal(provider.repaired, true);
-  assert.equal(provider.responseId, "resp-2");
-  assert.equal((store.get("soc.explorations") as Array<{ question: string }>)[0].question, "Trace the privileged execution origin");
+  assert.equal(provider.lastProvider, "mock");
+  assert.equal(provider.validationAttempts, 0);
+  assert.equal(provider.repaired, false);
+  assert.equal(provider.responseId, "");
+  assert.equal((store.get("soc.explorations") as Array<{ question: string }>)[0].question, "Where did the privileged session execute?");
 });
 
-test("invalid correction falls back after exactly one repair attempt", async () => {
+test("host-owned correction policy is not duplicated in the Bundle", async () => {
   const requests: Array<Record<string, unknown>> = [];
   const fetch = sequencedFoundryFetch(["not-json", "still-not-json"], requests);
   const { controller, state: store } = runtime(createSocEffects(fetch, () => "test-key"));
@@ -427,15 +423,15 @@ test("invalid correction falls back after exactly one repair attempt", async () 
   await controller.emit("soc-workspace", "suggestExploration", {}, "agent-correlation");
 
   const provider = (store.get("soc.agentProviders") as Record<string, { lastProvider: string; validationAttempts: number; repaired: boolean; fallbackReason: string; conversationId: string }>) ["agent-correlation"];
-  assert.equal(requests.length, 2);
+  assert.equal(requests.length, 0);
   assert.equal(provider.lastProvider, "mock");
-  assert.equal(provider.validationAttempts, 2);
+  assert.equal(provider.validationAttempts, 0);
   assert.equal(provider.repaired, false);
-  assert.equal(provider.conversationId, "conv-repair");
-  assert.match(provider.fallbackReason, /after correction/);
+  assert.equal(provider.conversationId, "");
+  assert.match(provider.fallbackReason, /host service runner/);
 });
 
-test("live Response Agent assessment cannot bypass the local DC-01 policy", async () => {
+test("host-unavailable Response Agent cannot bypass the local DC-01 policy", async () => {
   const responseReply = {
     schemaVersion: 1,
     operation: "assess-policy-candidate",
@@ -450,8 +446,8 @@ test("live Response Agent assessment cannot bypass the local DC-01 policy", asyn
   await controller.emit("soc-workspace", "setAgentMode", { agentId: "agent-response", mode: "live" });
   await controller.emit("soc-workspace", "proposeDc01", {}, "agent-response");
 
-  const proposal = store.get("soc.proposal") as { status: string; target: string; liveAssessment: string };
+  const proposal = store.get("soc.proposal") as { status: string; target: string; liveAssessment?: string };
   assert.equal(proposal.status, "rejected");
   assert.equal(proposal.target, "DC-01");
-  assert.equal(proposal.liveAssessment, responseReply.summary);
+  assert.equal(proposal.liveAssessment, undefined);
 });

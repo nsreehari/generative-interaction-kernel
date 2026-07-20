@@ -19,13 +19,13 @@ import {
 import { type ProjectionView } from "@gik/react";
 import * as React from "react";
 
-import { discoverFoundryAgents } from "../../../services/foundry-agent";
+import { discoverFoundryAgents } from "..";
 import {
   FOUNDRY_ACCESS_CHANGE_EVENT,
   clearFoundryAccessKey,
   getFoundryAccessKey,
   setFoundryAccessKey,
-} from "../../../services/foundry-agent";
+} from "..";
 
 const useStyles = makeStyles({
   stack: { display: "grid", gap: tokens.spacingVerticalM },
@@ -119,7 +119,7 @@ const FoundryAccessModal: ProjectionView = ({ node, emit }) => {
         if (cancelled) return;
         setEnteredKey("");
         setStatus("idle");
-        emitRef.current("accessResolved", { key: storedKey, agentNames });
+        emitRef.current("accessResolved", { agentNames });
       },
       (reason) => {
         if (cancelled) return;
@@ -144,7 +144,7 @@ const FoundryAccessModal: ProjectionView = ({ node, emit }) => {
       setFoundryAccessKey(key);
       setEnteredKey("");
       setStatus("idle");
-      emit("accessResolved", { key, agentNames });
+      emit("accessResolved", { agentNames });
     } catch (reason) {
       clearFoundryAccessKey();
       emit("accessCleared", {});
@@ -217,6 +217,15 @@ const FoundryAgentSelector: ProjectionView = ({ node, emit }) => {
   );
 };
 
+const FoundrySignOutButton: ProjectionView = ({ node, emit }) => (
+  <Button onClick={() => {
+    clearFoundryAccessKey();
+    void emit("press", {});
+  }}>
+    {String(node.props.label ?? "Sign out")}
+  </Button>
+);
+
 const FoundryAskPage: ProjectionView = ({ node, children }) => {
   const styles = useStyles();
   const title = String(node.props.title ?? "Ask the agent");
@@ -232,4 +241,5 @@ export default {
   "access-modal": FoundryAccessModal,
   "agent-selector": FoundryAgentSelector,
   "ask-page": FoundryAskPage,
+  "sign-out-button": FoundrySignOutButton,
 };

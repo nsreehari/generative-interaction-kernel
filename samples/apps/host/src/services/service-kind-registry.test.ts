@@ -30,7 +30,13 @@ test("Foundry declarations require host-authorized endpoints", async () => {
   const report = await registry.validate({
     kind: "foundry-agent",
     version: "1",
-    operations: ["chat"],
+    operations: {
+      chat: {
+        operation: "chat",
+        contract: "chat/v1",
+        settlement: { transform: { kind: "jsonata", expr: "{'outcome':'completed'}" } },
+      },
+    },
     config: {
       endpoint: "https://untrusted.example",
       agent: "Agent One",
