@@ -32,7 +32,7 @@
         "ui": { "from": "floor", "use": ["timer-button"] },
         "fluent": { "from": "fluent", "use": ["dropdown", "toggle"] }
       },
-      "effectHandlers": ["requestNextAct", "setPace", "selectDemo", "finishAct", "resetDemo"]
+      "effectHandlers": ["requestNextAct", "setPace", "selectDemo", "setPresentationContext", "finishAct", "resetDemo"]
     }
   }
 }

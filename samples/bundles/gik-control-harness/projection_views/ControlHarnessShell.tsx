@@ -1,15 +1,8 @@
 import React from "react";
-import { Button, Dropdown, Option, Tab, TabList, makeStyles, tokens } from "@fluentui/react-components";
+import { Button, Tab, TabList, makeStyles, tokens } from "@fluentui/react-components";
 import { ChevronLeft20Regular, ChevronRight20Regular } from "@fluentui/react-icons";
 import type { ProjectionView } from "@gik/react";
 import { GrowingContainer } from "../../../../adapters/react/src/primitives/registry";
-
-interface HarnessPresentation {
-  selectedContext: string;
-  contexts: Array<{ id: string; label: string }>;
-}
-
-const EMPTY_PRESENTATION: HarnessPresentation = { selectedContext: "", contexts: [] };
 
 const useStyles = makeStyles({
   harness: {
@@ -41,18 +34,6 @@ const useStyles = makeStyles({
     overflow: "hidden",
     "@media (max-width: 700px)": { maxWidth: "calc(100vw - 8px)" },
   },
-  presentationField: {
-    flex: "0 0 auto",
-    minWidth: "210px",
-    display: "grid",
-    gridTemplateColumns: "minmax(180px, 1fr)",
-    alignContent: "center",
-    gap: tokens.spacingVerticalXXS,
-    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`,
-    borderLeft: "1px solid var(--line)",
-    "@media (max-width: 540px)": { minWidth: "170px" },
-  },
-  presentationLabel: { color: "var(--muted)", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightSemibold, textTransform: "uppercase", whiteSpace: "nowrap" },
   panel: { minHeight: 0, overflow: "hidden", backgroundColor: "var(--panel)" },
   journalPanelContent: { height: "100%", minWidth: 0, minHeight: 0, padding: "14px", boxSizing: "border-box" },
   scrollPanelContent: { minWidth: 0, minHeight: "100%", padding: "14px", boxSizing: "border-box" },
@@ -61,9 +42,6 @@ const useStyles = makeStyles({
 export const ControlHarnessShell: ProjectionView = ({ node, emit, children }) => {
   const styles = useStyles();
   const harnessRef = React.useRef<HTMLElement>(null);
-  const [presentationOpen, setPresentationOpen] = React.useState(false);
-  const presentation = node.props.presentation as unknown as HarnessPresentation | null
-    ?? EMPTY_PRESENTATION;
   const requestedTab = String(node.props.activeTab ?? "journal");
   const activeTab = requestedTab === "blueprint" || requestedTab === "participants" ? requestedTab : "journal";
   const expanded = node.props.expanded !== false;
@@ -93,34 +71,6 @@ export const ControlHarnessShell: ProjectionView = ({ node, emit, children }) =>
     <>
       <div className={styles.contextStrip} aria-label="Harness context">
         {panels[3]}
-        <label className={styles.presentationField}>
-          <span className={styles.presentationLabel}>Presentation</span>
-          <Dropdown
-            aria-label="Select presentation context"
-            open={presentationOpen}
-            button={{
-              onPointerDown: (event) => {
-                if (event.button === 0 && !presentationOpen) setPresentationOpen(true);
-              },
-            }}
-            value={presentation.contexts.find((item) => item.id === presentation.selectedContext)?.label ?? ""}
-            selectedOptions={[presentation.selectedContext]}
-            onOpenChange={(_, data) => setPresentationOpen(data.open)}
-          >
-            {presentation.contexts.map((item) => (
-              <Option
-                key={item.id}
-                value={item.id}
-                onClick={() => {
-                  setPresentationOpen(false);
-                  emit("setPresentationContext", { contextId: item.id });
-                }}
-              >
-                {item.label}
-              </Option>
-            ))}
-          </Dropdown>
-        </label>
       </div>
       <aside
         ref={harnessRef}

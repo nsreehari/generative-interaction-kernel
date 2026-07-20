@@ -509,18 +509,19 @@ test("controlface exposes full time-travel ops: checkpoint, restore, effectsSinc
   const forward = await face.emit({ node: "btn-charge", name: "tap" });
   assert.equal(forward.rev, 1);
   assert.equal((face.getState().card_data as { status?: string }).status, "charged");
+  await face.whenIdle();
 
   const fired = face.effectsSince(cp.rev);
   assert.equal(fired.length, 1);
   assert.equal(fired[0].effect.tool, "charge");
 
-  const rollback = face.restore(cp);
-  assert.equal(rollback.rev, 2);
+  const rollback = await face.restore(cp);
+  assert.equal(rollback.rev, 3);
   assert.deepEqual(face.getState().card_data, {});
   assert.deepEqual(face.getState().payments, {});
 
   const compensation = await face.compensate(fired.map((e) => e.effect).reverse());
-  assert.equal(compensation.rev, 3);
+  assert.equal(compensation.rev, 4);
   assert.deepEqual(compensated.map((e) => e.tool), ["charge"]);
   assert.equal((face.getState().payments as { refunded?: boolean }).refunded, true);
 
@@ -561,11 +562,11 @@ test("/mcp-control serves restore and compensate as JSON time-travel tools", asy
   const fired = (await call("effectsSince", { rev: before.rev })).result.structuredContent as Array<{ effect: OrchestratorEffect }>;
 
   const rollback = (await call("restore", { checkpoint: before })).result.structuredContent as { rev: number };
-  assert.equal(rollback.rev, 2);
+  assert.equal(rollback.rev, 3);
 
   const compensation = (await call("compensate", { effects: fired.map((e) => e.effect).reverse() })).result
     .structuredContent as { rev: number; ops: Array<{ path: string }> };
-  assert.equal(compensation.rev, 3);
+  assert.equal(compensation.rev, 4);
   assert.ok(compensation.ops.some((op) => op.path === "payments.refunded"));
 
   host.stop();

@@ -59,7 +59,7 @@ export function createInMemoryTransportPair(): [TransportProvider, TransportProv
  * incremental replay of missing patches for a client resuming from a known `rev` —
  * dispatches inbound `event`s serially (monotonic `rev`), and broadcasts each patch to
  * every connection. Reconnection is a transport concern handled here, below the closed
- * five-message GIK protocol.
+ * six-message GIK protocol.
  */
 export class KernelTransportHost implements TransportBroker {
   private readonly connections = new Set<TransportProvider>();
@@ -68,13 +68,17 @@ export class KernelTransportHost implements TransportBroker {
   private readonly maxLog = 256;
   private baselined = false;
   private dispatchQueue = Promise.resolve();
+  private outboundQueue = Promise.resolve();
 
   constructor(
     private readonly manifest: Enveloped<ManifestPayload>,
     private readonly document: Enveloped<DocumentPayload>,
     private readonly kernel: Kernel,
     private readonly defaultTransport?: TransportProvider
-  ) {}
+  ) {
+    this.kernel.subscribePatches((patch) => this.onKernelPatch(patch));
+    this.kernel.subscribeProgress((progress) => this.queueBroadcast(envelope("progress", progress)));
+  }
 
   /** Convenience: attach the transport passed to the constructor. */
   async start(): Promise<void> {
@@ -139,6 +143,17 @@ export class KernelTransportHost implements TransportBroker {
     for (const transport of this.connections) await transport.send(message);
   }
 
+  private queueBroadcast(message: GIKMessage): Promise<void> {
+    const delivery = this.outboundQueue.then(() => this.broadcast(message));
+    this.outboundQueue = delivery.catch(() => undefined);
+    return delivery;
+  }
+
+  private onKernelPatch(patch: Patch): Promise<void> {
+    this.appendLog(patch);
+    return this.queueBroadcast(envelope("patch", patch));
+  }
+
   /**
    * Drive the kernel from in-process (a UI/API caller or a co-located agent) and broadcast the
    * resulting patch to every connection — the same authoritative path a wired `event` takes.
@@ -147,12 +162,18 @@ export class KernelTransportHost implements TransportBroker {
   dispatch(event: GIKEvent): Promise<Patch> {
     let captured: Patch | undefined;
     this.dispatchQueue = this.dispatchQueue.then(async () => {
+      this.ensureBaseline();
       const patch = await this.kernel.dispatch(event);
-      this.appendLog(patch);
-      await this.broadcast(envelope("patch", patch));
       captured = patch;
+      await this.outboundQueue;
     });
     return this.dispatchQueue.then(() => captured!);
+  }
+
+  async whenIdle(): Promise<void> {
+    await this.dispatchQueue;
+    await this.kernel.whenIdle();
+    await this.outboundQueue;
   }
 
   private onMessage(message: GIKMessage): Promise<void> {

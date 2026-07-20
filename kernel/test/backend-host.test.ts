@@ -1,7 +1,7 @@
 // The kernel driven as a pure backend service (no UI adapter). This locks in the
 // medium-agnostic claim: a custom Orchestrator whose invoke/confirm/route are
 // backend services (payment gateway, approval policy, queue router) drives a full
-// lifecycle cascade in one dispatch, and resolve() projects the SAME medium-neutral
+// lifecycle cascade across initiating and terminal patches, and resolve() projects the SAME medium-neutral
 // ResolvedNode tree a UI adapter would consume. Companion to
 // samples/backend-host/order-service.ts.
 
@@ -9,7 +9,7 @@ import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import { Kernel } from "../src/index";
-import type { GIKEvent, Json, Orchestrator, OrchestratorEffect, ResolvedNode } from "../src/index";
+import type { GIKEvent, Json, Orchestrator, OrchestratorEffect, Patch, ResolvedNode } from "../src/index";
 
 const manifest = {
   version: "backend-host/1",
@@ -84,7 +84,7 @@ function findChild(node: ResolvedNode, id: string): ResolvedNode | undefined {
   return undefined;
 }
 
-test("backend host: invoke/confirm/route cascade settles a full lifecycle in one rev", async () => {
+test("backend host: invoke settlement publishes a later lifecycle patch", async () => {
   const routed: Json[] = [];
   const orchestrator: Orchestrator = {
     async confirm(effect: OrchestratorEffect) {
@@ -113,6 +113,8 @@ test("backend host: invoke/confirm/route cascade settles a full lifecycle in one
   };
 
   const kernel = new Kernel(manifest as any, document as any, { orchestrator });
+  const patches: Patch[] = [];
+  kernel.subscribePatches((published) => patches.push(published));
   kernel.init();
   assert.equal((kernel.state() as any).order.lifecycle.state, "draft");
 
@@ -122,15 +124,21 @@ test("backend host: invoke/confirm/route cascade settles a full lifecycle in one
     payload: { orderId: "ord-42", amount: 129.5 },
   });
 
-  // One dispatch = one rev, regardless of the confirm->invoke->route fan-out.
   assert.equal(patch.rev, 1);
   assert.deepEqual(patch.ops, [
     { op: "set", path: "order.lifecycle.state", value: "pending_review" },
     { op: "set", path: "order.lifecycle.state", value: "charging" },
-    { op: "set", path: "payment.receipt", value: { id: "rcpt_129", amount: 129.5, status: "captured" } },
-    { op: "set", path: "order.fulfillment", value: "queued" },
-    { op: "set", path: "order.lifecycle.state", value: "confirmed" },
   ]);
+
+  await kernel.whenIdle();
+  assert.deepEqual(patches[1], {
+    rev: 2,
+    ops: [
+      { op: "set", path: "payment.receipt", value: { id: "rcpt_129", amount: 129.5, status: "captured" } },
+      { op: "set", path: "order.fulfillment", value: "queued" },
+      { op: "set", path: "order.lifecycle.state", value: "confirmed" },
+    ],
+  });
 
   // route reached the orchestrator as a backend routing verb (not a screen change).
   assert.deepEqual(routed, ["queue:fulfillment"]);
@@ -161,6 +169,7 @@ test("backend host: resolve() projects the same medium-neutral tree a UI adapter
   const kernel = new Kernel(manifest as any, document as any, { orchestrator });
   kernel.init();
   await kernel.dispatch({ node: "controller", name: "submit", payload: { amount: 50 } });
+  await kernel.whenIdle();
 
   const resolved = await kernel.resolve();
   const status = findChild(resolved, "status-view");

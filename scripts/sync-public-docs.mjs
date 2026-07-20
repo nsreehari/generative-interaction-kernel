@@ -4,9 +4,13 @@ import { fileURLToPath } from "node:url";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
-const sourceDocsDir = path.join(repoRoot, "docs", "public");
+const sourceDocsDir = path.join(repoRoot, "docs", "hidden");
 const licenseFile = path.join(repoRoot, "LICENSE");
 const targets = process.argv.slice(2);
+
+if (!existsSync(sourceDocsDir)) {
+  throw new Error(`Hidden docs source directory not found: ${sourceDocsDir}`);
+}
 
 if (targets.length === 0) {
   throw new Error("Provide at least one package path to sync docs into.");
@@ -22,13 +26,10 @@ for (const target of targets) {
 
   const docsDir = path.join(packageRoot, "docs");
   rmSync(docsDir, { recursive: true, force: true });
+  mkdirSync(docsDir, { recursive: true });
 
-  if (existsSync(sourceDocsDir)) {
-    mkdirSync(docsDir, { recursive: true });
-
-    for (const entry of readdirSync(sourceDocsDir)) {
-      cpSync(path.join(sourceDocsDir, entry), path.join(docsDir, entry), { recursive: true });
-    }
+  for (const entry of readdirSync(sourceDocsDir)) {
+    cpSync(path.join(sourceDocsDir, entry), path.join(docsDir, entry), { recursive: true });
   }
 
   if (existsSync(licenseFile)) {
