@@ -255,6 +255,18 @@ export type ServiceUse = {
   | { service?: never; inline: ServiceDeclaration }
 );
 
+/** Declarative mapping between a document `invoke` and one Blueprint service operation.
+ * Expressions receive `{ state, effect }` for requests and `{ state, effect, result }` for
+ * settlement. The host evaluates and validates them; Blueprints never supply callbacks. */
+export interface DeclarativeServiceBinding {
+  invoke: string;
+  use: ServiceUse;
+  mode?: "immediate" | "queued";
+  request?: string;
+  result?: string;
+  subject?: ServiceSubject;
+}
+
 export type ServiceSubject =
   | { kind: "cell"; blueprintId: string; cellId: string }
   | { kind: "substrate-agent"; blueprintId: string; actorId: string }
@@ -273,6 +285,8 @@ export interface ExternalsSpec {
   effectHandlers?: string[];
   /** Logical service requirements resolved to provider adapters by the outer host. */
   services?: Record<string, ServiceRequirement | ServiceDeclaration>;
+  /** Blueprint-authored service invocation and settlement mappings. */
+  serviceBindings?: DeclarativeServiceBinding[];
 }
 
 export interface ManifestPayload {

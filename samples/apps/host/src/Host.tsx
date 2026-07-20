@@ -1,8 +1,5 @@
-// The ONE generic host app. There is no per-app shell anymore: this entry runs ANY bundle by id.
-// It publishes a runtime `BundleRegistry` (seeded from samples/bundles/registry.json), picks a bundle
-// (`?bundle=<id>`, defaulting to the samples overview), and mounts it — a JSON leaf through the shared
-// `BundleHost`, or an irreducibly-native composition through its `Root`. Swapping the id renders a
-// different app with zero code change here; registering a bundle at runtime makes it mountable live.
+// The ONE generic host app opens a Blueprint selected by `?b=<id>` and adapts its lowered runtime
+// to BundleHost. Ordinary Bundle artifacts are previewed inside the manage-bundles Blueprint.
 
 import React from "react";
 import { makeStyles, tokens } from "@fluentui/react-components";
@@ -21,7 +18,7 @@ import {
   useProjectionProviderResolver,
   useRegistryIds,
 } from "@gik/react";
-import { createHostRegistry, DEFAULT_BUNDLE, resolveBundleProjectionViews } from "./bundles";
+import { createHostRegistry, DEFAULT_BLUEPRINT, resolveBundleProjectionViews } from "./bundles";
 import { createHostCompositionBundle } from "./host-composition";
 import {
   canonicalizeHostUrl,
@@ -54,7 +51,7 @@ const useStyles = makeStyles({
 export function Host(): React.ReactElement {
   // One registry for the life of the app; every BundleHost and every `embed props.app` resolves it.
   const query = readHostQuery(window.location.search);
-  const targetId = query.targetId ?? DEFAULT_BUNDLE;
+  const targetId = query.blueprintId ?? DEFAULT_BLUEPRINT;
   const { demoId, harnessId, presentationContext } = query;
   const registry = React.useMemo(() => createHostRegistry(demoId, targetId), [demoId, targetId]);
   const demoComposition = React.useMemo(
@@ -206,13 +203,16 @@ function HostView({
         : entry.make();
       return <BundleHost bundle={bundle} contexts={contexts} />;
     }
-    return <p className={styles.unknownBundle}>Unknown bundle: {id}</p>;
+    return <p className={styles.unknownBundle}>Unknown Blueprint: {id}</p>;
   }, [contexts, demoId, entry, harnessId, id, styles.unknownBundle]);
 
   // The switcher is itself a bundle, mounted through the same host as an overlay — so host chrome
   // rides the ambient, host-owned theme. Its list reacts to runtime register/unregister.
   const ids = useRegistryIds({ listable: true });
-  const switcher = React.useMemo(() => switcherBundle([...ids], id), [ids, id]);
+  const switcher = React.useMemo(
+    () => switcherBundle([...ids], id),
+    [ids, id]
+  );
   return (
     <>
       {mounted}

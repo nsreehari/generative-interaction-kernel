@@ -5,7 +5,23 @@
 // executors live in the GenUI flavor package (@gik/profile-genui). Any profile family can reuse
 // this core by supplying its own recipe types and registering executors.
 
-import type { Json, ServiceDeclaration, ServiceRequirement } from "../../kernel/src/index";
+import type {
+  ExternalsSpec,
+  Json,
+  ManifestPayload,
+  ServiceDeclaration,
+  ServiceRequirement,
+} from "../../kernel/src/index";
+
+export interface ProfileRuntime {
+  expression?: string;
+  namespaces?: string[];
+  contexts?: string[];
+  actions?: string[];
+  capabilities: ManifestPayload["capabilities"];
+  externals?: Omit<ExternalsSpec, "services">;
+  state?: Record<string, Json>;
+}
 
 /** A generic per-run context bag threaded through every profile stage. Profile families may
  *  document preferred keys, but the core treats context as plain data rather than a hardcoded,
@@ -64,6 +80,9 @@ export interface Profile {
   /** Logical external services required by this semantic profile/Blueprint. Lowering carries the
    *  same data into `manifest.externals.services`; hosts supply all physical provider bindings. */
   services?: Record<string, ServiceRequirement | ServiceDeclaration>;
+  /** Non-derived runtime envelope and initial state. The terminal lowering stage supplies the
+   *  document; the Face combines it with this declaration and the Profile-owned services. */
+  runtime?: ProfileRuntime;
   /** Optional declarative authoring surface: the tools this profile projects from its layers and
    *  recipes. Data only — the core never interprets it; a face engine materializes it into tools. */
   authoring?: ProfileAuthoring;
@@ -260,6 +279,15 @@ export function resolveProfile<TRecipe extends RecipeBase>(
   const recipesById: Record<string, TRecipe> = Object.fromEntries(
     recipeArtifacts.map((recipe) => [recipe.payload.id, recipe.payload])
   );
+
+  if (recipes.length === 0) {
+    if (layers.length !== 1) {
+      throw new Error(`Profile '${id}' with no recipes must have exactly one terminal layer; found ${layers.length}`);
+    }
+    const resources = resolveResources(artifact, resolveResource);
+    const services = structuredClone(artifact.payload.services ?? {});
+    return { artifact, layersById, recipesById, stages: [], resources, services };
+  }
 
   const outgoing = new Map<string, LoweringRecipeRef>();
   for (const ref of recipes) {

@@ -3,8 +3,8 @@
   "type": "document",
   "payload": {
     "root": {
-      "capability": "host:bundleSwitcher",
-      "id": "bundle-switcher",
+      "capability": "host:applicationSwitcher",
+      "id": "application-switcher",
       "props": {},
       "edges": {
         "read": {
@@ -16,7 +16,7 @@
             {
               "do": "invoke",
               "args": {
-                "tool": "switchBundle"
+                "tool": "switchApplication"
               }
             }
           ]

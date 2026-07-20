@@ -24,7 +24,6 @@
         },
         "recipes": {
           "type": "array",
-          "minItems": 1,
           "items": {
             "type": "object",
             "required": ["id", "from", "to"],
@@ -91,10 +90,67 @@
                     "items": { "type": "string", "minLength": 1 }
                   },
                   "config": {},
-                  "scope": { "enum": ["per-invocation", "per-cell", "per-blueprint", "per-session"] }
+                  "scope": { "enum": ["per-invocation", "per-cell", "per-blueprint", "per-session"] },
+                  "operationPolicies": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "required": ["guardrails"],
+                      "properties": {
+                        "guardrails": { "type": "array" },
+                        "onViolation": { "type": "object" }
+                      },
+                      "additionalProperties": false
+                    }
+                  }
                 }
               }
             ]
+          }
+        },
+        "runtime": {
+          "type": "object",
+          "required": ["capabilities"],
+          "additionalProperties": false,
+          "properties": {
+            "expression": { "type": "string" },
+            "namespaces": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+            "contexts": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+            "actions": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+            "capabilities": { "type": "object" },
+            "externals": {
+              "type": "object",
+              "properties": {
+                "serviceBindings": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["invoke", "use"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "invoke": { "type": "string", "minLength": 1 },
+                      "use": {
+                        "type": "object",
+                        "required": ["service", "operation", "contract"],
+                        "additionalProperties": false,
+                        "properties": {
+                          "service": { "type": "string", "minLength": 1 },
+                          "operation": { "type": "string", "minLength": 1 },
+                          "contract": { "type": "string", "minLength": 1 },
+                          "policyOverride": { "type": "object" }
+                        }
+                      },
+                      "mode": { "enum": ["immediate", "queued"] },
+                      "request": { "type": "string", "minLength": 1 },
+                      "result": { "type": "string", "minLength": 1 },
+                      "subject": { "type": "object" }
+                    }
+                  }
+                }
+              },
+              "additionalProperties": true
+            },
+            "state": { "type": "object" }
           }
         },
         "authoring": {

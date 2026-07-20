@@ -4,10 +4,10 @@ import type { Json } from "@gik/kernel";
 import { bundleFromJson, loadBundleRuntime, SharedContextStore } from "@gik/react";
 import { t3ScenarioPlan } from "../../scenarios/live-workspace-soc-t3/compile";
 import { socExecutiveScenarioPlan } from "../../scenarios/live-workspace-soc-executive/compile";
+import { openSampleBlueprint } from "../../shared/blueprints";
 import { selectionFromTimelineItem, type ScenarioPlan, type TimelineItem } from "../../shared/demo-runner";
 import { selectionTargetsActor, selectionTargetsRecord } from "./projection_views";
 
-import document from "./document.json";
 import effects, {
   createSocEffects,
   socOrganismEffects,
@@ -16,10 +16,9 @@ import runnerDocument from "../demo-runner/document.json";
 import runnerEffects from "../demo-runner/effect_handlers/index";
 import runnerManifest from "../demo-runner/manifest.json";
 import runnerState from "../demo-runner/state.json";
-import manifest from "./manifest.json";
-import state from "./state.json";
 
 function runtime(effectHandlers = effects) {
+  const { manifest, document, state } = openSampleBlueprint("live-workspace-soc");
   return loadBundleRuntime(bundleFromJson({
     manifest: structuredClone(manifest),
     document: structuredClone(document),
@@ -28,6 +27,7 @@ function runtime(effectHandlers = effects) {
 }
 
 function demoRuntimes(scenarioPlan: ScenarioPlan = t3ScenarioPlan) {
+  const { manifest, document, state } = openSampleBlueprint("live-workspace-soc");
   const shared = SharedContextStore.create(["demo", "control"]);
   shared.apply([{ op: "set", path: "demo", value: {
     enabled: true,

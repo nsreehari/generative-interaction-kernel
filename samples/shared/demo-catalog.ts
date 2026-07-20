@@ -11,8 +11,9 @@ import {
   type ScenarioPlan,
 } from "./demo-runner";
 import type { OrganismControlContract } from "./control-runtime";
-import type { DocumentMessage, ManifestMessage } from "@gik/kernel";
+import { unwrap, type DocumentMessage, type ManifestMessage } from "@gik/kernel";
 import catalogArtifact from "../scenarios/catalog.json" with { type: "json" };
+import { hasSampleBlueprint, openSampleBlueprint } from "./blueprints";
 
 const scenarioArtifacts = import.meta.glob("../scenarios/*/scenario.json", {
   eager: true,
@@ -66,24 +67,29 @@ function controlContract(blueprintId: string, target: DemoTargetCatalogEntry): O
 
 export const demoCatalog = validateDemoCatalog(catalog, scenarioPlans);
 for (const entry of demoCatalog.entries) {
-  const manifest = bundleManifests.get(entry.bundleId);
-  const document = bundleDocuments.get(entry.bundleId);
-  if (!manifest || !document) throw new Error(`Demo '${entry.id}' references unknown Bundle '${entry.bundleId}'`);
+  const runtime = hasSampleBlueprint(entry.targetBlueprintId)
+    ? openSampleBlueprint(entry.targetBlueprintId)
+    : undefined;
+  const manifest = runtime?.manifest ?? bundleManifests.get(entry.targetBlueprintId);
+  const document = runtime?.document ?? bundleDocuments.get(entry.targetBlueprintId);
+  if (!manifest || !document) {
+    throw new Error(`Demo '${entry.id}' references unknown Blueprint '${entry.targetBlueprintId}'`);
+  }
   validateDemoTargetBundleContract(
     entry.targetBlueprintId,
     demoCatalog.targets[entry.targetBlueprintId],
-    manifest.payload,
-    document.payload
+    unwrap(manifest),
+    unwrap(document)
   );
 }
 
-export function resolveDemoComposition(requestedId?: string | null, bundleId?: string | null): {
+export function resolveDemoComposition(requestedId?: string | null, targetBlueprintId?: string | null): {
   entry: ReturnType<typeof resolveDemoEntry>;
   scenarioPlan: ScenarioPlan;
   demoContract: OrganismDemoContract;
   controlContract: OrganismControlContract;
 } {
-  const entry = resolveDemoEntry(demoCatalog, requestedId, bundleId);
+  const entry = resolveDemoEntry(demoCatalog, requestedId, targetBlueprintId);
   const scenarioPlan = scenarioPlans.get(entry.scenarioBlueprintId);
   if (!scenarioPlan) throw new Error(`Scenario '${entry.scenarioBlueprintId}' is not registered`);
   const target = demoCatalog.targets[entry.targetBlueprintId];

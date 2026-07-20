@@ -1,25 +1,25 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { createHostRegistry, DEFAULT_BUNDLE, resolveBundleProjectionViews } from "./bundles";
+import { createHostRegistry, DEFAULT_BLUEPRINT, resolveBundleProjectionViews } from "./bundles";
 
-test("host registry exposes the new sample bundles to the switcher", () => {
+test("host registry exposes only approved Blueprints to the switcher", () => {
   const registry = createHostRegistry();
 
-  assert.equal(DEFAULT_BUNDLE, "samples-overview");
+  assert.equal(DEFAULT_BLUEPRINT, "samples-overview");
   assert.equal(registry.has("samples-overview"), true);
   assert.equal(registry.has("manage-blueprints"), true);
   assert.equal(registry.has("manage-bundles"), true);
-  assert.equal(registry.has("console"), false);
-  assert.equal(registry.has("reactive-demo"), true);
-  assert.equal(registry.has("provider-authoring-demo"), true);
+  assert.equal(registry.has("foundry-agent"), true);
+  assert.equal(registry.has("live-workspace-soc"), true);
+  assert.equal(registry.has("portfolio-tracker"), true);
   assert.deepEqual(
-    registry
-      .ids({ listable: true })
-      .filter((id) => id === "reactive-demo" || id === "provider-authoring-demo" || id === "samples-overview")
-      .sort(),
-    ["provider-authoring-demo", "reactive-demo", "samples-overview"]
+    [...registry.ids({ listable: true })].sort(),
+    ["foundry-agent", "live-workspace-soc", "manage-blueprints", "manage-bundles", "portfolio-tracker", "samples-overview"]
   );
+  assert.equal(registry.has("reactive-demo"), false);
+  assert.equal(registry.has("provider-authoring-demo"), false);
+  assert.equal(registry.has("workbench"), false);
 });
 
 test("host registry keeps playground embed-only instead of switcher-visible", () => {

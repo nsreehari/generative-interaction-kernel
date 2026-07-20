@@ -2,7 +2,7 @@
 
 This provider supplies Fluent UI-specific projection views without adding framework-branded controls
 to the platform floor. It is discovered by the host's projection-view provider resolver but is not
-listed in `samples/bundles/registry.json`, so it is not a mountable or switcher-visible app bundle.
+listed in the hosted Blueprint registry, so it is not a mountable or switcher-visible application.
 
 Import controls through a manifest alias:
 

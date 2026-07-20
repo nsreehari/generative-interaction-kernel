@@ -15,7 +15,7 @@ export function setFoundryAccessKey(value: string): void {
     if (key) globalThis.localStorage?.setItem(FOUNDRY_ACCESS_STORAGE_KEY, key);
     else globalThis.localStorage?.removeItem(FOUNDRY_ACCESS_STORAGE_KEY);
   } catch {
-    // Local storage may be unavailable in embedded or privacy-restricted hosts.
+    // Storage is an optional host facility.
   }
   globalThis.dispatchEvent?.(new CustomEvent(FOUNDRY_ACCESS_CHANGE_EVENT, { detail: { available: key.length > 0 } }));
 }

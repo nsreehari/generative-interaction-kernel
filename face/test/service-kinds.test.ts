@@ -1,8 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import type { ServiceDeclaration } from "../../kernel/src/index";
 import {
+  InMemoryStateModel,
+  JsonataExpressionProvider,
+  type ServiceDeclaration,
+} from "../../kernel/src/index";
+import {
+  bindDeclarativeServiceUsesSync,
   bindServiceUse,
   bindServiceUseSync,
   QueueFace,
@@ -12,6 +17,30 @@ import {
   type ServiceAdapter,
   type ServiceKindFactory,
 } from "../src/index";
+
+function deterministicRegistry(output: Record<string, string> = { answer: "done" }): ServiceKindRegistry {
+  const registry = new ServiceKindRegistry();
+  registry.register({
+    manifest: {
+      id: "deterministic-agent",
+      version: "1",
+      configSchema: {},
+      executionModes: ["immediate"],
+      subjects: ["cell"],
+    },
+    create: () => ({
+      provider: { id: "deterministic:test", version: "1" },
+      discover: async () => ({
+        provider: { id: "deterministic:test", version: "1" },
+        revision: "1",
+        discoveredAt: "2026-07-20T00:00:00.000Z",
+        capabilities: [],
+      }),
+      execute: async () => ({ output }),
+    }),
+  });
+  return registry;
+}
 
 function copilotFactory(created: string[]): ServiceKindFactory {
   return {
@@ -191,6 +220,72 @@ test("binds synchronous kinds during synchronous bundle loading", () => {
   });
 
   assert.equal(binding.providerId, "deterministic:portfolio");
+});
+
+test("evaluates declarative service request and result mappings", async () => {
+  const queueFace = new QueueFace();
+  const state = new InMemoryStateModel(["work"]);
+  state.apply([{ op: "set", path: "work.prompt", value: "explain" }]);
+  bindDeclarativeServiceUsesSync(queueFace, deterministicRegistry(), {
+    analysis: { kind: "deterministic-agent", version: "1", operations: ["analyze"] },
+  }, [{
+    invoke: "requestAnalysis",
+    use: { service: "analysis", operation: "analyze", contract: "analysis/v1" },
+    request: "{'input': {'prompt': state.work.prompt}, 'actorId': effect.actorId}",
+    result: "{'ops': [{'op':'set','path':'work.answer','value':result.output.answer}]}",
+  }], {
+    blueprintId: "test",
+    blueprintRevision: "1",
+    state,
+    expression: new JsonataExpressionProvider(),
+  });
+
+  const settled = await queueFace.createOrchestrator().invoke!({
+    kind: "invoke",
+    node: "request-button",
+    tool: "requestAnalysis",
+    args: {},
+    actorId: "author",
+  });
+
+  assert.deepEqual(settled, {
+    ops: [{ op: "set", path: "work.answer", value: "done" }],
+  });
+  assert.deepEqual((await queueFace.listRequests())[0]?.request.input, { prompt: "explain" });
+  assert.equal((await queueFace.listRequests())[0]?.request.actorId, "author");
+});
+
+test("rejects malformed declarative service evaluator outputs", async () => {
+  const declarations = {
+    analysis: { kind: "deterministic-agent", version: "1", operations: ["analyze"] },
+  } satisfies Record<string, ServiceDeclaration>;
+  const options = {
+    blueprintId: "test",
+    blueprintRevision: "1",
+    state: new InMemoryStateModel(["work"]),
+    expression: new JsonataExpressionProvider(),
+  };
+  const invalidRequest = new QueueFace();
+  bindDeclarativeServiceUsesSync(invalidRequest, deterministicRegistry(), declarations, [{
+    invoke: "requestAnalysis",
+    use: { service: "analysis", operation: "analyze", contract: "analysis/v1" },
+    request: "42",
+  }], options);
+  await assert.rejects(
+    invalidRequest.createOrchestrator().invoke!({ kind: "invoke", node: "button", tool: "requestAnalysis", args: {} }),
+    /request expression must return an object/
+  );
+
+  const invalidResult = new QueueFace();
+  bindDeclarativeServiceUsesSync(invalidResult, deterministicRegistry(), declarations, [{
+    invoke: "requestAnalysis",
+    use: { service: "analysis", operation: "analyze", contract: "analysis/v1" },
+    result: "{'ops': [{'op':'explode','path':'work.answer'}]}",
+  }], options);
+  await assert.rejects(
+    invalidResult.createOrchestrator().invoke!({ kind: "invoke", node: "button", tool: "requestAnalysis", args: {} }),
+    /result ops must be valid patch operations/
+  );
 });
 
 test("records Blueprint revision and execution subject without provider config", async () => {

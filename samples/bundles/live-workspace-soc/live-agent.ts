@@ -243,3 +243,111 @@ export function createSocAgentContract(operation: SocAgentOperation): SocAgentCo
 export function buildAgentMessage(operation: SocAgentOperation, context: Record<string, unknown>): string {
   return JSON.stringify({ operation, incidentContext: context });
 }
+
+export interface AgentResponseSchema {
+  name: string;
+  schema: Record<string, unknown>;
+  strict?: boolean;
+}
+
+const STRING_ARRAY_SCHEMA = { type: "array", items: { type: "string" } } as const;
+
+function correlationReplyJsonSchema(operation: CorrelationOperation): Record<string, unknown> {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["schemaVersion", "operation", "summary", "rationale", "exploration", "findings", "evidenceIds", "entityIds", "confidence", "unknowns", "recommendedNextStep"],
+    properties: {
+      schemaVersion: { const: 1 },
+      operation: { const: operation },
+      summary: { type: "string" },
+      rationale: { type: "string" },
+      exploration: {
+        type: "object",
+        additionalProperties: false,
+        required: ["objective", "queries", "constraints"],
+        properties: {
+          objective: { type: "string" },
+          queries: STRING_ARRAY_SCHEMA,
+          constraints: STRING_ARRAY_SCHEMA,
+        },
+      },
+      findings: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["statement", "classification", "evidenceIds", "entityIds", "confidence"],
+          properties: {
+            statement: { type: "string" },
+            classification: { enum: ["confirmed", "supported", "hypothesis", "unknown"] },
+            evidenceIds: STRING_ARRAY_SCHEMA,
+            entityIds: STRING_ARRAY_SCHEMA,
+            confidence: { type: "number" },
+          },
+        },
+      },
+      evidenceIds: STRING_ARRAY_SCHEMA,
+      entityIds: STRING_ARRAY_SCHEMA,
+      confidence: { type: "number" },
+      unknowns: STRING_ARRAY_SCHEMA,
+      recommendedNextStep: { type: "string" },
+    },
+  };
+}
+
+function responseReplyJsonSchema(operation: ResponseOperation): Record<string, unknown> {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["schemaVersion", "operation", "summary", "proposal", "assessment", "confidence", "unknowns"],
+    properties: {
+      schemaVersion: { const: 1 },
+      operation: { const: operation },
+      summary: { type: "string" },
+      proposal: {
+        type: "object",
+        additionalProperties: false,
+        required: ["targetEntityId", "objective", "sequence", "constraints", "blastRadius", "operationalDependencies", "reversible", "rollbackConsiderations", "evidenceReady", "evidenceIds"],
+        properties: {
+          targetEntityId: { type: "string" },
+          objective: { type: "string" },
+          sequence: STRING_ARRAY_SCHEMA,
+          constraints: STRING_ARRAY_SCHEMA,
+          blastRadius: { type: "string" },
+          operationalDependencies: STRING_ARRAY_SCHEMA,
+          reversible: { type: "boolean" },
+          rollbackConsiderations: STRING_ARRAY_SCHEMA,
+          evidenceReady: { type: "boolean" },
+          evidenceIds: STRING_ARRAY_SCHEMA,
+        },
+      },
+      assessment: {
+        type: "object",
+        additionalProperties: false,
+        required: ["policyCompatibility", "recommendation", "reasons"],
+        properties: {
+          policyCompatibility: { enum: ["compatible", "incompatible", "requires-review", "unknown"] },
+          recommendation: { enum: ["proceed-to-human-recommendation", "revise", "reject", "gather-evidence"] },
+          reasons: STRING_ARRAY_SCHEMA,
+        },
+      },
+      confidence: { type: "number" },
+      unknowns: STRING_ARRAY_SCHEMA,
+    },
+  };
+}
+
+/** Builds a Structured Outputs (Responses API `text.format`) request from the exact contract
+ * `validateSocAgentReply` already enforces, so the model itself is constrained to emit
+ * schema-conformant JSON at generation time — the tool-level correctness the Foundry agent
+ * already supports — instead of relying solely on parsing a free-text reply after the fact.
+ * `validateSocAgentReply`'s checks (including the numeric confidence range and enum values a
+ * strict JSON Schema can't safely assert) still run afterward as defense in depth. */
+export function agentResponseSchema(operation: SocAgentOperation): AgentResponseSchema {
+  const name = operation.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64) || "soc_agent_reply";
+  const schema = CORRELATION_OPERATIONS.has(operation as CorrelationOperation)
+    ? correlationReplyJsonSchema(operation as CorrelationOperation)
+    : responseReplyJsonSchema(operation as ResponseOperation);
+  return { name, schema, strict: true };
+}

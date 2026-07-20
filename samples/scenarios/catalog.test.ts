@@ -10,9 +10,9 @@ import {
   writeDemoNavigation,
   type ScenarioPlan,
 } from "../shared/demo-runner";
-import portfolioDocument from "../bundles/portfolio-tracker/document.json" with { type: "json" };
-import portfolioManifest from "../bundles/portfolio-tracker/manifest.json" with { type: "json" };
 import { demoCatalog, resolveDemoComposition } from "../shared/demo-catalog";
+import { openSampleBlueprint } from "../shared/blueprints";
+import { unwrap } from "@gik/kernel";
 
 test("demo catalog resolves a validated scenario and organism composition", () => {
   const composition = resolveDemoComposition("soc-t3");
@@ -34,15 +34,15 @@ test("demo catalog resolves a validated scenario and organism composition", () =
 
 test("demo navigation changes only the selected demo", () => {
   const url = writeDemoNavigation(
-    "https://example.test/?bundle=live-workspace-soc&gik=1&presentation=operator-focus",
+    "https://example.test/?b=live-workspace-soc&gik=1&presentation=operator-focus",
     resolveDemoComposition("soc-t3").entry
   );
   const parsed = new URL(url);
   assert.equal(parsed.searchParams.get("demo"), "soc-t3");
-  assert.equal(parsed.searchParams.get("bundle"), "live-workspace-soc");
+  assert.equal(parsed.searchParams.get("b"), "live-workspace-soc");
   assert.equal(parsed.searchParams.get("gik"), "1");
   assert.equal(parsed.searchParams.get("presentation"), "operator-focus");
-  assert.deepEqual([...parsed.searchParams.keys()], ["bundle", "gik", "presentation", "demo"]);
+  assert.deepEqual([...parsed.searchParams.keys()], ["b", "gik", "presentation", "demo"]);
 });
 
 test("demo catalog rejects a scenario and organism target mismatch", () => {
@@ -73,7 +73,6 @@ test("demo catalog rejects a scenario and organism target mismatch", () => {
           label: "Demo A",
           scenarioBlueprintId: "scenario-a",
           targetBlueprintId: "organism-b",
-          bundleId: "bundle-b",
         }],
       },
       new Map([[scenario.id, scenario]])
@@ -88,7 +87,6 @@ test("composition validation rejects unsupported scenario requirements", () => {
     label: "Demo A",
     scenarioBlueprintId: "scenario-a",
     targetBlueprintId: "live-workspace-soc",
-    bundleId: "live-workspace-soc",
     defaultContext: "war-room",
     requiredTimelineSources: ["scenario", "organism"],
   };
@@ -152,7 +150,6 @@ test("demo catalog rejects malformed target contracts", () => {
       label: "Demo A",
       scenarioBlueprintId: "scenario-a",
       targetBlueprintId: "organism-a",
-      bundleId: "bundle-a",
     }],
   };
   assert.throws(
@@ -162,14 +159,15 @@ test("demo catalog rejects malformed target contracts", () => {
 });
 
 test("demo target mappings must reference declared Bundle node events", () => {
+  const runtime = openSampleBlueprint("portfolio-tracker");
   const target = structuredClone(demoCatalog.targets["portfolio-tracker"]);
   target.commands[0].event = "missing-event";
   assert.throws(
     () => validateDemoTargetBundleContract(
       "portfolio-tracker",
       target,
-      portfolioManifest.payload,
-      portfolioDocument.payload
+      unwrap(runtime.manifest),
+      unwrap(runtime.document)
     ),
     /unknown event 'missing-event'/
   );

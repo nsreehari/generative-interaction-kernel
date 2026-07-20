@@ -1,0 +1,11 @@
+{
+  "default": "samples-overview",
+  "blueprints": [
+    "samples-overview",
+    "portfolio-tracker",
+    "live-workspace-soc",
+    "foundry-agent",
+    "manage-blueprints",
+    "manage-bundles"
+  ]
+}

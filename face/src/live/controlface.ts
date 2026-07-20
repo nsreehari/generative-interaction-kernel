@@ -33,6 +33,29 @@ import {
 import { checkpoint, compensate, effectsSince, getState, getTree, restore } from "./ops";
 import type { QueueFace, ServiceProbeResult, ServiceRequestRecord } from "../services/queueface";
 import type { ServiceKindDescription, ServiceKindRegistry } from "../services/service-kinds";
+import type { ResolvedProfile } from "../../../profile/src/index";
+
+export interface BlueprintRuntime {
+  blueprintId: string;
+  revision: string;
+  manifest: Enveloped<ManifestPayload>;
+  document: Enveloped<DocumentPayload>;
+  state: Record<string, Json>;
+}
+
+export interface BlueprintDefinition {
+  profile: Pick<ResolvedProfile, "artifact" | "services">;
+  lower(context: Record<string, Json>): DocumentPayload;
+}
+
+export interface BlueprintResolver {
+  resolve(blueprintId: string): BlueprintDefinition | undefined;
+}
+
+export interface OpenBlueprintRequest {
+  blueprintId: string;
+  context?: Record<string, Json>;
+}
 
 export interface ControlFaceOptions {
   /** Pre-seeded state model for the kernel (namespaces already populated). */
@@ -48,6 +71,47 @@ export interface ControlFaceOptions {
 }
 
 export class ControlFace implements TransportBroker {
+  /** Resolve and lower an authored Blueprint before constructing its live ControlFace. */
+  static openBlueprint(
+    resolver: BlueprintResolver,
+    request: OpenBlueprintRequest
+  ): BlueprintRuntime {
+    const definition = resolver.resolve(request.blueprintId);
+    if (!definition) throw new Error(`Unknown Blueprint '${request.blueprintId}'`);
+    const { id, version, runtime } = definition.profile.artifact.payload;
+    if (id !== request.blueprintId) {
+      throw new Error(`Blueprint resolver returned '${id}' for requested '${request.blueprintId}'`);
+    }
+    if (!runtime) throw new Error(`Blueprint '${id}' has no runtime declaration`);
+
+    const manifest: ManifestPayload = {
+      version: `${id}/${version}`,
+      expression: runtime.expression,
+      namespaces: runtime.namespaces,
+      contexts: runtime.contexts,
+      actions: runtime.actions,
+      capabilities: structuredClone(runtime.capabilities),
+      externals: {
+        ...structuredClone(runtime.externals ?? {}),
+        ...(Object.keys(definition.profile.services).length > 0
+          ? { services: structuredClone(definition.profile.services) }
+          : {}),
+      },
+    };
+
+    return {
+      blueprintId: id,
+      revision: version,
+      manifest: { gik: "0.1", type: "manifest", payload: manifest },
+      document: {
+        gik: "0.1",
+        type: "document",
+        payload: definition.lower(structuredClone(request.context ?? {})),
+      },
+      state: structuredClone(runtime.state ?? {}),
+    };
+  }
+
   // The kernel and broker are INTERNAL composition — private so the face never leaks them to a
   // transport. Render transports bind through `attach`; drive goes through `emit`.
   private readonly kernel: Kernel;

@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const standaloneUrl = "/?bundle=live-workspace-soc";
-const demoUrl = "/?bundle=live-workspace-soc&demo=soc-executive&gik=1";
-const investigationBoardUrl = "/?bundle=live-workspace-soc&gik=1&presentation=investigation-board";
+const standaloneUrl = "/?b=live-workspace-soc";
+const demoUrl = "/?b=live-workspace-soc&demo=soc-executive&gik=1";
+const investigationBoardUrl = "/?b=live-workspace-soc&gik=1&presentation=investigation-board";
 
 async function stabilize(page: Page): Promise<void> {
   await page.getByRole("heading", { name: "Privileged access anomaly during payroll cutover" }).waitFor();

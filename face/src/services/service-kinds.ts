@@ -1,16 +1,21 @@
 import Ajv, { type ValidateFunction } from "ajv";
 import type {
+  DeclarativeServiceBinding,
+  ExpressionProvider,
   Json,
+  OrchestratorResult,
   ServiceDeclaration,
   ServiceOutputPolicy,
   ServiceScope,
   ServiceSubject,
   ServiceUse,
+  StateModel,
 } from "../../../kernel/src/index";
 import type {
   QueueFace,
   ServiceAdapter,
   ServiceBinding,
+  ServiceRequestInput,
   ServiceValidationReport,
 } from "./queueface";
 
@@ -285,6 +290,114 @@ export interface BindServiceUseOptions {
   mapRequest?: ServiceBinding["mapRequest"];
   mapResult?: ServiceBinding["mapResult"];
   subject?: ServiceSubject;
+}
+
+export interface BindDeclarativeServiceUsesOptions {
+  blueprintId: string;
+  blueprintRevision: string;
+  state: StateModel;
+  expression: ExpressionProvider;
+}
+
+async function evaluated(expression: ExpressionProvider, source: string, data: Record<string, unknown>): Promise<Json> {
+  const value = await expression.eval(source, data);
+  return JSON.parse(JSON.stringify(value)) as Json;
+}
+
+function record(value: Json, label: string): Record<string, Json> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`Declarative service ${label} expression must return an object`);
+  }
+  return value as Record<string, Json>;
+}
+
+function requestMapping(value: Json): Pick<ServiceRequestInput, "input" | "eventPayload" | "actorId"> {
+  const mapped = record(value, "request");
+  const unknown = Object.keys(mapped).filter((key) => !["input", "eventPayload", "actorId"].includes(key));
+  if (unknown.length > 0) throw new Error(`Declarative service request has unknown field '${unknown[0]}'`);
+  if (mapped.actorId !== undefined && typeof mapped.actorId !== "string") {
+    throw new Error("Declarative service request actorId must be a string");
+  }
+  if (mapped.eventPayload !== undefined
+    && (!mapped.eventPayload || typeof mapped.eventPayload !== "object" || Array.isArray(mapped.eventPayload))) {
+    throw new Error("Declarative service request eventPayload must be an object");
+  }
+  return {
+    input: mapped.input,
+    eventPayload: mapped.eventPayload as Record<string, Json> | undefined,
+    actorId: mapped.actorId as string | undefined,
+  };
+}
+
+function isPatchOp(value: Json): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const candidate = value as Record<string, Json>;
+  return ["set", "merge", "remove"].includes(String(candidate.op))
+    && typeof candidate.path === "string";
+}
+
+function orchestratorResult(value: Json): OrchestratorResult {
+  const mapped = record(value, "result");
+  const unknown = Object.keys(mapped).filter((key) => !["ops", "events", "outcome", "detail"].includes(key));
+  if (unknown.length > 0) throw new Error(`Declarative service result has unknown field '${unknown[0]}'`);
+  if (mapped.ops !== undefined && (!Array.isArray(mapped.ops) || !mapped.ops.every(isPatchOp))) {
+    throw new Error("Declarative service result ops must be valid patch operations");
+  }
+  if (mapped.outcome !== undefined && typeof mapped.outcome !== "string") {
+    throw new Error("Declarative service result outcome must be a string");
+  }
+  if (mapped.events !== undefined && (!Array.isArray(mapped.events) || !mapped.events.every((value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const event = value as Record<string, Json>;
+    return typeof event.node === "string" && typeof event.name === "string"
+      && (event.actorId === undefined || typeof event.actorId === "string")
+      && (event.payload === undefined
+        || (!!event.payload && typeof event.payload === "object" && !Array.isArray(event.payload)));
+  }))) {
+    throw new Error("Declarative service result events must be valid GIK events");
+  }
+  if (mapped.detail !== undefined
+    && (!mapped.detail || typeof mapped.detail !== "object" || Array.isArray(mapped.detail))) {
+    throw new Error("Declarative service result detail must be an object");
+  }
+  return mapped as unknown as OrchestratorResult;
+}
+
+/** Materialize all Blueprint-authored service mappings through one trusted evaluator boundary. */
+export function bindDeclarativeServiceUsesSync(
+  queueFace: QueueFace,
+  registry: ServiceKindRegistry,
+  declarations: Record<string, ServiceDeclaration>,
+  bindings: readonly DeclarativeServiceBinding[],
+  options: BindDeclarativeServiceUsesOptions
+): void {
+  for (const binding of bindings) {
+    const { serviceId } = resolveServiceUse(binding.use, declarations);
+    bindServiceUseSync(queueFace, registry, declarations, binding.use, {
+      blueprintId: options.blueprintId,
+      blueprintRevision: options.blueprintRevision,
+      invoke: binding.invoke,
+      mode: binding.mode,
+      subject: binding.subject,
+      mapRequest: binding.request
+        ? async (effect) => ({
+            service: serviceId,
+            operation: binding.use.operation,
+            ...requestMapping(await evaluated(options.expression, binding.request!, {
+              state: options.state.snapshot(),
+              effect,
+            })),
+          })
+        : undefined,
+      mapResult: binding.result
+        ? async (result, effect) => orchestratorResult(await evaluated(options.expression, binding.result!, {
+            state: options.state.snapshot(),
+            effect,
+            result,
+          }))
+        : undefined,
+    });
+  }
 }
 
 export function resolveServiceUse(

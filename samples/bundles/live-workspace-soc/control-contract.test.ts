@@ -2,13 +2,12 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { bundleFromJson, loadBundleRuntime } from "@gik/react";
 import { createHeadlessControlRuntime } from "../../shared/control-runtime";
+import { openSampleBlueprint } from "../../shared/blueprints";
 import { socControlContract } from "./control-contract";
-import document from "./document.json";
 import effects from "./effect_handlers";
-import manifest from "./manifest.json";
-import state from "./state.json";
 
 function headlessSoc() {
+  const { manifest, document, state } = openSampleBlueprint("live-workspace-soc");
   const runtime = loadBundleRuntime(bundleFromJson({
     manifest: structuredClone(manifest),
     document: structuredClone(document),

@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import initialState from "./state.json";
+import { openSampleBlueprint } from "../../shared/blueprints";
 import { mapSocParticipantStatus, projectSocInspection, projectSocParticipants } from "./inspection";
 import type { Actor, AgentProvider, Incident, JournalEntry, Presentation } from "./projection_views/types";
+
+const initialState = openSampleBlueprint("live-workspace-soc").state as unknown as {
+  soc: Record<string, unknown>;
+};
 
 test("SOC participant statuses lower to the neutral inspection vocabulary", () => {
   assert.equal(mapSocParticipantStatus("active"), "active");

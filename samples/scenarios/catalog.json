@@ -50,7 +50,6 @@
       "label": "Governed SOC investigation",
       "scenarioBlueprintId": "live-workspace-soc-t3",
       "targetBlueprintId": "live-workspace-soc",
-      "bundleId": "live-workspace-soc",
       "defaultContext": "war-room",
       "requiredTimelineSources": ["scenario", "organism"]
     },
@@ -59,7 +58,6 @@
       "label": "SOC executive walkthrough",
       "scenarioBlueprintId": "live-workspace-soc-executive",
       "targetBlueprintId": "live-workspace-soc",
-      "bundleId": "live-workspace-soc",
       "defaultContext": "war-room",
       "requiredTimelineSources": ["scenario", "organism"]
     },
@@ -68,7 +66,6 @@
       "label": "Portfolio baseline valuation",
       "scenarioBlueprintId": "portfolio-tracker-baseline",
       "targetBlueprintId": "portfolio-tracker",
-      "bundleId": "portfolio-tracker",
       "defaultContext": "portfolio-overview",
       "requiredTimelineSources": ["scenario"]
     },
@@ -77,7 +74,6 @@
       "label": "Portfolio dynamic ticker",
       "scenarioBlueprintId": "portfolio-tracker-dynamic-ticker",
       "targetBlueprintId": "portfolio-tracker",
-      "bundleId": "portfolio-tracker",
       "defaultContext": "portfolio-overview",
       "requiredTimelineSources": ["scenario"]
     },
@@ -86,7 +82,6 @@
       "label": "Portfolio intelligence and rebalance",
       "scenarioBlueprintId": "portfolio-tracker-intelligence-rebalance",
       "targetBlueprintId": "portfolio-tracker",
-      "bundleId": "portfolio-tracker",
       "defaultContext": "portfolio-advisor",
       "requiredTimelineSources": ["scenario"]
     }

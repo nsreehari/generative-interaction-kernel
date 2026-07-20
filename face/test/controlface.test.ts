@@ -20,6 +20,7 @@ import {
   type Orchestrator,
   type OrchestratorEffect,
   type ResolvedNode,
+  unwrap,
 } from "../../kernel/src/index";
 import { McpHttpServer } from "../../transports/mcp-http/src/index";
 import { SseClientTransport } from "../../transports/http-sse/src/index";
@@ -35,6 +36,73 @@ import {
   controlFaceTools,
   runtimeTools,
 } from "../src/index";
+
+test("ControlFace opens an authored Blueprint into a runtime", () => {
+  const definition = {
+    profile: {
+      artifact: {
+        gik: "0.1" as const,
+        type: "profile" as const,
+        payload: {
+          id: "example",
+          kind: "example",
+          version: "1",
+          layers: [{ id: "runtime-document", kind: "runtime-document" }],
+          recipes: [],
+          runtime: {
+            namespaces: ["example"],
+            capabilities: {},
+            state: { example: { ready: true } },
+          },
+        },
+      },
+      services: {
+        assistant: { version: "1", operations: ["chat"] },
+      },
+    },
+    lower: (context: Record<string, unknown>) => ({
+      root: {
+        id: "example",
+        capability: "ui:text",
+        props: { value: String(context.title ?? "Example") },
+      },
+    }),
+  };
+  const resolver = { resolve: (id: string) => id === "example" ? definition : undefined };
+
+  const runtime = ControlFace.openBlueprint(resolver, {
+    blueprintId: "example",
+    context: { title: "Opened" },
+  });
+
+  assert.equal(runtime.blueprintId, "example");
+  assert.equal(unwrap(runtime.document).root.props?.value, "Opened");
+  assert.deepEqual(unwrap(runtime.manifest).externals?.services, definition.profile.services);
+  assert.deepEqual(runtime.state, { example: { ready: true } });
+  assert.throws(
+    () => ControlFace.openBlueprint(resolver, { blueprintId: "missing" }),
+    /Unknown Blueprint/
+  );
+  assert.throws(
+    () => ControlFace.openBlueprint({ resolve: () => definition }, { blueprintId: "different" }),
+    /returned 'example' for requested 'different'/
+  );
+  assert.throws(
+    () => ControlFace.openBlueprint({
+      resolve: () => ({
+        ...definition,
+        profile: {
+          ...definition.profile,
+          artifact: {
+            ...definition.profile.artifact,
+            payload: { ...definition.profile.artifact.payload, runtime: undefined },
+          },
+        },
+      }),
+    }, { blueprintId: "example" }),
+    /has no runtime declaration/
+  );
+});
 import { ServiceKindRegistry } from "../src/services/service-kinds";
 
 const fx = (name: string) =>

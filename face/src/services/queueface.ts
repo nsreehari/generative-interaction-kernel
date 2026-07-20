@@ -138,8 +138,11 @@ export interface ServiceBinding {
   /** Resolved guardrail/output policy (kind default, Blueprint declaration, call-site override, in
    * that priority) enforced by `QueueFace` after each successful adapter execution. */
   outputPolicy?: ServiceOutputPolicy;
-  mapRequest?: (effect: OrchestratorEffect) => ServiceRequestInput;
-  mapResult?: (result: ServiceExecutionResult, effect: OrchestratorEffect) => OrchestratorResult;
+  mapRequest?: (effect: OrchestratorEffect) => ServiceRequestInput | Promise<ServiceRequestInput>;
+  mapResult?: (
+    result: ServiceExecutionResult,
+    effect: OrchestratorEffect
+  ) => OrchestratorResult | Promise<OrchestratorResult>;
 }
 
 export type ServiceRequestStatus =
@@ -390,7 +393,7 @@ export class QueueFace {
       if (!binding) return fallback?.[method]?.(effect);
       const args = { ...(effect.args ?? {}) };
       delete args.tool;
-      const mapped = binding.mapRequest?.(effect);
+      const mapped = await binding.mapRequest?.(effect);
       const record = await this.submit(
         mapped ?? {
           service: binding.service,
@@ -402,7 +405,7 @@ export class QueueFace {
         effect
       );
       if (record.status === "completed" && record.result) {
-        return binding.mapResult?.(record.result, effect)
+        return await binding.mapResult?.(record.result, effect)
           ?? record.result.orchestratorResult
           ?? { outcome: "completed", detail: { requestId: record.request.id } };
       }

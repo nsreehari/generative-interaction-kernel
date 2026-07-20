@@ -1,4 +1,4 @@
-import { getFoundryAccessKey } from "../foundry-agent/access-storage";
+import { getFoundryAccessKey } from "../../services/foundry-agent";
 
 export function getSocFoundryKey(): string {
   return getFoundryAccessKey();

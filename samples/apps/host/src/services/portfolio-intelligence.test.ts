@@ -1,20 +1,19 @@
 import { describe, expect, it } from "vitest";
-import type { ServiceDeclaration } from "@gik/kernel";
+import { unwrap } from "@gik/kernel";
 import { seedState } from "@gik/react";
 
-import manifest from "../../../../bundles/portfolio-tracker/manifest.json" with { type: "json" };
-import state from "../../../../bundles/portfolio-tracker/state.json" with { type: "json" };
+import { openSampleBlueprint } from "../../../../shared/blueprints";
 import {
-  createPortfolioQueueFace,
-  DETERMINISTIC_PORTFOLIO_PROVIDER,
-} from "../../../../bundles/portfolio-tracker/services";
+  createBlueprintQueueFace,
+} from "../../../../shared/service-runtime";
+import { DETERMINISTIC_PORTFOLIO_PROVIDER } from "../../../../services";
 
-const declarations = manifest.payload.externals.services as Record<string, ServiceDeclaration>;
-const typedManifest = manifest as unknown as Parameters<typeof seedState>[0];
+const runtime = openSampleBlueprint("portfolio-tracker");
+const typedManifest = runtime.manifest as Parameters<typeof seedState>[0];
 
 describe("portfolio intelligence service declarations", () => {
   it("materializes the Blueprint-owned deterministic service kind", async () => {
-    const queueFace = createPortfolioQueueFace(seedState(typedManifest, structuredClone(state)), declarations);
+    const queueFace = createBlueprintQueueFace(runtime, seedState(typedManifest, runtime.state));
     const description = await queueFace.describeServices();
 
     expect(description.providers).toHaveLength(1);
@@ -26,13 +25,14 @@ describe("portfolio intelligence service declarations", () => {
   });
 
   it("rejects a declaration whose configured deterministic handler is unavailable", () => {
-    const unavailable = structuredClone(declarations);
-    unavailable["portfolio-intelligence"] = {
-      ...unavailable["portfolio-intelligence"],
+    const unavailable = structuredClone(runtime);
+    const services = unwrap(unavailable.manifest).externals!.services!;
+    services["portfolio-intelligence"] = {
+      ...services["portfolio-intelligence"],
       config: { handler: "not-registered" },
     };
 
-    expect(() => createPortfolioQueueFace(seedState(typedManifest, structuredClone(state)), unavailable))
+    expect(() => createBlueprintQueueFace(unavailable, seedState(typedManifest, runtime.state)))
       .toThrow("Unknown deterministic handler 'not-registered'");
   });
 });

@@ -11,7 +11,9 @@ npm test
 npm run build
 ```
 
-Run the generic browser host with `npm run dev`. Select a bundle with a URL such as `http://localhost:5175/?bundle=workbench`.
+Run the generic browser host with `npm run dev`. Select a Blueprint with a URL such as
+`http://localhost:5175/?b=portfolio-tracker`; inspect ordinary Bundle artifacts through
+`http://localhost:5175/?b=manage-bundles`.
 
 The backend examples have dedicated scripts: `start:backend`, `start:agent`, `start:control`, `start:continuity`, and `start:gik`.
 

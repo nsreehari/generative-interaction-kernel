@@ -6,7 +6,9 @@ import { useStyles } from "./styles";
 
 function openOverview() {
   const url = new URL(window.location.href);
-  url.searchParams.set("bundle", "samples-overview");
+  url.searchParams.delete("blueprint");
+  url.searchParams.delete("bundle");
+  url.searchParams.set("b", "samples-overview");
   window.location.href = url.toString();
 }
 

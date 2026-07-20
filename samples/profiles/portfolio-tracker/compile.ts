@@ -3,11 +3,11 @@ import {
   loadProfile,
   traceProfile,
   type CellDefinition,
-  type DocumentPayload,
   type LayerRecipe,
   type StageExecutor,
   type StageTrace,
 } from "@gik/profile";
+import type { DocNode, DocumentPayload } from "@gik/kernel";
 
 import profileArtifact from "./profile.json" with { type: "json" };
 import presentationRecipe from "./portfolio-to-presentation.recipe.json" with { type: "json" };
@@ -98,7 +98,7 @@ const executors: Record<string, StageExecutor<LayerRecipe>> = {
             ])),
             setPresentationContext: [{ do: "invoke", args: { tool: "setPresentationContext" } }],
           },
-          children: presentation.cells.map((cell) => ({
+          children: presentation.cells.map((cell): DocNode => ({
             id: cell.id,
             capability: cell.capability,
             props: {
@@ -146,3 +146,6 @@ export function tracePortfolioBlueprint(): StageTrace[] {
 export function compilePortfolioDocument(): DocumentPayload {
   return tracePortfolioBlueprint().at(-1)?.output as DocumentPayload;
 }
+
+export const blueprint = portfolioBlueprint;
+export const lowerBlueprint = compilePortfolioDocument;

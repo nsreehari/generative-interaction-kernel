@@ -1,24 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { bundleFromJson, loadBundleRuntime, SharedContextStore } from "@gik/react";
-import type { ServiceDeclaration } from "@gik/kernel";
 import { dispatchDemoControlRequest, withDemoHumanGate } from "../../bundles/demo-runner/control-bridge";
 import runnerDocument from "../../bundles/demo-runner/document.json" with { type: "json" };
 import runnerEffects from "../../bundles/demo-runner/effect_handlers/index";
 import runnerManifest from "../../bundles/demo-runner/manifest.json" with { type: "json" };
 import runnerState from "../../bundles/demo-runner/state.json" with { type: "json" };
-import portfolioDocument from "../../bundles/portfolio-tracker/document.json" with { type: "json" };
 import portfolioEffects from "../../bundles/portfolio-tracker/effect_handlers/index";
-import portfolioManifest from "../../bundles/portfolio-tracker/manifest.json" with { type: "json" };
-import portfolioState from "../../bundles/portfolio-tracker/state.json" with { type: "json" };
 import type { ControlRequest } from "../../shared/control-runtime";
 import { resolveDemoComposition } from "../../shared/demo-catalog";
-import { createPortfolioQueueFace } from "../../bundles/portfolio-tracker/services";
+import { openSampleBlueprint } from "../../shared/blueprints";
+import { declarativeServiceOrchestrator } from "../../shared/service-runtime";
 
 const portfolioBaselineComposition = resolveDemoComposition("portfolio-baseline");
 const portfolioBaselineScenarioPlan = portfolioBaselineComposition.scenarioPlan;
 const portfolioControlContract = portfolioBaselineComposition.controlContract;
 
 function demoRuntimes() {
+  const portfolioRuntime = openSampleBlueprint("portfolio-tracker");
   const shared = SharedContextStore.create(["demo", "control"]);
   shared.apply([
     { op: "set", path: "demo", value: {
@@ -33,16 +31,12 @@ function demoRuntimes() {
   ]);
   const contexts = { demo: shared, control: shared };
   const portfolio = loadBundleRuntime(bundleFromJson({
-    manifest: structuredClone(portfolioManifest),
-    document: structuredClone(portfolioDocument),
-    state: structuredClone(portfolioState),
+    manifest: portfolioRuntime.manifest,
+    document: portfolioRuntime.document,
+    state: portfolioRuntime.state,
   }, { effectHandlers: portfolioEffects }), {
     contexts,
-    wrapOrchestrator: (fallback, runtimeState) =>
-      createPortfolioQueueFace(
-        runtimeState,
-        portfolioManifest.payload.externals.services as Record<string, ServiceDeclaration>
-      ).createOrchestrator(fallback),
+    wrapOrchestrator: declarativeServiceOrchestrator(portfolioRuntime),
   });
   const runnerSeed = structuredClone(runnerState) as Record<string, unknown>;
   runnerSeed.runner = { plan: portfolioBaselineScenarioPlan, catalog: [], entry: null };

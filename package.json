@@ -35,7 +35,6 @@
     "test:parity:soc:update": "playwright test --config playwright.soc.config.ts --update-snapshots",
     "test:mcp": "vitest run --project mcp",
     "test:vitest": "vitest run",
-    "dev:workbench": "vite samples/apps/host --open /?bundle=workbench",
     "dev:host": "vite samples/apps/host",
     "build:host": "vite build samples/apps/host",
     "dev:backend-host": "tsx samples/backend-host/order-service.ts",
