@@ -24,8 +24,8 @@ const REGISTRY = registry as Registry;
 const HOST_INFRASTRUCTURE_BUNDLES = ["demo-runner", "gik-control-harness"] as const;
 
 // Vite build-time discovery of each bundle folder's parts, keyed by folder name. registry.json is the
-// authoritative list; these globs only supply the file contents for a declared bundle. The `*` matches
-// a single segment, so the workbench's own nested `bundles/*` leaves are never picked up here.
+// authoritative list; these globs only supply the file contents for a declared bundle. Hosted app-root
+// projections may live under `approot/*`; workbench's unrelated nested `bundles/*` leaves stay excluded.
 const rawManifests = import.meta.glob("../../../bundles/*/manifest.json", { eager: true, import: "default" });
 const rawDocuments = import.meta.glob("../../../bundles/*/document.json", { eager: true, import: "default" });
 const rawStates = import.meta.glob("../../../bundles/*/state.json", { eager: true, import: "default" });
@@ -36,12 +36,16 @@ const rawProjectionViews = import.meta.glob("../../../bundles/*/projection_views
   eager: true,
   import: "default",
 });
+const rawAppRootProjectionViews = import.meta.glob("../../../bundles/approot/*/projection_views/index.{ts,tsx}", {
+  eager: true,
+  import: "default",
+});
 
 /** Re-key a Vite glob (keyed by file path) by the bundle folder id the file lives under. */
 function byBundleId<T>(glob: Record<string, T>): Record<string, T> {
   const out: Record<string, T> = {};
   for (const [path, mod] of Object.entries(glob)) {
-    const id = path.match(/\/bundles\/([^/]+)\//)?.[1];
+    const id = path.match(/\/bundles\/(?:approot\/)?([^/]+)\//)?.[1];
     if (id) out[id] = mod;
   }
   return out;
@@ -53,7 +57,10 @@ const states = byBundleId(rawStates);
 const effectHandlerModules = byBundleId(rawEffectHandlerModules) as Record<string, {
   default: EffectHandlerMap;
 }>;
-const projectionViews = byBundleId(rawProjectionViews) as Record<string, Record<string, ProjectionView>>;
+const projectionViews = byBundleId({
+  ...rawProjectionViews,
+  ...rawAppRootProjectionViews,
+}) as Record<string, Record<string, ProjectionView>>;
 /** The Blueprint the host opens when no `?b=<id>` is given. */
 export const DEFAULT_BLUEPRINT = REGISTRY.default;
 

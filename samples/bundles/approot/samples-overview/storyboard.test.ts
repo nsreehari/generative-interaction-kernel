@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import socProfile from "../../profiles/live-workspace-soc/profile.json" with { type: "json" };
-import t3Scenario from "../../scenarios/live-workspace-soc-t3/scenario.json" with { type: "json" };
-import { openSampleBlueprint } from "../../shared/blueprints";
+import socProfile from "../../../profiles/live-workspace-soc/profile.json" with { type: "json" };
+import t3Scenario from "../../../scenarios/live-workspace-soc-t3/scenario.json" with { type: "json" };
+import { openSampleBlueprint } from "../../../shared/blueprints";
 
 const overview = openSampleBlueprint("samples-overview").state.overview as unknown as {
   actors: Array<{ id: string }>;
