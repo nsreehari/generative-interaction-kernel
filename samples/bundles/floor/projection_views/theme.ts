@@ -1,4 +1,4 @@
-import roleData from "../../../theme/roles.json";
+import roleData from "../../../../theme/roles.json";
 
 /**
  * The shared semantic role map (theme/roles.json) — the ONE source both adapters read.

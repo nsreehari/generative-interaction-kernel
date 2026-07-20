@@ -3,7 +3,7 @@ import React from "react";
 import { test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { Json, ResolvedNode } from "@gik/kernel";
-import { buildRegistryFromImports, floorFallback, renderNode } from "@gik/react";
+import { FallbackView, buildRegistryFromImports, renderNode } from "@gik/react";
 
 import foundryViews from "./index";
 
@@ -28,7 +28,7 @@ const registry = buildRegistryFromImports(
     : from === "test"
       ? { content: ({ node }) => React.createElement("span", null, String(node.props.value ?? "")) }
       : undefined,
-  floorFallback
+  FallbackView
 );
 
 test("foundry:access-gate prompts for access and withholds protected children", () => {

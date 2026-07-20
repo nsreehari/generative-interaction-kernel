@@ -4,14 +4,13 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactElement } from "react";
 import type { Json } from "@gik/kernel";
 
-import { renderNode } from "../src/render";
-import { buildRegistryFromImports, type ProjectionViewProps } from "../src/registry";
-import { FLOOR_COMPONENTS, floorFallback } from "../src/primitives/registry";
+import { FallbackView, buildRegistryFromImports, renderNode, type ProjectionViewProps } from "@gik/react";
+import { FLOOR_COMPONENTS } from "./index";
 
 const registry = buildRegistryFromImports(
   { ui: { from: "floor" } },
   (from) => from === "floor" ? FLOOR_COMPONENTS : undefined,
-  floorFallback
+  FallbackView
 );
 
 function leaf(capability: string, props: Record<string, unknown>) {

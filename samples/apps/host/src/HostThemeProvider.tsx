@@ -6,7 +6,8 @@ import {
   tokens,
   webLightTheme,
 } from "@fluentui/react-components";
-import { FloorStyleSheet, roleVars } from "@gik/react";
+import { FloorStyleSheet } from "../../../bundles/floor/projection_views/styles";
+import { roleVars } from "../../../bundles/floor/projection_views/theme";
 
 const HOST_THEME_CSS = `
 .gx-host * { box-sizing: border-box; }

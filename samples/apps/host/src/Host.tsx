@@ -12,7 +12,6 @@ import {
   SharedContextStore,
   buildBundleRegistry,
   loadBundle,
-  sampleProfileComponents,
   type Bundle,
   useBundleContextSync,
   useBundleRegistry,
@@ -28,6 +27,7 @@ import {
   writePresentationNavigation,
 } from "./host-query";
 import { switcherBundle } from "../../../bundles/approot/switcher/projection_views";
+import { sampleProfileComponents } from "../../../bundles/floor/projection_views/profile";
 import { demoCatalog, resolveDemoComposition } from "../../../shared/demo-catalog";
 import { dispatchDemoControlRequest, withDemoHumanGate } from "../../../bundles/demo-runner/effect_handlers/control-bridge";
 import type { ControlRequest, OrganismControlContract } from "../../../shared/control-runtime";

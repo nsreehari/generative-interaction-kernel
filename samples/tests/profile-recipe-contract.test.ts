@@ -4,7 +4,11 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-import { PRIMITIVE_CAPABILITIES, FLOOR_READ_KEYS, FLOOR_ALIAS } from "@gik/react";
+import {
+  PRIMITIVE_CAPABILITIES,
+  FLOOR_READ_KEYS,
+  FLOOR_ALIAS,
+} from "../bundles/floor/projection_views/capabilities";
 
 // --- SAMPLE guardrail: do these profiles' lowering recipes obey the floor contract? -----------
 //
