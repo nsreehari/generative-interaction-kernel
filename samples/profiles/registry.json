@@ -3,9 +3,15 @@
   "blueprints": [
     "samples-overview",
     "portfolio-tracker",
+    "portfolio-tracker-no-cells",
     "live-workspace-soc",
     "foundry-agent",
+    "foundry-agent-no-cells",
     "manage-blueprints",
     "manage-bundles"
-  ]
+  ],
+  "nativeFrom": {
+    "foundry-agent-no-cells": "foundry-agent",
+    "portfolio-tracker-no-cells": "portfolio-tracker"
+  }
 }

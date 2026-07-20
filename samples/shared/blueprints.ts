@@ -1,8 +1,12 @@
-import { ControlFace, type BlueprintDefinition, type BlueprintRuntime } from "@gik/controlface";
-import type { DocumentPayload } from "@gik/kernel";
-import { loadProfile, type LayerRecipe, type ProfileArtifact } from "@gik/profile";
+import {
+  ControlFace,
+  defineDeclarativeBlueprint,
+  type BlueprintDefinition,
+  type BlueprintRuntime,
+} from "@gik/controlface";
+import type { ProfileArtifact } from "@gik/profile";
 
-const modules = import.meta.glob("../profiles/*/compile.ts", { eager: true }) as Record<string, {
+const modules = import.meta.glob("../compilers/*/index.ts", { eager: true }) as Record<string, {
   blueprint?: BlueprintDefinition["profile"];
   lowerBlueprint?: BlueprintDefinition["lower"];
 }>;
@@ -13,7 +17,7 @@ const profileArtifacts = import.meta.glob("../profiles/*/profile.json", {
 
 const definitions = new Map<string, BlueprintDefinition>();
 for (const [path, module] of Object.entries(modules)) {
-  const id = path.match(/\/profiles\/([^/]+)\//)?.[1];
+  const id = path.match(/\/compilers\/([^/]+)\//)?.[1];
   if (id && module.blueprint && module.lowerBlueprint) {
     definitions.set(id, { profile: module.blueprint, lower: module.lowerBlueprint });
   }
@@ -21,13 +25,8 @@ for (const [path, module] of Object.entries(modules)) {
 for (const [path, artifact] of Object.entries(profileArtifacts)) {
   const id = path.match(/\/profiles\/([^/]+)\//)?.[1];
   if (!id || definitions.has(id)) continue;
-  const document = artifact.payload.resources?.document;
-  if (!document || !("inline" in document)) continue;
-  const profile = loadProfile<LayerRecipe>(artifact, []);
-  definitions.set(id, {
-    profile,
-    lower: () => structuredClone(document.inline) as unknown as DocumentPayload,
-  });
+  const definition = defineDeclarativeBlueprint(artifact);
+  if (definition) definitions.set(id, definition);
 }
 
 const resolver = { resolve: (id: string) => definitions.get(id) };

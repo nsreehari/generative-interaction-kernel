@@ -27,9 +27,9 @@ import {
   resolvePresentationContext,
   writePresentationNavigation,
 } from "./host-query";
-import { switcherBundle } from "../../../bundles/approot/switcher/switcher";
+import { switcherBundle } from "../../../bundles/approot/switcher/projection_views";
 import { demoCatalog, resolveDemoComposition } from "../../../shared/demo-catalog";
-import { dispatchDemoControlRequest, withDemoHumanGate } from "../../../bundles/demo-runner/control-bridge";
+import { dispatchDemoControlRequest, withDemoHumanGate } from "../../../bundles/demo-runner/effect_handlers/control-bridge";
 import type { ControlRequest, OrganismControlContract } from "../../../shared/control-runtime";
 
 const useStyles = makeStyles({

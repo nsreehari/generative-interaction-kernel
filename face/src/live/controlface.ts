@@ -34,7 +34,15 @@ import { checkpoint, compensate, effectsSince, getState, getTree, restore } from
 import type { ServiceProbeResult, ServiceRequestRecord } from "../services/queueface";
 import type { ServiceHost } from "../services/service-host";
 import type { ServiceKindDescription } from "../services/service-kinds";
-import type { ResolvedProfile } from "../../../profile/src/index";
+import {
+  compileCellTopology,
+  composeCellDocument,
+  loadProfile,
+  type CellDefinition,
+  type LayerRecipe,
+  type ProfileArtifact,
+  type ResolvedProfile,
+} from "../../../profile/src/index";
 
 export interface BlueprintRuntime {
   blueprintId: string;
@@ -47,6 +55,38 @@ export interface BlueprintRuntime {
 export interface BlueprintDefinition {
   profile: Pick<ResolvedProfile, "artifact" | "services">;
   lower(context: Record<string, Json>): DocumentPayload;
+}
+
+/**
+ * Resolve a zero-recipe, JSON-authored Blueprint whose organism is already expressed as runtime
+ * nodes/cells. Recipe-backed Profiles deliberately return undefined and keep their registered
+ * lowering implementation.
+ */
+export function defineDeclarativeBlueprint(artifact: ProfileArtifact): BlueprintDefinition | undefined {
+  if (artifact.payload.recipes.length > 0) return undefined;
+  const rawResources = artifact.payload.resources;
+  const hasDocument = rawResources?.document && "inline" in rawResources.document;
+  const hasRootAndCells = rawResources?.organismRoot && "inline" in rawResources.organismRoot
+    && rawResources?.cells && "inline" in rawResources.cells;
+  if (!hasDocument && !hasRootAndCells) return undefined;
+
+  const profile = loadProfile<LayerRecipe>(artifact, []);
+  const document = profile.resources.document as unknown as { root: CellDefinition } | undefined;
+  const organismRoot = profile.resources.organismRoot as unknown as CellDefinition | undefined;
+  const cells = profile.resources.cells as unknown as CellDefinition[] | undefined;
+  const organism = document?.root ?? (organismRoot && cells ? {
+    ...organismRoot,
+    edges: {
+      ...organismRoot.edges,
+      children: [...(organismRoot.edges?.children ?? []), ...cells],
+    },
+  } : undefined);
+  if (!organism) return undefined;
+
+  return {
+    profile,
+    lower: () => composeCellDocument(organism, compileCellTopology(profile.artifact.payload.id, organism)),
+  };
 }
 
 export interface BlueprintResolver {

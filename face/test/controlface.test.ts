@@ -26,6 +26,7 @@ import {
 import { McpHttpServer } from "../../transports/mcp-http/src/index";
 import { SseClientTransport } from "../../transports/http-sse/src/index";
 import { SseTransportServer } from "../../transports/http-sse/src/index";
+import type { ProfileArtifact } from "../../profile/src/index";
 import {
   AGENTFACE_ALLOWLIST,
   ControlFace,
@@ -36,8 +37,60 @@ import {
   createAgentFaceDispatcher,
   createControlFaceDispatcher,
   controlFaceTools,
+  defineDeclarativeBlueprint,
   runtimeTools,
 } from "../src/index";
+
+test("ControlFace defines zero-recipe JSON cell Blueprints without product code", () => {
+  const artifact: ProfileArtifact = {
+    gik: "0.1",
+    type: "profile",
+    payload: {
+      id: "cell-example",
+      kind: "runtime-blueprint",
+      version: "1",
+      layers: [{ id: "runtime-document", kind: "runtime-document" }],
+      recipes: [],
+      runtime: { namespaces: ["example"], capabilities: {} },
+      resources: {
+        document: {
+          inline: {
+            root: {
+              id: "root",
+              capability: "ui:screen",
+              edges: {
+                children: [{
+                  id: "source",
+                  capability: "ui:text",
+                  provides: ["ready"],
+                }, {
+                  id: "consumer",
+                  capability: "ui:text",
+                  requires: ["ready"],
+                }],
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+
+  const definition = defineDeclarativeBlueprint(artifact);
+  assert.ok(definition);
+  const document = definition.lower({});
+  assert.deepEqual(document.root.edges?.children?.map((node) => node.id), ["source", "consumer"]);
+  assert.equal("provides" in (document.root.edges?.children?.[0] ?? {}), false);
+  assert.equal("requires" in (document.root.edges?.children?.[1] ?? {}), false);
+
+  assert.equal(defineDeclarativeBlueprint({
+    ...artifact,
+    payload: {
+      ...artifact.payload,
+      recipes: [{ id: "compile", from: "runtime-document", to: "runtime-document" }],
+    },
+  }), undefined);
+});
 
 test("ControlFace opens an authored Blueprint into a runtime", () => {
   const definition = {

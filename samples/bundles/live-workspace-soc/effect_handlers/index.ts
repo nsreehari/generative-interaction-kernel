@@ -1,8 +1,8 @@
 import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
 import type { Json, OrchestratorResult, PatchOp } from "@gik/kernel";
-import { compileSocPresentation } from "../../../profiles/live-workspace-soc/compile";
+import { compileSocPresentation } from "../../../compilers/live-workspace-soc";
 import profile from "../../../profiles/live-workspace-soc/profile.json";
-import { projectSocInspection, projectSocParticipants } from "../inspection";
+import { projectSocInspection, projectSocParticipants } from "./inspection";
 import type { Actor, AgentProvider, Incident, JournalEntry, Presentation } from "../projection_views/types";
 import {
   buildAgentMessage,
@@ -12,7 +12,7 @@ import {
   type ResponseReply,
   type SocAgentOperation,
   type SocAgentReply,
-} from "../live-agent";
+} from "./live-agent";
 
 type RecordValue = Record<string, Json>;
 const profileState = profile.payload.runtime.state as unknown as RecordValue;

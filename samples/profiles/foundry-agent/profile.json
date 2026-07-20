@@ -28,6 +28,13 @@
                 {
                   "capability": "foundry:access-gate",
                   "id": "foundry-access-gate",
+                  "provides": [
+                    {
+                      "token": "foundry-access",
+                      "read": "agent.agentOptions",
+                      "when": "agent.accessStatus = 'ready' or agent.accessStatus = 'empty'"
+                    }
+                  ],
                   "edges": {
                     "read": {
                       "status": "agent.accessStatus",
@@ -61,6 +68,7 @@
                       {
                         "capability": "agent:ask-page",
                         "id": "agent-demo",
+                        "requires": ["foundry-access"],
                         "props": {
                           "title": "Ask the agent"
                         },

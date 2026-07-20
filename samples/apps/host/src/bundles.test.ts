@@ -11,11 +11,13 @@ test("host registry exposes only approved Blueprints to the switcher", () => {
   assert.equal(registry.has("manage-blueprints"), true);
   assert.equal(registry.has("manage-bundles"), true);
   assert.equal(registry.has("foundry-agent"), true);
+  assert.equal(registry.has("foundry-agent-no-cells"), true);
   assert.equal(registry.has("live-workspace-soc"), true);
   assert.equal(registry.has("portfolio-tracker"), true);
+  assert.equal(registry.has("portfolio-tracker-no-cells"), true);
   assert.deepEqual(
     [...registry.ids({ listable: true })].sort(),
-    ["foundry-agent", "live-workspace-soc", "manage-blueprints", "manage-bundles", "portfolio-tracker", "samples-overview"]
+    ["foundry-agent", "foundry-agent-no-cells", "live-workspace-soc", "manage-blueprints", "manage-bundles", "portfolio-tracker", "portfolio-tracker-no-cells", "samples-overview"]
   );
   assert.equal(registry.has("reactive-demo"), false);
   assert.equal(registry.has("provider-authoring-demo"), false);

@@ -5,4 +5,4 @@
 // The manager's handlers are a cohesive domain unit — they all share the same validation and store
 // helpers — so the map stays defined beside that code in ../store rather than split one file per name.
 // This index is just the convention entry point that re-exports it.
-export { manageBlueprintsEffects as default } from "../store";
+export { manageBlueprintsEffects as default } from "./store";

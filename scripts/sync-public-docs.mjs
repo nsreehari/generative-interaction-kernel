@@ -8,10 +8,6 @@ const sourceDocsDir = path.join(repoRoot, "docs", "public");
 const licenseFile = path.join(repoRoot, "LICENSE");
 const targets = process.argv.slice(2);
 
-if (!existsSync(sourceDocsDir)) {
-  throw new Error(`Public docs directory not found: ${sourceDocsDir}`);
-}
-
 if (targets.length === 0) {
   throw new Error("Provide at least one package path to sync docs into.");
 }
@@ -26,10 +22,13 @@ for (const target of targets) {
 
   const docsDir = path.join(packageRoot, "docs");
   rmSync(docsDir, { recursive: true, force: true });
-  mkdirSync(docsDir, { recursive: true });
 
-  for (const entry of readdirSync(sourceDocsDir)) {
-    cpSync(path.join(sourceDocsDir, entry), path.join(docsDir, entry), { recursive: true });
+  if (existsSync(sourceDocsDir)) {
+    mkdirSync(docsDir, { recursive: true });
+
+    for (const entry of readdirSync(sourceDocsDir)) {
+      cpSync(path.join(sourceDocsDir, entry), path.join(docsDir, entry), { recursive: true });
+    }
   }
 
   if (existsSync(licenseFile)) {

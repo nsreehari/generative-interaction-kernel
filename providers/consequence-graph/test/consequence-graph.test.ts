@@ -1,7 +1,12 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
 
-import { activateConsequenceGraph, inspectConsequenceGraph } from "../src/consequence-graph";
+import { compileCellTopology } from "@gik/profile";
+import {
+  activateConsequenceGraph,
+  consequenceGraphFromTopology,
+  inspectConsequenceGraph,
+} from "../src/consequence-graph";
 import { portfolioConsequenceSample } from "../src/samples";
 
 test("inspectConsequenceGraph emits the portfolio dependency structure", () => {
@@ -25,5 +30,21 @@ test("activateConsequenceGraph reports blocked nodes when an external branch has
   assert.deepEqual(activation.blocked, [
     { node: "recommendations", waitingOn: ["currentValue", "taxExposure"] },
     { node: "taxExposure", waitingOn: ["portfolio"] },
+  ]);
+});
+
+test("derives consequence inspection from executable cell topology", () => {
+  const topology = compileCellTopology("foundry-agent", [
+    { id: "foundry-access", capability: "access-gate", provides: ["foundry-access"] },
+    { id: "foundry-chat", capability: "chat", requires: ["foundry-access"] },
+  ]);
+
+  const graph = consequenceGraphFromTopology(topology);
+  assert.deepEqual(graph.nodes, {
+    "foundry-access": { id: "foundry-access", kind: "source" },
+    "foundry-chat": { id: "foundry-chat", kind: "materialize", dependsOn: ["foundry-access"] },
+  });
+  assert.deepEqual(inspectConsequenceGraph(graph).edges, [
+    { from: "foundry-access", to: "foundry-chat" },
   ]);
 });

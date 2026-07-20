@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bundleFromJson, loadBundleRuntime, SharedContextStore } from "@gik/react";
-import { dispatchDemoControlRequest, withDemoHumanGate } from "../../bundles/demo-runner/control-bridge";
+import { dispatchDemoControlRequest, withDemoHumanGate } from "../../bundles/demo-runner/effect_handlers/control-bridge";
 import runnerDocument from "../../bundles/demo-runner/document.json" with { type: "json" };
 import runnerEffects from "../../bundles/demo-runner/effect_handlers/index";
 import runnerManifest from "../../bundles/demo-runner/manifest.json" with { type: "json" };

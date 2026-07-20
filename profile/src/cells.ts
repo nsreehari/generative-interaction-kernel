@@ -1,11 +1,39 @@
-import type { ServiceUse } from "../../kernel/src/index";
+import type { DocNode, Edges, Json, ServiceUse } from "../../kernel/src/index";
 
+export interface CellOutputBinding {
+  token: string;
+  read: string;
+  when?: string;
+}
+
+export interface CellEdges extends Omit<Edges, "children"> {
+  children?: CellDefinition[];
+}
+
+/** An ordinary runtime node with standing dataflow metadata. */
 export interface CellDefinition {
+  capability: string;
   id: string;
+  props?: Record<string, Json>;
+  edges?: CellEdges;
   requires?: readonly string[];
-  provides?: readonly string[];
-  /** Optional external intelligence/service operation materializing this cell's output. */
+  provides?: readonly (string | CellOutputBinding)[];
   service?: ServiceUse;
+}
+
+export interface ExecutableCellEdge {
+  token: string;
+  providerCellId: string;
+  consumerCellId: string;
+}
+
+export interface ExecutableCellTopology {
+  id: string;
+  cells: readonly CellDefinition[];
+  edges: readonly ExecutableCellEdge[];
+  externalInputs: readonly string[];
+  providers: Readonly<Record<string, string>>;
+  diagnostics: readonly CellDiagnostic[];
 }
 
 export interface TokenPattern {
@@ -15,7 +43,11 @@ export interface TokenPattern {
 }
 
 export interface CellDiagnostic {
-  code: "duplicate-cell-id" | "invalid-token-pattern" | "ambiguous-provider";
+  code:
+    | "duplicate-cell-id"
+    | "invalid-token-pattern"
+    | "ambiguous-provider"
+    | "invalid-output-binding";
   detail: string;
   cellId?: string;
   tokenPattern?: string;
@@ -103,7 +135,7 @@ export function analyzeCellComposition(cells: readonly CellDefinition[]): CellCo
     }
     ids.add(cell.id);
 
-    for (const pattern of [...(cell.requires ?? []), ...(cell.provides ?? [])]) {
+    for (const pattern of [...(cell.requires ?? []), ...providedTokens(cell)]) {
       try {
         tokenPattern(pattern);
       } catch (error) {
@@ -116,7 +148,16 @@ export function analyzeCellComposition(cells: readonly CellDefinition[]): CellCo
       }
     }
 
-    for (const provided of cell.provides ?? []) {
+    for (const output of cell.provides ?? []) {
+      const provided = typeof output === "string" ? output : output.token;
+      if (typeof output !== "string" && (!output.token || !output.read || (output.when !== undefined && !output.when))) {
+        diagnostics.push({
+          code: "invalid-output-binding",
+          cellId: cell.id,
+          tokenPattern: output.token,
+          detail: `Cell '${cell.id}' has an invalid output binding`,
+        });
+      }
       const providers = providerIds.get(provided) ?? [];
       providers.push(cell.id);
       providerIds.set(provided, providers);
@@ -142,4 +183,70 @@ export function analyzeCellComposition(cells: readonly CellDefinition[]): CellCo
     .sort((left, right) => left.localeCompare(right));
 
   return { externalInputs, providers, diagnostics };
+}
+
+export function compileCellTopology(
+  id: string,
+  organism: CellDefinition | readonly CellDefinition[]
+): ExecutableCellTopology {
+  const roots: readonly CellDefinition[] = Array.isArray(organism)
+    ? organism
+    : [organism as CellDefinition];
+  const cells = flattenCells(roots);
+  const composition = analyzeCellComposition(cells);
+  const edges = cells
+    .flatMap((cell) => (cell.requires ?? []).flatMap((token): ExecutableCellEdge[] => {
+      const providerCellId = composition.providers[token];
+      return providerCellId ? [{ token, providerCellId, consumerCellId: cell.id }] : [];
+    }))
+    .sort((left, right) =>
+      left.providerCellId.localeCompare(right.providerCellId)
+      || left.consumerCellId.localeCompare(right.consumerCellId)
+      || left.token.localeCompare(right.token));
+
+  return {
+    id,
+    cells,
+    edges,
+    externalInputs: composition.externalInputs,
+    providers: composition.providers,
+    diagnostics: composition.diagnostics,
+  };
+}
+
+/** Lower a cell tree by removing authoring-only dataflow metadata. */
+export function composeCellDocument(organism: CellDefinition, topology: ExecutableCellTopology): { root: DocNode } {
+  if (topology.diagnostics.length > 0) {
+    throw new Error(`Invalid cell topology '${topology.id}': ${topology.diagnostics.map(({ detail }) => detail).join("; ")}`);
+  }
+  return { root: toDocNode(organism) };
+}
+
+function providedTokens(cell: CellDefinition): string[] {
+  return (cell.provides ?? []).map((output) => typeof output === "string" ? output : output.token);
+}
+
+function flattenCells(roots: readonly CellDefinition[]): CellDefinition[] {
+  const cells: CellDefinition[] = [];
+  const visit = (cell: CellDefinition): void => {
+    if ((cell.requires?.length ?? 0) > 0 || (cell.provides?.length ?? 0) > 0 || cell.service) cells.push(cell);
+    for (const child of cell.edges?.children ?? []) visit(child);
+  };
+  for (const root of roots) visit(root);
+  return cells;
+}
+
+function toDocNode(cell: CellDefinition): DocNode {
+  const children = cell.edges?.children?.map(toDocNode);
+  return {
+    capability: cell.capability,
+    id: cell.id,
+    ...(cell.props ? { props: structuredClone(cell.props) } : {}),
+    ...(cell.edges ? {
+      edges: {
+        ...structuredClone(cell.edges),
+        ...(children ? { children } : {}),
+      },
+    } : {}),
+  };
 }

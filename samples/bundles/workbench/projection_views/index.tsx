@@ -23,7 +23,7 @@ import { editableRegions, facetsAsItems } from "./libs/edits";
 import { checkAuthoredProfile, parseAuthoredSession } from "./libs/authoring";
 import type { Json } from "@gik/kernel";
 import type { InteractionTaxonomy } from "@gik/profile";
-import { buildSession, type Session } from "../session";
+import { buildSession, type Session } from "./runtime/session";
 import {
   authoredApplyPayload,
   inputsSignature,
@@ -33,9 +33,9 @@ import {
   readFireRequest,
   readInputs,
   type StateReader,
-} from "../bridge";
-import { startAgentLoop, type AgentLoopClient } from "../agent-loop";
-import { workbenchComponents } from "../bundles/shared/registry";
+} from "./runtime/bridge";
+import { startAgentLoop, type AgentLoopClient } from "./runtime/agent-loop";
+import { workbenchComponents } from "./bundles/registry";
 import { sampleProfiles } from "../../../catalog/profile-catalog";
 
 function selectedProfile(profileId: string) {

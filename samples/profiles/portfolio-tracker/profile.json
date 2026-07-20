@@ -3,17 +3,12 @@
   "type": "profile",
   "payload": {
     "id": "portfolio-tracker",
-    "kind": "genui-profile",
+    "kind": "runtime-blueprint",
     "version": "1.0.0",
     "layers": [
-      { "id": "portfolio", "kind": "portfolio" },
-      { "id": "presentation", "kind": "portfolio-presentation" },
       { "id": "runtime-document", "kind": "runtime-document" }
     ],
-    "recipes": [
-      { "id": "portfolio.to-presentation", "from": "portfolio", "to": "presentation" },
-      { "id": "portfolio.presentation-to-runtime", "from": "presentation", "to": "runtime-document" }
-    ],
+    "recipes": [],
     "services": {
       "portfolio-intelligence": {
         "kind": "deterministic-agent",
@@ -147,15 +142,41 @@
     "resources": {
       "cells": {
         "inline": [
-          { "id": "holdings", "provides": ["holding:$TICKER"] },
-          { "id": "market-prices", "requires": ["holding:$TICKER"], "provides": ["quote:$TICKER"] },
-          { "id": "positions", "requires": ["holding:$TICKER", "quote:$TICKER"], "provides": ["position:$TICKER"] },
-          { "id": "summary", "requires": ["position:$TICKER"], "provides": ["portfolio-summary"] },
-          { "id": "portfolio-intelligence", "requires": ["portfolio-summary", "position:$TICKER", "investor-profile"], "provides": ["portfolio-intelligence"], "service": { "service": "portfolio-intelligence", "operation": "analyze", "contract": "portfolio-intelligence/v1" } },
-          { "id": "conservative-rebalance", "requires": ["position:$TICKER", "portfolio-summary", "portfolio-intelligence", "investor-profile"], "provides": ["rebalance-conservative"] },
-          { "id": "growth-rebalance", "requires": ["position:$TICKER", "portfolio-summary", "portfolio-intelligence", "investor-profile"], "provides": ["rebalance-growth"] },
-          { "id": "rebalance-comparison", "requires": ["rebalance-conservative", "rebalance-growth"], "provides": ["rebalance-recommendation"], "service": { "service": "portfolio-intelligence", "operation": "propose-strategies", "contract": "portfolio-strategies/v1" } }
+          {
+            "id": "holdings",
+            "capability": "ui:editable-table",
+            "provides": ["holding:$TICKER"],
+            "props": { "label": "holdings", "spec": { "schema": { "properties": { "ticker": { "type": "string" }, "quantity": { "type": "number" }, "costBasis": { "type": "number" } } } } },
+            "edges": { "readExpr": { "rows": "$each(portfolio.holdings, function($value) { $value })" }, "on": { "save": [{ "do": "invoke", "args": { "tool": "saveHoldings" } }] } }
+          },
+          { "id": "market-prices", "capability": "ui:table", "requires": ["holding:$TICKER"], "provides": ["quote:$TICKER"], "props": { "label": "market-prices" }, "edges": { "readExpr": { "rows": "$each(portfolio.quotes, function($value) { $value })" } } },
+          { "id": "positions", "capability": "ui:table", "requires": ["holding:$TICKER", "quote:$TICKER"], "provides": ["position:$TICKER"], "props": { "label": "positions" }, "edges": { "readExpr": { "rows": "$each(portfolio.positions, function($value) { $value })" } } },
+          { "id": "summary", "capability": "portfolio:summary", "requires": ["position:$TICKER"], "provides": ["portfolio-summary"], "props": { "label": "summary" }, "edges": { "read": { "value": "portfolio.summary" } } },
+          { "id": "portfolio-intelligence", "capability": "portfolio:narrative", "requires": ["portfolio-summary", "position:$TICKER", "investor-profile"], "provides": ["portfolio-intelligence"], "service": { "service": "portfolio-intelligence", "operation": "analyze", "contract": "portfolio-intelligence/v1" }, "props": { "label": "portfolio-intelligence" }, "edges": { "read": { "value": "portfolio.intelligence" } } },
+          { "id": "conservative-rebalance", "capability": "portfolio:narrative", "requires": ["position:$TICKER", "portfolio-summary", "portfolio-intelligence", "investor-profile"], "provides": ["rebalance-conservative"], "props": { "label": "conservative-rebalance" }, "edges": { "read": { "value": "portfolio.strategies.conservative" } } },
+          { "id": "growth-rebalance", "capability": "portfolio:narrative", "requires": ["position:$TICKER", "portfolio-summary", "portfolio-intelligence", "investor-profile"], "provides": ["rebalance-growth"], "props": { "label": "growth-rebalance" }, "edges": { "read": { "value": "portfolio.strategies.growth" } } },
+          { "id": "rebalance-comparison", "capability": "portfolio:recommendation", "requires": ["rebalance-conservative", "rebalance-growth"], "provides": ["rebalance-recommendation"], "service": { "service": "portfolio-intelligence", "operation": "propose-strategies", "contract": "portfolio-strategies/v1" }, "props": { "label": "rebalance-comparison" }, "edges": { "read": { "value": "portfolio.recommendation" }, "on": { "apply": [{ "do": "invoke", "args": { "tool": "applyRecommendation" } }] } } }
         ]
+      },
+      "organismRoot": {
+        "inline": {
+          "id": "portfolio-tracker",
+          "capability": "portfolio:workspace",
+          "props": { "title": "Portfolio tracker" },
+          "edges": {
+            "read": { "presentationContext": "portfolio.presentationContext" },
+            "react": [{ "when": "control.presentationContext", "runInitially": true, "run": [{ "do": "emit", "event": "setPresentationContext" }] }],
+            "on": {
+              "setHoldings": [{ "do": "invoke", "args": { "tool": "setHoldings" } }],
+              "upsertHolding": [{ "do": "invoke", "args": { "tool": "upsertHolding" } }],
+              "removeHolding": [{ "do": "invoke", "args": { "tool": "removeHolding" } }],
+              "refreshPrices": [{ "do": "invoke", "args": { "tool": "refreshPrices" } }],
+              "requestIntelligence": [{ "do": "invoke", "args": { "tool": "requestIntelligence" } }],
+              "calculateStrategies": [{ "do": "invoke", "args": { "tool": "calculateStrategies" } }],
+              "setPresentationContext": [{ "do": "invoke", "args": { "tool": "setPresentationContext" } }]
+            }
+          }
+        }
       }
     }
   }
