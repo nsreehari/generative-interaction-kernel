@@ -22,7 +22,16 @@
       "humanGates": ["authorizeContainment"],
       "observableOutcomes": ["soc.journal", "soc.actors", "soc.authorization", "soc.incident"],
       "actors": ["human-morgan", "human-priya", "agent-correlation", "agent-response"],
-      "presentationContexts": ["full-substrate", "war-room", "priya-mobile", "priya-laptop", "morgan-pager", "morgan-workstation", "correlation-agent", "response-agent"],
+      "presentationPresets": [
+        { "id": "full-substrate", "label": "Full substrate", "context": { "id": "full-substrate", "actor": "shared", "role": "technical-inspection", "device": "workstation", "task": "inspect-all", "disclosure": "complete", "layout": "console", "frame": "shared", "arrangement": "inspection" } },
+        { "id": "war-room", "label": "War room", "context": { "id": "war-room", "actor": "shared", "role": "incident-team", "device": "wall-display", "task": "coordinate", "disclosure": "operational", "layout": "war-room", "frame": "shared", "arrangement": "war-room" } },
+        { "id": "priya-mobile", "label": "Priya mobile", "context": { "id": "priya-mobile", "actor": "priya", "role": "incident-commander", "device": "mobile", "task": "approve", "disclosure": "decision", "layout": "decision-stack", "frame": "mobile", "arrangement": "decision" } },
+        { "id": "priya-laptop", "label": "Priya laptop", "context": { "id": "priya-laptop", "actor": "priya", "role": "incident-commander", "device": "laptop", "task": "command", "disclosure": "operational", "layout": "command-grid", "frame": "laptop", "arrangement": "command" } },
+        { "id": "morgan-pager", "label": "Morgan pager", "context": { "id": "morgan-pager", "actor": "morgan", "role": "investigator", "device": "pager", "task": "glance", "disclosure": "brief", "layout": "alert-stack", "frame": "pager", "arrangement": "glanceable" } },
+        { "id": "morgan-workstation", "label": "Morgan workstation", "context": { "id": "morgan-workstation", "actor": "morgan", "role": "investigator", "device": "workstation", "task": "investigate", "disclosure": "complete", "layout": "investigation-workbench", "frame": "workstation", "arrangement": "investigation" } },
+        { "id": "correlation-agent", "label": "Correlation agent", "context": { "id": "correlation-agent", "actor": "agent-correlation", "role": "analyst-agent", "device": "agent-console", "task": "correlate", "disclosure": "complete", "layout": "correlation-console", "frame": "agent-console", "arrangement": "agent-correlation" } },
+        { "id": "response-agent", "label": "Response agent", "context": { "id": "response-agent", "actor": "agent-response", "role": "response-agent", "device": "agent-console", "task": "plan-response", "disclosure": "complete", "layout": "response-console", "frame": "agent-console", "arrangement": "agent-response" } }
+      ],
       "focusKinds": ["actor", "cell", "token", "entity", "record", "region", "action"],
       "timelineSources": ["scenario", "organism"]
     },
@@ -39,7 +48,10 @@
       "humanGates": ["applyRecommendation"],
       "observableOutcomes": ["portfolio.holdings", "portfolio.quotes", "portfolio.positions", "portfolio.summary", "portfolio.intelligence", "portfolio.recommendation"],
       "actors": ["human-investor", "agent-market-data", "agent-portfolio-intelligence"],
-      "presentationContexts": ["portfolio-overview", "portfolio-advisor"],
+      "presentationPresets": [
+        { "id": "portfolio-overview", "label": "Portfolio overview", "context": { "id": "portfolio-overview", "view": "portfolio-overview", "role": "investor", "device": "workstation", "task": "review-holdings", "arrangement": "overview" } },
+        { "id": "portfolio-advisor", "label": "Portfolio advisor", "context": { "id": "portfolio-advisor", "view": "portfolio-advisor", "role": "investor", "device": "workstation", "task": "rebalance", "arrangement": "advisor" } }
+      ],
       "focusKinds": ["actor", "cell", "token", "record", "region", "action"],
       "timelineSources": ["scenario"]
     }

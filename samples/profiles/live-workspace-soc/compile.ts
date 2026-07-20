@@ -43,15 +43,40 @@ export const SOC_BLUEPRINT_SEED = {
   subject: "Privileged access anomaly during payroll cutover",
 };
 
-export function traceSocBlueprint(presentationContext = "full-substrate"): StageTrace[] {
-  return traceProfile(socBlueprint, SOC_BLUEPRINT_SEED, { presentationContext });
+export type SocPresentationContext = {
+  id?: string;
+  actor?: string;
+  role?: string;
+  device?: string;
+  task?: string;
+  disclosure?: string;
+  layout?: string;
+  frame?: string;
+  arrangement?: string;
+  regions?: string[];
+};
+
+function defaultSocPresentationContext(): SocPresentationContext {
+  return SOC_BLUEPRINT_CONTEXTS.find((context) => context.id === "full-substrate") ?? SOC_BLUEPRINT_CONTEXTS[0];
 }
 
-export function compileSocPresentation(presentationContext = "full-substrate"): PresentationSpec & { frame?: string } {
+function resolveSocPresentationContext(context?: string | SocPresentationContext): SocPresentationContext {
+  if (!context) return defaultSocPresentationContext();
+  if (typeof context === "string") {
+    return SOC_BLUEPRINT_CONTEXTS.find((item) => item.id === context) ?? defaultSocPresentationContext();
+  }
+  return context;
+}
+
+export function traceSocBlueprint(presentationContext?: string | SocPresentationContext): StageTrace[] {
+  return traceProfile(socBlueprint, SOC_BLUEPRINT_SEED, resolveSocPresentationContext(presentationContext));
+}
+
+export function compileSocPresentation(presentationContext?: string | SocPresentationContext): PresentationSpec & { frame?: string } {
   return traceSocBlueprint(presentationContext)[1].output as PresentationSpec & { frame?: string };
 }
 
-export function compileSocDocument(presentationContext = "full-substrate"): DocumentPayload {
+export function compileSocDocument(presentationContext?: string | SocPresentationContext): DocumentPayload {
   const document = structuredClone(traceSocBlueprint(presentationContext).at(-1)?.output) as DocumentPayload;
   document.root.edges ??= {};
   document.root.edges.children ??= [];
@@ -104,4 +129,10 @@ export function compileSocDocument(presentationContext = "full-substrate"): Docu
 
 export const blueprint = socBlueprint;
 export const lowerBlueprint = (context: Record<string, unknown>) =>
-  compileSocDocument(typeof context.presentationContext === "string" ? context.presentationContext : undefined);
+  compileSocDocument(
+    typeof context.presentationContext === "string"
+      ? context.presentationContext
+      : context.presentationContext && typeof context.presentationContext === "object" && !Array.isArray(context.presentationContext)
+        ? context.presentationContext as SocPresentationContext
+        : undefined
+  );

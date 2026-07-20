@@ -3,6 +3,7 @@
 
 import React from "react";
 import { makeStyles, tokens } from "@fluentui/react-components";
+import type { Json } from "@gik/kernel";
 import {
   BundleHost,
   BundleContextsProvider,
@@ -27,7 +28,7 @@ import {
   writePresentationNavigation,
 } from "./host-query";
 import { switcherBundle } from "../../../bundles/approot/switcher/switcher";
-import { resolveDemoComposition } from "../../../shared/demo-catalog";
+import { demoCatalog, resolveDemoComposition } from "../../../shared/demo-catalog";
 import { dispatchDemoControlRequest, withDemoHumanGate } from "../../../bundles/demo-runner/control-bridge";
 import type { ControlRequest, OrganismControlContract } from "../../../shared/control-runtime";
 
@@ -51,16 +52,20 @@ const useStyles = makeStyles({
 export function Host(): React.ReactElement {
   // One registry for the life of the app; every BundleHost and every `embed props.app` resolves it.
   const query = readHostQuery(window.location.search);
-  const targetId = query.blueprintId ?? DEFAULT_BLUEPRINT;
+  const targetId = query.targetId ?? DEFAULT_BLUEPRINT;
   const { demoId, harnessId, presentationContext } = query;
   const registry = React.useMemo(() => createHostRegistry(demoId, targetId), [demoId, targetId]);
   const demoComposition = React.useMemo(
     () => demoId ? resolveDemoComposition(demoId, targetId) : undefined,
     [demoId, targetId]
   );
+  const presentationPresets = React.useMemo(
+    () => demoComposition?.demoContract.presentationPresets ?? demoCatalog.targets[targetId]?.presentationPresets ?? [],
+    [demoComposition, targetId]
+  );
   const resolvedPresentationContext = resolvePresentationContext(
     presentationContext,
-    demoComposition?.demoContract.presentationContexts ?? [],
+    presentationPresets,
     demoComposition?.entry.defaultContext
   );
   const contexts = React.useMemo<Record<string, SharedContextStore>>(() => {
@@ -74,13 +79,19 @@ export function Host(): React.ReactElement {
       && !Array.isArray(targetState.inspection)
       ? structuredClone(targetState.inspection)
       : { participants: [] };
-    if (!("presentation" in inspection) && demoComposition) {
+    if (!("presentation" in inspection) && presentationPresets.length > 0) {
       inspection.presentation = {
-        selectedContext: resolvedPresentationContext ?? "",
-        contexts: demoComposition.demoContract.presentationContexts.map((id) => ({ id, label: id })),
-      };
+        selectedContext: resolvedPresentationContext?.id ?? "",
+        contexts: presentationPresets.map((preset) => ({
+          id: preset.id,
+          label: preset.label ?? preset.id,
+          ...(preset.audience ? { audience: preset.audience } : {}),
+          ...(preset.focus ? { focus: preset.focus } : {}),
+          context: preset.context,
+        })),
+      } as unknown as Json;
     }
-    if (demoId || harnessId || resolvedPresentationContext) {
+    if (demoId || harnessId || presentationPresets.length > 0 || resolvedPresentationContext) {
       const control = SharedContextStore.create(["control"]);
       const controlSeed = {
         ...(harnessState?.control
@@ -91,14 +102,16 @@ export function Host(): React.ReactElement {
             request: null,
             receipt: null,
             commands: {},
-            presentationContext: resolvedPresentationContext,
+            presentationContext: resolvedPresentationContext?.context ?? null,
+            presentationPresetId: resolvedPresentationContext?.id ?? null,
             participantConfigurationRequest: null,
             agentModeRequest: null,
             authorizationRequest: null,
           }),
         inspection,
-        presentationContext: resolvedPresentationContext,
-      };
+        presentationContext: (resolvedPresentationContext?.context ?? null) as Json,
+        presentationPresetId: resolvedPresentationContext?.id ?? null,
+      } as unknown as Json;
       control.apply([{ op: "set", path: "control", value: controlSeed }]);
       next.control = control;
     }
@@ -132,7 +145,7 @@ export function Host(): React.ReactElement {
       }
     }
     return next;
-  }, [demoComposition, demoId, harnessId, registry, resolvedPresentationContext, targetId]);
+  }, [demoComposition, demoId, harnessId, presentationPresets, registry, resolvedPresentationContext, targetId]);
   React.useEffect(() => {
     const canonicalUrl = canonicalizeHostUrl(window.location.href);
     if (canonicalUrl !== window.location.href) window.history.replaceState(null, "", canonicalUrl);
@@ -141,15 +154,18 @@ export function Host(): React.ReactElement {
     const control = contexts.control;
     if (!control) return;
     const syncQuery = () => {
-      const selected = control.get("control.presentationContext");
+      const selected = control.get("control.presentationPresetId");
       if (typeof selected !== "string" || !selected) return;
       const url = writePresentationNavigation(window.location.href, selected);
       if (url !== window.location.href) window.history.replaceState(null, "", url);
     };
     const unsubscribe = control.subscribe(syncQuery);
     if (resolvedPresentationContext
-      && control.get("control.presentationContext") !== resolvedPresentationContext) {
-      control.apply([{ op: "set", path: "control.presentationContext", value: resolvedPresentationContext }]);
+      && control.get("control.presentationPresetId") !== resolvedPresentationContext.id) {
+      control.apply([
+        { op: "set", path: "control.presentationPresetId", value: resolvedPresentationContext.id },
+        { op: "set", path: "control.presentationContext", value: resolvedPresentationContext.context as unknown as import("@gik/kernel").Json },
+      ]);
     }
     syncQuery();
     return unsubscribe;

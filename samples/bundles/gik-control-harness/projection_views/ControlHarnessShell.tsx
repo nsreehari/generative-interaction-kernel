@@ -113,7 +113,7 @@ export const ControlHarnessShell: ProjectionView = ({ node, emit, children }) =>
                 value={item.id}
                 onClick={() => {
                   setPresentationOpen(false);
-                  emit("setPresentationContext", { contextId: item.id });
+                  emit("setPresentationContext", { contextId: item.id, context: item.context ?? null });
                 }}
               >
                 {item.label}

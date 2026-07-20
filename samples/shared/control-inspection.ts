@@ -49,6 +49,7 @@ export interface InspectionPresentationContext {
   label: string;
   audience?: string;
   focus?: string;
+  context?: Record<string, unknown>;
 }
 
 export interface InspectionPresentation {

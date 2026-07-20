@@ -11,10 +11,33 @@ import workflowRecipe from "./workflow-to-interaction.recipe.json" with { type: 
 import {
   compileSocDocument,
   compileSocPresentation,
+  type SocPresentationContext,
   SOC_BLUEPRINT_CONTEXTS,
   socBlueprint,
   traceSocBlueprint,
 } from "./compile";
+
+function runtimeContext(context: {
+  actor: string;
+  role: string;
+  device: string;
+  task: string;
+  disclosure: string;
+  layout: string;
+  frame: string;
+  arrangement: string;
+}): SocPresentationContext {
+  return {
+    actor: context.actor,
+    role: context.role,
+    device: context.device,
+    task: context.task,
+    disclosure: context.disclosure,
+    layout: context.layout,
+    frame: context.frame,
+    arrangement: context.arrangement,
+  };
+}
 
 const recipeArtifacts = [workflowRecipe, interactionRecipe, runtimeRecipe] as LayerRecipeArtifact[];
 const runtime = openSampleBlueprint("live-workspace-soc");
@@ -42,7 +65,7 @@ test("SOC recipes lint against the bundle terminal capability vocabulary", () =>
 
 test("all presentation contexts lower the same substrate through every tier", () => {
   for (const context of SOC_BLUEPRINT_CONTEXTS) {
-    const trace = traceSocBlueprint(context.id);
+    const trace = traceSocBlueprint(runtimeContext(context));
     assert.equal(trace.length, 3);
     const interaction = trace[0].output as {
       interaction: string;
@@ -91,7 +114,7 @@ test("presentation contexts own distinct inspectable projection contracts", () =
 
 test("lowering recipes select, order, and disclose context facets without materializing them", () => {
   for (const context of SOC_BLUEPRINT_CONTEXTS) {
-    const presentation = compileSocPresentation(context.id);
+    const presentation = compileSocPresentation(runtimeContext(context));
     const substrateRegions = presentation.regions.filter((region) => region.materialize === false);
     const visibleNames = substrateRegions.filter((region) => region.disclosure !== "omitted").map((region) => region.name);
 
@@ -101,7 +124,7 @@ test("lowering recipes select, order, and disclose context facets without materi
     assert.equal(substrateRegions.every((region) => region.materialize === false), true);
   }
 
-  const mobile = compileSocPresentation("priya-mobile");
+  const mobile = compileSocPresentation(runtimeContext(SOC_BLUEPRINT_CONTEXTS.find((context) => context.id === "priya-mobile")!));
   assert.deepEqual(
     mobile.regions.filter((region) => region.disclosure !== "omitted" && region.materialize === false).map((region) => [region.name, region.priority, region.disclosure]),
     [
@@ -113,7 +136,7 @@ test("lowering recipes select, order, and disclose context facets without materi
     ]
   );
 
-  const board = compileSocPresentation("investigation-board");
+  const board = compileSocPresentation(runtimeContext(SOC_BLUEPRINT_CONTEXTS.find((context) => context.id === "investigation-board")!));
   assert.deepEqual(
     board.regions.filter((region) => region.disclosure !== "omitted" && region.materialize === false).map((region) => [region.name, region.group]),
     [
@@ -130,7 +153,7 @@ test("lowering recipes select, order, and disclose context facets without materi
 });
 
 test("human contexts lower regions into stable operational groups", () => {
-  const warRoom = compileSocPresentation("war-room").regions.filter((region) => region.disclosure !== "omitted" && region.materialize === false);
+  const warRoom = compileSocPresentation(runtimeContext(SOC_BLUEPRINT_CONTEXTS.find((context) => context.id === "war-room")!)).regions.filter((region) => region.disclosure !== "omitted" && region.materialize === false);
   assert.deepEqual(warRoom.map((region) => [region.name, region.concern, region.group]), [
     ["summary", "orientation", "orientation"],
     ["hypothesis", "orientation", "orientation"],
@@ -142,7 +165,7 @@ test("human contexts lower regions into stable operational groups", () => {
 });
 
 test("presentation lowering assigns semantic visual archetypes", () => {
-  const full = compileSocPresentation("full-substrate").regions;
+  const full = compileSocPresentation(runtimeContext(SOC_BLUEPRINT_CONTEXTS.find((context) => context.id === "full-substrate")!)).regions;
   assert.deepEqual(full.map((region) => [region.name, region.presentation]), [
     ["summary", "brief"],
     ["intent", "brief"],
@@ -159,7 +182,7 @@ test("presentation lowering assigns semantic visual archetypes", () => {
 
 test("agent contexts lower into context, state, request, response, and governed-result groups", () => {
   for (const contextId of ["correlation-agent", "response-agent"]) {
-    const visible = compileSocPresentation(contextId).regions.filter((region) => region.disclosure !== "omitted" && region.materialize === false);
+    const visible = compileSocPresentation(runtimeContext(SOC_BLUEPRINT_CONTEXTS.find((context) => context.id === contextId)!)).regions.filter((region) => region.disclosure !== "omitted" && region.materialize === false);
     assert.deepEqual([...new Set(visible.map((region) => region.group))], ["context", "shared-state", "request", "response", "governed-result"]);
     assert.equal(visible.find((region) => region.name === "agent-request")?.presentation, "agent-request");
   }
@@ -236,5 +259,5 @@ test("the Blueprint output includes the Foundry access gate without host documen
   const body = children.find((child) => child.id === "soc-workspace");
   assert.ok(body);
   assert.equal(body.edges.react.length, 19);
-  assert.deepEqual(compileSocDocument("war-room"), runtimeDocument);
+  assert.deepEqual(compileSocDocument(runtimeContext(SOC_BLUEPRINT_CONTEXTS.find((context) => context.id === "war-room")!)), runtimeDocument);
 });

@@ -135,10 +135,13 @@ const handlers: EffectHandlerMap = {
     };
   },
   setPresentationContext: (ctx) => {
-    const allowed = ["portfolio-overview", "portfolio-advisor"];
     const requested = ctx.get("control.presentationContext");
-    const next = typeof requested === "string" && allowed.includes(requested)
-      ? requested
+    const next = requested
+      && typeof requested === "object"
+      && !Array.isArray(requested)
+      && typeof (requested as Record<string, unknown>).view === "string"
+      && ["portfolio-overview", "portfolio-advisor"].includes(String((requested as Record<string, unknown>).view))
+      ? String((requested as Record<string, unknown>).view)
       : "portfolio-overview";
     if (ctx.get("portfolio.presentationContext") === next) return { outcome: "ignored" };
     return { ops: [ctx.set("portfolio.presentationContext", next as unknown as Json)] };

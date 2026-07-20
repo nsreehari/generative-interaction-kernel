@@ -1,7 +1,15 @@
 export const DEFAULT_PRESENTATION_CONTEXT = "full-substrate";
 
+export interface PresentationPreset {
+  id: string;
+  label?: string;
+  audience?: string;
+  focus?: string;
+  context: Record<string, unknown>;
+}
+
 export interface HostQuery {
-  blueprintId: string | null;
+  targetId: string | null;
   demoId: string | null;
   harnessId: string | null;
   presentationContext: string | null;
@@ -9,13 +17,18 @@ export interface HostQuery {
 
 export function resolvePresentationContext(
   requested: string | null | undefined,
-  available: readonly string[],
+  available: readonly PresentationPreset[],
   preferredDefault?: string | null
-): string | null {
-  if (requested && available.includes(requested)) return requested;
-  if (preferredDefault && available.includes(preferredDefault)) return preferredDefault;
-  if (available.includes(DEFAULT_PRESENTATION_CONTEXT)) return DEFAULT_PRESENTATION_CONTEXT;
-  return available[0] ?? null;
+): PresentationPreset | null {
+  if (requested) {
+    const preset = available.find((entry) => entry.id === requested);
+    if (preset) return preset;
+  }
+  if (preferredDefault) {
+    const preset = available.find((entry) => entry.id === preferredDefault);
+    if (preset) return preset;
+  }
+  return available.find((entry) => entry.id === DEFAULT_PRESENTATION_CONTEXT) ?? available[0] ?? null;
 }
 
 function isGikEnabled(params: URLSearchParams): boolean {
@@ -30,7 +43,7 @@ export function readHostQuery(search: string): HostQuery {
   const params = new URLSearchParams(search);
   const requestedPresentation = params.get("presentation") ?? params.get("presentationContext");
   return {
-    blueprintId: params.get("b"),
+    targetId: params.get("bundle"),
     demoId: params.get("demo"),
     harnessId: isGikEnabled(params) || params.get("harness") === "gik-control-harness" || params.has("plane")
       ? "gik-control-harness"
@@ -53,8 +66,6 @@ export function canonicalizeHostUrl(href: string): string {
   params.delete("plane");
   params.delete("context");
   params.delete("presentationContext");
-  params.delete("blueprint");
-  params.delete("bundle");
   if (params.get("presentation") === DEFAULT_PRESENTATION_CONTEXT) params.delete("presentation");
 
   return url.toString();

@@ -34,15 +34,15 @@ test("demo catalog resolves a validated scenario and organism composition", () =
 
 test("demo navigation changes only the selected demo", () => {
   const url = writeDemoNavigation(
-    "https://example.test/?b=live-workspace-soc&gik=1&presentation=operator-focus",
+    "https://example.test/?bundle=live-workspace-soc&gik=1&presentation=operator-focus",
     resolveDemoComposition("soc-t3").entry
   );
   const parsed = new URL(url);
   assert.equal(parsed.searchParams.get("demo"), "soc-t3");
-  assert.equal(parsed.searchParams.get("b"), "live-workspace-soc");
+  assert.equal(parsed.searchParams.get("bundle"), "live-workspace-soc");
   assert.equal(parsed.searchParams.get("gik"), "1");
   assert.equal(parsed.searchParams.get("presentation"), "operator-focus");
-  assert.deepEqual([...parsed.searchParams.keys()], ["b", "gik", "presentation", "demo"]);
+  assert.deepEqual([...parsed.searchParams.keys()], ["bundle", "gik", "presentation", "demo"]);
 });
 
 test("demo catalog rejects a scenario and organism target mismatch", () => {
@@ -63,7 +63,7 @@ test("demo catalog rejects a scenario and organism target mismatch", () => {
             humanGates: [],
             observableOutcomes: [],
             actors: [],
-            presentationContexts: [],
+            presentationPresets: [{ id: "default", context: { id: "default" } }],
             focusKinds: [],
             timelineSources: [],
           },
@@ -140,7 +140,7 @@ test("demo catalog rejects malformed target contracts", () => {
         humanGates: [],
         observableOutcomes: [],
         actors: [],
-        presentationContexts: [],
+        presentationPresets: [{ id: "default", context: { id: "default" } }],
         focusKinds: [],
         timelineSources: [],
       },
