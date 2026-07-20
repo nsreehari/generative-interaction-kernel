@@ -22,6 +22,7 @@ export interface SampleServiceRegistryOptions {
   hostCapabilities?: Iterable<string>;
   deterministicHandlers?: Record<string, DeterministicServiceHandler>;
   resolveCredential?: (reference: string) => Promise<unknown>;
+  clearCredential?: (reference: string) => void | Promise<void>;
   authorizeEndpoint?: (kind: string, endpoint: URL) => boolean | Promise<boolean>;
   execute?: (request: unknown) => Promise<unknown>;
 }

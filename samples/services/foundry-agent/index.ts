@@ -1,11 +1,11 @@
-import type { GuardrailRule, Json, ServiceDeclaration } from "../../../kernel/src/index";
+import type { Json, ServiceDeclaration } from "../../../kernel/src/index";
 import {
 	serviceConfig,
 	type ServiceKindFactory,
 	type ServiceKindManifest,
 } from "../../../face/src/services/service-kinds";
 import type { ServiceAdapter } from "../../../face/src/services/queueface";
-import { createFoundryProxy, type FoundryChatResponseSchema } from "../../shared/foundry-proxy";
+import { createFoundryProxy, FoundryProxyError, type FoundryChatResponseSchema } from "../../shared/foundry-proxy";
 import manifestJson from "./manifest.json";
 
 const manifest = manifestJson as ServiceKindManifest;
@@ -13,21 +13,6 @@ const manifest = manifestJson as ServiceKindManifest;
 function record(value: Json | undefined): Record<string, Json> {
 	if (!value || typeof value !== "object" || Array.isArray(value)) return {};
 	return value as Record<string, Json>;
-}
-
-/** Finds the `ajv-schema` guardrail (if any) declared for this operation's output policy and turns
- * it into a Responses API Structured Outputs request. This lets the model itself be constrained to
- * emit schema-conformant JSON — the tool-level correctness the provider already supports — rather
- * than relying only on post-hoc guardrail validation of a free-text reply. Guardrail enforcement
- * still runs afterward regardless (it also covers cross-field checks a JSON Schema can't express). */
-function responseSchemaFor(operation: string, guardrails: readonly GuardrailRule[] | undefined): FoundryChatResponseSchema | undefined {
-	const rule = guardrails?.find((candidate): candidate is Extract<GuardrailRule, { kind: "ajv-schema" }> =>
-		candidate !== null && typeof candidate === "object" && !Array.isArray(candidate)
-		&& "kind" in candidate && candidate.kind === "ajv-schema"
-	);
-	if (!rule) return undefined;
-	const name = operation.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64) || "response";
-	return { name, schema: rule.schema as Record<string, unknown>, strict: true };
 }
 
 /** Accepts an explicit responseSchema passed by the caller through `request.input`. Useful when
@@ -109,23 +94,30 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 				await (await client()).ping(agentName);
 				return { ok: true, detail: { agentName } as Record<string, Json> };
 			},
-			execute: async (request, context) => {
+			execute: async (request) => {
 				const input = record(request.input);
-				const agentName = configuredAgent || String(input.agentName ?? "");
-				if (!agentName) throw new Error("foundry-agent requires config.agent or input.agentName");
-				if (request.operation === "discover") {
-					return { output: await (await client()).listAgents() };
+				try {
+					if (request.operation === "discover") {
+						return { output: await (await client()).listAgents() };
+					}
+					if (request.operation !== "chat") throw new Error(`Unsupported foundry-agent operation '${request.operation}'`);
+					const agentName = configuredAgent || String(input.agentName ?? "");
+					if (!agentName) throw new Error("foundry-agent requires config.agent or input.agentName");
+					return {
+						output: await (await client()).chat({
+							message: String(input.message ?? ""),
+							agentName,
+							conversationId: typeof input.conversationId === "string" ? input.conversationId : undefined,
+							instructions: typeof input.instructions === "string" ? input.instructions : undefined,
+							responseSchema: inputResponseSchema(input),
+						}) as unknown as Json,
+					};
+				} catch (error) {
+					if (error instanceof FoundryProxyError && (error.status === 401 || error.status === 403)) {
+						await context.clearCredential?.(credentialRef);
+					}
+					throw error;
 				}
-				if (request.operation !== "chat") throw new Error(`Unsupported foundry-agent operation '${request.operation}'`);
-				return {
-					output: await (await client()).chat({
-						message: String(input.message ?? ""),
-						agentName,
-						conversationId: typeof input.conversationId === "string" ? input.conversationId : undefined,
-						instructions: typeof input.instructions === "string" ? input.instructions : undefined,
-						responseSchema: inputResponseSchema(input) ?? responseSchemaFor(request.operation, context.responseValidators),
-					}) as unknown as Json,
-				};
 			},
 		};
 	},
@@ -133,9 +125,3 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 }
 
 export const foundryAgentKind = createFoundryAgentKind();
-
-export async function discoverFoundryAgents(endpoint: string, key: string): Promise<string[]> {
-	return (await createFoundryProxy({ baseUrl: endpoint, key })).listAgents();
-}
-
-export * from "./access-storage";

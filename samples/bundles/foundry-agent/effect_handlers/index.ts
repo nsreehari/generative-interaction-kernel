@@ -5,23 +5,14 @@
 // dispatcher routes it here. Each handler reads the live store (the kernel applies reducer ops before
 // effects run) and returns store deltas.
 //
-import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
-
-function str(value: unknown): string {
-  return typeof value === "string" ? value : value == null ? "" : String(value);
-}
+import { setOp, type EffectHandlerMap } from "@gik/react";
 
 export const effects: EffectHandlerMap = {
-  acceptFoundryAccess(ctx: EffectContext) {
-    const agentNames = Array.isArray(ctx.payload.agentNames)
-      ? ctx.payload.agentNames.filter((value): value is string => typeof value === "string")
-      : [];
-    const currentAgent = str(ctx.get("agent.agentName"));
+  beginFoundryAccess() {
     return {
       ops: [
-        setOp("agent.agentOptions", agentNames),
-        setOp("agent.agentName", agentNames.includes(currentAgent) ? currentAgent : agentNames[0] ?? ""),
-        setOp("agent.error", ""),
+        setOp("agent.accessStatus", "checking"),
+        setOp("agent.accessError", ""),
       ],
     };
   },
@@ -29,6 +20,8 @@ export const effects: EffectHandlerMap = {
   clearFoundryAccess() {
     return {
       ops: [
+        setOp("agent.accessStatus", "required"),
+        setOp("agent.accessError", ""),
         setOp("agent.agentName", ""),
         setOp("agent.agentOptions", []),
         setOp("agent.conversationId", ""),
@@ -39,6 +32,8 @@ export const effects: EffectHandlerMap = {
   signOut() {
     return {
       ops: [
+        setOp("agent.accessStatus", "required"),
+        setOp("agent.accessError", ""),
         setOp("agent.agentName", ""),
         setOp("agent.reply", ""),
         setOp("agent.lastAsked", ""),

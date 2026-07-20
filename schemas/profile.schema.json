@@ -122,6 +122,12 @@
                           "additionalProperties": false,
                           "properties": { "transform": { "$ref": "#/$defs/serviceTransform" } }
                         },
+                        "failureSettlement": {
+                          "type": "object",
+                          "required": ["transform"],
+                          "additionalProperties": false,
+                          "properties": { "transform": { "$ref": "#/$defs/serviceTransform" } }
+                        },
                         "onViolation": { "type": "object" }
                       }
                     }

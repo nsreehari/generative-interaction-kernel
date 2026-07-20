@@ -36,10 +36,6 @@ const rawProjectionViews = import.meta.glob("../../../bundles/*/projection_views
   eager: true,
   import: "default",
 });
-const rawServiceProjectionViews = import.meta.glob("../../../services/*/projection_views/index.{ts,tsx}", {
-  eager: true,
-  import: "default",
-});
 const rawAppRootProjectionViews = import.meta.glob("../../../bundles/approot/*/projection_views/index.{ts,tsx}", {
   eager: true,
   import: "default",
@@ -49,7 +45,7 @@ const rawAppRootProjectionViews = import.meta.glob("../../../bundles/approot/*/p
 function byBundleId<T>(glob: Record<string, T>): Record<string, T> {
   const out: Record<string, T> = {};
   for (const [path, mod] of Object.entries(glob)) {
-    const id = path.match(/\/(?:bundles\/(?:approot\/)?|services\/)([^/]+)\//)?.[1];
+    const id = path.match(/\/bundles\/(?:approot\/)?([^/]+)\//)?.[1];
     if (id) out[id] = mod;
   }
   return out;
@@ -64,7 +60,6 @@ const effectHandlerModules = byBundleId(rawEffectHandlerModules) as Record<strin
 const projectionViews = byBundleId({
   ...rawProjectionViews,
   ...rawAppRootProjectionViews,
-  ...rawServiceProjectionViews,
 }) as Record<string, Record<string, ProjectionView>>;
 /** The Blueprint the host opens when no `?b=<id>` is given. */
 export const DEFAULT_BLUEPRINT = REGISTRY.default;
