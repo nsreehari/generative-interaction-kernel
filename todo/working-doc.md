@@ -137,13 +137,13 @@ Searched for files matching `**/GIK-*.md`, 15 matches
 
 Let me read the core essence doc, the public docs, and the samples-overview + workbench bundles.    
 
-Read [](file:///c%3A/Users/sreenaga/ADO/ai-tool-evolver/generative-interaction-kernel/docs/public)
+Read [](file:///c%3A/Users/sreenaga/ADO/ai-tool-evolver/generative-interaction-kernel/docs/hidden)
 
 Read [](file:///c%3A/Users/sreenaga/ADO/ai-tool-evolver/generative-interaction-kernel/samples/bundles/samples-overview)
 
 Read [](file:///c%3A/Users/sreenaga/ADO/ai-tool-evolver/generative-interaction-kernel/samples/bundles/workbench)
 
-Read [](file:///c%3A/Users/sreenaga/ADO/ai-tool-evolver/generative-interaction-kernel/docs/public/GIK-Core-Essence.md)
+Read [](file:///c%3A/Users/sreenaga/ADO/ai-tool-evolver/generative-interaction-kernel/docs/hidden/GIK-Core-Essence.md)
 
 Now let me read the samples-overview and workbench documents to see the stale claims, plus the registry.      
 
@@ -246,7 +246,7 @@ My recommended sequence once you pick: lock the **profile/bundle wording (#2)** 
 
 > This section is the current canonical framing. Where it conflicts with the earlier
 > profile/bundle wording above (e.g. "profile = the recipe"), **this section wins.**
-> Source: `docs/public/GIK-Platform.html` and `docs/public/GIK-SOC.html`.
+> Source: `docs/hidden/GIK-Platform.html` and `docs/hidden/GIK-SOC.html`.
 
 ## The canonical graph stack (layers are not arbitrary)
 

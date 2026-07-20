@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
-const sourceDocsDir = path.join(repoRoot, "docs", "public");
+const sourceDocsDir = path.join(repoRoot, "docs", "hidden");
 const licenseFile = path.join(repoRoot, "LICENSE");
 const targets = process.argv.slice(2);
 
 if (!existsSync(sourceDocsDir)) {
-  throw new Error(`Public docs directory not found: ${sourceDocsDir}`);
+  throw new Error(`Hidden docs source directory not found: ${sourceDocsDir}`);
 }
 
 if (targets.length === 0) {
