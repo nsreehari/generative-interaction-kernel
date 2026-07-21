@@ -97,6 +97,10 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 			execute: async (request) => {
 				const input = record(request.input);
 				try {
+					if (request.operation === "check-access") {
+						await (await client()).checkAccess();
+						return { output: { ok: true } };
+					}
 					if (request.operation === "discover") {
 						return { output: await (await client()).listAgents() };
 					}

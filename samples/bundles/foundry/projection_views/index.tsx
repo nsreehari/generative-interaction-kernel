@@ -25,6 +25,11 @@ import {
   setFoundryAccessKey,
 } from "../../../shared/foundry-access";
 
+function accessErrorMessage(reason: unknown): string {
+  if (reason instanceof Error && reason.message.trim() !== "") return reason.message;
+  return "Couldn't verify Foundry access.";
+}
+
 const useStyles = makeStyles({
   stack: { display: "grid", gap: tokens.spacingVerticalM },
   actions: { paddingTop: tokens.spacingVerticalM },
@@ -35,32 +40,54 @@ const FoundryAccessGate: ProjectionView = ({ node, emit, children }) => {
   const status = String(node.props.status ?? "checking");
   const error = String(node.props.error ?? "");
   const [enteredKey, setEnteredKey] = React.useState("");
+  const [hasStoredKey, setHasStoredKey] = React.useState(() => getFoundryAccessKey().trim() !== "");
+  const [fallbackStatus, setFallbackStatus] = React.useState<"idle" | "checking" | "error">("idle");
+  const [fallbackError, setFallbackError] = React.useState("");
   const [dialogOpen, setDialogOpen] = React.useState(true);
   const previousStatus = React.useRef(status);
   const emitRef = React.useRef(emit);
   emitRef.current = emit;
-  const { pending, run } = useAsyncEmit(emit, { delayMs: 120 });
+  const { pending, run } = useAsyncEmit(emit);
 
   React.useEffect(() => {
     const storedKey = getFoundryAccessKey().trim();
-    void emitRef.current(storedKey ? "accessRequested" : "accessCleared", {});
+    setHasStoredKey(storedKey !== "");
+    let disposed = false;
+    queueMicrotask(() => {
+      if (!disposed) {
+        void emitRef.current(storedKey ? "accessRequested" : "accessCleared", {});
+      }
+    });
 
     const accessChanged = (event: Event) => {
       const available = Boolean((event as CustomEvent<{ available?: boolean }>).detail?.available);
+      setHasStoredKey(available);
       if (!available) void emitRef.current("accessCleared", {});
     };
     const storageChanged = (event: StorageEvent) => {
-      if (event.key === "gik.foundry-agent.access-key" && !event.newValue) {
-        void emitRef.current("accessCleared", {});
+      if (event.key === "gik.foundry-agent.access-key") {
+        const available = Boolean(event.newValue?.trim());
+        setHasStoredKey(available);
+        if (!available) {
+          void emitRef.current("accessCleared", {});
+        }
       }
     };
     globalThis.addEventListener?.(FOUNDRY_ACCESS_CHANGE_EVENT, accessChanged);
     globalThis.addEventListener?.("storage", storageChanged);
     return () => {
+      disposed = true;
       globalThis.removeEventListener?.(FOUNDRY_ACCESS_CHANGE_EVENT, accessChanged);
       globalThis.removeEventListener?.("storage", storageChanged);
     };
   }, []);
+
+  React.useEffect(() => {
+    if (status !== "required") {
+      setFallbackStatus("idle");
+      setFallbackError("");
+    }
+  }, [status]);
 
   React.useEffect(() => {
     const previous = previousStatus.current;
@@ -73,28 +100,62 @@ const FoundryAccessGate: ProjectionView = ({ node, emit, children }) => {
   const continueWithKey = () => {
     const key = enteredKey.trim();
     if (!key || pending) return;
+    setFallbackStatus("checking");
+    setFallbackError("");
     setFoundryAccessKey(key);
+    setHasStoredKey(true);
     setEnteredKey("");
-    void run("accessRequested", {});
+    void run("accessRequested", {}).catch((reason) => {
+      setFallbackStatus("error");
+      setFallbackError(accessErrorMessage(reason));
+    });
   };
 
   const retry = () => {
     if (pending) return;
-    void run(getFoundryAccessKey().trim() ? "accessRequested" : "accessCleared", {});
+    if (!getFoundryAccessKey().trim()) {
+      setFallbackStatus("idle");
+      setFallbackError("");
+      void run("accessCleared", {});
+      return;
+    }
+    setFallbackStatus("checking");
+    setFallbackError("");
+    void run("accessRequested", {}).catch((reason) => {
+      setFallbackStatus("error");
+      setFallbackError(accessErrorMessage(reason));
+    });
   };
 
-  if (status === "ready" || status === "empty") return <>{children}</>;
+  const useDifferentKey = () => {
+    if (pending) return;
+    setFoundryAccessKey("");
+    setHasStoredKey(false);
+    setFallbackStatus("idle");
+    setFallbackError("");
+    setEnteredKey("");
+    void run("accessCleared", {});
+  };
 
-  const requiresKey = status === "required";
-  const title = status === "unconfigured" ? "Foundry is unavailable" : "Connect to Foundry";
+  const effectiveStatus = status === "required" && fallbackStatus !== "idle"
+    ? fallbackStatus
+    : status;
+  const effectiveError = status === "required" && fallbackStatus === "error" && fallbackError
+    ? fallbackError
+    : error;
+
+  if (effectiveStatus === "ready" || effectiveStatus === "empty") return <>{children}</>;
+
+  const requiresKey = effectiveStatus === "required";
+  const title = effectiveStatus === "unconfigured" ? "Foundry is unavailable" : "Connect to Foundry";
   const message = requiresKey
-    ? error || "Foundry access is required to continue."
-    : error || (status === "checking" ? "Checking Foundry access..." : "Couldn't load the available agents.");
+    ? effectiveError || "Foundry access is required to continue."
+    : effectiveError || (effectiveStatus === "checking" ? "Checking Foundry access..." : "Couldn't verify Foundry access.");
 
   return (
     <>
       {!dialogOpen ? (
-        <MessageBar intent={status === "checking" ? "info" : "warning"}>
+        <MessageBar intent={effectiveStatus === "checking" ? "info" : "warning"}>
           <MessageBarBody>{message}</MessageBarBody>
           <MessageBarActions
             containerAction={(
@@ -110,9 +171,9 @@ const FoundryAccessGate: ProjectionView = ({ node, emit, children }) => {
           <DialogBody>
             <DialogTitle>{title}</DialogTitle>
             <DialogContent className={styles.stack}>
-              {status === "checking" ? (
-                <Spinner labelPosition="after" label="Checking access and loading agents..." />
-              ) : status === "unconfigured" || status === "error" ? (
+              {effectiveStatus === "checking" ? (
+                <Spinner labelPosition="after" label="Checking access..." />
+              ) : effectiveStatus === "unconfigured" || effectiveStatus === "error" ? (
                 <MessageBar intent="error"><MessageBarBody>{message}</MessageBarBody></MessageBar>
               ) : (
                 <>
@@ -134,6 +195,7 @@ const FoundryAccessGate: ProjectionView = ({ node, emit, children }) => {
               )}
             </DialogContent>
             <DialogActions className={styles.actions}>
+              {hasStoredKey ? <Button onClick={useDifferentKey} disabled={pending}>Reset Key</Button> : null}
               <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
               {requiresKey ? (
                 <Button
@@ -145,7 +207,7 @@ const FoundryAccessGate: ProjectionView = ({ node, emit, children }) => {
                 >
                   {pending ? "Connecting..." : "Continue"}
                 </Button>
-              ) : status === "error" ? (
+              ) : effectiveStatus === "error" ? (
                 <Button
                   appearance="primary"
                   aria-busy={pending || undefined}
