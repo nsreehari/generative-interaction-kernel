@@ -1,7 +1,7 @@
 import {
-  ControlFace,
+  openBlueprint,
   type BlueprintRuntime,
-} from "@gik/controlface";
+} from "@gik/controlface/blueprint";
 import type { Json } from "@gik/kernel";
 import { createProfileBundle, type LayerRecipe, type ProfileArtifact, type ProfileArtifactBundle, type RecipeArtifactBase } from "@gik/profile";
 
@@ -44,5 +44,5 @@ export function resolveSampleBlueprintSource(id: string): ProfileArtifact | Prof
 }
 
 export function openSampleBlueprint(id: string): BlueprintRuntime {
-  return ControlFace.openBlueprint(resolveSampleBlueprintSource(id));
+  return openBlueprint(resolveSampleBlueprintSource(id));
 }

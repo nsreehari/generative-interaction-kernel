@@ -120,6 +120,31 @@ function jsonRecord(value: unknown): JsonRecord | null {
     : null;
 }
 
+function mergeJsonRecords(base: JsonRecord, overlay: JsonRecord): JsonRecord {
+  const merged: JsonRecord = structuredClone(base);
+  for (const [key, value] of Object.entries(overlay)) {
+    const existing = merged[key];
+    if (
+      existing !== null
+      && typeof existing === "object"
+      && !Array.isArray(existing)
+      && value !== null
+      && typeof value === "object"
+      && !Array.isArray(value)
+    ) {
+      merged[key] = mergeJsonRecords(existing as JsonRecord, value as JsonRecord);
+      continue;
+    }
+    merged[key] = structuredClone(value);
+  }
+  return merged;
+}
+
+function resolveInitialSeed(context: Record<string, Json> | undefined): JsonRecord {
+  const initialSeed = jsonRecord(context?.initialSeed) ?? jsonRecord(context?.freeContext);
+  return initialSeed ? structuredClone(initialSeed) : {};
+}
+
 function defaultsFromSchema(schema: unknown): JsonRecord {
   const input = jsonRecord(schema);
   const properties = jsonRecord(input?.properties);
@@ -184,73 +209,84 @@ export interface ControlFaceOptions {
   serviceHost?: ServiceHost;
 }
 
-export class ControlFace implements TransportBroker {
-  private static runtimeFromLowering(
-    profile: Pick<ResolvedProfile, "artifact" | "services">,
-    document: DocumentPayload,
-  ): BlueprintRuntime {
-    const { id, version, runtime } = profile.artifact.payload;
-    if (!runtime) throw new Error(`Blueprint '${id}' has no runtime declaration`);
+function runtimeFromLowering(
+  profile: Pick<ResolvedProfile, "artifact" | "services">,
+  document: DocumentPayload,
+  context?: Record<string, Json>,
+): BlueprintRuntime {
+  const { id, version, runtime } = profile.artifact.payload;
+  if (!runtime) throw new Error(`Blueprint '${id}' has no runtime declaration`);
 
-    const manifest: ManifestPayload = {
-      version: `${id}/${version}`,
-      expression: runtime.expression,
-      namespaces: runtime.namespaces,
-      contexts: runtime.contexts,
-      actions: runtime.actions,
-      capabilities: structuredClone(runtime.capabilities),
-      externals: {
-        ...structuredClone(runtime.externals ?? {}),
-        ...(Object.keys(profile.services).length > 0
-          ? { services: structuredClone(profile.services) }
-          : {}),
-      },
-    };
+  const manifest: ManifestPayload = {
+    version: `${id}/${version}`,
+    expression: runtime.expression,
+    namespaces: runtime.namespaces,
+    contexts: runtime.contexts,
+    actions: runtime.actions,
+    capabilities: structuredClone(runtime.capabilities),
+    externals: {
+      ...structuredClone(runtime.externals ?? {}),
+      ...(Object.keys(profile.services).length > 0
+        ? { services: structuredClone(profile.services) }
+        : {}),
+    },
+  };
 
-    return {
-      blueprintId: id,
-      revision: version,
-      manifest: { gik: "0.1", type: "manifest", payload: manifest },
-      document: {
-        gik: "0.1",
-        type: "document",
-        payload: document,
-      },
-      state: structuredClone(runtime.state ?? {}),
-    };
+  return {
+    blueprintId: id,
+    revision: version,
+    manifest: { gik: "0.1", type: "manifest", payload: manifest },
+    document: {
+      gik: "0.1",
+      type: "document",
+      payload: document,
+    },
+    state: mergeJsonRecords(structuredClone(runtime.state ?? {}), resolveInitialSeed(context)),
+  };
+}
+
+/** Open a JSON-authored Blueprint or JSON profile bundle without projecting the full control-plane surface. */
+export function openBlueprint(
+  source: BlueprintSource,
+  options: OpenBlueprintOptions = {}
+): BlueprintRuntime {
+  if (isProfileBundle(source)) {
+    const profile = loadProfileBundle<LayerRecipe>(
+      source,
+      resolveProfileTemplateResource,
+      resolveProfileTemplate,
+    );
+    return runtimeFromLowering(
+      profile,
+      runProfile(
+        profile,
+        structuredClone(defaultsFromSchema(profile.artifact.payload.layers[0]?.input)),
+        resolveContextFor(profile, structuredClone(options.context ?? {})),
+      ) as DocumentPayload,
+      options.context,
+    );
   }
 
+  const definition = defineDeclarativeBlueprint(source);
+  if (!definition) {
+    throw new Error(
+      `Blueprint '${source.payload.id}' is not self-contained JSON; provide a profile bundle when recipes are required`
+    );
+  }
+  return runtimeFromLowering(
+    definition.profile,
+    definition.lower(structuredClone(options.context ?? {})),
+    options.context,
+  );
+}
+
+export class ControlFace implements TransportBroker {
   /** Open a JSON-authored Blueprint or JSON profile bundle before constructing its live ControlFace. */
   static openBlueprint(
     source: BlueprintSource,
     options: OpenBlueprintOptions = {}
   ): BlueprintRuntime {
-    if (isProfileBundle(source)) {
-      const profile = loadProfileBundle<LayerRecipe>(
-        source,
-        resolveProfileTemplateResource,
-        resolveProfileTemplate,
-      );
-      return ControlFace.runtimeFromLowering(
-        profile,
-        runProfile(
-          profile,
-          structuredClone(defaultsFromSchema(profile.artifact.payload.layers[0]?.input)),
-          resolveContextFor(profile, structuredClone(options.context ?? {})),
-        ) as DocumentPayload,
-      );
-    }
-
-    const definition = defineDeclarativeBlueprint(source);
-    if (!definition) {
-      throw new Error(
-        `Blueprint '${source.payload.id}' is not self-contained JSON; provide a profile bundle when recipes are required`
-      );
-    }
-    return ControlFace.runtimeFromLowering(
-      definition.profile,
-      definition.lower(structuredClone(options.context ?? {})),
-    );
+    return openBlueprint(source, options);
   }
 
   // The kernel and broker are INTERNAL composition — private so the face never leaks them to a

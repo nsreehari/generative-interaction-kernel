@@ -15,6 +15,14 @@ const controlFace = new ControlFace(/* bundle */);
 const dispatch = createControlFaceDispatcher(controlFace);
 ```
 
+If you only need to lower a blueprint into manifest/document/state JSON, use the narrower subpath:
+
+```ts
+import { openBlueprint } from "@gik/controlface/blueprint";
+
+const runtime = openBlueprint(blueprint);
+```
+
 Mount the returned dispatcher over a transport such as [`@gik/transport-mcp-http`](https://www.npmjs.com/package/@gik/transport-mcp-http),
 or expose an allowlisted subset with [`@gik/agentface`](https://www.npmjs.com/package/@gik/agentface).
 

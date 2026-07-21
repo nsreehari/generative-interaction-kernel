@@ -1,5 +1,5 @@
 import React from "react";
-import { ControlFace } from "@gik/controlface";
+import { openBlueprint } from "@gik/controlface/blueprint";
 import type { Json } from "@gik/kernel";
 import {
   BundleCompositionHost,
@@ -12,6 +12,9 @@ import {
 } from "@gik/react";
 import type { LayerRecipe, ProfileArtifact, ProfileArtifactBundle } from "@gik/profile";
 
+const EMPTY_COMPANIONS: CompositionOrganism[] = [];
+const EMPTY_CONTEXTS: BundleContextBindings = {};
+
 export interface BlueprintHostProps {
   blueprint: ProfileArtifact | ProfileArtifactBundle<LayerRecipe>;
   native?: BundleNative;
@@ -19,6 +22,7 @@ export interface BlueprintHostProps {
   contexts?: BundleContextBindings;
   fileServices?: GenUIFileServices;
   primaryBridge?: OrganismBridge;
+  primaryInstanceKey?: string | number;
   className?: string;
   style?: React.CSSProperties;
   context?: Record<string, Json>;
@@ -28,16 +32,17 @@ function runtimeFromBlueprint(
   blueprint: ProfileArtifact | ProfileArtifactBundle<LayerRecipe>,
   context?: Record<string, Json>,
 ) {
-  return ControlFace.openBlueprint(blueprint, context ? { context } : undefined);
+  return openBlueprint(blueprint, context ? { context } : undefined);
 }
 
 export function BlueprintHost({
   blueprint,
   native,
-  companions = [],
-  contexts = {},
+  companions = EMPTY_COMPANIONS,
+  contexts = EMPTY_CONTEXTS,
   fileServices,
   primaryBridge,
+  primaryInstanceKey,
   className,
   style,
   context,
@@ -47,7 +52,8 @@ export function BlueprintHost({
     () => bundleFromJson({ manifest: runtime.manifest, document: runtime.document, state: runtime.state }, native),
     [runtime, native],
   );
-  const primaryId = "format" in blueprint ? blueprint.profileArtifact.payload.id : blueprint.payload.id;
+  const blueprintId = "format" in blueprint ? blueprint.profileArtifact.payload.id : blueprint.payload.id;
+  const primaryId = primaryInstanceKey === undefined ? blueprintId : `${blueprintId}:${primaryInstanceKey}`;
   const primary = React.useMemo<CompositionOrganism>(
     () => ({ id: primaryId, bundle, bridge: primaryBridge }),
     [primaryId, bundle, primaryBridge],

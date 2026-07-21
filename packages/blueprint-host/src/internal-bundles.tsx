@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import type { Json } from "@gik/kernel";
 import {
   bundleFromJson,
@@ -25,6 +26,8 @@ import type {
 } from "./control-inspection";
 import type { ControlReceipt } from "./control-runtime";
 import {
+  GIK_DEMO_RESET_STATE_COMMAND,
+  isBuiltInDemoCommand,
   scenarioStepCommands,
   writeDemoNavigation,
   type DemoCatalogEntry,
@@ -108,7 +111,9 @@ const demoRunnerEffects: EffectHandlerMap = {
       };
       ops.push(setOp("demo.request", request));
       ops.push(setOp("control.request", request));
-      ops.push(setOp(`control.commands.${commands[0]}`, token));
+      if (!isBuiltInDemoCommand(commands[0])) {
+        ops.push(setOp(`control.commands.${commands[0]}`, token));
+      }
     } else if (step.kind === "human-gate") {
       const request = {
         id: correlationId,
@@ -164,7 +169,7 @@ const demoRunnerEffects: EffectHandlerMap = {
     const presenter = record(ctx.get("demo.presenter"));
     const request = record(ctx.get("demo.request"));
     const receipt = record(ctx.get("control.receipt")) as unknown as ControlReceipt;
-    if (request.command === "$reset" || request.token !== receipt.token || request.command !== receipt.command || receipt.status !== "completed") {
+    if (request.token !== receipt.token || request.command !== receipt.command || receipt.status !== "completed") {
       return { outcome: "ignored" };
     }
     const result = record(receipt.result as Json);
@@ -193,7 +198,7 @@ const demoRunnerEffects: EffectHandlerMap = {
           ...(resultItem ? [setOp("demo.timeline", [...timeline(ctx), resultItem] as unknown as Json)] : []),
           setOp("demo.request", { ...request, command: nextCommand, commandIndex: commandIndex + 1 }),
           setOp("control.request", { ...request, command: nextCommand, commandIndex: commandIndex + 1 }),
-          setOp(`control.commands.${nextCommand}`, request.token),
+          ...(!isBuiltInDemoCommand(nextCommand) ? [setOp(`control.commands.${nextCommand}`, request.token)] : []),
         ],
       };
     }
@@ -217,6 +222,14 @@ const demoRunnerEffects: EffectHandlerMap = {
     const scenario = plan(ctx);
     const presenter = record(ctx.get("demo.presenter"));
     const token = Number(presenter.advanceToken ?? 0) + 1;
+    const request = {
+      id: `${scenario.id}:reset:${token}`,
+      targetBlueprintId: scenario.targetBlueprintId,
+      token,
+      command: GIK_DEMO_RESET_STATE_COMMAND,
+      actorId: "",
+      waitAfterMs: 0,
+    };
     return {
       outcome: "reset",
       ops: [
@@ -227,9 +240,8 @@ const demoRunnerEffects: EffectHandlerMap = {
           locked: false,
           advanceToken: token,
         }),
-        setOp("demo.request", { id: `${scenario.id}:reset:${token}`, targetBlueprintId: scenario.targetBlueprintId, token, command: "$reset", actorId: "", waitAfterMs: 0 }),
-        setOp("control.request", { id: `${scenario.id}:reset:${token}`, targetBlueprintId: scenario.targetBlueprintId, token, command: "$reset", actorId: "", waitAfterMs: 0 }),
-        setOp("control.commands.reset", token),
+        setOp("demo.request", null),
+        setOp("control.request", request),
         setOp("demo.timeline", []),
         setOp("demo.selection", null),
       ],
@@ -249,6 +261,21 @@ const shellColors = {
   warning: "#8a5b00",
 };
 
+const runnerShellStyle: React.CSSProperties = {
+  position: "fixed",
+  left: 16,
+  right: 16,
+  bottom: 16,
+  zIndex: 25,
+  border: `1px solid ${shellColors.line}`,
+  borderRadius: 12,
+  background: "#fff7ea",
+  boxShadow: "0 8px 24px rgba(21,49,60,.18)",
+  padding: 12,
+  display: "grid",
+  gap: 10,
+};
+
 function buttonStyle(active = false, primary = false): React.CSSProperties {
   return {
     border: `1px solid ${primary || active ? shellColors.accent : shellColors.line}`,
@@ -259,6 +286,25 @@ function buttonStyle(active = false, primary = false): React.CSSProperties {
     cursor: "pointer",
     font: "inherit",
   };
+}
+
+function isToggleOn(value: unknown, onValue: unknown): boolean {
+  if (value === onValue) return true;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (typeof onValue === "boolean") {
+      return onValue ? normalized === "true" || normalized === "1" || normalized === "on" : normalized === "false" || normalized === "0" || normalized === "off";
+    }
+    if (typeof onValue === "string") {
+      return normalized === onValue.trim().toLowerCase();
+    }
+  }
+  return false;
+}
+
+function ViewportPortal({ children }: { children: React.ReactNode }): React.ReactElement | null {
+  if (typeof document === "undefined") return null;
+  return createPortal(children, document.body);
 }
 
 function statusLabel(status: ParticipantStatus): string {
@@ -301,10 +347,10 @@ const NativeDropdown: ProjectionView = ({ node, emit }) => {
 };
 
 const NativeToggle: ProjectionView = ({ node, emit }) => {
-  const value = typeof node.props.value === "string" ? node.props.value : "manual";
-  const onValue = typeof node.props.onValue === "string" ? node.props.onValue : "on";
-  const offValue = typeof node.props.offValue === "string" ? node.props.offValue : "off";
-  const checked = value === onValue;
+  const value = node.props.value;
+  const onValue = node.props.onValue ?? "on";
+  const offValue = node.props.offValue ?? "off";
+  const checked = isToggleOn(value, onValue);
   const label = checked ? String(node.props.onLabel ?? onValue) : String(node.props.offLabel ?? offValue);
   return (
     <button type="button" aria-pressed={checked} onClick={() => emit("toggle", { value: checked ? offValue : onValue })} style={buttonStyle(checked)}>
@@ -378,7 +424,8 @@ const DemoRunner: ProjectionView = ({ node, emit, children }) => {
   }, [catalog, entry.id, selectedDemoId]);
 
   return (
-    <aside aria-label="Scenario runner" style={{ borderTop: `1px solid ${shellColors.line}`, background: "#fff7ea", padding: 12, display: "grid", gap: 10 }}>
+    <ViewportPortal>
+      <aside aria-label="Scenario runner" style={runnerShellStyle}>
       <div style={{ display: "grid", gridTemplateColumns: expanded ? "auto minmax(180px,1fr) minmax(240px, 420px) auto" : "auto minmax(0,1fr) auto", gap: 12, alignItems: "center" }}>
         <button type="button" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)} style={buttonStyle(false)}>
           {expanded ? "Collapse runner" : "Expand runner"}
@@ -393,7 +440,8 @@ const DemoRunner: ProjectionView = ({ node, emit, children }) => {
         </button> : null}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>{floorControls}</div>
       </div>
-    </aside>
+      </aside>
+    </ViewportPortal>
   );
 };
 
@@ -421,11 +469,15 @@ const ControlHarnessShell: ProjectionView = ({ node, emit, children }) => {
   const requestedTab = String(node.props.activeTab ?? "journal");
   const activeTab = requestedTab === "blueprint" || requestedTab === "participants" ? requestedTab : "journal";
   const expanded = node.props.expanded !== false;
+  const visible = isToggleOn(node.props.visible, true);
   const panels = React.Children.toArray(children);
   const activePanel = activeTab === "blueprint" ? panels[0] : activeTab === "participants" ? panels[2] : panels[1];
 
+  if (!visible) return null;
+
   return (
-    <>
+    <ViewportPortal>
+      <>
       <div aria-label="Harness context" style={{ position: "fixed", top: 0, right: 0, zIndex: 35, minHeight: 56, display: "flex", alignItems: "stretch", border: `1px solid ${shellColors.line}`, borderTop: 0, borderRight: 0, borderRadius: "0 0 0 8px", background: "rgba(246,247,245,.9)", overflow: "hidden" }}>
         {panels[3]}
       </div>
@@ -447,7 +499,8 @@ const ControlHarnessShell: ProjectionView = ({ node, emit, children }) => {
           {activeTab === "journal" ? activePanel : <GrowingContainer>{activePanel}</GrowingContainer>}
         </div> : null}
       </aside>
-    </>
+      </>
+    </ViewportPortal>
   );
 };
 
@@ -679,6 +732,12 @@ const demoRunnerDocument = {
             edges: { read: { value: "demo.presenter.pace" }, on: { toggle: [{ do: "invoke", args: { tool: "setPace" } }] } },
           },
           {
+            capability: "blueprint-host:toggle",
+            id: "gik-visibility-toggle-region",
+            props: { onValue: true, offValue: false, onLabel: "Hide GIK", offLabel: "Show GIK" },
+            edges: { read: { value: "control.ui.gikVisible" }, on: { toggle: [{ do: "assign", target: "control.ui.gikVisible", args: { from: "$event.value" } }] } },
+          },
+          {
             capability: "demo:timer-button",
             id: "next-act-timer-region",
             props: { label: "Next act", tone: "primary", showCountdown: true },
@@ -726,7 +785,7 @@ const harnessDocument = {
       capability: "harness:shell",
       id: "gik-control-harness",
       edges: {
-        read: { activeTab: "control.ui.activeTab", expanded: "control.ui.harnessExpanded" },
+        read: { activeTab: "control.ui.activeTab", expanded: "control.ui.harnessExpanded", visible: "control.ui.gikVisible" },
         on: {
           selectTab: [{ do: "assign", target: "control.ui.activeTab", args: { from: "$event.tab" } }],
           toggleHarness: [{ do: "assign", target: "control.ui.harnessExpanded", args: { from: "$event.expanded" } }],
@@ -779,6 +838,7 @@ const harnessState = {
   control: {
     ui: {
       activeTab: "journal",
+      gikVisible: false,
       harnessExpanded: false,
       journalMode: "journal",
       selectedJournalId: null,
