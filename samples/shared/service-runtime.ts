@@ -13,9 +13,10 @@ import {
   type SampleServiceRegistryOptions,
 } from "../services";
 import { clearFoundryAccessKey, getFoundryAccessKey } from "./foundry-access";
+import { hostConfig } from "./host-config";
 
 const FOUNDRY_CREDENTIAL_REF = "foundry-agent/access-key";
-const FOUNDRY_ORIGIN = "https://sz-foundry-proxy.azurewebsites.net";
+const FOUNDRY_ORIGIN = new URL(hostConfig.foundryProxyOrigin).origin;
 
 export const browserServiceRegistryOptions: SampleServiceRegistryOptions = {
   hostCapabilities: ["foundry-executor", "credential-resolver"],

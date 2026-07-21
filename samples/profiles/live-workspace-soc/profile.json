@@ -426,7 +426,7 @@
           }
         },
         "config": {
-          "endpoint": "https://sz-foundry-proxy.azurewebsites.net",
+          "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}",
           "agent": "SOC-Correlation-Agent",
           "credentialRef": "foundry-agent/access-key"
         },
@@ -444,7 +444,7 @@
           }
         },
         "config": {
-          "endpoint": "https://sz-foundry-proxy.azurewebsites.net",
+          "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}",
           "agent": "SOC-Response-Agent",
           "credentialRef": "foundry-agent/access-key"
         },

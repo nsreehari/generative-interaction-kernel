@@ -4,6 +4,7 @@ import {
 } from "@gik/controlface";
 import type { Json } from "@gik/kernel";
 import { createProfileBundle, type LayerRecipe, type ProfileArtifact, type ProfileArtifactBundle, type RecipeArtifactBase } from "@gik/profile";
+import { applyHostConfig } from "./host-config";
 
 const profileArtifacts = import.meta.glob("../profiles/*/profile.json", {
   eager: true,
@@ -40,7 +41,7 @@ export function hasSampleBlueprint(id: string): boolean {
 export function resolveSampleBlueprintSource(id: string): ProfileArtifact | ProfileArtifactBundle<LayerRecipe> {
   const blueprint = blueprints.get(id);
   if (!blueprint) throw new Error(`Unknown Blueprint '${id}'`);
-  return blueprint;
+  return applyHostConfig(blueprint);
 }
 
 export function openSampleBlueprint(id: string): BlueprintRuntime {
