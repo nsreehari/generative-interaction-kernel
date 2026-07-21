@@ -7,7 +7,23 @@ export type HostConfig = {
   foundryProxyOrigin: string;
 };
 
-export const hostConfig: HostConfig = import.meta.env.PROD
+export type HostEnvironment = "local" | "production";
+
+type HostEnvironmentInput = {
+  MODE: string;
+  VITE_GIK_HOST_ENV?: string;
+};
+
+export function resolveHostEnvironment(env: HostEnvironmentInput): HostEnvironment {
+  const configured = env.VITE_GIK_HOST_ENV?.trim();
+  if (configured === "local" || configured === "production") return configured;
+  if (configured) throw new Error(`Unsupported VITE_GIK_HOST_ENV '${configured}'`);
+  if (env.MODE === "gik-local") return "local";
+  return "production";
+}
+
+export const hostEnvironment = resolveHostEnvironment(import.meta.env);
+export const hostConfig: HostConfig = hostEnvironment === "production"
   ? productionConfig
   : localConfig;
 

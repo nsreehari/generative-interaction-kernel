@@ -2,10 +2,26 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import { resolveSampleBlueprintSource } from "./blueprints";
-import { applyHostConfig, hostConfig } from "./host-config";
+import { applyHostConfig, hostConfig, resolveHostEnvironment } from "./host-config";
 
-test("local host config points Foundry services at the local Function host", () => {
-  assert.equal(hostConfig.foundryProxyOrigin, "http://localhost:7071");
+test("host config defaults to production when no environment is set", () => {
+  assert.equal(hostConfig.foundryProxyOrigin, "https://sz-foundry-proxy.azurewebsites.net");
+  assert.equal(resolveHostEnvironment({ MODE: "development" }), "production");
+});
+
+test("local host environment must be selected explicitly", () => {
+  assert.equal(resolveHostEnvironment({
+    MODE: "production",
+    VITE_GIK_HOST_ENV: "local",
+  }), "local");
+  assert.equal(resolveHostEnvironment({ MODE: "gik-local" }), "local");
+});
+
+test("host environment rejects unknown explicit values", () => {
+  assert.throws(
+    () => resolveHostEnvironment({ MODE: "production", VITE_GIK_HOST_ENV: "staging" }),
+    /Unsupported VITE_GIK_HOST_ENV 'staging'/
+  );
 });
 
 test("host config replaces endpoint tokens without mutating the source", () => {
