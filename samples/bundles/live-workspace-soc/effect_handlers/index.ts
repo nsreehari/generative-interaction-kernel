@@ -1,18 +1,9 @@
 import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
 import type { Json, OrchestratorResult, PatchOp } from "@gik/kernel";
-import { compileSocPresentation } from "../../../compilers/live-workspace-soc";
 import profile from "../../../profiles/live-workspace-soc/profile.json";
+import { compileSocPresentation } from "./blueprint";
 import { projectSocInspection, projectSocParticipants } from "./inspection";
 import type { Actor, AgentProvider, Incident, JournalEntry, Presentation } from "../projection_views/types";
-import {
-  buildAgentMessage,
-  createSocAgentContract,
-  type AgentValidationIssue,
-  type CorrelationReply,
-  type ResponseReply,
-  type SocAgentOperation,
-  type SocAgentReply,
-} from "./live-agent";
 
 type RecordValue = Record<string, Json>;
 const profileState = profile.payload.runtime.state as unknown as RecordValue;
@@ -93,20 +84,20 @@ function roleFor(ctx: EffectContext, actorId: string): string | undefined {
 }
 
 interface ProviderRecord extends RecordValue {
-  mode: "mock" | "live";
+  mode: "mock";
   status: string;
   agentName: string;
   conversationId: string;
 }
 
-const LIVE_OPERATIONS: Record<string, { actorId: "agent-correlation" | "agent-response"; operation: SocAgentOperation }> = {
-  suggestExploration: { actorId: "agent-correlation", operation: "suggest-exploration" },
-  replanExploration: { actorId: "agent-correlation", operation: "replan-exploration" },
-  commitPartialFindings: { actorId: "agent-correlation", operation: "commit-partial-findings" },
-  completeCorrelation: { actorId: "agent-correlation", operation: "complete-correlation" },
-  evaluateDc01Policy: { actorId: "agent-response", operation: "assess-policy-candidate" },
-  proposeHostA: { actorId: "agent-response", operation: "propose-contained-response" },
-  calculateResponse: { actorId: "agent-response", operation: "validate-response" },
+const AGENT_OPERATIONS: Record<string, { actorId: "agent-correlation" | "agent-response" }> = {
+  suggestExploration: { actorId: "agent-correlation" },
+  replanExploration: { actorId: "agent-correlation" },
+  commitPartialFindings: { actorId: "agent-correlation" },
+  completeCorrelation: { actorId: "agent-correlation" },
+  evaluateDc01Policy: { actorId: "agent-response" },
+  proposeHostA: { actorId: "agent-response" },
+  calculateResponse: { actorId: "agent-response" },
 };
 
 function providers(ctx: EffectContext): Record<string, ProviderRecord> {
@@ -152,78 +143,10 @@ function incidentContext(ctx: EffectContext): Record<string, unknown> {
   };
 }
 
-function assertKnownReferences(ctx: EffectContext, reply: SocAgentReply): void {
-  const knownEntities = new Set(list(ctx, "soc.entities").map((value) => String((value as RecordValue).id)));
-  const knownEvidence = new Set(list(ctx, "soc.evidence").map((value) => String((value as RecordValue).id)));
-  const entityIds = "entityIds" in reply
-    ? [...reply.entityIds, ...reply.findings.flatMap((finding) => finding.entityIds)]
-    : [reply.proposal.targetEntityId].filter(Boolean);
-  const evidenceIds = "evidenceIds" in reply
-    ? [...reply.evidenceIds, ...reply.findings.flatMap((finding) => finding.evidenceIds)]
-    : reply.proposal.evidenceIds;
-  if (entityIds.some((id) => !knownEntities.has(id))) throw new Error("Agent response referenced an unknown entity.");
-  if (evidenceIds.some((id) => !knownEvidence.has(id))) throw new Error("Agent response referenced unknown evidence.");
-}
-
 function replaceSet(ops: PatchOp[], path: string, update: (value: Json) => Json): PatchOp[] {
   return ops.map((op) => op.op === "set" && op.path === path && op.value !== undefined
     ? { ...op, value: update(op.value) }
     : op);
-}
-
-function lowerLiveReply(result: OrchestratorResult, operation: SocAgentOperation, reply: SocAgentReply): OrchestratorResult {
-  let ops = result.ops ?? [];
-  if (operation === "suggest-exploration" && "exploration" in reply) {
-    ops = replaceSet(ops, "soc.explorations", (value) => (value as Json[]).map((item) => ({
-      ...(item as RecordValue),
-      question: reply.exploration.objective || reply.exploration.queries[0] || (item as RecordValue).question,
-      safety: reply.exploration.constraints.join("; ") || (item as RecordValue).safety,
-    })));
-  }
-  if (operation === "replan-exploration" && "exploration" in reply) {
-    ops = replaceSet(ops, "soc.explorations", (value) => (value as Json[]).map((item) => ({
-      ...(item as RecordValue),
-      question: reply.exploration.objective || (item as RecordValue).question,
-    })));
-  }
-  if ((operation === "commit-partial-findings" || operation === "complete-correlation") && "findings" in reply) {
-    ops = replaceSet(ops, "soc.evidence", (value) => {
-      const evidence = value as Json[];
-      const offset = Math.max(0, evidence.length - reply.findings.length);
-      return evidence.map((item, index) => {
-      const finding = index >= offset ? reply.findings[index - offset] : undefined;
-      return finding ? { ...(item as RecordValue), summary: finding.statement, confidence: Math.round(finding.confidence * 100) } : item;
-      });
-    });
-    ops = replaceSet(ops, "soc.hypothesis", (value) => ({
-      ...(value as RecordValue),
-      statement: reply.summary || (value as RecordValue).statement,
-      confidence: Math.round(reply.confidence * 100),
-    }));
-  }
-  if (operation === "assess-policy-candidate" && "assessment" in reply) {
-    ops = replaceSet(ops, "soc.proposal", (value) => ({
-      ...(value as RecordValue),
-      liveAssessment: reply.summary,
-    }));
-  }
-  if (operation === "propose-contained-response" && "proposal" in reply) {
-    ops = replaceSet(ops, "soc.proposal", (value) => ({
-      ...(value as RecordValue),
-      action: reply.proposal.objective || (value as RecordValue).action,
-      sequence: reply.proposal.sequence.length > 0 ? reply.proposal.sequence : (value as RecordValue).sequence,
-    }));
-  }
-  if (operation === "validate-response" && "proposal" in reply) {
-    ops = replaceSet(ops, "soc.proposal", (value) => ({
-      ...(value as RecordValue),
-      blastRadius: reply.proposal.blastRadius || (value as RecordValue).blastRadius,
-      reversible: reply.proposal.reversible,
-      evidenceReady: reply.proposal.evidenceReady,
-      operationalDependencies: reply.proposal.operationalDependencies,
-    }));
-  }
-  return { ...result, ops };
 }
 
 function annotateProvider(
@@ -707,65 +630,18 @@ export function createSocEffects(
 ): EffectHandlerMap {
   const wrapped: EffectHandlerMap = { ...deterministicEffects };
 
-  wrapped.setAgentMode = (ctx) => {
-    const controlRequest = ctx.get("control.agentModeRequest") as RecordValue | undefined;
-    const participantRequest = ctx.get("control.participantConfigurationRequest") as RecordValue | undefined;
-    const actorId = typeof ctx.payload.agentId === "string"
-      ? ctx.payload.agentId
-      : typeof ctx.payload.name === "string"
-        ? ctx.payload.name
-        : typeof controlRequest?.name === "string"
-          ? controlRequest.name
-          : typeof participantRequest?.participantId === "string" ? participantRequest.participantId : "";
-    const requested = ctx.payload.mode ?? ctx.payload.value ?? controlRequest?.value ?? participantRequest?.value;
-    const mode: ProviderRecord["mode"] = requested === "live" ? "live" : "mock";
-    const currentProviders = providers(ctx);
-    const provider = currentProviders[actorId];
-    if (!provider || !["agent-correlation", "agent-response"].includes(actorId)) {
-      return { outcome: "rejected", detail: { reason: "unknown-agent" } };
-    }
-    const liveUnavailable = mode === "live";
-    const next = {
-      ...provider,
-      mode,
-      status: liveUnavailable ? "fallback" : "ready",
-      lastProvider: "mock",
-      fallbackReason: liveUnavailable ? "Live SOC execution must be supplied by the host service runner." : "",
-    };
-    const accessRequired = mode === "live"
-      || Object.entries(currentProviders).some(([id, current]) => id !== actorId && current.mode === "live");
-    return {
-      outcome: liveUnavailable ? "fallback" : "updated",
-      ops: [
-        ...providerOps(ctx, actorId, next),
-        setOp("soc.foundry.required", accessRequired),
-      ],
-    };
-  };
-
-  wrapped.acceptSocFoundryAccess = (ctx) => ({
-    outcome: "updated",
-    ops: [
-      setOp("soc.foundry.agentNames", Array.isArray(ctx.payload.agentNames)
-        ? ctx.payload.agentNames.filter((value): value is string => typeof value === "string")
-        : []),
-    ],
-  });
-  wrapped.clearSocFoundryAccess = () => ({ outcome: "updated", ops: [setOp("soc.foundry.agentNames", [])] });
-
-  for (const [handlerName, live] of Object.entries(LIVE_OPERATIONS)) {
+  for (const [handlerName, agent] of Object.entries(AGENT_OPERATIONS)) {
     const deterministic = deterministicEffects[handlerName];
     wrapped[handlerName] = async (ctx) => {
-      const provider = providers(ctx)[live.actorId];
+      const provider = providers(ctx)[agent.actorId];
       const result = await deterministic(ctx) as OrchestratorResult | void;
-      const liveRequested = provider?.mode === "live";
       return annotateProvider(
         result ?? {},
         ctx,
-        live.actorId,
+        agent.actorId,
         provider,
         "mock",
-        liveRequested ? "Live SOC execution must be supplied by the host service runner." : ""
+        ""
       );
     };
   }
