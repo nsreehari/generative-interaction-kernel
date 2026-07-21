@@ -1,13 +1,11 @@
 import assert from "node:assert/strict";
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { test } from "vitest";
 
 const samplesRoot = fileURLToPath(new URL("../", import.meta.url));
 const authoredRoots = ["profiles", "bundles"] as const;
 const implementationLeaves = new Set(["projection_views", "effect_handlers"]);
-const legacyCompilerAllowlist = ["live-workspace-soc"] as const;
-
 function filesBelow(path: string): string[] {
   return readdirSync(path, { withFileTypes: true }).flatMap((entry) => {
     const child = `${path}/${entry.name}`;
@@ -29,15 +27,17 @@ test("sample Profiles and Bundles keep TypeScript inside native leaf directories
   ].join("\n"));
 });
 
-test("sample compiler residue stays explicit and temporary", () => {
-  const compilerEntries = readdirSync(`${samplesRoot}/compilers`, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .sort();
+test("sample compiler residue is fully removed", () => {
+  const compilersRoot = `${samplesRoot}/compilers`;
+  const compilerEntries = existsSync(compilersRoot)
+    ? readdirSync(compilersRoot, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort()
+    : [];
 
-  assert.deepEqual(compilerEntries, [...legacyCompilerAllowlist].sort(), [
-    "Sample blueprint compilers are migration residue, not an open extension point.",
-    "Only explicitly approved legacy compiler folders may remain under samples/compilers:",
+  assert.deepEqual(compilerEntries, [], [
+    "Sample blueprint compilers are gone; no folders should remain under samples/compilers.",
     ...compilerEntries,
   ].join("\n"));
 });

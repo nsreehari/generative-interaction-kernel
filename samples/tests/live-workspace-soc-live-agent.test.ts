@@ -1,34 +1,24 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { buildAgentInstructions, parseSocAgentReply } from "../bundles/live-workspace-soc/effect_handlers/live-agent";
+import profileArtifact from "../profiles/live-workspace-soc/profile.json" with { type: "json" };
+import workflowRecipeArtifact from "../profiles/live-workspace-soc/workflow-to-interaction.recipe.json" with { type: "json" };
 
-const correlationReply = {
-  schemaVersion: 1,
-  operation: "suggest-exploration",
-  summary: "Correlate the supplied sources.",
-  rationale: "The execution origin is unresolved.",
-  exploration: { objective: "Resolve execution origin", queries: ["Correlate token and session"], constraints: ["Passive only"] },
-  findings: [],
-  evidenceIds: [],
-  entityIds: ["DC-01", "Host-A"],
-  confidence: 0.6,
-  unknowns: ["Execution host"],
-  recommendedNextStep: "Run passive correlation",
-};
+const actors = profileArtifact.payload.resources.actors.inline;
+const authorityPolicy = profileArtifact.payload.resources.authorityPolicy.inline;
+const parts = workflowRecipeArtifact.payload.program[0]?.emit?.parts ?? [];
+const exploration = parts.find((part) => part.name === "exploration");
 
-test("accepts the exact correlation operation contract", () => {
-  assert.deepEqual(parseSocAgentReply(JSON.stringify(correlationReply), "suggest-exploration"), correlationReply);
+test("SOC profile keeps the agent authority boundary declarative", () => {
+  assert.equal(authorityPolicy.participationDoesNotImplyAuthority, true);
+  assert.deepEqual(authorityPolicy.protectedTargets, ["DC-01"]);
+  assert.ok(actors.some((actor) => actor.id === "agent-correlation" && actor.authority.includes("suggest-exploration")));
+  assert.ok(actors.some((actor) => actor.id === "human-priya" && actor.authority.includes("authorize-containment")));
 });
 
-test("rejects fenced output, wrong operations, and authority-bearing extra fields", () => {
-  assert.throws(() => parseSocAgentReply(`\`\`\`json\n${JSON.stringify(correlationReply)}\n\`\`\``, "suggest-exploration"));
-  assert.throws(() => parseSocAgentReply(JSON.stringify({ ...correlationReply, operation: "complete-correlation" }), "suggest-exploration"));
-  assert.throws(() => parseSocAgentReply(JSON.stringify({ ...correlationReply, authorization: "approved" }), "suggest-exploration"));
-});
-
-test("per-turn instructions preserve the governance boundary", () => {
-  const instructions = buildAgentInstructions("validate-response");
-  assert.match(instructions, /validate-response/);
-  assert.match(instructions, /Do not authorize, execute/);
+test("SOC workflow keeps exploration as a suggestion-only interaction", () => {
+  assert.ok(exploration);
+  assert.deepEqual(exploration?.actions, ["suggestExploration", "amendExploration", "replanExploration"]);
+  assert.deepEqual(exploration?.authority, ["direct-investigation", "suggest-exploration"]);
+  assert.ok(parts.every((part) => !part.actions || !part.actions.includes("authorizeContainment") || part.name === "authorization"));
 });

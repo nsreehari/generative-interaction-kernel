@@ -16,7 +16,6 @@ import {
   type StageExecutor,
   type StageTrace,
 } from "./profile-core";
-import type { StageEvidenceSink } from "./acx";
 import {
   planPresentationWithRecipe,
   planningRecipeOf,
@@ -36,6 +35,10 @@ import {
   type RuntimeNodeRecipeFields,
   type WorkflowSpec,
 } from "./genui";
+
+interface StageEvidenceSink {
+  record(entry: import("./genui").GenuiDecisionEvidence): void;
+}
 
 export const EXECUTOR_PLAN_PRESENTATION = "plan-presentation";
 export const EXECUTOR_LOWER_DOCUMENT = "lower-document";
