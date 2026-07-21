@@ -211,20 +211,24 @@ export function GikDemoBlueprintHost({
     [],
   );
   const harnessControlState = harnessBundle?.state?.control;
+  const presentationPresets = React.useMemo(() => {
+    const availablePresets = resolvedDemo.demoContract.presentationPresets
+      ?? resolvedCatalog.targets[resolvedDemo.entry.targetBlueprintId]?.presentationPresets
+      ?? [];
+    const applicableContexts = new Set(resolvedDemo.scenarioPlan.applicableContexts);
+    return availablePresets.filter((preset) => applicableContexts.has(preset.id));
+  }, [resolvedCatalog.targets, resolvedDemo]);
   const runnerBundle = React.useMemo(
     () => createDemoRunnerBundle({
       runner: {
         plan: resolvedDemo.scenarioPlan,
         catalog: resolvedCatalog.entries,
         entry: resolvedDemo.entry,
-        presentationPresets: resolvedDemo.demoContract.presentationPresets,
+        presentationPresets,
       },
     }),
-    [resolvedCatalog.entries, resolvedDemo],
+    [presentationPresets, resolvedCatalog.entries, resolvedDemo],
   );
-  const presentationPresets = resolvedDemo.demoContract.presentationPresets
-    ?? resolvedCatalog.targets[resolvedDemo.entry.targetBlueprintId]?.presentationPresets
-    ?? [];
   const resolvedPresentationContext = resolvePresentationContext(
     requestedPresentationContext,
     presentationPresets,

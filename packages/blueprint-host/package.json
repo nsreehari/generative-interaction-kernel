@@ -1,6 +1,6 @@
 {
   "name": "@gik/blueprint-host",
-  "version": "0.1.7",
+  "version": "0.1.16",
   "description": "Blueprint-level React hosts and self-contained demo/control companion bundles for the Generative Interaction Kernel.",
   "license": "MIT",
   "author": "nsreehari",
@@ -44,6 +44,8 @@
     "react-dom": "^18.3.1"
   },
   "dependencies": {
+    "@fluentui/react-components": "^9.74.3",
+    "@fluentui/react-icons": "^2.0.312",
     "@gik/controlface": "0.1.1",
     "@gik/kernel": "0.1.0",
     "@gik/profile": "0.1.0",

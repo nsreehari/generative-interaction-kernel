@@ -50,6 +50,7 @@ export interface ScenarioPlan {
   id: string;
   targetBlueprintId: string;
   title: string;
+  applicableContexts: string[];
   pace: {
     manualDurationMs: number;
     autoDurationMs: number;
@@ -100,6 +101,15 @@ export function compileScenarioBlueprint(artifact: ScenarioBlueprintArtifact): S
   const plan = artifact.payload;
   if (!plan.id.trim()) throw new Error("Scenario Blueprint id is required");
   if (!plan.targetBlueprintId.trim()) throw new Error("Scenario target Blueprint id is required");
+  if (!Array.isArray(plan.applicableContexts) || plan.applicableContexts.length === 0) {
+    throw new Error("Scenario Blueprint must define at least one applicable context");
+  }
+  if (plan.applicableContexts.some((contextId) => typeof contextId !== "string" || !contextId.trim())) {
+    throw new Error("Scenario Blueprint has an invalid applicable context");
+  }
+  if (new Set(plan.applicableContexts).size !== plan.applicableContexts.length) {
+    throw new Error("Scenario Blueprint has duplicate applicable contexts");
+  }
   if (plan.steps.length === 0) throw new Error("Scenario Blueprint must define at least one step");
 
   const stepIds = new Set<string>();
@@ -138,6 +148,9 @@ export function validateDemoComposition(entry: DemoCatalogEntry, scenario: Scena
   const contexts = new Set(organism.presentationPresets.map((preset) => preset.id));
   const focusKinds = new Set(organism.focusKinds);
   const timelineSources = new Set(organism.timelineSources);
+  for (const contextId of scenario.applicableContexts) {
+    if (!contexts.has(contextId)) throw new Error(`Unsupported applicable context '${contextId}'`);
+  }
   for (const step of scenario.steps) {
     for (const command of scenarioStepCommands(step)) {
       if (!commands.has(command) && !isBuiltInDemoCommand(command)) {
@@ -157,6 +170,9 @@ export function validateDemoComposition(entry: DemoCatalogEntry, scenario: Scena
     }
   }
   if (entry.defaultContext && !contexts.has(entry.defaultContext)) throw new Error(`Unsupported presentation context '${entry.defaultContext}'`);
+  if (entry.defaultContext && !scenario.applicableContexts.includes(entry.defaultContext)) {
+    throw new Error(`Default presentation context '${entry.defaultContext}' is not applicable to scenario '${scenario.id}'`);
+  }
   for (const source of entry.requiredTimelineSources ?? []) {
     if (!timelineSources.has(source)) throw new Error(`Unsupported timeline source '${source}'`);
   }
