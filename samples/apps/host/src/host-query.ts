@@ -1,34 +1,17 @@
-export const DEFAULT_PRESENTATION_CONTEXT = "full-substrate";
+import {
+  DEFAULT_PRESENTATION_CONTEXT,
+  resolvePresentationContext,
+  type PresentationPreset,
+} from "../../../shared/presentation";
 
-export interface PresentationPreset {
-  id: string;
-  label?: string;
-  audience?: string;
-  focus?: string;
-  context: Record<string, unknown>;
-}
+// Re-exported for existing consumers; the canonical definitions live in shared/presentation.
+export { DEFAULT_PRESENTATION_CONTEXT, resolvePresentationContext, type PresentationPreset };
 
 export interface HostQuery {
   targetId: string | null;
   demoId: string | null;
   harnessId: string | null;
   presentationContext: string | null;
-}
-
-export function resolvePresentationContext(
-  requested: string | null | undefined,
-  available: readonly PresentationPreset[],
-  preferredDefault?: string | null
-): PresentationPreset | null {
-  if (requested) {
-    const preset = available.find((entry) => entry.id === requested);
-    if (preset) return preset;
-  }
-  if (preferredDefault) {
-    const preset = available.find((entry) => entry.id === preferredDefault);
-    if (preset) return preset;
-  }
-  return available.find((entry) => entry.id === DEFAULT_PRESENTATION_CONTEXT) ?? available[0] ?? null;
 }
 
 function isGikEnabled(params: URLSearchParams): boolean {
