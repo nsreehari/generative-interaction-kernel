@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { InMemoryStateModel, type OrchestratorEffect } from "@gik/kernel";
+import {
+  InMemoryStateModel,
+  type InvocationControl,
+  type OrchestratorEffect,
+  type OrchestratorProgress,
+  type OrchestratorResult,
+} from "@gik/kernel";
 import { createEffectDispatcher } from "../src/primitives/effects";
 
 test("named route and confirm handlers receive actor provenance", async () => {
@@ -36,4 +42,50 @@ test("named route and confirm handlers receive actor provenance", async () => {
     { kind: "route", actorId: "agent-response" },
     { kind: "confirm", actorId: "agent-response" },
   ]);
+});
+
+test("named invoke handlers receive invocation control", async () => {
+  const state = new InMemoryStateModel(["demo"]);
+  const controller = new AbortController();
+  const progress: OrchestratorProgress[] = [];
+  const settlements: OrchestratorResult[] = [];
+  const control: InvocationControl = {
+    id: "inv-test",
+    signal: controller.signal,
+    emitProgress: async (message) => {
+      progress.push(message);
+    },
+    emit: async (result = {}) => {
+      settlements.push(result);
+    },
+  };
+  const orchestrator = createEffectDispatcher(state, {
+    async download(ctx) {
+      assert.equal(ctx.invocationId, "inv-test");
+      assert.equal(ctx.signal, controller.signal);
+      await ctx.emitProgress?.({ name: "download-progress", detail: { percent: 25 } });
+      await ctx.emit?.({ outcome: "stream-complete" });
+    },
+    legacy(ctx) {
+      return { ops: [ctx.set("demo.result", "done")] };
+    },
+  });
+
+  const controlledResult = await orchestrator.invoke?.({
+    kind: "invoke",
+    node: "download",
+    tool: "download",
+    args: {},
+  }, control);
+  const legacyResult = await orchestrator.invoke?.({
+    kind: "invoke",
+    node: "legacy",
+    tool: "legacy",
+    args: {},
+  }, control);
+
+  assert.deepEqual(progress, [{ name: "download-progress", detail: { percent: 25 } }]);
+  assert.deepEqual(settlements, [{ outcome: "stream-complete" }]);
+  assert.equal(controlledResult, undefined);
+  assert.deepEqual(legacyResult, { ops: [{ op: "set", path: "demo.result", value: "done" }] });
 });
