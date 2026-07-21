@@ -1,5 +1,5 @@
 import type { BlueprintInspection, InspectionParticipant, OrganismInspection, ParticipantStatus } from "../../../shared/control-inspection";
-import { SOC_BLUEPRINT_PRESENTATION_PRESETS, socBlueprint, traceSocBlueprint } from "../../../compilers/live-workspace-soc";
+import { SOC_BLUEPRINT_PRESENTATION_PRESETS, socBlueprint, traceSocBlueprint } from "./blueprint";
 import { socJournalTimelineItem } from "../projection_views/helpers";
 import type { Actor, AgentProvider, Incident, JournalEntry, Presentation } from "../projection_views/types";
 
@@ -37,9 +37,6 @@ export function projectSocParticipants(
   providers: Readonly<Record<string, AgentProvider>>,
 ): InspectionParticipant[] {
   return actors.map((actor) => {
-    const provider = providers[actor.id];
-    const message = provider?.fallbackReason
-      || (provider?.mode === "live" && provider.conversationId ? "Live conversation active" : undefined);
     return {
       id: actor.id,
       kind: actor.kind,
@@ -48,18 +45,7 @@ export function projectSocParticipants(
       status: mapSocParticipantStatus(actor.status),
       capabilities: actor.authority ? [actor.authority.replace(/^May /, "Can ")] : undefined,
       focusRef: { namespace: "soc", kind: "actor", id: actor.id },
-      settings: provider ? [{
-        id: "provider-mode",
-        kind: "toggle",
-        label: "provider mode",
-        value: provider.mode,
-        offLabel: "Mock",
-        offValue: "mock",
-        onLabel: "Live",
-        onValue: "live",
-        status: provider.status === "fallback" ? "error" : "ready",
-        message,
-      }] : undefined,
+      settings: undefined,
     };
   });
 }

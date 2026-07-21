@@ -1,4 +1,4 @@
-import type { Action, CapabilityDescriptor, Json } from "../../kernel/src/index";
+import type { Action, CapabilityDescriptor, Json, Reaction } from "../../kernel/src/index";
 import {
   matchProgramEmit,
   recipeForKinds as recipeForKindsCore,
@@ -244,6 +244,7 @@ export interface RuntimeNodeRecipeFields {
   readExpr?: Record<string, string>;
   gate?: string;
   on?: Record<string, Action[]>;
+  react?: Reaction[];
   children?: RuntimeNodeRecipeFields[];
 }
 
@@ -253,6 +254,15 @@ export interface PresentationRuntimeFacts extends RecipeMatch {
   arrangement?: LayoutArrangement;
   frame?: string;
 }
+
+export interface GenuiDecisionEvidence {
+  kind: "rule-selected" | "rule-missed" | "fallback-selected" | "resource-read" | "capability-emitted";
+  detail: string;
+  subject: string;
+  data?: Json;
+}
+
+export type GenuiEvidenceRecorder = (evidence: GenuiDecisionEvidence) => void;
 
 export type PresentationRuntimeProgramSlot = "container" | "region";
 
@@ -598,24 +608,65 @@ function defaultPresentation(
   return interactionProgramEmit(recipe, "presentation", regionFacts(facet, index, spec, ctx, recipe, { priority, disclosure }));
 }
 
+function recordProgramDecision(
+  recipe: InteractionToPresentationRecipe,
+  slot: InteractionProgramSlot,
+  facts: RecipeMatch,
+  record: GenuiEvidenceRecorder | undefined,
+  decisionSubject: string
+): void {
+  if (!record) return;
+  const rule = interactionProgramRules(recipe, slot).find((candidate) => matchesFacts(candidate.match, facts));
+  record({
+    kind: rule ? "rule-selected" : "rule-missed",
+    detail: rule
+      ? `Selected '${slot}' rule for '${decisionSubject}'`
+      : `No '${slot}' rule selected for '${decisionSubject}'`,
+    subject: `${recipe.id}#${slot}:${decisionSubject}`,
+    data: { slot, facts, match: rule?.match, emit: rule?.emit } as Json,
+  });
+}
+
 export function planPresentationWithRecipe(
   spec: InteractionSpec,
   ctx: LayerContext,
   recipe: LayerRecipe,
-  taxonomy: InteractionTaxonomy
+  taxonomy: InteractionTaxonomy,
+  record?: GenuiEvidenceRecorder
 ): PresentationSpec {
   const plannerRecipe = planningRecipeOf(recipe);
   if (!plannerRecipe) {
     throw new Error(`Recipe '${recipe.id}' does not carry presentation planning data`);
   }
+  const templateFacts: RecipeMatch = {
+    ...ctx,
+    interaction: spec.interaction,
+    constrained: isConstrained(ctx, plannerRecipe),
+  };
+  recordProgramDecision(plannerRecipe, "template", templateFacts, record, "template");
   const { template, layout, frame } = selectTemplate(spec, ctx, plannerRecipe);
   const facets = resolveFacets(spec, taxonomy);
+  facets.forEach((facet, index) => {
+    recordProgramDecision(
+      plannerRecipe,
+      "rank",
+      regionFacts(facet, index, spec, ctx, plannerRecipe),
+      record,
+      facet.name
+    );
+  });
   const ordered = orderByRank(facets, (facet, index) => orderRankOf(facet, index, spec, ctx, plannerRecipe));
   const chosen = capOrderedItems(ordered, template.maxRegions, plannerRecipe.cap.preserveRequired, (facet) => facet.required);
 
   const regions: PresentationRegion[] = chosen.map(({ item: facet }, index) => {
     const priority = priorityOf(facet, index, spec, ctx, plannerRecipe);
     const disclosure = disclosureOf(facet, priority, index, spec, ctx, plannerRecipe);
+    const facts = regionFacts(facet, index, spec, ctx, plannerRecipe, { priority, disclosure });
+    recordProgramDecision(plannerRecipe, "priority", regionFacts(facet, index, spec, ctx, plannerRecipe), record, facet.name);
+    recordProgramDecision(plannerRecipe, "disclosure", regionFacts(facet, index, spec, ctx, plannerRecipe, { priority }), record, facet.name);
+    recordProgramDecision(plannerRecipe, "group", facts, record, facet.name);
+    recordProgramDecision(plannerRecipe, "rationale", facts, record, facet.name);
+    recordProgramDecision(plannerRecipe, "presentation", facts, record, facet.name);
     const facetView: InteractionFacetView | undefined = spec.facetViews?.[facet.name];
     const region: PresentationRegion = {
       name: facet.name,
