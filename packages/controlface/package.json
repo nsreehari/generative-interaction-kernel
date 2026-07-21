@@ -1,7 +1,7 @@
 {
   "name": "@gik/controlface",
-  "version": "0.1.0",
-  "description": "Control-plane projection surface over the shared face catalog for the Generative Interaction Kernel.",
+  "version": "0.1.1",
+  "description": "Control-plane projection surface (full capability catalog) for the Generative Interaction Kernel.",
   "license": "MIT",
   "author": "nsreehari",
   "keywords": [
@@ -32,6 +32,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./blueprint": {
+      "types": "./dist/blueprint.d.ts",
+      "import": "./dist/blueprint.js"
     }
   },
   "main": "./dist/index.js",
@@ -41,7 +45,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
+    "build": "tsup src/index.ts src/blueprint.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
     "prepack": "node ../../scripts/sync-public-docs.mjs packages/controlface"
   }
 }

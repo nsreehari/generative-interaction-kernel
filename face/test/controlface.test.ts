@@ -141,6 +141,55 @@ test("ControlFace opens an authored Blueprint into a runtime", () => {
   );
 });
 
+test("ControlFace applies initialSeed from blueprint context", () => {
+  const artifact: ProfileArtifact = {
+    gik: "0.1",
+    type: "profile",
+    payload: {
+      id: "seeded",
+      kind: "example",
+      version: "1",
+      layers: [{ id: "runtime-document", kind: "runtime-document" }],
+      recipes: [],
+      runtime: {
+        namespaces: ["example"],
+        capabilities: {},
+        state: { example: { ready: false, nested: { before: true } } },
+      },
+      resources: {
+        document: {
+          inline: {
+            root: {
+              id: "seeded",
+              capability: "ui:text",
+              props: { value: "Seeded" },
+            },
+          },
+        },
+      },
+    },
+  };
+
+  const runtime = ControlFace.openBlueprint(artifact, {
+    context: {
+      initialSeed: {
+        example: {
+          message: "Hello",
+          nested: { after: true },
+        },
+      },
+    },
+  });
+
+  assert.deepEqual(runtime.state, {
+    example: {
+      ready: false,
+      message: "Hello",
+      nested: { before: true, after: true },
+    },
+  });
+});
+
 test("ControlFace opens a recipe-backed Blueprint from a JSON profile bundle", () => {
   const bundle = createProfileBundle(liveWorkspaceSocProfile as ProfileArtifact, [
     liveWorkspaceSocWorkflowRecipe as never,

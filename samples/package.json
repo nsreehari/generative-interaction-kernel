@@ -19,7 +19,7 @@
     "@fluentui/react-icons": "^2.0.312",
     "@gik/agentface": "0.1.0",
     "@gik/component-infinite-canvas": "0.1.0",
-    "@gik/controlface": "0.1.0",
+    "@gik/controlface": "0.1.1",
     "@gik/evaluators": "0.1.0",
     "@gik/kernel": "0.1.0",
     "@gik/profile": "0.1.0",
