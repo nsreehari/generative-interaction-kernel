@@ -238,15 +238,33 @@ function flattenCells(roots: readonly CellDefinition[]): CellDefinition[] {
 
 function toDocNode(cell: CellDefinition): DocNode {
   const children = cell.edges?.children?.map(toDocNode);
+  const props = cell.service
+    ? {
+        ...structuredClone(cell.props ?? {}),
+        externalSource: { refreshEvent: "refresh" },
+      }
+    : cell.props
+      ? structuredClone(cell.props)
+      : undefined;
+  const edges = cell.service
+    ? {
+        ...structuredClone(cell.edges ?? {}),
+        on: {
+          ...structuredClone(cell.edges?.on ?? {}),
+          refresh: [{ do: "invoke" as const, args: { tool: cell.service.operation } }],
+        },
+        ...(children ? { children } : {}),
+      }
+    : cell.edges
+      ? {
+          ...structuredClone(cell.edges),
+          ...(children ? { children } : {}),
+        }
+      : undefined;
   return {
     capability: cell.capability,
     id: cell.id,
-    ...(cell.props ? { props: structuredClone(cell.props) } : {}),
-    ...(cell.edges ? {
-      edges: {
-        ...structuredClone(cell.edges),
-        ...(children ? { children } : {}),
-      },
-    } : {}),
+    ...(props ? { props } : {}),
+    ...(edges ? { edges } : {}),
   };
 }

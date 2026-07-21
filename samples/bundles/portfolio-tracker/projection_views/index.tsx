@@ -15,7 +15,9 @@ const useStyles = makeStyles({
   overview: { display: "grid", gridTemplateColumns: "minmax(0, 1.6fr) minmax(280px, .7fr)", gap: tokens.spacingHorizontalXXL, alignItems: "start", "@media (max-width: 900px)": { gridTemplateColumns: "minmax(0, 1fr)" } },
   marketGrid: { display: "grid", gridTemplateColumns: "minmax(300px, .7fr) minmax(560px, 1.3fr)", gap: tokens.spacingHorizontalXXL, "@media (max-width: 1120px)": { gridTemplateColumns: "minmax(0, 1fr)" } },
   section: { minWidth: 0 },
+  sectionHeader: { marginBottom: tokens.spacingVerticalM, display: "flex", alignItems: "center", justifyContent: "space-between", gap: tokens.spacingHorizontalM },
   sectionHeading: { margin: `0 0 ${tokens.spacingVerticalM}`, fontSize: tokens.fontSizeBase500, fontWeight: tokens.fontWeightSemibold, letterSpacing: "0" },
+  sectionHeaderHeading: { margin: 0 },
   tableSurface: {
     minWidth: 0,
     overflow: "hidden",
@@ -67,12 +69,35 @@ function valueOf(node: ProjectionViewProps["node"]): unknown {
   return node.props.value;
 }
 
-function childrenByNodeId(children: React.ReactNode): Map<string, React.ReactNode> {
-  const slots = new Map<string, React.ReactNode>();
+function childrenByNodeId(children: React.ReactNode): Map<string, React.ReactElement<ProjectionViewProps>> {
+  const slots = new Map<string, React.ReactElement<ProjectionViewProps>>();
   for (const child of React.Children.toArray(children)) {
     if (React.isValidElement<ProjectionViewProps>(child)) slots.set(child.props.node.id, child);
   }
   return slots;
+}
+
+function CellSection({ title, cell, className }: { title: string; cell?: React.ReactElement<ProjectionViewProps>; className?: string }) {
+  const styles = useStyles();
+  const [refreshing, setRefreshing] = React.useState(false);
+  const externalSource = cell?.props.node.props.externalSource as { refreshEvent?: unknown } | undefined;
+  const refreshEvent = typeof externalSource?.refreshEvent === "string" ? externalSource.refreshEvent : null;
+  const refresh = async () => {
+    if (!cell || !refreshEvent) return;
+    setRefreshing(true);
+    try {
+      await cell.props.emit(refreshEvent, {});
+    } finally {
+      setRefreshing(false);
+    }
+  };
+  return <div className={styles.section}>
+    <div className={styles.sectionHeader}>
+      <h2 className={`${styles.sectionHeading} ${styles.sectionHeaderHeading}`}>{title}</h2>
+      {refreshEvent ? <Button disabled={refreshing} onClick={() => void refresh()}>{refreshing ? "Refreshing..." : "Refresh"}</Button> : null}
+    </div>
+    <div className={className ?? styles.tableSurface}>{cell}</div>
+  </div>;
 }
 
 const SummaryView: ProjectionView = ({ node }) => {
@@ -160,15 +185,12 @@ const WorkspaceView: ProjectionView = ({ node, children, emit }) => {
     }
   };
   const overview = <section className={styles.overview}>
-    <div className={styles.section}>
-      <h2 className={styles.sectionHeading}>Holdings</h2>
-      <div className={styles.tableSurface}>{cells.get("holdings")}</div>
-    </div>
+    <CellSection title="Holdings" cell={cells.get("holdings")} />
     <div className={styles.summary}>{cells.get("summary")}</div>
   </section>;
   const market = <section className={styles.marketGrid}>
-    <div className={styles.section}><h2 className={styles.sectionHeading}>Market prices</h2><div className={styles.tableSurface}>{cells.get("market-prices")}</div></div>
-    <div className={styles.section}><h2 className={styles.sectionHeading}>Positions</h2><div className={`${styles.tableSurface} ${styles.positionsSurface}`}>{cells.get("positions")}</div></div>
+    <CellSection title="Market prices" cell={cells.get("market-prices")} />
+    <CellSection title="Positions" cell={cells.get("positions")} className={`${styles.tableSurface} ${styles.positionsSurface}`} />
   </section>;
   const advisory = <section className={styles.advisory}>
     {cells.get("portfolio-intelligence")}
@@ -184,13 +206,13 @@ const WorkspaceView: ProjectionView = ({ node, children, emit }) => {
           <h1 className={styles.title}>{String(node.props.title ?? "Portfolio tracker")}</h1>
         </div>
         <div className={styles.workflowActions} aria-label="Portfolio workflows">
-          <button className={styles.workflowButton} disabled={pendingCommand !== null} type="button" onClick={() => void runWorkflow("refreshPrices")}>Refresh prices</button>
           <button className={styles.workflowButton} disabled={pendingCommand !== null} type="button" onClick={() => void runWorkflow("requestIntelligence")}>Analyze portfolio</button>
           <button className={`${styles.workflowButton} ${styles.primaryWorkflowButton}`} disabled={pendingCommand !== null} type="button" onClick={() => void runWorkflow("calculateStrategies")}>Build strategies</button>
         </div>
       </div>
     </header>
     <div className={styles.content}>
+      {cells.get("http-proxy-access-gate")}
       {isAdvisorContext
         ? <>{advisory}{overview}{market}</>
         : <>{overview}{market}{advisory}</>}

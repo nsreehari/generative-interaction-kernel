@@ -1,3 +1,4 @@
 {
-  "foundryProxyOrigin": "http://localhost:7071"
+  "foundryProxyOrigin": "http://localhost:7071",
+  "httpProxyOrigin": "http://localhost:7073"
 }

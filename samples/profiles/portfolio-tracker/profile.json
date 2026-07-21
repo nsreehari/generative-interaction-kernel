@@ -14,6 +14,17 @@
         "kind": "http-service",
         "version": "1",
         "operations": {
+          "checkHttpProxyAccess": {
+            "operation": "check-access",
+            "contract": "http-proxy-access-check/v1",
+            "settlement": {
+              "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'portfolio.httpProxyAccessStatus','value':'ready'},{'op':'set','path':'portfolio.httpProxyAccessError','value':''}]}" }
+            },
+            "failureSettlement": {
+              "transform": { "kind": "jsonata", "expr": "($rejected := error.status = 401 or error.status = 403; $missing := error.message = 'HTTP proxy access is required'; {'ops':[{'op':'set','path':'portfolio.httpProxyAccessStatus','value':($rejected or $missing) ? 'required' : 'error'},{'op':'set','path':'portfolio.httpProxyAccessError','value':$rejected ? 'That access key was rejected.' : ($missing ? 'HTTP proxy access is required.' : error.message)}]})" }
+            },
+            "onViolation": { "action": "fail" }
+          },
           "refreshPrices": {
             "operation": "fetch-quotes",
             "contract": "portfolio-market-quotes/v1",
@@ -106,7 +117,10 @@
             }
           }
         },
-        "config": { "endpoint": "https://query1.finance.yahoo.com" },
+        "config": {
+          "endpoint": "${GIK_HTTP_PROXY_ORIGIN}",
+          "credentialRef": "http-proxy/access-key"
+        },
         "scope": "per-blueprint"
       },
       "portfolio-intelligence": {
@@ -210,6 +224,7 @@
       "actions": ["invoke", "emit"],
       "capabilities": {
         "portfolio:workspace": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"], "emits": ["setHoldings", "upsertHolding", "removeHolding", "refreshPrices", "requestIntelligence", "calculateStrategies", "setPresentationContext"] },
+        "http-proxy:access-gate": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["accessRequested", "accessCleared"] },
         "ui:editable-table": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"], "dataProp": "rows" },
         "ui:table": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "rows" },
         "portfolio:summary": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
@@ -219,12 +234,15 @@
       "externals": {
         "projectionViews": {
           "ui": { "from": "floor" },
+          "http-proxy": { "from": "http-proxy" },
           "portfolio": { "from": "self" }
         },
         "effectHandlers": ["setHoldings", "upsertHolding", "removeHolding", "applyRecommendation", "saveHoldings", "setPresentationContext"]
       },
       "state": {
         "portfolio": {
+          "httpProxyAccessStatus": "checking",
+          "httpProxyAccessError": "",
           "holdings": {},
           "quotes": {},
           "positions": {},
@@ -242,13 +260,39 @@
       "cells": {
         "inline": [
           {
+            "id": "http-proxy-access-gate",
+            "capability": "http-proxy:access-gate",
+            "provides": [
+              {
+                "token": "http-proxy-access",
+                "read": "portfolio.httpProxyAccessStatus",
+                "when": "portfolio.httpProxyAccessStatus = 'ready'"
+              }
+            ],
+            "edges": {
+              "read": {
+                "status": "portfolio.httpProxyAccessStatus",
+                "error": "portfolio.httpProxyAccessError"
+              },
+              "on": {
+                "accessRequested": [
+                  { "do": "invoke", "args": { "tool": "checkHttpProxyAccess" } }
+                ],
+                "accessCleared": [
+                  { "do": "assign", "target": "portfolio.httpProxyAccessStatus", "args": { "value": "required" } },
+                  { "do": "assign", "target": "portfolio.httpProxyAccessError", "args": { "value": "" } }
+                ]
+              }
+            }
+          },
+          {
             "id": "holdings",
             "capability": "ui:editable-table",
             "provides": ["holding:$TICKER"],
             "props": { "label": "holdings", "spec": { "schema": { "properties": { "ticker": { "type": "string" }, "quantity": { "type": "number" }, "costBasis": { "type": "number" } } } } },
             "edges": { "readExpr": { "rows": "[portfolio.holdings.*]" }, "on": { "save": [{ "do": "invoke", "args": { "tool": "saveHoldings" } }, { "do": "invoke", "args": { "tool": "refreshPrices" } }] } }
           },
-          { "id": "market-prices", "capability": "ui:table", "requires": ["holding:$TICKER"], "provides": ["quote:$TICKER"], "props": { "label": "market-prices" }, "edges": { "readExpr": { "rows": "[portfolio.quotes.*]" } } },
+          { "id": "market-prices", "capability": "ui:table", "requires": ["http-proxy-access", "holding:$TICKER"], "provides": ["quote:$TICKER"], "service": { "service": "portfolio-market-data", "operation": "refreshPrices", "contract": "portfolio-market-quotes/v1" }, "props": { "label": "market-prices" }, "edges": { "readExpr": { "rows": "[portfolio.quotes.*]" } } },
           { "id": "positions", "capability": "ui:table", "requires": ["holding:$TICKER", "quote:$TICKER"], "provides": ["position:$TICKER"], "props": { "label": "positions" }, "edges": { "readExpr": { "rows": "[portfolio.positions.*]" } } },
           { "id": "summary", "capability": "portfolio:summary", "requires": ["position:$TICKER"], "provides": ["portfolio-summary"], "props": { "label": "summary" }, "edges": { "read": { "value": "portfolio.summary" } } },
           { "id": "portfolio-intelligence", "capability": "portfolio:narrative", "requires": ["portfolio-summary", "position:$TICKER", "investor-profile"], "provides": ["portfolio-intelligence"], "service": { "service": "portfolio-intelligence", "operation": "analyze", "contract": "portfolio-intelligence/v1" }, "props": { "label": "portfolio-intelligence" }, "edges": { "read": { "value": "portfolio.intelligence" } } },

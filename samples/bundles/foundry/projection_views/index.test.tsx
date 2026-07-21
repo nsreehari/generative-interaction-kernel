@@ -30,7 +30,7 @@ vi.mock("@fluentui/react-components", () => {
 });
 
 import foundryViews from "./index";
-import { FOUNDRY_ACCESS_STORAGE_KEY } from "../../../shared/foundry-access";
+import { FUNCTION_ACCESS } from "../../../shared/function-access";
 
 function gate(status: string, children: ResolvedNode[] = []): ResolvedNode {
   return {
@@ -88,7 +88,7 @@ test("foundry:access-gate offers reset key in the modal when a cached key exists
   Object.defineProperty(globalThis, "localStorage", {
     configurable: true,
     value: {
-      getItem: (key: string) => key === FOUNDRY_ACCESS_STORAGE_KEY ? "stale-key" : null,
+      getItem: (key: string) => key === FUNCTION_ACCESS.foundry.storageKey ? "stale-key" : null,
     },
   });
 

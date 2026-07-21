@@ -149,35 +149,32 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
       status: "applied",
       actorId: "human-investor",
     });
-    await portfolio.controller.emit(
+    await expect(portfolio.controller.emit(
       "rebalance-comparison",
       "apply",
       {},
       "human-investor"
-    );
-    await expect(portfolio.controller.settle()).rejects.toThrow("A proposed recommendation is required");
+    )).rejects.toThrow("A proposed recommendation is required");
   });
 
   it("rejects recommendation application without a proposal or attributed actor", async () => {
     const portfolio = runtime(blueprintId);
 
-    await portfolio.controller.emit(
+    await expect(portfolio.controller.emit(
       "rebalance-comparison",
       "apply",
       {},
       "human-investor"
-    );
-    await expect(portfolio.controller.settle()).rejects.toThrow("A proposed recommendation is required");
+    )).rejects.toThrow("A proposed recommendation is required");
 
     await portfolio.controller.emit(blueprintId, "requestIntelligence", {}, "agent-portfolio-intelligence");
     await portfolio.controller.settle();
     await portfolio.controller.emit(blueprintId, "calculateStrategies", {}, "agent-portfolio-intelligence");
     await portfolio.controller.settle();
-    await portfolio.controller.emit(
+    await expect(portfolio.controller.emit(
       "rebalance-comparison",
       "apply"
-    );
-    await expect(portfolio.controller.settle()).rejects.toThrow("requires an attributed actor");
+    )).rejects.toThrow("requires an attributed actor");
     expect(portfolio.state.get("portfolio.appliedRecommendation")).toBeNull();
     expect(portfolio.state.get("portfolio.recommendation.status")).toBe("proposed");
   });

@@ -18,7 +18,7 @@ describe("portfolio intelligence service declarations", () => {
 
     expect(description).toHaveLength(2);
     expect(description[0]?.provider.id).toBe("http-service:portfolio-market-data");
-    expect(description[0]?.capabilities.map(({ operation }) => operation)).toEqual(["fetch-quotes"]);
+    expect(description[0]?.capabilities.map(({ operation }) => operation)).toEqual(["check-access", "fetch-quotes"]);
     expect(description[1]?.provider.id).toBe(`deterministic-agent:${DETERMINISTIC_PORTFOLIO_PROVIDER}`);
     expect(description[1]?.capabilities.map(({ operation }) => operation)).toEqual(["analyze", "propose-strategies"]);
   });
