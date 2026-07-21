@@ -1,15 +1,26 @@
 import React from "react";
-import { ControlFace } from "@gik/controlface";
+import { openBlueprint } from "@gik/controlface/blueprint";
 import { unwrap, type Json, type Reaction } from "@gik/kernel";
 import { SharedContextStore, type BundleNative, type CompositionOrganism, type OrganismBridge } from "@gik/react";
 import type { LayerRecipe, ProfileArtifact, ProfileArtifactBundle } from "@gik/profile";
-import { BlueprintHost } from "./BlueprintHost";
+import { BlueprintHost, type BlueprintHostProps } from "./BlueprintHost";
 import { createDemoRunnerBundle, createGikControlHarnessBundle } from "./internal-bundles";
 import { dispatchDemoControlRequest, withDemoHumanGate } from "./internal-demo-control-bridge";
-import type { ControlRequest } from "./control-runtime";
+import type { ControlReceipt, ControlRequest } from "./control-runtime";
 import { resolvePresentationContext } from "./presentation";
-import type { DemoCatalog, DemoCatalogEntry, OrganismDemoContract, ScenarioPlan } from "./demo-runner";
+import {
+  GIK_DEMO_APPLY_STATE_COMMAND,
+  GIK_DEMO_RESET_STATE_COMMAND,
+  isBuiltInDemoCommand,
+  type DemoCatalog,
+  type DemoCatalogEntry,
+  type OrganismDemoContract,
+  type ScenarioPlan,
+} from "./demo-runner";
 import type { OrganismControlContract } from "./control-runtime";
+
+const EMPTY_COMPANIONS: CompositionOrganism[] = [];
+const EMPTY_CONTEXTS: BlueprintHostProps["contexts"] = {};
 
 const compositionStyle: React.CSSProperties = {
   height: "100vh",
@@ -25,57 +36,202 @@ export interface DemoComposition {
   controlContract: OrganismControlContract;
 }
 
-export interface GikDemoBlueprintHostProps {
-  blueprint: ProfileArtifact | ProfileArtifactBundle<LayerRecipe>;
-  native?: BundleNative;
-  demo: DemoComposition;
-  catalog: DemoCatalog;
+function readDemoQuery(): {
+  demoId: string | null;
+  demoIndex: number | null;
+  presentationContext: string | null;
+} {
+  if (typeof window === "undefined") {
+    return { demoId: null, demoIndex: null, presentationContext: null };
+  }
+  const params = new URLSearchParams(window.location.search);
+  const rawDemoIndex = params.get("demoIndex") ?? params.get("scenarioIndex") ?? params.get("index");
+  let demoIndex: number | null = null;
+  if (rawDemoIndex !== null) {
+    const parsedDemoIndex = Number(rawDemoIndex);
+    demoIndex = Number.isInteger(parsedDemoIndex) && parsedDemoIndex >= 0 ? parsedDemoIndex : 0;
+  }
+  return {
+    demoId: params.get("demo"),
+    demoIndex,
+    presentationContext: params.get("presentation") ?? params.get("presentationContext"),
+  };
+}
+
+type JsonRecord = Record<string, Json>;
+
+function isJsonRecord(value: Json | undefined): value is JsonRecord {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function cloneJsonRecord(value: JsonRecord | undefined): JsonRecord {
+  return value ? structuredClone(value) : {};
+}
+
+function applyPath(target: JsonRecord, path: string, value: Json): void {
+  const parts = path.split(".").filter(Boolean);
+  if (parts.length === 0) return;
+  let cursor = target;
+  for (const part of parts.slice(0, -1)) {
+    const existing = cursor[part];
+    if (!isJsonRecord(existing)) {
+      cursor[part] = {};
+    }
+    cursor = cursor[part] as JsonRecord;
+  }
+  cursor[parts[parts.length - 1]] = structuredClone(value);
+}
+
+function applyBuiltInStatePayload(seed: JsonRecord, payload: Record<string, Json> | undefined): JsonRecord {
+  const next = cloneJsonRecord(seed);
+  const ops = Array.isArray(payload?.ops) ? payload.ops : [];
+  for (const op of ops) {
+    if (!op || typeof op !== "object" || Array.isArray(op)) continue;
+    const path = typeof op.path === "string" ? op.path : "";
+    if (!path) continue;
+    applyPath(next, path, (op as Record<string, Json>).value);
+  }
+  return next;
+}
+
+function mergeDemoContext(baseContext: Record<string, Json> | undefined, demoSeed: JsonRecord | null): Record<string, Json> | undefined {
+  if (!demoSeed || Object.keys(demoSeed).length === 0) return baseContext;
+  const next = baseContext ? structuredClone(baseContext) : {};
+  const mergedSeed = isJsonRecord(next.initialSeed)
+    ? applyBuiltInStatePayload(next.initialSeed as JsonRecord, { ops: Object.entries(demoSeed).map(([path, value]) => ({ path, value })) as unknown as Json[] } as unknown as Record<string, Json>)
+    : cloneJsonRecord(demoSeed);
+  next.initialSeed = mergedSeed;
+  return next;
+}
+
+function resolveScenarioIndex(requestedIndex: number | null, stepCount: number): number {
+  if (requestedIndex === null) return 0;
+  return requestedIndex >= 0 && requestedIndex < stepCount ? requestedIndex : 0;
+}
+
+function replayScenarioSeed(
+  baseInitialSeed: JsonRecord | null,
+  scenarioPlan: ScenarioPlan,
+  startIndex: number,
+): JsonRecord | null {
+  let seed = baseInitialSeed;
+  for (const step of scenarioPlan.steps.slice(0, startIndex)) {
+    const command = step.command ?? step.commands?.[0];
+    if (command === GIK_DEMO_RESET_STATE_COMMAND) {
+      seed = baseInitialSeed;
+      continue;
+    }
+    if (command === GIK_DEMO_APPLY_STATE_COMMAND) {
+      seed = applyBuiltInStatePayload(seed ?? {}, step.payload);
+    }
+  }
+  return seed;
+}
+
+export interface GikDemoBlueprintHostProps extends Omit<BlueprintHostProps, "primaryBridge"> {
+  demo?: DemoComposition;
+  catalog?: DemoCatalog;
+  resolveDemoComposition?: (requestedId?: string | null, targetBlueprintId?: string | null, requestedIndex?: number | null) => DemoComposition;
   blueprintState?: Record<string, unknown>;
-  companions?: CompositionOrganism[];
   showControlHarness?: boolean;
   presentationContext?: string | null;
-  className?: string;
   onPresentationPresetChange?: (presetId: string) => void;
 }
 
 export function GikDemoBlueprintHost({
   blueprint,
   native,
+  companions = EMPTY_COMPANIONS,
+  contexts = EMPTY_CONTEXTS,
+  fileServices,
+  className,
+  style,
+  context,
   demo,
   catalog,
+  resolveDemoComposition,
   blueprintState,
-  companions = [],
   showControlHarness = false,
   presentationContext,
-  className,
   onPresentationPresetChange,
 }: GikDemoBlueprintHostProps): React.ReactElement {
+  const blueprintId = "format" in blueprint ? blueprint.profileArtifact.payload.id : blueprint.payload.id;
+  const query = React.useMemo(readDemoQuery, []);
+  const activeDemo = React.useMemo(() => {
+    if (demo) {
+      if (!catalog) throw new Error("GikDemoBlueprintHost requires 'catalog' when 'demo' is provided");
+      return { catalog, composition: demo };
+    }
+    if ((!query.demoId && query.demoIndex === null) || !catalog || !resolveDemoComposition) {
+      return null;
+    }
+    return {
+      catalog,
+      composition: resolveDemoComposition(query.demoId, blueprintId, query.demoIndex),
+    };
+  }, [blueprintId, catalog, demo, query.demoId, query.demoIndex, resolveDemoComposition]);
+
+  if (!activeDemo) {
+    return (
+      <BlueprintHost
+        blueprint={blueprint}
+        native={native}
+        companions={companions}
+        contexts={contexts}
+        fileServices={fileServices}
+        className={className}
+        style={style}
+        context={context}
+      />
+    );
+  }
+
+  const resolvedDemo = activeDemo.composition;
+  const resolvedCatalog = activeDemo.catalog;
+  const requestedPresentationContext = presentationContext ?? query.presentationContext;
+  const [resetEpoch, setResetEpoch] = React.useState(0);
+  const baseInitialSeed = React.useMemo(
+    () => (context && isJsonRecord(context.initialSeed) ? cloneJsonRecord(context.initialSeed as JsonRecord) : null),
+    [context],
+  );
+  const scenarioIndex = React.useMemo(
+    () => resolveScenarioIndex(query.demoIndex, resolvedDemo.scenarioPlan.steps.length),
+    [query.demoIndex, resolvedDemo.scenarioPlan.steps.length],
+  );
+  const initialDemoSeed = React.useMemo(
+    () => replayScenarioSeed(baseInitialSeed, resolvedDemo.scenarioPlan, scenarioIndex),
+    [baseInitialSeed, resolvedDemo.scenarioPlan, scenarioIndex],
+  );
+  const [demoSeed, setDemoSeed] = React.useState<JsonRecord | null>(initialDemoSeed);
+  React.useEffect(() => {
+    setDemoSeed(initialDemoSeed);
+  }, [activeDemo, initialDemoSeed]);
   const harnessBundle = React.useMemo(
-    () => (showControlHarness ? createGikControlHarnessBundle() : null),
-    [showControlHarness],
+    () => createGikControlHarnessBundle(),
+    [],
   );
   const harnessControlState = harnessBundle?.state?.control;
   const runnerBundle = React.useMemo(
     () => createDemoRunnerBundle({
       runner: {
-        plan: demo.scenarioPlan,
-        catalog: catalog.entries,
-        entry: demo.entry,
-        presentationPresets: demo.demoContract.presentationPresets,
+        plan: resolvedDemo.scenarioPlan,
+        catalog: resolvedCatalog.entries,
+        entry: resolvedDemo.entry,
+        presentationPresets: resolvedDemo.demoContract.presentationPresets,
       },
     }),
-    [catalog.entries, demo],
+    [resolvedCatalog.entries, resolvedDemo],
   );
-  const presentationPresets = demo.demoContract.presentationPresets
-    ?? catalog.targets[demo.entry.targetBlueprintId]?.presentationPresets
+  const presentationPresets = resolvedDemo.demoContract.presentationPresets
+    ?? resolvedCatalog.targets[resolvedDemo.entry.targetBlueprintId]?.presentationPresets
     ?? [];
   const resolvedPresentationContext = resolvePresentationContext(
-    presentationContext,
+    requestedPresentationContext,
     presentationPresets,
-    demo.entry.defaultContext,
+    resolvedDemo.entry.defaultContext,
   );
 
-  const contexts = React.useMemo<Record<string, SharedContextStore>>(() => {
+  const demoContexts = React.useMemo<Record<string, SharedContextStore>>(() => {
     const next: Record<string, SharedContextStore> = {};
     const inspection = blueprintState?.inspection && typeof blueprintState.inspection === "object" && !Array.isArray(blueprintState.inspection)
       ? structuredClone(blueprintState.inspection) as Record<string, unknown>
@@ -107,19 +263,25 @@ export function GikDemoBlueprintHost({
         ? structuredClone(harnessControlState)
         : {}),
     } as unknown as Json;
+    if (controlSeed && typeof controlSeed === "object" && !Array.isArray(controlSeed)) {
+      const controlRecord = controlSeed as Record<string, Json>;
+      const ui = isJsonRecord(controlRecord.ui) ? cloneJsonRecord(controlRecord.ui) : {};
+      ui.gikVisible = showControlHarness;
+      controlRecord.ui = ui;
+    }
     control.apply([{ op: "set", path: "control", value: controlSeed }]);
     next.control = control;
 
-    const scenarioPlan = demo.scenarioPlan;
+    const scenarioPlan = resolvedDemo.scenarioPlan;
     const pace = scenarioPlan.pace.default;
     const demoContext = SharedContextStore.create(["demo"]);
     demoContext.apply([{ op: "set", path: "demo", value: {
       enabled: true,
-      act: 0,
+      act: scenarioIndex,
       presenter: {
         pace,
         durationMs: pace === "auto" ? scenarioPlan.pace.autoDurationMs : scenarioPlan.pace.manualDurationMs,
-        locked: false,
+        locked: scenarioIndex >= scenarioPlan.steps.length,
         advanceToken: 0,
       },
       request: null,
@@ -128,26 +290,36 @@ export function GikDemoBlueprintHost({
     } }]);
     next.demo = demoContext;
 
-    if (showControlHarness && blueprintState?.soc !== undefined) {
+    if (blueprintState?.soc !== undefined) {
       const soc = SharedContextStore.create(["soc"]);
       soc.apply([{ op: "set", path: "soc", value: structuredClone(blueprintState.soc) as Json }]);
       next.soc = soc;
     }
     return next;
-  }, [blueprintState, demo, harnessControlState, presentationPresets, resolvedPresentationContext, showControlHarness]);
+  }, [blueprintState, harnessControlState, presentationPresets, resolvedDemo, resolvedPresentationContext, scenarioIndex, showControlHarness]);
+
+  const mergedContexts = React.useMemo(
+    () => ({ ...contexts, ...demoContexts }),
+    [contexts, demoContexts],
+  );
+  const resolvedContext = React.useMemo(
+    () => mergeDemoContext(context, demoSeed),
+    [context, demoSeed],
+  );
 
   const targetHandlesControl = React.useMemo(() => {
-    const runtime = ControlFace.openBlueprint(blueprint);
+    const runtime = openBlueprint(blueprint);
     return unwrap(runtime.document).root.edges?.react?.some(
       (reaction: Reaction) => typeof reaction.when === "string" && reaction.when.startsWith("control.commands."),
     ) ?? false;
   }, [blueprint]);
 
-  const controlStore = contexts.control;
+  const controlStore = demoContexts.control;
+
   const primaryBridge = React.useMemo<OrganismBridge>(() => ({
-    wrapSource: (controller) => controlStore ? withDemoHumanGate(controller, controlStore, demo.controlContract) : controller,
+    wrapSource: (controller) => controlStore ? withDemoHumanGate(controller, controlStore, resolvedDemo.controlContract) : controller,
     connect: (controller) => {
-      if (!controlStore || targetHandlesControl) return;
+      if (!controlStore) return;
       const processed = new Set<string>();
       const dispatch = () => {
         const request = controlStore.get("control.request") as unknown as ControlRequest | null;
@@ -155,13 +327,34 @@ export function GikDemoBlueprintHost({
         const key = `${request.id}:${request.commandIndex ?? 0}:${request.command}`;
         if (processed.has(key)) return;
         processed.add(key);
-        void dispatchDemoControlRequest(controller, controlStore, demo.controlContract, request);
+        if (isBuiltInDemoCommand(request.command)) {
+          if (request.command === GIK_DEMO_RESET_STATE_COMMAND) {
+            setDemoSeed(baseInitialSeed);
+          } else if (request.command === GIK_DEMO_APPLY_STATE_COMMAND) {
+            setDemoSeed((current) => applyBuiltInStatePayload(current ?? baseInitialSeed ?? {}, request.payload));
+          }
+          setResetEpoch((value) => value + 1);
+          const receipt: ControlReceipt = {
+            requestId: request.id,
+            token: request.token,
+            command: request.command,
+            status: "completed",
+            outcome: request.command === GIK_DEMO_RESET_STATE_COMMAND ? "reset-state" : "applied-state",
+          };
+          controlStore.apply([
+            { op: "set", path: "control.receipt", value: receipt as unknown as Json },
+            { op: "set", path: "control.request", value: null },
+          ]);
+          return;
+        }
+        if (targetHandlesControl) return;
+        void dispatchDemoControlRequest(controller, controlStore, resolvedDemo.controlContract, request);
       };
       const unsubscribe = controlStore.subscribe(dispatch);
       dispatch();
       return unsubscribe;
     },
-  }), [controlStore, demo.controlContract, targetHandlesControl]);
+  }), [baseInitialSeed, controlStore, resolvedDemo.controlContract, targetHandlesControl]);
 
   React.useEffect(() => {
     if (!controlStore) return;
@@ -182,7 +375,7 @@ export function GikDemoBlueprintHost({
 
   const packageCompanions = React.useMemo<CompositionOrganism[]>(() => {
     const list = [...companions];
-    if (harnessBundle) list.push({ id: "gik-control-harness", bundle: harnessBundle });
+    list.push({ id: "gik-control-harness", bundle: harnessBundle });
     list.push({ id: "demo-runner", bundle: runnerBundle });
     return list;
   }, [companions, harnessBundle, runnerBundle]);
@@ -192,10 +385,13 @@ export function GikDemoBlueprintHost({
       blueprint={blueprint}
       native={native}
       companions={packageCompanions}
-      contexts={contexts}
+      contexts={mergedContexts}
+      fileServices={fileServices}
       primaryBridge={primaryBridge}
+      primaryInstanceKey={resetEpoch}
       className={className}
-      style={compositionStyle}
+      style={style ? { ...compositionStyle, ...style } : compositionStyle}
+      context={resolvedContext}
     />
   );
 }

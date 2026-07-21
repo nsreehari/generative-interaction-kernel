@@ -89,6 +89,13 @@ export interface DemoTargetCatalogEntry {
   timelineSources: TimelineItem["source"][];
 }
 
+export const GIK_DEMO_APPLY_STATE_COMMAND = "$apply-state";
+export const GIK_DEMO_RESET_STATE_COMMAND = "$reset-state";
+
+export function isBuiltInDemoCommand(command: string | null | undefined): boolean {
+  return command === GIK_DEMO_APPLY_STATE_COMMAND || command === GIK_DEMO_RESET_STATE_COMMAND;
+}
+
 export function compileScenarioBlueprint(artifact: ScenarioBlueprintArtifact): ScenarioPlan {
   const plan = artifact.payload;
   if (!plan.id.trim()) throw new Error("Scenario Blueprint id is required");
@@ -133,7 +140,12 @@ export function validateDemoComposition(entry: DemoCatalogEntry, scenario: Scena
   const timelineSources = new Set(organism.timelineSources);
   for (const step of scenario.steps) {
     for (const command of scenarioStepCommands(step)) {
-      if (!commands.has(command)) throw new Error(`Unsupported scenario command '${command}'`);
+      if (!commands.has(command) && !isBuiltInDemoCommand(command)) {
+        throw new Error(`Unsupported scenario command '${command}'`);
+      }
+      if (step.kind === "human-gate" && isBuiltInDemoCommand(command)) {
+        throw new Error(`Built-in demo command '${command}' cannot be human-gated`);
+      }
       if (step.kind === "human-gate" && !humanGates.has(command)) throw new Error(`Scenario command '${command}' is not a human gate`);
       if (step.kind === "dispatch" && humanGates.has(command)) throw new Error(`Human-gated command '${command}' cannot be dispatched automatically`);
     }
@@ -256,14 +268,21 @@ export function resolveDemoEntry(
   catalog: DemoCatalog,
   requestedId?: string | null,
   targetBlueprintId?: string | null,
+  requestedIndex?: number | null,
 ): DemoCatalogEntry {
   const entries = targetBlueprintId ? catalog.entries.filter((entry) => entry.targetBlueprintId === targetBlueprintId) : catalog.entries;
   if (entries.length === 0) throw new Error(`No demos are registered for Blueprint '${targetBlueprintId}'`);
   const exact = entries.find((entry) => entry.id === requestedId);
   if (exact) return exact;
+  if (requestedIndex !== null && requestedIndex !== undefined) {
+    const indexed = entries[requestedIndex];
+    if (indexed) return indexed;
+    return entries[0];
+  }
   if (requestedId && /^\d+$/.test(requestedId)) {
     const indexed = entries[Number(requestedId)];
     if (indexed) return indexed;
+    return entries[0];
   }
   return targetBlueprintId ? entries[0] : entries.find((entry) => entry.id === catalog.default) ?? entries[0];
 }
