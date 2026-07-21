@@ -1,11 +1,15 @@
 {
   "agent": {
+    "accessStatus": "required",
+    "accessError": "",
     "agentName": "",
     "draft": "",
     "reply": "",
     "lastAsked": "",
     "conversationId": "",
     "agentOptions": [],
+    "agentsStatus": "idle",
+    "agentsError": "",
     "error": ""
   }
 }

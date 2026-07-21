@@ -8,15 +8,6 @@
 import { setOp, type EffectHandlerMap } from "@gik/react";
 
 export const effects: EffectHandlerMap = {
-  beginFoundryAccess() {
-    return {
-      ops: [
-        setOp("agent.accessStatus", "checking"),
-        setOp("agent.accessError", ""),
-      ],
-    };
-  },
-
   clearFoundryAccess() {
     return {
       ops: [
@@ -24,6 +15,8 @@ export const effects: EffectHandlerMap = {
         setOp("agent.accessError", ""),
         setOp("agent.agentName", ""),
         setOp("agent.agentOptions", []),
+        setOp("agent.agentsStatus", "idle"),
+        setOp("agent.agentsError", ""),
         setOp("agent.conversationId", ""),
       ],
     };
@@ -39,6 +32,8 @@ export const effects: EffectHandlerMap = {
         setOp("agent.lastAsked", ""),
         setOp("agent.conversationId", ""),
         setOp("agent.agentOptions", []),
+        setOp("agent.agentsStatus", "idle"),
+        setOp("agent.agentsError", ""),
         setOp("agent.error", ""),
       ],
     };

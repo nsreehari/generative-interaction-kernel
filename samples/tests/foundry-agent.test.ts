@@ -43,24 +43,39 @@ afterEach(() => {
 });
 
 describe.each(FOUNDRY_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
-test("access request discovers agents through the host and selects an available agent", async () => {
+test("access check and agent discovery run as separate phases", async () => {
   const values = installLocalStorage();
   values.set(FOUNDRY_ACCESS_STORAGE_KEY, "access-key");
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () => new Response(JSON.stringify({
-    data: [
-      { name: "Agent One", state: "enabled" },
-      { name: "Agent Two", state: "enabled" },
-    ],
-  }), { status: 200, headers: { "content-type": "application/json" } });
+  const requests: string[] = [];
+  globalThis.fetch = async (input) => {
+    requests.push(String(input));
+    return String(input).includes("/api/access/check")
+      ? new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "content-type": "application/json" } })
+      : new Response(JSON.stringify({
+          data: [
+            { name: "Agent One", state: "enabled" },
+            { name: "Agent Two", state: "enabled" },
+          ],
+        }), { status: 200, headers: { "content-type": "application/json" } });
+  };
   try {
     const { controller, state: store } = runtime(blueprintId);
     await controller.start();
     await controller.emit("foundry-access-gate", "accessRequested", {});
-    await controller.settle();
+
+    assert.equal(store.get("agent.accessStatus"), "ready");
+    assert.equal(store.get("agent.agentsStatus"), "idle");
+    assert.equal(requests.length, 1);
+    assert.match(requests[0], /\/api\/access\/check$/);
+
+    await controller.emit("agent-selector", "agentsRequested", {});
 
     assert.equal(store.get("agent.key"), null);
     assert.equal(store.get("agent.accessStatus"), "ready");
+    assert.equal(store.get("agent.agentsStatus"), "ready");
+    assert.equal(requests.length, 2);
+    assert.match(requests[1], /\/api\/foundry\/agents/);
     assert.deepEqual(store.get("agent.agentOptions"), ["Agent One", "Agent Two"]);
     assert.equal(store.get("agent.agentName"), "Agent One");
 
@@ -93,6 +108,12 @@ test("chat resolves the host credential without copying it into Kernel state", a
   const originalFetch = globalThis.fetch;
   let request: RequestInit | undefined;
   globalThis.fetch = async (input, init) => {
+    if (String(input).includes("/api/access/check")) {
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
     if (String(input).includes("/api/foundry/agents")) {
       return new Response(JSON.stringify({ data: [{ name: "Agent One", state: "enabled" }] }), {
         status: 200,
@@ -110,6 +131,8 @@ test("chat resolves the host credential without copying it into Kernel state", a
     const { controller, state: store } = runtime(blueprintId);
     await controller.start();
     await controller.emit("foundry-access-gate", "accessRequested", {});
+    await controller.settle();
+    await controller.emit("agent-selector", "agentsRequested", {});
     await controller.settle();
     await controller.emit("agent-message-field", "input", { value: "Hello" });
     await controller.emit("agent-ask-btn", "press", {}, "human-user");
@@ -173,19 +196,26 @@ test("chat failures settle into application error state", async () => {
   const values = installLocalStorage();
   values.set(FOUNDRY_ACCESS_STORAGE_KEY, "access-key");
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (input) => String(input).includes("/api/foundry/agents")
-    ? new Response(JSON.stringify({ data: [{ name: "Agent One", state: "enabled" }] }), {
+  globalThis.fetch = async (input) => String(input).includes("/api/access/check")
+    ? new Response(JSON.stringify({ ok: true }), {
         status: 200,
         headers: { "content-type": "application/json" },
       })
-    : new Response(JSON.stringify({ error: "Provider unavailable" }), {
-        status: 503,
+    : String(input).includes("/api/foundry/agents")
+      ? new Response(JSON.stringify({ data: [{ name: "Agent One", state: "enabled" }] }), {
+        status: 200,
         headers: { "content-type": "application/json" },
-      });
+      })
+      : new Response(JSON.stringify({ error: "Provider unavailable" }), {
+          status: 503,
+          headers: { "content-type": "application/json" },
+        });
   try {
     const { controller, state: store } = runtime(blueprintId);
     await controller.start();
     await controller.emit("foundry-access-gate", "accessRequested", {});
+    await controller.settle();
+    await controller.emit("agent-selector", "agentsRequested", {});
     await controller.settle();
     await controller.emit("agent-message-field", "input", { value: "Hello" });
     await controller.emit("agent-ask-btn", "press", {}, "human-user");

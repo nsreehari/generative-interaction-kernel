@@ -3,6 +3,26 @@ import { test } from "vitest";
 
 import { createFoundryProxy, FoundryProxyError } from "./foundry-proxy";
 
+test("Foundry proxy checks access without loading agents", async () => {
+  let requestUrl = "";
+  let request: RequestInit | undefined;
+  const proxy = createFoundryProxy({
+    baseUrl: "https://proxy.example/",
+    key: "function-key",
+    fetch: async (url, init) => {
+      requestUrl = String(url);
+      request = init;
+      return Response.json({ ok: true });
+    },
+  });
+
+  await proxy.checkAccess();
+
+  assert.equal(requestUrl, "https://proxy.example/api/access/check");
+  assert.equal(request?.method, "GET");
+  assert.equal((request?.headers as Record<string, string>)["x-functions-key"], "function-key");
+});
+
 test("Foundry proxy chat sends agent name, conversation, and per-turn instructions", async () => {
   let request: RequestInit | undefined;
   const proxy = createFoundryProxy({
@@ -41,5 +61,21 @@ test("Foundry proxy exposes service errors without leaking response bodies", asy
   await assert.rejects(
     proxy.ping("SOC-Response-Agent"),
     (error: unknown) => error instanceof FoundryProxyError && error.status === 403 && error.message === "Access denied"
+  );
+});
+
+test("Foundry proxy times out hung requests so the access gate can recover", async () => {
+  const proxy = createFoundryProxy({
+    baseUrl: "https://proxy.example",
+    key: "stale-key",
+    timeoutMs: 5,
+    fetch: async () => new Promise<Response>(() => {}),
+  });
+
+  await assert.rejects(
+    proxy.listAgents(),
+    (error: unknown) => error instanceof FoundryProxyError
+      && error.status === 408
+      && error.message === "Timed out checking Foundry access. Retry or enter a new access key."
   );
 });

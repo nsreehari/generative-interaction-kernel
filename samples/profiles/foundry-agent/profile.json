@@ -31,8 +31,8 @@
                   "provides": [
                     {
                       "token": "foundry-access",
-                      "read": "agent.agentOptions",
-                      "when": "agent.accessStatus = 'ready' or agent.accessStatus = 'empty'"
+                      "read": "agent.accessStatus",
+                      "when": "agent.accessStatus = 'ready'"
                     }
                   ],
                   "edges": {
@@ -43,15 +43,19 @@
                     "on": {
                       "accessRequested": [
                         {
-                          "do": "invoke",
-                          "args": {
-                            "tool": "beginFoundryAccess"
-                          }
+                          "do": "assign",
+                          "target": "agent.accessStatus",
+                          "args": { "value": "checking" }
+                        },
+                        {
+                          "do": "assign",
+                          "target": "agent.accessError",
+                          "args": { "value": "" }
                         },
                         {
                           "do": "invoke",
                           "args": {
-                            "tool": "discoverAgents"
+                            "tool": "checkFoundryAccess"
                           }
                         }
                       ],
@@ -68,7 +72,6 @@
                       {
                         "capability": "agent:ask-page",
                         "id": "agent-demo",
-                        "requires": ["foundry-access"],
                         "props": {
                           "title": "Ask the agent"
                         },
@@ -77,12 +80,38 @@
                       {
                         "capability": "agent:agent-selector",
                         "id": "agent-selector",
+                        "requires": ["foundry-access"],
+                        "provides": [
+                          {
+                            "token": "foundry-agent-selection",
+                            "read": "agent.agentName",
+                            "when": "agent.agentName != ''"
+                          }
+                        ],
                         "edges": {
                           "read": {
                             "agentName": "agent.agentName",
-                            "agentOptions": "agent.agentOptions"
+                            "agentOptions": "agent.agentOptions",
+                            "agentsStatus": "agent.agentsStatus",
+                            "agentsError": "agent.agentsError"
                           },
                           "on": {
+                            "agentsRequested": [
+                              {
+                                "do": "assign",
+                                "target": "agent.agentsStatus",
+                                "args": { "value": "loading" }
+                              },
+                              {
+                                "do": "assign",
+                                "target": "agent.agentsError",
+                                "args": { "value": "" }
+                              },
+                              {
+                                "do": "invoke",
+                                "args": { "tool": "discoverAgents" }
+                              }
+                            ],
                             "select": [
                               {
                                 "do": "assign",
@@ -135,6 +164,7 @@
                       {
                         "capability": "ui:button",
                         "id": "agent-ask-btn",
+                        "requires": ["foundry-agent-selection"],
                         "props": {
                           "label": "Ask",
                           "tone": "primary"
@@ -297,6 +327,17 @@
             },
             "onViolation": { "action": "fail" }
           },
+          "checkFoundryAccess": {
+            "operation": "check-access",
+            "contract": "foundry-access-check/v1",
+            "settlement": {
+              "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'agent.accessStatus','value':'ready'},{'op':'set','path':'agent.accessError','value':''}]}" }
+            },
+            "failureSettlement": {
+              "transform": { "kind": "jsonata", "expr": "($rejected := error.status = 401 or error.status = 403; $missing := error.message = 'Foundry access is required'; {'ops':[{'op':'set','path':'agent.accessStatus','value':($rejected or $missing) ? 'required' : 'error'},{'op':'set','path':'agent.accessError','value':$rejected ? 'That access key was rejected.' : ($missing ? 'Foundry access is required.' : error.message)}]})" }
+            },
+            "onViolation": { "action": "fail" }
+          },
           "discoverAgents": {
             "operation": "discover",
             "contract": "foundry-agent-list/v1",
@@ -313,10 +354,10 @@
               ]
             },
             "settlement": {
-              "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'agent.agentOptions','value':response},{'op':'set','path':'agent.agentName','value':$count(response) > 0 ? response[0] : ''},{'op':'set','path':'agent.accessStatus','value':$count(response) > 0 ? 'ready' : 'empty'},{'op':'set','path':'agent.accessError','value':''}]}" }
+              "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'agent.agentOptions','value':response},{'op':'set','path':'agent.agentName','value':$count(response) > 0 ? response[0] : ''},{'op':'set','path':'agent.agentsStatus','value':$count(response) > 0 ? 'ready' : 'empty'},{'op':'set','path':'agent.agentsError','value':''}]}" }
             },
             "failureSettlement": {
-              "transform": { "kind": "jsonata", "expr": "($rejected := error.status = 401 or error.status = 403; $missing := error.message = 'Foundry access is required'; $unconfigured := $contains(error.message, 'Invalid service') or $contains(error.message, 'Unsupported service kind') or $contains(error.message, 'requires host capabilities'); {'ops':[{'op':'set','path':'agent.agentOptions','value':[]},{'op':'set','path':'agent.agentName','value':''},{'op':'set','path':'agent.accessStatus','value':($rejected or $missing) ? 'required' : ($unconfigured ? 'unconfigured' : 'error')},{'op':'set','path':'agent.accessError','value':$rejected ? 'That access key was rejected.' : ($missing ? 'Foundry access is required.' : error.message)}]})" }
+              "transform": { "kind": "jsonata", "expr": "($rejected := error.status = 401 or error.status = 403; $missing := error.message = 'Foundry access is required'; {'ops':[{'op':'set','path':'agent.agentOptions','value':[]},{'op':'set','path':'agent.agentName','value':''},{'op':'set','path':'agent.accessStatus','value':($rejected or $missing) ? 'required' : state.agent.accessStatus},{'op':'set','path':'agent.accessError','value':$rejected ? 'That access key was rejected.' : ($missing ? 'Foundry access is required.' : state.agent.accessError)},{'op':'set','path':'agent.agentsStatus','value':($rejected or $missing) ? 'idle' : 'error'},{'op':'set','path':'agent.agentsError','value':($rejected or $missing) ? '' : error.message}]})" }
             },
             "onViolation": { "action": "fail" }
           }
@@ -426,6 +467,7 @@
             "additionalProperties": true
           },
           "emits": [
+            "agentsRequested",
             "select"
           ]
         },
@@ -479,14 +521,13 @@
           }
         },
         "effectHandlers": [
-          "beginFoundryAccess",
           "clearFoundryAccess",
           "signOut"
         ]
       },
       "state": {
         "agent": {
-          "accessStatus": "checking",
+          "accessStatus": "required",
           "accessError": "",
           "agentName": "",
           "draft": "",
@@ -494,6 +535,8 @@
           "lastAsked": "",
           "conversationId": "",
           "agentOptions": [],
+          "agentsStatus": "idle",
+          "agentsError": "",
           "error": ""
         }
       }

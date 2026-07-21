@@ -60,6 +60,7 @@ export class GenUIController {
         payload: payload as Record<string, never> | undefined,
         actorId,
       });
+      await this.kernel.whenIdle();
       return this.refresh();
     });
   }

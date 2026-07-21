@@ -2,6 +2,8 @@ import {
   Button,
   Field,
   Select,
+  Spinner,
+  Text,
   makeStyles,
   tokens,
 } from "@fluentui/react-components";
@@ -30,13 +32,41 @@ const useStyles = makeStyles({
 
 const FoundryAgentSelector: ProjectionView = ({ node, emit }) => {
   const agentName = String(node.props.agentName ?? "");
+  const agentsStatus = String(node.props.agentsStatus ?? "idle");
+  const agentsError = String(node.props.agentsError ?? "");
   const agentOptions = Array.isArray(node.props.agentOptions)
     ? node.props.agentOptions.map((value) => String(value))
     : [];
+  const requested = React.useRef(false);
+
+  React.useEffect(() => {
+    if (agentsStatus === "idle" && !requested.current) {
+      requested.current = true;
+      void emit("agentsRequested", {});
+    } else if (agentsStatus !== "idle") {
+      requested.current = false;
+    }
+  }, [agentsStatus, emit]);
+
+  if (agentsStatus === "loading" || agentsStatus === "idle") {
+    return <Spinner labelPosition="after" label="Loading agents..." />;
+  }
+
+  if (agentsStatus === "error") {
+    return (
+      <Field label="Agent" validationMessage={agentsError || "Couldn't load the available agents."} validationState="error">
+        <Button onClick={() => emit("agentsRequested", {})}>Retry loading agents</Button>
+      </Field>
+    );
+  }
+
+  if (agentsStatus === "empty") {
+    return <Text>No Foundry agents are available.</Text>;
+  }
+
   return (
     <Field label="Agent">
-      <Select value={agentName} disabled={agentOptions.length === 0} onChange={(_event, data) => emit("select", { value: data.value })}>
-        {agentOptions.length === 0 ? <option value="">No agents available</option> : null}
+      <Select value={agentName} onChange={(_event, data) => emit("select", { value: data.value })}>
         {agentOptions.map((option) => <option key={option} value={option}>{option}</option>)}
       </Select>
     </Field>
