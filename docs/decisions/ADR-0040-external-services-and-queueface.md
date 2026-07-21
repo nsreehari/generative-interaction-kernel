@@ -61,9 +61,16 @@ scoped adapters through the trusted `ServiceKindRegistry`. Cache scope (`per-inv
 service-instance registration. Immediate and queued execution share one request/settlement
 contract.
 
+GIK defines the `ServiceHost` interface and provides `DefaultServiceHost` as its official reference
+implementation. Outer hosts instantiate it and supply trusted service-kind factories, adapters,
+credential resolution, endpoint authorization, and environment policy. Providing the reference
+coordinator does not make GIK the host or owner of external services or their storage.
+
 `QueueFace` is a thin queue-oriented projection over `ServiceHost`; it does not register adapters or
 execute providers. `ControlFace` projects kind/config-schema/probe/request-state operations from the
-same `ServiceHost` instance. This is consistent with the face/projection boundary from
+same `ServiceHost` instance, and `AgentFace` exposes only the policy-approved service operations
+projected by `ControlFace`. These Faces depend on the `ServiceHost` contract; they do not construct
+`DefaultServiceHost`. This is consistent with the face/projection boundary from
 [ADR-0037](ADR-0037-face-projections-and-transport-boundary.md): faces expose one host capability
 without owning a parallel registry or runtime. `AgentFace` receives only the policy-approved
 operational subset.
