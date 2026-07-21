@@ -8,10 +8,6 @@
     "contexts": ["control", "soc"],
     "actions": ["assign", "derive", "emit", "invoke", "route", "confirm"],
     "capabilities": {
-      "foundry:access-modal": {
-        "propsSchema": { "type": "object", "additionalProperties": true },
-        "emits": ["accessResolved", "accessCleared"]
-      },
       "soc:workspace-shell": {
         "propsSchema": { "type": "object", "additionalProperties": true },
         "slots": ["children"]
@@ -26,7 +22,7 @@
           "establishIntent", "addConstraint", "suggestExploration", "amendExploration",
           "replanExploration", "commitPartialFindings", "proposeDc01", "completeCorrelation",
           "proposeHostA", "reviseResponse", "calculateResponse", "recommendContainment",
-          "authorizeContainment", "executeContainment", "setPresentationContext", "setAgentMode", "reset"
+          "authorizeContainment", "executeContainment", "setPresentationContext", "reset"
         ]
       },
       "soc:substrate-chrome": {
@@ -76,40 +72,15 @@
     },
     "externals": {
       "projectionViews": {
-        "foundry": { "from": "foundry-agent", "use": ["access-modal"] },
         "soc": { "from": "self" }
       },
       "effectHandlers": [
         "establishIntent", "addConstraint", "suggestExploration", "amendExploration",
         "replanExploration", "commitPartialFindings", "evaluateDc01Policy", "completeCorrelation",
         "proposeHostA", "reviseResponse", "calculateResponse", "recommendContainment",
-        "authorizeContainment", "setPresentationContext", "setAgentMode", "syncInspection",
-        "acceptSocFoundryAccess", "clearSocFoundryAccess", "executeContainment", "resetScenario"
-      ],
-      "services": {
-        "correlation-agent": {
-          "kind": "foundry-agent",
-          "version": "1",
-          "operations": ["chat"],
-          "config": {
-            "endpoint": "https://sz-foundry-proxy.azurewebsites.net",
-            "agent": "SOC-Correlation-Agent",
-            "credentialRef": "foundry-agent/access-key"
-          },
-          "scope": "per-session"
-        },
-        "response-agent": {
-          "kind": "foundry-agent",
-          "version": "1",
-          "operations": ["chat"],
-          "config": {
-            "endpoint": "https://sz-foundry-proxy.azurewebsites.net",
-            "agent": "SOC-Response-Agent",
-            "credentialRef": "foundry-agent/access-key"
-          },
-          "scope": "per-session"
-        }
-      }
+        "authorizeContainment", "setPresentationContext", "syncInspection",
+        "executeContainment", "resetScenario"
+      ]
     }
   }
 }

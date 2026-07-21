@@ -6,6 +6,7 @@ import {
   type Json,
   type Lowering,
   type NodeOptions,
+  type Reaction,
 } from "../../kernel/src/index";
 import {
   matchesFacts,
@@ -15,6 +16,7 @@ import {
   type StageExecutor,
   type StageTrace,
 } from "./profile-core";
+import type { StageEvidenceSink } from "./acx";
 import {
   planPresentationWithRecipe,
   planningRecipeOf,
@@ -26,6 +28,7 @@ import {
   isWorkflowToInteractionRecipe,
   type InteractionSpec,
   type InteractionTaxonomy,
+  type GenuiEvidenceRecorder,
   type LayerRecipe,
   type PresentationRuntimeFacts,
   type PresentationSpec,
@@ -45,6 +48,7 @@ type RuntimeEmitterNodeOptions<TNode> = {
   readExpr?: Record<string, string>;
   gate?: string;
   on?: Record<string, Action[]>;
+  react?: Reaction[];
   children?: TNode[];
 };
 
@@ -53,15 +57,29 @@ const kernelRuntimeEmitter: RuntimeEmitter<DocNode, DocumentPayload, NodeOptions
   output: (root) => ({ root }),
 };
 
-export function lowerWorkflow(recipe: LayerRecipe): (workflow: WorkflowSpec) => InteractionSpec {
+function evidenceData(value: unknown): Json {
+  return JSON.parse(JSON.stringify(value)) as Json;
+}
+
+export function lowerWorkflow(recipe: LayerRecipe, record?: GenuiEvidenceRecorder): (workflow: WorkflowSpec) => InteractionSpec {
   if (!isWorkflowToInteractionRecipe(recipe)) {
     throw new Error(`Recipe '${recipe.id}' does not carry workflow-to-interaction data`);
   }
   return (workflow: WorkflowSpec): InteractionSpec => {
-    const selected = workflowProgramEmit(recipe, "interaction", {
+    const facts = {
       workflow: workflow.workflow,
       subject: workflow.subject,
       interaction: workflow.interaction,
+    };
+    const selected = workflowProgramEmit(recipe, "interaction", facts);
+    const selectedRule = recipe.program.find((rule) => matchesFacts(rule.match, facts));
+    record?.({
+      kind: selectedRule ? "rule-selected" : "rule-missed",
+      detail: selectedRule
+        ? `Selected interaction '${selected?.interaction ?? ""}' for workflow '${workflow.workflow}'`
+        : `No interaction rule selected for workflow '${workflow.workflow}'`,
+      subject: `${recipe.id}#interaction:${workflow.workflow}`,
+      data: evidenceData({ slot: "interaction", facts, match: selectedRule?.match, emit: selectedRule?.emit }),
     });
     if (!selected?.interaction) {
       throw new Error(`Recipe '${recipe.id}' could not select an interaction for workflow '${workflow.workflow}'`);
@@ -128,6 +146,7 @@ function runtimeFieldsToNodeOptions<TNode>(
   if (source.readExpr) options.readExpr = resolveTemplatedValue(source.readExpr, tokens) as Record<string, string>;
   if (source.gate !== undefined) options.gate = resolveTemplatedValue(source.gate, tokens) as string;
   if (source.on) options.on = resolveTemplatedValue(source.on, tokens) as Record<string, Action[]>;
+  if (source.react) options.react = resolveTemplatedValue(source.react, tokens) as Reaction[];
   return options;
 }
 
@@ -151,7 +170,8 @@ function authoredRuntimeChildren<TNode>(
 
 export function lowerPresentationWithRuntimeEmitter<TNode, TOutput>(
   recipe: LayerRecipe,
-  emitter: RuntimeEmitter<TNode, TOutput, RuntimeEmitterNodeOptions<TNode>>
+  emitter: RuntimeEmitter<TNode, TOutput, RuntimeEmitterNodeOptions<TNode>>,
+  record?: GenuiEvidenceRecorder
 ): (presentation: PresentationSpec) => TOutput {
   const runtimeRecipe = runtimeRecipeOf(recipe);
   if (!runtimeRecipe) {
@@ -167,6 +187,14 @@ export function lowerPresentationWithRuntimeEmitter<TNode, TOutput>(
       frame: presentation.frame,
     };
     const container = presentationRuntimeProgramEmit(runtimeRecipe, "container", containerFacts);
+    const containerRule = presentationRuntimeProgramRules(runtimeRecipe, "container")
+      .find((rule) => matchesFacts(rule.match, containerFacts));
+    record?.({
+      kind: containerRule ? "rule-selected" : "rule-missed",
+      detail: containerRule ? "Selected runtime container rule" : "No runtime container rule selected",
+      subject: `${runtimeRecipe.id}#container`,
+      data: evidenceData({ slot: "container", facts: containerFacts, match: containerRule?.match, emit: containerRule?.emit }),
+    });
     const containerTokens = buildContainerTokens(presentation);
     const children: TNode[] = presentation.regions.filter((region) => region.materialize !== false).map((region) => {
       const matchFacts: PresentationRuntimeFacts = {
@@ -182,7 +210,40 @@ export function lowerPresentationWithRuntimeEmitter<TNode, TOutput>(
       const matched = regionRules
         .filter((rule) => Object.keys(rule.match ?? {}).length > 0)
         .find((rule) => matchesFacts(rule.match, matchFacts))?.emit;
+      const matchedRule = regionRules
+        .filter((rule) => Object.keys(rule.match ?? {}).length > 0)
+        .find((rule) => matchesFacts(rule.match, matchFacts));
+      const fallbackRule = [...regionRules].reverse()
+        .find((rule) => Object.keys(rule.match ?? {}).length === 0);
+      record?.({
+        kind: matchedRule ? "rule-selected" : "fallback-selected",
+        detail: matchedRule
+          ? `Selected runtime region rule for '${region.name}'`
+          : `Selected runtime fallback for '${region.name}'`,
+        subject: `${runtimeRecipe.id}#region:${region.name}`,
+        data: evidenceData({
+          slot: "region",
+          facts: matchFacts,
+          match: matchedRule?.match ?? fallbackRule?.match,
+          emit: matchedRule?.emit ?? fallbackRule?.emit,
+        }),
+      });
       const capability = region.capability ?? matched?.capability ?? fallback?.capability ?? region.name;
+      record?.({
+        kind: "capability-emitted",
+        detail: `Emitted capability '${capability}' for region '${region.name}'`,
+        subject: `${runtimeRecipe.id}#region:${region.name}`,
+        data: {
+          capability,
+          source: region.capability
+            ? "interaction"
+            : matched?.capability
+              ? "matched-rule"
+              : fallback?.capability
+                ? "fallback"
+                : "region-name",
+        },
+      });
       const tokens = buildRegionTokens(presentation, region);
       const fallbackOptions = runtimeFieldsToNodeOptions<TNode>(fallback, tokens);
       const matchedOptions = runtimeFieldsToNodeOptions<TNode>(matched, tokens);
@@ -218,6 +279,12 @@ export function lowerPresentationWithRuntimeEmitter<TNode, TOutput>(
     });
 
     const rootId = container?.id ?? source.interaction;
+    record?.({
+      kind: "capability-emitted",
+      detail: `Emitted root capability '${container?.capability ?? source.interaction}'`,
+      subject: `${runtimeRecipe.id}#container`,
+      data: { capability: container?.capability ?? source.interaction, id: rootId },
+    });
     const root = emitter.node(container?.capability ?? source.interaction, rootId, {
       ...runtimeFieldsToNodeOptions<TNode>(container, containerTokens),
       children: [
@@ -229,8 +296,12 @@ export function lowerPresentationWithRuntimeEmitter<TNode, TOutput>(
   };
 }
 
-export function lowerPresentation(recipe: LayerRecipe): Lowering<PresentationSpec> {
-  return lowerPresentationWithRuntimeEmitter(recipe, kernelRuntimeEmitter);
+export function lowerPresentation(recipe: LayerRecipe, record?: GenuiEvidenceRecorder): Lowering<PresentationSpec> {
+  return lowerPresentationWithRuntimeEmitter(recipe, kernelRuntimeEmitter, record);
+}
+
+function recorderFor(evidence?: StageEvidenceSink): GenuiEvidenceRecorder | undefined {
+  return evidence ? (entry) => evidence.record(entry) : undefined;
 }
 
 export function defaultStageExecutors(): Record<string, StageExecutor<LayerRecipe>> {
@@ -243,30 +314,45 @@ export function defaultStageExecutors(): Record<string, StageExecutor<LayerRecip
   };
 
   return {
-    [EXECUTOR_SELECT_INTERACTION]: (recipe, input) =>
-      lowerWorkflow(recipe)(input as WorkflowSpec),
-    [EXECUTOR_PLAN_PRESENTATION]: (recipe, input, ctx, profile) => {
+    [EXECUTOR_SELECT_INTERACTION]: (recipe, input, _ctx, _profile, evidence?: StageEvidenceSink) =>
+      lowerWorkflow(recipe, recorderFor(evidence))(input as WorkflowSpec),
+    [EXECUTOR_PLAN_PRESENTATION]: (recipe, input, ctx, profile, evidence?: StageEvidenceSink) => {
       const planner = planningRecipeOf(recipe);
       if (!planner) throw new Error(`Recipe '${recipe.id}' does not carry presentation planning data`);
+      evidence?.record({
+        kind: "resource-read",
+        detail: "Read resolved taxonomy resource for presentation planning",
+        subject: `${recipe.id}#resource:taxonomy`,
+        data: { resource: "taxonomy" },
+      });
       return planPresentationWithRecipe(
         input as InteractionSpec,
         ctx,
         planner,
-        requiredTaxonomy(profile)
+        requiredTaxonomy(profile),
+        recorderFor(evidence)
       );
     },
-    [EXECUTOR_LOWER_DOCUMENT]: (recipe, input) =>
-      lowerPresentation(recipe)(input as PresentationSpec),
-    [EXECUTOR_COMPOSE_DOCUMENT]: (recipe, input, ctx, profile) => {
+    [EXECUTOR_LOWER_DOCUMENT]: (recipe, input, _ctx, _profile, evidence?: StageEvidenceSink) =>
+      lowerPresentation(recipe, recorderFor(evidence))(input as PresentationSpec),
+    [EXECUTOR_COMPOSE_DOCUMENT]: (recipe, input, ctx, profile, evidence?: StageEvidenceSink) => {
       const planner = planningRecipeOf(recipe);
       if (!planner) throw new Error(`Recipe '${recipe.id}' does not carry presentation planning data`);
+      evidence?.record({
+        kind: "resource-read",
+        detail: "Read resolved taxonomy resource for composed lowering",
+        subject: `${recipe.id}#resource:taxonomy`,
+        data: { resource: "taxonomy" },
+      });
+      const record = recorderFor(evidence);
       const presentation = planPresentationWithRecipe(
         input as InteractionSpec,
         ctx,
         planner,
-        requiredTaxonomy(profile)
+        requiredTaxonomy(profile),
+        record
       );
-      return lowerPresentation(recipe)(presentation);
+      return lowerPresentation(recipe, record)(presentation);
     },
   };
 }
