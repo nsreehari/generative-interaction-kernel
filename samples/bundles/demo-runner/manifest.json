@@ -13,7 +13,7 @@
         "slots": ["children"],
         "emits": ["reset", "finishAct"]
       },
-      "ui:timer-button": {
+      "demo:timer-button": {
         "propsSchema": { "type": "object", "additionalProperties": true },
         "emits": ["press"]
       },
@@ -29,7 +29,6 @@
     "externals": {
       "projectionViews": {
         "demo": { "from": "self" },
-        "ui": { "from": "floor", "use": ["timer-button"] },
         "fluent": { "from": "fluent", "use": ["dropdown", "toggle"] }
       },
       "effectHandlers": ["requestNextAct", "setPace", "selectDemo", "setPresentationContext", "finishAct", "resetDemo"]

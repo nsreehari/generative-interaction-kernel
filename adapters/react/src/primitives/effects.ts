@@ -8,9 +8,12 @@
 // stays JSON, never a bespoke Orchestrator subclass.
 
 import type {
+  InvocationControl,
+  InvocationId,
   Json,
   Orchestrator,
   OrchestratorEffect,
+  OrchestratorProgress,
   OrchestratorResult,
   PatchOp,
   StateModel,
@@ -33,6 +36,14 @@ export interface EffectContext {
   payload: Record<string, Json>;
   /** Identity of the human or agent that emitted the triggering event, when supplied. */
   actorId?: string;
+  /** Identity of the active invocation. Present for `invoke`; absent for one-shot route/confirm. */
+  invocationId?: InvocationId;
+  /** Aborted when the active invocation is cancelled. Present for `invoke` only. */
+  signal?: AbortSignal;
+  /** Publish non-terminal, non-durable progress. Present for `invoke` only. */
+  emitProgress?: (progress: OrchestratorProgress) => Promise<void>;
+  /** Settle the active invocation exactly once. Present for `invoke` only. */
+  emit?: (result?: OrchestratorResult) => Promise<void>;
   store: StateModel;
 }
 
@@ -42,24 +53,45 @@ export type EffectHandler = (
 
 export type EffectHandlerMap = Record<string, EffectHandler>;
 
+function contextFor(store: StateModel, effect: OrchestratorEffect): EffectContext {
+  return {
+    get: (path) => store.get(path),
+    set: setOp,
+    args: effect.args ?? {},
+    payload: effect.payload ?? {},
+    actorId: effect.actorId,
+    store,
+  };
+}
+
 /**
  * Build an Orchestrator that routes every `invoke("<name>")` to `handlers[name]`. Unregistered
  * names are a no-op (traced by the kernel). The dispatcher shares the SAME state model the kernel
  * reduces into, so handlers read current values and return computed ops.
  */
 export function createEffectDispatcher(store: StateModel, handlers: EffectHandlerMap): Orchestrator {
-  const run = async (effect: OrchestratorEffect): Promise<OrchestratorResult | void> => {
-    const handler = effect.tool ? handlers[effect.tool] : undefined;
+  const handlerFor = (effect: OrchestratorEffect): EffectHandler | undefined =>
+    effect.tool ? handlers[effect.tool] : undefined;
+
+  const invoke = async (
+    effect: OrchestratorEffect,
+    control: InvocationControl
+  ): Promise<OrchestratorResult | void> => {
+    const handler = handlerFor(effect);
     if (!handler) return;
-    const ctx: EffectContext = {
-      get: (path) => store.get(path),
-      set: setOp,
-      args: effect.args ?? {},
-      payload: effect.payload ?? {},
-      actorId: effect.actorId,
-      store,
-    };
-    return handler(ctx);
+    return handler({
+      ...contextFor(store, effect),
+      invocationId: control.id,
+      signal: control.signal,
+      emitProgress: control.emitProgress,
+      emit: control.emit,
+    });
   };
-  return { invoke: run, confirm: run, route: run };
+
+  const runOneShot = async (effect: OrchestratorEffect): Promise<OrchestratorResult | void> => {
+    const handler = handlerFor(effect);
+    if (!handler) return;
+    return handler(contextFor(store, effect));
+  };
+  return { invoke, confirm: runOneShot, route: runOneShot };
 }

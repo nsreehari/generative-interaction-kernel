@@ -72,7 +72,7 @@
             }
           },
           {
-            "capability": "ui:timer-button",
+            "capability": "demo:timer-button",
             "id": "next-act-timer-region",
             "props": { "label": "Next act", "tone": "primary", "showCountdown": true },
             "edges": {
