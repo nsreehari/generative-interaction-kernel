@@ -71,7 +71,7 @@
           "version": "1",
           "operations": ["chat"],
           "config": {
-            "endpoint": "https://sz-foundry-proxy.azurewebsites.net",
+            "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}",
             "credentialRef": "foundry-agent/access-key"
           },
           "scope": "per-session"

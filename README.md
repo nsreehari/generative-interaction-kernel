@@ -49,6 +49,13 @@ Run `npm run dev:host` in [generative-interaction-kernel](.) and select a hosted
 `/?b=<id>`. The default is `samples-overview`; the application switcher lists the approved Blueprint
 catalog. Open `/?b=manage-bundles` to inspect and preview ordinary Bundle artifacts.
 
+The sample host reads environment-specific service values from
+[`samples/config/host.local.json`](samples/config/host.local.json) during development and
+[`samples/config/host.production.json`](samples/config/host.production.json) in production builds.
+For local Foundry-backed samples, start the sibling Function host with `npm run dev:foundry-proxy`
+in one terminal and run `npm run dev:host` in another. The local proxy listens on
+`http://localhost:7071`.
+
 ### Live portfolio intelligence
 
 The portfolio tracker routes `analyze` and `propose-strategies` through QueueFace. Its Blueprint declares a `deterministic-agent` service for offline execution and attaches the operations to the producing cells. Live deployments replace that declaration with a host-supported kind such as `foundry-agent`; endpoints, model/agent selection, and credential references belong to the Blueprint declaration, while the host authorizes kinds, endpoint origins, and credential resolution.

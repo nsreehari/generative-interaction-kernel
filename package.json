@@ -37,6 +37,7 @@
     "test:mcp": "vitest run --project mcp",
     "test:vitest": "vitest run",
     "dev:host": "vite samples/apps/host",
+    "dev:foundry-proxy": "npm --prefix ../azure-function-proxy run start:bff",
     "build:host": "vite build samples/apps/host",
     "dev:backend-host": "tsx samples/backend-host/order-service.ts",
     "dev:mcp": "tsx samples/agent-host/mcp-service.ts",
