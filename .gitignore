@@ -15,3 +15,5 @@ build/
 
 # Node lockfile kept for reproducible conformance runs
 !package-lock.json
+
+.tmp/
