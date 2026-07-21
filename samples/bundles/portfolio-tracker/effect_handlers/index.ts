@@ -16,11 +16,6 @@ function recordAt<T>(ctx: EffectContext, path: string): Record<string, T> {
   return (ctx.get(path) ?? {}) as unknown as Record<string, T>;
 }
 
-function deterministicPrice(ticker: string): number {
-  const hash = [...ticker].reduce((value, character) => ((value * 31) + character.charCodeAt(0)) >>> 0, 17);
-  return Number((25 + (hash % 50000) / 100).toFixed(2));
-}
-
 function holdingFrom(value: Json | undefined): Holding | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
   const ticker = String(value.ticker ?? "").trim().toUpperCase();
@@ -31,37 +26,15 @@ function holdingFrom(value: Json | undefined): Holding | undefined {
     : undefined;
 }
 
-function holdingsOps(ctx: EffectContext, holdings: Record<string, Holding>): PatchOp[] {
-  const quotes: Record<string, Quote> = {};
-  const positions: Record<string, Json> = {};
-  let marketValue = 0;
-  let costBasis = 0;
-
-  for (const [ticker, holding] of Object.entries(holdings)) {
-    const price = deterministicPrice(ticker);
-    const value = holding.quantity * price;
-    const positionCost = holding.quantity * holding.costBasis;
-    quotes[ticker] = { ticker, price };
-    positions[ticker] = {
-      ticker,
-      quantity: holding.quantity,
-      price,
-      value: Number(value.toFixed(2)),
-      costBasis: Number(positionCost.toFixed(2)),
-      gainLoss: Number((value - positionCost).toFixed(2)),
-    };
-    marketValue += value;
-    costBasis += positionCost;
-  }
-
+function clearDerivedPortfolioOps(ctx: EffectContext, holdings: Record<string, Holding>): PatchOp[] {
   return [
     ctx.set("portfolio.holdings", holdings as unknown as Json),
-    ctx.set("portfolio.quotes", quotes as unknown as Json),
-    ctx.set("portfolio.positions", positions as Json),
+    ctx.set("portfolio.quotes", {} as Json),
+    ctx.set("portfolio.positions", {} as Json),
     ctx.set("portfolio.summary", {
-      marketValue: Number(marketValue.toFixed(2)),
-      costBasis: Number(costBasis.toFixed(2)),
-      gainLoss: Number((marketValue - costBasis).toFixed(2)),
+      marketValue: 0,
+      costBasis: 0,
+      gainLoss: 0,
     }),
     ctx.set("portfolio.intelligence", null),
     ctx.set("portfolio.strategies", {}),
@@ -73,7 +46,7 @@ function replaceHoldings(ctx: EffectContext, holdings: Holding[], investorProfil
   const keyed = Object.fromEntries(holdings.map((holding) => [holding.ticker, holding]));
   return {
     ops: [
-      ...holdingsOps(ctx, keyed),
+      ...clearDerivedPortfolioOps(ctx, keyed),
       ctx.set("portfolio.investorProfile", investorProfile),
       ctx.set("portfolio.appliedRecommendation", null),
     ],
@@ -92,7 +65,7 @@ const handlers: EffectHandlerMap = {
     const holding = holdingFrom(ctx.payload.holding);
     if (!holding) return { outcome: "ignored" };
     return {
-      ops: holdingsOps(ctx, {
+      ops: clearDerivedPortfolioOps(ctx, {
         ...recordAt<Holding>(ctx, "portfolio.holdings"),
         [holding.ticker]: holding,
       }),
@@ -103,7 +76,7 @@ const handlers: EffectHandlerMap = {
     if (!ticker) return { outcome: "ignored" };
     const holdings = { ...recordAt<Holding>(ctx, "portfolio.holdings") };
     delete holdings[ticker];
-    return { ops: holdingsOps(ctx, holdings) };
+    return { ops: clearDerivedPortfolioOps(ctx, holdings) };
   },
   saveHoldings: (ctx) => {
     const rows = Array.isArray(ctx.payload.rows)
@@ -111,9 +84,6 @@ const handlers: EffectHandlerMap = {
       : [];
     return replaceHoldings(ctx, rows, ctx.get("portfolio.investorProfile"));
   },
-  refreshPrices: (ctx) => ({
-    ops: holdingsOps(ctx, recordAt<Holding>(ctx, "portfolio.holdings")),
-  }),
   applyRecommendation: (ctx) => {
     const recommendation = ctx.get("portfolio.recommendation") as Record<string, Json> | null;
     if (recommendation?.status !== "proposed") {
