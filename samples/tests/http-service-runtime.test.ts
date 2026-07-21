@@ -53,6 +53,7 @@ test("routes declared requests through the authenticated HTTP proxy", async () =
 
   const headers = new Headers(captured.init?.headers);
   assert.equal(captured.input, "https://proxy.example/api/http-proxy");
+  assert.equal(captured.init?.cache, "no-store");
   assert.equal(headers.get("x-functions-key"), "http-key");
   assert.equal(headers.get("x-http-proxy-url"), "https://query1.finance.yahoo.com/chart/MSFT?range=1d");
 });

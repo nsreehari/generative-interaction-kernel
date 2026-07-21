@@ -72,6 +72,7 @@ export async function executeHttpServiceInvocation(
     const spec = asRequestSpec(entry, index);
     const response = await fetchImpl(`${proxyOrigin}/api/http-proxy`, {
       method: spec.method ?? "GET",
+      cache: "no-store",
       headers: {
         ...spec.headers,
         "x-functions-key": options.accessKey,
