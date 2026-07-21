@@ -3,8 +3,44 @@ import { bundleFromJson, loadBundleRuntime } from "@gik/react";
 import effects from "../bundles/portfolio-tracker/effect_handlers";
 import { openSampleBlueprint } from "../shared/blueprints";
 import { declarativeServiceOrchestrator } from "../shared/service-runtime";
+import type { SampleServiceRegistryOptions } from "../services";
 
 const PORTFOLIO_BLUEPRINTS = ["portfolio-tracker"] as const;
+
+const quoteFixture = (ticker: string, price: number) => ({
+  chart: {
+    result: [{
+      meta: {
+        symbol: ticker,
+        regularMarketPrice: price,
+        regularMarketChange: Number((price * 0.01).toFixed(2)),
+        regularMarketChangePercent: 1,
+        chartPreviousClose: Number((price * 0.99).toFixed(2)),
+      },
+    }],
+  },
+});
+
+const registryOptions: SampleServiceRegistryOptions = {
+  hostCapabilities: ["http-executor"],
+  execute: async (request) => {
+    const invocation = request as { kind?: string; input?: { requests?: Array<{ key?: string; meta?: unknown }> } };
+    if (invocation.kind !== "http-service") throw new Error("Unexpected service kind");
+    const requests = Array.isArray(invocation.input?.requests)
+      ? invocation.input.requests
+      : invocation.input?.requests
+        ? [invocation.input.requests]
+        : [];
+    return {
+      results: requests.map((entry, index) => ({
+        key: String(entry.key ?? `TICK${index}`),
+        status: 200,
+        meta: entry.meta ?? null,
+        body: quoteFixture(String(entry.key ?? `TICK${index}`), 100 + index),
+      })),
+    };
+  },
+};
 
 function runtime(blueprintId: typeof PORTFOLIO_BLUEPRINTS[number]) {
   const blueprintRuntime = openSampleBlueprint(blueprintId);
@@ -13,11 +49,25 @@ function runtime(blueprintId: typeof PORTFOLIO_BLUEPRINTS[number]) {
     document: blueprintRuntime.document,
     state: blueprintRuntime.state,
   }, { effectHandlers: effects }), {
-    wrapOrchestrator: declarativeServiceOrchestrator(blueprintRuntime),
+    wrapOrchestrator: declarativeServiceOrchestrator(blueprintRuntime, registryOptions),
   });
 }
 
 describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
+  it("auto-refreshes live quotes when the holdings table saves rows", async () => {
+    const portfolio = runtime(blueprintId);
+
+    await portfolio.controller.emit("holdings", "save", {
+      rows: [{ ticker: "NVDA", quantity: 100, costBasis: 120 }],
+    }, "human-investor");
+    await portfolio.controller.settle();
+
+    expect(portfolio.state.get("portfolio.holdings.NVDA")).toMatchObject({ ticker: "NVDA", quantity: 100, costBasis: 120 });
+    expect(portfolio.state.get("portfolio.quotes.NVDA")).toMatchObject({ ticker: "NVDA", price: 100 });
+    expect(portfolio.state.get("portfolio.positions.NVDA")).toMatchObject({ ticker: "NVDA", quantity: 100, price: 100 });
+    expect(portfolio.state.get("portfolio.summary.marketValue")).toBe(10000);
+  });
+
   it("maintains keyed quotes, positions, and summary as tickers change", async () => {
     const portfolio = runtime(blueprintId);
 
@@ -25,20 +75,32 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
       holdings: [{ ticker: "AAPL", quantity: 8, costBasis: 178 }],
     }, "human-investor");
     await portfolio.controller.settle();
-    expect(portfolio.state.get("portfolio.positions.AAPL")).toMatchObject({ ticker: "AAPL", quantity: 8 });
+    expect(portfolio.state.get("portfolio.positions.AAPL")).toBeNull();
+
+    await portfolio.controller.emit(blueprintId, "refreshPrices", {}, "agent-market-data");
+    await portfolio.controller.settle();
+    expect(portfolio.state.get("portfolio.positions.AAPL")).toMatchObject({ ticker: "AAPL", quantity: 8, price: 100 });
 
     await portfolio.controller.emit(blueprintId, "upsertHolding", {
       holding: { ticker: "GOOG", quantity: 4, costBasis: 165 },
     }, "human-investor");
     await portfolio.controller.settle();
-    expect(portfolio.state.get("portfolio.quotes.GOOG")).toMatchObject({ ticker: "GOOG" });
+    expect(portfolio.state.get("portfolio.quotes.GOOG")).toBeNull();
+
+    await portfolio.controller.emit(blueprintId, "refreshPrices", {}, "agent-market-data");
+    await portfolio.controller.settle();
+    expect(portfolio.state.get("portfolio.quotes.GOOG")).toMatchObject({ ticker: "GOOG", price: 101 });
     expect(portfolio.state.get("portfolio.positions.GOOG")).toMatchObject({ ticker: "GOOG", quantity: 4 });
 
     await portfolio.controller.emit(blueprintId, "removeHolding", { ticker: "AAPL" }, "human-investor");
     await portfolio.controller.settle();
     expect(portfolio.state.get("portfolio.holdings.AAPL")).toBeNull();
     expect(portfolio.state.get("portfolio.positions.AAPL")).toBeNull();
-    expect(portfolio.state.get("portfolio.positions.GOOG")).not.toBeNull();
+    expect(portfolio.state.get("portfolio.positions.GOOG")).toBeNull();
+
+    await portfolio.controller.emit(blueprintId, "refreshPrices", {}, "agent-market-data");
+    await portfolio.controller.settle();
+    expect(portfolio.state.get("portfolio.positions.GOOG")).toMatchObject({ ticker: "GOOG", quantity: 4 });
   });
 
   it("commits structured intelligence and keeps rebalance application attributable", async () => {
@@ -51,6 +113,8 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
       ],
       investorProfile: { riskTolerance: "moderate", horizonYears: 8 },
     }, "human-investor");
+    await portfolio.controller.settle();
+    await portfolio.controller.emit(blueprintId, "refreshPrices", {}, "agent-market-data");
     await portfolio.controller.settle();
     await portfolio.controller.emit(
       blueprintId,
@@ -127,6 +191,8 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
     }));
 
     await portfolio.controller.emit(blueprintId, "setHoldings", { holdings }, "human-investor");
+    await portfolio.controller.settle();
+    await portfolio.controller.emit(blueprintId, "refreshPrices", {}, "agent-market-data");
     await portfolio.controller.settle();
 
     expect(Object.keys(portfolio.state.get("portfolio.holdings") as object)).toHaveLength(250);

@@ -3,8 +3,8 @@
 
 import { createMcpDispatcher, type McpDispatcher, type McpTool } from "../tool-surface";
 import { authoringTools } from "../pure/authoring-tools";
-import { controlFaceTools } from "./controlface";
 import type { ControlFace } from "../live/controlface";
+import { fullCatalogTools } from "./full-catalog";
 
 const AGENT_SAFE_RUNTIME = ["getState", "getTree", "describeServiceKinds"] as const;
 
@@ -17,7 +17,7 @@ export const AGENTFACE_ALLOWLIST: ReadonlySet<string> = new Set<string>([
 ]);
 
 export function agentFaceProjection(face: ControlFace): McpTool[] {
-  return controlFaceTools(face).filter((t) => t.agentSafe);
+  return fullCatalogTools(face).filter((t) => t.agentSafe);
 }
 
 export function createAgentFaceDispatcher(face: ControlFace): McpDispatcher {

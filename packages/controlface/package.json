@@ -1,7 +1,7 @@
 {
   "name": "@gik/controlface",
   "version": "0.1.0",
-  "description": "Control-plane projection surface (full capability catalog) for the Generative Interaction Kernel.",
+  "description": "Control-plane projection surface over the shared face catalog for the Generative Interaction Kernel.",
   "license": "MIT",
   "author": "nsreehari",
   "keywords": [
