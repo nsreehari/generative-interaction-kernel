@@ -469,16 +469,6 @@
         "confirm"
       ],
       "capabilities": {
-        "foundry:access-modal": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "emits": [
-            "accessResolved",
-            "accessCleared"
-          ]
-        },
         "soc:workspace-shell": {
           "propsSchema": {
             "type": "object",
@@ -518,7 +508,6 @@
             "authorizeContainment",
             "executeContainment",
             "setPresentationContext",
-            "setAgentMode",
             "reset"
           ]
         },
@@ -618,12 +607,6 @@
       },
       "externals": {
         "projectionViews": {
-          "foundry": {
-            "from": "foundry-agent",
-            "use": [
-              "access-modal"
-            ]
-          },
           "soc": {
             "from": "self"
           }
@@ -643,10 +626,7 @@
           "recommendContainment",
           "authorizeContainment",
           "setPresentationContext",
-          "setAgentMode",
           "syncInspection",
-          "acceptSocFoundryAccess",
-          "clearSocFoundryAccess",
           "executeContainment",
           "resetScenario"
         ]
@@ -873,10 +853,6 @@
               "fallbackReason": ""
             }
           },
-          "foundry": {
-            "required": false,
-            "agentNames": []
-          },
           "intent": null,
           "constraints": [],
           "dataSources": [
@@ -980,20 +956,7 @@
                 "namespace": "soc",
                 "kind": "actor",
                 "id": "agent-correlation"
-              },
-              "settings": [
-                {
-                  "id": "provider-mode",
-                  "kind": "toggle",
-                  "label": "provider mode",
-                  "value": "mock",
-                  "offLabel": "Mock",
-                  "offValue": "mock",
-                  "onLabel": "Live",
-                  "onValue": "live",
-                  "status": "ready"
-                }
-              ]
+              }
             },
             {
               "id": "agent-response",
@@ -1008,20 +971,7 @@
                 "namespace": "soc",
                 "kind": "actor",
                 "id": "agent-response"
-              },
-              "settings": [
-                {
-                  "id": "provider-mode",
-                  "kind": "toggle",
-                  "label": "provider mode",
-                  "value": "mock",
-                  "offLabel": "Mock",
-                  "offValue": "mock",
-                  "onLabel": "Live",
-                  "onValue": "live",
-                  "status": "ready"
-                }
-              ]
+              }
             }
           ]
         }

@@ -41,7 +41,6 @@
       "agent-correlation": { "mode": "mock", "status": "ready", "agentName": "SOC-Correlation-Agent", "conversationId": "", "responseId": "", "lastProvider": "mock", "fallbackReason": "" },
       "agent-response": { "mode": "mock", "status": "ready", "agentName": "SOC-Response-Agent", "conversationId": "", "responseId": "", "lastProvider": "mock", "fallbackReason": "" }
     },
-    "foundry": { "required": false, "agentNames": [] },
     "intent": null,
     "constraints": [],
     "dataSources": [
@@ -68,8 +67,8 @@
     "participants": [
       { "id": "human-morgan", "kind": "human", "name": "Morgan", "role": "SOC Analyst", "status": "active", "capabilities": ["Can direct investigation and recommend containment"], "focusRef": { "namespace": "soc", "kind": "actor", "id": "human-morgan" } },
       { "id": "human-priya", "kind": "human", "name": "Priya", "role": "Incident Commander", "status": "active", "capabilities": ["Can authorize protected containment"], "focusRef": { "namespace": "soc", "kind": "actor", "id": "human-priya" } },
-      { "id": "agent-correlation", "kind": "agent", "name": "Correlation Agent", "role": "Evidence correlation", "status": "waiting", "capabilities": ["Can query, correlate, and contribute findings"], "focusRef": { "namespace": "soc", "kind": "actor", "id": "agent-correlation" }, "settings": [{ "id": "provider-mode", "kind": "toggle", "label": "provider mode", "value": "mock", "offLabel": "Mock", "offValue": "mock", "onLabel": "Live", "onValue": "live", "status": "ready" }] },
-      { "id": "agent-response", "kind": "agent", "name": "Response Agent", "role": "Containment planning", "status": "waiting", "capabilities": ["Can propose and execute only after authorization"], "focusRef": { "namespace": "soc", "kind": "actor", "id": "agent-response" }, "settings": [{ "id": "provider-mode", "kind": "toggle", "label": "provider mode", "value": "mock", "offLabel": "Mock", "offValue": "mock", "onLabel": "Live", "onValue": "live", "status": "ready" }] }
+      { "id": "agent-correlation", "kind": "agent", "name": "Correlation Agent", "role": "Evidence correlation", "status": "waiting", "capabilities": ["Can query, correlate, and contribute findings"], "focusRef": { "namespace": "soc", "kind": "actor", "id": "agent-correlation" } },
+      { "id": "agent-response", "kind": "agent", "name": "Response Agent", "role": "Containment planning", "status": "waiting", "capabilities": ["Can propose and execute only after authorization"], "focusRef": { "namespace": "soc", "kind": "actor", "id": "agent-response" } }
     ]
   }
 }

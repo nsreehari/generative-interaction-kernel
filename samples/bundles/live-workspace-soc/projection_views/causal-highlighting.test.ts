@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { resolveFocusTargets, selectionFromTimelineItem, type TimelineItem } from "../../../shared/demo-runner";
-import { compileSocPresentation } from "../../../compilers/live-workspace-soc";
+import { compileSocPresentation } from "../effect_handlers/blueprint";
 
 import {
   SOC_FOCUS_TARGETS,

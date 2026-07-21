@@ -15,7 +15,7 @@ import {
   SOC_BLUEPRINT_PRESENTATION_PRESETS,
   socBlueprint,
   traceSocBlueprint,
-} from "../compilers/live-workspace-soc";
+} from "../bundles/live-workspace-soc/effect_handlers/blueprint";
 
 function runtimeContext(context: {
   actor: string;
@@ -237,27 +237,14 @@ test("the runtime projection owns ordered document-gated context views", () => {
   }
 });
 
-test("the Blueprint output includes the Foundry access gate without host document patches", () => {
+test("the Blueprint output remains declarative without host document patches", () => {
   const document = structuredClone(runtimeDocument);
   const children = document.root.edges.children;
   assert.equal(children.some((child) => child.id === "demo-runner-region"), false);
   assert.equal(children.some((child) => child.id === "soc-participants-region"), false);
-  const accessGateIndex = children.findIndex((child) => child.id === "foundry-access-gate-region");
-  assert.notEqual(accessGateIndex, -1);
-  assert.deepEqual(children[accessGateIndex], {
-    capability: "foundry:access-modal",
-    id: "foundry-access-gate-region",
-    props: { proxyBaseUrl: "https://sz-foundry-proxy.azurewebsites.net" },
-    edges: {
-      read: { required: "soc.foundry.required" },
-      on: {
-        accessResolved: [{ do: "invoke", args: { tool: "acceptSocFoundryAccess" } }],
-        accessCleared: [{ do: "invoke", args: { tool: "clearSocFoundryAccess" } }],
-      },
-    },
-  });
+  assert.equal(children.some((child) => child.id === "foundry-access-gate-region"), false);
   const body = children.find((child) => child.id === "soc-workspace");
   assert.ok(body);
-  assert.equal(body.edges.react.length, 19);
+  assert.equal(body.edges.react.length, 17);
   assert.deepEqual(compileSocDocument(runtimeContext(SOC_BLUEPRINT_PRESENTATION_PRESETS.find((context) => context.id === "war-room")!)), runtimeDocument);
 });

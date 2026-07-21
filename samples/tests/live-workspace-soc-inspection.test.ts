@@ -18,13 +18,13 @@ test("SOC participant statuses lower to the neutral inspection vocabulary", () =
   assert.equal(mapSocParticipantStatus("domain-specific-state"), "available");
 });
 
-test("SOC projects human and agent data into neutral participants and settings", () => {
+test("SOC projects human and agent data into neutral participants", () => {
   const actors: Actor[] = [
     { id: "human-1", kind: "human", name: "Human", role: "Reviewer", status: "active", objective: "Review", authority: "May approve" },
     { id: "agent-1", kind: "agent", name: "Agent", role: "Research", status: "waiting", objective: "Research", authority: "May investigate" },
   ];
   const providers: Record<string, AgentProvider> = {
-    "agent-1": { mode: "live", status: "fallback", agentName: "internal-name", conversationId: "", responseId: "", lastProvider: "mock", fallbackReason: "Unavailable" },
+    "agent-1": { mode: "mock", status: "ready", agentName: "internal-name", conversationId: "", responseId: "", lastProvider: "mock", fallbackReason: "" },
   };
 
   const participants = projectSocParticipants(actors, providers);
@@ -39,18 +39,7 @@ test("SOC projects human and agent data into neutral participants and settings",
     settings: undefined,
   });
   assert.equal(participants[1].status, "waiting");
-  assert.deepEqual(participants[1].settings, [{
-    id: "provider-mode",
-    kind: "toggle",
-    label: "provider mode",
-    value: "live",
-    offLabel: "Mock",
-    offValue: "mock",
-    onLabel: "Live",
-    onValue: "live",
-    status: "error",
-    message: "Unavailable",
-  }]);
+  assert.equal(participants[1].settings, undefined);
 });
 
 test("SOC publishes presentation, blueprint, and timeline through neutral inspection", () => {
