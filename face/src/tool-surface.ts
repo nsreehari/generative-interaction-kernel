@@ -1,7 +1,7 @@
 // The shared MCP tool-surface primitive: a JSON tool catalog plus a pure, transport-free JSON-RPC
 // 2.0 dispatcher over it. BOTH faces are expressed as `McpTool[]` and dispatched through here —
-// AgentFace over its (agent-safe) subset, ControlFace over the full catalog — so the projection is
-// literally "filter the tool list". This knows nothing about HTTP/SSE/stdio: a message goes in, a
+// ControlFace and AgentFace as projections over the shared full catalog — so the projection step is
+// literally "reuse or filter the tool list". This knows nothing about HTTP/SSE/stdio: a message goes in, a
 // reply comes out.
 //
 // The dispatcher is MaybePromise: a tool with a synchronous handler yields a synchronous reply

@@ -10,5 +10,6 @@ export * from "./services/service-kinds";
 export * from "./live/runtime-tools";
 export * from "./live/ops";
 export * from "./live/controlface";
+export * from "./projections/full-catalog";
 export * from "./projections/agentface";
 export * from "./projections/controlface";

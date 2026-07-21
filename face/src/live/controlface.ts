@@ -7,7 +7,7 @@
 //     getState/getTree/emit/checkpoint/restore/effectsSince/compensate as JSON->JSON ops,
 //     dispatched over the same MCP dispatcher the pure authoring tools use. The methods below are
 //     the impls those tools wrap.
-//     AgentFace is the full catalog filtered to its allowlist.
+//     Both projections derive from the shared full catalog; AgentFace applies the agent-safe filter.
 //   - the render STREAM: `attach` is streaming plumbing for SSE (it takes a live transport and returns
 //     a detach handle), NOT a JSON tool. It implements `TransportBroker` so SSE plugs into the face.
 
