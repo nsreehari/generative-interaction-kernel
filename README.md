@@ -49,9 +49,10 @@ Run `npm run dev:host` in [generative-interaction-kernel](.) and select a hosted
 `/?b=<id>`. The default is `samples-overview`; the application switcher lists the approved Blueprint
 catalog. Open `/?b=manage-bundles` to inspect and preview ordinary Bundle artifacts.
 
-The sample host reads environment-specific service values from
-[`samples/config/host.local.json`](samples/config/host.local.json) during development and
-[`samples/config/host.production.json`](samples/config/host.production.json) in production builds.
+The sample host defaults to [`samples/config/host.production.json`](samples/config/host.production.json)
+in both development and production modes. Use `npm run dev:host:local` or
+`npm run build:host:local` to opt into [`samples/config/host.local.json`](samples/config/host.local.json).
+`VITE_GIK_HOST_ENV=local|production` is also available as an explicit override.
 For local Foundry-backed samples, start the sibling Function host with `npm run dev:foundry-proxy`
 in one terminal and run `npm run dev:host` in another. The local proxy listens on
 `http://localhost:7071`.
