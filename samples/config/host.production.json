@@ -1,3 +1,4 @@
 {
-  "foundryProxyOrigin": "https://sz-foundry-proxy.azurewebsites.net"
+  "foundryProxyOrigin": "https://sz-foundry-proxy.azurewebsites.net",
+  "httpProxyOrigin": "https://sz-http-proxy.azurewebsites.net"
 }

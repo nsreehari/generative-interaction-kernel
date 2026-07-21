@@ -104,8 +104,7 @@ describe("portfolio demo-runner composition", () => {
     shared.apply([{ op: "set", path: "control.request", value: request }]);
 
     const source = withDemoHumanGate(portfolio.controller, shared, portfolioControlContract);
-    await source.emit("rebalance-comparison", "apply", {});
-    await expect(portfolio.controller.settle()).rejects.toThrow("attributed actor");
+    await expect(source.emit("rebalance-comparison", "apply", {})).rejects.toThrow("attributed actor");
     expect(shared.get("control.receipt")).toBeNull();
 
     await source.emit("rebalance-comparison", "apply", {}, "human-investor");

@@ -5,6 +5,7 @@ import {
 } from "@gik/profile";
 
 import { openSampleBlueprint } from "../shared/blueprints";
+import { applyHostConfig } from "../shared/host-config";
 import profileArtifact from "../profiles/portfolio-tracker/profile.json" with { type: "json" };
 
 const resources = profileArtifact.payload.resources as unknown as {
@@ -15,6 +16,7 @@ const portfolioCells = resources.cells.inline;
 describe("portfolio-tracker Blueprint", () => {
   it("resolves the KISS cell composition", () => {
     expect(portfolioCells.map((cell) => cell.id)).toEqual([
+      "http-proxy-access-gate",
       "holdings",
       "market-prices",
       "positions",
@@ -34,6 +36,22 @@ describe("portfolio-tracker Blueprint", () => {
     expect(document.root.edges?.children?.map((node) => node.id)).toEqual(
       portfolioCells.map((cell) => cell.id)
     );
+    const marketPrices = document.root.edges?.children?.find((node) => node.id === "market-prices");
+    const accessGate = portfolioCells.find((cell) => cell.id === "http-proxy-access-gate");
+    expect(accessGate?.provides).toEqual([{
+      token: "http-proxy-access",
+      read: "portfolio.httpProxyAccessStatus",
+      when: "portfolio.httpProxyAccessStatus = 'ready'",
+    }]);
+    expect(portfolioCells.find((cell) => cell.id === "market-prices")?.requires).toEqual([
+      "http-proxy-access",
+      "holding:$TICKER",
+    ]);
+    expect(marketPrices?.props?.externalSource).toEqual({ refreshEvent: "refresh" });
+    expect(marketPrices?.edges?.on?.refresh).toEqual([{
+      do: "invoke",
+      args: { tool: "refreshPrices" },
+    }]);
   });
 
   it("lowers the empty holdings editor with an explicit row schema", () => {
@@ -54,7 +72,7 @@ describe("portfolio-tracker Blueprint", () => {
     expect(runtime.document).toMatchObject({ type: "document", payload: { root: { id: "portfolio-tracker" } } });
     expect(runtime.manifest).toMatchObject({
       type: "manifest",
-      payload: { externals: { services: profileArtifact.payload.services } },
+      payload: { externals: { services: applyHostConfig(profileArtifact.payload.services) } },
     });
     expect(runtime.state.portfolio).toMatchObject({ holdings: {}, positions: {} });
   });

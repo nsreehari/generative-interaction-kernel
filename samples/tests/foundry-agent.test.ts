@@ -3,7 +3,9 @@ import { afterEach, describe, test } from "vitest";
 import { bundleFromJson, loadBundleRuntime } from "@gik/react";
 import { openSampleBlueprint } from "../shared/blueprints";
 
-import { FOUNDRY_ACCESS_STORAGE_KEY } from "../shared/foundry-access";
+import { FUNCTION_ACCESS } from "../shared/function-access";
+
+const FOUNDRY_ACCESS_STORAGE_KEY = FUNCTION_ACCESS.foundry.storageKey;
 import effects from "../bundles/foundry-agent/effect_handlers";
 import {
   browserServiceRegistryOptions,

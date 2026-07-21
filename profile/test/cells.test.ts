@@ -111,4 +111,27 @@ describe("Blueprint cells", () => {
       edges: { children: [{ id: "chat", capability: "chat" }] },
     }]);
   });
+
+  it("lowers an externally sourced cell with a local refresh action", () => {
+    const organism = {
+      id: "market-prices",
+      capability: "table",
+      service: {
+        service: "portfolio-market-data",
+        operation: "refreshPrices",
+        contract: "portfolio-quotes/v1",
+      },
+      props: { label: "Market prices" },
+    } as const;
+    const document = composeCellDocument(organism, compileCellTopology("market-prices", organism));
+
+    expect(document.root.props).toEqual({
+      label: "Market prices",
+      externalSource: { refreshEvent: "refresh" },
+    });
+    expect(document.root.edges?.on?.refresh).toEqual([{
+      do: "invoke",
+      args: { tool: "refreshPrices" },
+    }]);
+  });
 });

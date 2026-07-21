@@ -20,14 +20,15 @@ import { type ProjectionView, useAsyncEmit } from "@gik/react";
 import * as React from "react";
 
 import {
-  FOUNDRY_ACCESS_CHANGE_EVENT,
-  getFoundryAccessKey,
-  setFoundryAccessKey,
-} from "../../../shared/foundry-access";
+  FUNCTION_ACCESS,
+  getFunctionAccessKey,
+  setFunctionAccessKey,
+  type FunctionAccessScope,
+} from "../../../shared/function-access";
 
-function accessErrorMessage(reason: unknown): string {
+function accessErrorMessage(reason: unknown, serviceName: string): string {
   if (reason instanceof Error && reason.message.trim() !== "") return reason.message;
-  return "Couldn't verify Foundry access.";
+  return `Couldn't verify ${serviceName} access.`;
 }
 
 const useStyles = makeStyles({
@@ -35,12 +36,17 @@ const useStyles = makeStyles({
   actions: { paddingTop: tokens.spacingVerticalM },
 });
 
-const FoundryAccessGate: ProjectionView = ({ node, emit, children }) => {
+export const FunctionAccessGate: ProjectionView = ({ node, emit, children }) => {
   const styles = useStyles();
+  const scope: FunctionAccessScope = node.capability.startsWith("http-proxy:") ? "http-proxy" : "foundry";
+  const access = FUNCTION_ACCESS[scope];
+  const getAccessKey = () => getFunctionAccessKey(scope);
+  const setAccessKey = (value: string) => setFunctionAccessKey(scope, value);
+  const serviceName = access.label;
   const status = String(node.props.status ?? "checking");
   const error = String(node.props.error ?? "");
   const [enteredKey, setEnteredKey] = React.useState("");
-  const [hasStoredKey, setHasStoredKey] = React.useState(() => getFoundryAccessKey().trim() !== "");
+  const [hasStoredKey, setHasStoredKey] = React.useState(() => getAccessKey().trim() !== "");
   const [fallbackStatus, setFallbackStatus] = React.useState<"idle" | "checking" | "error">("idle");
   const [fallbackError, setFallbackError] = React.useState("");
   const [dialogOpen, setDialogOpen] = React.useState(true);
@@ -50,7 +56,7 @@ const FoundryAccessGate: ProjectionView = ({ node, emit, children }) => {
   const { pending, run } = useAsyncEmit(emit);
 
   React.useEffect(() => {
-    const storedKey = getFoundryAccessKey().trim();
+    const storedKey = getAccessKey().trim();
     setHasStoredKey(storedKey !== "");
     let disposed = false;
     queueMicrotask(() => {
@@ -65,7 +71,7 @@ const FoundryAccessGate: ProjectionView = ({ node, emit, children }) => {
       if (!available) void emitRef.current("accessCleared", {});
     };
     const storageChanged = (event: StorageEvent) => {
-      if (event.key === "gik.foundry-agent.access-key") {
+      if (event.key === access.storageKey) {
         const available = Boolean(event.newValue?.trim());
         setHasStoredKey(available);
         if (!available) {
@@ -73,11 +79,11 @@ const FoundryAccessGate: ProjectionView = ({ node, emit, children }) => {
         }
       }
     };
-    globalThis.addEventListener?.(FOUNDRY_ACCESS_CHANGE_EVENT, accessChanged);
+    globalThis.addEventListener?.(access.changeEvent, accessChanged);
     globalThis.addEventListener?.("storage", storageChanged);
     return () => {
       disposed = true;
-      globalThis.removeEventListener?.(FOUNDRY_ACCESS_CHANGE_EVENT, accessChanged);
+      globalThis.removeEventListener?.(access.changeEvent, accessChanged);
       globalThis.removeEventListener?.("storage", storageChanged);
     };
   }, []);
@@ -102,18 +108,18 @@ const FoundryAccessGate: ProjectionView = ({ node, emit, children }) => {
     if (!key || pending) return;
     setFallbackStatus("checking");
     setFallbackError("");
-    setFoundryAccessKey(key);
+    setAccessKey(key);
     setHasStoredKey(true);
     setEnteredKey("");
     void run("accessRequested", {}).catch((reason) => {
       setFallbackStatus("error");
-      setFallbackError(accessErrorMessage(reason));
+      setFallbackError(accessErrorMessage(reason, serviceName));
     });
   };
 
   const retry = () => {
     if (pending) return;
-    if (!getFoundryAccessKey().trim()) {
+    if (!getAccessKey().trim()) {
       setFallbackStatus("idle");
       setFallbackError("");
       void run("accessCleared", {});
@@ -123,13 +129,13 @@ const FoundryAccessGate: ProjectionView = ({ node, emit, children }) => {
     setFallbackError("");
     void run("accessRequested", {}).catch((reason) => {
       setFallbackStatus("error");
-      setFallbackError(accessErrorMessage(reason));
+      setFallbackError(accessErrorMessage(reason, serviceName));
     });
   };
 
   const useDifferentKey = () => {
     if (pending) return;
-    setFoundryAccessKey("");
+    setAccessKey("");
     setHasStoredKey(false);
     setFallbackStatus("idle");
     setFallbackError("");
@@ -147,10 +153,10 @@ const FoundryAccessGate: ProjectionView = ({ node, emit, children }) => {
   if (effectiveStatus === "ready" || effectiveStatus === "empty") return <>{children}</>;
 
   const requiresKey = effectiveStatus === "required";
-  const title = effectiveStatus === "unconfigured" ? "Foundry is unavailable" : "Connect to Foundry";
+  const title = effectiveStatus === "unconfigured" ? `${serviceName} is unavailable` : `Connect to ${serviceName}`;
   const message = requiresKey
-    ? effectiveError || "Foundry access is required to continue."
-    : effectiveError || (effectiveStatus === "checking" ? "Checking Foundry access..." : "Couldn't verify Foundry access.");
+    ? effectiveError || `${serviceName} access is required to continue.`
+    : effectiveError || (effectiveStatus === "checking" ? `Checking ${serviceName} access...` : `Couldn't verify ${serviceName} access.`);
 
   return (
     <>
@@ -167,7 +173,7 @@ const FoundryAccessGate: ProjectionView = ({ node, emit, children }) => {
         </MessageBar>
       ) : null}
       <Dialog open={dialogOpen} modalType="modal" onOpenChange={(_event, data) => setDialogOpen(data.open)}>
-        <DialogSurface aria-label="Foundry access required">
+        <DialogSurface aria-label={`${serviceName} access required`}>
           <DialogBody>
             <DialogTitle>{title}</DialogTitle>
             <DialogContent className={styles.stack}>
@@ -227,5 +233,5 @@ const FoundryAccessGate: ProjectionView = ({ node, emit, children }) => {
 };
 
 export default {
-  "access-gate": FoundryAccessGate,
+  "access-gate": FunctionAccessGate,
 };
