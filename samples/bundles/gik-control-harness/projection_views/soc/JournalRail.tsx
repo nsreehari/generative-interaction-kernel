@@ -2,7 +2,7 @@ import React from "react";
 import { Button, mergeClasses } from "@fluentui/react-components";
 import { CheckmarkCircle20Regular, Clock20Regular } from "@fluentui/react-icons";
 import type { ProjectionView } from "@gik/react";
-import { GrowingContainer } from "../../../floor/projection_views";
+import { GrowingContainer } from "../GrowingContainer";
 import { selectionFromTimelineItem, type DemoSelection, type TimelineItem } from "../../../../shared/demo-runner";
 import type { InspectionParticipant, InspectionStatus } from "../../../../shared/control-inspection";
 import { useStyles } from "../../../live-workspace-soc/projection_views/styles";
