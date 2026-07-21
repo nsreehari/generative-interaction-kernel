@@ -4,7 +4,7 @@ import effects from "../bundles/portfolio-tracker/effect_handlers";
 import { openSampleBlueprint } from "../shared/blueprints";
 import { declarativeServiceOrchestrator } from "../shared/service-runtime";
 
-const PORTFOLIO_BLUEPRINTS = ["portfolio-tracker", "portfolio-tracker-no-cells"] as const;
+const PORTFOLIO_BLUEPRINTS = ["portfolio-tracker"] as const;
 
 function runtime(blueprintId: typeof PORTFOLIO_BLUEPRINTS[number]) {
   const blueprintRuntime = openSampleBlueprint(blueprintId);

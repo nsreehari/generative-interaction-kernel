@@ -81,7 +81,7 @@ export function createHostRegistry(demoId?: string | null, targetBlueprintId?: s
   const demoComposition = demoId ? resolveDemoComposition(demoId, targetBlueprintId) : undefined;
   for (const id of REGISTRY.blueprints) {
     if (!hasSampleBlueprint(id)) {
-      throw new Error(`createHostRegistry: Blueprint '${id}' has no profile compiler module`);
+      throw new Error(`createHostRegistry: Blueprint '${id}' has no supported declarative or approved legacy definition`);
     }
     reg.registerBundle(id, {
       kind: "bundle",

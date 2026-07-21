@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: [
+      "tests/**/*.test.ts",
       "control-host/**/*.test.ts",
       "shared/**/*.test.ts",
       "profiles/**/*.test.ts",
