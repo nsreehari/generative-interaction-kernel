@@ -6,7 +6,7 @@ import {
   ChevronRight20Regular,
   DataTrending24Regular,
 } from "@fluentui/react-icons";
-import type { ProjectionView } from "@gik/react";
+import { readProps, useCountdownTimer, type ProjectionView, type ProjectionViewProps } from "@gik/react";
 import { writeDemoNavigation, type DemoCatalogEntry, type ScenarioPlan } from "../../../shared/demo-runner";
 
 interface DemoState {
@@ -266,4 +266,41 @@ const DemoRunner: ProjectionView = ({ node, emit, children }) => {
   </aside>;
 };
 
-export default { runner: DemoRunner };
+function TimerButton({ node, emit }: ProjectionViewProps) {
+  const p = readProps(node);
+  const label = p.str("label");
+  const configuredDuration = Number(node.props.durationMs ?? node.props.duration ?? 3000);
+  const durationMs = Number.isFinite(configuredDuration) ? Math.max(250, configuredDuration) : 3000;
+  const disabled = p.bool("disabled");
+  const running = node.props.autoStart !== false && !disabled;
+  const timer = useCountdownTimer({
+    durationMs,
+    running,
+    onElapsed: () => {
+      emit("press", { reason: "timeout" });
+      timer.restart();
+    },
+  });
+
+  const press = () => {
+    emit("press", { reason: "manual" });
+    timer.restart();
+  };
+
+  return (
+    <button
+      className={`gx-btn gx-btn-${p.str("tone", "default")}`}
+      disabled={disabled}
+      aria-label={`${label}, ${timer.remainingSeconds} seconds remaining`}
+      onClick={press}
+    >
+      <span className="gx-timer-label">{label}</span>
+      {node.props.showCountdown !== false ? <>
+        <span className="gx-timer-separator" aria-hidden="true"> · </span>
+        <span className="gx-timer-count">{timer.remainingSeconds}</span>
+      </> : null}
+    </button>
+  );
+}
+
+export default { runner: DemoRunner, "timer-button": TimerButton };
