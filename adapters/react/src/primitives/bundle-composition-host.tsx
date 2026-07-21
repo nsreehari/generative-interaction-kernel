@@ -48,6 +48,7 @@ export function BundleCompositionHost({
   contexts = {},
   fileServices,
   className,
+  style,
 }: {
   /** The primary organism — rendered first. */
   primary: CompositionOrganism;
@@ -59,12 +60,14 @@ export function BundleCompositionHost({
   fileServices?: GenUIFileServices;
   /** className on the container that wraps all organisms — the caller owns layout. */
   className?: string;
+  /** Optional inline style on the composition container — the caller owns layout. */
+  style?: React.CSSProperties;
 }): React.ReactElement {
   const organisms = [primary, ...companions];
   return (
     <BundleContextsProvider contexts={contexts}>
       <GenUIFileServicesProvider services={fileServices}>
-        <div className={className}>
+        <div className={className} style={style}>
           {organisms.map((organism) => (
             <CompositionOrganismRuntime key={organism.id} organism={organism} contexts={contexts} />
           ))}

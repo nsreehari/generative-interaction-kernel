@@ -10,14 +10,12 @@
 // responsible for establishing that context.
 
 import React from "react";
+import type { BundleContextBindings, CompositionOrganism, GenUIFileServices, OrganismBridge } from "@gik/react";
 import {
-  BundleCompositionHost,
-  type BundleContextBindings,
-  type CompositionOrganism,
-  type GenUIFileServices,
-  type OrganismBridge,
-} from "@gik/react";
-import { resolveBlueprintBundle } from "./sample-bundles";
+  BlueprintHost as PublicBlueprintHost,
+} from "@gik/blueprint-host";
+import { resolveSampleBlueprintSource } from "./blueprints";
+import { resolveBlueprintNative } from "./sample-bundles";
 
 export function BlueprintHost({
   blueprintId,
@@ -40,17 +38,16 @@ export function BlueprintHost({
   /** className on the composition container — the caller owns layout. */
   className?: string;
 }): React.ReactElement {
-  const bundle = React.useMemo(() => resolveBlueprintBundle(blueprintId), [blueprintId]);
-  const primary = React.useMemo<CompositionOrganism>(
-    () => ({ id: blueprintId, bundle, bridge: primaryBridge }),
-    [blueprintId, bundle, primaryBridge]
-  );
+  const blueprint = React.useMemo(() => resolveSampleBlueprintSource(blueprintId), [blueprintId]);
+  const native = React.useMemo(() => resolveBlueprintNative(blueprintId), [blueprintId]);
   return (
-    <BundleCompositionHost
-      primary={primary}
+    <PublicBlueprintHost
+      blueprint={blueprint}
+      native={native}
       companions={companions}
       contexts={contexts}
       fileServices={fileServices}
+      primaryBridge={primaryBridge}
       className={className}
     />
   );

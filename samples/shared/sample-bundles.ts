@@ -64,6 +64,16 @@ const projectionViews = byBundleId({
   ...rawAppRootProjectionViews,
 }) as Record<string, Record<string, ProjectionView>>;
 
+export function resolveBlueprintNative(id: string): BundleNative {
+  const runtime = openSampleBlueprint(id);
+  const nativeId = REGISTRY.nativeFrom?.[id] ?? id;
+  return {
+    effectHandlers: effectHandlerModules[nativeId]?.default,
+    projectionViews: projectionViews[nativeId],
+    wrapOrchestrator: declarativeServiceOrchestrator(runtime, browserServiceRegistryOptions),
+  };
+}
+
 /** Resolve a bundle's native projection views by id (for a cross-bundle provider resolver). */
 export function resolveSampleProjectionViews(id: string): Record<string, ProjectionView> | undefined {
   return projectionViews[id];
@@ -73,13 +83,7 @@ export function resolveSampleProjectionViews(id: string): Record<string, Project
 export function resolveBlueprintBundle(id: string): Bundle {
   const runtime = openSampleBlueprint(id);
   const { manifest, document, state } = runtime;
-  const nativeId = REGISTRY.nativeFrom?.[id] ?? id;
-  const native: BundleNative = {
-    effectHandlers: effectHandlerModules[nativeId]?.default,
-    projectionViews: projectionViews[nativeId],
-    wrapOrchestrator: declarativeServiceOrchestrator(runtime, browserServiceRegistryOptions),
-  };
-  return bundleFromJson({ manifest, document, state }, native);
+  return bundleFromJson({ manifest, document, state }, resolveBlueprintNative(id));
 }
 
 /** Assemble a raw JSON bundle (manifest/document/state) + native code. State is cloned per call so each

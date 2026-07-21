@@ -38,11 +38,16 @@ import {
   compileCellTopology,
   composeCellDocument,
   loadProfile,
+  loadProfileBundle,
+  PROFILE_BUNDLE_FORMAT,
+  runProfile,
   type CellDefinition,
   type LayerRecipe,
   type ProfileArtifact,
+  type ProfileArtifactBundle,
   type ResolvedProfile,
 } from "../../../profile/src/index";
+import { resolveProfileTemplate, resolveProfileTemplateResource } from "../../../profile/src/templates";
 
 export interface BlueprintRuntime {
   blueprintId: string;
@@ -52,9 +57,15 @@ export interface BlueprintRuntime {
   state: Record<string, Json>;
 }
 
-export interface BlueprintDefinition {
+type LoweredBlueprint = {
   profile: Pick<ResolvedProfile, "artifact" | "services">;
   lower(context: Record<string, Json>): DocumentPayload;
+};
+
+export type BlueprintSource = ProfileArtifact | ProfileArtifactBundle<LayerRecipe>;
+
+function isProfileBundle(source: BlueprintSource): source is ProfileArtifactBundle<LayerRecipe> {
+  return "format" in source && source.format === PROFILE_BUNDLE_FORMAT;
 }
 
 /**
@@ -62,7 +73,7 @@ export interface BlueprintDefinition {
  * nodes/cells. Recipe-backed Profiles deliberately return undefined and keep their registered
  * lowering implementation.
  */
-export function defineDeclarativeBlueprint(artifact: ProfileArtifact): BlueprintDefinition | undefined {
+export function defineDeclarativeBlueprint(artifact: ProfileArtifact): LoweredBlueprint | undefined {
   if (artifact.payload.recipes.length > 0) return undefined;
   const rawResources = artifact.payload.resources;
   const hasDocument = rawResources?.document && "inline" in rawResources.document;
@@ -89,12 +100,76 @@ export function defineDeclarativeBlueprint(artifact: ProfileArtifact): Blueprint
   };
 }
 
-export interface BlueprintResolver {
-  resolve(blueprintId: string): BlueprintDefinition | undefined;
+type JsonRecord = Record<string, Json>;
+type PresentationPreset = {
+  id?: string;
+  actor?: string;
+  role?: string;
+  device?: string;
+  task?: string;
+  disclosure?: string;
+  layout?: string;
+  frame?: string;
+  arrangement?: string;
+  regions?: Json[];
+};
+
+function jsonRecord(value: unknown): JsonRecord | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as JsonRecord
+    : null;
 }
 
-export interface OpenBlueprintRequest {
-  blueprintId: string;
+function defaultsFromSchema(schema: unknown): JsonRecord {
+  const input = jsonRecord(schema);
+  const properties = jsonRecord(input?.properties);
+  if (!properties) return {};
+  const defaults: JsonRecord = {};
+  for (const [key, declaration] of Object.entries(properties)) {
+    const field = jsonRecord(declaration);
+    if (field && Object.hasOwn(field, "default")) {
+      defaults[key] = structuredClone(field.default as Json);
+    }
+  }
+  return defaults;
+}
+
+function normalizePresentationPreset(preset: PresentationPreset | undefined): JsonRecord {
+  if (!preset) return {};
+  const context: JsonRecord = {};
+  for (const key of ["id", "actor", "role", "device", "task", "disclosure", "layout", "frame", "arrangement"] as const) {
+    const value = preset[key];
+    if (typeof value === "string") context[key] = value;
+  }
+  if (Array.isArray(preset.regions)) context.regions = structuredClone(preset.regions);
+  return context;
+}
+
+function presentationPresetContexts(profile: ResolvedProfile<LayerRecipe>): PresentationPreset[] {
+  const presets = profile.resources.presentationPresets;
+  return Array.isArray(presets) ? presets as PresentationPreset[] : [];
+}
+
+function defaultContextFor(profile: ResolvedProfile<LayerRecipe>): JsonRecord {
+  const presets = presentationPresetContexts(profile);
+  const preferred = presets.find((preset) => preset.id === "full-substrate") ?? presets[0];
+  return normalizePresentationPreset(preferred);
+}
+
+function resolveContextFor(profile: ResolvedProfile<LayerRecipe>, context: Record<string, Json>): JsonRecord {
+  const requested = context.presentationContext;
+  if (requested && typeof requested === "object" && !Array.isArray(requested)) {
+    return structuredClone(requested as JsonRecord);
+  }
+  if (typeof requested === "string") {
+    return normalizePresentationPreset(
+      presentationPresetContexts(profile).find((preset) => preset.id === requested)
+    );
+  }
+  return defaultContextFor(profile);
+}
+
+export interface OpenBlueprintOptions {
   context?: Record<string, Json>;
 }
 
@@ -110,17 +185,11 @@ export interface ControlFaceOptions {
 }
 
 export class ControlFace implements TransportBroker {
-  /** Resolve and lower an authored Blueprint before constructing its live ControlFace. */
-  static openBlueprint(
-    resolver: BlueprintResolver,
-    request: OpenBlueprintRequest
+  private static runtimeFromLowering(
+    profile: Pick<ResolvedProfile, "artifact" | "services">,
+    document: DocumentPayload,
   ): BlueprintRuntime {
-    const definition = resolver.resolve(request.blueprintId);
-    if (!definition) throw new Error(`Unknown Blueprint '${request.blueprintId}'`);
-    const { id, version, runtime } = definition.profile.artifact.payload;
-    if (id !== request.blueprintId) {
-      throw new Error(`Blueprint resolver returned '${id}' for requested '${request.blueprintId}'`);
-    }
+    const { id, version, runtime } = profile.artifact.payload;
     if (!runtime) throw new Error(`Blueprint '${id}' has no runtime declaration`);
 
     const manifest: ManifestPayload = {
@@ -132,8 +201,8 @@ export class ControlFace implements TransportBroker {
       capabilities: structuredClone(runtime.capabilities),
       externals: {
         ...structuredClone(runtime.externals ?? {}),
-        ...(Object.keys(definition.profile.services).length > 0
-          ? { services: structuredClone(definition.profile.services) }
+        ...(Object.keys(profile.services).length > 0
+          ? { services: structuredClone(profile.services) }
           : {}),
       },
     };
@@ -145,10 +214,43 @@ export class ControlFace implements TransportBroker {
       document: {
         gik: "0.1",
         type: "document",
-        payload: definition.lower(structuredClone(request.context ?? {})),
+        payload: document,
       },
       state: structuredClone(runtime.state ?? {}),
     };
+  }
+
+  /** Open a JSON-authored Blueprint or JSON profile bundle before constructing its live ControlFace. */
+  static openBlueprint(
+    source: BlueprintSource,
+    options: OpenBlueprintOptions = {}
+  ): BlueprintRuntime {
+    if (isProfileBundle(source)) {
+      const profile = loadProfileBundle<LayerRecipe>(
+        source,
+        resolveProfileTemplateResource,
+        resolveProfileTemplate,
+      );
+      return ControlFace.runtimeFromLowering(
+        profile,
+        runProfile(
+          profile,
+          structuredClone(defaultsFromSchema(profile.artifact.payload.layers[0]?.input)),
+          resolveContextFor(profile, structuredClone(options.context ?? {})),
+        ) as DocumentPayload,
+      );
+    }
+
+    const definition = defineDeclarativeBlueprint(source);
+    if (!definition) {
+      throw new Error(
+        `Blueprint '${source.payload.id}' is not self-contained JSON; provide a profile bundle when recipes are required`
+      );
+    }
+    return ControlFace.runtimeFromLowering(
+      definition.profile,
+      definition.lower(structuredClone(options.context ?? {})),
+    );
   }
 
   // The kernel and broker are INTERNAL composition — private so the face never leaks them to a

@@ -23,10 +23,14 @@ import {
   type ResolvedNode,
   unwrap,
 } from "../../kernel/src/index";
+import { createProfileBundle, type ProfileArtifact } from "../../profile/src/index";
+import liveWorkspaceSocProfile from "../../samples/profiles/live-workspace-soc/profile.json" with { type: "json" };
+import liveWorkspaceSocWorkflowRecipe from "../../samples/profiles/live-workspace-soc/workflow-to-interaction.recipe.json" with { type: "json" };
+import liveWorkspaceSocInteractionRecipe from "../../samples/profiles/live-workspace-soc/interaction-to-presentation.recipe.json" with { type: "json" };
+import liveWorkspaceSocRuntimeRecipe from "../../samples/profiles/live-workspace-soc/presentation-to-runtime.recipe.json" with { type: "json" };
 import { McpHttpServer } from "../../transports/mcp-http/src/index";
 import { SseClientTransport } from "../../transports/http-sse/src/index";
 import { SseTransportServer } from "../../transports/http-sse/src/index";
-import type { ProfileArtifact } from "../../profile/src/index";
 import {
   AGENTFACE_ALLOWLIST,
   ControlFace,
@@ -93,70 +97,79 @@ test("ControlFace defines zero-recipe JSON cell Blueprints without product code"
 });
 
 test("ControlFace opens an authored Blueprint into a runtime", () => {
-  const definition = {
-    profile: {
-      artifact: {
-        gik: "0.1" as const,
-        type: "profile" as const,
-        payload: {
-          id: "example",
-          kind: "example",
-          version: "1",
-          layers: [{ id: "runtime-document", kind: "runtime-document" }],
-          recipes: [],
-          runtime: {
-            namespaces: ["example"],
-            capabilities: {},
-            state: { example: { ready: true } },
+  const artifact: ProfileArtifact = {
+    gik: "0.1",
+    type: "profile",
+    payload: {
+      id: "example",
+      kind: "example",
+      version: "1",
+      layers: [{ id: "runtime-document", kind: "runtime-document" }],
+      recipes: [],
+      runtime: {
+        namespaces: ["example"],
+        capabilities: {},
+        state: { example: { ready: true } },
+      },
+      resources: {
+        document: {
+          inline: {
+            root: {
+              id: "example",
+              capability: "ui:text",
+              props: { value: "Opened" },
+            },
           },
         },
       },
-      services: {
-        assistant: { version: "1", operations: ["chat"] },
-      },
     },
-    lower: (context: Record<string, unknown>) => ({
-      root: {
-        id: "example",
-        capability: "ui:text",
-        props: { value: String(context.title ?? "Example") },
-      },
-    }),
   };
-  const resolver = { resolve: (id: string) => id === "example" ? definition : undefined };
-
-  const runtime = ControlFace.openBlueprint(resolver, {
-    blueprintId: "example",
-    context: { title: "Opened" },
-  });
+  const runtime = ControlFace.openBlueprint(artifact);
 
   assert.equal(runtime.blueprintId, "example");
   assert.equal(unwrap(runtime.document).root.props?.value, "Opened");
-  assert.deepEqual(unwrap(runtime.manifest).externals?.services, definition.profile.services);
   assert.deepEqual(runtime.state, { example: { ready: true } });
   assert.throws(
-    () => ControlFace.openBlueprint(resolver, { blueprintId: "missing" }),
-    /Unknown Blueprint/
-  );
-  assert.throws(
-    () => ControlFace.openBlueprint({ resolve: () => definition }, { blueprintId: "different" }),
-    /returned 'example' for requested 'different'/
-  );
-  assert.throws(
     () => ControlFace.openBlueprint({
-      resolve: () => ({
-        ...definition,
-        profile: {
-          ...definition.profile,
-          artifact: {
-            ...definition.profile.artifact,
-            payload: { ...definition.profile.artifact.payload, runtime: undefined },
-          },
-        },
-      }),
-    }, { blueprintId: "example" }),
-    /has no runtime declaration/
+      ...artifact,
+      payload: {
+        ...artifact.payload,
+        recipes: [{ id: "compile", from: "runtime-document", to: "runtime-document" }],
+      },
+    }),
+    /provide a profile bundle/
   );
+});
+
+test("ControlFace opens a recipe-backed Blueprint from a JSON profile bundle", () => {
+  const bundle = createProfileBundle(liveWorkspaceSocProfile as ProfileArtifact, [
+    liveWorkspaceSocWorkflowRecipe as never,
+    liveWorkspaceSocInteractionRecipe as never,
+    liveWorkspaceSocRuntimeRecipe as never,
+  ]);
+
+  const runtime = ControlFace.openBlueprint(bundle);
+  const manifest = unwrap(runtime.manifest);
+
+  assert.equal(runtime.blueprintId, "live-workspace-soc");
+  assert.equal(manifest.namespaces?.includes("soc") ?? false, true);
+  assert.equal(typeof unwrap(runtime.document).root.id, "string");
+});
+
+test("ControlFace rejects bundled Blueprints without runtime", () => {
+  const bundle = createProfileBundle({
+    gik: "0.1",
+    type: "profile",
+    payload: {
+      id: "missing-runtime",
+      kind: "example",
+      version: "1",
+      layers: [{ id: "workflow", kind: "workflow" }],
+      recipes: [],
+    },
+  }, []);
+
+  assert.throws(() => ControlFace.openBlueprint(bundle), /has no runtime declaration/);
 });
 import { ServiceKindRegistry } from "../src/services/service-kinds";
 
