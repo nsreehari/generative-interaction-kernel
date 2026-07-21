@@ -57,6 +57,14 @@ For local Foundry-backed samples, start the sibling Function host with `npm run 
 in one terminal and run `npm run dev:host` in another. The local proxy listens on
 `http://localhost:7071`.
 
+To run every Function app declared by the local host configuration, use `npm run func:local`.
+The command reads each origin from `samples/config/host.local.json` and starts the sibling Function
+apps on those ports.
+
+Use `npm run dev` for the complete local stack. It starts those Function apps and the Vite host
+together, explicitly setting `VITE_GIK_HOST_ENV=local` for the host process. Stopping either process
+stops the other.
+
 ### Live portfolio intelligence
 
 The portfolio tracker routes `analyze` and `propose-strategies` through QueueFace. Its Blueprint declares a `deterministic-agent` service for offline execution and attaches the operations to the producing cells. Live deployments replace that declaration with a host-supported kind such as `foundry-agent`; endpoints, model/agent selection, and credential references belong to the Blueprint declaration, while the host authorizes kinds, endpoint origins, and credential resolution.
