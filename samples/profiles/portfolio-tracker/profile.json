@@ -10,6 +10,105 @@
     ],
     "recipes": [],
     "services": {
+      "portfolio-market-data": {
+        "kind": "http-service",
+        "version": "1",
+        "operations": {
+          "refreshPrices": {
+            "operation": "fetch-quotes",
+            "contract": "portfolio-market-quotes/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'requests':state.portfolio.holdings.*.{'key':ticker,'url':'https://query1.finance.yahoo.com/v8/finance/chart/' & ticker & '?interval=1d&range=1d','headers':{'User-Agent':'Mozilla/5.0 (compatible; portfolio-tracker-demo/1.0)'},'meta':{'quantity':quantity,'costBasis':costBasis}}}"
+              }
+            },
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "message": "Portfolio market data response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": ["results"],
+                    "properties": {
+                      "results": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": ["key", "status", "meta", "body"],
+                          "properties": {
+                            "key": { "type": "string", "minLength": 1 },
+                            "status": { "type": "number" },
+                            "meta": {
+                              "type": "object",
+                              "required": ["quantity", "costBasis"],
+                              "properties": {
+                                "quantity": { "type": "number" },
+                                "costBasis": { "type": "number" }
+                              },
+                              "additionalProperties": true
+                            },
+                            "body": {
+                              "type": "object",
+                              "required": ["chart"],
+                              "properties": {
+                                "chart": {
+                                  "type": "object",
+                                  "required": ["result"],
+                                  "properties": {
+                                    "result": {
+                                      "type": "array",
+                                      "minItems": 1,
+                                      "items": {
+                                        "type": "object",
+                                        "required": ["meta"],
+                                        "properties": {
+                                          "meta": {
+                                            "type": "object",
+                                            "required": ["symbol", "regularMarketPrice"],
+                                            "properties": {
+                                              "symbol": { "type": "string", "minLength": 1 },
+                                              "regularMarketPrice": { "type": "number" },
+                                              "longName": { "type": "string" },
+                                              "shortName": { "type": "string" },
+                                              "regularMarketChange": { "type": "number" },
+                                              "regularMarketChangePercent": { "type": "number" },
+                                              "chartPreviousClose": { "type": "number" }
+                                            },
+                                            "additionalProperties": true
+                                          }
+                                        },
+                                        "additionalProperties": true
+                                      }
+                                    }
+                                  },
+                                  "additionalProperties": true
+                                }
+                              },
+                              "additionalProperties": true
+                            }
+                          },
+                          "additionalProperties": true
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              ]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($positions := response.results.{'ticker':key,'quantity':meta.quantity,'price':$round(body.chart.result[0].meta.regularMarketPrice, 2),'value':$round(meta.quantity * body.chart.result[0].meta.regularMarketPrice, 2),'costBasis':$round(meta.quantity * meta.costBasis, 2),'gainLoss':$round((meta.quantity * body.chart.result[0].meta.regularMarketPrice) - (meta.quantity * meta.costBasis), 2)}; {'ops':[{'op':'set','path':'portfolio.quotes','value':$count(response.results) > 0 ? $merge(response.results.{key:{'ticker':key,'price':$round(body.chart.result[0].meta.regularMarketPrice, 2)}}) : {}},{'op':'set','path':'portfolio.positions','value':$count($positions) > 0 ? $merge($positions.{ticker:$}) : {}},{'op':'set','path':'portfolio.summary','value':{'marketValue':$count($positions) > 0 ? $round($sum($positions.value), 2) : 0,'costBasis':$count($positions) > 0 ? $round($sum($positions.costBasis), 2) : 0,'gainLoss':$count($positions) > 0 ? $round($sum($positions.gainLoss), 2) : 0}},{'op':'set','path':'portfolio.intelligence','value':null},{'op':'set','path':'portfolio.strategies','value':{}},{'op':'set','path':'portfolio.recommendation','value':null}],'detail':{'provider':'yahoo-finance-http-service','quoteCount':$count(response.results)}})"
+              }
+            }
+          }
+        },
+        "config": { "endpoint": "https://query1.finance.yahoo.com" },
+        "scope": "per-blueprint"
+      },
       "portfolio-intelligence": {
         "kind": "deterministic-agent",
         "version": "1",
@@ -122,7 +221,7 @@
           "ui": { "from": "floor" },
           "portfolio": { "from": "self" }
         },
-        "effectHandlers": ["setHoldings", "upsertHolding", "removeHolding", "refreshPrices", "applyRecommendation", "saveHoldings", "setPresentationContext"]
+        "effectHandlers": ["setHoldings", "upsertHolding", "removeHolding", "applyRecommendation", "saveHoldings", "setPresentationContext"]
       },
       "state": {
         "portfolio": {
@@ -147,7 +246,7 @@
             "capability": "ui:editable-table",
             "provides": ["holding:$TICKER"],
             "props": { "label": "holdings", "spec": { "schema": { "properties": { "ticker": { "type": "string" }, "quantity": { "type": "number" }, "costBasis": { "type": "number" } } } } },
-            "edges": { "readExpr": { "rows": "[portfolio.holdings.*]" }, "on": { "save": [{ "do": "invoke", "args": { "tool": "saveHoldings" } }] } }
+            "edges": { "readExpr": { "rows": "[portfolio.holdings.*]" }, "on": { "save": [{ "do": "invoke", "args": { "tool": "saveHoldings" } }, { "do": "invoke", "args": { "tool": "refreshPrices" } }] } }
           },
           { "id": "market-prices", "capability": "ui:table", "requires": ["holding:$TICKER"], "provides": ["quote:$TICKER"], "props": { "label": "market-prices" }, "edges": { "readExpr": { "rows": "[portfolio.quotes.*]" } } },
           { "id": "positions", "capability": "ui:table", "requires": ["holding:$TICKER", "quote:$TICKER"], "provides": ["position:$TICKER"], "props": { "label": "positions" }, "edges": { "readExpr": { "rows": "[portfolio.positions.*]" } } },

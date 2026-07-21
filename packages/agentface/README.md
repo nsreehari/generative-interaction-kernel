@@ -1,8 +1,8 @@
 # @gik/agentface
 
 Agent-facing projection surface for the **Generative Interaction Kernel** — an allowlisted, agent-safe
-subset of the control-plane tool catalog. `agentface` is not a second engine; it is `controlface`
-filtered down to authoring plus read-oriented tools (`getState` / `getTree`).
+projection over the shared face tool catalog. `agentface` is not a second engine; it applies the
+agent-safe filter to that shared catalog and exposes authoring plus read-oriented tools (`getState` / `getTree`).
 
 ```bash
 npm install @gik/agentface

@@ -1,13 +1,11 @@
-// The FULL catalog/view over the face package: every pure authoring tool plus every live runtime
-// tool. This is the implementation surface first-party UI/API can expose.
+// The control-plane projection over the shared full catalog.
 
 import { createMcpDispatcher, type McpDispatcher, type McpTool } from "../tool-surface";
-import { authoringTools } from "../pure/authoring-tools";
-import { runtimeTools } from "../live/runtime-tools";
 import type { ControlFace } from "../live/controlface";
+import { fullCatalogTools } from "./full-catalog";
 
 export function controlFaceTools(face: ControlFace): McpTool[] {
-  return [...authoringTools, ...runtimeTools(face)];
+  return fullCatalogTools(face);
 }
 
 export function createControlFaceDispatcher(face: ControlFace): McpDispatcher {
