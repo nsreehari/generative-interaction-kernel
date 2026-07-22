@@ -18,6 +18,7 @@ describe("portfolio-tracker Blueprint", () => {
     expect(portfolioCells.map((cell) => cell.id)).toEqual([
       "http-proxy-access-gate",
       "holdings",
+      "foundry-access-gate",
       "market-prices",
       "positions",
       "summary",
@@ -38,6 +39,7 @@ describe("portfolio-tracker Blueprint", () => {
     );
     const marketPrices = document.root.edges?.children?.find((node) => node.id === "market-prices");
     const accessGate = portfolioCells.find((cell) => cell.id === "http-proxy-access-gate");
+    const foundryAccessGate = portfolioCells.find((cell) => cell.id === "foundry-access-gate");
     expect(accessGate?.provides).toEqual([{
       token: "http-proxy-access",
       read: "portfolio.httpProxyAccessStatus",
@@ -47,6 +49,12 @@ describe("portfolio-tracker Blueprint", () => {
       "http-proxy-access",
       "holding:$TICKER",
     ]);
+    expect(foundryAccessGate?.provides).toEqual([{
+      token: "foundry-access",
+      read: "portfolio.foundryAccessStatus",
+      when: "portfolio.foundryAccessStatus = 'ready'",
+    }]);
+    expect(portfolioCells.find((cell) => cell.id === "portfolio-intelligence")?.requires).toContain("foundry-access");
     expect(marketPrices?.props?.externalSource).toEqual({ refreshEvent: "refresh" });
     expect(marketPrices?.edges?.on?.refresh).toEqual([{
       do: "invoke",

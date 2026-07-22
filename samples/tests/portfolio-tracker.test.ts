@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { bundleFromJson, loadBundleRuntime } from "@gik/react";
 import effects from "../bundles/portfolio-tracker/effect_handlers";
 import { openSampleBlueprint } from "../shared/blueprints";
@@ -6,6 +6,36 @@ import { declarativeServiceOrchestrator } from "../shared/service-runtime";
 import type { SampleServiceRegistryOptions } from "../services";
 
 const PORTFOLIO_BLUEPRINTS = ["portfolio-tracker"] as const;
+const originalFetch = globalThis.fetch;
+let foundryRequests: Array<Record<string, unknown>> = [];
+
+const intelligenceResponse = {
+  summary: "The portfolio is concentrated in two individual equities.",
+  observations: ["NVDA has the larger market-value weight."],
+  risks: ["NVDA: current semiconductor volatility may amplify drawdowns."],
+  evidence: ["NVDA company and market news reviewed for the current date."],
+  asOf: "2026-07-22",
+};
+
+const strategiesResponse = {
+  strategies: {
+    conservative: {
+      id: "conservative",
+      rationale: "Reduce single-name concentration.",
+      targetWeights: [{ ticker: "NVDA", weight: 0.4 }, { ticker: "JNJ", weight: 0.6 }],
+    },
+    growth: {
+      id: "growth",
+      rationale: "Retain a larger growth allocation.",
+      targetWeights: [{ ticker: "NVDA", weight: 0.65 }, { ticker: "JNJ", weight: 0.35 }],
+    },
+  },
+  recommendation: {
+    selected: "conservative",
+    reason: "It better matches the supplied moderate risk tolerance.",
+    status: "proposed",
+  },
+};
 
 const quoteFixture = (ticker: string, price: number) => ({
   chart: {
@@ -23,6 +53,8 @@ const quoteFixture = (ticker: string, price: number) => ({
 
 const registryOptions: SampleServiceRegistryOptions = {
   hostCapabilities: ["http-executor"],
+  resolveCredential: async () => "foundry-access-key",
+  authorizeEndpoint: async () => true,
   execute: async (request) => {
     const invocation = request as { kind?: string; input?: { requests?: Array<{ key?: string; meta?: unknown }> } };
     if (invocation.kind !== "http-service") throw new Error("Unexpected service kind");
@@ -41,6 +73,27 @@ const registryOptions: SampleServiceRegistryOptions = {
     };
   },
 };
+
+beforeEach(() => {
+  foundryRequests = [];
+  globalThis.fetch = async (_input, init) => {
+    const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    foundryRequests.push(body);
+    const schemaName = String((body.responseSchema as { name?: unknown } | undefined)?.name ?? "");
+    const reply = schemaName.startsWith("portfolio-intelligence")
+      ? intelligenceResponse
+      : strategiesResponse;
+    return new Response(JSON.stringify({
+      conversationId: `conversation-${foundryRequests.length}`,
+      responseId: `response-${foundryRequests.length}`,
+      reply: JSON.stringify(reply),
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+});
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+});
 
 function runtime(blueprintId: typeof PORTFOLIO_BLUEPRINTS[number]) {
   const blueprintRuntime = openSampleBlueprint(blueprintId);
@@ -124,9 +177,14 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
     );
     await portfolio.controller.settle();
     expect(portfolio.state.get("portfolio.intelligence")).toMatchObject({
-      provider: "portfolio-intelligence-deterministic",
-      risks: ["single-name concentration", "market-price volatility"],
+      provider: "foundry-agent:Portfolio-Intelligence-Agent",
+      risks: intelligenceResponse.risks,
     });
+    expect(foundryRequests[0]).toMatchObject({ agentName: "Portfolio-Intelligence-Agent" });
+    expect(String(foundryRequests[0].message)).toContain("NVDA");
+    expect(String(foundryRequests[0].message)).toContain("riskTolerance");
+    expect(String(foundryRequests[0].instructions)).toContain("Use web search");
+    expect((foundryRequests[0].responseSchema as { strict?: boolean }).strict).toBe(true);
 
     await portfolio.controller.emit(
       blueprintId,
@@ -137,7 +195,10 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
     await portfolio.controller.settle();
     expect(portfolio.state.get("portfolio.strategies.conservative")).toMatchObject({ id: "conservative" });
     expect(portfolio.state.get("portfolio.strategies.growth")).toMatchObject({ id: "growth" });
+    expect(portfolio.state.get("portfolio.strategies.conservative.targetWeights")).toEqual({ NVDA: 0.4, JNJ: 0.6 });
     expect(portfolio.state.get("portfolio.recommendation.status")).toBe("proposed");
+    expect(foundryRequests[1]).toMatchObject({ agentName: "Portfolio-Strategy-Agent" });
+    expect(String(foundryRequests[1].message)).toContain("Portfolio intelligence JSON");
 
     await portfolio.controller.emit("rebalance-comparison", "apply", {}, "human-investor");
     await portfolio.controller.settle();

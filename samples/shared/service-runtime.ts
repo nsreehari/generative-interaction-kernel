@@ -106,7 +106,7 @@ export function createBlueprintQueueFace(
   state: StateModel,
   registryOptions: SampleServiceRegistryOptions = {}
 ): QueueFace {
-  return new QueueFace(createBlueprintServiceHost(runtime, state, mergeRegistryOptions(registryOptions)));
+  return new QueueFace(createBlueprintServiceHost(runtime, state, registryOptions));
 }
 
 export function declarativeServiceOrchestrator(
@@ -114,7 +114,7 @@ export function declarativeServiceOrchestrator(
   registryOptions: SampleServiceRegistryOptions = {}
 ): NonNullable<LoadBundleOptions["wrapOrchestrator"]> {
   return (fallback, state) => {
-    const host = createBlueprintServiceHost(runtime, state, mergeRegistryOptions(registryOptions));
+    const host = createBlueprintServiceHost(runtime, state, registryOptions);
     const declarations = (unwrap(runtime.manifest).externals?.services ?? {}) as Record<string, ServiceDeclaration>;
     const serviceInvokes = new Set(Object.values(declarations).flatMap((declaration) => Object.keys(declaration.operations)));
     return {
