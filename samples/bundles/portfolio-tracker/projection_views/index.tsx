@@ -62,7 +62,6 @@ const useStyles = makeStyles({
   recommendationPanel: { gridColumn: "1 / -1", padding: tokens.spacingHorizontalXL, borderTop: "3px solid #0f6cbd", backgroundColor: "#ffffff", boxShadow: "0 1px 3px rgba(0, 0, 0, .06)" },
   recommendationChoice: { margin: `0 0 ${tokens.spacingVerticalXS}`, fontSize: tokens.fontSizeBase600, fontWeight: tokens.fontWeightSemibold, textTransform: "capitalize" },
   recommendationReason: { margin: `0 0 ${tokens.spacingVerticalL}`, maxWidth: "72ch", color: "#42464d", lineHeight: tokens.lineHeightBase400 },
-  appliedStatus: { margin: 0, color: "#107c10", fontWeight: tokens.fontWeightSemibold },
 });
 
 function valueOf(node: ProjectionViewProps["node"]): unknown {
@@ -121,8 +120,14 @@ const SummaryView: ProjectionView = ({ node }) => {
 const NarrativeView: ProjectionView = ({ node }) => {
   const styles = useStyles();
   const value = valueOf(node) as Record<string, unknown> | null;
-  if (value == null) return null;
   if (node.id === "portfolio-intelligence") {
+    if (value == null) {
+      return <article className={`${styles.advisoryPanel} ${styles.advisoryWide}`}>
+        <p className={styles.advisoryEyebrow}>Portfolio intelligence</p>
+        <h2 className={styles.advisoryTitle}>Ready for analysis</h2>
+        <p className={styles.advisorySummary}>Add holdings, then analyze the portfolio for observations and risk signals.</p>
+      </article>;
+    }
     const observations = Array.isArray(value.observations) ? value.observations.map(String) : [];
     const risks = Array.isArray(value.risks) ? value.risks.map(String) : [];
     return <article className={`${styles.advisoryPanel} ${styles.advisoryWide}`}>
@@ -135,6 +140,7 @@ const NarrativeView: ProjectionView = ({ node }) => {
       </div>
     </article>;
   }
+  if (value == null) return null;
   const weights = value.targetWeights && typeof value.targetWeights === "object"
     ? Object.entries(value.targetWeights as Record<string, unknown>)
     : [];
@@ -155,18 +161,23 @@ const NarrativeView: ProjectionView = ({ node }) => {
   </article>;
 };
 
-const RecommendationView: ProjectionView = ({ node, emit }) => {
+const StrategyComparisonView: ProjectionView = ({ node }) => {
   const styles = useStyles();
   const value = valueOf(node) as Record<string, unknown> | null;
-  if (value == null) return null;
+  if (value == null) {
+    return (
+      <section className={styles.recommendationPanel}>
+        <p className={styles.advisoryEyebrow}>Strategy comparison</p>
+        <h2 className={styles.recommendationChoice}>Awaiting portfolio intelligence</h2>
+        <p className={styles.recommendationReason}>Build strategies after analysis to compare conservative and growth alternatives.</p>
+      </section>
+    );
+  }
   return (
     <section className={styles.recommendationPanel}>
-      <p className={styles.advisoryEyebrow}>Recommended allocation</p>
-      <h2 className={styles.recommendationChoice}>{String(value.selected ?? "Recommendation")}</h2>
+      <p className={styles.advisoryEyebrow}>Strategy comparison</p>
+      <h2 className={styles.recommendationChoice}>Agent preference: {String(value.selected ?? "Not available")}</h2>
       <p className={styles.recommendationReason}>{String(value.reason ?? "")}</p>
-      {value.status === "proposed"
-        ? <Button appearance="primary" onClick={() => emit("apply", {}, "human-investor")}>Apply recommendation</Button>
-        : <p className={styles.appliedStatus}>Applied by {String(value.actorId ?? "investor")}</p>}
     </section>
   );
 };
@@ -196,7 +207,7 @@ const WorkspaceView: ProjectionView = ({ node, children, emit }) => {
     {cells.get("portfolio-intelligence")}
     {cells.get("conservative-rebalance")}
     {cells.get("growth-rebalance")}
-    {cells.get("rebalance-comparison")}
+    {cells.get("strategy-comparison")}
   </section>;
   return <main className={styles.workspace}>
     <header className={styles.header}>
@@ -225,5 +236,5 @@ export default {
   workspace: WorkspaceView,
   summary: SummaryView,
   narrative: NarrativeView,
-  recommendation: RecommendationView,
+  comparison: StrategyComparisonView,
 };

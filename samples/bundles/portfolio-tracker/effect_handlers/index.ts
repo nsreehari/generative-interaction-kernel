@@ -48,7 +48,6 @@ function replaceHoldings(ctx: EffectContext, holdings: Holding[], investorProfil
     ops: [
       ...clearDerivedPortfolioOps(ctx, keyed),
       ctx.set("portfolio.investorProfile", investorProfile),
-      ctx.set("portfolio.appliedRecommendation", null),
     ],
   };
 }
@@ -83,26 +82,6 @@ const handlers: EffectHandlerMap = {
       ? ctx.payload.rows.map((value) => holdingFrom(value)).filter((value): value is Holding => value !== undefined)
       : [];
     return replaceHoldings(ctx, rows, ctx.get("portfolio.investorProfile"));
-  },
-  applyRecommendation: (ctx) => {
-    const recommendation = ctx.get("portfolio.recommendation") as Record<string, Json> | null;
-    if (recommendation?.status !== "proposed") {
-      throw new Error("A proposed recommendation is required");
-    }
-    if (!ctx.actorId?.trim()) {
-      throw new Error("Recommendation application requires an attributed actor");
-    }
-    const appliedRecommendation = {
-      ...recommendation,
-      status: "applied",
-      actorId: ctx.actorId,
-    };
-    return {
-      ops: [
-        ctx.set("portfolio.recommendation", appliedRecommendation),
-        ctx.set("portfolio.appliedRecommendation", appliedRecommendation),
-      ],
-    };
   },
   setPresentationContext: (ctx) => {
     const requested = ctx.get("control.presentationContext");

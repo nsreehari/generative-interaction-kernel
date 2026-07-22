@@ -55,10 +55,26 @@ export async function executeHttpServiceInvocation(
   const proxyOrigin = options.proxyOrigin.replace(/\/$/, "");
   const fetchImpl = options.fetch ?? globalThis.fetch.bind(globalThis);
   if (request.operation === "check-access") {
-    const response = await fetchImpl(`${proxyOrigin}/api/access/check`, {
-      method: "GET",
-      headers: { "x-functions-key": options.accessKey },
-    });
+    let response: Response;
+    try {
+      response = await fetchImpl(`${proxyOrigin}/api/access/check`, {
+        method: "GET",
+        headers: { "x-functions-key": options.accessKey },
+      });
+    } catch {
+      try {
+        await fetchImpl(proxyOrigin, { method: "GET" });
+      } catch {
+        throw new HttpServiceError(
+          `Could not reach HTTP proxy at ${proxyOrigin}. Verify the server is running.`,
+          503
+        );
+      }
+      throw new HttpServiceError(
+        `HTTP proxy at ${proxyOrigin} is reachable, but ${proxyOrigin}/api/access/check could not be reached.`,
+        503
+      );
+    }
     if (!response.ok) throw new HttpServiceError(`HTTP proxy returned ${response.status}.`, response.status);
     return { ok: true };
   }

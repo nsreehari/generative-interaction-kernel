@@ -25,7 +25,7 @@ describe("portfolio-tracker Blueprint", () => {
       "portfolio-intelligence",
       "conservative-rebalance",
       "growth-rebalance",
-      "rebalance-comparison",
+      "strategy-comparison",
     ]);
     const composition = analyzeCellComposition(portfolioCells);
     expect(composition.externalInputs).toEqual(["investor-profile"]);
@@ -55,6 +55,9 @@ describe("portfolio-tracker Blueprint", () => {
       when: "portfolio.foundryAccessStatus = 'ready'",
     }]);
     expect(portfolioCells.find((cell) => cell.id === "portfolio-intelligence")?.requires).toContain("foundry-access");
+    const strategyComparison = portfolioCells.find((cell) => cell.id === "strategy-comparison");
+    expect(strategyComparison?.capability).toBe("portfolio:comparison");
+    expect(strategyComparison?.edges?.on).toBeUndefined();
     expect(marketPrices?.props?.externalSource).toEqual({ refreshEvent: "refresh" });
     expect(marketPrices?.edges?.on?.refresh).toEqual([{
       do: "invoke",

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { bundleFromJson, loadBundleRuntime } from "@gik/react";
 import effects from "../bundles/portfolio-tracker/effect_handlers";
 import { openSampleBlueprint } from "../shared/blueprints";
+import { hostConfig } from "../shared/host-config";
 import { declarativeServiceOrchestrator } from "../shared/service-runtime";
 import type { SampleServiceRegistryOptions } from "../services";
 
@@ -107,6 +108,19 @@ function runtime(blueprintId: typeof PORTFOLIO_BLUEPRINTS[number]) {
 }
 
 describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
+  it("reports when the configured Foundry server cannot be reached", async () => {
+    globalThis.fetch = async () => { throw new TypeError("Failed to fetch"); };
+    const portfolio = runtime(blueprintId);
+
+    await portfolio.controller.emit("foundry-access-gate", "accessRequested", {});
+    await portfolio.controller.settle();
+
+    expect(portfolio.state.get("portfolio.foundryAccessStatus")).toBe("error");
+    expect(portfolio.state.get("portfolio.foundryAccessError")).toBe(
+      `Could not reach Foundry at ${hostConfig.foundryProxyOrigin}. Verify the server is running.`
+    );
+  });
+
   it("auto-refreshes live quotes when the holdings table saves rows", async () => {
     const portfolio = runtime(blueprintId);
 
@@ -156,7 +170,7 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
     expect(portfolio.state.get("portfolio.positions.GOOG")).toMatchObject({ ticker: "GOOG", quantity: 4 });
   });
 
-  it("commits structured intelligence and keeps rebalance application attributable", async () => {
+  it("commits structured intelligence and informational strategy comparison", async () => {
     const portfolio = runtime(blueprintId);
 
     await portfolio.controller.emit(blueprintId, "setHoldings", {
@@ -199,45 +213,6 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
     expect(portfolio.state.get("portfolio.recommendation.status")).toBe("proposed");
     expect(foundryRequests[1]).toMatchObject({ agentName: "Portfolio-Strategy-Agent" });
     expect(String(foundryRequests[1].message)).toContain("Portfolio intelligence JSON");
-
-    await portfolio.controller.emit("rebalance-comparison", "apply", {}, "human-investor");
-    await portfolio.controller.settle();
-    expect(portfolio.state.get("portfolio.appliedRecommendation")).toMatchObject({
-      status: "applied",
-      actorId: "human-investor",
-    });
-    expect(portfolio.state.get("portfolio.recommendation")).toMatchObject({
-      status: "applied",
-      actorId: "human-investor",
-    });
-    await expect(portfolio.controller.emit(
-      "rebalance-comparison",
-      "apply",
-      {},
-      "human-investor"
-    )).rejects.toThrow("A proposed recommendation is required");
-  });
-
-  it("rejects recommendation application without a proposal or attributed actor", async () => {
-    const portfolio = runtime(blueprintId);
-
-    await expect(portfolio.controller.emit(
-      "rebalance-comparison",
-      "apply",
-      {},
-      "human-investor"
-    )).rejects.toThrow("A proposed recommendation is required");
-
-    await portfolio.controller.emit(blueprintId, "requestIntelligence", {}, "agent-portfolio-intelligence");
-    await portfolio.controller.settle();
-    await portfolio.controller.emit(blueprintId, "calculateStrategies", {}, "agent-portfolio-intelligence");
-    await portfolio.controller.settle();
-    await expect(portfolio.controller.emit(
-      "rebalance-comparison",
-      "apply"
-    )).rejects.toThrow("requires an attributed actor");
-    expect(portfolio.state.get("portfolio.appliedRecommendation")).toBeNull();
-    expect(portfolio.state.get("portfolio.recommendation.status")).toBe("proposed");
   });
 
   it("accepts an arbitrary high-cardinality ticker set without new commands", async () => {

@@ -44,7 +44,11 @@ if (!dryRun) {
   const children = commands.map(({ cwd, port }) => spawn(
     process.execPath,
     [npmCli, "run", "start", "--", "--port", port],
-    { cwd, stdio: "inherit" }
+    {
+      cwd,
+      stdio: "inherit",
+      env: { ...process.env, FUNCTIONS_WORKER_RUNTIME: "node" },
+    }
   ));
   let stopping = false;
 
