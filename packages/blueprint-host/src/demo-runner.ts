@@ -80,6 +80,11 @@ export interface DemoCatalog {
   entries: DemoCatalogEntry[];
 }
 
+export interface DemoScenariosJson {
+  catalog: DemoCatalog;
+  scenarios: ScenarioBlueprintArtifact[];
+}
+
 export interface DemoTargetCatalogEntry {
   commands: Array<{ command: string; nodeId: string; event: string }>;
   humanGates: string[];
@@ -301,6 +306,64 @@ export function resolveDemoEntry(
     return entries[0];
   }
   return targetBlueprintId ? entries[0] : entries.find((entry) => entry.id === catalog.default) ?? entries[0];
+}
+
+export interface LoadedDemoScenarios {
+  catalog: DemoCatalog;
+  resolveComposition(
+    requestedId?: string | null,
+    targetBlueprintId?: string | null,
+    requestedIndex?: number | null,
+  ): {
+    entry: DemoCatalogEntry;
+    scenarioPlan: ScenarioPlan;
+    demoContract: OrganismDemoContract;
+    controlContract: import("./control-runtime").OrganismControlContract;
+  };
+}
+
+export function loadDemoScenarios(scenariosJson: DemoScenariosJson): LoadedDemoScenarios {
+  if (!scenariosJson || typeof scenariosJson !== "object" || Array.isArray(scenariosJson)) {
+    throw new Error("Demo scenarios must be an object");
+  }
+  if (!Array.isArray(scenariosJson.scenarios)) {
+    throw new Error("Demo scenarios must contain a scenarios array");
+  }
+  const scenarioPlans = new Map<string, ScenarioPlan>();
+  for (const artifact of scenariosJson.scenarios) {
+    const plan = compileScenarioBlueprint(artifact);
+    if (scenarioPlans.has(plan.id)) throw new Error(`Duplicate Scenario Blueprint '${plan.id}'`);
+    scenarioPlans.set(plan.id, plan);
+  }
+  const catalog = validateDemoCatalog(scenariosJson.catalog, scenarioPlans);
+
+  return {
+    catalog,
+    resolveComposition(requestedId, targetBlueprintId, requestedIndex) {
+      const entry = resolveDemoEntry(catalog, requestedId, targetBlueprintId, requestedIndex);
+      const scenarioPlan = scenarioPlans.get(entry.scenarioBlueprintId);
+      if (!scenarioPlan) throw new Error(`Scenario '${entry.scenarioBlueprintId}' is not registered`);
+      const target = catalog.targets[entry.targetBlueprintId];
+      if (!target) throw new Error(`No target contract is registered for Blueprint '${entry.targetBlueprintId}'`);
+      const demoContract: OrganismDemoContract = {
+        blueprintId: entry.targetBlueprintId,
+        commands: target.commands.map(({ command }) => command),
+        humanGates: target.humanGates,
+        actors: target.actors,
+        presentationPresets: target.presentationPresets,
+        focusKinds: target.focusKinds,
+        timelineSources: target.timelineSources,
+      };
+      const controlContract = {
+        blueprintId: entry.targetBlueprintId,
+        commands: target.commands,
+        humanGates: target.humanGates,
+        observableOutcomes: target.observableOutcomes,
+      };
+      validateDemoComposition(entry, scenarioPlan, demoContract);
+      return { entry, scenarioPlan, demoContract, controlContract };
+    },
+  };
 }
 
 export function writeDemoNavigation(url: string, entry: DemoCatalogEntry): string {

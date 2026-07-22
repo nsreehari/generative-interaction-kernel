@@ -14,8 +14,10 @@ import {
   isBuiltInDemoCommand,
   type DemoCatalog,
   type DemoCatalogEntry,
+  type DemoScenariosJson,
   type OrganismDemoContract,
   type ScenarioPlan,
+  loadDemoScenarios,
 } from "./demo-runner";
 import type { OrganismControlContract } from "./control-runtime";
 
@@ -129,9 +131,7 @@ function replayScenarioSeed(
 }
 
 export interface GikDemoBlueprintHostProps extends Omit<BlueprintHostProps, "primaryBridge"> {
-  demo?: DemoComposition;
-  catalog?: DemoCatalog;
-  resolveDemoComposition?: (requestedId?: string | null, targetBlueprintId?: string | null, requestedIndex?: number | null) => DemoComposition;
+  scenariosJson?: DemoScenariosJson;
   blueprintState?: Record<string, unknown>;
   showControlHarness?: boolean;
   presentationContext?: string | null;
@@ -147,9 +147,8 @@ export function GikDemoBlueprintHost({
   className,
   style,
   context,
-  demo,
-  catalog,
-  resolveDemoComposition,
+  resolveLeavesProvider,
+  scenariosJson,
   blueprintState,
   showControlHarness = false,
   presentationContext,
@@ -157,24 +156,25 @@ export function GikDemoBlueprintHost({
 }: GikDemoBlueprintHostProps): React.ReactElement {
   const blueprintId = "format" in blueprint ? blueprint.profileArtifact.payload.id : blueprint.payload.id;
   const query = React.useMemo(readDemoQuery, []);
+  const loadedScenarios = React.useMemo(
+    () => scenariosJson ? loadDemoScenarios(scenariosJson) : null,
+    [scenariosJson],
+  );
   const activeDemo = React.useMemo(() => {
-    if (demo) {
-      if (!catalog) throw new Error("GikDemoBlueprintHost requires 'catalog' when 'demo' is provided");
-      return { catalog, composition: demo };
-    }
-    if ((!query.demoId && query.demoIndex === null) || !catalog || !resolveDemoComposition) {
+    if ((!query.demoId && query.demoIndex === null) || !loadedScenarios) {
       return null;
     }
     return {
-      catalog,
-      composition: resolveDemoComposition(query.demoId, blueprintId, query.demoIndex),
+      catalog: loadedScenarios.catalog,
+      composition: loadedScenarios.resolveComposition(query.demoId, blueprintId, query.demoIndex),
     };
-  }, [blueprintId, catalog, demo, query.demoId, query.demoIndex, resolveDemoComposition]);
+  }, [blueprintId, loadedScenarios, query.demoId, query.demoIndex]);
 
   if (!activeDemo) {
     return (
       <BlueprintHost
         blueprint={blueprint}
+        resolveLeavesProvider={resolveLeavesProvider}
         native={native}
         companions={companions}
         contexts={contexts}
@@ -387,6 +387,7 @@ export function GikDemoBlueprintHost({
   return (
     <BlueprintHost
       blueprint={blueprint}
+      resolveLeavesProvider={resolveLeavesProvider}
       native={native}
       companions={packageCompanions}
       contexts={mergedContexts}

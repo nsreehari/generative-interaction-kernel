@@ -8,7 +8,7 @@
 import React from "react";
 import { GikDemoBlueprintHost as PublicGikDemoBlueprintHost } from "@gik/blueprint-host";
 import { resolveBlueprintBundle, resolveBlueprintNative } from "./sample-bundles";
-import { demoCatalog, resolveDemoComposition } from "./demo-catalog";
+import { demoScenariosJson } from "./demo-catalog";
 import { resolveSampleBlueprintSource } from "./blueprints";
 
 export function GikDemoBlueprintHost({
@@ -35,14 +35,12 @@ export function GikDemoBlueprintHost({
   const blueprint = React.useMemo(() => resolveSampleBlueprintSource(blueprintId), [blueprintId]);
   const native = React.useMemo(() => resolveBlueprintNative(blueprintId), [blueprintId]);
   const targetBundle = React.useMemo(() => resolveBlueprintBundle(blueprintId), [blueprintId]);
-  const demoComposition = React.useMemo(() => resolveDemoComposition(demoId, blueprintId), [demoId, blueprintId]);
 
   return (
     <PublicGikDemoBlueprintHost
       blueprint={blueprint}
       native={native}
-      demo={demoComposition}
-      catalog={demoCatalog}
+      scenariosJson={demoScenariosJson}
       blueprintState={targetBundle.state as Record<string, unknown> | undefined}
       showControlHarness={showControlHarness}
       presentationContext={presentationContext}
