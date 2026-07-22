@@ -3,10 +3,12 @@ import productionConfig from "../config/host.production.json";
 
 const FOUNDRY_PROXY_ORIGIN_TOKEN = "${GIK_FOUNDRY_PROXY_ORIGIN}";
 const HTTP_PROXY_ORIGIN_TOKEN = "${GIK_HTTP_PROXY_ORIGIN}";
+const STORES_PROXY_ORIGIN_TOKEN = "${GIK_STORES_PROXY_ORIGIN}";
 
 export type HostConfig = {
   foundryProxyOrigin: string;
   httpProxyOrigin: string;
+  storesProxyOrigin: string;
 };
 
 export type HostEnvironment = "local" | "production";
@@ -35,6 +37,9 @@ export function applyHostConfig<T>(value: T, config: HostConfig = hostConfig): T
   }
   if (value === HTTP_PROXY_ORIGIN_TOKEN) {
     return config.httpProxyOrigin as T;
+  }
+  if (value === STORES_PROXY_ORIGIN_TOKEN) {
+    return config.storesProxyOrigin as T;
   }
   if (Array.isArray(value)) {
     return value.map((entry) => applyHostConfig(entry, config)) as T;
