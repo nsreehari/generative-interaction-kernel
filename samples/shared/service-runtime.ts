@@ -14,6 +14,7 @@ import {
   type SampleServiceRegistryOptions,
 } from "../services";
 import { executeHttpServiceInvocation } from "../services/http-service/runtime";
+import { executeMcpServiceInvocation } from "../services/mcp/runtime";
 import {
   clearFunctionAccessKey,
   FUNCTION_ACCESS,
@@ -32,7 +33,7 @@ const FOUNDRY_ORIGIN = new URL(hostConfig.foundryProxyOrigin).origin;
 const HTTP_PROXY_ORIGIN = new URL(hostConfig.httpProxyOrigin).origin;
 
 export const browserServiceRegistryOptions: SampleServiceRegistryOptions = {
-  hostCapabilities: ["foundry-executor", "credential-resolver", "http-executor"],
+  hostCapabilities: ["foundry-executor", "credential-resolver", "http-executor", "mcp-executor"],
   resolveCredential: async (reference) => {
     const scope = CREDENTIAL_SCOPES[reference];
     if (!scope) throw new Error(`Unknown credential reference '${reference}'`);
@@ -64,6 +65,9 @@ export const browserServiceRegistryOptions: SampleServiceRegistryOptions = {
         }
         throw error;
       }
+    }
+    if (invocation.kind === "mcp") {
+      return executeMcpServiceInvocation(request as Parameters<typeof executeMcpServiceInvocation>[0]);
     }
     throw new Error(`Unsupported sample service execution kind '${String(invocation.kind ?? "unknown")}'`);
   },

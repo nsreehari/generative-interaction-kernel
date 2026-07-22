@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import { unwrap } from "@gik/kernel";
 
 import { createHostRegistry, DEFAULT_BLUEPRINT, resolveBundleProjectionViews } from "./bundles";
+import { openSampleBlueprint } from "../../../shared/blueprints";
 
 test("host registry exposes only approved Blueprints to the switcher", () => {
   const registry = createHostRegistry();
@@ -10,6 +12,7 @@ test("host registry exposes only approved Blueprints to the switcher", () => {
   assert.equal(registry.has("samples-overview"), true);
   assert.equal(registry.has("manage-blueprints"), true);
   assert.equal(registry.has("manage-bundles"), true);
+  assert.equal(registry.has("copilot-c2"), true);
   assert.equal(registry.has("foundry-agent"), true);
   assert.equal(registry.has("foundry-agent-no-cells"), true);
   assert.equal(registry.has("live-workspace-soc"), true);
@@ -17,7 +20,7 @@ test("host registry exposes only approved Blueprints to the switcher", () => {
   assert.equal(registry.has("portfolio-tracker-no-cells"), false);
   assert.deepEqual(
     [...registry.ids({ listable: true })].sort(),
-    ["foundry-agent", "foundry-agent-no-cells", "live-workspace-soc", "manage-blueprints", "manage-bundles", "portfolio-tracker", "samples-overview"]
+    ["copilot-c2", "foundry-agent", "foundry-agent-no-cells", "live-workspace-soc", "manage-blueprints", "manage-bundles", "portfolio-tracker", "samples-overview"]
   );
   assert.equal(registry.has("reactive-demo"), false);
   assert.equal(registry.has("provider-authoring-demo"), false);
@@ -43,4 +46,16 @@ test("host projection imports can resolve another bundle by id", () => {
   assert.equal(typeof fluentViews?.switch, "function");
   assert.equal(typeof fluentViews?.toggle, "function");
   assert.equal(resolveBundleProjectionViews("missing-bundle"), undefined);
+});
+
+test("copilot-c2 opens as a declarative MCP-backed Blueprint", () => {
+  const runtime = openSampleBlueprint("copilot-c2");
+  const services = unwrap(runtime.manifest).externals?.services as Record<string, { kind?: string }>;
+
+  assert.equal(runtime.blueprintId, "copilot-c2");
+  assert.equal(Object.keys(services).length, 5);
+  assert.deepEqual(
+    Object.values(services).map((service) => service.kind),
+    ["mcp", "mcp", "mcp", "mcp", "mcp"]
+  );
 });
