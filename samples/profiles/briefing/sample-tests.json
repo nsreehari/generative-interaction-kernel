@@ -1,9 +1,6 @@
 {
   "name": "briefing sample profile",
-  "profileFile": "profile.json",
-  "recipeFiles": [
-    "interaction-to-runtime.recipe.json"
-  ],
+  "blueprintFile": "blueprint.json",
   "expectLoad": {
     "id": "briefing",
     "kind": "briefing-profile",

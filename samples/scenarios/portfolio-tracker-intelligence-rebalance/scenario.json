@@ -5,6 +5,7 @@
     "id": "portfolio-tracker-intelligence-rebalance",
     "targetBlueprintId": "portfolio-tracker",
     "title": "Agent intelligence and governed rebalance",
+    "applicableContexts": ["portfolio-advisor"],
     "pace": { "manualDurationMs": 90000, "autoDurationMs": 1900, "default": "manual" },
     "steps": [
       { "id": "act-01", "title": "Load NVDA and JNJ with an investor profile", "kind": "dispatch", "command": "setHoldings", "payload": { "holdings": [{ "ticker": "NVDA", "quantity": 18, "costBasis": 138 }, { "ticker": "JNJ", "quantity": 12, "costBasis": 149 }], "investorProfile": { "riskTolerance": "moderate", "horizonYears": 8, "objective": "growth-with-drawdown-control" } }, "actorRef": { "namespace": "portfolio", "kind": "actor", "id": "human-investor", "relation": "origin" } },

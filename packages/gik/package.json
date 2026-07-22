@@ -40,7 +40,7 @@
     "@gik/kernel": "0.1.0",
     "@gik/react": "0.1.0",
     "@gik/agentface": "0.1.0",
-    "@gik/controlface": "0.1.1",
+    "@gik/controlface": "0.1.2",
     "@gik/transport-http-sse": "0.1.0",
     "@gik/transport-mcp-http": "0.1.0"
   },

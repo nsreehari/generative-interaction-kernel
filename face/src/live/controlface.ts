@@ -37,14 +37,11 @@ import type { ServiceKindDescription } from "../services/service-kinds";
 import {
   compileCellTopology,
   composeCellDocument,
-  loadProfile,
-  loadProfileBundle,
-  PROFILE_BUNDLE_FORMAT,
+  loadBlueprint,
   runProfile,
+  type BlueprintArtifact,
   type CellDefinition,
   type LayerRecipe,
-  type ProfileArtifact,
-  type ProfileArtifactBundle,
   type ResolvedProfile,
 } from "../../../profile/src/index";
 import { resolveProfileTemplate, resolveProfileTemplateResource } from "../../../profile/src/templates";
@@ -62,37 +59,29 @@ type LoweredBlueprint = {
   lower(context: Record<string, Json>): DocumentPayload;
 };
 
-export type BlueprintSource = ProfileArtifact | ProfileArtifactBundle<LayerRecipe>;
-
-function isProfileBundle(source: BlueprintSource): source is ProfileArtifactBundle<LayerRecipe> {
-  return "format" in source && source.format === PROFILE_BUNDLE_FORMAT;
-}
+export type BlueprintSource = BlueprintArtifact<LayerRecipe>;
 
 /**
  * Resolve a zero-recipe, JSON-authored Blueprint whose organism is already expressed as runtime
  * nodes/cells. Recipe-backed Profiles deliberately return undefined and keep their registered
  * lowering implementation.
  */
-export function defineDeclarativeBlueprint(artifact: ProfileArtifact): LoweredBlueprint | undefined {
-  if (artifact.payload.recipes.length > 0) return undefined;
-  const rawResources = artifact.payload.resources;
-  const hasDocument = rawResources?.document && "inline" in rawResources.document;
-  const hasRootAndCells = rawResources?.organismRoot && "inline" in rawResources.organismRoot
-    && rawResources?.cells && "inline" in rawResources.cells;
-  if (!hasDocument && !hasRootAndCells) return undefined;
-
-  const profile = loadProfile<LayerRecipe>(artifact, []);
-  const document = profile.resources.document as unknown as { root: CellDefinition } | undefined;
-  const organismRoot = profile.resources.organismRoot as unknown as CellDefinition | undefined;
-  const cells = profile.resources.cells as unknown as CellDefinition[] | undefined;
-  const organism = document?.root ?? (organismRoot && cells ? {
-    ...organismRoot,
+export function defineDeclarativeBlueprint(blueprint: BlueprintSource): LoweredBlueprint | undefined {
+  if (blueprint.payload.recipes.length > 0 || !blueprint.payload.organism?.root) return undefined;
+  const profile = loadBlueprint<LayerRecipe>(
+    blueprint,
+    resolveProfileTemplateResource,
+    resolveProfileTemplate,
+  );
+  const root = blueprint.payload.organism.root;
+  const cells = blueprint.payload.organism.cells;
+  const organism: CellDefinition = cells ? {
+    ...root,
     edges: {
-      ...organismRoot.edges,
-      children: [...(organismRoot.edges?.children ?? []), ...cells],
+      ...root.edges,
+      children: [...(root.edges?.children ?? []), ...cells],
     },
-  } : undefined);
-  if (!organism) return undefined;
+  } : root;
 
   return {
     profile,
@@ -245,13 +234,13 @@ function runtimeFromLowering(
   };
 }
 
-/** Open a JSON-authored Blueprint or JSON profile bundle without projecting the full control-plane surface. */
+/** Open one canonical JSON-authored Blueprint without projecting the full control-plane surface. */
 export function openBlueprint(
   source: BlueprintSource,
   options: OpenBlueprintOptions = {}
 ): BlueprintRuntime {
-  if (isProfileBundle(source)) {
-    const profile = loadProfileBundle<LayerRecipe>(
+  if (source.payload.recipes.length > 0) {
+    const profile = loadBlueprint<LayerRecipe>(
       source,
       resolveProfileTemplateResource,
       resolveProfileTemplate,
@@ -260,7 +249,7 @@ export function openBlueprint(
       profile,
       runProfile(
         profile,
-        structuredClone(defaultsFromSchema(profile.artifact.payload.layers[0]?.input)),
+        structuredClone(defaultsFromSchema(source.payload.tiers[0]?.input)),
         resolveContextFor(profile, structuredClone(options.context ?? {})),
       ) as DocumentPayload,
       options.context,
@@ -270,7 +259,7 @@ export function openBlueprint(
   const definition = defineDeclarativeBlueprint(source);
   if (!definition) {
     throw new Error(
-      `Blueprint '${source.payload.id}' is not self-contained JSON; provide a profile bundle when recipes are required`
+      `Blueprint '${source.payload.id}' has no organism root or lowering recipes`
     );
   }
   return runtimeFromLowering(
@@ -281,7 +270,7 @@ export function openBlueprint(
 }
 
 export class ControlFace implements TransportBroker {
-  /** Open a JSON-authored Blueprint or JSON profile bundle before constructing its live ControlFace. */
+  /** Open a canonical JSON-authored Blueprint before constructing its live ControlFace. */
   static openBlueprint(
     source: BlueprintSource,
     options: OpenBlueprintOptions = {}

@@ -30,12 +30,11 @@ test("profile-artifact mode includes the live-cards profile seed and artifact-ba
   });
 
   assert.equal(plan.profileSeed?.summary?.id, "live-cards");
-  assert.deepEqual(plan.profileSeed?.summary?.recipeRefs.map((ref) => ref.id), [
+  assert.deepEqual(plan.profileSeed?.summary?.recipes.map((recipe) => recipe.id), [
     "live-cards.interaction-to-presentation",
     "live-cards.presentation-to-runtime",
   ]);
-  assert.equal(typeof plan.args.profileArtifact, "object");
-  assert.ok(Array.isArray(plan.args.recipeArtifacts));
+  assert.equal(typeof plan.args.blueprint, "object");
   assert.ok(plan.exploratoryFrontier.unlocked.includes("medicine"));
   assert.ok(!plan.exploratoryFrontier.unlocked.includes("engineering"));
 });

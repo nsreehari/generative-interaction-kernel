@@ -1,4 +1,6 @@
 import type { DocNode, DocumentPayload, Json, ManifestPayload } from "@gik/kernel";
+import { runDeclarativeValidators } from "@gik/evaluators";
+import demoScenariosSchema from "../../../schemas/demo-scenarios.schema.json" with { type: "json" };
 import type { FocusKind, FocusRef, TimelineItem } from "./control-focus";
 
 export {
@@ -323,11 +325,14 @@ export interface LoadedDemoScenarios {
 }
 
 export function loadDemoScenarios(scenariosJson: DemoScenariosJson): LoadedDemoScenarios {
-  if (!scenariosJson || typeof scenariosJson !== "object" || Array.isArray(scenariosJson)) {
-    throw new Error("Demo scenarios must be an object");
-  }
-  if (!Array.isArray(scenariosJson.scenarios)) {
-    throw new Error("Demo scenarios must contain a scenarios array");
+  const validation = runDeclarativeValidators([{
+    kind: "ajv-schema",
+    schema: demoScenariosSchema,
+    message: "Invalid demo scenarios",
+  }], scenariosJson as never);
+  if (!validation.ok) {
+    const details = validation.errors.map((issue) => issue.detail).join("; ");
+    throw new Error(details || "Invalid demo scenarios");
   }
   const scenarioPlans = new Map<string, ScenarioPlan>();
   for (const artifact of scenariosJson.scenarios) {

@@ -1,13 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { unwrap } from "@gik/kernel";
-import { lintLoweringRecipe, type LayerRecipeArtifact } from "@gik/profile";
+import { lintLoweringRecipe, type LayerRecipe, type LayerRecipeArtifact } from "@gik/profile";
 import { t3ScenarioPlan } from "../scenarios/live-workspace-soc-t3/compile";
 import { openSampleBlueprint } from "../shared/blueprints";
 
-import interactionRecipe from "../profiles/live-workspace-soc/interaction-to-presentation.recipe.json" with { type: "json" };
-import runtimeRecipe from "../profiles/live-workspace-soc/presentation-to-runtime.recipe.json" with { type: "json" };
-import workflowRecipe from "../profiles/live-workspace-soc/workflow-to-interaction.recipe.json" with { type: "json" };
+import blueprint from "../profiles/live-workspace-soc/blueprint.json" with { type: "json" };
 import {
   compileSocDocument,
   compileSocPresentation,
@@ -39,7 +37,11 @@ function runtimeContext(context: {
   };
 }
 
-const recipeArtifacts = [workflowRecipe, interactionRecipe, runtimeRecipe] as LayerRecipeArtifact[];
+const recipeArtifacts = blueprint.payload.recipes.map((payload) => ({
+  gik: "0.1" as const,
+  type: "lowering-recipe" as const,
+  payload: payload as unknown as LayerRecipe,
+})) as LayerRecipeArtifact[];
 const runtime = openSampleBlueprint("live-workspace-soc");
 const runtimeDocument = unwrap(runtime.document);
 const manifest = unwrap(runtime.manifest);

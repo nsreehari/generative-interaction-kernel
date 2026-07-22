@@ -3,7 +3,7 @@
 // `${fromKind}->${toKind}` pair and executed through an open executor registry (`traceStages`).
 export * from "./profile-core";
 export * from "./schema";
-export * from "./bundle";
+export * from "./blueprint";
 export * from "./templates";
 export * from "./authoring-runner";
 export * from "./cells";

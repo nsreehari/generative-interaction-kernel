@@ -16,9 +16,9 @@
 
 import { createServer } from "node:http";
 import { createStatelessAgentFaceDispatcher, toolsFromProfile } from "@gik/agentface";
-import { createGenuiAuthoringRegistry, type ProfileArtifact } from "@gik/profile";
+import { createGenuiAuthoringRegistry, loadBlueprint, type BlueprintArtifact, type LayerRecipe } from "@gik/profile";
 import { McpHttpServer } from "@gik/transport-mcp-http";
-import liveCardsProfileJson from "../profiles/live-cards/profile.json" with { type: "json" };
+import liveCardsBlueprintJson from "../profiles/live-cards/blueprint.json" with { type: "json" };
 
 const port = Number(process.env.GENUI_MCP_PORT || 8787);
 const host = process.env.GENUI_MCP_HOST || "127.0.0.1";
@@ -26,8 +26,9 @@ const host = process.env.GENUI_MCP_HOST || "127.0.0.1";
 // The genui authoring tools are a DECLARATIVE contribution: the genui profile DECLARES them and the
 // registry supplies their code; `toolsFromProfile` materializes them, and the generic stateless
 // AgentFace composes them alongside the platform authoring tools.
-const genuiAuthoringRegistry = createGenuiAuthoringRegistry(liveCardsProfileJson as ProfileArtifact);
-const genuiTools = toolsFromProfile((liveCardsProfileJson as ProfileArtifact).payload, genuiAuthoringRegistry);
+const liveCardsProfile = loadBlueprint(liveCardsBlueprintJson as BlueprintArtifact<LayerRecipe>);
+const genuiAuthoringRegistry = createGenuiAuthoringRegistry(liveCardsProfile.artifact);
+const genuiTools = toolsFromProfile(liveCardsProfile.artifact.payload, genuiAuthoringRegistry);
 const mcp = new McpHttpServer({ handler: createStatelessAgentFaceDispatcher(genuiTools).handleMcpMessage });
 
 const server = createServer(async (req, res) => {

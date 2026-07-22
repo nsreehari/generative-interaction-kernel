@@ -1,14 +1,14 @@
 import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
 import type { Json, OrchestratorResult, PatchOp } from "@gik/kernel";
-import profile from "../../../profiles/live-workspace-soc/profile.json";
+import blueprint from "../../../profiles/live-workspace-soc/blueprint.json";
 import { compileSocPresentation } from "./blueprint";
 import { projectSocInspection, projectSocParticipants } from "./inspection";
 import type { Actor, AgentProvider, Incident, JournalEntry, Presentation } from "../projection_views/types";
 
 type RecordValue = Record<string, Json>;
-const profileState = profile.payload.runtime.state as unknown as RecordValue;
-const resetState = JSON.parse(JSON.stringify(profileState.soc)) as RecordValue;
-const resetInspection = JSON.parse(JSON.stringify(profileState.inspection)) as RecordValue;
+const blueprintState = blueprint.payload.runtime.state as unknown as RecordValue;
+const resetState = JSON.parse(JSON.stringify(blueprintState.soc)) as RecordValue;
+const resetInspection = JSON.parse(JSON.stringify(blueprintState.inspection)) as RecordValue;
 
 function presentationContract(contextId: string): RecordValue {
   const presentation = compileSocPresentation(contextId);

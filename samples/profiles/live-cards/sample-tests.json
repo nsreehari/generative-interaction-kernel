@@ -1,10 +1,6 @@
 {
   "name": "live-cards sample profile",
-  "profileFile": "profile.json",
-  "recipeFiles": [
-    "interaction-to-presentation.recipe.json",
-    "presentation-to-runtime.recipe.json"
-  ],
+  "blueprintFile": "blueprint.json",
   "expectLoad": {
     "id": "live-cards",
     "kind": "genui-profile",

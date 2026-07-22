@@ -15,10 +15,10 @@ import {
 } from "@gik/provider-exploratory-graph";
 import {
   createProfileAuthoringRegistry,
-  summarizeProfileArtifacts,
+  summarizeBlueprint,
 } from "@gik/provider-profile-authoring";
 import { StepOrchestrator, type FlowRegistry } from "@gik/provider-step-orchestrator";
-import { liveCardsProfileArtifact, liveCardsRecipeArtifacts } from "../../../catalog/profile-catalog";
+import { liveCardsBlueprint } from "../../../catalog/profile-catalog";
 
 function prettyJson(value: unknown): string {
   return JSON.stringify(value, null, 2);
@@ -75,9 +75,8 @@ export interface ProviderAuthoringPlanResult {
   exploratoryInspection: ReturnType<typeof inspectExploratoryGraph>;
   exploratoryFrontier: ReturnType<typeof evaluateExploratoryFrontier>;
   profileSeed: {
-    profileArtifact: typeof liveCardsProfileArtifact;
-    recipeArtifacts: typeof liveCardsRecipeArtifacts extends readonly (infer T)[] ? T[] : never;
-    summary: ReturnType<typeof summarizeProfileArtifacts>;
+    blueprint: typeof liveCardsBlueprint;
+    summary: ReturnType<typeof summarizeBlueprint>;
   } | null;
   args: Record<string, Json>;
 }
@@ -94,9 +93,8 @@ export function buildProviderAuthoringPlan(input: ProviderAuthoringPlanInput): P
   const profileSeed =
     input.mode === "profile-artifact" && input.profileSeedName === "live-cards"
       ? {
-          profileArtifact: liveCardsProfileArtifact,
-          recipeArtifacts: [...liveCardsRecipeArtifacts],
-          summary: summarizeProfileArtifacts(liveCardsProfileArtifact, liveCardsRecipeArtifacts),
+          blueprint: liveCardsBlueprint,
+          summary: summarizeBlueprint(liveCardsBlueprint),
         }
       : null;
 
@@ -107,9 +105,8 @@ export function buildProviderAuthoringPlan(input: ProviderAuthoringPlanInput): P
     consequence: toJsonRecord(consequenceActivation),
     exploratory: toJsonRecord(exploratoryFrontier),
   };
-  if (profileSeed?.profileArtifact) {
-    args.profileArtifact = toJsonRecord(profileSeed.profileArtifact);
-    args.recipeArtifacts = JSON.parse(JSON.stringify(profileSeed.recipeArtifacts)) as Json;
+  if (profileSeed?.blueprint) {
+    args.blueprint = toJsonRecord(profileSeed.blueprint);
   }
 
   return {
@@ -209,10 +206,10 @@ const ProviderAuthoringSampleView: ProjectionView = ({ node }) => {
 
       {profileSeed ? (
         <div className={styles.card}>
-          <div className="gx-muted">Declared profile artifact</div>
+          <div className="gx-muted">Declared blueprint</div>
           <strong>{profileSeed.summary?.id}</strong>
           <div>version = {profileSeed.summary?.version}</div>
-          <div>layers = {profileSeed.summary?.layers.map((layer) => layer.id).join(", ")}</div>
+          <div>tiers = {profileSeed.summary?.tiers.map((tier) => tier.id).join(", ")}</div>
           <pre className={`${styles.pre} ${styles.preTop}`}>{prettyJson(profileSeed.summary)}</pre>
         </div>
       ) : null}

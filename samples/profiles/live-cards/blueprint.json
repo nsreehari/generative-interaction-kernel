@@ -1,0 +1,934 @@
+{
+  "gik": "0.1",
+  "type": "blueprint",
+  "payload": {
+    "id": "live-cards",
+    "kind": "genui-profile",
+    "version": "0.1.0",
+        "runtime": {
+          "capabilities": {}
+        },
+    "recipes": [
+      {
+        "id": "live-cards.interaction-to-presentation",
+        "from": "interaction",
+        "to": "presentation",
+        "metadata": {
+          "executor": "plan-presentation"
+        },
+        "constrainedWhen": [
+          {
+            "surface": "mobile"
+          },
+          {
+            "surface": "copilot"
+          },
+          {
+            "space": "compact"
+          },
+          {
+            "attention": "glanceable"
+          },
+          {
+            "device": "voice"
+          }
+        ],
+        "templates": [
+          {
+            "name": "stack",
+            "arrangement": "stack"
+          },
+          {
+            "name": "narrative",
+            "arrangement": "narrative",
+            "maxRegions": 3
+          },
+          {
+            "name": "comparison",
+            "arrangement": "split"
+          },
+          {
+            "name": "workspace",
+            "arrangement": "grid"
+          },
+          {
+            "name": "dashboard",
+            "arrangement": "dashboard"
+          },
+          {
+            "name": "wizard",
+            "arrangement": "wizard"
+          }
+        ],
+        "program": [
+          {
+            "slot": "template",
+            "match": {
+              "interaction": "compare"
+            },
+            "emit": {
+              "template": "comparison",
+              "layout": "comparison"
+            }
+          },
+          {
+            "slot": "template",
+            "match": {
+              "interaction": "monitor"
+            },
+            "emit": {
+              "template": "dashboard",
+              "layout": "dashboard"
+            }
+          },
+          {
+            "slot": "template",
+            "match": {
+              "interaction": "create"
+            },
+            "emit": {
+              "template": "wizard",
+              "layout": "wizard"
+            }
+          },
+          {
+            "slot": "template",
+            "match": {
+              "interaction": "configure"
+            },
+            "emit": {
+              "template": "wizard",
+              "layout": "wizard"
+            }
+          },
+          {
+            "slot": "template",
+            "match": {
+              "surface": "copilot"
+            },
+            "emit": {
+              "template": "narrative",
+              "layout": "narrative"
+            }
+          },
+          {
+            "slot": "template",
+            "match": {
+              "attention": "glanceable"
+            },
+            "emit": {
+              "template": "narrative",
+              "layout": "narrative"
+            }
+          },
+          {
+            "slot": "template",
+            "match": {
+              "surface": "mobile"
+            },
+            "emit": {
+              "template": "stack",
+              "layout": "stack"
+            }
+          },
+          {
+            "slot": "template",
+            "match": {
+              "space": "compact"
+            },
+            "emit": {
+              "template": "stack",
+              "layout": "stack"
+            }
+          },
+          {
+            "slot": "template",
+            "match": {},
+            "emit": {
+              "template": "workspace",
+              "layout": "{{interaction}}_workspace"
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "required": true
+            },
+            "emit": {
+              "rank": 0
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {},
+            "emit": {
+              "rank": 1
+            }
+          },
+          {
+            "slot": "priority",
+            "match": {
+              "index": 0
+            },
+            "emit": {
+              "priority": "primary"
+            }
+          },
+          {
+            "slot": "priority",
+            "match": {
+              "required": true
+            },
+            "emit": {
+              "priority": "secondary"
+            }
+          },
+          {
+            "slot": "priority",
+            "match": {},
+            "emit": {
+              "priority": "tertiary"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "priority": "primary"
+            },
+            "emit": {
+              "disclosure": "always"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "priority": "secondary",
+              "expertise": "novice"
+            },
+            "emit": {
+              "disclosure": "always"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "priority": "tertiary",
+              "expertise": "novice",
+              "constrained": false
+            },
+            "emit": {
+              "disclosure": "always"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "priority": "secondary",
+              "expertise": "expert",
+              "constrained": true
+            },
+            "emit": {
+              "disclosure": "on-demand"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "priority": "secondary",
+              "expertise": "expert"
+            },
+            "emit": {
+              "disclosure": "collapsed"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "priority": "tertiary",
+              "expertise": "expert"
+            },
+            "emit": {
+              "disclosure": "on-demand"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "priority": "secondary",
+              "constrained": true
+            },
+            "emit": {
+              "disclosure": "collapsed"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "priority": "secondary"
+            },
+            "emit": {
+              "disclosure": "always"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "priority": "tertiary",
+              "constrained": true
+            },
+            "emit": {
+              "disclosure": "on-demand"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "priority": "tertiary"
+            },
+            "emit": {
+              "disclosure": "collapsed"
+            }
+          },
+          {
+            "slot": "presentation",
+            "match": {
+              "role": "graph"
+            },
+            "emit": {
+              "presentation": "relationship_graph"
+            }
+          },
+          {
+            "slot": "presentation",
+            "match": {
+              "role": "timeline"
+            },
+            "emit": {
+              "presentation": "timeline"
+            }
+          },
+          {
+            "slot": "presentation",
+            "match": {
+              "role": "comparison"
+            },
+            "emit": {
+              "presentation": "diff"
+            }
+          },
+          {
+            "slot": "presentation",
+            "match": {
+              "role": "metrics"
+            },
+            "emit": {
+              "presentation": "metric_grid"
+            }
+          },
+          {
+            "slot": "presentation",
+            "match": {
+              "role": "narrative"
+            },
+            "emit": {
+              "presentation": "narrative"
+            }
+          },
+          {
+            "slot": "presentation",
+            "match": {
+              "role": "form"
+            },
+            "emit": {
+              "presentation": "form"
+            }
+          },
+          {
+            "slot": "rationale",
+            "match": {},
+            "emit": {
+              "template": "role={{region.role}}, priority={{region.priority}}, disclosure={{region.disclosure}}"
+            }
+          }
+        ],
+        "cap": {
+          "preserveRequired": true
+        }
+      },
+      {
+        "id": "live-cards.presentation-to-runtime",
+        "from": "presentation",
+        "to": "runtime-document",
+        "metadata": {
+          "executor": "lower-document"
+        },
+        "program": [
+          {
+            "slot": "container",
+            "match": {},
+            "emit": {
+              "capability": "ui:board",
+              "props": {
+                "title": "{{source.subject}}",
+                "layout": "{{presentation.layout}}",
+                "arrangement": "{{presentation.arrangement}}"
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "region": "tasks"
+            },
+            "emit": {
+              "capability": "ui:todo",
+              "read": {
+                "items": "{{region.dataPath}}"
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "region": "relationships"
+            },
+            "emit": {
+              "capability": "ui:chart",
+              "read": {
+                "data": "{{region.dataPath}}"
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "region": "context"
+            },
+            "emit": {
+              "capability": "ui:markdown",
+              "read": {
+                "value": "{{region.dataPath}}"
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "region": "explanation"
+            },
+            "emit": {
+              "capability": "ui:markdown",
+              "read": {
+                "value": "{{region.dataPath}}"
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "region": "content"
+            },
+            "emit": {
+              "capability": "ui:markdown",
+              "read": {
+                "value": "{{region.dataPath}}"
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "region": "detail"
+            },
+            "emit": {
+              "capability": "ui:table",
+              "read": {
+                "rows": "{{region.dataPath}}"
+              },
+              "on": {
+                "rowSelect": [
+                  {
+                    "do": "assign",
+                    "target": "{{source.subject}}.selected",
+                    "args": {
+                      "from": "$event.id"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "region": "left"
+            },
+            "emit": {
+              "capability": "ui:table",
+              "read": {
+                "rows": "{{region.dataPath}}"
+              },
+              "on": {
+                "rowSelect": [
+                  {
+                    "do": "assign",
+                    "target": "{{source.subject}}.selected",
+                    "args": {
+                      "from": "$event.id"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "region": "right"
+            },
+            "emit": {
+              "capability": "ui:table",
+              "read": {
+                "rows": "{{region.dataPath}}"
+              },
+              "on": {
+                "rowSelect": [
+                  {
+                    "do": "assign",
+                    "target": "{{source.subject}}.selected",
+                    "args": {
+                      "from": "$event.id"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "region": "results"
+            },
+            "emit": {
+              "capability": "ui:table",
+              "read": {
+                "rows": "{{region.dataPath}}"
+              },
+              "on": {
+                "rowSelect": [
+                  {
+                    "do": "assign",
+                    "target": "{{source.subject}}.selected",
+                    "args": {
+                      "from": "$event.id"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "region": "options"
+            },
+            "emit": {
+              "capability": "ui:table",
+              "read": {
+                "rows": "{{region.dataPath}}"
+              },
+              "on": {
+                "rowSelect": [
+                  {
+                    "do": "assign",
+                    "target": "{{source.subject}}.selected",
+                    "args": {
+                      "from": "$event.id"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "region": "alerts"
+            },
+            "emit": {
+              "capability": "ui:table",
+              "read": {
+                "rows": "{{region.dataPath}}"
+              },
+              "on": {
+                "rowSelect": [
+                  {
+                    "do": "assign",
+                    "target": "{{source.subject}}.selected",
+                    "args": {
+                      "from": "$event.id"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "region": "thread"
+            },
+            "emit": {
+              "capability": "ui:table",
+              "read": {
+                "rows": "{{region.dataPath}}"
+              },
+              "on": {
+                "rowSelect": [
+                  {
+                    "do": "assign",
+                    "target": "{{source.subject}}.selected",
+                    "args": {
+                      "from": "$event.id"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "role": "summary"
+            },
+            "emit": {
+              "capability": "ui:metric",
+              "read": {
+                "value": "{{region.dataPath}}"
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "role": "metrics"
+            },
+            "emit": {
+              "capability": "ui:metric",
+              "read": {
+                "value": "{{region.dataPath}}"
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "role": "status"
+            },
+            "emit": {
+              "capability": "ui:metric",
+              "read": {
+                "value": "{{region.dataPath}}"
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "role": "narrative"
+            },
+            "emit": {
+              "capability": "ui:markdown",
+              "read": {
+                "value": "{{region.dataPath}}"
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "role": "recommendation"
+            },
+            "emit": {
+              "capability": "ui:markdown",
+              "read": {
+                "value": "{{region.dataPath}}"
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "role": "collection"
+            },
+            "emit": {
+              "capability": "ui:table",
+              "read": {
+                "rows": "{{region.dataPath}}"
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "role": "detail"
+            },
+            "emit": {
+              "capability": "ui:table",
+              "read": {
+                "rows": "{{region.dataPath}}"
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "role": "timeline"
+            },
+            "emit": {
+              "capability": "ui:table",
+              "read": {
+                "rows": "{{region.dataPath}}"
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "role": "comparison"
+            },
+            "emit": {
+              "capability": "ui:table",
+              "read": {
+                "rows": "{{region.dataPath}}"
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "role": "actions"
+            },
+            "emit": {
+              "capability": "ui:actions",
+              "read": {
+                "buttons": "{{region.dataPath}}"
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {
+              "role": "graph"
+            },
+            "emit": {
+              "capability": "ui:chart",
+              "read": {
+                "data": "{{region.dataPath}}"
+              }
+            }
+          },
+          {
+            "slot": "region",
+            "match": {},
+            "emit": {
+              "props": {
+                "label": "{{region.name}}",
+                "priority": "{{region.priority}}",
+                "disclosure": "{{region.disclosure}}",
+                "presentation": "{{region.presentation}}"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "authoring": {
+      "tools": [
+        {
+          "id": "describeInteractions",
+          "op": "describe",
+          "describe": "interaction-catalog",
+          "agentSafe": true,
+          "description": "List the interaction taxonomy (every kind with its facets) — vocabulary discovery."
+        },
+        {
+          "id": "validateInteraction",
+          "op": "validate",
+          "layer": "interaction",
+          "agentSafe": true,
+          "description": "Validate an InteractionSpec (kind known, subject present, facet/data references)."
+        },
+        {
+          "id": "validatePresentation",
+          "op": "validate",
+          "layer": "presentation",
+          "checks": [
+            "layer-semantics"
+          ],
+          "agentSafe": true,
+          "description": "Validate a Presentation DSL artifact (structure + the required-facet-survives invariant)."
+        },
+        {
+          "id": "validateIntent",
+          "op": "validate",
+          "checks": [
+            "intent-spec"
+          ],
+          "agentSafe": true,
+          "description": "Validate an IntentSpec; when an interaction is supplied, check targets against its facets.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "intent": {
+                "type": "object",
+                "properties": {
+                  "goal": {
+                    "type": "string"
+                  },
+                  "priorities": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "constraints": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "interaction": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "intent"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "id": "intentToEdits",
+          "op": "project",
+          "projectExpression": "($priorities := intent.priorities ? intent.priorities : []; {\"disabled\": [], \"priority\": ($count($priorities) = 0 ? {} : $merge($priorities@$v#$i.{ $v: ($i = 0 ? \"primary\" : \"secondary\") })), \"disclosure\": {}, \"order\": $priorities})",
+          "agentSafe": true,
+          "description": "Project an IntentSpec into PresentationEdits (the sanctioned override channel).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "intent": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "intent"
+            ],
+            "additionalProperties": false
+          }
+        }
+      ]
+    },
+    "blueprint-template": "genui",
+    "tiers": [
+      {
+        "id": "interaction",
+        "kind": "interaction",
+        "schema": "genui/interaction.schema.json",
+        "input": {
+          "properties": {
+            "interaction": {
+              "title": "Interaction",
+              "default": "investigate",
+              "enum": [
+                "investigate",
+                "compare",
+                "review",
+                "approve",
+                "monitor",
+                "explore",
+                "create",
+                "configure",
+                "collaborate",
+                "plan",
+                "learn",
+                "decide"
+              ]
+            },
+            "subject": {
+              "title": "Subject",
+              "default": "incident",
+              "placeholder": "incident"
+            },
+            "capabilities": {
+              "title": "Capabilities (optional override)",
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "validators": [
+                {
+                  "kind": "jsonata",
+                  "expr": "($allowed := $lookup($catalog, 'interaction-catalog')[interaction = $root.spec.interaction].facets.name; $count($allowed) = 0 or $count($[$not($ in $allowed)]) = 0)",
+                  "message": "one or more capabilities are not taxonomy facets of this interaction; they become synthesized detail facets",
+                  "level": "warning",
+                  "code": "synthesized-facet"
+                }
+              ]
+            },
+            "data": {
+              "title": "Input data (optional)",
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "rows": 6,
+              "placeholder": "{ }",
+              "validators": [
+                {
+                  "kind": "jsonata",
+                  "expr": "($allowed := $count($root.spec.capabilities) > 0 ? $root.spec.capabilities : $lookup($catalog, 'interaction-catalog')[interaction = $root.spec.interaction].facets.name; $count($allowed) = 0 or $count($keys($)[$not($ in $allowed)]) = 0)",
+                  "message": "one or more data bindings target no facet of this interaction",
+                  "level": "warning",
+                  "code": "data-for-unknown-facet"
+                }
+              ]
+            },
+            "facetViews": {
+              "title": "Facet views (optional)",
+              "type": "object",
+              "additionalProperties": {
+                "type": "object"
+              },
+              "validators": [
+                {
+                  "kind": "jsonata",
+                  "expr": "($allowed := $count($root.spec.capabilities) > 0 ? $root.spec.capabilities : $lookup($catalog, 'interaction-catalog')[interaction = $root.spec.interaction].facets.name; $count($allowed) = 0 or $count($keys($)[$not($ in $allowed)]) = 0)",
+                  "message": "one or more facetViews entries target no facet of this interaction",
+                  "level": "warning",
+                  "code": "view-for-unknown-facet"
+                }
+              ]
+            }
+          },
+          "required": [
+            "interaction",
+            "subject"
+          ]
+        }
+      },
+      {
+        "id": "presentation",
+        "kind": "presentation",
+        "schema": "genui/presentation.schema.json"
+      },
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document",
+        "schema": "genui/runtime-document.schema.json"
+      }
+    ]
+  }
+}

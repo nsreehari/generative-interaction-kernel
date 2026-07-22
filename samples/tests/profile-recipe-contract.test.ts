@@ -31,12 +31,12 @@ interface RecipeEmit {
 const PROFILES_DIR = fileURLToPath(new URL("../profiles", import.meta.url));
 const FLOOR_PREFIX = `${FLOOR_ALIAS}:`;
 
-function recipeFiles(dir: string): string[] {
+function blueprintFiles(dir: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir)) {
     const full = path.join(dir, entry);
-    if (statSync(full).isDirectory()) out.push(...recipeFiles(full));
-    else if (entry.endsWith(".recipe.json")) out.push(full);
+    if (statSync(full).isDirectory()) out.push(...blueprintFiles(full));
+    else if (entry === "blueprint.json") out.push(full);
   }
   return out;
 }
@@ -62,9 +62,9 @@ function collectEmits(value: unknown, file: string, sink: RecipeEmit[]): void {
 
 function allEmits(): RecipeEmit[] {
   const sink: RecipeEmit[] = [];
-  for (const file of recipeFiles(PROFILES_DIR)) {
-    const parsed = JSON.parse(readFileSync(file, "utf8")) as unknown;
-    collectEmits(parsed, path.relative(PROFILES_DIR, file), sink);
+  for (const file of blueprintFiles(PROFILES_DIR)) {
+    const parsed = JSON.parse(readFileSync(file, "utf8")) as { payload?: { recipes?: unknown[] } };
+    collectEmits(parsed.payload?.recipes ?? [], path.relative(PROFILES_DIR, file), sink);
   }
   return sink;
 }

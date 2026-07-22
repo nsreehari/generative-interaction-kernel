@@ -10,16 +10,19 @@ import { toolsFromProfile } from "../src/pure/profile-tools";
 import { createStatelessAgentFaceDispatcher } from "../src/projections/agentface";
 import {
   createGenuiAuthoringRegistry,
+  loadBlueprint,
   planPresentationWithRecipe,
   recipeForLayerKinds,
   type InteractionTaxonomy,
-  type ProfileArtifact,
+  type BlueprintArtifact,
+  type LayerRecipe,
 } from "@gik/profile";
-import liveCardsProfileJson from "../../samples/profiles/live-cards/profile.json" with { type: "json" };
+import liveCardsBlueprintJson from "../../samples/profiles/live-cards/blueprint.json" with { type: "json" };
 import { liveCardsProfile } from "./live-cards-fixture";
 
-const genuiAuthoringRegistry = createGenuiAuthoringRegistry(liveCardsProfileJson as ProfileArtifact);
-const genuiTools = toolsFromProfile((liveCardsProfileJson as ProfileArtifact).payload, genuiAuthoringRegistry);
+const liveCardsResolvedProfile = loadBlueprint(liveCardsBlueprintJson as BlueprintArtifact<LayerRecipe>);
+const genuiAuthoringRegistry = createGenuiAuthoringRegistry(liveCardsResolvedProfile.artifact);
+const genuiTools = toolsFromProfile(liveCardsResolvedProfile.artifact.payload, genuiAuthoringRegistry);
 const byName = new Map(genuiTools.map((t) => [t.name, t]));
 const liveCardsIToP = recipeForLayerKinds(liveCardsProfile, "interaction", "presentation");
 

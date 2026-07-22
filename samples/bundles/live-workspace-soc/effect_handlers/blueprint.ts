@@ -1,6 +1,6 @@
 import type { DocumentPayload } from "@gik/kernel";
 import {
-  loadProfile,
+  loadBlueprint,
   resolveProfileTemplate,
   resolveProfileTemplateResource,
   runProfile,
@@ -10,16 +10,10 @@ import {
   type StageTrace,
 } from "@gik/profile";
 
-import profileArtifact from "../../../profiles/live-workspace-soc/profile.json" with { type: "json" };
-import workflowRecipe from "../../../profiles/live-workspace-soc/workflow-to-interaction.recipe.json" with { type: "json" };
-import interactionRecipe from "../../../profiles/live-workspace-soc/interaction-to-presentation.recipe.json" with { type: "json" };
-import runtimeRecipe from "../../../profiles/live-workspace-soc/presentation-to-runtime.recipe.json" with { type: "json" };
+import blueprintArtifact from "../../../profiles/live-workspace-soc/blueprint.json" with { type: "json" };
 
-const recipeArtifacts = [workflowRecipe, interactionRecipe, runtimeRecipe];
-
-export const socBlueprint = loadProfile<LayerRecipe>(
-  profileArtifact,
-  recipeArtifacts,
+export const socBlueprint = loadBlueprint<LayerRecipe>(
+  blueprintArtifact,
   resolveProfileTemplateResource,
   resolveProfileTemplate,
 );

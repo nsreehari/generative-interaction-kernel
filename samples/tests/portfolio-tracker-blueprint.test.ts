@@ -6,12 +6,9 @@ import {
 
 import { openSampleBlueprint } from "../shared/blueprints";
 import { applyHostConfig } from "../shared/host-config";
-import profileArtifact from "../profiles/portfolio-tracker/profile.json" with { type: "json" };
+import blueprint from "../profiles/portfolio-tracker/blueprint.json" with { type: "json" };
 
-const resources = profileArtifact.payload.resources as unknown as {
-  cells: { inline: CellDefinition[] };
-};
-const portfolioCells = resources.cells.inline;
+const portfolioCells = blueprint.payload.organism.cells as unknown as CellDefinition[];
 
 describe("portfolio-tracker Blueprint", () => {
   it("resolves the KISS cell composition", () => {
@@ -72,7 +69,7 @@ describe("portfolio-tracker Blueprint", () => {
     expect(runtime.document).toMatchObject({ type: "document", payload: { root: { id: "portfolio-tracker" } } });
     expect(runtime.manifest).toMatchObject({
       type: "manifest",
-      payload: { externals: { services: applyHostConfig(profileArtifact.payload.services) } },
+      payload: { externals: { services: applyHostConfig(blueprint.payload.services) } },
     });
     expect(runtime.state.portfolio).toMatchObject({ holdings: {}, positions: {} });
   });

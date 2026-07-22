@@ -1,6 +1,6 @@
 {
   "name": "@gik/profile",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Profile and lowering base types for GIK (Task -> Domain -> Interaction -> UI).",
   "license": "MIT",
   "author": "nsreehari",

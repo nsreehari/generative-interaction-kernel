@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import type { Json, PatchOp } from "@gik/kernel";
-import { createProfileBundle, stringifyProfileBundle } from "@gik/profile";
+import { stringifyBlueprint } from "@gik/profile";
 import { buildProfilePreviewBundle, manageBlueprintsEffects } from "../bundles/manage-blueprints/effect_handlers/store";
-import { sampleProfileCatalog } from "../catalog/profile-catalog";
+import { sampleBlueprintCatalog } from "../catalog/profile-catalog";
 
 type JsonRecord = Record<string, Json>;
 
@@ -206,7 +206,7 @@ test("getBlueprint marks repo sample entries as read-only and seeds the editor b
   assert.equal(opRecord(result?.ops, "manageBlueprints.profile").readonly, true);
   assert.equal(typeof opRecord(result?.ops, "manageBlueprints.editor").bundleText, "string");
   assert.match(String(opRecord(result?.ops, "manageBlueprints.editor").status), /read-only/i);
-  assert.equal(opValue(result?.ops, "manageBlueprints.selectedLayerId"), sampleProfileCatalog[0].artifact.payload.layers[0].id);
+  assert.equal(opValue(result?.ops, "manageBlueprints.selectedLayerId"), sampleBlueprintCatalog[0].blueprint.payload.tiers[0].id);
   assert.equal(opValue(result?.ops, "manageBlueprints.selectedRecipeId"), "");
   assert.equal((opRecord(result?.ops, "manageBlueprints.sourceInput") as JsonRecord).interaction, "investigate");
   assert.equal((opRecord(result?.ops, "manageBlueprints.previewContext") as JsonRecord).surface, "desktop");
@@ -274,25 +274,22 @@ test("blueprint manager inspector metadata drives workflow recipe labels and sam
   assert.equal(((seeds[0]?.payload as JsonRecord)?.workflow), "incident-triage");
 });
 
-test("$init migrates the legacy console catalog and hydrates local blueprints", async () => {
+test("$init hydrates canonical local blueprints", async () => {
   const storage = new MemoryStorage();
   Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
 
-  const sample = sampleProfileCatalog[0];
+  const sample = sampleBlueprintCatalog[0];
   const localId = "live-cards-local";
   storage.setItem(
-    "gik.console.profileBundles.v1",
+    "gik.manage-blueprints.blueprints.v1",
     JSON.stringify({
-      [localId]: createProfileBundle(
-        {
-          ...sample.artifact,
-          payload: {
-            ...sample.artifact.payload,
-            id: localId,
-          },
+      [localId]: {
+        ...sample.blueprint,
+        payload: {
+          ...sample.blueprint.payload,
+          id: localId,
         },
-        sample.recipeArtifacts
-      ),
+      },
     })
   );
 
@@ -307,7 +304,7 @@ test("$init migrates the legacy console catalog and hydrates local blueprints", 
 
   const rows = opValue(result?.ops, "manageBlueprints.profiles") as Array<Record<string, Json>>;
   assert.equal(rows.some((row) => row.id === localId && row.source === "local"), true);
-  assert.ok(storage.getItem("gik.manage-blueprints.profileBundles.v1"));
+  assert.ok(storage.getItem("gik.manage-blueprints.blueprints.v1"));
 });
 
 test("seedLocalDraft creates a visible local draft flow even when nothing was selected", async () => {
@@ -329,21 +326,17 @@ test("seedLocalDraft creates a visible local draft flow even when nothing was se
   assert.match(String(opRecord(result?.ops, "manageBlueprints.editor").status), /New draft from/);
 });
 
-test("saveBlueprint persists a local bundle and listBlueprints exposes it as editable", async () => {
+test("saveBlueprint persists a local blueprint and listBlueprints exposes it as editable", async () => {
   const storage = new MemoryStorage();
   Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
 
-  const sample = sampleProfileCatalog[0];
-  const bundle = createProfileBundle(sample.artifact, sample.recipeArtifacts);
+  const sample = sampleBlueprintCatalog[0];
   const localId = "live-cards-local";
-  const localText = stringifyProfileBundle({
-    ...bundle,
-    profileArtifact: {
-      ...bundle.profileArtifact,
-      payload: {
-        ...bundle.profileArtifact.payload,
-        id: localId,
-      },
+  const localText = stringifyBlueprint({
+    ...sample.blueprint,
+    payload: {
+      ...sample.blueprint.payload,
+      id: localId,
     },
   });
 
@@ -362,7 +355,7 @@ test("saveBlueprint persists a local bundle and listBlueprints exposes it as edi
   });
   applyOps(state, saved?.ops as PatchOp[] | undefined);
 
-  const raw = storage.getItem("gik.manage-blueprints.profileBundles.v1");
+  const raw = storage.getItem("gik.manage-blueprints.blueprints.v1");
   assert.ok(raw, "saved profile should be written to localStorage");
   assert.ok(raw?.includes(localId));
   assert.equal(opValue(saved?.ops, "manageBlueprints.selectedId"), localId);
@@ -383,22 +376,17 @@ test("deleteBlueprint removes the stored local profile and clears the selection"
   const storage = new MemoryStorage();
   Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
 
-  const sample = sampleProfileCatalog[0];
+  const sample = sampleBlueprintCatalog[0];
   const localId = "live-cards-local";
   storage.setItem(
-    "gik.manage-blueprints.profileBundles.v1",
+    "gik.manage-blueprints.blueprints.v1",
     JSON.stringify({
       [localId]: {
-        ...createProfileBundle(
-          {
-            ...sample.artifact,
-            payload: {
-              ...sample.artifact.payload,
-              id: localId,
-            },
-          },
-          sample.recipeArtifacts
-        ),
+        ...sample.blueprint,
+        payload: {
+          ...sample.blueprint.payload,
+          id: localId,
+        },
       },
     })
   );
@@ -424,7 +412,7 @@ test("deleteBlueprint removes the stored local profile and clears the selection"
     store: { get: (path: string) => getPath(state, path) } as never,
   });
 
-  assert.equal(storage.getItem("gik.manage-blueprints.profileBundles.v1"), "{}");
+  assert.equal(storage.getItem("gik.manage-blueprints.blueprints.v1"), "{}");
   assert.equal(opValue(result?.ops, "manageBlueprints.selectedId"), "");
   assert.match(String(opRecord(result?.ops, "manageBlueprints.editor").status), /Deleted local profile/);
 });
@@ -433,13 +421,13 @@ test("selectLayer and selectRecipe update the focused detail models", async () =
   const storage = new MemoryStorage();
   Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
 
-  const sample = sampleProfileCatalog[0];
+  const sample = sampleBlueprintCatalog[0];
   const state = createState();
-  setPath(state, "manageBlueprints.selectedId", sample.artifact.payload.id);
-  setPath(state, "manageBlueprints.selectedLayerId", sample.artifact.payload.layers[0].id);
-  setPath(state, "manageBlueprints.selectedRecipeId", sample.artifact.payload.recipes[0].id);
+  setPath(state, "manageBlueprints.selectedId", sample.blueprint.payload.id);
+  setPath(state, "manageBlueprints.selectedLayerId", sample.blueprint.payload.tiers[0].id);
+  setPath(state, "manageBlueprints.selectedRecipeId", sample.blueprint.payload.recipes[0].id);
 
-  const selectedLayer = sample.artifact.payload.layers[1].id;
+  const selectedLayer = sample.blueprint.payload.tiers[1].id;
   const layerResult = await manageBlueprintsEffects.selectLayer({
     get: (path) => getPath(state, path),
     set: (path, value) => ({ op: "set", path, value }),
@@ -452,7 +440,7 @@ test("selectLayer and selectRecipe update the focused detail models", async () =
   assert.equal(opRecord(layerResult?.ops, "manageBlueprints.layerDetail").id, selectedLayer);
   assert.equal(opValue(layerResult?.ops, "manageBlueprints.selectedRecipeId"), "");
 
-  const selectedRecipe = sample.artifact.payload.recipes[1].id;
+  const selectedRecipe = sample.blueprint.payload.recipes[1].id;
   const recipeResult = await manageBlueprintsEffects.selectRecipe({
     get: (path) => getPath(state, path),
     set: (path, value) => ({ op: "set", path, value }),
@@ -461,14 +449,14 @@ test("selectLayer and selectRecipe update the focused detail models", async () =
     store: { get: (path: string) => getPath(state, path) } as never,
   });
 
-  assert.equal(opValue(recipeResult?.ops, "manageBlueprints.selectedLayerId"), sample.artifact.payload.recipes[1].from);
+  assert.equal(opValue(recipeResult?.ops, "manageBlueprints.selectedLayerId"), sample.blueprint.payload.recipes[1].from);
   assert.equal(opValue(recipeResult?.ops, "manageBlueprints.selectedRecipeId"), selectedRecipe);
   assert.equal(opRecord(recipeResult?.ops, "manageBlueprints.recipeDetail").id, selectedRecipe);
   assert.equal((opRecord(recipeResult?.ops, "manageBlueprints.layerDetail").outgoingRecipe as JsonRecord).id, selectedRecipe);
 });
 
 test("configure preview for live-cards emits the frontend editable-table kind end-to-end", () => {
-  const liveCards = sampleProfileCatalog.find((entry) => entry.artifact.payload.id === "live-cards");
+  const liveCards = sampleBlueprintCatalog.find((entry) => entry.blueprint.payload.id === "live-cards");
   assert.ok(liveCards, "live-cards sample profile should be registered");
 
   const bundle = buildProfilePreviewBundle(liveCards, {
@@ -496,7 +484,7 @@ test("configure preview for live-cards emits the frontend editable-table kind en
 });
 
 test("workflow source preview runs from the source layer form instead of assuming interaction fields", () => {
-  const fourLayers = sampleProfileCatalog.find((entry) => entry.artifact.payload.id === "4layers");
+  const fourLayers = sampleBlueprintCatalog.find((entry) => entry.blueprint.payload.id === "4layers");
   assert.ok(fourLayers, "4layers sample profile should be registered");
 
   const bundle = buildProfilePreviewBundle(fourLayers, {
