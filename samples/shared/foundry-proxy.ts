@@ -3,6 +3,7 @@ export interface FoundryProxyOptions {
   key: string;
   fetch?: typeof globalThis.fetch;
   timeoutMs?: number;
+  chatTimeoutMs?: number;
 }
 
 export interface FoundryChatResponseSchema {
@@ -39,6 +40,7 @@ export class FoundryProxyError extends Error {
 }
 
 const DEFAULT_FOUNDRY_PROXY_TIMEOUT_MS = 10_000;
+const DEFAULT_FOUNDRY_CHAT_TIMEOUT_MS = 120_000;
 
 async function responseError(response: Response): Promise<string> {
   try {
@@ -53,15 +55,21 @@ export function createFoundryProxy(options: FoundryProxyOptions) {
   const baseUrl = options.baseUrl.replace(/\/$/, "");
   const fetchImpl = options.fetch ?? globalThis.fetch;
   const timeoutMs = options.timeoutMs ?? DEFAULT_FOUNDRY_PROXY_TIMEOUT_MS;
-  const request = async (input: string, init: RequestInit): Promise<Response> => {
+  const chatTimeoutMs = options.chatTimeoutMs ?? DEFAULT_FOUNDRY_CHAT_TIMEOUT_MS;
+  const request = async (
+    input: string,
+    init: RequestInit,
+    requestTimeoutMs = timeoutMs,
+    timeoutMessage = "Timed out checking Foundry access. Retry or enter a new access key."
+  ): Promise<Response> => {
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_resolve, reject) => {
       timeoutId = globalThis.setTimeout?.(() => {
         reject(new FoundryProxyError(
-          "Timed out checking Foundry access. Retry or enter a new access key.",
+          timeoutMessage,
           408
         ));
-      }, timeoutMs);
+      }, requestTimeoutMs);
     });
     try {
       return await Promise.race([fetchImpl(input, init), timeout]);
@@ -78,7 +86,12 @@ export function createFoundryProxy(options: FoundryProxyOptions) {
     }
   };
 
-  const post = async (path: string, body: Record<string, unknown>): Promise<Response> => {
+  const post = async (
+    path: string,
+    body: Record<string, unknown>,
+    requestTimeoutMs = timeoutMs,
+    timeoutMessage?: string
+  ): Promise<Response> => {
     const response = await request(`${baseUrl}${path}`, {
       method: "POST",
       headers: {
@@ -86,7 +99,7 @@ export function createFoundryProxy(options: FoundryProxyOptions) {
         "x-functions-key": options.key,
       },
       body: JSON.stringify(body),
-    });
+    }, requestTimeoutMs, timeoutMessage);
     if (!response.ok) {
       throw new FoundryProxyError((await responseError(response)) || `Foundry proxy returned ${response.status}.`, response.status);
     }
@@ -150,7 +163,7 @@ export function createFoundryProxy(options: FoundryProxyOptions) {
         conversationId: request.conversationId || undefined,
         instructions: request.instructions || undefined,
         responseSchema: request.responseSchema || undefined,
-      });
+      }, chatTimeoutMs, "Timed out waiting for the Foundry agent response.");
       const body = (await response.json()) as Partial<FoundryChatResponse>;
       if (typeof body.conversationId !== "string" || typeof body.responseId !== "string" || typeof body.reply !== "string") {
         throw new FoundryProxyError("Foundry proxy returned an invalid chat response.", response.status);

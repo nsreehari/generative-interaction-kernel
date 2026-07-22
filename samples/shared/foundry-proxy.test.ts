@@ -51,6 +51,23 @@ test("Foundry proxy chat sends agent name, conversation, and per-turn instructio
   assert.equal(result.responseId, "resp-1");
 });
 
+test("Foundry proxy gives agent chat a separate response timeout", async () => {
+  const proxy = createFoundryProxy({
+    baseUrl: "https://proxy.example",
+    key: "function-key",
+    timeoutMs: 1,
+    chatTimeoutMs: 5,
+    fetch: async () => new Promise<Response>(() => {}),
+  });
+
+  await assert.rejects(
+    proxy.chat({ message: "analyze", agentName: "Portfolio-Intelligence-Agent" }),
+    (error: unknown) => error instanceof FoundryProxyError
+      && error.status === 408
+      && error.message === "Timed out waiting for the Foundry agent response."
+  );
+});
+
 test("Foundry proxy exposes service errors without leaking response bodies", async () => {
   const proxy = createFoundryProxy({
     baseUrl: "https://proxy.example",
