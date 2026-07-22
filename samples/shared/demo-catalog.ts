@@ -36,6 +36,11 @@ const bundleDocuments = artifactsByBundleId(import.meta.glob("../bundles/*/docum
 
 const catalog = catalogArtifact as DemoCatalog;
 
+export const demoScenariosJson = {
+  catalog,
+  scenarios: Object.values(scenarioArtifacts),
+};
+
 function artifactsByBundleId<T>(artifacts: Record<string, T>): Map<string, T> {
   return new Map(Object.entries(artifacts).map(([path, artifact]) => {
     const bundleId = path.match(/\/bundles\/([^/]+)\//)?.[1];

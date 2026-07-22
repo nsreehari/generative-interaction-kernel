@@ -2,13 +2,16 @@ import React from "react";
 import { openBlueprint } from "@gik/controlface/blueprint";
 import type { Json } from "@gik/kernel";
 import {
+  BundleRegistryProvider,
   BundleCompositionHost,
   bundleFromJson,
+  createBundleRegistry,
   type BundleContextBindings,
   type BundleNative,
   type CompositionOrganism,
   type GenUIFileServices,
   type OrganismBridge,
+  type ProviderResolver,
 } from "@gik/react";
 import type { LayerRecipe, ProfileArtifact, ProfileArtifactBundle } from "@gik/profile";
 
@@ -17,6 +20,7 @@ const EMPTY_CONTEXTS: BundleContextBindings = {};
 
 export interface BlueprintHostProps {
   blueprint: ProfileArtifact | ProfileArtifactBundle<LayerRecipe>;
+  resolveLeavesProvider?: ProviderResolver;
   native?: BundleNative;
   companions?: CompositionOrganism[];
   contexts?: BundleContextBindings;
@@ -37,6 +41,7 @@ function runtimeFromBlueprint(
 
 export function BlueprintHost({
   blueprint,
+  resolveLeavesProvider,
   native,
   companions = EMPTY_COMPANIONS,
   contexts = EMPTY_CONTEXTS,
@@ -47,6 +52,7 @@ export function BlueprintHost({
   style,
   context,
 }: BlueprintHostProps): React.ReactElement {
+  const registry = React.useMemo(() => createBundleRegistry(), []);
   const runtime = React.useMemo(() => runtimeFromBlueprint(blueprint, context), [blueprint, context]);
   const bundle = React.useMemo(
     () => bundleFromJson({ manifest: runtime.manifest, document: runtime.document, state: runtime.state }, native),
@@ -59,13 +65,15 @@ export function BlueprintHost({
     [primaryId, bundle, primaryBridge],
   );
   return (
-    <BundleCompositionHost
-      primary={primary}
-      companions={companions}
-      contexts={contexts}
-      fileServices={fileServices}
-      className={className}
-      style={style}
-    />
+    <BundleRegistryProvider registry={registry} resolveProvider={resolveLeavesProvider}>
+      <BundleCompositionHost
+        primary={primary}
+        companions={companions}
+        contexts={contexts}
+        fileServices={fileServices}
+        className={className}
+        style={style}
+      />
+    </BundleRegistryProvider>
   );
 }
