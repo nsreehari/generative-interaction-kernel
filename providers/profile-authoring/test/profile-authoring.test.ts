@@ -3,17 +3,17 @@ import assert from "node:assert/strict";
 
 import type { Json } from "../../../kernel/src/index";
 import { StepOrchestrator } from "../../step-orchestrator/src/step-orchestrator";
-import { createProfileAuthoringRegistry, summarizeProfileArtifacts } from "../src/profile-authoring";
-import { liveCardsProfileArtifact, liveCardsRecipeArtifacts } from "../../../samples/catalog/profile-catalog";
+import { createProfileAuthoringRegistry, summarizeBlueprint } from "../src/profile-authoring";
+import { liveCardsBlueprint } from "../../../samples/catalog/profile-catalog";
 
 function asJson(value: unknown): Json {
   return JSON.parse(JSON.stringify(value)) as Json;
 }
 
-test("summarizeProfileArtifacts exposes the declared live-cards chain", () => {
-  const summary = summarizeProfileArtifacts(liveCardsProfileArtifact, liveCardsRecipeArtifacts);
+test("summarizeBlueprint exposes the declared live-cards chain", () => {
+  const summary = summarizeBlueprint(liveCardsBlueprint);
   assert.equal(summary?.id, "live-cards");
-  assert.deepEqual(summary?.recipeRefs.map((ref) => ref.id), [
+  assert.deepEqual(summary?.recipes.map((recipe) => recipe.id), [
     "live-cards.interaction-to-presentation",
     "live-cards.presentation-to-runtime",
   ]);
@@ -52,13 +52,12 @@ test("artifact-backed authoring mode proposes the profile's concrete recipe chai
       changedSource: "portfolio",
       consequence: { triggered: ["portfolio"], parallelStages: [["capitalGain", "marketPrices"]], blocked: [] },
       exploratory: { unlocked: ["tenthComplete", "choose12th", "engineering"] },
-      profileArtifact: asJson(liveCardsProfileArtifact),
-      recipeArtifacts: asJson([...liveCardsRecipeArtifacts]),
+      blueprint: asJson(liveCardsBlueprint),
     },
   });
   const payload = (res?.events?.[0].payload ?? {}) as Record<string, any>;
   assert.equal(payload.profile?.id, "live-cards");
-  assert.equal(payload.profileSeed?.source, "artifact");
+  assert.equal(payload.profileSeed?.source, "blueprint");
   assert.deepEqual(payload.recipes?.map((recipe: any) => recipe.id), [
     "live-cards.interaction-to-presentation",
     "live-cards.presentation-to-runtime",

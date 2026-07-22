@@ -1,11 +1,6 @@
 {
   "name": "Live Workspace SOC semantic blueprint",
-  "profileFile": "profile.json",
-  "recipeFiles": [
-    "workflow-to-interaction.recipe.json",
-    "interaction-to-presentation.recipe.json",
-    "presentation-to-runtime.recipe.json"
-  ],
+  "blueprintFile": "blueprint.json",
   "expectLoad": {
     "id": "live-workspace-soc",
     "kind": "genui-profile",

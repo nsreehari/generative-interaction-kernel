@@ -1,17 +1,10 @@
 {
   "gik": "0.1",
-  "type": "profile",
+  "type": "blueprint",
   "payload": {
     "id": "samples-overview",
     "kind": "runtime-blueprint",
     "version": "2.0",
-    "layers": [
-      {
-        "id": "runtime-document",
-        "kind": "runtime-document",
-        "description": "Authored terminal document for this hosted Blueprint."
-      }
-    ],
     "recipes": [],
     "resources": {
       "document": {
@@ -305,6 +298,36 @@
             "boundary": "Beat 4 proves remote, transported, and headless continuity. The current SOC runtime proves deterministic in-process collaboration; it does not prove durable remote clients or background agents.",
             "status": "Domain + Deployment Atlas · forthcoming"
           }
+        }
+      }
+    },
+    "tiers": [
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document",
+        "description": "Authored terminal document for this hosted Blueprint."
+      }
+    ],
+    "organism": {
+      "root": {
+        "capability": "ui:screen",
+        "id": "samples-overview-root",
+        "props": {
+          "title": "Governed Human-Agent Collaboration",
+          "subtitle": "One evolving workspace. Shared state, shared authority, complete trace."
+        },
+        "edges": {
+          "children": [
+            {
+              "capability": "overview:platform-storyboard",
+              "id": "samples-overview-view",
+              "edges": {
+                "read": {
+                  "overview": "overview"
+                }
+              }
+            }
+          ]
         }
       }
     }

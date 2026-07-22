@@ -13,13 +13,13 @@ import {
   type OrganismBridge,
   type ProviderResolver,
 } from "@gik/react";
-import type { LayerRecipe, ProfileArtifact, ProfileArtifactBundle } from "@gik/profile";
+import type { BlueprintArtifact, LayerRecipe } from "@gik/profile";
 
 const EMPTY_COMPANIONS: CompositionOrganism[] = [];
 const EMPTY_CONTEXTS: BundleContextBindings = {};
 
 export interface BlueprintHostProps {
-  blueprint: ProfileArtifact | ProfileArtifactBundle<LayerRecipe>;
+  blueprint: BlueprintArtifact<LayerRecipe>;
   resolveLeavesProvider?: ProviderResolver;
   native?: BundleNative;
   companions?: CompositionOrganism[];
@@ -33,7 +33,7 @@ export interface BlueprintHostProps {
 }
 
 function runtimeFromBlueprint(
-  blueprint: ProfileArtifact | ProfileArtifactBundle<LayerRecipe>,
+  blueprint: BlueprintArtifact<LayerRecipe>,
   context?: Record<string, Json>,
 ) {
   return openBlueprint(blueprint, context ? { context } : undefined);
@@ -58,7 +58,7 @@ export function BlueprintHost({
     () => bundleFromJson({ manifest: runtime.manifest, document: runtime.document, state: runtime.state }, native),
     [runtime, native],
   );
-  const blueprintId = "format" in blueprint ? blueprint.profileArtifact.payload.id : blueprint.payload.id;
+  const blueprintId = blueprint.payload.id;
   const primaryId = primaryInstanceKey === undefined ? blueprintId : `${blueprintId}:${primaryInstanceKey}`;
   const primary = React.useMemo<CompositionOrganism>(
     () => ({ id: primaryId, bundle, bridge: primaryBridge }),

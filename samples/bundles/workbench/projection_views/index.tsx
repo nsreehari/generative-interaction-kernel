@@ -36,10 +36,10 @@ import {
 } from "./runtime/bridge";
 import { startAgentLoop, type AgentLoopClient } from "./runtime/agent-loop";
 import { workbenchComponents } from "./bundles/registry";
-import { sampleProfiles } from "../../../catalog/profile-catalog";
+import { sampleBlueprintProfiles } from "../../../catalog/profile-catalog";
 
 function selectedProfile(profileId: string) {
-  return sampleProfiles[profileId] ?? sampleProfiles["live-cards"];
+  return sampleBlueprintProfiles[profileId] ?? sampleBlueprintProfiles["live-cards"];
 }
 
 const useStyles = makeStyles({

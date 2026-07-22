@@ -1,0 +1,3429 @@
+{
+  "gik": "0.1",
+  "type": "blueprint",
+  "payload": {
+    "id": "live-workspace-soc",
+    "kind": "genui-profile",
+    "version": "1.0.0",
+    "metadata": {
+      "productTerm": "semantic-blueprint",
+      "pitchBeat": "T3/Beat 3",
+      "bundleTarget": "live-workspace-soc",
+      "thesis": "Many actors. One state. Multiple views. Governed actions. Complete provenance."
+    },
+    "recipes": [
+      {
+        "id": "soc.workflow-to-interaction",
+        "from": "workflow",
+        "to": "interaction",
+        "metadata": {
+          "executor": "select-interaction",
+          "preserves": [
+            "intent",
+            "actor",
+            "authority",
+            "provenance",
+            "causal-step"
+          ]
+        },
+        "program": [
+          {
+            "slot": "interaction",
+            "match": {
+              "workflow": "governed-soc-investigation"
+            },
+            "emit": {
+              "interaction": "soc-workspace",
+              "subject": "Privileged access anomaly during payroll cutover",
+              "parts": [
+                {
+                  "name": "summary",
+                  "role": "situation",
+                  "required": true,
+                  "concern": "orientation",
+                  "dataDependencies": [
+                    "soc.incident",
+                    "soc.journal"
+                  ],
+                  "participants": [
+                    "human-morgan",
+                    "human-priya",
+                    "agent-correlation",
+                    "agent-response"
+                  ],
+                  "causalTargets": [
+                    "soc.journal"
+                  ]
+                },
+                {
+                  "name": "intent",
+                  "role": "investigation-direction",
+                  "required": false,
+                  "concern": "guardrails",
+                  "dataDependencies": [
+                    "soc.intent"
+                  ],
+                  "participants": [
+                    "human-morgan",
+                    "human-priya"
+                  ],
+                  "actions": [
+                    "establishIntent"
+                  ],
+                  "causalTargets": [
+                    "soc.intent"
+                  ]
+                },
+                {
+                  "name": "constraints",
+                  "role": "operational-boundary",
+                  "required": false,
+                  "concern": "guardrails",
+                  "dataDependencies": [
+                    "soc.constraints"
+                  ],
+                  "participants": [
+                    "human-priya",
+                    "human-morgan",
+                    "agent-correlation",
+                    "agent-response"
+                  ],
+                  "actions": [
+                    "addConstraint"
+                  ],
+                  "authority": [
+                    "constrain-operations"
+                  ],
+                  "causalTargets": [
+                    "soc.constraints"
+                  ]
+                },
+                {
+                  "name": "hypothesis",
+                  "role": "working-conclusion",
+                  "required": false,
+                  "concern": "orientation",
+                  "dataDependencies": [
+                    "soc.hypothesis"
+                  ],
+                  "participants": [
+                    "human-morgan",
+                    "agent-correlation"
+                  ],
+                  "causalTargets": [
+                    "soc.hypothesis"
+                  ]
+                },
+                {
+                  "name": "exploration",
+                  "role": "investigation-plan",
+                  "required": false,
+                  "concern": "investigation",
+                  "dataDependencies": [
+                    "soc.explorations"
+                  ],
+                  "participants": [
+                    "human-morgan",
+                    "agent-correlation"
+                  ],
+                  "actions": [
+                    "suggestExploration",
+                    "amendExploration",
+                    "replanExploration"
+                  ],
+                  "authority": [
+                    "direct-investigation",
+                    "suggest-exploration"
+                  ],
+                  "causalTargets": [
+                    "soc.explorations"
+                  ]
+                },
+                {
+                  "name": "evidence",
+                  "role": "decision-support",
+                  "required": false,
+                  "concern": "investigation",
+                  "dataDependencies": [
+                    "soc.evidence"
+                  ],
+                  "participants": [
+                    "human-morgan",
+                    "agent-correlation",
+                    "agent-response"
+                  ],
+                  "actions": [
+                    "commitPartialFindings",
+                    "completeCorrelation"
+                  ],
+                  "authority": [
+                    "contribute-evidence"
+                  ],
+                  "causalTargets": [
+                    "soc.evidence",
+                    "soc.hypothesis"
+                  ]
+                },
+                {
+                  "name": "agent-request",
+                  "role": "task-envelope",
+                  "required": false,
+                  "concern": "delegation",
+                  "dataDependencies": [
+                    "soc.agentProviders",
+                    "soc.explorations",
+                    "soc.proposal"
+                  ],
+                  "participants": [
+                    "human-morgan",
+                    "agent-correlation",
+                    "agent-response"
+                  ],
+                  "causalTargets": [
+                    "soc.journal"
+                  ]
+                },
+                {
+                  "name": "response",
+                  "role": "governed-action",
+                  "required": false,
+                  "concern": "response",
+                  "dataDependencies": [
+                    "soc.proposal"
+                  ],
+                  "participants": [
+                    "human-morgan",
+                    "human-priya",
+                    "agent-response"
+                  ],
+                  "actions": [
+                    "proposeHostA",
+                    "reviseResponse",
+                    "calculateResponse",
+                    "recommendContainment",
+                    "executeContainment"
+                  ],
+                  "authority": [
+                    "recommend-containment",
+                    "propose-response",
+                    "execute-after-authorization"
+                  ],
+                  "causalTargets": [
+                    "soc.proposal"
+                  ]
+                },
+                {
+                  "name": "authorization",
+                  "role": "consequential-decision",
+                  "required": false,
+                  "concern": "governance",
+                  "dataDependencies": [
+                    "soc.authorization",
+                    "soc.proposal"
+                  ],
+                  "participants": [
+                    "human-priya",
+                    "human-morgan",
+                    "agent-response"
+                  ],
+                  "actions": [
+                    "authorizeContainment"
+                  ],
+                  "authority": [
+                    "authorize-containment"
+                  ],
+                  "causalTargets": [
+                    "soc.authorization",
+                    "soc.proposal"
+                  ]
+                },
+                {
+                  "name": "causal-record",
+                  "role": "provenance",
+                  "required": false,
+                  "concern": "provenance",
+                  "dataDependencies": [
+                    "soc.journal"
+                  ],
+                  "participants": [
+                    "human-morgan",
+                    "human-priya",
+                    "agent-correlation",
+                    "agent-response"
+                  ],
+                  "causalTargets": [
+                    "soc.journal"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "soc.interaction-to-presentation",
+        "from": "interaction",
+        "to": "presentation",
+        "metadata": {
+          "executor": "plan-presentation",
+          "descriptor": "actor + role + device + task + disclosure + layout"
+        },
+        "constrainedWhen": [
+          {
+            "frame": "mobile"
+          },
+          {
+            "frame": "pager"
+          }
+        ],
+        "templates": [
+          {
+            "name": "inspection-grid",
+            "arrangement": "inspection"
+          },
+          {
+            "name": "war-room-board",
+            "arrangement": "war-room"
+          },
+          {
+            "name": "investigation-board",
+            "arrangement": "kanban"
+          },
+          {
+            "name": "decision-stack",
+            "arrangement": "decision"
+          },
+          {
+            "name": "command-grid",
+            "arrangement": "command"
+          },
+          {
+            "name": "alert-stack",
+            "arrangement": "glanceable"
+          },
+          {
+            "name": "investigation-workbench",
+            "arrangement": "investigation"
+          },
+          {
+            "name": "correlation-console",
+            "arrangement": "agent-correlation"
+          },
+          {
+            "name": "response-console",
+            "arrangement": "agent-response"
+          }
+        ],
+        "program": [
+          {
+            "slot": "template",
+            "match": {
+              "arrangement": "inspection"
+            },
+            "emit": {
+              "template": "inspection-grid",
+              "layout": "full_substrate",
+              "frame": "shared"
+            }
+          },
+          {
+            "slot": "template",
+            "match": {
+              "arrangement": "war-room"
+            },
+            "emit": {
+              "template": "war-room-board",
+              "layout": "war_room",
+              "frame": "shared"
+            }
+          },
+          {
+            "slot": "template",
+            "match": {
+              "arrangement": "kanban"
+            },
+            "emit": {
+              "template": "investigation-board",
+              "layout": "kanban",
+              "frame": "shared"
+            }
+          },
+          {
+            "slot": "template",
+            "match": {
+              "arrangement": "decision"
+            },
+            "emit": {
+              "template": "decision-stack",
+              "layout": "priya_mobile",
+              "frame": "mobile"
+            }
+          },
+          {
+            "slot": "template",
+            "match": {
+              "arrangement": "command"
+            },
+            "emit": {
+              "template": "command-grid",
+              "layout": "priya_command",
+              "frame": "laptop"
+            }
+          },
+          {
+            "slot": "template",
+            "match": {
+              "arrangement": "glanceable"
+            },
+            "emit": {
+              "template": "alert-stack",
+              "layout": "morgan_pager",
+              "frame": "pager"
+            }
+          },
+          {
+            "slot": "template",
+            "match": {
+              "arrangement": "investigation"
+            },
+            "emit": {
+              "template": "investigation-workbench",
+              "layout": "morgan_investigation",
+              "frame": "workstation"
+            }
+          },
+          {
+            "slot": "template",
+            "match": {
+              "arrangement": "agent-correlation"
+            },
+            "emit": {
+              "template": "correlation-console",
+              "layout": "correlation_agent",
+              "frame": "agent-console"
+            }
+          },
+          {
+            "slot": "template",
+            "match": {
+              "arrangement": "agent-response"
+            },
+            "emit": {
+              "template": "response-console",
+              "layout": "response_agent",
+              "frame": "agent-console"
+            }
+          },
+          {
+            "slot": "template",
+            "match": {},
+            "emit": {
+              "template": "war-room-board",
+              "layout": "war_room",
+              "frame": "shared"
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "war-room",
+              "region": "summary"
+            },
+            "emit": {
+              "rank": 0
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "war-room",
+              "region": "hypothesis"
+            },
+            "emit": {
+              "rank": 1
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "war-room",
+              "region": "response"
+            },
+            "emit": {
+              "rank": 2
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "war-room",
+              "region": "constraints"
+            },
+            "emit": {
+              "rank": 3
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "war-room",
+              "region": "authorization"
+            },
+            "emit": {
+              "rank": 4
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "kanban",
+              "region": "intent"
+            },
+            "emit": {
+              "rank": 0
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "kanban",
+              "region": "constraints"
+            },
+            "emit": {
+              "rank": 1
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "kanban",
+              "region": "hypothesis"
+            },
+            "emit": {
+              "rank": 2
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "kanban",
+              "region": "exploration"
+            },
+            "emit": {
+              "rank": 3
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "kanban",
+              "region": "evidence"
+            },
+            "emit": {
+              "rank": 4
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "kanban",
+              "region": "response"
+            },
+            "emit": {
+              "rank": 5
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "kanban",
+              "region": "authorization"
+            },
+            "emit": {
+              "rank": 6
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "kanban",
+              "region": "causal-record"
+            },
+            "emit": {
+              "rank": 7
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "decision",
+              "region": "summary"
+            },
+            "emit": {
+              "rank": 0
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "decision",
+              "region": "authorization"
+            },
+            "emit": {
+              "rank": 1
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "decision",
+              "region": "response"
+            },
+            "emit": {
+              "rank": 2
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "decision",
+              "region": "constraints"
+            },
+            "emit": {
+              "rank": 3
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "decision",
+              "region": "hypothesis"
+            },
+            "emit": {
+              "rank": 4
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "command",
+              "region": "summary"
+            },
+            "emit": {
+              "rank": 0
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "command",
+              "region": "constraints"
+            },
+            "emit": {
+              "rank": 1
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "command",
+              "region": "hypothesis"
+            },
+            "emit": {
+              "rank": 2
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "command",
+              "region": "evidence"
+            },
+            "emit": {
+              "rank": 3
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "command",
+              "region": "response"
+            },
+            "emit": {
+              "rank": 4
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "command",
+              "region": "authorization"
+            },
+            "emit": {
+              "rank": 5
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "glanceable",
+              "region": "summary"
+            },
+            "emit": {
+              "rank": 0
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "glanceable",
+              "region": "hypothesis"
+            },
+            "emit": {
+              "rank": 1
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "glanceable",
+              "region": "response"
+            },
+            "emit": {
+              "rank": 2
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "investigation",
+              "region": "summary"
+            },
+            "emit": {
+              "rank": 0
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "investigation",
+              "region": "intent"
+            },
+            "emit": {
+              "rank": 1
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "investigation",
+              "region": "constraints"
+            },
+            "emit": {
+              "rank": 2
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "investigation",
+              "region": "exploration"
+            },
+            "emit": {
+              "rank": 3
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "investigation",
+              "region": "evidence"
+            },
+            "emit": {
+              "rank": 4
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "investigation",
+              "region": "hypothesis"
+            },
+            "emit": {
+              "rank": 5
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "agent-correlation",
+              "region": "summary"
+            },
+            "emit": {
+              "rank": 0
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "agent-correlation",
+              "region": "intent"
+            },
+            "emit": {
+              "rank": 1
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "agent-correlation",
+              "region": "constraints"
+            },
+            "emit": {
+              "rank": 2
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "agent-correlation",
+              "region": "hypothesis"
+            },
+            "emit": {
+              "rank": 3
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "agent-correlation",
+              "region": "agent-request"
+            },
+            "emit": {
+              "rank": 4
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "agent-correlation",
+              "region": "exploration"
+            },
+            "emit": {
+              "rank": 5
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "agent-correlation",
+              "region": "evidence"
+            },
+            "emit": {
+              "rank": 6
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "agent-response",
+              "region": "summary"
+            },
+            "emit": {
+              "rank": 0
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "agent-response",
+              "region": "hypothesis"
+            },
+            "emit": {
+              "rank": 1
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "agent-response",
+              "region": "evidence"
+            },
+            "emit": {
+              "rank": 2
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "agent-response",
+              "region": "constraints"
+            },
+            "emit": {
+              "rank": 3
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "agent-response",
+              "region": "agent-request"
+            },
+            "emit": {
+              "rank": 4
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "agent-response",
+              "region": "response"
+            },
+            "emit": {
+              "rank": 5
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {
+              "arrangement": "agent-response",
+              "region": "authorization"
+            },
+            "emit": {
+              "rank": 6
+            }
+          },
+          {
+            "slot": "rank",
+            "match": {},
+            "emit": {
+              "rank": 50
+            }
+          },
+          {
+            "slot": "priority",
+            "match": {
+              "arrangement": "decision",
+              "region": "authorization"
+            },
+            "emit": {
+              "priority": "critical"
+            }
+          },
+          {
+            "slot": "priority",
+            "match": {
+              "arrangement": "decision",
+              "region": "response"
+            },
+            "emit": {
+              "priority": "critical"
+            }
+          },
+          {
+            "slot": "priority",
+            "match": {
+              "arrangement": "glanceable",
+              "region": "summary"
+            },
+            "emit": {
+              "priority": "critical"
+            }
+          },
+          {
+            "slot": "priority",
+            "match": {
+              "arrangement": "war-room",
+              "region": "hypothesis"
+            },
+            "emit": {
+              "priority": "primary"
+            }
+          },
+          {
+            "slot": "priority",
+            "match": {
+              "arrangement": "war-room",
+              "region": "response"
+            },
+            "emit": {
+              "priority": "primary"
+            }
+          },
+          {
+            "slot": "priority",
+            "match": {
+              "arrangement": "agent-correlation",
+              "region": "exploration"
+            },
+            "emit": {
+              "priority": "primary"
+            }
+          },
+          {
+            "slot": "priority",
+            "match": {
+              "arrangement": "agent-correlation",
+              "region": "evidence"
+            },
+            "emit": {
+              "priority": "primary"
+            }
+          },
+          {
+            "slot": "priority",
+            "match": {
+              "arrangement": "agent-response",
+              "region": "response"
+            },
+            "emit": {
+              "priority": "primary"
+            }
+          },
+          {
+            "slot": "priority",
+            "match": {
+              "arrangement": "agent-response",
+              "region": "authorization"
+            },
+            "emit": {
+              "priority": "primary"
+            }
+          },
+          {
+            "slot": "priority",
+            "match": {},
+            "emit": {
+              "priority": "supporting"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "inspection",
+              "region": "agent-request"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "war-room",
+              "region": "agent-request"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "kanban",
+              "region": "agent-request"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "kanban",
+              "region": "summary"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "decision",
+              "region": "agent-request"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "command",
+              "region": "agent-request"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "glanceable",
+              "region": "agent-request"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "investigation",
+              "region": "agent-request"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "war-room",
+              "region": "intent"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "war-room",
+              "region": "exploration"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "war-room",
+              "region": "evidence"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "decision",
+              "region": "intent"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "decision",
+              "region": "exploration"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "decision",
+              "region": "evidence"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "decision",
+              "region": "causal-record"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "command",
+              "region": "intent"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "command",
+              "region": "exploration"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "glanceable",
+              "region": "intent"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "glanceable",
+              "region": "constraints"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "glanceable",
+              "region": "exploration"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "glanceable",
+              "region": "evidence"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "glanceable",
+              "region": "authorization"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "glanceable",
+              "region": "causal-record"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "investigation",
+              "region": "authorization"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "agent-correlation",
+              "region": "response"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "agent-correlation",
+              "region": "authorization"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "agent-response",
+              "region": "intent"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "agent-response",
+              "region": "exploration"
+            },
+            "emit": {
+              "disclosure": "omitted"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "decision",
+              "region": "summary"
+            },
+            "emit": {
+              "disclosure": "status"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "decision",
+              "region": "hypothesis"
+            },
+            "emit": {
+              "disclosure": "status"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "inspection"
+            },
+            "emit": {
+              "disclosure": "detail"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "war-room"
+            },
+            "emit": {
+              "disclosure": "summary"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "kanban"
+            },
+            "emit": {
+              "disclosure": "detail"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "decision"
+            },
+            "emit": {
+              "disclosure": "summary"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "command"
+            },
+            "emit": {
+              "disclosure": "summary"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "glanceable"
+            },
+            "emit": {
+              "disclosure": "status"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "investigation"
+            },
+            "emit": {
+              "disclosure": "detail"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "agent-correlation"
+            },
+            "emit": {
+              "disclosure": "detail"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {
+              "arrangement": "agent-response"
+            },
+            "emit": {
+              "disclosure": "detail"
+            }
+          },
+          {
+            "slot": "disclosure",
+            "match": {},
+            "emit": {
+              "disclosure": "summary"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "agent-correlation",
+              "region": "summary"
+            },
+            "emit": {
+              "group": "context"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "kanban",
+              "region": "intent"
+            },
+            "emit": {
+              "group": "kanban-frame"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "kanban",
+              "region": "constraints"
+            },
+            "emit": {
+              "group": "kanban-frame"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "kanban",
+              "region": "hypothesis"
+            },
+            "emit": {
+              "group": "kanban-explore"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "kanban",
+              "region": "exploration"
+            },
+            "emit": {
+              "group": "kanban-explore"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "kanban",
+              "region": "evidence"
+            },
+            "emit": {
+              "group": "kanban-establish"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "kanban",
+              "region": "response"
+            },
+            "emit": {
+              "group": "kanban-decide"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "kanban",
+              "region": "authorization"
+            },
+            "emit": {
+              "group": "kanban-decide"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "kanban",
+              "region": "causal-record"
+            },
+            "emit": {
+              "group": "kanban-record"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "agent-correlation",
+              "region": "intent"
+            },
+            "emit": {
+              "group": "context"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "agent-correlation",
+              "region": "constraints"
+            },
+            "emit": {
+              "group": "shared-state"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "agent-correlation",
+              "region": "hypothesis"
+            },
+            "emit": {
+              "group": "shared-state"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "agent-correlation",
+              "region": "agent-request"
+            },
+            "emit": {
+              "group": "request"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "agent-correlation",
+              "region": "exploration"
+            },
+            "emit": {
+              "group": "request"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "agent-correlation",
+              "region": "evidence"
+            },
+            "emit": {
+              "group": "response"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "agent-correlation",
+              "region": "causal-record"
+            },
+            "emit": {
+              "group": "governed-result"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "agent-response",
+              "region": "summary"
+            },
+            "emit": {
+              "group": "context"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "agent-response",
+              "region": "hypothesis"
+            },
+            "emit": {
+              "group": "shared-state"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "agent-response",
+              "region": "evidence"
+            },
+            "emit": {
+              "group": "shared-state"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "agent-response",
+              "region": "constraints"
+            },
+            "emit": {
+              "group": "shared-state"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "agent-response",
+              "region": "agent-request"
+            },
+            "emit": {
+              "group": "request"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "agent-response",
+              "region": "response"
+            },
+            "emit": {
+              "group": "response"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "agent-response",
+              "region": "authorization"
+            },
+            "emit": {
+              "group": "governed-result"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "arrangement": "agent-response",
+              "region": "causal-record"
+            },
+            "emit": {
+              "group": "governed-result"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "region": "summary"
+            },
+            "emit": {
+              "group": "orientation"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "region": "intent"
+            },
+            "emit": {
+              "group": "guardrails"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "region": "constraints"
+            },
+            "emit": {
+              "group": "guardrails"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "region": "hypothesis"
+            },
+            "emit": {
+              "group": "orientation"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "region": "exploration"
+            },
+            "emit": {
+              "group": "investigation"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "region": "evidence"
+            },
+            "emit": {
+              "group": "investigation"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "region": "agent-request"
+            },
+            "emit": {
+              "group": "request"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "region": "response"
+            },
+            "emit": {
+              "group": "response"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "region": "authorization"
+            },
+            "emit": {
+              "group": "governance"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {
+              "region": "causal-record"
+            },
+            "emit": {
+              "group": "provenance"
+            }
+          },
+          {
+            "slot": "group",
+            "match": {},
+            "emit": {
+              "group": "substrate"
+            }
+          },
+          {
+            "slot": "presentation",
+            "match": {
+              "region": "summary"
+            },
+            "emit": {
+              "presentation": "brief",
+              "materialize": false
+            }
+          },
+          {
+            "slot": "presentation",
+            "match": {
+              "region": "intent"
+            },
+            "emit": {
+              "presentation": "brief",
+              "materialize": false
+            }
+          },
+          {
+            "slot": "presentation",
+            "match": {
+              "region": "constraints"
+            },
+            "emit": {
+              "presentation": "brief",
+              "materialize": false
+            }
+          },
+          {
+            "slot": "presentation",
+            "match": {
+              "region": "hypothesis"
+            },
+            "emit": {
+              "presentation": "finding",
+              "materialize": false
+            }
+          },
+          {
+            "slot": "presentation",
+            "match": {
+              "region": "exploration"
+            },
+            "emit": {
+              "presentation": "collection",
+              "materialize": false
+            }
+          },
+          {
+            "slot": "presentation",
+            "match": {
+              "region": "evidence"
+            },
+            "emit": {
+              "presentation": "collection",
+              "materialize": false
+            }
+          },
+          {
+            "slot": "presentation",
+            "match": {
+              "region": "agent-request"
+            },
+            "emit": {
+              "presentation": "agent-request",
+              "materialize": false
+            }
+          },
+          {
+            "slot": "presentation",
+            "match": {
+              "region": "response"
+            },
+            "emit": {
+              "presentation": "decision",
+              "materialize": false
+            }
+          },
+          {
+            "slot": "presentation",
+            "match": {
+              "region": "authorization"
+            },
+            "emit": {
+              "presentation": "decision",
+              "materialize": false
+            }
+          },
+          {
+            "slot": "presentation",
+            "match": {
+              "region": "causal-record"
+            },
+            "emit": {
+              "presentation": "audit",
+              "materialize": false
+            }
+          },
+          {
+            "slot": "presentation",
+            "match": {},
+            "emit": {
+              "presentation": "brief",
+              "materialize": false
+            }
+          },
+          {
+            "slot": "rationale",
+            "match": {
+              "arrangement": "decision"
+            },
+            "emit": {
+              "template": "Commander context keeps consequential decisions glanceable."
+            }
+          },
+          {
+            "slot": "rationale",
+            "match": {
+              "arrangement": "glanceable"
+            },
+            "emit": {
+              "template": "Analyst pager context exposes only urgent findings and pending work."
+            }
+          },
+          {
+            "slot": "rationale",
+            "match": {},
+            "emit": {
+              "template": "The specialized SOC workspace interprets one substrate for {{actor}} / {{device}} / {{arrangement}}."
+            }
+          }
+        ],
+        "cap": {
+          "preserveRequired": true
+        }
+      },
+      {
+        "id": "soc.presentation-to-runtime",
+        "from": "presentation",
+        "to": "runtime-doc",
+        "metadata": {
+          "executor": "lower-document",
+          "terminalVocabulary": "live-workspace-soc/1.0"
+        },
+        "program": [
+          {
+            "slot": "container",
+            "match": {},
+            "emit": {
+              "id": "soc-workspace-shell",
+              "capability": "soc:workspace-shell",
+              "children": [
+                {
+                  "id": "soc-header",
+                  "capability": "soc:header",
+                  "read": {
+                    "incident": "soc.incident"
+                  }
+                },
+                {
+                  "id": "soc-workspace",
+                  "capability": "soc:workspace-body",
+                  "on": {
+                    "establishIntent": [
+                      {
+                        "do": "invoke",
+                        "args": {
+                          "tool": "establishIntent"
+                        }
+                      }
+                    ],
+                    "addConstraint": [
+                      {
+                        "do": "invoke",
+                        "args": {
+                          "tool": "addConstraint"
+                        }
+                      }
+                    ],
+                    "suggestExploration": [
+                      {
+                        "do": "invoke",
+                        "args": {
+                          "tool": "suggestExploration"
+                        }
+                      }
+                    ],
+                    "amendExploration": [
+                      {
+                        "do": "invoke",
+                        "args": {
+                          "tool": "amendExploration"
+                        }
+                      }
+                    ],
+                    "replanExploration": [
+                      {
+                        "do": "invoke",
+                        "args": {
+                          "tool": "replanExploration"
+                        }
+                      }
+                    ],
+                    "commitPartialFindings": [
+                      {
+                        "do": "invoke",
+                        "args": {
+                          "tool": "commitPartialFindings"
+                        }
+                      }
+                    ],
+                    "proposeDc01": [
+                      {
+                        "do": "route",
+                        "args": {
+                          "tool": "evaluateDc01Policy",
+                          "to": "isolate:DC-01"
+                        }
+                      }
+                    ],
+                    "completeCorrelation": [
+                      {
+                        "do": "invoke",
+                        "args": {
+                          "tool": "completeCorrelation"
+                        }
+                      }
+                    ],
+                    "proposeHostA": [
+                      {
+                        "do": "invoke",
+                        "args": {
+                          "tool": "proposeHostA"
+                        }
+                      }
+                    ],
+                    "reviseResponse": [
+                      {
+                        "do": "invoke",
+                        "args": {
+                          "tool": "reviseResponse"
+                        }
+                      }
+                    ],
+                    "calculateResponse": [
+                      {
+                        "do": "invoke",
+                        "args": {
+                          "tool": "calculateResponse"
+                        }
+                      }
+                    ],
+                    "recommendContainment": [
+                      {
+                        "do": "invoke",
+                        "args": {
+                          "tool": "recommendContainment"
+                        }
+                      }
+                    ],
+                    "authorizeContainment": [
+                      {
+                        "do": "confirm",
+                        "args": {
+                          "tool": "authorizeContainment",
+                          "title": "Authorize Host-A isolation",
+                          "message": "Authorize the evidence-backed, reversible isolation plan?",
+                          "confirmLabel": "Authorize",
+                          "danger": true
+                        }
+                      }
+                    ],
+                    "executeContainment": [
+                      {
+                        "do": "invoke",
+                        "args": {
+                          "tool": "executeContainment"
+                        }
+                      }
+                    ],
+                    "setPresentationContext": [
+                      {
+                        "do": "invoke",
+                        "args": {
+                          "tool": "setPresentationContext"
+                        }
+                      }
+                    ],
+                    "reset": [
+                      {
+                        "do": "invoke",
+                        "args": {
+                          "tool": "resetScenario"
+                        }
+                      }
+                    ]
+                  },
+                  "react": [
+                    {
+                      "when": "$string(soc)",
+                      "runInitially": true,
+                      "run": [
+                        {
+                          "do": "invoke",
+                          "args": {
+                            "tool": "syncInspection"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "when": "control.commands.establishIntent",
+                      "run": [
+                        {
+                          "do": "emit",
+                          "event": "establishIntent"
+                        }
+                      ]
+                    },
+                    {
+                      "when": "control.commands.addConstraint",
+                      "run": [
+                        {
+                          "do": "emit",
+                          "event": "addConstraint"
+                        }
+                      ]
+                    },
+                    {
+                      "when": "control.commands.suggestExploration",
+                      "run": [
+                        {
+                          "do": "emit",
+                          "event": "suggestExploration"
+                        }
+                      ]
+                    },
+                    {
+                      "when": "control.commands.amendExploration",
+                      "run": [
+                        {
+                          "do": "emit",
+                          "event": "amendExploration"
+                        }
+                      ]
+                    },
+                    {
+                      "when": "control.commands.replanExploration",
+                      "run": [
+                        {
+                          "do": "emit",
+                          "event": "replanExploration"
+                        }
+                      ]
+                    },
+                    {
+                      "when": "control.commands.commitPartialFindings",
+                      "run": [
+                        {
+                          "do": "emit",
+                          "event": "commitPartialFindings"
+                        }
+                      ]
+                    },
+                    {
+                      "when": "control.commands.proposeDc01",
+                      "run": [
+                        {
+                          "do": "emit",
+                          "event": "proposeDc01"
+                        }
+                      ]
+                    },
+                    {
+                      "when": "control.commands.completeCorrelation",
+                      "run": [
+                        {
+                          "do": "emit",
+                          "event": "completeCorrelation"
+                        }
+                      ]
+                    },
+                    {
+                      "when": "control.commands.proposeHostA",
+                      "run": [
+                        {
+                          "do": "emit",
+                          "event": "proposeHostA"
+                        }
+                      ]
+                    },
+                    {
+                      "when": "control.commands.reviseResponse",
+                      "run": [
+                        {
+                          "do": "emit",
+                          "event": "reviseResponse"
+                        }
+                      ]
+                    },
+                    {
+                      "when": "control.commands.calculateResponse",
+                      "run": [
+                        {
+                          "do": "emit",
+                          "event": "calculateResponse"
+                        }
+                      ]
+                    },
+                    {
+                      "when": "control.commands.recommendContainment",
+                      "run": [
+                        {
+                          "do": "emit",
+                          "event": "recommendContainment"
+                        }
+                      ]
+                    },
+                    {
+                      "when": "control.commands.executeContainment",
+                      "run": [
+                        {
+                          "do": "emit",
+                          "event": "executeContainment"
+                        }
+                      ]
+                    },
+                    {
+                      "when": "control.commands.reset",
+                      "run": [
+                        {
+                          "do": "emit",
+                          "event": "reset"
+                        }
+                      ]
+                    },
+                    {
+                      "when": "control.presentationContext",
+                      "runInitially": true,
+                      "run": [
+                        {
+                          "do": "emit",
+                          "event": "setPresentationContext"
+                        }
+                      ]
+                    },
+                    {
+                      "when": "control.authorizationRequest",
+                      "runInitially": true,
+                      "run": [
+                        {
+                          "do": "emit",
+                          "event": "authorizeContainment"
+                        }
+                      ]
+                    }
+                  ],
+                  "children": [
+                    {
+                      "id": "soc-substrate-chrome",
+                      "capability": "soc:substrate-chrome",
+                      "read": {
+                        "incident": "soc.incident",
+                        "presentation": "soc.presentation",
+                        "journal": "soc.journal",
+                        "facet": "soc.presentation.regionFacets.summary"
+                      },
+                      "children": [
+                        {
+                          "id": "soc-runtime-projection",
+                          "capability": "soc:runtime-projection",
+                          "props": {
+                            "frame": "{{presentation.frame}}"
+                          },
+                          "read": {
+                            "presentation": "soc.presentation",
+                            "frame": "soc.presentation.frame"
+                          },
+                          "children": [
+                            {
+                              "id": "soc-presentation-layout",
+                              "capability": "soc:presentation-layout",
+                              "read": {
+                                "presentation": "soc.presentation",
+                                "actors": "soc.actors",
+                                "selection": "demo.selection"
+                              },
+                              "children": [
+                                {
+                                  "id": "soc-intent-surface",
+                                  "capability": "soc:region-surface",
+                                  "gate": "$lookup(soc.presentation.regionFacets, 'intent').visible = true",
+                                  "props": {
+                                    "region": "intent",
+                                    "title": "Investigation intent",
+                                    "focusTargets": [
+                                      "intent"
+                                    ]
+                                  },
+                                  "read": {
+                                    "facet": "soc.presentation.regionFacets.intent"
+                                  },
+                                  "children": [
+                                    {
+                                      "id": "soc-intent-region",
+                                      "capability": "soc:intent-region",
+                                      "read": {
+                                        "intent": "soc.intent"
+                                      }
+                                    }
+                                  ]
+                                },
+                                {
+                                  "id": "soc-constraints-surface",
+                                  "capability": "soc:region-surface",
+                                  "gate": "$lookup(soc.presentation.regionFacets, 'constraints').visible = true",
+                                  "props": {
+                                    "region": "constraints",
+                                    "title": "Operating constraints",
+                                    "focusTargets": [
+                                      "constraints",
+                                      "DC-01"
+                                    ]
+                                  },
+                                  "read": {
+                                    "facet": "soc.presentation.regionFacets.constraints"
+                                  },
+                                  "children": [
+                                    {
+                                      "id": "soc-constraints-region",
+                                      "capability": "soc:constraints-region",
+                                      "read": {
+                                        "constraints": "soc.constraints"
+                                      }
+                                    }
+                                  ]
+                                },
+                                {
+                                  "id": "soc-hypothesis-surface",
+                                  "capability": "soc:region-surface",
+                                  "gate": "$lookup(soc.presentation.regionFacets, 'hypothesis').visible = true",
+                                  "props": {
+                                    "region": "hypothesis",
+                                    "title": "Working hypothesis",
+                                    "metricSuffix": "%",
+                                    "focusTargets": [
+                                      "hypothesis",
+                                      "corr-1",
+                                      "Host-A"
+                                    ]
+                                  },
+                                  "read": {
+                                    "facet": "soc.presentation.regionFacets.hypothesis",
+                                    "metricValue": "soc.hypothesis.confidence"
+                                  },
+                                  "children": [
+                                    {
+                                      "id": "soc-hypothesis-region",
+                                      "capability": "soc:hypothesis-region",
+                                      "read": {
+                                        "hypothesis": "soc.hypothesis"
+                                      }
+                                    }
+                                  ]
+                                },
+                                {
+                                  "id": "soc-exploration-surface",
+                                  "capability": "soc:region-surface",
+                                  "gate": "$lookup(soc.presentation.regionFacets, 'exploration').visible = true",
+                                  "props": {
+                                    "region": "exploration",
+                                    "title": "Exploration"
+                                  },
+                                  "read": {
+                                    "facet": "soc.presentation.regionFacets.exploration"
+                                  },
+                                  "children": [
+                                    {
+                                      "id": "soc-exploration-region",
+                                      "capability": "soc:exploration-region",
+                                      "read": {
+                                        "explorations": "soc.explorations"
+                                      }
+                                    }
+                                  ]
+                                },
+                                {
+                                  "id": "soc-evidence-surface",
+                                  "capability": "soc:region-surface",
+                                  "gate": "$lookup(soc.presentation.regionFacets, 'evidence').visible = true",
+                                  "props": {
+                                    "region": "evidence",
+                                    "title": "Evidence"
+                                  },
+                                  "read": {
+                                    "facet": "soc.presentation.regionFacets.evidence"
+                                  },
+                                  "children": [
+                                    {
+                                      "id": "soc-evidence-region",
+                                      "capability": "soc:evidence-region",
+                                      "read": {
+                                        "evidence": "soc.evidence"
+                                      }
+                                    }
+                                  ]
+                                },
+                                {
+                                  "id": "soc-agent-request-surface",
+                                  "capability": "soc:region-surface",
+                                  "gate": "$lookup(soc.presentation.regionFacets, 'agent-request').visible = true",
+                                  "props": {
+                                    "region": "agent-request",
+                                    "title": "Agent request"
+                                  },
+                                  "readExpr": {
+                                    "facet": "$lookup(soc.presentation.regionFacets, 'agent-request')"
+                                  },
+                                  "children": [
+                                    {
+                                      "id": "soc-agent-request-region",
+                                      "capability": "soc:agent-request-region",
+                                      "read": {
+                                        "presentation": "soc.presentation",
+                                        "actors": "soc.actors",
+                                        "explorations": "soc.explorations",
+                                        "proposal": "soc.proposal"
+                                      }
+                                    }
+                                  ]
+                                },
+                                {
+                                  "id": "soc-response-surface",
+                                  "capability": "soc:region-surface",
+                                  "gate": "$lookup(soc.presentation.regionFacets, 'response').visible = true",
+                                  "props": {
+                                    "region": "response",
+                                    "title": "Governed response",
+                                    "focusTargets": [
+                                      "proposal-dc01",
+                                      "proposal-host-a",
+                                      "rec-1",
+                                      "authorization",
+                                      "DC-01",
+                                      "Host-A"
+                                    ]
+                                  },
+                                  "read": {
+                                    "facet": "soc.presentation.regionFacets.response"
+                                  },
+                                  "children": [
+                                    {
+                                      "id": "soc-response-region",
+                                      "capability": "soc:response-region",
+                                      "read": {
+                                        "proposal": "soc.proposal"
+                                      }
+                                    }
+                                  ]
+                                },
+                                {
+                                  "id": "soc-authorization-surface",
+                                  "capability": "soc:region-surface",
+                                  "gate": "$lookup(soc.presentation.regionFacets, 'authorization').visible = true",
+                                  "props": {
+                                    "region": "authorization",
+                                    "title": "Commander authority",
+                                    "focusTargets": [
+                                      "authorization",
+                                      "rec-1",
+                                      "Host-A"
+                                    ]
+                                  },
+                                  "read": {
+                                    "facet": "soc.presentation.regionFacets.authorization"
+                                  },
+                                  "children": [
+                                    {
+                                      "id": "soc-authorization-region",
+                                      "capability": "soc:authorization-region",
+                                      "read": {
+                                        "authorization": "soc.authorization"
+                                      },
+                                      "on": {
+                                        "authorizeContainment": [
+                                          {
+                                            "do": "confirm",
+                                            "args": {
+                                              "tool": "authorizeContainment",
+                                              "title": "Authorize Host-A isolation",
+                                              "message": "Authorize the evidence-backed, reversible isolation plan?",
+                                              "confirmLabel": "Authorize",
+                                              "danger": true
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                },
+                                {
+                                  "id": "soc-causal-record-surface",
+                                  "capability": "soc:region-surface",
+                                  "gate": "$lookup(soc.presentation.regionFacets, 'causal-record').visible = true",
+                                  "props": {
+                                    "region": "causal-record",
+                                    "title": "Relevant causal record"
+                                  },
+                                  "readExpr": {
+                                    "facet": "$lookup(soc.presentation.regionFacets, 'causal-record')"
+                                  },
+                                  "children": [
+                                    {
+                                      "id": "soc-causal-record-region",
+                                      "capability": "soc:causal-record-region"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "resources": {
+      "taxonomy": {
+        "inline": {
+          "soc-workspace": [
+            {
+              "name": "summary",
+              "role": "situation",
+              "required": true
+            },
+            {
+              "name": "intent",
+              "role": "investigation-direction",
+              "required": false
+            },
+            {
+              "name": "constraints",
+              "role": "operational-boundary",
+              "required": false
+            },
+            {
+              "name": "hypothesis",
+              "role": "working-conclusion",
+              "required": false
+            },
+            {
+              "name": "exploration",
+              "role": "investigation-plan",
+              "required": false
+            },
+            {
+              "name": "evidence",
+              "role": "decision-support",
+              "required": false
+            },
+            {
+              "name": "agent-request",
+              "role": "task-envelope",
+              "required": false
+            },
+            {
+              "name": "response",
+              "role": "governed-action",
+              "required": false
+            },
+            {
+              "name": "authorization",
+              "role": "consequential-decision",
+              "required": false
+            },
+            {
+              "name": "causal-record",
+              "role": "provenance",
+              "required": false
+            }
+          ]
+        }
+      },
+      "intent": {
+        "inline": {
+          "goal": "Determine the execution origin, contain it safely, preserve evidence, and do not disrupt the protected payroll cutover without Incident Commander authorization.",
+          "priorities": [
+            "preserve-evidence",
+            "payroll-continuity",
+            "bounded-containment"
+          ],
+          "constraints": [
+            "DC-01 is protected",
+            "Priya authorizes consequential containment"
+          ]
+        }
+      },
+      "actors": {
+        "inline": [
+          {
+            "id": "human-morgan",
+            "kind": "human",
+            "role": "SOC Analyst",
+            "authority": [
+              "direct-investigation",
+              "recommend-containment"
+            ]
+          },
+          {
+            "id": "human-priya",
+            "kind": "human",
+            "role": "Incident Commander",
+            "authority": [
+              "constrain-operations",
+              "authorize-containment"
+            ]
+          },
+          {
+            "id": "agent-correlation",
+            "kind": "agent",
+            "role": "Evidence correlation",
+            "authority": [
+              "suggest-exploration",
+              "contribute-evidence"
+            ]
+          },
+          {
+            "id": "agent-response",
+            "kind": "agent",
+            "role": "Containment planning",
+            "authority": [
+              "propose-response",
+              "execute-after-authorization"
+            ]
+          }
+        ]
+      },
+      "authorityPolicy": {
+        "inline": {
+          "protectedTargets": [
+            "DC-01"
+          ],
+          "consequentialActions": [
+            "isolate"
+          ],
+          "requiredRole": "Incident Commander",
+          "participationDoesNotImplyAuthority": true
+        }
+      },
+      "presentationPresets": {
+        "inline": [
+          {
+            "id": "full-substrate",
+            "actor": "shared",
+            "role": "technical-inspection",
+            "device": "workstation",
+            "task": "inspect-all",
+            "disclosure": "complete",
+            "layout": "console",
+            "frame": "shared",
+            "arrangement": "inspection",
+            "regions": [
+              "summary",
+              "intent",
+              "constraints",
+              "hypothesis",
+              "exploration",
+              "evidence",
+              "response",
+              "authorization",
+              "causal-record"
+            ]
+          },
+          {
+            "id": "war-room",
+            "actor": "shared",
+            "role": "incident-team",
+            "device": "wall-display",
+            "task": "coordinate",
+            "disclosure": "operational",
+            "layout": "war-room",
+            "frame": "shared",
+            "arrangement": "war-room",
+            "regions": [
+              "summary",
+              "hypothesis",
+              "response",
+              "constraints",
+              "authorization",
+              "causal-record"
+            ]
+          },
+          {
+            "id": "investigation-board",
+            "actor": "shared",
+            "role": "incident-team",
+            "device": "workstation",
+            "task": "track-lifecycle",
+            "disclosure": "complete",
+            "layout": "kanban",
+            "frame": "shared",
+            "arrangement": "kanban",
+            "regions": [
+              "intent",
+              "constraints",
+              "hypothesis",
+              "exploration",
+              "evidence",
+              "response",
+              "authorization",
+              "causal-record"
+            ]
+          },
+          {
+            "id": "priya-mobile",
+            "actor": "human-priya",
+            "role": "Incident Commander",
+            "device": "mobile",
+            "task": "authorize",
+            "disclosure": "decision",
+            "layout": "compact",
+            "frame": "mobile",
+            "arrangement": "decision",
+            "regions": [
+              "summary",
+              "authorization",
+              "response",
+              "constraints",
+              "hypothesis"
+            ]
+          },
+          {
+            "id": "priya-laptop",
+            "actor": "human-priya",
+            "role": "Incident Commander",
+            "device": "laptop",
+            "task": "command",
+            "disclosure": "evidence-summary",
+            "layout": "command",
+            "frame": "laptop",
+            "arrangement": "command",
+            "regions": [
+              "summary",
+              "constraints",
+              "hypothesis",
+              "evidence",
+              "response",
+              "authorization",
+              "causal-record"
+            ]
+          },
+          {
+            "id": "morgan-pager",
+            "actor": "human-morgan",
+            "role": "SOC Analyst",
+            "device": "pager",
+            "task": "triage",
+            "disclosure": "urgent",
+            "layout": "glanceable",
+            "frame": "pager",
+            "arrangement": "glanceable",
+            "regions": [
+              "summary",
+              "hypothesis",
+              "response"
+            ]
+          },
+          {
+            "id": "morgan-workstation",
+            "actor": "human-morgan",
+            "role": "SOC Analyst",
+            "device": "workstation",
+            "task": "investigate",
+            "disclosure": "evidence",
+            "layout": "investigation",
+            "frame": "workstation",
+            "arrangement": "investigation",
+            "regions": [
+              "summary",
+              "intent",
+              "constraints",
+              "exploration",
+              "evidence",
+              "hypothesis",
+              "response",
+              "causal-record"
+            ]
+          },
+          {
+            "id": "correlation-agent",
+            "actor": "agent-correlation",
+            "role": "Evidence correlation",
+            "device": "agent-console",
+            "task": "correlate",
+            "disclosure": "operation",
+            "layout": "agent",
+            "frame": "agent-console",
+            "arrangement": "agent-correlation",
+            "regions": [
+              "summary",
+              "intent",
+              "constraints",
+              "hypothesis",
+              "agent-request",
+              "exploration",
+              "evidence",
+              "causal-record"
+            ]
+          },
+          {
+            "id": "response-agent",
+            "actor": "agent-response",
+            "role": "Containment planning",
+            "device": "agent-console",
+            "task": "plan-response",
+            "disclosure": "policy-and-execution",
+            "layout": "agent",
+            "frame": "agent-console",
+            "arrangement": "agent-response",
+            "regions": [
+              "summary",
+              "hypothesis",
+              "evidence",
+              "constraints",
+              "agent-request",
+              "response",
+              "authorization",
+              "causal-record"
+            ]
+          }
+        ]
+      }
+    },
+    "authoring": {
+      "tools": [
+        {
+          "id": "validateSocWorkflow",
+          "op": "validate",
+          "layer": "workflow",
+          "agentSafe": true,
+          "description": "Validate the governed SOC workflow source."
+        },
+        {
+          "id": "validateSocInteraction",
+          "op": "validate",
+          "layer": "interaction",
+          "agentSafe": true,
+          "description": "Validate actor and semantic interaction output."
+        },
+        {
+          "id": "validateSocPresentation",
+          "op": "validate",
+          "layer": "presentation",
+          "agentSafe": true,
+          "description": "Validate projection completeness before runtime lowering."
+        },
+        {
+          "id": "describeSocBlueprint",
+          "op": "describe",
+          "describe": "soc-blueprint",
+          "agentSafe": true,
+          "description": "Describe the SOC actors, authority, operational semantics, and presentation contexts."
+        }
+      ]
+    },
+    "services": {
+      "correlation-agent": {
+        "kind": "foundry-agent",
+        "version": "1",
+        "operations": {
+          "correlationAgentChat": {
+            "operation": "chat",
+            "contract": "soc-agent-reply/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "effect.args"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'outcome':'completed','detail':{'response':response}}"
+              }
+            }
+          }
+        },
+        "config": {
+          "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}",
+          "agent": "SOC-Correlation-Agent",
+          "credentialRef": "foundry-agent/access-key"
+        },
+        "scope": "per-session"
+      },
+      "response-agent": {
+        "kind": "foundry-agent",
+        "version": "1",
+        "operations": {
+          "responseAgentChat": {
+            "operation": "chat",
+            "contract": "soc-agent-reply/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "effect.args"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'outcome':'completed','detail':{'response':response}}"
+              }
+            }
+          }
+        },
+        "config": {
+          "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}",
+          "agent": "SOC-Response-Agent",
+          "credentialRef": "foundry-agent/access-key"
+        },
+        "scope": "per-session"
+      }
+    },
+    "runtime": {
+      "expression": "jsonata",
+      "namespaces": [
+        "soc"
+      ],
+      "contexts": [
+        "control",
+        "soc"
+      ],
+      "actions": [
+        "assign",
+        "derive",
+        "emit",
+        "invoke",
+        "route",
+        "confirm"
+      ],
+      "capabilities": {
+        "soc:workspace-shell": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "soc:header": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "soc:workspace-body": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ],
+          "emits": [
+            "establishIntent",
+            "addConstraint",
+            "suggestExploration",
+            "amendExploration",
+            "replanExploration",
+            "commitPartialFindings",
+            "proposeDc01",
+            "completeCorrelation",
+            "proposeHostA",
+            "reviseResponse",
+            "calculateResponse",
+            "recommendContainment",
+            "authorizeContainment",
+            "executeContainment",
+            "setPresentationContext",
+            "reset"
+          ]
+        },
+        "soc:substrate-chrome": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "soc:runtime-projection": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "soc:presentation-layout": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "soc:region-surface": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "soc:intent-region": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "soc:constraints-region": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "soc:hypothesis-region": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "soc:exploration-region": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "soc:evidence-region": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "soc:agent-request-region": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "soc:response-region": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "soc:authorization-region": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "authorizeContainment"
+          ]
+        },
+        "soc:causal-record-region": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "externals": {
+        "projectionViews": {
+          "soc": {
+            "from": "self"
+          }
+        },
+        "effectHandlers": [
+          "establishIntent",
+          "addConstraint",
+          "suggestExploration",
+          "amendExploration",
+          "replanExploration",
+          "commitPartialFindings",
+          "evaluateDc01Policy",
+          "completeCorrelation",
+          "proposeHostA",
+          "reviseResponse",
+          "calculateResponse",
+          "recommendContainment",
+          "authorizeContainment",
+          "setPresentationContext",
+          "syncInspection",
+          "executeContainment",
+          "resetScenario"
+        ]
+      },
+      "state": {
+        "soc": {
+          "presentation": {
+            "selectedContext": "full-substrate",
+            "revision": 0,
+            "frame": "shared",
+            "arrangement": "inspection",
+            "regionFacets": {
+              "summary": {
+                "visible": true,
+                "rank": 0,
+                "priority": "supporting",
+                "disclosure": "detail",
+                "concern": "orientation",
+                "group": "orientation",
+                "presentation": "brief"
+              },
+              "intent": {
+                "visible": true,
+                "rank": 1,
+                "priority": "supporting",
+                "disclosure": "detail",
+                "concern": "guardrails",
+                "group": "guardrails",
+                "presentation": "brief"
+              },
+              "constraints": {
+                "visible": true,
+                "rank": 2,
+                "priority": "supporting",
+                "disclosure": "detail",
+                "concern": "guardrails",
+                "group": "guardrails",
+                "presentation": "brief"
+              },
+              "hypothesis": {
+                "visible": true,
+                "rank": 3,
+                "priority": "supporting",
+                "disclosure": "detail",
+                "concern": "orientation",
+                "group": "orientation",
+                "presentation": "finding"
+              },
+              "exploration": {
+                "visible": true,
+                "rank": 4,
+                "priority": "supporting",
+                "disclosure": "detail",
+                "concern": "investigation",
+                "group": "investigation",
+                "presentation": "collection"
+              },
+              "evidence": {
+                "visible": true,
+                "rank": 5,
+                "priority": "supporting",
+                "disclosure": "detail",
+                "concern": "investigation",
+                "group": "investigation",
+                "presentation": "collection"
+              },
+              "agent-request": {
+                "visible": false,
+                "rank": 50,
+                "priority": "supporting",
+                "disclosure": "omitted",
+                "concern": "delegation",
+                "group": "request",
+                "presentation": "agent-request"
+              },
+              "response": {
+                "visible": true,
+                "rank": 6,
+                "priority": "supporting",
+                "disclosure": "detail",
+                "concern": "response",
+                "group": "response",
+                "presentation": "decision"
+              },
+              "authorization": {
+                "visible": true,
+                "rank": 7,
+                "priority": "supporting",
+                "disclosure": "detail",
+                "concern": "governance",
+                "group": "governance",
+                "presentation": "decision"
+              },
+              "causal-record": {
+                "visible": true,
+                "rank": 8,
+                "priority": "supporting",
+                "disclosure": "detail",
+                "concern": "provenance",
+                "group": "provenance",
+                "presentation": "audit"
+              }
+            },
+            "contexts": [
+              {
+                "id": "full-substrate",
+                "label": "Full substrate",
+                "audience": "Technical inspection",
+                "focus": "All shared operational and causal state"
+              },
+              {
+                "id": "war-room",
+                "label": "War room",
+                "audience": "Shared team",
+                "focus": "Incident, hypothesis, response, and authority"
+              },
+              {
+                "id": "investigation-board",
+                "label": "Investigation board",
+                "audience": "Shared team",
+                "focus": "Investigation lifecycle from framing through causal record"
+              },
+              {
+                "id": "priya-mobile",
+                "label": "Priya · Mobile",
+                "audience": "Incident Commander",
+                "focus": "Decision, constraint, blast radius, and authorization"
+              },
+              {
+                "id": "priya-laptop",
+                "label": "Priya · Laptop",
+                "audience": "Incident Commander",
+                "focus": "Command view, evidence summary, and journal context"
+              },
+              {
+                "id": "morgan-pager",
+                "label": "Morgan · Pager",
+                "audience": "SOC Analyst",
+                "focus": "Urgent findings, recommendation, and incident status"
+              },
+              {
+                "id": "morgan-workstation",
+                "label": "Morgan · Workstation",
+                "audience": "SOC Analyst",
+                "focus": "Intent, exploration, evidence, and hypothesis"
+              },
+              {
+                "id": "correlation-agent",
+                "label": "Correlation Agent",
+                "audience": "Agent projection",
+                "focus": "Exploration plan, source evidence, and correlation"
+              },
+              {
+                "id": "response-agent",
+                "label": "Response Agent",
+                "audience": "Agent projection",
+                "focus": "Proposal, policy result, fallback, and execution"
+              }
+            ]
+          },
+          "stage": "Incident opened",
+          "incident": {
+            "id": "INC-2048",
+            "title": "Privileged access anomaly during payroll cutover",
+            "severity": "High",
+            "status": "Investigating",
+            "governance": "Open"
+          },
+          "actors": [
+            {
+              "id": "human-morgan",
+              "kind": "human",
+              "name": "Morgan",
+              "role": "SOC Analyst",
+              "status": "active",
+              "objective": "Establish scope and direct investigation",
+              "authority": "May direct investigation and recommend containment"
+            },
+            {
+              "id": "human-priya",
+              "kind": "human",
+              "name": "Priya",
+              "role": "Incident Commander",
+              "status": "active",
+              "objective": "Protect payroll continuity and authorize consequential action",
+              "authority": "May authorize protected containment"
+            },
+            {
+              "id": "agent-correlation",
+              "kind": "agent",
+              "name": "Correlation Agent",
+              "role": "Evidence correlation",
+              "status": "waiting",
+              "objective": "Resolve the execution origin across trusted sources",
+              "authority": "May query, correlate, and contribute findings"
+            },
+            {
+              "id": "agent-response",
+              "kind": "agent",
+              "name": "Response Agent",
+              "role": "Containment planning",
+              "status": "waiting",
+              "objective": "Prepare a bounded and reversible response",
+              "authority": "May propose and execute only after authorization"
+            }
+          ],
+          "agentProviders": {
+            "agent-correlation": {
+              "mode": "mock",
+              "status": "ready",
+              "agentName": "SOC-Correlation-Agent",
+              "conversationId": "",
+              "responseId": "",
+              "lastProvider": "mock",
+              "fallbackReason": ""
+            },
+            "agent-response": {
+              "mode": "mock",
+              "status": "ready",
+              "agentName": "SOC-Response-Agent",
+              "conversationId": "",
+              "responseId": "",
+              "lastProvider": "mock",
+              "fallbackReason": ""
+            }
+          },
+          "intent": null,
+          "constraints": [],
+          "dataSources": [
+            {
+              "id": "identity",
+              "name": "Identity logs",
+              "status": "ready"
+            },
+            {
+              "id": "pam",
+              "name": "Privileged access",
+              "status": "ready"
+            },
+            {
+              "id": "endpoint",
+              "name": "Endpoint telemetry",
+              "status": "ready"
+            },
+            {
+              "id": "network",
+              "name": "Network flow",
+              "status": "ready"
+            },
+            {
+              "id": "assets",
+              "name": "Asset inventory",
+              "status": "ready"
+            }
+          ],
+          "explorations": [],
+          "evidence": [],
+          "correlations": [],
+          "entities": [
+            {
+              "id": "DC-01",
+              "kind": "domain-controller",
+              "criticality": "protected",
+              "dependency": "Active payroll cutover",
+              "state": "observed"
+            },
+            {
+              "id": "Host-A",
+              "kind": "admin-workstation",
+              "criticality": "non-critical",
+              "dependency": "No active payroll dependency",
+              "state": "suspected"
+            }
+          ],
+          "hypothesis": {
+            "statement": "The execution origin is unresolved between DC-01 and Host-A.",
+            "confidence": 28,
+            "evidenceIds": []
+          },
+          "proposal": null,
+          "recommendation": null,
+          "authorization": null,
+          "journal": []
+        },
+        "inspection": {
+          "participants": [
+            {
+              "id": "human-morgan",
+              "kind": "human",
+              "name": "Morgan",
+              "role": "SOC Analyst",
+              "status": "active",
+              "capabilities": [
+                "Can direct investigation and recommend containment"
+              ],
+              "focusRef": {
+                "namespace": "soc",
+                "kind": "actor",
+                "id": "human-morgan"
+              }
+            },
+            {
+              "id": "human-priya",
+              "kind": "human",
+              "name": "Priya",
+              "role": "Incident Commander",
+              "status": "active",
+              "capabilities": [
+                "Can authorize protected containment"
+              ],
+              "focusRef": {
+                "namespace": "soc",
+                "kind": "actor",
+                "id": "human-priya"
+              }
+            },
+            {
+              "id": "agent-correlation",
+              "kind": "agent",
+              "name": "Correlation Agent",
+              "role": "Evidence correlation",
+              "status": "waiting",
+              "capabilities": [
+                "Can query, correlate, and contribute findings"
+              ],
+              "focusRef": {
+                "namespace": "soc",
+                "kind": "actor",
+                "id": "agent-correlation"
+              }
+            },
+            {
+              "id": "agent-response",
+              "kind": "agent",
+              "name": "Response Agent",
+              "role": "Containment planning",
+              "status": "waiting",
+              "capabilities": [
+                "Can propose and execute only after authorization"
+              ],
+              "focusRef": {
+                "namespace": "soc",
+                "kind": "actor",
+                "id": "agent-response"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "blueprint-template": "genui",
+    "tiers": [
+      {
+        "id": "workflow",
+        "kind": "workflow",
+        "schema": "genui/workflow.schema.json",
+        "description": "Governed SOC operational semantics independent of any demonstration sequence.",
+        "input": {
+          "properties": {
+            "workflow": {
+              "title": "Workflow",
+              "default": "governed-soc-investigation",
+              "enum": [
+                "governed-soc-investigation"
+              ]
+            },
+            "subject": {
+              "title": "Incident",
+              "default": "Privileged access anomaly during payroll cutover"
+            }
+          },
+          "required": [
+            "workflow",
+            "subject"
+          ]
+        }
+      },
+      {
+        "id": "interaction",
+        "kind": "interaction",
+        "schema": "genui/interaction.schema.json",
+        "description": "Actor, authority, provenance, semantic regions, and domain action vocabulary."
+      },
+      {
+        "id": "presentation",
+        "kind": "presentation",
+        "schema": "genui/presentation.schema.json",
+        "description": "Context-sensitive arrangement and disclosure over one shared substrate."
+      },
+      {
+        "id": "runtime-doc",
+        "kind": "runtime-doc",
+        "schema": "genui/runtime-document.schema.json",
+        "description": "Kernel-ready SOC workspace capability, reads, and governed domain events."
+      }
+    ]
+  }
+}

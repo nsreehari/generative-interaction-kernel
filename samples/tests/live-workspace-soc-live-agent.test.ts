@@ -1,12 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import profileArtifact from "../profiles/live-workspace-soc/profile.json" with { type: "json" };
-import workflowRecipeArtifact from "../profiles/live-workspace-soc/workflow-to-interaction.recipe.json" with { type: "json" };
+import blueprint from "../profiles/live-workspace-soc/blueprint.json" with { type: "json" };
 
-const actors = profileArtifact.payload.resources.actors.inline;
-const authorityPolicy = profileArtifact.payload.resources.authorityPolicy.inline;
-const parts = workflowRecipeArtifact.payload.program[0]?.emit?.parts ?? [];
+const actors = blueprint.payload.resources.actors.inline;
+const authorityPolicy = blueprint.payload.resources.authorityPolicy.inline;
+const parts = blueprint.payload.recipes[0]?.program?.[0]?.emit?.parts ?? [];
 const exploration = parts.find((part) => part.name === "exploration");
 
 test("SOC profile keeps the agent authority boundary declarative", () => {

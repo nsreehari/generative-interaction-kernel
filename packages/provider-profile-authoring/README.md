@@ -1,7 +1,7 @@
 # @gik/provider-profile-authoring
 
-Profile-authoring provider engine for the **Generative Interaction Kernel**. Builds an authoring
-registry and summarizes profile artifacts — the engine behind the Profiles governance console.
+Blueprint-authoring provider engine for the **Generative Interaction Kernel**. Builds an authoring
+registry and summarizes canonical blueprints for authoring workflows.
 
 ```bash
 npm install @gik/provider-profile-authoring
@@ -11,7 +11,7 @@ npm install @gik/provider-profile-authoring
 import {
   profileAuthoringFlow,
   createProfileAuthoringRegistry,
-  summarizeProfileArtifacts,
+  summarizeBlueprint,
 } from "@gik/provider-profile-authoring";
 ```
 

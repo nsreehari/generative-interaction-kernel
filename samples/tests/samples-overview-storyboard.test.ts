@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import socProfile from "../profiles/live-workspace-soc/profile.json" with { type: "json" };
+import socBlueprint from "../profiles/live-workspace-soc/blueprint.json" with { type: "json" };
 import t3Scenario from "../scenarios/live-workspace-soc-t3/scenario.json" with { type: "json" };
 import { openSampleBlueprint } from "../shared/blueprints";
 
@@ -11,7 +11,7 @@ const overview = openSampleBlueprint("samples-overview").state.overview as unkno
   proofPlanes: Array<{ blueprint: string; gik: boolean }>;
   expansion: { domains: Array<{ id: string }>; status: string; boundary: string };
 };
-const resources = socProfile.payload.resources;
+const resources = socBlueprint.payload.resources;
 const canonicalActors = resources.actors.inline;
 const canonicalActs = t3Scenario.payload.steps;
 

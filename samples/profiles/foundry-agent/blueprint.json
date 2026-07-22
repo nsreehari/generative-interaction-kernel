@@ -1,0 +1,882 @@
+{
+  "gik": "0.1",
+  "type": "blueprint",
+  "payload": {
+    "id": "foundry-agent",
+    "kind": "runtime-blueprint",
+    "version": "1.0",
+    "recipes": [],
+    "resources": {
+      "document": {
+        "inline": {
+          "root": {
+            "capability": "ui:screen",
+            "id": "foundry-agent-root",
+            "props": {
+              "title": "Foundry Agent",
+              "subtitle": "Choose an available agent and start a conversation."
+            },
+            "edges": {
+              "children": [
+                {
+                  "capability": "foundry:access-gate",
+                  "id": "foundry-access-gate",
+                  "provides": [
+                    {
+                      "token": "foundry-access",
+                      "read": "agent.accessStatus",
+                      "when": "agent.accessStatus = 'ready'"
+                    }
+                  ],
+                  "edges": {
+                    "read": {
+                      "status": "agent.accessStatus",
+                      "error": "agent.accessError"
+                    },
+                    "on": {
+                      "accessRequested": [
+                        {
+                          "do": "assign",
+                          "target": "agent.accessStatus",
+                          "args": {
+                            "value": "checking"
+                          }
+                        },
+                        {
+                          "do": "assign",
+                          "target": "agent.accessError",
+                          "args": {
+                            "value": ""
+                          }
+                        },
+                        {
+                          "do": "invoke",
+                          "args": {
+                            "tool": "checkFoundryAccess"
+                          }
+                        }
+                      ],
+                      "accessCleared": [
+                        {
+                          "do": "invoke",
+                          "args": {
+                            "tool": "clearFoundryAccess"
+                          }
+                        }
+                      ]
+                    },
+                    "children": [
+                      {
+                        "capability": "agent:ask-page",
+                        "id": "agent-demo",
+                        "props": {
+                          "title": "Ask the agent"
+                        },
+                        "edges": {
+                          "children": [
+                            {
+                              "capability": "agent:agent-selector",
+                              "id": "agent-selector",
+                              "requires": [
+                                "foundry-access"
+                              ],
+                              "provides": [
+                                {
+                                  "token": "foundry-agent-selection",
+                                  "read": "agent.agentName",
+                                  "when": "agent.agentName != ''"
+                                }
+                              ],
+                              "edges": {
+                                "read": {
+                                  "agentName": "agent.agentName",
+                                  "agentOptions": "agent.agentOptions",
+                                  "agentsStatus": "agent.agentsStatus",
+                                  "agentsError": "agent.agentsError"
+                                },
+                                "on": {
+                                  "agentsRequested": [
+                                    {
+                                      "do": "assign",
+                                      "target": "agent.agentsStatus",
+                                      "args": {
+                                        "value": "loading"
+                                      }
+                                    },
+                                    {
+                                      "do": "assign",
+                                      "target": "agent.agentsError",
+                                      "args": {
+                                        "value": ""
+                                      }
+                                    },
+                                    {
+                                      "do": "invoke",
+                                      "args": {
+                                        "tool": "discoverAgents"
+                                      }
+                                    }
+                                  ],
+                                  "select": [
+                                    {
+                                      "do": "assign",
+                                      "target": "agent.agentName",
+                                      "args": {
+                                        "from": "$event.value"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:alert",
+                              "id": "agent-connected",
+                              "props": {
+                                "label": "Connected to",
+                                "level": "good"
+                              },
+                              "edges": {
+                                "read": {
+                                  "value": "agent.agentName"
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:field",
+                              "id": "agent-message-field",
+                              "props": {
+                                "label": "Message",
+                                "placeholder": "Ask the agent something..."
+                              },
+                              "edges": {
+                                "read": {
+                                  "value": "agent.draft"
+                                },
+                                "on": {
+                                  "input": [
+                                    {
+                                      "do": "assign",
+                                      "target": "agent.draft",
+                                      "args": {
+                                        "from": "$event.value"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:button",
+                              "id": "agent-ask-btn",
+                              "requires": [
+                                "foundry-agent-selection"
+                              ],
+                              "props": {
+                                "label": "Ask",
+                                "tone": "primary"
+                              },
+                              "edges": {
+                                "on": {
+                                  "press": [
+                                    {
+                                      "do": "invoke",
+                                      "args": {
+                                        "tool": "askAgent"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:alert",
+                              "id": "agent-request-error",
+                              "props": {
+                                "label": "Something went wrong",
+                                "level": "error"
+                              },
+                              "edges": {
+                                "gate": "agent.error != ''",
+                                "read": {
+                                  "value": "agent.error"
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:panel",
+                              "id": "agent-asked-panel",
+                              "props": {
+                                "title": "You asked",
+                                "variant": "inset"
+                              },
+                              "edges": {
+                                "gate": "agent.lastAsked != ''",
+                                "children": [
+                                  {
+                                    "capability": "ui:note",
+                                    "id": "agent-asked-value",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "edges": {
+                                      "read": {
+                                        "value": "agent.lastAsked"
+                                      }
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "capability": "ui:panel",
+                              "id": "agent-reply-panel",
+                              "props": {
+                                "title": "Reply",
+                                "variant": "inset"
+                              },
+                              "edges": {
+                                "children": [
+                                  {
+                                    "capability": "ui:note",
+                                    "id": "agent-reply-empty",
+                                    "props": {
+                                      "value": "Send a message to see the agent's reply.",
+                                      "tone": "muted"
+                                    },
+                                    "edges": {
+                                      "gate": "agent.reply = ''"
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:markdown",
+                                    "id": "agent-reply-value",
+                                    "edges": {
+                                      "gate": "agent.reply != ''",
+                                      "read": {
+                                        "value": "agent.reply"
+                                      }
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "capability": "agent:sign-out-button",
+                              "id": "agent-signout-btn",
+                              "props": {
+                                "label": "Sign out"
+                              },
+                              "edges": {
+                                "on": {
+                                  "press": [
+                                    {
+                                      "do": "invoke",
+                                      "args": {
+                                        "tool": "signOut"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "services": {
+      "assistant": {
+        "kind": "foundry-agent",
+        "version": "1",
+        "operations": {
+          "askAgent": {
+            "operation": "chat",
+            "contract": "foundry-chat/v1",
+            "subject": {
+              "kind": "chat",
+              "blueprintId": "foundry-agent",
+              "turnId": "current"
+            },
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'message':$trim(state.agent.draft),'agentName':$trim(state.agent.agentName),'conversationId':state.agent.conversationId = '' ? null : state.agent.conversationId}"
+              }
+            },
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "message": "Foundry agent returned an invalid chat response",
+                  "schema": {
+                    "type": "object",
+                    "required": [
+                      "conversationId",
+                      "responseId",
+                      "reply"
+                    ],
+                    "properties": {
+                      "conversationId": {
+                        "type": "string"
+                      },
+                      "responseId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "reply": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                }
+              ]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'agent.error','value':''},{'op':'set','path':'agent.lastAsked','value':$trim(state.agent.draft)},{'op':'set','path':'agent.draft','value':''},{'op':'set','path':'agent.conversationId','value':response.conversationId},{'op':'set','path':'agent.reply','value':response.reply}],'detail':{'provider':'foundry-agent','responseId':response.responseId,'conversationId':response.conversationId}}"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($access := error.message = 'Foundry access is required' or error.status = 401 or error.status = 403; {'ops':[{'op':'set','path':'agent.error','value':$access ? '' : error.message},{'op':'set','path':'agent.accessStatus','value':$access ? 'required' : state.agent.accessStatus},{'op':'set','path':'agent.accessError','value':$access ? (error.status = 401 or error.status = 403 ? 'That access key was rejected.' : 'Foundry access is required.') : state.agent.accessError}]})"
+              }
+            },
+            "onViolation": {
+              "action": "fail"
+            }
+          },
+          "checkFoundryAccess": {
+            "operation": "check-access",
+            "contract": "foundry-access-check/v1",
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'agent.accessStatus','value':'ready'},{'op':'set','path':'agent.accessError','value':''}]}"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($rejected := error.status = 401 or error.status = 403; $missing := error.message = 'Foundry access is required'; {'ops':[{'op':'set','path':'agent.accessStatus','value':($rejected or $missing) ? 'required' : 'error'},{'op':'set','path':'agent.accessError','value':$rejected ? 'That access key was rejected.' : ($missing ? 'Foundry access is required.' : error.message)}]})"
+              }
+            },
+            "onViolation": {
+              "action": "fail"
+            }
+          },
+          "discoverAgents": {
+            "operation": "discover",
+            "contract": "foundry-agent-list/v1",
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "message": "Foundry returned an invalid agent list",
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              ]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'agent.agentOptions','value':response},{'op':'set','path':'agent.agentName','value':$count(response) > 0 ? response[0] : ''},{'op':'set','path':'agent.agentsStatus','value':$count(response) > 0 ? 'ready' : 'empty'},{'op':'set','path':'agent.agentsError','value':''}]}"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($rejected := error.status = 401 or error.status = 403; $missing := error.message = 'Foundry access is required'; {'ops':[{'op':'set','path':'agent.agentOptions','value':[]},{'op':'set','path':'agent.agentName','value':''},{'op':'set','path':'agent.accessStatus','value':($rejected or $missing) ? 'required' : state.agent.accessStatus},{'op':'set','path':'agent.accessError','value':$rejected ? 'That access key was rejected.' : ($missing ? 'Foundry access is required.' : state.agent.accessError)},{'op':'set','path':'agent.agentsStatus','value':($rejected or $missing) ? 'idle' : 'error'},{'op':'set','path':'agent.agentsError','value':($rejected or $missing) ? '' : error.message}]})"
+              }
+            },
+            "onViolation": {
+              "action": "fail"
+            }
+          }
+        },
+        "config": {
+          "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}",
+          "credentialRef": "foundry-agent/access-key"
+        },
+        "scope": "per-session"
+      }
+    },
+    "runtime": {
+      "expression": "jsonata",
+      "namespaces": [
+        "agent"
+      ],
+      "actions": [
+        "assign",
+        "invoke"
+      ],
+      "capabilities": {
+        "ui:screen": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "ui:panel": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "ui:col": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "ui:row": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "ui:heading": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "ui:note": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "ui:text": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "ui:alert": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "ui:field": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "input"
+          ]
+        },
+        "foundry:access-gate": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "accessRequested",
+            "accessCleared"
+          ],
+          "slots": [
+            "children"
+          ]
+        },
+        "agent:agent-selector": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "agentsRequested",
+            "select"
+          ]
+        },
+        "agent:ask-page": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "agent:sign-out-button": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "press"
+          ]
+        },
+        "ui:button": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "press"
+          ]
+        },
+        "ui:markdown": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "externals": {
+        "projectionViews": {
+          "ui": {
+            "from": "floor"
+          },
+          "agent": {
+            "from": "self"
+          },
+          "foundry": {
+            "from": "foundry",
+            "use": [
+              "access-gate"
+            ]
+          }
+        },
+        "effectHandlers": [
+          "clearFoundryAccess",
+          "signOut"
+        ]
+      },
+      "state": {
+        "agent": {
+          "accessStatus": "required",
+          "accessError": "",
+          "agentName": "",
+          "draft": "",
+          "reply": "",
+          "lastAsked": "",
+          "conversationId": "",
+          "agentOptions": [],
+          "agentsStatus": "idle",
+          "agentsError": "",
+          "error": ""
+        }
+      }
+    },
+    "tiers": [
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document",
+        "description": "Authored terminal document for this hosted Blueprint."
+      }
+    ],
+    "organism": {
+      "root": {
+        "capability": "ui:screen",
+        "id": "foundry-agent-root",
+        "props": {
+          "title": "Foundry Agent",
+          "subtitle": "Choose an available agent and start a conversation."
+        },
+        "edges": {
+          "children": [
+            {
+              "capability": "foundry:access-gate",
+              "id": "foundry-access-gate",
+              "provides": [
+                {
+                  "token": "foundry-access",
+                  "read": "agent.accessStatus",
+                  "when": "agent.accessStatus = 'ready'"
+                }
+              ],
+              "edges": {
+                "read": {
+                  "status": "agent.accessStatus",
+                  "error": "agent.accessError"
+                },
+                "on": {
+                  "accessRequested": [
+                    {
+                      "do": "assign",
+                      "target": "agent.accessStatus",
+                      "args": {
+                        "value": "checking"
+                      }
+                    },
+                    {
+                      "do": "assign",
+                      "target": "agent.accessError",
+                      "args": {
+                        "value": ""
+                      }
+                    },
+                    {
+                      "do": "invoke",
+                      "args": {
+                        "tool": "checkFoundryAccess"
+                      }
+                    }
+                  ],
+                  "accessCleared": [
+                    {
+                      "do": "invoke",
+                      "args": {
+                        "tool": "clearFoundryAccess"
+                      }
+                    }
+                  ]
+                },
+                "children": [
+                  {
+                    "capability": "agent:ask-page",
+                    "id": "agent-demo",
+                    "props": {
+                      "title": "Ask the agent"
+                    },
+                    "edges": {
+                      "children": [
+                        {
+                          "capability": "agent:agent-selector",
+                          "id": "agent-selector",
+                          "requires": [
+                            "foundry-access"
+                          ],
+                          "provides": [
+                            {
+                              "token": "foundry-agent-selection",
+                              "read": "agent.agentName",
+                              "when": "agent.agentName != ''"
+                            }
+                          ],
+                          "edges": {
+                            "read": {
+                              "agentName": "agent.agentName",
+                              "agentOptions": "agent.agentOptions",
+                              "agentsStatus": "agent.agentsStatus",
+                              "agentsError": "agent.agentsError"
+                            },
+                            "on": {
+                              "agentsRequested": [
+                                {
+                                  "do": "assign",
+                                  "target": "agent.agentsStatus",
+                                  "args": {
+                                    "value": "loading"
+                                  }
+                                },
+                                {
+                                  "do": "assign",
+                                  "target": "agent.agentsError",
+                                  "args": {
+                                    "value": ""
+                                  }
+                                },
+                                {
+                                  "do": "invoke",
+                                  "args": {
+                                    "tool": "discoverAgents"
+                                  }
+                                }
+                              ],
+                              "select": [
+                                {
+                                  "do": "assign",
+                                  "target": "agent.agentName",
+                                  "args": {
+                                    "from": "$event.value"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "capability": "ui:alert",
+                          "id": "agent-connected",
+                          "props": {
+                            "label": "Connected to",
+                            "level": "good"
+                          },
+                          "edges": {
+                            "read": {
+                              "value": "agent.agentName"
+                            }
+                          }
+                        },
+                        {
+                          "capability": "ui:field",
+                          "id": "agent-message-field",
+                          "props": {
+                            "label": "Message",
+                            "placeholder": "Ask the agent something..."
+                          },
+                          "edges": {
+                            "read": {
+                              "value": "agent.draft"
+                            },
+                            "on": {
+                              "input": [
+                                {
+                                  "do": "assign",
+                                  "target": "agent.draft",
+                                  "args": {
+                                    "from": "$event.value"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "capability": "ui:button",
+                          "id": "agent-ask-btn",
+                          "requires": [
+                            "foundry-agent-selection"
+                          ],
+                          "props": {
+                            "label": "Ask",
+                            "tone": "primary"
+                          },
+                          "edges": {
+                            "on": {
+                              "press": [
+                                {
+                                  "do": "invoke",
+                                  "args": {
+                                    "tool": "askAgent"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "capability": "ui:alert",
+                          "id": "agent-request-error",
+                          "props": {
+                            "label": "Something went wrong",
+                            "level": "error"
+                          },
+                          "edges": {
+                            "gate": "agent.error != ''",
+                            "read": {
+                              "value": "agent.error"
+                            }
+                          }
+                        },
+                        {
+                          "capability": "ui:panel",
+                          "id": "agent-asked-panel",
+                          "props": {
+                            "title": "You asked",
+                            "variant": "inset"
+                          },
+                          "edges": {
+                            "gate": "agent.lastAsked != ''",
+                            "children": [
+                              {
+                                "capability": "ui:note",
+                                "id": "agent-asked-value",
+                                "props": {
+                                  "tone": "muted"
+                                },
+                                "edges": {
+                                  "read": {
+                                    "value": "agent.lastAsked"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "capability": "ui:panel",
+                          "id": "agent-reply-panel",
+                          "props": {
+                            "title": "Reply",
+                            "variant": "inset"
+                          },
+                          "edges": {
+                            "children": [
+                              {
+                                "capability": "ui:note",
+                                "id": "agent-reply-empty",
+                                "props": {
+                                  "value": "Send a message to see the agent's reply.",
+                                  "tone": "muted"
+                                },
+                                "edges": {
+                                  "gate": "agent.reply = ''"
+                                }
+                              },
+                              {
+                                "capability": "ui:markdown",
+                                "id": "agent-reply-value",
+                                "edges": {
+                                  "gate": "agent.reply != ''",
+                                  "read": {
+                                    "value": "agent.reply"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "capability": "agent:sign-out-button",
+                          "id": "agent-signout-btn",
+                          "props": {
+                            "label": "Sign out"
+                          },
+                          "edges": {
+                            "on": {
+                              "press": [
+                                {
+                                  "do": "invoke",
+                                  "args": {
+                                    "tool": "signOut"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

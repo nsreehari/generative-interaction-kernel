@@ -1,13 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
-  loadProfile,
+  loadBlueprint,
   resolveProfileTemplate,
   resolveProfileTemplateResource,
   runProfile,
   type LayerRecipe,
-  type ProfileArtifact,
-  type RecipeArtifactBase,
+  type BlueprintArtifact,
 } from "@gik/profile";
 
 export interface SampleProfileRunExpectation {
@@ -24,8 +23,7 @@ export interface SampleProfileRunCase {
 
 export interface SampleProfileTestSpec {
   name: string;
-  profileFile: string;
-  recipeFiles: readonly string[];
+  blueprintFile: string;
   expectLoad: {
     id: string;
     kind: string;
@@ -51,11 +49,9 @@ function requiredJson(path: string): unknown {
 }
 
 export function registerSampleProfileTests(baseDir: string, spec: SampleProfileTestSpec): void {
-  const profileArtifact = requiredJson(joinSamplePath(baseDir, spec.profileFile)) as ProfileArtifact;
-  const recipeArtifacts = spec.recipeFiles.map((file) => requiredJson(joinSamplePath(baseDir, file))) as RecipeArtifactBase<LayerRecipe>[];
-  const profile = loadProfile<LayerRecipe>(
-    profileArtifact,
-    recipeArtifacts,
+  const blueprint = requiredJson(joinSamplePath(baseDir, spec.blueprintFile)) as BlueprintArtifact<LayerRecipe>;
+  const profile = loadBlueprint<LayerRecipe>(
+    blueprint,
     resolveProfileTemplateResource,
     resolveProfileTemplate
   );

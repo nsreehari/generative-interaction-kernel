@@ -1,7 +1,9 @@
 import layerSchemaJson from "../../schemas/layer.schema.json" with { type: "json" };
 import profileSchemaJson from "../../schemas/profile.schema.json" with { type: "json" };
 import loweringRecipeSchemaJson from "../../schemas/lowering-recipe.schema.json" with { type: "json" };
+import blueprintSchemaJson from "../../schemas/blueprint.schema.json" with { type: "json" };
 import { runDeclarativeValidators } from "@gik/evaluators";
+import type { BlueprintArtifact } from "./blueprint";
 import {
   applyProfileTemplate,
   resolveProfile,
@@ -19,6 +21,7 @@ import {
 export const layerSchema = layerSchemaJson;
 export const profileSchema = profileSchemaJson;
 export const loweringRecipeSchema = loweringRecipeSchemaJson;
+export const blueprintSchema = blueprintSchemaJson;
 
 export type StructuralSchemaValidatorRef = {
   schema: Record<string, unknown>;
@@ -54,6 +57,15 @@ const loweringRecipeArtifactValidators = [{
   schema: loweringRecipeSchema,
   refs: sharedSchemaRefs,
   message: "Invalid lowering recipe artifact",
+}] as const;
+const blueprintArtifactValidators = [{
+  kind: "ajv-schema",
+  schema: blueprintSchema,
+  refs: [
+    { schema: layerSchema, key: layerSchema.$id },
+    { schema: loweringRecipeSchema, key: loweringRecipeSchema.$id },
+  ],
+  message: "Invalid blueprint artifact",
 }] as const;
 
 const emptyAuthoringReport = (): AuthoringReport => ({ ok: true, errors: [], warnings: [] });
@@ -262,4 +274,72 @@ export function loadProfile<TRecipe extends RecipeBase = RecipeBase>(
     recipes,
     resolve
   );
+}
+
+export class BlueprintValidationError extends Error {
+  constructor(
+    message: string,
+    readonly errors: unknown
+  ) {
+    super(message);
+    this.name = "BlueprintValidationError";
+  }
+}
+
+export function validateBlueprintArtifact<TRecipe extends RecipeBase = RecipeBase>(
+  artifact: unknown,
+): asserts artifact is BlueprintArtifact<TRecipe> {
+  const report = runDeclarativeValidators(blueprintArtifactValidators, artifact as never);
+  if (!report.ok) {
+    throw new BlueprintValidationError(
+      report.errors.map((issue) => issue.detail).join("; "),
+      report.errors,
+    );
+  }
+
+  const blueprint = artifact as BlueprintArtifact<TRecipe>;
+  const tierIds = new Set<string>();
+  for (const tier of blueprint.payload.tiers) {
+    if (tierIds.has(tier.id)) {
+      throw new BlueprintValidationError(`Duplicate blueprint tier '${tier.id}'`, []);
+    }
+    tierIds.add(tier.id);
+  }
+
+  const recipeIds = new Set<string>();
+  const incoming = new Map<string, number>();
+  const outgoing = new Map<string, number>();
+  for (const recipe of blueprint.payload.recipes) {
+    if (recipeIds.has(recipe.id)) {
+      throw new BlueprintValidationError(`Duplicate blueprint recipe '${recipe.id}'`, []);
+    }
+    recipeIds.add(recipe.id);
+    if (!tierIds.has(recipe.from)) {
+      throw new BlueprintValidationError(`Blueprint recipe '${recipe.id}' starts from unknown tier '${recipe.from}'`, []);
+    }
+    if (!tierIds.has(recipe.to)) {
+      throw new BlueprintValidationError(`Blueprint recipe '${recipe.id}' targets unknown tier '${recipe.to}'`, []);
+    }
+    outgoing.set(recipe.from, (outgoing.get(recipe.from) ?? 0) + 1);
+    incoming.set(recipe.to, (incoming.get(recipe.to) ?? 0) + 1);
+  }
+
+  if (blueprint.payload.recipes.length === 0 && !blueprint.payload.organism?.root) {
+    throw new BlueprintValidationError("A zero-recipe blueprint requires organism.root", []);
+  }
+  if (blueprint.payload.recipes.length > 0) {
+    const sourceTiers = blueprint.payload.tiers.filter((tier) => !incoming.has(tier.id));
+    const terminalTiers = blueprint.payload.tiers.filter((tier) => !outgoing.has(tier.id));
+    if (sourceTiers.length !== 1 || terminalTiers.length !== 1) {
+      throw new BlueprintValidationError("Blueprint recipes must form one connected tier chain", []);
+    }
+    for (const tier of blueprint.payload.tiers) {
+      if ((incoming.get(tier.id) ?? 0) > 1 || (outgoing.get(tier.id) ?? 0) > 1) {
+        throw new BlueprintValidationError(`Blueprint tier '${tier.id}' branches or merges`, []);
+      }
+    }
+    if (!["runtime-document", "runtime-doc"].includes(terminalTiers[0].kind)) {
+      throw new BlueprintValidationError("Blueprint recipe chain must terminate at a runtime-document tier", []);
+    }
+  }
 }

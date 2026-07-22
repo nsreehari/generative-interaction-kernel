@@ -1,4 +1,4 @@
-import type { ProfileArtifact, RecipeArtifactBase } from "../../../profile/src/profile-core";
+import type { BlueprintArtifact } from "../../../profile/src/blueprint";
 import type { FlowRegistry } from "../../step-orchestrator/src/step-orchestrator";
 import type { StepFlowConfig } from "../../vendor/step-machine/types";
 
@@ -9,14 +9,13 @@ export interface GraphDigest {
   unlocked: string[];
 }
 
-export interface ProfileSeedSummary {
-  source: "artifact";
+export interface BlueprintSeedSummary {
+  source: "blueprint";
   id: string;
   kind: string;
   version: string;
-  layers: Array<{ id: string; kind: string }>;
-  recipeRefs: Array<{ id: string; from: string; to: string }>;
-  recipeArtifacts: Array<{ id: string; from: string; to: string }>;
+  tiers: Array<{ id: string; kind: string }>;
+  recipes: Array<{ id: string; from: string; to: string }>;
 }
 
 export const profileAuthoringFlow: StepFlowConfig = {
@@ -42,7 +41,7 @@ export function createProfileAuthoringRegistry(): FlowRegistry {
           const changedSource = String(input.changedSource ?? "portfolio");
           const consequence = asRecord(input.consequence);
           const exploratory = asRecord(input.exploratory);
-          const profileSeed = summarizeProfileArtifacts(input.profileArtifact, input.recipeArtifacts);
+          const profileSeed = summarizeBlueprint(input.blueprint);
           return {
             result: "ok",
             data: {
@@ -101,24 +100,19 @@ export function createProfileAuthoringRegistry(): FlowRegistry {
   };
 }
 
-export function summarizeProfileArtifacts(
-  profileArtifact: unknown,
-  recipeArtifacts: unknown
-): ProfileSeedSummary | null {
-  const artifact = asProfileArtifact(profileArtifact);
-  if (!artifact) return null;
-  const recipes = asRecipeArtifacts(recipeArtifacts);
+export function summarizeBlueprint(value: unknown): BlueprintSeedSummary | null {
+  const blueprint = asBlueprint(value);
+  if (!blueprint) return null;
   return {
-    source: "artifact",
-    id: artifact.payload.id,
-    kind: artifact.payload.kind,
-    version: artifact.payload.version,
-    layers: artifact.payload.layers.map((layer) => ({ id: layer.id, kind: layer.kind })),
-    recipeRefs: artifact.payload.recipes.map((ref) => ({ id: ref.id, from: ref.from, to: ref.to })),
-    recipeArtifacts: recipes.map((recipe) => ({
-      id: recipe.payload.id,
-      from: recipe.payload.from,
-      to: recipe.payload.to,
+    source: "blueprint",
+    id: blueprint.payload.id,
+    kind: blueprint.payload.kind,
+    version: blueprint.payload.version,
+    tiers: blueprint.payload.tiers.map((tier) => ({ id: tier.id, kind: tier.kind })),
+    recipes: blueprint.payload.recipes.map((recipe) => ({
+      id: recipe.id,
+      from: recipe.from,
+      to: recipe.to,
     })),
   };
 }
@@ -148,14 +142,14 @@ function buildDraftProfile(objective: string, surface: string, graphDigest: Reco
   };
 }
 
-function buildArtifactBackedProfile(profileSeed: ProfileSeedSummary, graphDigest: Record<string, unknown>) {
+function buildArtifactBackedProfile(profileSeed: BlueprintSeedSummary, graphDigest: Record<string, unknown>) {
   return {
     id: profileSeed.id,
     kind: profileSeed.kind,
     version: profileSeed.version,
     source: profileSeed.source,
-    layers: profileSeed.layers,
-    declaredRecipes: profileSeed.recipeRefs,
+    layers: profileSeed.tiers,
+    declaredRecipes: profileSeed.recipes,
     signals: graphDigest,
   };
 }
@@ -163,18 +157,18 @@ function buildArtifactBackedProfile(profileSeed: ProfileSeedSummary, graphDigest
 function buildRecipeSuggestions(
   profile: Record<string, unknown>,
   graphDigest: Record<string, unknown>,
-  profileSeed: ProfileSeedSummary | null
+  profileSeed: BlueprintSeedSummary | null
 ) {
   const triggered = asStringArray(graphDigest.triggered);
   const unlocked = asStringArray(graphDigest.unlocked);
-  if (profileSeed && profileSeed.recipeRefs.length > 0) {
-    return profileSeed.recipeRefs.map((ref, index) => ({
-      id: ref.id,
-      from: ref.from,
-      to: ref.to,
+  if (profileSeed && profileSeed.recipes.length > 0) {
+    return profileSeed.recipes.map((recipe, index) => ({
+      id: recipe.id,
+      from: recipe.from,
+      to: recipe.to,
       source: "declared-profile",
-      rationale: artifactRecipeRationale(index, triggered, unlocked, ref.to),
-      backedByArtifact: profileSeed.recipeArtifacts.find((recipe) => recipe.id === ref.id) ?? null,
+      rationale: artifactRecipeRationale(index, triggered, unlocked, recipe.to),
+      backedByArtifact: recipe,
     }));
   }
 
@@ -203,7 +197,7 @@ function buildRecipeSuggestions(
   ];
 }
 
-function buildNotes(profileSeed: ProfileSeedSummary | null): string[] {
+function buildNotes(profileSeed: BlueprintSeedSummary | null): string[] {
   const notes = [
     "Reactive state stays authoritative for computed values.",
     "Consequence graph explains downstream recompute and blocking.",
@@ -211,7 +205,7 @@ function buildNotes(profileSeed: ProfileSeedSummary | null): string[] {
     "StepOrchestrator turns those graph outputs into a resumable authoring plan.",
   ];
   if (profileSeed) {
-    notes.push("The plan starts from a declared profile artifact and proposes the concrete recipe chain that artifact already carries.");
+    notes.push("The plan starts from a declared blueprint and proposes the concrete recipe chain it already carries.");
   }
   return notes;
 }
@@ -226,22 +220,16 @@ function artifactRecipeRationale(index: number, triggered: string[], unlocked: s
   return `Use unlocked options (${unlocked.join(", ") || "none yet"}) to constrain how this declared recipe should be applied.`;
 }
 
-function asProfileSeed(value: unknown): ProfileSeedSummary | null {
+function asProfileSeed(value: unknown): BlueprintSeedSummary | null {
   const rec = asRecord(value);
-  return rec.source === "artifact" ? (rec as unknown as ProfileSeedSummary) : null;
+  return rec.source === "blueprint" ? (rec as unknown as BlueprintSeedSummary) : null;
 }
 
-function asProfileArtifact(value: unknown): ProfileArtifact | null {
+function asBlueprint(value: unknown): BlueprintArtifact | null {
   const rec = asRecord(value);
   const payload = asRecord(rec.payload);
-  if (rec.gik !== "0.1" || rec.type !== "profile" || typeof payload.id !== "string") return null;
-  return rec as unknown as ProfileArtifact;
-}
-
-function asRecipeArtifacts(value: unknown): RecipeArtifactBase[] {
-  return asArray(value)
-    .map((item) => asRecord(item))
-    .filter((item) => item.gik === "0.1" && item.type === "lowering-recipe") as unknown as RecipeArtifactBase[];
+  if (rec.gik !== "0.1" || rec.type !== "blueprint" || typeof payload.id !== "string") return null;
+  return rec as unknown as BlueprintArtifact;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {

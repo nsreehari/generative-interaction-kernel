@@ -5,6 +5,7 @@
     "id": "live-workspace-soc-executive",
     "targetBlueprintId": "live-workspace-soc",
     "title": "SOC executive walkthrough",
+    "applicableContexts": ["war-room"],
     "pace": {
       "manualDurationMs": 120000,
       "autoDurationMs": 2000,

@@ -5,6 +5,7 @@
     "id": "portfolio-tracker-dynamic-ticker",
     "targetBlueprintId": "portfolio-tracker",
     "title": "Dynamic ticker injection",
+    "applicableContexts": ["portfolio-overview"],
     "pace": { "manualDurationMs": 60000, "autoDurationMs": 1600, "default": "auto" },
     "steps": [
       { "id": "act-01", "title": "Start with AAPL", "kind": "dispatch", "command": "setHoldings", "payload": { "holdings": [{ "ticker": "AAPL", "quantity": 8, "costBasis": 178 }] }, "actorRef": { "namespace": "portfolio", "kind": "actor", "id": "human-investor", "relation": "origin" } },

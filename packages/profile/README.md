@@ -7,16 +7,15 @@ the `${fromKind}->${toKind}` pair and executed through an open executor registry
 The concrete GenUI kind *values* (interaction / presentation / runtime-document), their recipe shapes,
 and their executors currently live in the internal `packages/profile-genui` workspace.
 
-This package also owns the generic profile artifact validators, bundle helpers, and template-aware
-profile loader (`validateProfileArtifact`, `validateLoweringRecipeArtifact`, `loadProfile`,
-`createProfileBundle`, `loadProfileBundle`).
+This package also owns the canonical Blueprint artifact, schema validation, and template-aware
+lowering loader (`BlueprintArtifact`, `validateBlueprintArtifact`, `loadBlueprint`).
 
 ```bash
 npm install @gik/profile
 ```
 
 ```ts
-import { loadProfile, traceStages } from "@gik/profile";
+import { loadBlueprint, traceStages } from "@gik/profile";
 ```
 
 ## Documentation

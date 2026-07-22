@@ -867,7 +867,7 @@ practical, but Beat 3 authoring completeness does not gate the Beat 2 presentati
 
 The broader architecture now runs through the repository's canonical `@gik/profile` mechanism:
 
-- `samples/profiles/live-workspace-soc/profile.json` is the SOC semantic blueprint and owns the
+- `samples/profiles/live-workspace-soc/blueprint.json` is the SOC semantic blueprint and owns the
   intent, actor/authority vocabulary, fourteen acts across five chapters, taxonomy, and eight
   presentation descriptors, including each view's frame, arrangement, and visible regions;
 - three adjacent data recipes lower `workflow → interaction → presentation → runtime-doc` using

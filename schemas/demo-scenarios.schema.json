@@ -1,0 +1,169 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://gik.dev/schemas/demo-scenarios.schema.json",
+  "title": "GIK demo scenarios",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["catalog", "scenarios"],
+  "properties": {
+    "catalog": { "$ref": "#/definitions/catalog" },
+    "scenarios": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/scenarioArtifact" }
+    }
+  },
+  "definitions": {
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+    "stringArray": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/nonEmptyString" },
+      "uniqueItems": true
+    },
+    "focusRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["namespace", "kind", "id", "relation"],
+      "properties": {
+        "namespace": { "$ref": "#/definitions/nonEmptyString" },
+        "kind": { "$ref": "#/definitions/nonEmptyString" },
+        "id": { "$ref": "#/definitions/nonEmptyString" },
+        "relation": { "$ref": "#/definitions/nonEmptyString" }
+      }
+    },
+    "presentationPreset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "context"],
+      "properties": {
+        "id": { "$ref": "#/definitions/nonEmptyString" },
+        "label": { "type": "string" },
+        "audience": { "type": "string" },
+        "focus": { "type": "string" },
+        "context": { "type": "object" }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commands", "humanGates", "observableOutcomes", "actors", "presentationPresets", "focusKinds", "timelineSources"],
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["command", "nodeId", "event"],
+            "properties": {
+              "command": { "$ref": "#/definitions/nonEmptyString" },
+              "nodeId": { "$ref": "#/definitions/nonEmptyString" },
+              "event": { "$ref": "#/definitions/nonEmptyString" }
+            }
+          }
+        },
+        "humanGates": { "$ref": "#/definitions/stringArray" },
+        "observableOutcomes": { "$ref": "#/definitions/stringArray" },
+        "actors": { "$ref": "#/definitions/stringArray" },
+        "presentationPresets": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/presentationPreset" }
+        },
+        "focusKinds": { "$ref": "#/definitions/stringArray" },
+        "timelineSources": { "$ref": "#/definitions/stringArray" }
+      }
+    },
+    "catalogEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "scenarioBlueprintId", "targetBlueprintId"],
+      "properties": {
+        "id": { "$ref": "#/definitions/nonEmptyString" },
+        "label": { "$ref": "#/definitions/nonEmptyString" },
+        "scenarioBlueprintId": { "$ref": "#/definitions/nonEmptyString" },
+        "targetBlueprintId": { "$ref": "#/definitions/nonEmptyString" },
+        "defaultContext": { "$ref": "#/definitions/nonEmptyString" },
+        "requiredTimelineSources": { "$ref": "#/definitions/stringArray" }
+      }
+    },
+    "catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default", "targets", "entries"],
+      "properties": {
+        "default": { "$ref": "#/definitions/nonEmptyString" },
+        "targets": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "$ref": "#/definitions/target" }
+        },
+        "entries": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/catalogEntry" }
+        }
+      }
+    },
+    "pace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manualDurationMs", "autoDurationMs", "default"],
+      "properties": {
+        "manualDurationMs": { "type": "number", "minimum": 0 },
+        "autoDurationMs": { "type": "number", "minimum": 0 },
+        "default": { "enum": ["manual", "auto"] }
+      }
+    },
+    "scenarioStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "kind"],
+      "properties": {
+        "id": { "$ref": "#/definitions/nonEmptyString" },
+        "title": { "$ref": "#/definitions/nonEmptyString" },
+        "kind": { "enum": ["dispatch", "human-gate"] },
+        "command": { "$ref": "#/definitions/nonEmptyString" },
+        "commands": { "$ref": "#/definitions/stringArray" },
+        "payload": { "type": "object" },
+        "actorRef": { "$ref": "#/definitions/focusRef" },
+        "waitAfterMs": { "type": "number", "minimum": 0 },
+        "humanBoundary": { "$ref": "#/definitions/focusRef" },
+        "focusRefs": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/focusRef" }
+        }
+      }
+    },
+    "scenarioArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gik", "type", "payload"],
+      "properties": {
+        "gik": { "const": "0.1" },
+        "type": { "const": "scenario-blueprint" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "targetBlueprintId", "title", "applicableContexts", "pace", "steps"],
+          "properties": {
+            "id": { "$ref": "#/definitions/nonEmptyString" },
+            "targetBlueprintId": { "$ref": "#/definitions/nonEmptyString" },
+            "title": { "$ref": "#/definitions/nonEmptyString" },
+            "applicableContexts": {
+              "allOf": [
+                { "$ref": "#/definitions/stringArray" },
+                { "minItems": 1 }
+              ]
+            },
+            "pace": { "$ref": "#/definitions/pace" },
+            "steps": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/definitions/scenarioStep" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

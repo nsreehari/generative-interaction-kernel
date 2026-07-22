@@ -9,11 +9,10 @@
 
 import type { CapabilityDescriptor, DocumentPayload, Enveloped, Json, ManifestPayload } from "@gik/kernel";
 import {
-  createProfileBundle,
   lintLoweringRecipe as lintLoweringRecipeArtifact,
   lintProfileArtifacts,
-  loadProfileBundle,
-  parseProfileBundleJson,
+  loadBlueprint,
+  parseBlueprintJson,
   isWorkflowToInteractionRecipe,
   planningRecipeOf,
   resolveNamedProfileTemplateFile,
@@ -21,21 +20,21 @@ import {
   resolveProfileTemplateResource,
   runProfile,
   runtimeRecipeOf,
-  stringifyProfileBundle,
+  stringifyBlueprint,
   traceProfile,
-  validateProfileArtifact,
-  validateLoweringRecipeArtifact,
+  validateBlueprintArtifact,
+  type BlueprintArtifact,
   type InteractionKind,
   type InteractionSpec,
   type InteractionTaxonomy,
   type LayerDefinition,
   type LayerRecipe,
   type PresentationContext,
-  type ProfileArtifactBundle,
+  type RecipeArtifactBase,
   type StageTrace,
 } from "@gik/profile";
 import { setOp, type EffectContext, type EffectHandlerMap, type SerializableBundle } from "@gik/react";
-import { sampleProfileCatalog, type SampleProfileEntry } from "../../../catalog/profile-catalog";
+import { sampleBlueprintCatalog, type SampleBlueprintEntry } from "../../../catalog/profile-catalog";
 import { demoDataFor } from "../../workbench/projection_views/bundles/demo";
 
 export type ManageBlueprintsTab = "overview" | "layers" | "preview" | "draft";
@@ -58,10 +57,9 @@ interface ValidationResult {
 
 type ProfileSource = "repo" | "local";
 
-interface CatalogEntry extends SampleProfileEntry {
+interface CatalogEntry extends SampleBlueprintEntry {
   source: ProfileSource;
   readonly: boolean;
-  bundle: ProfileArtifactBundle<LayerRecipe>;
 }
 
 interface CatalogSnapshot {
@@ -186,8 +184,7 @@ type BlueprintSeed = {
   payload: Record<string, unknown>;
 };
 
-const LOCAL_PROFILE_STORAGE_KEY = "gik.manage-blueprints.profileBundles.v1";
-const LEGACY_PROFILE_STORAGE_KEY = "gik.console.profileBundles.v1";
+const LOCAL_BLUEPRINT_STORAGE_KEY = "gik.manage-blueprints.blueprints.v1";
 const PREVIEW_SURFACES = ["desktop", "web", "mobile", "copilot", "teams"] as const;
 const DEFAULT_PREVIEW_CONTEXT_FORM: Record<string, Json> = {
   properties: {
@@ -401,11 +398,10 @@ const EMPTY_VALIDATION: ValidationResult = {
 };
 
 function readRepoCatalog(): readonly CatalogEntry[] {
-  return sampleProfileCatalog.map((entry) => ({
+  return sampleBlueprintCatalog.map((entry) => ({
     ...entry,
     source: "repo" as const,
     readonly: true,
-    bundle: createProfileBundle(entry.artifact, entry.recipeArtifacts),
   }));
 }
 
@@ -472,17 +468,17 @@ function readPreviewInput(ctx: EffectContext): PreviewInput {
   return previewInputFromValues(readSourceInput(ctx), readPreviewContextValues(ctx));
 }
 
-function sourceLayerId(entry: CatalogEntry | SampleProfileEntry): string {
-  const sourceLayerId = entry.profile.stages[0]?.fromLayer.id ?? entry.artifact.payload.layers[0]?.id;
+function sourceLayerId(entry: CatalogEntry | SampleBlueprintEntry): string {
+  const sourceLayerId = entry.profile.stages[0]?.fromLayer.id ?? entry.blueprint.payload.tiers[0]?.id;
   return sourceLayerId ?? "";
 }
 
-function sourceLayer(entry: CatalogEntry | SampleProfileEntry): LayerDefinition | undefined {
+function sourceLayer(entry: CatalogEntry | SampleBlueprintEntry): LayerDefinition | undefined {
   const layerId = sourceLayerId(entry);
   return layerId ? entry.profile.layersById[layerId] : undefined;
 }
 
-function sourceLayerKind(entry: CatalogEntry | SampleProfileEntry): string {
+function sourceLayerKind(entry: CatalogEntry | SampleBlueprintEntry): string {
   return sourceLayer(entry)?.kind ?? "";
 }
 
@@ -506,7 +502,7 @@ function sourceInputDefaults(entry: CatalogEntry): Record<string, unknown> {
 }
 
 function previewContextFormFor(entry: CatalogEntry): Record<string, unknown> {
-  const declared = entry.artifact.payload.context;
+  const declared = entry.blueprint.payload.context;
   if (!declared || typeof declared !== "object" || Array.isArray(declared)) {
     return DEFAULT_PREVIEW_CONTEXT_FORM;
   }
@@ -532,7 +528,7 @@ function previewContextDefaults(entry: CatalogEntry): Record<string, unknown> {
   };
 }
 
-function isInteractionLikeSource(entry: CatalogEntry | SampleProfileEntry): boolean {
+function isInteractionLikeSource(entry: CatalogEntry | SampleBlueprintEntry): boolean {
   return sourceLayerKind(entry).includes("interaction");
 }
 
@@ -575,9 +571,9 @@ function interactionPreviewSeed(
 
 function catalogRows(entries: readonly CatalogEntry[]) {
   return entries.map((entry) => ({
-    id: entry.artifact.payload.id,
-    kind: entry.artifact.payload.kind,
-    version: entry.artifact.payload.version,
+    id: entry.blueprint.payload.id,
+    kind: entry.blueprint.payload.kind,
+    version: entry.blueprint.payload.version,
     layers: Object.keys(entry.profile.layersById).length,
     recipes: entry.profile.stages.length,
     source: entry.source,
@@ -587,7 +583,7 @@ function catalogRows(entries: readonly CatalogEntry[]) {
 }
 
 function findEntry(id: string, entries: readonly CatalogEntry[]): CatalogEntry | undefined {
-  return entries.find((entry) => entry.artifact.payload.id === id);
+  return entries.find((entry) => entry.blueprint.payload.id === id);
 }
 
 function profileStorage(): Storage | null {
@@ -595,45 +591,36 @@ function profileStorage(): Storage | null {
   return globalThis.localStorage ?? null;
 }
 
-function readStoredBundleMap(): { bundles: Record<string, ProfileArtifactBundle<LayerRecipe>>; errors: string[] } {
+function readStoredBlueprintMap(): { blueprints: Record<string, BlueprintArtifact<LayerRecipe>>; errors: string[] } {
   const storage = profileStorage();
-  if (!storage) return { bundles: {}, errors: [] };
+  if (!storage) return { blueprints: {}, errors: [] };
 
-  const currentRaw = storage.getItem(LOCAL_PROFILE_STORAGE_KEY);
-  const legacyRaw = currentRaw ? null : storage.getItem(LEGACY_PROFILE_STORAGE_KEY);
-  const raw = currentRaw ?? legacyRaw;
-  if (!raw) return { bundles: {}, errors: [] };
+  const raw = storage.getItem(LOCAL_BLUEPRINT_STORAGE_KEY);
+  if (!raw) return { blueprints: {}, errors: [] };
 
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       return {
-        bundles: {},
+        blueprints: {},
         errors: ["Local blueprint storage was ignored because it is not a JSON object."],
       };
     }
 
-    const bundles: Record<string, ProfileArtifactBundle<LayerRecipe>> = {};
+    const blueprints: Record<string, BlueprintArtifact<LayerRecipe>> = {};
     const errors: string[] = [];
     for (const [id, value] of Object.entries(parsed as Record<string, unknown>)) {
       try {
-        const bundle = parseProfileBundleJson<LayerRecipe>(JSON.stringify(value));
-        bundles[id] = normalizeBundleId(bundle, id);
+        const blueprint = parseBlueprintJson<LayerRecipe>(JSON.stringify(value));
+        blueprints[id] = normalizeBlueprintId(blueprint, id);
       } catch (error) {
-        errors.push(`Skipped stored profile '${id}': ${error instanceof Error ? error.message : String(error)}`);
+        errors.push(`Skipped stored blueprint '${id}': ${error instanceof Error ? error.message : String(error)}`);
       }
     }
-    if (!currentRaw && legacyRaw) {
-      try {
-        storage.setItem(LOCAL_PROFILE_STORAGE_KEY, JSON.stringify(bundles));
-      } catch (error) {
-        errors.push(`Loaded legacy blueprints but could not migrate them: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    }
-    return { bundles, errors };
+    return { blueprints, errors };
   } catch (error) {
     return {
-      bundles: {},
+      blueprints: {},
       errors: [
         `Local profile storage could not be parsed: ${error instanceof Error ? error.message : String(error)}`,
       ],
@@ -641,52 +628,47 @@ function readStoredBundleMap(): { bundles: Record<string, ProfileArtifactBundle<
   }
 }
 
-function writeStoredBundleMap(bundles: Record<string, ProfileArtifactBundle<LayerRecipe>>): void {
+function writeStoredBlueprintMap(blueprints: Record<string, BlueprintArtifact<LayerRecipe>>): void {
   const storage = profileStorage();
   if (!storage) {
     throw new Error("Browser localStorage is unavailable in this host.");
   }
-  storage.setItem(LOCAL_PROFILE_STORAGE_KEY, JSON.stringify(bundles));
+  storage.setItem(LOCAL_BLUEPRINT_STORAGE_KEY, JSON.stringify(blueprints));
 }
 
-function normalizeBundleId(bundle: ProfileArtifactBundle<LayerRecipe>, id: string): ProfileArtifactBundle<LayerRecipe> {
-  if (bundle.profileArtifact.payload.id === id) return bundle;
-  return createProfileBundle(
-    {
-      ...bundle.profileArtifact,
-      payload: {
-        ...bundle.profileArtifact.payload,
-        id,
-      },
-    },
-    bundle.recipeArtifacts
-  );
-}
-
-function asCatalogEntry(bundle: ProfileArtifactBundle<LayerRecipe>, source: ProfileSource, readonly: boolean): CatalogEntry {
+function normalizeBlueprintId(blueprint: BlueprintArtifact<LayerRecipe>, id: string): BlueprintArtifact<LayerRecipe> {
+  if (blueprint.payload.id === id) return blueprint;
   return {
-    artifact: bundle.profileArtifact,
-    recipeArtifacts: bundle.recipeArtifacts,
-    profile: loadProfileBundle<LayerRecipe>(bundle, resolveProfileTemplateResource, resolveProfileTemplate),
+    ...blueprint,
+    payload: {
+      ...blueprint.payload,
+      id,
+    },
+  };
+}
+
+function asCatalogEntry(blueprint: BlueprintArtifact<LayerRecipe>, source: ProfileSource, readonly: boolean): CatalogEntry {
+  return {
+    blueprint,
+    profile: loadBlueprint<LayerRecipe>(blueprint, resolveProfileTemplateResource, resolveProfileTemplate),
     source,
     readonly,
-    bundle,
   };
 }
 
 function loadCatalog(): CatalogSnapshot {
   const repoCatalog = readRepoCatalog();
-  const { bundles, errors } = readStoredBundleMap();
+  const { blueprints, errors } = readStoredBlueprintMap();
   const localEntries: CatalogEntry[] = [];
-  for (const [id, bundle] of Object.entries(bundles)) {
+  for (const [id, blueprint] of Object.entries(blueprints)) {
     try {
-      localEntries.push(asCatalogEntry(normalizeBundleId(bundle, id), "local", false));
+      localEntries.push(asCatalogEntry(normalizeBlueprintId(blueprint, id), "local", false));
     } catch (error) {
       errors.push(`Skipped local profile '${id}': ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
-  localEntries.sort((left, right) => left.artifact.payload.id.localeCompare(right.artifact.payload.id));
+  localEntries.sort((left, right) => left.blueprint.payload.id.localeCompare(right.blueprint.payload.id));
   return {
     entries: [...repoCatalog, ...localEntries],
     status: errors.join("\n"),
@@ -700,7 +682,7 @@ function catalogStatus(snapshot: CatalogSnapshot): string {
 }
 
 function nextDraftId(baseId: string, entries: readonly CatalogEntry[]): string {
-  const taken = new Set(entries.map((entry) => entry.artifact.payload.id));
+  const taken = new Set(entries.map((entry) => entry.blueprint.payload.id));
   if (!taken.has(baseId)) return baseId;
   let index = 2;
   while (taken.has(`${baseId}-${index}`)) index += 1;
@@ -709,13 +691,13 @@ function nextDraftId(baseId: string, entries: readonly CatalogEntry[]): string {
 
 function editorState(entry: CatalogEntry, statusOverride?: string, error = ""): EditableProfileState {
   return {
-    id: entry.readonly ? nextDraftId(`${entry.artifact.payload.id}-local`, loadCatalog().entries) : entry.artifact.payload.id,
-    bundleText: stringifyProfileBundle(entry.bundle),
+    id: entry.readonly ? nextDraftId(`${entry.blueprint.payload.id}-local`, loadCatalog().entries) : entry.blueprint.payload.id,
+    bundleText: stringifyBlueprint(entry.blueprint),
     status:
       statusOverride ??
       (entry.readonly
         ? "Read-only sample. Save with a local id to create an editable copy."
-        : `Editing local draft '${entry.artifact.payload.id}'.`),
+        : `Editing local draft '${entry.blueprint.payload.id}'.`),
     error,
   };
 }
@@ -842,7 +824,7 @@ function pipelineState(entry: CatalogEntry) {
   const incomingByNode = new Map<string, Array<{ token: string; label?: string }>>();
   const outgoingByNode = new Map<string, Array<{ token: string; label?: string }>>();
 
-  for (const ref of entry.artifact.payload.recipes) {
+  for (const ref of entry.blueprint.payload.recipes) {
     const outgoing = outgoingByNode.get(ref.from) ?? [];
     outgoing.push({ token: ref.id });
     outgoingByNode.set(ref.from, outgoing);
@@ -853,7 +835,7 @@ function pipelineState(entry: CatalogEntry) {
   }
 
   return {
-    nodes: entry.artifact.payload.layers.map((layer, index) => ({
+    nodes: entry.blueprint.payload.tiers.map((layer, index) => ({
       id: layer.id,
       label: layer.id,
       subtitle: layerRoleLabel(entry, layer.id),
@@ -866,7 +848,7 @@ function pipelineState(entry: CatalogEntry) {
 }
 
 function layerRows(entry: CatalogEntry) {
-  return entry.artifact.payload.layers.map((layer) => ({
+  return entry.blueprint.payload.tiers.map((layer) => ({
     id: layer.id,
     kind: layer.kind,
     roleLabel: layerRoleLabel(entry, layer.id),
@@ -876,16 +858,16 @@ function layerRows(entry: CatalogEntry) {
 }
 
 function defaultLayerId(entry: CatalogEntry): string {
-  return entry.artifact.payload.layers[0]?.id ?? "";
+  return entry.blueprint.payload.tiers[0]?.id ?? "";
 }
 
 function resolveLayerId(entry: CatalogEntry, layerId?: string): string {
-  const ids = new Set(entry.artifact.payload.layers.map((layer) => layer.id));
+  const ids = new Set(entry.blueprint.payload.tiers.map((layer) => layer.id));
   return layerId && ids.has(layerId) ? layerId : defaultLayerId(entry);
 }
 
 function resolveRecipeId(entry: CatalogEntry, recipeId?: string): string {
-  const ids = new Set(entry.artifact.payload.recipes.map((ref) => ref.id));
+  const ids = new Set(entry.blueprint.payload.recipes.map((ref) => ref.id));
   return recipeId && ids.has(recipeId) ? recipeId : "";
 }
 
@@ -911,7 +893,7 @@ function orderedLayerIds(entry: CatalogEntry): string[] {
   if (stages.length > 0) {
     return [stages[0].fromLayer.id, ...stages.map((stage) => stage.toLayer.id)];
   }
-  return entry.artifact.payload.layers.map((layer) => layer.id);
+  return entry.blueprint.payload.tiers.map((layer) => layer.id);
 }
 
 function layerStageLabel(entry: CatalogEntry, layerId: string): string {
@@ -942,7 +924,7 @@ function distinctTerms(values: Array<string | undefined>): string[] {
 }
 
 function profileTemplateId(entry: CatalogEntry): string | undefined {
-  const templateId = entry.artifact.payload["profile-template"];
+  const templateId = entry.blueprint.payload["blueprint-template"];
   return typeof templateId === "string" && templateId.length > 0 ? templateId : undefined;
 }
 
@@ -982,7 +964,7 @@ function defaultSeedPayload(entry: CatalogEntry): Record<string, unknown> {
 }
 
 function seedSourceConfig(entry: CatalogEntry): SampleSeedConfig | undefined {
-  const sourceLayer = entry.profile.stages[0]?.fromLayer ?? entry.artifact.payload.layers[0];
+  const sourceLayer = entry.profile.stages[0]?.fromLayer ?? entry.blueprint.payload.tiers[0];
   return manageBlueprintsInspectorConfig(entry).sampleSeeds.find((config) => !config.match?.sourceKind || config.match.sourceKind === sourceLayer?.kind);
 }
 
@@ -1049,12 +1031,12 @@ function extractConfiguredVocabularyTerms(
 // the selected layer's adjacent lowering program (outgoing planning, incoming planning, or incoming
 // runtime), then applies the template's declarative extraction rules to derive the terms it speaks.
 function layerVocabulary(entry: CatalogEntry, layerId: string) {
-  const layer = entry.artifact.payload.layers.find((candidate) => candidate.id === layerId);
+  const layer = entry.blueprint.payload.tiers.find((candidate) => candidate.id === layerId);
   const groups: Array<{ id: string; label: string; note: string; terms: string[] }> = [];
   if (!layer) return { groups };
 
-  const outgoingRef = entry.artifact.payload.recipes.find((candidate) => candidate.from === layerId);
-  const incomingRef = entry.artifact.payload.recipes.find((candidate) => candidate.to === layerId);
+  const outgoingRef = entry.blueprint.payload.recipes.find((candidate) => candidate.from === layerId);
+  const incomingRef = entry.blueprint.payload.recipes.find((candidate) => candidate.to === layerId);
   const outgoing = outgoingRef ? entry.profile.recipesById[outgoingRef.id] : undefined;
   const incoming = incomingRef ? entry.profile.recipesById[incomingRef.id] : undefined;
   const outgoingPlanning = outgoing ? planningRecipeOf(outgoing) : undefined;
@@ -1182,9 +1164,9 @@ function loweringExamples(entry: CatalogEntry, layerId: string) {
 }
 
 function layerDetailState(entry: CatalogEntry, layerId: string) {
-  const layer = entry.artifact.payload.layers.find((candidate) => candidate.id === layerId);
-  const outgoingRef = entry.artifact.payload.recipes.find((candidate) => candidate.from === layerId);
-  const incomingRef = entry.artifact.payload.recipes.find((candidate) => candidate.to === layerId);
+  const layer = entry.blueprint.payload.tiers.find((candidate) => candidate.id === layerId);
+  const outgoingRef = entry.blueprint.payload.recipes.find((candidate) => candidate.from === layerId);
+  const incomingRef = entry.blueprint.payload.recipes.find((candidate) => candidate.to === layerId);
   return {
     ...layerDetailView(layer),
     // Data-first: a layer's own `description` from the profile JSON wins; the kind-keyed sentence is
@@ -1200,7 +1182,7 @@ function layerDetailState(entry: CatalogEntry, layerId: string) {
 }
 
 function recipeSourceLayerId(entry: CatalogEntry, recipeId: string): string {
-  return entry.artifact.payload.recipes.find((candidate) => candidate.id === recipeId)?.from ?? defaultLayerId(entry);
+  return entry.blueprint.payload.recipes.find((candidate) => candidate.id === recipeId)?.from ?? defaultLayerId(entry);
 }
 
 function runtimeCapabilityRows(recipe: LayerRecipe) {
@@ -1222,7 +1204,7 @@ function runtimeCapabilityRows(recipe: LayerRecipe) {
 }
 
 function recipeDetailState(entry: CatalogEntry, recipeId: string) {
-  const ref = entry.artifact.payload.recipes.find((candidate) => candidate.id === recipeId);
+  const ref = entry.blueprint.payload.recipes.find((candidate) => candidate.id === recipeId);
   if (!ref) return { ...EMPTY_RECIPE_DETAIL };
 
   const recipe = entry.profile.recipesById[ref.id];
@@ -1295,20 +1277,19 @@ function recipeDetailState(entry: CatalogEntry, recipeId: string) {
 }
 
 function profileState(entry: CatalogEntry) {
-  const artifact = entry.artifact.payload;
-  const kindById = new Map(artifact.layers.map((layer) => [layer.id, layer.kind]));
+  const blueprint = entry.blueprint.payload;
   const legend = orderedLayerIds(entry)
     .map((id) => layerRoleLabel(entry, id))
     .join("  →  ");
   return {
-    id: artifact.id,
-    kind: artifact.kind,
-    version: artifact.version,
+    id: blueprint.id,
+    kind: blueprint.kind,
+    version: blueprint.version,
     source: entry.source,
     readonly: entry.readonly,
-    layerCount: artifact.layers.length,
-    recipeCount: artifact.recipes.length,
-    summary: `This blueprint lowers a user's goal into a rendered UI across ${artifact.layers.length} stages, joined by ${artifact.recipes.length} lowering ${artifact.recipes.length === 1 ? "recipe" : "recipes"}.`,
+    layerCount: blueprint.tiers.length,
+    recipeCount: blueprint.recipes.length,
+    summary: `This blueprint lowers a user's goal into a rendered UI across ${blueprint.tiers.length} stages, joined by ${blueprint.recipes.length} lowering ${blueprint.recipes.length === 1 ? "recipe" : "recipes"}.`,
     legend,
   };
 }
@@ -1318,42 +1299,38 @@ function formatJson(value: unknown): string {
 }
 
 function artifactState(entry: CatalogEntry) {
-  const bundle = entry.bundle;
   return {
-    profileText: formatJson(entry.artifact),
-    recipesText: entry.recipeArtifacts.map((artifact) => formatJson(artifact)).join("\n\n"),
+    profileText: formatJson(entry.blueprint),
+    recipesText: entry.blueprint.payload.recipes.map((recipe) => formatJson(recipe)).join("\n\n"),
     resolvedText: formatJson({
-      id: entry.artifact.payload.id,
+      id: entry.blueprint.payload.id,
       stages: entry.profile.stages.map((stage) => ({
         recipe: stage.ref.id,
         fromLayer: stage.fromLayer,
         toLayer: stage.toLayer,
       })),
     }),
-    bundleText: stringifyProfileBundle(bundle),
+    bundleText: stringifyBlueprint(entry.blueprint),
   };
 }
 
-export function validateSampleProfile(entry: SampleProfileEntry): ValidationResult {
+export function validateSampleBlueprint(entry: SampleBlueprintEntry): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
 
   try {
-    validateProfileArtifact(entry.artifact);
+    validateBlueprintArtifact(entry.blueprint);
   } catch (error) {
     errors.push(error instanceof Error ? error.message : String(error));
   }
 
-  for (const recipe of entry.recipeArtifacts) {
-    try {
-      validateLoweringRecipeArtifact(recipe);
-    } catch (error) {
-      errors.push(error instanceof Error ? error.message : String(error));
-    }
-  }
-
-  warnings.push(...lintProfileArtifacts(entry.artifact, entry.recipeArtifacts).map((warning) => warning.detail));
-  for (const recipe of entry.recipeArtifacts) {
+  const recipeArtifacts: RecipeArtifactBase<LayerRecipe>[] = entry.blueprint.payload.recipes.map((recipe) => ({
+    gik: "0.1",
+    type: "lowering-recipe",
+    payload: recipe,
+  }));
+  warnings.push(...lintProfileArtifacts(entry.profile.artifact, recipeArtifacts).map((warning) => warning.detail));
+  for (const recipe of recipeArtifacts) {
     warnings.push(
       ...lintLoweringRecipeArtifact(recipe, PREVIEW_CAPABILITIES).map((warning) => warning.detail)
     );
@@ -1377,7 +1354,7 @@ export function validateSampleProfile(entry: SampleProfileEntry): ValidationResu
   };
 }
 
-function previewSeed(entry: SampleProfileEntry, input: PreviewInput): unknown {
+function previewSeed(entry: SampleBlueprintEntry, input: PreviewInput): unknown {
   if (isInteractionLikeSource(entry)) {
     return interactionPreviewSeed(
       input.source,
@@ -1389,7 +1366,7 @@ function previewSeed(entry: SampleProfileEntry, input: PreviewInput): unknown {
 }
 
 export function buildProfilePreviewBundle(
-  entry: SampleProfileEntry,
+  entry: SampleBlueprintEntry,
   input: PreviewInput
 ): SerializableBundle {
   const document = runProfile(entry.profile, previewSeed(entry, input), input.ctx) as DocumentPayload;
@@ -1400,7 +1377,7 @@ export function buildProfilePreviewBundle(
   };
 }
 
-function previewState(entry: SampleProfileEntry, input: PreviewInput) {
+function previewState(entry: SampleBlueprintEntry, input: PreviewInput) {
   try {
     return {
       bundle: buildProfilePreviewBundle(entry, input),
@@ -1451,13 +1428,13 @@ function selectionOps(
   snapshot: CatalogSnapshot,
   selection?: { layerId?: string; recipeId?: string }
 ) {
-  const validation = validateSampleProfile(entry);
+  const validation = validateSampleBlueprint(entry);
   const preview = previewState(entry, input);
   const layerId = resolveLayerId(entry, selection?.layerId);
   const recipeId = resolveRecipeId(entry, selection?.recipeId);
   return [
     ...baseCatalogOps(snapshot),
-    setOp("manageBlueprints.selectedId", entry.artifact.payload.id),
+    setOp("manageBlueprints.selectedId", entry.blueprint.payload.id),
     setOp("manageBlueprints.profile", profileState(entry) as unknown as Json),
     setOp("manageBlueprints.pipeline", pipelineState(entry) as unknown as Json),
     setOp("manageBlueprints.layers", layerRows(entry) as unknown as Json),
@@ -1518,7 +1495,7 @@ export const manageBlueprintsEffects: EffectHandlerMap = {
     const snapshot = loadCatalog();
     const entry = findEntry(readSelectedId(ctx), snapshot.entries);
     if (!entry) return { ops: [] };
-    const validation = validateSampleProfile(entry);
+    const validation = validateSampleBlueprint(entry);
     return {
       ops: [
         ...baseCatalogOps(snapshot),
@@ -1572,8 +1549,8 @@ export const manageBlueprintsEffects: EffectHandlerMap = {
     const selected = findEntry(readSelectedId(ctx), snapshot.entries) ?? snapshot.entries[0];
     if (!selected) return { ops: baseCatalogOps(snapshot) };
 
-    const localId = nextDraftId(`${selected.artifact.payload.id}-local`, snapshot.entries);
-    const draft = normalizeBundleId(selected.bundle, localId);
+    const localId = nextDraftId(`${selected.blueprint.payload.id}-local`, snapshot.entries);
+    const draft = normalizeBlueprintId(selected.blueprint, localId);
     return {
       ops: [
         ...selectionOps(selected, readPreviewInput(ctx), "draft", snapshot),
@@ -1581,8 +1558,8 @@ export const manageBlueprintsEffects: EffectHandlerMap = {
           "manageBlueprints.editor",
           {
             id: localId,
-            bundleText: stringifyProfileBundle(draft),
-            status: `New draft from '${selected.artifact.payload.id}'. Save to persist.`,
+            bundleText: stringifyBlueprint(draft),
+            status: `New draft from '${selected.blueprint.payload.id}'. Save to persist.`,
             error: "",
           } as unknown as Json
         ),
@@ -1594,24 +1571,24 @@ export const manageBlueprintsEffects: EffectHandlerMap = {
     const snapshot = loadCatalog();
     try {
       const rawId = readStr(ctx, "manageBlueprints.editor.id").trim();
-      const rawBundle = readStr(ctx, "manageBlueprints.editor.bundleText").trim();
-      if (!rawBundle) throw new Error("Blueprint bundle JSON is empty.");
+      const rawBlueprint = readStr(ctx, "manageBlueprints.editor.bundleText").trim();
+      if (!rawBlueprint) throw new Error("Blueprint JSON is empty.");
 
-      const parsed = parseProfileBundleJson<LayerRecipe>(rawBundle);
-      const nextId = (rawId || parsed.profileArtifact.payload.id).trim();
+      const parsed = parseBlueprintJson<LayerRecipe>(rawBlueprint);
+      const nextId = (rawId || parsed.payload.id).trim();
       if (!nextId) throw new Error("Local blueprint id is required.");
-      if (readRepoCatalog().some((entry) => entry.artifact.payload.id === nextId)) {
+      if (readRepoCatalog().some((entry) => entry.blueprint.payload.id === nextId)) {
         throw new Error(`'${nextId}' is a repo sample profile id. Save with a different local id.`);
       }
 
-      const normalized = normalizeBundleId(parsed, nextId);
+      const normalized = normalizeBlueprintId(parsed, nextId);
       const selected = findEntry(readSelectedId(ctx), snapshot.entries);
-      const { bundles } = readStoredBundleMap();
-      if (selected?.source === "local" && selected.artifact.payload.id !== nextId) {
-        delete bundles[selected.artifact.payload.id];
+      const { blueprints } = readStoredBlueprintMap();
+      if (selected?.source === "local" && selected.blueprint.payload.id !== nextId) {
+        delete blueprints[selected.blueprint.payload.id];
       }
-      bundles[nextId] = normalized;
-      writeStoredBundleMap(bundles);
+      blueprints[nextId] = normalized;
+      writeStoredBlueprintMap(blueprints);
 
       const fresh = loadCatalog();
       const saved = findEntry(nextId, fresh.entries);
@@ -1666,7 +1643,7 @@ export const manageBlueprintsEffects: EffectHandlerMap = {
       outcome: "confirmation-required",
       ops: [setOp("manageBlueprints.deleteChallenge", {
         open: true,
-        message: `Delete local blueprint '${selected.artifact.payload.id}'? This cannot be undone.`,
+        message: `Delete local blueprint '${selected.blueprint.payload.id}'? This cannot be undone.`,
       })],
     };
   },
@@ -1708,9 +1685,9 @@ export const manageBlueprintsEffects: EffectHandlerMap = {
       };
     }
 
-    const { bundles } = readStoredBundleMap();
-    delete bundles[selected.artifact.payload.id];
-    writeStoredBundleMap(bundles);
+    const { blueprints } = readStoredBlueprintMap();
+    delete blueprints[selected.blueprint.payload.id];
+    writeStoredBlueprintMap(blueprints);
     const fresh = loadCatalog();
     return {
       ops: [
@@ -1720,7 +1697,7 @@ export const manageBlueprintsEffects: EffectHandlerMap = {
           "manageBlueprints.editor",
           {
             ...EMPTY_EDITOR,
-            status: `Deleted local profile '${selected.artifact.payload.id}' from browser storage.`,
+            status: `Deleted local profile '${selected.blueprint.payload.id}' from browser storage.`,
           } as unknown as Json
         ),
         setOp("manageBlueprints.tab", "draft"),

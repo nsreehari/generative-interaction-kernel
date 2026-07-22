@@ -50,6 +50,7 @@ export interface ScenarioPlan {
   id: string;
   targetBlueprintId: string;
   title: string;
+  applicableContexts: string[];
   pace: {
     manualDurationMs: number;
     autoDurationMs: number;
@@ -98,6 +99,15 @@ export function compileScenarioBlueprint(artifact: ScenarioBlueprintArtifact): S
   const plan = artifact.payload;
   if (!plan.id.trim()) throw new Error("Scenario Blueprint id is required");
   if (!plan.targetBlueprintId.trim()) throw new Error("Scenario target Blueprint id is required");
+  if (!Array.isArray(plan.applicableContexts) || plan.applicableContexts.length === 0) {
+    throw new Error("Scenario Blueprint must define at least one applicable context");
+  }
+  if (plan.applicableContexts.some((contextId) => typeof contextId !== "string" || !contextId.trim())) {
+    throw new Error("Scenario Blueprint applicable contexts must be non-empty strings");
+  }
+  if (new Set(plan.applicableContexts).size !== plan.applicableContexts.length) {
+    throw new Error("Scenario Blueprint applicable contexts must be unique");
+  }
   if (plan.steps.length === 0) throw new Error("Scenario Blueprint must define at least one step");
 
   const stepIds = new Set<string>();

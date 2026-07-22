@@ -2,7 +2,6 @@ import React from "react";
 import { openBlueprint } from "@gik/controlface/blueprint";
 import { unwrap, type Json, type Reaction } from "@gik/kernel";
 import { SharedContextStore, type BundleNative, type CompositionOrganism, type OrganismBridge } from "@gik/react";
-import type { LayerRecipe, ProfileArtifact, ProfileArtifactBundle } from "@gik/profile";
 import { BlueprintHost, type BlueprintHostProps } from "./BlueprintHost";
 import { createDemoRunnerBundle, createGikControlHarnessBundle } from "./internal-bundles";
 import { dispatchDemoControlRequest, withDemoHumanGate } from "./internal-demo-control-bridge";
@@ -154,7 +153,7 @@ export function GikDemoBlueprintHost({
   presentationContext,
   onPresentationPresetChange,
 }: GikDemoBlueprintHostProps): React.ReactElement {
-  const blueprintId = "format" in blueprint ? blueprint.profileArtifact.payload.id : blueprint.payload.id;
+  const blueprintId = blueprint.payload.id;
   const query = React.useMemo(readDemoQuery, []);
   const loadedScenarios = React.useMemo(
     () => scenariosJson ? loadDemoScenarios(scenariosJson) : null,

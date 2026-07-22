@@ -2,8 +2,8 @@ import React from "react";
 import { Handle } from "@xyflow/react";
 import { InfiniteCanvas, type InfiniteCanvasNodeDescriptor } from "@gik/component-infinite-canvas";
 import {
-  loadProfileBundle,
-  parseProfileBundleJson,
+  loadBlueprint,
+  parseBlueprintJson,
   resolveProfileTemplate,
   resolveProfileTemplateResource,
   traceProfile,
@@ -131,12 +131,12 @@ function ProfilePipelineCanvas({ node, emit }: ProjectionViewProps) {
   );
 }
 
-// Rebuild a runnable profile from the selected bundle's JSON text (manageBlueprints.artifacts.bundleText).
-// Mirrors the store's proven load path (parse -> loadProfileBundle) so the leaves can run the SAME
+// Rebuild a runnable profile from the selected blueprint's JSON text (manageBlueprints.artifacts.bundleText).
+// Mirrors the store's proven load path (parse -> loadBlueprint) so the leaves can run the SAME
 // engine (traceProfile) the store uses, but live and driven by in-component selections.
-function reconstructProfile(bundleText: string) {
-  return loadProfileBundle<LayerRecipe>(
-    parseProfileBundleJson<LayerRecipe>(bundleText),
+function reconstructProfile(blueprintText: string) {
+  return loadBlueprint<LayerRecipe>(
+    parseBlueprintJson<LayerRecipe>(blueprintText),
     resolveProfileTemplateResource,
     resolveProfileTemplate
   );

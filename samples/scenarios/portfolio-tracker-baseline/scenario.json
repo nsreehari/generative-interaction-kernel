@@ -5,6 +5,7 @@
     "id": "portfolio-tracker-baseline",
     "targetBlueprintId": "portfolio-tracker",
     "title": "Baseline portfolio valuation",
+    "applicableContexts": ["portfolio-overview"],
     "pace": { "manualDurationMs": 60000, "autoDurationMs": 1600, "default": "auto" },
     "steps": [
       { "id": "act-01", "title": "Load AAPL and MSFT holdings", "kind": "dispatch", "command": "setHoldings", "payload": { "holdings": [{ "ticker": "AAPL", "quantity": 10, "costBasis": 182.5 }, { "ticker": "MSFT", "quantity": 5, "costBasis": 420 }] }, "actorRef": { "namespace": "portfolio", "kind": "actor", "id": "human-investor", "relation": "origin" }, "focusRefs": [{ "namespace": "portfolio", "kind": "cell", "id": "holdings", "relation": "affected" }] },
