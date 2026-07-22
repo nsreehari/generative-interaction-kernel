@@ -80,6 +80,226 @@
         },
         "scope": "per-session"
       },
+      "copilot-source-roots": {
+        "kind": "mcp",
+        "version": "1",
+        "operations": {
+          "refreshSourceRoots": {
+            "operation": "call",
+            "contract": "copilot-source-roots/v1",
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "message": "Copilot source roots response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": ["structured"],
+                    "properties": {
+                      "text": { "type": "string" },
+                      "structured": {
+                        "type": "object",
+                        "required": ["roots"],
+                        "properties": {
+                          "roots": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["id", "path"],
+                              "properties": {
+                                "id": { "type": "string", "minLength": 1 },
+                                "path": { "type": "string", "minLength": 1 }
+                              },
+                              "additionalProperties": true
+                            }
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                }
+              ]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($roots := response.structured.roots ? response.structured.roots.{'id':$string(id),'name':$string(label ? label : id),'path':$string(path),'status':enabled = false ? 'disabled' : 'enabled'} : []; $selected := state.copilotC2.selectedSourceRootId; $next := $count($roots[id = $selected]) > 0 ? $selected : ($count($roots) > 0 ? $string($roots[0].id) : ''); {'ops':[{'op':'set','path':'copilotC2.sourceRoots','value':$roots},{'op':'set','path':'copilotC2.selectedSourceRootId','value':$next},{'op':'set','path':'copilotC2.sourceRootStatus','value':response.text != '' ? response.text : ($count($roots) > 0 ? 'Loaded ' & $string($count($roots)) & ' source root(s).' : 'No configured Copilot source roots.')},{'op':'set','path':'copilotC2.sourceRootError','value':''}]})"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'copilotC2.sourceRootError','value':error.message},{'op':'set','path':'copilotC2.sourceRootStatus','value':'Unable to load Copilot source roots.'}]}"
+              }
+            },
+            "onViolation": { "action": "fail" }
+          }
+        },
+        "config": {
+          "server": "http://127.0.0.1:7801/mcp",
+          "tool": "copilot.list_source_roots"
+        },
+        "scope": "per-session"
+      },
+      "copilot-source-root-upsert": {
+        "kind": "mcp",
+        "version": "1",
+        "operations": {
+          "upsertSourceRoot": {
+            "operation": "call",
+            "contract": "copilot-source-root-upsert/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($id := $trim(state.copilotC2.sourceRootId); $label := $trim(state.copilotC2.sourceRootLabel); $path := $trim(state.copilotC2.sourceRootPath); $merge([{'path':$path}, $id != '' ? {'id':$id} : {}, $label != '' ? {'label':$label} : {}]))"
+              }
+            },
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "message": "Copilot source root upsert response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": ["structured"],
+                    "properties": {
+                      "text": { "type": "string" },
+                      "structured": {
+                        "type": "object",
+                        "required": ["root", "roots", "created"],
+                        "properties": {
+                          "root": {
+                            "type": "object",
+                            "required": ["id", "path"],
+                            "properties": {
+                              "id": { "type": "string", "minLength": 1 },
+                              "path": { "type": "string", "minLength": 1 }
+                            },
+                            "additionalProperties": true
+                          },
+                          "roots": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["id", "path"],
+                              "properties": {
+                                "id": { "type": "string", "minLength": 1 },
+                                "path": { "type": "string", "minLength": 1 }
+                              },
+                              "additionalProperties": true
+                            }
+                          },
+                          "created": { "type": "boolean" }
+                        },
+                        "additionalProperties": true
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                }
+              ]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($root := response.structured.root; $roots := response.structured.roots ? response.structured.roots.{'id':$string(id),'name':$string(label ? label : id),'path':$string(path),'status':enabled = false ? 'disabled' : 'enabled'} : []; {'ops':[{'op':'set','path':'copilotC2.sourceRoots','value':$roots},{'op':'set','path':'copilotC2.selectedSourceRootId','value':$string($root.id)},{'op':'set','path':'copilotC2.sourceRootId','value':$string($root.id)},{'op':'set','path':'copilotC2.sourceRootLabel','value':$string($root.label ? $root.label : $root.id)},{'op':'set','path':'copilotC2.sourceRootPath','value':$string($root.path)},{'op':'set','path':'copilotC2.sourceRootStatus','value':response.text != '' ? response.text : (response.structured.created ? 'Added Copilot source root.' : 'Updated Copilot source root.')},{'op':'set','path':'copilotC2.sourceRootError','value':''}]})"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'copilotC2.sourceRootError','value':error.message},{'op':'set','path':'copilotC2.sourceRootStatus','value':'Unable to save Copilot source root.'}]}"
+              }
+            },
+            "onViolation": { "action": "fail" }
+          }
+        },
+        "config": {
+          "server": "http://127.0.0.1:7801/mcp",
+          "tool": "copilot.upsert_source_root"
+        },
+        "scope": "per-session"
+      },
+      "copilot-source-root-remove": {
+        "kind": "mcp",
+        "version": "1",
+        "operations": {
+          "removeSelectedSourceRoot": {
+            "operation": "call",
+            "contract": "copilot-source-root-remove/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'id':$trim(state.copilotC2.selectedSourceRootId)}"
+              }
+            },
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "message": "Copilot source root remove response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": ["structured"],
+                    "properties": {
+                      "text": { "type": "string" },
+                      "structured": {
+                        "type": "object",
+                        "required": ["removed", "roots"],
+                        "properties": {
+                          "removed": {
+                            "type": "object",
+                            "required": ["id", "path"],
+                            "properties": {
+                              "id": { "type": "string", "minLength": 1 },
+                              "path": { "type": "string", "minLength": 1 }
+                            },
+                            "additionalProperties": true
+                          },
+                          "roots": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["id", "path"],
+                              "properties": {
+                                "id": { "type": "string", "minLength": 1 },
+                                "path": { "type": "string", "minLength": 1 }
+                              },
+                              "additionalProperties": true
+                            }
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                }
+              ]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($roots := response.structured.roots ? response.structured.roots.{'id':$string(id),'name':$string(label ? label : id),'path':$string(path),'status':enabled = false ? 'disabled' : 'enabled'} : []; $next := $count($roots) > 0 ? $string($roots[0].id) : ''; {'ops':[{'op':'set','path':'copilotC2.sourceRoots','value':$roots},{'op':'set','path':'copilotC2.selectedSourceRootId','value':$next},{'op':'set','path':'copilotC2.sourceRootStatus','value':response.text != '' ? response.text : 'Removed Copilot source root.'},{'op':'set','path':'copilotC2.sourceRootError','value':''},{'op':'set','path':'copilotC2.sourceRootId','value':''},{'op':'set','path':'copilotC2.sourceRootLabel','value':''},{'op':'set','path':'copilotC2.sourceRootPath','value':''}]})"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'copilotC2.sourceRootError','value':error.message},{'op':'set','path':'copilotC2.sourceRootStatus','value':'Unable to remove Copilot source root.'}]}"
+              }
+            },
+            "onViolation": { "action": "fail" }
+          }
+        },
+        "config": {
+          "server": "http://127.0.0.1:7801/mcp",
+          "tool": "copilot.remove_source_root"
+        },
+        "scope": "per-session"
+      },
       "copilot-run-start": {
         "kind": "mcp",
         "version": "1",
@@ -482,6 +702,254 @@
                                       "readExpr": {
                                         "value": "$string(copilotC2.agents[id = copilotC2.selectedAgentId][0].description)"
                                       }
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "capability": "ui:panel",
+                              "id": "copilot-c2-source-roots",
+                              "props": {
+                                "title": "Source roots",
+                                "variant": "inset"
+                              },
+                              "edges": {
+                                "children": [
+                                  {
+                                    "capability": "ui:note",
+                                    "id": "copilot-c2-source-roots-status",
+                                    "props": {
+                                      "tone": "info"
+                                    },
+                                    "edges": {
+                                      "read": {
+                                        "value": "copilotC2.sourceRootStatus"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:alert",
+                                    "id": "copilot-c2-source-roots-error",
+                                    "props": {
+                                      "label": "Source roots error",
+                                      "level": "error"
+                                    },
+                                    "edges": {
+                                      "gate": "copilotC2.sourceRootError != ''",
+                                      "read": {
+                                        "value": "copilotC2.sourceRootError"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:row",
+                                    "id": "copilot-c2-source-roots-actions",
+                                    "edges": {
+                                      "children": [
+                                        {
+                                          "capability": "ui:button",
+                                          "id": "copilot-c2-refresh-source-roots",
+                                          "props": {
+                                            "label": "Refresh roots"
+                                          },
+                                          "edges": {
+                                            "on": {
+                                              "press": [
+                                                {
+                                                  "do": "invoke",
+                                                  "args": {
+                                                    "tool": "refreshSourceRoots"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:button",
+                                          "id": "copilot-c2-upsert-source-root",
+                                          "props": {
+                                            "label": "Add or update root",
+                                            "tone": "primary"
+                                          },
+                                          "edges": {
+                                            "on": {
+                                              "press": [
+                                                {
+                                                  "do": "invoke",
+                                                  "args": {
+                                                    "tool": "upsertSourceRoot"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:button",
+                                          "id": "copilot-c2-remove-source-root",
+                                          "props": {
+                                            "label": "Remove selected root",
+                                            "tone": "danger"
+                                          },
+                                          "edges": {
+                                            "gate": "copilotC2.selectedSourceRootId != ''",
+                                            "on": {
+                                              "press": [
+                                                {
+                                                  "do": "invoke",
+                                                  "args": {
+                                                    "tool": "removeSelectedSourceRoot"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:field",
+                                    "id": "copilot-c2-source-root-id",
+                                    "props": {
+                                      "label": "Root id"
+                                    },
+                                    "edges": {
+                                      "read": {
+                                        "value": "copilotC2.sourceRootId"
+                                      },
+                                      "on": {
+                                        "input": [
+                                          {
+                                            "do": "assign",
+                                            "target": "copilotC2.sourceRootId",
+                                            "args": {
+                                              "from": "$event.value"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:field",
+                                    "id": "copilot-c2-source-root-label",
+                                    "props": {
+                                      "label": "Root label"
+                                    },
+                                    "edges": {
+                                      "read": {
+                                        "value": "copilotC2.sourceRootLabel"
+                                      },
+                                      "on": {
+                                        "input": [
+                                          {
+                                            "do": "assign",
+                                            "target": "copilotC2.sourceRootLabel",
+                                            "args": {
+                                              "from": "$event.value"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:field",
+                                    "id": "copilot-c2-source-root-path",
+                                    "props": {
+                                      "label": "Root path"
+                                    },
+                                    "edges": {
+                                      "read": {
+                                        "value": "copilotC2.sourceRootPath"
+                                      },
+                                      "on": {
+                                        "input": [
+                                          {
+                                            "do": "assign",
+                                            "target": "copilotC2.sourceRootPath",
+                                            "args": {
+                                              "from": "$event.value"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:list",
+                                    "id": "copilot-c2-source-root-list",
+                                    "props": {
+                                      "idKey": "id",
+                                      "primaryKey": "name",
+                                      "valueKey": "path",
+                                      "badgeKey": "status"
+                                    },
+                                    "edges": {
+                                      "read": {
+                                        "selectedId": "copilotC2.selectedSourceRootId"
+                                      },
+                                      "readExpr": {
+                                        "items": "copilotC2.sourceRoots"
+                                      },
+                                      "on": {
+                                        "select": [
+                                          {
+                                            "do": "assign",
+                                            "target": "copilotC2.selectedSourceRootId",
+                                            "args": {
+                                              "from": "$event.id"
+                                            }
+                                          },
+                                          {
+                                            "do": "assign",
+                                            "target": "copilotC2.sourceRootId",
+                                            "args": {
+                                              "from": "$event.id"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:panel",
+                                    "id": "copilot-c2-source-root-detail",
+                                    "props": {
+                                      "title": "Selected root",
+                                      "variant": "inset"
+                                    },
+                                    "edges": {
+                                      "gate": "copilotC2.selectedSourceRootId != ''",
+                                      "children": [
+                                        {
+                                          "capability": "ui:note",
+                                          "id": "copilot-c2-source-root-detail-name",
+                                          "props": {
+                                            "tone": "info"
+                                          },
+                                          "edges": {
+                                            "readExpr": {
+                                              "value": "$string(copilotC2.sourceRoots[id = copilotC2.selectedSourceRootId][0].name)"
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:note",
+                                          "id": "copilot-c2-source-root-detail-path",
+                                          "props": {
+                                            "tone": "muted"
+                                          },
+                                          "edges": {
+                                            "readExpr": {
+                                              "value": "$string(copilotC2.sourceRoots[id = copilotC2.selectedSourceRootId][0].path)"
+                                            }
+                                          }
+                                        }
+                                      ]
                                     }
                                   }
                                 ]
@@ -995,6 +1463,13 @@
           "model": "gpt-5.4",
           "environmentStatus": "Discover local Copilot agents.",
           "environmentError": "",
+          "sourceRootStatus": "Refresh Copilot source roots.",
+          "sourceRootError": "",
+          "sourceRoots": [],
+          "selectedSourceRootId": "",
+          "sourceRootId": "",
+          "sourceRootLabel": "",
+          "sourceRootPath": "",
           "agents": [],
           "selectedAgentId": "",
           "draft": "Summarize the current workspace and propose the next implementation step.",

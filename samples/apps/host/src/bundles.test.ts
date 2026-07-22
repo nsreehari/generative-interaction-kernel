@@ -53,9 +53,9 @@ test("copilot-c2 opens as a declarative MCP-backed Blueprint", () => {
   const services = unwrap(runtime.manifest).externals?.services as Record<string, { kind?: string }>;
 
   assert.equal(runtime.blueprintId, "copilot-c2");
-  assert.equal(Object.keys(services).length, 5);
+  assert.equal(Object.keys(services).length, 8);
   assert.deepEqual(
     Object.values(services).map((service) => service.kind),
-    ["mcp", "mcp", "mcp", "mcp", "mcp"]
+    ["mcp", "mcp", "mcp", "mcp", "mcp", "mcp", "mcp", "mcp"]
   );
 });
