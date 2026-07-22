@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { bundleFromJson, loadBundleRuntime, SharedContextStore } from "@gik/react";
 import { dispatchDemoControlRequest, withDemoHumanGate } from "../../bundles/demo-runner/effect_handlers/control-bridge";
 import runnerDocument from "../../bundles/demo-runner/document.json" with { type: "json" };
@@ -10,6 +10,39 @@ import type { ControlRequest } from "../../shared/control-runtime";
 import { resolveDemoComposition } from "../../shared/demo-catalog";
 import { openSampleBlueprint } from "../../shared/blueprints";
 import { declarativeServiceOrchestrator } from "../../shared/service-runtime";
+
+const originalFetch = globalThis.fetch;
+
+beforeEach(() => {
+  globalThis.fetch = async (_input, init) => {
+    const body = JSON.parse(String(init?.body)) as { responseSchema?: { name?: string } };
+    const intelligence = String(body.responseSchema?.name ?? "").startsWith("portfolio-intelligence");
+    const reply = intelligence
+      ? {
+          summary: "The portfolio has two individual-equity positions.",
+          observations: ["NVDA has the larger market-value weight."],
+          risks: ["Single-name concentration may amplify drawdowns."],
+          evidence: ["Supplied portfolio positions and current market context."],
+          asOf: "2026-07-22",
+        }
+      : {
+          strategies: {
+            conservative: { id: "conservative", rationale: "Reduce concentration.", targetWeights: [{ ticker: "NVDA", weight: 0.4 }, { ticker: "JNJ", weight: 0.6 }] },
+            growth: { id: "growth", rationale: "Retain growth exposure.", targetWeights: [{ ticker: "NVDA", weight: 0.65 }, { ticker: "JNJ", weight: 0.35 }] },
+          },
+          recommendation: { selected: "conservative", reason: "Matches moderate risk tolerance.", status: "proposed" },
+        };
+    return new Response(JSON.stringify({
+      conversationId: "scenario-conversation",
+      responseId: "scenario-response",
+      reply: JSON.stringify(reply),
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+});
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+});
 
 const portfolioBaselineComposition = resolveDemoComposition("portfolio-baseline");
 const portfolioBaselineScenarioPlan = portfolioBaselineComposition.scenarioPlan;
@@ -36,7 +69,10 @@ function demoRuntimes() {
     state: portfolioRuntime.state,
   }, { effectHandlers: portfolioEffects }), {
     contexts,
-    wrapOrchestrator: declarativeServiceOrchestrator(portfolioRuntime),
+    wrapOrchestrator: declarativeServiceOrchestrator(portfolioRuntime, {
+      resolveCredential: async () => "foundry-access-key",
+      authorizeEndpoint: async () => true,
+    }),
   });
   const runnerSeed = structuredClone(runnerState) as Record<string, unknown>;
   runnerSeed.runner = {

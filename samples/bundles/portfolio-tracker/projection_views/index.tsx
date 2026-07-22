@@ -213,6 +213,7 @@ const WorkspaceView: ProjectionView = ({ node, children, emit }) => {
     </header>
     <div className={styles.content}>
       {cells.get("http-proxy-access-gate")}
+      {cells.get("foundry-access-gate")}
       {isAdvisorContext
         ? <>{advisory}{overview}{market}</>
         : <>{overview}{market}{advisory}</>}
