@@ -65,6 +65,12 @@ export function createFoundryProxy(options: FoundryProxyOptions) {
     });
     try {
       return await Promise.race([fetchImpl(input, init), timeout]);
+    } catch (error) {
+      if (error instanceof FoundryProxyError) throw error;
+      throw new FoundryProxyError(
+        `Could not reach Foundry at ${baseUrl}. Verify the server is running.`,
+        503
+      );
     } finally {
       if (timeoutId) {
         globalThis.clearTimeout?.(timeoutId);
@@ -89,10 +95,27 @@ export function createFoundryProxy(options: FoundryProxyOptions) {
 
   return {
     async checkAccess(): Promise<void> {
-      const response = await request(`${baseUrl}/api/access/check`, {
-        method: "GET",
-        headers: { "x-functions-key": options.key },
-      });
+      let response: Response;
+      try {
+        response = await request(`${baseUrl}/api/access/check`, {
+          method: "GET",
+          headers: { "x-functions-key": options.key },
+        });
+      } catch (error) {
+        if (!(error instanceof FoundryProxyError) || (error.status !== 408 && error.status !== 503)) throw error;
+        try {
+          await request(baseUrl, { method: "GET" });
+        } catch {
+          throw new FoundryProxyError(
+            `Could not reach Foundry at ${baseUrl}. Verify the server is running.`,
+            503
+          );
+        }
+        throw new FoundryProxyError(
+          `Foundry at ${baseUrl} is reachable, but ${baseUrl}/api/access/check could not be reached.`,
+          503
+        );
+      }
       if (!response.ok) {
         throw new FoundryProxyError((await responseError(response)) || `Foundry proxy returned ${response.status}.`, response.status);
       }

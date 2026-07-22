@@ -219,14 +219,14 @@
         "ui:table": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "rows" },
         "portfolio:summary": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
         "portfolio:narrative": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
-        "portfolio:recommendation": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["apply"], "dataProp": "value" }
+        "portfolio:comparison": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" }
       },
       "externals": {
         "projectionViews": {
           "ui": { "from": "floor" },
           "portfolio": { "from": "self" }
         },
-        "effectHandlers": ["setHoldings", "upsertHolding", "removeHolding", "applyRecommendation", "saveHoldings", "setPresentationContext"]
+        "effectHandlers": ["setHoldings", "upsertHolding", "removeHolding", "saveHoldings", "setPresentationContext"]
       },
       "state": {
         "portfolio": {
@@ -238,7 +238,6 @@
           "strategies": {},
           "recommendation": null,
           "investorProfile": null,
-          "appliedRecommendation": null,
           "presentationContext": "portfolio-overview"
         }
       }
@@ -253,7 +252,7 @@
           { "id": "portfolio-intelligence", "requires": ["portfolio-summary", "position:$TICKER", "investor-profile"], "provides": ["portfolio-intelligence"], "service": { "service": "portfolio-intelligence", "operation": "analyze", "contract": "portfolio-intelligence/v1" } },
           { "id": "conservative-rebalance", "requires": ["position:$TICKER", "portfolio-summary", "portfolio-intelligence", "investor-profile"], "provides": ["rebalance-conservative"] },
           { "id": "growth-rebalance", "requires": ["position:$TICKER", "portfolio-summary", "portfolio-intelligence", "investor-profile"], "provides": ["rebalance-growth"] },
-          { "id": "rebalance-comparison", "requires": ["rebalance-conservative", "rebalance-growth"], "provides": ["rebalance-recommendation"], "service": { "service": "portfolio-intelligence", "operation": "propose-strategies", "contract": "portfolio-strategies/v1" } }
+          { "id": "strategy-comparison", "requires": ["rebalance-conservative", "rebalance-growth"], "provides": ["strategy-comparison"], "service": { "service": "portfolio-intelligence", "operation": "propose-strategies", "contract": "portfolio-strategies/v1" } }
         ]
       }
     }

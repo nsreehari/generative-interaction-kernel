@@ -276,7 +276,7 @@
         "ui:table": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "rows" },
         "portfolio:summary": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
         "portfolio:narrative": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
-        "portfolio:recommendation": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["apply"], "dataProp": "value" }
+        "portfolio:comparison": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" }
       },
       "externals": {
         "projectionViews": {
@@ -285,7 +285,7 @@
           "foundry": { "from": "foundry", "use": ["access-gate"] },
           "portfolio": { "from": "self" }
         },
-        "effectHandlers": ["setHoldings", "upsertHolding", "removeHolding", "applyRecommendation", "saveHoldings", "setPresentationContext"]
+        "effectHandlers": ["setHoldings", "upsertHolding", "removeHolding", "saveHoldings", "setPresentationContext"]
       },
       "state": {
         "portfolio": {
@@ -301,7 +301,6 @@
           "strategies": {},
           "recommendation": null,
           "investorProfile": null,
-          "appliedRecommendation": null,
           "presentationContext": "portfolio-overview"
         }
       }
@@ -374,7 +373,7 @@
           { "id": "portfolio-intelligence", "capability": "portfolio:narrative", "requires": ["foundry-access", "portfolio-summary", "position:$TICKER", "investor-profile"], "provides": ["portfolio-intelligence"], "service": { "service": "portfolio-intelligence", "operation": "chat", "contract": "portfolio-intelligence/v1" }, "props": { "label": "portfolio-intelligence" }, "edges": { "read": { "value": "portfolio.intelligence" } } },
           { "id": "conservative-rebalance", "capability": "portfolio:narrative", "requires": ["position:$TICKER", "portfolio-summary", "portfolio-intelligence", "investor-profile"], "provides": ["rebalance-conservative"], "props": { "label": "conservative-rebalance" }, "edges": { "read": { "value": "portfolio.strategies.conservative" } } },
           { "id": "growth-rebalance", "capability": "portfolio:narrative", "requires": ["position:$TICKER", "portfolio-summary", "portfolio-intelligence", "investor-profile"], "provides": ["rebalance-growth"], "props": { "label": "growth-rebalance" }, "edges": { "read": { "value": "portfolio.strategies.growth" } } },
-          { "id": "rebalance-comparison", "capability": "portfolio:recommendation", "requires": ["rebalance-conservative", "rebalance-growth"], "provides": ["rebalance-recommendation"], "service": { "service": "portfolio-strategies", "operation": "chat", "contract": "portfolio-strategies/v1" }, "props": { "label": "rebalance-comparison" }, "edges": { "read": { "value": "portfolio.recommendation" }, "on": { "apply": [{ "do": "invoke", "args": { "tool": "applyRecommendation" } }] } } }
+          { "id": "strategy-comparison", "capability": "portfolio:comparison", "requires": ["rebalance-conservative", "rebalance-growth"], "provides": ["strategy-comparison"], "service": { "service": "portfolio-strategies", "operation": "chat", "contract": "portfolio-strategies/v1" }, "props": { "label": "strategy-comparison" }, "edges": { "read": { "value": "portfolio.recommendation" } } }
         ]
       },
       "organismRoot": {

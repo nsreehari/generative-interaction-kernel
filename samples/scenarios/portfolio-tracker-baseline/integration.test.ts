@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { bundleFromJson, loadBundleRuntime, SharedContextStore } from "@gik/react";
-import { dispatchDemoControlRequest, withDemoHumanGate } from "../../bundles/demo-runner/effect_handlers/control-bridge";
+import { dispatchDemoControlRequest } from "../../bundles/demo-runner/effect_handlers/control-bridge";
 import runnerDocument from "../../bundles/demo-runner/document.json" with { type: "json" };
 import runnerEffects from "../../bundles/demo-runner/effect_handlers/index";
 import runnerManifest from "../../bundles/demo-runner/manifest.json" with { type: "json" };
@@ -114,71 +114,4 @@ describe("portfolio demo-runner composition", () => {
     expect(shared.get("demo.presenter.locked")).toBe(false);
   });
 
-  it("completes a recommendation gate only through the attributed product event", async () => {
-    const { shared, portfolio } = demoRuntimes();
-    await portfolio.controller.start();
-    await portfolio.controller.emit("portfolio-tracker", "setHoldings", {
-      holdings: [
-        { ticker: "NVDA", quantity: 18, costBasis: 138 },
-        { ticker: "JNJ", quantity: 12, costBasis: 149 },
-      ],
-      investorProfile: { riskTolerance: "moderate", horizonYears: 8 },
-    });
-    await portfolio.controller.settle();
-    await portfolio.controller.emit("portfolio-tracker", "requestIntelligence");
-    await portfolio.controller.settle();
-    await portfolio.controller.emit("portfolio-tracker", "calculateStrategies");
-    await portfolio.controller.settle();
-    const request: ControlRequest = {
-      id: "portfolio-apply:1",
-      targetBlueprintId: "portfolio-tracker",
-      token: 4,
-      command: "$human-gate",
-      commands: ["applyRecommendation"],
-      actorId: "human-investor",
-    };
-    shared.apply([{ op: "set", path: "control.request", value: request }]);
-
-    const source = withDemoHumanGate(portfolio.controller, shared, portfolioControlContract);
-    await expect(source.emit("rebalance-comparison", "apply", {})).rejects.toThrow("attributed actor");
-    expect(shared.get("control.receipt")).toBeNull();
-
-    await source.emit("rebalance-comparison", "apply", {}, "human-investor");
-    await portfolio.controller.settle();
-
-    expect(portfolio.state.get("portfolio.appliedRecommendation")).toMatchObject({
-      status: "applied",
-      actorId: "human-investor",
-    });
-    expect(shared.get("control.receipt")).toMatchObject({
-      command: "$human-gate",
-      status: "completed",
-      token: 4,
-      outcome: "authorized",
-    });
-  });
-
-  it("rejects automatic dispatch of a human-gated command", async () => {
-    const { shared, portfolio } = demoRuntimes();
-    await portfolio.controller.start();
-    const request: ControlRequest = {
-      id: "portfolio-apply:auto",
-      targetBlueprintId: "portfolio-tracker",
-      token: 5,
-      command: "applyRecommendation",
-      actorId: "human-investor",
-    };
-
-    const receipt = await dispatchDemoControlRequest(
-      portfolio.controller,
-      shared,
-      portfolioControlContract,
-      request
-    );
-
-    expect(receipt).toMatchObject({
-      status: "rejected",
-      outcome: "human-authorization-required",
-    });
-  });
 });
