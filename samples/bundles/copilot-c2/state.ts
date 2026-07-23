@@ -4,6 +4,7 @@ import type { LoadBundleOptions } from "@gik/react";
 export const copilotC2StateStorageKey = "gik.copilot-c2.state.v1";
 
 const PERSISTED_COPILOT_C2_KEYS = [
+  "mcpServer",
   "workingDir",
   "model",
   "sourceRoots",

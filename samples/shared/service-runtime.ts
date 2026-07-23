@@ -74,8 +74,10 @@ export const browserServiceRegistryOptions: SampleServiceRegistryOptions = {
 };
 
 function mergeRegistryOptions(
-  registryOptions: SampleServiceRegistryOptions = {}
+  registryOptions: SampleServiceRegistryOptions = {},
+  state?: StateModel
 ): SampleServiceRegistryOptions {
+  const execute = registryOptions.execute ?? browserServiceRegistryOptions.execute;
   return {
     ...browserServiceRegistryOptions,
     ...registryOptions,
@@ -85,6 +87,23 @@ function mergeRegistryOptions(
         ...(registryOptions.hostCapabilities ?? []),
       ]),
     ],
+    execute: execute && state
+      ? (request) => {
+          const invocation = request as Parameters<typeof executeMcpServiceInvocation>[0];
+          if (invocation.kind !== "mcp") return execute(request);
+          const config = invocation.declaration.config as Record<string, Json> | undefined;
+          const serverStatePath = String(config?.serverStatePath ?? "").trim();
+          const server = serverStatePath ? String(state.get(serverStatePath) ?? "").trim() : "";
+          if (!server) return execute(request);
+          return execute({
+            ...invocation,
+            declaration: {
+              ...invocation.declaration,
+              config: { ...config, server },
+            },
+          });
+        }
+      : execute,
   };
 }
 
@@ -99,7 +118,7 @@ export function createBlueprintServiceHost(
     blueprintId: runtime.blueprintId,
     blueprintRevision: runtime.revision,
     declarations,
-    registry: createSampleServiceKindRegistry(mergeRegistryOptions(registryOptions)),
+    registry: createSampleServiceKindRegistry(mergeRegistryOptions(registryOptions, state)),
     state,
     expression: new JsonataExpressionProvider({ safe: true }),
   });

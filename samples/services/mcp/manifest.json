@@ -7,6 +7,7 @@
     "additionalProperties": false,
     "properties": {
       "server": { "type": "string", "minLength": 1 },
+      "serverStatePath": { "type": "string", "minLength": 1 },
       "tool": { "type": "string", "minLength": 1 },
       "credentialRef": { "type": "string", "minLength": 1 }
     },
