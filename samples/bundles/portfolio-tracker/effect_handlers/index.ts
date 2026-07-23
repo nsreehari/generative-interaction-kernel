@@ -148,6 +148,7 @@ function clearDerivedPortfolioOps(ctx: EffectContext, holdings: Record<string, H
       gainLoss: 0,
     }),
     ctx.set("portfolio.intelligence", null),
+    ctx.set("portfolio.intelligenceError", ""),
     ctx.set("portfolio.intelligence2", null),
     ctx.set("portfolio.strategies", {}),
     ctx.set("portfolio.recommendation", null),

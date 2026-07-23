@@ -55,7 +55,9 @@ describe("portfolio-tracker Blueprint", () => {
       read: "portfolio.foundryAccessStatus",
       when: "portfolio.foundryAccessStatus = 'ready'",
     }]);
-    expect(portfolioCells.find((cell) => cell.id === "portfolio-intelligence")?.requires).toContain("foundry-access");
+    const intelligence1 = portfolioCells.find((cell) => cell.id === "portfolio-intelligence");
+    expect(intelligence1?.requires).toContain("foundry-access");
+    expect(intelligence1?.edges?.read).toEqual({ value: "portfolio.intelligence", error: "portfolio.intelligenceError" });
     const intelligence2 = portfolioCells.find((cell) => cell.id === "portfolio-intelligence-2");
     expect(intelligence2).toMatchObject({
       capability: "portfolio:intelligence-projections",
