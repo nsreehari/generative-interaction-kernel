@@ -28,6 +28,7 @@ import {
   type ProjectionView,
   type ProjectionViewProps,
 } from "@gik/react";
+import { formatCountdown } from "../../../shared/countdown";
 
 interface Option {
   value: string;
@@ -1824,6 +1825,7 @@ function TimerButton({ node, emit }: ProjectionViewProps) {
       timer.restart();
     },
   });
+  const countdown = formatCountdown(timer.remainingSeconds);
 
   const press = () => {
     emit("press", { reason: "manual" });
@@ -1840,7 +1842,7 @@ function TimerButton({ node, emit }: ProjectionViewProps) {
       <span className="gx-timer-label">{label}</span>
       {node.props.showCountdown !== false ? <>
         <span className="gx-timer-separator" aria-hidden="true"> · </span>
-        <span className="gx-timer-count">{timer.remainingSeconds}</span>
+        <span className="gx-timer-count">{countdown}</span>
       </> : null}
     </button>
   );
