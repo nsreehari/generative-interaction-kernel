@@ -1,4 +1,4 @@
-import type { EffectContext, EffectHandlerMap } from "@gik/react";
+import type { EffectContext, EffectHandlerMap, LoadBundleOptions } from "@gik/react";
 import type { Json, PatchOp } from "@gik/kernel";
 
 interface Holding {
@@ -10,6 +10,29 @@ interface Holding {
 interface Quote {
   ticker: string;
   price: number;
+}
+
+export const portfolioStateStorageKey = "gik.portfolio-tracker.state.v1";
+const PERSISTED_PORTFOLIO_KEYS = [
+  "holdings",
+  "quotes",
+  "positions",
+  "summary",
+  "intelligence",
+  "intelligence2",
+  "strategies",
+  "recommendation",
+  "investorProfile",
+] as const;
+
+function portfolioStorage(): Storage | null {
+  try {
+    return typeof globalThis === "undefined" || !("localStorage" in globalThis)
+      ? null
+      : globalThis.localStorage ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function recordAt<T>(ctx: EffectContext, path: string): Record<string, T> {
@@ -24,6 +47,93 @@ function holdingFrom(value: Json | undefined): Holding | undefined {
   return ticker && Number.isFinite(quantity) && Number.isFinite(costBasis)
     ? { ticker, quantity, costBasis }
     : undefined;
+}
+
+function normalizedHoldings(value: unknown): Record<string, Holding> {
+  const values = Array.isArray(value)
+    ? value
+    : value && typeof value === "object"
+      ? Object.values(value)
+      : [];
+  const holdings = values
+    .map((entry) => holdingFrom(entry as Json))
+    .filter((entry): entry is Holding => entry !== undefined);
+  return Object.fromEntries(holdings.map((holding) => [holding.ticker, holding]));
+}
+
+export function readStoredPortfolioState(
+  storage: Pick<Storage, "getItem"> | null = portfolioStorage()
+): Record<string, Json> | null {
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(portfolioStateStorageKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { portfolio?: unknown };
+    if (!parsed || typeof parsed !== "object" || !parsed.portfolio || typeof parsed.portfolio !== "object" || Array.isArray(parsed.portfolio)) return null;
+    const source = parsed.portfolio as Record<string, Json>;
+    const portfolio = Object.fromEntries(
+      PERSISTED_PORTFOLIO_KEYS
+        .filter((key) => key in source)
+        .map((key) => [key, source[key]])
+    ) as Record<string, Json>;
+    portfolio.holdings = normalizedHoldings(source.holdings) as unknown as Json;
+    return portfolio;
+  } catch {
+    return null;
+  }
+}
+
+export function writeStoredPortfolioState(
+  portfolio: Record<string, Json>,
+  storage: Pick<Storage, "setItem"> | null = portfolioStorage()
+): void {
+  if (!storage) return;
+  try {
+    const persisted = Object.fromEntries(
+      PERSISTED_PORTFOLIO_KEYS
+        .filter((key) => key in portfolio)
+        .map((key) => [key, portfolio[key]])
+    );
+    if ("holdings" in portfolio) persisted.holdings = normalizedHoldings(portfolio.holdings);
+    storage.setItem(portfolioStateStorageKey, JSON.stringify({
+      savedAt: new Date().toISOString(),
+      portfolio: persisted,
+    }));
+  } catch {
+    // Browser storage is an optional durability layer; state updates must still succeed.
+  }
+}
+
+export function hydrateState(
+  state: Record<string, unknown>,
+  storage: Pick<Storage, "getItem"> | null = portfolioStorage()
+): void {
+  const stored = readStoredPortfolioState(storage);
+  if (stored === null) return;
+  const portfolio = state.portfolio;
+  if (!portfolio || typeof portfolio !== "object" || Array.isArray(portfolio)) return;
+  Object.assign(portfolio, stored);
+}
+
+export function wrapOrchestrator(
+  next: NonNullable<LoadBundleOptions["wrapOrchestrator"]>
+): NonNullable<LoadBundleOptions["wrapOrchestrator"]> {
+  return (fallback, state) => {
+    const apply = state.apply.bind(state);
+    state.apply = (ops) => {
+      apply(ops);
+      const durableChange = ops.some((op) =>
+        op.path === "portfolio"
+        || PERSISTED_PORTFOLIO_KEYS.some((key) => op.path === `portfolio.${key}` || op.path.startsWith(`portfolio.${key}.`))
+      );
+      if (!durableChange) return;
+      const portfolio = state.get("portfolio");
+      if (portfolio && typeof portfolio === "object" && !Array.isArray(portfolio)) {
+        writeStoredPortfolioState(portfolio as Record<string, Json>);
+      }
+    };
+    return next(fallback, state);
+  };
 }
 
 function clearDerivedPortfolioOps(ctx: EffectContext, holdings: Record<string, Holding>): PatchOp[] {
