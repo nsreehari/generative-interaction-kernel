@@ -15,13 +15,15 @@ describe("portfolio-tracker Blueprint", () => {
     expect(portfolioCells.map((cell) => cell.id)).toEqual([
       "http-proxy-access-gate",
       "holdings",
+      "foundry-access-gate",
       "market-prices",
       "positions",
       "summary",
       "portfolio-intelligence",
+      "portfolio-intelligence-2",
       "conservative-rebalance",
       "growth-rebalance",
-      "rebalance-comparison",
+      "strategy-comparison",
     ]);
     const composition = analyzeCellComposition(portfolioCells);
     expect(composition.externalInputs).toEqual(["investor-profile"]);
@@ -35,6 +37,7 @@ describe("portfolio-tracker Blueprint", () => {
     );
     const marketPrices = document.root.edges?.children?.find((node) => node.id === "market-prices");
     const accessGate = portfolioCells.find((cell) => cell.id === "http-proxy-access-gate");
+    const foundryAccessGate = portfolioCells.find((cell) => cell.id === "foundry-access-gate");
     expect(accessGate?.provides).toEqual([{
       token: "http-proxy-access",
       read: "portfolio.httpProxyAccessStatus",
@@ -44,6 +47,35 @@ describe("portfolio-tracker Blueprint", () => {
       "http-proxy-access",
       "holding:$TICKER",
     ]);
+    expect(foundryAccessGate?.provides).toEqual([{
+      token: "foundry-access",
+      read: "portfolio.foundryAccessStatus",
+      when: "portfolio.foundryAccessStatus = 'ready'",
+    }]);
+    const intelligence1 = portfolioCells.find((cell) => cell.id === "portfolio-intelligence");
+    expect(intelligence1?.requires).toContain("foundry-access");
+    expect(intelligence1?.edges?.read).toEqual({ value: "portfolio.intelligence", error: "portfolio.intelligenceError" });
+    const intelligence2 = portfolioCells.find((cell) => cell.id === "portfolio-intelligence-2");
+    expect(intelligence2).toMatchObject({
+      capability: "portfolio:intelligence-projections",
+      service: { service: "portfolio-intelligence-2", contract: "portfolio-intelligence-2/v1" },
+      edges: { read: { value: "portfolio.intelligence2", presentationContext: "portfolio.presentationContext", error: "portfolio.foundryAccessError" } },
+    });
+    expect(intelligence2?.props?.projectionRecipe).toMatchObject({
+      contexts: {
+        "portfolio-overview": { attention: "glanceable", maxSections: 3 },
+        "portfolio-advisor": { attention: "focused", maxSections: 8 },
+      },
+    });
+    const strategyComparison = portfolioCells.find((cell) => cell.id === "strategy-comparison");
+    expect(strategyComparison?.capability).toBe("portfolio:comparison");
+    expect(strategyComparison?.requires).toEqual(expect.arrayContaining(["portfolio-intelligence", "portfolio-intelligence-2"]));
+    expect(strategyComparison?.edges?.read).toMatchObject({
+      intelligence1: "portfolio.intelligence",
+      intelligence2: "portfolio.intelligence2",
+      strategyInputs: "portfolio.strategyInputs",
+    });
+    expect(strategyComparison?.edges?.on).toBeUndefined();
     expect(marketPrices?.props?.externalSource).toEqual({ refreshEvent: "refresh" });
     expect(marketPrices?.edges?.on?.refresh).toEqual([{
       do: "invoke",

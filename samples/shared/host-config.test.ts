@@ -7,6 +7,7 @@ import { applyHostConfig, hostConfig, resolveHostEnvironment } from "./host-conf
 test("host config defaults to production when no environment is set", () => {
   assert.equal(hostConfig.foundryProxyOrigin, "https://sz-foundry-proxy.azurewebsites.net");
   assert.equal(hostConfig.httpProxyOrigin, "https://sz-http-proxy.azurewebsites.net");
+  assert.equal(hostConfig.storesProxyOrigin, "https://sz-stores-proxy.azurewebsites.net");
   assert.equal(resolveHostEnvironment({ MODE: "development" }), "production");
 });
 
@@ -31,6 +32,7 @@ test("host config replaces endpoint tokens without mutating the source", () => {
       config: {
         endpoint: "${GIK_FOUNDRY_PROXY_ORIGIN}",
         proxyEndpoint: "${GIK_HTTP_PROXY_ORIGIN}",
+        storesEndpoint: "${GIK_STORES_PROXY_ORIGIN}",
       },
     }],
   };
@@ -38,12 +40,15 @@ test("host config replaces endpoint tokens without mutating the source", () => {
   const configured = applyHostConfig(source, {
     foundryProxyOrigin: "https://proxy.example.test",
     httpProxyOrigin: "https://http-proxy.example.test",
+    storesProxyOrigin: "https://stores-proxy.example.test",
   });
 
   assert.equal(configured.services[0].config.endpoint, "https://proxy.example.test");
   assert.equal(configured.services[0].config.proxyEndpoint, "https://http-proxy.example.test");
+  assert.equal(configured.services[0].config.storesEndpoint, "https://stores-proxy.example.test");
   assert.equal(source.services[0].config.endpoint, "${GIK_FOUNDRY_PROXY_ORIGIN}");
   assert.equal(source.services[0].config.proxyEndpoint, "${GIK_HTTP_PROXY_ORIGIN}");
+  assert.equal(source.services[0].config.storesEndpoint, "${GIK_STORES_PROXY_ORIGIN}");
 });
 
 test.each(["foundry-agent", "foundry-agent-no-cells", "live-workspace-soc"])(

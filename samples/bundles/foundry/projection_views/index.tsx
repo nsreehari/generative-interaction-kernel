@@ -33,6 +33,7 @@ function accessErrorMessage(reason: unknown, serviceName: string): string {
 
 const useStyles = makeStyles({
   stack: { display: "grid", gap: tokens.spacingVerticalM },
+  endpoint: { overflowWrap: "anywhere", userSelect: "text" },
   actions: { paddingTop: tokens.spacingVerticalM },
 });
 
@@ -177,6 +178,9 @@ export const FunctionAccessGate: ProjectionView = ({ node, emit, children }) => 
           <DialogBody>
             <DialogTitle>{title}</DialogTitle>
             <DialogContent className={styles.stack}>
+              <Field label="Base URL">
+                <Text className={styles.endpoint}>{access.baseUrl}</Text>
+              </Field>
               {effectiveStatus === "checking" ? (
                 <Spinner labelPosition="after" label="Checking access..." />
               ) : effectiveStatus === "unconfigured" || effectiveStatus === "error" ? (

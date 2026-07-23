@@ -24,7 +24,7 @@ vi.mock("@fluentui/react-components", () => {
     MessageBarBody: element("div"),
     Spinner: ({ label }: { label?: string }) => React.createElement("div", null, label ?? "Loading"),
     Text: element("p"),
-    makeStyles: () => () => ({ stack: "stack", actions: "actions" }),
+    makeStyles: () => () => ({ stack: "stack", endpoint: "endpoint", actions: "actions" }),
     tokens: { spacingVerticalM: "12px" },
   };
 });
@@ -67,6 +67,8 @@ test("foundry:access-gate prompts for access and withholds protected children", 
   }]), registry, () => {}));
 
   assert.match(markup, /Enter your access key to continue/);
+  assert.match(markup, /Base URL/);
+  assert.match(markup, new RegExp(FUNCTION_ACCESS.foundry.baseUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.doesNotMatch(markup, /Protected content/);
 });
 

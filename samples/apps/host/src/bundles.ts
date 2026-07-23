@@ -8,6 +8,7 @@ import {
   type BundleNative,
   type BundleRegistry,
   type EffectHandlerMap,
+  type LoadBundleOptions,
   type ProjectionView,
 } from "@gik/react";
 import { playgroundApp } from "../../../bundles/floor/projection_views/playground";
@@ -36,6 +37,7 @@ const rawStates = import.meta.glob("../../../bundles/*/state.json", { eager: tru
 const rawEffectHandlerModules = import.meta.glob("../../../bundles/*/effect_handlers/index.{ts,tsx}", {
   eager: true,
 });
+const rawStateModules = import.meta.glob("../../../bundles/*/state.ts", { eager: true });
 const rawProjectionViews = import.meta.glob("../../../bundles/*/projection_views/index.{ts,tsx}", {
   eager: true,
   import: "default",
@@ -60,6 +62,16 @@ const documents = byBundleId(rawDocuments);
 const states = byBundleId(rawStates);
 const effectHandlerModules = byBundleId(rawEffectHandlerModules) as Record<string, {
   default: EffectHandlerMap;
+  hydrateState?: (state: Record<string, unknown>) => void;
+  wrapOrchestrator?: (
+    next: NonNullable<LoadBundleOptions["wrapOrchestrator"]>
+  ) => NonNullable<LoadBundleOptions["wrapOrchestrator"]>;
+}>;
+const stateModules = byBundleId(rawStateModules) as Record<string, {
+  hydrateState?: (state: Record<string, unknown>) => void;
+  wrapOrchestrator?: (
+    next: NonNullable<LoadBundleOptions["wrapOrchestrator"]>
+  ) => NonNullable<LoadBundleOptions["wrapOrchestrator"]>;
 }>;
 const projectionViews = byBundleId({
   ...rawProjectionViews,
@@ -90,10 +102,13 @@ export function createHostRegistry(demoId?: string | null, targetBlueprintId?: s
         const { manifest, document, state } = runtime;
         const nativeId = REGISTRY.nativeFrom?.[id] ?? id;
         const effectModule = effectHandlerModules[nativeId];
+        const stateModule = stateModules[nativeId] ?? effectModule;
+        stateModule?.hydrateState?.(state as Record<string, unknown>);
+        const serviceOrchestrator = declarativeServiceOrchestrator(runtime, browserServiceRegistryOptions);
         const native: BundleNative = {
           effectHandlers: effectModule?.default,
           projectionViews: projectionViews[nativeId],
-          wrapOrchestrator: declarativeServiceOrchestrator(runtime, browserServiceRegistryOptions),
+          wrapOrchestrator: stateModule?.wrapOrchestrator?.(serviceOrchestrator) ?? serviceOrchestrator,
         };
         return bundleFromJson({ manifest, document, state }, native);
       },

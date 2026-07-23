@@ -28,6 +28,7 @@ import {
   type ProjectionView,
   type ProjectionViewProps,
 } from "@gik/react";
+import { formatCountdown } from "../../../shared/countdown";
 
 interface Option {
   value: string;
@@ -540,6 +541,43 @@ function editableRowsFrom(source: unknown[]): Array<Record<string, unknown>> {
 
     return { ...(row as Record<string, unknown>) };
   });
+}
+
+function blankEditableRow(columns: string[]): Record<string, unknown> {
+  return Object.fromEntries(columns.map((column) => [column, ""]));
+}
+
+export function isEmptyEditableRow(row: Record<string, unknown>): boolean {
+  return Object.values(row).every((value) =>
+    value == null || (typeof value === "string" && value.trim() === "")
+  );
+}
+
+export function withTrailingEditableRow(
+  rows: Array<Record<string, unknown>>,
+  columns: string[]
+): Array<Record<string, unknown>> {
+  if (rows.length > 0 && isEmptyEditableRow(rows[rows.length - 1])) {
+    return rows;
+  }
+
+  return [...rows, blankEditableRow(columns)];
+}
+
+export function committedEditableRows(
+  rows: Array<Record<string, unknown>>
+): Array<Record<string, unknown>> {
+  return rows.filter((row) => !isEmptyEditableRow(row));
+}
+
+export function appendEditableRowOnLastRowFocus(
+  rows: Array<Record<string, unknown>>,
+  columns: string[],
+  rowIndex: number
+): Array<Record<string, unknown>> {
+  return rowIndex === rows.length - 1
+    ? [...rows, blankEditableRow(columns)]
+    : rows;
 }
 
 function editableColumns(spec: EditableTableSpec, rows: Array<Record<string, unknown>>): string[] {
@@ -1824,6 +1862,7 @@ function TimerButton({ node, emit }: ProjectionViewProps) {
       timer.restart();
     },
   });
+  const countdown = formatCountdown(timer.remainingSeconds);
 
   const press = () => {
     emit("press", { reason: "manual" });
@@ -1840,7 +1879,7 @@ function TimerButton({ node, emit }: ProjectionViewProps) {
       <span className="gx-timer-label">{label}</span>
       {node.props.showCountdown !== false ? <>
         <span className="gx-timer-separator" aria-hidden="true"> · </span>
-        <span className="gx-timer-count">{timer.remainingSeconds}</span>
+        <span className="gx-timer-count">{countdown}</span>
       </> : null}
     </button>
   );
@@ -2176,19 +2215,94 @@ function Notes({ node, emit }: ProjectionViewProps) {
   );
 }
 
+interface EditableTableRowProps {
+  row: Record<string, unknown>;
+  rowIndex: number;
+  isLastRow: boolean;
+  columns: string[];
+  schemaProps: Record<string, Record<string, unknown>>;
+  canDelete: boolean;
+  onCellChange: (rowIndex: number, column: string, value: string, isNumber: boolean) => void;
+  onDelete: (rowIndex: number) => void;
+  onLastRowFocus: (rowIndex: number) => void;
+}
+
+const EditableTableRow = React.memo(function EditableTableRow({
+  row,
+  rowIndex,
+  isLastRow,
+  columns,
+  schemaProps,
+  canDelete,
+  onCellChange,
+  onDelete,
+  onLastRowFocus,
+}: EditableTableRowProps) {
+  return (
+    <tr>
+      {columns.map((column) => {
+        const prop = schemaProps[column] ?? {};
+        const isNumber = prop.type === "number" || prop.type === "integer" || typeof row[column] === "number";
+        return (
+          <td key={column}>
+            <input
+              type={isNumber ? "number" : "text"}
+              step={isNumber ? "any" : undefined}
+              value={row[column] == null ? "" : String(row[column])}
+              onFocus={isLastRow ? () => onLastRowFocus(rowIndex) : undefined}
+              onChange={(event) => onCellChange(rowIndex, column, event.target.value, isNumber)}
+            />
+          </td>
+        );
+      })}
+      {canDelete ? (
+        <td>
+          <button type="button" className="gx-cell-delete" aria-label={`remove row ${rowIndex + 1}`} onClick={() => onDelete(rowIndex)}>
+            ✕
+          </button>
+        </td>
+      ) : null}
+    </tr>
+  );
+});
+
 function EditableTable({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
   const spec = p.obj<EditableTableSpec>("spec", {});
   const incomingRows = editableRowsFrom(
     p.list<unknown>("rows").length > 0 ? p.list<unknown>("rows") : p.list<unknown>("baseRows")
   );
-  const { draft: rows, dirty, setDirty, update: updateRows, reset } = useDraftState(incomingRows);
+  const incomingColumns = editableColumns(spec, incomingRows);
+  const visibleIncomingRows = withTrailingEditableRow(incomingRows, incomingColumns);
+  const { draft: rows, setDraft: setRows, dirty, setDirty, update: updateRows, reset } = useDraftState(visibleIncomingRows);
 
-  const columns = editableColumns(spec, rows);
+  const columnsSignature = incomingColumns.join("\u0000");
+  const columns = React.useMemo(() => incomingColumns, [columnsSignature]);
   const canAdd = spec.addRow !== false;
   const canDelete = spec.deleteRow !== false;
   const placeholder = spec.placeholder ?? "No data";
   const schemaProps = spec.schema?.properties ?? {};
+  const handleCellChange = React.useCallback((rowIndex: number, column: string, value: string, isNumber: boolean) => {
+    setRows((currentRows) => {
+      const next = currentRows.slice();
+      next[rowIndex] = {
+        ...next[rowIndex],
+        [column]: isNumber && value !== "" ? Number.parseFloat(value) : value,
+      };
+      return next;
+    });
+    setDirty(true);
+  }, [setDirty, setRows]);
+  const handleLastRowFocus = React.useCallback((rowIndex: number) => {
+    setRows((currentRows) => appendEditableRowOnLastRowFocus(currentRows, columns, rowIndex));
+  }, [columns, setRows]);
+  const handleDelete = React.useCallback((rowIndex: number) => {
+    setRows((currentRows) => withTrailingEditableRow(
+      currentRows.filter((_, index) => index !== rowIndex),
+      columns
+    ));
+    setDirty(true);
+  }, [columns, setDirty, setRows]);
 
   if (columns.length === 0 && !canAdd) {
     return <p className="gx-muted">{placeholder}</p>;
@@ -2209,35 +2323,18 @@ function EditableTable({ node, emit }: ProjectionViewProps) {
               <td className="gx-muted" colSpan={columns.length + (canDelete ? 1 : 0)}>{placeholder}</td>
             </tr>
           ) : rows.map((row, rowIndex) => (
-            <tr key={rowIndex}>
-              {columns.map((column) => {
-                const prop = schemaProps[column] ?? {};
-                const isNumber = prop.type === "number" || prop.type === "integer" || typeof row[column] === "number";
-                return (
-                  <td key={column}>
-                    <input
-                      type={isNumber ? "number" : "text"}
-                      step={isNumber ? "any" : undefined}
-                      value={row[column] == null ? "" : String(row[column])}
-                      onChange={(event) => {
-                        const next = rows.map((entry) => ({ ...entry }));
-                        next[rowIndex][column] = isNumber
-                          ? (event.target.value === "" ? 0 : Number.parseFloat(event.target.value))
-                          : event.target.value;
-                        updateRows(next);
-                      }}
-                    />
-                  </td>
-                );
-              })}
-              {canDelete ? (
-                <td>
-                  <button type="button" className="gx-cell-delete" aria-label={`remove row ${rowIndex + 1}`} onClick={() => updateRows(rows.filter((_, index) => index !== rowIndex))}>
-                    ✕
-                  </button>
-                </td>
-              ) : null}
-            </tr>
+            <EditableTableRow
+              key={rowIndex}
+              row={row}
+              rowIndex={rowIndex}
+              isLastRow={rowIndex === rows.length - 1}
+              columns={columns}
+              schemaProps={schemaProps}
+              canDelete={canDelete}
+              onCellChange={handleCellChange}
+              onDelete={handleDelete}
+              onLastRowFocus={handleLastRowFocus}
+            />
           ))}
         </tbody>
       </table>
@@ -2246,13 +2343,13 @@ function EditableTable({ node, emit }: ProjectionViewProps) {
         discardLabel={p.str("discardLabel", "Discard")}
         saveLabel={p.str("saveLabel", "Save")}
         onDiscard={reset}
-        onSave={() => { emit("save", { rows }); setDirty(false); }}
+        onSave={() => { emit("save", { rows: committedEditableRows(rows) }); setDirty(false); }}
         leading={canAdd ? (
           <button
             type="button"
             className="gx-btn"
             onClick={() => {
-              const blank = Object.fromEntries(columns.map((column) => [column, ""]));
+              const blank = blankEditableRow(columns);
               updateRows([...rows, blank]);
             }}
           >

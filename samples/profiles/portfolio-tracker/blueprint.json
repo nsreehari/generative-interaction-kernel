@@ -160,7 +160,7 @@
             "settlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "($positions := response.results.{'ticker':key,'quantity':meta.quantity,'price':$round(body.chart.result[0].meta.regularMarketPrice, 2),'value':$round(meta.quantity * body.chart.result[0].meta.regularMarketPrice, 2),'costBasis':$round(meta.quantity * meta.costBasis, 2),'gainLoss':$round((meta.quantity * body.chart.result[0].meta.regularMarketPrice) - (meta.quantity * meta.costBasis), 2)}; {'ops':[{'op':'set','path':'portfolio.quotes','value':$count(response.results) > 0 ? $merge(response.results.{key:{'ticker':key,'price':$round(body.chart.result[0].meta.regularMarketPrice, 2)}}) : {}},{'op':'set','path':'portfolio.positions','value':$count($positions) > 0 ? $merge($positions.{ticker:$}) : {}},{'op':'set','path':'portfolio.summary','value':{'marketValue':$count($positions) > 0 ? $round($sum($positions.value), 2) : 0,'costBasis':$count($positions) > 0 ? $round($sum($positions.costBasis), 2) : 0,'gainLoss':$count($positions) > 0 ? $round($sum($positions.gainLoss), 2) : 0}},{'op':'set','path':'portfolio.intelligence','value':null},{'op':'set','path':'portfolio.strategies','value':{}},{'op':'set','path':'portfolio.recommendation','value':null}],'detail':{'provider':'yahoo-finance-http-service','quoteCount':$count(response.results)}})"
+                "expr": "($positions := response.results.{'ticker':key,'quantity':meta.quantity,'price':$round(body.chart.result[0].meta.regularMarketPrice, 2),'value':$round(meta.quantity * body.chart.result[0].meta.regularMarketPrice, 2),'costBasis':$round(meta.quantity * meta.costBasis, 2),'gainLoss':$round((meta.quantity * body.chart.result[0].meta.regularMarketPrice) - (meta.quantity * meta.costBasis), 2)}; {'ops':[{'op':'set','path':'portfolio.quotes','value':$count(response.results) > 0 ? $merge(response.results.{key:{'ticker':key,'price':$round(body.chart.result[0].meta.regularMarketPrice, 2)}}) : {}},{'op':'set','path':'portfolio.positions','value':$count($positions) > 0 ? $merge($positions.{ticker:$}) : {}},{'op':'set','path':'portfolio.summary','value':{'marketValue':$count($positions) > 0 ? $round($sum($positions.value), 2) : 0,'costBasis':$count($positions) > 0 ? $round($sum($positions.costBasis), 2) : 0,'gainLoss':$count($positions) > 0 ? $round($sum($positions.gainLoss), 2) : 0}},{'op':'set','path':'portfolio.intelligence','value':null},{'op':'set','path':'portfolio.intelligence2','value':null},{'op':'set','path':'portfolio.strategies','value':{}},{'op':'set','path':'portfolio.recommendation','value':null},{'op':'set','path':'portfolio.strategyInputs','value':null},{'op':'set','path':'portfolio.pendingStrategyInputs','value':null}],'detail':{'provider':'yahoo-finance-http-service','quoteCount':$count(response.results)}})"
               }
             }
           }
@@ -172,22 +172,42 @@
         "scope": "per-blueprint"
       },
       "portfolio-intelligence": {
-        "kind": "deterministic-agent",
+        "kind": "foundry-agent",
         "version": "1",
         "operations": {
+          "checkFoundryAccess": {
+            "operation": "check-access",
+            "contract": "foundry-access-check/v1",
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'portfolio.foundryAccessStatus','value':'ready'},{'op':'set','path':'portfolio.foundryAccessError','value':''}]}"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($rejected := error.status = 401 or error.status = 403; $missing := error.message = 'Foundry access is required'; {'ops':[{'op':'set','path':'portfolio.foundryAccessStatus','value':($rejected or $missing) ? 'required' : 'error'},{'op':'set','path':'portfolio.foundryAccessError','value':$rejected ? 'That access key was rejected.' : ($missing ? 'Foundry access is required.' : error.message)}]})"
+              }
+            },
+            "onViolation": {
+              "action": "fail"
+            }
+          },
           "requestIntelligence": {
-            "operation": "analyze",
+            "operation": "chat",
             "contract": "portfolio-intelligence/v1",
             "request": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "{'positions':state.portfolio.positions,'summary':state.portfolio.summary,'investorProfile':state.portfolio.investorProfile}"
+                "expr": "{'message':'Analyze the following portfolio using the supplied values as authoritative. Positions JSON: ' & $string(state.portfolio.positions) & ' Portfolio summary JSON: ' & $string(state.portfolio.summary) & ' Investor profile JSON: ' & $string(state.portfolio.investorProfile),'instructions':'Analyze only the supplied portfolio data; do not imply that external news or events were researched. Distinguish supplied facts from analytical judgments and uncertainty. Do not invent prices, events, sources, or investor constraints. Return an empty evidence array because no external evidence is supplied. Keep the assessment concise and keep the complete structured response within the supplied output token budget.','maxOutputTokens':1800}"
               }
             },
             "response": {
               "validators": [
                 {
                   "kind": "ajv-schema",
+                  "code": "provider-structured-output",
                   "message": "Portfolio intelligence response is invalid",
                   "schema": {
                     "type": "object",
@@ -196,8 +216,7 @@
                       "observations",
                       "risks",
                       "evidence",
-                      "investorProfile",
-                      "provider"
+                      "asOf"
                     ],
                     "properties": {
                       "summary": {
@@ -222,8 +241,7 @@
                           "type": "string"
                         }
                       },
-                      "investorProfile": {},
-                      "provider": {
+                      "asOf": {
                         "type": "string",
                         "minLength": 1
                       }
@@ -236,65 +254,445 @@
             "settlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':response}],'detail':{'provider':response.provider}}"
+                "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':$merge([response,{'investorProfile':state.portfolio.investorProfile,'provider':'foundry-agent:Portfolio-Intelligence-Agent'}])},{'op':'set','path':'portfolio.intelligenceError','value':''}],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Intelligence-Agent'}}"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($access := error.message = 'Foundry access is required' or error.status = 401 or error.status = 403; $message := $access ? (error.status = 401 or error.status = 403 ? 'That access key was rejected.' : 'Foundry access is required.') : error.message; {'ops':[{'op':'set','path':'portfolio.foundryAccessStatus','value':$access ? 'required' : state.portfolio.foundryAccessStatus},{'op':'set','path':'portfolio.foundryAccessError','value':$access ? $message : state.portfolio.foundryAccessError},{'op':'set','path':'portfolio.intelligenceError','value':$message}]})"
               }
             },
             "onViolation": {
               "action": "fail"
             }
-          },
-          "calculateStrategies": {
-            "operation": "propose-strategies",
-            "contract": "portfolio-strategies/v1",
+          }
+        },
+        "config": {
+          "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}",
+          "agent": "Portfolio-Intelligence-Agent",
+          "credentialRef": "foundry-agent/access-key"
+        },
+        "scope": "per-blueprint"
+      },
+      "portfolio-intelligence-2": {
+        "kind": "foundry-agent",
+        "version": "1",
+        "operations": {
+          "requestIntelligence2": {
+            "operation": "chat",
+            "contract": "portfolio-intelligence-2/v1",
             "request": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "{'positions':state.portfolio.positions,'summary':state.portfolio.summary,'investorProfile':state.portfolio.investorProfile,'intelligence':state.portfolio.intelligence}"
+                "expr": "{'message':'Analyze this portfolio and propose useful semantic projections. Positions JSON: ' & $string(state.portfolio.positions) & ' Portfolio summary JSON: ' & $string(state.portfolio.summary) & ' Investor profile JSON: ' & $string(state.portfolio.investorProfile) & ' Interaction context JSON: ' & $string({'interaction':'investigate','subject':'portfolio intelligence','goal':'understand what deserves human attention','facets':['summary','signals','catalysts','risks','evidence']}) & ' Attention context JSON: ' & $string({'presentationContext':state.portfolio.presentationContext,'attention':state.portfolio.presentationContext = 'portfolio-advisor' ? 'focused' : 'glanceable','space':state.portfolio.presentationContext = 'portfolio-advisor' ? 'expanded' : 'regular'}),'instructions':'Build reusable semantic items first. Then return two or three alternative projection candidates that reference those items by id. Available primitives are hero-signal, metric-strip, signal-list, timeline, evidence-list, and narrative. Available priority tokens are primary, secondary, and tertiary. Available disclosure tokens are always, collapsed, and on-demand. Use only this catalog. A glanceable candidate should expose no more than three always-visible sections and lead with the most material signal. A focused candidate may retain evidence and supporting detail through progressive disclosure. The runtime recipe, not you, chooses the active candidate. Analyze only the supplied portfolio data; do not imply that external news or events were researched. Distinguish supplied facts, judgments, and uncertainty through semantic item kinds. Return no evidence unless it was supplied in the request. Keep the complete structured response within the supplied output token budget.','maxOutputTokens':2500}"
               }
             },
             "response": {
               "validators": [
                 {
                   "kind": "ajv-schema",
-                  "message": "Portfolio strategies response is invalid",
+                  "code": "provider-structured-output",
+                  "message": "Portfolio intelligence 2 response is invalid",
                   "schema": {
                     "type": "object",
                     "required": [
-                      "strategies",
-                      "recommendation",
-                      "provider"
+                      "headline",
+                      "summary",
+                      "asOf",
+                      "items",
+                      "evidence",
+                      "projectionCandidates"
                     ],
                     "properties": {
-                      "strategies": {
-                        "type": "object",
-                        "minProperties": 1,
-                        "additionalProperties": {
+                      "headline": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "summary": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "asOf": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "items": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
                           "type": "object",
                           "required": [
                             "id",
-                            "rationale",
-                            "targetWeights"
+                            "kind",
+                            "title",
+                            "detail",
+                            "salience",
+                            "confidence",
+                            "entities",
+                            "value",
+                            "unit",
+                            "date",
+                            "evidenceIds"
                           ],
                           "properties": {
                             "id": {
                               "type": "string",
                               "minLength": 1
                             },
-                            "rationale": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "fact",
+                                "risk",
+                                "opportunity",
+                                "catalyst",
+                                "judgment",
+                                "uncertainty"
+                              ]
+                            },
+                            "title": {
                               "type": "string",
                               "minLength": 1
                             },
-                            "targetWeights": {
-                              "type": "object",
-                              "additionalProperties": {
-                                "type": "number",
-                                "minimum": 0,
-                                "maximum": 1
+                            "detail": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "salience": {
+                              "type": "string",
+                              "enum": [
+                                "critical",
+                                "high",
+                                "medium",
+                                "low"
+                              ]
+                            },
+                            "confidence": {
+                              "type": "string",
+                              "enum": [
+                                "high",
+                                "medium",
+                                "low"
+                              ]
+                            },
+                            "entities": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "value": {
+                              "type": "string"
+                            },
+                            "unit": {
+                              "type": "string"
+                            },
+                            "date": {
+                              "type": "string"
+                            },
+                            "evidenceIds": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
                               }
                             }
                           },
                           "additionalProperties": false
                         }
+                      },
+                      "evidence": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "id",
+                            "title",
+                            "publisher",
+                            "url",
+                            "publishedAt"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "title": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "publisher": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "url": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "publishedAt": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "projectionCandidates": {
+                        "type": "array",
+                        "minItems": 2,
+                        "maxItems": 3,
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "id",
+                            "label",
+                            "attention",
+                            "rationale",
+                            "sections"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "label": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "attention": {
+                              "type": "string",
+                              "enum": [
+                                "glanceable",
+                                "focused"
+                              ]
+                            },
+                            "rationale": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "sections": {
+                              "type": "array",
+                              "minItems": 1,
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "title",
+                                  "primitive",
+                                  "priority",
+                                  "disclosure",
+                                  "contentIds"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "primitive": {
+                                    "type": "string",
+                                    "enum": [
+                                      "hero-signal",
+                                      "metric-strip",
+                                      "signal-list",
+                                      "timeline",
+                                      "evidence-list",
+                                      "narrative"
+                                    ]
+                                  },
+                                  "priority": {
+                                    "type": "string",
+                                    "enum": [
+                                      "primary",
+                                      "secondary",
+                                      "tertiary"
+                                    ]
+                                  },
+                                  "disclosure": {
+                                    "type": "string",
+                                    "enum": [
+                                      "always",
+                                      "collapsed",
+                                      "on-demand"
+                                    ]
+                                  },
+                                  "contentIds": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                {
+                  "kind": "jsonata",
+                  "expr": "$count(data.projectionCandidates[attention = 'glanceable']) > 0 and $count(data.projectionCandidates[attention = 'focused']) > 0",
+                  "message": "Portfolio intelligence 2 must provide glanceable and focused projections",
+                  "code": "projection-attention-coverage"
+                },
+                {
+                  "kind": "jsonata",
+                  "expr": "$count(data.projectionCandidates[attention = 'glanceable'][$count(sections[disclosure = 'always']) > 3]) = 0",
+                  "message": "Each glanceable projection may expose at most three always-visible sections",
+                  "code": "glanceable-attention-budget"
+                }
+              ]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence2','value':$merge([response,{'provider':'foundry-agent:Portfolio-Intelligence-2-Agent'}])}],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Intelligence-2-Agent'}}"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($access := error.message = 'Foundry access is required' or error.status = 401 or error.status = 403; {'ops':[{'op':'set','path':'portfolio.foundryAccessStatus','value':$access ? 'required' : state.portfolio.foundryAccessStatus},{'op':'set','path':'portfolio.foundryAccessError','value':$access ? (error.status = 401 or error.status = 403 ? 'That access key was rejected.' : 'Foundry access is required.') : error.message}]})"
+              }
+            },
+            "onViolation": {
+              "action": "fail"
+            }
+          }
+        },
+        "config": {
+          "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}",
+          "agent": "Portfolio-Intelligence-2-Agent",
+          "credentialRef": "foundry-agent/access-key"
+        },
+        "scope": "per-blueprint"
+      },
+      "portfolio-strategies": {
+        "kind": "foundry-agent",
+        "version": "1",
+        "operations": {
+          "calculateStrategies": {
+            "operation": "chat",
+            "contract": "portfolio-strategies/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'message':'Build conservative and growth target allocations for the current holdings only. Positions JSON: ' & $string(state.portfolio.pendingStrategyInputs.positions) & ' Portfolio summary JSON: ' & $string(state.portfolio.pendingStrategyInputs.summary) & ' Investor profile JSON: ' & $string(state.portfolio.pendingStrategyInputs.investorProfile) & ' Portfolio intelligence source: ' & state.portfolio.pendingStrategyInputs.intelligenceSource & ' Portfolio intelligence JSON: ' & $string(state.portfolio.pendingStrategyInputs.intelligence),'instructions':'Propose two educational rebalance alternatives using only tickers already present in the supplied positions. Make every target allocation total exactly 1. Choose the alternative that best fits the supplied investor profile; if the profile is missing, say so in the recommendation reason and prefer the conservative alternative. Do not claim to execute trades.'}"
+              }
+            },
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "code": "provider-structured-output",
+                  "message": "Portfolio strategies response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": [
+                      "strategies",
+                      "recommendation"
+                    ],
+                    "properties": {
+                      "strategies": {
+                        "type": "object",
+                        "required": [
+                          "conservative",
+                          "growth"
+                        ],
+                        "properties": {
+                          "conservative": {
+                            "type": "object",
+                            "required": [
+                              "id",
+                              "rationale",
+                              "targetWeights"
+                            ],
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "const": "conservative"
+                              },
+                              "rationale": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "targetWeights": {
+                                "type": "array",
+                                "minItems": 1,
+                                "items": {
+                                  "type": "object",
+                                  "required": [
+                                    "ticker",
+                                    "weight"
+                                  ],
+                                  "properties": {
+                                    "ticker": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "weight": {
+                                      "type": "number",
+                                      "minimum": 0,
+                                      "maximum": 1
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          "growth": {
+                            "type": "object",
+                            "required": [
+                              "id",
+                              "rationale",
+                              "targetWeights"
+                            ],
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "const": "growth"
+                              },
+                              "rationale": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "targetWeights": {
+                                "type": "array",
+                                "minItems": 1,
+                                "items": {
+                                  "type": "object",
+                                  "required": [
+                                    "ticker",
+                                    "weight"
+                                  ],
+                                  "properties": {
+                                    "ticker": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "weight": {
+                                      "type": "number",
+                                      "minimum": 0,
+                                      "maximum": 1
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        },
+                        "additionalProperties": false
                       },
                       "recommendation": {
                         "type": "object",
@@ -306,21 +704,21 @@
                         "properties": {
                           "selected": {
                             "type": "string",
-                            "minLength": 1
+                            "enum": [
+                              "conservative",
+                              "growth"
+                            ]
                           },
                           "reason": {
                             "type": "string",
                             "minLength": 1
                           },
                           "status": {
+                            "type": "string",
                             "const": "proposed"
                           }
                         },
                         "additionalProperties": false
-                      },
-                      "provider": {
-                        "type": "string",
-                        "minLength": 1
                       }
                     },
                     "additionalProperties": false
@@ -328,7 +726,7 @@
                 },
                 {
                   "kind": "jsonata",
-                  "expr": "$count(data.strategies.*[$abs($sum(targetWeights.*) - 1) > 0.001]) = 0",
+                  "expr": "$count(data.strategies.*[$abs($sum(targetWeights.weight) - 1) > 0.001]) = 0",
                   "message": "Every strategy's target weights must total 1",
                   "code": "target-weights-sum"
                 },
@@ -343,7 +741,13 @@
             "settlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "{'ops':[{'op':'set','path':'portfolio.strategies','value':response.strategies},{'op':'set','path':'portfolio.recommendation','value':response.recommendation}],'detail':{'provider':response.provider}}"
+                "expr": "{'ops':[{'op':'set','path':'portfolio.strategies','value':{'conservative':$merge([response.strategies.conservative,{'targetWeights':$merge(response.strategies.conservative.targetWeights.{ticker:weight})}]),'growth':$merge([response.strategies.growth,{'targetWeights':$merge(response.strategies.growth.targetWeights.{ticker:weight})}])}},{'op':'set','path':'portfolio.recommendation','value':response.recommendation},{'op':'set','path':'portfolio.strategyInputs','value':state.portfolio.pendingStrategyInputs},{'op':'set','path':'portfolio.pendingStrategyInputs','value':null}],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Strategy-Agent'}}"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($access := error.message = 'Foundry access is required' or error.status = 401 or error.status = 403; {'ops':[{'op':'set','path':'portfolio.foundryAccessStatus','value':$access ? 'required' : state.portfolio.foundryAccessStatus},{'op':'set','path':'portfolio.foundryAccessError','value':$access ? (error.status = 401 or error.status = 403 ? 'That access key was rejected.' : 'Foundry access is required.') : error.message},{'op':'set','path':'portfolio.pendingStrategyInputs','value':null}]})"
               }
             },
             "onViolation": {
@@ -352,7 +756,9 @@
           }
         },
         "config": {
-          "handler": "portfolio-intelligence-deterministic"
+          "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}",
+          "agent": "Portfolio-Strategy-Agent",
+          "credentialRef": "foundry-agent/access-key"
         },
         "scope": "per-blueprint"
       }
@@ -384,11 +790,22 @@
             "removeHolding",
             "refreshPrices",
             "requestIntelligence",
+            "requestIntelligence2",
             "calculateStrategies",
             "setPresentationContext"
           ]
         },
         "http-proxy:access-gate": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "accessRequested",
+            "accessCleared"
+          ]
+        },
+        "foundry:access-gate": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -429,14 +846,18 @@
           },
           "dataProp": "value"
         },
-        "portfolio:recommendation": {
+        "portfolio:intelligence-projections": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           },
-          "emits": [
-            "apply"
-          ],
+          "dataProp": "value"
+        },
+        "portfolio:comparison": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
           "dataProp": "value"
         }
       },
@@ -448,6 +869,12 @@
           "http-proxy": {
             "from": "http-proxy"
           },
+          "foundry": {
+            "from": "foundry",
+            "use": [
+              "access-gate"
+            ]
+          },
           "portfolio": {
             "from": "self"
           }
@@ -456,8 +883,8 @@
           "setHoldings",
           "upsertHolding",
           "removeHolding",
-          "applyRecommendation",
           "saveHoldings",
+          "prepareStrategies",
           "setPresentationContext"
         ]
       },
@@ -465,6 +892,8 @@
         "portfolio": {
           "httpProxyAccessStatus": "checking",
           "httpProxyAccessError": "",
+          "foundryAccessStatus": "checking",
+          "foundryAccessError": "",
           "holdings": {},
           "quotes": {},
           "positions": {},
@@ -474,10 +903,13 @@
             "gainLoss": 0
           },
           "intelligence": null,
+          "intelligenceError": "",
+          "intelligence2": null,
           "strategies": {},
           "recommendation": null,
+          "strategyInputs": null,
+          "pendingStrategyInputs": null,
           "investorProfile": null,
-          "appliedRecommendation": null,
           "presentationContext": "portfolio-overview"
         }
       }
@@ -575,6 +1007,49 @@
             }
           },
           {
+            "id": "foundry-access-gate",
+            "capability": "foundry:access-gate",
+            "provides": [
+              {
+                "token": "foundry-access",
+                "read": "portfolio.foundryAccessStatus",
+                "when": "portfolio.foundryAccessStatus = 'ready'"
+              }
+            ],
+            "edges": {
+              "read": {
+                "status": "portfolio.foundryAccessStatus",
+                "error": "portfolio.foundryAccessError"
+              },
+              "on": {
+                "accessRequested": [
+                  {
+                    "do": "invoke",
+                    "args": {
+                      "tool": "checkFoundryAccess"
+                    }
+                  }
+                ],
+                "accessCleared": [
+                  {
+                    "do": "assign",
+                    "target": "portfolio.foundryAccessStatus",
+                    "args": {
+                      "value": "required"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "portfolio.foundryAccessError",
+                    "args": {
+                      "value": ""
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
             "id": "market-prices",
             "capability": "ui:table",
             "requires": [
@@ -639,6 +1114,7 @@
             "id": "portfolio-intelligence",
             "capability": "portfolio:narrative",
             "requires": [
+              "foundry-access",
               "portfolio-summary",
               "position:$TICKER",
               "investor-profile"
@@ -648,7 +1124,7 @@
             ],
             "service": {
               "service": "portfolio-intelligence",
-              "operation": "analyze",
+              "operation": "chat",
               "contract": "portfolio-intelligence/v1"
             },
             "props": {
@@ -656,7 +1132,62 @@
             },
             "edges": {
               "read": {
-                "value": "portfolio.intelligence"
+                "value": "portfolio.intelligence",
+                "error": "portfolio.intelligenceError"
+              }
+            }
+          },
+          {
+            "id": "portfolio-intelligence-2",
+            "capability": "portfolio:intelligence-projections",
+            "requires": [
+              "foundry-access",
+              "portfolio-summary",
+              "position:$TICKER",
+              "investor-profile"
+            ],
+            "provides": [
+              "portfolio-intelligence-2"
+            ],
+            "service": {
+              "service": "portfolio-intelligence-2",
+              "operation": "chat",
+              "contract": "portfolio-intelligence-2/v1"
+            },
+            "props": {
+              "label": "portfolio-intelligence-2",
+              "projectionRecipe": {
+                "contexts": {
+                  "portfolio-overview": {
+                    "attention": "glanceable",
+                    "showDisclosure": [
+                      "always"
+                    ],
+                    "maxSections": 3
+                  },
+                  "portfolio-advisor": {
+                    "attention": "focused",
+                    "showDisclosure": [
+                      "always",
+                      "collapsed"
+                    ],
+                    "maxSections": 8
+                  }
+                },
+                "fallback": {
+                  "attention": "glanceable",
+                  "showDisclosure": [
+                    "always"
+                  ],
+                  "maxSections": 3
+                }
+              }
+            },
+            "edges": {
+              "read": {
+                "value": "portfolio.intelligence2",
+                "presentationContext": "portfolio.presentationContext",
+                "error": "portfolio.foundryAccessError"
               }
             }
           },
@@ -703,36 +1234,34 @@
             }
           },
           {
-            "id": "rebalance-comparison",
-            "capability": "portfolio:recommendation",
+            "id": "strategy-comparison",
+            "capability": "portfolio:comparison",
             "requires": [
               "rebalance-conservative",
-              "rebalance-growth"
+              "rebalance-growth",
+              "portfolio-intelligence",
+              "portfolio-intelligence-2"
             ],
             "provides": [
-              "rebalance-recommendation"
+              "strategy-comparison"
             ],
             "service": {
-              "service": "portfolio-intelligence",
-              "operation": "propose-strategies",
+              "service": "portfolio-strategies",
+              "operation": "chat",
               "contract": "portfolio-strategies/v1"
             },
             "props": {
-              "label": "rebalance-comparison"
+              "label": "strategy-comparison"
             },
             "edges": {
               "read": {
-                "value": "portfolio.recommendation"
-              },
-              "on": {
-                "apply": [
-                  {
-                    "do": "invoke",
-                    "args": {
-                      "tool": "applyRecommendation"
-                    }
-                  }
-                ]
+                "value": "portfolio.recommendation",
+                "positions": "portfolio.positions",
+                "summary": "portfolio.summary",
+                "investorProfile": "portfolio.investorProfile",
+                "intelligence1": "portfolio.intelligence",
+                "intelligence2": "portfolio.intelligence2",
+                "strategyInputs": "portfolio.strategyInputs"
               }
             }
           }
@@ -802,7 +1331,21 @@
                   }
                 }
               ],
+              "requestIntelligence2": [
+                {
+                  "do": "invoke",
+                  "args": {
+                    "tool": "requestIntelligence2"
+                  }
+                }
+              ],
               "calculateStrategies": [
+                {
+                  "do": "invoke",
+                  "args": {
+                    "tool": "prepareStrategies"
+                  }
+                },
                 {
                   "do": "invoke",
                   "args": {
@@ -893,7 +1436,21 @@
                 }
               }
             ],
+            "requestIntelligence2": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "requestIntelligence2"
+                }
+              }
+            ],
             "calculateStrategies": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "prepareStrategies"
+                }
+              },
               {
                 "do": "invoke",
                 "args": {
@@ -1003,6 +1560,49 @@
           }
         },
         {
+          "id": "foundry-access-gate",
+          "capability": "foundry:access-gate",
+          "provides": [
+            {
+              "token": "foundry-access",
+              "read": "portfolio.foundryAccessStatus",
+              "when": "portfolio.foundryAccessStatus = 'ready'"
+            }
+          ],
+          "edges": {
+            "read": {
+              "status": "portfolio.foundryAccessStatus",
+              "error": "portfolio.foundryAccessError"
+            },
+            "on": {
+              "accessRequested": [
+                {
+                  "do": "invoke",
+                  "args": {
+                    "tool": "checkFoundryAccess"
+                  }
+                }
+              ],
+              "accessCleared": [
+                {
+                  "do": "assign",
+                  "target": "portfolio.foundryAccessStatus",
+                  "args": {
+                    "value": "required"
+                  }
+                },
+                {
+                  "do": "assign",
+                  "target": "portfolio.foundryAccessError",
+                  "args": {
+                    "value": ""
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
           "id": "market-prices",
           "capability": "ui:table",
           "requires": [
@@ -1067,6 +1667,7 @@
           "id": "portfolio-intelligence",
           "capability": "portfolio:narrative",
           "requires": [
+            "foundry-access",
             "portfolio-summary",
             "position:$TICKER",
             "investor-profile"
@@ -1076,7 +1677,7 @@
           ],
           "service": {
             "service": "portfolio-intelligence",
-            "operation": "analyze",
+            "operation": "chat",
             "contract": "portfolio-intelligence/v1"
           },
           "props": {
@@ -1084,7 +1685,62 @@
           },
           "edges": {
             "read": {
-              "value": "portfolio.intelligence"
+              "value": "portfolio.intelligence",
+              "error": "portfolio.intelligenceError"
+            }
+          }
+        },
+        {
+          "id": "portfolio-intelligence-2",
+          "capability": "portfolio:intelligence-projections",
+          "requires": [
+            "foundry-access",
+            "portfolio-summary",
+            "position:$TICKER",
+            "investor-profile"
+          ],
+          "provides": [
+            "portfolio-intelligence-2"
+          ],
+          "service": {
+            "service": "portfolio-intelligence-2",
+            "operation": "chat",
+            "contract": "portfolio-intelligence-2/v1"
+          },
+          "props": {
+            "label": "portfolio-intelligence-2",
+            "projectionRecipe": {
+              "contexts": {
+                "portfolio-overview": {
+                  "attention": "glanceable",
+                  "showDisclosure": [
+                    "always"
+                  ],
+                  "maxSections": 3
+                },
+                "portfolio-advisor": {
+                  "attention": "focused",
+                  "showDisclosure": [
+                    "always",
+                    "collapsed"
+                  ],
+                  "maxSections": 8
+                }
+              },
+              "fallback": {
+                "attention": "glanceable",
+                "showDisclosure": [
+                  "always"
+                ],
+                "maxSections": 3
+              }
+            }
+          },
+          "edges": {
+            "read": {
+              "value": "portfolio.intelligence2",
+              "presentationContext": "portfolio.presentationContext",
+              "error": "portfolio.foundryAccessError"
             }
           }
         },
@@ -1131,36 +1787,34 @@
           }
         },
         {
-          "id": "rebalance-comparison",
-          "capability": "portfolio:recommendation",
+          "id": "strategy-comparison",
+          "capability": "portfolio:comparison",
           "requires": [
             "rebalance-conservative",
-            "rebalance-growth"
+            "rebalance-growth",
+            "portfolio-intelligence",
+            "portfolio-intelligence-2"
           ],
           "provides": [
-            "rebalance-recommendation"
+            "strategy-comparison"
           ],
           "service": {
-            "service": "portfolio-intelligence",
-            "operation": "propose-strategies",
+            "service": "portfolio-strategies",
+            "operation": "chat",
             "contract": "portfolio-strategies/v1"
           },
           "props": {
-            "label": "rebalance-comparison"
+            "label": "strategy-comparison"
           },
           "edges": {
             "read": {
-              "value": "portfolio.recommendation"
-            },
-            "on": {
-              "apply": [
-                {
-                  "do": "invoke",
-                  "args": {
-                    "tool": "applyRecommendation"
-                  }
-                }
-              ]
+              "value": "portfolio.recommendation",
+              "positions": "portfolio.positions",
+              "summary": "portfolio.summary",
+              "investorProfile": "portfolio.investorProfile",
+              "intelligence1": "portfolio.intelligence",
+              "intelligence2": "portfolio.intelligence2",
+              "strategyInputs": "portfolio.strategyInputs"
             }
           }
         }

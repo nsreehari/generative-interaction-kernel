@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, makeStyles, tokens } from "@fluentui/react-components";
+import { Button, makeStyles, mergeClasses, tokens } from "@fluentui/react-components";
 import type { ProjectionView, ProjectionViewProps } from "@gik/react";
 
 const useStyles = makeStyles({
@@ -8,9 +8,9 @@ const useStyles = makeStyles({
   headerInner: { width: "min(1440px, 100%)", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "end", gap: tokens.spacingHorizontalXXL, flexWrap: "wrap" },
   eyebrow: { margin: 0, color: "#57606a", fontSize: tokens.fontSizeBase200, fontWeight: tokens.fontWeightSemibold, textTransform: "uppercase" },
   title: { margin: `${tokens.spacingVerticalXS} 0 0`, fontSize: tokens.fontSizeHero700, fontWeight: tokens.fontWeightSemibold, letterSpacing: "0" },
-  workflowActions: { display: "flex", gap: tokens.spacingHorizontalS, flexWrap: "wrap" },
   workflowButton: { minHeight: "36px", padding: `0 ${tokens.spacingHorizontalM}`, border: "1px solid #b7bdc5", borderRadius: tokens.borderRadiusMedium, backgroundColor: "#ffffff", color: "#242424", fontWeight: tokens.fontWeightSemibold, cursor: "pointer", ":hover": { backgroundColor: "#f3f4f6" }, ":disabled": { color: "#8a8f98", cursor: "wait" } },
   primaryWorkflowButton: { backgroundColor: "#0f6cbd", color: "#ffffff", ":hover": { backgroundColor: "#115ea3" } },
+  panelHeadingRow: { display: "flex", alignItems: "start", justifyContent: "space-between", gap: tokens.spacingHorizontalL },
   content: { width: "min(1440px, 100%)", margin: "0 auto", padding: `clamp(20px, 3vw, 40px) clamp(16px, 4vw, 56px)`, display: "grid", gap: tokens.spacingVerticalXXL },
   overview: { display: "grid", gridTemplateColumns: "minmax(0, 1.6fr) minmax(280px, .7fr)", gap: tokens.spacingHorizontalXXL, alignItems: "start", "@media (max-width: 900px)": { gridTemplateColumns: "minmax(0, 1fr)" } },
   marketGrid: { display: "grid", gridTemplateColumns: "minmax(300px, .7fr) minmax(560px, 1.3fr)", gap: tokens.spacingHorizontalXXL, "@media (max-width: 1120px)": { gridTemplateColumns: "minmax(0, 1fr)" } },
@@ -62,7 +62,42 @@ const useStyles = makeStyles({
   recommendationPanel: { gridColumn: "1 / -1", padding: tokens.spacingHorizontalXL, borderTop: "3px solid #0f6cbd", backgroundColor: "#ffffff", boxShadow: "0 1px 3px rgba(0, 0, 0, .06)" },
   recommendationChoice: { margin: `0 0 ${tokens.spacingVerticalXS}`, fontSize: tokens.fontSizeBase600, fontWeight: tokens.fontWeightSemibold, textTransform: "capitalize" },
   recommendationReason: { margin: `0 0 ${tokens.spacingVerticalL}`, maxWidth: "72ch", color: "#42464d", lineHeight: tokens.lineHeightBase400 },
-  appliedStatus: { margin: 0, color: "#107c10", fontWeight: tokens.fontWeightSemibold },
+  intelligence2: { gridColumn: "1 / -1", border: "1px solid #c7ccd1", borderRadius: tokens.borderRadiusMedium, backgroundColor: "#ffffff", overflow: "hidden", boxShadow: "0 2px 8px rgba(0, 0, 0, .06)" },
+  intelligence2Header: { padding: tokens.spacingHorizontalXL, display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: tokens.spacingHorizontalXL, alignItems: "start", borderBottom: "1px solid #e2e5e9", backgroundColor: "#fbfcfd", "@media (max-width: 720px)": { gridTemplateColumns: "minmax(0, 1fr)" } },
+  intelligence2Title: { margin: `0 0 ${tokens.spacingVerticalXS}`, fontSize: tokens.fontSizeBase600, fontWeight: tokens.fontWeightSemibold },
+  intelligence2Summary: { margin: 0, maxWidth: "76ch", color: "#42464d", lineHeight: tokens.lineHeightBase400 },
+  recipeMeta: { display: "flex", gap: tokens.spacingHorizontalXS, flexWrap: "wrap", justifyContent: "end", "@media (max-width: 720px)": { justifyContent: "start" } },
+  recipeToken: { padding: `3px ${tokens.spacingHorizontalS}`, border: "1px solid #b7bdc5", borderRadius: tokens.borderRadiusMedium, backgroundColor: "#ffffff", color: "#42464d", fontSize: tokens.fontSizeBase200, whiteSpace: "nowrap" },
+  projectionBody: { padding: tokens.spacingHorizontalXL, display: "grid", gap: tokens.spacingVerticalXL },
+  projectionRationale: { margin: 0, color: "#57606a", fontSize: tokens.fontSizeBase200 },
+  projectionGrid: { display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gap: tokens.spacingHorizontalL },
+  projectionSection: { gridColumn: "span 6", minWidth: 0, padding: tokens.spacingHorizontalL, borderTop: "2px solid #b7bdc5", backgroundColor: "#f8f9fa", "@media (max-width: 760px)": { gridColumn: "1 / -1" } },
+  projectionPrimary: { gridColumn: "1 / -1", borderTopColor: "#0f6cbd", backgroundColor: "#f3f8fc" },
+  projectionTertiary: { gridColumn: "span 4", "@media (max-width: 980px)": { gridColumn: "span 6" }, "@media (max-width: 760px)": { gridColumn: "1 / -1" } },
+  disclosureSummary: { cursor: "pointer", "&::marker": { color: "#0f6cbd" } },
+  disclosureTitle: { display: "block", marginTop: tokens.spacingVerticalXS, fontSize: tokens.fontSizeBase400, fontWeight: tokens.fontWeightSemibold },
+  disclosureContent: { marginTop: tokens.spacingVerticalM },
+  primitiveLabel: { margin: `0 0 ${tokens.spacingVerticalXS}`, color: "#57606a", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightSemibold, textTransform: "uppercase" },
+  primitiveTitle: { margin: `0 0 ${tokens.spacingVerticalM}`, fontSize: tokens.fontSizeBase400, fontWeight: tokens.fontWeightSemibold },
+  heroSignal: { margin: `0 0 ${tokens.spacingVerticalS}`, maxWidth: "30ch", fontSize: tokens.fontSizeBase600, fontWeight: tokens.fontWeightSemibold, lineHeight: tokens.lineHeightBase500 },
+  signalList: { margin: 0, padding: 0, listStyle: "none", display: "grid", gap: tokens.spacingVerticalM },
+  signalItem: { display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", gap: tokens.spacingHorizontalM, alignItems: "start" },
+  salience: { minWidth: "58px", padding: `2px ${tokens.spacingHorizontalXS}`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "#e5e8ec", color: "#242424", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightSemibold, textAlign: "center", textTransform: "uppercase" },
+  salienceCritical: { backgroundColor: "#fde7e9", color: "#b10e1c" },
+  salienceHigh: { backgroundColor: "#fff4ce", color: "#6d5700" },
+  signalTitle: { display: "block", marginBottom: "2px", fontWeight: tokens.fontWeightSemibold },
+  signalDetail: { margin: 0, color: "#42464d", lineHeight: tokens.lineHeightBase300 },
+  metricStrip: { display: "flex", gap: tokens.spacingHorizontalXL, flexWrap: "wrap" },
+  metricBlock: { minWidth: "150px" },
+  metricNumber: { display: "block", fontSize: tokens.fontSizeBase600, fontWeight: tokens.fontWeightSemibold, fontVariantNumeric: "tabular-nums" },
+  metricCaption: { display: "block", marginBottom: tokens.spacingVerticalXS, color: "#57606a", fontSize: tokens.fontSizeBase200 },
+  timeline: { margin: 0, padding: 0, listStyle: "none", display: "grid", gap: tokens.spacingVerticalM },
+  timelineItem: { display: "grid", gridTemplateColumns: "100px minmax(0, 1fr)", gap: tokens.spacingHorizontalM, borderLeft: "2px solid #0f6cbd", paddingLeft: tokens.spacingHorizontalM },
+  evidenceList: { margin: 0, padding: 0, listStyle: "none", display: "grid", gap: tokens.spacingVerticalS },
+  evidenceLink: { color: "#0f6cbd", textDecoration: "none", ":hover": { textDecoration: "underline" } },
+  alternatives: { padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalXL}`, display: "flex", alignItems: "center", gap: tokens.spacingHorizontalS, flexWrap: "wrap", borderTop: "1px solid #e2e5e9", color: "#57606a", fontSize: tokens.fontSizeBase200 },
+  alternative: { padding: `2px ${tokens.spacingHorizontalS}`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "#eef0f2" },
+  provenance: { margin: 0, padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalXL}`, borderTop: "1px solid #e2e5e9", color: "#57606a", fontSize: tokens.fontSizeBase200 },
 });
 
 function valueOf(node: ProjectionViewProps["node"]): unknown {
@@ -75,6 +110,23 @@ function childrenByNodeId(children: React.ReactNode): Map<string, React.ReactEle
     if (React.isValidElement<ProjectionViewProps>(child)) slots.set(child.props.node.id, child);
   }
   return slots;
+}
+
+type WorkflowCommand = "requestIntelligence" | "requestIntelligence2" | "calculateStrategies";
+type PortfolioWorkflowContextValue = {
+  pendingCommand: WorkflowCommand | null;
+  runWorkflow: (command: WorkflowCommand) => Promise<void>;
+};
+
+const PortfolioWorkflowContext = React.createContext<PortfolioWorkflowContextValue | null>(null);
+
+function WorkflowButton({ command, hasResult, initialLabel, refreshLabel, primary = false, unavailable = false }: { command: WorkflowCommand; hasResult: boolean; initialLabel: string; refreshLabel: string; primary?: boolean; unavailable?: boolean }) {
+  const styles = useStyles();
+  const workflow = React.useContext(PortfolioWorkflowContext);
+  if (!workflow) return null;
+  const pending = workflow.pendingCommand === command;
+  const pendingLabel = command === "calculateStrategies" ? "Building..." : "Analyzing...";
+  return <button className={mergeClasses(styles.workflowButton, primary && styles.primaryWorkflowButton)} disabled={workflow.pendingCommand !== null || unavailable} type="button" onClick={() => void workflow.runWorkflow(command)}>{pending ? pendingLabel : hasResult ? refreshLabel : initialLabel}</button>;
 }
 
 function CellSection({ title, cell, className }: { title: string; cell?: React.ReactElement<ProjectionViewProps>; className?: string }) {
@@ -121,12 +173,19 @@ const SummaryView: ProjectionView = ({ node }) => {
 const NarrativeView: ProjectionView = ({ node }) => {
   const styles = useStyles();
   const value = valueOf(node) as Record<string, unknown> | null;
-  if (value == null) return null;
   if (node.id === "portfolio-intelligence") {
+    const error = String(node.props.error ?? "");
+    if (value == null) {
+      return <article className={`${styles.advisoryPanel} ${styles.advisoryWide}`}>
+        <div className={styles.panelHeadingRow}><p className={styles.advisoryEyebrow}>Portfolio intelligence</p><WorkflowButton command="requestIntelligence" hasResult={false} initialLabel="Analyze portfolio" refreshLabel="Refresh analysis" /></div>
+        <h2 className={styles.advisoryTitle}>{error ? "Analysis unavailable" : "Ready for analysis"}</h2>
+        <p className={styles.advisorySummary}>{error || "Add holdings, then analyze the portfolio for observations and risk signals."}</p>
+      </article>;
+    }
     const observations = Array.isArray(value.observations) ? value.observations.map(String) : [];
     const risks = Array.isArray(value.risks) ? value.risks.map(String) : [];
     return <article className={`${styles.advisoryPanel} ${styles.advisoryWide}`}>
-      <p className={styles.advisoryEyebrow}>Portfolio intelligence</p>
+      <div className={styles.panelHeadingRow}><p className={styles.advisoryEyebrow}>Portfolio intelligence</p><WorkflowButton command="requestIntelligence" hasResult initialLabel="Analyze portfolio" refreshLabel="Refresh analysis" /></div>
       <h2 className={styles.advisoryTitle}>Assessment</h2>
       <p className={styles.advisorySummary}>{String(value.summary ?? "Analysis complete.")}</p>
       <div className={styles.detailColumns}>
@@ -135,6 +194,7 @@ const NarrativeView: ProjectionView = ({ node }) => {
       </div>
     </article>;
   }
+  if (value == null) return null;
   const weights = value.targetWeights && typeof value.targetWeights === "object"
     ? Object.entries(value.targetWeights as Record<string, unknown>)
     : [];
@@ -155,28 +215,264 @@ const NarrativeView: ProjectionView = ({ node }) => {
   </article>;
 };
 
-const RecommendationView: ProjectionView = ({ node, emit }) => {
+const StrategyComparisonView: ProjectionView = ({ node }) => {
   const styles = useStyles();
   const value = valueOf(node) as Record<string, unknown> | null;
-  if (value == null) return null;
+  const currentInputs = strategyInputSnapshot(node.props);
+  const unavailable = strategyActionDisabled(node.props);
+  if (value == null) {
+    return (
+      <section className={styles.recommendationPanel}>
+        <div className={styles.panelHeadingRow}><p className={styles.advisoryEyebrow}>Strategy comparison</p><WorkflowButton command="calculateStrategies" hasResult={false} initialLabel="Build strategies" refreshLabel="Refresh strategies" primary unavailable={unavailable} /></div>
+        <h2 className={styles.recommendationChoice}>{currentInputs === null ? "Portfolio intelligence required" : "Ready to build strategies"}</h2>
+        <p className={styles.recommendationReason}>{currentInputs === null ? "Complete either portfolio analysis to enable strategy generation." : "Compare conservative and growth allocations using the latest portfolio intelligence."}</p>
+      </section>
+    );
+  }
   return (
     <section className={styles.recommendationPanel}>
-      <p className={styles.advisoryEyebrow}>Recommended allocation</p>
-      <h2 className={styles.recommendationChoice}>{String(value.selected ?? "Recommendation")}</h2>
+      <div className={styles.panelHeadingRow}><p className={styles.advisoryEyebrow}>Strategy comparison</p><WorkflowButton command="calculateStrategies" hasResult initialLabel="Build strategies" refreshLabel="Refresh strategies" primary unavailable={unavailable} /></div>
+      <h2 className={styles.recommendationChoice}>Agent preference: {String(value.selected ?? "Not available")}</h2>
       <p className={styles.recommendationReason}>{String(value.reason ?? "")}</p>
-      {value.status === "proposed"
-        ? <Button appearance="primary" onClick={() => emit("apply", {}, "human-investor")}>Apply recommendation</Button>
-        : <p className={styles.appliedStatus}>Applied by {String(value.actorId ?? "investor")}</p>}
     </section>
   );
 };
 
+export type StrategyInputSnapshot = {
+  positions: unknown;
+  summary: unknown;
+  investorProfile: unknown;
+  intelligenceSource: "portfolio-intelligence" | "portfolio-intelligence-2";
+  intelligence: unknown;
+};
+
+function objectValue(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+export function strategyInputSnapshot(props: Record<string, unknown>): StrategyInputSnapshot | null {
+  const intelligence2 = objectValue(props.intelligence2);
+  const intelligence1 = objectValue(props.intelligence1);
+  const intelligence = intelligence2 ?? intelligence1;
+  if (!intelligence) return null;
+  return {
+    positions: props.positions ?? {},
+    summary: props.summary ?? {},
+    investorProfile: props.investorProfile ?? null,
+    intelligenceSource: intelligence2 ? "portfolio-intelligence-2" : "portfolio-intelligence",
+    intelligence,
+  };
+}
+
+function canonicalJson(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalJson);
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, entry]) => [key, canonicalJson(entry)]));
+  }
+  return value;
+}
+
+export function strategyInputsEqual(current: StrategyInputSnapshot, previous: unknown): boolean {
+  return JSON.stringify(canonicalJson(current)) === JSON.stringify(canonicalJson(previous));
+}
+
+export function strategyActionDisabled(props: Record<string, unknown>): boolean {
+  const current = strategyInputSnapshot(props);
+  return current === null || strategyInputsEqual(current, props.strategyInputs);
+}
+
+type IntelligenceItem = {
+  id: string;
+  kind: string;
+  title: string;
+  detail: string;
+  salience: string;
+  confidence: string;
+  entities: string[];
+  value: string;
+  unit: string;
+  date: string;
+  evidenceIds: string[];
+};
+
+type EvidenceItem = { id: string; title: string; publisher: string; url: string; publishedAt: string };
+export type ProjectionSection = { id: string; title: string; primitive: string; priority: string; disclosure: string; contentIds: string[] };
+export type ProjectionCandidate = { id: string; label: string; attention: string; rationale: string; sections: ProjectionSection[] };
+export type ProjectionPolicy = { attention: string; showDisclosure: string[]; maxSections: number };
+
+const EMPTY_POLICY: ProjectionPolicy = { attention: "glanceable", showDisclosure: ["always"], maxSections: 3 };
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function intelligenceItems(value: unknown): IntelligenceItem[] {
+  return Array.isArray(value) ? value.map(asRecord).map((item) => ({
+    id: String(item.id ?? ""), kind: String(item.kind ?? "judgment"), title: String(item.title ?? ""), detail: String(item.detail ?? ""),
+    salience: String(item.salience ?? "medium"), confidence: String(item.confidence ?? "medium"),
+    entities: Array.isArray(item.entities) ? item.entities.map(String) : [], value: String(item.value ?? ""), unit: String(item.unit ?? ""),
+    date: String(item.date ?? ""), evidenceIds: Array.isArray(item.evidenceIds) ? item.evidenceIds.map(String) : [],
+  })).filter((item) => item.id && item.title) : [];
+}
+
+function evidenceItems(value: unknown): EvidenceItem[] {
+  return Array.isArray(value) ? value.map(asRecord).map((item) => ({
+    id: String(item.id ?? ""), title: String(item.title ?? ""), publisher: String(item.publisher ?? ""),
+    url: String(item.url ?? ""), publishedAt: String(item.publishedAt ?? ""),
+  })).filter((item) => item.id && item.title && item.url) : [];
+}
+
+function projectionCandidates(value: unknown): ProjectionCandidate[] {
+  return Array.isArray(value) ? value.map(asRecord).map((candidate) => ({
+    id: String(candidate.id ?? ""), label: String(candidate.label ?? ""), attention: String(candidate.attention ?? ""),
+    rationale: String(candidate.rationale ?? ""), sections: Array.isArray(candidate.sections)
+      ? candidate.sections.map(asRecord).map((section) => ({
+        id: String(section.id ?? ""), title: String(section.title ?? ""), primitive: String(section.primitive ?? ""),
+        priority: String(section.priority ?? "secondary"), disclosure: String(section.disclosure ?? "collapsed"),
+        contentIds: Array.isArray(section.contentIds) ? section.contentIds.map(String) : [],
+      })) : [],
+  })).filter((candidate) => candidate.id && candidate.sections.length > 0) : [];
+}
+
+export function selectIntelligenceProjection(value: unknown, context: string, recipeValue: unknown): {
+  policy: ProjectionPolicy;
+  candidate: ProjectionCandidate | undefined;
+  sections: ProjectionSection[];
+} {
+  const valueRecord = asRecord(value);
+  const recipe = asRecord(recipeValue);
+  const contexts = asRecord(recipe.contexts);
+  const configuredPolicy = asRecord(contexts[context] ?? recipe.fallback);
+  const policy: ProjectionPolicy = {
+    attention: String(configuredPolicy.attention ?? EMPTY_POLICY.attention),
+    showDisclosure: Array.isArray(configuredPolicy.showDisclosure) ? configuredPolicy.showDisclosure.map(String) : EMPTY_POLICY.showDisclosure,
+    maxSections: Number(configuredPolicy.maxSections ?? EMPTY_POLICY.maxSections),
+  };
+  const candidates = projectionCandidates(valueRecord.projectionCandidates);
+  const candidate = candidates.find((entry) => entry.attention === policy.attention) ?? candidates[0];
+  const sections = (candidate?.sections ?? [])
+    .filter((section) => policy.showDisclosure.includes(section.disclosure))
+    .slice(0, policy.maxSections);
+  return { policy, candidate, sections };
+}
+
+function salienceClass(styles: ReturnType<typeof useStyles>, salience: string): string {
+  if (salience === "critical") return `${styles.salience} ${styles.salienceCritical}`;
+  if (salience === "high") return `${styles.salience} ${styles.salienceHigh}`;
+  return styles.salience;
+}
+
+export function safeEvidenceUrl(value: string): string | undefined {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function formatIntelligenceMetric(value: string, unit: string): string {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return [value, unit].filter(Boolean).join(" ");
+  const normalizedUnit = unit.trim().toLowerCase();
+  if (["usd", "currency", "dollar", "dollars"].includes(normalizedUnit)) {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(numericValue);
+  }
+  const formatted = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(numericValue);
+  if (normalizedUnit === "%" || normalizedUnit.includes("percent")) return `${formatted}%`;
+  if (normalizedUnit === "share" || normalizedUnit === "shares") return `${formatted} shares`;
+  return unit ? `${formatted} ${unit}` : formatted;
+}
+
+function ProjectionPrimitive({ section, items, evidence }: { section: ProjectionSection; items: IntelligenceItem[]; evidence: EvidenceItem[] }) {
+  const styles = useStyles();
+  const selectedItems = section.contentIds.map((id) => items.find((item) => item.id === id)).filter((item): item is IntelligenceItem => item !== undefined);
+  const selectedEvidence = section.contentIds.map((id) => evidence.find((item) => item.id === id)).filter((item): item is EvidenceItem => item !== undefined);
+  if (section.primitive === "hero-signal") {
+    const item = selectedItems[0];
+    return item ? <><p className={styles.heroSignal}>{item.title}</p><p className={styles.signalDetail}>{item.detail}</p></> : null;
+  }
+  if (section.primitive === "metric-strip") {
+    return <div className={styles.metricStrip}>{selectedItems.map((item) => <div className={styles.metricBlock} key={item.id}><span className={styles.metricCaption}>{item.title}</span><strong className={styles.metricNumber}>{formatIntelligenceMetric(item.value, item.unit)}</strong></div>)}</div>;
+  }
+  if (section.primitive === "timeline") {
+    return <ol className={styles.timeline}>{selectedItems.map((item) => <li className={styles.timelineItem} key={item.id}><strong>{item.date || "Upcoming"}</strong><div><span className={styles.signalTitle}>{item.title}</span><p className={styles.signalDetail}>{item.detail}</p></div></li>)}</ol>;
+  }
+  if (section.primitive === "evidence-list") {
+    const linkedEvidence = selectedEvidence.length > 0 ? selectedEvidence : evidence.filter((entry) => selectedItems.some((item) => item.evidenceIds.includes(entry.id)));
+    return <ul className={styles.evidenceList}>{linkedEvidence.map((entry) => {
+      const href = safeEvidenceUrl(entry.url);
+      return <li key={entry.id}>{href ? <a className={styles.evidenceLink} href={href} target="_blank" rel="noreferrer">{entry.title}</a> : <span>{entry.title}</span>} <span>· {entry.publisher}{entry.publishedAt ? ` · ${entry.publishedAt}` : ""}</span></li>;
+    })}</ul>;
+  }
+  if (section.primitive === "narrative") {
+    return <div>{selectedItems.map((item) => <p className={styles.signalDetail} key={item.id}>{item.detail}</p>)}</div>;
+  }
+  return <ul className={styles.signalList}>{selectedItems.map((item) => <li className={styles.signalItem} key={item.id}><span className={salienceClass(styles, item.salience)}>{item.salience}</span><div><span className={styles.signalTitle}>{item.title}</span><p className={styles.signalDetail}>{item.detail}</p></div></li>)}</ul>;
+}
+
+function ProjectionSectionView({ section, items, evidence, diagnostics }: { section: ProjectionSection; items: IntelligenceItem[]; evidence: EvidenceItem[]; diagnostics: boolean }) {
+  const styles = useStyles();
+  const className = mergeClasses(
+    styles.projectionSection,
+    section.priority === "primary" && styles.projectionPrimary,
+    section.priority === "tertiary" && styles.projectionTertiary,
+  );
+  const style = section.primitive === "signal-list" ? { gridColumn: "1 / -1" } : undefined;
+  const label = `${section.primitive} · ${section.priority} · ${section.disclosure}`;
+  if (section.disclosure === "collapsed") {
+    return <details className={className} key={section.id} style={style}>
+      <summary className={styles.disclosureSummary}>{diagnostics ? <span className={styles.primitiveLabel}>{label}</span> : null}<span className={styles.disclosureTitle}>{section.title}</span></summary>
+      <div className={styles.disclosureContent}><ProjectionPrimitive section={section} items={items} evidence={evidence} /></div>
+    </details>;
+  }
+  return <section className={className} key={section.id} style={style}>{diagnostics ? <p className={styles.primitiveLabel}>{label}</p> : null}<h3 className={styles.primitiveTitle}>{section.title}</h3><ProjectionPrimitive section={section} items={items} evidence={evidence} /></section>;
+}
+
+const IntelligenceProjectionsView: ProjectionView = ({ node }) => {
+  const styles = useStyles();
+  const value = asRecord(valueOf(node));
+  const context = String(node.props.presentationContext ?? "portfolio-overview");
+  const error = String(node.props.error ?? "");
+  const diagnostics = node.props.projectionDiagnostics === true;
+  const { policy, candidate: selected, sections } = selectIntelligenceProjection(value, context, node.props.projectionRecipe);
+  if (Object.keys(value).length === 0) {
+    return <section className={styles.intelligence2}><div className={styles.intelligence2Header}><div><p className={styles.advisoryEyebrow}>Portfolio Intelligence 2</p><h2 className={styles.intelligence2Title}>{error ? "Analysis unavailable" : "Ready for analysis"}</h2><p className={styles.intelligence2Summary}>{error || "Analyze the portfolio to identify the signals that deserve attention."}</p></div><div className={styles.recipeMeta}>{diagnostics ? <><span className={styles.recipeToken}>{policy.attention}</span><span className={styles.recipeToken}>{context}</span></> : null}<WorkflowButton command="requestIntelligence2" hasResult={false} initialLabel="Analyze intelligence" refreshLabel="Refresh analysis" /></div></div></section>;
+  }
+  const items = intelligenceItems(value.items);
+  const evidence = evidenceItems(value.evidence);
+  const candidates = projectionCandidates(value.projectionCandidates);
+  const heroSection = sections.find((section) => section.primitive === "hero-signal");
+  const heroItem = heroSection?.contentIds.map((id) => items.find((item) => item.id === id)).find((item): item is IntelligenceItem => item !== undefined);
+  const visibleSections = diagnostics || !heroSection ? sections : sections.filter((section) => section.id !== heroSection.id);
+  const headline = diagnostics ? String(value.headline ?? "Structured assessment") : heroItem?.title ?? String(value.headline ?? "Portfolio assessment");
+  const summary = diagnostics || policy.attention === "focused" ? String(value.summary ?? "") : heroItem?.detail ?? String(value.summary ?? "");
+  const provenance = evidence.length > 0
+    ? `Based on the supplied portfolio data and ${evidence.length} external ${evidence.length === 1 ? "source" : "sources"}.`
+    : "Based on the supplied portfolio data. External news was not included.";
+  return <section className={styles.intelligence2}>
+    <header className={styles.intelligence2Header}>
+      <div><p className={styles.advisoryEyebrow}>Portfolio Intelligence</p><h2 className={styles.intelligence2Title}>{headline}</h2><p className={styles.intelligence2Summary}>{summary}</p></div>
+      <div className={styles.recipeMeta}>{diagnostics ? <><span className={styles.recipeToken}>{policy.attention}</span><span className={styles.recipeToken}>{selected?.label ?? "fallback"}</span></> : null}<span className={styles.recipeToken}>As of {String(value.asOf ?? "unknown")}</span><WorkflowButton command="requestIntelligence2" hasResult initialLabel="Analyze intelligence" refreshLabel="Refresh analysis" /></div>
+    </header>
+    <div className={styles.projectionBody}>
+      {diagnostics ? <p className={styles.projectionRationale}>Selected by the Blueprint recipe for {context}: {selected?.rationale ?? "First valid candidate."}</p> : null}
+      <div className={styles.projectionGrid}>{visibleSections.map((section) => <ProjectionSectionView section={section} items={items} evidence={evidence} diagnostics={diagnostics} key={section.id} />)}</div>
+    </div>
+    {diagnostics
+      ? <footer className={styles.alternatives}><strong>Agent-proposed projections</strong>{candidates.map((candidate) => <span className={styles.alternative} key={candidate.id}>{candidate.label} · {candidate.attention}{candidate.id === selected?.id ? " · selected" : ""}</span>)}</footer>
+      : <p className={styles.provenance}>{provenance}</p>}
+  </section>;
+};
+
 const WorkspaceView: ProjectionView = ({ node, children, emit }) => {
   const styles = useStyles();
-  const [pendingCommand, setPendingCommand] = React.useState<string | null>(null);
+  const [pendingCommand, setPendingCommand] = React.useState<WorkflowCommand | null>(null);
   const cells = childrenByNodeId(children);
   const isAdvisorContext = node.props.presentationContext === "portfolio-advisor";
-  const runWorkflow = async (command: string) => {
+  const runWorkflow = async (command: WorkflowCommand) => {
     setPendingCommand(command);
     try {
       await emit(command, {});
@@ -192,12 +488,13 @@ const WorkspaceView: ProjectionView = ({ node, children, emit }) => {
     <CellSection title="Market prices" cell={cells.get("market-prices")} />
     <CellSection title="Positions" cell={cells.get("positions")} className={`${styles.tableSurface} ${styles.positionsSurface}`} />
   </section>;
-  const advisory = <section className={styles.advisory}>
+  const advisory = <PortfolioWorkflowContext.Provider value={{ pendingCommand, runWorkflow }}><section className={styles.advisory}>
     {cells.get("portfolio-intelligence")}
+    {cells.get("portfolio-intelligence-2")}
     {cells.get("conservative-rebalance")}
     {cells.get("growth-rebalance")}
-    {cells.get("rebalance-comparison")}
-  </section>;
+    {cells.get("strategy-comparison")}
+  </section></PortfolioWorkflowContext.Provider>;
   return <main className={styles.workspace}>
     <header className={styles.header}>
       <div className={styles.headerInner}>
@@ -205,14 +502,11 @@ const WorkspaceView: ProjectionView = ({ node, children, emit }) => {
           <p className={styles.eyebrow}>{isAdvisorContext ? "Advisor workspace" : "Investment workspace"}</p>
           <h1 className={styles.title}>{String(node.props.title ?? "Portfolio tracker")}</h1>
         </div>
-        <div className={styles.workflowActions} aria-label="Portfolio workflows">
-          <button className={styles.workflowButton} disabled={pendingCommand !== null} type="button" onClick={() => void runWorkflow("requestIntelligence")}>Analyze portfolio</button>
-          <button className={`${styles.workflowButton} ${styles.primaryWorkflowButton}`} disabled={pendingCommand !== null} type="button" onClick={() => void runWorkflow("calculateStrategies")}>Build strategies</button>
-        </div>
       </div>
     </header>
     <div className={styles.content}>
       {cells.get("http-proxy-access-gate")}
+      {cells.get("foundry-access-gate")}
       {isAdvisorContext
         ? <>{advisory}{overview}{market}</>
         : <>{overview}{market}{advisory}</>}
@@ -224,5 +518,6 @@ export default {
   workspace: WorkspaceView,
   summary: SummaryView,
   narrative: NarrativeView,
-  recommendation: RecommendationView,
+  "intelligence-projections": IntelligenceProjectionsView,
+  comparison: StrategyComparisonView,
 };
