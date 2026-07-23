@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { bundleFromJson, loadBundleRuntime } from "@gik/react";
-import effects from "../bundles/portfolio-tracker/effect_handlers";
+import effects, {
+  hydrateState,
+  portfolioStateStorageKey,
+  readStoredPortfolioState,
+  wrapOrchestrator,
+  writeStoredPortfolioState,
+} from "../bundles/portfolio-tracker/effect_handlers";
 import { formatIntelligenceMetric, safeEvidenceUrl, selectIntelligenceProjection } from "../bundles/portfolio-tracker/projection_views";
 import { openSampleBlueprint } from "../shared/blueprints";
 import { hostConfig } from "../shared/host-config";
@@ -10,6 +16,14 @@ import type { SampleServiceRegistryOptions } from "../services";
 const PORTFOLIO_BLUEPRINTS = ["portfolio-tracker"] as const;
 const originalFetch = globalThis.fetch;
 let foundryRequests: Array<Record<string, unknown>> = [];
+
+function memoryStorage() {
+  const values = new Map<string, string>();
+  return {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => { values.set(key, value); },
+  };
+}
 
 const intelligenceResponse = {
   summary: "The portfolio is concentrated in two individual equities.",
@@ -134,11 +148,62 @@ function runtime(blueprintId: typeof PORTFOLIO_BLUEPRINTS[number]) {
     document: blueprintRuntime.document,
     state: blueprintRuntime.state,
   }, { effectHandlers: effects }), {
-    wrapOrchestrator: declarativeServiceOrchestrator(blueprintRuntime, registryOptions),
+    wrapOrchestrator: wrapOrchestrator(declarativeServiceOrchestrator(blueprintRuntime, registryOptions)),
   });
 }
 
 describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
+  it("persists and hydrates the durable portfolio state without transient host fields", () => {
+    const storage = memoryStorage();
+    writeStoredPortfolioState({
+      holdings: { nvda: { ticker: "nvda", quantity: 12, costBasis: 118 } },
+      quotes: { NVDA: { ticker: "NVDA", price: 175 } },
+      positions: { NVDA: { ticker: "NVDA", quantity: 12, value: 2100 } },
+      summary: { marketValue: 2100, costBasis: 1416, gainLoss: 684 },
+      intelligence: { summary: "Concentrated portfolio", asOf: "2026-07-23" },
+      intelligence2: null,
+      strategies: {},
+      recommendation: null,
+      investorProfile: { riskTolerance: "moderate" },
+      presentationContext: "portfolio-advisor",
+      foundryAccessStatus: "ready",
+    }, storage);
+
+    const raw = JSON.parse(storage.getItem(portfolioStateStorageKey) ?? "");
+    expect(raw).toMatchObject({
+      portfolio: {
+        holdings: { NVDA: { ticker: "NVDA", quantity: 12, costBasis: 118 } },
+        quotes: { NVDA: { ticker: "NVDA", price: 175 } },
+        intelligence: { summary: "Concentrated portfolio", asOf: "2026-07-23" },
+      },
+    });
+    expect(raw.savedAt).toEqual(expect.any(String));
+    expect(raw.portfolio).not.toHaveProperty("presentationContext");
+    expect(raw.portfolio).not.toHaveProperty("foundryAccessStatus");
+
+    const state = { portfolio: { holdings: {}, quotes: {}, intelligence: null, presentationContext: "portfolio-overview" } };
+    hydrateState(state, storage);
+    expect(state.portfolio.holdings).toEqual({ NVDA: { ticker: "NVDA", quantity: 12, costBasis: 118 } });
+    expect(state.portfolio.quotes).toEqual({ NVDA: { ticker: "NVDA", price: 175 } });
+    expect(state.portfolio.intelligence).toEqual({ summary: "Concentrated portfolio", asOf: "2026-07-23" });
+    expect(state.portfolio.presentationContext).toBe("portfolio-overview");
+  });
+
+  it("ignores malformed storage and honors a valid empty portfolio", () => {
+    const storage = memoryStorage();
+    storage.setItem(portfolioStateStorageKey, "not-json");
+    expect(readStoredPortfolioState(storage)).toBeNull();
+
+    const malformedState = { portfolio: { holdings: { DEFAULT: { ticker: "DEFAULT" } } } };
+    hydrateState(malformedState, storage);
+    expect(malformedState.portfolio.holdings).toEqual({ DEFAULT: { ticker: "DEFAULT" } });
+
+    writeStoredPortfolioState({ holdings: {} }, storage);
+    const emptyState = { portfolio: { holdings: { DEFAULT: { ticker: "DEFAULT" } } } };
+    hydrateState(emptyState, storage);
+    expect(emptyState.portfolio.holdings).toEqual({});
+  });
+
   it("allows only web evidence links", () => {
     expect(safeEvidenceUrl("https://investor.nvidia.com/events")).toBe("https://investor.nvidia.com/events");
     expect(safeEvidenceUrl("javascript:alert(1)")).toBeUndefined();
@@ -176,6 +241,28 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
     expect(portfolio.state.get("portfolio.quotes.NVDA")).toMatchObject({ ticker: "NVDA", price: 100 });
     expect(portfolio.state.get("portfolio.positions.NVDA")).toMatchObject({ ticker: "NVDA", quantity: 100, price: 100 });
     expect(portfolio.state.get("portfolio.summary.marketValue")).toBe(10000);
+  });
+
+  it("persists editable-table saves through the portfolio effect service", async () => {
+    const storage = memoryStorage();
+    const previousStorage = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+    Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
+    try {
+      const portfolio = runtime(blueprintId);
+      await portfolio.controller.emit("holdings", "save", {
+        rows: [{ ticker: "msft", quantity: 7, costBasis: 405 }],
+      }, "human-investor");
+      await portfolio.controller.settle();
+
+      expect(readStoredPortfolioState(storage)).toMatchObject({
+        holdings: { MSFT: { ticker: "MSFT", quantity: 7, costBasis: 405 } },
+        quotes: { MSFT: { ticker: "MSFT", price: 100 } },
+        positions: { MSFT: { ticker: "MSFT", quantity: 7, price: 100 } },
+      });
+    } finally {
+      if (previousStorage) Object.defineProperty(globalThis, "localStorage", previousStorage);
+      else Reflect.deleteProperty(globalThis, "localStorage");
+    }
   });
 
   it("maintains keyed quotes, positions, and summary as tickers change", async () => {
@@ -256,6 +343,40 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
     expect(portfolio.state.get("portfolio.recommendation.status")).toBe("proposed");
     expect(foundryRequests[1]).toMatchObject({ agentName: "Portfolio-Strategy-Agent" });
     expect(String(foundryRequests[1].message)).toContain("Portfolio intelligence JSON");
+  });
+
+  it("persists committed intelligence and strategy cells in the portfolio snapshot", async () => {
+    const storage = memoryStorage();
+    const previousStorage = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+    Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
+    try {
+      const portfolio = runtime(blueprintId);
+      await portfolio.controller.emit(blueprintId, "setHoldings", {
+        holdings: [{ ticker: "NVDA", quantity: 18, costBasis: 138 }],
+        investorProfile: { riskTolerance: "moderate", horizonYears: 8 },
+      }, "human-investor");
+      await portfolio.controller.settle();
+      await portfolio.controller.emit(blueprintId, "refreshPrices", {}, "agent-market-data");
+      await portfolio.controller.settle();
+      await portfolio.controller.emit(blueprintId, "requestIntelligence", {}, "agent-portfolio-intelligence");
+      await portfolio.controller.settle();
+      await portfolio.controller.emit(blueprintId, "requestIntelligence2", {}, "agent-portfolio-intelligence");
+      await portfolio.controller.settle();
+      await portfolio.controller.emit(blueprintId, "calculateStrategies", {}, "agent-portfolio-intelligence");
+      await portfolio.controller.settle();
+
+      expect(readStoredPortfolioState(storage)).toMatchObject({
+        quotes: { NVDA: { ticker: "NVDA", price: 100 } },
+        intelligence: { summary: intelligenceResponse.summary },
+        intelligence2: { headline: intelligence2Response.headline },
+        strategies: { conservative: { id: "conservative" }, growth: { id: "growth" } },
+        recommendation: { selected: "conservative", status: "proposed" },
+        investorProfile: { riskTolerance: "moderate", horizonYears: 8 },
+      });
+    } finally {
+      if (previousStorage) Object.defineProperty(globalThis, "localStorage", previousStorage);
+      else Reflect.deleteProperty(globalThis, "localStorage");
+    }
   });
 
   it("stitches agent-proposed projections to the current Blueprint attention context", async () => {
