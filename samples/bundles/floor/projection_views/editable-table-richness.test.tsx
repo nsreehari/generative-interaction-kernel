@@ -4,7 +4,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { Json } from "@gik/kernel";
 
 import { FallbackView, buildRegistryFromImports, renderNode } from "@gik/react";
-import { FLOOR_COMPONENTS } from "./index";
+import {
+  FLOOR_COMPONENTS,
+  appendEditableRowOnLastRowFocus,
+  committedEditableRows,
+  withTrailingEditableRow,
+} from "./index";
 
 const registry = buildRegistryFromImports(
   { ui: { from: "floor" } },
@@ -50,6 +55,34 @@ test("editable-table renders schema-defined columns when rows are empty", () => 
   assert.match(markup, /<th>ticker<\/th>/i);
   assert.match(markup, /<th>quantity<\/th>/i);
   assert.match(markup, /<th>costBasis<\/th>/i);
+  assert.equal((markup.match(/<tr>/g) ?? []).length, 2);
+  assert.equal((markup.match(/<input/g) ?? []).length, 3);
+});
+
+test("editable-table normalizes populated rows with a trailing blank row", () => {
+  const rows = [{ ticker: "MSFT", quantity: 10 }];
+  assert.deepEqual(withTrailingEditableRow(rows, ["ticker", "quantity"]), [
+    { ticker: "MSFT", quantity: 10 },
+    { ticker: "", quantity: "" },
+  ]);
+});
+
+test("editable-table focus appends only when the focused row is still last", () => {
+  const rows = [{ ticker: "", quantity: "" }];
+  const afterFocus = appendEditableRowOnLastRowFocus(rows, ["ticker", "quantity"], 0);
+  assert.equal(afterFocus.length, 2);
+  assert.equal(appendEditableRowOnLastRowFocus(afterFocus, ["ticker", "quantity"], 0), afterFocus);
+});
+
+test("editable-table save rows omit fully empty rows and preserve partial rows", () => {
+  assert.deepEqual(committedEditableRows([
+    { ticker: "MSFT", quantity: 10 },
+    { ticker: "  ", quantity: "" },
+    { ticker: "AAPL", quantity: "" },
+  ]), [
+    { ticker: "MSFT", quantity: 10 },
+    { ticker: "AAPL", quantity: "" },
+  ]);
 });
 
 test("editable-table renders themed table + inputs (no inline styles)", () => {
