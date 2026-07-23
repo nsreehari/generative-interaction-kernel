@@ -142,7 +142,7 @@
             "operation": "chat",
             "contract": "portfolio-intelligence/v1",
             "request": {
-              "transform": { "kind": "jsonata", "expr": "{'message':'Analyze the following portfolio using the supplied values as authoritative. Positions JSON: ' & $string(state.portfolio.positions) & ' Portfolio summary JSON: ' & $string(state.portfolio.summary) & ' Investor profile JSON: ' & $string(state.portfolio.investorProfile),'instructions':'Use web search to investigate current ticker-specific news, dated upcoming events, and material risks for every supplied position. Distinguish supplied portfolio facts from researched facts and analytical judgments. Do not invent prices, events, sources, or investor constraints. Keep the assessment concise and evidence-grounded.'}" }
+              "transform": { "kind": "jsonata", "expr": "{'message':'Analyze the following portfolio using the supplied values as authoritative. Positions JSON: ' & $string(state.portfolio.positions) & ' Portfolio summary JSON: ' & $string(state.portfolio.summary) & ' Investor profile JSON: ' & $string(state.portfolio.investorProfile),'instructions':'Use web search to investigate current ticker-specific news, dated upcoming events, and material risks for every supplied position. Distinguish supplied portfolio facts from researched facts and analytical judgments. Do not invent prices, events, sources, or investor constraints. Keep the assessment concise and evidence-grounded. Keep the complete structured response within the supplied output token budget.','maxOutputTokens':1800}" }
             },
             "response": {
               "validators": [
@@ -166,10 +166,10 @@
               ]
             },
             "settlement": {
-              "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':$merge([response,{'investorProfile':state.portfolio.investorProfile,'provider':'foundry-agent:Portfolio-Intelligence-Agent'}])}],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Intelligence-Agent'}}" }
+              "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':$merge([response,{'investorProfile':state.portfolio.investorProfile,'provider':'foundry-agent:Portfolio-Intelligence-Agent'}])},{'op':'set','path':'portfolio.intelligenceError','value':''}],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Intelligence-Agent'}}" }
             },
             "failureSettlement": {
-              "transform": { "kind": "jsonata", "expr": "($access := error.message = 'Foundry access is required' or error.status = 401 or error.status = 403; {'ops':[{'op':'set','path':'portfolio.foundryAccessStatus','value':$access ? 'required' : state.portfolio.foundryAccessStatus},{'op':'set','path':'portfolio.foundryAccessError','value':$access ? (error.status = 401 or error.status = 403 ? 'That access key was rejected.' : 'Foundry access is required.') : error.message}]})" }
+              "transform": { "kind": "jsonata", "expr": "($access := error.message = 'Foundry access is required' or error.status = 401 or error.status = 403; $message := $access ? (error.status = 401 or error.status = 403 ? 'That access key was rejected.' : 'Foundry access is required.') : error.message; {'ops':[{'op':'set','path':'portfolio.foundryAccessStatus','value':$access ? 'required' : state.portfolio.foundryAccessStatus},{'op':'set','path':'portfolio.foundryAccessError','value':$access ? $message : state.portfolio.foundryAccessError},{'op':'set','path':'portfolio.intelligenceError','value':$message}]})" }
             },
             "onViolation": { "action": "fail" }
           }
@@ -419,6 +419,7 @@
           "positions": {},
           "summary": { "marketValue": 0, "costBasis": 0, "gainLoss": 0 },
           "intelligence": null,
+          "intelligenceError": "",
           "intelligence2": null,
           "strategies": {},
           "recommendation": null,
@@ -494,7 +495,7 @@
           { "id": "market-prices", "capability": "ui:table", "requires": ["http-proxy-access", "holding:$TICKER"], "provides": ["quote:$TICKER"], "service": { "service": "portfolio-market-data", "operation": "refreshPrices", "contract": "portfolio-market-quotes/v1" }, "props": { "label": "market-prices" }, "edges": { "readExpr": { "rows": "[portfolio.quotes.*]" } } },
           { "id": "positions", "capability": "ui:table", "requires": ["holding:$TICKER", "quote:$TICKER"], "provides": ["position:$TICKER"], "props": { "label": "positions" }, "edges": { "readExpr": { "rows": "[portfolio.positions.*]" } } },
           { "id": "summary", "capability": "portfolio:summary", "requires": ["position:$TICKER"], "provides": ["portfolio-summary"], "props": { "label": "summary" }, "edges": { "read": { "value": "portfolio.summary" } } },
-          { "id": "portfolio-intelligence", "capability": "portfolio:narrative", "requires": ["foundry-access", "portfolio-summary", "position:$TICKER", "investor-profile"], "provides": ["portfolio-intelligence"], "service": { "service": "portfolio-intelligence", "operation": "chat", "contract": "portfolio-intelligence/v1" }, "props": { "label": "portfolio-intelligence" }, "edges": { "read": { "value": "portfolio.intelligence" } } },
+          { "id": "portfolio-intelligence", "capability": "portfolio:narrative", "requires": ["foundry-access", "portfolio-summary", "position:$TICKER", "investor-profile"], "provides": ["portfolio-intelligence"], "service": { "service": "portfolio-intelligence", "operation": "chat", "contract": "portfolio-intelligence/v1" }, "props": { "label": "portfolio-intelligence" }, "edges": { "read": { "value": "portfolio.intelligence", "error": "portfolio.intelligenceError" } } },
           {
             "id": "portfolio-intelligence-2",
             "capability": "portfolio:intelligence-projections",

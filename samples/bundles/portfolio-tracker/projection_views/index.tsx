@@ -174,11 +174,12 @@ const NarrativeView: ProjectionView = ({ node }) => {
   const styles = useStyles();
   const value = valueOf(node) as Record<string, unknown> | null;
   if (node.id === "portfolio-intelligence") {
+    const error = String(node.props.error ?? "");
     if (value == null) {
       return <article className={`${styles.advisoryPanel} ${styles.advisoryWide}`}>
         <div className={styles.panelHeadingRow}><p className={styles.advisoryEyebrow}>Portfolio intelligence</p><WorkflowButton command="requestIntelligence" hasResult={false} initialLabel="Analyze portfolio" refreshLabel="Refresh analysis" /></div>
-        <h2 className={styles.advisoryTitle}>Ready for analysis</h2>
-        <p className={styles.advisorySummary}>Add holdings, then analyze the portfolio for observations and risk signals.</p>
+        <h2 className={styles.advisoryTitle}>{error ? "Analysis unavailable" : "Ready for analysis"}</h2>
+        <p className={styles.advisorySummary}>{error || "Add holdings, then analyze the portfolio for observations and risk signals."}</p>
       </article>;
     }
     const observations = Array.isArray(value.observations) ? value.observations.map(String) : [];
