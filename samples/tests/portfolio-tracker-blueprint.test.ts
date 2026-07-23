@@ -23,6 +23,7 @@ describe("portfolio-tracker Blueprint", () => {
       "positions",
       "summary",
       "portfolio-intelligence",
+      "portfolio-intelligence-2",
       "conservative-rebalance",
       "growth-rebalance",
       "strategy-comparison",
@@ -55,6 +56,18 @@ describe("portfolio-tracker Blueprint", () => {
       when: "portfolio.foundryAccessStatus = 'ready'",
     }]);
     expect(portfolioCells.find((cell) => cell.id === "portfolio-intelligence")?.requires).toContain("foundry-access");
+    const intelligence2 = portfolioCells.find((cell) => cell.id === "portfolio-intelligence-2");
+    expect(intelligence2).toMatchObject({
+      capability: "portfolio:intelligence-projections",
+      service: { service: "portfolio-intelligence-2", contract: "portfolio-intelligence-2/v1" },
+      edges: { read: { value: "portfolio.intelligence2", presentationContext: "portfolio.presentationContext", error: "portfolio.foundryAccessError" } },
+    });
+    expect(intelligence2?.props?.projectionRecipe).toMatchObject({
+      contexts: {
+        "portfolio-overview": { attention: "glanceable", maxSections: 3 },
+        "portfolio-advisor": { attention: "focused", maxSections: 8 },
+      },
+    });
     const strategyComparison = portfolioCells.find((cell) => cell.id === "strategy-comparison");
     expect(strategyComparison?.capability).toBe("portfolio:comparison");
     expect(strategyComparison?.edges?.on).toBeUndefined();

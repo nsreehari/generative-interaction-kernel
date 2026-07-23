@@ -112,7 +112,7 @@
             "settlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "($positions := response.results.{'ticker':key,'quantity':meta.quantity,'price':$round(body.chart.result[0].meta.regularMarketPrice, 2),'value':$round(meta.quantity * body.chart.result[0].meta.regularMarketPrice, 2),'costBasis':$round(meta.quantity * meta.costBasis, 2),'gainLoss':$round((meta.quantity * body.chart.result[0].meta.regularMarketPrice) - (meta.quantity * meta.costBasis), 2)}; {'ops':[{'op':'set','path':'portfolio.quotes','value':$count(response.results) > 0 ? $merge(response.results.{key:{'ticker':key,'price':$round(body.chart.result[0].meta.regularMarketPrice, 2)}}) : {}},{'op':'set','path':'portfolio.positions','value':$count($positions) > 0 ? $merge($positions.{ticker:$}) : {}},{'op':'set','path':'portfolio.summary','value':{'marketValue':$count($positions) > 0 ? $round($sum($positions.value), 2) : 0,'costBasis':$count($positions) > 0 ? $round($sum($positions.costBasis), 2) : 0,'gainLoss':$count($positions) > 0 ? $round($sum($positions.gainLoss), 2) : 0}},{'op':'set','path':'portfolio.intelligence','value':null},{'op':'set','path':'portfolio.strategies','value':{}},{'op':'set','path':'portfolio.recommendation','value':null}],'detail':{'provider':'yahoo-finance-http-service','quoteCount':$count(response.results)}})"
+                "expr": "($positions := response.results.{'ticker':key,'quantity':meta.quantity,'price':$round(body.chart.result[0].meta.regularMarketPrice, 2),'value':$round(meta.quantity * body.chart.result[0].meta.regularMarketPrice, 2),'costBasis':$round(meta.quantity * meta.costBasis, 2),'gainLoss':$round((meta.quantity * body.chart.result[0].meta.regularMarketPrice) - (meta.quantity * meta.costBasis), 2)}; {'ops':[{'op':'set','path':'portfolio.quotes','value':$count(response.results) > 0 ? $merge(response.results.{key:{'ticker':key,'price':$round(body.chart.result[0].meta.regularMarketPrice, 2)}}) : {}},{'op':'set','path':'portfolio.positions','value':$count($positions) > 0 ? $merge($positions.{ticker:$}) : {}},{'op':'set','path':'portfolio.summary','value':{'marketValue':$count($positions) > 0 ? $round($sum($positions.value), 2) : 0,'costBasis':$count($positions) > 0 ? $round($sum($positions.costBasis), 2) : 0,'gainLoss':$count($positions) > 0 ? $round($sum($positions.gainLoss), 2) : 0}},{'op':'set','path':'portfolio.intelligence','value':null},{'op':'set','path':'portfolio.intelligence2','value':null},{'op':'set','path':'portfolio.strategies','value':{}},{'op':'set','path':'portfolio.recommendation','value':null}],'detail':{'provider':'yahoo-finance-http-service','quoteCount':$count(response.results)}})"
               }
             }
           }
@@ -177,6 +177,126 @@
         "config": {
           "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}",
           "agent": "Portfolio-Intelligence-Agent",
+          "credentialRef": "foundry-agent/access-key"
+        },
+        "scope": "per-blueprint"
+      },
+      "portfolio-intelligence-2": {
+        "kind": "foundry-agent",
+        "version": "1",
+        "operations": {
+          "requestIntelligence2": {
+            "operation": "chat",
+            "contract": "portfolio-intelligence-2/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'message':'Analyze this portfolio and propose useful semantic projections. Positions JSON: ' & $string(state.portfolio.positions) & ' Portfolio summary JSON: ' & $string(state.portfolio.summary) & ' Investor profile JSON: ' & $string(state.portfolio.investorProfile) & ' Interaction context JSON: ' & $string({'interaction':'investigate','subject':'portfolio intelligence','goal':'understand what deserves human attention','facets':['summary','signals','catalysts','risks','evidence']}) & ' Attention context JSON: ' & $string({'presentationContext':state.portfolio.presentationContext,'attention':state.portfolio.presentationContext = 'portfolio-advisor' ? 'focused' : 'glanceable','space':state.portfolio.presentationContext = 'portfolio-advisor' ? 'expanded' : 'regular'}),'instructions':'Build reusable semantic items first. Then return two or three alternative projection candidates that reference those items by id. Available primitives are hero-signal, metric-strip, signal-list, timeline, evidence-list, and narrative. Available priority tokens are primary, secondary, and tertiary. Available disclosure tokens are always, collapsed, and on-demand. Use only this catalog. A glanceable candidate should expose no more than three always-visible sections and lead with the most material signal. A focused candidate may retain evidence and supporting detail through progressive disclosure. The runtime recipe, not you, chooses the active candidate. Analyze only the supplied portfolio data; do not imply that external news or events were researched. Distinguish supplied facts, judgments, and uncertainty through semantic item kinds. Return no evidence unless it was supplied in the request. Keep the complete structured response within the supplied output token budget.','maxOutputTokens':2500}"
+              }
+            },
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "code": "provider-structured-output",
+                  "message": "Portfolio intelligence 2 response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": ["headline", "summary", "asOf", "items", "evidence", "projectionCandidates"],
+                    "properties": {
+                      "headline": { "type": "string", "minLength": 1 },
+                      "summary": { "type": "string", "minLength": 1 },
+                      "asOf": { "type": "string", "minLength": 1 },
+                      "items": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "object",
+                          "required": ["id", "kind", "title", "detail", "salience", "confidence", "entities", "value", "unit", "date", "evidenceIds"],
+                          "properties": {
+                            "id": { "type": "string", "minLength": 1 },
+                            "kind": { "type": "string", "enum": ["fact", "risk", "opportunity", "catalyst", "judgment", "uncertainty"] },
+                            "title": { "type": "string", "minLength": 1 },
+                            "detail": { "type": "string", "minLength": 1 },
+                            "salience": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+                            "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+                            "entities": { "type": "array", "items": { "type": "string" } },
+                            "value": { "type": "string" },
+                            "unit": { "type": "string" },
+                            "date": { "type": "string" },
+                            "evidenceIds": { "type": "array", "items": { "type": "string" } }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "evidence": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": ["id", "title", "publisher", "url", "publishedAt"],
+                          "properties": {
+                            "id": { "type": "string", "minLength": 1 },
+                            "title": { "type": "string", "minLength": 1 },
+                            "publisher": { "type": "string", "minLength": 1 },
+                            "url": { "type": "string", "minLength": 1 },
+                            "publishedAt": { "type": "string" }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "projectionCandidates": {
+                        "type": "array",
+                        "minItems": 2,
+                        "maxItems": 3,
+                        "items": {
+                          "type": "object",
+                          "required": ["id", "label", "attention", "rationale", "sections"],
+                          "properties": {
+                            "id": { "type": "string", "minLength": 1 },
+                            "label": { "type": "string", "minLength": 1 },
+                            "attention": { "type": "string", "enum": ["glanceable", "focused"] },
+                            "rationale": { "type": "string", "minLength": 1 },
+                            "sections": {
+                              "type": "array",
+                              "minItems": 1,
+                              "items": {
+                                "type": "object",
+                                "required": ["id", "title", "primitive", "priority", "disclosure", "contentIds"],
+                                "properties": {
+                                  "id": { "type": "string", "minLength": 1 },
+                                  "title": { "type": "string", "minLength": 1 },
+                                  "primitive": { "type": "string", "enum": ["hero-signal", "metric-strip", "signal-list", "timeline", "evidence-list", "narrative"] },
+                                  "priority": { "type": "string", "enum": ["primary", "secondary", "tertiary"] },
+                                  "disclosure": { "type": "string", "enum": ["always", "collapsed", "on-demand"] },
+                                  "contentIds": { "type": "array", "items": { "type": "string" } }
+                                },
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                { "kind": "jsonata", "expr": "$count(data.projectionCandidates[attention = 'glanceable']) > 0 and $count(data.projectionCandidates[attention = 'focused']) > 0", "message": "Portfolio intelligence 2 must provide glanceable and focused projections", "code": "projection-attention-coverage" },
+                { "kind": "jsonata", "expr": "$count(data.projectionCandidates[attention = 'glanceable'][$count(sections[disclosure = 'always']) > 3]) = 0", "message": "Each glanceable projection may expose at most three always-visible sections", "code": "glanceable-attention-budget" }
+              ]
+            },
+            "settlement": {
+              "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence2','value':$merge([response,{'provider':'foundry-agent:Portfolio-Intelligence-2-Agent'}])}],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Intelligence-2-Agent'}}" }
+            },
+            "failureSettlement": {
+              "transform": { "kind": "jsonata", "expr": "($access := error.message = 'Foundry access is required' or error.status = 401 or error.status = 403; {'ops':[{'op':'set','path':'portfolio.foundryAccessStatus','value':$access ? 'required' : state.portfolio.foundryAccessStatus},{'op':'set','path':'portfolio.foundryAccessError','value':$access ? (error.status = 401 or error.status = 403 ? 'That access key was rejected.' : 'Foundry access is required.') : error.message}]})" }
+            },
+            "onViolation": { "action": "fail" }
+          }
+        },
+        "config": {
+          "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}",
+          "agent": "Portfolio-Intelligence-2-Agent",
           "credentialRef": "foundry-agent/access-key"
         },
         "scope": "per-blueprint"
@@ -269,13 +389,14 @@
       "contexts": ["control"],
       "actions": ["invoke", "emit"],
       "capabilities": {
-        "portfolio:workspace": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"], "emits": ["setHoldings", "upsertHolding", "removeHolding", "refreshPrices", "requestIntelligence", "calculateStrategies", "setPresentationContext"] },
+        "portfolio:workspace": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"], "emits": ["setHoldings", "upsertHolding", "removeHolding", "refreshPrices", "requestIntelligence", "requestIntelligence2", "calculateStrategies", "setPresentationContext"] },
         "http-proxy:access-gate": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["accessRequested", "accessCleared"] },
         "foundry:access-gate": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["accessRequested", "accessCleared"] },
         "ui:editable-table": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"], "dataProp": "rows" },
         "ui:table": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "rows" },
         "portfolio:summary": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
         "portfolio:narrative": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
+        "portfolio:intelligence-projections": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
         "portfolio:comparison": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" }
       },
       "externals": {
@@ -298,6 +419,7 @@
           "positions": {},
           "summary": { "marketValue": 0, "costBasis": 0, "gainLoss": 0 },
           "intelligence": null,
+          "intelligence2": null,
           "strategies": {},
           "recommendation": null,
           "investorProfile": null,
@@ -371,6 +493,24 @@
           { "id": "positions", "capability": "ui:table", "requires": ["holding:$TICKER", "quote:$TICKER"], "provides": ["position:$TICKER"], "props": { "label": "positions" }, "edges": { "readExpr": { "rows": "[portfolio.positions.*]" } } },
           { "id": "summary", "capability": "portfolio:summary", "requires": ["position:$TICKER"], "provides": ["portfolio-summary"], "props": { "label": "summary" }, "edges": { "read": { "value": "portfolio.summary" } } },
           { "id": "portfolio-intelligence", "capability": "portfolio:narrative", "requires": ["foundry-access", "portfolio-summary", "position:$TICKER", "investor-profile"], "provides": ["portfolio-intelligence"], "service": { "service": "portfolio-intelligence", "operation": "chat", "contract": "portfolio-intelligence/v1" }, "props": { "label": "portfolio-intelligence" }, "edges": { "read": { "value": "portfolio.intelligence" } } },
+          {
+            "id": "portfolio-intelligence-2",
+            "capability": "portfolio:intelligence-projections",
+            "requires": ["foundry-access", "portfolio-summary", "position:$TICKER", "investor-profile"],
+            "provides": ["portfolio-intelligence-2"],
+            "service": { "service": "portfolio-intelligence-2", "operation": "chat", "contract": "portfolio-intelligence-2/v1" },
+            "props": {
+              "label": "portfolio-intelligence-2",
+              "projectionRecipe": {
+                "contexts": {
+                  "portfolio-overview": { "attention": "glanceable", "showDisclosure": ["always"], "maxSections": 3 },
+                  "portfolio-advisor": { "attention": "focused", "showDisclosure": ["always", "collapsed"], "maxSections": 8 }
+                },
+                "fallback": { "attention": "glanceable", "showDisclosure": ["always"], "maxSections": 3 }
+              }
+            },
+            "edges": { "read": { "value": "portfolio.intelligence2", "presentationContext": "portfolio.presentationContext", "error": "portfolio.foundryAccessError" } }
+          },
           { "id": "conservative-rebalance", "capability": "portfolio:narrative", "requires": ["position:$TICKER", "portfolio-summary", "portfolio-intelligence", "investor-profile"], "provides": ["rebalance-conservative"], "props": { "label": "conservative-rebalance" }, "edges": { "read": { "value": "portfolio.strategies.conservative" } } },
           { "id": "growth-rebalance", "capability": "portfolio:narrative", "requires": ["position:$TICKER", "portfolio-summary", "portfolio-intelligence", "investor-profile"], "provides": ["rebalance-growth"], "props": { "label": "growth-rebalance" }, "edges": { "read": { "value": "portfolio.strategies.growth" } } },
           { "id": "strategy-comparison", "capability": "portfolio:comparison", "requires": ["rebalance-conservative", "rebalance-growth"], "provides": ["strategy-comparison"], "service": { "service": "portfolio-strategies", "operation": "chat", "contract": "portfolio-strategies/v1" }, "props": { "label": "strategy-comparison" }, "edges": { "read": { "value": "portfolio.recommendation" } } }
@@ -390,6 +530,7 @@
               "removeHolding": [{ "do": "invoke", "args": { "tool": "removeHolding" } }],
               "refreshPrices": [{ "do": "invoke", "args": { "tool": "refreshPrices" } }],
               "requestIntelligence": [{ "do": "invoke", "args": { "tool": "requestIntelligence" } }],
+              "requestIntelligence2": [{ "do": "invoke", "args": { "tool": "requestIntelligence2" } }],
               "calculateStrategies": [{ "do": "invoke", "args": { "tool": "calculateStrategies" } }],
               "setPresentationContext": [{ "do": "invoke", "args": { "tool": "setPresentationContext" } }]
             }

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { bundleFromJson, loadBundleRuntime } from "@gik/react";
 import effects from "../bundles/portfolio-tracker/effect_handlers";
+import { safeEvidenceUrl, selectIntelligenceProjection } from "../bundles/portfolio-tracker/projection_views";
 import { openSampleBlueprint } from "../shared/blueprints";
 import { hostConfig } from "../shared/host-config";
 import { declarativeServiceOrchestrator } from "../shared/service-runtime";
@@ -16,6 +17,34 @@ const intelligenceResponse = {
   risks: ["NVDA: current semiconductor volatility may amplify drawdowns."],
   evidence: ["NVDA company and market news reviewed for the current date."],
   asOf: "2026-07-22",
+};
+
+const intelligence2Response = {
+  headline: "Concentration deserves immediate attention",
+  summary: "The same semantic assessment supports a glanceable overview and a focused review.",
+  asOf: "2026-07-23",
+  items: [
+    { id: "concentration", kind: "risk", title: "Two holdings drive all portfolio outcomes", detail: "NVDA has the larger weight.", salience: "critical", confidence: "high", entities: ["NVDA", "JNJ"], value: "55.4", unit: "% NVDA", date: "", evidenceIds: [] },
+    { id: "earnings", kind: "catalyst", title: "NVDA earnings", detail: "A dated volatility catalyst.", salience: "high", confidence: "high", entities: ["NVDA"], value: "", unit: "", date: "2026-08-26", evidenceIds: ["nvda-events"] },
+  ],
+  evidence: [{ id: "nvda-events", title: "Events and presentations", publisher: "NVIDIA", url: "https://investor.nvidia.com", publishedAt: "" }],
+  projectionCandidates: [
+    {
+      id: "executive-scan", label: "Executive scan", attention: "glanceable", rationale: "Lead with the dominant risk and next catalyst.",
+      sections: [
+        { id: "lead", title: "What matters", primitive: "hero-signal", priority: "primary", disclosure: "always", contentIds: ["concentration"] },
+        { id: "next", title: "What is next", primitive: "timeline", priority: "secondary", disclosure: "always", contentIds: ["earnings"] },
+        { id: "sources", title: "Evidence", primitive: "evidence-list", priority: "tertiary", disclosure: "on-demand", contentIds: ["nvda-events"] },
+      ],
+    },
+    {
+      id: "analyst-review", label: "Analyst review", attention: "focused", rationale: "Retain signals and inspectable evidence.",
+      sections: [
+        { id: "signals", title: "Signals", primitive: "signal-list", priority: "primary", disclosure: "always", contentIds: ["concentration", "earnings"] },
+        { id: "evidence", title: "Evidence", primitive: "evidence-list", priority: "secondary", disclosure: "collapsed", contentIds: ["nvda-events"] },
+      ],
+    },
+  ],
 };
 
 const strategiesResponse = {
@@ -81,8 +110,10 @@ beforeEach(() => {
     const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
     foundryRequests.push(body);
     const schemaName = String((body.responseSchema as { name?: unknown } | undefined)?.name ?? "");
-    const reply = schemaName.startsWith("portfolio-intelligence")
-      ? intelligenceResponse
+    const reply = schemaName.startsWith("portfolio-intelligence-2")
+      ? intelligence2Response
+      : schemaName.startsWith("portfolio-intelligence")
+        ? intelligenceResponse
       : strategiesResponse;
     return new Response(JSON.stringify({
       conversationId: `conversation-${foundryRequests.length}`,
@@ -108,6 +139,12 @@ function runtime(blueprintId: typeof PORTFOLIO_BLUEPRINTS[number]) {
 }
 
 describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
+  it("allows only web evidence links", () => {
+    expect(safeEvidenceUrl("https://investor.nvidia.com/events")).toBe("https://investor.nvidia.com/events");
+    expect(safeEvidenceUrl("javascript:alert(1)")).toBeUndefined();
+    expect(safeEvidenceUrl("not a url")).toBeUndefined();
+  });
+
   it("reports when the configured Foundry server cannot be reached", async () => {
     globalThis.fetch = async () => { throw new TypeError("Failed to fetch"); };
     const portfolio = runtime(blueprintId);
@@ -213,6 +250,38 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
     expect(portfolio.state.get("portfolio.recommendation.status")).toBe("proposed");
     expect(foundryRequests[1]).toMatchObject({ agentName: "Portfolio-Strategy-Agent" });
     expect(String(foundryRequests[1].message)).toContain("Portfolio intelligence JSON");
+  });
+
+  it("stitches agent-proposed projections to the current Blueprint attention context", async () => {
+    const portfolio = runtime(blueprintId);
+    await portfolio.controller.emit(blueprintId, "setHoldings", {
+      holdings: [{ ticker: "NVDA", quantity: 18, costBasis: 138 }],
+      investorProfile: { riskTolerance: "moderate", horizonYears: 8 },
+    }, "human-investor");
+    await portfolio.controller.settle();
+    await portfolio.controller.emit(blueprintId, "refreshPrices", {}, "agent-market-data");
+    await portfolio.controller.settle();
+    await portfolio.controller.emit(blueprintId, "requestIntelligence2", {}, "agent-portfolio-intelligence");
+    await portfolio.controller.settle();
+
+    expect(portfolio.state.get("portfolio.intelligence2")).toMatchObject({
+      provider: "foundry-agent:Portfolio-Intelligence-2-Agent",
+      projectionCandidates: intelligence2Response.projectionCandidates,
+    });
+    expect(foundryRequests[0]).toMatchObject({ agentName: "Portfolio-Intelligence-2-Agent", maxOutputTokens: 2500 });
+    expect(String(foundryRequests[0].message)).toContain("Interaction context JSON");
+    expect(String(foundryRequests[0].message)).toContain("glanceable");
+    expect(String(foundryRequests[0].instructions)).toContain("Available primitives");
+
+    const document = openSampleBlueprint(blueprintId).document.payload;
+    const intelligence2Node = document.root.edges?.children?.find((node) => node.id === "portfolio-intelligence-2");
+    const recipe = intelligence2Node?.props?.projectionRecipe;
+    const overview = selectIntelligenceProjection(intelligence2Response, "portfolio-overview", recipe);
+    const advisor = selectIntelligenceProjection(intelligence2Response, "portfolio-advisor", recipe);
+    expect(overview).toMatchObject({ policy: { attention: "glanceable" }, candidate: { id: "executive-scan" } });
+    expect(overview.sections.map((section) => section.id)).toEqual(["lead", "next"]);
+    expect(advisor).toMatchObject({ policy: { attention: "focused" }, candidate: { id: "analyst-review" } });
+    expect(advisor.sections.map((section) => section.id)).toEqual(["signals", "evidence"]);
   });
 
   it("accepts an arbitrary high-cardinality ticker set without new commands", async () => {
