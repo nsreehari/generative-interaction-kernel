@@ -70,7 +70,7 @@ type DemoState = {
   };
   request?: {
     token: number;
-            props: { hidden: true, onValue: true, offValue: false, onLabel: "Hide GIK", offLabel: "Show GIK" },
+    command: string;
     waitAfterMs: number;
   } | null;
 };
@@ -514,7 +514,7 @@ const useOverlayStyles = makeStyles({
     display: "inline-flex",
     alignItems: "center",
     gap: tokens.spacingHorizontalXS,
-    borderRadius: 999,
+    borderRadius: tokens.borderRadiusCircular,
     padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`,
     backgroundColor: "rgba(230, 244, 234, .85)",
     color: shellColors.good,
@@ -525,7 +525,7 @@ const useOverlayStyles = makeStyles({
   blueprintIntro: { display: "grid", gap: tokens.spacingVerticalM, gridTemplateColumns: "minmax(0, 1fr) auto", alignItems: "start" },
   contextMatrix: { display: "flex", gap: tokens.spacingHorizontalXS, flexWrap: "wrap" },
   contextChip: {
-    borderRadius: 999,
+    borderRadius: tokens.borderRadiusCircular,
     padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`,
     border: `1px solid ${shellColors.line}`,
     backgroundColor: "#fff",

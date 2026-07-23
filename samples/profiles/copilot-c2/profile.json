@@ -1,0 +1,1956 @@
+{
+  "gik": "0.1",
+  "type": "profile",
+  "payload": {
+    "id": "copilot-c2",
+    "kind": "runtime-blueprint",
+    "version": "1.0",
+    "layers": [
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document",
+        "description": "Authored terminal document for a local Copilot command center."
+      }
+    ],
+    "recipes": [],
+    "services": {
+      "copilot-environment": {
+        "kind": "mcp",
+        "version": "1",
+        "operations": {
+          "refreshEnvironment": {
+            "operation": "call",
+            "contract": "copilot-environment/v1",
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "message": "Copilot environment response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": ["text", "structured"],
+                    "properties": {
+                      "text": { "type": "string" },
+                      "structured": {
+                        "type": "object",
+                        "required": ["agents"],
+                        "properties": {
+                          "agents": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["id"],
+                              "properties": {
+                                "id": { "type": "string", "minLength": 1 },
+                                "name": { "type": "string" },
+                                "description": { "type": "string" },
+                                "source": { "type": "string" },
+                                "userInvocable": {}
+                              },
+                              "additionalProperties": true
+                            }
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                }
+              ]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($agents := response.structured.agents ? response.structured.agents.{'id':$string(id),'name':$string(name ? name : id),'description':$string(description ? description : ''),'source':$string(source ? source : 'project'),'scope':userInvocable = true ? 'direct' : 'local'} : []; $runs := state.copilotC2.runs; $activities := $agents.($agent := $; $matches := $runs[agent = $agent.id]; $run := $count($matches) > 0 ? $matches[0] : {}; {'id':$agent.id,'name':$agent.name,'description':$agent.description,'source':$agent.source,'status':$run.status ? $string($run.status) : 'idle','runId':$run.id ? $string($run.id) : '','startedAt':$run.startedAt ? $string($run.startedAt) : '','finishedAt':$run.finishedAt ? $string($run.finishedAt) : '','preview':$trim($string($run.error ? $run.error : ($run.stdout ? $run.stdout : 'No run yet'))),'run':$run}); {'ops':[{'op':'set','path':'copilotC2.environmentStatus','value':response.text != '' ? response.text : ($count($agents) > 0 ? 'Found ' & $string($count($agents)) & ' agent(s).' : 'No Copilot agents found.')},{'op':'set','path':'copilotC2.environmentError','value':''},{'op':'set','path':'copilotC2.agents','value':$agents},{'op':'set','path':'copilotC2.agentActivities','value':$activities}]})"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'copilotC2.environmentError','value':error.message},{'op':'set','path':'copilotC2.environmentStatus','value':'Unable to discover Copilot agents.'},{'op':'set','path':'copilotC2.agents','value':[]}]}"
+              }
+            },
+            "onViolation": { "action": "fail" }
+          }
+        },
+        "config": {
+          "server": "http://127.0.0.1:7801/mcp",
+          "tool": "copilot.check_environment"
+        },
+        "scope": "per-session"
+      },
+      "copilot-source-roots": {
+        "kind": "mcp",
+        "version": "1",
+        "operations": {
+          "refreshSourceRoots": {
+            "operation": "call",
+            "contract": "copilot-source-roots/v1",
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "message": "Copilot source roots response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": ["structured"],
+                    "properties": {
+                      "text": { "type": "string" },
+                      "structured": {
+                        "type": "object",
+                        "required": ["roots"],
+                        "properties": {
+                          "roots": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["id", "path"],
+                              "properties": {
+                                "id": { "type": "string", "minLength": 1 },
+                                "path": { "type": "string", "minLength": 1 }
+                              },
+                              "additionalProperties": true
+                            }
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                }
+              ]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($roots := response.structured.roots ? response.structured.roots.{'id':$string(id),'name':$string(label ? label : id),'path':$string(path),'status':enabled = false ? 'disabled' : 'enabled'} : []; $selected := state.copilotC2.selectedSourceRootId; $next := $count($roots[id = $selected]) > 0 ? $selected : ($count($roots) > 0 ? $string($roots[0].id) : ''); {'ops':[{'op':'set','path':'copilotC2.sourceRoots','value':$roots},{'op':'set','path':'copilotC2.selectedSourceRootId','value':$next},{'op':'set','path':'copilotC2.sourceRootStatus','value':response.text != '' ? response.text : ($count($roots) > 0 ? 'Loaded ' & $string($count($roots)) & ' source root(s).' : 'No configured Copilot source roots.')},{'op':'set','path':'copilotC2.sourceRootError','value':''}]})"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'copilotC2.sourceRootError','value':error.message},{'op':'set','path':'copilotC2.sourceRootStatus','value':'Unable to load Copilot source roots.'}]}"
+              }
+            },
+            "onViolation": { "action": "fail" }
+          }
+        },
+        "config": {
+          "server": "http://127.0.0.1:7801/mcp",
+          "tool": "copilot.list_source_roots"
+        },
+        "scope": "per-session"
+      },
+      "copilot-source-root-upsert": {
+        "kind": "mcp",
+        "version": "1",
+        "operations": {
+          "upsertSourceRoot": {
+            "operation": "call",
+            "contract": "copilot-source-root-upsert/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($id := $trim(state.copilotC2.sourceRootId); $label := $trim(state.copilotC2.sourceRootLabel); $path := $trim(state.copilotC2.sourceRootPath); $merge([{'path':$path}, $id != '' ? {'id':$id} : {}, $label != '' ? {'label':$label} : {}]))"
+              }
+            },
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "message": "Copilot source root upsert response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": ["structured"],
+                    "properties": {
+                      "text": { "type": "string" },
+                      "structured": {
+                        "type": "object",
+                        "required": ["root", "roots", "created"],
+                        "properties": {
+                          "root": {
+                            "type": "object",
+                            "required": ["id", "path"],
+                            "properties": {
+                              "id": { "type": "string", "minLength": 1 },
+                              "path": { "type": "string", "minLength": 1 }
+                            },
+                            "additionalProperties": true
+                          },
+                          "roots": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["id", "path"],
+                              "properties": {
+                                "id": { "type": "string", "minLength": 1 },
+                                "path": { "type": "string", "minLength": 1 }
+                              },
+                              "additionalProperties": true
+                            }
+                          },
+                          "created": { "type": "boolean" }
+                        },
+                        "additionalProperties": true
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                }
+              ]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($root := response.structured.root; $roots := response.structured.roots ? response.structured.roots.{'id':$string(id),'name':$string(label ? label : id),'path':$string(path),'status':enabled = false ? 'disabled' : 'enabled'} : []; {'ops':[{'op':'set','path':'copilotC2.sourceRoots','value':$roots},{'op':'set','path':'copilotC2.selectedSourceRootId','value':$string($root.id)},{'op':'set','path':'copilotC2.sourceRootId','value':$string($root.id)},{'op':'set','path':'copilotC2.sourceRootLabel','value':$string($root.label ? $root.label : $root.id)},{'op':'set','path':'copilotC2.sourceRootPath','value':$string($root.path)},{'op':'set','path':'copilotC2.sourceRootStatus','value':response.text != '' ? response.text : (response.structured.created ? 'Added Copilot source root.' : 'Updated Copilot source root.')},{'op':'set','path':'copilotC2.sourceRootError','value':''}]})"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'copilotC2.sourceRootError','value':error.message},{'op':'set','path':'copilotC2.sourceRootStatus','value':'Unable to save Copilot source root.'}]}"
+              }
+            },
+            "onViolation": { "action": "fail" }
+          }
+        },
+        "config": {
+          "server": "http://127.0.0.1:7801/mcp",
+          "tool": "copilot.upsert_source_root"
+        },
+        "scope": "per-session"
+      },
+      "copilot-source-root-remove": {
+        "kind": "mcp",
+        "version": "1",
+        "operations": {
+          "removeSelectedSourceRoot": {
+            "operation": "call",
+            "contract": "copilot-source-root-remove/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'id':$trim(state.copilotC2.selectedSourceRootId)}"
+              }
+            },
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "message": "Copilot source root remove response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": ["structured"],
+                    "properties": {
+                      "text": { "type": "string" },
+                      "structured": {
+                        "type": "object",
+                        "required": ["removed", "roots"],
+                        "properties": {
+                          "removed": {
+                            "type": "object",
+                            "required": ["id", "path"],
+                            "properties": {
+                              "id": { "type": "string", "minLength": 1 },
+                              "path": { "type": "string", "minLength": 1 }
+                            },
+                            "additionalProperties": true
+                          },
+                          "roots": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["id", "path"],
+                              "properties": {
+                                "id": { "type": "string", "minLength": 1 },
+                                "path": { "type": "string", "minLength": 1 }
+                              },
+                              "additionalProperties": true
+                            }
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                }
+              ]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($roots := response.structured.roots ? response.structured.roots.{'id':$string(id),'name':$string(label ? label : id),'path':$string(path),'status':enabled = false ? 'disabled' : 'enabled'} : []; $next := $count($roots) > 0 ? $string($roots[0].id) : ''; {'ops':[{'op':'set','path':'copilotC2.sourceRoots','value':$roots},{'op':'set','path':'copilotC2.selectedSourceRootId','value':$next},{'op':'set','path':'copilotC2.sourceRootStatus','value':response.text != '' ? response.text : 'Removed Copilot source root.'},{'op':'set','path':'copilotC2.sourceRootError','value':''},{'op':'set','path':'copilotC2.sourceRootId','value':''},{'op':'set','path':'copilotC2.sourceRootLabel','value':''},{'op':'set','path':'copilotC2.sourceRootPath','value':''}]})"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'copilotC2.sourceRootError','value':error.message},{'op':'set','path':'copilotC2.sourceRootStatus','value':'Unable to remove Copilot source root.'}]}"
+              }
+            },
+            "onViolation": { "action": "fail" }
+          }
+        },
+        "config": {
+          "server": "http://127.0.0.1:7801/mcp",
+          "tool": "copilot.remove_source_root"
+        },
+        "scope": "per-session"
+      },
+      "copilot-run-start": {
+        "kind": "mcp",
+        "version": "1",
+        "operations": {
+          "startRun": {
+            "operation": "call",
+            "contract": "copilot-run-start/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($message := $trim(state.copilotC2.draft); $agent := $trim(state.copilotC2.selectedAgentId); $model := $trim(state.copilotC2.model); $cwd := $trim(state.copilotC2.workingDir); $merge([{'message':$message,'runMode':'async'}, $agent != '' ? {'agent':$agent} : {}, $model != '' ? {'model':$model} : {}, $cwd != '' ? {'cwd':$cwd} : {}]))"
+              }
+            },
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "message": "Copilot run start response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": ["structured"],
+                    "properties": {
+                      "text": { "type": "string" },
+                      "structured": {
+                        "type": "object",
+                        "required": ["run"],
+                        "properties": {
+                          "run": {
+                            "type": "object",
+                            "required": ["id", "status"],
+                            "properties": {
+                              "id": { "type": "string", "minLength": 1 },
+                              "status": { "type": "string", "minLength": 1 }
+                            },
+                            "additionalProperties": true
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                }
+              ]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($run := response.structured.run; {'ops':[{'op':'set','path':'copilotC2.view','value':'agent'},{'op':'set','path':'copilotC2.runStatus','value':response.text != '' ? response.text : 'Started Copilot run.'},{'op':'set','path':'copilotC2.runError','value':''},{'op':'set','path':'copilotC2.selectedRunId','value':$string($run.id)},{'op':'set','path':'copilotC2.currentRun','value':$run},{'op':'set','path':'copilotC2.runs','value':[$run]}]})"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'copilotC2.runError','value':error.message},{'op':'set','path':'copilotC2.runStatus','value':'Unable to start Copilot run.'}]}"
+              }
+            },
+            "onViolation": { "action": "fail" }
+          }
+        },
+        "config": {
+          "server": "http://127.0.0.1:7801/mcp",
+          "tool": "copilot.run_agent"
+        },
+        "scope": "per-session"
+      },
+      "copilot-run-list": {
+        "kind": "mcp",
+        "version": "1",
+        "operations": {
+          "refreshRuns": {
+            "operation": "call",
+            "contract": "copilot-run-list/v1",
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "message": "Copilot run list response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": ["structured"],
+                    "properties": {
+                      "text": { "type": "string" },
+                      "structured": {
+                        "type": "object",
+                        "required": ["runs"],
+                        "properties": {
+                          "runs": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["id", "status"],
+                              "properties": {
+                                "id": { "type": "string", "minLength": 1 },
+                                "status": { "type": "string", "minLength": 1 }
+                              },
+                              "additionalProperties": true
+                            }
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                }
+              ]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($runs := response.structured.runs ? response.structured.runs : []; $agents := state.copilotC2.agents; $activities := $agents.($agent := $; $matches := $runs[agent = $agent.id]; $run := $count($matches) > 0 ? $matches[0] : {}; {'id':$agent.id,'name':$agent.name,'description':$agent.description,'source':$agent.source,'status':$run.status ? $string($run.status) : 'idle','runId':$run.id ? $string($run.id) : '','startedAt':$run.startedAt ? $string($run.startedAt) : '','finishedAt':$run.finishedAt ? $string($run.finishedAt) : '','preview':$trim($string($run.error ? $run.error : ($run.stdout ? $run.stdout : 'No run yet'))),'run':$run}); $selected := state.copilotC2.selectedRunId; $current := $count($runs[id = $selected]) > 0 ? $runs[id = $selected][0] : state.copilotC2.currentRun; {'ops':[{'op':'set','path':'copilotC2.runs','value':$runs},{'op':'set','path':'copilotC2.agentActivities','value':$activities},{'op':'set','path':'copilotC2.currentRun','value':$current},{'op':'set','path':'copilotC2.runStatus','value':response.text != '' ? response.text : ($count($runs) > 0 ? 'Loaded ' & $string($count($runs)) & ' run(s).' : 'No runs yet.')},{'op':'set','path':'copilotC2.runError','value':''}]})"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'copilotC2.runError','value':error.message},{'op':'set','path':'copilotC2.runStatus','value':'Unable to refresh Copilot runs.'}]}"
+              }
+            },
+            "onViolation": { "action": "fail" }
+          }
+        },
+        "config": {
+          "server": "http://127.0.0.1:7801/mcp",
+          "tool": "copilot.list_runs"
+        },
+        "scope": "per-session"
+      },
+      "copilot-run-detail": {
+        "kind": "mcp",
+        "version": "1",
+        "operations": {
+          "loadSelectedRun": {
+            "operation": "call",
+            "contract": "copilot-run-detail/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'runId':$trim(state.copilotC2.selectedRunId)}"
+              }
+            },
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "message": "Copilot run detail response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": ["structured"],
+                    "properties": {
+                      "text": { "type": "string" },
+                      "structured": {
+                        "type": "object",
+                        "required": ["run"],
+                        "properties": {
+                          "run": {
+                            "type": "object",
+                            "required": ["id", "status"],
+                            "properties": {
+                              "id": { "type": "string", "minLength": 1 },
+                              "status": { "type": "string", "minLength": 1 }
+                            },
+                            "additionalProperties": true
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                }
+              ]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($run := response.structured.run; {'ops':[{'op':'set','path':'copilotC2.selectedRunId','value':$string($run.id)},{'op':'set','path':'copilotC2.currentRun','value':$run},{'op':'set','path':'copilotC2.runStatus','value':response.text != '' ? response.text : 'Loaded selected run.'},{'op':'set','path':'copilotC2.runError','value':''}]})"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'copilotC2.runError','value':error.message},{'op':'set','path':'copilotC2.runStatus','value':'Unable to load the selected Copilot run.'}]}"
+              }
+            },
+            "onViolation": { "action": "fail" }
+          }
+        },
+        "config": {
+          "server": "http://127.0.0.1:7801/mcp",
+          "tool": "copilot.get_run"
+        },
+        "scope": "per-session"
+      },
+      "copilot-run-cancel": {
+        "kind": "mcp",
+        "version": "1",
+        "operations": {
+          "cancelSelectedRun": {
+            "operation": "call",
+            "contract": "copilot-run-cancel/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'runId':$trim(state.copilotC2.selectedRunId)}"
+              }
+            },
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "message": "Copilot run cancel response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": ["structured"],
+                    "properties": {
+                      "text": { "type": "string" },
+                      "structured": {
+                        "type": "object",
+                        "required": ["run"],
+                        "properties": {
+                          "run": {
+                            "type": "object",
+                            "required": ["id", "status"],
+                            "properties": {
+                              "id": { "type": "string", "minLength": 1 },
+                              "status": { "type": "string", "minLength": 1 }
+                            },
+                            "additionalProperties": true
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                }
+              ]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($run := response.structured.run; {'ops':[{'op':'set','path':'copilotC2.selectedRunId','value':$string($run.id)},{'op':'set','path':'copilotC2.currentRun','value':$run},{'op':'set','path':'copilotC2.runStatus','value':response.text != '' ? response.text : 'Cancellation requested.'},{'op':'set','path':'copilotC2.runError','value':''}]})"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'copilotC2.runError','value':error.message},{'op':'set','path':'copilotC2.runStatus','value':'Unable to cancel the selected Copilot run.'}]}"
+              }
+            },
+            "onViolation": { "action": "fail" }
+          }
+        },
+        "config": {
+          "server": "http://127.0.0.1:7801/mcp",
+          "tool": "copilot.cancel_run"
+        },
+        "scope": "per-session"
+      }
+    },
+    "resources": {
+      "document": {
+        "inline": {
+          "root": {
+            "capability": "ui:screen",
+            "id": "copilot-c2-root",
+            "props": {
+              "title": "Copilot C2",
+              "subtitle": "Drive local Copilot agents through the demo-boards MCP server"
+            },
+            "edges": {
+              "children": [
+                {
+                  "capability": "c2:workspace",
+                  "id": "copilot-c2-dashboard",
+                  "props": {
+                    "title": "Agent activity"
+                  },
+                  "edges": {
+                    "gate": "copilotC2.view = 'dashboard'",
+                    "children": [
+                      {
+                        "capability": "ui:row",
+                        "id": "copilot-c2-dashboard-actions",
+                        "edges": {
+                          "children": [
+                            {
+                              "capability": "ui:timer-button",
+                              "id": "copilot-c2-dashboard-refresh",
+                              "props": {
+                                "label": "Refresh activity",
+                                "durationMs": 300000,
+                                "autoStart": true,
+                                "showCountdown": true,
+                                "tone": "primary"
+                              },
+                              "edges": {
+                                "on": {
+                                  "press": [
+                                    {
+                                      "do": "invoke",
+                                      "args": {
+                                        "tool": "refreshEnvironment"
+                                      }
+                                    },
+                                    {
+                                      "do": "invoke",
+                                      "args": {
+                                        "tool": "refreshRuns"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:button",
+                              "id": "copilot-c2-open-settings",
+                              "props": {
+                                "label": "Settings"
+                              },
+                              "edges": {
+                                "on": {
+                                  "press": [
+                                    {
+                                      "do": "assign",
+                                      "target": "copilotC2.view",
+                                      "args": {
+                                        "value": "settings"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "capability": "ui:note",
+                        "id": "copilot-c2-dashboard-status",
+                        "props": {
+                          "tone": "muted"
+                        },
+                        "edges": {
+                          "read": {
+                            "value": "copilotC2.environmentStatus"
+                          }
+                        }
+                      },
+                      {
+                        "capability": "ui:alert",
+                        "id": "copilot-c2-dashboard-error",
+                        "props": {
+                          "label": "Copilot activity error",
+                          "level": "error"
+                        },
+                        "edges": {
+                          "gate": "copilotC2.environmentError != '' or copilotC2.runError != ''",
+                          "readExpr": {
+                            "value": "copilotC2.environmentError != '' ? copilotC2.environmentError : copilotC2.runError"
+                          }
+                        }
+                      },
+                      {
+                        "capability": "c2:agent-activity-board",
+                        "id": "copilot-c2-agent-activity-board",
+                        "props": {
+                          "emptyMessage": "Refresh activity to discover the available Copilot agents."
+                        },
+                        "edges": {
+                          "readExpr": {
+                            "items": "copilotC2.agentActivities"
+                          },
+                          "on": {
+                            "select": [
+                              {
+                                "do": "assign",
+                                "target": "copilotC2.selectedAgentId",
+                                "args": {
+                                  "from": "$event.agentId"
+                                }
+                              },
+                              {
+                                "do": "assign",
+                                "target": "copilotC2.selectedRunId",
+                                "args": {
+                                  "from": "$event.runId"
+                                }
+                              },
+                              {
+                                "do": "assign",
+                                "target": "copilotC2.currentRun",
+                                "args": {
+                                  "from": "$event.run"
+                                }
+                              },
+                              {
+                                "do": "assign",
+                                "target": "copilotC2.view",
+                                "args": {
+                                  "value": "agent"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "capability": "c2:workspace",
+                  "id": "copilot-c2-agent-workspace",
+                  "props": {
+                    "title": "Agent workspace"
+                  },
+                  "edges": {
+                    "gate": "copilotC2.view = 'agent'",
+                    "children": [
+                      {
+                        "capability": "ui:row",
+                        "id": "copilot-c2-agent-navigation",
+                        "edges": {
+                          "children": [
+                            {
+                              "capability": "ui:button",
+                              "id": "copilot-c2-back-dashboard",
+                              "props": {
+                                "label": "All agents"
+                              },
+                              "edges": {
+                                "on": {
+                                  "press": [
+                                    {
+                                      "do": "assign",
+                                      "target": "copilotC2.view",
+                                      "args": {
+                                        "value": "dashboard"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:timer-button",
+                              "id": "copilot-c2-agent-refresh",
+                              "props": {
+                                "label": "Refresh run",
+                                "durationMs": 300000,
+                                "autoStart": true,
+                                "showCountdown": true
+                              },
+                              "edges": {
+                                "gate": "copilotC2.selectedRunId != ''",
+                                "on": {
+                                  "press": [
+                                    {
+                                      "do": "invoke",
+                                      "args": {
+                                        "tool": "loadSelectedRun"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:button",
+                              "id": "copilot-c2-agent-settings",
+                              "props": {
+                                "label": "Settings"
+                              },
+                              "edges": {
+                                "on": {
+                                  "press": [
+                                    {
+                                      "do": "assign",
+                                      "target": "copilotC2.view",
+                                      "args": {
+                                        "value": "settings"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "capability": "ui:text",
+                        "id": "copilot-c2-agent-workspace-name",
+                        "edges": {
+                          "readExpr": {
+                            "value": "($id := copilotC2.selectedAgentId; $agent := copilotC2.agents[id = $id][0]; $string($agent.name ? $agent.name : $id))"
+                          }
+                        }
+                      },
+                      {
+                        "capability": "ui:note",
+                        "id": "copilot-c2-agent-run-status",
+                        "props": {
+                          "tone": "info"
+                        },
+                        "edges": {
+                          "readExpr": {
+                            "value": "copilotC2.currentRun.id != '' ? ('Run ' & $string(copilotC2.currentRun.status) & ' · ' & $string(copilotC2.currentRun.id)) : 'No run for this agent yet.'"
+                          }
+                        }
+                      },
+                      {
+                        "capability": "c2:run-console",
+                        "id": "copilot-c2-agent-console",
+                        "props": {
+                          "emptyMessage": "Start a task to see output here."
+                        },
+                        "edges": {
+                          "readExpr": {
+                            "content": "($stdout := $trim($string(copilotC2.currentRun.stdout)); $stderr := $trim($string(copilotC2.currentRun.stderr)); $error := $trim($string(copilotC2.currentRun.error)); $stdout != '' ? $stdout : ($stderr != '' ? $stderr : ($error != '' ? $error : 'Start a task to see output here.')))"
+                          }
+                        }
+                      },
+                      {
+                        "capability": "ui:textarea",
+                        "id": "copilot-c2-agent-prompt",
+                        "props": {
+                          "label": "Task for this agent",
+                          "rows": 6
+                        },
+                        "edges": {
+                          "read": {
+                            "value": "copilotC2.draft"
+                          },
+                          "on": {
+                            "input": [
+                              {
+                                "do": "assign",
+                                "target": "copilotC2.draft",
+                                "args": {
+                                  "from": "$event.value"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "capability": "ui:row",
+                        "id": "copilot-c2-agent-run-actions",
+                        "edges": {
+                          "children": [
+                            {
+                              "capability": "ui:button",
+                              "id": "copilot-c2-agent-start-run",
+                              "props": {
+                                "label": "Start task",
+                                "tone": "primary"
+                              },
+                              "edges": {
+                                "on": {
+                                  "press": [
+                                    {
+                                      "do": "invoke",
+                                      "args": {
+                                        "tool": "startRun"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:button",
+                              "id": "copilot-c2-agent-cancel-run",
+                              "props": {
+                                "label": "Cancel run",
+                                "tone": "danger"
+                              },
+                              "edges": {
+                                "gate": "copilotC2.currentRun.status = 'running'",
+                                "on": {
+                                  "press": [
+                                    {
+                                      "do": "invoke",
+                                      "args": {
+                                        "tool": "cancelSelectedRun"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "capability": "ui:row",
+                  "id": "copilot-c2-settings-navigation",
+                  "edges": {
+                    "gate": "copilotC2.view = 'settings'",
+                    "children": [
+                      {
+                        "capability": "ui:button",
+                        "id": "copilot-c2-settings-back",
+                        "props": {
+                          "label": "Back to agents"
+                        },
+                        "edges": {
+                          "on": {
+                            "press": [
+                              {
+                                "do": "assign",
+                                "target": "copilotC2.view",
+                                "args": {
+                                  "value": "dashboard"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "capability": "ui:panel",
+                  "id": "copilot-c2-run-defaults",
+                  "props": {
+                    "title": "Run defaults",
+                    "variant": "inset"
+                  },
+                  "edges": {
+                    "gate": "copilotC2.view = 'settings'",
+                    "children": [
+                      {
+                        "capability": "ui:field",
+                        "id": "copilot-c2-settings-model",
+                        "props": {
+                          "label": "Model"
+                        },
+                        "edges": {
+                          "read": {
+                            "value": "copilotC2.model"
+                          },
+                          "on": {
+                            "input": [
+                              {
+                                "do": "assign",
+                                "target": "copilotC2.model",
+                                "args": {
+                                  "from": "$event.value"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "capability": "ui:field",
+                        "id": "copilot-c2-settings-working-dir",
+                        "props": {
+                          "label": "Working directory"
+                        },
+                        "edges": {
+                          "read": {
+                            "value": "copilotC2.workingDir"
+                          },
+                          "on": {
+                            "input": [
+                              {
+                                "do": "assign",
+                                "target": "copilotC2.workingDir",
+                                "args": {
+                                  "from": "$event.value"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "capability": "ui:row",
+                  "id": "copilot-c2-layout",
+                  "props": {
+                    "variant": "split"
+                  },
+                  "edges": {
+                    "gate": "copilotC2.view = 'settings'",
+                    "children": [
+                      {
+                        "capability": "ui:panel",
+                        "id": "copilot-c2-env",
+                        "props": {
+                          "title": "Environment",
+                          "variant": "rail"
+                        },
+                        "edges": {
+                          "children": [
+                            {
+                              "capability": "ui:note",
+                              "id": "copilot-c2-env-server",
+                              "props": {
+                                "tone": "muted",
+                                "value": "Targets the local demo-boards MCP server at http://127.0.0.1:7801/mcp."
+                              }
+                            },
+                            {
+                              "capability": "ui:note",
+                              "id": "copilot-c2-env-status",
+                              "props": {
+                                "tone": "info"
+                              },
+                              "edges": {
+                                "read": {
+                                  "value": "copilotC2.environmentStatus"
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:alert",
+                              "id": "copilot-c2-env-error",
+                              "props": {
+                                "label": "Environment error",
+                                "level": "error"
+                              },
+                              "edges": {
+                                "gate": "copilotC2.environmentError != ''",
+                                "read": {
+                                  "value": "copilotC2.environmentError"
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:button",
+                              "id": "copilot-c2-refresh-env",
+                              "props": {
+                                "label": "Discover agents"
+                              },
+                              "edges": {
+                                "on": {
+                                  "press": [
+                                    {
+                                      "do": "invoke",
+                                      "args": {
+                                        "tool": "refreshEnvironment"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:list",
+                              "id": "copilot-c2-agent-list",
+                              "props": {
+                                "idKey": "id",
+                                "primaryKey": "name",
+                                "valueKey": "source",
+                                "badgeKey": "scope"
+                              },
+                              "edges": {
+                                "gate": "copilotC2.view = 'legacy'",
+                                "read": {
+                                  "selectedId": "copilotC2.selectedAgentId"
+                                },
+                                "readExpr": {
+                                  "items": "copilotC2.agents"
+                                },
+                                "on": {
+                                  "select": [
+                                    {
+                                      "do": "assign",
+                                      "target": "copilotC2.selectedAgentId",
+                                      "args": {
+                                        "from": "$event.id"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:panel",
+                              "id": "copilot-c2-agent-detail",
+                              "props": {
+                                "title": "Selected agent",
+                                "variant": "inset"
+                              },
+                              "edges": {
+                                "gate": "copilotC2.view = 'legacy' and copilotC2.selectedAgentId != ''",
+                                "children": [
+                                  {
+                                    "capability": "ui:text",
+                                    "id": "copilot-c2-agent-name",
+                                    "edges": {
+                                      "readExpr": {
+                                        "value": "$string(copilotC2.agents[id = copilotC2.selectedAgentId][0].name)"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:note",
+                                    "id": "copilot-c2-agent-description",
+                                    "props": {
+                                      "tone": "muted"
+                                    },
+                                    "edges": {
+                                      "readExpr": {
+                                        "value": "$string(copilotC2.agents[id = copilotC2.selectedAgentId][0].description)"
+                                      }
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "capability": "ui:panel",
+                              "id": "copilot-c2-source-roots",
+                              "props": {
+                                "title": "Source roots",
+                                "variant": "inset"
+                              },
+                              "edges": {
+                                "children": [
+                                  {
+                                    "capability": "ui:note",
+                                    "id": "copilot-c2-source-roots-status",
+                                    "props": {
+                                      "tone": "info"
+                                    },
+                                    "edges": {
+                                      "read": {
+                                        "value": "copilotC2.sourceRootStatus"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:alert",
+                                    "id": "copilot-c2-source-roots-error",
+                                    "props": {
+                                      "label": "Source roots error",
+                                      "level": "error"
+                                    },
+                                    "edges": {
+                                      "gate": "copilotC2.sourceRootError != ''",
+                                      "read": {
+                                        "value": "copilotC2.sourceRootError"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:row",
+                                    "id": "copilot-c2-source-roots-actions",
+                                    "edges": {
+                                      "children": [
+                                        {
+                                          "capability": "ui:button",
+                                          "id": "copilot-c2-refresh-source-roots",
+                                          "props": {
+                                            "label": "Refresh roots"
+                                          },
+                                          "edges": {
+                                            "on": {
+                                              "press": [
+                                                {
+                                                  "do": "invoke",
+                                                  "args": {
+                                                    "tool": "refreshSourceRoots"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:button",
+                                          "id": "copilot-c2-upsert-source-root",
+                                          "props": {
+                                            "label": "Add or update root",
+                                            "tone": "primary"
+                                          },
+                                          "edges": {
+                                            "on": {
+                                              "press": [
+                                                {
+                                                  "do": "invoke",
+                                                  "args": {
+                                                    "tool": "upsertSourceRoot"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:button",
+                                          "id": "copilot-c2-remove-source-root",
+                                          "props": {
+                                            "label": "Remove selected root",
+                                            "tone": "danger"
+                                          },
+                                          "edges": {
+                                            "gate": "copilotC2.selectedSourceRootId != ''",
+                                            "on": {
+                                              "press": [
+                                                {
+                                                  "do": "invoke",
+                                                  "args": {
+                                                    "tool": "removeSelectedSourceRoot"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:field",
+                                    "id": "copilot-c2-source-root-id",
+                                    "props": {
+                                      "label": "Root id"
+                                    },
+                                    "edges": {
+                                      "read": {
+                                        "value": "copilotC2.sourceRootId"
+                                      },
+                                      "on": {
+                                        "input": [
+                                          {
+                                            "do": "assign",
+                                            "target": "copilotC2.sourceRootId",
+                                            "args": {
+                                              "from": "$event.value"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:field",
+                                    "id": "copilot-c2-source-root-label",
+                                    "props": {
+                                      "label": "Root label"
+                                    },
+                                    "edges": {
+                                      "read": {
+                                        "value": "copilotC2.sourceRootLabel"
+                                      },
+                                      "on": {
+                                        "input": [
+                                          {
+                                            "do": "assign",
+                                            "target": "copilotC2.sourceRootLabel",
+                                            "args": {
+                                              "from": "$event.value"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:field",
+                                    "id": "copilot-c2-source-root-path",
+                                    "props": {
+                                      "label": "Root path"
+                                    },
+                                    "edges": {
+                                      "read": {
+                                        "value": "copilotC2.sourceRootPath"
+                                      },
+                                      "on": {
+                                        "input": [
+                                          {
+                                            "do": "assign",
+                                            "target": "copilotC2.sourceRootPath",
+                                            "args": {
+                                              "from": "$event.value"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:list",
+                                    "id": "copilot-c2-source-root-list",
+                                    "props": {
+                                      "idKey": "id",
+                                      "primaryKey": "name",
+                                      "valueKey": "path",
+                                      "badgeKey": "status"
+                                    },
+                                    "edges": {
+                                      "read": {
+                                        "selectedId": "copilotC2.selectedSourceRootId"
+                                      },
+                                      "readExpr": {
+                                        "items": "copilotC2.sourceRoots"
+                                      },
+                                      "on": {
+                                        "select": [
+                                          {
+                                            "do": "assign",
+                                            "target": "copilotC2.selectedSourceRootId",
+                                            "args": {
+                                              "from": "$event.id"
+                                            }
+                                          },
+                                          {
+                                            "do": "assign",
+                                            "target": "copilotC2.sourceRootId",
+                                            "args": {
+                                              "from": "$event.id"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:panel",
+                                    "id": "copilot-c2-source-root-detail",
+                                    "props": {
+                                      "title": "Selected root",
+                                      "variant": "inset"
+                                    },
+                                    "edges": {
+                                      "gate": "copilotC2.selectedSourceRootId != ''",
+                                      "children": [
+                                        {
+                                          "capability": "ui:note",
+                                          "id": "copilot-c2-source-root-detail-name",
+                                          "props": {
+                                            "tone": "info"
+                                          },
+                                          "edges": {
+                                            "readExpr": {
+                                              "value": "$string(copilotC2.sourceRoots[id = copilotC2.selectedSourceRootId][0].name)"
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:note",
+                                          "id": "copilot-c2-source-root-detail-path",
+                                          "props": {
+                                            "tone": "muted"
+                                          },
+                                          "edges": {
+                                            "readExpr": {
+                                              "value": "$string(copilotC2.sourceRoots[id = copilotC2.selectedSourceRootId][0].path)"
+                                            }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "capability": "ui:panel",
+                        "id": "copilot-c2-main",
+                        "props": {
+                          "title": "Operations",
+                          "variant": "detail"
+                        },
+                        "edges": {
+                          "gate": "copilotC2.view = 'legacy'",
+                          "children": [
+                            {
+                              "capability": "ui:tabBar",
+                              "id": "copilot-c2-tabs",
+                              "props": {
+                                "options": [
+                                  {
+                                    "value": "run",
+                                    "label": "Run"
+                                  },
+                                  {
+                                    "value": "history",
+                                    "label": "History"
+                                  }
+                                ]
+                              },
+                              "edges": {
+                                "read": {
+                                  "active": "copilotC2.tab"
+                                },
+                                "on": {
+                                  "select": [
+                                    {
+                                      "do": "assign",
+                                      "target": "copilotC2.tab",
+                                      "args": {
+                                        "from": "$event.value"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            {
+                              "capability": "ui:panel",
+                              "id": "copilot-c2-run-tab",
+                              "props": {
+                                "title": "Start a run",
+                                "variant": "tab"
+                              },
+                              "edges": {
+                                "gate": "copilotC2.tab = 'run'",
+                                "children": [
+                                  {
+                                    "capability": "ui:note",
+                                    "id": "copilot-c2-run-status",
+                                    "props": {
+                                      "tone": "info"
+                                    },
+                                    "edges": {
+                                      "read": {
+                                        "value": "copilotC2.runStatus"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:alert",
+                                    "id": "copilot-c2-run-error",
+                                    "props": {
+                                      "label": "Run error",
+                                      "level": "error"
+                                    },
+                                    "edges": {
+                                      "gate": "copilotC2.runError != ''",
+                                      "read": {
+                                        "value": "copilotC2.runError"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:field",
+                                    "id": "copilot-c2-model",
+                                    "props": {
+                                      "label": "Model"
+                                    },
+                                    "edges": {
+                                      "read": {
+                                        "value": "copilotC2.model"
+                                      },
+                                      "on": {
+                                        "input": [
+                                          {
+                                            "do": "assign",
+                                            "target": "copilotC2.model",
+                                            "args": {
+                                              "from": "$event.value"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:field",
+                                    "id": "copilot-c2-working-dir",
+                                    "props": {
+                                      "label": "Working directory"
+                                    },
+                                    "edges": {
+                                      "read": {
+                                        "value": "copilotC2.workingDir"
+                                      },
+                                      "on": {
+                                        "input": [
+                                          {
+                                            "do": "assign",
+                                            "target": "copilotC2.workingDir",
+                                            "args": {
+                                              "from": "$event.value"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:textarea",
+                                    "id": "copilot-c2-draft",
+                                    "props": {
+                                      "label": "Prompt",
+                                      "rows": 10
+                                    },
+                                    "edges": {
+                                      "read": {
+                                        "value": "copilotC2.draft"
+                                      },
+                                      "on": {
+                                        "input": [
+                                          {
+                                            "do": "assign",
+                                            "target": "copilotC2.draft",
+                                            "args": {
+                                              "from": "$event.value"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:row",
+                                    "id": "copilot-c2-run-actions",
+                                    "edges": {
+                                      "children": [
+                                        {
+                                          "capability": "ui:button",
+                                          "id": "copilot-c2-start-run",
+                                          "props": {
+                                            "label": "Start async run",
+                                            "tone": "primary"
+                                          },
+                                          "edges": {
+                                            "on": {
+                                              "press": [
+                                                {
+                                                  "do": "invoke",
+                                                  "args": {
+                                                    "tool": "startRun"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:button",
+                                          "id": "copilot-c2-refresh-runs-from-run-tab",
+                                          "props": {
+                                            "label": "Refresh runs"
+                                          },
+                                          "edges": {
+                                            "on": {
+                                              "press": [
+                                                {
+                                                  "do": "invoke",
+                                                  "args": {
+                                                    "tool": "refreshRuns"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:panel",
+                                    "id": "copilot-c2-current-run-run-tab",
+                                    "props": {
+                                      "title": "Current run",
+                                      "variant": "inset"
+                                    },
+                                    "edges": {
+                                      "gate": "copilotC2.currentRun.id != ''",
+                                      "children": [
+                                        {
+                                          "capability": "ui:note",
+                                          "id": "copilot-c2-current-run-summary-run-tab",
+                                          "props": {
+                                            "tone": "info"
+                                          },
+                                          "edges": {
+                                            "readExpr": {
+                                              "value": "($status := $string(copilotC2.currentRun.status ? copilotC2.currentRun.status : 'unknown'); $exit := copilotC2.currentRun.exitCode; 'Run ' & $string(copilotC2.currentRun.id) & ' is ' & $status & ($type($exit) = 'number' ? ' (exit ' & $string($exit) & ')' : '') & '.')"
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:markdown",
+                                          "id": "copilot-c2-current-run-output-run-tab",
+                                          "edges": {
+                                            "readExpr": {
+                                              "value": "($status := $string(copilotC2.currentRun.status ? copilotC2.currentRun.status : 'unknown'); $exit := copilotC2.currentRun.exitCode; $summary := 'Run ' & $string(copilotC2.currentRun.id) & ' is ' & $status & ($type($exit) = 'number' ? ' (exit ' & $string($exit) & ')' : '') & '.'; $stdout := $trim($string(copilotC2.currentRun.stdout)); $stderr := $trim($string(copilotC2.currentRun.stderr)); $error := $trim($string(copilotC2.currentRun.error)); $summary & ($stdout != '' ? '\n\n## stdout\n\n```text\n' & $stdout & '\n```' : '') & ($stderr != '' ? '\n\n## stderr\n\n```text\n' & $stderr & '\n```' : '') & ($error != '' ? '\n\n## error\n\n' & $error : ''))"
+                                            }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "capability": "ui:panel",
+                              "id": "copilot-c2-history-tab",
+                              "props": {
+                                "title": "Run history",
+                                "variant": "tab"
+                              },
+                              "edges": {
+                                "gate": "copilotC2.tab = 'history'",
+                                "children": [
+                                  {
+                                    "capability": "ui:note",
+                                    "id": "copilot-c2-history-status",
+                                    "props": {
+                                      "tone": "info"
+                                    },
+                                    "edges": {
+                                      "read": {
+                                        "value": "copilotC2.runStatus"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:row",
+                                    "id": "copilot-c2-history-actions",
+                                    "edges": {
+                                      "children": [
+                                        {
+                                          "capability": "ui:button",
+                                          "id": "copilot-c2-refresh-runs",
+                                          "props": {
+                                            "label": "Refresh runs"
+                                          },
+                                          "edges": {
+                                            "on": {
+                                              "press": [
+                                                {
+                                                  "do": "invoke",
+                                                  "args": {
+                                                    "tool": "refreshRuns"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:button",
+                                          "id": "copilot-c2-cancel-run",
+                                          "props": {
+                                            "label": "Cancel selected run",
+                                            "tone": "danger"
+                                          },
+                                          "edges": {
+                                            "gate": "copilotC2.selectedRunId != ''",
+                                            "on": {
+                                              "press": [
+                                                {
+                                                  "do": "invoke",
+                                                  "args": {
+                                                    "tool": "cancelSelectedRun"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:list",
+                                    "id": "copilot-c2-run-list",
+                                    "props": {
+                                      "idKey": "id",
+                                      "primaryKey": "name",
+                                      "valueKey": "updatedAt",
+                                      "badgeKey": "status"
+                                    },
+                                    "edges": {
+                                      "read": {
+                                        "selectedId": "copilotC2.selectedRunId"
+                                      },
+                                      "readExpr": {
+                                        "items": "copilotC2.runs.{'id':$string(id),'name':$string(agent ? agent : 'copilot'),'status':$string(status),'updatedAt':$string(finishedAt ? finishedAt : (startedAt ? startedAt : createdAt))}"
+                                      },
+                                      "on": {
+                                        "select": [
+                                          {
+                                            "do": "assign",
+                                            "target": "copilotC2.selectedRunId",
+                                            "args": {
+                                              "from": "$event.id"
+                                            }
+                                          },
+                                          {
+                                            "do": "invoke",
+                                            "args": {
+                                              "tool": "loadSelectedRun"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "capability": "ui:panel",
+                                    "id": "copilot-c2-current-run-history-tab",
+                                    "props": {
+                                      "title": "Selected run",
+                                      "variant": "inset"
+                                    },
+                                    "edges": {
+                                      "gate": "copilotC2.currentRun.id != ''",
+                                      "children": [
+                                        {
+                                          "capability": "ui:note",
+                                          "id": "copilot-c2-current-run-summary-history-tab",
+                                          "props": {
+                                            "tone": "info"
+                                          },
+                                          "edges": {
+                                            "readExpr": {
+                                              "value": "($status := $string(copilotC2.currentRun.status ? copilotC2.currentRun.status : 'unknown'); $exit := copilotC2.currentRun.exitCode; 'Run ' & $string(copilotC2.currentRun.id) & ' is ' & $status & ($type($exit) = 'number' ? ' (exit ' & $string($exit) & ')' : '') & '.')"
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "capability": "ui:markdown",
+                                          "id": "copilot-c2-current-run-output-history-tab",
+                                          "edges": {
+                                            "readExpr": {
+                                              "value": "($status := $string(copilotC2.currentRun.status ? copilotC2.currentRun.status : 'unknown'); $exit := copilotC2.currentRun.exitCode; $summary := 'Run ' & $string(copilotC2.currentRun.id) & ' is ' & $status & ($type($exit) = 'number' ? ' (exit ' & $string($exit) & ')' : '') & '.'; $stdout := $trim($string(copilotC2.currentRun.stdout)); $stderr := $trim($string(copilotC2.currentRun.stderr)); $error := $trim($string(copilotC2.currentRun.error)); $summary & ($stdout != '' ? '\n\n## stdout\n\n```text\n' & $stdout & '\n```' : '') & ($stderr != '' ? '\n\n## stderr\n\n```text\n' & $stderr & '\n```' : '') & ($error != '' ? '\n\n## error\n\n' & $error : ''))"
+                                            }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "runtime": {
+      "expression": "jsonata",
+      "namespaces": [
+        "copilotC2"
+      ],
+      "actions": [
+        "assign",
+        "invoke"
+      ],
+      "capabilities": {
+        "ui:screen": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "ui:row": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "ui:panel": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "ui:text": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "ui:note": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "ui:alert": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "ui:list": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "select"
+          ]
+        },
+        "ui:field": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "input"
+          ]
+        },
+        "ui:textarea": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "input"
+          ]
+        },
+        "ui:button": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "press"
+          ]
+        },
+        "ui:timer-button": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "press"
+          ]
+        },
+        "ui:tabBar": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "select"
+          ]
+        },
+        "ui:markdown": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "c2:agent-activity-board": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "select"
+          ]
+        },
+        "c2:workspace": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "c2:run-console": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "externals": {
+        "projectionViews": {
+          "ui": {
+            "from": "floor"
+          },
+          "c2": {
+            "from": "self"
+          }
+        }
+      },
+      "state": {
+        "copilotC2": {
+          "view": "dashboard",
+          "workingDir": "",
+          "model": "gpt-5.4",
+          "environmentStatus": "Discover local Copilot agents.",
+          "environmentError": "",
+          "sourceRootStatus": "Refresh Copilot source roots.",
+          "sourceRootError": "",
+          "sourceRoots": [],
+          "selectedSourceRootId": "",
+          "sourceRootId": "",
+          "sourceRootLabel": "",
+          "sourceRootPath": "",
+          "agents": [],
+          "agentActivities": [],
+          "selectedAgentId": "",
+          "draft": "Summarize the current workspace and propose the next implementation step.",
+          "runStatus": "No Copilot run selected.",
+          "runError": "",
+          "tab": "run",
+          "runs": [],
+          "selectedRunId": "",
+          "currentRun": {
+            "id": "",
+            "status": "",
+            "createdAt": "",
+            "startedAt": "",
+            "finishedAt": "",
+            "agent": "",
+            "model": "",
+            "sessionId": "",
+            "stdout": "",
+            "stderr": "",
+            "error": "",
+            "exitCode": null
+          }
+        }
+      }
+    }
+  }
+}

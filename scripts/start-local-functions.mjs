@@ -14,6 +14,7 @@ if (!npmCli && !dryRun) throw new Error("func:local must be started through npm"
 const functions = [
   { configKey: "foundryProxyOrigin", app: "foundry-bff" },
   { configKey: "httpProxyOrigin", app: "http-proxy" },
+  { configKey: "storesProxyOrigin", app: "stores-proxy" },
 ];
 
 function localPort(origin, configKey) {
@@ -43,7 +44,11 @@ if (!dryRun) {
   const children = commands.map(({ cwd, port }) => spawn(
     process.execPath,
     [npmCli, "run", "start", "--", "--port", port],
-    { cwd, stdio: "inherit" }
+    {
+      cwd,
+      stdio: "inherit",
+      env: { ...process.env, FUNCTIONS_WORKER_RUNTIME: "node" },
+    }
   ));
   let stopping = false;
 

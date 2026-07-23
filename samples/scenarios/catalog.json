@@ -42,10 +42,9 @@
         { "command": "removeHolding", "nodeId": "portfolio-tracker", "event": "removeHolding" },
         { "command": "refreshPrices", "nodeId": "portfolio-tracker", "event": "refreshPrices" },
         { "command": "requestIntelligence", "nodeId": "portfolio-tracker", "event": "requestIntelligence" },
-        { "command": "calculateStrategies", "nodeId": "portfolio-tracker", "event": "calculateStrategies" },
-        { "command": "applyRecommendation", "nodeId": "rebalance-comparison", "event": "apply" }
+        { "command": "calculateStrategies", "nodeId": "portfolio-tracker", "event": "calculateStrategies" }
       ],
-      "humanGates": ["applyRecommendation"],
+      "humanGates": [],
       "observableOutcomes": ["portfolio.holdings", "portfolio.quotes", "portfolio.positions", "portfolio.summary", "portfolio.intelligence", "portfolio.recommendation"],
       "actors": ["human-investor", "agent-market-data", "agent-portfolio-intelligence"],
       "presentationPresets": [
@@ -91,7 +90,7 @@
     },
     {
       "id": "portfolio-intelligence-rebalance",
-      "label": "Portfolio intelligence and rebalance",
+      "label": "Portfolio intelligence and strategies",
       "scenarioBlueprintId": "portfolio-tracker-intelligence-rebalance",
       "targetBlueprintId": "portfolio-tracker",
       "defaultContext": "portfolio-advisor",

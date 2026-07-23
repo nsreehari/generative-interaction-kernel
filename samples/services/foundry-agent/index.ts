@@ -4,7 +4,7 @@ import {
 	type ServiceKindFactory,
 	type ServiceKindManifest,
 } from "../../../face/src/services/service-kinds";
-import type { ServiceAdapter } from "../../../face/src/services/queueface";
+import type { ServiceAdapter, ServiceAdapterContext, ServiceRequest } from "../../../face/src/services/queueface";
 import { createFoundryProxy, FoundryProxyError, type FoundryChatResponseSchema } from "../../shared/foundry-proxy";
 import manifestJson from "./manifest.json";
 
@@ -25,6 +25,25 @@ function inputResponseSchema(input: Record<string, Json>): FoundryChatResponseSc
 	const { name, schema, strict } = candidate as Record<string, Json>;
 	if (typeof name !== "string" || !schema || typeof schema !== "object" || Array.isArray(schema)) return undefined;
 	return { name, schema: schema as Record<string, unknown>, strict: strict !== false };
+}
+
+function declaredResponseSchema(
+	request: ServiceRequest,
+	context: ServiceAdapterContext,
+): FoundryChatResponseSchema | undefined {
+	const validator = context.responseValidators?.find((rule) =>
+		"kind" in rule
+		&& rule.kind === "ajv-schema"
+		&& rule.code === "provider-structured-output"
+		&& rule.level !== "warning"
+	);
+	if (!validator || !("kind" in validator) || validator.kind !== "ajv-schema") return undefined;
+	const schema = validator.schema;
+	if (!schema || typeof schema !== "object" || Array.isArray(schema)) return undefined;
+	const name = `${request.capabilityId || request.operation}_response`
+		.replace(/[^a-zA-Z0-9_-]/g, "_")
+		.slice(0, 64);
+	return { name, schema: schema as Record<string, unknown>, strict: true };
 }
 
 
@@ -94,7 +113,7 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 				await (await client()).ping(agentName);
 				return { ok: true, detail: { agentName } as Record<string, Json> };
 			},
-			execute: async (request) => {
+			execute: async (request, adapterContext) => {
 				const input = record(request.input);
 				try {
 					if (request.operation === "check-access") {
@@ -107,14 +126,28 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 					if (request.operation !== "chat") throw new Error(`Unsupported foundry-agent operation '${request.operation}'`);
 					const agentName = configuredAgent || String(input.agentName ?? "");
 					if (!agentName) throw new Error("foundry-agent requires config.agent or input.agentName");
+					const responseSchema = inputResponseSchema(input) ?? declaredResponseSchema(request, adapterContext);
+					const response = await (await client()).chat({
+						message: String(input.message ?? ""),
+						agentName,
+						conversationId: typeof input.conversationId === "string" ? input.conversationId : undefined,
+						instructions: typeof input.instructions === "string" ? input.instructions : undefined,
+						maxOutputTokens: typeof input.maxOutputTokens === "number" ? input.maxOutputTokens : undefined,
+						responseSchema,
+					});
+					let structuredOutput: Json | undefined;
+					if (responseSchema) {
+						try {
+							structuredOutput = JSON.parse(response.reply) as Json;
+						} catch {
+							throw new Error("Foundry agent returned invalid structured JSON");
+						}
+					}
 					return {
-						output: await (await client()).chat({
-							message: String(input.message ?? ""),
-							agentName,
-							conversationId: typeof input.conversationId === "string" ? input.conversationId : undefined,
-							instructions: typeof input.instructions === "string" ? input.instructions : undefined,
-							responseSchema: inputResponseSchema(input),
-						}) as unknown as Json,
+						output: structuredOutput ?? response as unknown as Json,
+						detail: structuredOutput === undefined
+							? undefined
+							: { responseId: response.responseId, conversationId: response.conversationId },
 					};
 				} catch (error) {
 					if (error instanceof FoundryProxyError && (error.status === 401 || error.status === 403)) {

@@ -416,14 +416,11 @@
           },
           "dataProp": "value"
         },
-        "portfolio:recommendation": {
+        "portfolio:comparison": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           },
-          "emits": [
-            "apply"
-          ],
           "dataProp": "value"
         }
       },
@@ -440,7 +437,6 @@
           "setHoldings",
           "upsertHolding",
           "removeHolding",
-          "applyRecommendation",
           "saveHoldings",
           "setPresentationContext"
         ]
@@ -459,7 +455,6 @@
           "strategies": {},
           "recommendation": null,
           "investorProfile": null,
-          "appliedRecommendation": null,
           "presentationContext": "portfolio-overview"
         }
       }
@@ -542,13 +537,13 @@
             ]
           },
           {
-            "id": "rebalance-comparison",
+            "id": "strategy-comparison",
             "requires": [
               "rebalance-conservative",
               "rebalance-growth"
             ],
             "provides": [
-              "rebalance-recommendation"
+              "strategy-comparison"
             ],
             "service": {
               "service": "portfolio-intelligence",
@@ -650,13 +645,13 @@
           ]
         },
         {
-          "id": "rebalance-comparison",
+          "id": "strategy-comparison",
           "requires": [
             "rebalance-conservative",
             "rebalance-growth"
           ],
           "provides": [
-            "rebalance-recommendation"
+            "strategy-comparison"
           ],
           "service": {
             "service": "portfolio-intelligence",

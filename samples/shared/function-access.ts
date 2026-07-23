@@ -1,11 +1,15 @@
+import { hostConfig } from "./host-config";
+
 export const FUNCTION_ACCESS = {
   foundry: {
     label: "Foundry",
+    baseUrl: hostConfig.foundryProxyOrigin,
     storageKey: "gik.foundry-agent.access-key",
     changeEvent: "gik:foundry-access-change",
   },
   "http-proxy": {
     label: "HTTP proxy",
+    baseUrl: hostConfig.httpProxyOrigin,
     storageKey: "gik.http-proxy.access-key",
     changeEvent: "gik:http-proxy-access-change",
   },

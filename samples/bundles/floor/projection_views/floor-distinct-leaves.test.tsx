@@ -94,12 +94,12 @@ test("actions leaf renders button row labels", () => {
 test("timer-button leaf renders its initial countdown", () => {
   const markup = renderToStaticMarkup(renderNode(leaf("ui:timer-button", {
     label: "Auto next",
-    durationMs: 3000,
+    durationMs: 300000,
   }), registry, () => {}));
 
-  assert.match(markup, /aria-label="Auto next, 3 seconds remaining"/);
+  assert.match(markup, /aria-label="Auto next, 300 seconds remaining"/);
   assert.match(markup, /class="gx-timer-label">Auto next<\/span>/);
-  assert.match(markup, /class="gx-timer-count">3<\/span>/);
+  assert.match(markup, /class="gx-timer-count">5:00<\/span>/);
 });
 
 test("math-challenge leaf renders an accessible deterministic confirmation gate", () => {

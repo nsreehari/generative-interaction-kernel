@@ -32,6 +32,57 @@ test("checks HTTP proxy access with the configured Function key", async () => {
   assert.equal(new Headers(captured.init?.headers).get("x-functions-key"), "http-key");
 });
 
+test("identifies an unreachable configured HTTP proxy", async () => {
+  const requested: string[] = [];
+  await assert.rejects(
+    executeHttpServiceInvocation({
+      kind: "http-service",
+      declaration,
+      operation: "check-access",
+      input: null,
+    }, {
+      proxyOrigin: "http://localhost:7073",
+      accessKey: "local-dev",
+      fetch: async (input) => {
+        requested.push(String(input));
+        throw new TypeError("Failed to fetch");
+      },
+    }),
+    (error: unknown) => error instanceof Error
+      && error.message === "Could not reach HTTP proxy at http://localhost:7073. Verify the server is running."
+  );
+  assert.deepEqual(requested, [
+    "http://localhost:7073/api/access/check",
+    "http://localhost:7073",
+  ]);
+});
+
+test("reports a reachable HTTP proxy whose access check cannot be reached", async () => {
+  const requested: string[] = [];
+  await assert.rejects(
+    executeHttpServiceInvocation({
+      kind: "http-service",
+      declaration,
+      operation: "check-access",
+      input: null,
+    }, {
+      proxyOrigin: "http://localhost:7073",
+      accessKey: "local-dev",
+      fetch: async (input) => {
+        requested.push(String(input));
+        if (String(input).endsWith("/api/access/check")) throw new TypeError("Failed to fetch");
+        return new Response(null, { status: 404 });
+      },
+    }),
+    (error: unknown) => error instanceof Error
+      && error.message === "HTTP proxy at http://localhost:7073 is reachable, but http://localhost:7073/api/access/check could not be reached."
+  );
+  assert.deepEqual(requested, [
+    "http://localhost:7073/api/access/check",
+    "http://localhost:7073",
+  ]);
+});
+
 test("routes declared requests through the authenticated HTTP proxy", async () => {
   let captured: { input?: RequestInfo | URL; init?: RequestInit } = {};
   await executeHttpServiceInvocation({

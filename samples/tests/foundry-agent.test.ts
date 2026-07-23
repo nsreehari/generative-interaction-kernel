@@ -11,6 +11,7 @@ import {
   browserServiceRegistryOptions,
   declarativeServiceOrchestrator,
 } from "../shared/service-runtime";
+import { createFoundryAgentKind } from "../services/foundry-agent";
 
 const FOUNDRY_BLUEPRINTS = ["foundry-agent", "foundry-agent-no-cells"] as const;
 
@@ -44,6 +45,53 @@ afterEach(() => {
   Reflect.deleteProperty(globalThis, "localStorage");
 });
 
+test("foundry service exposes schema-constrained replies as structured output", async () => {
+  let requestBody: Record<string, unknown> | undefined;
+  const factory = createFoundryAgentKind(async (_input, init) => {
+    requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    return new Response(JSON.stringify({
+      conversationId: "conversation-1",
+      responseId: "response-1",
+      reply: JSON.stringify({ summary: "Concentrated portfolio" }),
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  });
+  const adapter = factory.create({
+    kind: "foundry-agent",
+    version: "1",
+    operations: { analyze: { operation: "chat", contract: "portfolio-intelligence/v1" } },
+    config: {
+      endpoint: "https://foundry.example",
+      agent: "Portfolio-Intelligence-Agent",
+      credentialRef: "foundry-agent/access-key",
+    },
+  }, {
+    hostCapabilities: new Set(["foundry-executor", "credential-resolver"]),
+    resolveCredential: async () => "access-key",
+  });
+  const result = await adapter.execute({
+    operation: "chat",
+    capabilityId: "portfolio-intelligence/v1",
+    input: {
+      message: "Analyze this portfolio",
+    },
+  } as never, {
+    responseValidators: [{
+      kind: "ajv-schema",
+      code: "provider-structured-output",
+      schema: {
+        type: "object",
+        required: ["summary"],
+        properties: { summary: { type: "string" } },
+        additionalProperties: false,
+      },
+    }],
+  } as never);
+
+  assert.equal((requestBody?.responseSchema as { name?: string })?.name, "portfolio-intelligence_v1_response");
+  assert.deepEqual(result.output, { summary: "Concentrated portfolio" });
+  assert.deepEqual(result.detail, { responseId: "response-1", conversationId: "conversation-1" });
+});
+
 describe.each(FOUNDRY_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
 test("access check and agent discovery run as separate phases", async () => {
   const values = installLocalStorage();
@@ -72,6 +120,7 @@ test("access check and agent discovery run as separate phases", async () => {
     assert.match(requests[0], /\/api\/access\/check$/);
 
     await controller.emit("agent-selector", "agentsRequested", {});
+    await controller.settle();
 
     assert.equal(store.get("agent.key"), null);
     assert.equal(store.get("agent.accessStatus"), "ready");
