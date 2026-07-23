@@ -17,6 +17,7 @@ export interface FoundryChatRequest {
   agentName: string;
   conversationId?: string;
   instructions?: string;
+  maxOutputTokens?: number;
   /** Requests Structured Outputs (Responses API `text.format`) so the model itself is
    * constrained to emit JSON matching this schema, rather than relying solely on
    * post-hoc validation of a free-text reply. */
@@ -162,6 +163,7 @@ export function createFoundryProxy(options: FoundryProxyOptions) {
         agentName: request.agentName,
         conversationId: request.conversationId || undefined,
         instructions: request.instructions || undefined,
+        maxOutputTokens: request.maxOutputTokens || undefined,
         responseSchema: request.responseSchema || undefined,
       }, chatTimeoutMs, "Timed out waiting for the Foundry agent response.");
       const body = (await response.json()) as Partial<FoundryChatResponse>;

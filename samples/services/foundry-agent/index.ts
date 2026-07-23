@@ -132,6 +132,7 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 						agentName,
 						conversationId: typeof input.conversationId === "string" ? input.conversationId : undefined,
 						instructions: typeof input.instructions === "string" ? input.instructions : undefined,
+						maxOutputTokens: typeof input.maxOutputTokens === "number" ? input.maxOutputTokens : undefined,
 						responseSchema,
 					});
 					let structuredOutput: Json | undefined;

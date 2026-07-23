@@ -62,6 +62,41 @@ const useStyles = makeStyles({
   recommendationPanel: { gridColumn: "1 / -1", padding: tokens.spacingHorizontalXL, borderTop: "3px solid #0f6cbd", backgroundColor: "#ffffff", boxShadow: "0 1px 3px rgba(0, 0, 0, .06)" },
   recommendationChoice: { margin: `0 0 ${tokens.spacingVerticalXS}`, fontSize: tokens.fontSizeBase600, fontWeight: tokens.fontWeightSemibold, textTransform: "capitalize" },
   recommendationReason: { margin: `0 0 ${tokens.spacingVerticalL}`, maxWidth: "72ch", color: "#42464d", lineHeight: tokens.lineHeightBase400 },
+  intelligence2: { gridColumn: "1 / -1", border: "1px solid #c7ccd1", borderRadius: tokens.borderRadiusMedium, backgroundColor: "#ffffff", overflow: "hidden", boxShadow: "0 2px 8px rgba(0, 0, 0, .06)" },
+  intelligence2Header: { padding: tokens.spacingHorizontalXL, display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: tokens.spacingHorizontalXL, alignItems: "start", borderBottom: "1px solid #e2e5e9", backgroundColor: "#fbfcfd", "@media (max-width: 720px)": { gridTemplateColumns: "minmax(0, 1fr)" } },
+  intelligence2Title: { margin: `0 0 ${tokens.spacingVerticalXS}`, fontSize: tokens.fontSizeBase600, fontWeight: tokens.fontWeightSemibold },
+  intelligence2Summary: { margin: 0, maxWidth: "76ch", color: "#42464d", lineHeight: tokens.lineHeightBase400 },
+  recipeMeta: { display: "flex", gap: tokens.spacingHorizontalXS, flexWrap: "wrap", justifyContent: "end", "@media (max-width: 720px)": { justifyContent: "start" } },
+  recipeToken: { padding: `3px ${tokens.spacingHorizontalS}`, border: "1px solid #b7bdc5", borderRadius: tokens.borderRadiusMedium, backgroundColor: "#ffffff", color: "#42464d", fontSize: tokens.fontSizeBase200, whiteSpace: "nowrap" },
+  projectionBody: { padding: tokens.spacingHorizontalXL, display: "grid", gap: tokens.spacingVerticalXL },
+  projectionRationale: { margin: 0, color: "#57606a", fontSize: tokens.fontSizeBase200 },
+  projectionGrid: { display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gap: tokens.spacingHorizontalL },
+  projectionSection: { gridColumn: "span 6", minWidth: 0, padding: tokens.spacingHorizontalL, borderTop: "2px solid #b7bdc5", backgroundColor: "#f8f9fa", "@media (max-width: 760px)": { gridColumn: "1 / -1" } },
+  projectionPrimary: { gridColumn: "1 / -1", borderTopColor: "#0f6cbd", backgroundColor: "#f3f8fc" },
+  projectionTertiary: { gridColumn: "span 4", "@media (max-width: 980px)": { gridColumn: "span 6" }, "@media (max-width: 760px)": { gridColumn: "1 / -1" } },
+  disclosureSummary: { cursor: "pointer", "&::marker": { color: "#0f6cbd" } },
+  disclosureTitle: { display: "block", marginTop: tokens.spacingVerticalXS, fontSize: tokens.fontSizeBase400, fontWeight: tokens.fontWeightSemibold },
+  disclosureContent: { marginTop: tokens.spacingVerticalM },
+  primitiveLabel: { margin: `0 0 ${tokens.spacingVerticalXS}`, color: "#57606a", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightSemibold, textTransform: "uppercase" },
+  primitiveTitle: { margin: `0 0 ${tokens.spacingVerticalM}`, fontSize: tokens.fontSizeBase400, fontWeight: tokens.fontWeightSemibold },
+  heroSignal: { margin: `0 0 ${tokens.spacingVerticalS}`, maxWidth: "30ch", fontSize: tokens.fontSizeBase600, fontWeight: tokens.fontWeightSemibold, lineHeight: tokens.lineHeightBase500 },
+  signalList: { margin: 0, padding: 0, listStyle: "none", display: "grid", gap: tokens.spacingVerticalM },
+  signalItem: { display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", gap: tokens.spacingHorizontalM, alignItems: "start" },
+  salience: { minWidth: "58px", padding: `2px ${tokens.spacingHorizontalXS}`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "#e5e8ec", color: "#242424", fontSize: tokens.fontSizeBase100, fontWeight: tokens.fontWeightSemibold, textAlign: "center", textTransform: "uppercase" },
+  salienceCritical: { backgroundColor: "#fde7e9", color: "#b10e1c" },
+  salienceHigh: { backgroundColor: "#fff4ce", color: "#6d5700" },
+  signalTitle: { display: "block", marginBottom: "2px", fontWeight: tokens.fontWeightSemibold },
+  signalDetail: { margin: 0, color: "#42464d", lineHeight: tokens.lineHeightBase300 },
+  metricStrip: { display: "flex", gap: tokens.spacingHorizontalXL, flexWrap: "wrap" },
+  metricBlock: { minWidth: "120px" },
+  metricNumber: { display: "block", fontSize: tokens.fontSizeBase600, fontWeight: tokens.fontWeightSemibold, fontVariantNumeric: "tabular-nums" },
+  metricCaption: { color: "#57606a", fontSize: tokens.fontSizeBase200 },
+  timeline: { margin: 0, padding: 0, listStyle: "none", display: "grid", gap: tokens.spacingVerticalM },
+  timelineItem: { display: "grid", gridTemplateColumns: "100px minmax(0, 1fr)", gap: tokens.spacingHorizontalM, borderLeft: "2px solid #0f6cbd", paddingLeft: tokens.spacingHorizontalM },
+  evidenceList: { margin: 0, padding: 0, listStyle: "none", display: "grid", gap: tokens.spacingVerticalS },
+  evidenceLink: { color: "#0f6cbd", textDecoration: "none", ":hover": { textDecoration: "underline" } },
+  alternatives: { padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalXL}`, display: "flex", alignItems: "center", gap: tokens.spacingHorizontalS, flexWrap: "wrap", borderTop: "1px solid #e2e5e9", color: "#57606a", fontSize: tokens.fontSizeBase200 },
+  alternative: { padding: `2px ${tokens.spacingHorizontalS}`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "#eef0f2" },
 });
 
 function valueOf(node: ProjectionViewProps["node"]): unknown {
@@ -182,6 +217,161 @@ const StrategyComparisonView: ProjectionView = ({ node }) => {
   );
 };
 
+type IntelligenceItem = {
+  id: string;
+  kind: string;
+  title: string;
+  detail: string;
+  salience: string;
+  confidence: string;
+  entities: string[];
+  value: string;
+  unit: string;
+  date: string;
+  evidenceIds: string[];
+};
+
+type EvidenceItem = { id: string; title: string; publisher: string; url: string; publishedAt: string };
+export type ProjectionSection = { id: string; title: string; primitive: string; priority: string; disclosure: string; contentIds: string[] };
+export type ProjectionCandidate = { id: string; label: string; attention: string; rationale: string; sections: ProjectionSection[] };
+export type ProjectionPolicy = { attention: string; showDisclosure: string[]; maxSections: number };
+
+const EMPTY_POLICY: ProjectionPolicy = { attention: "glanceable", showDisclosure: ["always"], maxSections: 3 };
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function intelligenceItems(value: unknown): IntelligenceItem[] {
+  return Array.isArray(value) ? value.map(asRecord).map((item) => ({
+    id: String(item.id ?? ""), kind: String(item.kind ?? "judgment"), title: String(item.title ?? ""), detail: String(item.detail ?? ""),
+    salience: String(item.salience ?? "medium"), confidence: String(item.confidence ?? "medium"),
+    entities: Array.isArray(item.entities) ? item.entities.map(String) : [], value: String(item.value ?? ""), unit: String(item.unit ?? ""),
+    date: String(item.date ?? ""), evidenceIds: Array.isArray(item.evidenceIds) ? item.evidenceIds.map(String) : [],
+  })).filter((item) => item.id && item.title) : [];
+}
+
+function evidenceItems(value: unknown): EvidenceItem[] {
+  return Array.isArray(value) ? value.map(asRecord).map((item) => ({
+    id: String(item.id ?? ""), title: String(item.title ?? ""), publisher: String(item.publisher ?? ""),
+    url: String(item.url ?? ""), publishedAt: String(item.publishedAt ?? ""),
+  })).filter((item) => item.id && item.title && item.url) : [];
+}
+
+function projectionCandidates(value: unknown): ProjectionCandidate[] {
+  return Array.isArray(value) ? value.map(asRecord).map((candidate) => ({
+    id: String(candidate.id ?? ""), label: String(candidate.label ?? ""), attention: String(candidate.attention ?? ""),
+    rationale: String(candidate.rationale ?? ""), sections: Array.isArray(candidate.sections)
+      ? candidate.sections.map(asRecord).map((section) => ({
+        id: String(section.id ?? ""), title: String(section.title ?? ""), primitive: String(section.primitive ?? ""),
+        priority: String(section.priority ?? "secondary"), disclosure: String(section.disclosure ?? "collapsed"),
+        contentIds: Array.isArray(section.contentIds) ? section.contentIds.map(String) : [],
+      })) : [],
+  })).filter((candidate) => candidate.id && candidate.sections.length > 0) : [];
+}
+
+export function selectIntelligenceProjection(value: unknown, context: string, recipeValue: unknown): {
+  policy: ProjectionPolicy;
+  candidate: ProjectionCandidate | undefined;
+  sections: ProjectionSection[];
+} {
+  const valueRecord = asRecord(value);
+  const recipe = asRecord(recipeValue);
+  const contexts = asRecord(recipe.contexts);
+  const configuredPolicy = asRecord(contexts[context] ?? recipe.fallback);
+  const policy: ProjectionPolicy = {
+    attention: String(configuredPolicy.attention ?? EMPTY_POLICY.attention),
+    showDisclosure: Array.isArray(configuredPolicy.showDisclosure) ? configuredPolicy.showDisclosure.map(String) : EMPTY_POLICY.showDisclosure,
+    maxSections: Number(configuredPolicy.maxSections ?? EMPTY_POLICY.maxSections),
+  };
+  const candidates = projectionCandidates(valueRecord.projectionCandidates);
+  const candidate = candidates.find((entry) => entry.attention === policy.attention) ?? candidates[0];
+  const sections = (candidate?.sections ?? [])
+    .filter((section) => policy.showDisclosure.includes(section.disclosure))
+    .slice(0, policy.maxSections);
+  return { policy, candidate, sections };
+}
+
+function salienceClass(styles: ReturnType<typeof useStyles>, salience: string): string {
+  if (salience === "critical") return `${styles.salience} ${styles.salienceCritical}`;
+  if (salience === "high") return `${styles.salience} ${styles.salienceHigh}`;
+  return styles.salience;
+}
+
+export function safeEvidenceUrl(value: string): string | undefined {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function ProjectionPrimitive({ section, items, evidence }: { section: ProjectionSection; items: IntelligenceItem[]; evidence: EvidenceItem[] }) {
+  const styles = useStyles();
+  const selectedItems = section.contentIds.map((id) => items.find((item) => item.id === id)).filter((item): item is IntelligenceItem => item !== undefined);
+  const selectedEvidence = section.contentIds.map((id) => evidence.find((item) => item.id === id)).filter((item): item is EvidenceItem => item !== undefined);
+  if (section.primitive === "hero-signal") {
+    const item = selectedItems[0];
+    return item ? <><p className={styles.heroSignal}>{item.title}</p><p className={styles.signalDetail}>{item.detail}</p></> : null;
+  }
+  if (section.primitive === "metric-strip") {
+    return <div className={styles.metricStrip}>{selectedItems.map((item) => <div className={styles.metricBlock} key={item.id}><strong className={styles.metricNumber}>{item.value || item.title}</strong><span className={styles.metricCaption}>{item.unit || item.detail}</span></div>)}</div>;
+  }
+  if (section.primitive === "timeline") {
+    return <ol className={styles.timeline}>{selectedItems.map((item) => <li className={styles.timelineItem} key={item.id}><strong>{item.date || "Upcoming"}</strong><div><span className={styles.signalTitle}>{item.title}</span><p className={styles.signalDetail}>{item.detail}</p></div></li>)}</ol>;
+  }
+  if (section.primitive === "evidence-list") {
+    const linkedEvidence = selectedEvidence.length > 0 ? selectedEvidence : evidence.filter((entry) => selectedItems.some((item) => item.evidenceIds.includes(entry.id)));
+    return <ul className={styles.evidenceList}>{linkedEvidence.map((entry) => {
+      const href = safeEvidenceUrl(entry.url);
+      return <li key={entry.id}>{href ? <a className={styles.evidenceLink} href={href} target="_blank" rel="noreferrer">{entry.title}</a> : <span>{entry.title}</span>} <span>· {entry.publisher}{entry.publishedAt ? ` · ${entry.publishedAt}` : ""}</span></li>;
+    })}</ul>;
+  }
+  if (section.primitive === "narrative") {
+    return <div>{selectedItems.map((item) => <p className={styles.signalDetail} key={item.id}>{item.detail}</p>)}</div>;
+  }
+  return <ul className={styles.signalList}>{selectedItems.map((item) => <li className={styles.signalItem} key={item.id}><span className={salienceClass(styles, item.salience)}>{item.salience}</span><div><span className={styles.signalTitle}>{item.title}</span><p className={styles.signalDetail}>{item.detail}</p></div></li>)}</ul>;
+}
+
+function ProjectionSectionView({ section, items, evidence }: { section: ProjectionSection; items: IntelligenceItem[]; evidence: EvidenceItem[] }) {
+  const styles = useStyles();
+  const className = `${styles.projectionSection} ${section.priority === "primary" ? styles.projectionPrimary : ""} ${section.priority === "tertiary" ? styles.projectionTertiary : ""}`;
+  const label = `${section.primitive} · ${section.priority} · ${section.disclosure}`;
+  if (section.disclosure === "collapsed") {
+    return <details className={className} key={section.id}>
+      <summary className={styles.disclosureSummary}><span className={styles.primitiveLabel}>{label}</span><span className={styles.disclosureTitle}>{section.title}</span></summary>
+      <div className={styles.disclosureContent}><ProjectionPrimitive section={section} items={items} evidence={evidence} /></div>
+    </details>;
+  }
+  return <section className={className} key={section.id}><p className={styles.primitiveLabel}>{label}</p><h3 className={styles.primitiveTitle}>{section.title}</h3><ProjectionPrimitive section={section} items={items} evidence={evidence} /></section>;
+}
+
+const IntelligenceProjectionsView: ProjectionView = ({ node }) => {
+  const styles = useStyles();
+  const value = asRecord(valueOf(node));
+  const context = String(node.props.presentationContext ?? "portfolio-overview");
+  const error = String(node.props.error ?? "");
+  const { policy, candidate: selected, sections } = selectIntelligenceProjection(value, context, node.props.projectionRecipe);
+  if (Object.keys(value).length === 0) {
+    return <section className={styles.intelligence2}><div className={styles.intelligence2Header}><div><p className={styles.advisoryEyebrow}>Portfolio Intelligence 2</p><h2 className={styles.intelligence2Title}>{error ? "Analysis unavailable" : "Context-aware analysis ready"}</h2><p className={styles.intelligence2Summary}>{error || "Analyze the portfolio to generate semantic content and alternative projections for the current attention context."}</p></div><div className={styles.recipeMeta}><span className={styles.recipeToken}>{policy.attention}</span><span className={styles.recipeToken}>{context}</span></div></div></section>;
+  }
+  const items = intelligenceItems(value.items);
+  const evidence = evidenceItems(value.evidence);
+  const candidates = projectionCandidates(value.projectionCandidates);
+  return <section className={styles.intelligence2}>
+    <header className={styles.intelligence2Header}>
+      <div><p className={styles.advisoryEyebrow}>Portfolio Intelligence 2</p><h2 className={styles.intelligence2Title}>{String(value.headline ?? "Structured assessment")}</h2><p className={styles.intelligence2Summary}>{String(value.summary ?? "")}</p></div>
+      <div className={styles.recipeMeta}><span className={styles.recipeToken}>{policy.attention}</span><span className={styles.recipeToken}>{selected?.label ?? "fallback"}</span><span className={styles.recipeToken}>as of {String(value.asOf ?? "unknown")}</span></div>
+    </header>
+    <div className={styles.projectionBody}>
+      <p className={styles.projectionRationale}>Selected by the Blueprint recipe for {context}: {selected?.rationale ?? "First valid candidate."}</p>
+      <div className={styles.projectionGrid}>{sections.map((section) => <ProjectionSectionView section={section} items={items} evidence={evidence} key={section.id} />)}</div>
+    </div>
+    <footer className={styles.alternatives}><strong>Agent-proposed projections</strong>{candidates.map((candidate) => <span className={styles.alternative} key={candidate.id}>{candidate.label} · {candidate.attention}{candidate.id === selected?.id ? " · selected" : ""}</span>)}</footer>
+  </section>;
+};
+
 const WorkspaceView: ProjectionView = ({ node, children, emit }) => {
   const styles = useStyles();
   const [pendingCommand, setPendingCommand] = React.useState<string | null>(null);
@@ -205,6 +395,7 @@ const WorkspaceView: ProjectionView = ({ node, children, emit }) => {
   </section>;
   const advisory = <section className={styles.advisory}>
     {cells.get("portfolio-intelligence")}
+    {cells.get("portfolio-intelligence-2")}
     {cells.get("conservative-rebalance")}
     {cells.get("growth-rebalance")}
     {cells.get("strategy-comparison")}
@@ -218,6 +409,7 @@ const WorkspaceView: ProjectionView = ({ node, children, emit }) => {
         </div>
         <div className={styles.workflowActions} aria-label="Portfolio workflows">
           <button className={styles.workflowButton} disabled={pendingCommand !== null} type="button" onClick={() => void runWorkflow("requestIntelligence")}>Analyze portfolio</button>
+          <button className={styles.workflowButton} disabled={pendingCommand !== null} type="button" onClick={() => void runWorkflow("requestIntelligence2")}>Analyze intelligence 2</button>
           <button className={`${styles.workflowButton} ${styles.primaryWorkflowButton}`} disabled={pendingCommand !== null} type="button" onClick={() => void runWorkflow("calculateStrategies")}>Build strategies</button>
         </div>
       </div>
@@ -236,5 +428,6 @@ export default {
   workspace: WorkspaceView,
   summary: SummaryView,
   narrative: NarrativeView,
+  "intelligence-projections": IntelligenceProjectionsView,
   comparison: StrategyComparisonView,
 };
