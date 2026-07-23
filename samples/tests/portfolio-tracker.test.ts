@@ -370,7 +370,8 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
     expect(foundryRequests[0]).toMatchObject({ agentName: "Portfolio-Intelligence-Agent" });
     expect(String(foundryRequests[0].message)).toContain("NVDA");
     expect(String(foundryRequests[0].message)).toContain("riskTolerance");
-    expect(String(foundryRequests[0].instructions)).toContain("Use web search");
+    expect(String(foundryRequests[0].instructions)).toContain("Analyze only the supplied portfolio data");
+    expect(String(foundryRequests[0].instructions)).toContain("Return an empty evidence array");
     expect((foundryRequests[0].responseSchema as { strict?: boolean }).strict).toBe(true);
 
     await portfolio.controller.emit(
