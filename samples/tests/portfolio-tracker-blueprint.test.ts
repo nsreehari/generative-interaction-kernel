@@ -70,6 +70,12 @@ describe("portfolio-tracker Blueprint", () => {
     });
     const strategyComparison = portfolioCells.find((cell) => cell.id === "strategy-comparison");
     expect(strategyComparison?.capability).toBe("portfolio:comparison");
+    expect(strategyComparison?.requires).toEqual(expect.arrayContaining(["portfolio-intelligence", "portfolio-intelligence-2"]));
+    expect(strategyComparison?.edges?.read).toMatchObject({
+      intelligence1: "portfolio.intelligence",
+      intelligence2: "portfolio.intelligence2",
+      strategyInputs: "portfolio.strategyInputs",
+    });
     expect(strategyComparison?.edges?.on).toBeUndefined();
     expect(marketPrices?.props?.externalSource).toEqual({ refreshEvent: "refresh" });
     expect(marketPrices?.edges?.on?.refresh).toEqual([{

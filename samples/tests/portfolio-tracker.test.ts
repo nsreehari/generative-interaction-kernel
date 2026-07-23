@@ -7,7 +7,7 @@ import effects, {
   wrapOrchestrator,
   writeStoredPortfolioState,
 } from "../bundles/portfolio-tracker/effect_handlers";
-import { formatIntelligenceMetric, safeEvidenceUrl, selectIntelligenceProjection } from "../bundles/portfolio-tracker/projection_views";
+import { formatIntelligenceMetric, safeEvidenceUrl, selectIntelligenceProjection, strategyActionDisabled, strategyInputSnapshot, strategyInputsEqual } from "../bundles/portfolio-tracker/projection_views";
 import { openSampleBlueprint } from "../shared/blueprints";
 import { hostConfig } from "../shared/host-config";
 import { declarativeServiceOrchestrator } from "../shared/service-runtime";
@@ -216,6 +216,49 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
     expect(formatIntelligenceMetric("100", "shares")).toBe("100 shares");
   });
 
+  it("prefers intelligence 2 and compares strategy inputs canonically", () => {
+    const baseline = { summary: "baseline" };
+    const enhanced = { headline: "enhanced" };
+    const current = strategyInputSnapshot({
+      positions: { NVDA: { value: 100 } },
+      summary: { marketValue: 100 },
+      investorProfile: null,
+      intelligence1: baseline,
+      intelligence2: enhanced,
+    });
+    expect(current).toMatchObject({ intelligenceSource: "portfolio-intelligence-2", intelligence: enhanced });
+    expect(strategyInputsEqual(current!, {
+      intelligence: enhanced,
+      intelligenceSource: "portfolio-intelligence-2",
+      investorProfile: null,
+      positions: { NVDA: { value: 100 } },
+      summary: { marketValue: 100 },
+    })).toBe(true);
+    expect(strategyInputsEqual(current!, { ...current, intelligenceSource: "portfolio-intelligence" })).toBe(false);
+    expect(strategyInputSnapshot({ intelligence1: baseline, intelligence2: null })).toMatchObject({ intelligenceSource: "portfolio-intelligence" });
+    expect(strategyInputSnapshot({ intelligence1: null, intelligence2: null })).toBeNull();
+    expect(strategyActionDisabled({ intelligence1: null, intelligence2: null })).toBe(true);
+    expect(strategyActionDisabled({ intelligence1: baseline, intelligence2: null, strategyInputs: null })).toBe(false);
+    expect(strategyActionDisabled({
+      positions: current!.positions,
+      summary: current!.summary,
+      investorProfile: current!.investorProfile,
+      intelligence1: baseline,
+      intelligence2: enhanced,
+      strategyInputs: current,
+    })).toBe(true);
+    expect(strategyActionDisabled({
+      positions: current!.positions,
+      summary: { marketValue: 101 },
+      investorProfile: current!.investorProfile,
+      intelligence1: baseline,
+      intelligence2: enhanced,
+      strategyInputs: current,
+    })).toBe(false);
+    const baselineInputs = strategyInputSnapshot({ intelligence1: baseline, intelligence2: null });
+    expect(strategyActionDisabled({ intelligence1: baseline, intelligence2: enhanced, strategyInputs: baselineInputs })).toBe(false);
+  });
+
   it("reports when the configured Foundry server cannot be reached", async () => {
     globalThis.fetch = async () => { throw new TypeError("Failed to fetch"); };
     const portfolio = runtime(blueprintId);
@@ -341,7 +384,9 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
     expect(portfolio.state.get("portfolio.strategies.growth")).toMatchObject({ id: "growth" });
     expect(portfolio.state.get("portfolio.strategies.conservative.targetWeights")).toEqual({ NVDA: 0.4, JNJ: 0.6 });
     expect(portfolio.state.get("portfolio.recommendation.status")).toBe("proposed");
+    expect(portfolio.state.get("portfolio.strategyInputs")).toMatchObject({ intelligenceSource: "portfolio-intelligence" });
     expect(foundryRequests[1]).toMatchObject({ agentName: "Portfolio-Strategy-Agent" });
+    expect(String(foundryRequests[1].message)).toContain("Portfolio intelligence source: portfolio-intelligence");
     expect(String(foundryRequests[1].message)).toContain("Portfolio intelligence JSON");
   });
 
@@ -371,8 +416,12 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
         intelligence2: { headline: intelligence2Response.headline },
         strategies: { conservative: { id: "conservative" }, growth: { id: "growth" } },
         recommendation: { selected: "conservative", status: "proposed" },
+        strategyInputs: { intelligenceSource: "portfolio-intelligence-2", intelligence: { headline: intelligence2Response.headline } },
         investorProfile: { riskTolerance: "moderate", horizonYears: 8 },
       });
+      const strategyRequest = foundryRequests.find((request) => request.agentName === "Portfolio-Strategy-Agent");
+      expect(String(strategyRequest?.message)).toContain("Portfolio intelligence source: portfolio-intelligence-2");
+      expect(String(strategyRequest?.message)).toContain(intelligence2Response.headline);
     } finally {
       if (previousStorage) Object.defineProperty(globalThis, "localStorage", previousStorage);
       else Reflect.deleteProperty(globalThis, "localStorage");

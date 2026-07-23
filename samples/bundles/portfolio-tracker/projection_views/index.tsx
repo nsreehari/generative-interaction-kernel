@@ -120,13 +120,13 @@ type PortfolioWorkflowContextValue = {
 
 const PortfolioWorkflowContext = React.createContext<PortfolioWorkflowContextValue | null>(null);
 
-function WorkflowButton({ command, hasResult, initialLabel, refreshLabel, primary = false }: { command: WorkflowCommand; hasResult: boolean; initialLabel: string; refreshLabel: string; primary?: boolean }) {
+function WorkflowButton({ command, hasResult, initialLabel, refreshLabel, primary = false, unavailable = false }: { command: WorkflowCommand; hasResult: boolean; initialLabel: string; refreshLabel: string; primary?: boolean; unavailable?: boolean }) {
   const styles = useStyles();
   const workflow = React.useContext(PortfolioWorkflowContext);
   if (!workflow) return null;
   const pending = workflow.pendingCommand === command;
   const pendingLabel = command === "calculateStrategies" ? "Building..." : "Analyzing...";
-  return <button className={mergeClasses(styles.workflowButton, primary && styles.primaryWorkflowButton)} disabled={workflow.pendingCommand !== null} type="button" onClick={() => void workflow.runWorkflow(command)}>{pending ? pendingLabel : hasResult ? refreshLabel : initialLabel}</button>;
+  return <button className={mergeClasses(styles.workflowButton, primary && styles.primaryWorkflowButton)} disabled={workflow.pendingCommand !== null || unavailable} type="button" onClick={() => void workflow.runWorkflow(command)}>{pending ? pendingLabel : hasResult ? refreshLabel : initialLabel}</button>;
 }
 
 function CellSection({ title, cell, className }: { title: string; cell?: React.ReactElement<ProjectionViewProps>; className?: string }) {
@@ -217,23 +217,70 @@ const NarrativeView: ProjectionView = ({ node }) => {
 const StrategyComparisonView: ProjectionView = ({ node }) => {
   const styles = useStyles();
   const value = valueOf(node) as Record<string, unknown> | null;
+  const currentInputs = strategyInputSnapshot(node.props);
+  const unavailable = strategyActionDisabled(node.props);
   if (value == null) {
     return (
       <section className={styles.recommendationPanel}>
-        <div className={styles.panelHeadingRow}><p className={styles.advisoryEyebrow}>Strategy comparison</p><WorkflowButton command="calculateStrategies" hasResult={false} initialLabel="Build strategies" refreshLabel="Refresh strategies" primary /></div>
-        <h2 className={styles.recommendationChoice}>Awaiting portfolio intelligence</h2>
-        <p className={styles.recommendationReason}>Build strategies after analysis to compare conservative and growth alternatives.</p>
+        <div className={styles.panelHeadingRow}><p className={styles.advisoryEyebrow}>Strategy comparison</p><WorkflowButton command="calculateStrategies" hasResult={false} initialLabel="Build strategies" refreshLabel="Refresh strategies" primary unavailable={unavailable} /></div>
+        <h2 className={styles.recommendationChoice}>{currentInputs === null ? "Portfolio intelligence required" : "Ready to build strategies"}</h2>
+        <p className={styles.recommendationReason}>{currentInputs === null ? "Complete either portfolio analysis to enable strategy generation." : "Compare conservative and growth allocations using the latest portfolio intelligence."}</p>
       </section>
     );
   }
   return (
     <section className={styles.recommendationPanel}>
-      <div className={styles.panelHeadingRow}><p className={styles.advisoryEyebrow}>Strategy comparison</p><WorkflowButton command="calculateStrategies" hasResult initialLabel="Build strategies" refreshLabel="Refresh strategies" primary /></div>
+      <div className={styles.panelHeadingRow}><p className={styles.advisoryEyebrow}>Strategy comparison</p><WorkflowButton command="calculateStrategies" hasResult initialLabel="Build strategies" refreshLabel="Refresh strategies" primary unavailable={unavailable} /></div>
       <h2 className={styles.recommendationChoice}>Agent preference: {String(value.selected ?? "Not available")}</h2>
       <p className={styles.recommendationReason}>{String(value.reason ?? "")}</p>
     </section>
   );
 };
+
+export type StrategyInputSnapshot = {
+  positions: unknown;
+  summary: unknown;
+  investorProfile: unknown;
+  intelligenceSource: "portfolio-intelligence" | "portfolio-intelligence-2";
+  intelligence: unknown;
+};
+
+function objectValue(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+export function strategyInputSnapshot(props: Record<string, unknown>): StrategyInputSnapshot | null {
+  const intelligence2 = objectValue(props.intelligence2);
+  const intelligence1 = objectValue(props.intelligence1);
+  const intelligence = intelligence2 ?? intelligence1;
+  if (!intelligence) return null;
+  return {
+    positions: props.positions ?? {},
+    summary: props.summary ?? {},
+    investorProfile: props.investorProfile ?? null,
+    intelligenceSource: intelligence2 ? "portfolio-intelligence-2" : "portfolio-intelligence",
+    intelligence,
+  };
+}
+
+function canonicalJson(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalJson);
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, entry]) => [key, canonicalJson(entry)]));
+  }
+  return value;
+}
+
+export function strategyInputsEqual(current: StrategyInputSnapshot, previous: unknown): boolean {
+  return JSON.stringify(canonicalJson(current)) === JSON.stringify(canonicalJson(previous));
+}
+
+export function strategyActionDisabled(props: Record<string, unknown>): boolean {
+  const current = strategyInputSnapshot(props);
+  return current === null || strategyInputsEqual(current, props.strategyInputs);
+}
 
 type IntelligenceItem = {
   id: string;
