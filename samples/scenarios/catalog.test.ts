@@ -174,7 +174,9 @@ test("demo target mappings must reference declared Bundle node events", () => {
 });
 
 test("host demo resolution accepts bundle-scoped IDs and zero-based indices", () => {
-  assert.equal(resolveDemoComposition("portfolio-intelligence-rebalance", "portfolio-tracker").entry.id, "portfolio-intelligence-rebalance");
+  const intelligenceRebalance = resolveDemoComposition("portfolio-intelligence-rebalance", "portfolio-tracker");
+  assert.equal(intelligenceRebalance.entry.id, "portfolio-intelligence-rebalance");
+  assert.deepEqual(intelligenceRebalance.scenarioPlan.applicableContexts, ["portfolio-advisor"]);
   assert.equal(resolveDemoComposition("0", "portfolio-tracker").entry.id, "portfolio-baseline");
   assert.equal(resolveDemoComposition("1", "portfolio-tracker").entry.id, "portfolio-dynamic-ticker");
   assert.equal(resolveDemoComposition("2", "portfolio-tracker").entry.id, "portfolio-intelligence-rebalance");

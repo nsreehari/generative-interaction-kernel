@@ -1,11 +1,11 @@
 {
   "gik": "0.1",
-  "type": "profile",
+  "type": "blueprint",
   "payload": {
     "id": "copilot-c2",
     "kind": "runtime-blueprint",
     "version": "1.0",
-    "layers": [
+    "tiers": [
       {
         "id": "runtime-document",
         "kind": "runtime-document",
@@ -562,10 +562,8 @@
         "scope": "per-session"
       }
     },
-    "resources": {
-      "document": {
-        "inline": {
-          "root": {
+    "organism": {
+      "root": {
             "capability": "ui:screen",
             "id": "copilot-c2-root",
             "props": {
@@ -1758,9 +1756,7 @@
                 }
               ]
             }
-          }
         }
-      }
     },
     "runtime": {
       "expression": "jsonata",
