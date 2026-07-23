@@ -22,6 +22,7 @@ const PERSISTED_PORTFOLIO_KEYS = [
   "intelligence2",
   "strategies",
   "recommendation",
+  "strategyInputs",
   "investorProfile",
 ] as const;
 
@@ -150,7 +151,22 @@ function clearDerivedPortfolioOps(ctx: EffectContext, holdings: Record<string, H
     ctx.set("portfolio.intelligence2", null),
     ctx.set("portfolio.strategies", {}),
     ctx.set("portfolio.recommendation", null),
+    ctx.set("portfolio.strategyInputs", null),
+    ctx.set("portfolio.pendingStrategyInputs", null),
   ];
+}
+
+function currentStrategyInputs(ctx: EffectContext): Json {
+  const intelligence2 = ctx.get("portfolio.intelligence2");
+  const intelligence1 = ctx.get("portfolio.intelligence");
+  const useIntelligence2 = intelligence2 !== null && typeof intelligence2 === "object" && !Array.isArray(intelligence2);
+  return {
+    positions: ctx.get("portfolio.positions") ?? {},
+    summary: ctx.get("portfolio.summary") ?? {},
+    investorProfile: ctx.get("portfolio.investorProfile") ?? null,
+    intelligenceSource: useIntelligence2 ? "portfolio-intelligence-2" : "portfolio-intelligence",
+    intelligence: (useIntelligence2 ? intelligence2 : intelligence1) ?? null,
+  } as Json;
 }
 
 function replaceHoldings(ctx: EffectContext, holdings: Holding[], investorProfile: Json = null): { ops: PatchOp[] } {
@@ -194,6 +210,9 @@ const handlers: EffectHandlerMap = {
       : [];
     return replaceHoldings(ctx, rows, ctx.get("portfolio.investorProfile"));
   },
+  prepareStrategies: (ctx) => ({
+    ops: [ctx.set("portfolio.pendingStrategyInputs", currentStrategyInputs(ctx))],
+  }),
   setPresentationContext: (ctx) => {
     const requested = ctx.get("control.presentationContext");
     const next = requested

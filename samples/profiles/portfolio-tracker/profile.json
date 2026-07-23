@@ -112,7 +112,7 @@
             "settlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "($positions := response.results.{'ticker':key,'quantity':meta.quantity,'price':$round(body.chart.result[0].meta.regularMarketPrice, 2),'value':$round(meta.quantity * body.chart.result[0].meta.regularMarketPrice, 2),'costBasis':$round(meta.quantity * meta.costBasis, 2),'gainLoss':$round((meta.quantity * body.chart.result[0].meta.regularMarketPrice) - (meta.quantity * meta.costBasis), 2)}; {'ops':[{'op':'set','path':'portfolio.quotes','value':$count(response.results) > 0 ? $merge(response.results.{key:{'ticker':key,'price':$round(body.chart.result[0].meta.regularMarketPrice, 2)}}) : {}},{'op':'set','path':'portfolio.positions','value':$count($positions) > 0 ? $merge($positions.{ticker:$}) : {}},{'op':'set','path':'portfolio.summary','value':{'marketValue':$count($positions) > 0 ? $round($sum($positions.value), 2) : 0,'costBasis':$count($positions) > 0 ? $round($sum($positions.costBasis), 2) : 0,'gainLoss':$count($positions) > 0 ? $round($sum($positions.gainLoss), 2) : 0}},{'op':'set','path':'portfolio.intelligence','value':null},{'op':'set','path':'portfolio.intelligence2','value':null},{'op':'set','path':'portfolio.strategies','value':{}},{'op':'set','path':'portfolio.recommendation','value':null}],'detail':{'provider':'yahoo-finance-http-service','quoteCount':$count(response.results)}})"
+                "expr": "($positions := response.results.{'ticker':key,'quantity':meta.quantity,'price':$round(body.chart.result[0].meta.regularMarketPrice, 2),'value':$round(meta.quantity * body.chart.result[0].meta.regularMarketPrice, 2),'costBasis':$round(meta.quantity * meta.costBasis, 2),'gainLoss':$round((meta.quantity * body.chart.result[0].meta.regularMarketPrice) - (meta.quantity * meta.costBasis), 2)}; {'ops':[{'op':'set','path':'portfolio.quotes','value':$count(response.results) > 0 ? $merge(response.results.{key:{'ticker':key,'price':$round(body.chart.result[0].meta.regularMarketPrice, 2)}}) : {}},{'op':'set','path':'portfolio.positions','value':$count($positions) > 0 ? $merge($positions.{ticker:$}) : {}},{'op':'set','path':'portfolio.summary','value':{'marketValue':$count($positions) > 0 ? $round($sum($positions.value), 2) : 0,'costBasis':$count($positions) > 0 ? $round($sum($positions.costBasis), 2) : 0,'gainLoss':$count($positions) > 0 ? $round($sum($positions.gainLoss), 2) : 0}},{'op':'set','path':'portfolio.intelligence','value':null},{'op':'set','path':'portfolio.intelligence2','value':null},{'op':'set','path':'portfolio.strategies','value':{}},{'op':'set','path':'portfolio.recommendation','value':null},{'op':'set','path':'portfolio.strategyInputs','value':null},{'op':'set','path':'portfolio.pendingStrategyInputs','value':null}],'detail':{'provider':'yahoo-finance-http-service','quoteCount':$count(response.results)}})"
               }
             }
           }
@@ -309,7 +309,7 @@
             "operation": "chat",
             "contract": "portfolio-strategies/v1",
             "request": {
-              "transform": { "kind": "jsonata", "expr": "{'message':'Build conservative and growth target allocations for the current holdings only. Positions JSON: ' & $string(state.portfolio.positions) & ' Portfolio summary JSON: ' & $string(state.portfolio.summary) & ' Investor profile JSON: ' & $string(state.portfolio.investorProfile) & ' Portfolio intelligence JSON: ' & $string(state.portfolio.intelligence),'instructions':'Propose two educational rebalance alternatives using only tickers already present in the supplied positions. Make every target allocation total exactly 1. Choose the alternative that best fits the supplied investor profile; if the profile is missing, say so in the recommendation reason and prefer the conservative alternative. Do not claim to execute trades.'}" }
+              "transform": { "kind": "jsonata", "expr": "{'message':'Build conservative and growth target allocations for the current holdings only. Positions JSON: ' & $string(state.portfolio.pendingStrategyInputs.positions) & ' Portfolio summary JSON: ' & $string(state.portfolio.pendingStrategyInputs.summary) & ' Investor profile JSON: ' & $string(state.portfolio.pendingStrategyInputs.investorProfile) & ' Portfolio intelligence source: ' & state.portfolio.pendingStrategyInputs.intelligenceSource & ' Portfolio intelligence JSON: ' & $string(state.portfolio.pendingStrategyInputs.intelligence),'instructions':'Propose two educational rebalance alternatives using only tickers already present in the supplied positions. Make every target allocation total exactly 1. Choose the alternative that best fits the supplied investor profile; if the profile is missing, say so in the recommendation reason and prefer the conservative alternative. Do not claim to execute trades.'}" }
             },
             "response": {
               "validators": [
@@ -367,10 +367,10 @@
               ]
             },
             "settlement": {
-              "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'portfolio.strategies','value':{'conservative':$merge([response.strategies.conservative,{'targetWeights':$merge(response.strategies.conservative.targetWeights.{ticker:weight})}]),'growth':$merge([response.strategies.growth,{'targetWeights':$merge(response.strategies.growth.targetWeights.{ticker:weight})}])}},{'op':'set','path':'portfolio.recommendation','value':response.recommendation}],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Strategy-Agent'}}" }
+              "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'portfolio.strategies','value':{'conservative':$merge([response.strategies.conservative,{'targetWeights':$merge(response.strategies.conservative.targetWeights.{ticker:weight})}]),'growth':$merge([response.strategies.growth,{'targetWeights':$merge(response.strategies.growth.targetWeights.{ticker:weight})}])}},{'op':'set','path':'portfolio.recommendation','value':response.recommendation},{'op':'set','path':'portfolio.strategyInputs','value':state.portfolio.pendingStrategyInputs},{'op':'set','path':'portfolio.pendingStrategyInputs','value':null}],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Strategy-Agent'}}" }
             },
             "failureSettlement": {
-              "transform": { "kind": "jsonata", "expr": "($access := error.message = 'Foundry access is required' or error.status = 401 or error.status = 403; {'ops':[{'op':'set','path':'portfolio.foundryAccessStatus','value':$access ? 'required' : state.portfolio.foundryAccessStatus},{'op':'set','path':'portfolio.foundryAccessError','value':$access ? (error.status = 401 or error.status = 403 ? 'That access key was rejected.' : 'Foundry access is required.') : error.message}]})" }
+              "transform": { "kind": "jsonata", "expr": "($access := error.message = 'Foundry access is required' or error.status = 401 or error.status = 403; {'ops':[{'op':'set','path':'portfolio.foundryAccessStatus','value':$access ? 'required' : state.portfolio.foundryAccessStatus},{'op':'set','path':'portfolio.foundryAccessError','value':$access ? (error.status = 401 or error.status = 403 ? 'That access key was rejected.' : 'Foundry access is required.') : error.message},{'op':'set','path':'portfolio.pendingStrategyInputs','value':null}]})" }
             },
             "onViolation": { "action": "fail" }
           }
@@ -406,7 +406,7 @@
           "foundry": { "from": "foundry", "use": ["access-gate"] },
           "portfolio": { "from": "self" }
         },
-        "effectHandlers": ["setHoldings", "upsertHolding", "removeHolding", "saveHoldings", "setPresentationContext"]
+        "effectHandlers": ["setHoldings", "upsertHolding", "removeHolding", "saveHoldings", "prepareStrategies", "setPresentationContext"]
       },
       "state": {
         "portfolio": {
@@ -422,6 +422,8 @@
           "intelligence2": null,
           "strategies": {},
           "recommendation": null,
+          "strategyInputs": null,
+          "pendingStrategyInputs": null,
           "investorProfile": null,
           "presentationContext": "portfolio-overview"
         }
@@ -513,7 +515,7 @@
           },
           { "id": "conservative-rebalance", "capability": "portfolio:narrative", "requires": ["position:$TICKER", "portfolio-summary", "portfolio-intelligence", "investor-profile"], "provides": ["rebalance-conservative"], "props": { "label": "conservative-rebalance" }, "edges": { "read": { "value": "portfolio.strategies.conservative" } } },
           { "id": "growth-rebalance", "capability": "portfolio:narrative", "requires": ["position:$TICKER", "portfolio-summary", "portfolio-intelligence", "investor-profile"], "provides": ["rebalance-growth"], "props": { "label": "growth-rebalance" }, "edges": { "read": { "value": "portfolio.strategies.growth" } } },
-          { "id": "strategy-comparison", "capability": "portfolio:comparison", "requires": ["rebalance-conservative", "rebalance-growth"], "provides": ["strategy-comparison"], "service": { "service": "portfolio-strategies", "operation": "chat", "contract": "portfolio-strategies/v1" }, "props": { "label": "strategy-comparison" }, "edges": { "read": { "value": "portfolio.recommendation" } } }
+          { "id": "strategy-comparison", "capability": "portfolio:comparison", "requires": ["rebalance-conservative", "rebalance-growth", "portfolio-intelligence", "portfolio-intelligence-2"], "provides": ["strategy-comparison"], "service": { "service": "portfolio-strategies", "operation": "chat", "contract": "portfolio-strategies/v1" }, "props": { "label": "strategy-comparison" }, "edges": { "read": { "value": "portfolio.recommendation", "positions": "portfolio.positions", "summary": "portfolio.summary", "investorProfile": "portfolio.investorProfile", "intelligence1": "portfolio.intelligence", "intelligence2": "portfolio.intelligence2", "strategyInputs": "portfolio.strategyInputs" } } }
         ]
       },
       "organismRoot": {
@@ -531,7 +533,7 @@
               "refreshPrices": [{ "do": "invoke", "args": { "tool": "refreshPrices" } }],
               "requestIntelligence": [{ "do": "invoke", "args": { "tool": "requestIntelligence" } }],
               "requestIntelligence2": [{ "do": "invoke", "args": { "tool": "requestIntelligence2" } }],
-              "calculateStrategies": [{ "do": "invoke", "args": { "tool": "calculateStrategies" } }],
+              "calculateStrategies": [{ "do": "invoke", "args": { "tool": "prepareStrategies" } }, { "do": "invoke", "args": { "tool": "calculateStrategies" } }],
               "setPresentationContext": [{ "do": "invoke", "args": { "tool": "setPresentationContext" } }]
             }
           }
