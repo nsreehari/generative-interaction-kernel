@@ -8,9 +8,9 @@ const useStyles = makeStyles({
   headerInner: { width: "min(1440px, 100%)", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "end", gap: tokens.spacingHorizontalXXL, flexWrap: "wrap" },
   eyebrow: { margin: 0, color: "#57606a", fontSize: tokens.fontSizeBase200, fontWeight: tokens.fontWeightSemibold, textTransform: "uppercase" },
   title: { margin: `${tokens.spacingVerticalXS} 0 0`, fontSize: tokens.fontSizeHero700, fontWeight: tokens.fontWeightSemibold, letterSpacing: "0" },
-  workflowActions: { display: "flex", gap: tokens.spacingHorizontalS, flexWrap: "wrap" },
   workflowButton: { minHeight: "36px", padding: `0 ${tokens.spacingHorizontalM}`, border: "1px solid #b7bdc5", borderRadius: tokens.borderRadiusMedium, backgroundColor: "#ffffff", color: "#242424", fontWeight: tokens.fontWeightSemibold, cursor: "pointer", ":hover": { backgroundColor: "#f3f4f6" }, ":disabled": { color: "#8a8f98", cursor: "wait" } },
   primaryWorkflowButton: { backgroundColor: "#0f6cbd", color: "#ffffff", ":hover": { backgroundColor: "#115ea3" } },
+  panelHeadingRow: { display: "flex", alignItems: "start", justifyContent: "space-between", gap: tokens.spacingHorizontalL },
   content: { width: "min(1440px, 100%)", margin: "0 auto", padding: `clamp(20px, 3vw, 40px) clamp(16px, 4vw, 56px)`, display: "grid", gap: tokens.spacingVerticalXXL },
   overview: { display: "grid", gridTemplateColumns: "minmax(0, 1.6fr) minmax(280px, .7fr)", gap: tokens.spacingHorizontalXXL, alignItems: "start", "@media (max-width: 900px)": { gridTemplateColumns: "minmax(0, 1fr)" } },
   marketGrid: { display: "grid", gridTemplateColumns: "minmax(300px, .7fr) minmax(560px, 1.3fr)", gap: tokens.spacingHorizontalXXL, "@media (max-width: 1120px)": { gridTemplateColumns: "minmax(0, 1fr)" } },
@@ -112,6 +112,23 @@ function childrenByNodeId(children: React.ReactNode): Map<string, React.ReactEle
   return slots;
 }
 
+type WorkflowCommand = "requestIntelligence" | "requestIntelligence2" | "calculateStrategies";
+type PortfolioWorkflowContextValue = {
+  pendingCommand: WorkflowCommand | null;
+  runWorkflow: (command: WorkflowCommand) => Promise<void>;
+};
+
+const PortfolioWorkflowContext = React.createContext<PortfolioWorkflowContextValue | null>(null);
+
+function WorkflowButton({ command, hasResult, initialLabel, refreshLabel, primary = false }: { command: WorkflowCommand; hasResult: boolean; initialLabel: string; refreshLabel: string; primary?: boolean }) {
+  const styles = useStyles();
+  const workflow = React.useContext(PortfolioWorkflowContext);
+  if (!workflow) return null;
+  const pending = workflow.pendingCommand === command;
+  const pendingLabel = command === "calculateStrategies" ? "Building..." : "Analyzing...";
+  return <button className={mergeClasses(styles.workflowButton, primary && styles.primaryWorkflowButton)} disabled={workflow.pendingCommand !== null} type="button" onClick={() => void workflow.runWorkflow(command)}>{pending ? pendingLabel : hasResult ? refreshLabel : initialLabel}</button>;
+}
+
 function CellSection({ title, cell, className }: { title: string; cell?: React.ReactElement<ProjectionViewProps>; className?: string }) {
   const styles = useStyles();
   const [refreshing, setRefreshing] = React.useState(false);
@@ -159,7 +176,7 @@ const NarrativeView: ProjectionView = ({ node }) => {
   if (node.id === "portfolio-intelligence") {
     if (value == null) {
       return <article className={`${styles.advisoryPanel} ${styles.advisoryWide}`}>
-        <p className={styles.advisoryEyebrow}>Portfolio intelligence</p>
+        <div className={styles.panelHeadingRow}><p className={styles.advisoryEyebrow}>Portfolio intelligence</p><WorkflowButton command="requestIntelligence" hasResult={false} initialLabel="Analyze portfolio" refreshLabel="Refresh analysis" /></div>
         <h2 className={styles.advisoryTitle}>Ready for analysis</h2>
         <p className={styles.advisorySummary}>Add holdings, then analyze the portfolio for observations and risk signals.</p>
       </article>;
@@ -167,7 +184,7 @@ const NarrativeView: ProjectionView = ({ node }) => {
     const observations = Array.isArray(value.observations) ? value.observations.map(String) : [];
     const risks = Array.isArray(value.risks) ? value.risks.map(String) : [];
     return <article className={`${styles.advisoryPanel} ${styles.advisoryWide}`}>
-      <p className={styles.advisoryEyebrow}>Portfolio intelligence</p>
+      <div className={styles.panelHeadingRow}><p className={styles.advisoryEyebrow}>Portfolio intelligence</p><WorkflowButton command="requestIntelligence" hasResult initialLabel="Analyze portfolio" refreshLabel="Refresh analysis" /></div>
       <h2 className={styles.advisoryTitle}>Assessment</h2>
       <p className={styles.advisorySummary}>{String(value.summary ?? "Analysis complete.")}</p>
       <div className={styles.detailColumns}>
@@ -203,7 +220,7 @@ const StrategyComparisonView: ProjectionView = ({ node }) => {
   if (value == null) {
     return (
       <section className={styles.recommendationPanel}>
-        <p className={styles.advisoryEyebrow}>Strategy comparison</p>
+        <div className={styles.panelHeadingRow}><p className={styles.advisoryEyebrow}>Strategy comparison</p><WorkflowButton command="calculateStrategies" hasResult={false} initialLabel="Build strategies" refreshLabel="Refresh strategies" primary /></div>
         <h2 className={styles.recommendationChoice}>Awaiting portfolio intelligence</h2>
         <p className={styles.recommendationReason}>Build strategies after analysis to compare conservative and growth alternatives.</p>
       </section>
@@ -211,7 +228,7 @@ const StrategyComparisonView: ProjectionView = ({ node }) => {
   }
   return (
     <section className={styles.recommendationPanel}>
-      <p className={styles.advisoryEyebrow}>Strategy comparison</p>
+      <div className={styles.panelHeadingRow}><p className={styles.advisoryEyebrow}>Strategy comparison</p><WorkflowButton command="calculateStrategies" hasResult initialLabel="Build strategies" refreshLabel="Refresh strategies" primary /></div>
       <h2 className={styles.recommendationChoice}>Agent preference: {String(value.selected ?? "Not available")}</h2>
       <p className={styles.recommendationReason}>{String(value.reason ?? "")}</p>
     </section>
@@ -374,7 +391,7 @@ const IntelligenceProjectionsView: ProjectionView = ({ node }) => {
   const diagnostics = node.props.projectionDiagnostics === true;
   const { policy, candidate: selected, sections } = selectIntelligenceProjection(value, context, node.props.projectionRecipe);
   if (Object.keys(value).length === 0) {
-    return <section className={styles.intelligence2}><div className={styles.intelligence2Header}><div><p className={styles.advisoryEyebrow}>Portfolio Intelligence</p><h2 className={styles.intelligence2Title}>{error ? "Analysis unavailable" : "Ready for analysis"}</h2><p className={styles.intelligence2Summary}>{error || "Analyze the portfolio to identify the signals that deserve attention."}</p></div>{diagnostics ? <div className={styles.recipeMeta}><span className={styles.recipeToken}>{policy.attention}</span><span className={styles.recipeToken}>{context}</span></div> : null}</div></section>;
+    return <section className={styles.intelligence2}><div className={styles.intelligence2Header}><div><p className={styles.advisoryEyebrow}>Portfolio Intelligence 2</p><h2 className={styles.intelligence2Title}>{error ? "Analysis unavailable" : "Ready for analysis"}</h2><p className={styles.intelligence2Summary}>{error || "Analyze the portfolio to identify the signals that deserve attention."}</p></div><div className={styles.recipeMeta}>{diagnostics ? <><span className={styles.recipeToken}>{policy.attention}</span><span className={styles.recipeToken}>{context}</span></> : null}<WorkflowButton command="requestIntelligence2" hasResult={false} initialLabel="Analyze intelligence" refreshLabel="Refresh analysis" /></div></div></section>;
   }
   const items = intelligenceItems(value.items);
   const evidence = evidenceItems(value.evidence);
@@ -390,7 +407,7 @@ const IntelligenceProjectionsView: ProjectionView = ({ node }) => {
   return <section className={styles.intelligence2}>
     <header className={styles.intelligence2Header}>
       <div><p className={styles.advisoryEyebrow}>Portfolio Intelligence</p><h2 className={styles.intelligence2Title}>{headline}</h2><p className={styles.intelligence2Summary}>{summary}</p></div>
-      <div className={styles.recipeMeta}>{diagnostics ? <><span className={styles.recipeToken}>{policy.attention}</span><span className={styles.recipeToken}>{selected?.label ?? "fallback"}</span></> : null}<span className={styles.recipeToken}>As of {String(value.asOf ?? "unknown")}</span></div>
+      <div className={styles.recipeMeta}>{diagnostics ? <><span className={styles.recipeToken}>{policy.attention}</span><span className={styles.recipeToken}>{selected?.label ?? "fallback"}</span></> : null}<span className={styles.recipeToken}>As of {String(value.asOf ?? "unknown")}</span><WorkflowButton command="requestIntelligence2" hasResult initialLabel="Analyze intelligence" refreshLabel="Refresh analysis" /></div>
     </header>
     <div className={styles.projectionBody}>
       {diagnostics ? <p className={styles.projectionRationale}>Selected by the Blueprint recipe for {context}: {selected?.rationale ?? "First valid candidate."}</p> : null}
@@ -404,10 +421,10 @@ const IntelligenceProjectionsView: ProjectionView = ({ node }) => {
 
 const WorkspaceView: ProjectionView = ({ node, children, emit }) => {
   const styles = useStyles();
-  const [pendingCommand, setPendingCommand] = React.useState<string | null>(null);
+  const [pendingCommand, setPendingCommand] = React.useState<WorkflowCommand | null>(null);
   const cells = childrenByNodeId(children);
   const isAdvisorContext = node.props.presentationContext === "portfolio-advisor";
-  const runWorkflow = async (command: string) => {
+  const runWorkflow = async (command: WorkflowCommand) => {
     setPendingCommand(command);
     try {
       await emit(command, {});
@@ -423,24 +440,19 @@ const WorkspaceView: ProjectionView = ({ node, children, emit }) => {
     <CellSection title="Market prices" cell={cells.get("market-prices")} />
     <CellSection title="Positions" cell={cells.get("positions")} className={`${styles.tableSurface} ${styles.positionsSurface}`} />
   </section>;
-  const advisory = <section className={styles.advisory}>
+  const advisory = <PortfolioWorkflowContext.Provider value={{ pendingCommand, runWorkflow }}><section className={styles.advisory}>
     {cells.get("portfolio-intelligence")}
     {cells.get("portfolio-intelligence-2")}
     {cells.get("conservative-rebalance")}
     {cells.get("growth-rebalance")}
     {cells.get("strategy-comparison")}
-  </section>;
+  </section></PortfolioWorkflowContext.Provider>;
   return <main className={styles.workspace}>
     <header className={styles.header}>
       <div className={styles.headerInner}>
         <div>
           <p className={styles.eyebrow}>{isAdvisorContext ? "Advisor workspace" : "Investment workspace"}</p>
           <h1 className={styles.title}>{String(node.props.title ?? "Portfolio tracker")}</h1>
-        </div>
-        <div className={styles.workflowActions} aria-label="Portfolio workflows">
-          <button className={styles.workflowButton} disabled={pendingCommand !== null} type="button" onClick={() => void runWorkflow("requestIntelligence")}>Analyze portfolio</button>
-          <button className={styles.workflowButton} disabled={pendingCommand !== null} type="button" onClick={() => void runWorkflow("requestIntelligence2")}>Analyze intelligence 2</button>
-          <button className={`${styles.workflowButton} ${styles.primaryWorkflowButton}`} disabled={pendingCommand !== null} type="button" onClick={() => void runWorkflow("calculateStrategies")}>Build strategies</button>
         </div>
       </div>
     </header>
