@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, makeStyles, tokens } from "@fluentui/react-components";
+import { Button, makeStyles, mergeClasses, tokens } from "@fluentui/react-components";
 import type { ProjectionView, ProjectionViewProps } from "@gik/react";
 
 const useStyles = makeStyles({
@@ -88,15 +88,16 @@ const useStyles = makeStyles({
   signalTitle: { display: "block", marginBottom: "2px", fontWeight: tokens.fontWeightSemibold },
   signalDetail: { margin: 0, color: "#42464d", lineHeight: tokens.lineHeightBase300 },
   metricStrip: { display: "flex", gap: tokens.spacingHorizontalXL, flexWrap: "wrap" },
-  metricBlock: { minWidth: "120px" },
+  metricBlock: { minWidth: "150px" },
   metricNumber: { display: "block", fontSize: tokens.fontSizeBase600, fontWeight: tokens.fontWeightSemibold, fontVariantNumeric: "tabular-nums" },
-  metricCaption: { color: "#57606a", fontSize: tokens.fontSizeBase200 },
+  metricCaption: { display: "block", marginBottom: tokens.spacingVerticalXS, color: "#57606a", fontSize: tokens.fontSizeBase200 },
   timeline: { margin: 0, padding: 0, listStyle: "none", display: "grid", gap: tokens.spacingVerticalM },
   timelineItem: { display: "grid", gridTemplateColumns: "100px minmax(0, 1fr)", gap: tokens.spacingHorizontalM, borderLeft: "2px solid #0f6cbd", paddingLeft: tokens.spacingHorizontalM },
   evidenceList: { margin: 0, padding: 0, listStyle: "none", display: "grid", gap: tokens.spacingVerticalS },
   evidenceLink: { color: "#0f6cbd", textDecoration: "none", ":hover": { textDecoration: "underline" } },
   alternatives: { padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalXL}`, display: "flex", alignItems: "center", gap: tokens.spacingHorizontalS, flexWrap: "wrap", borderTop: "1px solid #e2e5e9", color: "#57606a", fontSize: tokens.fontSizeBase200 },
   alternative: { padding: `2px ${tokens.spacingHorizontalS}`, borderRadius: tokens.borderRadiusMedium, backgroundColor: "#eef0f2" },
+  provenance: { margin: 0, padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalXL}`, borderTop: "1px solid #e2e5e9", color: "#57606a", fontSize: tokens.fontSizeBase200 },
 });
 
 function valueOf(node: ProjectionViewProps["node"]): unknown {
@@ -307,6 +308,19 @@ export function safeEvidenceUrl(value: string): string | undefined {
   }
 }
 
+export function formatIntelligenceMetric(value: string, unit: string): string {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return [value, unit].filter(Boolean).join(" ");
+  const normalizedUnit = unit.trim().toLowerCase();
+  if (["usd", "currency", "dollar", "dollars"].includes(normalizedUnit)) {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(numericValue);
+  }
+  const formatted = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(numericValue);
+  if (normalizedUnit === "%" || normalizedUnit.includes("percent")) return `${formatted}%`;
+  if (normalizedUnit === "share" || normalizedUnit === "shares") return `${formatted} shares`;
+  return unit ? `${formatted} ${unit}` : formatted;
+}
+
 function ProjectionPrimitive({ section, items, evidence }: { section: ProjectionSection; items: IntelligenceItem[]; evidence: EvidenceItem[] }) {
   const styles = useStyles();
   const selectedItems = section.contentIds.map((id) => items.find((item) => item.id === id)).filter((item): item is IntelligenceItem => item !== undefined);
@@ -316,7 +330,7 @@ function ProjectionPrimitive({ section, items, evidence }: { section: Projection
     return item ? <><p className={styles.heroSignal}>{item.title}</p><p className={styles.signalDetail}>{item.detail}</p></> : null;
   }
   if (section.primitive === "metric-strip") {
-    return <div className={styles.metricStrip}>{selectedItems.map((item) => <div className={styles.metricBlock} key={item.id}><strong className={styles.metricNumber}>{item.value || item.title}</strong><span className={styles.metricCaption}>{item.unit || item.detail}</span></div>)}</div>;
+    return <div className={styles.metricStrip}>{selectedItems.map((item) => <div className={styles.metricBlock} key={item.id}><span className={styles.metricCaption}>{item.title}</span><strong className={styles.metricNumber}>{formatIntelligenceMetric(item.value, item.unit)}</strong></div>)}</div>;
   }
   if (section.primitive === "timeline") {
     return <ol className={styles.timeline}>{selectedItems.map((item) => <li className={styles.timelineItem} key={item.id}><strong>{item.date || "Upcoming"}</strong><div><span className={styles.signalTitle}>{item.title}</span><p className={styles.signalDetail}>{item.detail}</p></div></li>)}</ol>;
@@ -334,17 +348,22 @@ function ProjectionPrimitive({ section, items, evidence }: { section: Projection
   return <ul className={styles.signalList}>{selectedItems.map((item) => <li className={styles.signalItem} key={item.id}><span className={salienceClass(styles, item.salience)}>{item.salience}</span><div><span className={styles.signalTitle}>{item.title}</span><p className={styles.signalDetail}>{item.detail}</p></div></li>)}</ul>;
 }
 
-function ProjectionSectionView({ section, items, evidence }: { section: ProjectionSection; items: IntelligenceItem[]; evidence: EvidenceItem[] }) {
+function ProjectionSectionView({ section, items, evidence, diagnostics }: { section: ProjectionSection; items: IntelligenceItem[]; evidence: EvidenceItem[]; diagnostics: boolean }) {
   const styles = useStyles();
-  const className = `${styles.projectionSection} ${section.priority === "primary" ? styles.projectionPrimary : ""} ${section.priority === "tertiary" ? styles.projectionTertiary : ""}`;
+  const className = mergeClasses(
+    styles.projectionSection,
+    section.priority === "primary" && styles.projectionPrimary,
+    section.priority === "tertiary" && styles.projectionTertiary,
+  );
+  const style = section.primitive === "signal-list" ? { gridColumn: "1 / -1" } : undefined;
   const label = `${section.primitive} · ${section.priority} · ${section.disclosure}`;
   if (section.disclosure === "collapsed") {
-    return <details className={className} key={section.id}>
-      <summary className={styles.disclosureSummary}><span className={styles.primitiveLabel}>{label}</span><span className={styles.disclosureTitle}>{section.title}</span></summary>
+    return <details className={className} key={section.id} style={style}>
+      <summary className={styles.disclosureSummary}>{diagnostics ? <span className={styles.primitiveLabel}>{label}</span> : null}<span className={styles.disclosureTitle}>{section.title}</span></summary>
       <div className={styles.disclosureContent}><ProjectionPrimitive section={section} items={items} evidence={evidence} /></div>
     </details>;
   }
-  return <section className={className} key={section.id}><p className={styles.primitiveLabel}>{label}</p><h3 className={styles.primitiveTitle}>{section.title}</h3><ProjectionPrimitive section={section} items={items} evidence={evidence} /></section>;
+  return <section className={className} key={section.id} style={style}>{diagnostics ? <p className={styles.primitiveLabel}>{label}</p> : null}<h3 className={styles.primitiveTitle}>{section.title}</h3><ProjectionPrimitive section={section} items={items} evidence={evidence} /></section>;
 }
 
 const IntelligenceProjectionsView: ProjectionView = ({ node }) => {
@@ -352,23 +371,34 @@ const IntelligenceProjectionsView: ProjectionView = ({ node }) => {
   const value = asRecord(valueOf(node));
   const context = String(node.props.presentationContext ?? "portfolio-overview");
   const error = String(node.props.error ?? "");
+  const diagnostics = node.props.projectionDiagnostics === true;
   const { policy, candidate: selected, sections } = selectIntelligenceProjection(value, context, node.props.projectionRecipe);
   if (Object.keys(value).length === 0) {
-    return <section className={styles.intelligence2}><div className={styles.intelligence2Header}><div><p className={styles.advisoryEyebrow}>Portfolio Intelligence 2</p><h2 className={styles.intelligence2Title}>{error ? "Analysis unavailable" : "Context-aware analysis ready"}</h2><p className={styles.intelligence2Summary}>{error || "Analyze the portfolio to generate semantic content and alternative projections for the current attention context."}</p></div><div className={styles.recipeMeta}><span className={styles.recipeToken}>{policy.attention}</span><span className={styles.recipeToken}>{context}</span></div></div></section>;
+    return <section className={styles.intelligence2}><div className={styles.intelligence2Header}><div><p className={styles.advisoryEyebrow}>Portfolio Intelligence</p><h2 className={styles.intelligence2Title}>{error ? "Analysis unavailable" : "Ready for analysis"}</h2><p className={styles.intelligence2Summary}>{error || "Analyze the portfolio to identify the signals that deserve attention."}</p></div>{diagnostics ? <div className={styles.recipeMeta}><span className={styles.recipeToken}>{policy.attention}</span><span className={styles.recipeToken}>{context}</span></div> : null}</div></section>;
   }
   const items = intelligenceItems(value.items);
   const evidence = evidenceItems(value.evidence);
   const candidates = projectionCandidates(value.projectionCandidates);
+  const heroSection = sections.find((section) => section.primitive === "hero-signal");
+  const heroItem = heroSection?.contentIds.map((id) => items.find((item) => item.id === id)).find((item): item is IntelligenceItem => item !== undefined);
+  const visibleSections = diagnostics || !heroSection ? sections : sections.filter((section) => section.id !== heroSection.id);
+  const headline = diagnostics ? String(value.headline ?? "Structured assessment") : heroItem?.title ?? String(value.headline ?? "Portfolio assessment");
+  const summary = diagnostics || policy.attention === "focused" ? String(value.summary ?? "") : heroItem?.detail ?? String(value.summary ?? "");
+  const provenance = evidence.length > 0
+    ? `Based on the supplied portfolio data and ${evidence.length} external ${evidence.length === 1 ? "source" : "sources"}.`
+    : "Based on the supplied portfolio data. External news was not included.";
   return <section className={styles.intelligence2}>
     <header className={styles.intelligence2Header}>
-      <div><p className={styles.advisoryEyebrow}>Portfolio Intelligence 2</p><h2 className={styles.intelligence2Title}>{String(value.headline ?? "Structured assessment")}</h2><p className={styles.intelligence2Summary}>{String(value.summary ?? "")}</p></div>
-      <div className={styles.recipeMeta}><span className={styles.recipeToken}>{policy.attention}</span><span className={styles.recipeToken}>{selected?.label ?? "fallback"}</span><span className={styles.recipeToken}>as of {String(value.asOf ?? "unknown")}</span></div>
+      <div><p className={styles.advisoryEyebrow}>Portfolio Intelligence</p><h2 className={styles.intelligence2Title}>{headline}</h2><p className={styles.intelligence2Summary}>{summary}</p></div>
+      <div className={styles.recipeMeta}>{diagnostics ? <><span className={styles.recipeToken}>{policy.attention}</span><span className={styles.recipeToken}>{selected?.label ?? "fallback"}</span></> : null}<span className={styles.recipeToken}>As of {String(value.asOf ?? "unknown")}</span></div>
     </header>
     <div className={styles.projectionBody}>
-      <p className={styles.projectionRationale}>Selected by the Blueprint recipe for {context}: {selected?.rationale ?? "First valid candidate."}</p>
-      <div className={styles.projectionGrid}>{sections.map((section) => <ProjectionSectionView section={section} items={items} evidence={evidence} key={section.id} />)}</div>
+      {diagnostics ? <p className={styles.projectionRationale}>Selected by the Blueprint recipe for {context}: {selected?.rationale ?? "First valid candidate."}</p> : null}
+      <div className={styles.projectionGrid}>{visibleSections.map((section) => <ProjectionSectionView section={section} items={items} evidence={evidence} diagnostics={diagnostics} key={section.id} />)}</div>
     </div>
-    <footer className={styles.alternatives}><strong>Agent-proposed projections</strong>{candidates.map((candidate) => <span className={styles.alternative} key={candidate.id}>{candidate.label} · {candidate.attention}{candidate.id === selected?.id ? " · selected" : ""}</span>)}</footer>
+    {diagnostics
+      ? <footer className={styles.alternatives}><strong>Agent-proposed projections</strong>{candidates.map((candidate) => <span className={styles.alternative} key={candidate.id}>{candidate.label} · {candidate.attention}{candidate.id === selected?.id ? " · selected" : ""}</span>)}</footer>
+      : <p className={styles.provenance}>{provenance}</p>}
   </section>;
 };
 

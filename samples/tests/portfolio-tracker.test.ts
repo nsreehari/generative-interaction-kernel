@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { bundleFromJson, loadBundleRuntime } from "@gik/react";
 import effects from "../bundles/portfolio-tracker/effect_handlers";
-import { safeEvidenceUrl, selectIntelligenceProjection } from "../bundles/portfolio-tracker/projection_views";
+import { formatIntelligenceMetric, safeEvidenceUrl, selectIntelligenceProjection } from "../bundles/portfolio-tracker/projection_views";
 import { openSampleBlueprint } from "../shared/blueprints";
 import { hostConfig } from "../shared/host-config";
 import { declarativeServiceOrchestrator } from "../shared/service-runtime";
@@ -143,6 +143,12 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
     expect(safeEvidenceUrl("https://investor.nvidia.com/events")).toBe("https://investor.nvidia.com/events");
     expect(safeEvidenceUrl("javascript:alert(1)")).toBeUndefined();
     expect(safeEvidenceUrl("not a url")).toBeUndefined();
+  });
+
+  it("formats intelligence metrics for portfolio readers", () => {
+    expect(formatIntelligenceMetric("62235.2", "USD")).toBe("$62,235.20");
+    expect(formatIntelligenceMetric("125.5", "percent")).toBe("125.5%");
+    expect(formatIntelligenceMetric("100", "shares")).toBe("100 shares");
   });
 
   it("reports when the configured Foundry server cannot be reached", async () => {
