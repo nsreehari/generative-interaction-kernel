@@ -24,7 +24,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
 
       # npm install (not ci): the rolldown/vite wasm optional-binding tree resolves to
       # slightly different nested native-dep versions across platforms, which makes strict
@@ -36,7 +36,7 @@ jobs:
         # Build the workspace packages first so non-aliased barrels (e.g. @gik/kernel,
         # resolved via the workspace's dist/) exist before the host bundles them.
         run: |
-          npm run build:public-packages || npm run build:public-packages
+          npm run build:public-packages
           npm run build:host
         env:
           # Serve under the project Pages path so asset URLs resolve.
