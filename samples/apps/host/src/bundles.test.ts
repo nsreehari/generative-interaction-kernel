@@ -36,6 +36,10 @@ test("host registry keeps playground embed-only instead of switcher-visible", ()
 });
 
 test("host projection imports can resolve another bundle by id", () => {
+  const copilotViews = resolveBundleProjectionViews("copilot-c2");
+  assert.equal(typeof copilotViews?.workspace, "function");
+  assert.equal(typeof copilotViews?.["agent-activity-board"], "function");
+  assert.equal(typeof copilotViews?.["run-console"], "function");
   const foundryProviderViews = resolveBundleProjectionViews("foundry");
   assert.equal(typeof foundryProviderViews?.["access-gate"], "function");
   const foundryViews = resolveBundleProjectionViews("foundry-agent");
