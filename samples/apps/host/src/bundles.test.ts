@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { unwrap } from "@gik/kernel";
-import { loadBundleRuntime } from "@gik/react";
+import { loadBundleRuntime, seedState } from "@gik/react";
 
 import { createHostRegistry, DEFAULT_BLUEPRINT, resolveBundleProjectionViews } from "./bundles";
 import { copilotC2StateStorageKey } from "../../../bundles/copilot-c2/state";
 import { portfolioStateStorageKey } from "../../../bundles/portfolio-tracker/effect_handlers";
 import { openSampleBlueprint } from "../../../shared/blueprints";
+import { createBlueprintServiceHost } from "../../../shared/service-runtime";
 
 test("host registry exposes only approved Blueprints to the switcher", () => {
   const registry = createHostRegistry();
@@ -67,6 +68,7 @@ test("host registry hydrates and persists durable copilot-c2 state only", () => 
     copilotC2StateStorageKey,
     JSON.stringify({
       copilotC2: {
+        mcpServer: "https://mcp.example.test/mcp",
         workingDir: "C:/work/demo",
         model: "gpt-5.4",
         agents: [{ id: "reviewer", name: "Reviewer" }],
@@ -90,6 +92,7 @@ test("host registry hydrates and persists durable copilot-c2 state only", () => 
     if (!entry || entry.kind !== "bundle") throw new Error("copilot-c2 bundle is unavailable");
     const bundle = entry.make();
     const hydrated = bundle.state?.copilotC2 as Record<string, unknown>;
+    assert.equal(hydrated.mcpServer, "https://mcp.example.test/mcp");
     assert.equal(hydrated.workingDir, "C:/work/demo");
     assert.deepEqual(hydrated.agents, [{ id: "reviewer", name: "Reviewer" }]);
     assert.equal(hydrated.view, "dashboard");
@@ -99,6 +102,7 @@ test("host registry hydrates and persists durable copilot-c2 state only", () => 
     runtime.state.apply([{ op: "set", path: "copilotC2.model", value: "gpt-5.5" }]);
     const afterDurableChange = values.get(copilotC2StateStorageKey) ?? "";
     const persisted = JSON.parse(afterDurableChange);
+    assert.equal(persisted.copilotC2.mcpServer, "https://mcp.example.test/mcp");
     assert.equal(persisted.copilotC2.model, "gpt-5.5");
     assert.equal(persisted.copilotC2.view, undefined);
     assert.equal(persisted.copilotC2.runStatus, undefined);
@@ -130,7 +134,10 @@ test("host projection imports can resolve another bundle by id", () => {
 
 test("copilot-c2 opens as a declarative MCP-backed Blueprint", () => {
   const runtime = openSampleBlueprint("copilot-c2");
-  const services = unwrap(runtime.manifest).externals?.services as Record<string, { kind?: string }>;
+  const services = unwrap(runtime.manifest).externals?.services as Record<string, {
+    kind?: string;
+    config?: Record<string, unknown>;
+  }>;
 
   assert.equal(runtime.blueprintId, "copilot-c2");
   assert.equal(Object.keys(services).length, 8);
@@ -138,4 +145,32 @@ test("copilot-c2 opens as a declarative MCP-backed Blueprint", () => {
     Object.values(services).map((service) => service.kind),
     ["mcp", "mcp", "mcp", "mcp", "mcp", "mcp", "mcp", "mcp"]
   );
+  assert.deepEqual(
+    Object.values(services).map((service) => service.config?.serverStatePath),
+    Array(8).fill("copilotC2.mcpServer")
+  );
+});
+
+test("copilot-c2 resolves its editable MCP server before execution", async () => {
+  const runtime = openSampleBlueprint("copilot-c2");
+  const state = seedState(runtime.manifest as Parameters<typeof seedState>[0], runtime.state);
+  state.apply([{ op: "set", path: "copilotC2.mcpServer", value: "https://mcp.example.test/mcp" }]);
+  let invocation: unknown;
+  const serviceHost = createBlueprintServiceHost(runtime, state, {
+    hostCapabilities: ["mcp-executor"],
+    execute: async (request) => {
+      invocation = request;
+      return { text: "No agents found.", structured: { agents: [] } };
+    },
+  });
+
+  await serviceHost.invoke({
+    kind: "invoke",
+    node: "copilot-c2-discover-agents",
+    tool: "refreshEnvironment",
+    args: {},
+  });
+
+  const declaration = (invocation as { declaration: { config: Record<string, unknown> } }).declaration;
+  assert.equal(declaration.config.server, "https://mcp.example.test/mcp");
 });

@@ -76,6 +76,7 @@
         },
         "config": {
           "server": "http://127.0.0.1:7801/mcp",
+          "serverStatePath": "copilotC2.mcpServer",
           "tool": "copilot.check_environment"
         },
         "scope": "per-session"
@@ -139,6 +140,7 @@
         },
         "config": {
           "server": "http://127.0.0.1:7801/mcp",
+          "serverStatePath": "copilotC2.mcpServer",
           "tool": "copilot.list_source_roots"
         },
         "scope": "per-session"
@@ -218,6 +220,7 @@
         },
         "config": {
           "server": "http://127.0.0.1:7801/mcp",
+          "serverStatePath": "copilotC2.mcpServer",
           "tool": "copilot.upsert_source_root"
         },
         "scope": "per-session"
@@ -296,6 +299,7 @@
         },
         "config": {
           "server": "http://127.0.0.1:7801/mcp",
+          "serverStatePath": "copilotC2.mcpServer",
           "tool": "copilot.remove_source_root"
         },
         "scope": "per-session"
@@ -362,6 +366,7 @@
         },
         "config": {
           "server": "http://127.0.0.1:7801/mcp",
+          "serverStatePath": "copilotC2.mcpServer",
           "tool": "copilot.run_agent"
         },
         "scope": "per-session"
@@ -425,6 +430,7 @@
         },
         "config": {
           "server": "http://127.0.0.1:7801/mcp",
+          "serverStatePath": "copilotC2.mcpServer",
           "tool": "copilot.list_runs"
         },
         "scope": "per-session"
@@ -491,6 +497,7 @@
         },
         "config": {
           "server": "http://127.0.0.1:7801/mcp",
+          "serverStatePath": "copilotC2.mcpServer",
           "tool": "copilot.get_run"
         },
         "scope": "per-session"
@@ -557,6 +564,7 @@
         },
         "config": {
           "server": "http://127.0.0.1:7801/mcp",
+          "serverStatePath": "copilotC2.mcpServer",
           "tool": "copilot.cancel_run"
         },
         "scope": "per-session"
@@ -941,6 +949,29 @@
                     "children": [
                       {
                         "capability": "ui:field",
+                        "id": "copilot-c2-settings-mcp-server",
+                        "props": {
+                          "label": "MCP server URL"
+                        },
+                        "edges": {
+                          "read": {
+                            "value": "copilotC2.mcpServer"
+                          },
+                          "on": {
+                            "input": [
+                              {
+                                "do": "assign",
+                                "target": "copilotC2.mcpServer",
+                                "args": {
+                                  "from": "$event.value"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "capability": "ui:field",
                         "id": "copilot-c2-settings-model",
                         "props": {
                           "label": "Model"
@@ -1010,8 +1041,12 @@
                               "capability": "ui:note",
                               "id": "copilot-c2-env-server",
                               "props": {
-                                "tone": "muted",
-                                "value": "Targets the local demo-boards MCP server at http://127.0.0.1:7801/mcp."
+                                "tone": "muted"
+                              },
+                              "edges": {
+                                "readExpr": {
+                                  "value": "'Targets the configured demo-boards MCP server at ' & copilotC2.mcpServer & '.'"
+                                }
                               }
                             },
                             {
@@ -1911,6 +1946,7 @@
       "state": {
         "copilotC2": {
           "view": "dashboard",
+          "mcpServer": "http://127.0.0.1:7801/mcp",
           "workingDir": "",
           "model": "gpt-5.4",
           "environmentStatus": "Discover local Copilot agents.",
