@@ -15,6 +15,7 @@ import {
 import { resolveNode } from "./interpret";
 import { reduce, reduceActions } from "./reduce";
 import { validateProgramMessage, validateProgramDefinition } from "./validate";
+import { ContinuousGraphRuntime } from "./graph-runtime";
 import {
   unwrap,
   type DocNode,
@@ -36,6 +37,14 @@ import {
   type Reaction,
   type ResolvedNode,
   type TraceSink,
+  type ExecutionBudget,
+  type ExecutionSnapshot,
+  type GraphExecutionResult,
+  type GraphMutation,
+  type GraphNodeExecutionOutcome,
+  type ProgramNode,
+  type PortToken,
+  type TransitionResult,
 } from "./types";
 import { DerivationScheduler } from "./derivations";
 
@@ -82,12 +91,24 @@ function cloneJson<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+function flattenState(value: Json, prefix = "", result: Record<PortToken, Json> = {}): Record<PortToken, Json> {
+  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    for (const [key, child] of Object.entries(value)) {
+      flattenState(child, prefix ? `${prefix}.${key}` : key, result);
+    }
+  } else if (prefix) {
+    result[prefix] = value;
+  }
+  return result;
+}
+
 export class Kernel {
   private rev = 0;
   private readonly doc: ExecutableProgramDefinition;
   private readonly manifest: ExecutableVocabularyManifest;
   private readonly store: StateModel;
   private readonly derivations: DerivationScheduler;
+  private readonly graph?: ContinuousGraphRuntime;
   private readonly expr: ExpressionProvider;
   private readonly predicateExpr: ExpressionProvider;
   private readonly registry: CapabilityRegistry;
@@ -115,6 +136,7 @@ export class Kernel {
   }>();
   private readonly invocationTasks = new Set<Promise<void>>();
   private readonly invocationErrors: unknown[] = [];
+  private readonly graphInvocationNodes = new Map<InvocationId, string>();
 
   constructor(
     manifest: Enveloped<ExecutableVocabularyManifest>,
@@ -135,6 +157,10 @@ export class Kernel {
         ? new CompositeStateModel(local, opts.contexts)
         : local;
     this.derivations = new DerivationScheduler(this.doc.derivations);
+    this.graph = this.doc.graph
+      ? new ContinuousGraphRuntime(this.doc.graph, this.expr, (node, inputs, event) =>
+          this.executeGraphNode(node, inputs, event))
+      : undefined;
     this.orchestrator = opts.orchestrator ?? new NullOrchestrator();
     this.sink = opts.sink;
   }
@@ -186,6 +212,15 @@ export class Kernel {
       const fired: OrchestratorEffect[] = [];
       const invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }> = [];
       await this.settle(event, ops, 0, fired, invokes);
+      if (this.graph) {
+        await this.applyGraphResult(
+          await this.graph.publish(flattenState(this.store.snapshot())),
+          ops,
+          fired,
+          invokes,
+        );
+        await this.applyGraphResult(await this.graph.dispatch(event), ops, fired, invokes);
+      }
       this.rev += 1;
       for (const effect of fired) {
         const invocationId = invokes.find((entry) => entry.effect === effect)?.id;
@@ -196,6 +231,43 @@ export class Kernel {
       for (const invoke of invokes) this.startInvocation(invoke.effect, invoke.id);
       return patch;
     });
+  }
+
+  start(budget?: ExecutionBudget): Promise<TransitionResult> {
+    return this.enqueueGraphTransition(async () => {
+      const graph = this.requireGraph();
+      const seeded = await graph.publish(flattenState(this.store.snapshot()), budget);
+      if (seeded.status === "yielded") return seeded;
+      return this.mergeGraphResults(seeded, await graph.start(budget));
+    });
+  }
+
+  publish(values: Record<PortToken, Json>, budget?: ExecutionBudget): Promise<TransitionResult> {
+    return this.enqueueGraphTransition(() => this.requireGraph().publish(values, budget));
+  }
+
+  mutate(mutations: readonly GraphMutation[], budget?: ExecutionBudget): Promise<TransitionResult> {
+    return this.enqueueGraphTransition(async () => {
+      const graph = this.requireGraph();
+      graph.mutate(mutations);
+      return graph.resume(budget);
+    });
+  }
+
+  resume(budget?: ExecutionBudget): Promise<TransitionResult> {
+    return this.enqueueGraphTransition(() => this.requireGraph().resume(budget));
+  }
+
+  execution(): ExecutionSnapshot {
+    const graph = this.requireGraph();
+    return {
+      topologyVersion: graph.inspect().topologyVersion,
+      status: graph.status(),
+      tokens: graph.snapshotTokens(),
+      nodes: graph.snapshotNodes(),
+      readyNodes: graph.readyNodeIds(),
+      runningInvocations: [...this.activeInvocations.keys()],
+    };
   }
 
   /**
@@ -391,6 +463,118 @@ export class Kernel {
     return next;
   }
 
+  private requireGraph(): ContinuousGraphRuntime {
+    if (!this.graph) throw new Error("This program does not declare a graph");
+    return this.graph;
+  }
+
+  private enqueueGraphTransition(operation: () => Promise<GraphExecutionResult>): Promise<TransitionResult> {
+    return this.enqueueMutation(async () => {
+      const previousRevision = this.rev;
+      const effectStart = this.effectLog.length;
+      const graphResult = await operation();
+      const ops: PatchOp[] = [];
+      const fired: OrchestratorEffect[] = [];
+      const invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }> = [];
+      await this.applyGraphResult(graphResult, ops, fired, invokes);
+      if (ops.length > 0 || fired.length > 0) this.rev += 1;
+      for (const effect of fired) {
+        const invocationId = invokes.find((entry) => entry.effect === effect)?.id;
+        this.effectLog.push({ rev: this.rev, seq: this.effectSeq++, effect, invocationId });
+      }
+      const patch = { rev: this.rev, ops };
+      if (ops.length > 0) this.publishPatch(patch);
+      for (const invoke of invokes) this.startInvocation(invoke.effect, invoke.id);
+      return {
+        previousRevision,
+        revision: this.rev,
+        status: graphResult.status,
+        state: cloneJson(this.store.snapshot()),
+        patch,
+        effects: this.effectLog.slice(effectStart).map((entry) => ({ ...entry })),
+        execution: this.execution(),
+      };
+    });
+  }
+
+  private applyGraphPublications(result: GraphExecutionResult, acc: PatchOp[]): void {
+    for (const [path, value] of Object.entries(result.publications)) {
+      const operation: PatchOp = { op: "set", path, value };
+      this.store.apply([operation]);
+      acc.push(operation);
+    }
+  }
+
+  private mergeGraphResults(first: GraphExecutionResult, second: GraphExecutionResult): GraphExecutionResult {
+    return {
+      status: second.status,
+      publications: { ...first.publications, ...second.publications },
+      operations: [...first.operations, ...second.operations],
+      effects: [...first.effects, ...second.effects],
+      events: [...first.events, ...second.events],
+      readyNodes: second.readyNodes,
+      nodeExecutions: first.nodeExecutions + second.nodeExecutions,
+      publicationCount: first.publicationCount + second.publicationCount,
+    };
+  }
+
+  private async applyGraphResult(
+    result: GraphExecutionResult,
+    acc: PatchOp[],
+    fired: OrchestratorEffect[],
+    invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }>,
+  ): Promise<void> {
+    await this.applyAndDerive(result.operations, acc);
+    this.applyGraphPublications(result, acc);
+    const invokeStart = invokes.length;
+    await this.runEffects(result.effects, acc, 0, fired, invokes);
+    const graphNodes = this.graph?.snapshotNodes();
+    for (const invocation of invokes.slice(invokeStart)) {
+      if (result.effects.includes(invocation.effect) && graphNodes?.[invocation.effect.node]?.status === "suspended") {
+        this.graphInvocationNodes.set(invocation.id, invocation.effect.node);
+      }
+    }
+    for (const event of result.events) await this.settle(event, acc, 0, fired, invokes);
+    await this.runReactions(acc, 0, fired, invokes);
+  }
+
+  private async executeGraphNode(
+    node: ProgramNode,
+    inputs: Record<string, Json>,
+    event?: GIKEvent,
+  ): Promise<GraphNodeExecutionOutcome> {
+    if (node.operation.kind === "actions") {
+      const result = await reduceActions(
+        this.store,
+        node.id,
+        node.operation.actions,
+        this.expr,
+        this.predicateExpr,
+        { inputs, event: event?.payload ?? {} },
+      );
+      for (const trace of result.traces) this.sink?.(trace);
+      return {
+        operations: result.ops,
+        effects: result.effects,
+        events: result.emitted,
+      };
+    }
+    if (node.operation.kind === "invoke") {
+      const args: Record<string, Json> = {};
+      for (const [name, expression] of Object.entries(node.operation.arguments ?? {})) {
+        args[name] = await this.expr.eval(expression, this.store.snapshot(), {
+          inputs,
+          event: event?.payload ?? {},
+        });
+      }
+      return {
+        effects: [{ kind: "invoke", node: node.id, tool: node.operation.tool, args }],
+        suspended: true,
+      };
+    }
+    throw new Error(`Graph node operation '${node.operation.kind}' does not require Kernel execution context`);
+  }
+
   private async applyAndDerive(operations: readonly PatchOp[], acc: PatchOp[]): Promise<void> {
     if (operations.length === 0) return;
     this.store.apply([...operations]);
@@ -492,6 +676,11 @@ export class Kernel {
         if (result.ops?.length) {
           await this.applyAndDerive(result.ops, ops);
         }
+        const graphNodeId = this.graphInvocationNodes.get(id);
+        if (graphNodeId && this.graph) {
+          const graphResult = await this.graph.complete(graphNodeId, result.outputs ?? {});
+          await this.applyGraphResult(graphResult, ops, fired, invokes);
+        }
         for (const followUp of result.events ?? []) {
           await this.settle(followUp, ops, 0, fired, invokes);
         }
@@ -520,6 +709,7 @@ export class Kernel {
         for (const invoke of invokes) this.startInvocation(invoke.effect, invoke.id);
       });
     } finally {
+      this.graphInvocationNodes.delete(id);
       if (this.activeInvocations.get(id) === active) {
         this.activeInvocations.delete(id);
       }

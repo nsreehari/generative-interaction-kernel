@@ -13,6 +13,7 @@
       "type": "object",
       "additionalProperties": false,
       "anyOf": [
+        { "required": ["graph"] },
         { "required": ["root"] },
         { "required": ["handlers"] },
         { "required": ["reactions"] },
@@ -24,6 +25,7 @@
           "type": "string",
           "description": "Vocabulary version this program targets."
         },
+        "graph": { "$ref": "#/definitions/programGraph" },
         "root": { "$ref": "#/definitions/node" },
         "handlers": {
           "type": "array",
@@ -64,6 +66,166 @@
     "expr": {
       "type": "string",
       "description": "An opaque expression in the vocabulary-declared dialect."
+    },
+    "portToken": {
+      "type": "string",
+      "description": "A program-level dataflow token. Tokens may be dormant or participate in feedback cycles.",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)*$"
+    },
+    "portDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "enum": ["value", "signal", "stream"] },
+        "producers": { "enum": ["single", "many"] }
+      }
+    },
+    "inputPort": {
+      "oneOf": [
+        { "$ref": "#/definitions/portToken" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["token"],
+          "properties": {
+            "token": { "$ref": "#/definitions/portToken" },
+            "optional": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "outputPort": {
+      "oneOf": [
+        { "$ref": "#/definitions/portToken" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["token"],
+          "properties": {
+            "token": { "$ref": "#/definitions/portToken" },
+            "mode": { "enum": ["value", "signal", "stream"] }
+          }
+        }
+      ]
+    },
+    "nodeTrigger": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["startup"],
+          "properties": { "startup": { "const": true } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["event"],
+          "properties": {
+            "event": { "$ref": "#/definitions/identifier" },
+            "node": { "$ref": "#/definitions/identifier" }
+          }
+        }
+      ]
+    },
+    "computeOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "expression"],
+      "properties": {
+        "kind": { "const": "compute" },
+        "expression": { "$ref": "#/definitions/expr" }
+      }
+    },
+    "actionsOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "actions"],
+      "properties": {
+        "kind": { "const": "actions" },
+        "actions": { "type": "array", "items": { "$ref": "#/definitions/action" } }
+      }
+    },
+    "invokeOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "tool"],
+      "properties": {
+        "kind": { "const": "invoke" },
+        "tool": { "type": "string", "minLength": 1 },
+        "arguments": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/expr" }
+        }
+      }
+    },
+    "decisionCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["when"],
+      "properties": {
+        "when": { "$ref": "#/definitions/expr" },
+        "outputs": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/expr" }
+        }
+      }
+    },
+    "decisionOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "cases"],
+      "properties": {
+        "kind": { "const": "decision" },
+        "cases": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/decisionCase" }
+        }
+      }
+    },
+    "programNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "operation"],
+      "properties": {
+        "id": { "$ref": "#/definitions/identifier" },
+        "inputs": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/inputPort" }
+        },
+        "outputs": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/outputPort" }
+        },
+        "trigger": { "$ref": "#/definitions/nodeTrigger" },
+        "when": { "$ref": "#/definitions/expr" },
+        "operation": {
+          "oneOf": [
+            { "$ref": "#/definitions/computeOperation" },
+            { "$ref": "#/definitions/actionsOperation" },
+            { "$ref": "#/definitions/invokeOperation" },
+            { "$ref": "#/definitions/decisionOperation" }
+          ]
+        }
+      }
+    },
+    "programGraph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodes"],
+      "properties": {
+        "inputs": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/definitions/portToken" } },
+        "outputs": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/definitions/portToken" } },
+        "ports": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/portDefinition" }
+        },
+        "nodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/programNode" }
+        }
+      }
     },
     "action": {
       "type": "object",

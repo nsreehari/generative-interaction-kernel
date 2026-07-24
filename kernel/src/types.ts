@@ -45,6 +45,156 @@ export interface GIKEvent {
   actorId?: string;
 }
 
+export type PortToken = string;
+export type PortMode = "value" | "signal" | "stream";
+
+export interface PortDefinition {
+  mode?: PortMode;
+  producers?: "single" | "many";
+}
+
+export interface InputPort {
+  token: PortToken;
+  optional?: boolean;
+}
+
+export interface OutputPort {
+  token: PortToken;
+  mode?: PortMode;
+}
+
+export type NodeTrigger =
+  | { startup: true }
+  | { event: string; node?: string };
+
+export interface ComputeNodeOperation {
+  kind: "compute";
+  expression: string;
+}
+
+export interface ActionsNodeOperation {
+  kind: "actions";
+  actions: Action[];
+}
+
+export interface InvokeNodeOperation {
+  kind: "invoke";
+  tool: string;
+  arguments?: Record<string, string>;
+}
+
+export interface DecisionCase {
+  when: string;
+  outputs?: Record<string, string>;
+}
+
+export interface DecisionNodeOperation {
+  kind: "decision";
+  cases: DecisionCase[];
+}
+
+export type NodeOperation =
+  | ComputeNodeOperation
+  | ActionsNodeOperation
+  | InvokeNodeOperation
+  | DecisionNodeOperation;
+
+export interface ProgramNode {
+  id: string;
+  inputs?: Record<string, PortToken | InputPort>;
+  outputs?: Record<string, PortToken | OutputPort>;
+  trigger?: NodeTrigger;
+  when?: string;
+  operation: NodeOperation;
+}
+
+export interface ProgramGraph {
+  inputs?: PortToken[];
+  outputs?: PortToken[];
+  ports?: Record<PortToken, PortDefinition>;
+  nodes: ProgramNode[];
+}
+
+export interface TokenRuntimeState {
+  status: "absent" | "available";
+  value?: Json;
+  version: number;
+  producedBy?: string;
+}
+
+export type GraphNodeStatus = "idle" | "ready" | "running" | "suspended" | "failed";
+
+export interface GraphNodeRuntimeState {
+  status: GraphNodeStatus;
+  consumedVersions: Record<PortToken, number>;
+  invocationId?: InvocationId;
+  failure?: Json;
+}
+
+export type ExecutionStatus = "quiescent" | "suspended" | "completed" | "yielded" | "failed";
+
+export interface ExecutionBudget {
+  maxNodeExecutions?: number;
+  maxPublications?: number;
+}
+
+export interface GraphExecutionResult {
+  status: ExecutionStatus;
+  publications: Record<PortToken, Json>;
+  operations: PatchOp[];
+  effects: OrchestratorEffect[];
+  events: GIKEvent[];
+  readyNodes: string[];
+  nodeExecutions: number;
+  publicationCount: number;
+}
+
+export interface GraphNodeExecutionOutcome {
+  outputs?: Record<string, Json>;
+  operations?: PatchOp[];
+  effects?: OrchestratorEffect[];
+  events?: GIKEvent[];
+  suspended?: boolean;
+}
+
+export interface ExecutionSnapshot {
+  topologyVersion: number;
+  status: ExecutionStatus;
+  tokens: Record<PortToken, TokenRuntimeState>;
+  nodes: Record<string, GraphNodeRuntimeState>;
+  readyNodes: string[];
+  runningInvocations: InvocationId[];
+}
+
+export interface TransitionResult {
+  previousRevision: number;
+  revision: number;
+  status: ExecutionStatus;
+  state: Record<string, Json>;
+  patch: Patch;
+  effects: RecordedEffect[];
+  execution: ExecutionSnapshot;
+}
+
+export interface GraphDiagnostic {
+  kind: "unproduced-token" | "unused-token" | "feedback-component";
+  token?: PortToken;
+  nodes?: string[];
+}
+
+export interface GraphInspection {
+  topologyVersion: number;
+  diagnostics: GraphDiagnostic[];
+}
+
+export type GraphMutation =
+  | { op: "addNode"; node: ProgramNode }
+  | { op: "removeNode"; nodeId: string }
+  | { op: "replaceNode"; nodeId: string; node: ProgramNode }
+  | { op: "addPort"; token: PortToken; definition?: PortDefinition }
+  | { op: "removePort"; token: PortToken }
+  | { op: "updatePort"; token: PortToken; definition: PortDefinition };
+
 export interface Action {
   do: string;
   target?: string;
@@ -132,6 +282,7 @@ export interface RuntimeReaction extends Reaction {
 
 export interface ProgramDefinition {
   vocabulary?: string;
+  graph?: ProgramGraph;
   handlers?: RuntimeHandler[];
   reactions?: RuntimeReaction[];
   machines?: Machine[];
@@ -175,6 +326,8 @@ export interface OrchestratorEffect {
 export interface OrchestratorResult {
   ops?: PatchOp[];
   events?: GIKEvent[];
+  /** Local output-port values returned when settling a graph invoke node. */
+  outputs?: Record<string, Json>;
   /** Semantic settlement recorded by observability (for example rejected or confirmation-required). */
   outcome?: string;
   /** Structured, serializable context for the settlement receipt. */
