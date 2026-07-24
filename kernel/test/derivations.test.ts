@@ -7,7 +7,7 @@ import {
   InMemoryStateModel,
   JsonataExpressionProvider,
   assignFrom,
-  authorDocument,
+  authorProjectedProgram,
   envelope,
   node,
 } from "../src/index";
@@ -77,17 +77,17 @@ test("rejects standing derivation cycles", () => {
 });
 
 test("kernel settles standing derivations into the initiating patch", async () => {
-  const manifest = envelope("manifest", {
+  const manifest = envelope("vocabulary", {
     version: "derivations/1",
     namespaces: ["portfolio"],
     capabilities: { input: { emits: ["setPrice"] } },
   });
-  const document = authorDocument(
+  const document = authorProjectedProgram(
     node("input", "price", {
       on: { setPrice: [assignFrom("portfolio.price", "$event.price")] },
     }),
     {
-      manifest: "derivations/1",
+      vocabulary: "derivations/1",
       derivations: [
         {
           id: "market-value",
@@ -124,13 +124,13 @@ test("kernel settles standing derivations into the initiating patch", async () =
 });
 
 test("restore publishes derived writes with the restored namespace", async () => {
-  const manifest = envelope("manifest", {
+  const manifest = envelope("vocabulary", {
     version: "derivations/1",
     namespaces: ["portfolio"],
     capabilities: {},
   });
-  const document = authorDocument(node("text", "summary"), {
-    manifest: "derivations/1",
+  const document = authorProjectedProgram(node("text", "summary"), {
+    vocabulary: "derivations/1",
     derivations: [{
       id: "market-value",
       target: "portfolio.marketValue",

@@ -1,4 +1,4 @@
-import type { DocumentPayload } from "@gik/kernel";
+import type { ProjectedProgramDefinition } from "@gik/kernel";
 import {
   loadBlueprint,
   resolveProfileTemplate,
@@ -71,10 +71,10 @@ export function compileSocPresentation(presentationContext?: string | SocPresent
   return traceSocBlueprint(presentationContext)[1].output as PresentationSpec & { frame?: string };
 }
 
-export function compileSocDocument(presentationContext?: string | SocPresentationContext): DocumentPayload {
+export function compileSocDocument(presentationContext?: string | SocPresentationContext): ProjectedProgramDefinition {
   return runProfile(
     socBlueprint,
     SOC_BLUEPRINT_SEED,
     resolveSocPresentationContext(presentationContext),
-  ) as DocumentPayload;
+  ) as ProjectedProgramDefinition;
 }

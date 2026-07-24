@@ -1,9 +1,9 @@
 {
   "name": "patch ops: merge is a shallow combine, remove deletes a leaf",
   "description": "Seeds a base object, then a merge op (shallow-combines keys, overwriting on conflict) and a remove op (deletes one leaf). A node reads the resulting object so any conforming kernel's applyOp semantics for merge/remove are observable through the resolved tree.",
-  "manifest": {
+  "vocabulary": {
     "gik": "0.1",
-    "type": "manifest",
+    "type": "vocabulary",
     "payload": {
       "version": "ops-demo/1.0",
       "expression": "jsonata",
@@ -12,11 +12,11 @@
       "capabilities": { "panel": {} }
     }
   },
-  "document": {
+  "program": {
     "gik": "0.1",
-    "type": "document",
+    "type": "program",
     "payload": {
-      "manifest": "ops-demo/1.0",
+      "vocabulary": "ops-demo/1.0",
       "root": {
         "capability": "panel",
         "id": "p",

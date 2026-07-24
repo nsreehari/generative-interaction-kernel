@@ -43,8 +43,8 @@ const recipeArtifacts = blueprint.payload.recipes.map((payload) => ({
   payload: payload as unknown as LayerRecipe,
 })) as LayerRecipeArtifact[];
 const runtime = openSampleBlueprint("live-workspace-soc");
-const runtimeDocument = unwrap(runtime.document);
-const manifest = unwrap(runtime.manifest);
+const runtimeDocument = unwrap(runtime.program);
+const manifest = unwrap(runtime.vocabulary);
 
 test("SOC blueprint owns one connected four-tier lowering chain", () => {
   assert.deepEqual(

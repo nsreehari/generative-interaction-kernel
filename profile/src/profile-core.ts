@@ -8,7 +8,7 @@
 import type {
   ExternalsSpec,
   Json,
-  ManifestPayload,
+  ProjectedVocabularyManifest,
   ServiceDeclaration,
   ServiceRequirement,
 } from "../../kernel/src/index";
@@ -18,7 +18,7 @@ export interface ProfileRuntime {
   namespaces?: string[];
   contexts?: string[];
   actions?: string[];
-  capabilities: ManifestPayload["capabilities"];
+  capabilities: ProjectedVocabularyManifest["capabilities"];
   externals?: Omit<ExternalsSpec, "services">;
   state?: Record<string, Json>;
 }

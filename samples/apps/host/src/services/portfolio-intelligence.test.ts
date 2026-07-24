@@ -9,7 +9,7 @@ import {
 import { DETERMINISTIC_PORTFOLIO_PROVIDER } from "../../../../services";
 
 const runtime = openSampleBlueprint("portfolio-tracker");
-const typedManifest = runtime.manifest as Parameters<typeof seedState>[0];
+const typedManifest = runtime.vocabulary as Parameters<typeof seedState>[0];
 
 describe("portfolio intelligence service declarations", () => {
   it("materializes the Blueprint-owned market data and intelligence services", async () => {
@@ -25,7 +25,7 @@ describe("portfolio intelligence service declarations", () => {
 
   it("rejects a declaration whose configured deterministic handler is unavailable", async () => {
     const unavailable = structuredClone(runtime);
-    const services = unwrap(unavailable.manifest).externals!.services!;
+    const services = unwrap(unavailable.vocabulary).externals!.services!;
     services["portfolio-intelligence"] = {
       ...services["portfolio-intelligence"],
       config: { handler: "not-registered" },

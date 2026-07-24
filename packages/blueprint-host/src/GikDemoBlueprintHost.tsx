@@ -312,7 +312,7 @@ export function GikDemoBlueprintHost({
 
   const targetHandlesControl = React.useMemo(() => {
     const runtime = openBlueprint(blueprint);
-    return unwrap(runtime.document).root.edges?.react?.some(
+    return unwrap(runtime.program).root.edges?.react?.some(
       (reaction: Reaction) => typeof reaction.when === "string" && reaction.when.startsWith("control.commands."),
     ) ?? false;
   }, [blueprint]);

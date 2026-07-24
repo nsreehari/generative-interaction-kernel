@@ -10,8 +10,8 @@
 // host-owned theme roles (theme/roles.json), exactly like the floor.
 
 import React from "react";
-import manifest from "../manifest.json";
-import document from "../document.json";
+import manifest from "../vocabulary.json";
+import document from "../program.json";
 import {
   bundleFromJson,
   readProps,

@@ -45,8 +45,8 @@ const registryOptions: SampleServiceRegistryOptions = {
 function runtime(blueprintId: typeof PORTFOLIO_BLUEPRINTS[number]) {
   const blueprintRuntime = openSampleBlueprint(blueprintId);
   return loadBundleRuntime(bundleFromJson({
-    manifest: blueprintRuntime.manifest,
-    document: blueprintRuntime.document,
+    vocabulary: blueprintRuntime.vocabulary,
+    program: blueprintRuntime.program,
     state: blueprintRuntime.state,
   }, { effectHandlers: effects }), {
     wrapOrchestrator: declarativeServiceOrchestrator(blueprintRuntime, registryOptions),

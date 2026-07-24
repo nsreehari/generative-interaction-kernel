@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import {
   Kernel,
   InMemoryStateModel,
-  authorDocument,
+  authorProjectedProgram,
   node,
   assignFrom,
   reaction,
@@ -17,7 +17,7 @@ import {
 
 // A manifest declaring `shared` as context. `namespaces` still lists the kernel's own local roots.
 function manifestMsg(namespaces: string[]) {
-  return envelope("manifest", {
+  return envelope("vocabulary", {
     version: "context-test/1",
     namespaces,
     contexts: ["shared"],
@@ -36,11 +36,11 @@ test("a context namespace is one source of truth across independently-mounted ke
   // Writer kernel: its button assigns into the context namespace.
   const writer = new Kernel(
     manifestMsg(["local"]),
-    authorDocument(
+    authorProjectedProgram(
       node("board", "root", {
         children: [node("actions", "apply", { on: { set: [assignFrom("shared.title", "$event.value")] } })],
       }),
-      { manifest: "context-test/1" }
+      { vocabulary: "context-test/1" }
     ),
     { contexts: { shared } }
   );
@@ -48,7 +48,7 @@ test("a context namespace is one source of truth across independently-mounted ke
   // Reader kernel: a separate document/kernel bound to the SAME shared store.
   const reader = new Kernel(
     manifestMsg(["mirror"]),
-    authorDocument(node("board", "root", {}), { manifest: "context-test/1" }),
+    authorProjectedProgram(node("board", "root", {}), { vocabulary: "context-test/1" }),
     { contexts: { shared } }
   );
 
@@ -64,7 +64,7 @@ test("writes route by scope: a context path hits the shared store, a local path 
 
   const a = new Kernel(
     manifestMsg(["local"]),
-    authorDocument(
+    authorProjectedProgram(
       node("board", "root", {
         children: [
           node("actions", "apply", {
@@ -72,14 +72,14 @@ test("writes route by scope: a context path hits the shared store, a local path 
           }),
         ],
       }),
-      { manifest: "context-test/1" }
+      { vocabulary: "context-test/1" }
     ),
     { contexts: { shared } }
   );
 
   const b = new Kernel(
     manifestMsg(["local"]),
-    authorDocument(node("board", "root", {}), { manifest: "context-test/1" }),
+    authorProjectedProgram(node("board", "root", {}), { vocabulary: "context-test/1" }),
     { contexts: { shared } }
   );
 
@@ -95,12 +95,12 @@ test("react composes with context: a reaction's `when` reads the shared namespac
 
   const k = new Kernel(
     manifestMsg(["local"]),
-    authorDocument(
+    authorProjectedProgram(
       node("board", "root", {
         react: [reaction("shared.n", [assignFrom("local.doubled", "shared.n * 2")])],
         children: [node("actions", "apply", { on: { set: [assignFrom("shared.n", "$event.value")] } })],
       }),
-      { manifest: "context-test/1" }
+      { vocabulary: "context-test/1" }
     ),
     { contexts: { shared } }
   );

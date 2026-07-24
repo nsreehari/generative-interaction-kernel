@@ -1,9 +1,9 @@
 {
   "name": "negative: a malformed document is rejected (validate-before-commit)",
   "description": "An action missing the required `do` field fails structural validation; the kernel MUST refuse to construct.",
-  "manifest": {
+  "vocabulary": {
     "gik": "0.1",
-    "type": "manifest",
+    "type": "vocabulary",
     "payload": {
       "version": "bad-demo/1.0",
       "expression": "jsonata",
@@ -11,11 +11,11 @@
       "capabilities": { "control": { "emits": ["tap"] } }
     }
   },
-  "document": {
+  "program": {
     "gik": "0.1",
-    "type": "document",
+    "type": "program",
     "payload": {
-      "manifest": "bad-demo/1.0",
+      "vocabulary": "bad-demo/1.0",
       "root": {
         "capability": "control",
         "id": "c",

@@ -1,12 +1,12 @@
-import type { Kernel } from "./kernel";
+import { ProjectionUnavailableError, type Kernel } from "./kernel";
 import {
   envelope,
   unwrap,
-  type DocumentPayload,
+  type ProjectedProgramDefinition,
   type Enveloped,
   type GIKEvent,
   type GIKMessage,
-  type ManifestPayload,
+  type ProjectedVocabularyManifest,
   type Patch,
 } from "./types";
 
@@ -71,8 +71,8 @@ export class KernelTransportHost implements TransportBroker {
   private outboundQueue = Promise.resolve();
 
   constructor(
-    private readonly manifest: Enveloped<ManifestPayload>,
-    private readonly document: Enveloped<DocumentPayload>,
+    private readonly manifest: Enveloped<ProjectedVocabularyManifest>,
+    private readonly document: Enveloped<ProjectedProgramDefinition>,
     private readonly kernel: Kernel,
     private readonly defaultTransport?: TransportProvider
   ) {
@@ -91,6 +91,7 @@ export class KernelTransportHost implements TransportBroker {
    * client is re-onboarded in full.
    */
   async attach(transport: TransportProvider, fromRev?: number): Promise<() => void> {
+    if (!unwrap(this.document).root) throw new ProjectionUnavailableError();
     this.ensureBaseline();
     this.connections.add(transport);
     const unsubscribe = transport.subscribe((message) => this.onMessage(message));
@@ -121,7 +122,7 @@ export class KernelTransportHost implements TransportBroker {
     const current = this.log[this.log.length - 1].rev;
 
     if (fromRev !== undefined && fromRev >= oldest && fromRev <= current) {
-      // Resume: the client already has manifest/document and state up to fromRev.
+      // Resume: the client already has vocabulary/program and state up to fromRev.
       for (const patch of this.log) {
         if (patch.rev > fromRev) await transport.send(envelope("patch", patch));
       }
@@ -129,8 +130,8 @@ export class KernelTransportHost implements TransportBroker {
     }
 
     // Full onboarding: vocabulary, structure, then the complete current state.
-    await transport.send(envelope("manifest", unwrap(this.manifest)));
-    await transport.send(envelope("document", unwrap(this.document)));
+    await transport.send(envelope("vocabulary", unwrap(this.manifest)));
+    await transport.send(envelope("program", unwrap(this.document)));
     await transport.send(envelope("patch", this.kernel.snapshotPatch()));
   }
 

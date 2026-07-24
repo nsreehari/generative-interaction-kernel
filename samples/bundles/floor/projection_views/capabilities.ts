@@ -9,7 +9,7 @@
 // edges that bind data into named props. `emits` documents the events a primitive raises so
 // documents can wire `on` handlers to them.
 
-import type { CapabilityDescriptor, Enveloped, ManifestPayload } from "@gik/kernel";
+import type { CapabilityDescriptor, Enveloped, ProjectedVocabularyManifest } from "@gik/kernel";
 
 const anyProps = { type: "object", additionalProperties: true } as const;
 
@@ -81,7 +81,7 @@ export const PRIMITIVE_CAPABILITIES: Record<string, CapabilityDescriptor> = {
   query: { propsSchema: anyProps, emits: ["submit"], dataProp: "value" }, // explicit alias of searchbox
 
   // --- Composition: embed a whole bundle/app as a nested runtime ---
-  embed: { propsSchema: anyProps }, // props.app: registered app by name | props.bundle: inline { manifest, document, state }
+  embed: { propsSchema: anyProps }, // props.app: registered app by name | props.bundle: inline { vocabulary, program, state }
 };
 
 /**
@@ -149,13 +149,13 @@ export const FLOOR_ALIAS = "ui";
  * `ui:name` and the bundle declares its outward dependency contract in `externals`. A bundle only
  * has to declare its state namespaces and a version — never its own vocabulary.
  */
-export function bundleManifest(opts: BundleManifestOptions): Enveloped<ManifestPayload> {
+export function bundleManifest(opts: BundleManifestOptions): Enveloped<ProjectedVocabularyManifest> {
   const primitives = Object.fromEntries(
     Object.entries(PRIMITIVE_CAPABILITIES).map(([k, v]) => [`${FLOOR_ALIAS}:${k}`, v])
   );
   return {
     gik: "0.1",
-    type: "manifest",
+    type: "vocabulary",
     payload: {
       version: opts.version,
       expression: "jsonata",

@@ -9,12 +9,12 @@
 // absent from the catalog get a permissive descriptor, so the document still validates and renders
 // (unknown capabilities fall back gracefully at runtime anyway).
 
-import type { CapabilityDescriptor, DocNode, DocumentPayload, ManifestPayload } from "./types";
+import type { CapabilityDescriptor, DocNode, ExecutableProgramDefinition, ProjectedVocabularyManifest } from "./types";
 
 /** The descriptor used for a capability the document uses but the catalog doesn't describe. */
 const PERMISSIVE: CapabilityDescriptor = { propsSchema: { type: "object", additionalProperties: true } };
 
-export interface GenerateManifestOptions {
+export interface GenerateVocabularyOptions {
   /** manifest version string (default "generated/1.0"). */
   version?: string;
   /** expression dialect (default "jsonata"). */
@@ -34,7 +34,7 @@ function firstSegment(path: string): string {
  * capability used (reusing catalog descriptors where available), every namespace an edge or machine
  * touches, and every action family a handler runs — the minimal, honest vocabulary the document relies on.
  */
-export function generateManifest(doc: DocumentPayload, opts: GenerateManifestOptions = {}): ManifestPayload {
+export function generateVocabulary(doc: ExecutableProgramDefinition, opts: GenerateVocabularyOptions = {}): ProjectedVocabularyManifest {
   const capabilities: Record<string, CapabilityDescriptor> = {};
   const namespaces = new Set<string>(opts.namespaces ?? []);
   const actions = new Set<string>();
@@ -60,7 +60,11 @@ export function generateManifest(doc: DocumentPayload, opts: GenerateManifestOpt
     for (const child of n.edges?.children ?? []) walk(child);
   };
 
-  walk(doc.root);
+  if (doc.root) walk(doc.root);
+  for (const handler of doc.handlers ?? []) {
+    for (const list of Object.values(handler.on)) addActions(list);
+  }
+  for (const reaction of doc.reactions ?? []) addActions(reaction.run);
 
   for (const m of doc.machines ?? []) {
     addNs(m.context);

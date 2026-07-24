@@ -5,7 +5,7 @@ import { createHostCompositionBundle } from "./host-composition";
 
 function embeddedApps(harnessId?: string | null, demoId?: string | null): string[] {
   const bundle = createHostCompositionBundle("live-workspace-soc", harnessId, demoId) as SerializableBundle;
-  return (bundle.document.payload.root.edges?.children ?? []).map((child) => String(child.props?.app));
+  return (bundle.program.payload.root.edges?.children ?? []).map((child) => String(child.props?.app));
 }
 
 test("host composition supports every optional harness and runner mode", () => {

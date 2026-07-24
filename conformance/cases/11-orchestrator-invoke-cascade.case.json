@@ -1,9 +1,9 @@
 {
   "name": "orchestrator: an invoke effect settles in a later patch",
   "description": "Pressing Load commits idle -> loading in the initiating patch. The scripted Orchestrator then returns fetched rows plus a `resolved` follow-up event, which advances loading -> ready in a later terminal patch.",
-  "manifest": {
+  "vocabulary": {
     "gik": "0.1",
-    "type": "manifest",
+    "type": "vocabulary",
     "payload": {
       "version": "fetch-demo/1.0",
       "expression": "jsonata",
@@ -17,11 +17,11 @@
       }
     }
   },
-  "document": {
+  "program": {
     "gik": "0.1",
-    "type": "document",
+    "type": "program",
     "payload": {
-      "manifest": "fetch-demo/1.0",
+      "vocabulary": "fetch-demo/1.0",
       "root": {
         "capability": "board",
         "id": "board",

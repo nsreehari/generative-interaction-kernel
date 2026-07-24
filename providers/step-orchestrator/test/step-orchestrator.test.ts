@@ -6,10 +6,10 @@ import assert from "node:assert/strict";
 
 import {
   Kernel,
-  authorDocument,
+  authorProjectedProgram,
   node,
   invoke,
-  type ManifestPayload,
+  type ProjectedVocabularyManifest,
   type ResolvedNode,
   type OrchestratorResult,
 } from "../../../kernel/src/index";
@@ -63,7 +63,7 @@ test("a failing step retries under the flow's retry policy (the vendored crux)",
 });
 
 test("the Kernel fulfils an invoke through a flow and applies its result to the store", async () => {
-  const manifest: ManifestPayload = {
+  const manifest: ProjectedVocabularyManifest = {
     version: "invoke-demo/1.0",
     expression: "jsonata",
     namespaces: ["result"],
@@ -73,8 +73,8 @@ test("the Kernel fulfils an invoke through a flow and applies its result to the 
       metric: { propsSchema: { type: "object", required: ["label"], properties: { label: { type: "string" }, value: { type: ["number", "string"] } } } },
       actions: { propsSchema: { type: "object", properties: { label: { type: "string" } } }, emits: ["tap"] },
     },
-  } as ManifestPayload;
-  const manifestMessage = { gik: "0.1", type: "manifest", payload: manifest } as const;
+  } as ProjectedVocabularyManifest;
+  const manifestMessage = { gik: "0.1", type: "vocabulary", payload: manifest } as const;
 
   const root = node("board", "board-1", {
     props: { title: "Invoke" },
@@ -83,7 +83,7 @@ test("the Kernel fulfils an invoke through a flow and applies its result to the 
       node("actions", "btn", { props: { label: "Compute" }, on: { tap: [invoke("compute", { seed: 5 })] } }),
     ],
   });
-  const doc = authorDocument(root, { manifest: "invoke-demo/1.0" });
+  const doc = authorProjectedProgram(root, { vocabulary: "invoke-demo/1.0" });
 
   const flow: StepFlowConfig = {
     settings: { start_step: "run" },

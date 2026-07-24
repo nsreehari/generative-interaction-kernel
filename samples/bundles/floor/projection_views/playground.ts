@@ -8,7 +8,7 @@
 // so the whole surface stays JSON — no bespoke React, no effect handlers, and it composes via the
 // same bundle-in-bundle mechanism the console already uses.
 
-import { assign, authorDocument, node, type DocNode } from "@gik/kernel";
+import { assign, authorProjectedProgram, node, type DocNode } from "@gik/kernel";
 import type { SerializableBundle } from "@gik/react";
 import { bundleManifest } from "./capabilities";
 
@@ -92,8 +92,8 @@ export function buildPlaygroundBundle(spec: PlaygroundSpec): SerializableBundle 
   });
 
   return {
-    manifest: bundleManifest({ version: PLAYGROUND_VERSION, namespaces: ["pg"] }),
-    document: authorDocument(root, { manifest: PLAYGROUND_VERSION }),
+    vocabulary: bundleManifest({ version: PLAYGROUND_VERSION, namespaces: ["pg"] }),
+    program: authorProjectedProgram(root, { vocabulary: PLAYGROUND_VERSION }),
     state: { pg: { selected: "" } },
   };
 }

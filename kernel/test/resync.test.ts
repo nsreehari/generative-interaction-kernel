@@ -25,8 +25,8 @@ const fx = (name: string) =>
     )
   );
 
-const manifest = fx("live-cards.manifest.json");
-const document = fx("example.document.json");
+const manifest = fx("live-cards.vocabulary.json");
+const document = fx("example.program.json");
 
 function makeKernel(): Kernel {
   const store = new InMemoryStateModel(manifest.payload.namespaces);
@@ -98,7 +98,7 @@ test("a disconnected client resumes from its rev via incremental replay; a late 
   assert.deepEqual(
     messagesOnResume.map((m) => m.type),
     ["patch"],
-    "resume replays only the missing patch (no manifest/document re-onboard)"
+    "resume replays only the missing patch (no vocabulary/program re-onboard)"
   );
 
   // A brand-new late client full-syncs to current state (Approve visible from rev 1).

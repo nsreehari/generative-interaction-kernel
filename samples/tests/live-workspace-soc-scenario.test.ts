@@ -12,22 +12,22 @@ import effects, {
   createSocEffects,
   socOrganismEffects,
 } from "../bundles/live-workspace-soc/effect_handlers";
-import runnerDocument from "../bundles/demo-runner/document.json";
+import runnerDocument from "../bundles/demo-runner/program.json";
 import runnerEffects from "../bundles/demo-runner/effect_handlers";
-import runnerManifest from "../bundles/demo-runner/manifest.json";
+import runnerManifest from "../bundles/demo-runner/vocabulary.json";
 import runnerState from "../bundles/demo-runner/state.json";
 
 function runtime(effectHandlers = effects) {
-  const { manifest, document, state } = openSampleBlueprint("live-workspace-soc");
+  const { vocabulary, program, state } = openSampleBlueprint("live-workspace-soc");
   return loadBundleRuntime(bundleFromJson({
-    manifest: structuredClone(manifest),
-    document: structuredClone(document),
+    vocabulary: structuredClone(vocabulary),
+    program: structuredClone(program),
     state: structuredClone(state),
   }, { effectHandlers }));
 }
 
 function demoRuntimes(scenarioPlan: ScenarioPlan = t3ScenarioPlan) {
-  const { manifest, document, state } = openSampleBlueprint("live-workspace-soc");
+  const { vocabulary, program, state } = openSampleBlueprint("live-workspace-soc");
   const shared = SharedContextStore.create(["demo", "control"]);
   shared.apply([{ op: "set", path: "demo", value: {
     enabled: true,
@@ -46,8 +46,8 @@ function demoRuntimes(scenarioPlan: ScenarioPlan = t3ScenarioPlan) {
   } }]);
   const contexts = { demo: shared, control: shared };
   const soc = loadBundleRuntime(bundleFromJson({
-    manifest: structuredClone(manifest),
-    document: structuredClone(document),
+    vocabulary: structuredClone(vocabulary),
+    program: structuredClone(program),
     state: structuredClone(state),
   }, { effectHandlers: createSocEffects() }), contexts);
   const runnerSeed = structuredClone(runnerState) as Record<string, unknown>;
@@ -61,8 +61,8 @@ function demoRuntimes(scenarioPlan: ScenarioPlan = t3ScenarioPlan) {
     ],
   };
   const runner = loadBundleRuntime(bundleFromJson({
-    manifest: structuredClone(runnerManifest),
-    document: structuredClone(runnerDocument),
+    vocabulary: structuredClone(runnerManifest),
+    program: structuredClone(runnerDocument),
     state: runnerSeed,
   }, { effectHandlers: runnerEffects }), contexts);
   return { shared, soc, runner };

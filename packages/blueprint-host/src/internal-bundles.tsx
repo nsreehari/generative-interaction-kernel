@@ -1085,7 +1085,7 @@ const Participants: ProjectionView = ({ node, emit }) => {
 
 const demoRunnerManifest = {
   gik: "0.1",
-  type: "manifest",
+  type: "vocabulary",
   payload: {
     version: "demo-runner/1.0",
     expression: "jsonata",
@@ -1110,7 +1110,7 @@ const demoRunnerManifest = {
 
 const demoRunnerDocument = {
   gik: "0.1",
-  type: "document",
+  type: "program",
   payload: {
     root: {
       capability: "demo:runner",
@@ -1177,7 +1177,7 @@ const demoRunnerState = {
 
 const harnessManifest = {
   gik: "0.1",
-  type: "manifest",
+  type: "vocabulary",
   payload: {
     version: "gik-control-harness/1.0",
     expression: "jsonata",
@@ -1196,7 +1196,7 @@ const harnessManifest = {
 
 const harnessDocument = {
   gik: "0.1",
-  type: "document",
+  type: "program",
   payload: {
     root: {
       capability: "harness:shell",

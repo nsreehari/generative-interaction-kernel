@@ -16,9 +16,9 @@ const FOUNDRY_BLUEPRINTS = ["foundry-agent", "foundry-agent-no-cells"] as const;
 
 function runtime(blueprintId: typeof FOUNDRY_BLUEPRINTS[number]) {
   const blueprintRuntime = openSampleBlueprint(blueprintId);
-  const { manifest, document, state } = blueprintRuntime;
+  const { vocabulary, program, state } = blueprintRuntime;
   return loadBundleRuntime(bundleFromJson(
-    { manifest, document, state },
+    { vocabulary, program, state },
     {
       effectHandlers: effects,
       wrapOrchestrator: declarativeServiceOrchestrator(blueprintRuntime, browserServiceRegistryOptions),

@@ -1,8 +1,8 @@
 {
   "gik": "0.1",
-  "type": "manifest",
+  "type": "vocabulary",
   "payload": {
-    "version": "live-cards/1.0",
+    "version": "workbench-live-cards/1.0",
     "expression": "jsonata",
     "namespaces": ["card_data", "requires", "fetched_sources", "computed_values"],
     "actions": ["assign", "derive", "invoke", "emit", "route", "confirm"],
@@ -23,29 +23,6 @@
           "properties": { "label": { "type": "string" }, "value": { "type": ["number", "string"] } }
         }
       },
-      "ui:chart": {
-        "propsSchema": { "type": "object", "additionalProperties": true },
-        "dataProp": "data"
-      },
-      "ui:markdown": {
-        "propsSchema": { "type": "object", "additionalProperties": true },
-        "dataProp": "value"
-      },
-      "ui:todo": {
-        "propsSchema": { "type": "object", "additionalProperties": true },
-        "emits": ["save"],
-        "dataProp": "items"
-      },
-      "ui:selection": {
-        "propsSchema": { "type": "object", "additionalProperties": true },
-        "emits": ["select"],
-        "dataProp": "options"
-      },
-      "ui:searchbox": {
-        "propsSchema": { "type": "object", "additionalProperties": true },
-        "emits": ["submit"],
-        "dataProp": "value"
-      },
       "ui:table": {
         "propsSchema": {
           "type": "object",
@@ -54,11 +31,37 @@
         "emits": ["rowSelect"],
         "dataProp": "rows"
       },
-      "ui:actions": {
+      "ui:chart": {
         "propsSchema": {
           "type": "object",
-          "properties": { "label": { "type": "string" } }
+          "additionalProperties": true
         },
+        "dataProp": "data"
+      },
+      "ui:markdown": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "dataProp": "value"
+      },
+      "ui:markup": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "dataProp": "value"
+      },
+      "ui:todo": {
+        "propsSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "emits": ["save"],
+        "dataProp": "items"
+      },
+      "ui:actions": {
+        "propsSchema": { "type": "object", "properties": { "label": { "type": "string" } } },
         "emits": ["tap"]
       }
     }

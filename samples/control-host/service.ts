@@ -44,18 +44,22 @@ const fx = (name: string) =>
     readFileSync(fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url)), "utf8")
   );
 
-const manifest = fx("live-cards.manifest.json");
-const document = fx("example.document.json");
+const vocabulary = fx("live-cards.vocabulary.json");
+const program = fx("example.program.json");
 
-const rollbackManifest = {
-  version: "rollback-sample/1",
-  namespaces: ["card_data", "payments"],
-  capabilities: {},
+const rollbackVocabulary = {
+  gik: "0.1",
+  type: "vocabulary",
+  payload: {
+    version: "rollback-sample/1",
+    namespaces: ["card_data", "payments"],
+    capabilities: {},
+  },
 };
 
-const rollbackDocument = {
+const rollbackProgram = {
   gik: "0.1",
-  type: "document",
+  type: "program",
   payload: {
     root: {
       capability: "actions",
@@ -73,18 +77,22 @@ const rollbackDocument = {
   },
 };
 
-const continuityManifest = {
-  version: "continuity-sample/1",
-  namespaces: ["continuity"],
-  capabilities: {
-    workflow: {},
-    status: { dataProp: "value" },
+const continuityVocabulary = {
+  gik: "0.1",
+  type: "vocabulary",
+  payload: {
+    version: "continuity-sample/1",
+    namespaces: ["continuity"],
+    capabilities: {
+      workflow: {},
+      status: { dataProp: "value" },
+    },
   },
 };
 
-const continuityDocument = {
+const continuityProgram = {
   gik: "0.1",
-  type: "document",
+  type: "program",
   payload: {
     root: {
       capability: "workflow",
@@ -154,25 +162,25 @@ export interface ControlHostOptions {
 function createRuntime(demo: DemoMode) {
   return demo === "continuity"
     ? {
-        manifest: continuityManifest,
-        document: continuityDocument,
-        state: new InMemoryStateModel(continuityManifest.namespaces),
+        vocabulary: continuityVocabulary,
+        program: continuityProgram,
+        state: new InMemoryStateModel(continuityVocabulary.payload.namespaces),
         orchestrator: undefined,
         tickerEvent: null,
       }
     : demo === "rollback"
     ? {
-        manifest: rollbackManifest,
-        document: rollbackDocument,
-        state: new InMemoryStateModel(rollbackManifest.namespaces),
+        vocabulary: rollbackVocabulary,
+        program: rollbackProgram,
+        state: new InMemoryStateModel(rollbackVocabulary.payload.namespaces),
         orchestrator: rollbackOrchestrator,
         tickerEvent: null,
       }
     : {
-        manifest,
-        document,
+        vocabulary,
+        program,
         state: (() => {
-          const state = new InMemoryStateModel(manifest.payload.namespaces);
+          const state = new InMemoryStateModel(vocabulary.payload.namespaces);
           state.apply([
             { op: "set", path: "fetched_sources.orders", value: [{ id: "order-42", amount: 100 }] },
             { op: "set", path: "computed_values.total", value: 150 },
@@ -203,7 +211,7 @@ export function createControlHost(options: ControlHostOptions = {}): ControlHost
   const hostName = options.hostName ?? (process.env.GENUI_CONTROLFACE_HOST || "127.0.0.1");
   const runtime = createRuntime(demo);
 
-  const controlface = new ControlFace(runtime.manifest as any, runtime.document as any, {
+  const controlface = new ControlFace(runtime.vocabulary as any, runtime.program as any, {
     state: runtime.state,
     orchestrator: runtime.orchestrator,
   });

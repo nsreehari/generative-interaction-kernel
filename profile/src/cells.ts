@@ -1,4 +1,4 @@
-import type { Action, DocNode, DocumentPayload, Json, Reaction, ServiceUse } from "../../kernel/src/index";
+import type { Action, DocNode, ProjectedProgramDefinition, Json, Reaction, ServiceUse } from "../../kernel/src/index";
 import type { BlueprintArtifact } from "./blueprint";
 
 export interface CellInput {
@@ -277,7 +277,7 @@ export function compileCellTopology(
 }
 
 /** Compile a Blueprint's optional presentation into the kernel document projection. */
-export function composeCellDocument(definition: CellProjectionDefinition, topology: ExecutableCellTopology): DocumentPayload {
+export function composeCellDocument(definition: CellProjectionDefinition, topology: ExecutableCellTopology): ProjectedProgramDefinition {
   if (topology.diagnostics.length > 0) {
     throw new Error(`Invalid cell topology '${topology.id}': ${topology.diagnostics.map(({ detail }) => detail).join("; ")}`);
   }

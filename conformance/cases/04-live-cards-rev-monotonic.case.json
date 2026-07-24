@@ -1,8 +1,8 @@
 {
   "name": "live-cards: revision is monotonic across dispatches",
   "description": "Each dispatch increments rev by exactly one regardless of the action, independent of init().",
-  "manifestRef": "../../schemas/fixtures/live-cards.manifest.json",
-  "documentRef": "../../schemas/fixtures/example.document.json",
+  "vocabularyRef": "../../schemas/fixtures/live-cards.vocabulary.json",
+  "programRef": "../../schemas/fixtures/example.program.json",
   "steps": [
     {
       "event": { "node": "table-orders", "name": "rowSelect", "payload": { "id": "order-7" } },

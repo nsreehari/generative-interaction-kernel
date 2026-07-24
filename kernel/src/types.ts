@@ -121,12 +121,32 @@ export interface StandingDerivation {
   dependencies: string[];
 }
 
-export interface DocumentPayload {
-  manifest?: string;
-  root: DocNode;
+export interface RuntimeHandler {
+  id: string;
+  on: Record<string, Action[]>;
+}
+
+export interface RuntimeReaction extends Reaction {
+  id: string;
+}
+
+export interface ProgramDefinition {
+  vocabulary?: string;
+  handlers?: RuntimeHandler[];
+  reactions?: RuntimeReaction[];
   machines?: Machine[];
   derivations?: StandingDerivation[];
 }
+
+export interface ProjectedProgramDefinition extends ProgramDefinition {
+  root: DocNode;
+}
+
+export interface HeadlessProgramDefinition extends ProgramDefinition {
+  root?: never;
+}
+
+export type ExecutableProgramDefinition = ProjectedProgramDefinition | HeadlessProgramDefinition;
 
 export interface CapabilityDescriptor {
   propsSchema?: object;
@@ -342,7 +362,7 @@ export interface ExternalsSpec {
   services?: Record<string, ServiceRequirement | ServiceDeclaration>;
 }
 
-export interface ManifestPayload {
+export interface ProjectedVocabularyManifest {
   version: string;
   expression?: string;
   namespaces?: string[];
@@ -359,6 +379,12 @@ export interface ManifestPayload {
   externals?: ExternalsSpec;
 }
 
+export type HeadlessVocabularyManifest = Omit<ProjectedVocabularyManifest, "capabilities"> & {
+  capabilities?: never;
+};
+
+export type ExecutableVocabularyManifest = ProjectedVocabularyManifest | HeadlessVocabularyManifest;
+
 export interface TraceEvent {
   event: "resolve" | "fallback" | "action" | "transition" | "validate" | "effect";
   node?: string;
@@ -370,16 +396,22 @@ export type TraceSink = (t: TraceEvent) => void;
 
 export const GIK_VERSION = "0.1";
 
-export interface ManifestMessage {
+export interface VocabularyMessage {
   gik: typeof GIK_VERSION;
-  type: "manifest";
-  payload: ManifestPayload;
+  type: "vocabulary";
+  payload: ProjectedVocabularyManifest;
 }
 
-export interface DocumentMessage {
+export interface ProjectedProgramMessage {
   gik: typeof GIK_VERSION;
-  type: "document";
-  payload: DocumentPayload;
+  type: "program";
+  payload: ProjectedProgramDefinition;
+}
+
+export interface ProgramMessage {
+  gik: typeof GIK_VERSION;
+  type: "program";
+  payload: HeadlessProgramDefinition;
 }
 
 export interface PatchMessage {
@@ -407,8 +439,9 @@ export interface TraceMessage {
 }
 
 export type GIKMessage =
-  | ManifestMessage
-  | DocumentMessage
+  | VocabularyMessage
+  | ProjectedProgramMessage
+  | ProgramMessage
   | PatchMessage
   | ProgressMessage
   | EventMessage

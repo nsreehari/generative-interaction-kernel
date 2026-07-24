@@ -12,9 +12,9 @@
 import {
   Kernel,
   bufferSink,
-  lowerToDocument,
+  lowerToProjectedProgram,
   unwrap,
-  type DocumentPayload,
+  type ProjectedProgramDefinition,
   type TraceEvent,
 } from "@gik/kernel";
 import {
@@ -43,7 +43,7 @@ export interface Session {
   /** Layer 4 — the planned Presentation DSL (regions + priority/disclosure/rationale). */
   presentation: PresentationSpec;
   /** the lowered UI DSL document the kernel interprets. */
-  document: DocumentPayload;
+  document: ProjectedProgramDefinition;
   /** the in-process runtime rendering the guest. */
   controller: GenUIController;
   /** live trace buffer (mutated as the guest dispatches events). */
@@ -72,7 +72,7 @@ export function buildSession(
     edits,
     taxonomy
   );
-  const message = lowerToDocument(lowerPresentation(lowering), presentation);
+  const message = lowerToProjectedProgram(lowerPresentation(lowering), presentation);
   const document = unwrap(message);
 
   const state = seedState(unwrap(DEMO_MANIFEST).namespaces ?? []);

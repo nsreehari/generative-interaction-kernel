@@ -14,7 +14,7 @@
     },
     {
       "file": "schemas/runtime-document.schema.json",
-      "refs": ["https://genui.dev/gik/0.1/document.schema.json"],
+      "refs": ["https://genui.dev/gik/0.1/program.schema.json"],
       "message": "Invalid runtime document"
     }
   ]

@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 
 import {
   Kernel,
-  authorDocument,
+  authorProjectedProgram,
   node,
   assignFrom,
   invoke,
@@ -25,16 +25,16 @@ const manifest = {
     actions: { emits: ["set"] },
   },
 };
-const manifestMsg = envelope("manifest", manifest);
+const manifestMsg = envelope("vocabulary", manifest);
 
 // A button that writes `n` from the event payload; the root carries the reactions.
 function docWith(...reactions: ReturnType<typeof reaction>[]) {
-  return authorDocument(
+  return authorProjectedProgram(
     node("board", "root", {
       react: reactions,
       children: [node("actions", "apply", { on: { set: [assignFrom("n", "$event.value")] } })],
     }),
-    { manifest: "react-test/1" }
+    { vocabulary: "react-test/1" }
   );
 }
 

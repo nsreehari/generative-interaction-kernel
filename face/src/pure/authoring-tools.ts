@@ -3,7 +3,7 @@
 // Projections decide whether these appear in ControlFace, AgentFace, or some other filtered view.
 
 import { describeCatalog, namespaces, effects } from "./catalog";
-import { validateDocument, lint, authorDocument } from "./document";
+import { validateDocument, lint, authorProjectedProgram } from "./document";
 import { validateCapability } from "./capability";
 import type { McpTool } from "../tool-surface";
 
@@ -48,10 +48,10 @@ const platformAuthoringTools: McpTool[] = [
     handler: (a) => lint(a.manifest, a.document),
   },
   {
-    name: "authorDocument",
+    name: "authorProjectedProgram",
     description: "Validate then commit a UI document, returning a wire message or a shaped error.",
     inputSchema: obj({ document: any, manifest: any }, ["document"]),
-    handler: (a) => authorDocument(a.document, a.manifest as never),
+    handler: (a) => authorProjectedProgram(a.document, a.manifest as never),
   },
   {
     name: "validateCapability",

@@ -1,22 +1,22 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://genui.dev/gik/0.1/manifest.schema.json",
-  "title": "GIK manifest message",
+  "$id": "https://genui.dev/gik/0.1/vocabulary.schema.json",
+  "title": "GIK vocabulary message",
   "description": "Publishes the capability vocabulary a domain speaks. Every other party (validator, renderer, orchestrator) validates against it.",
   "type": "object",
   "additionalProperties": false,
   "required": ["gik", "type", "payload"],
   "properties": {
     "gik": { "const": "0.1" },
-    "type": { "const": "manifest" },
+    "type": { "const": "vocabulary" },
     "payload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["version", "capabilities"],
+      "required": ["version"],
       "properties": {
         "version": {
           "type": "string",
-          "description": "The manifest (vocabulary) version documents are validated against."
+          "description": "The vocabulary version programs are validated against."
         },
         "expression": {
           "type": "string",

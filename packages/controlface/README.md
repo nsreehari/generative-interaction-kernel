@@ -15,7 +15,7 @@ const controlFace = new ControlFace(/* bundle */);
 const dispatch = createControlFaceDispatcher(controlFace);
 ```
 
-If you only need to lower a blueprint into manifest/document/state JSON, use the narrower subpath:
+If you only need to lower a blueprint into vocabulary/program/state JSON, use the narrower subpath:
 
 ```ts
 import { openBlueprint } from "@gik/controlface/blueprint";

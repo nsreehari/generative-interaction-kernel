@@ -14,23 +14,23 @@ import {
   formatTrace,
   multiSink,
   node,
-  type ManifestPayload,
+  type ProjectedVocabularyManifest,
 } from "../src/index";
 
 const manifest = {
   gik: "0.1",
-  type: "manifest",
+  type: "vocabulary",
   payload: {
     version: "obs-demo/1.0",
     expression: "jsonata",
     namespaces: ["card_data"],
     capabilities: { widget: { emits: ["go"] } },
-  } as ManifestPayload,
+  } as ProjectedVocabularyManifest,
 };
 
 const document = {
   gik: "0.1",
-  type: "document",
+  type: "program",
   payload: {
     root: node("widget", "w", { on: { go: [assign("card_data.x", 1)] } }),
   },

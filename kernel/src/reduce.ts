@@ -4,7 +4,7 @@
 import type {
   Action,
   DocNode,
-  DocumentPayload,
+  ExecutableProgramDefinition,
   GIKEvent,
   Json,
   Machine,
@@ -160,7 +160,7 @@ function reduceMachine(
 }
 
 export async function reduce(
-  doc: DocumentPayload,
+  doc: ExecutableProgramDefinition,
   store: StateModel,
   event: GIKEvent,
   expr: ExpressionProvider,
@@ -187,8 +187,12 @@ export async function reduce(
     c.currentEvent = current;
     c.bindings = { event: current.payload ?? {} };
 
-    const node = findNode(doc.root, current.node);
-    const actions = node?.edges?.on?.[current.name] ?? [];
+    const node = doc.root ? findNode(doc.root, current.node) : undefined;
+    const handler = doc.handlers?.find(({ id }) => id === current.node);
+    const actions = [
+      ...(handler?.on[current.name] ?? []),
+      ...(node?.edges?.on?.[current.name] ?? []),
+    ];
     for (const a of actions) {
       if (a.guard && !truthy(await predicateExpr.eval(a.guard, c.data, c.bindings))) continue;
       await dispatchAction(a, c);

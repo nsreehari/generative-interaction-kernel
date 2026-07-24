@@ -2,14 +2,14 @@ import { resolveNode } from "./interpret";
 import {
   InMemoryStateModel,
   JsonataExpressionProvider,
-  ManifestRegistry,
+  VocabularyRegistry,
   type CapabilityRegistry,
   type ExpressionProvider,
   type StateModel,
 } from "./providers";
 import {
   envelope,
-  type DocumentPayload,
+  type ProjectedProgramDefinition,
   type GIKMessage,
   type InvocationProgress,
   type Json,
@@ -38,7 +38,7 @@ export class GIKClient {
   private readonly predicateExpr: ExpressionProvider;
   private store?: StateModel;
   private registry?: CapabilityRegistry;
-  private doc?: DocumentPayload;
+  private doc?: ProjectedProgramDefinition;
   private tree: ResolvedNode | null = null;
   private rev = -1;
   private readonly listeners = new Set<() => void>();
@@ -103,15 +103,21 @@ export class GIKClient {
 
   private async onMessage(message: GIKMessage): Promise<void> {
     switch (message.type) {
-      case "manifest": {
+      case "vocabulary": {
         // A manifest (re)establishes vocabulary and a fresh replica: reset rev so the
         // full-snapshot patch that follows always applies, even on a full resync.
-        this.registry = ManifestRegistry.fromManifest(message.payload);
+        this.registry = VocabularyRegistry.fromVocabulary(message.payload);
         this.store = new InMemoryStateModel(message.payload.namespaces ?? []);
         this.rev = -1;
         return;
       }
-      case "document": {
+      case "program": {
+        if (!message.payload.root) {
+          this.doc = undefined;
+          this.tree = null;
+          for (const listener of this.listeners) listener();
+          return;
+        }
         this.doc = message.payload;
         await this.reresolve();
         return;
@@ -137,6 +143,11 @@ export class GIKClient {
 
   private async reresolve(): Promise<void> {
     if (!this.doc || !this.store || !this.registry) return;
+    if (!this.doc.root) {
+      this.tree = null;
+      for (const listener of this.listeners) listener();
+      return;
+    }
     this.tree = await resolveNode(this.doc.root, {
       store: this.store,
       expr: this.expr,

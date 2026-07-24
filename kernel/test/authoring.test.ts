@@ -16,15 +16,15 @@ import {
   ValidationError,
   assign,
   assignFrom,
-  authorDocument,
+  authorProjectedProgram,
   createInMemoryTransportPair,
-  document,
+  projectedProgram,
   guarded,
   invoke,
-  lintManifestReferences,
+  lintVocabularyReferences,
   node,
   type Action,
-  type ManifestPayload,
+  type ProjectedVocabularyManifest,
   type ResolvedNode,
 } from "../src/index";
 
@@ -36,8 +36,8 @@ const fx = (name: string) =>
     )
   );
 
-const manifest = fx("live-cards.manifest.json");
-const manifestPayload = manifest.payload as ManifestPayload;
+const manifest = fx("live-cards.vocabulary.json");
+const vocabularyPayload = manifest.payload as ProjectedVocabularyManifest;
 
 // The same live-cards UI as the fixture, but authored by an agent via constructors.
 function authorLiveCards() {
@@ -65,11 +65,11 @@ function authorLiveCards() {
       }),
     ],
   });
-  return { root, message: authorDocument(root, { manifest: "live-cards/1.0" }) };
+  return { root, message: authorProjectedProgram(root, { vocabulary: "live-cards/1.0" }) };
 }
 
 function makeKernelFor(docMessage: unknown): Kernel {
-  const store = new InMemoryStateModel(manifestPayload.namespaces);
+  const store = new InMemoryStateModel(vocabularyPayload.namespaces);
   store.apply([
     {
       op: "set",
@@ -97,10 +97,10 @@ function find(node: ResolvedNode | null, id: string): ResolvedNode | undefined {
 test("an agent authors a valid document that passes validation, lints clean, and renders end-to-end", async () => {
   const { root, message } = authorLiveCards();
 
-  // validate-before-commit already ran inside authorDocument (no throw).
-  assert.equal(message.type, "document");
-  // References all resolve against the manifest vocabulary.
-  assert.deepEqual(lintManifestReferences(manifestPayload, document(root, { manifest: "live-cards/1.0" })), []);
+  // validate-before-commit already ran inside authorProjectedProgram (no throw).
+  assert.equal(message.type, "program");
+  // References all resolve against the vocabulary.
+  assert.deepEqual(lintVocabularyReferences(vocabularyPayload, projectedProgram(root, { vocabulary: "live-cards/1.0" })), []);
 
   // The authored document drives the kernel over the wire.
   const host = new KernelTransportHost(manifest, message, makeKernelFor(message));
@@ -124,10 +124,10 @@ test("an unknown capability is structurally valid, is flagged by lint, and rende
   });
 
   // Structure is valid: authoring must not throw on an unknown capability.
-  const message = authorDocument(root, { manifest: "live-cards/1.0" });
+  const message = authorProjectedProgram(root, { vocabulary: "live-cards/1.0" });
 
   // Lint flags it as a warning (not an error).
-  const warnings = lintManifestReferences(manifestPayload, document(root, { manifest: "live-cards/1.0" }));
+  const warnings = lintVocabularyReferences(vocabularyPayload, projectedProgram(root, { vocabulary: "live-cards/1.0" }));
   assert.equal(warnings.length, 1);
   assert.equal(warnings[0].code, "unknown-capability");
   assert.equal(warnings[0].node, "widget-1");
@@ -146,7 +146,7 @@ test("a structurally malformed document is rejected by validate-before-commit", 
   const badAction = { target: "card_data.x" } as unknown as Action; // missing required `do`
   const root = node("ui:actions", "btn-x", { on: { tap: [badAction] } });
   assert.throws(
-    () => authorDocument(root, { manifest: "live-cards/1.0" }),
+    () => authorProjectedProgram(root, { vocabulary: "live-cards/1.0" }),
     (err: unknown) => err instanceof ValidationError
   );
 });
@@ -161,7 +161,7 @@ test("lint flags undeclared events and namespaces on an otherwise valid structur
       }),
     ],
   });
-  const warnings = lintManifestReferences(manifestPayload, document(root));
+  const warnings = lintVocabularyReferences(vocabularyPayload, projectedProgram(root));
   const codes = warnings.map((w) => w.code).sort();
   assert.deepEqual(codes, ["undeclared-event", "undeclared-namespace"]);
 });

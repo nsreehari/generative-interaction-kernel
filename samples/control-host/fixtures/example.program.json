@@ -1,6 +1,6 @@
 {
   "gik": "0.1",
-  "type": "document",
+  "type": "program",
   "payload": {
     "manifest": "live-cards/1.0",
     "root": {

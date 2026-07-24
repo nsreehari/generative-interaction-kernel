@@ -11,7 +11,7 @@ import {
   type ScenarioPlan,
 } from "./demo-runner";
 import type { OrganismControlContract } from "./control-runtime";
-import { unwrap, type DocumentMessage, type ManifestMessage } from "@gik/kernel";
+import { unwrap, type ProjectedProgramMessage, type VocabularyMessage } from "@gik/kernel";
 import catalogArtifact from "../scenarios/catalog.json" with { type: "json" };
 import { hasSampleBlueprint, openSampleBlueprint } from "./blueprints";
 
@@ -25,14 +25,14 @@ const scenarioPlans = new Map<string, ScenarioPlan>(
     return [plan.id, plan];
   })
 );
-const bundleManifests = artifactsByBundleId(import.meta.glob("../bundles/*/manifest.json", {
+const bundleVocabularies = artifactsByBundleId(import.meta.glob("../bundles/*/vocabulary.json", {
   eager: true,
   import: "default",
-}) as Record<string, ManifestMessage>);
-const bundleDocuments = artifactsByBundleId(import.meta.glob("../bundles/*/document.json", {
+}) as Record<string, VocabularyMessage>);
+const bundlePrograms = artifactsByBundleId(import.meta.glob("../bundles/*/program.json", {
   eager: true,
   import: "default",
-}) as Record<string, DocumentMessage>);
+}) as Record<string, ProjectedProgramMessage>);
 
 const catalog = catalogArtifact as DemoCatalog;
 
@@ -75,16 +75,16 @@ for (const entry of demoCatalog.entries) {
   const runtime = hasSampleBlueprint(entry.targetBlueprintId)
     ? openSampleBlueprint(entry.targetBlueprintId)
     : undefined;
-  const manifest = runtime?.manifest ?? bundleManifests.get(entry.targetBlueprintId);
-  const document = runtime?.document ?? bundleDocuments.get(entry.targetBlueprintId);
-  if (!manifest || !document) {
+  const vocabulary = runtime?.vocabulary ?? bundleVocabularies.get(entry.targetBlueprintId);
+  const program = runtime?.program ?? bundlePrograms.get(entry.targetBlueprintId);
+  if (!vocabulary || !program) {
     throw new Error(`Demo '${entry.id}' references unknown Blueprint '${entry.targetBlueprintId}'`);
   }
   validateDemoTargetBundleContract(
     entry.targetBlueprintId,
     demoCatalog.targets[entry.targetBlueprintId],
-    unwrap(manifest),
-    unwrap(document)
+    unwrap(vocabulary),
+    unwrap(program)
   );
 }
 

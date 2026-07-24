@@ -1,9 +1,9 @@
 {
   "name": "derive: an expression over $event is stored",
   "description": "A derive action evaluates an expression against the event and writes the result (rev 1).",
-  "manifest": {
+  "vocabulary": {
     "gik": "0.1",
-    "type": "manifest",
+    "type": "vocabulary",
     "payload": {
       "version": "derive-demo/1.0",
       "expression": "jsonata",
@@ -12,11 +12,11 @@
       "capabilities": { "widget": { "emits": ["compute"] } }
     }
   },
-  "document": {
+  "program": {
     "gik": "0.1",
-    "type": "document",
+    "type": "program",
     "payload": {
-      "manifest": "derive-demo/1.0",
+      "vocabulary": "derive-demo/1.0",
       "root": {
         "capability": "widget",
         "id": "w",

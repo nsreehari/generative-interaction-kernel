@@ -11,8 +11,8 @@ import { dirname, join } from "node:path";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const readJson = (p) => JSON.parse(readFileSync(join(here, p), "utf8"));const schemaFiles = [
-  "manifest.schema.json",
-  "document.schema.json",
+  "vocabulary.schema.json",
+  "program.schema.json",
   "patch.schema.json",
   "progress.schema.json",
   "event.schema.json",
@@ -39,29 +39,29 @@ const check = (label, validate, data) => {
   }
 };
 
-const vManifest = ajv.getSchema(byId("manifest.schema.json"));
-const vDocument = ajv.getSchema(byId("document.schema.json"));
+const vVocabulary = ajv.getSchema(byId("vocabulary.schema.json"));
+const vProgram = ajv.getSchema(byId("program.schema.json"));
 const vPatch = ajv.getSchema(byId("patch.schema.json"));
 const vProgress = ajv.getSchema(byId("progress.schema.json"));
 const vEvent = ajv.getSchema(byId("event.schema.json"));
 const vEnvelope = ajv.getSchema(byId("envelope.schema.json"));
 
-const manifest = readJson("fixtures/live-cards.manifest.json");
-const document = readJson("fixtures/example.document.json");
+const vocabulary = readJson("fixtures/live-cards.vocabulary.json");
+const program = readJson("fixtures/example.program.json");
 const event = readJson("fixtures/example.event.json");
 const expectedPatch = readJson("fixtures/expected.patch.json");
 const progress = readJson("fixtures/example.progress.json");
 
 console.log("Per-message schema validation:");
-check("manifest fixture -> manifest.schema", vManifest, manifest);
-check("document fixture -> document.schema", vDocument, document);
+check("vocabulary fixture -> vocabulary.schema", vVocabulary, vocabulary);
+check("program fixture    -> program.schema", vProgram, program);
 check("event fixture    -> event.schema", vEvent, event);
 check("patch fixture    -> patch.schema", vPatch, expectedPatch);
 check("progress fixture -> progress.schema", vProgress, progress);
 
 console.log("\nEnvelope (oneOf) validation:");
-check("manifest -> envelope", vEnvelope, manifest);
-check("document -> envelope", vEnvelope, document);
+check("vocabulary -> envelope", vEnvelope, vocabulary);
+check("program    -> envelope", vEnvelope, program);
 check("event    -> envelope", vEnvelope, event);
 check("patch    -> envelope", vEnvelope, expectedPatch);
 check("progress -> envelope", vEnvelope, progress);
@@ -71,7 +71,7 @@ check("progress -> envelope", vEnvelope, progress);
 // MUST produce exactly `expected.patch.json`. Reducer implementation is future work; here we
 // assert the fixture is internally consistent with the document's declared behavior edge.
 console.log("\nGolden reduction contract:");
-const node = document.payload.root.edges.children.find((n) => n.id === event.payload.node);
+const node = program.payload.root.edges.children.find((n) => n.id === event.payload.node);
 const actions = node?.edges?.on?.[event.payload.name] ?? [];
 const assign = actions.find((a) => a.do === "assign");
 const contractOk =
@@ -83,7 +83,7 @@ if (contractOk) {
   console.log(`  PASS  event(${event.payload.name}) on ${event.payload.node} -> ${expectedPatch.payload.ops[0].path}`);
 } else {
   failures++;
-  console.log("  FAIL  event does not map to expected patch per the document's behavior edge");
+  console.log("  FAIL  event does not map to expected patch per the program's behavior edge");
 }
 
 // Behavioral conformance matrix: structural validation of every case file against the

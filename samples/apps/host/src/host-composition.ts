@@ -22,9 +22,9 @@ export function createHostCompositionBundle(
   }
 
   const composition: SerializableBundle = {
-    manifest: {
+    vocabulary: {
       gik: "0.1",
-      type: "manifest",
+      type: "vocabulary",
       payload: {
         version: "host-composition/1.0",
         expression: "jsonata",
@@ -42,9 +42,9 @@ export function createHostCompositionBundle(
         },
       },
     },
-    document: {
+    program: {
       gik: "0.1",
-      type: "document",
+      type: "program",
       payload: {
         root: {
           capability: "ui:screen",

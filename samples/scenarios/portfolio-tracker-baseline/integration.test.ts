@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { bundleFromJson, loadBundleRuntime, SharedContextStore } from "@gik/react";
 import { dispatchDemoControlRequest, withDemoHumanGate } from "../../bundles/demo-runner/effect_handlers/control-bridge";
-import runnerDocument from "../../bundles/demo-runner/document.json" with { type: "json" };
+import runnerDocument from "../../bundles/demo-runner/program.json" with { type: "json" };
 import runnerEffects from "../../bundles/demo-runner/effect_handlers/index";
-import runnerManifest from "../../bundles/demo-runner/manifest.json" with { type: "json" };
+import runnerManifest from "../../bundles/demo-runner/vocabulary.json" with { type: "json" };
 import runnerState from "../../bundles/demo-runner/state.json" with { type: "json" };
 import portfolioEffects from "../../bundles/portfolio-tracker/effect_handlers/index";
 import type { ControlRequest } from "../../shared/control-runtime";
@@ -31,8 +31,8 @@ function demoRuntimes() {
   ]);
   const contexts = { demo: shared, control: shared };
   const portfolio = loadBundleRuntime(bundleFromJson({
-    manifest: portfolioRuntime.manifest,
-    document: portfolioRuntime.document,
+    vocabulary: portfolioRuntime.vocabulary,
+    program: portfolioRuntime.program,
     state: portfolioRuntime.state,
   }, { effectHandlers: portfolioEffects }), {
     contexts,
@@ -46,8 +46,8 @@ function demoRuntimes() {
     presentationPresets: portfolioBaselineComposition.demoContract.presentationPresets,
   };
   const runner = loadBundleRuntime(bundleFromJson({
-    manifest: structuredClone(runnerManifest),
-    document: structuredClone(runnerDocument),
+    vocabulary: structuredClone(runnerManifest),
+    program: structuredClone(runnerDocument),
     state: runnerSeed,
   }, { effectHandlers: runnerEffects }), contexts);
   return { shared, portfolio, runner };

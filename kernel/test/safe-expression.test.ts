@@ -15,7 +15,7 @@ import {
   reduce,
   resolveNode,
   type CapabilityRegistry,
-  type DocumentPayload,
+  type ProjectedProgramDefinition,
 } from "../src/index";
 
 const UNSAFE: Array<[string, string]> = [
@@ -82,7 +82,7 @@ test("reduce rejects an unsafe action guard but still allows a lambda in a deriv
       capability: "x",
       edges: { on: { tap: [{ do: "assign", target: "ns.a", args: { value: 1 }, guard: "function($x){ $x }(true)" }] } },
     },
-  } as unknown as DocumentPayload;
+  } as unknown as ProjectedProgramDefinition;
 
   await assert.rejects(
     () => reduce(guardedDoc, store, event, new JsonataExpressionProvider(), new JsonataExpressionProvider({ safe: true })),
@@ -95,7 +95,7 @@ test("reduce rejects an unsafe action guard but still allows a lambda in a deriv
       capability: "x",
       edges: { on: { tap: [{ do: "derive", target: "ns.b", args: { expr: "function($x){ $x * 2 }(21)" } }] } },
     },
-  } as unknown as DocumentPayload;
+  } as unknown as ProjectedProgramDefinition;
 
   const { ops } = await reduce(
     deriveDoc,

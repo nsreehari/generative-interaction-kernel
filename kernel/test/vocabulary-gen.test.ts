@@ -10,9 +10,9 @@ import {
   InMemoryStateModel,
   assign,
   assignFrom,
-  authorDocument,
-  document,
-  generateManifest,
+  authorProjectedProgram,
+  projectedProgram,
+  generateVocabulary,
   invoke,
   node,
   type CapabilityDescriptor,
@@ -20,7 +20,7 @@ import {
 } from "../src/index";
 
 function authorDoc() {
-  return document(
+  return projectedProgram(
     node("board", "board-1", {
       props: { title: "Sales" },
       children: [
@@ -42,8 +42,8 @@ function authorDoc() {
   );
 }
 
-test("generateManifest collects capabilities, namespaces, and action families a document uses", () => {
-  const m = generateManifest(authorDoc());
+test("generateVocabulary collects capabilities, namespaces, and action families a program uses", () => {
+  const m = generateVocabulary(authorDoc());
 
   assert.deepEqual(
     Object.keys(m.capabilities).sort(),
@@ -67,7 +67,7 @@ test("a supplied catalog is reused for used capabilities; unknown ones get a per
   const catalog: Record<string, CapabilityDescriptor> = {
     table: { propsSchema: { type: "object" }, emits: ["rowSelect"], dataProp: "rows" },
   };
-  const m = generateManifest(authorDoc(), { version: "authored/1.0", catalog });
+  const m = generateVocabulary(authorDoc(), { version: "authored/1.0", catalog });
 
   assert.equal(m.version, "authored/1.0");
   assert.equal(m.capabilities.table.dataProp, "rows", "catalog descriptor is reused (keeps dataProp)");
@@ -78,9 +78,9 @@ test("a supplied catalog is reused for used capabilities; unknown ones get a per
 
 test("a generated manifest can drive the very document it was generated from (round-trip)", async () => {
   const doc = authorDoc();
-  const manifest = generateManifest(doc, { catalog: { table: { propsSchema: {}, dataProp: "rows" } } });
+  const manifest = generateVocabulary(doc, { catalog: { table: { propsSchema: {}, dataProp: "rows" } } });
 
-  const message = authorDocument(doc.root);
+  const message = authorProjectedProgram(doc.root);
   const state = new InMemoryStateModel(manifest.namespaces ?? []);
   state.apply([
     { op: "set", path: "computed_values.total", value: 150 },
@@ -88,7 +88,7 @@ test("a generated manifest can drive the very document it was generated from (ro
   ]);
 
   // constructing + resolving over the generated manifest must not throw.
-  const kernel = new Kernel({ gik: "0.1", type: "manifest", payload: manifest }, message, { state });
+  const kernel = new Kernel({ gik: "0.1", type: "vocabulary", payload: manifest }, message, { state });
   const tree = (await kernel.resolve()) as ResolvedNode;
   assert.equal(tree.capability, "board");
   assert.equal(tree.children.length, 3, "the document resolves in full under its generated manifest");

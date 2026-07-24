@@ -166,8 +166,8 @@ test("demo target mappings must reference declared Bundle node events", () => {
     () => validateDemoTargetBundleContract(
       "portfolio-tracker",
       target,
-      unwrap(runtime.manifest),
-      unwrap(runtime.document)
+      unwrap(runtime.vocabulary),
+      unwrap(runtime.program)
     ),
     /unknown event 'missing-event'/
   );

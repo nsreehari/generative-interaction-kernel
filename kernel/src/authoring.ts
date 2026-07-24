@@ -1,9 +1,9 @@
 // Phase 7: the agent-authoring path. Agents don't hand-write JSON — they compose GIK
-// documents from the manifest's vocabulary using typed constructors for the *closed*
+// programs from the vocabulary manifest using typed constructors for the *closed*
 // grammar, then get two independent safety nets:
-//   1. authorDocument() runs validate-before-commit (structural schema validation) and
-//      throws on a malformed document.
-//   2. lintManifestReferences() returns NON-throwing warnings for references that are
+//   1. authorProjectedProgram() runs validate-before-commit (structural schema validation) and
+//      throws on a malformed program.
+//   2. lintVocabularyReferences() returns NON-throwing warnings for references that are
 //      structurally valid but semantically suspect (unknown capabilities, events a
 //      capability doesn't declare, undeclared namespaces). Unknown capabilities are safe
 //      at runtime via graceful fallback, so they are lint, not errors.
@@ -12,16 +12,21 @@ import { envelope } from "./types";
 import type {
   Action,
   DocNode,
-  DocumentMessage,
-  DocumentPayload,
+  ProjectedProgramMessage,
+  ProjectedProgramDefinition,
   Edges,
+  ExecutableProgramDefinition,
   Json,
   Machine,
-  ManifestPayload,
+  ProjectedVocabularyManifest,
   Reaction,
+  ProgramMessage,
+  HeadlessProgramDefinition,
+  RuntimeHandler,
+  RuntimeReaction,
   StandingDerivation,
 } from "./types";
-import { validateDocumentMessage } from "./validate";
+import { validateProgramMessage } from "./validate";
 
 // --- Action constructors (the six closed families) --------------------------------
 
@@ -74,7 +79,7 @@ export function reaction(when: string, run: Action[], options: { runInitially?: 
   return { when, run, ...options };
 }
 
-// --- Node + document constructors -------------------------------------------------
+// --- Node + program constructors --------------------------------------------------
 
 export interface NodeOptions {
   props?: Record<string, Json>;
@@ -93,7 +98,7 @@ export interface NodeOptions {
   children?: DocNode[];
 }
 
-/** Build a document node for a manifest capability. Omits empty edges to stay schema-clean. */
+/** Build a projection node for a vocabulary capability. Omits empty edges to stay schema-clean. */
 export function node(capability: string, id: string, opts: NodeOptions = {}): DocNode {
   const edges: Edges = {};
   if (opts.read) edges.read = opts.read;
@@ -114,28 +119,52 @@ export function node(capability: string, id: string, opts: NodeOptions = {}): Do
   return result;
 }
 
-export interface DocumentOptions {
-  manifest?: string;
+export interface ProgramOptions {
+  vocabulary?: string;
+  handlers?: RuntimeHandler[];
+  reactions?: RuntimeReaction[];
   machines?: Machine[];
   derivations?: StandingDerivation[];
 }
 
-/** Assemble a document payload from a root node. */
-export function document(root: DocNode, opts: DocumentOptions = {}): DocumentPayload {
-  const payload: DocumentPayload = { root };
-  if (opts.manifest !== undefined) payload.manifest = opts.manifest;
+/** Assemble a projected program from a root node. */
+export function projectedProgram(root: DocNode, opts: ProgramOptions = {}): ProjectedProgramDefinition {
+  const payload: ProjectedProgramDefinition = { root };
+  if (opts.vocabulary !== undefined) payload.vocabulary = opts.vocabulary;
+  if (opts.handlers) payload.handlers = opts.handlers;
+  if (opts.reactions) payload.reactions = opts.reactions;
+  if (opts.machines) payload.machines = opts.machines;
+  if (opts.derivations) payload.derivations = opts.derivations;
+  return payload;
+}
+
+export type HeadlessProgramOptions = ProgramOptions;
+
+/** Assemble a headless program without a projection root. */
+export function program(opts: HeadlessProgramOptions): HeadlessProgramDefinition {
+  const payload: HeadlessProgramDefinition = {};
+  if (opts.vocabulary !== undefined) payload.vocabulary = opts.vocabulary;
+  if (opts.handlers) payload.handlers = opts.handlers;
+  if (opts.reactions) payload.reactions = opts.reactions;
   if (opts.machines) payload.machines = opts.machines;
   if (opts.derivations) payload.derivations = opts.derivations;
   return payload;
 }
 
 /**
- * Validate-before-commit: envelope the document and run structural schema validation.
- * Throws {@link ValidationError} on a malformed document; returns the wire message otherwise.
+ * Validate-before-commit: envelope the program and run structural schema validation.
+ * Throws {@link ValidationError} on a malformed program; returns the wire message otherwise.
  */
-export function authorDocument(root: DocNode, opts: DocumentOptions = {}): DocumentMessage {
-  const message = envelope("document", document(root, opts)) as DocumentMessage;
-  validateDocumentMessage(message);
+export function authorProjectedProgram(root: DocNode, opts: ProgramOptions = {}): ProjectedProgramMessage {
+  const message = envelope("program", projectedProgram(root, opts)) as ProjectedProgramMessage;
+  validateProgramMessage(message);
+  return message;
+}
+
+/** Validate and envelope a headless program without a projection root. */
+export function authorProgram(opts: HeadlessProgramOptions): ProgramMessage {
+  const message = envelope("program", program(opts)) as ProgramMessage;
+  validateProgramMessage(message);
   return message;
 }
 
@@ -153,15 +182,15 @@ function firstSegment(path: string): string {
 
 /**
  * Lint a document's references against a manifest. Returns warnings (never throws) for
- * references that are structurally valid but not backed by the manifest vocabulary:
+ * references that are structurally valid but not backed by the vocabulary:
  * - `unknown-capability`: a node uses a capability the manifest doesn't declare (safe at
  *   runtime via graceful fallback, hence a warning).
  * - `undeclared-event`: a node handles an event the capability doesn't list in `emits`.
  * - `undeclared-namespace`: a read/write/assign path targets an undeclared namespace.
  */
-export function lintManifestReferences(
-  manifest: ManifestPayload,
-  doc: DocumentPayload
+export function lintVocabularyReferences(
+  manifest: ProjectedVocabularyManifest,
+  doc: ExecutableProgramDefinition
 ): LintWarning[] {
   const warnings: LintWarning[] = [];
   const namespaces = new Set(manifest.namespaces ?? []);
@@ -182,7 +211,7 @@ export function lintManifestReferences(
   };
 
   const walk = (n: DocNode): void => {
-    const cap = manifest.capabilities[n.capability];
+    const cap = manifest.capabilities?.[n.capability];
     if (!cap) {
       warnings.push({
         code: "unknown-capability",
@@ -220,7 +249,27 @@ export function lintManifestReferences(
     for (const child of n.edges?.children ?? []) walk(child);
   };
 
-  walk(doc.root);
+  if (doc.root) walk(doc.root);
+
+  const checkActions = (owner: string, actions: Action[]): void => {
+    for (const action of actions) {
+      if (action.target) checkNs(action.target, owner, `action '${action.do}' target`);
+      if (declaredEffects && action.do === "invoke") {
+        const tool = typeof action.args?.tool === "string" ? action.args.tool : undefined;
+        if (tool && !effectSet.has(tool)) {
+          warnings.push({
+            code: "undeclared-effect",
+            node: owner,
+            detail: `invokes effect '${tool}' not declared in manifest externals.effectHandlers`,
+          });
+        }
+      }
+    }
+  };
+  for (const handler of doc.handlers ?? []) {
+    for (const actions of Object.values(handler.on)) checkActions(handler.id, actions);
+  }
+  for (const reaction of doc.reactions ?? []) checkActions(reaction.id, reaction.run);
 
   for (const m of doc.machines ?? []) checkNs(m.context, m.id, `machine '${m.id}' context`);
 

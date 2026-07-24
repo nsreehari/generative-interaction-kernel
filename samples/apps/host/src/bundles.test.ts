@@ -108,7 +108,7 @@ test("host projection imports can resolve another bundle by id", () => {
 
 test("copilot-c2 opens as a declarative MCP-backed Blueprint", () => {
   const runtime = openSampleBlueprint("copilot-c2");
-  const services = unwrap(runtime.manifest).externals?.services as Record<string, {
+  const services = unwrap(runtime.vocabulary).externals?.services as Record<string, {
     kind?: string;
     config?: Record<string, unknown>;
   }>;
@@ -127,7 +127,7 @@ test("copilot-c2 opens as a declarative MCP-backed Blueprint", () => {
 
 test("copilot-c2 resolves its editable MCP server before execution", async () => {
   const runtime = openSampleBlueprint("copilot-c2");
-  const state = seedState(runtime.manifest as Parameters<typeof seedState>[0], runtime.state);
+  const state = seedState(runtime.vocabulary as Parameters<typeof seedState>[0], runtime.state);
   state.apply([{ op: "set", path: "copilotC2.mcpServer", value: "https://mcp.example.test/mcp" }]);
   let invocation: unknown;
   const serviceHost = createBlueprintServiceHost(runtime, state, {
