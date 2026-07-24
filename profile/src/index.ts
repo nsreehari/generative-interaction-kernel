@@ -7,6 +7,7 @@ export * from "./blueprint";
 export * from "./templates";
 export * from "./authoring-runner";
 export * from "./cells";
+export * from "./lowering-cells";
 export * from "./genui";
 export * from "./genui-runtime";
 export * from "./genui-authoring";

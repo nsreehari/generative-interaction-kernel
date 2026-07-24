@@ -7,6 +7,10 @@ package:
   purpose: >-
     Expose canonical Blueprint and Cell authoring functions while temporarily
     retaining legacy Profile pipeline and GenUI lowering functions.
+  lowering_scope: >-
+    Blueprint tiers and lowering recipes are artifact-compilation mechanisms, not
+    frontend-only concepts. They may terminate in projected UI programs or headless
+    service, automation, workflow, and agent programs accepted by the Kernel.
   public_entrypoint: packages/profile/src/index.ts
   implementation_entrypoint: profile/src/index.ts
 
@@ -100,6 +104,18 @@ free_functions:
           - Requires exactly one presentation root.
           - Rejects unknown, non-visual, or cyclic presentation Cells.
           - Lowers Cell computations into standing kernel derivations.
+
+  - group: lowering-cells
+    category: canonical
+    source: profile/src/lowering-cells.ts
+    functions:
+      - name: defineLoweringCell
+        signature: "defineLoweringCell(definition: LoweringCellDefinition): LoweringCellDefinition"
+        purpose: Clone and minimally validate one artifact-processing participant in a compiler meta-graph.
+        guarantees:
+          - Rejects empty IDs and invalid or duplicate artifact ports.
+          - Requires terminal Blueprint emission to declare validation policy.
+          - Does not add the Cell to the executable Blueprint or grant runtime mutation authority.
 
   - group: profile-loading
     category: legacy_transitional
@@ -240,6 +256,15 @@ callable_extension_interfaces:
       (recipe: TRecipe, input: unknown, context: LayerContext,
       profile: ResolvedProfile<TRecipe>) => unknown
     purpose: Execute one transition in a resolved Profile chain.
+  - name: LoweringCellDefinition
+    category: canonical
+    source: profile/src/lowering-cells.ts
+    purpose: >-
+      Declare one compiler-plane artifact participant for deterministic transforms,
+      strategy selection or synthesis, validation, approval, or terminal Blueprint emission.
+    boundary: >-
+      A Lowering Cell belongs to the meta-graph that produces an executable Blueprint;
+      it is not an application runtime Cell inside the Blueprint it produces.
   - name: StructuralValidator
     category: legacy_transitional
     signature: "(args: Record<string, Json>) => AuthoringReport"
@@ -275,6 +300,11 @@ primary_data_contracts:
     - CellView
     - CellComposition
     - ExecutableCellTopology
+    - ArtifactPort
+    - LoweringCellDefinition
+    - LoweringCellKind
+    - LoweringCellPolicy
+    - LoweringStrategyRef
   legacy_transitional:
     - Profile
     - ProfileArtifact
@@ -304,6 +334,9 @@ behavioral_guarantees:
   - Topology and ProjectedProgramDefinition are projections over Cells, not intrinsic Blueprint structure.
   - New Blueprint APIs must not derive their public types from Profile.
   - Profile and GenUI functions remain transitional until Blueprint-native execution replaces them.
+  - Tiers and recipes may lower to projected or headless executable programs.
+  - Backend service and workflow Blueprints do not require fabricated presentation tiers or roots.
+  - Agent-driven strategy selection or synthesis occurs in the compiler plane; only a validated terminal Blueprint receives Kernel execution authority.
 
 verification:
   commands:

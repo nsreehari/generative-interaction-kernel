@@ -567,6 +567,8 @@ export interface ProgramMessage {
   payload: HeadlessProgramDefinition;
 }
 
+export type ExecutableProgramMessage = ProjectedProgramMessage | ProgramMessage;
+
 export interface PatchMessage {
   gik: typeof GIK_VERSION;
   type: "patch";

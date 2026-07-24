@@ -15,10 +15,12 @@ import {
   ValidationError,
   assignFrom,
   invoke,
+  lowerToProgram,
   lowerToProjectedProgram,
   node,
   pipeline,
   type DocNode,
+  type HeadlessProgramDefinition,
   type ProjectedProgramDefinition,
   type ProjectedVocabularyManifest,
   type ResolvedNode,
@@ -139,6 +141,26 @@ test("layers are optional: a single-stage Domain -> UI pipeline is valid (ADR-00
   const message = lowerToProjectedProgram(compiled, salesBoard);
   assert.equal(message.payload.root.capability, "board");
   assert.equal(message.payload.root.props?.title, "Sales");
+});
+
+test("a lowering may emit a headless executable program", () => {
+  const lowerAutomation: Stage<{ token: string }, HeadlessProgramDefinition> = ({ token }) => ({
+    graph: {
+      inputs: [token],
+      outputs: ["result"],
+      nodes: [{
+        id: "copy-input",
+        inputs: { value: token },
+        outputs: { result: "result" },
+        operation: { kind: "compute", expression: "$inputs.value" },
+      }],
+    },
+  });
+
+  const message = lowerToProgram(lowerAutomation, { token: "source" });
+  assert.equal(message.type, "program");
+  assert.equal(message.payload.root, undefined);
+  assert.equal(message.payload.graph?.nodes[0].id, "copy-input");
 });
 
 test("a lowering that emits a malformed document is rejected at the kernel boundary", () => {

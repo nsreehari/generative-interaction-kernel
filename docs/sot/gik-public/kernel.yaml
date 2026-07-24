@@ -8,6 +8,11 @@ package:
     Provide the authoritative GIK program runtime, vocabulary contracts,
     host extension ports, optional projection subsystem, renderer-side replica,
     transport broker, and program authoring helpers.
+  core_promise: >-
+    Turn an executable Blueprint into one authoritative, continuously settling
+    causal system: deterministically propagate every currently reachable
+    consequence until execution is quiescent, suspended on external work, or
+    yielded at a configured budget boundary.
   public_entrypoint: packages/kernel/src/index.ts
   implementation_entrypoint: kernel/src/index.ts
 
@@ -18,6 +23,61 @@ api_policy:
     host_extension: Interface implemented or supplied by a host.
     advanced: Supported infrastructure API not needed by ordinary consumers.
     internal_candidate: Exported today but not yet accepted as a durable contract.
+
+capability_model:
+  mental_model: >-
+    Authoring and strategy produce Profiles, recipes, and higher-level artifacts;
+    lowering compiles them into a validated executable Blueprint; Kernel execution
+    settles that Blueprint against host-owned services; optional projection, transport,
+    replication, and observation expose the result to consumers.
+  categories:
+    - name: contracts-and-protocol
+      phase: cross-cutting
+      role: supporting
+      purpose: Define executable programs, vocabularies, events, patches, progress, traces, and wire envelopes.
+      modules: [kernel/src/types.ts]
+    - name: authoring
+      phase: before-execution
+      role: supporting
+      purpose: Construct actions, projected or headless programs, and validated program messages.
+      modules: [kernel/src/authoring.ts, kernel/src/vocabulary-gen.ts]
+    - name: lowering-and-validation
+      phase: before-execution
+      role: supporting
+      purpose: >-
+        Compile higher-level frontend or backend artifacts into projected or headless
+        executable programs and validate the terminal artifact before execution.
+      modules: [kernel/src/lower.ts, kernel/src/validate.ts]
+    - name: authoritative-execution
+      phase: execution
+      role: core
+      purpose: Own revisioned state, event reduction, continuous graph settlement, effects, and invocations.
+      modules: [kernel/src/kernel.ts, kernel/src/graph-runtime.ts, kernel/src/reduce.ts, kernel/src/derivations.ts]
+    - name: host-orchestration
+      phase: execution
+      role: extension
+      purpose: Delegate expressions, state storage, capabilities, external work, and transport to host-supplied ports.
+      modules: [kernel/src/providers.ts]
+    - name: projection
+      phase: after-execution
+      role: optional
+      purpose: Resolve projected programs into renderer-neutral trees; headless programs omit this category.
+      modules: [kernel/src/interpret.ts]
+    - name: transport-and-replication
+      phase: after-execution
+      role: optional
+      purpose: Carry protocol messages and maintain renderer-side state and revision replicas.
+      modules: [kernel/src/transport.ts, kernel/src/client.ts]
+    - name: lifecycle-and-observability
+      phase: cross-cutting
+      role: supporting
+      purpose: Inspect execution, manage checkpoints and effects, and publish traces and progress.
+      modules: [kernel/src/kernel.ts, kernel/src/observability.ts]
+  package_direction:
+    - Keep contracts, validation boundary, authoritative execution, and host interfaces in Kernel.
+    - Treat authoring and lowering as the first physical split candidate after their contracts stabilize.
+    - Treat projection and client replication as later optional split candidates driven by deployment needs.
+    - Do not split packages merely to mirror source modules.
 
 runtime_contracts:
   - name: ProgramDefinition
@@ -656,7 +716,13 @@ free_functions:
     category: advanced
     functions:
       - "pipeline<In, Out>(first: Stage<In, Out>): Pipeline<In, Out>"
-      - "lowerToProjectedProgram<In>(lowering: ProgramLowering<In>, input: In): ProjectedProgramMessage"
+      - >-
+        lowerToProgram<In, Out extends ExecutableProgramDefinition>(
+        lowering: ProgramLowering<In, Out>, input: In): ProgramMessageFor<Out>
+      - >-
+        lowerToProjectedProgram<In>(
+        lowering: ProgramLowering<In, ProjectedProgramDefinition>,
+        input: In): ProjectedProgramMessage
   - group: protocol
     category: primary
     functions:
