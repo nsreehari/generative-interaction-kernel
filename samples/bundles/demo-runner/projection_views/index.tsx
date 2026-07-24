@@ -8,6 +8,7 @@ import {
 } from "@fluentui/react-icons";
 import { readProps, useCountdownTimer, type ProjectionView, type ProjectionViewProps } from "@gik/react";
 import { writeDemoNavigation, type DemoCatalogEntry, type ScenarioPlan } from "../../../shared/demo-runner";
+import { formatCountdown } from "../../../shared/countdown";
 
 interface DemoState {
   act: number;
@@ -281,6 +282,7 @@ function TimerButton({ node, emit }: ProjectionViewProps) {
       timer.restart();
     },
   });
+  const countdown = formatCountdown(timer.remainingSeconds);
 
   const press = () => {
     emit("press", { reason: "manual" });
@@ -297,7 +299,7 @@ function TimerButton({ node, emit }: ProjectionViewProps) {
       <span className="gx-timer-label">{label}</span>
       {node.props.showCountdown !== false ? <>
         <span className="gx-timer-separator" aria-hidden="true"> · </span>
-        <span className="gx-timer-count">{timer.remainingSeconds}</span>
+        <span className="gx-timer-count">{countdown}</span>
       </> : null}
     </button>
   );

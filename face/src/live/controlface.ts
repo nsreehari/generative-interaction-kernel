@@ -37,9 +37,11 @@ import type { ServiceKindDescription } from "../services/service-kinds";
 import {
   compileCellTopology,
   composeCellDocument,
+  assembleBlueprint,
   loadBlueprint,
   runProfile,
   type BlueprintArtifact,
+  type BlueprintReferenceResolver,
   type CellDefinition,
   type LayerRecipe,
   type ResolvedProfile,
@@ -48,10 +50,13 @@ import { resolveProfileTemplate, resolveProfileTemplateResource } from "../../..
 
 export interface BlueprintRuntime {
   blueprintId: string;
+  instanceId: string;
   revision: string;
+  definition: BlueprintSource;
   manifest: Enveloped<ManifestPayload>;
   document: Enveloped<DocumentPayload>;
   state: Record<string, Json>;
+  children: Readonly<Record<string, BlueprintRuntime>>;
 }
 
 type LoweredBlueprint = {
@@ -62,30 +67,25 @@ type LoweredBlueprint = {
 export type BlueprintSource = BlueprintArtifact<LayerRecipe>;
 
 /**
- * Resolve a zero-recipe, JSON-authored Blueprint whose organism is already expressed as runtime
+ * Resolve a zero-recipe, JSON-authored Blueprint whose Cells are already expressed as runtime
  * nodes/cells. Recipe-backed Profiles deliberately return undefined and keep their registered
  * lowering implementation.
  */
 export function defineDeclarativeBlueprint(blueprint: BlueprintSource): LoweredBlueprint | undefined {
-  if (blueprint.payload.recipes.length > 0 || !blueprint.payload.organism?.root) return undefined;
+  if (blueprint.payload.recipes.length > 0 || !blueprint.payload.cells || !blueprint.payload.projections?.presentation) return undefined;
+  const definition = {
+    cells: blueprint.payload.cells,
+    projections: { presentation: blueprint.payload.projections.presentation },
+  };
   const profile = loadBlueprint<LayerRecipe>(
     blueprint,
     resolveProfileTemplateResource,
     resolveProfileTemplate,
   );
-  const root = blueprint.payload.organism.root;
-  const cells = blueprint.payload.organism.cells;
-  const organism: CellDefinition = cells ? {
-    ...root,
-    edges: {
-      ...root.edges,
-      children: [...(root.edges?.children ?? []), ...cells],
-    },
-  } : root;
 
   return {
     profile,
-    lower: () => composeCellDocument(organism, compileCellTopology(profile.artifact.payload.id, organism)),
+    lower: () => composeCellDocument(definition, compileCellTopology(profile.artifact.payload.id, definition)),
   };
 }
 
@@ -185,6 +185,8 @@ function resolveContextFor(profile: ResolvedProfile<LayerRecipe>, context: Recor
 
 export interface OpenBlueprintOptions {
   context?: Record<string, Json>;
+  resolveBlueprint?: BlueprintReferenceResolver<LayerRecipe>;
+  instanceId?: string;
 }
 
 export interface ControlFaceOptions {
@@ -199,6 +201,8 @@ export interface ControlFaceOptions {
 }
 
 function runtimeFromLowering(
+  definition: BlueprintSource,
+  instanceId: string,
   profile: Pick<ResolvedProfile, "artifact" | "services">,
   document: DocumentPayload,
   context?: Record<string, Json>,
@@ -223,7 +227,9 @@ function runtimeFromLowering(
 
   return {
     blueprintId: id,
+    instanceId,
     revision: version,
+    definition,
     manifest: { gik: "0.1", type: "manifest", payload: manifest },
     document: {
       gik: "0.1",
@@ -231,21 +237,25 @@ function runtimeFromLowering(
       payload: document,
     },
     state: mergeJsonRecords(structuredClone(runtime.state ?? {}), resolveInitialSeed(context)),
+    children: {},
   };
 }
 
-/** Open one canonical JSON-authored Blueprint without projecting the full control-plane surface. */
-export function openBlueprint(
+function openAssembledBlueprint(
   source: BlueprintSource,
-  options: OpenBlueprintOptions = {}
+  options: Pick<OpenBlueprintOptions, "context" | "instanceId">,
 ): BlueprintRuntime {
+  const instanceId = options.instanceId ?? source.payload.id;
+  let runtime: BlueprintRuntime;
   if (source.payload.recipes.length > 0) {
     const profile = loadBlueprint<LayerRecipe>(
       source,
       resolveProfileTemplateResource,
       resolveProfileTemplate,
     );
-    return runtimeFromLowering(
+    runtime = runtimeFromLowering(
+      source,
+      instanceId,
       profile,
       runProfile(
         profile,
@@ -254,19 +264,41 @@ export function openBlueprint(
       ) as DocumentPayload,
       options.context,
     );
-  }
-
-  const definition = defineDeclarativeBlueprint(source);
-  if (!definition) {
-    throw new Error(
-      `Blueprint '${source.payload.id}' has no organism root or lowering recipes`
+  } else {
+    const definition = defineDeclarativeBlueprint(source);
+    if (!definition) {
+      throw new Error(
+        `Blueprint '${source.payload.id}' has no presentation projection root or lowering recipes`
+      );
+    }
+    runtime = runtimeFromLowering(
+      source,
+      instanceId,
+      definition.profile,
+      definition.lower(structuredClone(options.context ?? {})),
+      options.context,
     );
   }
-  return runtimeFromLowering(
-    definition.profile,
-    definition.lower(structuredClone(options.context ?? {})),
-    options.context,
+
+  const children = Object.fromEntries(
+    Object.entries(source.payload.cells ?? {}).flatMap(([cellId, cell]) => {
+      const child = cell.blueprint;
+      if (!child || !("inline" in child)) return [];
+      return [[cellId, openAssembledBlueprint(child.inline as BlueprintSource, {
+        instanceId: `${instanceId}/cells/${cellId}`,
+      })]];
+    }),
   );
+  return { ...runtime, children };
+}
+
+/** Open one canonical JSON-authored Blueprint without projecting the full control-plane surface. */
+export function openBlueprint(
+  source: BlueprintSource,
+  options: OpenBlueprintOptions = {}
+): BlueprintRuntime {
+  const assembled = assembleBlueprint(source, options.resolveBlueprint);
+  return openAssembledBlueprint(assembled, options);
 }
 
 export class ControlFace implements TransportBroker {

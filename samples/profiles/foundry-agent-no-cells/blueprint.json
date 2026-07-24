@@ -6,272 +6,6 @@
     "kind": "runtime-blueprint",
     "version": "1.0",
     "recipes": [],
-    "resources": {
-      "document": {
-        "inline": {
-          "root": {
-            "capability": "ui:screen",
-            "id": "foundry-agent-root",
-            "props": {
-              "title": "Foundry Agent",
-              "subtitle": "Choose an available agent and start a conversation."
-            },
-            "edges": {
-              "children": [
-                {
-                  "capability": "foundry:access-gate",
-                  "id": "foundry-access-gate",
-                  "edges": {
-                    "read": {
-                      "status": "agent.accessStatus",
-                      "error": "agent.accessError"
-                    },
-                    "on": {
-                      "accessRequested": [
-                        {
-                          "do": "assign",
-                          "target": "agent.accessStatus",
-                          "args": {
-                            "value": "checking"
-                          }
-                        },
-                        {
-                          "do": "assign",
-                          "target": "agent.accessError",
-                          "args": {
-                            "value": ""
-                          }
-                        },
-                        {
-                          "do": "invoke",
-                          "args": {
-                            "tool": "checkFoundryAccess"
-                          }
-                        }
-                      ],
-                      "accessCleared": [
-                        {
-                          "do": "invoke",
-                          "args": {
-                            "tool": "clearFoundryAccess"
-                          }
-                        }
-                      ]
-                    },
-                    "children": [
-                      {
-                        "capability": "agent:ask-page",
-                        "id": "agent-demo",
-                        "props": {
-                          "title": "Ask the agent"
-                        },
-                        "edges": {
-                          "children": [
-                            {
-                              "capability": "agent:agent-selector",
-                              "id": "agent-selector",
-                              "edges": {
-                                "read": {
-                                  "agentName": "agent.agentName",
-                                  "agentOptions": "agent.agentOptions",
-                                  "agentsStatus": "agent.agentsStatus",
-                                  "agentsError": "agent.agentsError"
-                                },
-                                "on": {
-                                  "agentsRequested": [
-                                    {
-                                      "do": "assign",
-                                      "target": "agent.agentsStatus",
-                                      "args": {
-                                        "value": "loading"
-                                      }
-                                    },
-                                    {
-                                      "do": "assign",
-                                      "target": "agent.agentsError",
-                                      "args": {
-                                        "value": ""
-                                      }
-                                    },
-                                    {
-                                      "do": "invoke",
-                                      "args": {
-                                        "tool": "discoverAgents"
-                                      }
-                                    }
-                                  ],
-                                  "select": [
-                                    {
-                                      "do": "assign",
-                                      "target": "agent.agentName",
-                                      "args": {
-                                        "from": "$event.value"
-                                      }
-                                    }
-                                  ]
-                                }
-                              }
-                            },
-                            {
-                              "capability": "ui:alert",
-                              "id": "agent-connected",
-                              "props": {
-                                "label": "Connected to",
-                                "level": "good"
-                              },
-                              "edges": {
-                                "read": {
-                                  "value": "agent.agentName"
-                                }
-                              }
-                            },
-                            {
-                              "capability": "ui:field",
-                              "id": "agent-message-field",
-                              "props": {
-                                "label": "Message",
-                                "placeholder": "Ask the agent something..."
-                              },
-                              "edges": {
-                                "read": {
-                                  "value": "agent.draft"
-                                },
-                                "on": {
-                                  "input": [
-                                    {
-                                      "do": "assign",
-                                      "target": "agent.draft",
-                                      "args": {
-                                        "from": "$event.value"
-                                      }
-                                    }
-                                  ]
-                                }
-                              }
-                            },
-                            {
-                              "capability": "ui:button",
-                              "id": "agent-ask-btn",
-                              "props": {
-                                "label": "Ask",
-                                "tone": "primary"
-                              },
-                              "edges": {
-                                "on": {
-                                  "press": [
-                                    {
-                                      "do": "invoke",
-                                      "args": {
-                                        "tool": "askAgent"
-                                      }
-                                    }
-                                  ]
-                                }
-                              }
-                            },
-                            {
-                              "capability": "ui:alert",
-                              "id": "agent-request-error",
-                              "props": {
-                                "label": "Something went wrong",
-                                "level": "error"
-                              },
-                              "edges": {
-                                "gate": "agent.error != ''",
-                                "read": {
-                                  "value": "agent.error"
-                                }
-                              }
-                            },
-                            {
-                              "capability": "ui:panel",
-                              "id": "agent-asked-panel",
-                              "props": {
-                                "title": "You asked",
-                                "variant": "inset"
-                              },
-                              "edges": {
-                                "gate": "agent.lastAsked != ''",
-                                "children": [
-                                  {
-                                    "capability": "ui:note",
-                                    "id": "agent-asked-value",
-                                    "props": {
-                                      "tone": "muted"
-                                    },
-                                    "edges": {
-                                      "read": {
-                                        "value": "agent.lastAsked"
-                                      }
-                                    }
-                                  }
-                                ]
-                              }
-                            },
-                            {
-                              "capability": "ui:panel",
-                              "id": "agent-reply-panel",
-                              "props": {
-                                "title": "Reply",
-                                "variant": "inset"
-                              },
-                              "edges": {
-                                "children": [
-                                  {
-                                    "capability": "ui:note",
-                                    "id": "agent-reply-empty",
-                                    "props": {
-                                      "value": "Send a message to see the agent's reply.",
-                                      "tone": "muted"
-                                    },
-                                    "edges": {
-                                      "gate": "agent.reply = ''"
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:markdown",
-                                    "id": "agent-reply-value",
-                                    "edges": {
-                                      "gate": "agent.reply != ''",
-                                      "read": {
-                                        "value": "agent.reply"
-                                      }
-                                    }
-                                  }
-                                ]
-                              }
-                            },
-                            {
-                              "capability": "agent:sign-out-button",
-                              "id": "agent-signout-btn",
-                              "props": {
-                                "label": "Sign out"
-                              },
-                              "edges": {
-                                "on": {
-                                  "press": [
-                                    {
-                                      "do": "invoke",
-                                      "args": {
-                                        "tool": "signOut"
-                                      }
-                                    }
-                                  ]
-                                }
-                              }
-                            }
-                          ]
-                        }
-                      }
-                    ]
-                  }
-                }
-              ]
-            }
-          }
-        }
-      }
-    },
     "services": {
       "assistant": {
         "kind": "foundry-agent",
@@ -576,266 +310,375 @@
         "description": "Authored terminal document for this hosted Blueprint."
       }
     ],
-    "organism": {
-      "root": {
-        "capability": "ui:screen",
+    "cells": {
+      "foundry-agent-root": {
         "id": "foundry-agent-root",
-        "props": {
-          "title": "Foundry Agent",
-          "subtitle": "Choose an available agent and start a conversation."
-        },
-        "edges": {
-          "children": [
-            {
-              "capability": "foundry:access-gate",
-              "id": "foundry-access-gate",
-              "edges": {
-                "read": {
-                  "status": "agent.accessStatus",
-                  "error": "agent.accessError"
-                },
-                "on": {
-                  "accessRequested": [
-                    {
-                      "do": "assign",
-                      "target": "agent.accessStatus",
-                      "args": {
-                        "value": "checking"
-                      }
-                    },
-                    {
-                      "do": "assign",
-                      "target": "agent.accessError",
-                      "args": {
-                        "value": ""
-                      }
-                    },
-                    {
-                      "do": "invoke",
-                      "args": {
-                        "tool": "checkFoundryAccess"
-                      }
-                    }
-                  ],
-                  "accessCleared": [
-                    {
-                      "do": "invoke",
-                      "args": {
-                        "tool": "clearFoundryAccess"
-                      }
-                    }
-                  ]
-                },
-                "children": [
-                  {
-                    "capability": "agent:ask-page",
-                    "id": "agent-demo",
-                    "props": {
-                      "title": "Ask the agent"
-                    },
-                    "edges": {
-                      "children": [
-                        {
-                          "capability": "agent:agent-selector",
-                          "id": "agent-selector",
-                          "edges": {
-                            "read": {
-                              "agentName": "agent.agentName",
-                              "agentOptions": "agent.agentOptions",
-                              "agentsStatus": "agent.agentsStatus",
-                              "agentsError": "agent.agentsError"
-                            },
-                            "on": {
-                              "agentsRequested": [
-                                {
-                                  "do": "assign",
-                                  "target": "agent.agentsStatus",
-                                  "args": {
-                                    "value": "loading"
-                                  }
-                                },
-                                {
-                                  "do": "assign",
-                                  "target": "agent.agentsError",
-                                  "args": {
-                                    "value": ""
-                                  }
-                                },
-                                {
-                                  "do": "invoke",
-                                  "args": {
-                                    "tool": "discoverAgents"
-                                  }
-                                }
-                              ],
-                              "select": [
-                                {
-                                  "do": "assign",
-                                  "target": "agent.agentName",
-                                  "args": {
-                                    "from": "$event.value"
-                                  }
-                                }
-                              ]
-                            }
-                          }
-                        },
-                        {
-                          "capability": "ui:alert",
-                          "id": "agent-connected",
-                          "props": {
-                            "label": "Connected to",
-                            "level": "good"
-                          },
-                          "edges": {
-                            "read": {
-                              "value": "agent.agentName"
-                            }
-                          }
-                        },
-                        {
-                          "capability": "ui:field",
-                          "id": "agent-message-field",
-                          "props": {
-                            "label": "Message",
-                            "placeholder": "Ask the agent something..."
-                          },
-                          "edges": {
-                            "read": {
-                              "value": "agent.draft"
-                            },
-                            "on": {
-                              "input": [
-                                {
-                                  "do": "assign",
-                                  "target": "agent.draft",
-                                  "args": {
-                                    "from": "$event.value"
-                                  }
-                                }
-                              ]
-                            }
-                          }
-                        },
-                        {
-                          "capability": "ui:button",
-                          "id": "agent-ask-btn",
-                          "props": {
-                            "label": "Ask",
-                            "tone": "primary"
-                          },
-                          "edges": {
-                            "on": {
-                              "press": [
-                                {
-                                  "do": "invoke",
-                                  "args": {
-                                    "tool": "askAgent"
-                                  }
-                                }
-                              ]
-                            }
-                          }
-                        },
-                        {
-                          "capability": "ui:alert",
-                          "id": "agent-request-error",
-                          "props": {
-                            "label": "Something went wrong",
-                            "level": "error"
-                          },
-                          "edges": {
-                            "gate": "agent.error != ''",
-                            "read": {
-                              "value": "agent.error"
-                            }
-                          }
-                        },
-                        {
-                          "capability": "ui:panel",
-                          "id": "agent-asked-panel",
-                          "props": {
-                            "title": "You asked",
-                            "variant": "inset"
-                          },
-                          "edges": {
-                            "gate": "agent.lastAsked != ''",
-                            "children": [
-                              {
-                                "capability": "ui:note",
-                                "id": "agent-asked-value",
-                                "props": {
-                                  "tone": "muted"
-                                },
-                                "edges": {
-                                  "read": {
-                                    "value": "agent.lastAsked"
-                                  }
-                                }
-                              }
-                            ]
-                          }
-                        },
-                        {
-                          "capability": "ui:panel",
-                          "id": "agent-reply-panel",
-                          "props": {
-                            "title": "Reply",
-                            "variant": "inset"
-                          },
-                          "edges": {
-                            "children": [
-                              {
-                                "capability": "ui:note",
-                                "id": "agent-reply-empty",
-                                "props": {
-                                  "value": "Send a message to see the agent's reply.",
-                                  "tone": "muted"
-                                },
-                                "edges": {
-                                  "gate": "agent.reply = ''"
-                                }
-                              },
-                              {
-                                "capability": "ui:markdown",
-                                "id": "agent-reply-value",
-                                "edges": {
-                                  "gate": "agent.reply != ''",
-                                  "read": {
-                                    "value": "agent.reply"
-                                  }
-                                }
-                              }
-                            ]
-                          }
-                        },
-                        {
-                          "capability": "agent:sign-out-button",
-                          "id": "agent-signout-btn",
-                          "props": {
-                            "label": "Sign out"
-                          },
-                          "edges": {
-                            "on": {
-                              "press": [
-                                {
-                                  "do": "invoke",
-                                  "args": {
-                                    "tool": "signOut"
-                                  }
-                                }
-                              ]
-                            }
-                          }
-                        }
-                      ]
-                    }
-                  }
-                ]
-              }
-            }
-          ]
+        "view": {
+          "capability": "ui:screen",
+          "props": {
+            "title": "Foundry Agent",
+            "subtitle": "Choose an available agent and start a conversation."
+          }
         }
+      },
+      "foundry-access-gate": {
+        "id": "foundry-access-gate",
+        "behavior": {
+          "events": {
+            "accessRequested": [
+              {
+                "do": "assign",
+                "target": "agent.accessStatus",
+                "args": {
+                  "value": "checking"
+                }
+              },
+              {
+                "do": "assign",
+                "target": "agent.accessError",
+                "args": {
+                  "value": ""
+                }
+              },
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "checkFoundryAccess"
+                }
+              }
+            ],
+            "accessCleared": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "clearFoundryAccess"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "foundry:access-gate",
+          "bindings": {
+            "status": {
+              "from": "agent.accessStatus"
+            },
+            "error": {
+              "from": "agent.accessError"
+            }
+          }
+        }
+      },
+      "agent-demo": {
+        "id": "agent-demo",
+        "view": {
+          "capability": "agent:ask-page",
+          "props": {
+            "title": "Ask the agent"
+          }
+        }
+      },
+      "agent-selector": {
+        "id": "agent-selector",
+        "behavior": {
+          "events": {
+            "agentsRequested": [
+              {
+                "do": "assign",
+                "target": "agent.agentsStatus",
+                "args": {
+                  "value": "loading"
+                }
+              },
+              {
+                "do": "assign",
+                "target": "agent.agentsError",
+                "args": {
+                  "value": ""
+                }
+              },
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "discoverAgents"
+                }
+              }
+            ],
+            "select": [
+              {
+                "do": "assign",
+                "target": "agent.agentName",
+                "args": {
+                  "from": "$event.value"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "agent:agent-selector",
+          "bindings": {
+            "agentName": {
+              "from": "agent.agentName"
+            },
+            "agentOptions": {
+              "from": "agent.agentOptions"
+            },
+            "agentsStatus": {
+              "from": "agent.agentsStatus"
+            },
+            "agentsError": {
+              "from": "agent.agentsError"
+            }
+          }
+        }
+      },
+      "agent-connected": {
+        "id": "agent-connected",
+        "view": {
+          "capability": "ui:alert",
+          "props": {
+            "label": "Connected to",
+            "level": "good"
+          },
+          "bindings": {
+            "value": {
+              "from": "agent.agentName"
+            }
+          }
+        }
+      },
+      "agent-message-field": {
+        "id": "agent-message-field",
+        "behavior": {
+          "events": {
+            "input": [
+              {
+                "do": "assign",
+                "target": "agent.draft",
+                "args": {
+                  "from": "$event.value"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:field",
+          "props": {
+            "label": "Message",
+            "placeholder": "Ask the agent something..."
+          },
+          "bindings": {
+            "value": {
+              "from": "agent.draft"
+            }
+          }
+        }
+      },
+      "agent-ask-btn": {
+        "id": "agent-ask-btn",
+        "behavior": {
+          "events": {
+            "press": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "askAgent"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:button",
+          "props": {
+            "label": "Ask",
+            "tone": "primary"
+          }
+        }
+      },
+      "agent-request-error": {
+        "id": "agent-request-error",
+        "view": {
+          "capability": "ui:alert",
+          "props": {
+            "label": "Something went wrong",
+            "level": "error"
+          },
+          "bindings": {
+            "value": {
+              "from": "agent.error"
+            }
+          },
+          "visibility": "agent.error != ''"
+        }
+      },
+      "agent-asked-panel": {
+        "id": "agent-asked-panel",
+        "view": {
+          "capability": "ui:panel",
+          "props": {
+            "title": "You asked",
+            "variant": "inset"
+          },
+          "visibility": "agent.lastAsked != ''"
+        }
+      },
+      "agent-asked-value": {
+        "id": "agent-asked-value",
+        "view": {
+          "capability": "ui:note",
+          "props": {
+            "tone": "muted"
+          },
+          "bindings": {
+            "value": {
+              "from": "agent.lastAsked"
+            }
+          }
+        }
+      },
+      "agent-reply-panel": {
+        "id": "agent-reply-panel",
+        "view": {
+          "capability": "ui:panel",
+          "props": {
+            "title": "Reply",
+            "variant": "inset"
+          }
+        }
+      },
+      "agent-reply-empty": {
+        "id": "agent-reply-empty",
+        "view": {
+          "capability": "ui:note",
+          "props": {
+            "value": "Send a message to see the agent's reply.",
+            "tone": "muted"
+          },
+          "visibility": "agent.reply = ''"
+        }
+      },
+      "agent-reply-value": {
+        "id": "agent-reply-value",
+        "view": {
+          "capability": "ui:markdown",
+          "bindings": {
+            "value": {
+              "from": "agent.reply"
+            }
+          },
+          "visibility": "agent.reply != ''"
+        }
+      },
+      "agent-signout-btn": {
+        "id": "agent-signout-btn",
+        "behavior": {
+          "events": {
+            "press": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "signOut"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "agent:sign-out-button",
+          "props": {
+            "label": "Sign out"
+          }
+        }
+      }
+    },
+    "projections": {
+      "presentation": {
+        "roots": [
+          "foundry-agent-root"
+        ],
+        "placements": [
+          {
+            "cell": "foundry-access-gate",
+            "parent": "foundry-agent-root",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "agent-demo",
+            "parent": "foundry-access-gate",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "agent-selector",
+            "parent": "agent-demo",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "agent-connected",
+            "parent": "agent-demo",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "agent-message-field",
+            "parent": "agent-demo",
+            "slot": "children",
+            "order": 2
+          },
+          {
+            "cell": "agent-ask-btn",
+            "parent": "agent-demo",
+            "slot": "children",
+            "order": 3
+          },
+          {
+            "cell": "agent-request-error",
+            "parent": "agent-demo",
+            "slot": "children",
+            "order": 4
+          },
+          {
+            "cell": "agent-asked-panel",
+            "parent": "agent-demo",
+            "slot": "children",
+            "order": 5
+          },
+          {
+            "cell": "agent-asked-value",
+            "parent": "agent-asked-panel",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "agent-reply-panel",
+            "parent": "agent-demo",
+            "slot": "children",
+            "order": 6
+          },
+          {
+            "cell": "agent-reply-empty",
+            "parent": "agent-reply-panel",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "agent-reply-value",
+            "parent": "agent-reply-panel",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "agent-signout-btn",
+            "parent": "agent-demo",
+            "slot": "children",
+            "order": 7
+          }
+        ]
       }
     }
   }

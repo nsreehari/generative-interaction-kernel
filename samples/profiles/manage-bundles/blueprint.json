@@ -6,619 +6,6 @@
     "kind": "runtime-blueprint",
     "version": "1.0",
     "recipes": [],
-    "resources": {
-      "document": {
-        "inline": {
-          "root": {
-            "capability": "ui:screen",
-            "id": "manage-bundles-root",
-            "props": {
-              "title": "Manage Bundles",
-              "subtitle": "Inspect repository bundles and manage portable browser-local bundle artifacts"
-            },
-            "edges": {
-              "children": [
-                {
-                  "capability": "ui:row",
-                  "id": "manage-bundles-layout",
-                  "props": {
-                    "variant": "split"
-                  },
-                  "edges": {
-                    "children": [
-                      {
-                        "capability": "ui:panel",
-                        "id": "bundle-catalog",
-                        "props": {
-                          "title": "Bundle catalog",
-                          "variant": "rail"
-                        },
-                        "edges": {
-                          "children": [
-                            {
-                              "capability": "ui:note",
-                              "id": "catalog-status",
-                              "props": {
-                                "tone": "info"
-                              },
-                              "edges": {
-                                "read": {
-                                  "value": "manageBundles.catalogStatus"
-                                }
-                              }
-                            },
-                            {
-                              "capability": "ui:row",
-                              "id": "catalog-actions",
-                              "edges": {
-                                "children": [
-                                  {
-                                    "capability": "ui:button",
-                                    "id": "refresh-bundles",
-                                    "props": {
-                                      "label": "Refresh"
-                                    },
-                                    "edges": {
-                                      "on": {
-                                        "press": [
-                                          {
-                                            "do": "invoke",
-                                            "args": {
-                                              "tool": "listBundles"
-                                            }
-                                          }
-                                        ]
-                                      }
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:button",
-                                    "id": "create-bundle",
-                                    "props": {
-                                      "label": "New local bundle",
-                                      "tone": "primary"
-                                    },
-                                    "edges": {
-                                      "on": {
-                                        "press": [
-                                          {
-                                            "do": "invoke",
-                                            "args": {
-                                              "tool": "createBundle"
-                                            }
-                                          }
-                                        ]
-                                      }
-                                    }
-                                  },
-                                  {
-                                    "capability": "manage-bundles:bundle-import",
-                                    "id": "import-bundle",
-                                    "edges": {
-                                      "on": {
-                                        "import": [
-                                          {
-                                            "do": "invoke",
-                                            "args": {
-                                              "tool": "importBundle"
-                                            }
-                                          }
-                                        ]
-                                      }
-                                    }
-                                  }
-                                ]
-                              }
-                            },
-                            {
-                              "capability": "ui:list",
-                              "id": "bundle-list",
-                              "props": {
-                                "idKey": "id",
-                                "primaryKey": "label",
-                                "secondaryKey": "detail",
-                                "badgeKey": "source",
-                                "emptyText": "No bundle artifacts found."
-                              },
-                              "edges": {
-                                "read": {
-                                  "items": "manageBundles.bundles",
-                                  "selectedId": "manageBundles.selectedId"
-                                },
-                                "on": {
-                                  "select": [
-                                    {
-                                      "do": "invoke",
-                                      "args": {
-                                        "tool": "getBundle"
-                                      }
-                                    }
-                                  ]
-                                }
-                              }
-                            }
-                          ]
-                        }
-                      },
-                      {
-                        "capability": "ui:panel",
-                        "id": "bundle-detail",
-                        "props": {
-                          "title": "Bundle artifact",
-                          "variant": "detail"
-                        },
-                        "edges": {
-                          "children": [
-                            {
-                              "capability": "ui:note",
-                              "id": "empty-selection",
-                              "props": {
-                                "value": "Select a repository or local bundle, or create a new local artifact.",
-                                "tone": "muted"
-                              },
-                              "edges": {
-                                "gate": "manageBundles.selectedId = '' and manageBundles.editor.bundleText = ''"
-                              }
-                            },
-                            {
-                              "capability": "ui:tabBar",
-                              "id": "bundle-tabs",
-                              "props": {
-                                "options": [
-                                  {
-                                    "value": "overview",
-                                    "label": "Overview"
-                                  },
-                                  {
-                                    "value": "draft",
-                                    "label": "Draft"
-                                  },
-                                  {
-                                    "value": "preview",
-                                    "label": "Preview"
-                                  }
-                                ]
-                              },
-                              "edges": {
-                                "read": {
-                                  "active": "manageBundles.tab"
-                                },
-                                "on": {
-                                  "select": [
-                                    {
-                                      "do": "assign",
-                                      "target": "manageBundles.tab",
-                                      "args": {
-                                        "from": "$event.value"
-                                      }
-                                    }
-                                  ]
-                                }
-                              }
-                            },
-                            {
-                              "capability": "ui:panel",
-                              "id": "bundle-overview",
-                              "props": {
-                                "title": "Artifact boundary",
-                                "variant": "tab"
-                              },
-                              "edges": {
-                                "gate": "manageBundles.tab = 'overview'",
-                                "children": [
-                                  {
-                                    "capability": "ui:property",
-                                    "id": "bundle-id",
-                                    "props": {
-                                      "label": "ID"
-                                    },
-                                    "edges": {
-                                      "read": {
-                                        "value": "manageBundles.selected.id"
-                                      }
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:property",
-                                    "id": "bundle-source",
-                                    "props": {
-                                      "label": "Source"
-                                    },
-                                    "edges": {
-                                      "read": {
-                                        "value": "manageBundles.selected.source"
-                                      }
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:property",
-                                    "id": "bundle-version",
-                                    "props": {
-                                      "label": "Version"
-                                    },
-                                    "edges": {
-                                      "read": {
-                                        "value": "manageBundles.selected.version"
-                                      }
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:property",
-                                    "id": "bundle-namespaces",
-                                    "props": {
-                                      "label": "Namespaces"
-                                    },
-                                    "edges": {
-                                      "read": {
-                                        "value": "manageBundles.selected.namespaces"
-                                      }
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:property",
-                                    "id": "bundle-capabilities",
-                                    "props": {
-                                      "label": "Capabilities"
-                                    },
-                                    "edges": {
-                                      "read": {
-                                        "value": "manageBundles.selected.capabilityCount"
-                                      }
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:note",
-                                    "id": "native-dependencies",
-                                    "props": {
-                                      "tone": "warning"
-                                    },
-                                    "edges": {
-                                      "gate": "manageBundles.selected.nativeDependencies != ''",
-                                      "read": {
-                                        "value": "manageBundles.selected.nativeDependencies"
-                                      }
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:row",
-                                    "id": "overview-actions",
-                                    "edges": {
-                                      "children": [
-                                        {
-                                          "capability": "ui:button",
-                                          "id": "clone-bundle",
-                                          "props": {
-                                            "label": "Clone to local draft"
-                                          },
-                                          "edges": {
-                                            "on": {
-                                              "press": [
-                                                {
-                                                  "do": "invoke",
-                                                  "args": {
-                                                    "tool": "cloneBundle"
-                                                  }
-                                                }
-                                              ]
-                                            }
-                                          }
-                                        },
-                                        {
-                                          "capability": "ui:button",
-                                          "id": "delete-bundle",
-                                          "props": {
-                                            "label": "Delete local bundle",
-                                            "tone": "danger"
-                                          },
-                                          "edges": {
-                                            "on": {
-                                              "press": [
-                                                {
-                                                  "do": "invoke",
-                                                  "args": {
-                                                    "tool": "requestDeleteBundle"
-                                                  }
-                                                }
-                                              ]
-                                            }
-                                          }
-                                        }
-                                      ]
-                                    }
-                                  }
-                                ]
-                              }
-                            },
-                            {
-                              "capability": "ui:panel",
-                              "id": "bundle-draft",
-                              "props": {
-                                "title": "Serializable bundle JSON",
-                                "variant": "tab"
-                              },
-                              "edges": {
-                                "gate": "manageBundles.tab = 'draft'",
-                                "children": [
-                                  {
-                                    "capability": "ui:note",
-                                    "id": "editor-status",
-                                    "props": {
-                                      "tone": "info"
-                                    },
-                                    "edges": {
-                                      "read": {
-                                        "value": "manageBundles.editor.status"
-                                      }
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:note",
-                                    "id": "editor-error",
-                                    "props": {
-                                      "tone": "danger"
-                                    },
-                                    "edges": {
-                                      "gate": "manageBundles.editor.error != ''",
-                                      "read": {
-                                        "value": "manageBundles.editor.error"
-                                      }
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:field",
-                                    "id": "editor-id",
-                                    "props": {
-                                      "label": "Local bundle id"
-                                    },
-                                    "edges": {
-                                      "read": {
-                                        "value": "manageBundles.editor.id"
-                                      },
-                                      "on": {
-                                        "input": [
-                                          {
-                                            "do": "assign",
-                                            "target": "manageBundles.editor.id",
-                                            "args": {
-                                              "from": "$event.value"
-                                            }
-                                          }
-                                        ]
-                                      }
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:textarea",
-                                    "id": "editor-json",
-                                    "props": {
-                                      "label": "Bundle JSON",
-                                      "rows": 22
-                                    },
-                                    "edges": {
-                                      "read": {
-                                        "value": "manageBundles.editor.bundleText"
-                                      },
-                                      "on": {
-                                        "input": [
-                                          {
-                                            "do": "assign",
-                                            "target": "manageBundles.editor.bundleText",
-                                            "args": {
-                                              "from": "$event.value"
-                                            }
-                                          }
-                                        ]
-                                      }
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:note",
-                                    "id": "validation-summary",
-                                    "props": {
-                                      "tone": "info"
-                                    },
-                                    "edges": {
-                                      "read": {
-                                        "value": "manageBundles.validation.summary"
-                                      }
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:note",
-                                    "id": "validation-errors",
-                                    "props": {
-                                      "tone": "danger"
-                                    },
-                                    "edges": {
-                                      "gate": "manageBundles.validation.errors != ''",
-                                      "read": {
-                                        "value": "manageBundles.validation.errors"
-                                      }
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:note",
-                                    "id": "validation-warnings",
-                                    "props": {
-                                      "tone": "warning"
-                                    },
-                                    "edges": {
-                                      "gate": "manageBundles.validation.warnings != ''",
-                                      "read": {
-                                        "value": "manageBundles.validation.warnings"
-                                      }
-                                    }
-                                  },
-                                  {
-                                    "capability": "ui:row",
-                                    "id": "editor-actions",
-                                    "edges": {
-                                      "children": [
-                                        {
-                                          "capability": "ui:button",
-                                          "id": "validate-bundle",
-                                          "props": {
-                                            "label": "Validate"
-                                          },
-                                          "edges": {
-                                            "on": {
-                                              "press": [
-                                                {
-                                                  "do": "invoke",
-                                                  "args": {
-                                                    "tool": "validateBundle"
-                                                  }
-                                                }
-                                              ]
-                                            }
-                                          }
-                                        },
-                                        {
-                                          "capability": "ui:button",
-                                          "id": "save-bundle",
-                                          "props": {
-                                            "label": "Save locally",
-                                            "tone": "primary"
-                                          },
-                                          "edges": {
-                                            "on": {
-                                              "press": [
-                                                {
-                                                  "do": "invoke",
-                                                  "args": {
-                                                    "tool": "saveBundle"
-                                                  }
-                                                }
-                                              ]
-                                            }
-                                          }
-                                        },
-                                        {
-                                          "capability": "ui:button",
-                                          "id": "preview-bundle",
-                                          "props": {
-                                            "label": "Preview"
-                                          },
-                                          "edges": {
-                                            "on": {
-                                              "press": [
-                                                {
-                                                  "do": "invoke",
-                                                  "args": {
-                                                    "tool": "previewBundle"
-                                                  }
-                                                }
-                                              ]
-                                            }
-                                          }
-                                        },
-                                        {
-                                          "capability": "ui:button",
-                                          "id": "export-bundle",
-                                          "props": {
-                                            "label": "Export JSON"
-                                          },
-                                          "edges": {
-                                            "on": {
-                                              "press": [
-                                                {
-                                                  "do": "invoke",
-                                                  "args": {
-                                                    "tool": "exportBundle"
-                                                  }
-                                                }
-                                              ]
-                                            }
-                                          }
-                                        }
-                                      ]
-                                    }
-                                  }
-                                ]
-                              }
-                            },
-                            {
-                              "capability": "ui:panel",
-                              "id": "bundle-preview",
-                              "props": {
-                                "title": "Portable preview",
-                                "variant": "tab"
-                              },
-                              "edges": {
-                                "gate": "manageBundles.tab = 'preview'",
-                                "children": [
-                                  {
-                                    "capability": "ui:note",
-                                    "id": "preview-error",
-                                    "props": {
-                                      "tone": "warning"
-                                    },
-                                    "edges": {
-                                      "gate": "manageBundles.previewError != ''",
-                                      "read": {
-                                        "value": "manageBundles.previewError"
-                                      }
-                                    }
-                                  },
-                                  {
-                                    "capability": "manage-bundles:bundle-preview",
-                                    "id": "portable-bundle-preview",
-                                    "edges": {
-                                      "gate": "manageBundles.previewBundle != null",
-                                      "read": {
-                                        "bundle": "manageBundles.previewBundle"
-                                      }
-                                    }
-                                  }
-                                ]
-                              }
-                            }
-                          ]
-                        }
-                      }
-                    ]
-                  }
-                },
-                {
-                  "capability": "ui:math-challenge",
-                  "id": "delete-bundle-challenge",
-                  "props": {
-                    "title": "Confirm bundle deletion",
-                    "operandA": 6,
-                    "operandB": 7,
-                    "confirmLabel": "Delete bundle"
-                  },
-                  "edges": {
-                    "gate": "manageBundles.deleteChallenge.open = true",
-                    "read": {
-                      "message": "manageBundles.deleteChallenge.message"
-                    },
-                    "on": {
-                      "confirm": [
-                        {
-                          "do": "invoke",
-                          "args": {
-                            "tool": "deleteBundle"
-                          }
-                        }
-                      ],
-                      "cancel": [
-                        {
-                          "do": "invoke",
-                          "args": {
-                            "tool": "cancelDeleteBundle"
-                          }
-                        }
-                      ]
-                    }
-                  }
-                }
-              ]
-            }
-          }
-        }
-      }
-    },
     "runtime": {
       "expression": "jsonata",
       "namespaces": [
@@ -823,613 +210,898 @@
         "description": "Authored terminal document for this hosted Blueprint."
       }
     ],
-    "organism": {
-      "root": {
-        "capability": "ui:screen",
+    "cells": {
+      "manage-bundles-root": {
         "id": "manage-bundles-root",
-        "props": {
-          "title": "Manage Bundles",
-          "subtitle": "Inspect repository bundles and manage portable browser-local bundle artifacts"
-        },
-        "edges": {
-          "children": [
-            {
-              "capability": "ui:row",
-              "id": "manage-bundles-layout",
-              "props": {
-                "variant": "split"
-              },
-              "edges": {
-                "children": [
-                  {
-                    "capability": "ui:panel",
-                    "id": "bundle-catalog",
-                    "props": {
-                      "title": "Bundle catalog",
-                      "variant": "rail"
-                    },
-                    "edges": {
-                      "children": [
-                        {
-                          "capability": "ui:note",
-                          "id": "catalog-status",
-                          "props": {
-                            "tone": "info"
-                          },
-                          "edges": {
-                            "read": {
-                              "value": "manageBundles.catalogStatus"
-                            }
-                          }
-                        },
-                        {
-                          "capability": "ui:row",
-                          "id": "catalog-actions",
-                          "edges": {
-                            "children": [
-                              {
-                                "capability": "ui:button",
-                                "id": "refresh-bundles",
-                                "props": {
-                                  "label": "Refresh"
-                                },
-                                "edges": {
-                                  "on": {
-                                    "press": [
-                                      {
-                                        "do": "invoke",
-                                        "args": {
-                                          "tool": "listBundles"
-                                        }
-                                      }
-                                    ]
-                                  }
-                                }
-                              },
-                              {
-                                "capability": "ui:button",
-                                "id": "create-bundle",
-                                "props": {
-                                  "label": "New local bundle",
-                                  "tone": "primary"
-                                },
-                                "edges": {
-                                  "on": {
-                                    "press": [
-                                      {
-                                        "do": "invoke",
-                                        "args": {
-                                          "tool": "createBundle"
-                                        }
-                                      }
-                                    ]
-                                  }
-                                }
-                              },
-                              {
-                                "capability": "manage-bundles:bundle-import",
-                                "id": "import-bundle",
-                                "edges": {
-                                  "on": {
-                                    "import": [
-                                      {
-                                        "do": "invoke",
-                                        "args": {
-                                          "tool": "importBundle"
-                                        }
-                                      }
-                                    ]
-                                  }
-                                }
-                              }
-                            ]
-                          }
-                        },
-                        {
-                          "capability": "ui:list",
-                          "id": "bundle-list",
-                          "props": {
-                            "idKey": "id",
-                            "primaryKey": "label",
-                            "secondaryKey": "detail",
-                            "badgeKey": "source",
-                            "emptyText": "No bundle artifacts found."
-                          },
-                          "edges": {
-                            "read": {
-                              "items": "manageBundles.bundles",
-                              "selectedId": "manageBundles.selectedId"
-                            },
-                            "on": {
-                              "select": [
-                                {
-                                  "do": "invoke",
-                                  "args": {
-                                    "tool": "getBundle"
-                                  }
-                                }
-                              ]
-                            }
-                          }
-                        }
-                      ]
-                    }
-                  },
-                  {
-                    "capability": "ui:panel",
-                    "id": "bundle-detail",
-                    "props": {
-                      "title": "Bundle artifact",
-                      "variant": "detail"
-                    },
-                    "edges": {
-                      "children": [
-                        {
-                          "capability": "ui:note",
-                          "id": "empty-selection",
-                          "props": {
-                            "value": "Select a repository or local bundle, or create a new local artifact.",
-                            "tone": "muted"
-                          },
-                          "edges": {
-                            "gate": "manageBundles.selectedId = '' and manageBundles.editor.bundleText = ''"
-                          }
-                        },
-                        {
-                          "capability": "ui:tabBar",
-                          "id": "bundle-tabs",
-                          "props": {
-                            "options": [
-                              {
-                                "value": "overview",
-                                "label": "Overview"
-                              },
-                              {
-                                "value": "draft",
-                                "label": "Draft"
-                              },
-                              {
-                                "value": "preview",
-                                "label": "Preview"
-                              }
-                            ]
-                          },
-                          "edges": {
-                            "read": {
-                              "active": "manageBundles.tab"
-                            },
-                            "on": {
-                              "select": [
-                                {
-                                  "do": "assign",
-                                  "target": "manageBundles.tab",
-                                  "args": {
-                                    "from": "$event.value"
-                                  }
-                                }
-                              ]
-                            }
-                          }
-                        },
-                        {
-                          "capability": "ui:panel",
-                          "id": "bundle-overview",
-                          "props": {
-                            "title": "Artifact boundary",
-                            "variant": "tab"
-                          },
-                          "edges": {
-                            "gate": "manageBundles.tab = 'overview'",
-                            "children": [
-                              {
-                                "capability": "ui:property",
-                                "id": "bundle-id",
-                                "props": {
-                                  "label": "ID"
-                                },
-                                "edges": {
-                                  "read": {
-                                    "value": "manageBundles.selected.id"
-                                  }
-                                }
-                              },
-                              {
-                                "capability": "ui:property",
-                                "id": "bundle-source",
-                                "props": {
-                                  "label": "Source"
-                                },
-                                "edges": {
-                                  "read": {
-                                    "value": "manageBundles.selected.source"
-                                  }
-                                }
-                              },
-                              {
-                                "capability": "ui:property",
-                                "id": "bundle-version",
-                                "props": {
-                                  "label": "Version"
-                                },
-                                "edges": {
-                                  "read": {
-                                    "value": "manageBundles.selected.version"
-                                  }
-                                }
-                              },
-                              {
-                                "capability": "ui:property",
-                                "id": "bundle-namespaces",
-                                "props": {
-                                  "label": "Namespaces"
-                                },
-                                "edges": {
-                                  "read": {
-                                    "value": "manageBundles.selected.namespaces"
-                                  }
-                                }
-                              },
-                              {
-                                "capability": "ui:property",
-                                "id": "bundle-capabilities",
-                                "props": {
-                                  "label": "Capabilities"
-                                },
-                                "edges": {
-                                  "read": {
-                                    "value": "manageBundles.selected.capabilityCount"
-                                  }
-                                }
-                              },
-                              {
-                                "capability": "ui:note",
-                                "id": "native-dependencies",
-                                "props": {
-                                  "tone": "warning"
-                                },
-                                "edges": {
-                                  "gate": "manageBundles.selected.nativeDependencies != ''",
-                                  "read": {
-                                    "value": "manageBundles.selected.nativeDependencies"
-                                  }
-                                }
-                              },
-                              {
-                                "capability": "ui:row",
-                                "id": "overview-actions",
-                                "edges": {
-                                  "children": [
-                                    {
-                                      "capability": "ui:button",
-                                      "id": "clone-bundle",
-                                      "props": {
-                                        "label": "Clone to local draft"
-                                      },
-                                      "edges": {
-                                        "on": {
-                                          "press": [
-                                            {
-                                              "do": "invoke",
-                                              "args": {
-                                                "tool": "cloneBundle"
-                                              }
-                                            }
-                                          ]
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "capability": "ui:button",
-                                      "id": "delete-bundle",
-                                      "props": {
-                                        "label": "Delete local bundle",
-                                        "tone": "danger"
-                                      },
-                                      "edges": {
-                                        "on": {
-                                          "press": [
-                                            {
-                                              "do": "invoke",
-                                              "args": {
-                                                "tool": "requestDeleteBundle"
-                                              }
-                                            }
-                                          ]
-                                        }
-                                      }
-                                    }
-                                  ]
-                                }
-                              }
-                            ]
-                          }
-                        },
-                        {
-                          "capability": "ui:panel",
-                          "id": "bundle-draft",
-                          "props": {
-                            "title": "Serializable bundle JSON",
-                            "variant": "tab"
-                          },
-                          "edges": {
-                            "gate": "manageBundles.tab = 'draft'",
-                            "children": [
-                              {
-                                "capability": "ui:note",
-                                "id": "editor-status",
-                                "props": {
-                                  "tone": "info"
-                                },
-                                "edges": {
-                                  "read": {
-                                    "value": "manageBundles.editor.status"
-                                  }
-                                }
-                              },
-                              {
-                                "capability": "ui:note",
-                                "id": "editor-error",
-                                "props": {
-                                  "tone": "danger"
-                                },
-                                "edges": {
-                                  "gate": "manageBundles.editor.error != ''",
-                                  "read": {
-                                    "value": "manageBundles.editor.error"
-                                  }
-                                }
-                              },
-                              {
-                                "capability": "ui:field",
-                                "id": "editor-id",
-                                "props": {
-                                  "label": "Local bundle id"
-                                },
-                                "edges": {
-                                  "read": {
-                                    "value": "manageBundles.editor.id"
-                                  },
-                                  "on": {
-                                    "input": [
-                                      {
-                                        "do": "assign",
-                                        "target": "manageBundles.editor.id",
-                                        "args": {
-                                          "from": "$event.value"
-                                        }
-                                      }
-                                    ]
-                                  }
-                                }
-                              },
-                              {
-                                "capability": "ui:textarea",
-                                "id": "editor-json",
-                                "props": {
-                                  "label": "Bundle JSON",
-                                  "rows": 22
-                                },
-                                "edges": {
-                                  "read": {
-                                    "value": "manageBundles.editor.bundleText"
-                                  },
-                                  "on": {
-                                    "input": [
-                                      {
-                                        "do": "assign",
-                                        "target": "manageBundles.editor.bundleText",
-                                        "args": {
-                                          "from": "$event.value"
-                                        }
-                                      }
-                                    ]
-                                  }
-                                }
-                              },
-                              {
-                                "capability": "ui:note",
-                                "id": "validation-summary",
-                                "props": {
-                                  "tone": "info"
-                                },
-                                "edges": {
-                                  "read": {
-                                    "value": "manageBundles.validation.summary"
-                                  }
-                                }
-                              },
-                              {
-                                "capability": "ui:note",
-                                "id": "validation-errors",
-                                "props": {
-                                  "tone": "danger"
-                                },
-                                "edges": {
-                                  "gate": "manageBundles.validation.errors != ''",
-                                  "read": {
-                                    "value": "manageBundles.validation.errors"
-                                  }
-                                }
-                              },
-                              {
-                                "capability": "ui:note",
-                                "id": "validation-warnings",
-                                "props": {
-                                  "tone": "warning"
-                                },
-                                "edges": {
-                                  "gate": "manageBundles.validation.warnings != ''",
-                                  "read": {
-                                    "value": "manageBundles.validation.warnings"
-                                  }
-                                }
-                              },
-                              {
-                                "capability": "ui:row",
-                                "id": "editor-actions",
-                                "edges": {
-                                  "children": [
-                                    {
-                                      "capability": "ui:button",
-                                      "id": "validate-bundle",
-                                      "props": {
-                                        "label": "Validate"
-                                      },
-                                      "edges": {
-                                        "on": {
-                                          "press": [
-                                            {
-                                              "do": "invoke",
-                                              "args": {
-                                                "tool": "validateBundle"
-                                              }
-                                            }
-                                          ]
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "capability": "ui:button",
-                                      "id": "save-bundle",
-                                      "props": {
-                                        "label": "Save locally",
-                                        "tone": "primary"
-                                      },
-                                      "edges": {
-                                        "on": {
-                                          "press": [
-                                            {
-                                              "do": "invoke",
-                                              "args": {
-                                                "tool": "saveBundle"
-                                              }
-                                            }
-                                          ]
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "capability": "ui:button",
-                                      "id": "preview-bundle",
-                                      "props": {
-                                        "label": "Preview"
-                                      },
-                                      "edges": {
-                                        "on": {
-                                          "press": [
-                                            {
-                                              "do": "invoke",
-                                              "args": {
-                                                "tool": "previewBundle"
-                                              }
-                                            }
-                                          ]
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "capability": "ui:button",
-                                      "id": "export-bundle",
-                                      "props": {
-                                        "label": "Export JSON"
-                                      },
-                                      "edges": {
-                                        "on": {
-                                          "press": [
-                                            {
-                                              "do": "invoke",
-                                              "args": {
-                                                "tool": "exportBundle"
-                                              }
-                                            }
-                                          ]
-                                        }
-                                      }
-                                    }
-                                  ]
-                                }
-                              }
-                            ]
-                          }
-                        },
-                        {
-                          "capability": "ui:panel",
-                          "id": "bundle-preview",
-                          "props": {
-                            "title": "Portable preview",
-                            "variant": "tab"
-                          },
-                          "edges": {
-                            "gate": "manageBundles.tab = 'preview'",
-                            "children": [
-                              {
-                                "capability": "ui:note",
-                                "id": "preview-error",
-                                "props": {
-                                  "tone": "warning"
-                                },
-                                "edges": {
-                                  "gate": "manageBundles.previewError != ''",
-                                  "read": {
-                                    "value": "manageBundles.previewError"
-                                  }
-                                }
-                              },
-                              {
-                                "capability": "manage-bundles:bundle-preview",
-                                "id": "portable-bundle-preview",
-                                "edges": {
-                                  "gate": "manageBundles.previewBundle != null",
-                                  "read": {
-                                    "bundle": "manageBundles.previewBundle"
-                                  }
-                                }
-                              }
-                            ]
-                          }
-                        }
-                      ]
-                    }
-                  }
-                ]
-              }
-            },
-            {
-              "capability": "ui:math-challenge",
-              "id": "delete-bundle-challenge",
-              "props": {
-                "title": "Confirm bundle deletion",
-                "operandA": 6,
-                "operandB": 7,
-                "confirmLabel": "Delete bundle"
-              },
-              "edges": {
-                "gate": "manageBundles.deleteChallenge.open = true",
-                "read": {
-                  "message": "manageBundles.deleteChallenge.message"
-                },
-                "on": {
-                  "confirm": [
-                    {
-                      "do": "invoke",
-                      "args": {
-                        "tool": "deleteBundle"
-                      }
-                    }
-                  ],
-                  "cancel": [
-                    {
-                      "do": "invoke",
-                      "args": {
-                        "tool": "cancelDeleteBundle"
-                      }
-                    }
-                  ]
+        "view": {
+          "capability": "ui:screen",
+          "props": {
+            "title": "Manage Bundles",
+            "subtitle": "Inspect repository bundles and manage portable browser-local bundle artifacts"
+          }
+        }
+      },
+      "manage-bundles-layout": {
+        "id": "manage-bundles-layout",
+        "view": {
+          "capability": "ui:row",
+          "props": {
+            "variant": "split"
+          }
+        }
+      },
+      "bundle-catalog": {
+        "id": "bundle-catalog",
+        "view": {
+          "capability": "ui:panel",
+          "props": {
+            "title": "Bundle catalog",
+            "variant": "rail"
+          }
+        }
+      },
+      "catalog-status": {
+        "id": "catalog-status",
+        "view": {
+          "capability": "ui:note",
+          "props": {
+            "tone": "info"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBundles.catalogStatus"
+            }
+          }
+        }
+      },
+      "catalog-actions": {
+        "id": "catalog-actions",
+        "view": {
+          "capability": "ui:row"
+        }
+      },
+      "refresh-bundles": {
+        "id": "refresh-bundles",
+        "behavior": {
+          "events": {
+            "press": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "listBundles"
                 }
               }
-            }
-          ]
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:button",
+          "props": {
+            "label": "Refresh"
+          }
         }
+      },
+      "create-bundle": {
+        "id": "create-bundle",
+        "behavior": {
+          "events": {
+            "press": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "createBundle"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:button",
+          "props": {
+            "label": "New local bundle",
+            "tone": "primary"
+          }
+        }
+      },
+      "import-bundle": {
+        "id": "import-bundle",
+        "behavior": {
+          "events": {
+            "import": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "importBundle"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "manage-bundles:bundle-import"
+        }
+      },
+      "bundle-list": {
+        "id": "bundle-list",
+        "behavior": {
+          "events": {
+            "select": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "getBundle"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:list",
+          "props": {
+            "idKey": "id",
+            "primaryKey": "label",
+            "secondaryKey": "detail",
+            "badgeKey": "source",
+            "emptyText": "No bundle artifacts found."
+          },
+          "bindings": {
+            "items": {
+              "from": "manageBundles.bundles"
+            },
+            "selectedId": {
+              "from": "manageBundles.selectedId"
+            }
+          }
+        }
+      },
+      "bundle-detail": {
+        "id": "bundle-detail",
+        "view": {
+          "capability": "ui:panel",
+          "props": {
+            "title": "Bundle artifact",
+            "variant": "detail"
+          }
+        }
+      },
+      "empty-selection": {
+        "id": "empty-selection",
+        "view": {
+          "capability": "ui:note",
+          "props": {
+            "value": "Select a repository or local bundle, or create a new local artifact.",
+            "tone": "muted"
+          },
+          "visibility": "manageBundles.selectedId = '' and manageBundles.editor.bundleText = ''"
+        }
+      },
+      "bundle-tabs": {
+        "id": "bundle-tabs",
+        "behavior": {
+          "events": {
+            "select": [
+              {
+                "do": "assign",
+                "target": "manageBundles.tab",
+                "args": {
+                  "from": "$event.value"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:tabBar",
+          "props": {
+            "options": [
+              {
+                "value": "overview",
+                "label": "Overview"
+              },
+              {
+                "value": "draft",
+                "label": "Draft"
+              },
+              {
+                "value": "preview",
+                "label": "Preview"
+              }
+            ]
+          },
+          "bindings": {
+            "active": {
+              "from": "manageBundles.tab"
+            }
+          }
+        }
+      },
+      "bundle-overview": {
+        "id": "bundle-overview",
+        "view": {
+          "capability": "ui:panel",
+          "props": {
+            "title": "Artifact boundary",
+            "variant": "tab"
+          },
+          "visibility": "manageBundles.tab = 'overview'"
+        }
+      },
+      "bundle-id": {
+        "id": "bundle-id",
+        "view": {
+          "capability": "ui:property",
+          "props": {
+            "label": "ID"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBundles.selected.id"
+            }
+          }
+        }
+      },
+      "bundle-source": {
+        "id": "bundle-source",
+        "view": {
+          "capability": "ui:property",
+          "props": {
+            "label": "Source"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBundles.selected.source"
+            }
+          }
+        }
+      },
+      "bundle-version": {
+        "id": "bundle-version",
+        "view": {
+          "capability": "ui:property",
+          "props": {
+            "label": "Version"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBundles.selected.version"
+            }
+          }
+        }
+      },
+      "bundle-namespaces": {
+        "id": "bundle-namespaces",
+        "view": {
+          "capability": "ui:property",
+          "props": {
+            "label": "Namespaces"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBundles.selected.namespaces"
+            }
+          }
+        }
+      },
+      "bundle-capabilities": {
+        "id": "bundle-capabilities",
+        "view": {
+          "capability": "ui:property",
+          "props": {
+            "label": "Capabilities"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBundles.selected.capabilityCount"
+            }
+          }
+        }
+      },
+      "native-dependencies": {
+        "id": "native-dependencies",
+        "view": {
+          "capability": "ui:note",
+          "props": {
+            "tone": "warning"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBundles.selected.nativeDependencies"
+            }
+          },
+          "visibility": "manageBundles.selected.nativeDependencies != ''"
+        }
+      },
+      "overview-actions": {
+        "id": "overview-actions",
+        "view": {
+          "capability": "ui:row"
+        }
+      },
+      "clone-bundle": {
+        "id": "clone-bundle",
+        "behavior": {
+          "events": {
+            "press": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "cloneBundle"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:button",
+          "props": {
+            "label": "Clone to local draft"
+          }
+        }
+      },
+      "delete-bundle": {
+        "id": "delete-bundle",
+        "behavior": {
+          "events": {
+            "press": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "requestDeleteBundle"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:button",
+          "props": {
+            "label": "Delete local bundle",
+            "tone": "danger"
+          }
+        }
+      },
+      "bundle-draft": {
+        "id": "bundle-draft",
+        "view": {
+          "capability": "ui:panel",
+          "props": {
+            "title": "Serializable bundle JSON",
+            "variant": "tab"
+          },
+          "visibility": "manageBundles.tab = 'draft'"
+        }
+      },
+      "editor-status": {
+        "id": "editor-status",
+        "view": {
+          "capability": "ui:note",
+          "props": {
+            "tone": "info"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBundles.editor.status"
+            }
+          }
+        }
+      },
+      "editor-error": {
+        "id": "editor-error",
+        "view": {
+          "capability": "ui:note",
+          "props": {
+            "tone": "danger"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBundles.editor.error"
+            }
+          },
+          "visibility": "manageBundles.editor.error != ''"
+        }
+      },
+      "editor-id": {
+        "id": "editor-id",
+        "behavior": {
+          "events": {
+            "input": [
+              {
+                "do": "assign",
+                "target": "manageBundles.editor.id",
+                "args": {
+                  "from": "$event.value"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:field",
+          "props": {
+            "label": "Local bundle id"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBundles.editor.id"
+            }
+          }
+        }
+      },
+      "editor-json": {
+        "id": "editor-json",
+        "behavior": {
+          "events": {
+            "input": [
+              {
+                "do": "assign",
+                "target": "manageBundles.editor.bundleText",
+                "args": {
+                  "from": "$event.value"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:textarea",
+          "props": {
+            "label": "Bundle JSON",
+            "rows": 22
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBundles.editor.bundleText"
+            }
+          }
+        }
+      },
+      "validation-summary": {
+        "id": "validation-summary",
+        "view": {
+          "capability": "ui:note",
+          "props": {
+            "tone": "info"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBundles.validation.summary"
+            }
+          }
+        }
+      },
+      "validation-errors": {
+        "id": "validation-errors",
+        "view": {
+          "capability": "ui:note",
+          "props": {
+            "tone": "danger"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBundles.validation.errors"
+            }
+          },
+          "visibility": "manageBundles.validation.errors != ''"
+        }
+      },
+      "validation-warnings": {
+        "id": "validation-warnings",
+        "view": {
+          "capability": "ui:note",
+          "props": {
+            "tone": "warning"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBundles.validation.warnings"
+            }
+          },
+          "visibility": "manageBundles.validation.warnings != ''"
+        }
+      },
+      "editor-actions": {
+        "id": "editor-actions",
+        "view": {
+          "capability": "ui:row"
+        }
+      },
+      "validate-bundle": {
+        "id": "validate-bundle",
+        "behavior": {
+          "events": {
+            "press": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "validateBundle"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:button",
+          "props": {
+            "label": "Validate"
+          }
+        }
+      },
+      "save-bundle": {
+        "id": "save-bundle",
+        "behavior": {
+          "events": {
+            "press": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "saveBundle"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:button",
+          "props": {
+            "label": "Save locally",
+            "tone": "primary"
+          }
+        }
+      },
+      "preview-bundle": {
+        "id": "preview-bundle",
+        "behavior": {
+          "events": {
+            "press": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "previewBundle"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:button",
+          "props": {
+            "label": "Preview"
+          }
+        }
+      },
+      "export-bundle": {
+        "id": "export-bundle",
+        "behavior": {
+          "events": {
+            "press": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "exportBundle"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:button",
+          "props": {
+            "label": "Export JSON"
+          }
+        }
+      },
+      "bundle-preview": {
+        "id": "bundle-preview",
+        "view": {
+          "capability": "ui:panel",
+          "props": {
+            "title": "Portable preview",
+            "variant": "tab"
+          },
+          "visibility": "manageBundles.tab = 'preview'"
+        }
+      },
+      "preview-error": {
+        "id": "preview-error",
+        "view": {
+          "capability": "ui:note",
+          "props": {
+            "tone": "warning"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBundles.previewError"
+            }
+          },
+          "visibility": "manageBundles.previewError != ''"
+        }
+      },
+      "portable-bundle-preview": {
+        "id": "portable-bundle-preview",
+        "view": {
+          "capability": "manage-bundles:bundle-preview",
+          "bindings": {
+            "bundle": {
+              "from": "manageBundles.previewBundle"
+            }
+          },
+          "visibility": "manageBundles.previewBundle != null"
+        }
+      },
+      "delete-bundle-challenge": {
+        "id": "delete-bundle-challenge",
+        "behavior": {
+          "events": {
+            "confirm": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "deleteBundle"
+                }
+              }
+            ],
+            "cancel": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "cancelDeleteBundle"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:math-challenge",
+          "props": {
+            "title": "Confirm bundle deletion",
+            "operandA": 6,
+            "operandB": 7,
+            "confirmLabel": "Delete bundle"
+          },
+          "bindings": {
+            "message": {
+              "from": "manageBundles.deleteChallenge.message"
+            }
+          },
+          "visibility": "manageBundles.deleteChallenge.open = true"
+        }
+      }
+    },
+    "projections": {
+      "presentation": {
+        "roots": [
+          "manage-bundles-root"
+        ],
+        "placements": [
+          {
+            "cell": "manage-bundles-layout",
+            "parent": "manage-bundles-root",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "bundle-catalog",
+            "parent": "manage-bundles-layout",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "catalog-status",
+            "parent": "bundle-catalog",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "catalog-actions",
+            "parent": "bundle-catalog",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "refresh-bundles",
+            "parent": "catalog-actions",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "create-bundle",
+            "parent": "catalog-actions",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "import-bundle",
+            "parent": "catalog-actions",
+            "slot": "children",
+            "order": 2
+          },
+          {
+            "cell": "bundle-list",
+            "parent": "bundle-catalog",
+            "slot": "children",
+            "order": 2
+          },
+          {
+            "cell": "bundle-detail",
+            "parent": "manage-bundles-layout",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "empty-selection",
+            "parent": "bundle-detail",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "bundle-tabs",
+            "parent": "bundle-detail",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "bundle-overview",
+            "parent": "bundle-detail",
+            "slot": "children",
+            "order": 2
+          },
+          {
+            "cell": "bundle-id",
+            "parent": "bundle-overview",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "bundle-source",
+            "parent": "bundle-overview",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "bundle-version",
+            "parent": "bundle-overview",
+            "slot": "children",
+            "order": 2
+          },
+          {
+            "cell": "bundle-namespaces",
+            "parent": "bundle-overview",
+            "slot": "children",
+            "order": 3
+          },
+          {
+            "cell": "bundle-capabilities",
+            "parent": "bundle-overview",
+            "slot": "children",
+            "order": 4
+          },
+          {
+            "cell": "native-dependencies",
+            "parent": "bundle-overview",
+            "slot": "children",
+            "order": 5
+          },
+          {
+            "cell": "overview-actions",
+            "parent": "bundle-overview",
+            "slot": "children",
+            "order": 6
+          },
+          {
+            "cell": "clone-bundle",
+            "parent": "overview-actions",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "delete-bundle",
+            "parent": "overview-actions",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "bundle-draft",
+            "parent": "bundle-detail",
+            "slot": "children",
+            "order": 3
+          },
+          {
+            "cell": "editor-status",
+            "parent": "bundle-draft",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "editor-error",
+            "parent": "bundle-draft",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "editor-id",
+            "parent": "bundle-draft",
+            "slot": "children",
+            "order": 2
+          },
+          {
+            "cell": "editor-json",
+            "parent": "bundle-draft",
+            "slot": "children",
+            "order": 3
+          },
+          {
+            "cell": "validation-summary",
+            "parent": "bundle-draft",
+            "slot": "children",
+            "order": 4
+          },
+          {
+            "cell": "validation-errors",
+            "parent": "bundle-draft",
+            "slot": "children",
+            "order": 5
+          },
+          {
+            "cell": "validation-warnings",
+            "parent": "bundle-draft",
+            "slot": "children",
+            "order": 6
+          },
+          {
+            "cell": "editor-actions",
+            "parent": "bundle-draft",
+            "slot": "children",
+            "order": 7
+          },
+          {
+            "cell": "validate-bundle",
+            "parent": "editor-actions",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "save-bundle",
+            "parent": "editor-actions",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "preview-bundle",
+            "parent": "editor-actions",
+            "slot": "children",
+            "order": 2
+          },
+          {
+            "cell": "export-bundle",
+            "parent": "editor-actions",
+            "slot": "children",
+            "order": 3
+          },
+          {
+            "cell": "bundle-preview",
+            "parent": "bundle-detail",
+            "slot": "children",
+            "order": 4
+          },
+          {
+            "cell": "preview-error",
+            "parent": "bundle-preview",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "portable-bundle-preview",
+            "parent": "bundle-preview",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "delete-bundle-challenge",
+            "parent": "manage-bundles-root",
+            "slot": "children",
+            "order": 1
+          }
+        ]
       }
     }
   }

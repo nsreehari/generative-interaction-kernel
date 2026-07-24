@@ -14,6 +14,7 @@ import {
   type SampleServiceRegistryOptions,
 } from "../services";
 import { executeHttpServiceInvocation } from "../services/http-service/runtime";
+import { executeMcpServiceInvocation } from "../services/mcp/runtime";
 import {
   clearFunctionAccessKey,
   FUNCTION_ACCESS,
@@ -32,7 +33,7 @@ const FOUNDRY_ORIGIN = new URL(hostConfig.foundryProxyOrigin).origin;
 const HTTP_PROXY_ORIGIN = new URL(hostConfig.httpProxyOrigin).origin;
 
 export const browserServiceRegistryOptions: SampleServiceRegistryOptions = {
-  hostCapabilities: ["foundry-executor", "credential-resolver", "http-executor"],
+  hostCapabilities: ["foundry-executor", "credential-resolver", "http-executor", "mcp-executor"],
   resolveCredential: async (reference) => {
     const scope = CREDENTIAL_SCOPES[reference];
     if (!scope) throw new Error(`Unknown credential reference '${reference}'`);
@@ -65,13 +66,18 @@ export const browserServiceRegistryOptions: SampleServiceRegistryOptions = {
         throw error;
       }
     }
+    if (invocation.kind === "mcp") {
+      return executeMcpServiceInvocation(request as Parameters<typeof executeMcpServiceInvocation>[0]);
+    }
     throw new Error(`Unsupported sample service execution kind '${String(invocation.kind ?? "unknown")}'`);
   },
 };
 
 function mergeRegistryOptions(
-  registryOptions: SampleServiceRegistryOptions = {}
+  registryOptions: SampleServiceRegistryOptions = {},
+  state?: StateModel
 ): SampleServiceRegistryOptions {
+  const execute = registryOptions.execute ?? browserServiceRegistryOptions.execute;
   return {
     ...browserServiceRegistryOptions,
     ...registryOptions,
@@ -81,6 +87,23 @@ function mergeRegistryOptions(
         ...(registryOptions.hostCapabilities ?? []),
       ]),
     ],
+    execute: execute && state
+      ? (request) => {
+          const invocation = request as Parameters<typeof executeMcpServiceInvocation>[0];
+          if (invocation.kind !== "mcp") return execute(request);
+          const config = invocation.declaration.config as Record<string, Json> | undefined;
+          const serverStatePath = String(config?.serverStatePath ?? "").trim();
+          const server = serverStatePath ? String(state.get(serverStatePath) ?? "").trim() : "";
+          if (!server) return execute(request);
+          return execute({
+            ...invocation,
+            declaration: {
+              ...invocation.declaration,
+              config: { ...config, server },
+            },
+          });
+        }
+      : execute,
   };
 }
 
@@ -95,7 +118,7 @@ export function createBlueprintServiceHost(
     blueprintId: runtime.blueprintId,
     blueprintRevision: runtime.revision,
     declarations,
-    registry: createSampleServiceKindRegistry(mergeRegistryOptions(registryOptions)),
+    registry: createSampleServiceKindRegistry(mergeRegistryOptions(registryOptions, state)),
     state,
     expression: new JsonataExpressionProvider({ safe: true }),
   });

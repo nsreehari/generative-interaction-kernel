@@ -2,8 +2,10 @@ import layerSchemaJson from "../../schemas/layer.schema.json" with { type: "json
 import profileSchemaJson from "../../schemas/profile.schema.json" with { type: "json" };
 import loweringRecipeSchemaJson from "../../schemas/lowering-recipe.schema.json" with { type: "json" };
 import blueprintSchemaJson from "../../schemas/blueprint.schema.json" with { type: "json" };
+import cellSchemaJson from "../../schemas/cell.schema.json" with { type: "json" };
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { BlueprintArtifact } from "./blueprint";
+import { analyzeCellComposition } from "./cells";
 import {
   applyProfileTemplate,
   resolveProfile,
@@ -22,6 +24,7 @@ export const layerSchema = layerSchemaJson;
 export const profileSchema = profileSchemaJson;
 export const loweringRecipeSchema = loweringRecipeSchemaJson;
 export const blueprintSchema = blueprintSchemaJson;
+export const cellSchema = cellSchemaJson;
 
 export type StructuralSchemaValidatorRef = {
   schema: Record<string, unknown>;
@@ -64,6 +67,7 @@ const blueprintArtifactValidators = [{
   refs: [
     { schema: layerSchema, key: layerSchema.$id },
     { schema: loweringRecipeSchema, key: loweringRecipeSchema.$id },
+    { schema: cellSchema, key: cellSchema.$id },
   ],
   message: "Invalid blueprint artifact",
 }] as const;
@@ -298,6 +302,34 @@ export function validateBlueprintArtifact<TRecipe extends RecipeBase = RecipeBas
   }
 
   const blueprint = artifact as BlueprintArtifact<TRecipe>;
+  const cells = blueprint.payload.cells;
+  if (cells) {
+    for (const [cellId, cell] of Object.entries(cells)) {
+      if (cell.id !== cellId) {
+        throw new BlueprintValidationError(`Blueprint cell key '${cellId}' does not match id '${cell.id}'`, []);
+      }
+    }
+    for (const rootId of blueprint.payload.projections?.presentation?.roots ?? []) {
+      if (!cells[rootId]) {
+        throw new BlueprintValidationError(`Blueprint presentation references unknown root '${rootId}'`, []);
+      }
+    }
+    for (const placement of blueprint.payload.projections?.presentation?.placements ?? []) {
+      if (!cells[placement.cell]) {
+        throw new BlueprintValidationError(`Blueprint placement references unknown cell '${placement.cell}'`, []);
+      }
+      if (placement.parent && !cells[placement.parent]) {
+        throw new BlueprintValidationError(`Blueprint placement references unknown parent '${placement.parent}'`, []);
+      }
+    }
+    const composition = analyzeCellComposition(Object.values(cells));
+    if (composition.diagnostics.length > 0) {
+      throw new BlueprintValidationError(
+        composition.diagnostics.map(({ detail }) => detail).join("; "),
+        composition.diagnostics,
+      );
+    }
+  }
   const tierIds = new Set<string>();
   for (const tier of blueprint.payload.tiers) {
     if (tierIds.has(tier.id)) {
@@ -324,8 +356,8 @@ export function validateBlueprintArtifact<TRecipe extends RecipeBase = RecipeBas
     incoming.set(recipe.to, (incoming.get(recipe.to) ?? 0) + 1);
   }
 
-  if (blueprint.payload.recipes.length === 0 && !blueprint.payload.organism?.root) {
-    throw new BlueprintValidationError("A zero-recipe blueprint requires organism.root", []);
+  if (blueprint.payload.recipes.length === 0 && !blueprint.payload.projections?.presentation?.roots.length) {
+    throw new BlueprintValidationError("A zero-recipe blueprint requires a presentation projection root", []);
   }
   if (blueprint.payload.recipes.length > 0) {
     const sourceTiers = blueprint.payload.tiers.filter((tier) => !incoming.has(tier.id));

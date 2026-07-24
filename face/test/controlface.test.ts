@@ -53,21 +53,29 @@ test("ControlFace defines zero-recipe JSON cell Blueprints without product code"
       tiers: [{ id: "runtime-document", kind: "runtime-document" }],
       recipes: [],
       runtime: { namespaces: ["example"], capabilities: {} },
-      organism: {
-        root: {
-          id: "root",
-          capability: "ui:screen",
-          edges: {
-            children: [{
-              id: "source",
-              capability: "ui:text",
-              provides: ["ready"],
-            }, {
-              id: "consumer",
-              capability: "ui:text",
-              requires: ["ready"],
-            }],
+      cells: {
+          root: {
+            id: "root",
+            view: { capability: "ui:screen" },
           },
+          source: {
+            id: "source",
+            outputs: [{ token: "ready" }],
+            view: { capability: "ui:text" },
+          },
+          consumer: {
+            id: "consumer",
+            inputs: [{ token: "ready" }],
+            view: { capability: "ui:text" },
+          },
+      },
+      projections: {
+        presentation: {
+          roots: ["root"],
+          placements: [
+            { cell: "source", parent: "root" },
+            { cell: "consumer", parent: "root" },
+          ],
         },
       },
     },
@@ -104,12 +112,17 @@ test("ControlFace opens an authored Blueprint into a runtime", () => {
         capabilities: {},
         state: { example: { ready: true } },
       },
-      organism: {
-        root: {
-          id: "example",
-          capability: "ui:text",
-          props: { value: "Opened" },
-        },
+      cells: {
+          example: {
+            id: "example",
+            view: {
+              capability: "ui:text",
+              props: { value: "Opened" },
+            },
+          },
+      },
+      projections: {
+        presentation: { roots: ["example"] },
       },
     },
   };
@@ -145,12 +158,17 @@ test("ControlFace applies initialSeed from blueprint context", () => {
         capabilities: {},
         state: { example: { ready: false, nested: { before: true } } },
       },
-      organism: {
-        root: {
-          id: "seeded",
-          capability: "ui:text",
-          props: { value: "Seeded" },
-        },
+      cells: {
+          seeded: {
+            id: "seeded",
+            view: {
+              capability: "ui:text",
+              props: { value: "Seeded" },
+            },
+          },
+      },
+      projections: {
+        presentation: { roots: ["seeded"] },
       },
     },
   };
@@ -173,6 +191,53 @@ test("ControlFace applies initialSeed from blueprint context", () => {
       nested: { before: true, after: true },
     },
   });
+});
+
+test("ControlFace opens Blueprint-backed Cells as independent child runtimes", () => {
+  const child: BlueprintArtifact<LayerRecipe> = {
+    gik: "0.1",
+    type: "blueprint",
+    payload: {
+      id: "child",
+      kind: "example",
+      version: "2",
+      tiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      recipes: [],
+      runtime: { capabilities: {}, state: { child: { count: 1 } } },
+      cells: { root: { id: "root", view: { capability: "ui:text" } } },
+      projections: { presentation: { roots: ["root"] } },
+    },
+  };
+  const parent: BlueprintArtifact<LayerRecipe> = {
+    gik: "0.1",
+    type: "blueprint",
+    payload: {
+      id: "parent",
+      kind: "example",
+      version: "1",
+      tiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      recipes: [],
+      runtime: { capabilities: {}, state: { parent: { ready: true } } },
+      cells: {
+        child: {
+          id: "child",
+          blueprint: { $ref: "./child.blueprint.json" },
+          view: { capability: "ui:blueprint" },
+        },
+      },
+      projections: { presentation: { roots: ["child"] } },
+    },
+  };
+
+  const runtime = ControlFace.openBlueprint(parent, {
+    resolveBlueprint: () => child,
+  });
+
+  assert.equal(runtime.instanceId, "parent");
+  assert.deepEqual(runtime.state, { parent: { ready: true } });
+  assert.equal(runtime.children.child.instanceId, "parent/cells/child");
+  assert.equal(runtime.children.child.definition.payload.id, "child");
+  assert.deepEqual(runtime.children.child.state, { child: { count: 1 } });
 });
 
 test("ControlFace opens a recipe-backed canonical Blueprint", () => {

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://genui.dev/schemas/blueprint.schema.json",
   "title": "GIK Blueprint",
-  "description": "A self-contained authored application with its tier chain, lowering recipes, organism, resources, and runtime contract.",
+  "description": "A self-contained authored organism definition with Cells, relationships, projections, services, and runtime contract.",
   "type": "object",
   "required": ["gik", "type", "payload"],
   "additionalProperties": false,
@@ -27,14 +27,46 @@
           "type": "array",
           "items": { "$ref": "https://genui.dev/schemas/lowering-recipe.schema.json#/definitions/layerRecipe" }
         },
-        "organism": {
+        "cells": {
           "type": "object",
-          "minProperties": 1,
-          "additionalProperties": false,
+          "additionalProperties": { "$ref": "https://genui.dev/schemas/cell.schema.json" }
+        },
+        "relationships": {
+          "type": "object",
+          "additionalProperties": { "type": "object" }
+        },
+        "projections": {
+          "type": "object",
           "properties": {
-            "root": { "$ref": "#/$defs/cell" },
-            "cells": { "type": "array", "items": { "$ref": "#/$defs/cell" } }
-          }
+            "presentation": {
+              "type": "object",
+              "required": ["roots"],
+              "additionalProperties": false,
+              "properties": {
+                "roots": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": { "type": "string", "minLength": 1 },
+                  "uniqueItems": true
+                },
+                "placements": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["cell"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "cell": { "type": "string", "minLength": 1 },
+                      "parent": { "type": "string", "minLength": 1 },
+                      "slot": { "type": "string", "minLength": 1 },
+                      "order": { "type": "number" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "additionalProperties": { "type": "object" }
         },
         "context": { "type": "object" },
         "resources": {
@@ -63,22 +95,6 @@
         },
         "authoring": { "type": "object" },
         "metadata": { "type": "object" }
-      }
-    }
-  },
-  "$defs": {
-    "cell": {
-      "type": "object",
-      "required": ["id"],
-      "additionalProperties": true,
-      "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "capability": { "type": "string", "minLength": 1 },
-        "props": { "type": "object" },
-        "edges": { "type": "object" },
-        "requires": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "provides": { "type": "array" },
-        "service": { "type": "object" }
       }
     }
   }

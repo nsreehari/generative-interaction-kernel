@@ -1,24 +1,89 @@
-import type { DocNode, Edges, Json, ServiceUse } from "../../kernel/src/index";
+import type { Action, DocNode, DocumentPayload, Json, Reaction, ServiceUse } from "../../kernel/src/index";
+import type { BlueprintArtifact } from "./blueprint";
 
-export interface CellOutputBinding {
+export interface CellInput {
   token: string;
-  read: string;
+  as?: string;
+  required?: boolean;
+  cardinality?: "one" | "many";
+  schema?: Record<string, Json>;
+}
+
+export interface CellOutput {
+  token: string;
+  from?: string;
+  when?: string;
+  schema?: Record<string, Json>;
+}
+
+export type CellSource = ServiceUse & {
+  id: string;
+  when?: string;
+};
+
+export interface CellComputation {
+  id: string;
+  expression: string;
+  assign: string;
+  dependencies: readonly string[];
   when?: string;
 }
 
-export interface CellEdges extends Omit<Edges, "children"> {
-  children?: CellDefinition[];
+export interface CellBehavior {
+  events?: Record<string, Action[]>;
+  reactions?: Reaction[];
 }
 
-/** An ordinary runtime node with standing dataflow metadata. */
-export interface CellDefinition {
+export type CellViewBinding =
+  | { from: string; expression?: never }
+  | { from?: never; expression: string };
+
+export interface CellView {
   capability: string;
-  id: string;
   props?: Record<string, Json>;
-  edges?: CellEdges;
-  requires?: readonly string[];
-  provides?: readonly (string | CellOutputBinding)[];
-  service?: ServiceUse;
+  bindings?: Record<string, CellViewBinding>;
+  visibility?: string;
+}
+
+export type CellBlueprint =
+  | { $ref: string; inline?: never }
+  | { inline: BlueprintArtifact; $ref?: never };
+
+/** An independently addressable reactive participant in a Blueprint. */
+export interface CellDefinition {
+  id: string;
+  kind?: string;
+  metadata?: Record<string, Json>;
+  state?: {
+    initial?: Record<string, Json>;
+    schema?: Record<string, Json>;
+    persistence?: "ephemeral" | "checkpointed" | "durable";
+  };
+  inputs?: readonly CellInput[];
+  sources?: readonly CellSource[];
+  compute?: readonly CellComputation[];
+  outputs?: readonly CellOutput[];
+  behavior?: CellBehavior;
+  view?: CellView;
+  /** A recursively composed Blueprint whose live instance is represented by this Cell. */
+  blueprint?: CellBlueprint;
+}
+
+export interface CellPlacement {
+  cell: string;
+  parent?: string;
+  slot?: string;
+  order?: number;
+}
+
+export interface CellProjectionDefinition {
+  cells: Readonly<Record<string, CellDefinition>>;
+  projections?: {
+    presentation?: {
+    roots: readonly string[];
+    placements?: readonly CellPlacement[];
+    };
+  };
 }
 
 export interface ExecutableCellEdge {
@@ -135,7 +200,7 @@ export function analyzeCellComposition(cells: readonly CellDefinition[]): CellCo
     }
     ids.add(cell.id);
 
-    for (const pattern of [...(cell.requires ?? []), ...providedTokens(cell)]) {
+    for (const pattern of [...(cell.inputs ?? []).map(({ token }) => token), ...providedTokens(cell)]) {
       try {
         tokenPattern(pattern);
       } catch (error) {
@@ -148,9 +213,9 @@ export function analyzeCellComposition(cells: readonly CellDefinition[]): CellCo
       }
     }
 
-    for (const output of cell.provides ?? []) {
-      const provided = typeof output === "string" ? output : output.token;
-      if (typeof output !== "string" && (!output.token || !output.read || (output.when !== undefined && !output.when))) {
+    for (const output of cell.outputs ?? []) {
+      const provided = output.token;
+      if (!output.token || (output.from !== undefined && !output.from) || (output.when !== undefined && !output.when)) {
         diagnostics.push({
           code: "invalid-output-binding",
           cellId: cell.id,
@@ -177,7 +242,7 @@ export function analyzeCellComposition(cells: readonly CellDefinition[]): CellCo
     });
   }
 
-  const required = new Set(cells.flatMap((cell) => [...(cell.requires ?? [])]));
+  const required = new Set(cells.flatMap((cell) => (cell.inputs ?? []).map(({ token }) => token)));
   const externalInputs = [...required]
     .filter((pattern) => !providerIds.has(pattern))
     .sort((left, right) => left.localeCompare(right));
@@ -187,15 +252,12 @@ export function analyzeCellComposition(cells: readonly CellDefinition[]): CellCo
 
 export function compileCellTopology(
   id: string,
-  organism: CellDefinition | readonly CellDefinition[]
+  definition: CellProjectionDefinition,
 ): ExecutableCellTopology {
-  const roots: readonly CellDefinition[] = Array.isArray(organism)
-    ? organism
-    : [organism as CellDefinition];
-  const cells = flattenCells(roots);
+  const cells = Object.values(definition.cells);
   const composition = analyzeCellComposition(cells);
   const edges = cells
-    .flatMap((cell) => (cell.requires ?? []).flatMap((token): ExecutableCellEdge[] => {
+    .flatMap((cell) => (cell.inputs ?? []).flatMap(({ token }): ExecutableCellEdge[] => {
       const providerCellId = composition.providers[token];
       return providerCellId ? [{ token, providerCellId, consumerCellId: cell.id }] : [];
     }))
@@ -214,57 +276,81 @@ export function compileCellTopology(
   };
 }
 
-/** Lower a cell tree by removing authoring-only dataflow metadata. */
-export function composeCellDocument(organism: CellDefinition, topology: ExecutableCellTopology): { root: DocNode } {
+/** Compile a Blueprint's optional presentation into the kernel document projection. */
+export function composeCellDocument(definition: CellProjectionDefinition, topology: ExecutableCellTopology): DocumentPayload {
   if (topology.diagnostics.length > 0) {
     throw new Error(`Invalid cell topology '${topology.id}': ${topology.diagnostics.map(({ detail }) => detail).join("; ")}`);
   }
-  return { root: toDocNode(organism) };
+  const presentation = definition.projections?.presentation;
+  const rootIds = presentation?.roots ?? [];
+  if (rootIds.length !== 1) {
+    throw new Error(`Blueprint '${topology.id}' requires exactly one presentation root`);
+  }
+  const byParent = new Map<string, CellPlacement[]>();
+  for (const placement of presentation?.placements ?? []) {
+    if (!placement.parent) continue;
+    const siblings = byParent.get(placement.parent) ?? [];
+    siblings.push(placement);
+    byParent.set(placement.parent, siblings);
+  }
+  const compile = (cellId: string, ancestors: readonly string[]): DocNode => {
+    if (ancestors.includes(cellId)) {
+      throw new Error(`Blueprint '${topology.id}' has a presentation cycle at '${cellId}'`);
+    }
+    const cell = definition.cells[cellId];
+    if (!cell) throw new Error(`Blueprint '${topology.id}' references unknown cell '${cellId}'`);
+    if (!cell.view) throw new Error(`Presentation cell '${cellId}' has no view`);
+    const children = (byParent.get(cellId) ?? [])
+      .sort((left, right) => (left.order ?? 0) - (right.order ?? 0))
+      .map(({ cell: childId }) => compile(childId, [...ancestors, cellId]));
+    return toDocNode(cell, children);
+  };
+  const derivations = topology.cells.flatMap((cell) => (cell.compute ?? []).map((computation) => ({
+    id: `${cell.id}-${computation.id}`,
+    target: computation.assign,
+    expression: computation.expression,
+    dependencies: [...computation.dependencies],
+  })));
+  return {
+    root: compile(rootIds[0], []),
+    ...(derivations.length > 0 ? { derivations } : {}),
+  };
 }
 
 function providedTokens(cell: CellDefinition): string[] {
-  return (cell.provides ?? []).map((output) => typeof output === "string" ? output : output.token);
+  return (cell.outputs ?? []).map(({ token }) => token);
 }
 
-function flattenCells(roots: readonly CellDefinition[]): CellDefinition[] {
-  const cells: CellDefinition[] = [];
-  const visit = (cell: CellDefinition): void => {
-    if ((cell.requires?.length ?? 0) > 0 || (cell.provides?.length ?? 0) > 0 || cell.service) cells.push(cell);
-    for (const child of cell.edges?.children ?? []) visit(child);
-  };
-  for (const root of roots) visit(root);
-  return cells;
-}
-
-function toDocNode(cell: CellDefinition): DocNode {
-  const children = cell.edges?.children?.map(toDocNode);
-  const props = cell.service
+function toDocNode(cell: CellDefinition, children: readonly DocNode[]): DocNode {
+  const source = cell.sources?.[0];
+  const directBindings = Object.entries(cell.view?.bindings ?? {})
+    .filter(([, binding]) => binding.from !== undefined)
+    .map(([prop, binding]) => [prop, binding.from!] as const);
+  const expressionBindings = Object.entries(cell.view?.bindings ?? {})
+    .filter(([, binding]) => binding.expression !== undefined)
+    .map(([prop, binding]) => [prop, binding.expression!] as const);
+  const props = source
     ? {
-        ...structuredClone(cell.props ?? {}),
+        ...structuredClone(cell.view?.props ?? {}),
         externalSource: { refreshEvent: "refresh" },
       }
-    : cell.props
-      ? structuredClone(cell.props)
+    : cell.view?.props
+      ? structuredClone(cell.view.props)
       : undefined;
-  const edges = cell.service
-    ? {
-        ...structuredClone(cell.edges ?? {}),
-        on: {
-          ...structuredClone(cell.edges?.on ?? {}),
-          refresh: [{ do: "invoke" as const, args: { tool: cell.service.operation } }],
-        },
-        ...(children ? { children } : {}),
-      }
-    : cell.edges
-      ? {
-          ...structuredClone(cell.edges),
-          ...(children ? { children } : {}),
-        }
-      : undefined;
+  const events = structuredClone(cell.behavior?.events ?? {});
+  if (source) events.refresh = [{ do: "invoke", args: { tool: source.operation } }];
+  const edges = {
+    ...(directBindings.length > 0 ? { read: Object.fromEntries(directBindings) } : {}),
+    ...(expressionBindings.length > 0 ? { readExpr: Object.fromEntries(expressionBindings) } : {}),
+    ...(cell.view?.visibility ? { gate: cell.view.visibility } : {}),
+    ...(Object.keys(events).length > 0 ? { on: events } : {}),
+    ...(cell.behavior?.reactions?.length ? { react: structuredClone(cell.behavior.reactions) } : {}),
+    ...(children.length > 0 ? { children: [...children] } : {}),
+  };
   return {
-    capability: cell.capability,
+    capability: cell.view!.capability,
     id: cell.id,
     ...(props ? { props } : {}),
-    ...(edges ? { edges } : {}),
+    ...(Object.keys(edges).length > 0 ? { edges } : {}),
   };
 }

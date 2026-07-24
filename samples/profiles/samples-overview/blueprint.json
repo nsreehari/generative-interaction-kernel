@@ -6,33 +6,6 @@
     "kind": "runtime-blueprint",
     "version": "2.0",
     "recipes": [],
-    "resources": {
-      "document": {
-        "inline": {
-          "root": {
-            "capability": "ui:screen",
-            "id": "samples-overview-root",
-            "props": {
-              "title": "Governed Human-Agent Collaboration",
-              "subtitle": "One evolving workspace. Shared state, shared authority, complete trace."
-            },
-            "edges": {
-              "children": [
-                {
-                  "capability": "overview:platform-storyboard",
-                  "id": "samples-overview-view",
-                  "edges": {
-                    "read": {
-                      "overview": "overview"
-                    }
-                  }
-                }
-              ]
-            }
-          }
-        }
-      }
-    },
     "runtime": {
       "expression": "jsonata",
       "namespaces": [
@@ -308,27 +281,42 @@
         "description": "Authored terminal document for this hosted Blueprint."
       }
     ],
-    "organism": {
-      "root": {
-        "capability": "ui:screen",
+    "cells": {
+      "samples-overview-root": {
         "id": "samples-overview-root",
-        "props": {
-          "title": "Governed Human-Agent Collaboration",
-          "subtitle": "One evolving workspace. Shared state, shared authority, complete trace."
-        },
-        "edges": {
-          "children": [
-            {
-              "capability": "overview:platform-storyboard",
-              "id": "samples-overview-view",
-              "edges": {
-                "read": {
-                  "overview": "overview"
-                }
-              }
-            }
-          ]
+        "view": {
+          "capability": "ui:screen",
+          "props": {
+            "title": "Governed Human-Agent Collaboration",
+            "subtitle": "One evolving workspace. Shared state, shared authority, complete trace."
+          }
         }
+      },
+      "samples-overview-view": {
+        "id": "samples-overview-view",
+        "view": {
+          "capability": "overview:platform-storyboard",
+          "bindings": {
+            "overview": {
+              "from": "overview"
+            }
+          }
+        }
+      }
+    },
+    "projections": {
+      "presentation": {
+        "roots": [
+          "samples-overview-root"
+        ],
+        "placements": [
+          {
+            "cell": "samples-overview-view",
+            "parent": "samples-overview-root",
+            "slot": "children",
+            "order": 0
+          }
+        ]
       }
     }
   }

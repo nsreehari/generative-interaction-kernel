@@ -1,5 +1,6 @@
 export * from "./types";
 export * from "./providers";
+export * from "./derivations";
 export * from "./interpret";
 export * from "./reduce";
 export * from "./validate";
