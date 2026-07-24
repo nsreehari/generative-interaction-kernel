@@ -1,9 +1,0 @@
-{
-  "extends": "../../kernel/tsconfig.json",
-  "include": [
-    "src",
-    "../../providers/reactive-state-model/src",
-    "../../providers/vendor",
-    "../../kernel/src"
-  ]
-}

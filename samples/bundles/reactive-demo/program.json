@@ -2,12 +2,58 @@
   "gik": "0.1",
   "type": "program",
   "payload": {
+    "graph": {
+      "nodes": [
+        {
+          "id": "profile-full",
+          "inputs": { "first": "demo.formFirst", "last": "demo.formLast" },
+          "outputs": { "full": "demo.formFull" },
+          "operation": { "kind": "compute", "expression": "$trim($inputs.first & ' ' & $inputs.last)" }
+        },
+        {
+          "id": "profile-ready",
+          "inputs": { "first": "demo.formFirst", "last": "demo.formLast", "consent": "demo.consent" },
+          "outputs": { "ready": "demo.formReady" },
+          "operation": { "kind": "compute", "expression": "$inputs.first != '' and $inputs.last != '' and ($inputs.consent = true or $inputs.consent = 'true')" }
+        },
+        {
+          "id": "profile-label",
+          "inputs": { "ready": "demo.formReady" },
+          "outputs": { "label": "demo.submitLabel" },
+          "operation": { "kind": "compute", "expression": "$inputs.ready ? 'Create profile' : 'Complete required fields'" }
+        },
+        {
+          "id": "metrics-total",
+          "inputs": { "approved": "demo.metricsApproved", "pending": "demo.metricsPending" },
+          "outputs": { "total": "demo.metricsTotal" },
+          "operation": { "kind": "compute", "expression": "$number($inputs.approved) + $number($inputs.pending)" }
+        },
+        {
+          "id": "metrics-remaining",
+          "inputs": { "limit": "demo.metricsLimit", "total": "demo.metricsTotal" },
+          "outputs": { "remaining": "demo.metricsRemaining" },
+          "operation": { "kind": "compute", "expression": "$number($inputs.limit) - $inputs.total" }
+        },
+        {
+          "id": "metrics-over-limit",
+          "inputs": { "limit": "demo.metricsLimit", "total": "demo.metricsTotal" },
+          "outputs": { "overLimit": "demo.metricsOverLimit" },
+          "operation": { "kind": "compute", "expression": "$inputs.total > $number($inputs.limit)" }
+        },
+        {
+          "id": "metrics-banner",
+          "inputs": { "overLimit": "demo.metricsOverLimit" },
+          "outputs": { "banner": "demo.metricsBanner" },
+          "operation": { "kind": "compute", "expression": "$inputs.overLimit ? 'Capacity exceeded' : 'Capacity available'" }
+        }
+      ]
+    },
     "root": {
       "capability": "ui:screen",
       "id": "reactive-demo-root",
       "props": {
-        "title": "Reactive StateModel Demo",
-        "subtitle": "A host-mounted sample using the vendored yaml-flow dependency graph through GIK's ReactiveStateModel provider."
+        "title": "Continuous Graph Demo",
+        "subtitle": "A continuous GIK port-token graph that propagates changed values to quiescence."
       },
       "edges": {
         "children": [
@@ -55,7 +101,7 @@
                         "capability": "ui:note",
                         "id": "reactive-demo-note-1",
                         "props": {
-                          "value": "Base writes land in a ReactiveStateModel. The vendored dependency graph maintains the standing computed cells and the demo re-renders after settle().",
+                          "value": "Base writes publish named tokens. Explicit graph ports propagate changed values through standing compute nodes until the graph reaches quiescence.",
                           "tone": "muted"
                         }
                       },
@@ -63,7 +109,7 @@
                         "capability": "ui:note",
                         "id": "reactive-demo-note-2",
                         "props": {
-                          "value": "The right panel is a native self-provided leaf because the interactive store lifecycle is not expressed in the document grammar itself.",
+                          "value": "The right panel is display-only; execution, dependency readiness, and convergence are owned by the Kernel.",
                           "tone": "muted"
                         }
                       },
@@ -215,7 +261,14 @@
                             "consent": "demo.consent",
                             "metricsApproved": "demo.metricsApproved",
                             "metricsPending": "demo.metricsPending",
-                            "metricsLimit": "demo.metricsLimit"
+                            "metricsLimit": "demo.metricsLimit",
+                            "formFull": "demo.formFull",
+                            "formReady": "demo.formReady",
+                            "submitLabel": "demo.submitLabel",
+                            "metricsTotal": "demo.metricsTotal",
+                            "metricsRemaining": "demo.metricsRemaining",
+                            "metricsOverLimit": "demo.metricsOverLimit",
+                            "metricsBanner": "demo.metricsBanner"
                           }
                         }
                       }

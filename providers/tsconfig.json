@@ -14,5 +14,5 @@
     "resolveJsonModule": true,
     "types": ["node"]
   },
-  "include": ["vendor", "reactive-state-model", "step-orchestrator", "consequence-graph", "exploratory-graph", "profile-authoring"]
+  "include": ["vendor", "step-orchestrator", "consequence-graph", "exploratory-graph", "profile-authoring"]
 }

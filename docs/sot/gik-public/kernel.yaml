@@ -22,10 +22,186 @@ api_policy:
 runtime_contracts:
   - name: ProgramDefinition
     signature: >-
-      interface ProgramDefinition { vocabulary?: string; handlers?: RuntimeHandler[];
+      interface ProgramDefinition { vocabulary?: string; graph?: ProgramGraph;
+      handlers?: RuntimeHandler[];
       reactions?: RuntimeReaction[]; machines?: Machine[];
       derivations?: StandingDerivation[] }
     purpose: Shared executable behavior independent of projection.
+  - name: ProgramGraph
+    signature: >-
+      interface ProgramGraph { inputs?: PortToken[]; outputs?: PortToken[];
+      ports?: Record<PortToken, PortDefinition>; nodes: ProgramNode[] }
+    purpose: >-
+      Declare one continuous dataflow topology whose explicit port tokens determine
+      readiness, propagation, feedback, and dormancy.
+    current_behavior:
+      - inputs marks tokens as externally producible for inspection; publish accepts any token.
+      - outputs prevents an otherwise unconsumed token from being diagnosed as unused.
+      - ports configures token metadata; producer cardinality is declared but not yet enforced.
+      - nodes are selected deterministically by lexicographic id order.
+  - name: ProgramNode
+    signature: >-
+      interface ProgramNode { id: string;
+      inputs?: Record<string, PortToken | InputPort>;
+      outputs?: Record<string, PortToken | OutputPort>; trigger?: NodeTrigger;
+      when?: string; operation: NodeOperation }
+    purpose: Declare a schedulable operation and its local-to-global port bindings.
+  - name: PortToken
+    signature: "type PortToken = string"
+    purpose: Name a graph value, signal, or ordered stream independently of expressions.
+  - name: PortMode
+    signature: 'type PortMode = "value" | "signal" | "stream"'
+    purpose: Select structural-change, every-publication, or accumulated-publication propagation.
+    behavior:
+      - value increments the token version only when structural JSON equality changes.
+      - signal increments the token version for every publication, including equal values.
+      - stream appends each publication to the token's JSON array value and increments its version.
+  - name: PortDefinition
+    signature: >-
+      interface PortDefinition { mode?: PortMode; producers?: "single" | "many" }
+    purpose: Configure token publication and declare producer cardinality metadata.
+    limitation: The runtime does not currently enforce single versus many producers.
+  - name: InputPort
+    signature: "interface InputPort { token: PortToken; optional?: boolean }"
+    purpose: Bind one local node input to a global token.
+  - name: OutputPort
+    signature: "interface OutputPort { token: PortToken; mode?: PortMode }"
+    purpose: Bind one local node output to a global token with an optional mode override.
+  - name: NodeOperation
+    signature: >-
+      type NodeOperation = ComputeNodeOperation | ActionsNodeOperation |
+      InvokeNodeOperation | DecisionNodeOperation
+    purpose: Select intrinsic computation, closed actions, external invocation, or branching.
+    variants:
+      - "ComputeNodeOperation { kind: compute; expression: string }"
+      - "ActionsNodeOperation { kind: actions; actions: Action[] }"
+      - "InvokeNodeOperation { kind: invoke; tool: string; arguments?: Record<string, string> }"
+      - "DecisionNodeOperation { kind: decision; cases: DecisionCase[] }"
+    behavior:
+      - Compute with one declared output maps the expression value to that output.
+      - Compute with multiple outputs requires the expression to return an object keyed by local output name.
+      - Decision evaluates cases in declaration order and publishes the first matching case.
+      - Actions emit state operations, effects, and events; they do not synthesize graph outputs.
+      - Invoke suspends its node and resumes it from OrchestratorResult.outputs.
+      - An invoke action inside ActionsNodeOperation settles as an ordinary effect; its outputs do not complete the graph node.
+    expression_bindings:
+      - $inputs is the object of local input names mapped to available token values.
+      - $event is the triggering event payload, or an empty object when no event triggered the node.
+      - Expressions do not determine dependency topology.
+  - name: NodeTrigger
+    signature: >-
+      type NodeTrigger = { startup: true } | { event: string; node?: string }
+    purpose: Admit a node on Kernel start or a matching event.
+    behavior: A trigger does not bypass absent required inputs; only optional inputs may be absent.
+  - name: GraphMutation
+    signature: >-
+      type GraphMutation = addNode | removeNode | replaceNode | addPort |
+      removePort | updatePort
+    purpose: Change topology as one serialized mutation batch, then reindex and reschedule.
+    behavior:
+      - A successful batch increments topologyVersion once.
+      - addNode rejects a duplicate id; replaceNode rejects an unknown id.
+      - removeNode and removePort are no-ops when their target is absent.
+      - Existing token values and surviving node consumption versions are retained across reindexing.
+    limitations:
+      - Producer cardinality and references to removed ports are not validated.
+      - Removing or replacing a suspended node does not cancel its active host invocation.
+      - Topology mutation is not included in checkpoint or restore.
+  - name: ExecutionStatus
+    signature: >-
+      type ExecutionStatus = "quiescent" | "suspended" | "completed" |
+      "yielded" | "failed"
+    purpose: Report why continuous propagation returned control to the host.
+    current_runtime_values:
+      - quiescent
+      - suspended
+      - yielded
+    reserved_not_currently_emitted:
+      - completed
+      - failed
+  - name: ExecutionBudget
+    signature: >-
+      interface ExecutionBudget { maxNodeExecutions?: number; maxPublications?: number }
+    purpose: Bound one scheduling turn without making perpetual graphs invalid.
+  - name: ExecutionSnapshot
+    signature: >-
+      interface ExecutionSnapshot { topologyVersion: number; status: ExecutionStatus;
+      tokens: Record<PortToken, TokenRuntimeState>;
+      nodes: Record<string, GraphNodeRuntimeState>; readyNodes: string[];
+      runningInvocations: InvocationId[] }
+    purpose: Expose a clone of current topology version, token versions, node state, and invocation ids.
+    limitations:
+      - It is an observation API, not a restorable execution checkpoint.
+      - runningInvocations includes every active Kernel invocation, not only graph invocations.
+  - name: TokenRuntimeState
+    signature: >-
+      interface TokenRuntimeState { status: "absent" | "available"; value?: Json;
+      version: number; producedBy?: string }
+    purpose: Record the latest token value, monotonic publication version, and producer node.
+  - name: GraphNodeStatus
+    signature: 'type GraphNodeStatus = "idle" | "ready" | "running" | "suspended" | "failed"'
+    purpose: Describe node lifecycle state in GraphNodeRuntimeState.
+    current_behavior: >-
+      Readiness is computed rather than persisted; snapshots normally expose idle or suspended.
+      failed is reserved and is not currently assigned by the scheduler.
+  - name: GraphNodeRuntimeState
+    signature: >-
+      interface GraphNodeRuntimeState { status: GraphNodeStatus;
+      consumedVersions: Record<PortToken, number>; invocationId?: InvocationId;
+      failure?: Json }
+    purpose: Record the token versions consumed by a node and its lifecycle state.
+    limitation: invocationId and failure are declared but are not currently populated by ContinuousGraphRuntime.
+  - name: TransitionResult
+    signature: >-
+      interface TransitionResult { previousRevision: number; revision: number;
+      status: ExecutionStatus; state: Record<string, Json>; patch: Patch;
+      effects: RecordedEffect[]; execution: ExecutionSnapshot }
+    purpose: Return authoritative state and execution settlement from one graph transition.
+  - name: GraphInspection
+    signature: >-
+      interface GraphInspection { topologyVersion: number; diagnostics: GraphDiagnostic[] }
+    purpose: >-
+      Report dormant tokens, unused outputs, and feedback components as diagnostics,
+      not graph-invalidity errors.
+  - name: GraphDiagnostic
+    signature: >-
+      interface GraphDiagnostic { kind: "unproduced-token" | "unused-token" |
+      "feedback-component"; token?: PortToken; nodes?: string[] }
+    purpose: Describe non-fatal topology observations.
+  - name: GraphExecutionResult
+    signature: >-
+      interface GraphExecutionResult { status: ExecutionStatus;
+      publications: Record<PortToken, Json>; operations: PatchOp[];
+      effects: OrchestratorEffect[]; events: GIKEvent[]; readyNodes: string[];
+      nodeExecutions: number; publicationCount: number }
+    purpose: Low-level result returned by one ContinuousGraphRuntime scheduling turn.
+    category: advanced
+    behavior:
+      - publications contains the last raw publication per token in the turn.
+      - publicationCount counts every accepted publication even when publications overwrites the same token key.
+      - stream accumulation is visible in TokenRuntimeState.value, while publications retains the latest raw item.
+  - name: GraphNodeExecutionOutcome
+    signature: >-
+      interface GraphNodeExecutionOutcome { outputs?: Record<string, Json>;
+      operations?: PatchOp[]; effects?: OrchestratorEffect[]; events?: GIKEvent[];
+      suspended?: boolean }
+    purpose: Result returned by a host executor for actions and invoke nodes.
+    category: advanced
+  - name: OrchestratorResult
+    signature: >-
+      interface OrchestratorResult { ops?: PatchOp[]; events?: GIKEvent[];
+      outputs?: Record<string, Json>; outcome?: string; detail?: Record<string, Json> }
+    purpose: Settle external work with state operations, follow-up events, or graph-local outputs.
+    behavior:
+      - outputs is consumed only for a suspended InvokeNodeOperation.
+      - ops and events use the existing Kernel settlement path.
+      - outcome and detail are observability metadata.
+  - name: InvocationControl
+    signature: >-
+      interface InvocationControl { readonly id: InvocationId; readonly signal: AbortSignal;
+      emitProgress(progress: OrchestratorProgress): Promise<void>;
+      emit(result?: OrchestratorResult): Promise<void> }
+    purpose: Publish ordered progress and terminal settlement for a controlled invocation.
   - name: ProjectedProgramDefinition
     signature: >-
       interface ProjectedProgramDefinition extends ProgramDefinition { root: DocNode }
@@ -47,9 +223,48 @@ runtime_contracts:
     purpose: Own a standing reaction independently of a projection node.
   - name: ProjectedVocabularyManifest
     signature: >-
-      interface ProjectedVocabularyManifest { version: string;
-      capabilities: Record<string, CapabilityDescriptor>; ... }
+      interface ProjectedVocabularyManifest { version: string; expression?: string;
+      namespaces?: string[]; contexts?: string[]; actions?: string[];
+      capabilities: Record<string, CapabilityDescriptor>; externals?: ExternalsSpec }
     purpose: Runtime vocabulary including projection capability descriptors.
+  - name: CapabilityDescriptor
+    signature: >-
+      interface CapabilityDescriptor { propsSchema?: object; emits?: string[];
+      slots?: string[]; dataProp?: string }
+    purpose: Describe a projection capability's props, events, slots, and bound-data prop.
+  - name: ProjectionViewImport
+    signature: "interface ProjectionViewImport { from: string; use?: string[] }"
+    purpose: Bind a vocabulary alias to all or a selected subset of a projection-view provider.
+  - name: ExternalsSpec
+    signature: >-
+      interface ExternalsSpec { projectionViews?: Record<string, ProjectionViewImport>;
+      effectHandlers?: string[];
+      services?: Record<string, ServiceRequirement | ServiceDeclaration> }
+    purpose: Declare host-provided projection, effect, and logical service dependencies.
+  - name: ServiceDeclaration
+    signature: >-
+      interface ServiceDeclaration { kind: string; version: string;
+      operations: Record<string, ServiceOperationDeclaration>; config?: Json;
+      scope?: ServiceScope }
+    purpose: Declare a logical service kind and its operation contracts without physical credentials.
+  - name: ServiceOperationDeclaration
+    signature: >-
+      interface ServiceOperationDeclaration { operation: string; contract: string;
+      mode?: "immediate" | "queued"; subject?: ServiceSubject;
+      request?: ServiceDataStage; response?: ServiceDataStage;
+      settlement: ServiceSettlementStage; failureSettlement?: ServiceSettlementStage;
+      onViolation?: GuardrailViolationAction }
+    purpose: Declare request, response, settlement, and guardrail behavior for one service operation.
+  - name: ServiceRequirement
+    signature: >-
+      interface ServiceRequirement { version: string; operations: string[]; kind?: string;
+      config?: Json; scope?: ServiceScope }
+    purpose: Deprecated migration shape for operation-only service requirements.
+  - name: ServiceOutputPolicy
+    signature: >-
+      interface ServiceOutputPolicy { guardrails?: readonly GuardrailRule[];
+      onViolation?: GuardrailViolationAction }
+    purpose: Declare validation and settlement policy for service output.
   - name: HeadlessVocabularyManifest
     signature: >-
       type HeadlessVocabularyManifest =
@@ -62,6 +277,22 @@ runtime_contracts:
       HeadlessVocabularyManifest
     purpose: The complete vocabulary input accepted by Kernel.
 
+wire_contracts:
+  version: "0.1"
+  envelope: "{ gik: typeof GIK_VERSION; type: string; payload: unknown }"
+  messages:
+    - "VocabularyMessage: vocabulary + ProjectedVocabularyManifest"
+    - "ProjectedProgramMessage: program + ProjectedProgramDefinition"
+    - "ProgramMessage: program + HeadlessProgramDefinition"
+    - "EventMessage: event + GIKEvent"
+    - "PatchMessage: patch + Patch"
+    - "ProgressMessage: progress + InvocationProgress"
+    - "TraceMessage: trace + TraceEvent"
+  union: >-
+    GIKMessage = VocabularyMessage | ProjectedProgramMessage | ProgramMessage |
+    EventMessage | PatchMessage | ProgressMessage | TraceMessage
+  compatibility: No manifest or document type aliases are accepted.
+
 internal_subsystems:
   execution:
     owns:
@@ -73,6 +304,16 @@ internal_subsystems:
     modules:
       - kernel/src/reduce.ts
       - kernel/src/derivations.ts
+      - kernel/src/kernel.ts
+  graph_execution:
+    owns:
+      - explicit port-token topology and token versions
+      - deterministic readiness and propagation to quiescence
+      - valid feedback cycles, dormant paths, suspension, and budget yielding
+      - serialized topology mutation, reindexing, and rescheduling
+    accepts: ProgramGraph
+    modules:
+      - kernel/src/graph-runtime.ts
       - kernel/src/kernel.ts
   projection:
     owns:
@@ -92,8 +333,8 @@ classes:
     source: kernel/src/kernel.ts
     constructor:
       signature: >-
-        new Kernel(vocabulary: Enveloped<ExecutableVocabularyManifest>,
-        program: Enveloped<ExecutableProgramDefinition>, options?: KernelOptions)
+        new Kernel(manifest: Enveloped<ExecutableVocabularyManifest>,
+        document: Enveloped<ExecutableProgramDefinition>, opts?: KernelOptions)
       behavior:
         - Validates the program and capability references unless disabled.
         - Installs host-supplied providers or package defaults.
@@ -102,9 +343,48 @@ classes:
       - name: init
         signature: "init(): Patch"
         category: primary
-        purpose: Seed machine states and return the revision-zero initialization patch.
+        purpose: Seed machine states and return only their revision-zero set operations.
         mutates_state: true
         increments_revision: false
+      - name: start
+        signature: "start(budget?: ExecutionBudget): Promise<TransitionResult>"
+        category: primary
+        purpose: Seed graph inputs from current state, fire startup nodes, and propagate.
+        behavior:
+          - Flattens object-valued state into dotted leaf tokens before startup triggers run.
+          - Uses value-mode equality to avoid retriggering unchanged leaves.
+        mutates_state: conditional
+        increments_revision: only-when-work-settles
+      - name: publish
+        signature: >-
+          publish(values: Record<PortToken, Json>, budget?: ExecutionBudget):
+          Promise<TransitionResult>
+        category: primary
+        purpose: Publish external token values and propagate reachable nodes.
+        behavior:
+          - Accepts any token name; ProgramGraph.inputs is not an access-control list.
+          - Commits changed input and output publications as state paths.
+        mutates_state: conditional
+        increments_revision: only-when-work-settles
+      - name: mutate
+        signature: >-
+          mutate(mutations: readonly GraphMutation[], budget?: ExecutionBudget):
+          Promise<TransitionResult>
+        category: primary
+        purpose: Apply one serialized topology batch, advance its version, reindex, and resume.
+        mutates_state: conditional
+        increments_revision: only-when-work-settles
+      - name: resume
+        signature: "resume(budget?: ExecutionBudget): Promise<TransitionResult>"
+        category: primary
+        purpose: Continue ready graph work after yielding or host-controlled suspension.
+        mutates_state: conditional
+        increments_revision: only-when-work-settles
+      - name: execution
+        signature: "execution(): ExecutionSnapshot"
+        category: primary
+        purpose: Return current topology, token versions, node states, and invocations.
+        mutates_state: false
       - name: dispatch
         signature: "dispatch(event: GIKEvent): Promise<Patch>"
         category: primary
@@ -112,6 +392,7 @@ classes:
         behavior:
           - Serializes mutations.
           - Settles actions, immediate effects, standing derivations, and reactions.
+          - Publishes current state leaves into the graph before running graph event triggers.
           - Commits and publishes one initiating patch.
           - Starts asynchronous invokes after the initiating patch commits.
         mutates_state: true
@@ -160,7 +441,11 @@ classes:
       - name: checkpoint
         signature: "checkpoint(): Checkpoint"
         category: primary
-        purpose: Capture an immutable revision-keyed snapshot of pure state.
+        purpose: Capture an immutable revision-keyed snapshot of StateModel state only.
+        excludes:
+          - graph topology and topologyVersion
+          - token values and consumed versions
+          - suspended nodes and active invocations
         mutates_state: false
       - name: restore
         signature: "restore(checkpoint: Checkpoint): Promise<Patch>"
@@ -169,6 +454,9 @@ classes:
         guarantees:
           - Does not claim to undo external effects.
           - Publishes the resulting patch.
+        limitations:
+          - Does not restore or reset graph topology, tokens, node versions, or invocations.
+          - Does not automatically republish restored state into graph tokens.
         mutates_state: true
         increments_revision: true
       - name: effectsSince
@@ -185,7 +473,7 @@ classes:
       - name: baseline
         signature: "baseline(): Patch"
         category: advanced
-        purpose: Initialize machines and return all state as a revision-zero patch.
+        purpose: Initialize machines and return the complete current state for initial client onboarding.
       - name: snapshotPatch
         signature: "snapshotPatch(): Patch"
         category: advanced
@@ -235,8 +523,8 @@ classes:
     source: kernel/src/transport.ts
     constructor:
       signature: >-
-        new KernelTransportHost(vocabulary: Enveloped<ProjectedVocabularyManifest>,
-        program: Enveloped<ProjectedProgramDefinition>, kernel: Kernel,
+        new KernelTransportHost(manifest: Enveloped<ProjectedVocabularyManifest>,
+        document: Enveloped<ProjectedProgramDefinition>, kernel: Kernel,
         defaultTransport?: TransportProvider)
     methods:
       - name: start
@@ -258,6 +546,30 @@ classes:
       - name: whenIdle
         signature: "whenIdle(): Promise<void>"
         purpose: Wait for dispatch, invocation, and outbound delivery queues.
+
+  - name: ContinuousGraphRuntime
+    category: advanced
+    purpose: Execute an explicit port-token graph without Kernel state, revision, or transport ownership.
+    source: kernel/src/graph-runtime.ts
+    constructor:
+      signature: >-
+        new ContinuousGraphRuntime(graph: ProgramGraph, expression: ExpressionProvider,
+        executeNode?: GraphNodeExecutor)
+    methods:
+      - "publish(values: Record<PortToken, Json>, budget?: ExecutionBudget): Promise<GraphExecutionResult>"
+      - "start(budget?: ExecutionBudget): Promise<GraphExecutionResult>"
+      - "dispatch(event: GIKEvent, budget?: ExecutionBudget): Promise<GraphExecutionResult>"
+      - "resume(budget?: ExecutionBudget): Promise<GraphExecutionResult>"
+      - "complete(nodeId: string, outputs: Record<string, Json>, budget?: ExecutionBudget): Promise<GraphExecutionResult>"
+      - "mutate(mutations: readonly GraphMutation[]): void"
+      - "inspect(): GraphInspection"
+      - "status(): ExecutionStatus"
+      - "readyNodeIds(): string[]"
+      - "snapshotTokens(): Record<PortToken, TokenRuntimeState>"
+      - "snapshotNodes(): Record<string, GraphNodeRuntimeState>"
+    boundary: >-
+      Kernel is the primary API. Direct users must commit operations/effects/events themselves
+      and provide an executor for actions or invoke nodes.
 
 host_extension_interfaces:
   - name: ExpressionProvider
@@ -282,6 +594,17 @@ host_extension_interfaces:
       - "confirm?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>"
       - "route?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>"
       - "compensate?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>"
+    invocation_settlement:
+      - InvocationControl.emitProgress publishes non-terminal progress.
+      - InvocationControl.emit settles once; later emissions reject with InvocationClosedError.
+      - OrchestratorResult.outputs maps local names to a suspended graph invoke node's declared outputs.
+      - Unknown local output names fail settlement rather than creating undeclared tokens.
+  - name: GraphNodeExecutor
+    purpose: Execute low-level actions or invoke nodes for ContinuousGraphRuntime.
+    methods:
+      - >-
+        (node: ProgramNode, inputs: Record<string, Json>, event?: GIKEvent):
+        Promise<GraphNodeExecutionOutcome>
   - name: TransportProvider
     purpose: Carry GIK messages without owning runtime semantics.
     methods:
@@ -363,6 +686,9 @@ internal_candidate_exports:
     - kernel/src/interpret.ts
     - kernel/src/reduce.ts
     - kernel/src/derivations.ts
+  notes:
+    - StateModel, InMemoryStateModel, CompositeStateModel, and DerivationScheduler remain exported migration surfaces.
+    - Legacy handlers, reactions, machines, and derivations may coexist with ProgramGraph in one program.
 
 behavioral_guarantees:
   - Authoritative mutations are serialized and revisions increase monotonically.
@@ -373,7 +699,24 @@ behavioral_guarantees:
   - Headless programs execute without fabricated projection nodes or capabilities.
   - Projection is optional for execution and explicit at resolve and renderer boundaries.
   - Renderer transport attachment requires a ProjectedProgramDefinition.
-  - Wire message kinds are vocabulary and program; no manifest or document aliases are accepted.
+  - Cycles, self-feedback, disconnected components, and unproduced tokens are valid graph topology.
+  - Graph propagation stops at quiescence, suspension, or an execution-budget yield.
+  - Graph dependencies come only from declared input and output tokens, never expression inference.
+  - Wire message kinds are vocabulary, program, event, patch, progress, and trace.
+  - No manifest or document message aliases are accepted.
+
+current_graph_limitations:
+  - ExecutionStatus.completed and ExecutionStatus.failed are reserved but not emitted.
+  - GraphNodeStatus.ready and GraphNodeStatus.failed are declared but not persisted by the scheduler.
+  - PortDefinition.producers is metadata only and is not enforced.
+  - stream mode exposes an accumulated JSON array, not a consumable per-subscriber queue.
+  - Kernel patches store the latest raw stream publication; ExecutionSnapshot.tokens stores the accumulated stream array.
+  - Mutation does not reconcile or cancel active invocations for removed or replaced nodes.
+  - Cancelling, failing, or leaving a graph invoke unhandled does not currently release its suspended node.
+  - A mutation rejected during reindexing is not transactionally rolled back.
+  - Checkpoint and restore cover StateModel state, not graph execution state.
+  - syncExternal settles legacy derivations and reactions but does not publish shared state into graph tokens.
+  - Follow-up events returned by OrchestratorResult settle legacy handlers and reactions but do not currently enter graph event triggers.
 
 verification:
   commands:

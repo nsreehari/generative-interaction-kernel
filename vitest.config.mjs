@@ -1,9 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
-const providerReactiveStateModel = fileURLToPath(
-  new URL("./packages/provider-reactive-state-model/src/index.ts", import.meta.url)
-);
 const profilePackage = fileURLToPath(
   new URL("./profile/src/index.ts", import.meta.url)
 );
@@ -86,7 +83,6 @@ export default defineConfig({
         resolve: {
           alias: {
             "@gik/profile": profilePackage,
-            "@gik/provider-reactive-state-model": providerReactiveStateModel,
             "@gik/provider-consequence-graph": providerConsequenceGraph,
             "@gik/provider-exploratory-graph": providerExploratoryGraph,
             "@gik/provider-step-orchestrator": providerStepOrchestrator,
