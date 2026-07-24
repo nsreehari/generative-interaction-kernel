@@ -299,7 +299,10 @@ export function lowerPresentationWithRuntimeEmitter<TNode, TOutput>(
   };
 }
 
-export function lowerPresentation(recipe: LayerRecipe, record?: GenuiEvidenceRecorder): ProgramLowering<PresentationSpec> {
+export function lowerPresentation(
+  recipe: LayerRecipe,
+  record?: GenuiEvidenceRecorder,
+): ProgramLowering<PresentationSpec, ProjectedProgramDefinition> {
   return lowerPresentationWithRuntimeEmitter(recipe, kernelRuntimeEmitter, record);
 }
 

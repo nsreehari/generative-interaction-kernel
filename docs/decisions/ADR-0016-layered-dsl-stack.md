@@ -1,6 +1,6 @@
 # ADR-0016 — Layered DSL stack: one kernel, lowering compilers above it
 
-**Status:** Accepted — 2026-07-04
+**Status:** Accepted — 2026-07-04; terminal UI-only assumption refined by ADR-0043
 
 ## Context
 
