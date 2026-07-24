@@ -34,10 +34,18 @@ test("activateConsequenceGraph reports blocked nodes when an external branch has
 });
 
 test("derives consequence inspection from executable cell topology", () => {
-  const topology = compileCellTopology("foundry-agent", [
-    { id: "foundry-access", capability: "access-gate", provides: ["foundry-access"] },
-    { id: "foundry-chat", capability: "chat", requires: ["foundry-access"] },
-  ]);
+  const topology = compileCellTopology("foundry-agent", {
+    cells: {
+      "foundry-access": {
+        id: "foundry-access",
+        outputs: [{ token: "foundry-access" }],
+      },
+      "foundry-chat": {
+        id: "foundry-chat",
+        inputs: [{ token: "foundry-access" }],
+      },
+    },
+  });
 
   const graph = consequenceGraphFromTopology(topology);
   assert.deepEqual(graph.nodes, {

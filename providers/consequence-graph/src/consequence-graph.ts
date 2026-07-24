@@ -145,8 +145,8 @@ export function consequenceGraphFromTopology(
 }
 
 function classifyCell(cell: CellDefinition): ConsequenceNodeKind {
-  if (cell.service) return "effect";
-  if ((cell.requires?.length ?? 0) === 0) return "source";
-  if ((cell.provides?.length ?? 0) === 0) return "materialize";
+  if ((cell.sources?.length ?? 0) > 0) return "effect";
+  if ((cell.inputs?.length ?? 0) === 0) return "source";
+  if ((cell.outputs?.length ?? 0) === 0) return "materialize";
   return "compute";
 }

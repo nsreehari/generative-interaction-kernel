@@ -19,6 +19,7 @@ import type {
   Machine,
   ManifestPayload,
   Reaction,
+  StandingDerivation,
 } from "./types";
 import { validateDocumentMessage } from "./validate";
 
@@ -116,6 +117,7 @@ export function node(capability: string, id: string, opts: NodeOptions = {}): Do
 export interface DocumentOptions {
   manifest?: string;
   machines?: Machine[];
+  derivations?: StandingDerivation[];
 }
 
 /** Assemble a document payload from a root node. */
@@ -123,6 +125,7 @@ export function document(root: DocNode, opts: DocumentOptions = {}): DocumentPay
   const payload: DocumentPayload = { root };
   if (opts.manifest !== undefined) payload.manifest = opts.manifest;
   if (opts.machines) payload.machines = opts.machines;
+  if (opts.derivations) payload.derivations = opts.derivations;
   return payload;
 }
 

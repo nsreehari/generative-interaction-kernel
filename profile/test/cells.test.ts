@@ -5,6 +5,8 @@ import {
   composeCellDocument,
   tokenPattern,
 } from "../src/cells";
+import { validateBlueprintArtifact } from "../src/schema";
+import { assembleBlueprint } from "../src/blueprint";
 
 describe("Blueprint cells", () => {
   it("matches literal and parameterized tokens", () => {
@@ -15,18 +17,16 @@ describe("Blueprint cells", () => {
 
   it("resolves unique providers and derives external inputs", () => {
     const result = analyzeCellComposition([
-      { id: "holdings", capability: "table", provides: ["holding:$TICKER"] },
+      { id: "holdings", outputs: [{ token: "holding:$TICKER" }] },
       {
         id: "market-prices",
-        capability: "table",
-        requires: ["holding:$TICKER"],
-        provides: ["quote:$TICKER"],
+        inputs: [{ token: "holding:$TICKER" }],
+        outputs: [{ token: "quote:$TICKER" }],
       },
       {
         id: "intelligence",
-        capability: "narrative",
-        requires: ["quote:$TICKER", "investor-profile"],
-        provides: ["portfolio-intelligence"],
+        inputs: [{ token: "quote:$TICKER" }, { token: "investor-profile" }],
+        outputs: [{ token: "portfolio-intelligence" }],
       },
     ]);
 
@@ -41,8 +41,8 @@ describe("Blueprint cells", () => {
 
   it("reports duplicate ids, invalid patterns, and ambiguous providers", () => {
     const result = analyzeCellComposition([
-      { id: "quotes", capability: "table", provides: ["quote:$TICKER"] },
-      { id: "quotes", capability: "table", provides: ["quote:$TICKER", "quote:$"] },
+      { id: "quotes", outputs: [{ token: "quote:$TICKER" }] },
+      { id: "quotes", outputs: [{ token: "quote:$TICKER" }, { token: "quote:$" }] },
     ]);
 
     expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toEqual([
@@ -52,24 +52,34 @@ describe("Blueprint cells", () => {
     ]);
   });
 
-  it("derives topology directly from nested authored cells", () => {
+  it("derives topology from normalized authored cells", () => {
     const organism = {
-      id: "root",
-      capability: "screen",
-      edges: { children: [{
-        id: "foundry-access",
-        capability: "access-gate",
-        provides: [{
-          token: "foundry-access",
-          read: "agent.accessCapability",
-          when: "agent.accessStatus = 'ready'",
-        }],
-        edges: { children: [{
+      cells: {
+        root: { id: "root", view: { capability: "screen" } },
+        "foundry-access": {
+          id: "foundry-access",
+          outputs: [{
+            token: "foundry-access",
+            from: "state.accessCapability",
+            when: "state.accessStatus = 'ready'",
+          }],
+          view: { capability: "access-gate" },
+        },
+        "foundry-chat": {
           id: "foundry-chat",
-          capability: "chat",
-          requires: ["foundry-access"],
-        }] },
-      }] },
+          inputs: [{ token: "foundry-access" }],
+          view: { capability: "chat" },
+        },
+      },
+      projections: {
+        presentation: {
+          roots: ["root"],
+          placements: [
+            { cell: "foundry-access", parent: "root", order: 0 },
+            { cell: "foundry-chat", parent: "foundry-access", order: 0 },
+          ],
+        },
+      },
     } as const;
     const result = compileCellTopology("foundry-agent", organism);
 
@@ -78,30 +88,48 @@ describe("Blueprint cells", () => {
       providerCellId: "foundry-access",
       consumerCellId: "foundry-chat",
     }]);
-    expect(result.cells.map((cell) => cell.id)).toEqual(["foundry-access", "foundry-chat"]);
+    expect(result.cells.map((cell) => cell.id)).toEqual(["root", "foundry-access", "foundry-chat"]);
     expect(result.diagnostics).toEqual([]);
   });
 
   it("reports invalid value-bearing outputs", () => {
-    const result = compileCellTopology("invalid", [{
-      id: "producer",
-      capability: "source",
-      provides: [{ token: "value", read: "" }],
-    }]);
+    const result = compileCellTopology("invalid", {
+      cells: {
+        producer: {
+          id: "producer",
+          outputs: [{ token: "value", from: "" }],
+          view: { capability: "source" },
+        },
+      },
+    });
 
     expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(["invalid-output-binding"]);
   });
 
-  it("lowers the same cell tree by stripping only dataflow metadata", () => {
+  it("compiles presentation while stripping Cell dataflow metadata", () => {
     const organism = {
-      id: "root",
-      capability: "screen",
-      edges: { children: [{
-        id: "access",
-        capability: "access-gate",
-        provides: ["access"],
-        edges: { children: [{ id: "chat", capability: "chat", requires: ["access"] }] },
-      }] },
+      cells: {
+        root: { id: "root", view: { capability: "screen" } },
+        access: {
+          id: "access",
+          outputs: [{ token: "access" }],
+          view: { capability: "access-gate" },
+        },
+        chat: {
+          id: "chat",
+          inputs: [{ token: "access" }],
+          view: { capability: "chat" },
+        },
+      },
+      projections: {
+        presentation: {
+          roots: ["root"],
+          placements: [
+            { cell: "access", parent: "root", order: 0 },
+            { cell: "chat", parent: "access", order: 0 },
+          ],
+        },
+      },
     } as const;
     const document = composeCellDocument(organism, compileCellTopology("access-chat", organism));
 
@@ -112,16 +140,51 @@ describe("Blueprint cells", () => {
     }]);
   });
 
+  it("lowers Cell computations into kernel standing derivations", () => {
+    const organism = {
+      cells: {
+        summary: {
+          id: "summary",
+          compute: [{
+            id: "market-value",
+            expression: "portfolio.quantity * portfolio.price",
+            assign: "portfolio.marketValue",
+            dependencies: ["portfolio.quantity", "portfolio.price"],
+          }],
+          view: { capability: "summary" },
+        },
+      },
+      projections: { presentation: { roots: ["summary"] } },
+    } as const;
+
+    const document = composeCellDocument(organism, compileCellTopology("portfolio", organism));
+
+    expect(document.derivations).toEqual([{
+      id: "summary-market-value",
+      target: "portfolio.marketValue",
+      expression: "portfolio.quantity * portfolio.price",
+      dependencies: ["portfolio.quantity", "portfolio.price"],
+    }]);
+  });
+
   it("lowers an externally sourced cell with a local refresh action", () => {
     const organism = {
-      id: "market-prices",
-      capability: "table",
-      service: {
-        service: "portfolio-market-data",
-        operation: "refreshPrices",
-        contract: "portfolio-quotes/v1",
+      cells: {
+        "market-prices": {
+          id: "market-prices",
+          sources: [{
+            id: "market-prices.source",
+            service: "portfolio-market-data",
+            operation: "refreshPrices",
+            contract: "portfolio-quotes/v1",
+          }],
+          view: {
+            capability: "table",
+            props: { label: "Market prices" },
+          },
+        },
       },
-      props: { label: "Market prices" },
+      projections: { presentation: { roots: ["market-prices"] } },
     } as const;
     const document = composeCellDocument(organism, compileCellTopology("market-prices", organism));
 
@@ -133,5 +196,86 @@ describe("Blueprint cells", () => {
       do: "invoke",
       args: { tool: "refreshPrices" },
     }]);
+  });
+
+  it("accepts a Cell implemented by an inline child Blueprint", () => {
+    const child = {
+      gik: "0.1",
+      type: "blueprint",
+      payload: {
+        id: "child",
+        kind: "test",
+        version: "1",
+        tiers: [{ id: "runtime", kind: "runtime-document" }],
+        recipes: [],
+        cells: {
+          root: { id: "root", view: { capability: "child-view" } },
+        },
+        projections: { presentation: { roots: ["root"] } },
+        runtime: { capabilities: {} },
+      },
+    } as const;
+    const parent = {
+      gik: "0.1",
+      type: "blueprint",
+      payload: {
+        id: "parent",
+        kind: "test",
+        version: "1",
+        tiers: [{ id: "runtime", kind: "runtime-document" }],
+        recipes: [],
+        cells: {
+          child: {
+            id: "child",
+            blueprint: { inline: child },
+            view: { capability: "blueprint-host" },
+          },
+        },
+        projections: { presentation: { roots: ["child"] } },
+        runtime: { capabilities: {} },
+      },
+    } as const;
+
+    expect(() => validateBlueprintArtifact(parent)).not.toThrow();
+  });
+
+  it("assembles referenced child Blueprints into a self-contained artifact", () => {
+    const child = {
+      gik: "0.1",
+      type: "blueprint",
+      payload: {
+        id: "child",
+        kind: "test",
+        version: "1",
+        tiers: [{ id: "runtime", kind: "runtime-document" }],
+        recipes: [],
+        cells: { root: { id: "root", view: { capability: "child-view" } } },
+        projections: { presentation: { roots: ["root"] } },
+        runtime: { capabilities: {} },
+      },
+    } as const;
+    const parent = {
+      ...child,
+      payload: {
+        ...child.payload,
+        id: "parent",
+        cells: {
+          child: {
+            id: "child",
+            blueprint: { $ref: "./child.blueprint.json" },
+            view: { capability: "blueprint-host" },
+          },
+        },
+        projections: { presentation: { roots: ["child"] } },
+      },
+    } as const;
+
+    const assembled = assembleBlueprint(parent, (ref, context) => {
+      expect(ref).toBe("./child.blueprint.json");
+      expect(context).toEqual({ parentBlueprintId: "parent", cellId: "child" });
+      return child;
+    });
+
+    expect(assembled.payload.cells.child.blueprint).toEqual({ inline: child });
   });
 });

@@ -8,11 +8,12 @@ import { openSampleBlueprint } from "../shared/blueprints";
 import { applyHostConfig } from "../shared/host-config";
 import blueprint from "../profiles/portfolio-tracker/blueprint.json" with { type: "json" };
 
-const portfolioCells = blueprint.payload.organism.cells as unknown as CellDefinition[];
+const portfolioCells = Object.values(blueprint.payload.cells) as unknown as CellDefinition[];
 
 describe("portfolio-tracker Blueprint", () => {
   it("resolves the KISS cell composition", () => {
     expect(portfolioCells.map((cell) => cell.id)).toEqual([
+      "portfolio-tracker",
       "http-proxy-access-gate",
       "holdings",
       "market-prices",
@@ -31,24 +32,36 @@ describe("portfolio-tracker Blueprint", () => {
   it("composes the runtime directly from Blueprint-owned cell bodies", () => {
     const document = openSampleBlueprint("portfolio-tracker").document.payload;
     expect(document.root.edges?.children?.map((node) => node.id)).toEqual(
-      portfolioCells.map((cell) => cell.id)
+      portfolioCells.slice(1).map((cell) => cell.id)
     );
     const marketPrices = document.root.edges?.children?.find((node) => node.id === "market-prices");
     const accessGate = portfolioCells.find((cell) => cell.id === "http-proxy-access-gate");
-    expect(accessGate?.provides).toEqual([{
+    expect(accessGate?.outputs).toEqual([{
       token: "http-proxy-access",
-      read: "portfolio.httpProxyAccessStatus",
+      from: "portfolio.httpProxyAccessStatus",
       when: "portfolio.httpProxyAccessStatus = 'ready'",
     }]);
-    expect(portfolioCells.find((cell) => cell.id === "market-prices")?.requires).toEqual([
-      "http-proxy-access",
-      "holding:$TICKER",
+    expect(portfolioCells.find((cell) => cell.id === "market-prices")?.inputs).toEqual([
+      { token: "http-proxy-access" },
+      { token: "holding:$TICKER" },
     ]);
     expect(marketPrices?.props?.externalSource).toEqual({ refreshEvent: "refresh" });
     expect(marketPrices?.edges?.on?.refresh).toEqual([{
       do: "invoke",
       args: { tool: "refreshPrices" },
     }]);
+    expect(document.derivations).toEqual([
+      expect.objectContaining({
+        id: "positions-positions-by-ticker",
+        target: "portfolio.positions",
+        dependencies: ["portfolio.holdings", "portfolio.quotes"],
+      }),
+      expect.objectContaining({
+        id: "summary-portfolio-totals",
+        target: "portfolio.summary",
+        dependencies: ["portfolio.positions"],
+      }),
+    ]);
   });
 
   it("lowers the empty holdings editor with an explicit row schema", () => {

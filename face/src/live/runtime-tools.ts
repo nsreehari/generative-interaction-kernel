@@ -6,6 +6,19 @@ import type { Checkpoint, GIKEvent, OrchestratorEffect } from "../../../kernel/s
 import type { McpTool } from "../tool-surface";
 import type { ControlFace } from "./controlface";
 
+export type RuntimeFace = Pick<ControlFace,
+  | "getState"
+  | "getTree"
+  | "describeServiceKinds"
+  | "listServiceRequests"
+  | "probeService"
+  | "emit"
+  | "checkpoint"
+  | "restore"
+  | "effectsSince"
+  | "compensate"
+>;
+
 const obj = (properties: Record<string, unknown>, required: string[] = []): Record<string, unknown> => ({
   type: "object",
   properties,
@@ -16,7 +29,7 @@ const any = { type: "object" } as const;
 const checkpointSchema = obj({ rev: { type: "number" }, state: any }, ["rev", "state"]);
 const effectsSchema = { type: "array", items: any } as const;
 
-export function runtimeTools(face: ControlFace): McpTool[] {
+export function runtimeTools(face: RuntimeFace): McpTool[] {
   return [
     {
       name: "getState",

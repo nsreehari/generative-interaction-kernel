@@ -37,6 +37,7 @@ import {
   type ResolvedNode,
   type TraceSink,
 } from "./types";
+import { DerivationScheduler } from "./derivations";
 
 export interface KernelOptions {
   expression?: ExpressionProvider;
@@ -79,6 +80,7 @@ export class Kernel {
   private readonly doc: DocumentPayload;
   private readonly manifest: ManifestPayload;
   private readonly store: StateModel;
+  private readonly derivations: DerivationScheduler;
   private readonly expr: ExpressionProvider;
   private readonly predicateExpr: ExpressionProvider;
   private readonly registry: CapabilityRegistry;
@@ -125,6 +127,7 @@ export class Kernel {
       opts.contexts && Object.keys(opts.contexts).length > 0
         ? new CompositeStateModel(local, opts.contexts)
         : local;
+    this.derivations = new DerivationScheduler(this.doc.derivations);
     this.orchestrator = opts.orchestrator ?? new NullOrchestrator();
     this.sink = opts.sink;
   }
@@ -202,6 +205,7 @@ export class Kernel {
         await this.seedReactionBaseline();
         await this.runInitialReactions(ops, 0, fired, invokes);
       } else {
+        ops.push(...await this.derivations.settleAll(this.store, this.expr));
         await this.runReactions(ops, 0, fired, invokes);
       }
       if (ops.length > 0 || fired.length > 0) {
@@ -230,8 +234,7 @@ export class Kernel {
     }
 
     const { ops, traces, effects } = await reduce(this.doc, this.store, event, this.expr, this.predicateExpr);
-    this.store.apply(ops);
-    acc.push(...ops);
+    await this.applyAndDerive(ops, acc);
     for (const t of traces) this.sink?.(t);
 
     await this.runEffects(effects, acc, depth, journal, invokes);
@@ -283,8 +286,7 @@ export class Kernel {
       });
 
       if (result.ops?.length) {
-        this.store.apply(result.ops);
-        acc.push(...result.ops);
+        await this.applyAndDerive(result.ops, acc);
       }
       for (const followUp of result.events ?? []) {
         await this.settle(followUp, acc, depth + 1, journal, invokes);
@@ -325,8 +327,7 @@ export class Kernel {
       const result = await reduceActions(this.store, nodeId, reaction.run, this.expr, this.predicateExpr, {
         when: value,
       });
-      this.store.apply(result.ops);
-      acc.push(...result.ops);
+      await this.applyAndDerive(result.ops, acc);
       for (const trace of result.traces) this.sink?.(trace);
       await this.runEffects(result.effects, acc, depth + 1, journal, invokes);
       for (const event of result.emitted) await this.settle(event, acc, depth + 1, journal, invokes);
@@ -364,8 +365,7 @@ export class Kernel {
         const r = await reduceActions(this.store, nodeId, reaction.run, this.expr, this.predicateExpr, {
           when: value,
         });
-        this.store.apply(r.ops);
-        acc.push(...r.ops);
+        await this.applyAndDerive(r.ops, acc);
         for (const t of r.traces) this.sink?.(t);
         await this.runEffects(r.effects, acc, depth + 1, journal, invokes);
         for (const ev of r.emitted) await this.settle(ev, acc, depth + 1, journal, invokes);
@@ -377,6 +377,17 @@ export class Kernel {
     const next = this.mutationQueue.then(operation, operation);
     this.mutationQueue = next.then(() => undefined, () => undefined);
     return next;
+  }
+
+  private async applyAndDerive(operations: readonly PatchOp[], acc: PatchOp[]): Promise<void> {
+    if (operations.length === 0) return;
+    this.store.apply([...operations]);
+    acc.push(...operations);
+    acc.push(...await this.derivations.settle(
+      operations.map(({ path }) => path),
+      this.store,
+      this.expr,
+    ));
   }
 
   private startInvocation(effect: OrchestratorEffect, id: InvocationId): void {
@@ -467,8 +478,7 @@ export class Kernel {
         const fired: OrchestratorEffect[] = [];
         const invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }> = [];
         if (result.ops?.length) {
-          this.store.apply(result.ops);
-          ops.push(...result.ops);
+          await this.applyAndDerive(result.ops, ops);
         }
         for (const followUp of result.events ?? []) {
           await this.settle(followUp, ops, 0, fired, invokes);
@@ -610,12 +620,13 @@ export class Kernel {
    */
   restore(cp: Checkpoint): Promise<Patch> {
     return this.enqueueMutation(async () => {
-      const ops: PatchOp[] = Object.entries(cp.state).map(([namespace, value]) => ({
+      const restoreOps: PatchOp[] = Object.entries(cp.state).map(([namespace, value]) => ({
         op: "set" as const,
         path: namespace,
         value: value as Json,
       }));
-      this.store.apply(ops);
+      const ops: PatchOp[] = [];
+      await this.applyAndDerive(restoreOps, ops);
       this.rev += 1;
       const patch = { rev: this.rev, ops };
       this.publishPatch(patch);
@@ -658,8 +669,7 @@ export class Kernel {
         const result = await handler.call(this.orchestrator, effect);
         if (!result) continue;
         if (result.ops?.length) {
-          this.store.apply(result.ops);
-          ops.push(...result.ops);
+          await this.applyAndDerive(result.ops, ops);
         }
         // Follow-up events (e.g. driving a machine to a `refunded` state) settle normally; a
         // compensation that spawns further effects is out of scope for this sketch (empty journal).

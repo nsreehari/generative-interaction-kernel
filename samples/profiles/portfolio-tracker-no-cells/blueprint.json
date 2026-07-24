@@ -464,108 +464,13 @@
         }
       }
     },
-    "resources": {
-      "cells": {
-        "inline": [
-          {
-            "id": "holdings",
-            "provides": [
-              "holding:$TICKER"
-            ]
-          },
-          {
-            "id": "market-prices",
-            "requires": [
-              "holding:$TICKER"
-            ],
-            "provides": [
-              "quote:$TICKER"
-            ]
-          },
-          {
-            "id": "positions",
-            "requires": [
-              "holding:$TICKER",
-              "quote:$TICKER"
-            ],
-            "provides": [
-              "position:$TICKER"
-            ]
-          },
-          {
-            "id": "summary",
-            "requires": [
-              "position:$TICKER"
-            ],
-            "provides": [
-              "portfolio-summary"
-            ]
-          },
-          {
-            "id": "portfolio-intelligence",
-            "requires": [
-              "portfolio-summary",
-              "position:$TICKER",
-              "investor-profile"
-            ],
-            "provides": [
-              "portfolio-intelligence"
-            ],
-            "service": {
-              "service": "portfolio-intelligence",
-              "operation": "analyze",
-              "contract": "portfolio-intelligence/v1"
-            }
-          },
-          {
-            "id": "conservative-rebalance",
-            "requires": [
-              "position:$TICKER",
-              "portfolio-summary",
-              "portfolio-intelligence",
-              "investor-profile"
-            ],
-            "provides": [
-              "rebalance-conservative"
-            ]
-          },
-          {
-            "id": "growth-rebalance",
-            "requires": [
-              "position:$TICKER",
-              "portfolio-summary",
-              "portfolio-intelligence",
-              "investor-profile"
-            ],
-            "provides": [
-              "rebalance-growth"
-            ]
-          },
-          {
-            "id": "rebalance-comparison",
-            "requires": [
-              "rebalance-conservative",
-              "rebalance-growth"
-            ],
-            "provides": [
-              "rebalance-recommendation"
-            ],
-            "service": {
-              "service": "portfolio-intelligence",
-              "operation": "propose-strategies",
-              "contract": "portfolio-strategies/v1"
-            }
-          }
-        ]
-      }
-    },
     "tiers": [
       {
         "id": "portfolio",
         "kind": "portfolio"
       },
       {
-        "id": "presentation",
+        "id": "portfolio-presentation",
         "kind": "portfolio-presentation"
       },
       {
@@ -573,98 +478,153 @@
         "kind": "runtime-document"
       }
     ],
-    "organism": {
-      "cells": [
-        {
-          "id": "holdings",
-          "provides": [
-            "holding:$TICKER"
-          ]
-        },
-        {
-          "id": "market-prices",
-          "requires": [
-            "holding:$TICKER"
-          ],
-          "provides": [
-            "quote:$TICKER"
-          ]
-        },
-        {
-          "id": "positions",
-          "requires": [
-            "holding:$TICKER",
-            "quote:$TICKER"
-          ],
-          "provides": [
-            "position:$TICKER"
-          ]
-        },
-        {
-          "id": "summary",
-          "requires": [
-            "position:$TICKER"
-          ],
-          "provides": [
-            "portfolio-summary"
-          ]
-        },
-        {
-          "id": "portfolio-intelligence",
-          "requires": [
-            "portfolio-summary",
-            "position:$TICKER",
-            "investor-profile"
-          ],
-          "provides": [
-            "portfolio-intelligence"
-          ],
-          "service": {
+    "cells": {
+      "holdings": {
+        "id": "holdings",
+        "outputs": [
+          {
+            "token": "holding:$TICKER"
+          }
+        ]
+      },
+      "market-prices": {
+        "id": "market-prices",
+        "inputs": [
+          {
+            "token": "holding:$TICKER"
+          }
+        ],
+        "outputs": [
+          {
+            "token": "quote:$TICKER"
+          }
+        ]
+      },
+      "positions": {
+        "id": "positions",
+        "inputs": [
+          {
+            "token": "holding:$TICKER"
+          },
+          {
+            "token": "quote:$TICKER"
+          }
+        ],
+        "outputs": [
+          {
+            "token": "position:$TICKER"
+          }
+        ]
+      },
+      "summary": {
+        "id": "summary",
+        "inputs": [
+          {
+            "token": "position:$TICKER"
+          }
+        ],
+        "outputs": [
+          {
+            "token": "portfolio-summary"
+          }
+        ]
+      },
+      "portfolio-intelligence": {
+        "id": "portfolio-intelligence",
+        "inputs": [
+          {
+            "token": "portfolio-summary"
+          },
+          {
+            "token": "position:$TICKER"
+          },
+          {
+            "token": "investor-profile"
+          }
+        ],
+        "sources": [
+          {
+            "id": "portfolio-intelligence.source",
             "service": "portfolio-intelligence",
             "operation": "analyze",
             "contract": "portfolio-intelligence/v1"
           }
-        },
-        {
-          "id": "conservative-rebalance",
-          "requires": [
-            "position:$TICKER",
-            "portfolio-summary",
-            "portfolio-intelligence",
-            "investor-profile"
-          ],
-          "provides": [
-            "rebalance-conservative"
-          ]
-        },
-        {
-          "id": "growth-rebalance",
-          "requires": [
-            "position:$TICKER",
-            "portfolio-summary",
-            "portfolio-intelligence",
-            "investor-profile"
-          ],
-          "provides": [
-            "rebalance-growth"
-          ]
-        },
-        {
-          "id": "rebalance-comparison",
-          "requires": [
-            "rebalance-conservative",
-            "rebalance-growth"
-          ],
-          "provides": [
-            "rebalance-recommendation"
-          ],
-          "service": {
+        ],
+        "outputs": [
+          {
+            "token": "portfolio-intelligence"
+          }
+        ]
+      },
+      "conservative-rebalance": {
+        "id": "conservative-rebalance",
+        "inputs": [
+          {
+            "token": "position:$TICKER"
+          },
+          {
+            "token": "portfolio-summary"
+          },
+          {
+            "token": "portfolio-intelligence"
+          },
+          {
+            "token": "investor-profile"
+          }
+        ],
+        "outputs": [
+          {
+            "token": "rebalance-conservative"
+          }
+        ]
+      },
+      "growth-rebalance": {
+        "id": "growth-rebalance",
+        "inputs": [
+          {
+            "token": "position:$TICKER"
+          },
+          {
+            "token": "portfolio-summary"
+          },
+          {
+            "token": "portfolio-intelligence"
+          },
+          {
+            "token": "investor-profile"
+          }
+        ],
+        "outputs": [
+          {
+            "token": "rebalance-growth"
+          }
+        ]
+      },
+      "rebalance-comparison": {
+        "id": "rebalance-comparison",
+        "inputs": [
+          {
+            "token": "rebalance-conservative"
+          },
+          {
+            "token": "rebalance-growth"
+          }
+        ],
+        "sources": [
+          {
+            "id": "rebalance-comparison.source",
             "service": "portfolio-intelligence",
             "operation": "propose-strategies",
             "contract": "portfolio-strategies/v1"
           }
-        }
-      ]
-    }
+        ],
+        "outputs": [
+          {
+            "token": "rebalance-recommendation"
+          }
+        ]
+      }
+    },
+    "projections": {}
   }
 }

@@ -114,10 +114,18 @@ export interface Machine {
   states: Record<string, MachineState>;
 }
 
+export interface StandingDerivation {
+  id: string;
+  target: string;
+  expression: string;
+  dependencies: string[];
+}
+
 export interface DocumentPayload {
   manifest?: string;
   root: DocNode;
   machines?: Machine[];
+  derivations?: StandingDerivation[];
 }
 
 export interface CapabilityDescriptor {

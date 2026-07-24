@@ -160,7 +160,7 @@
             "settlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "($positions := response.results.{'ticker':key,'quantity':meta.quantity,'price':$round(body.chart.result[0].meta.regularMarketPrice, 2),'value':$round(meta.quantity * body.chart.result[0].meta.regularMarketPrice, 2),'costBasis':$round(meta.quantity * meta.costBasis, 2),'gainLoss':$round((meta.quantity * body.chart.result[0].meta.regularMarketPrice) - (meta.quantity * meta.costBasis), 2)}; {'ops':[{'op':'set','path':'portfolio.quotes','value':$count(response.results) > 0 ? $merge(response.results.{key:{'ticker':key,'price':$round(body.chart.result[0].meta.regularMarketPrice, 2)}}) : {}},{'op':'set','path':'portfolio.positions','value':$count($positions) > 0 ? $merge($positions.{ticker:$}) : {}},{'op':'set','path':'portfolio.summary','value':{'marketValue':$count($positions) > 0 ? $round($sum($positions.value), 2) : 0,'costBasis':$count($positions) > 0 ? $round($sum($positions.costBasis), 2) : 0,'gainLoss':$count($positions) > 0 ? $round($sum($positions.gainLoss), 2) : 0}},{'op':'set','path':'portfolio.intelligence','value':null},{'op':'set','path':'portfolio.strategies','value':{}},{'op':'set','path':'portfolio.recommendation','value':null}],'detail':{'provider':'yahoo-finance-http-service','quoteCount':$count(response.results)}})"
+                "expr": "{'ops':[{'op':'set','path':'portfolio.quotes','value':$count(response.results) > 0 ? $merge(response.results.{key:{'ticker':key,'price':$round(body.chart.result[0].meta.regularMarketPrice, 2)}}) : {}},{'op':'set','path':'portfolio.intelligence','value':null},{'op':'set','path':'portfolio.strategies','value':{}},{'op':'set','path':'portfolio.recommendation','value':null}],'detail':{'provider':'yahoo-finance-http-service','quoteCount':$count(response.results)}}"
               }
             }
           }
@@ -482,377 +482,17 @@
         }
       }
     },
-    "resources": {
-      "cells": {
-        "inline": [
-          {
-            "id": "http-proxy-access-gate",
-            "capability": "http-proxy:access-gate",
-            "provides": [
-              {
-                "token": "http-proxy-access",
-                "read": "portfolio.httpProxyAccessStatus",
-                "when": "portfolio.httpProxyAccessStatus = 'ready'"
-              }
-            ],
-            "edges": {
-              "read": {
-                "status": "portfolio.httpProxyAccessStatus",
-                "error": "portfolio.httpProxyAccessError"
-              },
-              "on": {
-                "accessRequested": [
-                  {
-                    "do": "invoke",
-                    "args": {
-                      "tool": "checkHttpProxyAccess"
-                    }
-                  }
-                ],
-                "accessCleared": [
-                  {
-                    "do": "assign",
-                    "target": "portfolio.httpProxyAccessStatus",
-                    "args": {
-                      "value": "required"
-                    }
-                  },
-                  {
-                    "do": "assign",
-                    "target": "portfolio.httpProxyAccessError",
-                    "args": {
-                      "value": ""
-                    }
-                  }
-                ]
-              }
-            }
-          },
-          {
-            "id": "holdings",
-            "capability": "ui:editable-table",
-            "provides": [
-              "holding:$TICKER"
-            ],
-            "props": {
-              "label": "holdings",
-              "spec": {
-                "schema": {
-                  "properties": {
-                    "ticker": {
-                      "type": "string"
-                    },
-                    "quantity": {
-                      "type": "number"
-                    },
-                    "costBasis": {
-                      "type": "number"
-                    }
-                  }
-                }
-              }
-            },
-            "edges": {
-              "readExpr": {
-                "rows": "[portfolio.holdings.*]"
-              },
-              "on": {
-                "save": [
-                  {
-                    "do": "invoke",
-                    "args": {
-                      "tool": "saveHoldings"
-                    }
-                  },
-                  {
-                    "do": "invoke",
-                    "args": {
-                      "tool": "refreshPrices"
-                    }
-                  }
-                ]
-              }
-            }
-          },
-          {
-            "id": "market-prices",
-            "capability": "ui:table",
-            "requires": [
-              "http-proxy-access",
-              "holding:$TICKER"
-            ],
-            "provides": [
-              "quote:$TICKER"
-            ],
-            "service": {
-              "service": "portfolio-market-data",
-              "operation": "refreshPrices",
-              "contract": "portfolio-market-quotes/v1"
-            },
-            "props": {
-              "label": "market-prices"
-            },
-            "edges": {
-              "readExpr": {
-                "rows": "[portfolio.quotes.*]"
-              }
-            }
-          },
-          {
-            "id": "positions",
-            "capability": "ui:table",
-            "requires": [
-              "holding:$TICKER",
-              "quote:$TICKER"
-            ],
-            "provides": [
-              "position:$TICKER"
-            ],
-            "props": {
-              "label": "positions"
-            },
-            "edges": {
-              "readExpr": {
-                "rows": "[portfolio.positions.*]"
-              }
-            }
-          },
-          {
-            "id": "summary",
-            "capability": "portfolio:summary",
-            "requires": [
-              "position:$TICKER"
-            ],
-            "provides": [
-              "portfolio-summary"
-            ],
-            "props": {
-              "label": "summary"
-            },
-            "edges": {
-              "read": {
-                "value": "portfolio.summary"
-              }
-            }
-          },
-          {
-            "id": "portfolio-intelligence",
-            "capability": "portfolio:narrative",
-            "requires": [
-              "portfolio-summary",
-              "position:$TICKER",
-              "investor-profile"
-            ],
-            "provides": [
-              "portfolio-intelligence"
-            ],
-            "service": {
-              "service": "portfolio-intelligence",
-              "operation": "analyze",
-              "contract": "portfolio-intelligence/v1"
-            },
-            "props": {
-              "label": "portfolio-intelligence"
-            },
-            "edges": {
-              "read": {
-                "value": "portfolio.intelligence"
-              }
-            }
-          },
-          {
-            "id": "conservative-rebalance",
-            "capability": "portfolio:narrative",
-            "requires": [
-              "position:$TICKER",
-              "portfolio-summary",
-              "portfolio-intelligence",
-              "investor-profile"
-            ],
-            "provides": [
-              "rebalance-conservative"
-            ],
-            "props": {
-              "label": "conservative-rebalance"
-            },
-            "edges": {
-              "read": {
-                "value": "portfolio.strategies.conservative"
-              }
-            }
-          },
-          {
-            "id": "growth-rebalance",
-            "capability": "portfolio:narrative",
-            "requires": [
-              "position:$TICKER",
-              "portfolio-summary",
-              "portfolio-intelligence",
-              "investor-profile"
-            ],
-            "provides": [
-              "rebalance-growth"
-            ],
-            "props": {
-              "label": "growth-rebalance"
-            },
-            "edges": {
-              "read": {
-                "value": "portfolio.strategies.growth"
-              }
-            }
-          },
-          {
-            "id": "rebalance-comparison",
-            "capability": "portfolio:recommendation",
-            "requires": [
-              "rebalance-conservative",
-              "rebalance-growth"
-            ],
-            "provides": [
-              "rebalance-recommendation"
-            ],
-            "service": {
-              "service": "portfolio-intelligence",
-              "operation": "propose-strategies",
-              "contract": "portfolio-strategies/v1"
-            },
-            "props": {
-              "label": "rebalance-comparison"
-            },
-            "edges": {
-              "read": {
-                "value": "portfolio.recommendation"
-              },
-              "on": {
-                "apply": [
-                  {
-                    "do": "invoke",
-                    "args": {
-                      "tool": "applyRecommendation"
-                    }
-                  }
-                ]
-              }
-            }
-          }
-        ]
-      },
-      "organismRoot": {
-        "inline": {
-          "id": "portfolio-tracker",
-          "capability": "portfolio:workspace",
-          "props": {
-            "title": "Portfolio tracker"
-          },
-          "edges": {
-            "read": {
-              "presentationContext": "portfolio.presentationContext"
-            },
-            "react": [
-              {
-                "when": "control.presentationContext",
-                "runInitially": true,
-                "run": [
-                  {
-                    "do": "emit",
-                    "event": "setPresentationContext"
-                  }
-                ]
-              }
-            ],
-            "on": {
-              "setHoldings": [
-                {
-                  "do": "invoke",
-                  "args": {
-                    "tool": "setHoldings"
-                  }
-                }
-              ],
-              "upsertHolding": [
-                {
-                  "do": "invoke",
-                  "args": {
-                    "tool": "upsertHolding"
-                  }
-                }
-              ],
-              "removeHolding": [
-                {
-                  "do": "invoke",
-                  "args": {
-                    "tool": "removeHolding"
-                  }
-                }
-              ],
-              "refreshPrices": [
-                {
-                  "do": "invoke",
-                  "args": {
-                    "tool": "refreshPrices"
-                  }
-                }
-              ],
-              "requestIntelligence": [
-                {
-                  "do": "invoke",
-                  "args": {
-                    "tool": "requestIntelligence"
-                  }
-                }
-              ],
-              "calculateStrategies": [
-                {
-                  "do": "invoke",
-                  "args": {
-                    "tool": "calculateStrategies"
-                  }
-                }
-              ],
-              "setPresentationContext": [
-                {
-                  "do": "invoke",
-                  "args": {
-                    "tool": "setPresentationContext"
-                  }
-                }
-              ]
-            }
-          }
-        }
-      }
-    },
     "tiers": [
       {
         "id": "runtime-document",
         "kind": "runtime-document"
       }
     ],
-    "organism": {
-      "root": {
+    "cells": {
+      "portfolio-tracker": {
         "id": "portfolio-tracker",
-        "capability": "portfolio:workspace",
-        "props": {
-          "title": "Portfolio tracker"
-        },
-        "edges": {
-          "read": {
-            "presentationContext": "portfolio.presentationContext"
-          },
-          "react": [
-            {
-              "when": "control.presentationContext",
-              "runInitially": true,
-              "run": [
-                {
-                  "do": "emit",
-                  "event": "setPresentationContext"
-                }
-              ]
-            }
-          ],
-          "on": {
+        "behavior": {
+          "events": {
             "setHoldings": [
               {
                 "do": "invoke",
@@ -909,59 +549,108 @@
                 }
               }
             ]
-          }
-        }
-      },
-      "cells": [
-        {
-          "id": "http-proxy-access-gate",
-          "capability": "http-proxy:access-gate",
-          "provides": [
+          },
+          "reactions": [
             {
-              "token": "http-proxy-access",
-              "read": "portfolio.httpProxyAccessStatus",
-              "when": "portfolio.httpProxyAccessStatus = 'ready'"
-            }
-          ],
-          "edges": {
-            "read": {
-              "status": "portfolio.httpProxyAccessStatus",
-              "error": "portfolio.httpProxyAccessError"
-            },
-            "on": {
-              "accessRequested": [
+              "when": "control.presentationContext",
+              "runInitially": true,
+              "run": [
                 {
-                  "do": "invoke",
-                  "args": {
-                    "tool": "checkHttpProxyAccess"
-                  }
-                }
-              ],
-              "accessCleared": [
-                {
-                  "do": "assign",
-                  "target": "portfolio.httpProxyAccessStatus",
-                  "args": {
-                    "value": "required"
-                  }
-                },
-                {
-                  "do": "assign",
-                  "target": "portfolio.httpProxyAccessError",
-                  "args": {
-                    "value": ""
-                  }
+                  "do": "emit",
+                  "event": "setPresentationContext"
                 }
               ]
             }
+          ]
+        },
+        "view": {
+          "capability": "portfolio:workspace",
+          "props": {
+            "title": "Portfolio tracker"
+          },
+          "bindings": {
+            "presentationContext": {
+              "from": "portfolio.presentationContext"
+            }
+          }
+        }
+      },
+      "http-proxy-access-gate": {
+        "id": "http-proxy-access-gate",
+        "outputs": [
+          {
+            "token": "http-proxy-access",
+            "from": "portfolio.httpProxyAccessStatus",
+            "when": "portfolio.httpProxyAccessStatus = 'ready'"
+          }
+        ],
+        "behavior": {
+          "events": {
+            "accessRequested": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "checkHttpProxyAccess"
+                }
+              }
+            ],
+            "accessCleared": [
+              {
+                "do": "assign",
+                "target": "portfolio.httpProxyAccessStatus",
+                "args": {
+                  "value": "required"
+                }
+              },
+              {
+                "do": "assign",
+                "target": "portfolio.httpProxyAccessError",
+                "args": {
+                  "value": ""
+                }
+              }
+            ]
           }
         },
-        {
-          "id": "holdings",
+        "view": {
+          "capability": "http-proxy:access-gate",
+          "bindings": {
+            "status": {
+              "from": "portfolio.httpProxyAccessStatus"
+            },
+            "error": {
+              "from": "portfolio.httpProxyAccessError"
+            }
+          }
+        }
+      },
+      "holdings": {
+        "id": "holdings",
+        "outputs": [
+          {
+            "token": "holding:$TICKER"
+          }
+        ],
+        "behavior": {
+          "events": {
+            "save": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "saveHoldings"
+                }
+              },
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "refreshPrices"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
           "capability": "ui:editable-table",
-          "provides": [
-            "holding:$TICKER"
-          ],
           "props": {
             "label": "holdings",
             "spec": {
@@ -980,191 +669,334 @@
               }
             }
           },
-          "edges": {
-            "readExpr": {
-              "rows": "[portfolio.holdings.*]"
-            },
-            "on": {
-              "save": [
-                {
-                  "do": "invoke",
-                  "args": {
-                    "tool": "saveHoldings"
-                  }
-                },
-                {
-                  "do": "invoke",
-                  "args": {
-                    "tool": "refreshPrices"
-                  }
-                }
-              ]
-            }
-          }
-        },
-        {
-          "id": "market-prices",
-          "capability": "ui:table",
-          "requires": [
-            "http-proxy-access",
-            "holding:$TICKER"
-          ],
-          "provides": [
-            "quote:$TICKER"
-          ],
-          "service": {
-            "service": "portfolio-market-data",
-            "operation": "refreshPrices",
-            "contract": "portfolio-market-quotes/v1"
-          },
-          "props": {
-            "label": "market-prices"
-          },
-          "edges": {
-            "readExpr": {
-              "rows": "[portfolio.quotes.*]"
-            }
-          }
-        },
-        {
-          "id": "positions",
-          "capability": "ui:table",
-          "requires": [
-            "holding:$TICKER",
-            "quote:$TICKER"
-          ],
-          "provides": [
-            "position:$TICKER"
-          ],
-          "props": {
-            "label": "positions"
-          },
-          "edges": {
-            "readExpr": {
-              "rows": "[portfolio.positions.*]"
-            }
-          }
-        },
-        {
-          "id": "summary",
-          "capability": "portfolio:summary",
-          "requires": [
-            "position:$TICKER"
-          ],
-          "provides": [
-            "portfolio-summary"
-          ],
-          "props": {
-            "label": "summary"
-          },
-          "edges": {
-            "read": {
-              "value": "portfolio.summary"
-            }
-          }
-        },
-        {
-          "id": "portfolio-intelligence",
-          "capability": "portfolio:narrative",
-          "requires": [
-            "portfolio-summary",
-            "position:$TICKER",
-            "investor-profile"
-          ],
-          "provides": [
-            "portfolio-intelligence"
-          ],
-          "service": {
-            "service": "portfolio-intelligence",
-            "operation": "analyze",
-            "contract": "portfolio-intelligence/v1"
-          },
-          "props": {
-            "label": "portfolio-intelligence"
-          },
-          "edges": {
-            "read": {
-              "value": "portfolio.intelligence"
-            }
-          }
-        },
-        {
-          "id": "conservative-rebalance",
-          "capability": "portfolio:narrative",
-          "requires": [
-            "position:$TICKER",
-            "portfolio-summary",
-            "portfolio-intelligence",
-            "investor-profile"
-          ],
-          "provides": [
-            "rebalance-conservative"
-          ],
-          "props": {
-            "label": "conservative-rebalance"
-          },
-          "edges": {
-            "read": {
-              "value": "portfolio.strategies.conservative"
-            }
-          }
-        },
-        {
-          "id": "growth-rebalance",
-          "capability": "portfolio:narrative",
-          "requires": [
-            "position:$TICKER",
-            "portfolio-summary",
-            "portfolio-intelligence",
-            "investor-profile"
-          ],
-          "provides": [
-            "rebalance-growth"
-          ],
-          "props": {
-            "label": "growth-rebalance"
-          },
-          "edges": {
-            "read": {
-              "value": "portfolio.strategies.growth"
-            }
-          }
-        },
-        {
-          "id": "rebalance-comparison",
-          "capability": "portfolio:recommendation",
-          "requires": [
-            "rebalance-conservative",
-            "rebalance-growth"
-          ],
-          "provides": [
-            "rebalance-recommendation"
-          ],
-          "service": {
-            "service": "portfolio-intelligence",
-            "operation": "propose-strategies",
-            "contract": "portfolio-strategies/v1"
-          },
-          "props": {
-            "label": "rebalance-comparison"
-          },
-          "edges": {
-            "read": {
-              "value": "portfolio.recommendation"
-            },
-            "on": {
-              "apply": [
-                {
-                  "do": "invoke",
-                  "args": {
-                    "tool": "applyRecommendation"
-                  }
-                }
-              ]
+          "bindings": {
+            "rows": {
+              "expression": "[portfolio.holdings.*]"
             }
           }
         }
-      ]
+      },
+      "market-prices": {
+        "id": "market-prices",
+        "inputs": [
+          {
+            "token": "http-proxy-access"
+          },
+          {
+            "token": "holding:$TICKER"
+          }
+        ],
+        "sources": [
+          {
+            "id": "market-prices.source",
+            "service": "portfolio-market-data",
+            "operation": "refreshPrices",
+            "contract": "portfolio-market-quotes/v1"
+          }
+        ],
+        "outputs": [
+          {
+            "token": "quote:$TICKER"
+          }
+        ],
+        "view": {
+          "capability": "ui:table",
+          "props": {
+            "label": "market-prices"
+          },
+          "bindings": {
+            "rows": {
+              "expression": "[portfolio.quotes.*]"
+            }
+          }
+        }
+      },
+      "positions": {
+        "id": "positions",
+        "inputs": [
+          {
+            "token": "holding:$TICKER"
+          },
+          {
+            "token": "quote:$TICKER"
+          }
+        ],
+        "outputs": [
+          {
+            "token": "position:$TICKER"
+          }
+        ],
+        "compute": [
+          {
+            "id": "positions-by-ticker",
+            "expression": "($holdings := portfolio.holdings; $quotes := portfolio.quotes; $rows := $each($holdings, function($holding, $ticker) { $lookup($quotes, $ticker) ? {$ticker:{'ticker':$ticker,'quantity':$holding.quantity,'price':$lookup($quotes, $ticker).price,'value':$round($holding.quantity * $lookup($quotes, $ticker).price, 2),'costBasis':$round($holding.quantity * $holding.costBasis, 2),'gainLoss':$round(($holding.quantity * $lookup($quotes, $ticker).price) - ($holding.quantity * $holding.costBasis), 2)}} : {} }); $count($rows) > 0 ? $merge($rows) : {})",
+            "assign": "portfolio.positions",
+            "dependencies": [
+              "portfolio.holdings",
+              "portfolio.quotes"
+            ]
+          }
+        ],
+        "view": {
+          "capability": "ui:table",
+          "props": {
+            "label": "positions"
+          },
+          "bindings": {
+            "rows": {
+              "expression": "[portfolio.positions.*]"
+            }
+          }
+        }
+      },
+      "summary": {
+        "id": "summary",
+        "inputs": [
+          {
+            "token": "position:$TICKER"
+          }
+        ],
+        "outputs": [
+          {
+            "token": "portfolio-summary"
+          }
+        ],
+        "compute": [
+          {
+            "id": "portfolio-totals",
+            "expression": "{'marketValue':$count(portfolio.positions.*) > 0 ? $round($sum(portfolio.positions.*.value), 2) : 0,'costBasis':$count(portfolio.positions.*) > 0 ? $round($sum(portfolio.positions.*.costBasis), 2) : 0,'gainLoss':$count(portfolio.positions.*) > 0 ? $round($sum(portfolio.positions.*.gainLoss), 2) : 0}",
+            "assign": "portfolio.summary",
+            "dependencies": [
+              "portfolio.positions"
+            ]
+          }
+        ],
+        "view": {
+          "capability": "portfolio:summary",
+          "props": {
+            "label": "summary"
+          },
+          "bindings": {
+            "value": {
+              "from": "portfolio.summary"
+            }
+          }
+        }
+      },
+      "portfolio-intelligence": {
+        "id": "portfolio-intelligence",
+        "inputs": [
+          {
+            "token": "portfolio-summary"
+          },
+          {
+            "token": "position:$TICKER"
+          },
+          {
+            "token": "investor-profile"
+          }
+        ],
+        "sources": [
+          {
+            "id": "portfolio-intelligence.source",
+            "service": "portfolio-intelligence",
+            "operation": "analyze",
+            "contract": "portfolio-intelligence/v1"
+          }
+        ],
+        "outputs": [
+          {
+            "token": "portfolio-intelligence"
+          }
+        ],
+        "view": {
+          "capability": "portfolio:narrative",
+          "props": {
+            "label": "portfolio-intelligence"
+          },
+          "bindings": {
+            "value": {
+              "from": "portfolio.intelligence"
+            }
+          }
+        }
+      },
+      "conservative-rebalance": {
+        "id": "conservative-rebalance",
+        "inputs": [
+          {
+            "token": "position:$TICKER"
+          },
+          {
+            "token": "portfolio-summary"
+          },
+          {
+            "token": "portfolio-intelligence"
+          },
+          {
+            "token": "investor-profile"
+          }
+        ],
+        "outputs": [
+          {
+            "token": "rebalance-conservative"
+          }
+        ],
+        "view": {
+          "capability": "portfolio:narrative",
+          "props": {
+            "label": "conservative-rebalance"
+          },
+          "bindings": {
+            "value": {
+              "from": "portfolio.strategies.conservative"
+            }
+          }
+        }
+      },
+      "growth-rebalance": {
+        "id": "growth-rebalance",
+        "inputs": [
+          {
+            "token": "position:$TICKER"
+          },
+          {
+            "token": "portfolio-summary"
+          },
+          {
+            "token": "portfolio-intelligence"
+          },
+          {
+            "token": "investor-profile"
+          }
+        ],
+        "outputs": [
+          {
+            "token": "rebalance-growth"
+          }
+        ],
+        "view": {
+          "capability": "portfolio:narrative",
+          "props": {
+            "label": "growth-rebalance"
+          },
+          "bindings": {
+            "value": {
+              "from": "portfolio.strategies.growth"
+            }
+          }
+        }
+      },
+      "rebalance-comparison": {
+        "id": "rebalance-comparison",
+        "inputs": [
+          {
+            "token": "rebalance-conservative"
+          },
+          {
+            "token": "rebalance-growth"
+          }
+        ],
+        "sources": [
+          {
+            "id": "rebalance-comparison.source",
+            "service": "portfolio-intelligence",
+            "operation": "propose-strategies",
+            "contract": "portfolio-strategies/v1"
+          }
+        ],
+        "outputs": [
+          {
+            "token": "rebalance-recommendation"
+          }
+        ],
+        "behavior": {
+          "events": {
+            "apply": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "applyRecommendation"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "portfolio:recommendation",
+          "props": {
+            "label": "rebalance-comparison"
+          },
+          "bindings": {
+            "value": {
+              "from": "portfolio.recommendation"
+            }
+          }
+        }
+      }
+    },
+    "projections": {
+      "presentation": {
+        "roots": [
+          "portfolio-tracker"
+        ],
+        "placements": [
+          {
+            "cell": "http-proxy-access-gate",
+            "parent": "portfolio-tracker",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "holdings",
+            "parent": "portfolio-tracker",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "market-prices",
+            "parent": "portfolio-tracker",
+            "slot": "children",
+            "order": 2
+          },
+          {
+            "cell": "positions",
+            "parent": "portfolio-tracker",
+            "slot": "children",
+            "order": 3
+          },
+          {
+            "cell": "summary",
+            "parent": "portfolio-tracker",
+            "slot": "children",
+            "order": 4
+          },
+          {
+            "cell": "portfolio-intelligence",
+            "parent": "portfolio-tracker",
+            "slot": "children",
+            "order": 5
+          },
+          {
+            "cell": "conservative-rebalance",
+            "parent": "portfolio-tracker",
+            "slot": "children",
+            "order": 6
+          },
+          {
+            "cell": "growth-rebalance",
+            "parent": "portfolio-tracker",
+            "slot": "children",
+            "order": 7
+          },
+          {
+            "cell": "rebalance-comparison",
+            "parent": "portfolio-tracker",
+            "slot": "children",
+            "order": 8
+          }
+        ]
+      }
     }
   }
 }
