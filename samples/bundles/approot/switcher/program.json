@@ -1,6 +1,6 @@
 {
   "gik": "0.1",
-  "type": "document",
+  "type": "program",
   "payload": {
     "root": {
       "capability": "host:applicationSwitcher",

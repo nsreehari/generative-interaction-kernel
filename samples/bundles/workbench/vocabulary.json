@@ -1,6 +1,6 @@
 {
   "gik": "0.1",
-  "type": "manifest",
+  "type": "vocabulary",
   "payload": {
     "version": "workbench/1.0",
     "expression": "jsonata",

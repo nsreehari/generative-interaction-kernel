@@ -5,7 +5,7 @@ import {
   InMemoryStateModel,
   CompositeStateModel,
   JsonataExpressionProvider,
-  ManifestRegistry,
+  VocabularyRegistry,
   NullOrchestrator,
   type CapabilityRegistry,
   type ExpressionProvider,
@@ -14,11 +14,11 @@ import {
 } from "./providers";
 import { resolveNode } from "./interpret";
 import { reduce, reduceActions } from "./reduce";
-import { validateDocumentMessage, validateDocumentProps } from "./validate";
+import { validateProgramMessage, validateProgramDefinition } from "./validate";
 import {
   unwrap,
   type DocNode,
-  type DocumentPayload,
+  type ExecutableProgramDefinition,
   type Enveloped,
   type GIKEvent,
   InvocationClosedError,
@@ -26,7 +26,7 @@ import {
   type InvocationId,
   type InvocationProgress,
   type Json,
-  type ManifestPayload,
+  type ExecutableVocabularyManifest,
   type OrchestratorEffect,
   type OrchestratorResult,
   type Patch,
@@ -61,6 +61,13 @@ export interface KernelOptions {
   validate?: boolean;
 }
 
+export class ProjectionUnavailableError extends Error {
+  constructor() {
+    super("This runtime document has no projection root");
+    this.name = "ProjectionUnavailableError";
+  }
+}
+
 // Bounds runaway effect/event chains (e.g. an invoke whose result re-triggers itself).
 const MAX_SETTLE_DEPTH = 32;
 
@@ -77,8 +84,8 @@ function cloneJson<T>(value: T): T {
 
 export class Kernel {
   private rev = 0;
-  private readonly doc: DocumentPayload;
-  private readonly manifest: ManifestPayload;
+  private readonly doc: ExecutableProgramDefinition;
+  private readonly manifest: ExecutableVocabularyManifest;
   private readonly store: StateModel;
   private readonly derivations: DerivationScheduler;
   private readonly expr: ExpressionProvider;
@@ -110,18 +117,18 @@ export class Kernel {
   private readonly invocationErrors: unknown[] = [];
 
   constructor(
-    manifest: Enveloped<ManifestPayload>,
-    document: Enveloped<DocumentPayload>,
+    manifest: Enveloped<ExecutableVocabularyManifest>,
+    document: Enveloped<ExecutableProgramDefinition>,
     opts: KernelOptions = {}
   ) {
-    if (opts.validate !== false) validateDocumentMessage(document);
+    if (opts.validate !== false) validateProgramMessage(document);
 
     this.manifest = unwrap(manifest);
     this.doc = unwrap(document);
-    if (opts.validate !== false) validateDocumentProps(this.doc, this.manifest.capabilities);
+    if (opts.validate !== false) validateProgramDefinition(this.doc, this.manifest.capabilities);
     this.expr = opts.expression ?? new JsonataExpressionProvider();
     this.predicateExpr = opts.predicateExpression ?? new JsonataExpressionProvider({ safe: true });
-    this.registry = opts.registry ?? ManifestRegistry.fromManifest(this.manifest);
+    this.registry = opts.registry ?? VocabularyRegistry.fromVocabulary(this.manifest);
     const local = opts.state ?? new InMemoryStateModel(this.manifest.namespaces ?? []);
     this.store =
       opts.contexts && Object.keys(opts.contexts).length > 0
@@ -296,12 +303,17 @@ export class Kernel {
 
   // Every reaction in the document, flattened with a stable key (`${nodeId}#${index}`).
   private reactions(): Array<{ key: string; nodeId: string; reaction: Reaction }> {
-    const out: Array<{ key: string; nodeId: string; reaction: Reaction }> = [];
+    const out: Array<{ key: string; nodeId: string; reaction: Reaction }> =
+      (this.doc.reactions ?? []).map((reaction, index) => ({
+        key: `runtime:${reaction.id}#${index}`,
+        nodeId: reaction.id,
+        reaction,
+      }));
     const walk = (n: DocNode): void => {
       n.edges?.react?.forEach((r, i) => out.push({ key: `${n.id}#${i}`, nodeId: n.id, reaction: r }));
       for (const child of n.edges?.children ?? []) walk(child);
     };
-    walk(this.doc.root);
+    if (this.doc.root) walk(this.doc.root);
     return out;
   }
 
@@ -588,6 +600,7 @@ export class Kernel {
 
   /** Resolve the current document into a renderable tree. */
   async resolve(): Promise<ResolvedNode> {
+    if (!this.doc.root) throw new ProjectionUnavailableError();
     return resolveNode(this.doc.root, {
       store: this.store,
       expr: this.expr,
@@ -595,6 +608,10 @@ export class Kernel {
       registry: this.registry,
       sink: this.sink,
     });
+  }
+
+  hasProjection(): boolean {
+    return this.doc.root !== undefined;
   }
 
   state(): Record<string, Json> {

@@ -6,11 +6,11 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
 
-import { Kernel, authorDocument, node, envelope, ValidationError } from "../src/index";
+import { Kernel, authorProjectedProgram, node, envelope, ValidationError } from "../src/index";
 
 // `metric` declares a props contract: a required string `label` and a required number `value`.
 function manifestMsg() {
-  return envelope("manifest", {
+  return envelope("vocabulary", {
     version: "props-test/1",
     namespaces: ["local"],
     capabilities: {
@@ -28,7 +28,7 @@ function manifestMsg() {
 }
 
 const board = (children: ReturnType<typeof node>[]) =>
-  authorDocument(node("board", "root", { children }), { manifest: "props-test/1" });
+  authorProjectedProgram(node("board", "root", { children }), { vocabulary: "props-test/1" });
 
 test("valid static props pass the boundary", () => {
   const doc = board([node("metric", "m1", { props: { label: "CPU", value: 42 } })]);
@@ -57,10 +57,10 @@ test("validate:false bypasses the props boundary", () => {
 });
 
 test("a list-like dataProp readExpr must be bracket-wrapped to preserve singleton arrays", () => {
-  const doc = authorDocument(node("board", "root", {
+  const doc = authorProjectedProgram(node("board", "root", {
     children: [node("table", "t1", { readExpr: { rows: 'local.quotes.{ "ticker": ticker, "price": price }' } })],
-  }), { manifest: "props-test/1" });
-  const manifest = envelope("manifest", {
+  }), { vocabulary: "props-test/1" });
+  const manifest = envelope("vocabulary", {
     version: "props-test/1",
     namespaces: ["local"],
     capabilities: {
@@ -79,10 +79,10 @@ test("a list-like dataProp readExpr must be bracket-wrapped to preserve singleto
 });
 
 test("a list-like dataProp readExpr may be bracket-wrapped to preserve singleton arrays", () => {
-  const doc = authorDocument(node("board", "root", {
+  const doc = authorProjectedProgram(node("board", "root", {
     children: [node("table", "t1", { readExpr: { rows: '[local.quotes.{ "ticker": ticker, "price": price }]' } })],
-  }), { manifest: "props-test/1" });
-  const manifest = envelope("manifest", {
+  }), { vocabulary: "props-test/1" });
+  const manifest = envelope("vocabulary", {
     version: "props-test/1",
     namespaces: ["local"],
     capabilities: {

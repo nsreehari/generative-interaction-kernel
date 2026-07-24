@@ -9,7 +9,7 @@ import type {
   Json,
   InvocationControl,
   PatchOp,
-  ManifestPayload,
+  ExecutableVocabularyManifest,
   CapabilityDescriptor,
   OrchestratorEffect,
   OrchestratorResult,
@@ -280,11 +280,11 @@ export interface CapabilityRegistry {
   get(type: string): CapabilityDescriptor | undefined;
 }
 
-export class ManifestRegistry implements CapabilityRegistry {
+export class VocabularyRegistry implements CapabilityRegistry {
   constructor(private caps: Record<string, CapabilityDescriptor>) {}
 
-  static fromManifest(m: ManifestPayload): ManifestRegistry {
-    return new ManifestRegistry(m.capabilities ?? {});
+  static fromVocabulary(m: ExecutableVocabularyManifest): VocabularyRegistry {
+    return new VocabularyRegistry(m.capabilities ?? {});
   }
 
   has(type: string): boolean {

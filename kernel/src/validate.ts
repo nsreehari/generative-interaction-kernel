@@ -1,12 +1,12 @@
-// validate-before-commit: structural validation of a document message
-// against the normative GIK document schema.
+// validate-before-commit: structural validation of a program message
+// against the normative GIK program schema.
 
 import Ajv, { type ValidateFunction } from "ajv";
-import documentSchema from "../../schemas/document.schema.json" with { type: "json" };
-import type { CapabilityDescriptor, DocNode, DocumentPayload } from "./types";
+import programSchema from "../../schemas/program.schema.json" with { type: "json" };
+import type { CapabilityDescriptor, DocNode, ExecutableProgramDefinition } from "./types";
 
 const ajv = new Ajv({ allErrors: true, strict: false });
-const validateFn: ValidateFunction = ajv.compile(documentSchema);
+const validateFn: ValidateFunction = ajv.compile(programSchema);
 
 export class ValidationError extends Error {
   constructor(message: string, readonly errors: unknown) {
@@ -15,12 +15,12 @@ export class ValidationError extends Error {
   }
 }
 
-export function validateDocumentMessage(message: unknown): void {
+export function validateProgramMessage(message: unknown): void {
   if (!validateFn(message)) {
     const detail = (validateFn.errors ?? [])
       .map((e) => `${e.instancePath || "/"} ${e.message}`)
       .join("; ");
-    throw new ValidationError(`Invalid GIK document: ${detail}`, validateFn.errors);
+    throw new ValidationError(`Invalid GIK program: ${detail}`, validateFn.errors);
   }
 }
 
@@ -38,19 +38,19 @@ function propsValidator(schema: object): ValidateFunction {
 
 /**
  * Enforce each capability's declared `propsSchema` against the STATIC props authored on every node —
- * the kernel boundary check for props (a peer of {@link validateDocumentMessage}). A prop supplied
+ * the kernel boundary check for props (a peer of {@link validateProgramMessage}). A prop supplied
  * dynamically by a `read`/`readExpr` edge is exempt from that schema's `required` list, since it lands
  * only at resolve time; the check therefore validates what the document actually authors without
  * false-positives on bound props. Nodes whose capability has no descriptor (external/fallback) are
  * skipped. Throws {@link ValidationError} listing every violation.
  */
-export function validateDocumentProps(
-  document: DocumentPayload,
+export function validateProgramDefinition(
+  program: ExecutableProgramDefinition,
   capabilities: Record<string, CapabilityDescriptor> | undefined
 ): void {
   const caps = capabilities ?? {};
   const errors: string[] = [];
-  validateNodeProps(document.root, caps, errors);
+  if (program.root) validateNodeProps(program.root, caps, errors);
   if (errors.length > 0) {
     throw new ValidationError(`Invalid node props: ${errors.join("; ")}`, errors);
   }

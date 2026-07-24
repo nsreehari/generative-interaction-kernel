@@ -6,13 +6,13 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import { describeCatalog, namespaces, effects } from "../src/pure/catalog";
-import { validateDocument, lint, authorDocument } from "../src/pure/document";
+import { validateDocument, lint, authorProjectedProgram } from "../src/pure/document";
 import { validateCapability } from "../src/pure/capability";
 import { authoringTools } from "../src/pure/authoring-tools";
 import { createStatelessAgentFaceDispatcher } from "../src/projections/agentface";
-import type { ManifestPayload } from "../../kernel/src/index";
+import type { ProjectedVocabularyManifest } from "../../kernel/src/index";
 
-const manifest: ManifestPayload = {
+const manifest: ProjectedVocabularyManifest = {
   version: "0.1",
   namespaces: ["ui", "data"],
   capabilities: {
@@ -73,10 +73,10 @@ test("validate: clean ok, structural error not ok", () => {
 });
 
 test("author: valid commits, invalid rejected", () => {
-  const ok = authorDocument(cleanDoc, manifest);
+  const ok = authorProjectedProgram(cleanDoc, manifest);
   assert.equal(ok.ok, true);
   assert.ok(ok.message);
-  assert.equal(authorDocument({ root: { capability: "text" } }).ok, false);
+  assert.equal(authorProjectedProgram({ root: { capability: "text" } }).ok, false);
 });
 
 test("capability: well-formed descriptor is ok with no warnings", () => {
@@ -118,7 +118,7 @@ test("mcp: registry exposes one tool per method and dispatches", () => {
     "describeCatalog",
     "validateDocument",
     "lintDocument",
-    "authorDocument",
+    "authorProjectedProgram",
     "validateCapability",
   ]) {
     assert.ok(names.has(n), `missing tool ${n}`);

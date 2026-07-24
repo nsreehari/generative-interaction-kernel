@@ -1,5 +1,5 @@
 // Phase 5: the client half of the protocol. A GIKClient runs purely off wire
-// messages (manifest/document/patch) — no kernel — keeping a local state replica
+// messages (vocabulary/program/patch) — no kernel — keeping a local state replica
 // and resolving a renderable tree, and emits events back over the transport.
 
 import { test } from "vitest";
@@ -24,8 +24,8 @@ const fx = (name: string) =>
     )
   );
 
-const manifest = fx("live-cards.manifest.json");
-const document = fx("example.document.json");
+const manifest = fx("live-cards.vocabulary.json");
+const document = fx("example.program.json");
 
 function makeKernel(): Kernel {
   const store = new InMemoryStateModel(manifest.payload.namespaces);

@@ -18,7 +18,7 @@ const fx = (name: string) =>
     readFileSync(fileURLToPath(new URL(`../../../schemas/fixtures/${name}`, import.meta.url)), "utf8")
   );
 
-const manifest = fx("live-cards.manifest.json");
+const manifest = fx("live-cards.vocabulary.json");
 
 function listen(server: Server): Promise<string> {
   return new Promise((resolve) => {
@@ -65,7 +65,7 @@ test("tools/list surfaces the agentface projection over the wire", async () => {
   const names = reply.result.tools.map((t) => t.name);
   assert.ok(names.includes("describeCatalog"));
   assert.ok(names.includes("validateDocument"));
-  assert.ok(names.includes("authorDocument"));
+  assert.ok(names.includes("authorProjectedProgram"));
   await close(server);
 });
 

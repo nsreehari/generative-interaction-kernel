@@ -6,9 +6,9 @@ import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import { GenUIController, SharedContextStore } from "../src/index";
-import { Kernel, authorDocument, node, assignFrom, envelope, reaction, type ResolvedNode } from "@gik/kernel";
+import { Kernel, authorProjectedProgram, node, assignFrom, envelope, reaction, type ResolvedNode } from "@gik/kernel";
 
-const manifest = envelope("manifest", {
+const manifest = envelope("vocabulary", {
   version: "shared-context-test/1",
   namespaces: [],
   contexts: ["shared"],
@@ -33,20 +33,20 @@ test("a reader runtime re-resolves when a writer runtime updates the shared cont
 
   const writer = new Kernel(
     manifest,
-    authorDocument(
+    authorProjectedProgram(
       node("board", "root", {
         children: [node("actions", "apply", { on: { set: [assignFrom("shared.title", "$event.value")] } })],
       }),
-      { manifest: "shared-context-test/1" }
+      { vocabulary: "shared-context-test/1" }
     ),
     { contexts: { shared } }
   );
 
   const reader = new Kernel(
     manifest,
-    authorDocument(
+    authorProjectedProgram(
       node("board", "root", { children: [node("text", "label", { read: { text: "shared.title" } })] }),
-      { manifest: "shared-context-test/1" }
+      { vocabulary: "shared-context-test/1" }
     ),
     { contexts: { shared } }
   );
@@ -80,11 +80,11 @@ test("external context synchronization settles reader reactions", async () => {
   const shared = SharedContextStore.create(["shared"]);
   const reader = new Kernel(
     manifest,
-    authorDocument(
+    authorProjectedProgram(
       node("board", "root", {
         react: [reaction("shared.title", [assignFrom("shared.observed", "shared.title")])],
       }),
-      { manifest: "shared-context-test/1" }
+      { vocabulary: "shared-context-test/1" }
     ),
     { contexts: { shared } }
   );

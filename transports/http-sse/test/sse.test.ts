@@ -27,8 +27,8 @@ const fx = (name: string) =>
     )
   );
 
-const manifest = fx("live-cards.manifest.json");
-const document = fx("example.document.json");
+const manifest = fx("live-cards.vocabulary.json");
+const document = fx("example.program.json");
 
 function makeKernel(): Kernel {
   const store = new InMemoryStateModel(manifest.payload.namespaces);
@@ -151,10 +151,10 @@ test("fromRev query param drives an incremental resume over SSE (no manifest re-
   })();
 
   await waitFor(() => frames.length >= 1);
-  // Resume replays only patches after rev 1 — no manifest/document re-onboard.
+  // Resume replays only patches after rev 1 — no vocabulary/program re-onboard.
   assert.equal(frames[0].type, "patch");
   assert.equal((frames[0] as { payload: { rev: number } }).payload.rev, 2);
-  assert.ok(!frames.some((f) => f.type === "manifest" || f.type === "document"));
+  assert.ok(!frames.some((f) => f.type === "vocabulary" || f.type === "program"));
 
   controller.abort();
   await readLoop;

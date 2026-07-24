@@ -30,8 +30,8 @@ type ValidationResult = {
   bundle: SerializableBundle | null;
 };
 
-const rawManifests = import.meta.glob("../../*/manifest.json", { eager: true, import: "default" }) as Record<string, unknown>;
-const rawDocuments = import.meta.glob("../../*/document.json", { eager: true, import: "default" }) as Record<string, unknown>;
+const rawManifests = import.meta.glob("../../*/vocabulary.json", { eager: true, import: "default" }) as Record<string, unknown>;
+const rawDocuments = import.meta.glob("../../*/program.json", { eager: true, import: "default" }) as Record<string, unknown>;
 const rawStates = import.meta.glob("../../*/state.json", { eager: true, import: "default" }) as Record<string, unknown>;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -59,8 +59,8 @@ function getStorage(): Storage | null {
 function normalizeBundle(value: unknown): SerializableBundle {
   const bundle = bundleFromJson(value);
   return {
-    manifest: bundle.manifest,
-    document: bundle.document,
+    vocabulary: bundle.vocabulary,
+    program: bundle.program,
     ...(bundle.state ? { state: bundle.state } : {}),
   };
 }
@@ -105,7 +105,7 @@ function repositoryEntries(): CatalogEntry[] {
           id,
           source: "repo" as const,
           readonly: true,
-          bundle: normalizeBundle({ manifest: manifests[id], document: documents[id], state: states[id] }),
+          bundle: normalizeBundle({ vocabulary: manifests[id], program: documents[id], state: states[id] }),
         }];
       } catch {
         return [];
@@ -128,7 +128,7 @@ function loadCatalog(): { entries: CatalogEntry[]; errors: string[] } {
 }
 
 function manifestPayload(bundle: SerializableBundle): Record<string, unknown> {
-  return (bundle.manifest as unknown as { payload: Record<string, unknown> }).payload;
+  return (bundle.vocabulary as unknown as { payload: Record<string, unknown> }).payload;
 }
 
 function nativeDependencies(bundle: SerializableBundle): string[] {
@@ -263,9 +263,9 @@ function findEntry(id: string): CatalogEntry | undefined {
 
 function portableStarterBundle(): SerializableBundle {
   return normalizeBundle({
-    manifest: {
+    vocabulary: {
       gik: "0.1",
-      type: "manifest",
+      type: "vocabulary",
       payload: {
         version: "local-bundle/1.0",
         expression: "jsonata",
@@ -278,9 +278,9 @@ function portableStarterBundle(): SerializableBundle {
         externals: { projectionViews: { ui: { from: "floor" } } },
       },
     },
-    document: {
+    program: {
       gik: "0.1",
-      type: "document",
+      type: "program",
       payload: {
         root: {
           capability: "ui:screen",

@@ -10,8 +10,8 @@ Spec prose: [../docs/03-protocol.md](../docs/03-protocol.md).
 
 | File | Message | Purpose |
 |---|---|---|
-| `manifest.schema.json` | `manifest` | the capability vocabulary a domain speaks |
-| `document.schema.json` | `document` | the portable UI-intent artifact (nodes + machines) |
+| `vocabulary.schema.json` | `vocabulary` | the runtime vocabulary, including optional projection capabilities |
+| `program.schema.json` | `program` | the executable program definition with optional projection |
 | `patch.schema.json` | `patch` | state deltas (kernel → renderer) |
 | `event.schema.json` | `event` | interactions (renderer → kernel) |
 | `trace.schema.json` | `trace` | observability (kernel → sink) |
@@ -27,8 +27,8 @@ Drawn from the **live-cards** first onboarding profile
 
 | File | Role |
 |---|---|
-| `fixtures/live-cards.manifest.json` | a manifest (4 capabilities, 4 namespaces, jsonata) |
-| `fixtures/example.document.json` | a board with a metric (`read`), a table (`on.rowSelect`), a gated action button, and an approval machine |
+| `fixtures/live-cards.vocabulary.json` | a projected vocabulary (4 capabilities, 4 namespaces, jsonata) |
+| `fixtures/example.program.json` | a projected program with a metric (`read`), a table (`on.rowSelect`), a gated action button, and an approval machine |
 | `fixtures/example.event.json` | a `rowSelect` event carrying `{ id: "order-42" }` |
 | `fixtures/expected.patch.json` | the patch a conforming kernel MUST produce from that event |
 
@@ -45,5 +45,5 @@ npm run conformance
 ```
 
 The runner validates every fixture against its message schema and through the envelope, then
-asserts the golden reduction contract is internally consistent with the document's behavior edge.
+asserts the golden reduction contract is internally consistent with the program's behavior edge.
 The reducer itself is future work; this fixture pins the contract it must satisfy.

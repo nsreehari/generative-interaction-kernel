@@ -19,8 +19,8 @@ const fx = (name: string) =>
     )
   );
 
-const manifest = fx("live-cards.manifest.json");
-const document = fx("example.document.json");
+const manifest = fx("live-cards.vocabulary.json");
+const document = fx("example.program.json");
 
 function makeKernel(): Kernel {
   const store = new InMemoryStateModel(manifest.payload.namespaces);
@@ -38,7 +38,7 @@ function makeKernel(): Kernel {
   return new Kernel(manifest, document, { state: store });
 }
 
-test("transport host publishes manifest/document/init patch, then returns patches for inbound events", async () => {
+test("transport host publishes vocabulary/program/init patch, then returns patches for inbound events", async () => {
   const [hostTransport, clientTransport] = createInMemoryTransportPair();
   const messages: GIKMessage[] = [];
   clientTransport.subscribe((message) => {
@@ -50,7 +50,7 @@ test("transport host publishes manifest/document/init patch, then returns patche
 
   assert.deepEqual(
     messages.map((message) => message.type),
-    ["manifest", "document", "patch"]
+    ["vocabulary", "program", "patch"]
   );
   assert.equal(messages[2].type, "patch");
   if (messages[2].type === "patch") {
@@ -106,6 +106,6 @@ test("transport host stops consuming inbound events after stop()", async () => {
 
   assert.deepEqual(
     messages.map((message) => message.type),
-    ["manifest", "document", "patch"]
+    ["vocabulary", "program", "patch"]
   );
 });

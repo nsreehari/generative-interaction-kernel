@@ -28,7 +28,7 @@ export function buildBundleRegistry(
     return crossProvider?.(from);
   };
   return buildRegistryFromImports(
-    unwrap(bundle.manifest).externals?.projectionViews,
+    unwrap(bundle.vocabulary).externals?.projectionViews,
     resolve,
     FallbackView
   );

@@ -19,7 +19,7 @@ const manifest = {
 // resolves, it writes the rows and emits "resolved" (loading -> ready).
 const asyncDoc = {
   gik: "0.1",
-  type: "document",
+  type: "program",
   payload: {
     root: {
       capability: "board",
@@ -116,7 +116,7 @@ test("confirm: HITL approval returns a follow-up event that assigns status", asy
 
   const doc = {
     gik: "0.1",
-    type: "document",
+    type: "program",
     payload: {
       root: {
         capability: "actions",
@@ -159,7 +159,7 @@ test("route: routing effect reaches the orchestrator without touching the store"
 
   const doc = {
     gik: "0.1",
-    type: "document",
+    type: "program",
     payload: {
       root: {
         capability: "actions",
@@ -188,7 +188,7 @@ test("orchestrator settlement emits an attributable semantic outcome trace", asy
   };
   const doc = {
     gik: "0.1",
-    type: "document",
+    type: "program",
     payload: {
       root: {
         capability: "actions",
@@ -214,7 +214,7 @@ test("orchestrator settlement emits an attributable semantic outcome trace", asy
 test("unhandled effect is safe: default NullOrchestrator performs nothing", async () => {
   const doc = {
     gik: "0.1",
-    type: "document",
+    type: "program",
     payload: {
       root: {
         capability: "actions",

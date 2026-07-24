@@ -1,0 +1,388 @@
+schema_version: 1
+
+package:
+  name: "@gik/kernel"
+  version: "0.1.0"
+  status: experimental
+  purpose: >-
+    Provide the authoritative GIK program runtime, vocabulary contracts,
+    host extension ports, optional projection subsystem, renderer-side replica,
+    transport broker, and program authoring helpers.
+  public_entrypoint: packages/kernel/src/index.ts
+  implementation_entrypoint: kernel/src/index.ts
+
+api_policy:
+  signature_authority: generated TypeScript declarations
+  categories:
+    primary: Supported application-facing API.
+    host_extension: Interface implemented or supplied by a host.
+    advanced: Supported infrastructure API not needed by ordinary consumers.
+    internal_candidate: Exported today but not yet accepted as a durable contract.
+
+runtime_contracts:
+  - name: ProgramDefinition
+    signature: >-
+      interface ProgramDefinition { vocabulary?: string; handlers?: RuntimeHandler[];
+      reactions?: RuntimeReaction[]; machines?: Machine[];
+      derivations?: StandingDerivation[] }
+    purpose: Shared executable behavior independent of projection.
+  - name: ProjectedProgramDefinition
+    signature: >-
+      interface ProjectedProgramDefinition extends ProgramDefinition { root: DocNode }
+    purpose: An executable program with a renderer-neutral projection tree.
+  - name: HeadlessProgramDefinition
+    signature: >-
+      interface HeadlessProgramDefinition extends ProgramDefinition { root?: never }
+    purpose: An executable program with no projection tree.
+  - name: ExecutableProgramDefinition
+    signature: >-
+      type ExecutableProgramDefinition = ProjectedProgramDefinition |
+      HeadlessProgramDefinition
+    purpose: The complete program input accepted by Kernel.
+  - name: RuntimeHandler
+    signature: "interface RuntimeHandler { id: string; on: Record<string, Action[]> }"
+    purpose: Own event handlers independently of a projection node.
+  - name: RuntimeReaction
+    signature: "interface RuntimeReaction extends Reaction { id: string }"
+    purpose: Own a standing reaction independently of a projection node.
+  - name: ProjectedVocabularyManifest
+    signature: >-
+      interface ProjectedVocabularyManifest { version: string;
+      capabilities: Record<string, CapabilityDescriptor>; ... }
+    purpose: Runtime vocabulary including projection capability descriptors.
+  - name: HeadlessVocabularyManifest
+    signature: >-
+      type HeadlessVocabularyManifest =
+      Omit<ProjectedVocabularyManifest, "capabilities"> &
+      { capabilities?: never }
+    purpose: Runtime vocabulary with no projection capabilities.
+  - name: ExecutableVocabularyManifest
+    signature: >-
+      type ExecutableVocabularyManifest = ProjectedVocabularyManifest |
+      HeadlessVocabularyManifest
+    purpose: The complete vocabulary input accepted by Kernel.
+
+internal_subsystems:
+  execution:
+    owns:
+      - event and action reduction
+      - machines
+      - standing derivations and reactions
+      - effects, checkpoints, restore, and revisioning
+    accepts: ExecutableProgramDefinition
+    modules:
+      - kernel/src/reduce.ts
+      - kernel/src/derivations.ts
+      - kernel/src/kernel.ts
+  projection:
+    owns:
+      - DocNode interpretation
+      - ResolvedNode production
+      - renderer transport onboarding
+    requires: ProjectedProgramDefinition
+    modules:
+      - kernel/src/interpret.ts
+      - kernel/src/client.ts
+      - kernel/src/transport.ts
+
+classes:
+  - name: Kernel
+    category: primary
+    purpose: Own one authoritative, revisioned execution of a GIK program.
+    source: kernel/src/kernel.ts
+    constructor:
+      signature: >-
+        new Kernel(vocabulary: Enveloped<ExecutableVocabularyManifest>,
+        program: Enveloped<ExecutableProgramDefinition>, options?: KernelOptions)
+      behavior:
+        - Validates the program and capability references unless disabled.
+        - Installs host-supplied providers or package defaults.
+        - Does not initialize machines until init or baseline is called.
+    methods:
+      - name: init
+        signature: "init(): Patch"
+        category: primary
+        purpose: Seed machine states and return the revision-zero initialization patch.
+        mutates_state: true
+        increments_revision: false
+      - name: dispatch
+        signature: "dispatch(event: GIKEvent): Promise<Patch>"
+        category: primary
+        purpose: Apply one event to the authoritative runtime.
+        behavior:
+          - Serializes mutations.
+          - Settles actions, immediate effects, standing derivations, and reactions.
+          - Commits and publishes one initiating patch.
+          - Starts asynchronous invokes after the initiating patch commits.
+        mutates_state: true
+        increments_revision: true
+      - name: syncExternal
+        signature: "syncExternal(): Promise<Patch>"
+        category: primary
+        purpose: Settle derivations and reactions after shared state changed outside this Kernel.
+        mutates_state: conditional
+        increments_revision: only-when-work-settles
+      - name: resolve
+        signature: "resolve(): Promise<ResolvedNode>"
+        category: primary
+        purpose: Resolve a projected program into a renderer-neutral tree.
+        throws: ProjectionUnavailableError when the runtime has no projection root.
+        mutates_state: false
+      - name: hasProjection
+        signature: "hasProjection(): boolean"
+        category: primary
+        purpose: Report whether resolve is available for this runtime.
+      - name: state
+        signature: "state(): Record<string, Json>"
+        category: primary
+        purpose: Return the current state snapshot.
+        mutates_state: false
+      - name: subscribePatches
+        signature: "subscribePatches(listener: (patch: Patch) => unknown): () => void"
+        category: primary
+        purpose: Subscribe to committed patches and receive an unsubscribe function.
+      - name: subscribeProgress
+        signature: "subscribeProgress(listener: (progress: InvocationProgress) => unknown): () => void"
+        category: primary
+        purpose: Subscribe to asynchronous invocation progress.
+      - name: cancelInvocation
+        signature: "cancelInvocation(id: InvocationId): void"
+        category: primary
+        purpose: Abort and close an active invocation; unknown IDs are ignored.
+      - name: whenIdle
+        signature: "whenIdle(): Promise<void>"
+        category: primary
+        purpose: Wait for queued mutations and invocations, then surface invocation failures.
+      - name: dispose
+        signature: "dispose(): void"
+        category: primary
+        purpose: Cancel active invocations and remove runtime listeners.
+      - name: checkpoint
+        signature: "checkpoint(): Checkpoint"
+        category: primary
+        purpose: Capture an immutable revision-keyed snapshot of pure state.
+        mutates_state: false
+      - name: restore
+        signature: "restore(checkpoint: Checkpoint): Promise<Patch>"
+        category: primary
+        purpose: Restore pure state as a new revision and settle derivations.
+        guarantees:
+          - Does not claim to undo external effects.
+          - Publishes the resulting patch.
+        mutates_state: true
+        increments_revision: true
+      - name: effectsSince
+        signature: "effectsSince(revision: number): RecordedEffect[]"
+        category: primary
+        purpose: Return external effects after a revision in causal order.
+        mutates_state: false
+      - name: compensate
+        signature: "compensate(effects: OrchestratorEffect[]): Promise<Patch>"
+        category: primary
+        purpose: Ask the host to compensate effects in caller-supplied order.
+        mutates_state: conditional
+        increments_revision: true
+      - name: baseline
+        signature: "baseline(): Patch"
+        category: advanced
+        purpose: Initialize machines and return all state as a revision-zero patch.
+      - name: snapshotPatch
+        signature: "snapshotPatch(): Patch"
+        category: advanced
+        purpose: Return all state at the current revision without reinitializing machines.
+
+  - name: GIKClient
+    category: primary
+    purpose: Maintain a renderer-side replica over a TransportProvider.
+    source: kernel/src/client.ts
+    constructor:
+      signature: "new GIKClient(transport: TransportProvider, options?: GIKClientOptions)"
+    methods:
+      - name: start
+        signature: "start(): void"
+        purpose: Subscribe to the transport.
+      - name: stop
+        signature: "stop(): void"
+        purpose: Detach from the transport.
+      - name: rebind
+        signature: "rebind(transport: TransportProvider): void"
+        purpose: Reconnect while retaining replica state and revision.
+      - name: getTree
+        signature: "getTree(): ResolvedNode | null"
+        purpose: Return the latest resolved tree, or null before onboarding.
+        headless_program_behavior: Remains null when a headless program is received.
+      - name: getRev
+        signature: "getRev(): number"
+        purpose: Return the last applied revision, or -1 before onboarding.
+      - name: get
+        signature: "get(path: string): Json | undefined"
+        purpose: Read a path from the local replica.
+      - name: subscribe
+        signature: "subscribe(listener: () => void): () => void"
+        purpose: Subscribe to resolved-tree changes.
+      - name: subscribeProgress
+        signature: "subscribeProgress(listener: (progress: InvocationProgress) => void): () => void"
+        purpose: Subscribe to invocation progress.
+      - name: emit
+        signature: >-
+          emit(node: string, name: string, payload?: Record<string, Json>,
+          actorId?: string): void | Promise<void>
+        purpose: Send an event to the authoritative runtime.
+
+  - name: KernelTransportHost
+    category: advanced
+    purpose: Bind one Kernel to one or more transport-neutral connections.
+    source: kernel/src/transport.ts
+    constructor:
+      signature: >-
+        new KernelTransportHost(vocabulary: Enveloped<ProjectedVocabularyManifest>,
+        program: Enveloped<ProjectedProgramDefinition>, kernel: Kernel,
+        defaultTransport?: TransportProvider)
+    methods:
+      - name: start
+        signature: "start(): Promise<void>"
+        purpose: Attach the optional default transport.
+      - name: attach
+        signature: "attach(transport: TransportProvider, fromRevision?: number): Promise<() => void>"
+        purpose: Attach and onboard or resume one connection.
+        throws: ProjectionUnavailableError if the supplied program has no projection root.
+      - name: detach
+        signature: "detach(transport: TransportProvider): void"
+        purpose: Detach one connection.
+      - name: stop
+        signature: "stop(): void"
+        purpose: Detach all connections.
+      - name: dispatch
+        signature: "dispatch(event: GIKEvent): Promise<Patch>"
+        purpose: Serialize an in-process event and broadcast its patch.
+      - name: whenIdle
+        signature: "whenIdle(): Promise<void>"
+        purpose: Wait for dispatch, invocation, and outbound delivery queues.
+
+host_extension_interfaces:
+  - name: ExpressionProvider
+    purpose: Evaluate the expression language selected by the host.
+    methods:
+      - "eval(expression: string, data: unknown, bindings?: Record<string, unknown>): Json | Promise<Json>"
+  - name: StateModel
+    purpose: Store JSON state without changing Kernel reduction semantics.
+    methods:
+      - "snapshot(): Record<string, Json>"
+      - "get(path: string): Json"
+      - "apply(operations: PatchOp[]): void"
+  - name: CapabilityRegistry
+    purpose: Resolve capabilities declared by a vocabulary.
+    methods:
+      - "has(type: string): boolean"
+      - "get(type: string): CapabilityDescriptor | undefined"
+  - name: Orchestrator
+    purpose: Execute host-owned time, effects, human input, and routing.
+    methods:
+      - "invoke?(effect: OrchestratorEffect, control: InvocationControl): Promise<OrchestratorResult | void>"
+      - "confirm?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>"
+      - "route?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>"
+      - "compensate?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>"
+  - name: TransportProvider
+    purpose: Carry GIK messages without owning runtime semantics.
+    methods:
+      - "send(message: GIKMessage): void | Promise<void>"
+      - "subscribe(listener: TransportListener): () => void"
+  - name: TransportBroker
+    purpose: Accept renderer transport connections.
+    methods:
+      - "attach(transport: TransportProvider, fromRevision?: number): Promise<() => void>"
+
+provided_implementations:
+  - "JsonataExpressionProvider implements ExpressionProvider"
+  - "SyncJsonataExpressionProvider implements ExpressionProvider"
+  - "InMemoryStateModel implements StateModel"
+  - "CompositeStateModel implements StateModel"
+  - "VocabularyRegistry implements CapabilityRegistry"
+  - "NullOrchestrator implements Orchestrator"
+
+free_functions:
+  - group: action-authoring
+    category: primary
+    functions:
+      - "assign(target: string, value: Json): Action"
+      - "assignFrom(target: string, expression: string): Action"
+      - "derive(target: string, expression: string): Action"
+      - "emit(event: string, payload?: Record<string, Json>): Action"
+      - "invoke(tool: string, arguments?: Record<string, Json>): Action"
+      - "route(destination: Json, arguments?: Record<string, Json>): Action"
+      - "confirm(arguments?: Record<string, Json>): Action"
+      - "guarded(action: Action, guard: string): Action"
+      - "reaction(when: string, actions: Action[], options?: { runInitially?: boolean }): Reaction"
+  - group: program-authoring
+    category: primary
+    functions:
+      - "node(capability: string, id: string, options?: NodeOptions): DocNode"
+      - "projectedProgram(root: DocNode, options?: ProgramOptions): ProjectedProgramDefinition"
+      - "authorProjectedProgram(root: DocNode, options?: ProgramOptions): ProjectedProgramMessage"
+      - "program(options: HeadlessProgramOptions): HeadlessProgramDefinition"
+      - "authorProgram(options: HeadlessProgramOptions): ProgramMessage"
+      - "generateVocabulary(program: ExecutableProgramDefinition, options?: GenerateVocabularyOptions): ProjectedVocabularyManifest"
+      - "lintVocabularyReferences(vocabulary: ProjectedVocabularyManifest, program: ExecutableProgramDefinition): LintWarning[]"
+  - group: validation
+    category: primary
+    functions:
+      - "validateProgramMessage(message: unknown): void"
+      - "validateProgramDefinition(program: ExecutableProgramDefinition, capabilities?): void"
+      - "validateJsonataExpression(expression, options?): JsonataExpressionValidationResult"
+  - group: lowering
+    category: advanced
+    functions:
+      - "pipeline<In, Out>(first: Stage<In, Out>): Pipeline<In, Out>"
+      - "lowerToProjectedProgram<In>(lowering: ProgramLowering<In>, input: In): ProjectedProgramMessage"
+  - group: protocol
+    category: primary
+    functions:
+      - "envelope(type, payload): GIKMessage"
+      - "unwrap<T>(message: Enveloped<T>): T"
+  - group: transport
+    category: advanced
+    functions:
+      - "createInMemoryTransportPair(): [TransportProvider, TransportProvider]"
+  - group: confirmation
+    category: advanced
+    functions:
+      - "confirmPrompt(effect: OrchestratorEffect): ConfirmPrompt"
+      - "confirmOutcomeEvent(outcome, ...): GIKEvent"
+  - group: observability
+    category: advanced
+    functions:
+      - "formatTrace(trace: TraceEvent): string"
+      - "consoleSink(output?): TraceSink"
+      - "bufferSink(): { sink: TraceSink; events: TraceEvent[] }"
+      - "multiSink(...sinks: TraceSink[]): TraceSink"
+
+internal_candidate_exports:
+  reason: >-
+    These modules expose execution mechanics that should not become durable accidentally.
+  modules:
+    - kernel/src/interpret.ts
+    - kernel/src/reduce.ts
+    - kernel/src/derivations.ts
+
+behavioral_guarantees:
+  - Authoritative mutations are serialized and revisions increase monotonically.
+  - Pure state changes are represented as Patch operations.
+  - External work is delegated through Orchestrator and recorded separately from pure state.
+  - Restore never claims to undo an external effect.
+  - Transport and in-process consumers observe the same event, patch, and revision model.
+  - Headless programs execute without fabricated projection nodes or capabilities.
+  - Projection is optional for execution and explicit at resolve and renderer boundaries.
+  - Renderer transport attachment requires a ProjectedProgramDefinition.
+  - Wire message kinds are vocabulary and program; no manifest or document aliases are accepted.
+
+verification:
+  commands:
+    - npm run test:kernel
+    - npm run conformance
+    - npm run test:jsonata
+    - npm run build --workspace=@gik/kernel
+
+open_decisions:
+  - Which advanced and internal-candidate exports remain public for version 1?
+  - Should program authoring and lowering functions move to a separate package?
+  - When does measured deployment or versioning pressure justify splitting execution and projection packages?

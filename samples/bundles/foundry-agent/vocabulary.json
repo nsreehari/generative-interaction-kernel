@@ -1,6 +1,6 @@
 {
   "gik": "0.1",
-  "type": "manifest",
+  "type": "vocabulary",
   "payload": {
     "version": "genui-foundry-agent/1.0",
     "expression": "jsonata",

@@ -1,11 +1,11 @@
 {
   "gik": "0.1",
-  "type": "manifest",
+  "type": "vocabulary",
   "payload": {
-    "version": "provider-authoring-demo/1.0",
+    "version": "genui-reactive-demo/1.0",
     "expression": "jsonata",
     "namespaces": ["demo"],
-    "actions": ["assign", "emit"],
+    "actions": ["assign", "invoke", "emit"],
     "capabilities": {
       "ui:screen": {
         "propsSchema": { "type": "object", "additionalProperties": true },
@@ -33,7 +33,10 @@
       "ui:note": {
         "propsSchema": { "type": "object", "additionalProperties": true }
       },
-      "demo:providerAuthoringSample": {
+      "ui:codeBlock": {
+        "propsSchema": { "type": "object", "additionalProperties": true }
+      },
+      "demo:reactiveSample": {
         "propsSchema": { "type": "object", "additionalProperties": true }
       }
     },

@@ -2,9 +2,9 @@ import {
   node,
   type Action,
   type DocNode,
-  type DocumentPayload,
+  type ProjectedProgramDefinition,
   type Json,
-  type Lowering,
+  type ProgramLowering,
   type NodeOptions,
   type Reaction,
 } from "../../kernel/src/index";
@@ -55,7 +55,7 @@ type RuntimeEmitterNodeOptions<TNode> = {
   children?: TNode[];
 };
 
-const kernelRuntimeEmitter: RuntimeEmitter<DocNode, DocumentPayload, NodeOptions> = {
+const kernelRuntimeEmitter: RuntimeEmitter<DocNode, ProjectedProgramDefinition, NodeOptions> = {
   node,
   output: (root) => ({ root }),
 };
@@ -299,7 +299,7 @@ export function lowerPresentationWithRuntimeEmitter<TNode, TOutput>(
   };
 }
 
-export function lowerPresentation(recipe: LayerRecipe, record?: GenuiEvidenceRecorder): Lowering<PresentationSpec> {
+export function lowerPresentation(recipe: LayerRecipe, record?: GenuiEvidenceRecorder): ProgramLowering<PresentationSpec> {
   return lowerPresentationWithRuntimeEmitter(recipe, kernelRuntimeEmitter, record);
 }
 

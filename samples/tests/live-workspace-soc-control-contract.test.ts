@@ -7,10 +7,10 @@ import { socControlContract } from "../bundles/live-workspace-soc/projection_vie
 import effects from "../bundles/live-workspace-soc/effect_handlers";
 
 function headlessSoc() {
-  const { manifest, document, state } = openSampleBlueprint("live-workspace-soc");
+  const { vocabulary, program, state } = openSampleBlueprint("live-workspace-soc");
   const runtime = loadBundleRuntime(bundleFromJson({
-    manifest: structuredClone(manifest),
-    document: structuredClone(document),
+    vocabulary: structuredClone(vocabulary),
+    program: structuredClone(program),
     state: structuredClone(state),
   }, { effectHandlers: effects }));
   return createHeadlessControlRuntime(runtime, socControlContract);

@@ -22,7 +22,7 @@ const manifest = {
 
 const document = {
   gik: "0.1",
-  type: "document",
+  type: "program",
   payload: {
     root: {
       capability: "button",

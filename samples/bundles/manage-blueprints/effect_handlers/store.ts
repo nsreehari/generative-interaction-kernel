@@ -7,7 +7,7 @@
 // reducer ops before effects run) and returns store deltas — the reducer stays pure. Only genuinely
 // effectful/derived logic lives here in code; everything above it is data.
 
-import type { CapabilityDescriptor, DocumentPayload, Enveloped, Json, ManifestPayload } from "@gik/kernel";
+import type { CapabilityDescriptor, ProjectedProgramDefinition, Enveloped, Json, ProjectedVocabularyManifest } from "@gik/kernel";
 import {
   lintLoweringRecipe as lintLoweringRecipeArtifact,
   lintProfileArtifacts,
@@ -260,9 +260,9 @@ const PREVIEW_CAPABILITIES: Record<string, CapabilityDescriptor> = {
   },
 };
 
-const PROFILE_PREVIEW_MANIFEST: Enveloped<ManifestPayload> = {
+const PROFILE_PREVIEW_MANIFEST: Enveloped<ProjectedVocabularyManifest> = {
   gik: "0.1",
-  type: "manifest",
+  type: "vocabulary",
   payload: {
     version: "genui-profile-preview/1.0",
     expression: "jsonata",
@@ -1369,10 +1369,10 @@ export function buildProfilePreviewBundle(
   entry: SampleBlueprintEntry,
   input: PreviewInput
 ): SerializableBundle {
-  const document = runProfile(entry.profile, previewSeed(entry, input), input.ctx) as DocumentPayload;
+  const document = runProfile(entry.profile, previewSeed(entry, input), input.ctx) as ProjectedProgramDefinition;
   return {
-    manifest: PROFILE_PREVIEW_MANIFEST,
-    document: { gik: "0.1", type: "document", payload: document },
+    vocabulary: PROFILE_PREVIEW_MANIFEST,
+    program: { gik: "0.1", type: "program", payload: document },
     state: PREVIEW_STATE,
   };
 }

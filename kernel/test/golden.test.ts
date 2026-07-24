@@ -16,8 +16,8 @@ const fx = (name: string) =>
     )
   );
 
-const manifest = fx("live-cards.manifest.json");
-const document = fx("example.document.json");
+const manifest = fx("live-cards.vocabulary.json");
+const document = fx("example.program.json");
 const eventMsg = fx("example.event.json");
 const expectedPatch = fx("expected.patch.json");
 
@@ -90,15 +90,15 @@ test("traces: assign action and machine transition are observable", async () => 
   assert.ok(traces.some((t) => t.event === "action" && (t.detail as any)?.do === "assign"));
 });
 
-test("validate-before-commit: a malformed document is rejected", () => {
-  const bad = { gik: "0.1", type: "document", payload: { root: { id: "x" } } };
-  assert.throws(() => new Kernel(manifest, bad as any), /Invalid GIK document/);
+test("validate-before-commit: a malformed program is rejected", () => {
+  const bad = { gik: "0.1", type: "program", payload: { root: { id: "x" } } };
+  assert.throws(() => new Kernel(manifest, bad as any), /Invalid GIK program/);
 });
 
 test("emit: an emitted event is reduced and can drive a machine transition", async () => {
   const emitDoc = {
     gik: "0.1",
-    type: "document",
+    type: "program",
     payload: {
       root: {
         capability: "board",

@@ -27,8 +27,8 @@ const fx = (name: string) =>
     )
   );
 
-const manifest = fx("live-cards.manifest.json");
-const document = fx("example.document.json");
+const manifest = fx("live-cards.vocabulary.json");
+const document = fx("example.program.json");
 
 function makeKernel(): Kernel {
   const store = new InMemoryStateModel(manifest.payload.namespaces);

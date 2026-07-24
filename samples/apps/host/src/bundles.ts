@@ -31,8 +31,8 @@ const HOST_INFRASTRUCTURE_BUNDLES = ["demo-runner", "gik-control-harness"] as co
 // Vite build-time discovery of each bundle folder's parts, keyed by folder name. registry.json is the
 // authoritative list; these globs only supply the file contents for a declared bundle. Hosted app-root
 // projections may live under `approot/*`; workbench's unrelated nested `bundles/*` leaves stay excluded.
-const rawManifests = import.meta.glob("../../../bundles/*/manifest.json", { eager: true, import: "default" });
-const rawDocuments = import.meta.glob("../../../bundles/*/document.json", { eager: true, import: "default" });
+const rawVocabularies = import.meta.glob("../../../bundles/*/vocabulary.json", { eager: true, import: "default" });
+const rawPrograms = import.meta.glob("../../../bundles/*/program.json", { eager: true, import: "default" });
 const rawStates = import.meta.glob("../../../bundles/*/state.json", { eager: true, import: "default" });
 const rawEffectHandlerModules = import.meta.glob("../../../bundles/*/effect_handlers/index.{ts,tsx}", {
   eager: true,
@@ -57,8 +57,8 @@ function byBundleId<T>(glob: Record<string, T>): Record<string, T> {
   return out;
 }
 
-const manifests = byBundleId(rawManifests);
-const documents = byBundleId(rawDocuments);
+const vocabularies = byBundleId(rawVocabularies);
+const programs = byBundleId(rawPrograms);
 const states = byBundleId(rawStates);
 const effectHandlerModules = byBundleId(rawEffectHandlerModules) as Record<string, {
   default: EffectHandlerMap;
@@ -99,7 +99,7 @@ export function createHostRegistry(demoId?: string | null, targetBlueprintId?: s
       kind: "bundle",
       make: () => {
         const runtime = openSampleBlueprint(id);
-        const { manifest, document, state } = runtime;
+        const { vocabulary, program, state } = runtime;
         const nativeId = REGISTRY.nativeFrom?.[id] ?? id;
         const effectModule = effectHandlerModules[nativeId];
         const stateModule = stateModules[nativeId] ?? effectModule;
@@ -110,7 +110,7 @@ export function createHostRegistry(demoId?: string | null, targetBlueprintId?: s
           projectionViews: projectionViews[nativeId],
           wrapOrchestrator: stateModule?.wrapOrchestrator?.(serviceOrchestrator) ?? serviceOrchestrator,
         };
-        return bundleFromJson({ manifest, document, state }, native);
+        return bundleFromJson({ vocabulary, program, state }, native);
       },
     });
   }
@@ -128,8 +128,8 @@ export function createHostRegistry(demoId?: string | null, targetBlueprintId?: s
           };
         }
         return bundleFromJson({
-          manifest: structuredClone(manifests[id]),
-          document: structuredClone(documents[id]),
+          vocabulary: structuredClone(vocabularies[id]),
+          program: structuredClone(programs[id]),
           state,
         }, {
           effectHandlers: effectHandlerModules[id]?.default,

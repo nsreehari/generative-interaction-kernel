@@ -15,7 +15,7 @@ import {
   confirmOutcomeEvent,
   confirmPrompt,
   node,
-  type ManifestPayload,
+  type ProjectedVocabularyManifest,
   type Orchestrator,
   type OrchestratorEffect,
 } from "../src/index";
@@ -52,18 +52,18 @@ test("approved -> 'confirmed' event; every other outcome -> 'dismissed'", () => 
 
 const manifest = {
   gik: "0.1",
-  type: "manifest",
+  type: "vocabulary",
   payload: {
     version: "confirm-demo/1.0",
     expression: "jsonata",
     namespaces: ["card_data"],
     capabilities: { button: { emits: ["tap"] } },
-  } as ManifestPayload,
+  } as ProjectedVocabularyManifest,
 };
 
 const document = {
   gik: "0.1",
-  type: "document",
+  type: "program",
   payload: {
     root: node("button", "btn", {
       on: {

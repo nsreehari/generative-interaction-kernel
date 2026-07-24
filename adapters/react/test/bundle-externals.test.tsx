@@ -1,5 +1,5 @@
 // Mount-time enforcement of a bundle's `externals.effectHandlers` contract: every effect-handler
-// name the manifest declares must be supplied by the bundle's native code, or the bundle is rejected
+// name the vocabulary declares must be supplied by the bundle's native code, or the bundle is rejected
 // at load instead of silently no-op'ing the `invoke` deep in the reducer at runtime. Scoped to the
 // effect arm only — `externals.projectionViews` are provider imports resolved against the floor/embed
 // registries, not against `bundle.projectionViews`, so they are not checked here.
@@ -9,9 +9,9 @@ import assert from "node:assert/strict";
 
 import { assertExternalsSatisfied, bundleFromJson, loadBundle, loadBundleRuntime } from "../src/primitives";
 
-const manifestWith = (effectHandlers?: string[]) => ({
+const vocabularyWith = (effectHandlers?: string[]) => ({
   gik: "0.1",
-  type: "manifest",
+  type: "vocabulary",
   payload: {
     version: "test/1",
     namespaces: ["app"],
@@ -20,15 +20,15 @@ const manifestWith = (effectHandlers?: string[]) => ({
   },
 });
 
-const emptyDocument = {
+const emptyProgram = {
   gik: "0.1",
-  type: "document",
+  type: "program",
   payload: { root: { id: "root", capability: "board", props: {} } },
 };
 
 test("assertExternalsSatisfied: throws when a declared effect handler is missing", () => {
   const bundle = bundleFromJson(
-    { manifest: manifestWith(["saveProfile"]), document: emptyDocument },
+    { vocabulary: vocabularyWith(["saveProfile"]), program: emptyProgram },
     { effectHandlers: {} }
   );
   assert.throws(() => assertExternalsSatisfied(bundle), /saveProfile/);
@@ -36,7 +36,7 @@ test("assertExternalsSatisfied: throws when a declared effect handler is missing
 
 test("assertExternalsSatisfied: passes when every declared effect handler is supplied", () => {
   const bundle = bundleFromJson(
-    { manifest: manifestWith(["saveProfile"]), document: emptyDocument },
+    { vocabulary: vocabularyWith(["saveProfile"]), program: emptyProgram },
     { effectHandlers: { saveProfile: () => {} } }
   );
   assert.doesNotThrow(() => assertExternalsSatisfied(bundle));
@@ -44,7 +44,7 @@ test("assertExternalsSatisfied: passes when every declared effect handler is sup
 
 test("assertExternalsSatisfied: no-ops when the bundle declares no externals.effectHandlers", () => {
   const bundle = bundleFromJson(
-    { manifest: manifestWith(undefined), document: emptyDocument },
+    { vocabulary: vocabularyWith(undefined), program: emptyProgram },
     { effectHandlers: {} }
   );
   assert.doesNotThrow(() => assertExternalsSatisfied(bundle));
@@ -52,7 +52,7 @@ test("assertExternalsSatisfied: no-ops when the bundle declares no externals.eff
 
 test("loadBundle: mount-time gate rejects a bundle missing a declared effect handler", () => {
   const bundle = bundleFromJson(
-    { manifest: manifestWith(["charge"]), document: emptyDocument },
+    { vocabulary: vocabularyWith(["charge"]), program: emptyProgram },
     { effectHandlers: {} }
   );
   assert.throws(() => loadBundle(bundle), /charge/);
@@ -60,7 +60,7 @@ test("loadBundle: mount-time gate rejects a bundle missing a declared effect han
 
 test("loadBundleRuntime: applies a synchronous $init effect before the kernel starts", () => {
   const bundle = bundleFromJson(
-    { manifest: manifestWith(undefined), document: emptyDocument, state: { app: { ready: false } } },
+    { vocabulary: vocabularyWith(undefined), program: emptyProgram, state: { app: { ready: false } } },
     {
       effectHandlers: {
         $init: () => ({ ops: [{ op: "set", path: "app.ready", value: true }] }),
@@ -76,12 +76,12 @@ test("loadBundleRuntime: composes bundle service orchestration inside host polic
   const order: string[] = [];
   const bundle = bundleFromJson(
     {
-      manifest: manifestWith(undefined),
-      document: {
-        ...emptyDocument,
+      vocabulary: vocabularyWith(undefined),
+      program: {
+        ...emptyProgram,
         payload: {
           root: {
-            ...emptyDocument.payload.root,
+            ...emptyProgram.payload.root,
             edges: { on: { run: [{ do: "invoke", args: { tool: "work" } }] } },
           },
         },

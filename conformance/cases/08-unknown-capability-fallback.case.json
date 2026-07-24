@@ -1,9 +1,9 @@
 {
   "name": "graceful fallback: an unknown capability resolves without crashing",
   "description": "A node whose capability is not in the manifest resolves as a visible fallback node; a declared sibling does not.",
-  "manifest": {
+  "vocabulary": {
     "gik": "0.1",
-    "type": "manifest",
+    "type": "vocabulary",
     "payload": {
       "version": "fallback-demo/1.0",
       "expression": "jsonata",
@@ -11,11 +11,11 @@
       "capabilities": { "board": { "slots": ["children"] } }
     }
   },
-  "document": {
+  "program": {
     "gik": "0.1",
-    "type": "document",
+    "type": "program",
     "payload": {
-      "manifest": "fallback-demo/1.0",
+      "vocabulary": "fallback-demo/1.0",
       "root": {
         "capability": "board",
         "id": "b",

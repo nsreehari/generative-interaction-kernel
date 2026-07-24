@@ -1,8 +1,8 @@
 {
   "name": "live-cards: rowSelect assigns from $event and opens the gate",
   "description": "The golden interaction. rowSelect writes $event.id into card_data.selected (rev 1); the gated Approve button flips from hidden to visible.",
-  "manifestRef": "../../schemas/fixtures/live-cards.manifest.json",
-  "documentRef": "../../schemas/fixtures/example.document.json",
+  "vocabularyRef": "../../schemas/fixtures/live-cards.vocabulary.json",
+  "programRef": "../../schemas/fixtures/example.program.json",
   "seed": [
     { "op": "set", "path": "fetched_sources.orders", "value": [{ "id": "order-42", "amount": 100 }, { "id": "order-7", "amount": 50 }] },
     { "op": "set", "path": "computed_values.total", "value": 150 }

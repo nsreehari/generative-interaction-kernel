@@ -15,15 +15,15 @@ import assert from "node:assert/strict";
 import {
   Kernel,
   assign,
-  authorDocument,
+  authorProjectedProgram,
   node,
-  type ManifestPayload,
+  type ProjectedVocabularyManifest,
   type ResolvedNode,
 } from "../../../kernel/src/index";
 import { evalAsyncJsonata } from "@gik/evaluators";
 import { ReactiveStateModel } from "../src/reactive-state-model";
 
-const manifestPayload: ManifestPayload = {
+const manifestPayload: ProjectedVocabularyManifest = {
   version: "reactive-demo/1.0",
   expression: "jsonata",
   namespaces: ["a", "b", "total"],
@@ -39,9 +39,9 @@ const manifestPayload: ManifestPayload = {
     },
     actions: { propsSchema: { type: "object", properties: { label: { type: "string" } } }, emits: ["tap"] },
   },
-} as ManifestPayload;
+} as ProjectedVocabularyManifest;
 
-const manifestMessage = { gik: "0.1", type: "manifest", payload: manifestPayload } as const;
+const manifestMessage = { gik: "0.1", type: "vocabulary", payload: manifestPayload } as const;
 
 // A metric that READS the derived `total`, and a button whose tap ASSIGNS the base cell `a`.
 // Crucially, there is no `derive` action anywhere — the store owns that.
@@ -53,7 +53,7 @@ function authorDemo() {
       node("actions", "btn-bump", { props: { label: "Bump" }, on: { tap: [assign("a", 2)] } }),
     ],
   });
-  return authorDocument(root, { manifest: "reactive-demo/1.0" });
+  return authorProjectedProgram(root, { vocabulary: "reactive-demo/1.0" });
 }
 
 function find(n: ResolvedNode | null, id: string): ResolvedNode | undefined {

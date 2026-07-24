@@ -1,10 +1,10 @@
 // The PLATFORM FLOOR, part 3: the bundle model + loader.
 //
-// A BUNDLE is the unit the generic host runs: { manifest, document, state, effects }. The console,
+// A BUNDLE is the unit the generic host runs: { vocabulary, program, state, effects }. The console,
 // the playground, preview, and every profile are bundles. `loadBundle` stands up a runtime for one
 // (kernel + shared state + effect dispatcher) and returns a controller the React layer renders.
 //
-// Bundles COMPOSE: an `embed` primitive embeds a SerializableBundle (manifest + document + state,
+// Bundles COMPOSE: an `embed` primitive embeds a SerializableBundle (vocabulary + program + state,
 // all JSON) as a nested runtime. That is what makes "a JSON bundle can be composed of other JSON
 // bundles" real — e.g. the playground bundle embeds the edited profile's bundle.
 
@@ -15,10 +15,10 @@ import {
   bufferSink,
   unwrap,
   type OrchestratorResult,
-  type DocumentMessage,
+  type ProjectedProgramMessage,
   type Enveloped,
   type Json,
-  type ManifestPayload,
+  type ProjectedVocabularyManifest,
   type Orchestrator,
   type StateModel,
 } from "@gik/kernel";
@@ -30,8 +30,8 @@ const BUNDLE_INIT_EFFECT = "$init";
 
 /** The JSON-only part of a bundle — safe to store in state and embed via the `embed` primitive. */
 export interface SerializableBundle {
-  manifest: Enveloped<ManifestPayload>;
-  document: DocumentMessage;
+  vocabulary: Enveloped<ProjectedVocabularyManifest>;
+  program: ProjectedProgramMessage;
   /** Seed value per namespace (namespace -> initial object). */
   state?: Record<string, Json>;
 }
@@ -53,7 +53,7 @@ export interface BundleNative {
   wrapOrchestrator?: LoadBundleOptions["wrapOrchestrator"];
 }
 
-function isEnvelope(value: unknown, type: "manifest" | "document"): boolean {
+function isEnvelope(value: unknown, type: "vocabulary" | "program"): boolean {
   return (
     !!value &&
     typeof value === "object" &&
@@ -64,8 +64,8 @@ function isEnvelope(value: unknown, type: "manifest" | "document"): boolean {
 
 /**
  * The "everything is JSON" entry point: turn a parsed-JSON bundle (an imported `.json` file, a
- * fetched document, a bundle stored in state) into a runnable `Bundle`, attaching only the native
- * code it needs (effect handlers and/or extra components). The manifest, document, and seed state
+ * fetched program, a bundle stored in state) into a runnable `Bundle`, attaching only the native
+ * code it needs (effect handlers and/or extra components). The vocabulary, program, and seed state
  * are pure data — adding an app is authoring JSON, not TypeScript.
  *
  * This is a system boundary, so the JSON is validated: a malformed bundle throws instead of failing
@@ -76,18 +76,18 @@ export function bundleFromJson(json: unknown, native: BundleNative = {}): Bundle
     throw new Error("bundleFromJson: expected a bundle object");
   }
   const b = json as Partial<SerializableBundle>;
-  if (!isEnvelope(b.manifest, "manifest")) {
-    throw new Error("bundleFromJson: missing or invalid `manifest` (expected a GIK manifest message)");
+  if (!isEnvelope(b.vocabulary, "vocabulary")) {
+    throw new Error("bundleFromJson: missing or invalid `vocabulary` (expected a GIK vocabulary message)");
   }
-  if (!isEnvelope(b.document, "document")) {
-    throw new Error("bundleFromJson: missing or invalid `document` (expected a GIK document message)");
+  if (!isEnvelope(b.program, "program")) {
+    throw new Error("bundleFromJson: missing or invalid `program` (expected a GIK program message)");
   }
   if (b.state != null && (typeof b.state !== "object" || Array.isArray(b.state))) {
     throw new Error("bundleFromJson: `state` must be an object of namespace -> value");
   }
   return {
-    manifest: b.manifest as SerializableBundle["manifest"],
-    document: b.document as SerializableBundle["document"],
+    vocabulary: b.vocabulary as SerializableBundle["vocabulary"],
+    program: b.program as SerializableBundle["program"],
     state: b.state,
     effectHandlers: native.effectHandlers,
     projectionViews: native.projectionViews,
@@ -97,7 +97,7 @@ export function bundleFromJson(json: unknown, native: BundleNative = {}): Bundle
 
 /**
  * Enforce a bundle's `externals.effectHandlers` contract at mount: every effect-handler name the
- * manifest declares it needs must be present in the bundle's native `effectHandlers`. This turns the
+ * vocabulary declares it needs must be present in the bundle's native `effectHandlers`. This turns the
  * declared-and-linted contract (authoring emits an `undeclared-effect` warning) into a hard mount-time
  * gate — a missing handler otherwise silently no-ops the `invoke` deep in the reducer at runtime.
  *
@@ -109,23 +109,23 @@ export function bundleFromJson(json: unknown, native: BundleNative = {}): Bundle
  * undeclared `externals.effectHandlers` bundle is left untouched.
  */
 export function assertExternalsSatisfied(bundle: Bundle): void {
-  const required = unwrap(bundle.manifest).externals?.effectHandlers;
+  const required = unwrap(bundle.vocabulary).externals?.effectHandlers;
   if (!required || required.length === 0) return;
   const supplied = bundle.effectHandlers ?? {};
   const missing = required.filter((name) => !(name in supplied));
   if (missing.length > 0) {
     throw new Error(
-      `bundle: missing required effect handler(s) declared in manifest externals.effectHandlers: ${missing.join(", ")}`
+      `bundle: missing required effect handler(s) declared in vocabulary externals.effectHandlers: ${missing.join(", ")}`
     );
   }
 }
 
-/** Build a seeded state model from a manifest's namespaces and a bundle's seed values. */
+/** Build a seeded state model from a vocabulary's namespaces and a bundle's seed values. */
 export function seedState(
-  manifest: Enveloped<ManifestPayload>,
+  vocabulary: Enveloped<ProjectedVocabularyManifest>,
   state?: Record<string, Json>
 ): InMemoryStateModel {
-  const namespaces = unwrap(manifest).namespaces ?? [];
+  const namespaces = unwrap(vocabulary).namespaces ?? [];
   const model = new InMemoryStateModel(namespaces);
   if (state) {
     model.apply(
@@ -180,7 +180,7 @@ export function loadBundleRuntime(
     ? contextsOrOptions as LoadBundleOptions
     : { contexts: contextsOrOptions as Record<string, StateModel> | undefined };
   const contexts = options.contexts;
-  const state = seedState(bundle.manifest, bundle.state);
+  const state = seedState(bundle.vocabulary, bundle.state);
   applyBundleInit(bundle, state);
   const runtimeState = contexts && Object.keys(contexts).length > 0
     ? new CompositeStateModel(state, contexts)
@@ -188,7 +188,7 @@ export function loadBundleRuntime(
   const fallback = createEffectDispatcher(runtimeState, bundle.effectHandlers ?? {});
   const bundleOrchestrator = bundle.wrapOrchestrator?.(fallback, runtimeState) ?? fallback;
   const orchestrator = options.wrapOrchestrator?.(bundleOrchestrator, runtimeState) ?? bundleOrchestrator;
-  const kernel = new Kernel(bundle.manifest, bundle.document, {
+  const kernel = new Kernel(bundle.vocabulary, bundle.program, {
     state: runtimeState,
     orchestrator,
     sink: bufferSink().sink,
@@ -207,5 +207,5 @@ export function loadBundle(
 /** A stable signature so an embedded bundle only rebuilds when its JSON actually changes. */
 export function bundleSignature(bundle: SerializableBundle | null | undefined): string {
   if (!bundle) return "";
-  return JSON.stringify([bundle.manifest, bundle.document, bundle.state]);
+  return JSON.stringify([bundle.vocabulary, bundle.program, bundle.state]);
 }

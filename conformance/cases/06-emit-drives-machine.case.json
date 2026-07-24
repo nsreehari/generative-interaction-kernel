@@ -1,9 +1,9 @@
 {
   "name": "emit: an emitted event drives a machine within one dispatch",
   "description": "A press handler emits `go`; the flow machine consumes it (idle -> active) inside the same dispatch, so one rev carries the machine's state write.",
-  "manifest": {
+  "vocabulary": {
     "gik": "0.1",
-    "type": "manifest",
+    "type": "vocabulary",
     "payload": {
       "version": "emit-demo/1.0",
       "expression": "jsonata",
@@ -12,11 +12,11 @@
       "capabilities": { "control": { "emits": ["press"] } }
     }
   },
-  "document": {
+  "program": {
     "gik": "0.1",
-    "type": "document",
+    "type": "program",
     "payload": {
-      "manifest": "emit-demo/1.0",
+      "vocabulary": "emit-demo/1.0",
       "root": {
         "capability": "control",
         "id": "c",

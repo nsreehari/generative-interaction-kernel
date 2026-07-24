@@ -129,7 +129,7 @@ test("ControlFace opens an authored Blueprint into a runtime", () => {
   const runtime = ControlFace.openBlueprint(artifact);
 
   assert.equal(runtime.blueprintId, "example");
-  assert.equal(unwrap(runtime.document).root.props?.value, "Opened");
+  assert.equal(unwrap(runtime.program).root.props?.value, "Opened");
   assert.deepEqual(runtime.state, { example: { ready: true } });
   assert.throws(
     () => ControlFace.openBlueprint({
@@ -242,11 +242,11 @@ test("ControlFace opens Blueprint-backed Cells as independent child runtimes", (
 
 test("ControlFace opens a recipe-backed canonical Blueprint", () => {
   const runtime = ControlFace.openBlueprint(liveWorkspaceSocBlueprint as unknown as BlueprintArtifact<LayerRecipe>);
-  const manifest = unwrap(runtime.manifest);
+  const manifest = unwrap(runtime.vocabulary);
 
   assert.equal(runtime.blueprintId, "live-workspace-soc");
   assert.equal(manifest.namespaces?.includes("soc") ?? false, true);
-  assert.equal(typeof unwrap(runtime.document).root.id, "string");
+  assert.equal(typeof unwrap(runtime.program).root.id, "string");
 });
 
 test("ControlFace rejects Blueprints without runtime", () => {
@@ -271,8 +271,8 @@ const fx = (name: string) =>
     readFileSync(fileURLToPath(new URL(`../../schemas/fixtures/${name}`, import.meta.url)), "utf8")
   );
 
-const manifest = fx("live-cards.manifest.json");
-const document = fx("example.document.json");
+const manifest = fx("live-cards.vocabulary.json");
+const document = fx("example.program.json");
 
 const rollbackManifest = {
   version: "rollback-test/1",
@@ -282,7 +282,7 @@ const rollbackManifest = {
 
 const rollbackDocument = {
   gik: "0.1",
-  type: "document",
+  type: "program",
   payload: {
     root: {
       capability: "actions",

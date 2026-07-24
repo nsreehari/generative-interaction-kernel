@@ -1,5 +1,5 @@
 import type { Json } from "../../kernel/src/index";
-import documentSchemaJson from "../../schemas/document.schema.json" with { type: "json" };
+import programSchemaJson from "../../schemas/program.schema.json" with { type: "json" };
 import { executeSyncJsonataSteps, runDeclarativeValidators } from "@gik/evaluators";
 import {
   buildStructuralValidatorsForTemplate,
@@ -51,19 +51,19 @@ type IntentSpec = {
   constraints?: string[];
 };
 
-const documentSchemaRef = {
-  schema: documentSchemaJson as Record<string, unknown>,
-  key: typeof (documentSchemaJson as { $id?: unknown }).$id === "string"
-    ? (documentSchemaJson as { $id: string }).$id
+const programSchemaRef = {
+  schema: programSchemaJson as Record<string, unknown>,
+  key: typeof (programSchemaJson as { $id?: unknown }).$id === "string"
+    ? (programSchemaJson as { $id: string }).$id
     : undefined,
 };
 
-if (!documentSchemaRef.key) {
-  throw new Error("Document schema is missing a string $id");
+if (!programSchemaRef.key) {
+  throw new Error("Program schema is missing a string $id");
 }
 
 const structuralValidatorRefs: Record<string, StructuralSchemaValidatorRef> = {
-  [documentSchemaRef.key]: documentSchemaRef,
+  [programSchemaRef.key]: programSchemaRef,
 };
 
 const schemaRefFromTemplateFile = (templateId: string, file: string): string => {

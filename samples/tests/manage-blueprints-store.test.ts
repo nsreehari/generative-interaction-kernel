@@ -469,7 +469,7 @@ test("configure preview for live-cards emits the frontend editable-table kind en
     },
   });
 
-  const document = (bundle.document as { payload: { root: { edges?: { children?: Array<Record<string, unknown>> } } } }).payload;
+  const document = (bundle.program as { payload: { root: { edges?: { children?: Array<Record<string, unknown>> } } } }).payload;
   const settings = document.root.edges?.children?.find((child) => child.id === "settings-region") as
     | { capability?: string; edges?: { read?: Record<string, unknown> }; props?: Record<string, unknown> }
     | undefined;
@@ -497,6 +497,6 @@ test("workflow source preview runs from the source layer form instead of assumin
     },
   });
 
-  const document = (bundle.document as unknown as { payload: { root: Record<string, unknown> } }).payload;
+  const document = (bundle.program as unknown as { payload: { root: Record<string, unknown> } }).payload;
   assert.equal(typeof document.root.id, "string");
 });

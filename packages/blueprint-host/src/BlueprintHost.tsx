@@ -55,7 +55,7 @@ export function BlueprintHost({
   const registry = React.useMemo(() => createBundleRegistry(), []);
   const runtime = React.useMemo(() => runtimeFromBlueprint(blueprint, context), [blueprint, context]);
   const bundle = React.useMemo(
-    () => bundleFromJson({ manifest: runtime.manifest, document: runtime.document, state: runtime.state }, native),
+    () => bundleFromJson({ vocabulary: runtime.vocabulary, program: runtime.program, state: runtime.state }, native),
     [runtime, native],
   );
   const blueprintId = blueprint.payload.id;

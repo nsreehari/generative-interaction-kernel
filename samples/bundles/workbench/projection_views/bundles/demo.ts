@@ -2,16 +2,16 @@
 // platform, so it ships its own manifest + seed rather than reaching into the platform's test
 // fixtures. It imports the platform only through the public barrels.
 //
-// The manifest and seed are DATA — authored in ./manifest.json / ./seed.json. Only demoDataFor
+// The manifest and seed are DATA — authored in ./vocabulary.json / ./seed.json. Only demoDataFor
 // (the role->seed-path mapping) stays code.
 
-import { InMemoryStateModel, type Enveloped, type ManifestPayload } from "@gik/kernel";
+import { InMemoryStateModel, type Enveloped, type ProjectedVocabularyManifest } from "@gik/kernel";
 import { resolveFacets, type InteractionSpec, type InteractionTaxonomy } from "@gik/profile";
-import demoManifestJson from "../../bundles/demo/manifest.json";
+import demoManifestJson from "../../bundles/demo/vocabulary.json";
 import demoSeedJson from "../../bundles/demo/seed.json";
 
 /** A minimal live-cards manifest: the capabilities the React adapter's registry renders. */
-export const DEMO_MANIFEST: Enveloped<ManifestPayload> = demoManifestJson as unknown as Enveloped<ManifestPayload>;
+export const DEMO_MANIFEST: Enveloped<ProjectedVocabularyManifest> = demoManifestJson as unknown as Enveloped<ProjectedVocabularyManifest>;
 
 /** A fresh, seeded store so metric/table regions show real values in the playground. */
 export function seedState(namespaces: string[]): InMemoryStateModel {

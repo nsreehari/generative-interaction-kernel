@@ -54,10 +54,10 @@ interface ScriptEntry {
 
 interface ConformanceCase {
   name: string;
-  manifest?: object;
-  manifestRef?: string;
-  document?: object;
-  documentRef?: string;
+  vocabulary?: object;
+  vocabularyRef?: string;
+  program?: object;
+  programRef?: string;
   seed?: PatchOp[];
   orchestrator?: ScriptEntry[];
   expectInvalid?: boolean;
@@ -123,19 +123,19 @@ for (const file of files) {
   test(`conformance: ${c.name}`, async () => {
     assert.ok(validateCase(c), `case failed schema: ${JSON.stringify(validateCase.errors)}`);
 
-    const manifest = (c.manifest ?? loadRef(path, c.manifestRef!)) as never;
-    const document = (c.document ?? loadRef(path, c.documentRef!)) as never;
+    const vocabulary = (c.vocabulary ?? loadRef(path, c.vocabularyRef!)) as never;
+    const program = (c.program ?? loadRef(path, c.programRef!)) as never;
 
     if (c.expectInvalid) {
-      assert.throws(() => new Kernel(manifest, document));
+      assert.throws(() => new Kernel(vocabulary, program));
       return;
     }
 
-    const namespaces = (unwrap(manifest) as { namespaces?: string[] }).namespaces ?? [];
+    const namespaces = (unwrap(vocabulary) as { namespaces?: string[] }).namespaces ?? [];
     const store = new InMemoryStateModel(namespaces);
     if (c.seed) store.apply(c.seed);
 
-    const kernel = new Kernel(manifest, document, {
+    const kernel = new Kernel(vocabulary, program, {
       state: store,
       orchestrator: c.orchestrator ? scriptedOrchestrator(c.orchestrator) : undefined,
     });

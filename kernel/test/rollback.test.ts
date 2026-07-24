@@ -22,7 +22,7 @@ const manifest = {
 // A button that (a) marks the card charged in state and (b) fires a `charge` effect.
 const doc = {
   gik: "0.1",
-  type: "document",
+  type: "program",
   payload: {
     root: {
       capability: "actions",

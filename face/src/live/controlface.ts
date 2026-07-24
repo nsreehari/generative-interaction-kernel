@@ -15,11 +15,11 @@ import {
   Kernel,
   KernelTransportHost,
   type Checkpoint,
-  type DocumentPayload,
+  type ProjectedProgramDefinition,
   type Enveloped,
   type GIKEvent,
   type Json,
-  type ManifestPayload,
+  type ProjectedVocabularyManifest,
   type Orchestrator,
   type OrchestratorEffect,
   type Patch,
@@ -53,15 +53,15 @@ export interface BlueprintRuntime {
   instanceId: string;
   revision: string;
   definition: BlueprintSource;
-  manifest: Enveloped<ManifestPayload>;
-  document: Enveloped<DocumentPayload>;
+  vocabulary: Enveloped<ProjectedVocabularyManifest>;
+  program: Enveloped<ProjectedProgramDefinition>;
   state: Record<string, Json>;
   children: Readonly<Record<string, BlueprintRuntime>>;
 }
 
 type LoweredBlueprint = {
   profile: Pick<ResolvedProfile, "artifact" | "services">;
-  lower(context: Record<string, Json>): DocumentPayload;
+  lower(context: Record<string, Json>): ProjectedProgramDefinition;
 };
 
 export type BlueprintSource = BlueprintArtifact<LayerRecipe>;
@@ -204,13 +204,13 @@ function runtimeFromLowering(
   definition: BlueprintSource,
   instanceId: string,
   profile: Pick<ResolvedProfile, "artifact" | "services">,
-  document: DocumentPayload,
+  program: ProjectedProgramDefinition,
   context?: Record<string, Json>,
 ): BlueprintRuntime {
   const { id, version, runtime } = profile.artifact.payload;
   if (!runtime) throw new Error(`Blueprint '${id}' has no runtime declaration`);
 
-  const manifest: ManifestPayload = {
+  const vocabulary: ProjectedVocabularyManifest = {
     version: `${id}/${version}`,
     expression: runtime.expression,
     namespaces: runtime.namespaces,
@@ -230,11 +230,11 @@ function runtimeFromLowering(
     instanceId,
     revision: version,
     definition,
-    manifest: { gik: "0.1", type: "manifest", payload: manifest },
-    document: {
+    vocabulary: { gik: "0.1", type: "vocabulary", payload: vocabulary },
+    program: {
       gik: "0.1",
-      type: "document",
-      payload: document,
+      type: "program",
+      payload: program,
     },
     state: mergeJsonRecords(structuredClone(runtime.state ?? {}), resolveInitialSeed(context)),
     children: {},
@@ -261,7 +261,7 @@ function openAssembledBlueprint(
         profile,
         structuredClone(defaultsFromSchema(source.payload.tiers[0]?.input)),
         resolveContextFor(profile, structuredClone(options.context ?? {})),
-      ) as DocumentPayload,
+      ) as ProjectedProgramDefinition,
       options.context,
     );
   } else {
@@ -317,8 +317,8 @@ export class ControlFace implements TransportBroker {
   private readonly serviceHost?: ServiceHost;
 
   constructor(
-    manifest: Enveloped<ManifestPayload>,
-    document: Enveloped<DocumentPayload>,
+    manifest: Enveloped<ProjectedVocabularyManifest>,
+    document: Enveloped<ProjectedProgramDefinition>,
     opts: ControlFaceOptions = {}
   ) {
     this.kernel = new Kernel(manifest, document, {

@@ -30,11 +30,11 @@ describe("portfolio-tracker Blueprint", () => {
   });
 
   it("composes the runtime directly from Blueprint-owned cell bodies", () => {
-    const document = openSampleBlueprint("portfolio-tracker").document.payload;
-    expect(document.root.edges?.children?.map((node) => node.id)).toEqual(
+    const program = openSampleBlueprint("portfolio-tracker").program.payload;
+    expect(program.root.edges?.children?.map((node) => node.id)).toEqual(
       portfolioCells.slice(1).map((cell) => cell.id)
     );
-    const marketPrices = document.root.edges?.children?.find((node) => node.id === "market-prices");
+    const marketPrices = program.root.edges?.children?.find((node) => node.id === "market-prices");
     const accessGate = portfolioCells.find((cell) => cell.id === "http-proxy-access-gate");
     expect(accessGate?.outputs).toEqual([{
       token: "http-proxy-access",
@@ -50,7 +50,7 @@ describe("portfolio-tracker Blueprint", () => {
       do: "invoke",
       args: { tool: "refreshPrices" },
     }]);
-    expect(document.derivations).toEqual([
+    expect(program.derivations).toEqual([
       expect.objectContaining({
         id: "positions-positions-by-ticker",
         target: "portfolio.positions",
@@ -65,7 +65,7 @@ describe("portfolio-tracker Blueprint", () => {
   });
 
   it("lowers the empty holdings editor with an explicit row schema", () => {
-    const holdings = openSampleBlueprint("portfolio-tracker").document.payload.root.edges?.children?.find((node) => node.id === "holdings");
+    const holdings = openSampleBlueprint("portfolio-tracker").program.payload.root.edges?.children?.find((node) => node.id === "holdings");
     expect(holdings?.props?.spec).toEqual({
       schema: {
         properties: {
@@ -79,9 +79,9 @@ describe("portfolio-tracker Blueprint", () => {
 
   it("opens one runtime from the authored Blueprint", () => {
     const runtime = openSampleBlueprint("portfolio-tracker");
-    expect(runtime.document).toMatchObject({ type: "document", payload: { root: { id: "portfolio-tracker" } } });
-    expect(runtime.manifest).toMatchObject({
-      type: "manifest",
+    expect(runtime.program).toMatchObject({ type: "program", payload: { root: { id: "portfolio-tracker" } } });
+    expect(runtime.vocabulary).toMatchObject({
+      type: "vocabulary",
       payload: { externals: { services: applyHostConfig(blueprint.payload.services) } },
     });
     expect(runtime.state.portfolio).toMatchObject({ holdings: {}, positions: {} });

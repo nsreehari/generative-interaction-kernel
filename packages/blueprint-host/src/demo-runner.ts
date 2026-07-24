@@ -1,4 +1,4 @@
-import type { DocNode, DocumentPayload, Json, ManifestPayload } from "@gik/kernel";
+import type { DocNode, ProjectedProgramDefinition, Json, ProjectedVocabularyManifest } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import demoScenariosSchema from "../../../schemas/demo-scenarios.schema.json" with { type: "json" };
 import type { FocusKind, FocusRef, TimelineItem } from "./control-focus";
@@ -265,8 +265,8 @@ function validateDemoTarget(targetId: string, target: DemoTargetCatalogEntry): v
 export function validateDemoTargetBundleContract(
   targetId: string,
   target: DemoTargetCatalogEntry,
-  manifest: ManifestPayload,
-  document: DocumentPayload,
+  manifest: ProjectedVocabularyManifest,
+  document: ProjectedProgramDefinition,
 ): void {
   const nodes = new Map<string, DocNode>();
   const visit = (node: DocNode) => {

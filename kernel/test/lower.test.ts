@@ -1,7 +1,7 @@
 // ADR-0016: layered DSL lowering. A profile is a Domain DSL + a lowering to the kernel's
 // UI DSL. This recasts the live-cards board as a Domain DSL (pure semantics — no kernel
 // capabilities, no layout primitives) plus a single lowering stage that compiles it into
-// a kernel document. The domain author never writes board/metric/table/actions or edges;
+// a kernel program. The domain author never writes board/metric/table/actions or edges;
 // only the lowering (platform-owned) knows the UI DSL.
 
 import { test } from "vitest";
@@ -15,12 +15,12 @@ import {
   ValidationError,
   assignFrom,
   invoke,
-  lowerToDocument,
+  lowerToProjectedProgram,
   node,
   pipeline,
   type DocNode,
-  type DocumentPayload,
-  type ManifestPayload,
+  type ProjectedProgramDefinition,
+  type ProjectedVocabularyManifest,
   type ResolvedNode,
   type Stage,
 } from "../src/index";
@@ -33,8 +33,8 @@ const fx = (name: string) =>
     )
   );
 
-const manifest = fx("live-cards.manifest.json");
-const manifestPayload = manifest.payload as ManifestPayload;
+const manifest = fx("live-cards.vocabulary.json");
+const vocabularyPayload = manifest.payload as ProjectedVocabularyManifest;
 
 // --- The Domain DSL: what a "board" MEANS. No grid/flex/column, no kernel capabilities. ---
 interface BoardDomain {
@@ -44,9 +44,9 @@ interface BoardDomain {
   approve: { id: string; label: string; enabledWhen: string; tool: string };
 }
 
-// --- Stage: Domain DSL -> UI DSL (kernel document). The only code that knows the kernel
+// --- Stage: Domain DSL -> UI DSL (kernel program). The only code that knows the kernel
 // capabilities (board/metric/table/actions) and edges. This is platform/profile-owned. ---
-const lowerBoard: Stage<BoardDomain, DocumentPayload> = (d) => {
+const lowerBoard: Stage<BoardDomain, ProjectedProgramDefinition> = (d) => {
   const children: DocNode[] = [
     ...d.metrics.map((m) =>
       node("metric", m.id, { props: { label: m.label }, read: { value: m.from } })
@@ -91,16 +91,16 @@ function findResolved(n: ResolvedNode, id: string): ResolvedNode | undefined {
   return undefined;
 }
 
-test("Domain DSL lowers to a valid kernel document (validate-before-commit)", () => {
-  const message = lowerToDocument(lowerBoard, salesBoard);
-  assert.equal(message.type, "document");
+test("Domain DSL lowers to a valid kernel program (validate-before-commit)", () => {
+  const message = lowerToProjectedProgram(lowerBoard, salesBoard);
+  assert.equal(message.type, "program");
   assert.equal(message.payload.root.capability, "board");
   assert.equal(message.payload.root.props?.title, "Sales");
 });
 
 test("a lowered document is interpretable by the kernel like a hand-authored one", async () => {
-  const message = lowerToDocument(lowerBoard, salesBoard);
-  const state = new InMemoryStateModel(manifestPayload.namespaces ?? []);
+  const message = lowerToProjectedProgram(lowerBoard, salesBoard);
+  const state = new InMemoryStateModel(vocabularyPayload.namespaces ?? []);
   state.apply([
     { op: "set", path: "computed_values.total", value: 42 },
     { op: "set", path: "fetched_sources.orders", value: [{ id: "order-42", amount: 10 }] },
@@ -128,21 +128,21 @@ test("pipeline composes stages and stays type-aligned (Task -> Domain -> UI)", (
   const lowerTask: Stage<BoardTask, BoardDomain> = () => salesBoard;
 
   const compiled = pipeline(lowerTask).to(lowerBoard).build();
-  const message = lowerToDocument(compiled, { goal: "review-sales" });
+  const message = lowerToProjectedProgram(compiled, { goal: "review-sales" });
   assert.equal(message.payload.root.capability, "board");
 });
 
 test("layers are optional: a single-stage Domain -> UI pipeline is valid (ADR-0021)", () => {
   // No Task/Interaction/Presentation layer: a profile may go straight Domain -> UI. Only the
-  // terminal kernel document is schema-validated, so skipping layers costs no safety.
+  // terminal kernel program is schema-validated, so skipping layers costs no safety.
   const compiled = pipeline(lowerBoard).build();
-  const message = lowerToDocument(compiled, salesBoard);
+  const message = lowerToProjectedProgram(compiled, salesBoard);
   assert.equal(message.payload.root.capability, "board");
   assert.equal(message.payload.root.props?.title, "Sales");
 });
 
 test("a lowering that emits a malformed document is rejected at the kernel boundary", () => {
-  const brokenStage: Stage<null, DocumentPayload> = () =>
-    ({ root: { id: "x" } } as unknown as DocumentPayload); // missing capability
-  assert.throws(() => lowerToDocument(brokenStage, null), ValidationError);
+  const brokenStage: Stage<null, ProjectedProgramDefinition> = () =>
+    ({ root: { id: "x" } } as unknown as ProjectedProgramDefinition); // missing capability
+  assert.throws(() => lowerToProjectedProgram(brokenStage, null), ValidationError);
 });

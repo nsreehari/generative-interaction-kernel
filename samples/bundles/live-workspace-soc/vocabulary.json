@@ -1,6 +1,6 @@
 {
   "gik": "0.1",
-  "type": "manifest",
+  "type": "vocabulary",
   "payload": {
     "version": "live-workspace-soc/1.0",
     "expression": "jsonata",

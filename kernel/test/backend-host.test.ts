@@ -1,62 +1,63 @@
 // The kernel driven as a pure backend service (no UI adapter). This locks in the
 // medium-agnostic claim: a custom Orchestrator whose invoke/confirm/route are
 // backend services (payment gateway, approval policy, queue router) drives a full
-// lifecycle cascade across initiating and terminal patches, and resolve() projects the SAME medium-neutral
-// ResolvedNode tree a UI adapter would consume. Companion to
+// lifecycle cascade without inventing a projection tree. Companion to
 // samples/backend-host/order-service.ts.
 
 import { test } from "vitest";
 import assert from "node:assert/strict";
 
-import { Kernel } from "../src/index";
-import type { GIKEvent, Json, Orchestrator, OrchestratorEffect, Patch, ResolvedNode } from "../src/index";
+import { Kernel, ProjectionUnavailableError } from "../src/index";
+import type {
+  GIKEvent,
+  Json,
+  Orchestrator,
+  OrchestratorEffect,
+  Patch,
+  ProgramMessage,
+} from "../src/index";
 
 const manifest = {
   version: "backend-host/1",
   namespaces: ["order", "payment"],
-  capabilities: {
-    workflow: {},
-    step: {},
-    status: { dataProp: "lifecycle" },
-  },
 };
 
-const document = {
+const document: ProgramMessage = {
   gik: "0.1",
-  type: "document",
+  type: "program",
   payload: {
-    root: {
-      capability: "workflow",
-      id: "order-workflow",
-      props: { label: "Order approval workflow" },
-      edges: {
-        children: [
-          {
-            capability: "step",
-            id: "controller",
-            props: { label: "Order controller" },
-            edges: {
-              on: {
-                submit: [
-                  { do: "confirm", args: { message: "Manager approval required", onConfirm: "approve" } },
-                ],
-                approve: [{ do: "invoke", args: { tool: "chargeCard" } }],
-                charged: [
-                  { do: "route", args: { to: "queue:fulfillment" } },
-                  { do: "assign", target: "order.fulfillment", args: { value: "queued" } },
-                ],
-                declined: [{ do: "assign", target: "order.status", args: { value: "payment_failed" } }],
+    handlers: [
+      {
+        id: "controller",
+        on: {
+          submit: [
+            {
+              do: "confirm",
+              args: {
+                message: "Manager approval required",
+                onConfirm: "approve",
               },
             },
-          },
-          {
-            capability: "status",
-            id: "status-view",
-            edges: { read: { lifecycle: "order.lifecycle.state", receipt: "payment.receipt" } },
-          },
-        ],
+          ],
+          approve: [{ do: "invoke", args: { tool: "chargeCard" } }],
+          charged: [
+            { do: "route", args: { to: "queue:fulfillment" } },
+            {
+              do: "assign",
+              target: "order.fulfillment",
+              args: { value: "queued" },
+            },
+          ],
+          declined: [
+            {
+              do: "assign",
+              target: "order.status",
+              args: { value: "payment_failed" },
+            },
+          ],
+        },
       },
-    },
+    ],
     machines: [
       {
         id: "order",
@@ -75,22 +76,21 @@ const document = {
   },
 };
 
-function findChild(node: ResolvedNode, id: string): ResolvedNode | undefined {
-  if (node.id === id) return node;
-  for (const c of node.children) {
-    const hit = findChild(c, id);
-    if (hit) return hit;
-  }
-  return undefined;
-}
-
 test("backend host: invoke settlement publishes a later lifecycle patch", async () => {
   const routed: Json[] = [];
   const orchestrator: Orchestrator = {
     async confirm(effect: OrchestratorEffect) {
       const onConfirm = effect.args.onConfirm;
       return typeof onConfirm === "string"
-        ? { events: [{ node: effect.node, name: onConfirm, payload: effect.payload } as GIKEvent] }
+        ? {
+            events: [
+              {
+                node: effect.node,
+                name: onConfirm,
+                payload: effect.payload,
+              } as GIKEvent,
+            ],
+          }
         : undefined;
     },
     async invoke(effect: OrchestratorEffect) {
@@ -101,7 +101,11 @@ test("backend host: invoke settlement publishes a later lifecycle patch", async 
           {
             op: "set" as const,
             path: "payment.receipt",
-            value: { id: `rcpt_${Math.floor(amount)}`, amount, status: "captured" } as Json,
+            value: {
+              id: `rcpt_${Math.floor(amount)}`,
+              amount,
+              status: "captured",
+            } as Json,
           },
         ],
         events: [{ node: effect.node, name: "charged" } as GIKEvent],
@@ -134,7 +138,11 @@ test("backend host: invoke settlement publishes a later lifecycle patch", async 
   assert.deepEqual(patches[1], {
     rev: 2,
     ops: [
-      { op: "set", path: "payment.receipt", value: { id: "rcpt_129", amount: 129.5, status: "captured" } },
+      {
+        op: "set",
+        path: "payment.receipt",
+        value: { id: "rcpt_129", amount: 129.5, status: "captured" },
+      },
       { op: "set", path: "order.fulfillment", value: "queued" },
       { op: "set", path: "order.lifecycle.state", value: "confirmed" },
     ],
@@ -146,39 +154,25 @@ test("backend host: invoke settlement publishes a later lifecycle patch", async 
   // The payment amount threaded through the approval (confirm) seam into the invoke.
   assert.equal((kernel.state() as any).payment.receipt.amount, 129.5);
   assert.equal((kernel.state() as any).order.lifecycle.state, "confirmed");
+  assert.equal(kernel.hasProjection(), false);
+  await assert.rejects(kernel.resolve(), ProjectionUnavailableError);
 });
-
-test("backend host: resolve() projects the same medium-neutral tree a UI adapter consumes", async () => {
-  const orchestrator: Orchestrator = {
-    async confirm(effect: OrchestratorEffect) {
-      const onConfirm = effect.args.onConfirm;
-      return typeof onConfirm === "string"
-        ? { events: [{ node: effect.node, name: onConfirm, payload: effect.payload } as GIKEvent] }
-        : undefined;
+test("backend host: document-level reactions run without a projection root", async () => {
+  const reactiveDocument = structuredClone(document);
+  reactiveDocument.payload.reactions = [
+    {
+      id: "order-audit",
+      when: "order.lifecycle.state",
+      run: [
+        { do: "assign", target: "order.observed", args: { from: "$when" } },
+      ],
     },
-    async invoke(effect: OrchestratorEffect) {
-      if (effect.tool !== "chargeCard") return;
-      const amount = (effect.payload?.amount as number | undefined) ?? 0;
-      return {
-        ops: [{ op: "set" as const, path: "payment.receipt", value: { amount, status: "captured" } as Json }],
-        events: [{ node: effect.node, name: "charged" } as GIKEvent],
-      };
-    },
-  };
-
-  const kernel = new Kernel(manifest as any, document as any, { orchestrator });
+  ];
+  const kernel = new Kernel(manifest as any, reactiveDocument as any);
   kernel.init();
-  await kernel.dispatch({ node: "controller", name: "submit", payload: { amount: 50 } });
-  await kernel.whenIdle();
+  await kernel.syncExternal();
+  assert.equal((kernel.state() as any).order.observed, undefined);
 
-  const resolved = await kernel.resolve();
-  const status = findChild(resolved, "status-view");
-
-  assert.ok(status, "status-view resolves");
-  // No pixels — the projection is a plain tree of capability/id/props a non-UI host can read.
-  assert.equal(status.capability, "status");
-  assert.equal(status.fallback, false);
-  assert.equal(status.visible, true);
-  assert.equal(status.props.lifecycle, "confirmed");
-  assert.deepEqual(status.props.receipt, { amount: 50, status: "captured" });
+  await kernel.dispatch({ node: "controller", name: "submit" });
+  assert.equal((kernel.state() as any).order.observed, "pending_review");
 });
