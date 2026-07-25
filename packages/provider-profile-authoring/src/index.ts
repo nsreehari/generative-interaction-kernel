@@ -1,1 +1,0 @@
-export * from "../../../providers/profile-authoring/src/index";

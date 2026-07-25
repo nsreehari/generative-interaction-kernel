@@ -1,4 +1,4 @@
-// The application host opens only the Blueprints declared in samples/profiles/registry.json.
+// The application host opens only the Blueprints declared in samples/blueprints/registry.json.
 // Bundle JSON discovery below exists solely for hidden host infrastructure (demo runner and control
 // harness). Ordinary Bundle artifacts are catalogued and previewed by the manage-bundles Blueprint.
 
@@ -12,7 +12,7 @@ import {
   type ProjectionView,
 } from "@gik/react";
 import { playgroundApp } from "../../../bundles/floor/projection_views/playground";
-import registry from "../../../profiles/registry.json";
+import registry from "../../../blueprints/registry.json";
 import { demoCatalog, resolveDemoComposition } from "../../../shared/demo-catalog";
 import { hasSampleBlueprint, openSampleBlueprint } from "../../../shared/blueprints";
 import {
@@ -30,7 +30,7 @@ const HOST_INFRASTRUCTURE_BUNDLES = ["demo-runner", "gik-control-harness"] as co
 
 // Vite build-time discovery of each bundle folder's parts, keyed by folder name. registry.json is the
 // authoritative list; these globs only supply the file contents for a declared bundle. Hosted app-root
-// projections may live under `approot/*`; workbench's unrelated nested `bundles/*` leaves stay excluded.
+// projections may live under `approot/*`.
 const rawVocabularies = import.meta.glob("../../../bundles/*/vocabulary.json", { eager: true, import: "default" });
 const rawPrograms = import.meta.glob("../../../bundles/*/program.json", { eager: true, import: "default" });
 const rawStates = import.meta.glob("../../../bundles/*/state.json", { eager: true, import: "default" });

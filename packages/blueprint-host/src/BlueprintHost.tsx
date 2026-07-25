@@ -13,13 +13,13 @@ import {
   type OrganismBridge,
   type ProviderResolver,
 } from "@gik/react";
-import type { BlueprintArtifact, LayerRecipe } from "@gik/profile";
+import type { BlueprintArtifact } from "@gik/blueprint";
 
 const EMPTY_COMPANIONS: CompositionOrganism[] = [];
 const EMPTY_CONTEXTS: BundleContextBindings = {};
 
 export interface BlueprintHostProps {
-  blueprint: BlueprintArtifact<LayerRecipe>;
+  blueprint: BlueprintArtifact;
   resolveLeavesProvider?: ProviderResolver;
   native?: BundleNative;
   companions?: CompositionOrganism[];
@@ -33,7 +33,7 @@ export interface BlueprintHostProps {
 }
 
 function runtimeFromBlueprint(
-  blueprint: BlueprintArtifact<LayerRecipe>,
+  blueprint: BlueprintArtifact,
   context?: Record<string, Json>,
 ) {
   return openBlueprint(blueprint, context ? { context } : undefined);

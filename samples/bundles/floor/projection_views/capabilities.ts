@@ -1,7 +1,7 @@
 // The PLATFORM FLOOR, part 1: the fixed, shared primitive capability vocabulary.
 //
 // This is the GenUI equivalent of the demo-boards-frontend's Tier-1 `cardViewEntries`: a single,
-// shared set of leaf capabilities that EVERY app/tool/profile composes from. Apps do not declare
+// shared set of leaf capabilities that every app, tool, and Blueprint composes from. Apps do not declare
 // their own capabilities — they reuse these. Adding an app is JSON; only adding a *primitive* (a
 // rare, platform-level event) touches this file and the matching component in registry.tsx.
 //
@@ -27,7 +27,7 @@ export const PRIMITIVE_ACTIONS = [
 /**
  * The shared primitive vocabulary. Kinds are intentionally generic (screen/row/col/panel/text/
  * list/field/button/...) so the same set renders the console, the playground, preview, and any
- * domain profile.
+ * domain Blueprint.
  */
 export const PRIMITIVE_CAPABILITIES: Record<string, CapabilityDescriptor> = {
   // --- Layout / containers ---

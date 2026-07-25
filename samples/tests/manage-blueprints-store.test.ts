@@ -2,501 +2,179 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import type { Json, PatchOp } from "@gik/kernel";
-import { stringifyBlueprint } from "@gik/profile";
-import { buildProfilePreviewBundle, manageBlueprintsEffects } from "../bundles/manage-blueprints/effect_handlers/store";
-import { sampleBlueprintCatalog } from "../catalog/profile-catalog";
+import { openSampleBlueprint } from "../shared/blueprints";
+import { manageBlueprintsEffects, manageBlueprintsStorageKey } from "../bundles/manage-blueprints/effect_handlers/store";
 
 type JsonRecord = Record<string, Json>;
+const initialState = openSampleBlueprint("manage-blueprints").state;
 
 class MemoryStorage implements Storage {
   private readonly values = new Map<string, string>();
-
-  get length(): number {
-    return this.values.size;
-  }
-
-  clear(): void {
-    this.values.clear();
-  }
-
-  getItem(key: string): string | null {
-    return this.values.get(key) ?? null;
-  }
-
-  key(index: number): string | null {
-    return Array.from(this.values.keys())[index] ?? null;
-  }
-
-  removeItem(key: string): void {
-    this.values.delete(key);
-  }
-
-  setItem(key: string, value: string): void {
-    this.values.set(key, value);
-  }
+  get length(): number { return this.values.size; }
+  clear(): void { this.values.clear(); }
+  getItem(key: string): string | null { return this.values.get(key) ?? null; }
+  key(index: number): string | null { return Array.from(this.values.keys())[index] ?? null; }
+  removeItem(key: string): void { this.values.delete(key); }
+  setItem(key: string, value: string): void { this.values.set(key, value); }
 }
 
-function createState(): Record<string, Json> {
-  return {
-    manageBlueprints: {
-      profiles: [],
-      catalogStatus: "",
-      selectedId: "",
-      profile: {
-        id: "",
-        kind: "",
-        version: "",
-        source: "",
-        readonly: true,
-        layerCount: 0,
-        recipeCount: 0,
-      },
-      pipeline: {
-        nodes: [],
-      },
-      layers: [],
-      selectedLayerId: "",
-      layerDetail: {
-        id: "",
-        kind: "",
-        schema: "",
-        description: "",
-        outgoingRecipe: {
-          id: "",
-          kind: "",
-          kindLabel: "",
-          from: "",
-          to: "",
-          summary: "",
-          constrainedWhenText: "",
-          containerCapability: "",
-          fallbackCapability: "",
-          fromLayer: { id: "", kind: "", schema: "", description: "" },
-          toLayer: { id: "", kind: "", schema: "", description: "" },
-          ruleGroups: [],
-          templates: [],
-          runtimeRules: [],
-          runtimeCapabilities: [],
-        },
-        incomingRecipe: {
-          id: "",
-          kind: "",
-          kindLabel: "",
-          from: "",
-          to: "",
-          summary: "",
-          constrainedWhenText: "",
-          containerCapability: "",
-          fallbackCapability: "",
-          fromLayer: { id: "", kind: "", schema: "", description: "" },
-          toLayer: { id: "", kind: "", schema: "", description: "" },
-          ruleGroups: [],
-          templates: [],
-          runtimeRules: [],
-          runtimeCapabilities: [],
-        },
-      },
-      selectedRecipeId: "",
-      recipeDetail: {
-        id: "",
-        kind: "",
-        kindLabel: "",
-        from: "",
-        to: "",
-        summary: "",
-        constrainedWhenText: "",
-        containerCapability: "",
-        fallbackCapability: "",
-        fromLayer: { id: "", kind: "", schema: "", description: "" },
-        toLayer: { id: "", kind: "", schema: "", description: "" },
-        ruleGroups: [],
-        templates: [],
-        runtimeRules: [],
-        runtimeCapabilities: [],
-      },
-      validation: {
-        status: "unknown",
-        level: "unknown",
-        summary: "",
-        errors: [],
-        warnings: [],
-        errorsText: "",
-        warningsText: "",
-      },
-      artifacts: {
-        profileText: "",
-        recipesText: "",
-        resolvedText: "",
-        bundleText: "",
-      },
-      editor: {
-        id: "",
-        bundleText: "",
-        status: "",
-        error: "",
-      },
-      tab: "overview",
-      sourceInputForm: { properties: {} },
-      sourceInput: {},
-      previewContextForm: {
-        properties: {
-          surface: {
-            title: "Surface",
-            default: "desktop",
-            enum: ["desktop", "web", "mobile", "copilot", "teams"],
-          },
-        },
-        required: ["surface"],
-      },
-      previewContext: { surface: "desktop" },
-      previewBundle: null,
-      previewError: "",
-    },
-  } as unknown as Record<string, Json>;
+function createState(): JsonRecord {
+  return JSON.parse(JSON.stringify(initialState)) as JsonRecord;
 }
 
-function getPath(state: Record<string, Json>, path: string): Json {
-  return path.split(".").reduce<Json>((current, segment) => {
-    if (!current || typeof current !== "object" || Array.isArray(current)) return null;
-    return ((current as JsonRecord)[segment] ?? null) as Json;
-  }, state as unknown as Json);
+function getPath(root: JsonRecord, path: string): Json | undefined {
+  let current: Json | undefined = root;
+  for (const segment of path.split(".")) {
+    if (!current || Array.isArray(current) || typeof current !== "object") return undefined;
+    current = current[segment];
+  }
+  return current;
 }
 
-function setPath(state: Record<string, Json>, path: string, value: Json): void {
+function setPath(root: JsonRecord, path: string, value: Json): void {
   const segments = path.split(".");
-  let cursor = state as JsonRecord;
+  let current = root;
   for (const segment of segments.slice(0, -1)) {
-    const next = cursor[segment];
-    if (!next || typeof next !== "object" || Array.isArray(next)) {
-      cursor[segment] = {} as Json;
-    }
-    cursor = cursor[segment] as JsonRecord;
+    const next = current[segment];
+    if (!next || Array.isArray(next) || typeof next !== "object") current[segment] = {};
+    current = current[segment] as JsonRecord;
   }
-  cursor[segments[segments.length - 1]] = value;
+  current[segments.at(-1)!] = value;
 }
 
-function applyOps(state: Record<string, Json>, ops: readonly PatchOp[] | undefined): void {
-  for (const op of ops ?? []) {
-    if (op.op === "set") setPath(state, op.path, op.value as Json);
-  }
+function applyOps(state: JsonRecord, ops: readonly PatchOp[] | undefined): void {
+  for (const op of ops ?? []) if (op.op === "set") setPath(state, op.path, op.value ?? null);
 }
 
 function opValue(ops: readonly PatchOp[] | undefined, path: string): Json {
   const matches = (ops ?? []).filter((op) => op.op === "set" && op.path === path);
-  return (matches[matches.length - 1]?.value ?? null) as Json;
+  return matches.at(-1)?.value ?? null;
 }
 
-function opRecord(ops: readonly PatchOp[] | undefined, path: string): JsonRecord {
-  return opValue(ops, path) as JsonRecord;
+function context(state: JsonRecord, payload: JsonRecord = {}) {
+  return {
+    get: (path: string) => getPath(state, path) ?? null,
+    set: (path: string, value: Json) => ({ op: "set" as const, path, value }),
+    args: {},
+    payload,
+    store: { get: (path: string) => getPath(state, path) } as never,
+  };
 }
 
-test("getBlueprint marks repo sample entries as read-only and seeds the editor bundle", async () => {
-  const storage = new MemoryStorage();
-  Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
-
+test("listBlueprints exposes repository artifacts as read-only", async () => {
+  Object.defineProperty(globalThis, "localStorage", { value: new MemoryStorage(), configurable: true });
   const state = createState();
-  const result = await manageBlueprintsEffects.getBlueprint({
-    get: (path) => getPath(state, path),
-    set: (path, value) => ({ op: "set", path, value }),
-    args: {},
-    payload: { id: "live-cards" },
-    store: { get: (path: string) => getPath(state, path) } as never,
-  });
+  const result = await manageBlueprintsEffects.listBlueprints(context(state));
+  const rows = opValue(result?.ops, "manageBlueprints.blueprints") as JsonRecord[];
 
-  assert.equal(opRecord(result?.ops, "manageBlueprints.profile").readonly, true);
-  assert.equal(typeof opRecord(result?.ops, "manageBlueprints.editor").bundleText, "string");
-  assert.match(String(opRecord(result?.ops, "manageBlueprints.editor").status), /read-only/i);
-  assert.equal(opValue(result?.ops, "manageBlueprints.selectedLayerId"), sampleBlueprintCatalog[0].blueprint.payload.tiers[0].id);
-  assert.equal(opValue(result?.ops, "manageBlueprints.selectedRecipeId"), "");
-  assert.equal((opRecord(result?.ops, "manageBlueprints.sourceInput") as JsonRecord).interaction, "investigate");
-  assert.equal((opRecord(result?.ops, "manageBlueprints.previewContext") as JsonRecord).surface, "desktop");
+  assert.ok(rows.length > 0);
+  assert.equal(rows.some((row) => row.id === "samples-overview" && row.source === "repo" && row.readonly === true), true);
 });
 
-test("layer vocabulary is derived from template metadata for both source and presentation layers", async () => {
+test("create, save, reload, challenge, and delete stay inside blueprint-local storage", async () => {
   const storage = new MemoryStorage();
   Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
+  const state = createState();
 
-  const sourceState = createState();
-  const liveCards = await manageBlueprintsEffects.getBlueprint({
-    get: (path) => getPath(sourceState, path),
-    set: (path, value) => ({ op: "set", path, value }),
-    args: {},
-    payload: { id: "live-cards" },
-    store: { get: (path: string) => getPath(sourceState, path) } as never,
-  });
-  const liveCardsGroups = (opRecord(liveCards?.ops, "manageBlueprints.layerDetail").vocabulary as JsonRecord).groups as JsonRecord[];
-  assert.deepEqual(liveCardsGroups.map((group) => group.id), ["interactions", "roles", "context"]);
+  const created = await manageBlueprintsEffects.createBlueprint(context(state));
+  applyOps(state, created?.ops);
+  assert.equal(getPath(state, "manageBlueprints.tab"), "draft");
+  assert.equal(getPath(state, "manageBlueprints.validation.previewable"), true);
 
-  const presentationState = createState();
-  const fourLayers = await manageBlueprintsEffects.getBlueprint({
-    get: (path) => getPath(presentationState, path),
-    set: (path, value) => ({ op: "set", path, value }),
-    args: {},
-    payload: { id: "4layers" },
-    store: { get: (path: string) => getPath(presentationState, path) } as never,
-  });
-  applyOps(presentationState, fourLayers?.ops as PatchOp[] | undefined);
+  const saved = await manageBlueprintsEffects.saveBlueprint(context(state));
+  applyOps(state, saved?.ops);
+  const localId = String(getPath(state, "manageBlueprints.selectedId"));
+  assert.equal(localId, "untitled-blueprint-local");
+  assert.ok(storage.getItem(manageBlueprintsStorageKey)?.includes(localId));
 
-  const presentationLayer = await manageBlueprintsEffects.selectLayer({
-    get: (path) => getPath(presentationState, path),
-    set: (path, value) => ({ op: "set", path, value }),
-    args: {},
-    payload: { id: "presentation" },
-    store: { get: (path: string) => getPath(presentationState, path) } as never,
-  });
-  const presentationGroups = (opRecord(presentationLayer?.ops, "manageBlueprints.layerDetail").vocabulary as JsonRecord).groups as JsonRecord[];
-  assert.deepEqual(presentationGroups.map((group) => group.id), ["layouts", "presentations"]);
+  setPath(state, "manageBlueprints.editor.id", "renamed-blueprint-local");
+  const renamed = await manageBlueprintsEffects.saveBlueprint(context(state));
+  applyOps(state, renamed?.ops);
+  const storedAfterRename = storage.getItem(manageBlueprintsStorageKey) ?? "";
+  assert.equal(storedAfterRename.includes(`\"${localId}\"`), false);
+  assert.equal(storedAfterRename.includes("renamed-blueprint-local"), true);
+  const renamedId = "renamed-blueprint-local";
+
+  const reloaded = await manageBlueprintsEffects.listBlueprints(context(createState()));
+  const rows = opValue(reloaded?.ops, "manageBlueprints.blueprints") as JsonRecord[];
+  assert.equal(rows.some((row) => row.id === renamedId && row.source === "local" && row.readonly === false), true);
+
+  const requested = await manageBlueprintsEffects.requestDeleteBlueprint(context(state));
+  assert.equal((opValue(requested?.ops, "manageBlueprints.deleteChallenge") as JsonRecord).open, true);
+  assert.match(String((opValue(requested?.ops, "manageBlueprints.deleteChallenge") as JsonRecord).message), /cannot be undone/i);
+
+  const deleted = await manageBlueprintsEffects.deleteBlueprint(context(state));
+  assert.equal(deleted?.outcome, "deleted");
+  assert.equal(storage.getItem(manageBlueprintsStorageKey), "{}");
+  assert.equal(opValue(deleted?.ops, "manageBlueprints.selectedId"), "");
 });
 
-test("blueprint manager inspector metadata drives workflow recipe labels and sample seeds", async () => {
-  const storage = new MemoryStorage();
-  Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
-
+test("repository ids cannot be overwritten or deleted", async () => {
+  Object.defineProperty(globalThis, "localStorage", { value: new MemoryStorage(), configurable: true });
   const state = createState();
-  const result = await manageBlueprintsEffects.getBlueprint({
-    get: (path) => getPath(state, path),
-    set: (path, value) => ({ op: "set", path, value }),
-    args: {},
-    payload: { id: "4layers" },
-    store: { get: (path: string) => getPath(state, path) } as never,
-  });
+  const loaded = await manageBlueprintsEffects.getBlueprint(context(state, { id: "samples-overview" }));
+  applyOps(state, loaded?.ops);
 
-  const detail = opRecord(result?.ops, "manageBlueprints.layerDetail");
-  const seeds = detail.seeds as JsonRecord[];
-  assert.equal((detail.outgoingRecipe as JsonRecord).kindLabel, "Workflow → Interaction");
-  assert.equal((detail.outgoingRecipe as JsonRecord).tagline, "selects the interaction");
-  assert.deepEqual(seeds.map((seed) => seed.label), [
-    "incident-triage",
-    "portfolio-review",
-    "operations-monitoring",
-    "change-approval",
+  const saved = await manageBlueprintsEffects.saveBlueprint(context(state));
+  assert.equal(saved?.outcome, "readonly");
+  assert.match(String(opValue(saved?.ops, "manageBlueprints.editor.error")), /read-only/i);
+
+  const deleted = await manageBlueprintsEffects.requestDeleteBlueprint(context(state));
+  assert.equal(deleted?.outcome, "readonly");
+});
+
+test("importBlueprint validates file text and opens an unsaved local draft", async () => {
+  Object.defineProperty(globalThis, "localStorage", { value: new MemoryStorage(), configurable: true });
+  const state = createState();
+  applyOps(state, (await manageBlueprintsEffects.createBlueprint(context(state)))?.ops);
+  const text = String(getPath(state, "manageBlueprints.editor.blueprintText"));
+
+  const imported = await manageBlueprintsEffects.importBlueprint(context(createState(), {
+    name: "Incident Review.blueprint.json",
+    text,
+  }));
+
+  assert.equal(imported?.outcome, "draft-imported");
+  assert.equal((opValue(imported?.ops, "manageBlueprints.editor") as JsonRecord).id, "incident-review-local");
+  assert.equal(opValue(imported?.ops, "manageBlueprints.tab"), "draft");
+});
+
+test("preview exposes a validated structural Blueprint summary", async () => {
+  Object.defineProperty(globalThis, "localStorage", { value: new MemoryStorage(), configurable: true });
+  const portableState = createState();
+  applyOps(portableState, (await manageBlueprintsEffects.createBlueprint(context(portableState)))?.ops);
+
+  const portable = await manageBlueprintsEffects.previewBlueprint(context(portableState));
+  assert.equal(portable?.outcome, "summary-ready");
+  assert.notEqual(opValue(portable?.ops, "manageBlueprints.previewBlueprint"), null);
+});
+
+test("preview resolves the canonical tier and recipe chain", async () => {
+  Object.defineProperty(globalThis, "localStorage", { value: new MemoryStorage(), configurable: true });
+  const state = createState();
+  applyOps(state, (await manageBlueprintsEffects.createBlueprint(context(state)))?.ops);
+  const artifact = JSON.parse(String(getPath(state, "manageBlueprints.editor.blueprintText"))) as JsonRecord;
+  const payload = artifact.payload as JsonRecord;
+  payload.tiers = [
+    { id: "intent", kind: "intent" },
+    { id: "presentation", kind: "presentation" },
+    { id: "runtime-document", kind: "runtime-document" },
+  ];
+  payload.recipes = [
+    { id: "intent-to-presentation", from: "intent", to: "presentation" },
+    { id: "presentation-to-runtime", from: "presentation", to: "runtime-document" },
+  ];
+  setPath(state, "manageBlueprints.editor.blueprintText", JSON.stringify(artifact));
+
+  const preview = await manageBlueprintsEffects.previewBlueprint(context(state));
+  const inspection = opValue(preview?.ops, "manageBlueprints.inspection") as JsonRecord;
+  const recipes = inspection.recipes as JsonRecord[];
+  assert.equal(preview?.outcome, "summary-ready");
+  assert.deepEqual(recipes.map((recipe) => [recipe.from, recipe.to]), [
+    ["intent", "presentation"],
+    ["presentation", "runtime-document"],
   ]);
-  assert.equal(((seeds[0]?.payload as JsonRecord)?.workflow), "incident-triage");
-});
-
-test("$init hydrates canonical local blueprints", async () => {
-  const storage = new MemoryStorage();
-  Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
-
-  const sample = sampleBlueprintCatalog[0];
-  const localId = "live-cards-local";
-  storage.setItem(
-    "gik.manage-blueprints.blueprints.v1",
-    JSON.stringify({
-      [localId]: {
-        ...sample.blueprint,
-        payload: {
-          ...sample.blueprint.payload,
-          id: localId,
-        },
-      },
-    })
-  );
-
-  const state = createState();
-  const result = await manageBlueprintsEffects.$init?.({
-    get: (path) => getPath(state, path),
-    set: (path, value) => ({ op: "set", path, value }),
-    args: {},
-    payload: {},
-    store: { get: (path: string) => getPath(state, path) } as never,
-  });
-
-  const rows = opValue(result?.ops, "manageBlueprints.profiles") as Array<Record<string, Json>>;
-  assert.equal(rows.some((row) => row.id === localId && row.source === "local"), true);
-  assert.ok(storage.getItem("gik.manage-blueprints.blueprints.v1"));
-});
-
-test("seedLocalDraft creates a visible local draft flow even when nothing was selected", async () => {
-  const storage = new MemoryStorage();
-  Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
-
-  const state = createState();
-  const result = await manageBlueprintsEffects.seedLocalDraft({
-    get: (path) => getPath(state, path),
-    set: (path, value) => ({ op: "set", path, value }),
-    args: {},
-    payload: {},
-    store: { get: (path: string) => getPath(state, path) } as never,
-  });
-
-  assert.equal(opValue(result?.ops, "manageBlueprints.selectedId"), "live-cards");
-  assert.equal(opValue(result?.ops, "manageBlueprints.tab"), "draft");
-  assert.equal(opRecord(result?.ops, "manageBlueprints.editor").id, "live-cards-local");
-  assert.match(String(opRecord(result?.ops, "manageBlueprints.editor").status), /New draft from/);
-});
-
-test("saveBlueprint persists a local blueprint and listBlueprints exposes it as editable", async () => {
-  const storage = new MemoryStorage();
-  Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
-
-  const sample = sampleBlueprintCatalog[0];
-  const localId = "live-cards-local";
-  const localText = stringifyBlueprint({
-    ...sample.blueprint,
-    payload: {
-      ...sample.blueprint.payload,
-      id: localId,
-    },
-  });
-
-  const state = createState();
-  setPath(state, "manageBlueprints.selectedId", "live-cards");
-  setPath(state, "manageBlueprints.editor.id", localId);
-  setPath(state, "manageBlueprints.editor.bundleText", localText);
-  setPath(state, "manageBlueprints.editor.status", "draft");
-
-  const saved = await manageBlueprintsEffects.saveBlueprint({
-    get: (path) => getPath(state, path),
-    set: (path, value) => ({ op: "set", path, value }),
-    args: {},
-    payload: {},
-    store: { get: (path: string) => getPath(state, path) } as never,
-  });
-  applyOps(state, saved?.ops as PatchOp[] | undefined);
-
-  const raw = storage.getItem("gik.manage-blueprints.blueprints.v1");
-  assert.ok(raw, "saved profile should be written to localStorage");
-  assert.ok(raw?.includes(localId));
-  assert.equal(opValue(saved?.ops, "manageBlueprints.selectedId"), localId);
-  assert.equal(opRecord(saved?.ops, "manageBlueprints.profile").readonly, false);
-
-  const synced = await manageBlueprintsEffects.listBlueprints({
-    get: (path) => getPath(state, path),
-    set: (path, value) => ({ op: "set", path, value }),
-    args: {},
-    payload: {},
-    store: { get: (path: string) => getPath(state, path) } as never,
-  });
-  const rows = opValue(synced?.ops, "manageBlueprints.profiles") as Array<Record<string, Json>>;
-  assert.equal(rows.some((row) => row.id === localId && row.readonly === false && row.source === "local"), true);
-});
-
-test("deleteBlueprint removes the stored local profile and clears the selection", async () => {
-  const storage = new MemoryStorage();
-  Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
-
-  const sample = sampleBlueprintCatalog[0];
-  const localId = "live-cards-local";
-  storage.setItem(
-    "gik.manage-blueprints.blueprints.v1",
-    JSON.stringify({
-      [localId]: {
-        ...sample.blueprint,
-        payload: {
-          ...sample.blueprint.payload,
-          id: localId,
-        },
-      },
-    })
-  );
-
-  const state = createState();
-  setPath(state, "manageBlueprints.selectedId", localId);
-
-  const requested = await manageBlueprintsEffects.requestDeleteBlueprint({
-    get: (path) => getPath(state, path),
-    set: (path, value) => ({ op: "set", path, value }),
-    args: {},
-    payload: {},
-    store: { get: (path: string) => getPath(state, path) } as never,
-  });
-  assert.equal(opRecord(requested?.ops, "manageBlueprints.deleteChallenge").open, true);
-  assert.match(String(opRecord(requested?.ops, "manageBlueprints.deleteChallenge").message), /cannot be undone/i);
-
-  const result = await manageBlueprintsEffects.deleteBlueprint({
-    get: (path) => getPath(state, path),
-    set: (path, value) => ({ op: "set", path, value }),
-    args: {},
-    payload: {},
-    store: { get: (path: string) => getPath(state, path) } as never,
-  });
-
-  assert.equal(storage.getItem("gik.manage-blueprints.blueprints.v1"), "{}");
-  assert.equal(opValue(result?.ops, "manageBlueprints.selectedId"), "");
-  assert.match(String(opRecord(result?.ops, "manageBlueprints.editor").status), /Deleted local profile/);
-});
-
-test("selectLayer and selectRecipe update the focused detail models", async () => {
-  const storage = new MemoryStorage();
-  Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
-
-  const sample = sampleBlueprintCatalog[0];
-  const state = createState();
-  setPath(state, "manageBlueprints.selectedId", sample.blueprint.payload.id);
-  setPath(state, "manageBlueprints.selectedLayerId", sample.blueprint.payload.tiers[0].id);
-  setPath(state, "manageBlueprints.selectedRecipeId", sample.blueprint.payload.recipes[0].id);
-
-  const selectedLayer = sample.blueprint.payload.tiers[1].id;
-  const layerResult = await manageBlueprintsEffects.selectLayer({
-    get: (path) => getPath(state, path),
-    set: (path, value) => ({ op: "set", path, value }),
-    args: {},
-    payload: { id: selectedLayer },
-    store: { get: (path: string) => getPath(state, path) } as never,
-  });
-
-  assert.equal(opValue(layerResult?.ops, "manageBlueprints.selectedLayerId"), selectedLayer);
-  assert.equal(opRecord(layerResult?.ops, "manageBlueprints.layerDetail").id, selectedLayer);
-  assert.equal(opValue(layerResult?.ops, "manageBlueprints.selectedRecipeId"), "");
-
-  const selectedRecipe = sample.blueprint.payload.recipes[1].id;
-  const recipeResult = await manageBlueprintsEffects.selectRecipe({
-    get: (path) => getPath(state, path),
-    set: (path, value) => ({ op: "set", path, value }),
-    args: {},
-    payload: { id: selectedRecipe },
-    store: { get: (path: string) => getPath(state, path) } as never,
-  });
-
-  assert.equal(opValue(recipeResult?.ops, "manageBlueprints.selectedLayerId"), sample.blueprint.payload.recipes[1].from);
-  assert.equal(opValue(recipeResult?.ops, "manageBlueprints.selectedRecipeId"), selectedRecipe);
-  assert.equal(opRecord(recipeResult?.ops, "manageBlueprints.recipeDetail").id, selectedRecipe);
-  assert.equal((opRecord(recipeResult?.ops, "manageBlueprints.layerDetail").outgoingRecipe as JsonRecord).id, selectedRecipe);
-});
-
-test("configure preview for live-cards emits the frontend editable-table kind end-to-end", () => {
-  const liveCards = sampleBlueprintCatalog.find((entry) => entry.blueprint.payload.id === "live-cards");
-  assert.ok(liveCards, "live-cards sample profile should be registered");
-
-  const bundle = buildProfilePreviewBundle(liveCards, {
-    source: {
-      interaction: "configure",
-      subject: "incident",
-    },
-    ctx: {
-      surface: "desktop",
-    },
-  });
-
-  const document = (bundle.program as { payload: { root: { edges?: { children?: Array<Record<string, unknown>> } } } }).payload;
-  const settings = document.root.edges?.children?.find((child) => child.id === "settings-region") as
-    | { capability?: string; edges?: { read?: Record<string, unknown> }; props?: Record<string, unknown> }
-    | undefined;
-
-  assert.equal(settings?.capability, "ui:editable-table");
-  assert.deepEqual(settings?.edges?.read, { rows: "fetched_sources.orders" });
-  assert.deepEqual(settings?.props?.spec, {
-    columns: ["id", "amount"],
-    addRow: false,
-    deleteRow: false,
-  });
-});
-
-test("workflow source preview runs from the source layer form instead of assuming interaction fields", () => {
-  const fourLayers = sampleBlueprintCatalog.find((entry) => entry.blueprint.payload.id === "4layers");
-  assert.ok(fourLayers, "4layers sample profile should be registered");
-
-  const bundle = buildProfilePreviewBundle(fourLayers, {
-    source: {
-      workflow: "change-approval",
-      subject: "incident",
-    },
-    ctx: {
-      surface: "desktop",
-    },
-  });
-
-  const document = (bundle.program as unknown as { payload: { root: Record<string, unknown> } }).payload;
-  assert.equal(typeof document.root.id, "string");
+  assert.equal(inspection.terminalTier, "runtime-document");
+  assert.equal(inspection.executionStatus, "lowering-required");
+  assert.match(String(inspection.executionReason), /dialect-owned lowering/i);
 });

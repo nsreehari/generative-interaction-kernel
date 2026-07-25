@@ -1,8 +1,8 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
-const profilePackage = fileURLToPath(
-  new URL("./profile/src/index.ts", import.meta.url)
+const blueprintPackage = fileURLToPath(
+  new URL("./blueprint/src/index.ts", import.meta.url)
 );
 const providerConsequenceGraph = fileURLToPath(
   new URL("./packages/provider-consequence-graph/src/index.ts", import.meta.url)
@@ -13,8 +13,8 @@ const providerExploratoryGraph = fileURLToPath(
 const providerStepOrchestrator = fileURLToPath(
   new URL("./packages/provider-step-orchestrator/src/index.ts", import.meta.url)
 );
-const providerProfileAuthoring = fileURLToPath(
-  new URL("./packages/provider-profile-authoring/src/index.ts", import.meta.url)
+const providerBlueprintAuthoring = fileURLToPath(
+  new URL("./packages/provider-blueprint-authoring/src/index.ts", import.meta.url)
 );
 
 export default defineConfig({
@@ -36,6 +36,13 @@ export default defineConfig({
       },
       {
         test: {
+          name: "blueprint",
+          environment: "node",
+          include: ["blueprint/test/**/*.test.ts"],
+        },
+      },
+      {
+        test: {
           name: "profile",
           environment: "node",
           include: ["profile/test/**/*.test.ts"],
@@ -51,7 +58,7 @@ export default defineConfig({
       {
         resolve: {
           alias: {
-            "@gik/profile": profilePackage,
+            "@gik/blueprint": blueprintPackage,
           },
         },
         test: {
@@ -63,7 +70,7 @@ export default defineConfig({
       {
         resolve: {
           alias: {
-            "@gik/profile": profilePackage,
+            "@gik/blueprint": blueprintPackage,
           },
         },
         test: {
@@ -82,11 +89,11 @@ export default defineConfig({
       {
         resolve: {
           alias: {
-            "@gik/profile": profilePackage,
+            "@gik/blueprint": blueprintPackage,
             "@gik/provider-consequence-graph": providerConsequenceGraph,
             "@gik/provider-exploratory-graph": providerExploratoryGraph,
             "@gik/provider-step-orchestrator": providerStepOrchestrator,
-            "@gik/provider-profile-authoring": providerProfileAuthoring,
+            "@gik/provider-blueprint-authoring": providerBlueprintAuthoring,
           },
         },
         test: {

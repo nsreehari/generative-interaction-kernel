@@ -1,4 +1,0 @@
-{
-  "extends": "../kernel/tsconfig.json",
-  "include": ["src"]
-}

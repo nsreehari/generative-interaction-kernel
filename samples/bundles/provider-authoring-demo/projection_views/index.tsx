@@ -14,11 +14,11 @@ import {
   inspectExploratoryGraph,
 } from "@gik/provider-exploratory-graph";
 import {
-  createProfileAuthoringRegistry,
+  createBlueprintAuthoringRegistry,
   summarizeBlueprint,
-} from "@gik/provider-profile-authoring";
+} from "@gik/provider-blueprint-authoring";
 import { StepOrchestrator, type FlowRegistry } from "@gik/provider-step-orchestrator";
-import { liveCardsBlueprint } from "../../../catalog/profile-catalog";
+import samplesOverviewBlueprint from "../../../blueprints/samples-overview/blueprint.json" with { type: "json" };
 
 function prettyJson(value: unknown): string {
   return JSON.stringify(value, null, 2);
@@ -53,7 +53,7 @@ const useStyles = makeStyles({
   preTop: { marginTop: tokens.spacingVerticalM },
 });
 
-const orchestratorRegistry: FlowRegistry = createProfileAuthoringRegistry();
+const orchestratorRegistry: FlowRegistry = createBlueprintAuthoringRegistry();
 const orchestrator = new StepOrchestrator(orchestratorRegistry);
 
 function toJsonRecord(value: unknown): Record<string, Json> {
@@ -66,7 +66,7 @@ export interface ProviderAuthoringPlanInput {
   surface: string;
   changedSource: string;
   stream: string;
-  profileSeedName: string;
+  blueprintSeedName: string;
 }
 
 export interface ProviderAuthoringPlanResult {
@@ -74,8 +74,8 @@ export interface ProviderAuthoringPlanResult {
   consequenceActivation: ReturnType<typeof activateConsequenceGraph>;
   exploratoryInspection: ReturnType<typeof inspectExploratoryGraph>;
   exploratoryFrontier: ReturnType<typeof evaluateExploratoryFrontier>;
-  profileSeed: {
-    blueprint: typeof liveCardsBlueprint;
+  blueprintSeed: {
+    blueprint: typeof samplesOverviewBlueprint;
     summary: ReturnType<typeof summarizeBlueprint>;
   } | null;
   args: Record<string, Json>;
@@ -90,11 +90,11 @@ export function buildProviderAuthoringPlan(input: ProviderAuthoringPlanInput): P
     ["tenthComplete"],
     input.stream ? { choose12th: input.stream } : {}
   );
-  const profileSeed =
-    input.mode === "profile-artifact" && input.profileSeedName === "live-cards"
+  const blueprintSeed =
+    input.mode === "blueprint-artifact" && input.blueprintSeedName === "samples-overview"
       ? {
-          blueprint: liveCardsBlueprint,
-          summary: summarizeBlueprint(liveCardsBlueprint),
+          blueprint: samplesOverviewBlueprint,
+          summary: summarizeBlueprint(samplesOverviewBlueprint),
         }
       : null;
 
@@ -105,8 +105,8 @@ export function buildProviderAuthoringPlan(input: ProviderAuthoringPlanInput): P
     consequence: toJsonRecord(consequenceActivation),
     exploratory: toJsonRecord(exploratoryFrontier),
   };
-  if (profileSeed?.blueprint) {
-    args.blueprint = toJsonRecord(profileSeed.blueprint);
+  if (blueprintSeed?.blueprint) {
+    args.blueprint = toJsonRecord(blueprintSeed.blueprint);
   }
 
   return {
@@ -114,7 +114,7 @@ export function buildProviderAuthoringPlan(input: ProviderAuthoringPlanInput): P
     consequenceActivation,
     exploratoryInspection,
     exploratoryFrontier,
-    profileSeed,
+    blueprintSeed,
     args,
   };
 }
@@ -127,18 +127,18 @@ const ProviderAuthoringSampleView: ProjectionView = ({ node }) => {
   const surface = props.str("surface") || "copilot";
   const changedSource = props.str("changedSource") || "portfolio";
   const stream = props.str("stream") || "";
-  const profileSeedName = props.str("profileSeed") || "live-cards";
+  const blueprintSeedName = props.str("blueprintSeed") || "samples-overview";
 
   const planInput = React.useMemo(
-    () => ({ mode, objective, surface, changedSource, stream, profileSeedName }),
-    [changedSource, mode, objective, profileSeedName, stream, surface]
+    () => ({ mode, objective, surface, changedSource, stream, blueprintSeedName }),
+    [blueprintSeedName, changedSource, mode, objective, stream, surface]
   );
   const planModel = React.useMemo(() => buildProviderAuthoringPlan(planInput), [planInput]);
   const consequenceInspection = planModel.consequenceInspection;
   const consequenceActivation = planModel.consequenceActivation;
   const exploratoryInspection = planModel.exploratoryInspection;
   const exploratoryFrontier = planModel.exploratoryFrontier;
-  const profileSeed = planModel.profileSeed;
+  const blueprintSeed = planModel.blueprintSeed;
 
   const [plan, setPlan] = React.useState<Record<string, unknown> | null>(null);
 
@@ -148,7 +148,7 @@ const ProviderAuthoringSampleView: ProjectionView = ({ node }) => {
       .invoke({
         kind: "invoke",
         node: "provider-authoring-sample",
-        tool: "authorProfilePlan",
+        tool: "authorBlueprintPlan",
         args: planModel.args,
       })
       .then((result) => {
@@ -163,9 +163,9 @@ const ProviderAuthoringSampleView: ProjectionView = ({ node }) => {
   return (
     <div className={styles.stack}>
       <p className="gx-note gx-note-muted">
-        {mode === "profile-artifact"
-          ? "This mode starts from a declared profile artifact, then uses the consequence and exploratory graphs to explain how the existing recipe chain should be applied."
-          : "This mode is graph-driven: the consequence graph explains downstream activation, the exploratory graph explains unlocked choice frontiers, and the StepOrchestrator composes a draft authoring profile and lowering recipes."}
+        {mode === "blueprint-artifact"
+          ? "This mode starts from a declared Blueprint artifact and uses the graphs to explain its context."
+          : "This mode is graph-driven: the consequence graph explains downstream activation, the exploratory graph explains unlocked choice frontiers, and the StepOrchestrator composes a draft Blueprint."}
       </p>
 
       <div className={styles.grid}>
@@ -204,13 +204,13 @@ const ProviderAuthoringSampleView: ProjectionView = ({ node }) => {
         </div>
       </div>
 
-      {profileSeed ? (
+      {blueprintSeed ? (
         <div className={styles.card}>
           <div className="gx-muted">Declared blueprint</div>
-          <strong>{profileSeed.summary?.id}</strong>
-          <div>version = {profileSeed.summary?.version}</div>
-          <div>tiers = {profileSeed.summary?.tiers.map((tier) => tier.id).join(", ")}</div>
-          <pre className={`${styles.pre} ${styles.preTop}`}>{prettyJson(profileSeed.summary)}</pre>
+          <strong>{blueprintSeed.summary?.id}</strong>
+          <div>version = {blueprintSeed.summary?.version}</div>
+          <div>tiers = {blueprintSeed.summary?.tiers.map((tier) => tier.id).join(", ")}</div>
+          <pre className={`${styles.pre} ${styles.preTop}`}>{prettyJson(blueprintSeed.summary)}</pre>
         </div>
       ) : null}
 
@@ -219,7 +219,7 @@ const ProviderAuthoringSampleView: ProjectionView = ({ node }) => {
           <div className="gx-muted">StepOrchestrator authoring plan</div>
           <strong>{objective}</strong>
           <div>surface = {surface}</div>
-          <div>tool = authorProfilePlan</div>
+          <div>tool = authorBlueprintPlan</div>
           <div>mode = {mode}</div>
           <pre className={`${styles.pre} ${styles.preTop}`}>{prettyJson(plan)}</pre>
         </div>
@@ -230,8 +230,8 @@ const ProviderAuthoringSampleView: ProjectionView = ({ node }) => {
               mode,
               consequence: consequenceActivation,
               exploratory: exploratoryFrontier,
-              profileSeed: plan?.profileSeed,
-              profile: plan?.profile,
+              blueprintSeed: plan?.blueprintSeed,
+              blueprint: plan?.blueprint,
               recipes: plan?.recipes,
             })}
           </pre>

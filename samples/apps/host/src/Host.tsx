@@ -22,7 +22,7 @@ import {
   writePresentationNavigation,
 } from "./host-query";
 import { switcherBundle } from "../../../bundles/approot/switcher/projection_views";
-import { sampleProfileComponents } from "../../../bundles/floor/projection_views/profile";
+import { FLOOR_COMPONENTS } from "../../../bundles/floor/projection_views";
 import { demoCatalog } from "../../../shared/demo-catalog";
 import { GikDemoBlueprintHost } from "../../../shared/GikDemoBlueprintHost";
 
@@ -133,7 +133,7 @@ export function Host(): React.ReactElement {
     return unsubscribe;
   }, [contexts, resolvedPresentationContext]);
   const resolveProvider = React.useCallback(
-    (from: string) => (from === "profile" ? sampleProfileComponents : resolveBundleProjectionViews(from)),
+    (from: string) => (from === "floor" ? FLOOR_COMPONENTS : resolveBundleProjectionViews(from)),
     []
   );
   return (

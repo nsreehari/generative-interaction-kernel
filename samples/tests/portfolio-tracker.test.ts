@@ -1,11 +1,66 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { bundleFromJson, loadBundleRuntime } from "@gik/react";
-import effects from "../bundles/portfolio-tracker/effect_handlers";
+import effects, {
+  hydrateState,
+  portfolioStateStorageKey,
+  readStoredPortfolioState,
+  wrapOrchestrator,
+  writeStoredPortfolioState,
+} from "../bundles/portfolio-tracker/effect_handlers";
+import {
+  formatIntelligenceMetric,
+  safeEvidenceUrl,
+  strategyActionDisabled,
+  strategyInputSnapshot,
+  strategyInputsEqual,
+} from "../bundles/portfolio-tracker/projection_views";
 import { openSampleBlueprint } from "../shared/blueprints";
 import { declarativeServiceOrchestrator } from "../shared/service-runtime";
 import type { SampleServiceRegistryOptions } from "../services";
 
 const PORTFOLIO_BLUEPRINTS = ["portfolio-tracker"] as const;
+const originalFetch = globalThis.fetch;
+let foundryRequests: Array<Record<string, unknown>> = [];
+
+const intelligenceResponse = {
+  summary: "The portfolio is concentrated in two individual equities.",
+  observations: ["NVDA has the larger market-value weight."],
+  risks: ["single-name concentration", "market-price volatility"],
+  evidence: [],
+  asOf: "2026-07-22",
+};
+
+const intelligence2Response = {
+  headline: "Concentration deserves immediate attention",
+  summary: "The same assessment supports glanceable and focused review.",
+  asOf: "2026-07-23",
+  items: [{ id: "concentration", kind: "risk", title: "Two holdings drive outcomes", detail: "NVDA has the larger weight.", salience: "critical", confidence: "high", entities: ["NVDA", "JNJ"], value: "55.4", unit: "percent", date: "", evidenceIds: [] }],
+  evidence: [],
+  projectionCandidates: [
+    { id: "executive-scan", label: "Executive scan", attention: "glanceable", rationale: "Lead with risk.", sections: [{ id: "lead", title: "What matters", primitive: "hero-signal", priority: "primary", disclosure: "always", contentIds: ["concentration"] }] },
+    { id: "analyst-review", label: "Analyst review", attention: "focused", rationale: "Retain detail.", sections: [{ id: "signals", title: "Signals", primitive: "signal-list", priority: "primary", disclosure: "always", contentIds: ["concentration"] }] },
+  ],
+};
+
+const strategiesResponse = {
+  strategies: {
+    conservative: { id: "conservative", rationale: "Reduce concentration.", targetWeights: [{ ticker: "NVDA", weight: 0.4 }, { ticker: "JNJ", weight: 0.6 }] },
+    growth: { id: "growth", rationale: "Retain growth exposure.", targetWeights: [{ ticker: "NVDA", weight: 0.65 }, { ticker: "JNJ", weight: 0.35 }] },
+  },
+  recommendation: { selected: "conservative", reason: "Matches the supplied risk tolerance.", status: "proposed" },
+};
+
+class MemoryStorage {
+  readonly values = new Map<string, string>();
+
+  getItem(key: string): string | null {
+    return this.values.get(key) ?? null;
+  }
+
+  setItem(key: string, value: string): void {
+    this.values.set(key, value);
+  }
+}
 
 const quoteFixture = (ticker: string, price: number) => ({
   chart: {
@@ -23,6 +78,8 @@ const quoteFixture = (ticker: string, price: number) => ({
 
 const registryOptions: SampleServiceRegistryOptions = {
   hostCapabilities: ["http-executor"],
+  resolveCredential: async () => "foundry-access-key",
+  authorizeEndpoint: async () => true,
   execute: async (request) => {
     const invocation = request as { kind?: string; input?: { requests?: Array<{ key?: string; meta?: unknown }> } };
     if (invocation.kind !== "http-service") throw new Error("Unexpected service kind");
@@ -49,11 +106,97 @@ function runtime(blueprintId: typeof PORTFOLIO_BLUEPRINTS[number]) {
     program: blueprintRuntime.program,
     state: blueprintRuntime.state,
   }, { effectHandlers: effects }), {
-    wrapOrchestrator: declarativeServiceOrchestrator(blueprintRuntime, registryOptions),
+    wrapOrchestrator: wrapOrchestrator(declarativeServiceOrchestrator(blueprintRuntime, registryOptions)),
   });
 }
 
+beforeEach(() => {
+  foundryRequests = [];
+  globalThis.fetch = async (_input, init) => {
+    const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    foundryRequests.push(body);
+    const message = String(body.message ?? "");
+    const reply = message.includes("propose useful semantic projections")
+      ? intelligence2Response
+      : message.includes("Analyze")
+        ? intelligenceResponse
+        : strategiesResponse;
+    return new Response(JSON.stringify({
+      conversationId: `conversation-${foundryRequests.length}`,
+      responseId: `response-${foundryRequests.length}`,
+      reply: JSON.stringify(reply),
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+});
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+});
+
 describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
+  it("allows only web evidence links and formats intelligence metrics", () => {
+    expect(safeEvidenceUrl("https://investor.nvidia.com/events")).toBe("https://investor.nvidia.com/events");
+    expect(safeEvidenceUrl("javascript:alert(1)")).toBeUndefined();
+    expect(safeEvidenceUrl("not a url")).toBeUndefined();
+    expect(formatIntelligenceMetric("62235.2", "USD")).toBe("$62,235.20");
+    expect(formatIntelligenceMetric("125.5", "percent")).toBe("125.5%");
+    expect(formatIntelligenceMetric("100", "shares")).toBe("100 shares");
+  });
+
+  it("prefers intelligence 2 and compares strategy inputs canonically", () => {
+    const baseline = { summary: "baseline" };
+    const enhanced = { headline: "enhanced" };
+    const current = strategyInputSnapshot({
+      positions: { NVDA: { value: 100 } },
+      summary: { marketValue: 100 },
+      investorProfile: null,
+      intelligence1: baseline,
+      intelligence2: enhanced,
+    });
+    expect(current).toMatchObject({ intelligenceSource: "portfolio-intelligence-2", intelligence: enhanced });
+    expect(strategyInputsEqual(current!, { ...current })).toBe(true);
+    expect(strategyInputsEqual(current!, { ...current, intelligenceSource: "portfolio-intelligence" })).toBe(false);
+    expect(strategyActionDisabled({ intelligence1: null, intelligence2: null })).toBe(true);
+    expect(strategyActionDisabled({ intelligence1: baseline, intelligence2: null, strategyInputs: null })).toBe(false);
+    expect(strategyActionDisabled({ ...current, intelligence1: baseline, intelligence2: enhanced, strategyInputs: current })).toBe(true);
+  });
+
+  it("persists and hydrates durable portfolio state without transient host fields", () => {
+    const storage = new MemoryStorage();
+    writeStoredPortfolioState({
+      holdings: [{ ticker: "nvda", quantity: 12, costBasis: 118 }],
+      quotes: { NVDA: { ticker: "NVDA", price: 175 } },
+      intelligence: { summary: "Concentrated portfolio" },
+      appliedRecommendation: { status: "applied", actorId: "human-investor" },
+      presentationContext: "portfolio-advisor",
+      foundryAccessStatus: "ready",
+    }, storage);
+
+    const raw = JSON.parse(storage.getItem(portfolioStateStorageKey) ?? "null");
+    expect(raw.savedAt).toEqual(expect.any(String));
+    expect(raw.portfolio).not.toHaveProperty("presentationContext");
+    expect(raw.portfolio).not.toHaveProperty("foundryAccessStatus");
+
+    const state = {
+      portfolio: {
+        holdings: {},
+        quotes: {},
+        intelligence: null,
+        appliedRecommendation: null,
+        presentationContext: "portfolio-overview",
+      },
+    };
+    hydrateState(state, storage);
+    expect(state.portfolio.holdings).toEqual({ NVDA: { ticker: "NVDA", quantity: 12, costBasis: 118 } });
+    expect(state.portfolio.quotes).toEqual({ NVDA: { ticker: "NVDA", price: 175 } });
+    expect(state.portfolio.intelligence).toEqual({ summary: "Concentrated portfolio" });
+    expect(state.portfolio.appliedRecommendation).toEqual({ status: "applied", actorId: "human-investor" });
+    expect(state.portfolio.presentationContext).toBe("portfolio-overview");
+
+    storage.setItem(portfolioStateStorageKey, "not json");
+    expect(readStoredPortfolioState(storage)).toBeNull();
+  });
+
   it("auto-refreshes live quotes when the holdings table saves rows", async () => {
     const portfolio = runtime(blueprintId);
 
@@ -123,9 +266,22 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
       "agent-portfolio-intelligence"
     );
     await portfolio.controller.settle();
+    expect(foundryRequests[0]).toMatchObject({ message: expect.stringContaining("Analyze") });
+    expect(portfolio.state.get("portfolio.intelligenceError")).toBe("");
     expect(portfolio.state.get("portfolio.intelligence")).toMatchObject({
-      provider: "portfolio-intelligence-deterministic",
+      provider: "foundry-agent:Portfolio-Intelligence-Agent",
       risks: ["single-name concentration", "market-price volatility"],
+    });
+    expect(foundryRequests[0]).toMatchObject({ agentName: "Portfolio-Intelligence-Agent" });
+    expect(String(foundryRequests[0]?.message)).toContain("NVDA");
+    expect(String(foundryRequests[0]?.instructions)).toContain("Analyze only the supplied portfolio data");
+    expect((foundryRequests[0]?.responseSchema as { strict?: boolean }).strict).toBe(true);
+
+    await portfolio.controller.emit(blueprintId, "requestIntelligence2", {}, "agent-portfolio-intelligence");
+    await portfolio.controller.settle();
+    expect(portfolio.state.get("portfolio.intelligence2")).toMatchObject({
+      provider: "foundry-agent:Portfolio-Intelligence-2-Agent",
+      headline: intelligence2Response.headline,
     });
 
     await portfolio.controller.emit(
@@ -138,6 +294,13 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
     expect(portfolio.state.get("portfolio.strategies.conservative")).toMatchObject({ id: "conservative" });
     expect(portfolio.state.get("portfolio.strategies.growth")).toMatchObject({ id: "growth" });
     expect(portfolio.state.get("portfolio.recommendation.status")).toBe("proposed");
+    expect(portfolio.state.get("portfolio.strategyInputs")).toMatchObject({
+      intelligenceSource: "portfolio-intelligence-2",
+      intelligence: { headline: intelligence2Response.headline },
+    });
+    expect(portfolio.state.get("portfolio.pendingStrategyInputs")).toBeNull();
+    expect(foundryRequests[2]).toMatchObject({ agentName: "Portfolio-Strategy-Agent" });
+    expect(String(foundryRequests[2]?.message)).toContain("Portfolio intelligence source: portfolio-intelligence-2");
 
     await portfolio.controller.emit("rebalance-comparison", "apply", {}, "human-investor");
     await portfolio.controller.settle();
@@ -155,6 +318,38 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
       {},
       "human-investor"
     )).rejects.toThrow("A proposed recommendation is required");
+  });
+
+  it("clears stale intelligence and strategy inputs when holdings or prices change", async () => {
+    const portfolio = runtime(blueprintId);
+    await portfolio.controller.emit(blueprintId, "setHoldings", {
+      holdings: [{ ticker: "NVDA", quantity: 18, costBasis: 138 }],
+    }, "human-investor");
+    await portfolio.controller.settle();
+    await portfolio.controller.emit(blueprintId, "refreshPrices", {}, "agent-market-data");
+    await portfolio.controller.settle();
+    await portfolio.controller.emit(blueprintId, "requestIntelligence", {}, "agent-portfolio-intelligence");
+    await portfolio.controller.settle();
+    await portfolio.controller.emit(blueprintId, "requestIntelligence2", {}, "agent-portfolio-intelligence");
+    await portfolio.controller.settle();
+    await portfolio.controller.emit(blueprintId, "calculateStrategies", {}, "agent-portfolio-intelligence");
+    await portfolio.controller.settle();
+    expect(portfolio.state.get("portfolio.strategyInputs")).not.toBeNull();
+
+    await portfolio.controller.emit(blueprintId, "upsertHolding", {
+      holding: { ticker: "JNJ", quantity: 12, costBasis: 149 },
+    }, "human-investor");
+    await portfolio.controller.settle();
+    expect(portfolio.state.get("portfolio.intelligence")).toBeNull();
+    expect(portfolio.state.get("portfolio.intelligence2")).toBeNull();
+    expect(portfolio.state.get("portfolio.strategyInputs")).toBeNull();
+    expect(portfolio.state.get("portfolio.pendingStrategyInputs")).toBeNull();
+
+    await portfolio.controller.emit(blueprintId, "refreshPrices", {}, "agent-market-data");
+    await portfolio.controller.settle();
+    expect(portfolio.state.get("portfolio.intelligence2")).toBeNull();
+    expect(portfolio.state.get("portfolio.strategyInputs")).toBeNull();
+    expect(portfolio.state.get("portfolio.pendingStrategyInputs")).toBeNull();
   });
 
   it("rejects recommendation application without a proposal or attributed actor", async () => {

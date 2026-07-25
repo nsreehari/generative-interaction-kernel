@@ -9,7 +9,7 @@ import { fullCatalogTools } from "./full-catalog";
 const AGENT_SAFE_RUNTIME = ["getState", "getTree", "describeServiceKinds"] as const;
 
 // Agent-safety is a property of each tool (`McpTool.agentSafe`), so the projection is a uniform
-// predicate filter that also covers profile-contributed tools. AGENTFACE_ALLOWLIST stays exported
+// predicate filter that also covers blueprint-contributed tools. AGENTFACE_ALLOWLIST stays exported
 // as the derived set of agent-safe names for the built-in surface.
 export const AGENTFACE_ALLOWLIST: ReadonlySet<string> = new Set<string>([
   ...authoringTools.filter((t) => t.agentSafe).map((t) => t.name),
@@ -25,9 +25,9 @@ export function createAgentFaceDispatcher(face: RuntimeFace): McpDispatcher {
 }
 
 // A stateless projection for hosts that only want the pure authoring tools and do not have a live
-// runtime. Callers compose profile-contributed tools (e.g. a genui profile's declared authoring
-// surface via `toolsFromProfile`) by passing them as `extraTools`; the projection stays a uniform
-// agent-safe filter over the combined catalog, so face itself carries no profile-specific tools.
+// runtime. Callers compose blueprint-contributed tools (e.g. a genui blueprint's declared authoring
+// surface by passing them as `extraTools`; the projection stays a uniform
+// agent-safe filter over the combined catalog, so face itself carries no blueprint-specific tools.
 export function createStatelessAgentFaceDispatcher(extraTools: McpTool[] = []): McpDispatcher {
   const tools = [...authoringTools, ...extraTools].filter((t) => t.agentSafe);
   return createMcpDispatcher(tools, { name: "genui-agentface", version: "0.1" });

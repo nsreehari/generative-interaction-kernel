@@ -23,8 +23,7 @@ import {
   type ResolvedNode,
   unwrap,
 } from "../../kernel/src/index";
-import { type BlueprintArtifact, type LayerRecipe } from "../../profile/src/index";
-import liveWorkspaceSocBlueprint from "../../samples/profiles/live-workspace-soc/blueprint.json" with { type: "json" };
+import { type BlueprintArtifact } from "../../blueprint/src/index";
 import { McpHttpServer } from "../../transports/mcp-http/src/index";
 import { SseClientTransport } from "../../transports/http-sse/src/index";
 import { SseTransportServer } from "../../transports/http-sse/src/index";
@@ -43,7 +42,7 @@ import {
 } from "../src/index";
 
 test("ControlFace defines zero-recipe JSON cell Blueprints without product code", () => {
-  const artifact: BlueprintArtifact<LayerRecipe> = {
+  const artifact: BlueprintArtifact = {
     gik: "0.1",
     type: "blueprint",
     payload: {
@@ -98,7 +97,7 @@ test("ControlFace defines zero-recipe JSON cell Blueprints without product code"
 });
 
 test("ControlFace opens an authored Blueprint into a runtime", () => {
-  const artifact: BlueprintArtifact<LayerRecipe> = {
+  const artifact: BlueprintArtifact = {
     gik: "0.1",
     type: "blueprint",
     payload: {
@@ -144,7 +143,7 @@ test("ControlFace opens an authored Blueprint into a runtime", () => {
 });
 
 test("ControlFace applies initialSeed from blueprint context", () => {
-  const artifact: BlueprintArtifact<LayerRecipe> = {
+  const artifact: BlueprintArtifact = {
     gik: "0.1",
     type: "blueprint",
     payload: {
@@ -194,7 +193,7 @@ test("ControlFace applies initialSeed from blueprint context", () => {
 });
 
 test("ControlFace opens Blueprint-backed Cells as independent child runtimes", () => {
-  const child: BlueprintArtifact<LayerRecipe> = {
+  const child: BlueprintArtifact = {
     gik: "0.1",
     type: "blueprint",
     payload: {
@@ -208,7 +207,7 @@ test("ControlFace opens Blueprint-backed Cells as independent child runtimes", (
       projections: { presentation: { roots: ["root"] } },
     },
   };
-  const parent: BlueprintArtifact<LayerRecipe> = {
+  const parent: BlueprintArtifact = {
     gik: "0.1",
     type: "blueprint",
     payload: {
@@ -238,15 +237,6 @@ test("ControlFace opens Blueprint-backed Cells as independent child runtimes", (
   assert.equal(runtime.children.child.instanceId, "parent/cells/child");
   assert.equal(runtime.children.child.definition.payload.id, "child");
   assert.deepEqual(runtime.children.child.state, { child: { count: 1 } });
-});
-
-test("ControlFace opens a recipe-backed canonical Blueprint", () => {
-  const runtime = ControlFace.openBlueprint(liveWorkspaceSocBlueprint as unknown as BlueprintArtifact<LayerRecipe>);
-  const manifest = unwrap(runtime.vocabulary);
-
-  assert.equal(runtime.blueprintId, "live-workspace-soc");
-  assert.equal(manifest.namespaces?.includes("soc") ?? false, true);
-  assert.equal(typeof unwrap(runtime.program).root.id, "string");
 });
 
 test("ControlFace rejects Blueprints without runtime", () => {

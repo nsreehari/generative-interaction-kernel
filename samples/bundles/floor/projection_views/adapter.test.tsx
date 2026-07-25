@@ -15,8 +15,8 @@ import {
   Board,
   FallbackView,
   Table,
-  liveCardsRegistry,
-} from "./profile";
+  floorRegistry,
+} from "./components";
 
 const fx = (name: string) =>
   JSON.parse(
@@ -54,7 +54,7 @@ function find(node: ResolvedNode, id: string): ResolvedNode | undefined {
   return undefined;
 }
 
-const markupOf = (tree: ResolvedNode, registry = liveCardsRegistry) =>
+const markupOf = (tree: ResolvedNode, registry = floorRegistry) =>
   renderToStaticMarkup(
     createElement(Fragment, null, renderNode(tree, registry, () => {}))
   );
@@ -124,7 +124,7 @@ test("fallback: a capability with no registered component renders the fallback v
 
   // Registry intentionally missing "metric".
   const partial = buildRegistryFromImports(
-    { ui: { from: "profile" } },
+    { ui: { from: "floor" } },
     () => ({ board: Board, table: Table, actions: ActionButton }),
     FallbackView
   );

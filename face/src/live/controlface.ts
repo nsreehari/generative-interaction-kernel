@@ -39,14 +39,10 @@ import {
   composeCellDocument,
   assembleBlueprint,
   loadBlueprint,
-  runProfile,
   type BlueprintArtifact,
   type BlueprintReferenceResolver,
-  type CellDefinition,
-  type LayerRecipe,
-  type ResolvedProfile,
-} from "../../../profile/src/index";
-import { resolveProfileTemplate, resolveProfileTemplateResource } from "../../../profile/src/templates";
+  type ResolvedBlueprint,
+} from "../../../blueprint/src/index";
 
 export interface BlueprintRuntime {
   blueprintId: string;
@@ -60,15 +56,15 @@ export interface BlueprintRuntime {
 }
 
 type LoweredBlueprint = {
-  profile: Pick<ResolvedProfile, "artifact" | "services">;
+  resolved: Pick<ResolvedBlueprint, "artifact" | "services">;
   lower(context: Record<string, Json>): ProjectedProgramDefinition;
 };
 
-export type BlueprintSource = BlueprintArtifact<LayerRecipe>;
+export type BlueprintSource = BlueprintArtifact;
 
 /**
  * Resolve a zero-recipe, JSON-authored Blueprint whose Cells are already expressed as runtime
- * nodes/cells. Recipe-backed Profiles deliberately return undefined and keep their registered
+ * nodes/cells. Recipe-backed Blueprints deliberately return undefined and keep their registered
  * lowering implementation.
  */
 export function defineDeclarativeBlueprint(blueprint: BlueprintSource): LoweredBlueprint | undefined {
@@ -77,31 +73,15 @@ export function defineDeclarativeBlueprint(blueprint: BlueprintSource): LoweredB
     cells: blueprint.payload.cells,
     projections: { presentation: blueprint.payload.projections.presentation },
   };
-  const profile = loadBlueprint<LayerRecipe>(
-    blueprint,
-    resolveProfileTemplateResource,
-    resolveProfileTemplate,
-  );
+  const resolved = loadBlueprint(blueprint);
 
   return {
-    profile,
-    lower: () => composeCellDocument(definition, compileCellTopology(profile.artifact.payload.id, definition)),
+    resolved,
+    lower: () => composeCellDocument(definition, compileCellTopology(resolved.artifact.payload.id, definition.cells)),
   };
 }
 
 type JsonRecord = Record<string, Json>;
-type PresentationPreset = {
-  id?: string;
-  actor?: string;
-  role?: string;
-  device?: string;
-  task?: string;
-  disclosure?: string;
-  layout?: string;
-  frame?: string;
-  arrangement?: string;
-  regions?: Json[];
-};
 
 function jsonRecord(value: unknown): JsonRecord | null {
   return value !== null && typeof value === "object" && !Array.isArray(value)
@@ -134,58 +114,9 @@ function resolveInitialSeed(context: Record<string, Json> | undefined): JsonReco
   return initialSeed ? structuredClone(initialSeed) : {};
 }
 
-function defaultsFromSchema(schema: unknown): JsonRecord {
-  const input = jsonRecord(schema);
-  const properties = jsonRecord(input?.properties);
-  if (!properties) return {};
-  const defaults: JsonRecord = {};
-  for (const [key, declaration] of Object.entries(properties)) {
-    const field = jsonRecord(declaration);
-    if (field && Object.hasOwn(field, "default")) {
-      defaults[key] = structuredClone(field.default as Json);
-    }
-  }
-  return defaults;
-}
-
-function normalizePresentationPreset(preset: PresentationPreset | undefined): JsonRecord {
-  if (!preset) return {};
-  const context: JsonRecord = {};
-  for (const key of ["id", "actor", "role", "device", "task", "disclosure", "layout", "frame", "arrangement"] as const) {
-    const value = preset[key];
-    if (typeof value === "string") context[key] = value;
-  }
-  if (Array.isArray(preset.regions)) context.regions = structuredClone(preset.regions);
-  return context;
-}
-
-function presentationPresetContexts(profile: ResolvedProfile<LayerRecipe>): PresentationPreset[] {
-  const presets = profile.resources.presentationPresets;
-  return Array.isArray(presets) ? presets as PresentationPreset[] : [];
-}
-
-function defaultContextFor(profile: ResolvedProfile<LayerRecipe>): JsonRecord {
-  const presets = presentationPresetContexts(profile);
-  const preferred = presets.find((preset) => preset.id === "full-substrate") ?? presets[0];
-  return normalizePresentationPreset(preferred);
-}
-
-function resolveContextFor(profile: ResolvedProfile<LayerRecipe>, context: Record<string, Json>): JsonRecord {
-  const requested = context.presentationContext;
-  if (requested && typeof requested === "object" && !Array.isArray(requested)) {
-    return structuredClone(requested as JsonRecord);
-  }
-  if (typeof requested === "string") {
-    return normalizePresentationPreset(
-      presentationPresetContexts(profile).find((preset) => preset.id === requested)
-    );
-  }
-  return defaultContextFor(profile);
-}
-
 export interface OpenBlueprintOptions {
   context?: Record<string, Json>;
-  resolveBlueprint?: BlueprintReferenceResolver<LayerRecipe>;
+  resolveBlueprint?: BlueprintReferenceResolver;
   instanceId?: string;
 }
 
@@ -203,11 +134,11 @@ export interface ControlFaceOptions {
 function runtimeFromLowering(
   definition: BlueprintSource,
   instanceId: string,
-  profile: Pick<ResolvedProfile, "artifact" | "services">,
+  resolved: Pick<ResolvedBlueprint, "artifact" | "services">,
   program: ProjectedProgramDefinition,
   context?: Record<string, Json>,
 ): BlueprintRuntime {
-  const { id, version, runtime } = profile.artifact.payload;
+  const { id, version, runtime } = resolved.artifact.payload;
   if (!runtime) throw new Error(`Blueprint '${id}' has no runtime declaration`);
 
   const vocabulary: ProjectedVocabularyManifest = {
@@ -216,11 +147,11 @@ function runtimeFromLowering(
     namespaces: runtime.namespaces,
     contexts: runtime.contexts,
     actions: runtime.actions,
-    capabilities: structuredClone(runtime.capabilities),
+    capabilities: structuredClone(runtime.capabilities ?? {}),
     externals: {
       ...structuredClone(runtime.externals ?? {}),
-      ...(Object.keys(profile.services).length > 0
-        ? { services: structuredClone(profile.services) }
+      ...(Object.keys(resolved.services).length > 0
+        ? { services: structuredClone(resolved.services) }
         : {}),
     },
   };
@@ -248,22 +179,7 @@ function openAssembledBlueprint(
   const instanceId = options.instanceId ?? source.payload.id;
   let runtime: BlueprintRuntime;
   if (source.payload.recipes.length > 0) {
-    const profile = loadBlueprint<LayerRecipe>(
-      source,
-      resolveProfileTemplateResource,
-      resolveProfileTemplate,
-    );
-    runtime = runtimeFromLowering(
-      source,
-      instanceId,
-      profile,
-      runProfile(
-        profile,
-        structuredClone(defaultsFromSchema(source.payload.tiers[0]?.input)),
-        resolveContextFor(profile, structuredClone(options.context ?? {})),
-      ) as ProjectedProgramDefinition,
-      options.context,
-    );
+    throw new Error(`Blueprint '${source.payload.id}' must be lowered before it is opened`);
   } else {
     const definition = defineDeclarativeBlueprint(source);
     if (!definition) {
@@ -274,7 +190,7 @@ function openAssembledBlueprint(
     runtime = runtimeFromLowering(
       source,
       instanceId,
-      definition.profile,
+      definition.resolved,
       definition.lower(structuredClone(options.context ?? {})),
       options.context,
     );

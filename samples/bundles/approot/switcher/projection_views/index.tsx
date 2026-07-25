@@ -10,8 +10,8 @@
 // host-owned theme roles (theme/roles.json), exactly like the floor.
 
 import React from "react";
-import manifest from "../vocabulary.json";
-import document from "../program.json";
+import vocabulary from "../vocabulary.json";
+import program from "../program.json";
 import {
   bundleFromJson,
   readProps,
@@ -112,8 +112,8 @@ export function switcherBundle(
 ): Bundle {
   return bundleFromJson(
     {
-      manifest,
-      document,
+      vocabulary,
+      program,
       state: { switcher: { items: [...items], current } },
     },
     {

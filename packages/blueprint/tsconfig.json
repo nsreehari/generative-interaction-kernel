@@ -1,0 +1,9 @@
+{
+  "extends": "../../blueprint/tsconfig.json",
+  "include": [
+    "src",
+    "../../blueprint/src",
+    "../../packages/evaluators/src",
+    "../../kernel/src"
+  ]
+}

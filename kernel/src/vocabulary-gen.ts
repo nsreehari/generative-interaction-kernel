@@ -4,7 +4,7 @@
 // the namespaces its edges touch, and the action families it invokes. This is what makes an authored
 // artifact PORTABLE — export a document and its generated manifest and another host can load it.
 //
-// When a `catalog` of known descriptors is supplied (e.g. the profile's real manifest), each used
+// When a `catalog` of known descriptors is supplied (for example, the Blueprint's manifest), each used
 // capability reuses its descriptor (propsSchema/emits/slots/dataProp) so nothing is lost; capabilities
 // absent from the catalog get a permissive descriptor, so the document still validates and renders
 // (unknown capabilities fall back gracefully at runtime anyway).

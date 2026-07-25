@@ -1,0 +1,11 @@
+{
+  "extends": "../../kernel/tsconfig.json",
+  "include": [
+    "src",
+    "../../providers/blueprint-authoring/src",
+    "../../providers/step-orchestrator/src",
+    "../../providers/vendor",
+    "../blueprint/src",
+    "../../kernel/src"
+  ]
+}

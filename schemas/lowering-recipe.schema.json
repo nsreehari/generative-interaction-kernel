@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://genui.dev/schemas/lowering-recipe.schema.json",
-  "title": "GenUI Lowering Recipe",
+  "title": "GIK Lowering Recipe",
   "type": "object",
   "required": ["gik", "type", "payload"],
   "additionalProperties": false,
@@ -9,26 +9,19 @@
     "gik": { "const": "0.1" },
     "type": { "const": "lowering-recipe" },
     "payload": {
-      "$ref": "#/definitions/layerRecipe"
+      "$ref": "#/definitions/loweringRecipe"
     }
   },
   "definitions": {
-    "layerRecipe": {
+    "loweringRecipe": {
       "type": "object",
-      "required": ["id", "from", "to", "metadata"],
+      "required": ["id", "from", "to"],
       "additionalProperties": true,
       "properties": {
         "id": { "type": "string", "minLength": 1 },
         "from": { "type": "string", "minLength": 1 },
         "to": { "type": "string", "minLength": 1 },
-        "metadata": {
-          "type": "object",
-          "required": ["executor"],
-          "additionalProperties": true,
-          "properties": {
-            "executor": { "type": "string", "minLength": 1 }
-          }
-        }
+        "metadata": { "type": "object" }
       }
     }
   }

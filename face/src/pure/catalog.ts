@@ -1,4 +1,4 @@
-// Discovery projection: turn a manifest (the profile's declared vocabulary) into a flat
+// Discovery projection: turn a manifest (the blueprint's declared vocabulary) into a flat
 // catalog an authoring agent can read — capabilities with their schemas/emits, the declared
 // namespaces, and the external effect handlers. Nothing capability-specific is hardcoded; the
 // manifest handed in is the single source of truth.

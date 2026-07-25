@@ -1,4 +1,4 @@
-import type { CellDefinition, ExecutableCellTopology } from "@gik/profile";
+import type { CellDefinition, ExecutableCellTopology } from "@gik/blueprint";
 
 export type ConsequenceNodeKind = "source" | "compute" | "effect" | "materialize";
 

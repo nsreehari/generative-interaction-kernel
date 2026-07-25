@@ -14,7 +14,7 @@ import {
   type EffectHandlerMap,
   type ProjectionView,
 } from "@gik/react";
-import registry from "../profiles/registry.json";
+import registry from "../blueprints/registry.json";
 import { openSampleBlueprint } from "./blueprints";
 import { browserServiceRegistryOptions, declarativeServiceOrchestrator } from "./service-runtime";
 
