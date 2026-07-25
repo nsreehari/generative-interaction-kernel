@@ -1,0 +1,410 @@
+schema_version: 1
+
+document:
+  name: durable-runtime-client
+  status: current-implementation
+  scope: browser client and provider adapters
+  source_of_truth: >-
+    This file describes the current implementation under
+    samples/shared/durable-runtime. TypeScript source remains authoritative when this
+    document and implementation disagree.
+
+package:
+  name: durable-runtime-client
+  version: "0.1.0"
+  publication_status: unpublished-sample
+  purpose: >-
+    Run durable kernels and effect handlers locally in a browser while routing durable
+    state, journals, transition leases, and effect queues to IndexedDB, filesystem MCP,
+    or Azure Functions according to KindValueRef kinds.
+  core_promise: >-
+    The browser owns kernel and effect execution. Providers own persistence, locking,
+    optimistic revision checks, journal access, and queue settlement. A transition never
+    spans provider kinds.
+  public_entrypoint: samples/shared/durable-runtime/index.ts
+  implementation_entrypoint: samples/shared/durable-runtime/browser-runtime.ts
+  package_boundary: >-
+    This implementation is sample-shared source and is not currently published as an
+    @gik package. Consumers import source from the samples workspace.
+  relationship_to_kernel: >-
+    DurableKernel is the client adapter contract used by this runtime. It is not the
+    @gik/kernel Kernel class. A host that uses @gik/kernel must supply an adapter whose
+    initialState and transition methods satisfy DurableKernel.
+
+api_policy:
+  signature_authority: TypeScript source in samples/shared/durable-runtime
+  categories:
+    primary: Supported browser-runtime operation for current samples.
+    provider_extension: Interface implemented by durable storage providers.
+    host_extension: Kernel, effect handler, connection, or authentication behavior supplied by a host.
+    advanced: Provider factory or transition primitive used to compose a host.
+  compatibility: >-
+    There is no published package compatibility guarantee while this code remains under
+    samples/shared. Contract changes must update this SOT and focused tests together.
+
+architecture:
+  execution_owner: browser
+  provider_owner: durable storage and concurrency
+  boundaries:
+    - Kernels execute only in createBrowserDurableRuntime.runEngine.
+    - Effect handlers execute only in createBrowserDurableRuntime.processQueueLaneItem.
+    - Azure Functions and filesystem MCP do not execute kernels on the browser-runtime path.
+    - IndexedDB is accessed directly by its browser provider.
+    - The filesystem adapter receives an already-connected MCP callTool function from the host.
+    - The Azure adapter receives its base URL, dynamic headers callback, and optional fetch implementation from the host.
+  operation_flow:
+    initialize:
+      - Resolve the provider from stateRef and effectsQueueRef kind.
+      - Obtain initial state from the registered local kernel.
+      - Create revisioned state only when absent.
+    transition:
+      - Resolve one provider for state, journal, and effects refs.
+      - Acquire a lease and read persisted state plus journal entries after the cursor.
+      - Run the registered kernel locally.
+      - Commit state, cursor, and effects while releasing the lease.
+      - Abort and release the lease if local execution throws.
+    effect_processing:
+      - Lease one effect queue message.
+      - Resolve a local handler from message.body.type.
+      - Append every returned event to the journal.
+      - Acknowledge success or negatively acknowledge failure.
+
+reference_protocol:
+  encoding: "b64:<base64url(JSON)>"
+  decoded_shape: "{ kind: string; value: string }"
+  supported_provider_kinds:
+    indexed-db: Direct browser IndexedDB provider.
+    fs-path: Filesystem storage exposed through MCP tools.
+    stores-proxy: Azure Functions storage proxy backed by Cosmos DB.
+  routing_rules:
+    - appendJournal routes from journalRef.kind.
+    - initializeRuntime requires stateRef and effectsQueueRef to share one kind.
+    - runEngine requires stateRef, journalRef, and effectsQueueRef to share one kind.
+    - processQueueLaneItem requires effectsQueueRef and journalRef to share one kind.
+    - Mixed-kind operations fail before provider I/O.
+
+contracts:
+  - name: KindValueRef
+    signature: "type KindValueRef = { kind: string; value: string }"
+    purpose: Select a provider and carry its provider-specific logical address.
+    source: samples/shared/durable-runtime/refs.ts
+
+  - name: JournalEntry
+    signature: "type JournalEntry<T = unknown> = { id: string; payload: T }"
+    purpose: Record one unconditionally appended journal event.
+    guarantees:
+      - appendJournal does not deduplicate entries.
+      - Entry identifiers are assigned by the selected provider.
+
+  - name: RuntimeRefs
+    signature: >-
+      type RuntimeRefs = { stateRef: string; effectsQueueRef: string;
+      effectsLane?: string }
+    purpose: Identify state and effect storage for initialization.
+
+  - name: TransitionRefs
+    signature: "type TransitionRefs = RuntimeRefs & { journalRef: string }"
+    purpose: Identify all durable resources participating in one transition.
+
+  - name: InitializeRuntimeResult
+    signature: "type InitializeRuntimeResult = { created: boolean; revision: string }"
+    purpose: Report whether initial state was created and identify the persisted revision.
+    behavior:
+      - Initialization is create-if-absent.
+      - Repeating initialization for the same kernel preserves existing state and revision.
+      - An existing state owned by another kernel is rejected.
+
+  - name: TransitionSnapshot
+    signature: >-
+      type TransitionSnapshot<TState, TEvent> = { leaseToken: string;
+      leaseExpiresAt: string; state: TState; revision: string | null;
+      cursor: string | null; entries: JournalEntry<TEvent>[] }
+    purpose: Return leased state and journal work to the local kernel.
+    behavior:
+      - acquireTransition returns null when another active lease owns the transition.
+      - Acquisition fails when the runtime has not been initialized.
+      - entries contains journal records after cursor in provider order.
+
+  - name: TransitionCommit
+    signature: >-
+      type TransitionCommit<TState, TEffect> = TransitionRefs & { kernelId: string;
+      leaseToken: string; expectedRevision: string | null;
+      previousCursor: string | null; nextCursor: string; state: TState;
+      effects: TEffect[] }
+    purpose: Commit one locally computed transition under its acquired lease.
+    exclusions:
+      - initialState is not part of commit.
+      - Kernel execution is not part of commit.
+
+  - name: TransitionCommitResult
+    signature: >-
+      type TransitionCommitResult = { ok: true; revision: string } |
+      { ok: false; reason: "conflict" | "lease-lost"; revision: string | null }
+    purpose: Report an accepted commit or a concurrency failure.
+
+  - name: QueueLeasedMessage
+    signature: >-
+      type QueueLeasedMessage<T> = { id: string; body: T; enqueuedAt: string;
+      attempt: number; leaseToken: string; leaseExpiresAt: string }
+    purpose: Carry one leased effect to a local browser handler.
+
+  - name: DurableKernel
+    category: host_extension
+    signature: >-
+      type DurableKernel<TState, TEvent, TEffect> = { id: string;
+      initialState(): TState; transition(input: { state: TState;
+      revision: string | null; cursor: string | null;
+      entries: JournalEntry<TEvent>[] }): Promise<{ state: TState;
+      effects: TEffect[] }> | { state: TState; effects: TEffect[] } }
+    purpose: Supply local initial state and deterministic transition behavior.
+    behavior:
+      - initialState is evaluated only by explicit initializeRuntime.
+      - transition runs in the browser after provider acquisition.
+
+  - name: DurableEffectHandler
+    category: host_extension
+    signature: >-
+      type DurableEffectHandler<TEffect, TEvent> =
+      (effect: TEffect) => Promise<TEvent[] | void> | TEvent[] | void
+    purpose: Handle one leased effect locally and optionally produce journal events.
+
+  - name: DurableProvider
+    category: provider_extension
+    purpose: Implement persistence and concurrency for one reference kind.
+    methods:
+      - "appendJournal<T>(journalRef: string, entry: T): Promise<JournalEntry<T>>"
+      - >-
+        initializeRuntime<TState>(request: RuntimeRefs & { kernelId: string;
+        initialState: TState }): Promise<InitializeRuntimeResult>
+      - >-
+        acquireTransition<TState, TEvent>(request: TransitionRefs & {
+        kernelId: string; leaseMs?: number }):
+        Promise<TransitionSnapshot<TState, TEvent> | null>
+      - >-
+        commitTransition<TState, TEffect>(request: TransitionCommit<TState, TEffect>):
+        Promise<TransitionCommitResult>
+      - >-
+        abortTransition(request: TransitionRefs & { kernelId: string;
+        leaseToken: string }): Promise<boolean>
+      - "leaseQueueItem?<TEffect>(request): Promise<QueueLeasedMessage<TEffect> | null>"
+      - "ackQueueItem?(request): Promise<boolean>"
+      - "nackQueueItem?(request): Promise<boolean>"
+    queue_support: >-
+      Queue methods are optional at the interface level. processQueueLaneItem rejects a
+      provider that does not implement all three queue methods.
+
+browser_runtime:
+  factory:
+    name: createBrowserDurableRuntime
+    category: primary
+    source: samples/shared/durable-runtime/browser-runtime.ts
+    signature: >-
+      createBrowserDurableRuntime(options: { providers: Record<string, DurableProvider>;
+      kernels: DurableKernel[]; effectHandlers?: Record<string, DurableEffectHandler> })
+  methods:
+    - name: appendJournal
+      signature: "appendJournal<T>(journalRef: string, entry: T): Promise<JournalEntry<T>>"
+      purpose: Append one event without deduplication through the ref-selected provider.
+
+    - name: initializeRuntime
+      signature: >-
+        initializeRuntime(request: RuntimeRefs & { kernelId: string }):
+        Promise<InitializeRuntimeResult>
+      purpose: Explicitly create initial durable state for the selected local kernel.
+      behavior:
+        - Rejects an unknown kernel before provider I/O.
+        - Calls kernel.initialState and sends the value only to provider initialization.
+        - Does not require journalRef because initialization does not read the journal.
+        - Does not overwrite an existing runtime.
+
+    - name: runEngine
+      signature: >-
+        runEngine(request: TransitionRefs & { kernelId: string; leaseMs?: number }):
+        Promise<RunEngineResult>
+      purpose: Acquire durable work, execute one local kernel transition, and commit it.
+      results:
+        busy: Another active transition lease prevented acquisition.
+        idle: No journal entries followed the persisted cursor; the lease was aborted.
+        committed: State, cursor, and effects committed successfully.
+        conflict: Persisted revision or cursor changed before commit.
+        lease-lost: The lease was absent, mismatched, or expired before commit.
+      committed_fields:
+        - revision
+        - cursor
+        - entryCount
+        - effectCount
+      failure_behavior:
+        - A thrown kernel error triggers best-effort abort and is rethrown.
+        - A failed abort does not replace the original kernel error.
+
+    - name: processQueueLaneItem
+      signature: >-
+        processQueueLaneItem(request: { effectsQueueRef: string;
+        effectsLane?: string; journalRef: string; visibilityMs?: number;
+        maxAttempts?: number }): Promise<ProcessQueueLaneItemResult>
+      purpose: Execute at most one locally registered effect handler.
+      results:
+        idle: No queue message was available.
+        completed: Returned events were appended and the message was acknowledged.
+        retry: Handling failed before maxAttempts and the message was negatively acknowledged.
+        dead: Handling failed at or beyond maxAttempts and the message was dead-lettered.
+      handler_selection: message.body.type
+      default_max_attempts: 5
+      failure_behavior:
+        - Missing or non-object effect types fail handling.
+        - Journal appends happen before queue acknowledgement.
+        - An acknowledgement failure enters the same nack path as handler failure.
+
+configured_runtime:
+  factory:
+    name: createConfiguredBrowserDurableRuntime
+    category: primary
+    source: samples/shared/durable-runtime/configured-runtime.ts
+  config:
+    indexedDb:
+      shape: "{ databaseName?: string; indexedDB?: IDBFactory }"
+      registers_kind: indexed-db
+    filesystem:
+      shape: "{ mcpUrl: string; connect: (url: string) => Promise<McpCallTool> | McpCallTool }"
+      registers_kind: fs-path
+      ownership: The host creates and owns the MCP connection lifecycle.
+    azure:
+      shape: >-
+        { baseUrl: string; getHeaders?: () => Record<string, string>;
+        fetch?: typeof globalThis.fetch }
+      registers_kind: stores-proxy
+      ownership: getHeaders is evaluated for every request so credentials may rotate.
+  behavior:
+    - Only configured providers are registered.
+    - Factory setup awaits filesystem MCP connection establishment.
+    - Missing provider kinds fail when an operation attempts to route to them.
+
+providers:
+  - name: IndexedDB
+    kind: indexed-db
+    factory: createIndexedDbProvider
+    source: samples/shared/durable-runtime/providers/indexed-db.ts
+    default_database: gik-durable-runtime
+    object_store: records
+    transaction_model:
+      - Journal append and its sequence counter update share one readwrite transaction.
+      - Initialization is create-if-absent in one readwrite transaction.
+      - Acquire validates initialized state and writes the lease in one readwrite transaction.
+      - Commit validates lease, revision, and cursor; writes state and effects; and deletes the lock in one readwrite transaction.
+      - Abort validates the token and deletes the lock in one readwrite transaction.
+    default_transition_lease_ms: 300000
+    default_queue_visibility_ms: 60000
+
+  - name: Filesystem MCP
+    kind: fs-path
+    factory: createFilesystemMcpProvider
+    source: samples/shared/durable-runtime/providers/filesystem-mcp.ts
+    transport: Host-injected MCP callTool function.
+    tools:
+      append_and_queue: filesystem.storage_batch
+      initialize: filesystem.runtime_initialize
+      acquire: filesystem.transition_acquire
+      commit: filesystem.transition_commit
+      abort: filesystem.transition_abort
+    response_envelopes:
+      initialize: "{ initialization: InitializeRuntimeResult }"
+      acquire: "{ transition: TransitionSnapshot | null }"
+      abort: "{ aborted: boolean }"
+    server_implementation: ../demo-boards-ns-code/mcp-server
+
+  - name: Azure Functions
+    kind: stores-proxy
+    factory: createAzureFunctionsProvider
+    source: samples/shared/durable-runtime/providers/azure-functions.ts
+    transport: HTTP POST with JSON request and response bodies.
+    routes:
+      append: /api/gik/appendJournal
+      initialize: /api/gik/runtime/initialize
+      acquire: /api/gik/transition/acquire
+      commit: /api/gik/transition/commit
+      abort: /api/gik/transition/abort
+      queue_storage: /api/storage
+    authentication: >-
+      The host may return request headers from getHeaders. The adapter does not own or
+      persist credentials.
+    server_implementation: ../azure-function-proxy/apps/stores-proxy
+
+concurrency_and_durability:
+  initialization:
+    - Must occur explicitly before acquireTransition or runEngine.
+    - Is create-if-absent and never overwrites existing state.
+    - Produces the first durable revision with a null cursor.
+  transition_lease:
+    - Only one active transition lease may own a runtime namespace.
+    - Lease token and expiry are validated during commit.
+    - Successful commit releases the transition lease.
+    - Conflict releases the transition lease where supported by the provider protocol.
+    - Abort releases a matching lease without changing state or cursor.
+  optimistic_checks:
+    - expectedRevision must equal the persisted revision.
+    - previousCursor must equal the persisted cursor.
+    - nextCursor is the id of the last journal entry processed by the local kernel.
+  effects:
+    - Effects are persisted with state and cursor by the provider commit operation.
+    - Effect handlers run separately through queue leasing.
+  journal:
+    - Append is unconditional.
+    - The runtime does not provide event-level deduplication.
+
+host_responsibilities:
+  - Register every DurableKernel by a unique id.
+  - Call initializeRuntime explicitly before runEngine for a new runtime.
+  - Supply effect handlers keyed by effect body type.
+  - Supply provider URLs, MCP connection behavior, authentication headers, and optional browser APIs.
+  - Keep all refs in one operation on the same provider kind.
+  - Decide when to call runEngine and processQueueLaneItem; this client has no scheduler or background worker.
+  - Treat provider errors and kernel errors as operational failures requiring host policy.
+
+non_goals:
+  - Server-side kernel execution on the new browser-runtime transition path.
+  - Cross-provider atomic transitions.
+  - Journal deduplication.
+  - Lease renewal.
+  - Write-ahead logging or filesystem crash recovery.
+  - Transition idempotency keys.
+  - Automatic polling, scheduling, or service-worker ownership.
+  - Owning MCP transport lifecycle or Azure credentials.
+  - Replacing @gik/kernel public APIs.
+
+limitations:
+  - The implementation is not yet a published @gik package.
+  - Public browser runtime result types are inferred rather than exported as named contracts.
+  - The filesystem server holds transition release closures in process memory; server restart abandons that in-memory ownership and relies on filesystem lock behavior.
+  - Filesystem commit uses staged queue messages but is not a general write-ahead-log recovery protocol.
+  - Effect event appends occur before queue acknowledgement, so a later acknowledgement failure may cause handler retry and duplicate events unless the application handles idempotency.
+  - The runtime does not automatically initialize state from runEngine.
+  - No provider is selected by configuration alone; selection always comes from the ref kind.
+
+validation:
+  typecheck: "npx tsc -p samples/apps/host/tsconfig.json --noEmit"
+  focused_tests: >-
+    npx vitest run --project samples
+    samples/shared/durable-runtime/browser-runtime.test.ts
+    samples/shared/durable-runtime/providers/providers.test.ts
+    samples/shared/host-config.test.ts
+  coverage:
+    - Local kernel execution and provider-kind routing.
+    - Explicit initialization and repeat initialization without overwrite.
+    - Abort after local kernel failure.
+    - Mixed-provider rejection.
+    - Direct IndexedDB state, journal, effect, and queue flow.
+    - Azure route selection and dynamic request headers.
+    - Filesystem MCP response unwrapping and transition payload shape.
+  external_validation:
+    azure:
+      repository: ../azure-function-proxy
+      commands:
+        - npm --prefix durable-runtime run build
+        - npm --prefix durable-runtime run test
+        - npm --prefix apps/stores-proxy run build
+        - npm --prefix apps/stores-proxy run test
+    filesystem_mcp:
+      repository: ../demo-boards-ns-code
+      commands:
+        - npm --prefix mcp-server run test:filesystem
+        - npm --prefix mcp-server run test:smoke
