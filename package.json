@@ -2,6 +2,7 @@
   "name": "generative-interaction-kernel",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@11.6.2",
   "type": "module",
   "description": "Generative Interaction Kernel workspace: GIK wire schemas, conformance fixtures, and the reference implementation.",
   "workspaces": [
@@ -50,7 +51,7 @@
     "dev:gik": "tsx samples/gik-meta/quickstart.ts",
     "dev:console": "npm run dev:host",
     "build:console": "npm run build:host",
-    "build:public-packages": "npm run build --workspaces --if-present",
+    "build:public-packages": "turbo run build",
     "build:package:kernel": "npm run build --workspace=@gik/kernel",
     "typecheck": "tsc -p kernel/tsconfig.json --noEmit && tsc -p packages/evaluators/tsconfig.json --noEmit && tsc -p adapters/react/tsconfig.json --noEmit && tsc -p packages/blueprint/tsconfig.json --noEmit && tsc -p packages/blueprint-host/tsconfig.json --noEmit && tsc -p packages/demo-runner-host/tsconfig.json --noEmit && tsc -p face/tsconfig.json --noEmit && tsc -p transports/http-sse/tsconfig.json --noEmit && tsc -p transports/mcp-http/tsconfig.json --noEmit && tsc -p samples/apps/host/tsconfig.json --noEmit && tsc -p samples/backend-host/tsconfig.json --noEmit && tsc -p samples/agent-host/tsconfig.json --noEmit && tsc -p samples/control-host/tsconfig.json --noEmit && tsc -p providers/tsconfig.json --noEmit && tsc -p packages/component-infinite-canvas/tsconfig.json --noEmit && tsc -p samples/gik-meta/tsconfig.json --noEmit",
     "test": "npm run conformance && npm run typecheck && npm run test:jsonata && npm run test:vitest",
@@ -75,6 +76,7 @@
     "cross-env": "^10.1.0",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
+    "turbo": "2.10.5",
     "typescript": "^5.6.3",
     "vite": "^6.3.5",
     "vitest": "^4.1.10"
