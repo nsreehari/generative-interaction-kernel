@@ -234,7 +234,7 @@
             {
               "id": "blueprint",
               "label": "Blueprint · DX + ACX",
-              "title": "Inspect the Executable Blueprint",
+              "title": "Inspect the Blueprint",
               "text": "Trace the same SOC intent through four tiers and three lowering recipes into the runtime document.",
               "blueprint": "live-workspace-soc",
               "gik": true,
