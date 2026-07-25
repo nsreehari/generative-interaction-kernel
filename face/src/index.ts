@@ -1,7 +1,6 @@
 export * from "./pure/catalog";
 export * from "./pure/document";
 export * from "./pure/capability";
-export * from "./pure/profile-tools";
 export * from "./tool-surface";
 export * from "./pure/authoring-tools";
 export * from "./services/queueface";

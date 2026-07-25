@@ -5,7 +5,7 @@
 // wiring is layered ON TOP by GikDemoBlueprintHost, which passes companions, contexts, and a primary
 // bridge down through the generic props below.
 //
-// Provider resolution (for imports beyond `self` — e.g. `from: "profile"` or another bundle's views)
+// Provider resolution for imports beyond `self`, such as another bundle's projection views.
 // comes from the ambient BundleRegistryProvider, exactly as BundleHost expects. A standalone caller is
 // responsible for establishing that context.
 

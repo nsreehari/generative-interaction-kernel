@@ -1,0 +1,16 @@
+{
+  "default": "samples-overview",
+  "blueprints": [
+    "samples-overview",
+    "manage-blueprints",
+    "portfolio-tracker",
+    "live-workspace-soc",
+    "copilot-c2",
+    "foundry-agent",
+    "foundry-agent-no-cells",
+    "manage-bundles"
+  ],
+  "nativeFrom": {
+    "foundry-agent-no-cells": "foundry-agent"
+  }
+}

@@ -1,0 +1,1302 @@
+{
+  "gik": "0.1",
+  "type": "blueprint",
+  "payload": {
+    "id": "portfolio-tracker",
+    "kind": "runtime-blueprint",
+    "version": "1.0.0",
+    "recipes": [],
+    "services": {
+      "portfolio-market-data": {
+        "kind": "http-service",
+        "version": "1",
+        "operations": {
+          "checkHttpProxyAccess": {
+            "operation": "check-access",
+            "contract": "http-proxy-access-check/v1",
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'portfolio.httpProxyAccessStatus','value':'ready'},{'op':'set','path':'portfolio.httpProxyAccessError','value':''}]}"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($rejected := error.status = 401 or error.status = 403; $missing := error.message = 'HTTP proxy access is required'; {'ops':[{'op':'set','path':'portfolio.httpProxyAccessStatus','value':($rejected or $missing) ? 'required' : 'error'},{'op':'set','path':'portfolio.httpProxyAccessError','value':$rejected ? 'That access key was rejected.' : ($missing ? 'HTTP proxy access is required.' : error.message)}]})"
+              }
+            },
+            "onViolation": {
+              "action": "fail"
+            }
+          },
+          "refreshPrices": {
+            "operation": "fetch-quotes",
+            "contract": "portfolio-market-quotes/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'requests':state.portfolio.holdings.*.{'key':ticker,'url':'https://query1.finance.yahoo.com/v8/finance/chart/' & ticker & '?interval=1d&range=1d','headers':{'User-Agent':'Mozilla/5.0 (compatible; portfolio-tracker-demo/1.0)'},'meta':{'quantity':quantity,'costBasis':costBasis}}}"
+              }
+            },
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "message": "Portfolio market data response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": [
+                      "results"
+                    ],
+                    "properties": {
+                      "results": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "key",
+                            "status",
+                            "meta",
+                            "body"
+                          ],
+                          "properties": {
+                            "key": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "status": {
+                              "type": "number"
+                            },
+                            "meta": {
+                              "type": "object",
+                              "required": [
+                                "quantity",
+                                "costBasis"
+                              ],
+                              "properties": {
+                                "quantity": {
+                                  "type": "number"
+                                },
+                                "costBasis": {
+                                  "type": "number"
+                                }
+                              },
+                              "additionalProperties": true
+                            },
+                            "body": {
+                              "type": "object",
+                              "required": [
+                                "chart"
+                              ],
+                              "properties": {
+                                "chart": {
+                                  "type": "object",
+                                  "required": [
+                                    "result"
+                                  ],
+                                  "properties": {
+                                    "result": {
+                                      "type": "array",
+                                      "minItems": 1,
+                                      "items": {
+                                        "type": "object",
+                                        "required": [
+                                          "meta"
+                                        ],
+                                        "properties": {
+                                          "meta": {
+                                            "type": "object",
+                                            "required": [
+                                              "symbol",
+                                              "regularMarketPrice"
+                                            ],
+                                            "properties": {
+                                              "symbol": {
+                                                "type": "string",
+                                                "minLength": 1
+                                              },
+                                              "regularMarketPrice": {
+                                                "type": "number"
+                                              },
+                                              "longName": {
+                                                "type": "string"
+                                              },
+                                              "shortName": {
+                                                "type": "string"
+                                              },
+                                              "regularMarketChange": {
+                                                "type": "number"
+                                              },
+                                              "regularMarketChangePercent": {
+                                                "type": "number"
+                                              },
+                                              "chartPreviousClose": {
+                                                "type": "number"
+                                              }
+                                            },
+                                            "additionalProperties": true
+                                          }
+                                        },
+                                        "additionalProperties": true
+                                      }
+                                    }
+                                  },
+                                  "additionalProperties": true
+                                }
+                              },
+                              "additionalProperties": true
+                            }
+                          },
+                          "additionalProperties": true
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              ]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'portfolio.quotes','value':$count(response.results) > 0 ? $merge(response.results.{key:{'ticker':key,'price':$round(body.chart.result[0].meta.regularMarketPrice, 2)}}) : {}},{'op':'set','path':'portfolio.intelligence','value':null},{'op':'set','path':'portfolio.intelligence2','value':null},{'op':'set','path':'portfolio.strategies','value':{}},{'op':'set','path':'portfolio.recommendation','value':null},{'op':'set','path':'portfolio.strategyInputs','value':null},{'op':'set','path':'portfolio.pendingStrategyInputs','value':null}],'detail':{'provider':'yahoo-finance-http-service','quoteCount':$count(response.results)}}"
+              }
+            }
+          }
+        },
+        "config": {
+          "endpoint": "${GIK_HTTP_PROXY_ORIGIN}",
+          "credentialRef": "http-proxy/access-key"
+        },
+        "scope": "per-blueprint"
+      },
+      "portfolio-intelligence": {
+        "kind": "foundry-agent",
+        "version": "1",
+        "operations": {
+          "checkFoundryAccess": {
+            "operation": "check-access",
+            "contract": "foundry-access-check/v1",
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'portfolio.foundryAccessStatus','value':'ready'},{'op':'set','path':'portfolio.foundryAccessError','value':''}]}"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($rejected := error.status = 401 or error.status = 403; $missing := error.message = 'Foundry access is required'; {'ops':[{'op':'set','path':'portfolio.foundryAccessStatus','value':($rejected or $missing) ? 'required' : 'error'},{'op':'set','path':'portfolio.foundryAccessError','value':$rejected ? 'That access key was rejected.' : ($missing ? 'Foundry access is required.' : error.message)}]})"
+              }
+            },
+            "onViolation": {
+              "action": "fail"
+            }
+          },
+          "requestIntelligence": {
+            "operation": "chat",
+            "contract": "portfolio-intelligence/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'message':'Analyze the following portfolio using the supplied values as authoritative. Positions JSON: ' & $string(state.portfolio.positions) & ' Portfolio summary JSON: ' & $string(state.portfolio.summary) & ' Investor profile JSON: ' & $string(state.portfolio.investorProfile),'instructions':'Analyze only the supplied portfolio data; do not imply that external news or events were researched. Distinguish supplied facts from analytical judgments and uncertainty. Do not invent prices, events, sources, or investor constraints. Return an empty evidence array because no external evidence is supplied. Keep the assessment concise and keep the complete structured response within the supplied output token budget.','maxOutputTokens':1800}"
+              }
+            },
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "code": "provider-structured-output",
+                  "message": "Portfolio intelligence response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": [
+                      "summary",
+                      "observations",
+                      "risks",
+                      "evidence",
+                      "asOf"
+                    ],
+                    "properties": {
+                      "summary": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "observations": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "risks": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "evidence": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "asOf": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              ]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':$merge([response,{'investorProfile':state.portfolio.investorProfile,'provider':'foundry-agent:Portfolio-Intelligence-Agent'}])},{'op':'set','path':'portfolio.intelligenceError','value':''}],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Intelligence-Agent'}}"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($access := error.message = 'Foundry access is required' or error.status = 401 or error.status = 403; $message := $access ? (error.status = 401 or error.status = 403 ? 'That access key was rejected.' : 'Foundry access is required.') : error.message; {'ops':[{'op':'set','path':'portfolio.foundryAccessStatus','value':$access ? 'required' : state.portfolio.foundryAccessStatus},{'op':'set','path':'portfolio.foundryAccessError','value':$access ? $message : state.portfolio.foundryAccessError},{'op':'set','path':'portfolio.intelligenceError','value':$message}]})"
+              }
+            },
+            "onViolation": {
+              "action": "fail"
+            }
+          },
+          "legacyCalculateStrategies": {
+            "operation": "propose-strategies",
+            "contract": "portfolio-strategies/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'positions':state.portfolio.positions,'summary':state.portfolio.summary,'investorProfile':state.portfolio.investorProfile,'intelligence':state.portfolio.intelligence}"
+              }
+            },
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "message": "Portfolio strategies response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": [
+                      "strategies",
+                      "recommendation",
+                      "provider"
+                    ],
+                    "properties": {
+                      "strategies": {
+                        "type": "object",
+                        "minProperties": 1,
+                        "additionalProperties": {
+                          "type": "object",
+                          "required": [
+                            "id",
+                            "rationale",
+                            "targetWeights"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "rationale": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "targetWeights": {
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                              }
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "recommendation": {
+                        "type": "object",
+                        "required": [
+                          "selected",
+                          "reason",
+                          "status"
+                        ],
+                        "properties": {
+                          "selected": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "reason": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "status": {
+                            "const": "proposed"
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "provider": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                {
+                  "kind": "jsonata",
+                  "expr": "$count(data.strategies.*[$abs($sum(targetWeights.*) - 1) > 0.001]) = 0",
+                  "message": "Every strategy's target weights must total 1",
+                  "code": "target-weights-sum"
+                },
+                {
+                  "kind": "jsonata",
+                  "expr": "$exists($lookup(data.strategies, data.recommendation.selected))",
+                  "message": "Portfolio recommendation must select a returned strategy",
+                  "code": "recommendation-selects-known-strategy"
+                }
+              ]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'portfolio.strategies','value':response.strategies},{'op':'set','path':'portfolio.recommendation','value':response.recommendation}],'detail':{'provider':response.provider}}"
+              }
+            },
+            "onViolation": {
+              "action": "fail"
+            }
+          }
+        },
+        "config": {
+          "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}",
+          "agent": "Portfolio-Intelligence-Agent",
+          "credentialRef": "foundry-agent/access-key"
+        },
+        "scope": "per-blueprint"
+      },
+      "portfolio-intelligence-2": {
+        "kind": "foundry-agent",
+        "version": "1",
+        "operations": {
+          "requestIntelligence2": {
+            "operation": "chat",
+            "contract": "portfolio-intelligence-2/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'message':'Analyze this portfolio and propose useful semantic projections. Positions JSON: ' & $string(state.portfolio.positions) & ' Portfolio summary JSON: ' & $string(state.portfolio.summary) & ' Investor profile JSON: ' & $string(state.portfolio.investorProfile) & ' Interaction context JSON: ' & $string({'interaction':'investigate','subject':'portfolio intelligence','goal':'understand what deserves human attention','facets':['summary','signals','catalysts','risks','evidence']}) & ' Attention context JSON: ' & $string({'presentationContext':state.portfolio.presentationContext,'attention':state.portfolio.presentationContext = 'portfolio-advisor' ? 'focused' : 'glanceable','space':state.portfolio.presentationContext = 'portfolio-advisor' ? 'expanded' : 'regular'}),'instructions':'Build reusable semantic items first. Then return two or three alternative projection candidates that reference those items by id. Available primitives are hero-signal, metric-strip, signal-list, timeline, evidence-list, and narrative. Available priority tokens are primary, secondary, and tertiary. Available disclosure tokens are always, collapsed, and on-demand. Use only this catalog. A glanceable candidate should expose no more than three always-visible sections and lead with the most material signal. A focused candidate may retain evidence and supporting detail through progressive disclosure. The runtime recipe, not you, chooses the active candidate. Analyze only the supplied portfolio data; do not imply that external news or events were researched. Distinguish supplied facts, judgments, and uncertainty through semantic item kinds. Return no evidence unless it was supplied in the request. Keep the complete structured response within the supplied output token budget.','maxOutputTokens':2500}"
+              }
+            },
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "code": "provider-structured-output",
+                  "message": "Portfolio intelligence 2 response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": ["headline", "summary", "asOf", "items", "evidence", "projectionCandidates"],
+                    "properties": {
+                      "headline": { "type": "string", "minLength": 1 },
+                      "summary": { "type": "string", "minLength": 1 },
+                      "asOf": { "type": "string", "minLength": 1 },
+                      "items": { "type": "array", "minItems": 1 },
+                      "evidence": { "type": "array" },
+                      "projectionCandidates": { "type": "array", "minItems": 2, "maxItems": 3 }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                {
+                  "kind": "jsonata",
+                  "expr": "$count(data.projectionCandidates[attention = 'glanceable']) > 0 and $count(data.projectionCandidates[attention = 'focused']) > 0",
+                  "message": "Portfolio intelligence 2 must provide glanceable and focused projections",
+                  "code": "projection-attention-coverage"
+                },
+                {
+                  "kind": "jsonata",
+                  "expr": "$count(data.projectionCandidates[attention = 'glanceable'][$count(sections[disclosure = 'always']) > 3]) = 0",
+                  "message": "Each glanceable projection may expose at most three always-visible sections",
+                  "code": "glanceable-attention-budget"
+                }
+              ]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence2','value':$merge([response,{'provider':'foundry-agent:Portfolio-Intelligence-2-Agent'}])}],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Intelligence-2-Agent'}}"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($access := error.message = 'Foundry access is required' or error.status = 401 or error.status = 403; {'ops':[{'op':'set','path':'portfolio.foundryAccessStatus','value':$access ? 'required' : state.portfolio.foundryAccessStatus},{'op':'set','path':'portfolio.foundryAccessError','value':$access ? (error.status = 401 or error.status = 403 ? 'That access key was rejected.' : 'Foundry access is required.') : error.message}]})"
+              }
+            },
+            "onViolation": { "action": "fail" }
+          }
+        },
+        "config": {
+          "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}",
+          "agent": "Portfolio-Intelligence-2-Agent",
+          "credentialRef": "foundry-agent/access-key"
+        },
+        "scope": "per-blueprint"
+      },
+      "portfolio-strategies": {
+        "kind": "foundry-agent",
+        "version": "1",
+        "operations": {
+          "calculateStrategies": {
+            "operation": "chat",
+            "contract": "portfolio-strategies/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'message':'Build conservative and growth target allocations for the current holdings only. Positions JSON: ' & $string(state.portfolio.pendingStrategyInputs.positions) & ' Portfolio summary JSON: ' & $string(state.portfolio.pendingStrategyInputs.summary) & ' Investor profile JSON: ' & $string(state.portfolio.pendingStrategyInputs.investorProfile) & ' Portfolio intelligence source: ' & state.portfolio.pendingStrategyInputs.intelligenceSource & ' Portfolio intelligence JSON: ' & $string(state.portfolio.pendingStrategyInputs.intelligence),'instructions':'Propose two educational rebalance alternatives using only tickers already present in the supplied positions. Make every target allocation total exactly 1. Choose the alternative that best fits the supplied investor profile; if the profile is missing, say so in the recommendation reason and prefer the conservative alternative. Do not claim to execute trades.'}"
+              }
+            },
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "code": "provider-structured-output",
+                  "message": "Portfolio strategies response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": ["strategies", "recommendation"],
+                    "properties": {
+                      "strategies": {
+                        "type": "object",
+                        "required": ["conservative", "growth"],
+                        "properties": {
+                          "conservative": { "type": "object", "required": ["id", "rationale", "targetWeights"] },
+                          "growth": { "type": "object", "required": ["id", "rationale", "targetWeights"] }
+                        },
+                        "additionalProperties": false
+                      },
+                      "recommendation": {
+                        "type": "object",
+                        "required": ["selected", "reason", "status"],
+                        "properties": {
+                          "selected": { "type": "string", "enum": ["conservative", "growth"] },
+                          "reason": { "type": "string", "minLength": 1 },
+                          "status": { "type": "string", "const": "proposed" }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                {
+                  "kind": "jsonata",
+                  "expr": "$count(data.strategies.*[$abs($sum(targetWeights.weight) - 1) > 0.001]) = 0",
+                  "message": "Every strategy's target weights must total 1",
+                  "code": "target-weights-sum"
+                },
+                {
+                  "kind": "jsonata",
+                  "expr": "$exists($lookup(data.strategies, data.recommendation.selected))",
+                  "message": "Portfolio recommendation must select a returned strategy",
+                  "code": "recommendation-selects-known-strategy"
+                }
+              ]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'portfolio.strategies','value':{'conservative':$merge([response.strategies.conservative,{'targetWeights':$merge(response.strategies.conservative.targetWeights.{ticker:weight})}]),'growth':$merge([response.strategies.growth,{'targetWeights':$merge(response.strategies.growth.targetWeights.{ticker:weight})}])}},{'op':'set','path':'portfolio.recommendation','value':response.recommendation},{'op':'set','path':'portfolio.strategyInputs','value':state.portfolio.pendingStrategyInputs},{'op':'set','path':'portfolio.pendingStrategyInputs','value':null}],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Strategy-Agent'}}"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($access := error.message = 'Foundry access is required' or error.status = 401 or error.status = 403; {'ops':[{'op':'set','path':'portfolio.foundryAccessStatus','value':$access ? 'required' : state.portfolio.foundryAccessStatus},{'op':'set','path':'portfolio.foundryAccessError','value':$access ? (error.status = 401 or error.status = 403 ? 'That access key was rejected.' : 'Foundry access is required.') : error.message},{'op':'set','path':'portfolio.pendingStrategyInputs','value':null}]})"
+              }
+            },
+            "onViolation": { "action": "fail" }
+          }
+        },
+        "config": {
+          "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}",
+          "agent": "Portfolio-Strategy-Agent",
+          "credentialRef": "foundry-agent/access-key"
+        },
+        "scope": "per-blueprint"
+      }
+    },
+    "runtime": {
+      "expression": "jsonata",
+      "namespaces": [
+        "portfolio"
+      ],
+      "contexts": [
+        "control"
+      ],
+      "actions": [
+        "invoke",
+        "emit"
+      ],
+      "capabilities": {
+        "portfolio:workspace": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ],
+          "emits": [
+            "setHoldings",
+            "upsertHolding",
+            "removeHolding",
+            "refreshPrices",
+            "requestIntelligence",
+            "requestIntelligence2",
+            "calculateStrategies",
+            "setPresentationContext"
+          ]
+        },
+        "http-proxy:access-gate": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "accessRequested",
+            "accessCleared"
+          ]
+        },
+        "foundry:access-gate": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "emits": ["accessRequested", "accessCleared"]
+        },
+        "ui:editable-table": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "save"
+          ],
+          "dataProp": "rows"
+        },
+        "ui:table": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "rows"
+        },
+        "portfolio:summary": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "value"
+        },
+        "portfolio:narrative": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "value"
+        },
+        "portfolio:intelligence-projections": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "dataProp": "value"
+        },
+        "portfolio:comparison": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "emits": ["apply"],
+          "dataProp": "value"
+        },
+        "portfolio:recommendation": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "apply"
+          ],
+          "dataProp": "value"
+        }
+      },
+      "externals": {
+        "projectionViews": {
+          "ui": {
+            "from": "floor"
+          },
+          "http-proxy": {
+            "from": "http-proxy"
+          },
+          "foundry": {
+            "from": "foundry",
+            "use": ["access-gate"]
+          },
+          "portfolio": {
+            "from": "self"
+          }
+        },
+        "effectHandlers": [
+          "setHoldings",
+          "upsertHolding",
+          "removeHolding",
+          "applyRecommendation",
+          "saveHoldings",
+          "prepareStrategies",
+          "setPresentationContext"
+        ]
+      },
+      "state": {
+        "portfolio": {
+          "httpProxyAccessStatus": "checking",
+          "httpProxyAccessError": "",
+          "foundryAccessStatus": "checking",
+          "foundryAccessError": "",
+          "holdings": {},
+          "quotes": {},
+          "positions": {},
+          "summary": {
+            "marketValue": 0,
+            "costBasis": 0,
+            "gainLoss": 0
+          },
+          "intelligence": null,
+          "intelligenceError": "",
+          "intelligence2": null,
+          "strategies": {},
+          "recommendation": null,
+          "strategyInputs": null,
+          "pendingStrategyInputs": null,
+          "investorProfile": null,
+          "appliedRecommendation": null,
+          "presentationContext": "portfolio-overview"
+        }
+      }
+    },
+    "tiers": [
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document"
+      }
+    ],
+    "cells": {
+      "portfolio-tracker": {
+        "id": "portfolio-tracker",
+        "behavior": {
+          "events": {
+            "setHoldings": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "setHoldings"
+                }
+              }
+            ],
+            "upsertHolding": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "upsertHolding"
+                }
+              }
+            ],
+            "removeHolding": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "removeHolding"
+                }
+              }
+            ],
+            "refreshPrices": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "refreshPrices"
+                }
+              }
+            ],
+            "requestIntelligence": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "requestIntelligence"
+                }
+              }
+            ],
+            "requestIntelligence2": [
+              {
+                "do": "invoke",
+                "args": { "tool": "requestIntelligence2" }
+              }
+            ],
+            "calculateStrategies": [
+              {
+                "do": "invoke",
+                "args": { "tool": "prepareStrategies" }
+              },
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "calculateStrategies"
+                }
+              }
+            ],
+            "setPresentationContext": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "setPresentationContext"
+                }
+              }
+            ]
+          },
+          "reactions": [
+            {
+              "when": "control.presentationContext",
+              "runInitially": true,
+              "run": [
+                {
+                  "do": "emit",
+                  "event": "setPresentationContext"
+                }
+              ]
+            }
+          ]
+        },
+        "view": {
+          "capability": "portfolio:workspace",
+          "props": {
+            "title": "Portfolio tracker"
+          },
+          "bindings": {
+            "presentationContext": {
+              "from": "portfolio.presentationContext"
+            }
+          }
+        }
+      },
+      "http-proxy-access-gate": {
+        "id": "http-proxy-access-gate",
+        "outputs": [
+          {
+            "token": "http-proxy-access",
+            "from": "portfolio.httpProxyAccessStatus",
+            "when": "portfolio.httpProxyAccessStatus = 'ready'"
+          }
+        ],
+        "behavior": {
+          "events": {
+            "accessRequested": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "checkHttpProxyAccess"
+                }
+              }
+            ],
+            "accessCleared": [
+              {
+                "do": "assign",
+                "target": "portfolio.httpProxyAccessStatus",
+                "args": {
+                  "value": "required"
+                }
+              },
+              {
+                "do": "assign",
+                "target": "portfolio.httpProxyAccessError",
+                "args": {
+                  "value": ""
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "http-proxy:access-gate",
+          "bindings": {
+            "status": {
+              "from": "portfolio.httpProxyAccessStatus"
+            },
+            "error": {
+              "from": "portfolio.httpProxyAccessError"
+            }
+          }
+        }
+      },
+      "foundry-access-gate": {
+        "id": "foundry-access-gate",
+        "outputs": [
+          {
+            "token": "foundry-access",
+            "from": "portfolio.foundryAccessStatus",
+            "when": "portfolio.foundryAccessStatus = 'ready'"
+          }
+        ],
+        "behavior": {
+          "events": {
+            "accessRequested": [
+              { "do": "invoke", "args": { "tool": "checkFoundryAccess" } }
+            ],
+            "accessCleared": [
+              { "do": "assign", "target": "portfolio.foundryAccessStatus", "args": { "value": "required" } },
+              { "do": "assign", "target": "portfolio.foundryAccessError", "args": { "value": "" } }
+            ]
+          }
+        },
+        "view": {
+          "capability": "foundry:access-gate",
+          "bindings": {
+            "status": { "from": "portfolio.foundryAccessStatus" },
+            "error": { "from": "portfolio.foundryAccessError" }
+          }
+        }
+      },
+      "holdings": {
+        "id": "holdings",
+        "outputs": [
+          {
+            "token": "holding:$TICKER"
+          }
+        ],
+        "behavior": {
+          "events": {
+            "save": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "saveHoldings"
+                }
+              },
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "refreshPrices"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:editable-table",
+          "props": {
+            "label": "holdings",
+            "spec": {
+              "schema": {
+                "properties": {
+                  "ticker": {
+                    "type": "string"
+                  },
+                  "quantity": {
+                    "type": "number"
+                  },
+                  "costBasis": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          },
+          "bindings": {
+            "rows": {
+              "expression": "[portfolio.holdings.*]"
+            }
+          }
+        }
+      },
+      "market-prices": {
+        "id": "market-prices",
+        "inputs": [
+          {
+            "token": "http-proxy-access"
+          },
+          {
+            "token": "holding:$TICKER"
+          }
+        ],
+        "sources": [
+          {
+            "id": "market-prices.source",
+            "service": "portfolio-market-data",
+            "operation": "refreshPrices",
+            "contract": "portfolio-market-quotes/v1"
+          }
+        ],
+        "outputs": [
+          {
+            "token": "quote:$TICKER"
+          }
+        ],
+        "view": {
+          "capability": "ui:table",
+          "props": {
+            "label": "market-prices"
+          },
+          "bindings": {
+            "rows": {
+              "expression": "[portfolio.quotes.*]"
+            }
+          }
+        }
+      },
+      "positions": {
+        "id": "positions",
+        "inputs": [
+          {
+            "token": "holding:$TICKER"
+          },
+          {
+            "token": "quote:$TICKER"
+          }
+        ],
+        "outputs": [
+          {
+            "token": "position:$TICKER"
+          }
+        ],
+        "compute": [
+          {
+            "id": "positions-by-ticker",
+            "expression": "($holdings := portfolio.holdings; $quotes := portfolio.quotes; $rows := $each($holdings, function($holding, $ticker) { $lookup($quotes, $ticker) ? {$ticker:{'ticker':$ticker,'quantity':$holding.quantity,'price':$lookup($quotes, $ticker).price,'value':$round($holding.quantity * $lookup($quotes, $ticker).price, 2),'costBasis':$round($holding.quantity * $holding.costBasis, 2),'gainLoss':$round(($holding.quantity * $lookup($quotes, $ticker).price) - ($holding.quantity * $holding.costBasis), 2)}} : {} }); $count($rows) > 0 ? $merge($rows) : {})",
+            "assign": "portfolio.positions",
+            "dependencies": [
+              "portfolio.holdings",
+              "portfolio.quotes"
+            ]
+          }
+        ],
+        "view": {
+          "capability": "ui:table",
+          "props": {
+            "label": "positions"
+          },
+          "bindings": {
+            "rows": {
+              "expression": "[portfolio.positions.*]"
+            }
+          }
+        }
+      },
+      "summary": {
+        "id": "summary",
+        "inputs": [
+          {
+            "token": "position:$TICKER"
+          }
+        ],
+        "outputs": [
+          {
+            "token": "portfolio-summary"
+          }
+        ],
+        "compute": [
+          {
+            "id": "portfolio-totals",
+            "expression": "{'marketValue':$count(portfolio.positions.*) > 0 ? $round($sum(portfolio.positions.*.value), 2) : 0,'costBasis':$count(portfolio.positions.*) > 0 ? $round($sum(portfolio.positions.*.costBasis), 2) : 0,'gainLoss':$count(portfolio.positions.*) > 0 ? $round($sum(portfolio.positions.*.gainLoss), 2) : 0}",
+            "assign": "portfolio.summary",
+            "dependencies": [
+              "portfolio.positions"
+            ]
+          }
+        ],
+        "view": {
+          "capability": "portfolio:summary",
+          "props": {
+            "label": "summary"
+          },
+          "bindings": {
+            "value": {
+              "from": "portfolio.summary"
+            }
+          }
+        }
+      },
+      "portfolio-intelligence": {
+        "id": "portfolio-intelligence",
+        "inputs": [
+          { "token": "foundry-access" },
+          {
+            "token": "portfolio-summary"
+          },
+          {
+            "token": "position:$TICKER"
+          },
+          {
+            "token": "investor-profile"
+          }
+        ],
+        "sources": [
+          {
+            "id": "portfolio-intelligence.source",
+            "service": "portfolio-intelligence",
+            "operation": "chat",
+            "contract": "portfolio-intelligence/v1"
+          }
+        ],
+        "outputs": [
+          {
+            "token": "portfolio-intelligence"
+          }
+        ],
+        "view": {
+          "capability": "portfolio:narrative",
+          "props": {
+            "label": "portfolio-intelligence"
+          },
+          "bindings": {
+            "value": {
+              "from": "portfolio.intelligence"
+            },
+            "error": {
+              "from": "portfolio.intelligenceError"
+            }
+          }
+        }
+      },
+      "portfolio-intelligence-2": {
+        "id": "portfolio-intelligence-2",
+        "inputs": [
+          { "token": "foundry-access" },
+          { "token": "portfolio-summary" },
+          { "token": "position:$TICKER" },
+          { "token": "investor-profile" }
+        ],
+        "sources": [
+          {
+            "id": "portfolio-intelligence-2.source",
+            "service": "portfolio-intelligence-2",
+            "operation": "chat",
+            "contract": "portfolio-intelligence-2/v1"
+          }
+        ],
+        "outputs": [{ "token": "portfolio-intelligence-2" }],
+        "view": {
+          "capability": "portfolio:intelligence-projections",
+          "props": {
+            "label": "portfolio-intelligence-2",
+            "projectionRecipe": {
+              "contexts": {
+                "portfolio-overview": { "attention": "glanceable", "showDisclosure": ["always"], "maxSections": 3 },
+                "portfolio-advisor": { "attention": "focused", "showDisclosure": ["always", "collapsed"], "maxSections": 8 }
+              },
+              "fallback": { "attention": "glanceable", "showDisclosure": ["always"], "maxSections": 3 }
+            }
+          },
+          "bindings": {
+            "value": { "from": "portfolio.intelligence2" },
+            "presentationContext": { "from": "portfolio.presentationContext" },
+            "error": { "from": "portfolio.foundryAccessError" }
+          }
+        }
+      },
+      "conservative-rebalance": {
+        "id": "conservative-rebalance",
+        "inputs": [
+          {
+            "token": "position:$TICKER"
+          },
+          {
+            "token": "portfolio-summary"
+          },
+          {
+            "token": "portfolio-intelligence"
+          },
+          {
+            "token": "investor-profile"
+          }
+        ],
+        "outputs": [
+          {
+            "token": "rebalance-conservative"
+          }
+        ],
+        "view": {
+          "capability": "portfolio:narrative",
+          "props": {
+            "label": "conservative-rebalance"
+          },
+          "bindings": {
+            "value": {
+              "from": "portfolio.strategies.conservative"
+            }
+          }
+        }
+      },
+      "growth-rebalance": {
+        "id": "growth-rebalance",
+        "inputs": [
+          {
+            "token": "position:$TICKER"
+          },
+          {
+            "token": "portfolio-summary"
+          },
+          {
+            "token": "portfolio-intelligence"
+          },
+          {
+            "token": "investor-profile"
+          }
+        ],
+        "outputs": [
+          {
+            "token": "rebalance-growth"
+          }
+        ],
+        "view": {
+          "capability": "portfolio:narrative",
+          "props": {
+            "label": "growth-rebalance"
+          },
+          "bindings": {
+            "value": {
+              "from": "portfolio.strategies.growth"
+            }
+          }
+        }
+      },
+      "rebalance-comparison": {
+        "id": "rebalance-comparison",
+        "inputs": [
+          {
+            "token": "rebalance-conservative"
+          },
+          {
+            "token": "rebalance-growth"
+          },
+          { "token": "portfolio-intelligence" },
+          { "token": "portfolio-intelligence-2" }
+        ],
+        "sources": [
+          {
+            "id": "rebalance-comparison.source",
+            "service": "portfolio-strategies",
+            "operation": "chat",
+            "contract": "portfolio-strategies/v1"
+          }
+        ],
+        "outputs": [
+          {
+            "token": "rebalance-recommendation"
+          }
+        ],
+        "behavior": {
+          "events": {
+            "apply": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "applyRecommendation"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "portfolio:comparison",
+          "props": {
+            "label": "rebalance-comparison"
+          },
+          "bindings": {
+            "value": {
+              "from": "portfolio.recommendation"
+            },
+            "positions": { "from": "portfolio.positions" },
+            "summary": { "from": "portfolio.summary" },
+            "investorProfile": { "from": "portfolio.investorProfile" },
+            "intelligence1": { "from": "portfolio.intelligence" },
+            "intelligence2": { "from": "portfolio.intelligence2" },
+            "strategyInputs": { "from": "portfolio.strategyInputs" }
+          }
+        }
+      }
+    },
+    "projections": {
+      "presentation": {
+        "roots": [
+          "portfolio-tracker"
+        ],
+        "placements": [
+          {
+            "cell": "http-proxy-access-gate",
+            "parent": "portfolio-tracker",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "foundry-access-gate",
+            "parent": "portfolio-tracker",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "holdings",
+            "parent": "portfolio-tracker",
+            "slot": "children",
+            "order": 2
+          },
+          {
+            "cell": "market-prices",
+            "parent": "portfolio-tracker",
+            "slot": "children",
+            "order": 3
+          },
+          {
+            "cell": "positions",
+            "parent": "portfolio-tracker",
+            "slot": "children",
+            "order": 4
+          },
+          {
+            "cell": "summary",
+            "parent": "portfolio-tracker",
+            "slot": "children",
+            "order": 5
+          },
+          {
+            "cell": "portfolio-intelligence",
+            "parent": "portfolio-tracker",
+            "slot": "children",
+            "order": 6
+          },
+          {
+            "cell": "portfolio-intelligence-2",
+            "parent": "portfolio-tracker",
+            "slot": "children",
+            "order": 7
+          },
+          {
+            "cell": "conservative-rebalance",
+            "parent": "portfolio-tracker",
+            "slot": "children",
+            "order": 8
+          },
+          {
+            "cell": "growth-rebalance",
+            "parent": "portfolio-tracker",
+            "slot": "children",
+            "order": 9
+          },
+          {
+            "cell": "rebalance-comparison",
+            "parent": "portfolio-tracker",
+            "slot": "children",
+            "order": 10
+          }
+        ]
+      }
+    }
+  }
+}

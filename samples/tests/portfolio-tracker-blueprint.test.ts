@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   analyzeCellComposition,
   type CellDefinition,
-} from "@gik/profile";
+} from "@gik/blueprint";
 
 import { openSampleBlueprint } from "../shared/blueprints";
 import { applyHostConfig } from "../shared/host-config";
-import blueprint from "../profiles/portfolio-tracker/blueprint.json" with { type: "json" };
+import blueprint from "../blueprints/portfolio-tracker/blueprint.json" with { type: "json" };
 
 const portfolioCells = Object.values(blueprint.payload.cells) as unknown as CellDefinition[];
 
@@ -15,11 +15,13 @@ describe("portfolio-tracker Blueprint", () => {
     expect(portfolioCells.map((cell) => cell.id)).toEqual([
       "portfolio-tracker",
       "http-proxy-access-gate",
+      "foundry-access-gate",
       "holdings",
       "market-prices",
       "positions",
       "summary",
       "portfolio-intelligence",
+      "portfolio-intelligence-2",
       "conservative-rebalance",
       "growth-rebalance",
       "rebalance-comparison",
@@ -36,6 +38,7 @@ describe("portfolio-tracker Blueprint", () => {
     );
     const marketPrices = program.root.edges?.children?.find((node) => node.id === "market-prices");
     const accessGate = portfolioCells.find((cell) => cell.id === "http-proxy-access-gate");
+    const foundryAccessGate = portfolioCells.find((cell) => cell.id === "foundry-access-gate");
     expect(accessGate?.outputs).toEqual([{
       token: "http-proxy-access",
       from: "portfolio.httpProxyAccessStatus",
@@ -44,6 +47,53 @@ describe("portfolio-tracker Blueprint", () => {
     expect(portfolioCells.find((cell) => cell.id === "market-prices")?.inputs).toEqual([
       { token: "http-proxy-access" },
       { token: "holding:$TICKER" },
+    ]);
+    expect(foundryAccessGate?.outputs).toEqual([{
+      token: "foundry-access",
+      from: "portfolio.foundryAccessStatus",
+      when: "portfolio.foundryAccessStatus = 'ready'",
+    }]);
+    const intelligence1 = portfolioCells.find((cell) => cell.id === "portfolio-intelligence");
+    expect(intelligence1?.inputs).toContainEqual({ token: "foundry-access" });
+    expect(intelligence1?.view?.bindings).toMatchObject({
+      value: { from: "portfolio.intelligence" },
+      error: { from: "portfolio.intelligenceError" },
+    });
+    const intelligence2 = portfolioCells.find((cell) => cell.id === "portfolio-intelligence-2");
+    expect(intelligence2).toMatchObject({
+      inputs: expect.arrayContaining([{ token: "foundry-access" }]),
+      sources: [{ service: "portfolio-intelligence-2", operation: "chat", contract: "portfolio-intelligence-2/v1" }],
+      view: {
+        capability: "portfolio:intelligence-projections",
+        bindings: {
+          value: { from: "portfolio.intelligence2" },
+          presentationContext: { from: "portfolio.presentationContext" },
+          error: { from: "portfolio.foundryAccessError" },
+        },
+      },
+    });
+    expect(intelligence2?.view?.props?.projectionRecipe).toMatchObject({
+      contexts: {
+        "portfolio-overview": { attention: "glanceable", maxSections: 3 },
+        "portfolio-advisor": { attention: "focused", maxSections: 8 },
+      },
+    });
+    const comparison = portfolioCells.find((cell) => cell.id === "rebalance-comparison");
+    expect(comparison?.inputs).toEqual(expect.arrayContaining([
+      { token: "portfolio-intelligence" },
+      { token: "portfolio-intelligence-2" },
+    ]));
+    expect(comparison?.sources).toEqual([
+      expect.objectContaining({ service: "portfolio-strategies", operation: "chat" }),
+    ]);
+    expect(comparison?.view?.bindings).toMatchObject({
+      intelligence1: { from: "portfolio.intelligence" },
+      intelligence2: { from: "portfolio.intelligence2" },
+      strategyInputs: { from: "portfolio.strategyInputs" },
+    });
+    expect(blueprint.payload.cells["portfolio-tracker"].behavior.events.calculateStrategies).toEqual([
+      { do: "invoke", args: { tool: "prepareStrategies" } },
+      { do: "invoke", args: { tool: "calculateStrategies" } },
     ]);
     expect(marketPrices?.props?.externalSource).toEqual({ refreshEvent: "refresh" });
     expect(marketPrices?.edges?.on?.refresh).toEqual([{

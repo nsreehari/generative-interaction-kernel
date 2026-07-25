@@ -22,8 +22,7 @@ can load a single file. Only `envelope.schema.json` uses cross-file `$ref` (by `
 
 ## Golden conformance fixture
 
-Drawn from the **live-cards** first onboarding profile
-([../docs/04-first-onboarding-profile.md](../docs/04-first-onboarding-profile.md)):
+Drawn from the historical **live-cards** onboarding fixture:
 
 | File | Role |
 |---|---|

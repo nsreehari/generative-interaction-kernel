@@ -1,6 +1,6 @@
 // ObservabilitySink reference implementations + the required trace points (ADR-0020).
 //
-// The kernel emits a `TraceEvent` to its optional `sink` at fixed points; a profile plugs
+// The kernel emits a `TraceEvent` to its optional `sink` at fixed points; a host plugs
 // in a concrete sink (console, OpenTelemetry, ETW, file). The kernel depends only on the
 // `TraceSink` type, so these implementations are optional conveniences, not core.
 //

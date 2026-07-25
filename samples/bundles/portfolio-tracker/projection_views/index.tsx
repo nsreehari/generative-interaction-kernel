@@ -69,6 +69,122 @@ function valueOf(node: ProjectionViewProps["node"]): unknown {
   return node.props.value;
 }
 
+export type StrategyInputSnapshot = {
+  positions: unknown;
+  summary: unknown;
+  investorProfile: unknown;
+  intelligenceSource: "portfolio-intelligence" | "portfolio-intelligence-2";
+  intelligence: unknown;
+};
+
+function objectValue(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+export function strategyInputSnapshot(props: Record<string, unknown>): StrategyInputSnapshot | null {
+  const intelligence2 = objectValue(props.intelligence2);
+  const intelligence1 = objectValue(props.intelligence1);
+  const intelligence = intelligence2 ?? intelligence1;
+  if (!intelligence) return null;
+  return {
+    positions: props.positions ?? {},
+    summary: props.summary ?? {},
+    investorProfile: props.investorProfile ?? null,
+    intelligenceSource: intelligence2 ? "portfolio-intelligence-2" : "portfolio-intelligence",
+    intelligence,
+  };
+}
+
+function canonicalJson(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalJson);
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, entry]) => [key, canonicalJson(entry)]));
+  }
+  return value;
+}
+
+export function strategyInputsEqual(current: StrategyInputSnapshot, previous: unknown): boolean {
+  return JSON.stringify(canonicalJson(current)) === JSON.stringify(canonicalJson(previous));
+}
+
+export function strategyActionDisabled(props: Record<string, unknown>): boolean {
+  const current = strategyInputSnapshot(props);
+  return current === null || strategyInputsEqual(current, props.strategyInputs);
+}
+
+export type ProjectionSection = { id: string; title: string; primitive: string; priority: string; disclosure: string; contentIds: string[] };
+export type ProjectionCandidate = { id: string; label: string; attention: string; rationale: string; sections: ProjectionSection[] };
+export type ProjectionPolicy = { attention: string; showDisclosure: string[]; maxSections: number };
+
+const EMPTY_POLICY: ProjectionPolicy = { attention: "glanceable", showDisclosure: ["always"], maxSections: 3 };
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function projectionCandidates(value: unknown): ProjectionCandidate[] {
+  return Array.isArray(value) ? value.map(asRecord).map((candidate) => ({
+    id: String(candidate.id ?? ""),
+    label: String(candidate.label ?? ""),
+    attention: String(candidate.attention ?? ""),
+    rationale: String(candidate.rationale ?? ""),
+    sections: Array.isArray(candidate.sections) ? candidate.sections.map(asRecord).map((section) => ({
+      id: String(section.id ?? ""),
+      title: String(section.title ?? ""),
+      primitive: String(section.primitive ?? ""),
+      priority: String(section.priority ?? "secondary"),
+      disclosure: String(section.disclosure ?? "collapsed"),
+      contentIds: Array.isArray(section.contentIds) ? section.contentIds.map(String) : [],
+    })) : [],
+  })).filter((candidate) => candidate.id && candidate.sections.length > 0) : [];
+}
+
+export function selectIntelligenceProjection(value: unknown, context: string, recipeValue: unknown): {
+  policy: ProjectionPolicy;
+  candidate: ProjectionCandidate | undefined;
+  sections: ProjectionSection[];
+} {
+  const valueRecord = asRecord(value);
+  const recipe = asRecord(recipeValue);
+  const contexts = asRecord(recipe.contexts);
+  const configuredPolicy = asRecord(contexts[context] ?? recipe.fallback);
+  const policy: ProjectionPolicy = {
+    attention: String(configuredPolicy.attention ?? EMPTY_POLICY.attention),
+    showDisclosure: Array.isArray(configuredPolicy.showDisclosure) ? configuredPolicy.showDisclosure.map(String) : EMPTY_POLICY.showDisclosure,
+    maxSections: Number(configuredPolicy.maxSections ?? EMPTY_POLICY.maxSections),
+  };
+  const candidates = projectionCandidates(valueRecord.projectionCandidates);
+  const candidate = candidates.find((entry) => entry.attention === policy.attention) ?? candidates[0];
+  const sections = (candidate?.sections ?? [])
+    .filter((section) => policy.showDisclosure.includes(section.disclosure))
+    .slice(0, policy.maxSections);
+  return { policy, candidate, sections };
+}
+
+export function safeEvidenceUrl(value: string): string | undefined {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function formatIntelligenceMetric(value: string, unit: string): string {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return [value, unit].filter(Boolean).join(" ");
+  const normalizedUnit = unit.trim().toLowerCase();
+  if (["usd", "currency", "dollar", "dollars"].includes(normalizedUnit)) {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(numericValue);
+  }
+  const formatted = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(numericValue);
+  if (normalizedUnit === "%" || normalizedUnit.includes("percent")) return `${formatted}%`;
+  if (normalizedUnit === "share" || normalizedUnit === "shares") return `${formatted} shares`;
+  return unit ? `${formatted} ${unit}` : formatted;
+}
+
 function childrenByNodeId(children: React.ReactNode): Map<string, React.ReactElement<ProjectionViewProps>> {
   const slots = new Map<string, React.ReactElement<ProjectionViewProps>>();
   for (const child of React.Children.toArray(children)) {
@@ -171,6 +287,20 @@ const RecommendationView: ProjectionView = ({ node, emit }) => {
   );
 };
 
+const IntelligenceProjectionsView: ProjectionView = ({ node }) => {
+  const styles = useStyles();
+  const value = asRecord(valueOf(node));
+  if (Object.keys(value).length === 0) return null;
+  const context = String(node.props.presentationContext ?? "portfolio-overview");
+  const { candidate, sections } = selectIntelligenceProjection(value, context, node.props.projectionRecipe);
+  return <article className={`${styles.advisoryPanel} ${styles.advisoryWide}`}>
+    <p className={styles.advisoryEyebrow}>Portfolio intelligence</p>
+    <h2 className={styles.advisoryTitle}>{String(value.headline ?? candidate?.label ?? "Assessment")}</h2>
+    <p className={styles.advisorySummary}>{String(value.summary ?? "")}</p>
+    <ul className={styles.detailList}>{sections.map((section) => <li key={section.id}>{section.title}</li>)}</ul>
+  </article>;
+};
+
 const WorkspaceView: ProjectionView = ({ node, children, emit }) => {
   const styles = useStyles();
   const [pendingCommand, setPendingCommand] = React.useState<string | null>(null);
@@ -194,6 +324,7 @@ const WorkspaceView: ProjectionView = ({ node, children, emit }) => {
   </section>;
   const advisory = <section className={styles.advisory}>
     {cells.get("portfolio-intelligence")}
+    {cells.get("portfolio-intelligence-2")}
     {cells.get("conservative-rebalance")}
     {cells.get("growth-rebalance")}
     {cells.get("rebalance-comparison")}
@@ -213,6 +344,7 @@ const WorkspaceView: ProjectionView = ({ node, children, emit }) => {
     </header>
     <div className={styles.content}>
       {cells.get("http-proxy-access-gate")}
+      {cells.get("foundry-access-gate")}
       {isAdvisorContext
         ? <>{advisory}{overview}{market}</>
         : <>{overview}{market}{advisory}</>}
@@ -224,5 +356,7 @@ export default {
   workspace: WorkspaceView,
   summary: SummaryView,
   narrative: NarrativeView,
+  "intelligence-projections": IntelligenceProjectionsView,
+  comparison: RecommendationView,
   recommendation: RecommendationView,
 };

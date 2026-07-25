@@ -1,7 +1,7 @@
 // The document authoring surface: validate-before-commit (structural) plus non-throwing
 // reference linting against a manifest. A thin JSON-shaped facade over the kernel's
 // authorProjectedProgram + lintManifestReferences, so MCP/HTTP/in-proc wrappers can share one contract.
-// Nothing is hardcoded per profile: every check is relative to the manifest handed in.
+// Nothing is hardcoded per blueprint: every check is relative to the manifest handed in.
 
 import {
   authorProjectedProgram as kernelAuthorDocument,

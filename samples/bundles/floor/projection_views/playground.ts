@@ -1,7 +1,7 @@
 // The PLATFORM FLOOR, part 6: the COMMON Playground bundle builder.
 //
-// A Playground is the interactive surface a profile is exercised in. There is ONE builder — shared
-// by every profile — that turns a profile spec (a name + its capabilities) into a SerializableBundle
+// A Playground is an interactive surface for exercising a vocabulary. One builder turns a
+// vocabulary spec (a name + its capabilities) into a SerializableBundle
 // the `bundle` primitive embeds as a nested runtime. "Preview" is not a separate thing: it is simply
 // the Playground built in `"preview"` mode (read-only cards). `"interactive"` mode adds per-card
 // selection wired declaratively (each card's button `assign`s the nested bundle's own `pg.selected`),
@@ -17,7 +17,7 @@ export type PlaygroundMode = "preview" | "interactive";
 export interface PlaygroundSpec {
   /** Title shown on the playground board. */
   name: string;
-  /** The profile's capabilities — one card is rendered per capability. */
+  /** The vocabulary's capabilities — one card is rendered per capability. */
   capabilities: string[];
   /** `"preview"` = read-only cards (the Preview variant); `"interactive"` = selectable cards. */
   mode?: PlaygroundMode;
@@ -51,7 +51,7 @@ function interactiveCard(cap: string): DocNode {
 }
 
 /**
- * Build the shared Playground bundle for a profile spec. `mode` selects the variant:
+ * Build the shared Playground bundle for a vocabulary spec. `mode` selects the variant:
  * `"preview"` (default) renders read-only cards; `"interactive"` makes each card selectable and
  * shows the current selection. The returned bundle is fully serializable, so it can be stored in a
  * host's state and embedded via the `bundle` primitive.
@@ -87,7 +87,7 @@ export function buildPlaygroundBundle(spec: PlaygroundSpec): SerializableBundle 
   }
 
   const root = node("ui:panel", "preview-root", {
-    props: { variant: "preview-board", title: spec.name || "Untitled profile" },
+    props: { variant: "preview-board", title: spec.name || "Untitled vocabulary" },
     children,
   });
 

@@ -9,8 +9,7 @@ import { PRIMITIVE_CAPABILITIES, FLOOR_READ_KEYS } from "./capabilities";
 // into via `read`. This test keeps that contract internally consistent with the capability
 // manifest. It is platform-scoped: it says nothing about any particular bundle or sample — only
 // that the floor's own declared surface is coherent. The complementary SAMPLE guardrail (does a
-// given profile's recipes obey this contract) lives with the samples, in
-// samples/profiles/recipe-contract.test.ts.
+// whether a lowering obeys this contract belongs with that lowering.
 
 test("every FLOOR_READ_KEYS entry targets a declared floor capability", () => {
   const unknown = Object.keys(FLOOR_READ_KEYS).filter((name) => !(name in PRIMITIVE_CAPABILITIES));

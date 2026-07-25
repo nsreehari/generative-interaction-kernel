@@ -49,7 +49,7 @@
     "@gik/controlface": "0.1.2",
     "@gik/evaluators": "0.1.0",
     "@gik/kernel": "0.1.0",
-    "@gik/profile": "0.1.1",
+    "@gik/blueprint": "0.1.0",
     "@gik/react": "0.1.0"
   },
   "scripts": {

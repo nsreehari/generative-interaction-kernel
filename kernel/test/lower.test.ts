@@ -1,4 +1,4 @@
-// ADR-0016: layered DSL lowering. A profile is a Domain DSL + a lowering to the kernel's
+// ADR-0016: layered DSL lowering. A domain DSL lowers to the kernel's
 // UI DSL. This recasts the live-cards board as a Domain DSL (pure semantics — no kernel
 // capabilities, no layout primitives) plus a single lowering stage that compiles it into
 // a kernel program. The domain author never writes board/metric/table/actions or edges;
@@ -47,7 +47,7 @@ interface BoardDomain {
 }
 
 // --- Stage: Domain DSL -> UI DSL (kernel program). The only code that knows the kernel
-// capabilities (board/metric/table/actions) and edges. This is platform/profile-owned. ---
+// capabilities (board/metric/table/actions) and edges. This is lowering-owned. ---
 const lowerBoard: Stage<BoardDomain, ProjectedProgramDefinition> = (d) => {
   const children: DocNode[] = [
     ...d.metrics.map((m) =>
@@ -135,7 +135,7 @@ test("pipeline composes stages and stays type-aligned (Task -> Domain -> UI)", (
 });
 
 test("layers are optional: a single-stage Domain -> UI pipeline is valid (ADR-0021)", () => {
-  // No Task/Interaction/Presentation layer: a profile may go straight Domain -> UI. Only the
+  // No Task/Interaction/Presentation layer: lowering may go straight Domain -> UI. Only the
   // terminal kernel program is schema-validated, so skipping layers costs no safety.
   const compiled = pipeline(lowerBoard).build();
   const message = lowerToProjectedProgram(compiled, salesBoard);

@@ -1,0 +1,317 @@
+schema_version: 1
+
+package:
+  name: "@gik/blueprint"
+  version: "0.1.0"
+  status: implemented
+  stability: experimental
+  purpose: >-
+    Define, validate, assemble, and lower portable Blueprint artifacts into validated
+    projected or headless @gik/kernel executable programs.
+  core_promise: >-
+    A valid Blueprint describes one authored organism through Cells, tiers, lowering
+    recipes, relationships, projections, services, and Kernel vocabulary without
+    introducing another runtime or execution model.
+  public_entrypoint: packages/blueprint/src/index.ts
+  implementation_entrypoint: blueprint/src/index.ts
+
+terminology:
+  blueprint: The portable authored definition of one organism and its executable intent.
+  blueprint_structure_mode: Blueprint semantic policy for whether authored structure may change.
+  cell: An independently addressable participant belonging directly to a Blueprint.
+  tier: An authored declarative representation in a Blueprint compilation path.
+  lowering_recipe: A declarative transformation from one tier to another tier.
+  lowering_cell: An artifact-processing Cell in the compiler plane above runtime execution.
+  relationship: Optional cross-Cell semantics; no relationship kind defines the organism itself.
+  projection: An optional view over Blueprint Cells and state, including presentation.
+  rules:
+    - Public Blueprint contracts use tiers and lowering recipes.
+    - Lowering Cells use fromTier and toTier.
+    - Blueprint is the organism definition; there is no separate authored Organism entity.
+
+architecture:
+  owns:
+    - Blueprint artifact and entity contracts.
+    - Cell declarations and generic token-topology analysis.
+    - Tier and lowering-recipe declarations.
+    - Lowering Cell declarations and validation.
+    - Blueprint structural and semantic validation.
+    - Recursive child Blueprint assembly.
+    - Validated lowering from BlueprintArtifact to Kernel executable programs.
+  delegates_to_kernel:
+    - Executable vocabulary and program contracts.
+    - Program validation after lowering.
+    - Runtime state and revisions.
+    - Event reduction and continuous graph settlement.
+    - Patches, effects, invocations, checkpoints, and execution inspection.
+  does_not_own:
+    - A state store, scheduler, effect system, or runtime revision.
+    - A Blueprint-specific transition result or execution snapshot.
+    - Rendering, transports, Faces, or host service bindings.
+    - Compiler scheduling, strategy synthesis, or approval orchestration.
+    - Relationship-specific execution semantics.
+  dependency_direction:
+    - "@gik/blueprint -> @gik/kernel"
+    - "@gik/blueprint -> @gik/evaluators for declarative schema validation"
+    - "@gik/kernel must not depend on @gik/blueprint"
+
+artifact_contracts:
+  - name: BlueprintArtifact
+    signature: >-
+      interface BlueprintArtifact { gik: "0.1"; type: "blueprint";
+      payload: BlueprintDefinition }
+    guarantees:
+      - Portable JSON envelope.
+      - Supports projected and headless programs.
+      - Supports inline or referenced child Blueprints through Cells.
+  - name: BlueprintDefinition
+    signature: >-
+      interface BlueprintDefinition { id: string; kind: string; version: string;
+      structureMode?: BlueprintStructureMode;
+      tiers: TierDefinition[]; recipes: LoweringRecipeDefinition[];
+      cells?: Record<string, CellDefinition>;
+      relationships?: Record<string, RelationshipDefinition>;
+      projections?: Record<string, ProjectionDefinition | PresentationProjection>;
+      services?: Record<string, ServiceRequirement | ServiceDeclaration>;
+      runtime: ExecutableVocabularyManifest; metadata?: Record<string, Json> }
+    guarantees:
+      - runtime directly uses the Kernel ExecutableVocabularyManifest contract.
+      - Backend and worker Blueprints do not require a presentation projection.
+      - The serialized lowering-recipe collection is recipes in version 0.1.
+      - structureMode is fixed, reconfigurable, or adaptive; omission means fixed.
+  - name: TierDefinition
+    signature: >-
+      interface TierDefinition { id: string; kind: string; schema?: string;
+      description?: string; input?: Record<string, Json> }
+  - name: LoweringRecipeDefinition
+    signature: >-
+      interface LoweringRecipeDefinition { id: string; from: string; to: string;
+      [property: string]: unknown }
+    schema_requirement: Recipes are declarative data; Blueprint core does not select or run executors.
+  - name: CellDefinition
+    purpose: Describe one cohesive participant without making it intrinsically a graph node, workflow step, or visual component.
+    facets:
+      - state
+      - inputs
+      - sources
+      - compute
+      - outputs
+      - behavior
+      - view
+      - child Blueprint
+    guarantees:
+      - A Cell may be viewless, state-free, service-only, computational, or recursively composed.
+      - Cell map keys equal Cell ids.
+  - name: RelationshipDefinition
+    signature: >-
+      interface RelationshipDefinition { kind: string; participants: readonly string[];
+      configuration?: Json; metadata?: Record<string, Json> }
+    guarantees:
+      - Every participant references a Cell in the same Blueprint.
+      - Relationship-specific configuration remains opaque to Blueprint core.
+  - name: ProjectionDefinition
+    signature: >-
+      interface ProjectionDefinition { kind: string; participants?: readonly string[];
+      configuration?: Json; metadata?: Record<string, Json> }
+  - name: PresentationProjection
+    signature: >-
+      interface PresentationProjection { roots: readonly string[];
+      placements?: readonly CellPlacement[] }
+    guarantees:
+      - Roots and placements reference Cells in the same Blueprint.
+
+artifact_api:
+  - name: createBlueprint
+    signature: "createBlueprint(definition: BlueprintDefinition): BlueprintArtifact"
+    behavior:
+      - Clones the definition.
+      - Validates the resulting artifact.
+  - name: validateBlueprintArtifact
+    signature: "validateBlueprintArtifact(value: unknown): asserts value is BlueprintArtifact"
+    throws: BlueprintValidationError
+  - name: parseBlueprintJson
+    signature: "parseBlueprintJson(text: string): BlueprintArtifact"
+    behavior: Parses JSON and validates the artifact.
+  - name: stringifyBlueprint
+    signature: "stringifyBlueprint(blueprint: BlueprintArtifact): string"
+    behavior: Validates and pretty-prints the artifact.
+  - name: assembleBlueprint
+    signature: >-
+      assembleBlueprint(source: BlueprintArtifact,
+      resolveReference?: BlueprintReferenceResolver): BlueprintArtifact
+    behavior:
+      - Recursively replaces child Blueprint references with inline artifacts.
+      - Rejects unresolved references.
+      - Rejects recursive Blueprint identity cycles.
+      - Does not mutate source artifacts.
+      - Returns a validated self-contained artifact.
+
+cell_api:
+  - name: defineCell
+    signature: "defineCell(definition: CellDefinition): CellDefinition"
+    behavior: Validates required identity and returns a clone.
+  - name: tokenPattern
+    signature: "tokenPattern(source: string): TokenPattern"
+    behavior: Compiles literal and parameterized token patterns.
+  - name: analyzeCellComposition
+    signature: "analyzeCellComposition(cells: readonly CellDefinition[]): CellComposition"
+    reports:
+      - duplicate Cell ids
+      - invalid token patterns
+      - ambiguous providers
+      - invalid output bindings
+      - external input tokens
+  - name: compileCellTopology
+    signature: >-
+      compileCellTopology(id: string,
+      cellsById: Readonly<Record<string, CellDefinition>>): ExecutableCellTopology
+    behavior: Derives deterministic provider-consumer edges without creating a Kernel program.
+
+lowering_cell_api:
+  types:
+    - ArtifactPort
+    - LoweringCellKind
+    - LoweringCellDefinition
+  kinds:
+    - transform
+    - select-strategy
+    - synthesize-strategy
+    - validate
+    - approve
+    - emit-blueprint
+  function:
+    name: defineLoweringCell
+    signature: "defineLoweringCell(definition: LoweringCellDefinition): LoweringCellDefinition"
+    guarantees:
+      - Requires a non-empty id.
+      - Requires unique valid input and output ports.
+      - Requires validation policy for emit-blueprint Cells.
+      - Uses fromTier and toTier for tier boundaries.
+  boundary: The package declares Lowering Cells but does not schedule a compiler meta-graph.
+
+lowering_api:
+  type:
+    name: BlueprintLowering
+    signature: >-
+      type BlueprintLowering<Out extends ExecutableProgramDefinition =
+      ExecutableProgramDefinition> = (blueprint: BlueprintArtifact) => Out
+  function:
+    name: lowerBlueprint
+    signature: >-
+      lowerBlueprint<Out extends ExecutableProgramDefinition>(
+      blueprint: BlueprintArtifact,
+      lowering: BlueprintLowering<Out>): ProgramMessageFor<Out>
+  behavior:
+    - Validates the input Blueprint.
+    - Runs the supplied deterministic lowering.
+    - Delegates terminal executable-program validation to Kernel lowerToProgram.
+    - Preserves projected versus headless program message typing.
+  boundary:
+    - Strategy selection and synthesis occur before terminal lowering.
+    - Invalid executable programs never receive Kernel execution authority.
+
+validation:
+  structural:
+    - Blueprint artifacts use schemas/blueprint.schema.json.
+    - Cells use schemas/cell.schema.json.
+    - Tiers use schemas/tier.schema.json.
+    - Lowering recipes use schemas/lowering-recipe.schema.json.
+    - Unknown properties are rejected where schemas declare additionalProperties false.
+  semantic:
+    - Blueprint identity, runtime vocabulary version, tiers, and recipes are required.
+    - Tier ids and lowering-recipe ids are unique.
+    - Lowering recipes reference known tiers and form one non-branching chain when present.
+    - Cell keys match Cell ids.
+    - Cell composition has no error diagnostics.
+    - Presentation roots and placements reference known Cells.
+    - Relationship participants reference known Cells.
+
+runtime_boundary:
+  current_behavior: >-
+    @gik/blueprint produces validated executable program messages. Hosts construct and
+    operate Kernel instances using the Blueprint runtime vocabulary and lowered program.
+  invariant: Kernel remains the sole owner of runtime state, revisions, settlement, and effects.
+  structure_modes:
+    fixed: Authored Blueprint structure does not change during execution.
+    reconfigurable: An explicit authorized host or Face operation may change authored structure.
+    adaptive: Runtime behavior may propose or initiate structural change under Blueprint-defined policy.
+  default_structure_mode: fixed
+  mutation_boundary:
+    - Blueprint owns mode semantics, authorization, semantic validation, and lowering of structural change.
+    - Kernel does not interpret structure-mode labels.
+    - Executable topology changes use Kernel GraphMutation after Blueprint policy accepts and lowers them.
+  implementation_status: >-
+    The mode contract is implemented. Semantic Blueprint patches, authorization policy, state migration,
+    and lowering to GraphMutation remain future capabilities; non-fixed declarations do not bypass them.
+
+public_exports:
+  artifact:
+    - BlueprintArtifact
+    - BlueprintDefinition
+    - BlueprintReferenceResolver
+    - BlueprintValidationError
+    - createBlueprint
+    - validateBlueprintArtifact
+    - parseBlueprintJson
+    - stringifyBlueprint
+    - assembleBlueprint
+  cells:
+    - CellDefinition
+    - CellInput
+    - CellOutput
+    - CellSource
+    - CellComputation
+    - CellBehavior
+    - CellView
+    - CellBlueprint
+    - CellComposition
+    - CellDiagnostic
+    - ExecutableCellEdge
+    - ExecutableCellTopology
+    - defineCell
+    - tokenPattern
+    - analyzeCellComposition
+    - compileCellTopology
+  language:
+    - BlueprintStructureMode
+    - TierDefinition
+    - LoweringRecipeDefinition
+    - RelationshipDefinition
+    - ProjectionDefinition
+    - PresentationProjection
+  lowering:
+    - BlueprintLowering
+    - lowerBlueprint
+    - ArtifactPort
+    - LoweringCellKind
+    - LoweringCellDefinition
+    - defineLoweringCell
+
+current_limitations:
+  - Relationship configuration is structurally opaque and has no registered kind validators.
+  - Lowering Cells are declarations only and have no package-owned scheduler.
+  - Tier and lowering-recipe reference resolution is caller-owned.
+  - State migration, semantic structural patches, and mode-specific authorization are not defined.
+  - Continuous graph execution state is not serialized by this package.
+
+future_capabilities:
+  rule: Add against concrete host and Blueprint scenarios without changing Kernel ownership.
+  candidates:
+    - Semantic Blueprint mutations lowered to Kernel graph or program changes.
+    - State compatibility and migration policies for changed Cells.
+    - Relationship-kind validators and lowering extensions.
+    - Compiler-plane scheduling for Lowering Cells.
+  invariant: Future capabilities compose Kernel contracts and do not create a parallel execution model.
+
+verification:
+  focused_commands:
+    - npx vitest run --project blueprint
+    - npx tsc -p packages/blueprint/tsconfig.json --noEmit
+    - npm run build --workspace=@gik/blueprint
+  required_behavior:
+    - Artifact create, parse, stringify, and validation round trips.
+    - Recursive child assembly without source mutation.
+    - Structural and semantic validation failures.
+    - Canonical tier terminology on Lowering Cells.
+    - Deterministic Cell topology derivation.
+    - Projected and headless lowering through Kernel validation.

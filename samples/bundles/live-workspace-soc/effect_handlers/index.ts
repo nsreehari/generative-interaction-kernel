@@ -1,7 +1,6 @@
 import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
 import type { Json, OrchestratorResult, PatchOp } from "@gik/kernel";
-import blueprint from "../../../profiles/live-workspace-soc/blueprint.json";
-import { compileSocPresentation } from "./blueprint";
+import blueprint from "../../../blueprints/live-workspace-soc/blueprint.json";
 import { projectSocInspection, projectSocParticipants } from "./inspection";
 import type { Actor, AgentProvider, Incident, JournalEntry, Presentation } from "../projection_views/types";
 
@@ -10,23 +9,65 @@ const blueprintState = blueprint.payload.runtime.state as unknown as RecordValue
 const resetState = JSON.parse(JSON.stringify(blueprintState.soc)) as RecordValue;
 const resetInspection = JSON.parse(JSON.stringify(blueprintState.inspection)) as RecordValue;
 
-function presentationContract(contextId: string): RecordValue {
-  const presentation = compileSocPresentation(contextId);
-  const substrateRegions = presentation.regions.filter((region) => region.materialize === false);
-  const visibleRegions = substrateRegions.filter((region) => region.disclosure !== "omitted");
-  return {
-    frame: presentation.frame ?? "shared",
-    arrangement: presentation.arrangement,
-    regionFacets: Object.fromEntries(substrateRegions.map((region) => [region.name, {
-      visible: region.disclosure !== "omitted",
-      rank: region.disclosure === "omitted" ? 50 : visibleRegions.indexOf(region),
-      priority: region.priority,
-      disclosure: region.disclosure,
-      concern: region.concern ?? "substrate",
-      group: region.group ?? "substrate",
-      presentation: region.presentation ?? "brief",
-    }])),
+const REGION_PRESENTATION: Record<string, { concern: string; presentation: string; group?: string }> = {
+  summary: { concern: "orientation", presentation: "brief" },
+  intent: { concern: "guardrails", presentation: "brief" },
+  constraints: { concern: "guardrails", presentation: "brief" },
+  hypothesis: { concern: "orientation", presentation: "finding" },
+  exploration: { concern: "investigation", presentation: "collection" },
+  evidence: { concern: "investigation", presentation: "collection" },
+  "agent-request": { concern: "delegation", presentation: "agent-request", group: "request" },
+  response: { concern: "response", presentation: "decision" },
+  authorization: { concern: "governance", presentation: "decision" },
+  "causal-record": { concern: "provenance", presentation: "audit" },
+};
+
+function presentationContract(context: RecordValue): RecordValue {
+  const arrangement = String(context.arrangement);
+  const regions = (context.regions as Json[]).map(String);
+  const groupOverrides: Record<string, Record<string, string>> = {
+    kanban: {
+      intent: "kanban-frame", constraints: "kanban-frame", hypothesis: "kanban-explore",
+      exploration: "kanban-explore", evidence: "kanban-establish", response: "kanban-decide",
+      authorization: "kanban-decide", "causal-record": "kanban-record",
+    },
+    "agent-correlation": {
+      summary: "context", intent: "context", constraints: "shared-state", hypothesis: "shared-state",
+      exploration: "request", evidence: "response", "causal-record": "governed-result",
+    },
+    "agent-response": {
+      summary: "context", hypothesis: "shared-state", evidence: "shared-state", constraints: "shared-state",
+      authorization: "governed-result", "causal-record": "governed-result",
+    },
   };
+  const regionFacets = Object.fromEntries(Object.entries(REGION_PRESENTATION).map(([name, defaults]) => {
+    const rank = regions.indexOf(name);
+    const visible = rank >= 0;
+    const disclosure = !visible
+      ? "omitted"
+      : arrangement === "glanceable"
+        ? "status"
+        : arrangement === "decision" && (name === "summary" || name === "hypothesis")
+          ? "status"
+          : arrangement === "war-room" || arrangement === "command" || arrangement === "decision"
+            ? "summary"
+            : "detail";
+    const critical = (arrangement === "decision" && (name === "authorization" || name === "response"))
+      || (arrangement === "glanceable" && name === "summary");
+    const primary = (arrangement === "war-room" && (name === "hypothesis" || name === "response"))
+      || (arrangement === "agent-correlation" && (name === "exploration" || name === "evidence"))
+      || (arrangement === "agent-response" && (name === "response" || name === "authorization"));
+    return [name, {
+      visible,
+      rank: visible ? rank : 50,
+      priority: critical ? "critical" : primary ? "primary" : "supporting",
+      disclosure,
+      concern: defaults.concern,
+      group: groupOverrides[arrangement]?.[name] ?? defaults.group ?? defaults.concern,
+      presentation: defaults.presentation,
+    }];
+  }));
+  return { frame: context.frame, arrangement, regionFacets };
 }
 
 function list(ctx: EffectContext, path: string): Json[] {
@@ -220,15 +261,15 @@ const deterministicEffects: EffectHandlerMap = {
       : ctx.get("control.presentationContext") && typeof ctx.get("control.presentationContext") === "object" && !Array.isArray(ctx.get("control.presentationContext")) && typeof (ctx.get("control.presentationContext") as Record<string, unknown>).id === "string"
         ? String((ctx.get("control.presentationContext") as Record<string, unknown>).id)
         : "";
-    const exists = contexts.some((value) => (value as RecordValue).id === requested);
-    if (!exists || presentation.selectedContext === requested) return { outcome: "ignored" };
+    const context = contexts.find((value) => (value as RecordValue).id === requested) as RecordValue | undefined;
+    if (!context || presentation.selectedContext === requested) return { outcome: "ignored" };
     return {
       outcome: "projected",
       ops: [setOp("soc.presentation", {
         ...presentation,
         selectedContext: requested,
         revision: Number(presentation.revision ?? 0) + 1,
-        ...presentationContract(requested),
+        ...presentationContract(context),
       })],
     };
   },

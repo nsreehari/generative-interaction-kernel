@@ -1,23 +1,24 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import blueprint from "../profiles/live-workspace-soc/blueprint.json" with { type: "json" };
+import blueprint from "../blueprints/live-workspace-soc/blueprint.json" with { type: "json" };
 
-const actors = blueprint.payload.resources.actors.inline;
-const authorityPolicy = blueprint.payload.resources.authorityPolicy.inline;
-const parts = blueprint.payload.recipes[0]?.program?.[0]?.emit?.parts ?? [];
-const exploration = parts.find((part) => part.name === "exploration");
+const soc = blueprint.payload.runtime.state.soc;
+const actors = soc.actors;
+const events = blueprint.payload.cells["soc-workspace"].behavior.events;
 
-test("SOC profile keeps the agent authority boundary declarative", () => {
-  assert.equal(authorityPolicy.participationDoesNotImplyAuthority, true);
-  assert.deepEqual(authorityPolicy.protectedTargets, ["DC-01"]);
-  assert.ok(actors.some((actor) => actor.id === "agent-correlation" && actor.authority.includes("suggest-exploration")));
-  assert.ok(actors.some((actor) => actor.id === "human-priya" && actor.authority.includes("authorize-containment")));
+test("SOC Blueprint keeps the agent authority boundary declarative", () => {
+  assert.ok(soc.entities.some((entity) => entity.id === "DC-01" && entity.criticality === "protected"));
+  assert.ok(actors.some((actor) => actor.id === "agent-correlation" && !actor.authority.includes("authorize")));
+  assert.ok(actors.some((actor) => actor.id === "human-priya" && actor.authority.includes("authorize")));
 });
 
 test("SOC workflow keeps exploration as a suggestion-only interaction", () => {
-  assert.ok(exploration);
-  assert.deepEqual(exploration?.actions, ["suggestExploration", "amendExploration", "replanExploration"]);
-  assert.deepEqual(exploration?.authority, ["direct-investigation", "suggest-exploration"]);
-  assert.ok(parts.every((part) => !part.actions || !part.actions.includes("authorizeContainment") || part.name === "authorization"));
+  assert.deepEqual(Object.keys(events).filter((event) => event.toLowerCase().includes("exploration")), [
+    "suggestExploration",
+    "amendExploration",
+    "replanExploration",
+  ]);
+  assert.equal(events.suggestExploration[0].do, "invoke");
+  assert.equal(events.authorizeContainment[0].do, "confirm");
 });

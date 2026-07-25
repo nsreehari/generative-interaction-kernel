@@ -1,7 +1,7 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
 
-import { compileCellTopology } from "@gik/profile";
+import { compileCellTopology } from "@gik/blueprint";
 import {
   activateConsequenceGraph,
   consequenceGraphFromTopology,
@@ -35,15 +35,13 @@ test("activateConsequenceGraph reports blocked nodes when an external branch has
 
 test("derives consequence inspection from executable cell topology", () => {
   const topology = compileCellTopology("foundry-agent", {
-    cells: {
-      "foundry-access": {
-        id: "foundry-access",
-        outputs: [{ token: "foundry-access" }],
-      },
-      "foundry-chat": {
-        id: "foundry-chat",
-        inputs: [{ token: "foundry-access" }],
-      },
+    "foundry-access": {
+      id: "foundry-access",
+      outputs: [{ token: "foundry-access" }],
+    },
+    "foundry-chat": {
+      id: "foundry-chat",
+      inputs: [{ token: "foundry-access" }],
     },
   });
 

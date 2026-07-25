@@ -35,7 +35,7 @@ export interface Pipeline<In, Out> {
 /**
  * Start a pipeline from the top stage. Add lower stages with `.to(...)`; each `.to`
  * keeps the types aligned, so a stage can only be attached to one whose output it
- * accepts. Not every pipeline needs all four layers — a simple profile may go straight
+ * accepts. Not every pipeline needs all four layers — a simple lowering may go straight
  * from a Domain DSL to the kernel program.
  */
 export function pipeline<In, Out>(first: Stage<In, Out>): Pipeline<In, Out> {

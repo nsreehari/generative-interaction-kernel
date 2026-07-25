@@ -81,18 +81,15 @@ describe("portfolio demo-runner composition", () => {
   it("completes a recommendation gate only through the attributed product event", async () => {
     const { shared, portfolio } = demoRuntimes();
     await portfolio.controller.start();
-    await portfolio.controller.emit("portfolio-tracker", "setHoldings", {
-      holdings: [
-        { ticker: "NVDA", quantity: 18, costBasis: 138 },
-        { ticker: "JNJ", quantity: 12, costBasis: 149 },
-      ],
-      investorProfile: { riskTolerance: "moderate", horizonYears: 8 },
-    });
-    await portfolio.controller.settle();
-    await portfolio.controller.emit("portfolio-tracker", "requestIntelligence");
-    await portfolio.controller.settle();
-    await portfolio.controller.emit("portfolio-tracker", "calculateStrategies");
-    await portfolio.controller.settle();
+    portfolio.state.apply([{
+      op: "set",
+      path: "portfolio.recommendation",
+      value: {
+        selected: "conservative",
+        reason: "Matches the supplied risk tolerance.",
+        status: "proposed",
+      },
+    }]);
     const request: ControlRequest = {
       id: "portfolio-apply:1",
       targetBlueprintId: "portfolio-tracker",

@@ -30,7 +30,7 @@
                           "label": "Demo mode",
                           "options": [
                             { "value": "graph-driven", "label": "graph-driven" },
-                            { "value": "profile-artifact", "label": "profile-artifact" }
+                            { "value": "blueprint-artifact", "label": "blueprint-artifact" }
                           ]
                         },
                         "edges": {
@@ -138,21 +138,21 @@
                       },
                       {
                         "capability": "ui:select",
-                        "id": "provider-authoring-profile-seed",
+                        "id": "provider-authoring-blueprint-seed",
                         "props": {
-                          "label": "Profile artifact",
+                          "label": "Blueprint artifact",
                           "options": [
-                            { "value": "live-cards", "label": "live-cards" }
+                            { "value": "samples-overview", "label": "samples-overview" }
                           ]
                         },
                         "edges": {
-                          "gate": "demo.mode = 'profile-artifact'",
-                          "read": { "value": "demo.profileSeed" },
+                          "gate": "demo.mode = 'blueprint-artifact'",
+                          "read": { "value": "demo.blueprintSeed" },
                           "on": {
                             "change": [
                               {
                                 "do": "assign",
-                                "target": "demo.profileSeed",
+                                "target": "demo.blueprintSeed",
                                 "args": { "from": "$event.value" }
                               }
                             ]
@@ -180,7 +180,7 @@
                         "id": "provider-authoring-note-3",
                         "props": {
                           "tone": "muted",
-                          "value": "StepOrchestrator turns those graph signals into a profile-and-recipes authoring plan."
+                          "value": "StepOrchestrator turns those graph signals into a Blueprint authoring plan."
                         }
                       },
                       {
@@ -188,10 +188,10 @@
                         "id": "provider-authoring-note-4",
                         "props": {
                           "tone": "muted",
-                          "value": "In profile-artifact mode, the same plan starts from the declared live-cards profile and proposes its concrete lowering recipes instead of inventing a new chain."
+                          "value": "In blueprint-artifact mode, the same plan starts from the declared samples-overview Blueprint."
                         },
                         "edges": {
-                          "gate": "demo.mode = 'profile-artifact'"
+                          "gate": "demo.mode = 'blueprint-artifact'"
                         }
                       }
                     ]
@@ -213,7 +213,7 @@
                             "surface": "demo.surface",
                             "changedSource": "demo.changedSource",
                             "stream": "demo.stream",
-                            "profileSeed": "demo.profileSeed"
+                            "blueprintSeed": "demo.blueprintSeed"
                           }
                         }
                       }

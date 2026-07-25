@@ -20,11 +20,11 @@ function ctx(store: InMemoryStateModel) {
 }
 
 test("readExpr projects an array of objects into a capability-shaped list", async () => {
-  const store = new InMemoryStateModel(["workbench"]);
+  const store = new InMemoryStateModel(["sample"]);
   store.apply([
     {
       op: "set",
-      path: "workbench.facets",
+      path: "sample.facets",
       value: [
         { name: "context", role: "narrative", required: true },
         { name: "timeline", role: "sequence", required: false },
@@ -37,7 +37,7 @@ test("readExpr projects an array of objects into a capability-shaped list", asyn
     capability: "list",
     edges: {
       readExpr: {
-        items: '[workbench.facets.{ "name": name, "role": role, "tag": required ? "required" : "optional" }]',
+        items: '[sample.facets.{ "name": name, "role": role, "tag": required ? "required" : "optional" }]',
       },
     },
   };
@@ -52,13 +52,13 @@ test("readExpr projects an array of objects into a capability-shaped list", asyn
 });
 
 test("the bracket form keeps a single-element projection an array (JSONata singleton guard)", async () => {
-  const store = new InMemoryStateModel(["workbench"]);
-  store.apply([{ op: "set", path: "workbench.facets", value: [{ name: "only", role: "solo", required: true }] }]);
+  const store = new InMemoryStateModel(["sample"]);
+  store.apply([{ op: "set", path: "sample.facets", value: [{ name: "only", role: "solo", required: true }] }]);
 
   const node = {
     id: "facets",
     capability: "list",
-    edges: { readExpr: { items: '[workbench.facets.{ "name": name, "tag": required ? "required" : "optional" }]' } },
+    edges: { readExpr: { items: '[sample.facets.{ "name": name, "tag": required ? "required" : "optional" }]' } },
   };
 
   const resolved = await resolveNode(node, ctx(store));

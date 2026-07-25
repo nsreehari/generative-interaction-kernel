@@ -23,9 +23,5 @@
     "src",
     "vite.config.ts",
     "../../bundles"
-  ],
-  "exclude": [
-    "../../bundles/workbench/bundles/chrome",
-    "../../bundles/workbench/bundles/inspect"
   ]
 }

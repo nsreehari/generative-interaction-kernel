@@ -17,7 +17,7 @@ import {
   createInMemoryTransportPair,
 } from "@gik/kernel";
 import { GenUIRoot } from "@gik/react";
-import { liveCardsRegistry } from "./profile";
+import { floorRegistry } from "./components";
 
 const fx = (name: string) =>
   JSON.parse(
@@ -56,7 +56,7 @@ test("React components render over the wire via GIKClient, and an event re-rende
 
   // The client's wire-reconstructed tree drives the real React components.
   const before = renderToStaticMarkup(
-    React.createElement(GenUIRoot, { source: client, registry: liveCardsRegistry })
+    React.createElement(GenUIRoot, { source: client, registry: floorRegistry })
   );
   assert.match(before, /order-42/);
   assert.match(before, /150/);
@@ -66,7 +66,7 @@ test("React components render over the wire via GIKClient, and an event re-rende
   await client.emit("table-orders", "rowSelect", { id: "order-42" });
 
   const after = renderToStaticMarkup(
-    React.createElement(GenUIRoot, { source: client, registry: liveCardsRegistry })
+    React.createElement(GenUIRoot, { source: client, registry: floorRegistry })
   );
   assert.match(after, /Approve/, "gate opens after selection, over the wire");
 });

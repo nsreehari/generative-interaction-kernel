@@ -1,0 +1,46 @@
+{
+  "name": "@gik/provider-blueprint-authoring",
+  "version": "0.1.0",
+  "description": "Blueprint-authoring provider engine for the Generative Interaction Kernel.",
+  "license": "MIT",
+  "author": "nsreehari",
+  "keywords": [
+    "gik",
+    "generative-ui",
+    "declarative-ui",
+    "provider",
+    "blueprint-authoring",
+    "engine"
+  ],
+  "homepage": "https://github.com/nsreehari/generative-interaction-kernel#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nsreehari/generative-interaction-kernel.git",
+    "directory": "packages/provider-blueprint-authoring"
+  },
+  "bugs": {
+    "url": "https://github.com/nsreehari/generative-interaction-kernel/issues"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "docs"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
+    "prepack": "node ../../scripts/sync-public-docs.mjs packages/provider-blueprint-authoring"
+  }
+}

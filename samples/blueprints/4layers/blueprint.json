@@ -1,0 +1,213 @@
+{
+  "gik": "0.1",
+  "type": "blueprint",
+  "payload": {
+    "id": "4layers",
+    "kind": "runtime-blueprint",
+    "version": "1.0.0",
+    "recipes": [],
+    "runtime": {
+      "expression": "jsonata",
+      "namespaces": [
+        "architecture"
+      ],
+      "actions": [],
+      "capabilities": {
+        "ui:screen": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "ui:panel": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "ui:markdown": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "value"
+        },
+        "ui:table": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "rowSelect"
+          ]
+        }
+      },
+      "externals": {
+        "projectionViews": {
+          "ui": {
+            "from": "floor"
+          }
+        }
+      },
+      "state": {
+        "architecture": {
+          "summary": "The authored workflow is represented directly as a Kernel-executable Blueprint. The four conceptual stages remain visible as design provenance; no runtime recipe interpreter is required.",
+          "layers": [
+            {
+              "id": "workflow",
+              "stage": "Workflow",
+              "responsibility": "Capture the domain goal and source data",
+              "example": "Incident triage"
+            },
+            {
+              "id": "interaction",
+              "stage": "Interaction",
+              "responsibility": "Define how a participant works with the goal",
+              "example": "Investigate"
+            },
+            {
+              "id": "presentation",
+              "stage": "Presentation",
+              "responsibility": "Organize the information for the active surface",
+              "example": "Workspace"
+            },
+            {
+              "id": "runtime",
+              "stage": "Runtime document",
+              "responsibility": "Declare concrete Cells, bindings, and actions",
+              "example": "This executable screen"
+            }
+          ],
+          "contract": "Blueprint owns the authored declaration. Kernel owns state, actions, projection, and execution."
+        }
+      }
+    },
+    "tiers": [
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document",
+        "description": "Canonical Kernel-executable terminal document."
+      }
+    ],
+    "cells": {
+      "four-layers-root": {
+        "id": "four-layers-root",
+        "view": {
+          "capability": "ui:screen",
+          "props": {
+            "title": "Four-layer Blueprint",
+            "subtitle": "From domain intent to a concrete executable projection"
+          }
+        }
+      },
+      "four-layers-summary": {
+        "id": "four-layers-summary",
+        "view": {
+          "capability": "ui:markdown",
+          "bindings": {
+            "value": {
+              "from": "architecture.summary"
+            }
+          }
+        }
+      },
+      "four-layers-stages": {
+        "id": "four-layers-stages",
+        "view": {
+          "capability": "ui:table",
+          "props": {
+            "idKey": "id",
+            "columns": [
+              {
+                "key": "stage",
+                "label": "Stage"
+              },
+              {
+                "key": "responsibility",
+                "label": "Responsibility"
+              },
+              {
+                "key": "example",
+                "label": "Example"
+              }
+            ]
+          },
+          "bindings": {
+            "rows": {
+              "from": "architecture.layers"
+            }
+          }
+        }
+      },
+      "four-layers-contract": {
+        "id": "four-layers-contract",
+        "view": {
+          "capability": "ui:panel",
+          "props": {
+            "title": "Execution boundary"
+          }
+        }
+      },
+      "four-layers-contract-text": {
+        "id": "four-layers-contract-text",
+        "view": {
+          "capability": "ui:markdown",
+          "bindings": {
+            "value": {
+              "from": "architecture.contract"
+            }
+          }
+        }
+      }
+    },
+    "projections": {
+      "presentation": {
+        "roots": [
+          "four-layers-root"
+        ],
+        "placements": [
+          {
+            "cell": "four-layers-summary",
+            "parent": "four-layers-root",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "four-layers-stages",
+            "parent": "four-layers-root",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "four-layers-contract",
+            "parent": "four-layers-root",
+            "slot": "children",
+            "order": 2
+          },
+          {
+            "cell": "four-layers-contract-text",
+            "parent": "four-layers-contract",
+            "slot": "children",
+            "order": 0
+          }
+        ]
+      }
+    },
+    "metadata": {
+      "reauthoredFrom": "legacy-tiered-sample",
+      "executionModel": "direct-runtime",
+      "authoredStages": [
+        "workflow",
+        "interaction",
+        "presentation",
+        "runtime-document"
+      ]
+    }
+  }
+}

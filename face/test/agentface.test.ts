@@ -123,7 +123,7 @@ test("mcp: registry exposes one tool per method and dispatches", () => {
   ]) {
     assert.ok(names.has(n), `missing tool ${n}`);
   }
-  // face carries only the generic platform authoring tools; genui tools are a profile contribution.
+  // face carries only the generic platform authoring tools; genui tools are a blueprint contribution.
   assert.ok(!names.has("describeInteractions"), "face must not hardcode genui tools");
   // every tool advertises an object input schema
   assert.ok(tools.every((t) => (t.inputSchema as { type?: string }).type === "object"));

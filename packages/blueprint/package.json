@@ -1,0 +1,49 @@
+{
+  "name": "@gik/blueprint",
+  "version": "0.1.0",
+  "description": "Canonical Blueprint artifact, Cell, tier, lowering recipe, and Kernel lowering contracts for GIK.",
+  "license": "MIT",
+  "author": "nsreehari",
+  "keywords": [
+    "gik",
+    "blueprint",
+    "cells",
+    "lowering",
+    "declarative"
+  ],
+  "homepage": "https://github.com/nsreehari/generative-interaction-kernel#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nsreehari/generative-interaction-kernel.git",
+    "directory": "packages/blueprint"
+  },
+  "bugs": {
+    "url": "https://github.com/nsreehari/generative-interaction-kernel/issues"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "docs"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "dependencies": {
+    "@gik/evaluators": "0.1.0",
+    "@gik/kernel": "0.1.0"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --sourcemap --minify --clean --external @gik/kernel --external @gik/evaluators --tsconfig tsconfig.json",
+    "prepack": "node ../../scripts/sync-public-docs.mjs packages/blueprint"
+  }
+}

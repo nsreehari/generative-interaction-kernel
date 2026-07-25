@@ -1,0 +1,1105 @@
+{
+  "gik": "0.1",
+  "type": "blueprint",
+  "payload": {
+    "id": "manage-blueprints",
+    "kind": "runtime-blueprint",
+    "version": "1.0",
+    "recipes": [],
+    "runtime": {
+      "expression": "jsonata",
+      "namespaces": [
+        "manageBlueprints"
+      ],
+      "actions": [
+        "assign",
+        "invoke",
+        "emit"
+      ],
+      "capabilities": {
+        "ui:screen": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "ui:row": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "ui:col": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "ui:panel": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "ui:heading": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "ui:note": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "ui:property": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "ui:list": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "select"
+          ]
+        },
+        "ui:field": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "input"
+          ]
+        },
+        "ui:textarea": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "input"
+          ]
+        },
+        "ui:button": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "press"
+          ]
+        },
+        "ui:tabBar": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "select"
+          ]
+        },
+        "ui:math-challenge": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "confirm",
+            "cancel"
+          ]
+        },
+        "manage-blueprints:blueprint-import": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "import"
+          ]
+        },
+        "manage-blueprints:blueprint-preview": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "externals": {
+        "projectionViews": {
+          "ui": {
+            "from": "floor"
+          },
+          "manage-blueprints": {
+            "from": "self"
+          }
+        },
+        "effectHandlers": [
+          "listBlueprints",
+          "getBlueprint",
+          "createBlueprint",
+          "importBlueprint",
+          "cloneBlueprint",
+          "saveBlueprint",
+          "validateBlueprint",
+          "previewBlueprint",
+          "exportBlueprint",
+          "requestDeleteBlueprint",
+          "cancelDeleteBlueprint",
+          "deleteBlueprint"
+        ]
+      },
+      "state": {
+        "manageBlueprints": {
+          "blueprints": [],
+          "catalogStatus": "Loading blueprint catalog...",
+          "selectedId": "",
+          "selected": {
+            "id": "",
+            "source": "",
+            "readonly": true,
+            "version": "",
+            "structureMode": "fixed",
+            "tiers": "",
+            "recipeCount": 0
+          },
+          "tab": "overview",
+          "editor": {
+            "id": "",
+            "blueprintText": "",
+            "status": "Select a blueprint, or create a browser-local blueprint.",
+            "error": ""
+          },
+          "validation": {
+            "valid": false,
+            "previewable": false,
+            "summary": "Not validated.",
+            "errors": "",
+            "warnings": ""
+          },
+          "previewBlueprint": null,
+          "previewError": "",
+          "deleteChallenge": {
+            "open": false,
+            "message": ""
+          }
+        }
+      }
+    },
+    "tiers": [
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document",
+        "description": "Authored terminal document for this hosted Blueprint."
+      }
+    ],
+    "cells": {
+      "manage-blueprints-root": {
+        "id": "manage-blueprints-root",
+        "view": {
+          "capability": "ui:screen",
+          "props": {
+            "title": "Manage Blueprints",
+            "subtitle": "Inspect repository blueprints and manage portable browser-local blueprint artifacts"
+          }
+        }
+      },
+      "manage-blueprints-layout": {
+        "id": "manage-blueprints-layout",
+        "view": {
+          "capability": "ui:row",
+          "props": {
+            "variant": "split"
+          }
+        }
+      },
+      "blueprint-catalog": {
+        "id": "blueprint-catalog",
+        "view": {
+          "capability": "ui:panel",
+          "props": {
+            "title": "Blueprint catalog",
+            "variant": "rail"
+          }
+        }
+      },
+      "catalog-status": {
+        "id": "catalog-status",
+        "view": {
+          "capability": "ui:note",
+          "props": {
+            "tone": "info"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBlueprints.catalogStatus"
+            }
+          }
+        }
+      },
+      "catalog-actions": {
+        "id": "catalog-actions",
+        "view": {
+          "capability": "ui:row"
+        }
+      },
+      "refresh-blueprints": {
+        "id": "refresh-blueprints",
+        "behavior": {
+          "events": {
+            "press": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "listBlueprints"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:button",
+          "props": {
+            "label": "Refresh"
+          }
+        }
+      },
+      "create-blueprint": {
+        "id": "create-blueprint",
+        "behavior": {
+          "events": {
+            "press": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "createBlueprint"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:button",
+          "props": {
+            "label": "New local blueprint",
+            "tone": "primary"
+          }
+        }
+      },
+      "import-blueprint": {
+        "id": "import-blueprint",
+        "behavior": {
+          "events": {
+            "import": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "importBlueprint"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "manage-blueprints:blueprint-import"
+        }
+      },
+      "blueprint-list": {
+        "id": "blueprint-list",
+        "behavior": {
+          "events": {
+            "select": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "getBlueprint"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:list",
+          "props": {
+            "idKey": "id",
+            "primaryKey": "label",
+            "secondaryKey": "detail",
+            "badgeKey": "source",
+            "emptyText": "No blueprint artifacts found."
+          },
+          "bindings": {
+            "items": {
+              "from": "manageBlueprints.blueprints"
+            },
+            "selectedId": {
+              "from": "manageBlueprints.selectedId"
+            }
+          }
+        }
+      },
+      "blueprint-detail": {
+        "id": "blueprint-detail",
+        "view": {
+          "capability": "ui:panel",
+          "props": {
+            "title": "Blueprint artifact",
+            "variant": "detail"
+          }
+        }
+      },
+      "empty-selection": {
+        "id": "empty-selection",
+        "view": {
+          "capability": "ui:note",
+          "props": {
+            "value": "Select a repository or local blueprint, or create a new local artifact.",
+            "tone": "muted"
+          },
+          "visibility": "manageBlueprints.selectedId = '' and manageBlueprints.editor.blueprintText = ''"
+        }
+      },
+      "blueprint-tabs": {
+        "id": "blueprint-tabs",
+        "behavior": {
+          "events": {
+            "select": [
+              {
+                "do": "assign",
+                "target": "manageBlueprints.tab",
+                "args": {
+                  "from": "$event.value"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:tabBar",
+          "props": {
+            "options": [
+              {
+                "value": "overview",
+                "label": "Overview"
+              },
+              {
+                "value": "draft",
+                "label": "Draft"
+              },
+              {
+                "value": "preview",
+                "label": "Preview"
+              }
+            ]
+          },
+          "bindings": {
+            "active": {
+              "from": "manageBlueprints.tab"
+            }
+          }
+        }
+      },
+      "blueprint-overview": {
+        "id": "blueprint-overview",
+        "view": {
+          "capability": "ui:panel",
+          "props": {
+            "title": "Artifact boundary",
+            "variant": "tab"
+          },
+          "visibility": "manageBlueprints.tab = 'overview'"
+        }
+      },
+      "blueprint-id": {
+        "id": "blueprint-id",
+        "view": {
+          "capability": "ui:property",
+          "props": {
+            "label": "ID"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBlueprints.selected.id"
+            }
+          }
+        }
+      },
+      "blueprint-source": {
+        "id": "blueprint-source",
+        "view": {
+          "capability": "ui:property",
+          "props": {
+            "label": "Source"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBlueprints.selected.source"
+            }
+          }
+        }
+      },
+      "blueprint-version": {
+        "id": "blueprint-version",
+        "view": {
+          "capability": "ui:property",
+          "props": {
+            "label": "Version"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBlueprints.selected.version"
+            }
+          }
+        }
+      },
+      "blueprint-structure-mode": {
+        "id": "blueprint-structure-mode",
+        "view": {
+          "capability": "ui:property",
+          "props": {
+            "label": "Structure mode"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBlueprints.selected.structureMode"
+            }
+          }
+        }
+      },
+      "blueprint-tiers": {
+        "id": "blueprint-tiers",
+        "view": {
+          "capability": "ui:property",
+          "props": {
+            "label": "Tiers"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBlueprints.selected.tiers"
+            }
+          }
+        }
+      },
+      "blueprint-recipes": {
+        "id": "blueprint-recipes",
+        "view": {
+          "capability": "ui:property",
+          "props": { "label": "Recipes" },
+          "bindings": {
+            "value": {
+              "from": "manageBlueprints.selected.recipeCount"
+            }
+          }
+        }
+      },
+      "overview-actions": {
+        "id": "overview-actions",
+        "view": {
+          "capability": "ui:row"
+        }
+      },
+      "clone-blueprint": {
+        "id": "clone-blueprint",
+        "behavior": {
+          "events": {
+            "press": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "cloneBlueprint"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:button",
+          "props": {
+            "label": "Clone to local draft"
+          }
+        }
+      },
+      "delete-blueprint": {
+        "id": "delete-blueprint",
+        "behavior": {
+          "events": {
+            "press": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "requestDeleteBlueprint"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:button",
+          "props": {
+            "label": "Delete local blueprint",
+            "tone": "danger"
+          }
+        }
+      },
+      "blueprint-draft": {
+        "id": "blueprint-draft",
+        "view": {
+          "capability": "ui:panel",
+          "props": {
+            "title": "Serializable blueprint JSON",
+            "variant": "tab"
+          },
+          "visibility": "manageBlueprints.tab = 'draft'"
+        }
+      },
+      "editor-status": {
+        "id": "editor-status",
+        "view": {
+          "capability": "ui:note",
+          "props": {
+            "tone": "info"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBlueprints.editor.status"
+            }
+          }
+        }
+      },
+      "editor-error": {
+        "id": "editor-error",
+        "view": {
+          "capability": "ui:note",
+          "props": {
+            "tone": "danger"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBlueprints.editor.error"
+            }
+          },
+          "visibility": "manageBlueprints.editor.error != ''"
+        }
+      },
+      "editor-id": {
+        "id": "editor-id",
+        "behavior": {
+          "events": {
+            "input": [
+              {
+                "do": "assign",
+                "target": "manageBlueprints.editor.id",
+                "args": {
+                  "from": "$event.value"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:field",
+          "props": {
+            "label": "Local blueprint id"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBlueprints.editor.id"
+            }
+          }
+        }
+      },
+      "editor-json": {
+        "id": "editor-json",
+        "behavior": {
+          "events": {
+            "input": [
+              {
+                "do": "assign",
+                "target": "manageBlueprints.editor.blueprintText",
+                "args": {
+                  "from": "$event.value"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:textarea",
+          "props": {
+            "label": "Blueprint JSON",
+            "rows": 22
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBlueprints.editor.blueprintText"
+            }
+          }
+        }
+      },
+      "validation-summary": {
+        "id": "validation-summary",
+        "view": {
+          "capability": "ui:note",
+          "props": {
+            "tone": "info"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBlueprints.validation.summary"
+            }
+          }
+        }
+      },
+      "validation-errors": {
+        "id": "validation-errors",
+        "view": {
+          "capability": "ui:note",
+          "props": {
+            "tone": "danger"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBlueprints.validation.errors"
+            }
+          },
+          "visibility": "manageBlueprints.validation.errors != ''"
+        }
+      },
+      "validation-warnings": {
+        "id": "validation-warnings",
+        "view": {
+          "capability": "ui:note",
+          "props": {
+            "tone": "warning"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBlueprints.validation.warnings"
+            }
+          },
+          "visibility": "manageBlueprints.validation.warnings != ''"
+        }
+      },
+      "editor-actions": {
+        "id": "editor-actions",
+        "view": {
+          "capability": "ui:row"
+        }
+      },
+      "validate-blueprint": {
+        "id": "validate-blueprint",
+        "behavior": {
+          "events": {
+            "press": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "validateBlueprint"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:button",
+          "props": {
+            "label": "Validate"
+          }
+        }
+      },
+      "save-blueprint": {
+        "id": "save-blueprint",
+        "behavior": {
+          "events": {
+            "press": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "saveBlueprint"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:button",
+          "props": {
+            "label": "Save locally",
+            "tone": "primary"
+          }
+        }
+      },
+      "preview-blueprint": {
+        "id": "preview-blueprint",
+        "behavior": {
+          "events": {
+            "press": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "previewBlueprint"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:button",
+          "props": {
+            "label": "Preview"
+          }
+        }
+      },
+      "export-blueprint": {
+        "id": "export-blueprint",
+        "behavior": {
+          "events": {
+            "press": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "exportBlueprint"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:button",
+          "props": {
+            "label": "Export JSON"
+          }
+        }
+      },
+      "blueprint-preview": {
+        "id": "blueprint-preview",
+        "view": {
+          "capability": "ui:panel",
+          "props": {
+            "title": "Blueprint structure",
+            "variant": "tab"
+          },
+          "visibility": "manageBlueprints.tab = 'preview'"
+        }
+      },
+      "preview-error": {
+        "id": "preview-error",
+        "view": {
+          "capability": "ui:note",
+          "props": {
+            "tone": "warning"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBlueprints.previewError"
+            }
+          },
+          "visibility": "manageBlueprints.previewError != ''"
+        }
+      },
+      "portable-blueprint-preview": {
+        "id": "portable-blueprint-preview",
+        "view": {
+          "capability": "manage-blueprints:blueprint-preview",
+          "bindings": {
+            "blueprint": {
+              "from": "manageBlueprints.previewBlueprint"
+            }
+          },
+          "visibility": "manageBlueprints.previewBlueprint != null"
+        }
+      },
+      "delete-blueprint-challenge": {
+        "id": "delete-blueprint-challenge",
+        "behavior": {
+          "events": {
+            "confirm": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "deleteBlueprint"
+                }
+              }
+            ],
+            "cancel": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "cancelDeleteBlueprint"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:math-challenge",
+          "props": {
+            "title": "Confirm blueprint deletion",
+            "operandA": 6,
+            "operandB": 7,
+            "confirmLabel": "Delete blueprint"
+          },
+          "bindings": {
+            "message": {
+              "from": "manageBlueprints.deleteChallenge.message"
+            }
+          },
+          "visibility": "manageBlueprints.deleteChallenge.open = true"
+        }
+      }
+    },
+    "projections": {
+      "presentation": {
+        "roots": [
+          "manage-blueprints-root"
+        ],
+        "placements": [
+          {
+            "cell": "manage-blueprints-layout",
+            "parent": "manage-blueprints-root",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "blueprint-catalog",
+            "parent": "manage-blueprints-layout",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "catalog-status",
+            "parent": "blueprint-catalog",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "catalog-actions",
+            "parent": "blueprint-catalog",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "refresh-blueprints",
+            "parent": "catalog-actions",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "create-blueprint",
+            "parent": "catalog-actions",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "import-blueprint",
+            "parent": "catalog-actions",
+            "slot": "children",
+            "order": 2
+          },
+          {
+            "cell": "blueprint-list",
+            "parent": "blueprint-catalog",
+            "slot": "children",
+            "order": 2
+          },
+          {
+            "cell": "blueprint-detail",
+            "parent": "manage-blueprints-layout",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "empty-selection",
+            "parent": "blueprint-detail",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "blueprint-tabs",
+            "parent": "blueprint-detail",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "blueprint-overview",
+            "parent": "blueprint-detail",
+            "slot": "children",
+            "order": 2
+          },
+          {
+            "cell": "blueprint-id",
+            "parent": "blueprint-overview",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "blueprint-source",
+            "parent": "blueprint-overview",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "blueprint-version",
+            "parent": "blueprint-overview",
+            "slot": "children",
+            "order": 2
+          },
+          {
+            "cell": "blueprint-structure-mode",
+            "parent": "blueprint-overview",
+            "slot": "children",
+            "order": 3
+          },
+          {
+            "cell": "blueprint-tiers",
+            "parent": "blueprint-overview",
+            "slot": "children",
+            "order": 4
+          },
+          {
+            "cell": "blueprint-recipes",
+            "parent": "blueprint-overview",
+            "slot": "children",
+            "order": 5
+          },
+          {
+            "cell": "overview-actions",
+            "parent": "blueprint-overview",
+            "slot": "children",
+            "order": 6
+          },
+          {
+            "cell": "clone-blueprint",
+            "parent": "overview-actions",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "delete-blueprint",
+            "parent": "overview-actions",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "blueprint-draft",
+            "parent": "blueprint-detail",
+            "slot": "children",
+            "order": 3
+          },
+          {
+            "cell": "editor-status",
+            "parent": "blueprint-draft",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "editor-error",
+            "parent": "blueprint-draft",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "editor-id",
+            "parent": "blueprint-draft",
+            "slot": "children",
+            "order": 2
+          },
+          {
+            "cell": "editor-json",
+            "parent": "blueprint-draft",
+            "slot": "children",
+            "order": 3
+          },
+          {
+            "cell": "validation-summary",
+            "parent": "blueprint-draft",
+            "slot": "children",
+            "order": 4
+          },
+          {
+            "cell": "validation-errors",
+            "parent": "blueprint-draft",
+            "slot": "children",
+            "order": 5
+          },
+          {
+            "cell": "validation-warnings",
+            "parent": "blueprint-draft",
+            "slot": "children",
+            "order": 6
+          },
+          {
+            "cell": "editor-actions",
+            "parent": "blueprint-draft",
+            "slot": "children",
+            "order": 7
+          },
+          {
+            "cell": "validate-blueprint",
+            "parent": "editor-actions",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "save-blueprint",
+            "parent": "editor-actions",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "preview-blueprint",
+            "parent": "editor-actions",
+            "slot": "children",
+            "order": 2
+          },
+          {
+            "cell": "export-blueprint",
+            "parent": "editor-actions",
+            "slot": "children",
+            "order": 3
+          },
+          {
+            "cell": "blueprint-preview",
+            "parent": "blueprint-detail",
+            "slot": "children",
+            "order": 4
+          },
+          {
+            "cell": "preview-error",
+            "parent": "blueprint-preview",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "portable-blueprint-preview",
+            "parent": "blueprint-preview",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "delete-blueprint-challenge",
+            "parent": "manage-blueprints-root",
+            "slot": "children",
+            "order": 1
+          }
+        ]
+      }
+    }
+  }
+}

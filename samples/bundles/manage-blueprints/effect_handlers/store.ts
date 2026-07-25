@@ -1,1650 +1,463 @@
-// The blueprint manager's domain: types, seed data, validation, and named effect handlers.
-//
-// Under the "everything is JSON" model the manager has no bespoke Orchestrator class. Its UI is a
-// JSON document composed from shared primitives; its consequential operations are registered
-// NATIVE effect handlers (create/save/validate/promote a profile) that the shared effect
-// dispatcher routes `invoke("<name>")` to. Each handler reads the live store (the kernel applies
-// reducer ops before effects run) and returns store deltas — the reducer stays pure. Only genuinely
-// effectful/derived logic lives here in code; everything above it is data.
+import type { Json } from "@gik/kernel";
+import { parseBlueprintJson, resolveBlueprintExecution, type BlueprintArtifact } from "@gik/blueprint";
+import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
 
-import type { CapabilityDescriptor, ProjectedProgramDefinition, Enveloped, Json, ProjectedVocabularyManifest } from "@gik/kernel";
-import {
-  lintLoweringRecipe as lintLoweringRecipeArtifact,
-  lintProfileArtifacts,
-  loadBlueprint,
-  parseBlueprintJson,
-  isWorkflowToInteractionRecipe,
-  planningRecipeOf,
-  resolveNamedProfileTemplateFile,
-  resolveProfileTemplate,
-  resolveProfileTemplateResource,
-  runProfile,
-  runtimeRecipeOf,
-  stringifyBlueprint,
-  traceProfile,
-  validateBlueprintArtifact,
-  type BlueprintArtifact,
-  type InteractionKind,
-  type InteractionSpec,
-  type InteractionTaxonomy,
-  type LayerDefinition,
-  type LayerRecipe,
-  type PresentationContext,
-  type RecipeArtifactBase,
-  type StageTrace,
-} from "@gik/profile";
-import { setOp, type EffectContext, type EffectHandlerMap, type SerializableBundle } from "@gik/react";
-import { sampleBlueprintCatalog, type SampleBlueprintEntry } from "../../../catalog/profile-catalog";
-import { demoDataFor } from "../../workbench/projection_views/bundles/demo";
+const LOCAL_BUNDLE_STORAGE_KEY = "gik.manage-blueprints.blueprints.v1";
+const BUNDLE_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-export type ManageBlueprintsTab = "overview" | "layers" | "preview" | "draft";
+type JsonRecord = Record<string, Json>;
+type BlueprintSource = "repo" | "local";
 
-interface PreviewInput {
-  source: Record<string, unknown>;
-  ctx: PresentationContext;
-}
-
-interface ValidationResult {
-  status: "unknown" | "ok" | "error";
-  // `level`/`summary` drive the ui:alert banner (level maps to its good/warn/error/unknown badge tone).
-  level: "good" | "warn" | "error" | "unknown";
-  summary: string;
-  errors: string[];
-  warnings: string[];
-  errorsText: string;
-  warningsText: string;
-}
-
-type ProfileSource = "repo" | "local";
-
-interface CatalogEntry extends SampleBlueprintEntry {
-  source: ProfileSource;
+type CatalogEntry = {
+  id: string;
+  source: BlueprintSource;
   readonly: boolean;
-}
-
-interface CatalogSnapshot {
-  entries: readonly CatalogEntry[];
-  status: string;
-}
-
-interface EditableProfileState {
-  id: string;
-  bundleText: string;
-  status: string;
-  error: string;
-}
-
-type LayerVocabularySource = "outgoingPlanning" | "incomingPlanning" | "incomingRuntime";
-
-type RuleMatchValuesVocabularyGroup = {
-  id: string;
-  label: string;
-  note: string;
-  kind: "rule-match-values";
-  slot: string;
-  field: string;
+  blueprint: BlueprintArtifact;
 };
 
-type RuleMatchKeysVocabularyGroup = {
-  id: string;
-  label: string;
-  note: string;
-  kind: "rule-match-keys";
-  slot: string;
-  exclude?: readonly string[];
+type ValidationResult = {
+  valid: boolean;
+  previewable: boolean;
+  summary: string;
+  errors: string;
+  warnings: string;
+  blueprint: BlueprintArtifact | null;
+  inspection: JsonRecord | null;
 };
 
-type RuleEmitValuesVocabularyGroup = {
-  id: string;
-  label: string;
-  note: string;
-  kind: "rule-emit-values";
-  slots: readonly string[];
-  field: string;
-};
+const repositoryBlueprints = import.meta.glob("../../../blueprints/*/blueprint.json", {
+  eager: true,
+  import: "default",
+}) as Record<string, BlueprintArtifact>;
 
-type LayerVocabularyGroupConfig =
-  | RuleMatchValuesVocabularyGroup
-  | RuleMatchKeysVocabularyGroup
-  | RuleEmitValuesVocabularyGroup;
-
-type LayerVocabularyRuleConfig = {
-  match: { source: LayerVocabularySource; layerKind?: string };
-  groups: readonly LayerVocabularyGroupConfig[];
-};
-
-type LayerVocabularyConfig = {
-  rules: readonly LayerVocabularyRuleConfig[];
-};
-
-type VocabularyProgramRule = {
-  slot?: string;
-  match?: Record<string, unknown>;
-  emit?: Record<string, unknown>;
-};
-
-type VocabularyProgram = {
-  program: readonly VocabularyProgramRule[];
-};
-
-type LayerPositionName = "source" | "intermediate" | "terminal" | "unknown";
-
-type LayerPositionInspectorConfig = {
-  label: string;
-  role: string;
-};
-
-type SampleSeedConfig = {
-  match?: { sourceKind?: string };
-  kind: "workflow-rules" | "planning-match-values";
-  slot: string;
-  matchField: string;
-  payloadField: string;
-  labelPrefix?: string;
-};
-
-type RecipeRulePathConfig = {
-  kind: "mapping-when" | "path";
-  path?: string;
-};
-
-type RecipeRegionRulesConfig = {
-  fromLabel: string;
-  toLabel: string;
-  slots: readonly string[];
-  from: RecipeRulePathConfig;
-  to: { path: string };
-};
-
-type RecipeContainerCapabilityConfig = {
-  slot: string;
-  path: string;
-};
-
-type RecipeViewConfig = {
-  match: { family: "workflow" | "planning" | "runtime" };
-  kind: string;
-  kindLabel: string;
-  tagline: string;
-  purpose: string;
-  regionRules: RecipeRegionRulesConfig;
-  containerCapability?: RecipeContainerCapabilityConfig;
-};
-
-type ManageBlueprintsInspectorConfig = {
-  layerPositions: Record<LayerPositionName, LayerPositionInspectorConfig>;
-  stageLabelTemplate?: string;
-  sampleSeeds: readonly SampleSeedConfig[];
-  recipeViews: readonly RecipeViewConfig[];
-};
-
-type BlueprintSeed = {
-  id: string;
-  label: string;
-  payload: Record<string, unknown>;
-};
-
-const LOCAL_BLUEPRINT_STORAGE_KEY = "gik.manage-blueprints.blueprints.v1";
-const PREVIEW_SURFACES = ["desktop", "web", "mobile", "copilot", "teams"] as const;
-const DEFAULT_PREVIEW_CONTEXT_FORM: Record<string, Json> = {
-  properties: {
-    surface: {
-      title: "Surface",
-      default: "desktop",
-      enum: [...PREVIEW_SURFACES],
-    },
-  },
-  required: ["surface"],
-};
-const DEFAULT_PREVIEW_CONTEXT: PresentationContext = {
-  surface: "desktop",
-};
-
-const PREVIEW_CAPABILITIES: Record<string, CapabilityDescriptor> = {
-  "ui:board": {
-    propsSchema: { type: "object", additionalProperties: true },
-    slots: ["children"],
-  },
-  "ui:panel": {
-    propsSchema: { type: "object", additionalProperties: true },
-    slots: ["children"],
-  },
-  "ui:metric": {
-    propsSchema: { type: "object", additionalProperties: true },
-  },
-  "ui:table": {
-    propsSchema: { type: "object", additionalProperties: true },
-    emits: ["rowSelect"],
-    dataProp: "rows",
-  },
-  "ui:actions": {
-    propsSchema: { type: "object", additionalProperties: true },
-    emits: ["tap"],
-  },
-  "ui:chart": {
-    propsSchema: { type: "object", additionalProperties: true },
-    dataProp: "data",
-  },
-  "ui:markdown": {
-    propsSchema: { type: "object", additionalProperties: true },
-    dataProp: "value",
-  },
-  "ui:markup": {
-    propsSchema: { type: "object", additionalProperties: true },
-    dataProp: "value",
-  },
-  "ui:todo": {
-    propsSchema: { type: "object", additionalProperties: true },
-    emits: ["save"],
-    dataProp: "items",
-  },
-  "ui:timeline": {
-    propsSchema: { type: "object", additionalProperties: true },
-    dataProp: "items",
-  },
-  "ui:stats": {
-    propsSchema: { type: "object", additionalProperties: true },
-    dataProp: "items",
-  },
-  "ui:diff": {
-    propsSchema: { type: "object", additionalProperties: true },
-  },
-  "ui:form": {
-    propsSchema: { type: "object", additionalProperties: true },
-    emits: ["save"],
-  },
-  "ui:editable-table": {
-    propsSchema: { type: "object", additionalProperties: true },
-    emits: ["save"],
-    dataProp: "rows",
-  },
-};
-
-const PROFILE_PREVIEW_MANIFEST: Enveloped<ProjectedVocabularyManifest> = {
-  gik: "0.1",
-  type: "vocabulary",
-  payload: {
-    version: "genui-profile-preview/1.0",
-    expression: "jsonata",
-    namespaces: ["card_data", "requires", "fetched_sources", "computed_values"],
-    actions: ["assign", "assignFrom", "derive", "invoke", "route", "confirm", "emit"],
-    externals: {
-      projectionViews: {
-        ui: { from: "profile" },
-      },
-    },
-    capabilities: PREVIEW_CAPABILITIES,
-  },
-};
-
-const PREVIEW_STATE: Record<string, Json> = {
-  card_data: {},
-  requires: {},
-  fetched_sources: {
-    orders: [
-      { id: "order-42", amount: 120 },
-      { id: "order-43", amount: 30 },
-    ],
-  },
-  computed_values: { total: 150 },
-};
-
-const EMPTY_PROFILE = {
-  id: "",
-  kind: "",
-  version: "",
-  source: "",
-  readonly: true,
-  layerCount: 0,
-  recipeCount: 0,
-  summary: "",
-  legend: "",
-};
-
-const EMPTY_PIPELINE = {
-  nodes: [],
-};
-
-const EMPTY_LAYER_DETAIL = {
-  id: "",
-  kind: "",
-  schema: "",
-  description: "",
-  role: "",
-  stageLabel: "",
-  seeds: [] as string[],
-  vocabulary: { groups: [] as Array<{ id: string; label: string; note: string; terms: string[] }> },
-  loweringExamples: {
-    columns: [] as Array<{ key: string; label: string }>,
-    rows: [] as Array<{ id: string; input: string; context: string; output: string }>,
-  },
-  outgoingRecipe: {
-    id: "",
-    kind: "",
-    kindLabel: "",
-    from: "",
-    to: "",
-    summary: "",
-    constrainedWhenText: "",
-    containerCapability: "",
-    fallbackCapability: "",
-    fromLayer: { id: "", kind: "", schema: "", description: "" },
-    toLayer: { id: "", kind: "", schema: "", description: "" },
-    ruleGroups: [],
-    templates: [],
-    runtimeRules: [],
-    runtimeCapabilities: [],
-  },
-  incomingRecipe: {
-    id: "",
-    kind: "",
-    kindLabel: "",
-    from: "",
-    to: "",
-    summary: "",
-    constrainedWhenText: "",
-    containerCapability: "",
-    fallbackCapability: "",
-    fromLayer: { id: "", kind: "", schema: "", description: "" },
-    toLayer: { id: "", kind: "", schema: "", description: "" },
-    ruleGroups: [],
-    templates: [],
-    runtimeRules: [],
-    runtimeCapabilities: [],
-  },
-};
-
-const EMPTY_RECIPE_DETAIL = {
-  id: "",
-  kind: "",
-  kindLabel: "",
-  purpose: "",
-  tagline: "",
-  from: "",
-  to: "",
-  summary: "",
-  constrainedWhenText: "",
-  containerCapability: "",
-  fallbackCapability: "",
-  fromLayer: { ...EMPTY_LAYER_DETAIL },
-  toLayer: { ...EMPTY_LAYER_DETAIL },
-  regionRuleFromLabel: "",
-  regionRuleToLabel: "",
-  regionRuleMappings: [] as Array<{ id: string; from: string; to: string }>,
-  ruleGroups: [],
-  templates: [],
-  templateMappings: [],
-  regionMappings: [],
-  capabilityMappings: [],
-  runtimeRules: [],
-  runtimeCapabilities: [],
-};
-
-const EMPTY_EDITOR: EditableProfileState = {
-  id: "",
-  bundleText: "",
-  status: "Select a blueprint, or create a local draft to start editing.",
-  error: "",
-};
-
-const EMPTY_VALIDATION: ValidationResult = {
-  status: "unknown",
-  level: "unknown",
-  summary: "Not validated yet.",
-  errors: [],
-  warnings: [],
-  errorsText: "Select a blueprint to validate.",
-  warningsText: "",
-};
-
-function readRepoCatalog(): readonly CatalogEntry[] {
-  return sampleBlueprintCatalog.map((entry) => ({
-    ...entry,
-    source: "repo" as const,
-    readonly: true,
-  }));
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function readStr(ctx: EffectContext, path: string, fallback = ""): string {
-  const value = ctx.get(path);
-  return value == null ? fallback : String(value);
-}
-
-function readSelectedId(ctx: EffectContext): string {
-  return readStr(ctx, "manageBlueprints.selectedId");
-}
-
-function readTab(ctx: EffectContext): ManageBlueprintsTab {
-  const value = readStr(ctx, "manageBlueprints.tab", "overview");
-  return value === "overview" || value === "layers" || value === "preview" || value === "draft"
-    ? value
-    : "overview";
-}
-
-function readSelectedLayerId(ctx: EffectContext): string {
-  return readStr(ctx, "manageBlueprints.selectedLayerId");
-}
-
-function readSelectedRecipeId(ctx: EffectContext): string {
-  return readStr(ctx, "manageBlueprints.selectedRecipeId");
-}
-
-function readSourceInput(ctx: EffectContext): Record<string, unknown> {
-  const raw = ctx.get("manageBlueprints.sourceInput");
-  return raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
-}
-
-function readPreviewContextValues(ctx: EffectContext): Record<string, unknown> {
-  const raw = ctx.get("manageBlueprints.previewContext");
-  return raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
-}
-
-function readPreviewData(values: Record<string, unknown>): Record<string, string> | undefined {
-  const raw = values.data;
-  if (raw && typeof raw === "object" && !Array.isArray(raw) && Object.keys(raw as object).length > 0) {
-    return raw as Record<string, string>;
-  }
-  return undefined;
-}
-
-function previewContextFromValues(values: Record<string, unknown>): PresentationContext {
-  return {
-    ...values,
-    surface: typeof values.surface === "string" && values.surface ? values.surface : "desktop",
-  };
-}
-
-function previewInputFromValues(source: Record<string, unknown>, ctx: Record<string, unknown>): PreviewInput {
-  const normalized = { ...source };
-  const data = readPreviewData(source);
-  if (data) normalized.data = data;
-  return {
-    source: normalized,
-    ctx: previewContextFromValues(ctx),
-  };
-}
-
-function readPreviewInput(ctx: EffectContext): PreviewInput {
-  return previewInputFromValues(readSourceInput(ctx), readPreviewContextValues(ctx));
-}
-
-function sourceLayerId(entry: CatalogEntry | SampleBlueprintEntry): string {
-  const sourceLayerId = entry.profile.stages[0]?.fromLayer.id ?? entry.blueprint.payload.tiers[0]?.id;
-  return sourceLayerId ?? "";
-}
-
-function sourceLayer(entry: CatalogEntry | SampleBlueprintEntry): LayerDefinition | undefined {
-  const layerId = sourceLayerId(entry);
-  return layerId ? entry.profile.layersById[layerId] : undefined;
-}
-
-function sourceLayerKind(entry: CatalogEntry | SampleBlueprintEntry): string {
-  return sourceLayer(entry)?.kind ?? "";
-}
-
-function sourceInputFormFor(entry: CatalogEntry): Record<string, unknown> {
-  const layer = sourceLayer(entry);
-  const input = layer?.input;
-  return input && typeof input === "object" && !Array.isArray(input) ? (input as Record<string, unknown>) : { properties: {} };
-}
-
-function formDefaults(form: Record<string, unknown>): Record<string, unknown> {
-  const props = (form.properties ?? {}) as Record<string, Record<string, unknown>>;
-  const out: Record<string, unknown> = {};
-  for (const [key, field] of Object.entries(props)) {
-    if (field && field.default !== undefined) out[key] = field.default;
-  }
-  return out;
-}
-
-function sourceInputDefaults(entry: CatalogEntry): Record<string, unknown> {
-  return formDefaults(sourceInputFormFor(entry));
-}
-
-function previewContextFormFor(entry: CatalogEntry): Record<string, unknown> {
-  const declared = entry.blueprint.payload.context;
-  if (!declared || typeof declared !== "object" || Array.isArray(declared)) {
-    return DEFAULT_PREVIEW_CONTEXT_FORM;
-  }
-
-  const declaredRecord = declared as Record<string, unknown>;
-  const declaredRequired = Array.isArray(declaredRecord.required) ? (declaredRecord.required as string[]) : [];
-  const required = new Set<string>(["surface", ...declaredRequired]);
-
-  return {
-    ...declaredRecord,
-    properties: {
-      ...((DEFAULT_PREVIEW_CONTEXT_FORM.properties ?? {}) as Record<string, unknown>),
-      ...((declaredRecord.properties ?? {}) as Record<string, unknown>),
-    },
-    required: [...required],
-  };
-}
-
-function previewContextDefaults(entry: CatalogEntry): Record<string, unknown> {
-  return {
-    ...DEFAULT_PREVIEW_CONTEXT,
-    ...formDefaults(previewContextFormFor(entry)),
-  };
-}
-
-function isInteractionLikeSource(entry: CatalogEntry | SampleBlueprintEntry): boolean {
-  return sourceLayerKind(entry).includes("interaction");
-}
-
-function interactionPreviewSeed(
-  values: Record<string, unknown>,
-  taxonomy: InteractionTaxonomy
-): InteractionSpec {
-  const interaction = typeof values.interaction === "string" && values.interaction ? values.interaction : "investigate";
-  const subject = typeof values.subject === "string" && values.subject ? values.subject : "incident";
-  const base: InteractionSpec = {
-    interaction: interaction as InteractionKind,
-    subject,
-  };
-  const data = readPreviewData(values) ?? demoDataFor(base, taxonomy);
-  if (interaction === "configure") {
-    return {
-      ...base,
-      data: {
-        ...data,
-        settings: "fetched_sources.orders",
-      },
-      facetViews: {
-        settings: {
-          capability: "ui:editable-table",
-          read: { rows: "{{region.dataPath}}" },
-          props: {
-            spec: {
-              columns: ["id", "amount"],
-              addRow: false,
-              deleteRow: false,
-            },
-          },
-        },
-      },
-    };
-  }
-
-  return { ...base, data };
-}
-
-function catalogRows(entries: readonly CatalogEntry[]) {
-  return entries.map((entry) => ({
-    id: entry.blueprint.payload.id,
-    kind: entry.blueprint.payload.kind,
-    version: entry.blueprint.payload.version,
-    layers: Object.keys(entry.profile.layersById).length,
-    recipes: entry.profile.stages.length,
-    source: entry.source,
-    readonly: entry.readonly,
-    access: entry.readonly ? "read-only" : "editable",
-  }));
-}
-
-function findEntry(id: string, entries: readonly CatalogEntry[]): CatalogEntry | undefined {
-  return entries.find((entry) => entry.blueprint.payload.id === id);
-}
-
-function profileStorage(): Storage | null {
+function getStorage(): Storage | null {
   if (typeof globalThis === "undefined" || !("localStorage" in globalThis)) return null;
   return globalThis.localStorage ?? null;
 }
 
-function readStoredBlueprintMap(): { blueprints: Record<string, BlueprintArtifact<LayerRecipe>>; errors: string[] } {
-  const storage = profileStorage();
-  if (!storage) return { blueprints: {}, errors: [] };
+function normalizeBlueprint(value: unknown): BlueprintArtifact {
+  return parseBlueprintJson(JSON.stringify(value));
+}
 
-  const raw = storage.getItem(LOCAL_BLUEPRINT_STORAGE_KEY);
+function readStoredBlueprintMap(): { blueprints: Record<string, BlueprintArtifact>; errors: string[] } {
+  const storage = getStorage();
+  if (!storage) return { blueprints: {}, errors: [] };
+  const raw = storage.getItem(LOCAL_BUNDLE_STORAGE_KEY);
   if (!raw) return { blueprints: {}, errors: [] };
 
   try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return {
-        blueprints: {},
-        errors: ["Local blueprint storage was ignored because it is not a JSON object."],
-      };
-    }
-
-    const blueprints: Record<string, BlueprintArtifact<LayerRecipe>> = {};
+    const parsed = JSON.parse(raw);
+    if (!isRecord(parsed)) throw new Error("stored value must be an object keyed by blueprint id");
+    const blueprints: Record<string, BlueprintArtifact> = {};
     const errors: string[] = [];
-    for (const [id, value] of Object.entries(parsed as Record<string, unknown>)) {
+    for (const [id, value] of Object.entries(parsed)) {
       try {
-        const blueprint = parseBlueprintJson<LayerRecipe>(JSON.stringify(value));
-        blueprints[id] = normalizeBlueprintId(blueprint, id);
+        blueprints[id] = normalizeBlueprint(value);
       } catch (error) {
-        errors.push(`Skipped stored blueprint '${id}': ${error instanceof Error ? error.message : String(error)}`);
+        errors.push(`${id}: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
     return { blueprints, errors };
   } catch (error) {
-    return {
-      blueprints: {},
-      errors: [
-        `Local profile storage could not be parsed: ${error instanceof Error ? error.message : String(error)}`,
-      ],
-    };
+    return { blueprints: {}, errors: [error instanceof Error ? error.message : String(error)] };
   }
 }
 
-function writeStoredBlueprintMap(blueprints: Record<string, BlueprintArtifact<LayerRecipe>>): void {
-  const storage = profileStorage();
-  if (!storage) {
-    throw new Error("Browser localStorage is unavailable in this host.");
-  }
-  storage.setItem(LOCAL_BLUEPRINT_STORAGE_KEY, JSON.stringify(blueprints));
+function writeStoredBlueprintMap(blueprints: Record<string, BlueprintArtifact>): void {
+  const storage = getStorage();
+  if (!storage) throw new Error("Browser localStorage is unavailable in this host.");
+  storage.setItem(LOCAL_BUNDLE_STORAGE_KEY, JSON.stringify(blueprints));
 }
 
-function normalizeBlueprintId(blueprint: BlueprintArtifact<LayerRecipe>, id: string): BlueprintArtifact<LayerRecipe> {
-  if (blueprint.payload.id === id) return blueprint;
-  return {
-    ...blueprint,
-    payload: {
-      ...blueprint.payload,
-      id,
-    },
-  };
-}
-
-function asCatalogEntry(blueprint: BlueprintArtifact<LayerRecipe>, source: ProfileSource, readonly: boolean): CatalogEntry {
-  return {
-    blueprint,
-    profile: loadBlueprint<LayerRecipe>(blueprint, resolveProfileTemplateResource, resolveProfileTemplate),
-    source,
-    readonly,
-  };
-}
-
-function loadCatalog(): CatalogSnapshot {
-  const repoCatalog = readRepoCatalog();
-  const { blueprints, errors } = readStoredBlueprintMap();
-  const localEntries: CatalogEntry[] = [];
-  for (const [id, blueprint] of Object.entries(blueprints)) {
+function repositoryEntries(): CatalogEntry[] {
+  return Object.entries(repositoryBlueprints).flatMap(([path, value]) => {
+    const id = path.match(/\/blueprints\/([^/]+)\//)?.[1];
+    if (!id) return [];
     try {
-      localEntries.push(asCatalogEntry(normalizeBlueprintId(blueprint, id), "local", false));
-    } catch (error) {
-      errors.push(`Skipped local profile '${id}': ${error instanceof Error ? error.message : String(error)}`);
+      return [{ id, source: "repo" as const, readonly: true, blueprint: normalizeBlueprint(value) }];
+    } catch {
+      return [];
     }
-  }
+  }).sort((left, right) => left.id.localeCompare(right.id));
+}
 
-  localEntries.sort((left, right) => left.blueprint.payload.id.localeCompare(right.blueprint.payload.id));
+function loadCatalog(): { entries: CatalogEntry[]; errors: string[] } {
+  const stored = readStoredBlueprintMap();
+  const localEntries = Object.entries(stored.blueprints).map(([id, blueprint]) => ({
+    id,
+    source: "local" as const,
+    readonly: false,
+    blueprint,
+  }));
   return {
-    entries: [...repoCatalog, ...localEntries],
-    status: errors.join("\n"),
+    entries: [...repositoryEntries(), ...localEntries].sort((left, right) => left.id.localeCompare(right.id)),
+    errors: stored.errors,
   };
 }
 
-function catalogStatus(snapshot: CatalogSnapshot): string {
-  if (snapshot.status) return snapshot.status;
-  const localCount = snapshot.entries.filter((entry) => entry.source === "local").length;
-  return localCount > 0 ? `${localCount} local profile${localCount === 1 ? "" : "s"} loaded from browser storage.` : "";
-}
-
-function nextDraftId(baseId: string, entries: readonly CatalogEntry[]): string {
-  const taken = new Set(entries.map((entry) => entry.blueprint.payload.id));
-  if (!taken.has(baseId)) return baseId;
-  let index = 2;
-  while (taken.has(`${baseId}-${index}`)) index += 1;
-  return `${baseId}-${index}`;
-}
-
-function editorState(entry: CatalogEntry, statusOverride?: string, error = ""): EditableProfileState {
-  return {
-    id: entry.readonly ? nextDraftId(`${entry.blueprint.payload.id}-local`, loadCatalog().entries) : entry.blueprint.payload.id,
-    bundleText: stringifyBlueprint(entry.blueprint),
-    status:
-      statusOverride ??
-      (entry.readonly
-        ? "Read-only sample. Save with a local id to create an editable copy."
-        : `Editing local draft '${entry.blueprint.payload.id}'.`),
-    error,
-  };
-}
-
-function layerDetailView(layer: LayerDefinition | undefined) {
-  return {
-    id: layer?.id ?? "",
-    kind: layer?.kind ?? "",
-    schema: layer?.schema ?? "",
-    description: layer?.description ?? "",
-  };
-}
-
-function manageBlueprintsInspectorConfig(entry: CatalogEntry): ManageBlueprintsInspectorConfig {
-  const templateId = profileTemplateId(entry);
-  if (!templateId) {
+function validate(value: unknown): ValidationResult {
+  try {
+    const blueprint = normalizeBlueprint(value);
+    const resolved = resolveBlueprintExecution(blueprint);
     return {
-      layerPositions: {
-        source: { label: "Source tier", role: "The external input tier where the blueprint starts before any lowering rules run." },
-        intermediate: { label: "Intermediate tier", role: "An internal stage in the lowering pipeline that reshapes the previous tier into a more concrete representation." },
-        terminal: { label: "Terminal tier", role: "The final emitted tier after all lowering rules have run." },
-        unknown: { label: "Pipeline stage", role: "A stage in this blueprint's lowering pipeline." },
+      valid: true,
+      previewable: true,
+      summary: "Blueprint JSON is structurally and semantically valid.",
+      errors: "",
+      warnings: "",
+      blueprint,
+      inspection: {
+        tiers: blueprint.payload.tiers.map((tier) => ({
+          id: tier.id,
+          kind: tier.kind,
+          description: tier.description ?? "",
+        })),
+        recipes: resolved.stages.map((stage, index) => ({
+          order: index + 1,
+          id: stage.recipe.id,
+          from: stage.fromTier.id,
+          to: stage.toTier.id,
+        })),
+        terminalTier: resolved.stages.at(-1)?.toTier.id ?? blueprint.payload.tiers[0]?.id ?? "",
+        executionStatus: resolved.stages.length > 0 ? "lowering-required" : "runtime-ready",
+        executionReason: resolved.stages.length > 0
+          ? "This authored Blueprint requires a dialect-owned lowering implementation before runtime execution."
+          : "This Blueprint contains a terminal runtime definition.",
       },
-      stageLabelTemplate: "{label} · stage {index} of {total}",
-      sampleSeeds: [],
-      recipeViews: [],
     };
-  }
-  const template = resolveProfileTemplate(templateId);
-  return resolveNamedProfileTemplateFile(template, "consoleInspector") as unknown as ManageBlueprintsInspectorConfig;
-}
-
-function emptyRecipeDetailState() {
-  return {
-    id: "",
-    kind: "",
-    kindLabel: "",
-    purpose: "",
-    tagline: "",
-    from: "",
-    to: "",
-    summary: "",
-    constrainedWhenText: "",
-    containerCapability: "",
-    fallbackCapability: "",
-    fromLayer: layerDetailView(undefined),
-    toLayer: layerDetailView(undefined),
-    regionRuleFromLabel: "",
-    regionRuleToLabel: "",
-    regionRuleMappings: [] as Array<{ id: string; from: string; to: string }>,
-    ruleGroups: [],
-    templates: [],
-    templateMappings: [],
-    regionMappings: [],
-    capabilityMappings: [],
-    runtimeRules: [],
-    runtimeCapabilities: [],
-  };
-}
-
-function ruleMatchSummary(match: Record<string, unknown>): string {
-  const entries = Object.entries(match ?? {});
-  return entries.length === 0 ? "default" : entries.map(([key, value]) => `${key}=${String(value)}`).join(", ");
-}
-
-// A single, kind-agnostic view of a recipe's per-region rules: each rule as a `match -> emit` row,
-// plus the human labels for the two columns. This is the one place that knows the shape of each
-// recipe kind, so the UI can render "how each region is handled" for ANY non-terminal layer without
-// gating on a specific transition.
-function recipeFamily(recipe: LayerRecipe): "workflow" | "planning" | "runtime" | "unknown" {
-  if (isWorkflowToInteractionRecipe(recipe)) return "workflow";
-  if (planningRecipeOf(recipe)) return "planning";
-  if (runtimeRecipeOf(recipe)) return "runtime";
-  return "unknown";
-}
-
-function recipeViewConfig(entry: CatalogEntry, recipe: LayerRecipe): RecipeViewConfig | undefined {
-  const family = recipeFamily(recipe);
-  if (family === "unknown") return undefined;
-  return manageBlueprintsInspectorConfig(entry).recipeViews.find((config) => config.match.family === family);
-}
-
-function ruleDisplayValue(rule: VocabularyProgramRule, config: RecipeRulePathConfig): string {
-  if (config.kind === "mapping-when") {
-    return mappingWhen((rule.match ?? {}) as Record<string, unknown>);
-  }
-  return String(readPathValue(rule, config.path ?? "") ?? "");
-}
-
-function regionRuleView(entry: CatalogEntry, recipe: LayerRecipe): {
-  fromLabel: string;
-  toLabel: string;
-  mappings: Array<{ id: string; from: string; to: string }>;
-} {
-  const view = recipeViewConfig(entry, recipe);
-  if (!view) return { fromLabel: "When", toLabel: "Does", mappings: [] };
-
-  const program =
-    recipeFamily(recipe) === "workflow"
-      ? ((recipe as unknown as VocabularyProgram).program ? (recipe as unknown as VocabularyProgram) : undefined)
-      : ((planningRecipeOf(recipe) ?? runtimeRecipeOf(recipe)) as unknown as VocabularyProgram | undefined);
-  if (!program) return { fromLabel: view.regionRules.fromLabel, toLabel: view.regionRules.toLabel, mappings: [] };
-
-  const mappings = ruleMatches(program, view.regionRules.slots).map((rule, index) => ({
-    id: `map-${index}`,
-    from: ruleDisplayValue(rule, view.regionRules.from),
-    to: String(readPathValue(rule, view.regionRules.to.path) ?? ""),
-  }));
-  return { fromLabel: view.regionRules.fromLabel, toLabel: view.regionRules.toLabel, mappings };
-}
-
-// Reads a rule's match condition as the left-hand side of a lowering mapping ("when …"). An empty
-// match is the catch-all, shown as "Otherwise" so the row reads like a fallback branch.
-function mappingWhen(match: Record<string, unknown> | undefined): string {
-  const entries = Object.entries(match ?? {});
-  return entries.length === 0 ? "Otherwise" : entries.map(([key, value]) => `${key} = ${String(value)}`).join(", ");
-}
-
-function recipeTypeLabel(recipe: LayerRecipe): string {
-  return `${recipe.from} -> ${recipe.to}`;
-}
-
-function pipelineState(entry: CatalogEntry) {
-  const incomingByNode = new Map<string, Array<{ token: string; label?: string }>>();
-  const outgoingByNode = new Map<string, Array<{ token: string; label?: string }>>();
-
-  for (const ref of entry.blueprint.payload.recipes) {
-    const outgoing = outgoingByNode.get(ref.from) ?? [];
-    outgoing.push({ token: ref.id });
-    outgoingByNode.set(ref.from, outgoing);
-
-    const incoming = incomingByNode.get(ref.to) ?? [];
-    incoming.push({ token: ref.id });
-    incomingByNode.set(ref.to, incoming);
-  }
-
-  return {
-    nodes: entry.blueprint.payload.tiers.map((layer, index) => ({
-      id: layer.id,
-      label: layer.id,
-      subtitle: layerRoleLabel(entry, layer.id),
-      meta: layer.schema ?? `layer ${index + 1}`,
-      description: layer.description ?? "",
-      requires: incomingByNode.get(layer.id) ?? [],
-      provides: outgoingByNode.get(layer.id) ?? [],
-    })),
-  };
-}
-
-function layerRows(entry: CatalogEntry) {
-  return entry.blueprint.payload.tiers.map((layer) => ({
-    id: layer.id,
-    kind: layer.kind,
-    roleLabel: layerRoleLabel(entry, layer.id),
-    schema: layer.schema ?? "",
-    description: layer.description ?? "",
-  }));
-}
-
-function defaultLayerId(entry: CatalogEntry): string {
-  return entry.blueprint.payload.tiers[0]?.id ?? "";
-}
-
-function resolveLayerId(entry: CatalogEntry, layerId?: string): string {
-  const ids = new Set(entry.blueprint.payload.tiers.map((layer) => layer.id));
-  return layerId && ids.has(layerId) ? layerId : defaultLayerId(entry);
-}
-
-function resolveRecipeId(entry: CatalogEntry, recipeId?: string): string {
-  const ids = new Set(entry.blueprint.payload.recipes.map((ref) => ref.id));
-  return recipeId && ids.has(recipeId) ? recipeId : "";
-}
-
-function layerPosition(entry: CatalogEntry, layerId: string): LayerPositionName {
-  const order = orderedLayerIds(entry);
-  const index = order.indexOf(layerId);
-  if (index < 0) return "unknown";
-  if (index === 0) return "source";
-  if (index === order.length - 1) return "terminal";
-  return "intermediate";
-}
-
-function layerRole(entry: CatalogEntry, layerId: string): string {
-  return manageBlueprintsInspectorConfig(entry).layerPositions[layerPosition(entry, layerId)].role;
-}
-
-function layerRoleLabel(entry: CatalogEntry, layerId: string): string {
-  return manageBlueprintsInspectorConfig(entry).layerPositions[layerPosition(entry, layerId)].label;
-}
-
-function orderedLayerIds(entry: CatalogEntry): string[] {
-  const stages = entry.profile.stages;
-  if (stages.length > 0) {
-    return [stages[0].fromLayer.id, ...stages.map((stage) => stage.toLayer.id)];
-  }
-  return entry.blueprint.payload.tiers.map((layer) => layer.id);
-}
-
-function layerStageLabel(entry: CatalogEntry, layerId: string): string {
-  const order = orderedLayerIds(entry);
-  const index = order.indexOf(layerId);
-  const total = order.length;
-  if (index < 0 || total === 0) return "";
-  const positionLabel = layerRoleLabel(entry, layerId);
-  const template = manageBlueprintsInspectorConfig(entry).stageLabelTemplate ?? "{label} · stage {index} of {total}";
-  return template
-    .replace("{label}", positionLabel)
-    .replace("{index}", String(index + 1))
-    .replace("{total}", String(total));
-}
-
-// Distinct, non-empty term list preserving first-seen order.
-function distinctTerms(values: Array<string | undefined>): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const value of values) {
-    const term = (value ?? "").trim();
-    if (term && !seen.has(term)) {
-      seen.add(term);
-      out.push(term);
-    }
-  }
-  return out;
-}
-
-function profileTemplateId(entry: CatalogEntry): string | undefined {
-  const templateId = entry.blueprint.payload["blueprint-template"];
-  return typeof templateId === "string" && templateId.length > 0 ? templateId : undefined;
-}
-
-function layerVocabularyConfig(entry: CatalogEntry): LayerVocabularyConfig {
-  const templateId = profileTemplateId(entry);
-  if (!templateId) return { rules: [] };
-  const template = resolveProfileTemplate(templateId);
-  return resolveNamedProfileTemplateFile(template, "layerVocabulary") as unknown as LayerVocabularyConfig;
-}
-
-function readPathValue(value: unknown, path: string): unknown {
-  return path.split(".").reduce<unknown>((current, segment) => {
-    if (!current || typeof current !== "object" || Array.isArray(current)) return undefined;
-    return (current as Record<string, unknown>)[segment];
-  }, value);
-}
-
-function collectVocabularyTerms(value: unknown, out: string[]): void {
-  if (Array.isArray(value)) {
-    for (const item of value) collectVocabularyTerms(item, out);
-    return;
-  }
-  if (value != null && typeof value !== "object") {
-    out.push(String(value));
-  }
-}
-
-function configuredTerms(values: readonly unknown[], exclude: readonly string[] = []): string[] {
-  const rawTerms: string[] = [];
-  for (const value of values) collectVocabularyTerms(value, rawTerms);
-  const excluded = new Set(exclude.map(String));
-  return distinctTerms(rawTerms.filter((term) => !excluded.has(term)));
-}
-
-function defaultSeedPayload(entry: CatalogEntry): Record<string, unknown> {
-  return sourceInputDefaults(entry);
-}
-
-function seedSourceConfig(entry: CatalogEntry): SampleSeedConfig | undefined {
-  const sourceLayer = entry.profile.stages[0]?.fromLayer ?? entry.blueprint.payload.tiers[0];
-  return manageBlueprintsInspectorConfig(entry).sampleSeeds.find((config) => !config.match?.sourceKind || config.match.sourceKind === sourceLayer?.kind);
-}
-
-function profileSampleSeeds(entry: CatalogEntry): BlueprintSeed[] {
-  const sourceConfig = seedSourceConfig(entry);
-  if (!sourceConfig) return [];
-  const defaults = defaultSeedPayload(entry);
-  const firstStage = entry.profile.stages[0];
-  if (!firstStage) return [];
-
-  const addSeed = (labels: string[]) => distinctTerms(labels).map((label) => ({
-    id: label,
-    label,
-    payload: { ...defaults, [sourceConfig.payloadField]: label },
-  }));
-
-  if (sourceConfig.kind === "workflow-rules") {
-    const recipe = entry.profile.stages[0]?.recipe;
-    if (!recipe || !isWorkflowToInteractionRecipe(recipe)) return [];
-    const labels = recipe.program
-      .filter((rule) => rule.slot === sourceConfig.slot)
-      .map((rule) => String((rule.match as Record<string, unknown>)[sourceConfig.matchField] ?? ""));
-    return addSeed(labels);
-  }
-
-  const planning = planningRecipeOf(firstStage.recipe);
-  if (!planning) return [];
-  const labels = planning.program
-    .filter((rule) => rule.slot === sourceConfig.slot)
-    .map((rule) => String((rule.match as Record<string, unknown>)[sourceConfig.matchField] ?? ""));
-  return addSeed(labels);
-}
-
-function ruleMatches(program: VocabularyProgram, slots: readonly string[]): VocabularyProgramRule[] {
-  const allowed = new Set(slots);
-  return program.program.filter((rule) => typeof rule.slot === "string" && allowed.has(rule.slot));
-}
-
-function extractConfiguredVocabularyTerms(
-  program: VocabularyProgram,
-  group: LayerVocabularyGroupConfig
-): string[] {
-  if (group.kind === "rule-match-values") {
-    return configuredTerms(
-      ruleMatches(program, [group.slot]).map((rule) => readPathValue(rule.match ?? {}, group.field))
-    );
-  }
-
-  if (group.kind === "rule-match-keys") {
-    const excluded = new Set((group.exclude ?? []).map(String));
-    return distinctTerms(
-      ruleMatches(program, [group.slot]).flatMap((rule) =>
-        Object.keys(rule.match ?? {}).filter((key) => !excluded.has(key))
-      )
-    );
-  }
-
-  return configuredTerms(
-    ruleMatches(program, group.slots).map((rule) => readPathValue(rule.emit ?? {}, group.field))
-  );
-}
-
-// The vocabulary panel is template-owned semantics over a generic layer graph: the console chooses
-// the selected layer's adjacent lowering program (outgoing planning, incoming planning, or incoming
-// runtime), then applies the template's declarative extraction rules to derive the terms it speaks.
-function layerVocabulary(entry: CatalogEntry, layerId: string) {
-  const layer = entry.blueprint.payload.tiers.find((candidate) => candidate.id === layerId);
-  const groups: Array<{ id: string; label: string; note: string; terms: string[] }> = [];
-  if (!layer) return { groups };
-
-  const outgoingRef = entry.blueprint.payload.recipes.find((candidate) => candidate.from === layerId);
-  const incomingRef = entry.blueprint.payload.recipes.find((candidate) => candidate.to === layerId);
-  const outgoing = outgoingRef ? entry.profile.recipesById[outgoingRef.id] : undefined;
-  const incoming = incomingRef ? entry.profile.recipesById[incomingRef.id] : undefined;
-  const outgoingPlanning = outgoing ? planningRecipeOf(outgoing) : undefined;
-  const incomingPlanning = incoming ? planningRecipeOf(incoming) : undefined;
-  const incomingRuntime = incoming ? runtimeRecipeOf(incoming) : undefined;
-
-  const config = layerVocabularyConfig(entry);
-  const sources: Record<LayerVocabularySource, VocabularyProgram | undefined> = {
-    outgoingPlanning: outgoingPlanning as VocabularyProgram | undefined,
-    incomingPlanning: incomingPlanning as VocabularyProgram | undefined,
-    incomingRuntime: incomingRuntime as VocabularyProgram | undefined,
-  };
-
-  const matchedRule = config.rules.find((rule) => {
-    if (rule.match.layerKind && rule.match.layerKind !== layer.kind) return false;
-    return !!sources[rule.match.source];
-  });
-  const sourceProgram = matchedRule ? sources[matchedRule.match.source] : undefined;
-  if (!matchedRule || !sourceProgram) return { groups };
-
-  for (const group of matchedRule.groups) {
-    const terms = extractConfiguredVocabularyTerms(sourceProgram, group);
-    if (terms.length > 0) {
-      groups.push({ id: group.id, label: group.label, note: group.note, terms });
-    }
-  }
-
-  return { groups };
-}
-
-// Representative context surfaces to vary in the worked examples. We run every surface and then
-// collapse identical outcomes, so a row that reads "any surface" means context doesn't change that
-// interaction's result, while a split into specific surfaces reveals exactly where context matters.
-const EXAMPLE_SURFACES = ["desktop", "web", "mobile", "copilot", "teams"] as const;
-const EXAMPLE_LIMIT = 10;
-
-// A compact, shape-based summary of ANY stage value, so the worked-examples table can render the
-// input and output of any layer transition without knowing which kind it is: a runtime document
-// shows its root capability + the components it contains, a presentation spec shows its layout +
-// regions, an interaction spec shows its goal.
-function summarizeStageValue(value: unknown): string {
-  if (value && typeof value === "object") {
-    const v = value as Record<string, unknown>;
-    if (v.root && typeof v.root === "object") {
-      const root = v.root as { capability?: string; edges?: { children?: Array<{ capability?: string }> } };
-      const children = (root.edges?.children ?? [])
-        .map((child) => String(child.capability ?? ""))
-        .filter(Boolean);
-      return children.length ? `${root.capability} — ${children.join(", ")}` : String(root.capability ?? "");
-    }
-    if ("layout" in v && Array.isArray(v.regions)) {
-      const regions = (v.regions as Array<{ name?: string }>)
-        .map((region) => String(region.name ?? ""))
-        .filter(Boolean);
-      return regions.length ? `${v.layout} — ${regions.join(", ")}` : String(v.layout ?? "");
-    }
-    if (typeof v.interaction === "string") return v.interaction;
-  }
-  return String(value ?? "");
-}
-
-// Worked examples: the FIRST N real results of running this profile over sample inputs, read from
-// the stage where THIS layer lowers into the next one. Each row is genuine engine output (via
-// traceProfile), not an authored rule row — so it shows what the profile actually produces for a
-// concrete input. Fully generic: it works for any layer that has an outgoing stage (interaction,
-// presentation, or a future layer kind), and a terminal layer simply yields no rows.
-function loweringExamples(entry: CatalogEntry, layerId: string) {
-  const empty = {
-    columns: [] as Array<{ key: string; label: string }>,
-    rows: [] as Array<{ id: string; input: string; context: string; output: string }>,
-  };
-  const profile = entry.profile;
-  // The stage where this layer lowers into the next one. Terminal layers have none.
-  const stage = profile.stages.find((candidate) => candidate.fromLayer.id === layerId);
-  if (!stage) return empty;
-
-  const seeds = profileSampleSeeds(entry);
-  if (seeds.length === 0) return empty;
-
-  const columns = [
-    { key: "input", label: `From ${stage.fromLayer.kind}` },
-    { key: "context", label: "Context (surface)" },
-    { key: "output", label: `→ ${stage.toLayer.kind}` },
-  ];
-
-  // Run every seed × surface, then group by identical (input, output) outcome so a row that reads
-  // "any surface" means context doesn't change that result, while a split reveals where it does.
-  const byOutcome = new Map<string, { surfaces: string[]; input: string; output: string }>();
-  for (const seed of seeds) {
-    for (const surface of EXAMPLE_SURFACES) {
-      try {
-        const trace: StageTrace[] = traceProfile(
-          profile,
-          seed.payload,
-          { surface },
-        );
-        const step = trace.find((candidate) => candidate.fromLayerId === layerId);
-        if (!step) continue;
-        const input = summarizeStageValue(step.input);
-        const output = summarizeStageValue(step.output);
-        const key = `${input}|${output}`;
-        const existing = byOutcome.get(key);
-        if (existing) {
-          if (surface && !existing.surfaces.includes(surface)) existing.surfaces.push(surface);
-        } else {
-          byOutcome.set(key, { surfaces: surface ? [surface] : [], input, output });
-        }
-      } catch {
-        // Skip any seed the profile cannot resolve rather than failing the whole panel.
-      }
-    }
-  }
-
-  const rows: Array<{ id: string; input: string; context: string; output: string }> = [];
-  for (const [key, outcome] of byOutcome) {
-    if (rows.length >= EXAMPLE_LIMIT) break;
-    rows.push({
-      id: key,
-      input: outcome.input,
-      context: outcome.surfaces.length === EXAMPLE_SURFACES.length ? "any surface" : outcome.surfaces.join(", "),
-      output: outcome.output,
-    });
-  }
-  return { columns, rows };
-}
-
-function layerDetailState(entry: CatalogEntry, layerId: string) {
-  const layer = entry.blueprint.payload.tiers.find((candidate) => candidate.id === layerId);
-  const outgoingRef = entry.blueprint.payload.recipes.find((candidate) => candidate.from === layerId);
-  const incomingRef = entry.blueprint.payload.recipes.find((candidate) => candidate.to === layerId);
-  return {
-    ...layerDetailView(layer),
-    // Data-first: a layer's own `description` from the profile JSON wins; the kind-keyed sentence is
-    // only a fallback for profiles that don't author one (and a generic line for unknown kinds).
-    role: layer ? (layer.description?.trim() || layerRole(entry, layerId)) : "",
-    stageLabel: layer ? layerStageLabel(entry, layerId) : "",
-    seeds: layer ? profileSampleSeeds(entry) : [],
-    vocabulary: layer ? layerVocabulary(entry, layerId) : { groups: [] },
-    loweringExamples: layer ? loweringExamples(entry, layerId) : { columns: [], rows: [] },
-    outgoingRecipe: outgoingRef ? recipeDetailState(entry, outgoingRef.id) : emptyRecipeDetailState(),
-    incomingRecipe: incomingRef ? recipeDetailState(entry, incomingRef.id) : emptyRecipeDetailState(),
-  };
-}
-
-function recipeSourceLayerId(entry: CatalogEntry, recipeId: string): string {
-  return entry.blueprint.payload.recipes.find((candidate) => candidate.id === recipeId)?.from ?? defaultLayerId(entry);
-}
-
-function runtimeCapabilityRows(recipe: LayerRecipe) {
-  const runtime = runtimeRecipeOf(recipe);
-  if (!runtime) return [];
-  const rows: Array<{ id: string; capability: string; source: string }> = [];
-  const seen = new Set<string>();
-  const push = (capability: string | undefined, source: string) => {
-    if (!capability || seen.has(`${capability}:${source}`)) return;
-    seen.add(`${capability}:${source}`);
-    rows.push({ id: `${source}:${capability}`, capability, source });
-  };
-
-  const containerRule = runtime.program.find((rule) => rule.slot === "container");
-  const regionRules = runtime.program.filter((rule) => rule.slot === "region");
-  push(containerRule?.emit.capability, "container region");
-  regionRules.forEach((rule) => push(rule.emit.capability, ruleMatchSummary(rule.match as Record<string, unknown>)));
-  return rows;
-}
-
-function recipeDetailState(entry: CatalogEntry, recipeId: string) {
-  const ref = entry.blueprint.payload.recipes.find((candidate) => candidate.id === recipeId);
-  if (!ref) return { ...EMPTY_RECIPE_DETAIL };
-
-  const recipe = entry.profile.recipesById[ref.id];
-  const fromLayer = entry.profile.layersById[ref.from];
-  const toLayer = entry.profile.layersById[ref.to];
-  const region = regionRuleView(entry, recipe);
-  const view = recipeViewConfig(entry, recipe);
-  const base = {
-    id: ref.id,
-    from: ref.from,
-    to: ref.to,
-    fromLayer: layerDetailView(fromLayer),
-    toLayer: layerDetailView(toLayer),
-    regionRuleFromLabel: region.fromLabel,
-    regionRuleToLabel: region.toLabel,
-    regionRuleMappings: region.mappings,
-  };
-
-  if (!view) {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     return {
-      ...base,
-      kind: recipeTypeLabel(recipe),
-      kindLabel: recipeTypeLabel(recipe),
-      tagline: "",
-      purpose: "",
-      summary: "",
-      constrainedWhenText: "",
-      containerCapability: "",
-      fallbackCapability: "",
-      ruleGroups: [],
-      templates: [],
-      templateMappings: [],
-      regionMappings: [],
-      capabilityMappings: [],
-      runtimeRules: [],
-      runtimeCapabilities: [],
+      valid: false,
+      previewable: false,
+      summary: "Blueprint JSON is invalid.",
+      errors: message,
+      warnings: "",
+      blueprint: null,
+      inspection: null,
     };
   }
+}
 
-  const program =
-    recipeFamily(recipe) === "workflow"
-      ? ((recipe as unknown as VocabularyProgram).program ? (recipe as unknown as VocabularyProgram) : undefined)
-      : ((planningRecipeOf(recipe) ?? runtimeRecipeOf(recipe)) as unknown as VocabularyProgram | undefined);
-  const containerCapability = view.containerCapability && program
-    ? String(
-        readPathValue(
-          ruleMatches(program, [view.containerCapability.slot])[0] ?? {},
-          view.containerCapability.path
-        ) ?? ""
-      )
-    : "";
+function parseEditor(ctx: EffectContext): ValidationResult {
+  const text = String(ctx.get("manageBlueprints.editor.blueprintText") ?? "");
+  try {
+    return validate(JSON.parse(text));
+  } catch (error) {
+    return {
+      valid: false,
+      previewable: false,
+      summary: "Blueprint JSON is invalid.",
+      errors: error instanceof Error ? error.message : String(error),
+      warnings: "",
+      blueprint: null,
+      inspection: null,
+    };
+  }
+}
+
+function validationState(result: ValidationResult): JsonRecord {
   return {
-    ...base,
-    kind: view.kind,
-    kindLabel: view.kindLabel,
-    tagline: view.tagline,
-    purpose: view.purpose,
-    summary: "",
-    constrainedWhenText: "",
-    containerCapability,
-    fallbackCapability: "",
-    ruleGroups: [],
-    templates: [],
-    templateMappings: [],
-    regionMappings: [],
-    capabilityMappings: [],
-    runtimeRules: [],
-    runtimeCapabilities: [],
+    valid: result.valid,
+    previewable: result.previewable,
+    summary: result.summary,
+    errors: result.errors,
+    warnings: result.warnings,
   };
 }
 
-function profileState(entry: CatalogEntry) {
-  const blueprint = entry.blueprint.payload;
-  const legend = orderedLayerIds(entry)
-    .map((id) => layerRoleLabel(entry, id))
-    .join("  →  ");
+function inspectionState(result: ValidationResult): Json {
+  return result.inspection ?? { tiers: [], recipes: [], terminalTier: "", executionStatus: "invalid", executionReason: "" };
+}
+
+function catalogRows(entries: CatalogEntry[]): Json[] {
+  return entries.map((entry) => {
+    const payload = entry.blueprint.payload;
+    return {
+      id: entry.id,
+      label: entry.id,
+      source: entry.source,
+      readonly: entry.readonly,
+      detail: `${entry.source} | ${String(payload.version ?? "unknown version")}`,
+    } as Json;
+  });
+}
+
+function selectedState(entry: CatalogEntry): JsonRecord {
+  const payload = entry.blueprint.payload;
   return {
-    id: blueprint.id,
-    kind: blueprint.kind,
-    version: blueprint.version,
+    id: entry.id,
     source: entry.source,
     readonly: entry.readonly,
-    layerCount: blueprint.tiers.length,
-    recipeCount: blueprint.recipes.length,
-    summary: `This blueprint lowers a user's goal into a rendered UI across ${blueprint.tiers.length} stages, joined by ${blueprint.recipes.length} lowering ${blueprint.recipes.length === 1 ? "recipe" : "recipes"}.`,
-    legend,
+    version: payload.version,
+    structureMode: payload.structureMode ?? "fixed",
+    tiers: payload.tiers.map((tier) => tier.id).join(", "),
+    recipeCount: payload.recipes.length,
   };
 }
 
-function formatJson(value: unknown): string {
-  return JSON.stringify(value, null, 2);
-}
-
-function artifactState(entry: CatalogEntry) {
+function editorState(entry: CatalogEntry): JsonRecord {
   return {
-    profileText: formatJson(entry.blueprint),
-    recipesText: entry.blueprint.payload.recipes.map((recipe) => formatJson(recipe)).join("\n\n"),
-    resolvedText: formatJson({
-      id: entry.blueprint.payload.id,
-      stages: entry.profile.stages.map((stage) => ({
-        recipe: stage.ref.id,
-        fromLayer: stage.fromLayer,
-        toLayer: stage.toLayer,
-      })),
-    }),
-    bundleText: stringifyBlueprint(entry.blueprint),
+    id: entry.id,
+    blueprintText: JSON.stringify(entry.blueprint, null, 2),
+    status: entry.readonly
+      ? "Repository blueprint is read-only. Clone it to create a browser-local draft."
+      : "Browser-local blueprint loaded and editable.",
+    error: "",
   };
 }
 
-export function validateSampleBlueprint(entry: SampleBlueprintEntry): ValidationResult {
-  const errors: string[] = [];
-  const warnings: string[] = [];
-
-  try {
-    validateBlueprintArtifact(entry.blueprint);
-  } catch (error) {
-    errors.push(error instanceof Error ? error.message : String(error));
-  }
-
-  const recipeArtifacts: RecipeArtifactBase<LayerRecipe>[] = entry.blueprint.payload.recipes.map((recipe) => ({
-    gik: "0.1",
-    type: "lowering-recipe",
-    payload: recipe,
-  }));
-  warnings.push(...lintProfileArtifacts(entry.profile.artifact, recipeArtifacts).map((warning) => warning.detail));
-  for (const recipe of recipeArtifacts) {
-    warnings.push(
-      ...lintLoweringRecipeArtifact(recipe, PREVIEW_CAPABILITIES).map((warning) => warning.detail)
-    );
-  }
-
-  const errorLabel = errors.length === 1 ? "error" : "errors";
-  const warningLabel = warnings.length === 1 ? "warning" : "warnings";
-  return {
-    status: errors.length > 0 ? "error" : "ok",
-    level: errors.length > 0 ? "error" : warnings.length > 0 ? "warn" : "good",
-    summary:
+function catalogOps(entries: CatalogEntry[], errors: string[]) {
+  return [
+    setOp("manageBlueprints.blueprints", catalogRows(entries)),
+    setOp(
+      "manageBlueprints.catalogStatus",
       errors.length > 0
-        ? `${errors.length} ${errorLabel}`
-        : warnings.length > 0
-          ? `Valid \u00b7 ${warnings.length} ${warningLabel}`
-          : "Valid",
-    errors,
-    warnings,
-    errorsText: errors.length > 0 ? errors.join("\n") : "No errors.",
-    warningsText: warnings.length > 0 ? warnings.join("\n") : "No warnings.",
-  };
-}
-
-function previewSeed(entry: SampleBlueprintEntry, input: PreviewInput): unknown {
-  if (isInteractionLikeSource(entry)) {
-    return interactionPreviewSeed(
-      input.source,
-      entry.profile.resources.taxonomy as unknown as InteractionTaxonomy
-    );
-  }
-
-  return input.source;
-}
-
-export function buildProfilePreviewBundle(
-  entry: SampleBlueprintEntry,
-  input: PreviewInput
-): SerializableBundle {
-  const document = runProfile(entry.profile, previewSeed(entry, input), input.ctx) as ProjectedProgramDefinition;
-  return {
-    vocabulary: PROFILE_PREVIEW_MANIFEST,
-    program: { gik: "0.1", type: "program", payload: document },
-    state: PREVIEW_STATE,
-  };
-}
-
-function previewState(entry: SampleBlueprintEntry, input: PreviewInput) {
-  try {
-    return {
-      bundle: buildProfilePreviewBundle(entry, input),
-      error: "",
-    };
-  } catch (error) {
-    return {
-      bundle: null,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
-function baseCatalogOps(snapshot: CatalogSnapshot) {
-  return [
-    setOp("manageBlueprints.profiles", catalogRows(snapshot.entries) as unknown as Json),
-    setOp("manageBlueprints.catalogStatus", catalogStatus(snapshot)),
+        ? `${entries.length} blueprints loaded; ${errors.length} local artifact error(s).`
+        : `${entries.length} blueprints loaded: repository artifacts are read-only, local artifacts are editable.`
+    ),
   ];
 }
 
-function clearSelectionOps(snapshot: CatalogSnapshot, message = "") {
-  return [
-    ...baseCatalogOps(snapshot),
-    setOp("manageBlueprints.selectedId", ""),
-    setOp("manageBlueprints.profile", EMPTY_PROFILE as unknown as Json),
-    setOp("manageBlueprints.pipeline", EMPTY_PIPELINE as unknown as Json),
-    setOp("manageBlueprints.layers", [] as unknown as Json),
-    setOp("manageBlueprints.selectedLayerId", ""),
-    setOp("manageBlueprints.layerDetail", EMPTY_LAYER_DETAIL as unknown as Json),
-    setOp("manageBlueprints.selectedRecipeId", ""),
-    setOp("manageBlueprints.recipeDetail", EMPTY_RECIPE_DETAIL as unknown as Json),
-    setOp("manageBlueprints.validation", EMPTY_VALIDATION as unknown as Json),
-    setOp("manageBlueprints.artifacts", { ...EMPTY_EDITOR, profileText: "", recipesText: "", resolvedText: "", bundleText: "" } as unknown as Json),
-    setOp("manageBlueprints.sourceInputForm", { properties: {} } as unknown as Json),
-    setOp("manageBlueprints.sourceInput", {} as unknown as Json),
-    setOp("manageBlueprints.previewContextForm", DEFAULT_PREVIEW_CONTEXT_FORM as unknown as Json),
-    setOp("manageBlueprints.previewContext", DEFAULT_PREVIEW_CONTEXT as unknown as Json),
-    setOp("manageBlueprints.previewBundle", null as unknown as Json),
-    setOp("manageBlueprints.previewError", message),
-    setOp("manageBlueprints.editor", { ...EMPTY_EDITOR, status: message || EMPTY_EDITOR.status } as unknown as Json),
-  ];
+function findEntry(id: string): CatalogEntry | undefined {
+  return loadCatalog().entries.find((entry) => entry.id === id);
 }
 
-function selectionOps(
-  entry: CatalogEntry,
-  input: PreviewInput,
-  tab: ManageBlueprintsTab,
-  snapshot: CatalogSnapshot,
-  selection?: { layerId?: string; recipeId?: string }
-) {
-  const validation = validateSampleBlueprint(entry);
-  const preview = previewState(entry, input);
-  const layerId = resolveLayerId(entry, selection?.layerId);
-  const recipeId = resolveRecipeId(entry, selection?.recipeId);
+function portableStarterBlueprint(): BlueprintArtifact {
+  return normalizeBlueprint({
+    gik: "0.1",
+    type: "blueprint",
+    payload: {
+      id: "untitled-blueprint-local",
+      kind: "runtime-blueprint",
+      version: "1.0.0",
+      structureMode: "fixed",
+      tiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      recipes: [],
+      runtime: { version: "local-blueprint/1.0", capabilities: {}, state: {} },
+    },
+  });
+}
+
+function nextLocalId(baseId: string): string {
+  const ids = new Set(loadCatalog().entries.map((entry) => entry.id));
+  const base = `${baseId.replace(/-local(?:-\d+)?$/, "")}-local`;
+  if (!ids.has(base)) return base;
+  let suffix = 2;
+  while (ids.has(`${base}-${suffix}`)) suffix += 1;
+  return `${base}-${suffix}`;
+}
+
+function importedId(fileName: string): string {
+  const base = fileName
+    .replace(/\.blueprint\.json$/i, "")
+    .replace(/\.json$/i, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return nextLocalId(base || "imported-blueprint");
+}
+
+function withBlueprintId(blueprint: BlueprintArtifact, id: string): BlueprintArtifact {
+  return normalizeBlueprint({ ...blueprint, payload: { ...blueprint.payload, id } });
+}
+
+function draftOps(id: string, blueprint: BlueprintArtifact, status: string) {
+  const identified = withBlueprintId(blueprint, id);
+  const result = validate(identified);
   return [
-    ...baseCatalogOps(snapshot),
-    setOp("manageBlueprints.selectedId", entry.blueprint.payload.id),
-    setOp("manageBlueprints.profile", profileState(entry) as unknown as Json),
-    setOp("manageBlueprints.pipeline", pipelineState(entry) as unknown as Json),
-    setOp("manageBlueprints.layers", layerRows(entry) as unknown as Json),
-    setOp("manageBlueprints.selectedLayerId", layerId),
-    setOp("manageBlueprints.layerDetail", layerDetailState(entry, layerId) as unknown as Json),
-    setOp("manageBlueprints.selectedRecipeId", recipeId),
-    setOp("manageBlueprints.recipeDetail", recipeDetailState(entry, recipeId) as unknown as Json),
-    setOp("manageBlueprints.validation", validation as unknown as Json),
-    setOp("manageBlueprints.artifacts", artifactState(entry) as unknown as Json),
-    setOp("manageBlueprints.sourceInputForm", sourceInputFormFor(entry) as unknown as Json),
-    setOp("manageBlueprints.previewContextForm", previewContextFormFor(entry) as unknown as Json),
-    setOp("manageBlueprints.previewBundle", preview.bundle as unknown as Json),
-    setOp("manageBlueprints.previewError", preview.error),
-    setOp("manageBlueprints.editor", editorState(entry) as unknown as Json),
-    setOp("manageBlueprints.tab", tab),
+    setOp("manageBlueprints.tab", "draft"),
+    setOp("manageBlueprints.editor", { id, blueprintText: JSON.stringify(identified, null, 2), status, error: "" }),
+    setOp("manageBlueprints.validation", validationState(result)),
+    setOp("manageBlueprints.previewBlueprint", null),
+    setOp("manageBlueprints.previewError", ""),
   ];
 }
 
 export const manageBlueprintsEffects: EffectHandlerMap = {
   $init() {
-    const snapshot = loadCatalog();
-    return { ops: baseCatalogOps(snapshot) };
+    const catalog = loadCatalog();
+    return { ops: catalogOps(catalog.entries, catalog.errors) };
   },
 
-  listBlueprints(ctx) {
-    const snapshot = loadCatalog();
-    const selected = findEntry(readSelectedId(ctx), snapshot.entries);
-    if (!selected) return { ops: baseCatalogOps(snapshot) };
-    return {
-      ops: selectionOps(selected, readPreviewInput(ctx), readTab(ctx), snapshot, {
-        layerId: readSelectedLayerId(ctx),
-        recipeId: readSelectedRecipeId(ctx),
-      }),
-    };
+  listBlueprints() {
+    const catalog = loadCatalog();
+    return { ops: catalogOps(catalog.entries, catalog.errors) };
   },
 
   getBlueprint(ctx) {
-    const snapshot = loadCatalog();
-    const entry = findEntry(String(ctx.payload.id ?? ""), snapshot.entries);
+    const id = String(ctx.payload.id ?? "");
+    const entry = findEntry(id);
     if (!entry) {
+      return { outcome: "not-found", ops: [setOp("manageBlueprints.editor.error", `Blueprint '${id}' was not found.`)] };
+    }
+    const result = validate(entry.blueprint);
+    return {
+      outcome: "loaded",
+      ops: [
+        setOp("manageBlueprints.selectedId", id),
+        setOp("manageBlueprints.selected", selectedState(entry)),
+        setOp("manageBlueprints.editor", editorState(entry)),
+        setOp("manageBlueprints.validation", validationState(result)),
+        setOp("manageBlueprints.inspection", inspectionState(result)),
+        setOp("manageBlueprints.previewBlueprint", null),
+        setOp("manageBlueprints.previewError", ""),
+        setOp("manageBlueprints.tab", "overview"),
+      ],
+    };
+  },
+
+  createBlueprint() {
+    const blueprint = portableStarterBlueprint();
+    const id = nextLocalId("untitled-blueprint");
+    return { outcome: "draft-created", ops: draftOps(id, blueprint, "New browser-local blueprint draft.") };
+  },
+
+  importBlueprint(ctx) {
+    const fileName = String(ctx.payload.name ?? "imported-blueprint.json");
+    const text = String(ctx.payload.text ?? "");
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       return {
-        ops: clearSelectionOps(snapshot, `Profile '${String(ctx.payload.id ?? "")}' not found.`),
+        outcome: "invalid",
+        ops: [
+          setOp("manageBlueprints.tab", "draft"),
+          setOp("manageBlueprints.editor.error", message),
+          setOp("manageBlueprints.validation", { valid: false, previewable: false, summary: "Blueprint JSON is invalid.", errors: message, warnings: "" }),
+        ],
       };
     }
-    const sourceDefaults = sourceInputDefaults(entry);
-    const ctxDefaults = previewContextDefaults(entry);
-    const input = previewInputFromValues(sourceDefaults, ctxDefaults);
+    const result = validate(parsed);
+    if (!result.valid || !result.blueprint) {
+      return {
+        outcome: "invalid",
+        ops: [
+          setOp("manageBlueprints.tab", "draft"),
+          setOp("manageBlueprints.editor.error", result.errors),
+          setOp("manageBlueprints.validation", validationState(result)),
+        ],
+      };
+    }
+    const id = importedId(fileName);
+    return { outcome: "draft-imported", ops: draftOps(id, result.blueprint, `Imported ${fileName}. Save to persist locally.`) };
+  },
+
+  cloneBlueprint(ctx) {
+    const selectedId = String(ctx.get("manageBlueprints.selectedId") ?? "");
+    const entry = findEntry(selectedId);
+    if (!entry) {
+      return { outcome: "not-found", ops: [setOp("manageBlueprints.editor.error", "Select a blueprint to clone.")] };
+    }
+    const id = nextLocalId(entry.id);
+    return { outcome: "draft-created", ops: draftOps(id, entry.blueprint, `New local draft cloned from ${entry.id}.`) };
+  },
+
+  saveBlueprint(ctx) {
+    const id = String(ctx.get("manageBlueprints.editor.id") ?? "").trim();
+    if (!BUNDLE_ID_PATTERN.test(id)) {
+      return { outcome: "invalid", ops: [setOp("manageBlueprints.editor.error", "Blueprint id must use lowercase kebab-case.")] };
+    }
+    if (repositoryEntries().some((entry) => entry.id === id)) {
+      return { outcome: "readonly", ops: [setOp("manageBlueprints.editor.error", `Repository blueprint '${id}' is read-only. Choose a new local id.`)] };
+    }
+    const result = parseEditor(ctx);
+    if (!result.valid || !result.blueprint) {
+      return {
+        outcome: "invalid",
+        ops: [
+          setOp("manageBlueprints.validation", validationState(result)),
+          setOp("manageBlueprints.editor.error", result.errors),
+        ],
+      };
+    }
+    const stored = readStoredBlueprintMap();
+    const selectedId = String(ctx.get("manageBlueprints.selectedId") ?? "");
+    const selected = findEntry(selectedId);
+    if (selected?.source === "local" && selectedId !== id) {
+      delete stored.blueprints[selectedId];
+    }
+    const identified = withBlueprintId(result.blueprint, id);
+    stored.blueprints[id] = identified;
+    try {
+      writeStoredBlueprintMap(stored.blueprints);
+    } catch (error) {
+      return { outcome: "error", ops: [setOp("manageBlueprints.editor.error", error instanceof Error ? error.message : String(error))] };
+    }
+    const catalog = loadCatalog();
+    const entry = catalog.entries.find((candidate) => candidate.id === id)!;
     return {
+      outcome: "saved",
       ops: [
-        ...selectionOps(entry, input, "overview", snapshot),
-        setOp("manageBlueprints.sourceInput", sourceDefaults as unknown as Json),
-        setOp("manageBlueprints.previewContext", ctxDefaults as unknown as Json),
+        ...catalogOps(catalog.entries, catalog.errors),
+        setOp("manageBlueprints.selectedId", id),
+        setOp("manageBlueprints.selected", selectedState(entry)),
+        setOp("manageBlueprints.editor", { id, blueprintText: JSON.stringify(identified, null, 2), status: `Saved ${id} locally.`, error: "" }),
+        setOp("manageBlueprints.validation", validationState(result)),
       ],
     };
   },
 
-  validateProfile(ctx) {
-    const snapshot = loadCatalog();
-    const entry = findEntry(readSelectedId(ctx), snapshot.entries);
-    if (!entry) return { ops: [] };
-    const validation = validateSampleBlueprint(entry);
+  validateBlueprint(ctx) {
+    const result = parseEditor(ctx);
     return {
+      outcome: result.valid ? "valid" : "invalid",
       ops: [
-        ...baseCatalogOps(snapshot),
-        setOp("manageBlueprints.validation", validation as unknown as Json),
+        setOp("manageBlueprints.validation", validationState(result)),
+        setOp("manageBlueprints.editor.error", result.errors),
       ],
     };
   },
 
-  selectLayer(ctx) {
-    const snapshot = loadCatalog();
-    const entry = findEntry(readSelectedId(ctx), snapshot.entries);
-    if (!entry) return { ops: [] };
+  previewBlueprint(ctx) {
+    const result = parseEditor(ctx);
+    if (!result.valid || !result.blueprint) {
+      return { outcome: "invalid", ops: [setOp("manageBlueprints.validation", validationState(result)), setOp("manageBlueprints.previewError", result.errors)] };
+    }
     return {
-      ops: selectionOps(entry, readPreviewInput(ctx), readTab(ctx), snapshot, {
-        layerId: String(ctx.payload.id ?? ""),
-        recipeId: "",
-      }),
-    };
-  },
-
-  selectRecipe(ctx) {
-    const snapshot = loadCatalog();
-    const entry = findEntry(readSelectedId(ctx), snapshot.entries);
-    if (!entry) return { ops: [] };
-    const recipeId = String(ctx.payload.id ?? "");
-    return {
-      ops: selectionOps(entry, readPreviewInput(ctx), readTab(ctx), snapshot, {
-        layerId: recipeSourceLayerId(entry, recipeId),
-        recipeId,
-      }),
-    };
-  },
-
-  refreshPreview(ctx) {
-    const snapshot = loadCatalog();
-    const entry = findEntry(readSelectedId(ctx), snapshot.entries);
-    if (!entry) return { ops: [] };
-    const preview = previewState(entry, readPreviewInput(ctx));
-    return {
+      outcome: "summary-ready",
       ops: [
-        ...baseCatalogOps(snapshot),
-        setOp("manageBlueprints.previewBundle", preview.bundle as unknown as Json),
-        setOp("manageBlueprints.previewError", preview.error),
+        setOp("manageBlueprints.validation", validationState(result)),
+        setOp("manageBlueprints.previewBlueprint", result.blueprint as unknown as Json),
+        setOp("manageBlueprints.inspection", inspectionState(result)),
+        setOp("manageBlueprints.previewError", ""),
         setOp("manageBlueprints.tab", "preview"),
       ],
     };
   },
 
-  seedLocalDraft(ctx) {
-    const snapshot = loadCatalog();
-    const selected = findEntry(readSelectedId(ctx), snapshot.entries) ?? snapshot.entries[0];
-    if (!selected) return { ops: baseCatalogOps(snapshot) };
-
-    const localId = nextDraftId(`${selected.blueprint.payload.id}-local`, snapshot.entries);
-    const draft = normalizeBlueprintId(selected.blueprint, localId);
-    return {
-      ops: [
-        ...selectionOps(selected, readPreviewInput(ctx), "draft", snapshot),
-        setOp(
-          "manageBlueprints.editor",
-          {
-            id: localId,
-            bundleText: stringifyBlueprint(draft),
-            status: `New draft from '${selected.blueprint.payload.id}'. Save to persist.`,
-            error: "",
-          } as unknown as Json
-        ),
-      ],
-    };
-  },
-
-  saveBlueprint(ctx) {
-    const snapshot = loadCatalog();
-    try {
-      const rawId = readStr(ctx, "manageBlueprints.editor.id").trim();
-      const rawBlueprint = readStr(ctx, "manageBlueprints.editor.bundleText").trim();
-      if (!rawBlueprint) throw new Error("Blueprint JSON is empty.");
-
-      const parsed = parseBlueprintJson<LayerRecipe>(rawBlueprint);
-      const nextId = (rawId || parsed.payload.id).trim();
-      if (!nextId) throw new Error("Local blueprint id is required.");
-      if (readRepoCatalog().some((entry) => entry.blueprint.payload.id === nextId)) {
-        throw new Error(`'${nextId}' is a repo sample profile id. Save with a different local id.`);
-      }
-
-      const normalized = normalizeBlueprintId(parsed, nextId);
-      const selected = findEntry(readSelectedId(ctx), snapshot.entries);
-      const { blueprints } = readStoredBlueprintMap();
-      if (selected?.source === "local" && selected.blueprint.payload.id !== nextId) {
-        delete blueprints[selected.blueprint.payload.id];
-      }
-      blueprints[nextId] = normalized;
-      writeStoredBlueprintMap(blueprints);
-
-      const fresh = loadCatalog();
-      const saved = findEntry(nextId, fresh.entries);
-      if (!saved) throw new Error(`Saved local profile '${nextId}' could not be reloaded.`);
-
-      return {
-        ops: [
-          ...selectionOps(saved, readPreviewInput(ctx), "draft", fresh),
-          setOp(
-            "manageBlueprints.editor",
-            {
-              ...editorState(saved),
-              status: `Saved local profile '${nextId}' to browser storage.`,
-              error: "",
-            } as unknown as Json
-          ),
-        ],
-      };
-    } catch (error) {
-      return {
-        ops: [
-          ...baseCatalogOps(snapshot),
-          setOp(
-            "manageBlueprints.editor",
-            {
-              id: readStr(ctx, "manageBlueprints.editor.id"),
-              bundleText: readStr(ctx, "manageBlueprints.editor.bundleText"),
-              status: readStr(ctx, "manageBlueprints.editor.status", EMPTY_EDITOR.status),
-              error: error instanceof Error ? error.message : String(error),
-            } as unknown as Json
-          ),
-          setOp("manageBlueprints.tab", "draft"),
-        ],
-      };
+  exportBlueprint(ctx) {
+    const result = parseEditor(ctx);
+    if (!result.valid || !result.blueprint) {
+      return { outcome: "invalid", ops: [setOp("manageBlueprints.editor.error", result.errors)] };
     }
+    const id = String(ctx.get("manageBlueprints.editor.id") ?? "blueprint").trim() || "blueprint";
+    if (typeof document === "undefined" || typeof URL === "undefined") {
+      return { outcome: "unavailable", ops: [setOp("manageBlueprints.editor.error", "Download is unavailable in this host.")] };
+    }
+    const url = URL.createObjectURL(new Blob([JSON.stringify(result.blueprint, null, 2)], { type: "application/json" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${id}.blueprint.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    return { outcome: "exported", ops: [setOp("manageBlueprints.editor.status", `Exported ${anchor.download}.`), setOp("manageBlueprints.editor.error", "")] };
   },
 
   requestDeleteBlueprint(ctx) {
-    const snapshot = loadCatalog();
-    const selected = findEntry(readSelectedId(ctx), snapshot.entries);
-    if (!selected || selected.readonly || selected.source !== "local") {
-      return {
-        ops: [
-          ...baseCatalogOps(snapshot),
-          setOp("manageBlueprints.editor.error", "Only a local blueprint can be deleted."),
-          setOp("manageBlueprints.deleteChallenge", { open: false, message: "" }),
-          setOp("manageBlueprints.tab", "draft"),
-        ],
-      };
-    }
+    const id = String(ctx.get("manageBlueprints.selectedId") ?? "");
+    const entry = findEntry(id);
+    if (!entry) return { outcome: "not-found", ops: [setOp("manageBlueprints.editor.error", "Select a local blueprint to delete.")] };
+    if (entry.readonly) return { outcome: "readonly", ops: [setOp("manageBlueprints.editor.error", "Repository blueprints cannot be deleted.")] };
     return {
       outcome: "confirmation-required",
-      ops: [setOp("manageBlueprints.deleteChallenge", {
-        open: true,
-        message: `Delete local blueprint '${selected.blueprint.payload.id}'? This cannot be undone.`,
-      })],
+      ops: [setOp("manageBlueprints.deleteChallenge", { open: true, message: `Delete local blueprint '${id}'? This cannot be undone.` })],
     };
   },
 
@@ -1653,55 +466,28 @@ export const manageBlueprintsEffects: EffectHandlerMap = {
   },
 
   deleteBlueprint(ctx) {
-    const snapshot = loadCatalog();
-    const selected = findEntry(readSelectedId(ctx), snapshot.entries);
-    if (!selected) {
-      return {
-        ops: [
-          ...baseCatalogOps(snapshot),
-          setOp(
-            "manageBlueprints.editor",
-            {
-              ...EMPTY_EDITOR,
-              error: "Select a local blueprint before deleting it.",
-            } as unknown as Json
-          ),
-          setOp("manageBlueprints.tab", "draft"),
-        ],
-      };
-    }
-    if (selected.readonly || selected.source !== "local") {
-      return {
-        ops: [
-          ...selectionOps(selected, readPreviewInput(ctx), "draft", snapshot),
-          setOp(
-            "manageBlueprints.editor",
-            {
-              ...editorState(selected),
-              error: "Repo sample blueprints are read-only and cannot be deleted from browser storage.",
-            } as unknown as Json
-          ),
-        ],
-      };
-    }
-
-    const { blueprints } = readStoredBlueprintMap();
-    delete blueprints[selected.blueprint.payload.id];
-    writeStoredBlueprintMap(blueprints);
-    const fresh = loadCatalog();
+    const id = String(ctx.get("manageBlueprints.selectedId") ?? "");
+    const entry = findEntry(id);
+    if (!entry) return { outcome: "not-found", ops: [setOp("manageBlueprints.editor.error", "Select a local blueprint to delete.")] };
+    if (entry.readonly) return { outcome: "readonly", ops: [setOp("manageBlueprints.editor.error", "Repository blueprints cannot be deleted.")] };
+    const stored = readStoredBlueprintMap();
+    delete stored.blueprints[id];
+    writeStoredBlueprintMap(stored.blueprints);
+    const catalog = loadCatalog();
     return {
+      outcome: "deleted",
       ops: [
-        ...clearSelectionOps(fresh, ""),
+        ...catalogOps(catalog.entries, catalog.errors),
+        setOp("manageBlueprints.selectedId", ""),
+        setOp("manageBlueprints.selected", { id: "", source: "", readonly: true, version: "", structureMode: "fixed", tiers: "", recipeCount: 0 }),
+        setOp("manageBlueprints.editor", { id: "", blueprintText: "", status: `Deleted local blueprint ${id}.`, error: "" }),
+        setOp("manageBlueprints.validation", { valid: false, previewable: false, summary: "Not validated.", errors: "", warnings: "" }),
+        setOp("manageBlueprints.previewBlueprint", null),
+        setOp("manageBlueprints.previewError", ""),
         setOp("manageBlueprints.deleteChallenge", { open: false, message: "" }),
-        setOp(
-          "manageBlueprints.editor",
-          {
-            ...EMPTY_EDITOR,
-            status: `Deleted local profile '${selected.blueprint.payload.id}' from browser storage.`,
-          } as unknown as Json
-        ),
-        setOp("manageBlueprints.tab", "draft"),
       ],
     };
   },
 };
+
+export const manageBlueprintsStorageKey = LOCAL_BUNDLE_STORAGE_KEY;

@@ -1,0 +1,285 @@
+{
+  "gik": "0.1",
+  "type": "blueprint",
+  "payload": {
+    "id": "live-cards",
+    "kind": "runtime-blueprint",
+    "version": "1.0.0",
+    "recipes": [],
+    "runtime": {
+      "expression": "jsonata",
+      "namespaces": [
+        "liveCards"
+      ],
+      "actions": [
+        "assign"
+      ],
+      "capabilities": {
+        "ui:screen": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "ui:row": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "ui:panel": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "ui:table": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "rowSelect"
+          ]
+        },
+        "ui:markdown": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "value"
+        },
+        "ui:actions": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "press"
+          ],
+          "dataProp": "buttons"
+        }
+      },
+      "externals": {
+        "projectionViews": {
+          "ui": {
+            "from": "floor"
+          }
+        }
+      },
+      "state": {
+        "liveCards": {
+          "selectedId": "incident",
+          "cards": [
+            {
+              "id": "incident",
+              "title": "Incident status",
+              "status": "Investigating",
+              "owner": "SOC",
+              "detail": "## Incident status\n\nThe investigation is active. Host-A is contained, evidence is preserved, and lateral movement has not been confirmed."
+            },
+            {
+              "id": "evidence",
+              "title": "Evidence",
+              "status": "Current",
+              "owner": "Correlation",
+              "detail": "## Evidence\n\nIdentity, endpoint, and network observations point to Host-A as the execution origin."
+            },
+            {
+              "id": "response",
+              "title": "Response plan",
+              "status": "Authorized",
+              "owner": "Incident command",
+              "detail": "## Response plan\n\nMaintain bounded containment, verify dependencies, and retain the reversible recovery path."
+            }
+          ],
+          "shortcuts": [
+            {
+              "id": "incident",
+              "label": "Incident"
+            },
+            {
+              "id": "evidence",
+              "label": "Evidence"
+            },
+            {
+              "id": "response",
+              "label": "Response"
+            }
+          ]
+        }
+      }
+    },
+    "tiers": [
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document",
+        "description": "Canonical Kernel-executable live cards document."
+      }
+    ],
+    "cells": {
+      "live-cards-root": {
+        "id": "live-cards-root",
+        "view": {
+          "capability": "ui:screen",
+          "props": {
+            "title": "Live cards",
+            "subtitle": "One state model projected into selectable operational cards"
+          }
+        }
+      },
+      "live-cards-layout": {
+        "id": "live-cards-layout",
+        "view": {
+          "capability": "ui:row",
+          "props": {
+            "variant": "split"
+          }
+        }
+      },
+      "live-cards-catalog": {
+        "id": "live-cards-catalog",
+        "behavior": {
+          "events": {
+            "rowSelect": [
+              {
+                "do": "assign",
+                "target": "liveCards.selectedId",
+                "args": {
+                  "from": "$event.id"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:table",
+          "props": {
+            "title": "Cards",
+            "idKey": "id",
+            "columns": [
+              {
+                "key": "title",
+                "label": "Card"
+              },
+              {
+                "key": "status",
+                "label": "Status"
+              },
+              {
+                "key": "owner",
+                "label": "Owner"
+              }
+            ]
+          },
+          "bindings": {
+            "rows": {
+              "from": "liveCards.cards"
+            }
+          }
+        }
+      },
+      "live-cards-detail": {
+        "id": "live-cards-detail",
+        "view": {
+          "capability": "ui:panel",
+          "props": {
+            "title": "Selected card"
+          }
+        }
+      },
+      "live-cards-detail-text": {
+        "id": "live-cards-detail-text",
+        "view": {
+          "capability": "ui:markdown",
+          "bindings": {
+            "value": {
+              "expression": "liveCards.cards[id = liveCards.selectedId][0].detail"
+            }
+          }
+        }
+      },
+      "live-cards-shortcuts": {
+        "id": "live-cards-shortcuts",
+        "behavior": {
+          "events": {
+            "press": [
+              {
+                "do": "assign",
+                "target": "liveCards.selectedId",
+                "args": {
+                  "from": "$event.id"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:actions",
+          "bindings": {
+            "buttons": {
+              "from": "liveCards.shortcuts"
+            }
+          }
+        }
+      }
+    },
+    "projections": {
+      "presentation": {
+        "roots": [
+          "live-cards-root"
+        ],
+        "placements": [
+          {
+            "cell": "live-cards-shortcuts",
+            "parent": "live-cards-root",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "live-cards-layout",
+            "parent": "live-cards-root",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "live-cards-catalog",
+            "parent": "live-cards-layout",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "live-cards-detail",
+            "parent": "live-cards-layout",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "live-cards-detail-text",
+            "parent": "live-cards-detail",
+            "slot": "children",
+            "order": 0
+          }
+        ]
+      }
+    },
+    "metadata": {
+      "reauthoredFrom": "legacy-tiered-sample",
+      "executionModel": "direct-runtime",
+      "authoredStages": [
+        "interaction",
+        "presentation",
+        "runtime-document"
+      ]
+    }
+  }
+}

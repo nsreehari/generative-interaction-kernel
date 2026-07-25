@@ -2,18 +2,17 @@ import {
   openBlueprint,
   type BlueprintRuntime,
 } from "@gik/controlface/blueprint";
-import type { Json } from "@gik/kernel";
-import type { BlueprintArtifact, LayerRecipe } from "@gik/profile";
+import type { BlueprintArtifact } from "@gik/blueprint";
 import { applyHostConfig } from "./host-config";
 
-const blueprintArtifacts = import.meta.glob(["../profiles/*/blueprint.json", "../profiles/*/profile.json"], {
+const blueprintArtifacts = import.meta.glob("../blueprints/*/blueprint.json", {
   eager: true,
   import: "default",
-}) as Record<string, BlueprintArtifact<LayerRecipe>>;
+}) as Record<string, BlueprintArtifact>;
 
-const blueprints = new Map<string, BlueprintArtifact<LayerRecipe>>();
+const blueprints = new Map<string, BlueprintArtifact>();
 for (const [path, artifact] of Object.entries(blueprintArtifacts)) {
-  const id = path.match(/\/profiles\/([^/]+)\//)?.[1];
+  const id = path.match(/\/blueprints\/([^/]+)\//)?.[1];
   if (!id) continue;
   if (blueprints.has(id)) throw new Error(`Multiple declarative definitions found for Blueprint '${id}'`);
   blueprints.set(id, artifact);
@@ -23,7 +22,7 @@ export function hasSampleBlueprint(id: string): boolean {
   return blueprints.has(id);
 }
 
-export function resolveSampleBlueprintSource(id: string): BlueprintArtifact<LayerRecipe> {
+export function resolveSampleBlueprintSource(id: string): BlueprintArtifact {
   const blueprint = blueprints.get(id);
   if (!blueprint) throw new Error(`Unknown Blueprint '${id}'`);
   return applyHostConfig(blueprint);

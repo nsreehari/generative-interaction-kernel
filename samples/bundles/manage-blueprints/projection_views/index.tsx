@@ -1,296 +1,66 @@
 import React from "react";
-import { Handle } from "@xyflow/react";
-import { InfiniteCanvas, type InfiniteCanvasNodeDescriptor } from "@gik/component-infinite-canvas";
-import {
-  loadBlueprint,
-  parseBlueprintJson,
-  resolveProfileTemplate,
-  resolveProfileTemplateResource,
-  traceProfile,
-  type InteractionKind,
-  type LayerRecipe,
-  type StageTrace,
-} from "@gik/profile";
-import { readProps, type ProjectionView, type ProjectionViewProps } from "@gik/react";
 
-function ProfilePipelineCanvas({ node, emit }: ProjectionViewProps) {
-  const p = readProps(node);
-  const nodes = p.list<Record<string, unknown>>("nodes");
-  const selectedNodeId = p.str("selectedNodeId");
-  const selectedEdgeId = p.str("selectedEdgeId");
-  const hasEdgeSelection = selectedEdgeId.length > 0;
-  const stateKey = p.str(
-    "stateKey",
-    `${nodes.map((entry) => String(entry.id ?? "")).join("|")}`
-  );
+import { parseBlueprintJson, resolveBlueprintExecution } from "@gik/blueprint";
+import type { ProjectionView } from "@gik/react";
 
-  if (nodes.length === 0) return <p className="gx-muted">No tiers.</p>;
+const BlueprintImport: ProjectionView = ({ emit }) => (
+  <label className="gx-btn">
+    Import JSON
+    <input
+      type="file"
+      accept="application/json,.json"
+      hidden
+      onChange={async (event) => {
+        const file = event.currentTarget.files?.[0];
+        if (!file) return;
+        emit("import", { name: file.name, text: await file.text() });
+        event.currentTarget.value = "";
+      }}
+    />
+  </label>
+);
 
-  const nodeById = new Map(nodes.map((entry) => [String(entry.id ?? ""), entry]));
-
-  const descriptors: InfiniteCanvasNodeDescriptor[] = nodes.map((entry) => ({
-    id: String(entry.id ?? ""),
-    label: String(entry.label ?? entry.id ?? ""),
-    subtitle: String(entry.subtitle ?? entry.kind ?? ""),
-    meta: String(entry.meta ?? entry.schema ?? ""),
-    description: String(entry.description ?? ""),
-    selected: String(entry.id ?? "") === selectedNodeId,
-    width: typeof entry.width === "number" ? entry.width : 220,
-    draggable: false,
-  }));
-
-  const nodePorts = Object.fromEntries(
-    descriptors.map((descriptor) => {
-      const node = nodeById.get(descriptor.id) ?? {};
-      const incomingDefs = Array.isArray(node.requires) ? node.requires : [];
-      const outgoingDefs = Array.isArray(node.provides) ? node.provides : [];
-      const incoming = incomingDefs.map((edge) => {
-        const token = String((edge as Record<string, unknown>).token ?? (edge as Record<string, unknown>).id ?? "");
-        const isSelected = token === selectedEdgeId;
-        return {
-          id: token ? `require:${token}` : `${descriptor.id}-in`,
-          token,
-          title: String((edge as Record<string, unknown>).label ?? token ?? "Incoming lowering recipe"),
-          selected: isSelected,
-          highlighted: isSelected,
-          dimmed: hasEdgeSelection && !isSelected,
-        };
-      });
-      const outgoing = outgoingDefs.map((edge) => {
-        const token = String((edge as Record<string, unknown>).token ?? (edge as Record<string, unknown>).id ?? "");
-        const isSelected = token === selectedEdgeId;
-        return {
-          id: token ? `provide:${token}` : `${descriptor.id}-out`,
-          token,
-          title: String((edge as Record<string, unknown>).label ?? token ?? "Outgoing lowering recipe"),
-          selected: isSelected,
-          highlighted: isSelected,
-          dimmed: hasEdgeSelection && !isSelected,
-        };
-      });
-
-      return [
-        descriptor.id,
-        incoming.length || outgoing.length
-          ? {
-              left: incoming.length ? incoming : undefined,
-              right: outgoing.length ? outgoing : undefined,
-            }
-          : null,
-      ];
-    })
-  );
-
-  return (
-    <div className="gx-flow-canvas-shell">
-      <InfiniteCanvas
-        stateKey={stateKey}
-        nodes={descriptors}
-        nodePorts={nodePorts}
-        getInitialNodePos={(_, context) => ({ x: context.index * 280, y: 88 })}
-        renderNode={(descriptor) => (
-          <div className={`gx-flow-node${descriptor.selected ? " selected" : ""}`}>
-            <span className="gx-flow-node-title">{String(descriptor.label ?? descriptor.id)}</span>
-            {descriptor.subtitle ? <span className="gx-flow-node-subtitle">{String(descriptor.subtitle)}</span> : null}
-            {descriptor.meta ? <span className="gx-flow-node-meta">{String(descriptor.meta)}</span> : null}
-          </div>
-        )}
-        renderNodePort={(port, context) => {
-          const portId = String(port.id ?? `${context.side}-port`);
-          const isSource = context.side === "right" || context.side === "bottom";
-          const isSelected = port.selected === true;
-          const title = String(port.title ?? port.label ?? portId);
-          return (
-            <div className={`gx-flow-node-port gx-flow-node-port-${context.side}${isSelected ? " selected" : ""}`} title={title}>
-              <Handle
-                id={portId}
-                type={isSource ? "source" : "target"}
-                position={context.position}
-                className="gx-flow-node-handle"
-                isConnectable={false}
-              />
-              <span className="gx-flow-node-port-dot" aria-hidden="true" />
-              {port.label ? <span className="gx-flow-node-port-label">{String(port.label)}</span> : null}
-            </div>
-          );
-        }}
-        onNodeClick={(id) => emit("selectNode", { id, tab: "layers" })}
-        onEdgeClick={(id) => emit("selectEdge", { id, tab: "layers" })}
-        controls={false}
-        miniMap={false}
-        background={false}
-        panOnScroll={false}
-        selectionOnDrag={false}
-        minZoom={0.7}
-        maxZoom={1.2}
-        fitViewOptions={{ padding: 0.12 }}
-        className="gx-flow-canvas"
-        viewportClassName="gx-flow-canvas-viewport"
-      />
-    </div>
-  );
-}
-
-// Rebuild a runnable profile from the selected blueprint's JSON text (manageBlueprints.artifacts.bundleText).
-// Mirrors the store's proven load path (parse -> loadBlueprint) so the leaves can run the SAME
-// engine (traceProfile) the store uses, but live and driven by in-component selections.
-function reconstructProfile(blueprintText: string) {
-  return loadBlueprint<LayerRecipe>(
-    parseBlueprintJson<LayerRecipe>(blueprintText),
-    resolveProfileTemplateResource,
-    resolveProfileTemplate
-  );
-}
-
-function prettyJson(value: unknown): string {
-  return JSON.stringify(value, null, 2);
-}
-
-// Preview tab: run the WHOLE profile for the current inputs and show every stage's output as a
-// vertical waterfall — the literal "watch it lower" view. Read-only compute; the final rendered
-// document is still mounted separately via ui:embed.
-function PipelineRunner({ node }: ProjectionViewProps) {
-  const p = readProps(node);
-  const bundleText = p.str("bundleText");
-  const seed = p.obj<Record<string, unknown>>("seed", {});
-  const ctx = p.obj<Record<string, unknown>>("ctx", { surface: "desktop" });
-
+const BlueprintPreview: ProjectionView = ({ node }) => {
+  const source = node.props.blueprint;
   const result = React.useMemo(() => {
-    if (!bundleText.trim()) return { stages: [] as StageTrace[], seed: null as Record<string, unknown> | null, ctx, error: "" };
     try {
-      const profile = reconstructProfile(bundleText);
-      const stages = traceProfile(profile, seed, ctx);
-      return { stages, seed, ctx, error: "" };
-    } catch (err) {
-      return { stages: [] as StageTrace[], seed: null as Record<string, unknown> | null, ctx, error: err instanceof Error ? err.message : String(err) };
+      return { blueprint: parseBlueprintJson(JSON.stringify(source)), error: "" };
+    } catch (error) {
+      return { blueprint: null, error: error instanceof Error ? error.message : String(error) };
     }
-  }, [bundleText, JSON.stringify(seed), JSON.stringify(ctx)]);
+  }, [source]);
 
-  if (!bundleText.trim()) return <p className="gx-muted">Select a blueprint to trace its lowering.</p>;
-  if (result.error) return <p className="gx-json-error">{result.error}</p>;
+  if (result.error || !result.blueprint) {
+    return <p className="gx-note gx-note-danger">{result.error || "No preview blueprint available."}</p>;
+  }
 
+  const payload = result.blueprint.payload;
+  const execution = resolveBlueprintExecution(result.blueprint);
   return (
-    <div className="gx-col">
-      <div className="gx-panel-inset">
-        <span className="gx-property-label">Intent · source tier seed</span>
-        <div className="gx-code">
-          <pre>{prettyJson(result.seed)}</pre>
-        </div>
-      </div>
-      <div className="gx-panel-inset">
-        <span className="gx-property-label">Context</span>
-        <div className="gx-code">
-          <pre>{prettyJson(result.ctx)}</pre>
-        </div>
-      </div>
-      {result.stages.map((stage, index) => (
-        <div key={`${stage.fromLayerId}->${stage.toLayerId}`} className="gx-panel-inset">
-          <span className="gx-property-label">
-            Stage {index + 1} · {stage.fromKind} → {stage.toKind}
-          </span>
-          <div className="gx-code">
-            <pre>{prettyJson(stage.output)}</pre>
-          </div>
-        </div>
-      ))}
+    <div className="gx-panel">
+      <dl>
+        <dt>ID</dt><dd>{payload.id}</dd>
+        <dt>Kind</dt><dd>{payload.kind}</dd>
+        <dt>Version</dt><dd>{payload.version}</dd>
+        <dt>Structure mode</dt><dd>{payload.structureMode ?? "fixed"}</dd>
+        <dt>Tiers</dt><dd>{payload.tiers.map((tier) => `${tier.id} (${tier.kind})`).join(", ")}</dd>
+        <dt>Recipe chain</dt>
+        <dd>{execution.stages.length > 0
+          ? execution.stages.map((stage) => `${stage.fromTier.id} -[${stage.recipe.id}]-> ${stage.toTier.id}`).join("; ")
+          : `Terminal: ${payload.tiers[0]?.id ?? "none"}`}</dd>
+        <dt>Execution</dt>
+        <dd>{execution.stages.length > 0
+          ? "Lowering required: provide a dialect-owned lowering implementation."
+          : "Runtime ready"}</dd>
+        <dt>Cells</dt><dd>{Object.keys(payload.cells ?? {}).length}</dd>
+      </dl>
     </div>
   );
-}
-
-// Layers tab: pick one interaction goal (the profile's real external inputs) and run the profile,
-// showing what the SELECTED layer lowers into for that seed — the interactive replacement for the
-// old static worked-examples table. Terminal layers (no outgoing stage) report so.
-function LoweringRecipeRunner({ node }: ProjectionViewProps) {
-  const p = readProps(node);
-  const bundleText = p.str("bundleText");
-  const layerId = p.str("layerId");
-  const subject = p.str("subject", "incident");
-  const surface = p.str("surface", "desktop");
-  const rawSeeds = p.list<unknown>("seeds");
-  const seeds = rawSeeds.map((seed, index) => {
-    if (typeof seed === "string") {
-      return {
-        id: seed,
-        label: seed,
-        payload: { interaction: seed as InteractionKind, subject: subject.trim() || "incident" },
-      };
-    }
-    const record = (seed && typeof seed === "object" && !Array.isArray(seed)) ? (seed as Record<string, unknown>) : {};
-    const payload = (record.payload && typeof record.payload === "object" && !Array.isArray(record.payload))
-      ? { ...(record.payload as Record<string, unknown>) }
-      : {};
-    if (typeof payload.subject !== "string" || payload.subject.length === 0) {
-      payload.subject = subject.trim() || "incident";
-    }
-    return {
-      id: String(record.id ?? record.label ?? index),
-      label: String(record.label ?? record.id ?? index),
-      payload,
-    };
-  });
-  const [picked, setPicked] = React.useState("");
-  const activeSeed = seeds.find((seed) => seed.id === picked) ?? seeds[0] ?? null;
-
-  const result = React.useMemo(() => {
-    if (!bundleText.trim() || !layerId || !activeSeed) return null;
-    try {
-      const profile = reconstructProfile(bundleText);
-      const trace = traceProfile(
-        profile,
-        activeSeed.payload,
-        { surface: String(surface) },
-      );
-      const step = trace.find((candidate) => candidate.fromLayerId === layerId);
-      if (!step) return { error: "This tier is terminal for that goal — nothing lowers out of it." };
-      return { error: "", fromKind: step.fromKind, toKind: step.toKind, input: step.input, output: step.output };
-    } catch (err) {
-      return { error: err instanceof Error ? err.message : String(err) };
-    }
-  }, [bundleText, layerId, activeSeed, surface]);
-
-  if (!bundleText.trim() || !layerId) return <p className="gx-muted">Select a tier to compute its lowering.</p>;
-  if (seeds.length === 0) return <p className="gx-muted">This blueprint has no sample source inputs to run.</p>;
-
-  return (
-    <div className="gx-col">
-      <div className="gx-row">
-        {seeds.map((seed) => (
-          <button
-            key={seed.id}
-            type="button"
-            className={`gx-btn${seed.id === activeSeed?.id ? " gx-btn-primary" : ""}`}
-            onClick={() => setPicked(seed.id)}
-          >
-            {seed.label}
-          </button>
-        ))}
-      </div>
-      {result?.error ? (
-        <p className="gx-json-error">{result.error}</p>
-      ) : result ? (
-        <div className="gx-col">
-          <div className="gx-panel-inset">
-            <span className="gx-property-label">Input · {result.fromKind}</span>
-            <div className="gx-code">
-              <pre>{prettyJson(result.input)}</pre>
-            </div>
-          </div>
-          <div className="gx-panel-inset">
-            <span className="gx-property-label">Output · {result.toKind}</span>
-            <div className="gx-code">
-              <pre>{prettyJson(result.output)}</pre>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
+};
 
 const projectionViews: Record<string, ProjectionView> = {
-  "profile-pipeline-canvas": ProfilePipelineCanvas,
-  "pipeline-runner": PipelineRunner,
-  "lowering-recipe-runner": LoweringRecipeRunner,
+  "blueprint-import": BlueprintImport,
+  "blueprint-preview": BlueprintPreview,
 };
 
 export default projectionViews;

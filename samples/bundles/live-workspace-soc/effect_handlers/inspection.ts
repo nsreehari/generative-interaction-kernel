@@ -1,5 +1,4 @@
 import type { BlueprintInspection, InspectionParticipant, OrganismInspection, ParticipantStatus } from "../../../shared/control-inspection";
-import { SOC_BLUEPRINT_PRESENTATION_PRESETS, socBlueprint, traceSocBlueprint } from "./blueprint";
 import { socJournalTimelineItem } from "../projection_views/helpers";
 import type { Actor, AgentProvider, Incident, JournalEntry, Presentation } from "../projection_views/types";
 
@@ -50,50 +49,31 @@ export function projectSocParticipants(
   });
 }
 
-export function projectSocBlueprint(selectedContext: string): BlueprintInspection {
-  const trace = traceSocBlueprint(selectedContext);
-  const context = SOC_BLUEPRINT_PRESENTATION_PRESETS.find((item) => item.id === selectedContext) ?? SOC_BLUEPRINT_PRESENTATION_PRESETS[0];
-  const presentation = trace[1].output as { arrangement: string; regions: Array<{ name: string; group?: string; priority: string; disclosure: string }> };
-  const visibleRegions = presentation.regions.filter((region) => region.disclosure !== "omitted");
-  const summaries = trace.map((item) => {
-    const output = item.output as Record<string, unknown>;
-    if (item.toKind === "interaction") {
-      return `interaction=${String(output.interaction)}\ncapabilities=${JSON.stringify(output.capabilities ?? [])}`;
-    }
-    if (item.toKind === "presentation") {
-      return `arrangement=${String(output.arrangement)}\nreading-order=${visibleRegions.map((region) => region.name).join(" → ")}\ngroups=${[...new Set(visibleRegions.map((region) => region.group ?? "ungrouped"))].join(" → ")}`;
-    }
-    const root = output.root as { capability?: string; edges?: { children?: unknown[] } } | undefined;
-    return `root=${root?.capability ?? "unknown"}\nchildren=${root?.edges?.children?.length ?? 0} · terminal document matches bundle`;
-  });
-
+export function projectSocBlueprint(presentation: Presentation): BlueprintInspection {
+  const context = presentation.contexts.find((item) => item.id === presentation.selectedContext) ?? presentation.contexts[0];
+  const visibleRegions = Object.entries(presentation.regionFacets)
+    .filter(([, facet]) => facet.visible)
+    .sort(([, left], [, right]) => left.rank - right.rank);
   return {
-    title: "Intent to runnable bundle",
-    description: "The selected context runs through the organism's authored tiers and terminal document contract.",
-    status: "Blueprint and lowering recipes validated",
-    contextIds: SOC_BLUEPRINT_PRESENTATION_PRESETS.map((item) => item.id),
-    selectedContext: context.id,
+    title: "Runtime Blueprint",
+    description: "The organism is authored directly as Cells and a presentation projection.",
+    status: "Blueprint validated",
+    contextIds: presentation.contexts.map((item) => item.id),
+    selectedContext: context?.id ?? presentation.selectedContext,
     fields: [
-      { label: "Role", value: context.role },
-      { label: "Device / frame", value: `${context.device} / ${context.frame}` },
-      { label: "Task", value: context.task },
-      { label: "Disclosure", value: context.disclosure },
-      { label: "Layout", value: context.layout },
+      { label: "Audience", value: context?.audience ?? "" },
+      { label: "Focus", value: context?.focus ?? "" },
+      { label: "Frame", value: presentation.frame },
       { label: "Arrangement", value: presentation.arrangement },
-      { label: "Lowered reading order", value: visibleRegions.map((region) => region.name).join(" → ") },
-      { label: "Group / priority / disclosure", value: visibleRegions.map((region) => `${region.name}: ${region.group ?? "ungrouped"} / ${region.priority} / ${region.disclosure}`).join(" · ") },
+      { label: "Reading order", value: visibleRegions.map(([name]) => name).join(" → ") },
     ],
-    stages: trace.map((item, index) => ({
-      kind: `${item.fromKind} → ${item.toKind}`,
-      tier: `${item.fromLayerId} → ${item.toLayerId}`,
-      recipe: String(socBlueprint.stages[index].recipe.id),
-      summary: summaries[index],
-    })),
-    resources: [
-      { label: "Actors", value: String((socBlueprint.resources.actors as unknown[]).length) },
-      { label: "Projection presets", value: String(SOC_BLUEPRINT_PRESENTATION_PRESETS.length) },
-      { label: "Authority rule", value: String((socBlueprint.resources.authorityPolicy as { requiredRole: string }).requiredRole) },
-    ],
+    stages: [{
+      kind: "runtime Blueprint",
+      tier: "runtime-doc",
+      recipe: "none",
+      summary: "Cells project directly to the Kernel document",
+    }],
+    resources: [{ label: "Projection contexts", value: String(presentation.contexts.length) }],
   };
 }
 
@@ -110,7 +90,7 @@ export function projectSocInspection(
       selectedContext: presentation.selectedContext,
       contexts: presentation.contexts,
     },
-    blueprint: projectSocBlueprint(presentation.selectedContext),
+    blueprint: projectSocBlueprint(presentation),
     timeline: journal.map(socJournalTimelineItem),
     status: incident.status === "Contained"
       ? { kind: "success", message: "Host-A contained under commander authority." }

@@ -8,7 +8,7 @@
     "actions": ["assign", "derive", "invoke", "emit", "route", "confirm"],
     "externals": {
       "projectionViews": {
-        "ui": { "from": "profile" }
+        "ui": { "from": "floor" }
       }
     },
     "capabilities": {
