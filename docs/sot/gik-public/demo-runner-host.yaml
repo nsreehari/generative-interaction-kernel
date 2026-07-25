@@ -1,0 +1,255 @@
+schema_version: 1
+
+package:
+  name: "@gik/demo-runner-host"
+  version: "0.1.0"
+  purpose: >-
+    Add validated demo scenarios, playback controls, human-gate coordination, inspection,
+    and presentation selection around an injected Blueprint-compatible React host.
+  core_promise: >-
+    GikDemoBlueprintHost prepares demo behavior and passes the resulting companions,
+    contexts, bridge, and host inputs to a caller-supplied HostComponent.
+  public_entrypoint: packages/demo-runner-host/src/index.ts
+  implementation_entrypoint: packages/demo-runner-host/src/GikDemoBlueprintHost.tsx
+
+api_policy:
+  signature_authority: generated TypeScript declarations
+  categories:
+    host: React host composition API.
+    scenario: Demo artifact, catalog, validation, and selection API.
+    control: Request dispatch and receipt contracts.
+    inspection: Timeline, focus, participant, and inspection data contracts.
+
+architecture:
+  owns:
+    - Demo scenario and catalog contracts.
+    - Demo schema and cross-contract validation.
+    - Scenario selection and playback coordination.
+    - Control request, receipt, human-gate, focus, timeline, and inspection contracts.
+    - Managing internal demo-runner and control-harness companion bundles.
+    - Presentation-preset resolution for demos.
+  injected_boundary:
+    - The caller supplies HostComponent.
+    - HostComponent must accept DemoTargetHostProps.
+    - The package passes the target Blueprint, companions, contexts, bridge, and host options to HostComponent.
+  does_not_own:
+    - The concrete Blueprint host implementation.
+    - Blueprint preparation outside the inspection needed for demo control routing.
+    - Kernel execution semantics.
+    - Application ownership of navigation after writeDemoNavigation returns a URL string.
+  dependency_direction:
+    - "@gik/demo-runner-host -> @gik/blueprint"
+    - "@gik/demo-runner-host -> @gik/controlface"
+    - "@gik/demo-runner-host -> @gik/evaluators"
+    - "@gik/demo-runner-host -> @gik/kernel"
+    - "@gik/demo-runner-host -> @gik/react"
+    - "@gik/demo-runner-host and @gik/blueprint-host do not depend on each other"
+
+host_component_contract:
+  name: DemoTargetHostProps
+  signature: >-
+    interface DemoTargetHostProps { blueprint: BlueprintArtifact;
+    resolveLeavesProvider?: ProviderResolver; native?: BundleNative;
+    companions?: CompositionOrganism[]; contexts?: BundleContextBindings;
+    fileServices?: GenUIFileServices; primaryBridge?: OrganismBridge;
+    primaryInstanceKey?: string | number; className?: string;
+    style?: React.CSSProperties; context?: Record<string, Json> }
+  rule: Any structurally compatible React component may be supplied as HostComponent.
+
+component:
+  name: GikDemoBlueprintHost
+  signature: "function GikDemoBlueprintHost(props: GikDemoBlueprintHostProps): React.ReactElement"
+  props_signature: >-
+    interface GikDemoBlueprintHostProps extends Omit<DemoTargetHostProps, "primaryBridge"> {
+    HostComponent: React.ComponentType<DemoTargetHostProps>;
+    scenariosJson?: DemoScenariosJson; blueprintState?: Record<string, unknown>;
+    showControlHarness?: boolean; presentationContext?: string | null;
+    onPresentationPresetChange?: (presetId: string) => void }
+  common_behavior:
+    - Loads and validates scenariosJson whenever it is supplied, whether or not a demo query is present.
+    - Reads browser query parameters once per component mount and does not subscribe to URL changes.
+  behavior_without_active_demo:
+    - Renders HostComponent with the supplied target-host props.
+    - Does not add demo companions, contexts, or a primary bridge.
+  behavior_with_active_demo:
+    - Activates demo mode when scenariosJson is supplied and either demo or a scenario-index query parameter is present.
+    - Selects the target Blueprint's demo entry from the demo id or parsed scenario index.
+    - Reads the scenario index from demoIndex, scenarioIndex, or index, in that order.
+    - Normalizes a non-integer or negative query index to 0 and an index beyond the scenario's steps to 0.
+    - Reads presentation context from the prop, then the presentation or presentationContext query aliases in that order.
+    - Filters available presentation presets to ScenarioPlan.applicableContexts, then resolves the requested preset, entry default, full-substrate preset, or first filtered preset.
+    - Replays preceding built-in state commands when starting playback; the starting scenario index defaults to 0.
+    - Creates control and demo SharedContextStore instances and an optional soc context from blueprintState.
+    - Adds demo-runner and control-harness companion bundles; showControlHarness controls harness visibility.
+    - Installs a primary bridge that coordinates control requests and human gates.
+    - Passes the prepared companions, contexts, bridge, and context to HostComponent.
+    - Increments primaryInstanceKey after built-in reset or apply-state commands so a compatible HostComponent can give the target a fresh mounted identity.
+  built_in_commands:
+    - name: "$apply-state"
+      behavior: Applies path-value operations to the demo seed without dispatching to the target controller.
+    - name: "$reset-state"
+      behavior: Restores the base demo seed without dispatching to the target controller.
+
+scenario_contracts:
+  - name: ScenarioBlueprintArtifact
+    signature: >-
+      interface ScenarioBlueprintArtifact { gik: string; type: "scenario-blueprint";
+      payload: ScenarioPlan }
+  - name: ScenarioPlan
+    signature: >-
+      interface ScenarioPlan { id: string; targetBlueprintId: string; title: string;
+      applicableContexts: string[]; pace: { manualDurationMs: number;
+      autoDurationMs: number; default: "manual" | "auto" }; steps: ScenarioStep[] }
+  - name: ScenarioStep
+    signature: >-
+      interface ScenarioStep { id: string; title: string;
+      kind: "dispatch" | "human-gate"; command?: string; commands?: string[];
+      payload?: Record<string, Json>; actorRef?: FocusRef; waitAfterMs?: number;
+      humanBoundary?: FocusRef; focusRefs?: FocusRef[] }
+  - name: DemoScenariosJson
+    signature: "interface DemoScenariosJson { catalog: DemoCatalog; scenarios: ScenarioBlueprintArtifact[] }"
+  - name: DemoCatalog
+    signature: >-
+      interface DemoCatalog { default: string; targets: Record<string, DemoTargetCatalogEntry>;
+      entries: DemoCatalogEntry[] }
+
+scenario_api:
+  - name: compileScenarioBlueprint
+    behavior:
+      - Requires scenario identity, target identity, applicable contexts, and at least one step.
+      - Rejects duplicate step and context ids.
+      - Enforces dispatch and human-gate command shapes.
+      - Returns a structured clone of the plan.
+  - name: validateDemoCatalog
+    behavior: Validates targets, entries, scenario references, target compatibility, and the default entry.
+  - name: validateDemoComposition
+    behavior:
+      - Validates one selected scenario against target commands, gates, actors, contexts, focus kinds, and timeline sources.
+      - Rejects built-in demo commands in human-gate steps.
+  - name: validateDemoTargetBundleContract
+    behavior: Validates command node/event references against a projected Kernel vocabulary and program.
+  - name: loadDemoScenarios
+    behavior:
+      - Validates the full input against schemas/demo-scenarios.schema.json.
+      - Compiles scenarios and validates the catalog.
+      - Returns the catalog and a composition resolver.
+  - name: resolveDemoEntry
+    behavior: Selects an exact id, requested index, numeric id, target-first entry, or catalog default in that order where applicable.
+  - name: scenarioStepCommands
+    behavior: Returns the non-empty commands represented by one step.
+  - name: writeDemoNavigation
+    behavior: Returns a URL string whose demo query parameter is the selected entry id.
+
+control_api:
+  contracts:
+    - ControlCommandDescriptor
+    - OrganismControlContract
+    - ControlRequest
+    - ControlReceipt
+    - ControlRuntime
+  function:
+    name: createHeadlessControlRuntime
+    behavior:
+      - Rejects incompatible Blueprint ids, unsupported commands, and human-gated commands.
+      - Writes the request to control.request before emitting the mapped node event.
+      - Returns a matching runtime receipt when present, otherwise a completed receipt.
+      - Converts thrown dispatch errors into failed receipts.
+      - Exposes a state snapshot.
+
+focus_and_inspection_api:
+  focus_contracts:
+    - FocusKind
+    - FocusRef
+    - FocusTarget
+    - TimelineItem
+    - ControlSelection
+  aliases:
+    DemoSelection: Public type alias for ControlSelection.
+  focus_functions:
+    - selectionFromTimelineItem
+    - focusRefMatches
+    - selectionContainsFocus
+    - resolveFocusTargets
+  inspection_contracts:
+    - InspectionParticipant
+    - InspectionPresentation
+    - InspectionPresentationContext
+    - BlueprintInspection
+    - BlueprintInspectionField
+    - BlueprintInspectionStage
+    - InspectionStatus
+    - OrganismInspection
+    - ParticipantConfigurationRequest
+    - ParticipantKind
+    - ParticipantSetting
+    - ParticipantStatus
+    - ParticipantToggleSetting
+
+presentation_api:
+  default_context: full-substrate
+  function:
+    name: resolvePresentationContext
+    behavior: Selects the requested preset, preferred default, full-substrate preset, or first available preset in that order from the supplied preset list.
+
+public_exports:
+  host:
+    - GikDemoBlueprintHost
+    - GikDemoBlueprintHostProps
+    - DemoTargetHostProps
+    - DemoComposition
+  scenario:
+    - ScenarioBlueprintArtifact
+    - ScenarioPlan
+    - ScenarioStep
+    - DemoCatalog
+    - DemoCatalogEntry
+    - DemoScenariosJson
+    - DemoTargetCatalogEntry
+    - LoadedDemoScenarios
+    - OrganismDemoContract
+    - PresentationPreset
+    - GIK_DEMO_APPLY_STATE_COMMAND
+    - GIK_DEMO_RESET_STATE_COMMAND
+    - compileScenarioBlueprint
+    - isBuiltInDemoCommand
+    - loadDemoScenarios
+    - resolveDemoEntry
+    - scenarioStepCommands
+    - validateDemoCatalog
+    - validateDemoComposition
+    - validateDemoTargetBundleContract
+    - writeDemoNavigation
+  control:
+    - ControlCommandDescriptor
+    - ControlReceipt
+    - ControlRequest
+    - ControlRuntime
+    - OrganismControlContract
+    - createHeadlessControlRuntime
+  focus_and_inspection:
+    - BlueprintInspection
+    - BlueprintInspectionField
+    - BlueprintInspectionStage
+    - ControlSelection
+    - DemoSelection
+    - FocusKind
+    - FocusRef
+    - FocusTarget
+    - InspectionParticipant
+    - InspectionPresentation
+    - InspectionPresentationContext
+    - InspectionStatus
+    - OrganismInspection
+    - ParticipantConfigurationRequest
+    - ParticipantKind
+    - ParticipantSetting
+    - ParticipantStatus
+    - ParticipantToggleSetting
+    - TimelineItem
+    - focusRefMatches
+    - resolveFocusTargets
+    - selectionContainsFocus
+    - selectionFromTimelineItem
+  presentation:
+    - DEFAULT_PRESENTATION_CONTEXT
+    - resolvePresentationContext

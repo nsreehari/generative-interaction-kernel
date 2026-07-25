@@ -20,7 +20,10 @@ terminology:
   lowering_recipe: A declaration connecting one tier to another.
   lowering_cell: A declaration for an operation that processes artifacts during conversion.
   relationship: A typed connection among Cells. Blueprint validates participants but not kind-specific behavior.
-  projection: An optional description of how selected Cells are presented.
+  projection: >-
+    A named description of how selected Cells are presented. A Blueprint carries an open map of
+    named projections; the reserved `presentation` entry is the projection consumed by the
+    current declarative lowering.
   rules:
     - Public Blueprint contracts use tiers and lowering recipes.
     - Lowering Cells use fromTier and toTier.
@@ -70,7 +73,8 @@ artifact_contracts:
       resources?: Record<string, BlueprintResource>;
       cells?: Record<string, CellDefinition>;
       relationships?: Record<string, RelationshipDefinition>;
-      projections?: Record<string, ProjectionDefinition | PresentationProjection>;
+      projections?: Record<string, ProjectionDefinition | PresentationProjection>
+      & { presentation?: PresentationProjection };
       services?: Record<string, ServiceRequirement | ServiceDeclaration>;
       runtime: BlueprintRuntimeDefinition; metadata?: Record<string, Json> }
     guarantees:
@@ -128,6 +132,10 @@ artifact_contracts:
     signature: >-
       interface ProjectionDefinition { kind: string; participants?: readonly string[];
       configuration?: Json; metadata?: Record<string, Json> }
+    purpose: >-
+      A generic named projection over a set of Cells. Blueprint core validates its shape but does
+      not interpret it, and the current declarative lowering does not compile named entries other
+      than the reserved `presentation`.
   - name: PresentationProjection
     signature: >-
       interface PresentationProjection { roots: readonly string[];
@@ -135,6 +143,10 @@ artifact_contracts:
       slot?: string; order?: number }[] }
     guarantees:
       - Roots and placements reference Cells in the same Blueprint.
+    consumed_by:
+      - The reserved `projections.presentation` entry is the layout the current lowering compiles.
+      - composeCellDocument reads only `projections.presentation`, requires exactly one root, and
+        walks placements into the Kernel projection tree.
 
 artifact_api:
   - name: createBlueprint

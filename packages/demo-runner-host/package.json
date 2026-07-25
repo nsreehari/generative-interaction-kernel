@@ -1,7 +1,7 @@
 {
-  "name": "@gik/blueprint-host",
-  "version": "0.2.0",
-  "description": "React host for running a Blueprint with the Generative Interaction Kernel.",
+  "name": "@gik/demo-runner-host",
+  "version": "0.1.0",
+  "description": "Demo scenario runner and control harness host for the Generative Interaction Kernel.",
   "license": "MIT",
   "author": "nsreehari",
   "keywords": [
@@ -9,14 +9,15 @@
     "generative-ui",
     "declarative-ui",
     "react",
-    "blueprint",
+    "demo",
+    "runner",
     "host"
   ],
   "homepage": "https://github.com/nsreehari/generative-interaction-kernel#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nsreehari/generative-interaction-kernel.git",
-    "directory": "packages/blueprint-host"
+    "directory": "packages/demo-runner-host"
   },
   "bugs": {
     "url": "https://github.com/nsreehari/generative-interaction-kernel/issues"
@@ -44,13 +45,16 @@
     "react-dom": "^18.3.1"
   },
   "dependencies": {
+    "@fluentui/react-components": "^9.74.3",
+    "@fluentui/react-icons": "^2.0.312",
     "@gik/controlface": "0.1.2",
+    "@gik/evaluators": "0.1.0",
     "@gik/kernel": "0.1.0",
     "@gik/blueprint": "0.1.0",
     "@gik/react": "0.1.0"
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
-    "prepack": "node ../../scripts/sync-public-docs.mjs packages/blueprint-host"
+    "prepack": "node ../../scripts/sync-public-docs.mjs packages/demo-runner-host"
   }
 }

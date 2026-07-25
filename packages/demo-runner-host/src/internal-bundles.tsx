@@ -1095,13 +1095,13 @@ const demoRunnerManifest = {
     capabilities: {
       "demo:runner": { propsSchema: { type: "object", additionalProperties: true }, slots: ["children"], emits: ["reset", "finishAct"] },
       "demo:timer-button": { propsSchema: { type: "object", additionalProperties: true }, emits: ["press"] },
-      "blueprint-host:toggle": { propsSchema: { type: "object", additionalProperties: true }, emits: ["toggle"] },
-      "blueprint-host:dropdown": { propsSchema: { type: "object", additionalProperties: true }, emits: ["select"] },
+      "demo-runner-host:toggle": { propsSchema: { type: "object", additionalProperties: true }, emits: ["toggle"] },
+      "demo-runner-host:dropdown": { propsSchema: { type: "object", additionalProperties: true }, emits: ["select"] },
     },
     externals: {
       projectionViews: {
         demo: { from: "self" },
-        "blueprint-host": { from: "self", use: ["toggle", "dropdown"] },
+        "demo-runner-host": { from: "self", use: ["toggle", "dropdown"] },
       },
       effectHandlers: ["requestNextAct", "setPace", "selectDemo", "setPresentationContext", "finishAct", "resetDemo"],
     },
@@ -1131,25 +1131,25 @@ const demoRunnerDocument = {
         },
         children: [
           {
-            capability: "blueprint-host:dropdown",
+            capability: "demo-runner-host:dropdown",
             id: "demo-blueprint-dropdown-region",
             props: { ariaLabel: "Select demo Blueprint", placeholder: "Select a demo" },
             edges: { read: { value: "runner.entry.id", options: "runner.catalog" }, on: { select: [{ do: "invoke", args: { tool: "selectDemo" } }] } },
           },
           {
-            capability: "blueprint-host:dropdown",
+            capability: "demo-runner-host:dropdown",
             id: "presentation-context-dropdown-region",
             props: { ariaLabel: "Select presentation context", placeholder: "Select a presentation" },
             edges: { read: { value: "control.presentationPresetId", options: "runner.presentationPresets" }, on: { select: [{ do: "invoke", args: { tool: "setPresentationContext" } }] } },
           },
           {
-            capability: "blueprint-host:toggle",
+            capability: "demo-runner-host:toggle",
             id: "presenter-pace-toggle-region",
             props: { onValue: "auto", offValue: "manual", onLabel: "Auto", offLabel: "Manual" },
             edges: { read: { value: "demo.presenter.pace" }, on: { toggle: [{ do: "invoke", args: { tool: "setPace" } }] } },
           },
           {
-            capability: "blueprint-host:toggle",
+            capability: "demo-runner-host:toggle",
             id: "gik-visibility-toggle-region",
             props: { hidden: true, onValue: true, offValue: false, onLabel: "Hide GIK", offLabel: "Show GIK" },
             edges: { read: { value: "control.ui.gikVisible" }, on: { toggle: [{ do: "assign", target: "control.ui.gikVisible", args: { from: "$event.value" } }] } },

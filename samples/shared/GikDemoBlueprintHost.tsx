@@ -6,7 +6,8 @@
 // which feeds resolved ids in and reacts to presentation-preset changes via `onPresentationPresetChange`.
 
 import React from "react";
-import { GikDemoBlueprintHost as PublicGikDemoBlueprintHost } from "@gik/blueprint-host";
+import { BlueprintHost as PublicBlueprintHost } from "@gik/blueprint-host";
+import { GikDemoBlueprintHost as PublicGikDemoBlueprintHost } from "@gik/demo-runner-host";
 import { resolveBlueprintBundle, resolveBlueprintNative } from "./sample-bundles";
 import { demoScenariosJson } from "./demo-catalog";
 import { resolveSampleBlueprintSource } from "./blueprints";
@@ -38,6 +39,7 @@ export function GikDemoBlueprintHost({
 
   return (
     <PublicGikDemoBlueprintHost
+      HostComponent={PublicBlueprintHost}
       blueprint={blueprint}
       native={native}
       scenariosJson={demoScenariosJson}

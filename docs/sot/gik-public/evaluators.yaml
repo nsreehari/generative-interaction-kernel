@@ -1,0 +1,205 @@
+schema_version: 1
+
+package:
+  name: "@gik/evaluators"
+  version: "0.1.0"
+  purpose: >-
+    Evaluate JSONata expressions and run declarative JSONata, JSON Schema,
+    JSONata-expression, and JSON-type validators.
+  core_promise: >-
+    Evaluators provides shared JSON-only evaluation and validation helpers. It delegates
+    JSONata execution and expression policy to Kernel providers and JSON Schema validation to AJV.
+  public_entrypoint: packages/evaluators/src/index.ts
+  implementation_entrypoints:
+    - packages/evaluators/src/evaluators.ts
+    - packages/evaluators/src/validators.ts
+
+api_policy:
+  signature_authority: generated TypeScript declarations
+  public_surface:
+    - JSONata evaluation functions and step contracts.
+    - JSONata expression validation.
+    - Declarative validation dispatch.
+    - JSON schemas for synchronous step input and output.
+
+architecture:
+  owns:
+    - JSON-safe wrappers around Kernel JSONata providers.
+    - Sequential synchronous JSONata step execution.
+    - Normalization and dispatch of declarative validator descriptions.
+    - Aggregating validation errors and warnings.
+  delegates_to_kernel:
+    - Full and safe JSONata execution.
+    - JSONata expression syntax and safe-subset validation.
+    - The Json value contract.
+  delegates_to_ajv:
+    - JSON Schema compilation and validation.
+    - Resolution of caller-supplied schema references.
+  does_not_own:
+    - Kernel runtime expression scheduling.
+    - Blueprint or program validation policy.
+    - Schema discovery or loading.
+    - Throwing on ordinary declarative validation failures.
+  dependency_direction:
+    - "@gik/evaluators -> @gik/kernel"
+    - "@gik/evaluators -> ajv"
+    - "@gik/kernel must not depend on @gik/evaluators"
+
+jsonata_api:
+  - name: evalSyncJsonata
+    signature: >-
+      evalSyncJsonata(expr: string, data: Json,
+      bindings?: Record<string, Json>): Json
+    behavior:
+      - Uses one safe synchronous Kernel JSONata provider.
+      - Defaults bindings to an empty object.
+      - Converts the result to plain JSON through JSON serialization.
+      - Converts an undefined result to null.
+      - Propagates expression evaluation errors, including Kernel safe-expression rejection.
+  - name: evalAsyncJsonata
+    signature: >-
+      evalAsyncJsonata(expr: string, data: Json,
+      bindings?: Record<string, Json>): Promise<Json>
+    behavior:
+      - Uses one asynchronous full-mode Kernel JSONata provider; the provider defaults safe to false.
+      - Defaults bindings to an empty object.
+      - Converts the resolved result to plain JSON through JSON serialization.
+      - Converts an undefined result to null.
+      - Propagates expression evaluation errors.
+  - name: validateJsonataExpression
+    signature: >-
+      validateJsonataExpression(expr: string,
+      options?: ValidateJsonataExpressionOptions): ValidateJsonataExpressionResult
+    behavior:
+      - Delegates to Kernel expression validation.
+      - Uses full mode by default.
+      - Enables Kernel safe-subset validation only when mode is safe.
+      - Returns an ok flag and optional error instead of throwing for an invalid expression.
+
+step_execution:
+  contracts:
+    - name: SyncJsonataStep
+      signature: "type SyncJsonataStep = { expr: string; writeTo: string }"
+    - name: ExecuteSyncJsonataStepsInput
+      signature: >-
+        type ExecuteSyncJsonataStepsInput = { steps: readonly SyncJsonataStep[];
+        data: Json; bindings?: Record<string, Json>; returnKeys?: readonly string[] }
+    - name: ExecuteSyncJsonataStepsOutput
+      signature: "type ExecuteSyncJsonataStepsOutput = Record<string, Json>"
+  function:
+    name: executeSyncJsonataSteps
+    signature: "executeSyncJsonataSteps(input: ExecuteSyncJsonataStepsInput): ExecuteSyncJsonataStepsOutput"
+    behavior:
+      - Copies the supplied bindings into a mutable evaluation environment.
+      - Evaluates steps in declaration order against the same data value.
+      - Makes each step result available to later steps under writeTo.
+      - Returns the complete environment when returnKeys is absent or empty.
+      - When returnKeys is present, returns only requested keys that exist in the environment.
+  exported_schemas:
+    - syncJsonataStepSchema
+    - executeSyncJsonataStepsInputSchema
+    - executeSyncJsonataStepsOutputSchema
+
+validation_contracts:
+  - name: DeclarativeValidatorInput
+    signature: >-
+      type DeclarativeValidatorInput = [string, string?] | JsonataValidator |
+      AjvSchemaValidator | JsonataExpressionValidator | TypeDefValidator
+    note: This internal type shapes runDeclarativeValidators but is not exported from the package.
+  - name: DeclarativeValidationIssue
+    signature: "type DeclarativeValidationIssue = { detail: string; code?: string; node?: string }"
+    note: This internal return-member type is not exported from the package.
+  - name: DeclarativeValidationResult
+    signature: >-
+      type DeclarativeValidationResult = { ok: boolean;
+      errors: DeclarativeValidationIssue[]; warnings: DeclarativeValidationIssue[] }
+    note: This internal return type is not exported from the package.
+  - name: DeclarativeValidatorRunOptions
+    signature: >-
+      type DeclarativeValidatorRunOptions = { bindings?: Record<string, JsonValue>;
+      jsonataValueMode?: "wrapped-data" | "root" }
+    note: This internal parameter type is not exported from the package.
+
+validator_kinds:
+  jsonata:
+    accepted_forms:
+      - "[expression, optional message]"
+      - "{ kind?: jsonata, expr, message?, level?, code?, node? }"
+    behavior:
+      - Uses safe synchronous JSONata evaluation.
+      - Uses { data: value } as input by default.
+      - Uses the raw value as input when jsonataValueMode is root.
+      - Passes options.bindings as JSONata bindings.
+      - Passes only when the expression result is exactly true.
+      - Catches evaluation exceptions and reports them as validator failures.
+  ajv_schema:
+    accepted_form: "{ kind: ajv-schema, schema, refs?, message?, level?, code?, node? }"
+    behavior:
+      - Compiles with allErrors enabled and strict mode disabled.
+      - Adds each supplied reference schema before compiling the primary schema.
+      - Stores compiled validators in a WeakMap keyed by normalized validator object identity.
+      - Normalization creates fresh objects for each run, so equivalent schemas are not deduplicated across calls.
+      - Reports one issue for each AJV error.
+      - Reports one configured-message issue when AJV exposes no usable error details.
+      - Prefixes each AJV detail with the configured message.
+  jsonata_expression:
+    accepted_form: "{ kind: jsonata-expression, mode?, message?, level?, code?, node? }"
+    behavior:
+      - Reports a validation failure when the validated value is not a string.
+      - Uses full mode by default and safe mode only when explicitly selected.
+      - Appends the expression-validation error to the configured message.
+  typedef:
+    accepted_form: "{ kind: typedef, type, message?, level?, code?, node? }"
+    supported_types:
+      - json
+      - object
+      - array
+      - string
+      - number
+      - integer
+      - boolean
+      - null
+    behavior:
+      - Accepts one type or an array of allowed types.
+      - Treats object as a non-null, non-array object.
+      - Treats json as matching every JsonValue.
+      - Formats a failure as the configured message followed by ': expected <type>'.
+
+validation_api:
+  name: runDeclarativeValidators
+  signature: >-
+    runDeclarativeValidators(rawValidators: readonly DeclarativeValidatorInput[] | unknown,
+    value: JsonValue,
+    options?: DeclarativeValidatorRunOptions): DeclarativeValidationResult
+  behavior:
+    - Returns a successful empty report when rawValidators is not an array or contains no recognized validators.
+    - Ignores malformed or unrecognized validator entries during normalization.
+    - Runs recognized validators in declaration order.
+    - Uses Invalid value as the default ordinary-validator message.
+    - Uses Invalid JSONata expression as the default expression-validator message.
+    - Preserves optional code and node metadata on reported issues.
+    - Routes warning-level failures to warnings and all other failures to errors.
+    - Sets ok from the absence of errors; warnings do not make the result unsuccessful.
+    - Returns failures as data rather than throwing for ordinary mismatches.
+  exceptions:
+    - AJV schema compilation errors may propagate.
+    - Invalid reference registration may propagate.
+
+public_exports:
+  types:
+    - SyncJsonataStep
+    - ExecuteSyncJsonataStepsInput
+    - ExecuteSyncJsonataStepsOutput
+    - JsonataExpressionValidationMode
+    - ValidateJsonataExpressionOptions
+    - ValidateJsonataExpressionResult
+  functions:
+    - evalSyncJsonata
+    - evalAsyncJsonata
+    - executeSyncJsonataSteps
+    - validateJsonataExpression
+    - runDeclarativeValidators
+  schemas:
+    - syncJsonataStepSchema
+    - executeSyncJsonataStepsInputSchema
+    - executeSyncJsonataStepsOutputSchema

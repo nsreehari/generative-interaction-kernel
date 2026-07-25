@@ -233,17 +233,17 @@ export class ControlFace implements TransportBroker {
   private readonly serviceHost?: ServiceHost;
 
   constructor(
-    manifest: Enveloped<ProjectedVocabularyManifest>,
-    document: Enveloped<ProjectedProgramDefinition>,
-    opts: ControlFaceOptions = {}
+    vocabulary: Enveloped<ProjectedVocabularyManifest>,
+    program: Enveloped<ProjectedProgramDefinition>,
+    options: ControlFaceOptions = {}
   ) {
-    this.kernel = new Kernel(manifest, document, {
-      ...(opts.state ? { state: opts.state } : {}),
-      ...(opts.orchestrator ? { orchestrator: opts.orchestrator } : {}),
-      ...(opts.sink ? { sink: opts.sink } : {}),
+    this.kernel = new Kernel(vocabulary, program, {
+      ...(options.state ? { state: options.state } : {}),
+      ...(options.orchestrator ? { orchestrator: options.orchestrator } : {}),
+      ...(options.sink ? { sink: options.sink } : {}),
     });
-    this.broker = new KernelTransportHost(manifest, document, this.kernel);
-    this.serviceHost = opts.serviceHost;
+    this.broker = new KernelTransportHost(vocabulary, program, this.kernel);
+    this.serviceHost = options.serviceHost;
   }
 
   /**
