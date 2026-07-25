@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import { loadDemoScenarios, type DemoScenariosJson } from "@gik/demo-runner-host";
 
 import {
   validateDemoCatalog,
@@ -183,4 +184,50 @@ test("host demo resolution accepts bundle-scoped IDs and zero-based indices", ()
   assert.equal(resolveDemoComposition("999", "portfolio-tracker").entry.id, "portfolio-baseline");
   assert.equal(resolveDemoComposition("wrong", "portfolio-tracker").entry.id, "portfolio-baseline");
   assert.equal(resolveDemoComposition("portfolio-baseline", "live-workspace-soc").entry.id, "soc-t3");
+});
+
+test("scenario JSON accepts a focus reference without a relation", () => {
+  const scenarios: DemoScenariosJson = {
+    catalog: {
+      default: "demo-a",
+      targets: {
+        "blueprint-a": {
+          commands: [{ command: "start", nodeId: "root", event: "start" }],
+          humanGates: [],
+          observableOutcomes: [],
+          actors: ["operator-a"],
+          presentationPresets: [{ id: "default", context: {} }],
+          focusKinds: ["actor"],
+          timelineSources: ["scenario"],
+        },
+      },
+      entries: [{
+        id: "demo-a",
+        label: "Demo A",
+        scenarioBlueprintId: "scenario-a",
+        targetBlueprintId: "blueprint-a",
+        defaultContext: "default",
+      }],
+    },
+    scenarios: [{
+      gik: "0.1",
+      type: "scenario-blueprint",
+      payload: {
+        id: "scenario-a",
+        targetBlueprintId: "blueprint-a",
+        title: "Scenario A",
+        applicableContexts: ["default"],
+        pace: { manualDurationMs: 1000, autoDurationMs: 100, default: "manual" },
+        steps: [{
+          id: "step-a",
+          title: "Step A",
+          kind: "dispatch",
+          command: "start",
+          actorRef: { namespace: "demo", kind: "actor", id: "operator-a" },
+        }],
+      },
+    }],
+  };
+
+  assert.doesNotThrow(() => loadDemoScenarios(scenarios));
 });

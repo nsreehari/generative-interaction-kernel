@@ -1,8 +1,16 @@
 import React from "react";
 import { openBlueprint } from "@gik/controlface/blueprint";
 import { unwrap, type Json, type Reaction } from "@gik/kernel";
-import { SharedContextStore, type BundleNative, type CompositionOrganism, type OrganismBridge } from "@gik/react";
-import { BlueprintHost, type BlueprintHostProps } from "./BlueprintHost";
+import {
+  SharedContextStore,
+  type BundleContextBindings,
+  type BundleNative,
+  type CompositionOrganism,
+  type GenUIFileServices,
+  type OrganismBridge,
+  type ProviderResolver,
+} from "@gik/react";
+import type { BlueprintArtifact } from "@gik/blueprint";
 import { createDemoRunnerBundle, createGikControlHarnessBundle } from "./internal-bundles";
 import { dispatchDemoControlRequest, withDemoHumanGate } from "./internal-demo-control-bridge";
 import type { ControlReceipt, ControlRequest } from "./control-runtime";
@@ -21,7 +29,7 @@ import {
 import type { OrganismControlContract } from "./control-runtime";
 
 const EMPTY_COMPANIONS: CompositionOrganism[] = [];
-const EMPTY_CONTEXTS: BlueprintHostProps["contexts"] = {};
+const EMPTY_CONTEXTS: BundleContextBindings = {};
 
 const compositionStyle: React.CSSProperties = {
   height: "100vh",
@@ -129,7 +137,22 @@ function replayScenarioSeed(
   return seed;
 }
 
-export interface GikDemoBlueprintHostProps extends Omit<BlueprintHostProps, "primaryBridge"> {
+export interface DemoTargetHostProps {
+  blueprint: BlueprintArtifact;
+  resolveLeavesProvider?: ProviderResolver;
+  native?: BundleNative;
+  companions?: CompositionOrganism[];
+  contexts?: BundleContextBindings;
+  fileServices?: GenUIFileServices;
+  primaryBridge?: OrganismBridge;
+  primaryInstanceKey?: string | number;
+  className?: string;
+  style?: React.CSSProperties;
+  context?: Record<string, Json>;
+}
+
+export interface GikDemoBlueprintHostProps extends Omit<DemoTargetHostProps, "primaryBridge"> {
+  HostComponent: React.ComponentType<DemoTargetHostProps>;
   scenariosJson?: DemoScenariosJson;
   blueprintState?: Record<string, unknown>;
   showControlHarness?: boolean;
@@ -138,6 +161,7 @@ export interface GikDemoBlueprintHostProps extends Omit<BlueprintHostProps, "pri
 }
 
 export function GikDemoBlueprintHost({
+  HostComponent,
   blueprint,
   native,
   companions = EMPTY_COMPANIONS,
@@ -171,7 +195,7 @@ export function GikDemoBlueprintHost({
 
   if (!activeDemo) {
     return (
-      <BlueprintHost
+      <HostComponent
         blueprint={blueprint}
         resolveLeavesProvider={resolveLeavesProvider}
         native={native}
@@ -384,7 +408,7 @@ export function GikDemoBlueprintHost({
   }, [companions, harnessBundle, runnerBundle]);
 
   return (
-    <BlueprintHost
+    <HostComponent
       blueprint={blueprint}
       resolveLeavesProvider={resolveLeavesProvider}
       native={native}

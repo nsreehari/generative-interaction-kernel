@@ -23,7 +23,7 @@
     "focusRef": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["namespace", "kind", "id", "relation"],
+      "required": ["namespace", "kind", "id"],
       "properties": {
         "namespace": { "$ref": "#/definitions/nonEmptyString" },
         "kind": { "$ref": "#/definitions/nonEmptyString" },
