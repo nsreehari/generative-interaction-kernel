@@ -8,6 +8,7 @@ test("host config defaults to production when no environment is set", () => {
   assert.equal(hostConfig.foundryProxyOrigin, "https://sz-foundry-proxy.azurewebsites.net");
   assert.equal(hostConfig.httpProxyOrigin, "https://sz-http-proxy.azurewebsites.net");
   assert.equal(hostConfig.storesProxyOrigin, "https://sz-stores-proxy.azurewebsites.net");
+  assert.equal(hostConfig.filesystemMcpUrl, "http://127.0.0.1:7801/mcp");
   assert.equal(resolveHostEnvironment({ MODE: "development" }), "production");
 });
 
@@ -41,6 +42,7 @@ test("host config replaces endpoint tokens without mutating the source", () => {
     foundryProxyOrigin: "https://proxy.example.test",
     httpProxyOrigin: "https://http-proxy.example.test",
     storesProxyOrigin: "https://stores-proxy.example.test",
+    filesystemMcpUrl: "https://filesystem.example.test/mcp",
   });
 
   assert.equal(configured.services[0].config.endpoint, "https://proxy.example.test");

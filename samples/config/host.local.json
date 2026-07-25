@@ -1,5 +1,6 @@
 {
   "foundryProxyOrigin": "http://localhost:7071",
   "httpProxyOrigin": "http://localhost:7073",
-  "storesProxyOrigin": "http://localhost:7075"
+  "storesProxyOrigin": "http://localhost:7075",
+  "filesystemMcpUrl": "http://127.0.0.1:7801/mcp"
 }
