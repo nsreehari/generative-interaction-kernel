@@ -3,16 +3,12 @@ schema_version: 1
 package:
   name: "@gik/kernel"
   version: "0.1.0"
-  status: experimental
   purpose: >-
-    Provide the authoritative GIK program runtime, vocabulary contracts,
-    host extension ports, optional projection subsystem, renderer-side replica,
-    transport broker, and program authoring helpers.
+    Define Kernel programs and vocabularies, validate them, execute programs, and expose
+    host, projection, client, and transport interfaces.
   core_promise: >-
-    Turn an executable Blueprint into one authoritative, continuously settling
-    causal system: deterministically propagate every currently reachable
-    consequence until execution is quiescent, suspended on external work, or
-    yielded at a configured budget boundary.
+    Kernel accepts an ExecutableVocabularyManifest and an ExecutableProgramDefinition.
+    It owns the resulting state, revisions, graph processing, effects, and checkpoints.
   public_entrypoint: packages/kernel/src/index.ts
   implementation_entrypoint: kernel/src/index.ts
 
@@ -24,62 +20,7 @@ api_policy:
     advanced: Supported infrastructure API not needed by ordinary consumers.
     internal_candidate: Exported today but not yet accepted as a durable contract.
 
-capability_model:
-  mental_model: >-
-    Authoring and strategy produce Profiles, recipes, and higher-level artifacts;
-    lowering compiles them into a validated executable Blueprint; Kernel execution
-    settles that Blueprint against host-owned services; optional projection, transport,
-    replication, and observation expose the result to consumers.
-  categories:
-    - name: contracts-and-protocol
-      phase: cross-cutting
-      role: supporting
-      purpose: Define executable programs, vocabularies, events, patches, progress, traces, and wire envelopes.
-      modules: [kernel/src/types.ts]
-    - name: authoring
-      phase: before-execution
-      role: supporting
-      purpose: Construct actions, projected or headless programs, and validated program messages.
-      modules: [kernel/src/authoring.ts, kernel/src/vocabulary-gen.ts]
-    - name: lowering-and-validation
-      phase: before-execution
-      role: supporting
-      purpose: >-
-        Compile higher-level frontend or backend artifacts into projected or headless
-        executable programs and validate the terminal artifact before execution.
-      modules: [kernel/src/lower.ts, kernel/src/validate.ts]
-    - name: authoritative-execution
-      phase: execution
-      role: core
-      purpose: Own revisioned state, event reduction, continuous graph settlement, effects, and invocations.
-      modules: [kernel/src/kernel.ts, kernel/src/graph-runtime.ts, kernel/src/reduce.ts, kernel/src/derivations.ts]
-    - name: host-orchestration
-      phase: execution
-      role: extension
-      purpose: Delegate expressions, state storage, capabilities, external work, and transport to host-supplied ports.
-      modules: [kernel/src/providers.ts]
-    - name: projection
-      phase: after-execution
-      role: optional
-      purpose: Resolve projected programs into renderer-neutral trees; headless programs omit this category.
-      modules: [kernel/src/interpret.ts]
-    - name: transport-and-replication
-      phase: after-execution
-      role: optional
-      purpose: Carry protocol messages and maintain renderer-side state and revision replicas.
-      modules: [kernel/src/transport.ts, kernel/src/client.ts]
-    - name: lifecycle-and-observability
-      phase: cross-cutting
-      role: supporting
-      purpose: Inspect execution, manage checkpoints and effects, and publish traces and progress.
-      modules: [kernel/src/kernel.ts, kernel/src/observability.ts]
-  package_direction:
-    - Keep contracts, validation boundary, authoritative execution, and host interfaces in Kernel.
-    - Treat authoring and lowering as the first physical split candidate after their contracts stabilize.
-    - Treat projection and client replication as later optional split candidates driven by deployment needs.
-    - Do not split packages merely to mirror source modules.
-
-runtime_contracts:
+contracts:
   - name: ProgramDefinition
     signature: >-
       interface ProgramDefinition { vocabulary?: string; graph?: ProgramGraph;
@@ -216,7 +157,7 @@ runtime_contracts:
       interface TransitionResult { previousRevision: number; revision: number;
       status: ExecutionStatus; state: Record<string, Json>; patch: Patch;
       effects: RecordedEffect[]; execution: ExecutionSnapshot }
-    purpose: Return authoritative state and execution settlement from one graph transition.
+    purpose: Return state, patch, effects, and graph status from one transition.
   - name: GraphInspection
     signature: >-
       interface GraphInspection { topologyVersion: number; diagnostics: GraphDiagnostic[] }
@@ -353,43 +294,10 @@ wire_contracts:
     EventMessage | PatchMessage | ProgressMessage | TraceMessage
   compatibility: No manifest or document type aliases are accepted.
 
-internal_subsystems:
-  execution:
-    owns:
-      - event and action reduction
-      - machines
-      - standing derivations and reactions
-      - effects, checkpoints, restore, and revisioning
-    accepts: ExecutableProgramDefinition
-    modules:
-      - kernel/src/reduce.ts
-      - kernel/src/derivations.ts
-      - kernel/src/kernel.ts
-  graph_execution:
-    owns:
-      - explicit port-token topology and token versions
-      - deterministic readiness and propagation to quiescence
-      - valid feedback cycles, dormant paths, suspension, and budget yielding
-      - serialized topology mutation, reindexing, and rescheduling
-    accepts: ProgramGraph
-    modules:
-      - kernel/src/graph-runtime.ts
-      - kernel/src/kernel.ts
-  projection:
-    owns:
-      - DocNode interpretation
-      - ResolvedNode production
-      - renderer transport onboarding
-    requires: ProjectedProgramDefinition
-    modules:
-      - kernel/src/interpret.ts
-      - kernel/src/client.ts
-      - kernel/src/transport.ts
-
 classes:
   - name: Kernel
     category: primary
-    purpose: Own one authoritative, revisioned execution of a GIK program.
+    purpose: Execute one GIK program and own its state and revisions.
     source: kernel/src/kernel.ts
     constructor:
       signature: >-
@@ -448,7 +356,7 @@ classes:
       - name: dispatch
         signature: "dispatch(event: GIKEvent): Promise<Patch>"
         category: primary
-        purpose: Apply one event to the authoritative runtime.
+        purpose: Apply one event to the running program.
         behavior:
           - Serializes mutations.
           - Settles actions, immediate effects, standing derivations, and reactions.
@@ -522,7 +430,7 @@ classes:
       - name: effectsSince
         signature: "effectsSince(revision: number): RecordedEffect[]"
         category: primary
-        purpose: Return external effects after a revision in causal order.
+        purpose: Return recorded external effects after a revision in settlement order.
         mutates_state: false
       - name: compensate
         signature: "compensate(effects: OrchestratorEffect[]): Promise<Patch>"
@@ -575,7 +483,7 @@ classes:
         signature: >-
           emit(node: string, name: string, payload?: Record<string, Json>,
           actorId?: string): void | Promise<void>
-        purpose: Send an event to the authoritative runtime.
+        purpose: Send an event to the connected Kernel.
 
   - name: KernelTransportHost
     category: advanced
@@ -744,54 +652,3 @@ free_functions:
       - "consoleSink(output?): TraceSink"
       - "bufferSink(): { sink: TraceSink; events: TraceEvent[] }"
       - "multiSink(...sinks: TraceSink[]): TraceSink"
-
-internal_candidate_exports:
-  reason: >-
-    These modules expose execution mechanics that should not become durable accidentally.
-  modules:
-    - kernel/src/interpret.ts
-    - kernel/src/reduce.ts
-    - kernel/src/derivations.ts
-  notes:
-    - StateModel, InMemoryStateModel, CompositeStateModel, and DerivationScheduler remain exported migration surfaces.
-    - Legacy handlers, reactions, machines, and derivations may coexist with ProgramGraph in one program.
-
-behavioral_guarantees:
-  - Authoritative mutations are serialized and revisions increase monotonically.
-  - Pure state changes are represented as Patch operations.
-  - External work is delegated through Orchestrator and recorded separately from pure state.
-  - Restore never claims to undo an external effect.
-  - Transport and in-process consumers observe the same event, patch, and revision model.
-  - Headless programs execute without fabricated projection nodes or capabilities.
-  - Projection is optional for execution and explicit at resolve and renderer boundaries.
-  - Renderer transport attachment requires a ProjectedProgramDefinition.
-  - Cycles, self-feedback, disconnected components, and unproduced tokens are valid graph topology.
-  - Graph propagation stops at quiescence, suspension, or an execution-budget yield.
-  - Graph dependencies come only from declared input and output tokens, never expression inference.
-  - Wire message kinds are vocabulary, program, event, patch, progress, and trace.
-  - No manifest or document message aliases are accepted.
-
-current_graph_limitations:
-  - ExecutionStatus.completed and ExecutionStatus.failed are reserved but not emitted.
-  - GraphNodeStatus.ready and GraphNodeStatus.failed are declared but not persisted by the scheduler.
-  - PortDefinition.producers is metadata only and is not enforced.
-  - stream mode exposes an accumulated JSON array, not a consumable per-subscriber queue.
-  - Kernel patches store the latest raw stream publication; ExecutionSnapshot.tokens stores the accumulated stream array.
-  - Mutation does not reconcile or cancel active invocations for removed or replaced nodes.
-  - Cancelling, failing, or leaving a graph invoke unhandled does not currently release its suspended node.
-  - A mutation rejected during reindexing is not transactionally rolled back.
-  - Checkpoint and restore cover StateModel state, not graph execution state.
-  - syncExternal settles legacy derivations and reactions but does not publish shared state into graph tokens.
-  - Follow-up events returned by OrchestratorResult settle legacy handlers and reactions but do not currently enter graph event triggers.
-
-verification:
-  commands:
-    - npm run test:kernel
-    - npm run conformance
-    - npm run test:jsonata
-    - npm run build --workspace=@gik/kernel
-
-open_decisions:
-  - Which advanced and internal-candidate exports remain public for version 1?
-  - Should program authoring and lowering functions move to a separate package?
-  - When does measured deployment or versioning pressure justify splitting execution and projection packages?

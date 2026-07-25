@@ -57,7 +57,7 @@
       },
       "state": {
         "architecture": {
-          "summary": "The authored workflow is represented directly as a Kernel-executable Blueprint. The four conceptual stages remain visible as design provenance; no runtime recipe interpreter is required.",
+          "summary": "The Blueprint is converted directly to a Kernel program. The four conceptual stages remain visible as design context; no runtime recipe interpreter is required.",
           "layers": [
             {
               "id": "workflow",

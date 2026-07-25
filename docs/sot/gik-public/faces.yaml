@@ -1,0 +1,153 @@
+schema_version: 1
+
+package:
+  name: face
+  published: false
+  purpose: >-
+    Define one shared callable surface and publish audience-specific projections of that
+    surface through @gik/controlface and @gik/agentface.
+  implementation_entrypoint: face/src/index.ts
+  public_packages:
+    - "@gik/controlface"
+    - "@gik/agentface"
+
+api_policy:
+  signature_authority: Generated TypeScript declarations for each public package.
+
+terminology:
+  face: The shared callable operations implemented under face/src.
+  pure_operation: An operation over supplied values that does not require a live Kernel.
+  live_operation: An operation backed by a live Kernel or ServiceHost.
+  projection: A selected McpTool list over the shared operations.
+  controlface_projection: The complete shared tool catalog.
+  agentface_projection: The tools from the shared catalog whose agentSafe property is true.
+  queueface: A thin wrapper class that delegates queued-request operations to ServiceHost.
+
+architecture:
+  model:
+    - face/src implements pure and live operations once.
+    - fullCatalogTools combines the pure and live tool lists.
+    - controlFaceTools returns the full catalog.
+    - agentFaceProjection filters the full catalog by agentSafe.
+    - A transport receives a selected dispatcher or broker; transport code does not choose the projection.
+  naming_note: >-
+    The current code also exports a ControlFace class. controlFaceTools is the ControlFace
+    projection described by the Face architecture; the ControlFace class is the live object
+    used by that projection and by render transports.
+  decision_sources:
+    - docs/decisions/ADR-0037-face-projections-and-transport-boundary.md
+    - docs/decisions/ADR-0040-external-services-and-queueface.md
+    - docs/decisions/ADR-0041-blueprint-first-hosting-and-controlface-lowering.md
+  current_implementation: >-
+    Blueprint opening remains exported through ControlFace. The current implementation uses
+    the Blueprint implementation directly and does not use a Profile package.
+
+shared_contracts:
+  - name: McpTool
+    signature: >-
+      interface McpTool { name: string; description: string;
+      inputSchema: Record<string, unknown>;
+      handler: (args: Record<string, unknown>) => unknown | Promise<unknown>;
+      agentSafe?: boolean }
+  - name: McpDispatcher
+    purpose: List and invoke an McpTool catalog directly or through the implemented MCP JSON-RPC methods.
+  - name: RuntimeFace
+    purpose: Structural subset of ControlFace methods required to build the live tool catalog.
+  - name: MCP_PROTOCOL_VERSION
+    value: "2025-06-18"
+
+public_packages:
+  - name: "@gik/controlface"
+    version: "0.1.2"
+    entrypoint: packages/controlface/src/index.ts
+    purpose: Publish the full Face projection and the public objects used to supply its live operations.
+    projection:
+      function: "controlFaceTools(face: RuntimeFace): McpTool[]"
+      behavior: Returns fullCatalogTools(face) without filtering.
+      dispatcher: "createControlFaceDispatcher(face: RuntimeFace): McpDispatcher"
+    runtime_class:
+      name: ControlFace
+      constructor: >-
+        new ControlFace(vocabulary: Enveloped<ProjectedVocabularyManifest>,
+        program: Enveloped<ProjectedProgramDefinition>, options?: ControlFaceOptions)
+      behavior:
+        - Wraps a live Kernel and KernelTransportHost.
+        - Supplies live methods used by RuntimeFace tool handlers.
+        - Implements TransportBroker so render transports can attach through the Face boundary.
+    blueprint_opening:
+      entrypoint: packages/controlface/src/blueprint.ts
+      exports:
+        - defineDeclarativeBlueprint
+        - openBlueprint
+        - BlueprintRuntime
+        - BlueprintSource
+        - OpenBlueprintOptions
+      current_behavior: >-
+        openBlueprint prepares vocabulary, projected program, initial state, and child runtime
+        definitions for the supported recipe-free declarative Blueprint path. It does not create
+        a ControlFace or Kernel instance.
+    service_exports:
+      - QueueFace and service request contracts.
+      - ServiceHost and DefaultServiceHost.
+      - ServiceKindRegistry and service-kind contracts.
+    queueface:
+      constructor: "new QueueFace(host: ServiceHost)"
+      methods:
+        - "submit(effect) -> ServiceHost.enqueue(effect)"
+        - "getRequest(id) -> ServiceHost.getRequest(id)"
+        - "listRequests() -> ServiceHost.listRequests()"
+        - "cancel(id) -> ServiceHost.cancel(id)"
+
+  - name: "@gik/agentface"
+    version: "0.1.0"
+    entrypoint: packages/agentface/src/index.ts
+    depends_on: "@gik/controlface 0.1.2"
+    purpose: Publish the agentSafe projection of the shared Face catalog.
+    projection:
+      function: "agentFaceProjection(face: RuntimeFace): McpTool[]"
+      behavior: Returns fullCatalogTools(face).filter(tool => tool.agentSafe).
+      dispatcher: "createAgentFaceDispatcher(face: RuntimeFace): McpDispatcher"
+    stateless_dispatcher:
+      signature: "createStatelessAgentFaceDispatcher(extraTools?: McpTool[]): McpDispatcher"
+      behavior: Filters the built-in pure tools and supplied extra tools by agentSafe.
+    exports:
+      - AGENTFACE_ALLOWLIST
+      - agentFaceProjection
+      - createAgentFaceDispatcher
+      - createStatelessAgentFaceDispatcher
+      - MCP_PROTOCOL_VERSION
+      - McpDispatcher
+      - McpServerInfo
+      - McpTool
+
+projection_contents:
+  pure_tools:
+    - describeCatalog
+    - namespaces
+    - effects
+    - validateDocument
+    - lintDocument
+    - authorProjectedProgram
+    - validateCapability
+  live_tools:
+    - getState
+    - getTree
+    - describeServiceKinds
+    - listServiceRequests
+    - probeService
+    - emit
+    - checkpoint
+    - restore
+    - effectsSince
+    - compensate
+  built_in_agentface_tools:
+    - describeCatalog
+    - namespaces
+    - effects
+    - validateDocument
+    - lintDocument
+    - authorProjectedProgram
+    - validateCapability
+    - getState
+    - getTree
+    - describeServiceKinds
