@@ -9,6 +9,7 @@ export type HostConfig = {
   foundryProxyOrigin: string;
   httpProxyOrigin: string;
   storesProxyOrigin: string;
+  filesystemMcpUrl: string;
 };
 
 export type HostEnvironment = "local" | "production";

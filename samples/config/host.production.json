@@ -1,5 +1,6 @@
 {
   "foundryProxyOrigin": "https://sz-foundry-proxy.azurewebsites.net",
   "httpProxyOrigin": "https://sz-http-proxy.azurewebsites.net",
-  "storesProxyOrigin": "https://sz-stores-proxy.azurewebsites.net"
+  "storesProxyOrigin": "https://sz-stores-proxy.azurewebsites.net",
+  "filesystemMcpUrl": "http://127.0.0.1:7801/mcp"
 }
