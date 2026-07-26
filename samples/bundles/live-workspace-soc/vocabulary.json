@@ -22,7 +22,7 @@
           "establishIntent", "addConstraint", "suggestExploration", "amendExploration",
           "replanExploration", "commitPartialFindings", "proposeDc01", "completeCorrelation",
           "proposeHostA", "reviseResponse", "calculateResponse", "recommendContainment",
-          "authorizeContainment", "executeContainment", "setPresentationContext", "reset"
+          "authorizeContainment", "executeContainment", "reset"
         ]
       },
       "soc:substrate-chrome": {
@@ -78,7 +78,7 @@
         "establishIntent", "addConstraint", "suggestExploration", "amendExploration",
         "replanExploration", "commitPartialFindings", "evaluateDc01Policy", "completeCorrelation",
         "proposeHostA", "reviseResponse", "calculateResponse", "recommendContainment",
-        "authorizeContainment", "setPresentationContext", "syncInspection",
+        "authorizeContainment", "syncInspection",
         "executeContainment", "resetScenario"
       ]
     }

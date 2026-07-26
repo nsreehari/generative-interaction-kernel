@@ -118,6 +118,31 @@ function resolveScenarioIndex(requestedIndex: number | null, stepCount: number):
   return requestedIndex >= 0 && requestedIndex < stepCount ? requestedIndex : 0;
 }
 
+// Deep-merges a presentation preset's context bag into the live shared stores.
+// The bag is a state fragment keyed by namespace (e.g. `{ soc: { presentation: … } }`);
+// only namespaces that have a matching live store are applied, and only scalar/array
+// leaves are set so sibling keys (e.g. `soc.presentation.contexts`) are preserved.
+function applyPresentationFragment(
+  stores: Record<string, SharedContextStore>,
+  fragment: Record<string, Json> | undefined,
+): void {
+  if (!fragment) return;
+  for (const [namespace, subtree] of Object.entries(fragment)) {
+    const store = stores[namespace];
+    if (!store || !isJsonRecord(subtree)) continue;
+    const ops: { op: "set"; path: string; value: Json }[] = [];
+    const walk = (path: string, node: Json): void => {
+      if (isJsonRecord(node)) {
+        for (const [key, value] of Object.entries(node)) walk(`${path}.${key}`, value);
+      } else {
+        ops.push({ op: "set", path, value: node });
+      }
+    };
+    walk(namespace, subtree);
+    if (ops.length > 0) store.apply(ops);
+  }
+}
+
 function replayScenarioSeed(
   baseInitialSeed: JsonRecord | null,
   scenarioPlan: ScenarioPlan,
@@ -391,14 +416,21 @@ export function GikDemoBlueprintHost({
         { op: "set", path: "control.presentationContext", value: resolvedPresentationContext.context as unknown as Json },
       ]);
     }
+    let appliedPresetId: string | null = null;
     const notify = () => {
       const selected = controlStore.get("control.presentationPresetId");
-      if (typeof selected === "string" && selected) onPresentationPresetChange?.(selected);
+      if (typeof selected !== "string" || !selected) return;
+      if (selected !== appliedPresetId) {
+        appliedPresetId = selected;
+        const preset = presentationPresets.find((entry) => entry.id === selected);
+        if (preset) applyPresentationFragment(demoContexts, preset.context as Record<string, Json>);
+        onPresentationPresetChange?.(selected);
+      }
     };
     const unsubscribe = controlStore.subscribe(notify);
     notify();
     return unsubscribe;
-  }, [controlStore, onPresentationPresetChange, resolvedPresentationContext]);
+  }, [controlStore, demoContexts, onPresentationPresetChange, presentationPresets, resolvedPresentationContext]);
 
   const packageCompanions = React.useMemo<CompositionOrganism[]>(() => {
     const list = [...companions];

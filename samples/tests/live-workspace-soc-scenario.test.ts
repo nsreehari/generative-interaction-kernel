@@ -5,6 +5,8 @@ import { bundleFromJson, loadBundleRuntime, SharedContextStore } from "@gik/reac
 import { t3ScenarioPlan } from "../scenarios/live-workspace-soc-t3/compile";
 import { socExecutiveScenarioPlan } from "../scenarios/live-workspace-soc-executive/compile";
 import { openSampleBlueprint } from "../shared/blueprints";
+import catalog from "../scenarios/catalog.json";
+import socBlueprint from "../blueprints/live-workspace-soc/blueprint.json";
 import { selectionFromTimelineItem, type ScenarioPlan, type TimelineItem } from "../shared/demo-runner";
 import { selectionTargetsActor, selectionTargetsRecord } from "../bundles/live-workspace-soc/projection_views";
 
@@ -197,81 +199,54 @@ test("executive scenario uses the same runner timeline and semantic focus broker
   assert.equal(gateScenario?.correlationId, gateOrganism?.correlationId);
 });
 
-test("presentation context changes projection metadata without changing the causal journal", async () => {
-  const { controller, state: store } = runtime();
-  await controller.start();
-  const journalBefore = store.get("soc.journal");
-
-  await controller.emit("soc-workspace", "setPresentationContext", {
-    contextId: "priya-laptop",
-  });
-  await controller.settle();
-
-  const presentation = store.get("soc.presentation") as {
+test("SOC presentation presets carry region facets consistent with the blueprint context catalog", () => {
+  type Facet = { visible: boolean; rank: number; disclosure: string; group: string };
+  type PresetPresentation = {
     selectedContext: string;
-    revision: number;
     frame: string;
     arrangement: string;
-    regionFacets: Record<string, {
-      visible: boolean;
-      rank: number;
-      priority: string;
-      disclosure: string;
-      concern: string;
-      group: string;
-      presentation: string;
-    }>;
+    regionFacets: Record<string, Facet>;
   };
-  assert.equal(presentation.selectedContext, "priya-laptop");
-  assert.equal(presentation.revision, 1);
-  assert.equal(presentation.frame, "laptop");
-  assert.equal(presentation.arrangement, "command");
-  assert.deepEqual(presentation.regionFacets.authorization, {
-    visible: true,
-    rank: 5,
-    priority: "supporting",
-    disclosure: "summary",
-    concern: "governance",
-    group: "governance",
-    presentation: "decision",
-  });
-  assert.deepEqual(presentation.regionFacets.exploration, {
-    visible: false,
-    rank: 50,
-    priority: "supporting",
-    disclosure: "omitted",
-    concern: "investigation",
-    group: "investigation",
-    presentation: "collection",
-  });
+  const presets = (catalog.targets["live-workspace-soc"].presentationPresets ?? []) as Array<{
+    id: string;
+    context: { soc: { presentation: PresetPresentation } };
+  }>;
+  const contextCatalog = socBlueprint.payload.runtime.state.soc.presentation.contexts as Array<{
+    id: string;
+    frame: string;
+    arrangement: string;
+    regions: string[];
+  }>;
 
-  await controller.emit("soc-workspace", "setPresentationContext", {
-    contextId: "investigation-board",
-  });
-  await controller.settle();
-  const board = store.get("soc.presentation") as typeof presentation;
-  assert.equal(board.selectedContext, "investigation-board");
-  assert.equal(board.revision, 2);
-  assert.equal(board.frame, "shared");
-  assert.equal(board.arrangement, "kanban");
-  assert.equal(board.regionFacets.summary.visible, false);
-  assert.deepEqual(
-    ["intent", "constraints", "hypothesis", "exploration", "evidence", "response", "authorization", "causal-record"]
-      .map((region) => [region, board.regionFacets[region].rank, board.regionFacets[region].group]),
-    [
-      ["intent", 0, "kanban-frame"],
-      ["constraints", 1, "kanban-frame"],
-      ["hypothesis", 2, "kanban-explore"],
-      ["exploration", 3, "kanban-explore"],
-      ["evidence", 4, "kanban-establish"],
-      ["response", 5, "kanban-decide"],
-      ["authorization", 6, "kanban-decide"],
-      ["causal-record", 7, "kanban-record"],
-    ],
-  );
-  assert.equal(store.get("control.inspection.presentation.selectedContext"), "investigation-board");
-  assert.equal(store.get("control.inspection.blueprint.selectedContext"), "investigation-board");
-  assert.deepEqual(store.get("soc.journal"), journalBefore);
+  assert.ok(presets.length > 0, "expected SOC presentation presets");
+  for (const preset of presets) {
+    const presentation = preset.context.soc.presentation;
+    const def = contextCatalog.find((entry) => entry.id === preset.id);
+    assert.ok(def, `no context catalog entry for preset ${preset.id}`);
+    assert.equal(presentation.selectedContext, preset.id);
+    assert.equal(presentation.frame, def!.frame);
+    assert.equal(presentation.arrangement, def!.arrangement);
+    // Visible regions, ordered by rank, match the catalog's region list exactly.
+    const visible = Object.entries(presentation.regionFacets)
+      .filter(([, facet]) => facet.visible)
+      .sort((a, b) => a[1].rank - b[1].rank)
+      .map(([name]) => name);
+    assert.deepEqual(visible, def!.regions);
+    // Regions outside the context are ranked out of the way and omitted.
+    for (const [, facet] of Object.entries(presentation.regionFacets)) {
+      if (!facet.visible) {
+        assert.equal(facet.rank, 50);
+        assert.equal(facet.disclosure, "omitted");
+      }
+    }
+  }
+
+  // Spot-check the Priya laptop command view.
+  const priyaLaptop = presets.find((preset) => preset.id === "priya-laptop")!.context.soc.presentation;
+  assert.equal(priyaLaptop.frame, "laptop");
+  assert.equal(priyaLaptop.arrangement, "command");
+  assert.equal(priyaLaptop.regionFacets.authorization.disclosure, "summary");
+  assert.equal(priyaLaptop.regionFacets.exploration.visible, false);
 });
 
 test("mixed-team scenario preserves attributable steps and commander authority", async () => {

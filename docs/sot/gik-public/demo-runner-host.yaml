@@ -19,6 +19,7 @@ api_policy:
     scenario: Demo artifact, catalog, validation, and selection API.
     control: Request dispatch and receipt contracts.
     inspection: Timeline, focus, participant, and inspection data contracts.
+    presentation: Presentation preset resolution and default context.
 
 architecture:
   owns:
@@ -26,8 +27,9 @@ architecture:
     - Demo schema and cross-contract validation.
     - Scenario selection and playback coordination.
     - Control request, receipt, human-gate, focus, timeline, and inspection contracts.
-    - Managing internal demo-runner and control-harness companion bundles.
+    - Assembling internal demo-runner and control-harness companion bundles as program+vocabulary bundles.
     - Presentation-preset resolution for demos.
+    - Applying a selected presentation preset's state fragment to the live shared contexts without reopening the target.
   injected_boundary:
     - The caller supplies HostComponent.
     - HostComponent must accept DemoTargetHostProps.
@@ -78,6 +80,9 @@ component:
     - Normalizes a non-integer or negative query index to 0 and an index beyond the scenario's steps to 0.
     - Reads presentation context from the prop, then the presentation or presentationContext query aliases in that order.
     - Filters available presentation presets to ScenarioPlan.applicableContexts, then resolves the requested preset, entry default, full-substrate preset, or first filtered preset.
+    - Seeds control.presentationPresetId and control.presentationContext from the resolved preset and passes the filtered presets to the demo-runner presentation control.
+    - Subscribes to control.presentationPresetId and, whenever it changes, deep-merges the matching preset's context fragment into the live shared contexts as leaf-level set operations that preserve sibling keys, then calls onPresentationPresetChange.
+    - Applies a presentation-preset change in place without reopening or remounting the target, so in-progress target state is preserved across presentation changes.
     - Replays preceding built-in state commands when starting playback; the starting scenario index defaults to 0.
     - Creates control and demo SharedContextStore instances and an optional soc context from blueprintState.
     - Adds demo-runner and control-harness companion bundles; showControlHarness controls harness visibility.
@@ -112,6 +117,14 @@ scenario_contracts:
     signature: >-
       interface DemoCatalog { default: string; targets: Record<string, DemoTargetCatalogEntry>;
       entries: DemoCatalogEntry[] }
+  - name: PresentationPreset
+    signature: >-
+      interface PresentationPreset { id: string; label?: string; audience?: string;
+      focus?: string; context: Record<string, Json> }
+    notes: >-
+      context is a namespace-keyed state fragment (for example { soc: { presentation: … } }).
+      GikDemoBlueprintHost merges it into the live shared context whose top-level key matches a
+      namespace; fragment namespaces with no matching live store are ignored.
 
 scenario_api:
   - name: compileScenarioBlueprint
