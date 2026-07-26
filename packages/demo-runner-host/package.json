@@ -1,6 +1,6 @@
 {
   "name": "@gik/demo-runner-host",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Demo scenario runner and control harness host for the Generative Interaction Kernel.",
   "license": "MIT",
   "author": "nsreehari",
@@ -47,11 +47,11 @@
   "dependencies": {
     "@fluentui/react-components": "^9.74.3",
     "@fluentui/react-icons": "^2.0.312",
-    "@gik/controlface": "0.1.2",
-    "@gik/evaluators": "0.1.0",
-    "@gik/kernel": "0.1.0",
-    "@gik/blueprint": "0.1.0",
-    "@gik/react": "0.1.0"
+    "@gik/controlface": "0.1.3",
+    "@gik/evaluators": "0.1.1",
+    "@gik/kernel": "0.1.1",
+    "@gik/blueprint": "0.1.1",
+    "@gik/react": "0.1.1"
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",

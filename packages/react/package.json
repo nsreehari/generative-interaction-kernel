@@ -1,6 +1,6 @@
 {
   "name": "@gik/react",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "React renderer and <BundleHost> adapter for the Generative Interaction Kernel.",
   "license": "MIT",
   "author": "nsreehari",
@@ -45,7 +45,7 @@
     "react-dom": "^18.3.1"
   },
   "dependencies": {
-    "@gik/kernel": "0.1.0"
+    "@gik/kernel": "0.1.1"
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
