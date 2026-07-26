@@ -27,8 +27,6 @@ In this repo, the concrete shape is:
 - [packages/controlface](packages/controlface) = the public `@gik/controlface` package
 - [packages/agentface](packages/agentface) = the public `@gik/agentface` package
 - [packages/react](packages/react) = the public `@gik/react` package
-- [packages/provider-consequence-graph](packages/provider-consequence-graph) = the public `@gik/provider-consequence-graph` package
-- [packages/provider-exploratory-graph](packages/provider-exploratory-graph) = the public `@gik/provider-exploratory-graph` package
 - [packages/provider-step-orchestrator](packages/provider-step-orchestrator) = the public `@gik/provider-step-orchestrator` package
 - [packages/provider-profile-authoring](packages/provider-profile-authoring) = the public `@gik/provider-profile-authoring` package
 - [packages/transport-http-sse](packages/transport-http-sse) = the public `@gik/transport-http-sse` package
@@ -186,8 +184,6 @@ generative-interaction-kernel/
     evaluators/                 ← @gik/evaluators (JSONata evaluators + declarative validators)
     react/                      ← @gik/react
     profile/                    ← @gik/profile (generic profile machinery, GenUI interpreters, template loaders, authoring runner)
-    provider-consequence-graph/ ← @gik/provider-consequence-graph
-    provider-exploratory-graph/ ← @gik/provider-exploratory-graph
     provider-step-orchestrator/ ← @gik/provider-step-orchestrator
     provider-profile-authoring/ ← @gik/provider-profile-authoring
     transport-http-sse/         ← @gik/transport-http-sse (browser-safe top-level, Node server subpath)

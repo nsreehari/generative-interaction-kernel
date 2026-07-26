@@ -3,9 +3,9 @@ import type { FlowRegistry } from "../../step-orchestrator/src/step-orchestrator
 import type { StepFlowConfig } from "../../vendor/step-machine/types";
 
 export interface GraphDigest {
-  triggered: string[];
+  changedCells: string[];
   stages: number;
-  blocked: number;
+  blockers: number;
   unlocked: string[];
 }
 
@@ -39,8 +39,8 @@ export function createBlueprintAuthoringRegistry(): FlowRegistry {
           const objective = String(input.objective ?? "provider-authoring");
           const surface = String(input.surface ?? "copilot");
           const changedSource = String(input.changedSource ?? "portfolio");
-          const consequence = asRecord(input.consequence);
-          const exploratory = asRecord(input.exploratory);
+          const cellImpact = asRecord(input.cellImpact);
+          const exploration = asRecord(input.exploration);
           const blueprintSeed = summarizeBlueprint(input.blueprint);
           return {
             result: "ok",
@@ -48,7 +48,7 @@ export function createBlueprintAuthoringRegistry(): FlowRegistry {
               objective,
               surface,
               changedSource,
-              graphDigest: buildGraphDigest(consequence, exploratory),
+              graphDigest: buildGraphDigest(cellImpact, exploration),
               blueprintSeed,
             },
           };
@@ -117,12 +117,12 @@ export function summarizeBlueprint(value: unknown): BlueprintSeedSummary | null 
   };
 }
 
-function buildGraphDigest(consequence: Record<string, unknown>, exploratory: Record<string, unknown>): GraphDigest {
+function buildGraphDigest(cellImpact: Record<string, unknown>, exploration: Record<string, unknown>): GraphDigest {
   return {
-    triggered: asStringArray(consequence.triggered),
-    stages: asArray(consequence.parallelStages).length,
-    blocked: asArray(consequence.blocked).length,
-    unlocked: asStringArray(exploratory.unlocked),
+    changedCells: asStringArray(cellImpact.changedCells),
+    stages: asArray(cellImpact.stages).length,
+    blockers: asArray(cellImpact.blockers).length,
+    unlocked: asStringArray(exploration.unlocked),
   };
 }
 

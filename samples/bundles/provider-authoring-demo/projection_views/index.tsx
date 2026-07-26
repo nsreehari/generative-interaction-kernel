@@ -4,20 +4,17 @@ import type { Json } from "@gik/kernel";
 import { readProps, type ProjectionView } from "@gik/react";
 
 import {
-  activateConsequenceGraph,
-  inspectConsequenceGraph,
-  portfolioConsequenceSample,
-} from "@gik/provider-consequence-graph";
-import {
-  educationExploratorySample,
-  evaluateExploratoryFrontier,
-  inspectExploratoryGraph,
-} from "@gik/provider-exploratory-graph";
+  analyzeCellImpact,
+  analyzeExploration,
+  compileCellTopology,
+  inspectExploration,
+} from "@gik/blueprint";
 import {
   createBlueprintAuthoringRegistry,
   summarizeBlueprint,
 } from "@gik/provider-blueprint-authoring";
 import { StepOrchestrator, type FlowRegistry } from "@gik/provider-step-orchestrator";
+import { educationExploration, portfolioCells } from "./analysis-fixtures";
 import samplesOverviewBlueprint from "../../../blueprints/samples-overview/blueprint.json" with { type: "json" };
 
 function prettyJson(value: unknown): string {
@@ -55,6 +52,7 @@ const useStyles = makeStyles({
 
 const orchestratorRegistry: FlowRegistry = createBlueprintAuthoringRegistry();
 const orchestrator = new StepOrchestrator(orchestratorRegistry);
+const portfolioTopology = compileCellTopology("portfolio-refresh", portfolioCells);
 
 function toJsonRecord(value: unknown): Record<string, Json> {
   return JSON.parse(JSON.stringify(value ?? {})) as Record<string, Json>;
@@ -70,10 +68,9 @@ export interface ProviderAuthoringPlanInput {
 }
 
 export interface ProviderAuthoringPlanResult {
-  consequenceInspection: ReturnType<typeof inspectConsequenceGraph>;
-  consequenceActivation: ReturnType<typeof activateConsequenceGraph>;
-  exploratoryInspection: ReturnType<typeof inspectExploratoryGraph>;
-  exploratoryFrontier: ReturnType<typeof evaluateExploratoryFrontier>;
+  cellImpact: ReturnType<typeof analyzeCellImpact>;
+  explorationInspection: ReturnType<typeof inspectExploration>;
+  explorationFrontier: ReturnType<typeof analyzeExploration>;
   blueprintSeed: {
     blueprint: typeof samplesOverviewBlueprint;
     summary: ReturnType<typeof summarizeBlueprint>;
@@ -82,14 +79,12 @@ export interface ProviderAuthoringPlanResult {
 }
 
 export function buildProviderAuthoringPlan(input: ProviderAuthoringPlanInput): ProviderAuthoringPlanResult {
-  const consequenceInspection = inspectConsequenceGraph(portfolioConsequenceSample);
-  const consequenceActivation = activateConsequenceGraph(portfolioConsequenceSample, [input.changedSource]);
-  const exploratoryInspection = inspectExploratoryGraph(educationExploratorySample);
-  const exploratoryFrontier = evaluateExploratoryFrontier(
-    educationExploratorySample,
-    ["tenthComplete"],
-    input.stream ? { choose12th: input.stream } : {}
-  );
+  const cellImpact = analyzeCellImpact(portfolioTopology, { changedCells: [input.changedSource] });
+  const explorationInspection = inspectExploration(educationExploration);
+  const explorationFrontier = analyzeExploration(educationExploration, {
+    completed: ["tenthComplete"],
+    selections: input.stream ? { choose12th: input.stream } : {},
+  });
   const blueprintSeed =
     input.mode === "blueprint-artifact" && input.blueprintSeedName === "samples-overview"
       ? {
@@ -102,18 +97,17 @@ export function buildProviderAuthoringPlan(input: ProviderAuthoringPlanInput): P
     objective: input.objective,
     surface: input.surface,
     changedSource: input.changedSource,
-    consequence: toJsonRecord(consequenceActivation),
-    exploratory: toJsonRecord(exploratoryFrontier),
+    cellImpact: toJsonRecord(cellImpact),
+    exploration: toJsonRecord(explorationFrontier),
   };
   if (blueprintSeed?.blueprint) {
     args.blueprint = toJsonRecord(blueprintSeed.blueprint);
   }
 
   return {
-    consequenceInspection,
-    consequenceActivation,
-    exploratoryInspection,
-    exploratoryFrontier,
+    cellImpact,
+    explorationInspection,
+    explorationFrontier,
     blueprintSeed,
     args,
   };
@@ -134,10 +128,9 @@ const ProviderAuthoringSampleView: ProjectionView = ({ node }) => {
     [blueprintSeedName, changedSource, mode, objective, stream, surface]
   );
   const planModel = React.useMemo(() => buildProviderAuthoringPlan(planInput), [planInput]);
-  const consequenceInspection = planModel.consequenceInspection;
-  const consequenceActivation = planModel.consequenceActivation;
-  const exploratoryInspection = planModel.exploratoryInspection;
-  const exploratoryFrontier = planModel.exploratoryFrontier;
+  const cellImpact = planModel.cellImpact;
+  const explorationInspection = planModel.explorationInspection;
+  const explorationFrontier = planModel.explorationFrontier;
   const blueprintSeed = planModel.blueprintSeed;
 
   const [plan, setPlan] = React.useState<Record<string, unknown> | null>(null);
@@ -164,19 +157,19 @@ const ProviderAuthoringSampleView: ProjectionView = ({ node }) => {
     <div className={styles.stack}>
       <p className="gx-note gx-note-muted">
         {mode === "blueprint-artifact"
-          ? "This mode starts from a declared Blueprint artifact and uses the graphs to explain its context."
-          : "This mode is graph-driven: the consequence graph explains downstream activation, the exploratory graph explains unlocked choice frontiers, and the StepOrchestrator composes a draft Blueprint."}
+          ? "This mode starts from a declared Blueprint artifact and uses snapshot analysis to explain its context."
+          : "This mode uses Cell impact and exploration analysis to compose a draft Blueprint."}
       </p>
 
       <div className={styles.grid}>
         <div className={styles.card}>
-          <div className="gx-muted">Consequence graph</div>
-          <strong>triggered = {consequenceActivation.triggered.join(", ")}</strong>
-          <div>reachable = {consequenceActivation.reachable.join(", ") || "<none>"}</div>
-          <div>edges = {consequenceInspection.edges.length}</div>
+          <div className="gx-muted">Cell impact</div>
+          <strong>changed = {cellImpact.changedCells.join(", ")}</strong>
+          <div>affected = {cellImpact.affectedCells.join(", ") || "<none>"}</div>
+          <div>edges = {portfolioTopology.edges.length}</div>
           <div className={styles.gridTight}>
-            {consequenceActivation.parallelStages.length > 0 ? (
-              consequenceActivation.parallelStages.map((stage, index) => (
+            {cellImpact.stages.length > 0 ? (
+              cellImpact.stages.map((stage, index) => (
                 <div key={`stage-${index}`} className={`${styles.card} ${styles.insetCard}`}>
                   <div className="gx-muted">Stage {index + 1}</div>
                   <div>{stage.join(", ")}</div>
@@ -188,18 +181,18 @@ const ProviderAuthoringSampleView: ProjectionView = ({ node }) => {
           </div>
           <div className={styles.sectionGap}>
             <div className="gx-muted">Blocked</div>
-            <pre className={styles.pre}>{prettyJson(consequenceActivation.blocked)}</pre>
+            <pre className={styles.pre}>{prettyJson(cellImpact.blockers)}</pre>
           </div>
         </div>
 
         <div className={styles.card}>
           <div className="gx-muted">Exploratory frontier</div>
           <strong>stream = {stream || "(none yet)"}</strong>
-          <div>unlocked = {exploratoryFrontier.unlocked.join(", ")}</div>
-          <div>choice edges = {exploratoryInspection.edges.filter((edge) => edge.kind === "option").length}</div>
+          <div>unlocked = {explorationFrontier.unlocked.join(", ")}</div>
+          <div>choice edges = {explorationInspection.edges.filter((edge) => edge.kind === "option").length}</div>
           <div className={styles.sectionGap}>
             <div className="gx-muted">Available choices</div>
-            <pre className={styles.pre}>{prettyJson(exploratoryFrontier.availableChoices)}</pre>
+            <pre className={styles.pre}>{prettyJson(explorationFrontier.availableChoices)}</pre>
           </div>
         </div>
       </div>
@@ -228,8 +221,8 @@ const ProviderAuthoringSampleView: ProjectionView = ({ node }) => {
           <pre className={styles.pre}>
             {prettyJson({
               mode,
-              consequence: consequenceActivation,
-              exploratory: exploratoryFrontier,
+              cellImpact,
+              exploration: explorationFrontier,
               blueprintSeed: plan?.blueprintSeed,
               blueprint: plan?.blueprint,
               recipes: plan?.recipes,

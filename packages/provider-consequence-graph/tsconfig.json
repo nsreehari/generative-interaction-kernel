@@ -1,8 +1,0 @@
-{
-  "extends": "../../kernel/tsconfig.json",
-  "include": [
-    "src",
-    "../../providers/consequence-graph/src",
-    "../../kernel/src"
-  ]
-}

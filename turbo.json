@@ -4,6 +4,11 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
+    },
+    "@gik/blueprint#build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/blueprint/**"],
+      "outputs": ["dist/**"]
     }
   }
 }

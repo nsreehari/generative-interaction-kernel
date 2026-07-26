@@ -4,4 +4,6 @@ export * from "./cells";
 export * from "./lowering-cells";
 export * from "./types";
 export * from "./execution";
+export * from "./cell-impact";
+export * from "./exploration";
 export { composeCellDocument } from "./cell-projection";
