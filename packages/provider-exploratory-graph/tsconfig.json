@@ -1,8 +1,0 @@
-{
-  "extends": "../../kernel/tsconfig.json",
-  "include": [
-    "src",
-    "../../providers/exploratory-graph/src",
-    "../../kernel/src"
-  ]
-}

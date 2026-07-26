@@ -4,12 +4,6 @@ import { defineConfig } from "vitest/config";
 const blueprintPackage = fileURLToPath(
   new URL("./blueprint/src/index.ts", import.meta.url)
 );
-const providerConsequenceGraph = fileURLToPath(
-  new URL("./packages/provider-consequence-graph/src/index.ts", import.meta.url)
-);
-const providerExploratoryGraph = fileURLToPath(
-  new URL("./packages/provider-exploratory-graph/src/index.ts", import.meta.url)
-);
 const providerStepOrchestrator = fileURLToPath(
   new URL("./packages/provider-step-orchestrator/src/index.ts", import.meta.url)
 );
@@ -90,8 +84,6 @@ export default defineConfig({
         resolve: {
           alias: {
             "@gik/blueprint": blueprintPackage,
-            "@gik/provider-consequence-graph": providerConsequenceGraph,
-            "@gik/provider-exploratory-graph": providerExploratoryGraph,
             "@gik/provider-step-orchestrator": providerStepOrchestrator,
             "@gik/provider-blueprint-authoring": providerBlueprintAuthoring,
           },

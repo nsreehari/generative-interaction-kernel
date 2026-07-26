@@ -1,6 +1,37 @@
-import type { ExploratoryGraphDefinition } from "./exploratory-graph";
+import {
+  defineExploration,
+  type CellDefinition,
+} from "@gik/blueprint";
 
-export const educationExploratorySample: ExploratoryGraphDefinition = {
+export const portfolioCells: Readonly<Record<string, CellDefinition>> = {
+  portfolio: { id: "portfolio", outputs: [{ token: "portfolio" }] },
+  capitalGain: {
+    id: "capitalGain",
+    inputs: [{ token: "portfolio" }],
+    outputs: [{ token: "capitalGain" }],
+  },
+  marketPrices: {
+    id: "marketPrices",
+    inputs: [{ token: "portfolio" }],
+    outputs: [{ token: "marketPrices" }],
+  },
+  taxExposure: {
+    id: "taxExposure",
+    inputs: [{ token: "portfolio" }, { token: "capitalGain" }],
+    outputs: [{ token: "taxExposure" }],
+  },
+  currentValue: {
+    id: "currentValue",
+    inputs: [{ token: "portfolio" }, { token: "marketPrices" }],
+    outputs: [{ token: "currentValue" }],
+  },
+  recommendations: {
+    id: "recommendations",
+    inputs: [{ token: "currentValue" }, { token: "taxExposure" }],
+  },
+};
+
+export const educationExploration = defineExploration({
   id: "education-branches",
   nodes: {
     tenthComplete: { id: "tenthComplete", label: "10th complete", unlocks: ["choose12th"] },
@@ -26,4 +57,4 @@ export const educationExploratorySample: ExploratoryGraphDefinition = {
       ],
     },
   },
-};
+});

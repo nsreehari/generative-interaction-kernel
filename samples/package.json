@@ -23,8 +23,6 @@
     "@gik/evaluators": "0.1.0",
     "@gik/kernel": "0.1.0",
     "@gik/blueprint": "0.1.0",
-    "@gik/provider-consequence-graph": "0.1.0",
-    "@gik/provider-exploratory-graph": "0.1.0",
     "@gik/provider-blueprint-authoring": "0.1.0",
     "@gik/provider-step-orchestrator": "0.1.0",
     "@gik/react": "0.1.0",

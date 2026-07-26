@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  analyzeCellImpact,
+  analyzeExploration,
   assembleBlueprint,
   compileCellTopology,
   createBlueprint,
   defineLoweringCell,
+  defineExploration,
+  inspectExploration,
   lowerBlueprint,
   parseBlueprintJson,
   stringifyBlueprint,
@@ -96,6 +100,104 @@ describe("@gik/blueprint", () => {
       providerCellId: "holdings",
       consumerCellId: "prices",
     }]);
+  });
+
+  it("analyzes downstream Cell impact without mutating topology", () => {
+    const topology = compileCellTopology("portfolio", {
+      portfolio: { id: "portfolio", outputs: [{ token: "portfolio" }] },
+      gains: { id: "gains", inputs: [{ token: "portfolio" }], outputs: [{ token: "gains" }] },
+      prices: { id: "prices", inputs: [{ token: "portfolio" }], outputs: [{ token: "prices" }] },
+      recommendation: {
+        id: "recommendation",
+        inputs: [{ token: "gains" }, { token: "prices" }],
+      },
+    });
+
+    expect(analyzeCellImpact(topology, { changedCells: ["portfolio"] })).toEqual({
+      changedCells: ["portfolio"],
+      affectedCells: ["gains", "prices", "recommendation"],
+      stages: [["gains", "prices"], ["recommendation"]],
+      blockers: [],
+    });
+    expect(topology.cells).toHaveLength(4);
+  });
+
+  it("reports Cell impact blockers and rejects unknown Cells", () => {
+    const topology = compileCellTopology("portfolio", {
+      portfolio: { id: "portfolio", outputs: [{ token: "portfolio" }] },
+      gains: { id: "gains", inputs: [{ token: "portfolio" }], outputs: [{ token: "gains" }] },
+      prices: { id: "prices", inputs: [{ token: "portfolio" }], outputs: [{ token: "prices" }] },
+      recommendation: {
+        id: "recommendation",
+        inputs: [{ token: "gains" }, { token: "prices" }],
+      },
+    });
+
+    expect(analyzeCellImpact(topology, { changedCells: ["gains"] }).blockers).toEqual([
+      { cellId: "recommendation", waitingOn: ["prices"] },
+    ]);
+    expect(() => analyzeCellImpact(topology, { changedCells: ["missing"] })).toThrow("Unknown Cell 'missing'");
+  });
+
+  it("analyzes an exploration snapshot without owning Blueprint state", () => {
+    const exploration = defineExploration({
+      id: "education",
+      nodes: {
+        tenthComplete: { id: "tenthComplete", unlocks: ["chooseStream"] },
+        engineering: { id: "engineering" },
+        medicine: { id: "medicine" },
+      },
+      choices: {
+        chooseStream: {
+          id: "chooseStream",
+          label: "Choose stream",
+          requires: ["tenthComplete"],
+          options: [
+            { id: "mpc", label: "MPC", unlocks: ["engineering"] },
+            { id: "bpc", label: "BPC", unlocks: ["medicine"] },
+          ],
+        },
+      },
+    });
+
+    expect(analyzeExploration(exploration, {
+      completed: ["tenthComplete"],
+      selections: { chooseStream: "mpc" },
+    })).toMatchObject({
+      unlocked: ["chooseStream", "engineering", "tenthComplete"],
+      availableChoices: [{ id: "chooseStream" }],
+    });
+    expect(inspectExploration(exploration).edges).toContainEqual({
+      from: "chooseStream",
+      to: "engineering",
+      kind: "option",
+      optionId: "mpc",
+    });
+  });
+
+  it("rejects invalid exploration definitions and state", () => {
+    expect(() => defineExploration({
+      id: "invalid",
+      nodes: { start: { id: "start", unlocks: ["missing"] } },
+      choices: {},
+    })).toThrow("unknown participant 'missing'");
+
+    const exploration = defineExploration({
+      id: "choice",
+      nodes: { start: { id: "start" }, result: { id: "result" } },
+      choices: {
+        choose: {
+          id: "choose",
+          label: "Choose",
+          requires: ["start"],
+          options: [{ id: "one", label: "One", unlocks: ["result"] }],
+        },
+      },
+    });
+    expect(() => analyzeExploration(exploration, {
+      completed: [],
+      selections: { choose: "one" },
+    })).toThrow("choice 'choose' is not available");
   });
 
   it("lowers a headless Blueprint through Kernel validation", () => {

@@ -26,8 +26,8 @@ test("blueprint authoring registry composes blueprint and recipes from graph out
       objective: "portfolio-review",
       surface: "copilot",
       changedSource: "portfolio",
-      consequence: { triggered: ["portfolio"], parallelStages: [["capitalGain", "marketPrices"]], blocked: [] },
-      exploratory: { unlocked: ["tenthComplete", "choose12th", "engineering"] },
+      cellImpact: { changedCells: ["portfolio"], stages: [["capitalGain", "marketPrices"]], blockers: [] },
+      exploration: { unlocked: ["tenthComplete", "choose12th", "engineering"] },
     },
   });
   const payload = (res?.events?.[0].payload ?? {}) as Record<string, any>;
@@ -47,8 +47,8 @@ test("artifact-backed authoring mode proposes the blueprint's concrete recipe ch
       objective: "review board",
       surface: "desktop",
       changedSource: "portfolio",
-      consequence: { triggered: ["portfolio"], parallelStages: [["capitalGain", "marketPrices"]], blocked: [] },
-      exploratory: { unlocked: ["tenthComplete", "choose12th", "engineering"] },
+      cellImpact: { changedCells: ["portfolio"], stages: [["capitalGain", "marketPrices"]], blockers: [] },
+      exploration: { unlocked: ["tenthComplete", "choose12th", "engineering"] },
       blueprint: asJson(samplesOverviewBlueprint),
     },
   });

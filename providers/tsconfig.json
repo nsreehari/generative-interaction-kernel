@@ -14,5 +14,5 @@
     "resolveJsonModule": true,
     "types": ["node"]
   },
-  "include": ["vendor", "step-orchestrator", "consequence-graph", "exploratory-graph", "blueprint-authoring"]
+  "include": ["vendor", "step-orchestrator", "blueprint-authoring"]
 }

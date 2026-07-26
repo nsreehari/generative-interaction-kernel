@@ -1,1 +1,0 @@
-export * from "../../../providers/consequence-graph/src/index";

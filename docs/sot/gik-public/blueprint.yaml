@@ -20,6 +20,8 @@ terminology:
   lowering_recipe: A declaration connecting one tier to another.
   lowering_cell: A declaration for an operation that processes artifacts during conversion.
   relationship: A typed connection among Cells. Blueprint validates participants but not kind-specific behavior.
+  cell_impact: Static downstream analysis over one compiled Cell topology snapshot.
+  exploration: A validated possibility-space snapshot with gated choices and option-driven unlocks.
   projection: >-
     A named description of how selected Cells are presented. A Blueprint carries an open map of
     named projections; the reserved `presentation` entry is the projection consumed by the
@@ -32,7 +34,8 @@ terminology:
 architecture:
   owns:
     - Blueprint artifact and entity contracts.
-    - Cell declarations and generic token-topology analysis.
+    - Cell declarations, generic token-topology analysis, and static Cell impact analysis.
+    - Stateless exploration definition, inspection, and frontier analysis.
     - Tier and lowering-recipe declarations.
     - Lowering Cell declarations and validation.
     - Blueprint structural and semantic validation.
@@ -50,6 +53,7 @@ architecture:
     - Rendering, transports, Faces, or host service bindings.
     - Recipe execution or Lowering Cell scheduling.
     - Relationship-specific execution semantics.
+    - Blueprint mutation authorization, application, state, or lifecycle.
   dependency_direction:
     - "@gik/blueprint -> @gik/kernel"
     - "@gik/blueprint -> @gik/evaluators for declarative schema validation"
@@ -194,6 +198,15 @@ cell_api:
       compileCellTopology(id: string,
       cellsById: Readonly<Record<string, CellDefinition>>): ExecutableCellTopology
     behavior: Derives deterministic provider-consumer edges without creating a Kernel program.
+  - name: analyzeCellImpact
+    signature: >-
+      analyzeCellImpact(topology: ExecutableCellTopology,
+      request: CellImpactRequest): CellImpactAnalysis
+    behavior:
+      - Reports changed Cells, transitively affected Cells, dependency-ready stages, and blockers.
+      - Rejects changed or completed Cell ids absent from the supplied topology snapshot.
+      - Does not execute Cells, predict execution outcomes, or mutate the topology or Blueprint.
+      - Can be rerun against each accepted fixed, reconfigurable, or adaptive Blueprint snapshot.
   - name: composeCellDocument
     signature: >-
       composeCellDocument(definition: CellProjectionDefinition,
@@ -202,6 +215,40 @@ cell_api:
       Compiles one validated Cell topology and presentation projection into a Kernel
       projected program. CellProjectionDefinition is structural input to this function
       and is not separately exported from the package entrypoint.
+
+exploration_api:
+  contracts:
+    - ExplorationDefinition
+    - ExplorationNode
+    - ExplorationChoice
+    - ExplorationOption
+    - ExplorationState
+    - ExplorationFrontier
+    - ExplorationInspection
+    - ExplorationEdge
+  functions:
+    - name: defineExploration
+      signature: "defineExploration(definition: ExplorationDefinition): ExplorationDefinition"
+      behavior:
+        - Validates participant references, map-key identity, and option identity.
+        - Returns a clone of the supplied definition snapshot.
+    - name: inspectExploration
+      signature: "inspectExploration(definition: ExplorationDefinition): ExplorationInspection"
+      behavior: Returns deterministic participants and unlock or option edges for inspection.
+    - name: analyzeExploration
+      signature: >-
+        analyzeExploration(definition: ExplorationDefinition,
+        state: ExplorationState): ExplorationFrontier
+      behavior:
+        - Computes transitive unlocks and currently available choices from one definition and state snapshot.
+        - Rejects unknown completed participants, choices, options, and unavailable selections.
+        - Does not select options, mutate a Blueprint, or retain analysis state between calls.
+  relationship_boundary: >-
+    ExplorationDefinition may be carried by a relationship-specific configuration, but Blueprint
+    core does not automatically interpret arbitrary relationship configuration as exploration.
+  mutation_boundary: >-
+    Exploration results may inform a host or future Blueprint mutation authority. They never
+    authorize, apply, lower, or schedule structural mutations themselves.
 
 resolution_api:
   types:
@@ -309,6 +356,8 @@ structure_mode_contract:
     - Validation preserves an explicit value and leaves an omitted value undefined.
     - This package does not enforce mode-specific authorization, mutation, migration, or runtime behavior.
     - Kernel does not receive or interpret Blueprint structure-mode labels through this package.
+    - Cell impact and exploration APIs analyze supplied snapshots identically for all structure modes.
+    - After an accepted structural mutation, callers compile or supply the new snapshot and rerun analysis.
 
 public_exports:
   artifact:
@@ -337,11 +386,27 @@ public_exports:
     - CellDiagnostic
     - ExecutableCellEdge
     - ExecutableCellTopology
+    - CellImpactRequest
+    - CellImpactBlocker
+    - CellImpactAnalysis
     - defineCell
     - tokenPattern
     - analyzeCellComposition
     - compileCellTopology
+    - analyzeCellImpact
     - composeCellDocument
+  exploration:
+    - ExplorationDefinition
+    - ExplorationNode
+    - ExplorationChoice
+    - ExplorationOption
+    - ExplorationState
+    - ExplorationFrontier
+    - ExplorationInspection
+    - ExplorationEdge
+    - defineExploration
+    - inspectExploration
+    - analyzeExploration
   resolution:
     - ResourceResolver
     - ResolvedBlueprint
