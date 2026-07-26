@@ -1293,8 +1293,8 @@ export function createDemoRunnerBundle(stateSeed?: Record<string, unknown>): Bun
   const state = structuredClone(demoRunnerState) as Record<string, unknown>;
   if (stateSeed) Object.assign(state, stateSeed);
   return bundleFromJson({
-    manifest: structuredClone(demoRunnerManifest),
-    document: structuredClone(demoRunnerDocument),
+    vocabulary: structuredClone(demoRunnerManifest),
+    program: structuredClone(demoRunnerDocument),
     state,
   }, {
     effectHandlers: demoRunnerEffects,
@@ -1306,8 +1306,8 @@ export function createGikControlHarnessBundle(stateSeed?: Record<string, unknown
   const state = structuredClone(harnessState) as Record<string, unknown>;
   if (stateSeed) Object.assign(state, stateSeed);
   return bundleFromJson({
-    manifest: structuredClone(harnessManifest),
-    document: structuredClone(harnessDocument),
+    vocabulary: structuredClone(harnessManifest),
+    program: structuredClone(harnessDocument),
     state,
   }, {
     projectionViews: harnessViews,

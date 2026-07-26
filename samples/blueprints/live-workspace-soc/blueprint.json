@@ -126,7 +126,6 @@
             "recommendContainment",
             "authorizeContainment",
             "executeContainment",
-            "setPresentationContext",
             "reset"
           ]
         },
@@ -244,7 +243,6 @@
           "calculateResponse",
           "recommendContainment",
           "authorizeContainment",
-          "setPresentationContext",
           "syncInspection",
           "executeContainment",
           "resetScenario"
@@ -771,14 +769,6 @@
                 }
               }
             ],
-            "setPresentationContext": [
-              {
-                "do": "invoke",
-                "args": {
-                  "tool": "setPresentationContext"
-                }
-              }
-            ],
             "reset": [
               {
                 "do": "invoke",
@@ -924,16 +914,6 @@
                 {
                   "do": "emit",
                   "event": "reset"
-                }
-              ]
-            },
-            {
-              "when": "control.presentationContext",
-              "runInitially": true,
-              "run": [
-                {
-                  "do": "emit",
-                  "event": "setPresentationContext"
                 }
               ]
             },
