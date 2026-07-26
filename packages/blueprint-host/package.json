@@ -1,6 +1,6 @@
 {
   "name": "@gik/blueprint-host",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "React host for running a Blueprint with the Generative Interaction Kernel.",
   "license": "MIT",
   "author": "nsreehari",
@@ -44,10 +44,10 @@
     "react-dom": "^18.3.1"
   },
   "dependencies": {
-    "@gik/controlface": "0.1.2",
-    "@gik/kernel": "0.1.0",
-    "@gik/blueprint": "0.1.0",
-    "@gik/react": "0.1.0"
+    "@gik/controlface": "0.1.3",
+    "@gik/kernel": "0.1.1",
+    "@gik/blueprint": "0.1.1",
+    "@gik/react": "0.1.1"
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",

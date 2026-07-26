@@ -1,6 +1,6 @@
 {
   "name": "@gik/blueprint",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Canonical Blueprint artifact, Cell, tier, lowering recipe, and Kernel lowering contracts for GIK.",
   "license": "MIT",
   "author": "nsreehari",
@@ -39,8 +39,8 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "@gik/evaluators": "0.1.0",
-    "@gik/kernel": "0.1.0"
+    "@gik/evaluators": "0.1.1",
+    "@gik/kernel": "0.1.1"
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --sourcemap --minify --clean --external @gik/kernel --external @gik/evaluators --tsconfig tsconfig.json",
