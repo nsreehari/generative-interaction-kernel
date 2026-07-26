@@ -39,6 +39,9 @@
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
+  "devDependencies": {
+    "@gik/blueprint": "0.1.0"
+  },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
     "prepack": "node ../../scripts/sync-public-docs.mjs packages/provider-consequence-graph"
