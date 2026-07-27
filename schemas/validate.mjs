@@ -39,6 +39,15 @@ const check = (label, validate, data) => {
   }
 };
 
+const reject = (label, validate, data) => {
+  if (!validate(data)) {
+    console.log(`  PASS  ${label}`);
+  } else {
+    failures++;
+    console.log(`  FAIL  ${label}`);
+  }
+};
+
 const vVocabulary = ajv.getSchema(byId("vocabulary.schema.json"));
 const vProgram = ajv.getSchema(byId("program.schema.json"));
 const vPatch = ajv.getSchema(byId("patch.schema.json"));
@@ -57,6 +66,20 @@ check("vocabulary fixture -> vocabulary.schema", vVocabulary, vocabulary);
 check("program fixture    -> program.schema", vProgram, program);
 check("event fixture    -> event.schema", vEvent, event);
 check("patch fixture    -> patch.schema", vPatch, expectedPatch);
+check("program patch    -> patch.schema", vPatch, {
+  gik: "0.1",
+  type: "patch",
+  payload: {
+    rev: 1,
+    ops: [],
+    program: [{ op: "setRoot", root: { capability: "panel", id: "root" } }],
+  },
+});
+reject("malformed program patch rejected", vPatch, {
+  gik: "0.1",
+  type: "patch",
+  payload: { rev: 1, ops: [], program: [{ op: "setRoot" }] },
+});
 check("progress fixture -> progress.schema", vProgress, progress);
 
 console.log("\nEnvelope (oneOf) validation:");

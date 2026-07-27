@@ -40,7 +40,8 @@ architecture:
     - docs/decisions/ADR-0041-blueprint-first-hosting-and-controlface-lowering.md
   current_implementation: >-
     Blueprint opening remains exported through ControlFace. The current implementation uses
-    the Blueprint implementation directly and does not use a Profile package.
+    the Blueprint implementation directly and does not use a Profile package. A live ControlFace
+    may also attach the source Blueprint so its structure mode governs runtime and explicit changes.
 
 shared_contracts:
   - name: McpTool
@@ -74,12 +75,30 @@ public_packages:
         - Wraps a live Kernel and KernelTransportHost.
         - Supplies live methods used by RuntimeFace tool handlers.
         - Implements TransportBroker so render transports can attach through the Face boundary.
+        - Installs Blueprint adaptive ProgramPatch admission when ControlFaceOptions.blueprint is supplied.
+      blueprint_methods:
+        - "getBlueprint(): BlueprintSource | undefined"
+        - "getProgram(): ProjectedProgramDefinition"
+        - "inspectBlueprintStructureChange(request: BlueprintPatchRequest): BlueprintPatchDecision"
+        - "reconfigureBlueprint(patch: BlueprintPatch): Promise<BlueprintReconfigurationResult>"
+      mode_behavior:
+        - fixed rejects reconfigureBlueprint and runtime-originated program patches.
+        - reconfigurable accepts authorized reconfigureBlueprint calls but rejects runtime-originated program patches.
+        - adaptive admits event-produced program patches through BlueprintStructurePolicy.
+        - Adaptive checkpoints include the current program; fixed and reconfigurable checkpoints remain state-only.
+      reconfiguration_boundary: >-
+        reconfigureBlueprint applies a validated semantic Blueprint patch, derives a typed ProgramPatch
+        against the existing executable program, and commits it through Kernel.applyProgramPatch.
+        BlueprintReconfigurationResult always returns the accepted Blueprint snapshot and includes
+        programPatch and transition only when executable structure changed. It currently supports
+        recipe-free declarative, non-nested Blueprints.
     blueprint_opening:
       entrypoint: packages/controlface/src/blueprint.ts
       exports:
         - defineDeclarativeBlueprint
         - openBlueprint
         - BlueprintRuntime
+        - BlueprintReconfigurationResult
         - BlueprintSource
         - OpenBlueprintOptions
       current_behavior: >-
@@ -137,6 +156,10 @@ projection_contents:
   live_tools:
     - getState
     - getTree
+    - getBlueprint
+    - getProgram
+    - inspectBlueprintStructureChange
+    - reconfigureBlueprint
     - describeServiceKinds
     - listServiceRequests
     - probeService
@@ -156,3 +179,7 @@ projection_contents:
     - getState
     - getTree
     - describeServiceKinds
+  parked_agentface_structure_policy: >-
+    getBlueprint, getProgram, inspectBlueprintStructureChange, and reconfigureBlueprint are present
+    in the complete ControlFace catalog but are not agentSafe in this phase. Selecting constrained
+    Cell, relationship, or program operations for AgentFace is a separate future policy decision.

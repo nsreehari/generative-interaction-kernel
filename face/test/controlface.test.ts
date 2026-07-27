@@ -23,7 +23,7 @@ import {
   type ResolvedNode,
   unwrap,
 } from "../../kernel/src/index";
-import { type BlueprintArtifact } from "../../blueprint/src/index";
+import { createBlueprint, type BlueprintArtifact } from "../../blueprint/src/index";
 import { McpHttpServer } from "../../transports/mcp-http/src/index";
 import { SseClientTransport } from "../../transports/http-sse/src/index";
 import { SseTransportServer } from "../../transports/http-sse/src/index";
@@ -40,6 +40,43 @@ import {
   defineDeclarativeBlueprint,
   runtimeTools,
 } from "../src/index";
+
+function structuralBlueprint(
+  structureMode: "fixed" | "reconfigurable" | "adaptive",
+  adaptive = false,
+): BlueprintArtifact {
+  return createBlueprint({
+    id: `${structureMode}-surface`,
+    kind: "runtime-blueprint",
+    version: "1",
+    structureMode,
+    ...(adaptive ? {
+      structurePolicy: {
+        allowedBlueprintOperations: ["replaceCell"],
+        allowedProgramOperations: ["setRoot"],
+      },
+    } : {}),
+    tiers: [{ id: "runtime", kind: "runtime-document" }],
+    recipes: [],
+    runtime: { capabilities: {} },
+    cells: {
+      root: {
+        id: "root",
+        behavior: adaptive ? { events: { adapt: [{ do: "confirm" }] } } : undefined,
+        view: { capability: "surface:before" },
+      },
+    },
+    projections: { presentation: { roots: ["root"] } },
+  });
+}
+
+function structuralFace(blueprint: BlueprintArtifact, orchestrator?: Orchestrator): ControlFace {
+  const runtime = ControlFace.openBlueprint(blueprint);
+  return new ControlFace(runtime.vocabulary, runtime.program, {
+    blueprint,
+    orchestrator,
+  });
+}
 
 test("ControlFace defines zero-recipe JSON cell Blueprints without product code", () => {
   const artifact: BlueprintArtifact = {
@@ -486,6 +523,70 @@ test("AgentFace is the ControlFace catalog filtered to the allowlist (projection
   }
   // Read-only inspect tools ARE runtime tools — present in the catalog and allowlisted.
   assert.ok(runtimeTools(face).some((t) => t.name === "getState"));
+  face.stop();
+});
+
+test("Face enforces fixed and authorized reconfigurable Blueprint changes", async () => {
+  const change = [{
+    op: "replaceCell" as const,
+    cellId: "root",
+    cell: { id: "root", view: { capability: "surface:after" } },
+  }];
+  const fixed = structuralFace(structuralBlueprint("fixed"));
+  assert.deepEqual(fixed.inspectBlueprintStructureChange({ origin: "authorized", patch: change }), {
+    accepted: false,
+    reason: "fixed-structure",
+  });
+  await assert.rejects(fixed.reconfigureBlueprint(change), /fixed-structure/);
+  assert.equal(fixed.getProgram().root.capability, "surface:before");
+  fixed.stop();
+
+  const reconfigurable = structuralFace(structuralBlueprint("reconfigurable"));
+  assert.deepEqual(reconfigurable.inspectBlueprintStructureChange({ origin: "runtime", patch: change }), {
+    accepted: false,
+    reason: "authorization-required",
+  });
+  const result = await reconfigurable.reconfigureBlueprint(change);
+  assert.equal(result.transition?.program?.[0].op, "setRoot");
+  assert.equal(reconfigurable.getProgram().root.capability, "surface:after");
+  const relationshipOnly = await reconfigurable.reconfigureBlueprint([{
+    op: "setRelationship",
+    relationshipId: "self",
+    relationship: { kind: "association", participants: ["root"] },
+  }]);
+  assert.equal(relationshipOnly.blueprint.payload.relationships?.self.kind, "association");
+  assert.equal(relationshipOnly.transition, undefined);
+  reconfigurable.stop();
+});
+
+test("adaptive Face events admit policy-allowed program patches and checkpoint the program", async () => {
+  const blueprint = structuralBlueprint("adaptive", true);
+  const face = structuralFace(blueprint, {
+    async confirm() {
+      return {
+        program: [{ op: "setRoot", root: { capability: "surface:adapted", id: "root" } }],
+      };
+    },
+  });
+
+  const checkpoint = face.checkpoint();
+  assert.equal(checkpoint.program?.root?.capability, "surface:before");
+  const patch = await face.emit({ node: "root", name: "adapt" });
+  assert.equal(patch.program?.[0].op, "setRoot");
+  assert.equal(face.getProgram().root.capability, "surface:adapted");
+  await face.restore(checkpoint);
+  assert.equal(face.getProgram().root.capability, "surface:before");
+  face.stop();
+});
+
+test("ControlFace exposes all structural tools while AgentFace policy remains parked", () => {
+  const face = structuralFace(structuralBlueprint("reconfigurable"));
+  const control = new Set(controlFaceTools(face).map(({ name }) => name));
+  const agent = new Set(agentFaceProjection(face).map(({ name }) => name));
+  for (const name of ["getBlueprint", "getProgram", "inspectBlueprintStructureChange", "reconfigureBlueprint"]) {
+    assert.equal(control.has(name), true, `${name} missing from ControlFace`);
+    assert.equal(agent.has(name), false, `${name} unexpectedly exposed by AgentFace`);
+  }
   face.stop();
 });
 

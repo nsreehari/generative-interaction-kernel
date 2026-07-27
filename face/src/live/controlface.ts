@@ -23,10 +23,12 @@ import {
   type Orchestrator,
   type OrchestratorEffect,
   type Patch,
+  type ProgramPatch,
   type RecordedEffect,
   type ResolvedNode,
   type StateModel,
   type TraceSink,
+  type TransitionResult,
   type TransportBroker,
   type TransportProvider,
 } from "../../../kernel/src/index";
@@ -38,11 +40,18 @@ import {
   compileCellTopology,
   composeCellDocument,
   assembleBlueprint,
+  admitAdaptiveProgramPatch,
+  admitBlueprintPatch,
+  applyBlueprintPatch,
   loadBlueprint,
   type BlueprintArtifact,
+  type BlueprintPatch,
+  type BlueprintPatchDecision,
+  type BlueprintPatchRequest,
   type BlueprintReferenceResolver,
   type ResolvedBlueprint,
 } from "../../../blueprint/src/index";
+import { diffProgram } from "../../../kernel/src/program-patch";
 
 export interface BlueprintRuntime {
   blueprintId: string;
@@ -61,6 +70,12 @@ type LoweredBlueprint = {
 };
 
 export type BlueprintSource = BlueprintArtifact;
+
+export interface BlueprintReconfigurationResult {
+  blueprint: BlueprintSource;
+  programPatch?: ProgramPatch;
+  transition?: TransitionResult;
+}
 
 /**
  * Resolve a zero-recipe, JSON-authored Blueprint whose Cells are already expressed as runtime
@@ -129,6 +144,8 @@ export interface ControlFaceOptions {
   sink?: TraceSink;
   /** Shared host service capability projected by ControlFace and QueueFace. */
   serviceHost?: ServiceHost;
+  /** The source Blueprint whose structure mode governs this live runtime. */
+  blueprint?: BlueprintSource;
 }
 
 function runtimeFromLowering(
@@ -231,16 +248,21 @@ export class ControlFace implements TransportBroker {
   private readonly kernel: Kernel;
   private readonly broker: KernelTransportHost;
   private readonly serviceHost?: ServiceHost;
+  private blueprint?: BlueprintSource;
 
   constructor(
     vocabulary: Enveloped<ProjectedVocabularyManifest>,
     program: Enveloped<ProjectedProgramDefinition>,
     options: ControlFaceOptions = {}
   ) {
+    this.blueprint = options.blueprint ? structuredClone(options.blueprint) : undefined;
     this.kernel = new Kernel(vocabulary, program, {
       ...(options.state ? { state: options.state } : {}),
       ...(options.orchestrator ? { orchestrator: options.orchestrator } : {}),
       ...(options.sink ? { sink: options.sink } : {}),
+      ...(this.blueprint
+        ? { admitProgramPatch: (patch: ProgramPatch) => admitAdaptiveProgramPatch(this.blueprint!, patch) }
+        : {}),
     });
     this.broker = new KernelTransportHost(vocabulary, program, this.kernel);
     this.serviceHost = options.serviceHost;
@@ -267,8 +289,43 @@ export class ControlFace implements TransportBroker {
     return getTree(this.kernel);
   }
 
+  getBlueprint(): BlueprintSource | undefined {
+    return this.blueprint ? structuredClone(this.blueprint) : undefined;
+  }
+
+  getProgram(): ProjectedProgramDefinition {
+    const program = this.kernel.program();
+    if (!program.root) throw new Error("ControlFace runtime has no projected program");
+    return program;
+  }
+
+  inspectBlueprintStructureChange(request: BlueprintPatchRequest): BlueprintPatchDecision {
+    if (!this.blueprint) throw new Error("ControlFace has no Blueprint attached");
+    return admitBlueprintPatch(this.blueprint, request);
+  }
+
+  async reconfigureBlueprint(patch: BlueprintPatch): Promise<BlueprintReconfigurationResult> {
+    if (!this.blueprint) throw new Error("ControlFace has no Blueprint attached");
+    const decision = admitBlueprintPatch(this.blueprint, { origin: "authorized", patch });
+    if (!decision.accepted) throw new Error(`Blueprint structure change rejected: ${decision.reason}`);
+    const candidate = applyBlueprintPatch(this.blueprint, decision.patch);
+    const definition = defineDeclarativeBlueprint(candidate);
+    if (!definition) throw new Error("Runtime Blueprint reconfiguration requires a recipe-free declarative Blueprint");
+    const target = definition.lower({});
+    const program = diffProgram(this.kernel.program(), target);
+    const transition = program.length > 0
+      ? await this.kernel.applyProgramPatch(program)
+      : undefined;
+    this.blueprint = candidate;
+    return {
+      blueprint: structuredClone(candidate),
+      ...(program.length > 0 ? { programPatch: program } : {}),
+      ...(transition ? { transition } : {}),
+    };
+  }
+
   checkpoint(): Checkpoint {
-    return checkpoint(this.kernel);
+    return this.kernel.checkpoint({ includeProgram: this.blueprint?.payload.structureMode === "adaptive" });
   }
 
   restore(cp: Checkpoint): Promise<Patch> {

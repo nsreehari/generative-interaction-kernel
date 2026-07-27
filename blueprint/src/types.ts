@@ -4,6 +4,8 @@ import type {
   ExternalsSpec,
   Json,
   ProjectedVocabularyManifest,
+  ProgramPatch,
+  ProgramPatchOperation,
   Reaction,
   ServiceDeclaration,
   ServiceRequirement,
@@ -126,11 +128,49 @@ export interface PresentationProjection {
 
 export type BlueprintStructureMode = "fixed" | "reconfigurable" | "adaptive";
 
+export type BlueprintStructureOperation =
+  | "addCell"
+  | "replaceCell"
+  | "removeCell"
+  | "setRelationship"
+  | "removeRelationship"
+  | "setProjection"
+  | "removeProjection";
+
+export interface BlueprintStructurePolicy {
+  /** Semantic Blueprint operations admitted in adaptive mode. */
+  allowedBlueprintOperations?: readonly BlueprintStructureOperation[];
+  /** Executable program operations that adaptive runtime behavior may originate. */
+  allowedProgramOperations?: readonly ProgramPatchOperation["op"][];
+}
+
+export type BlueprintPatchOperation =
+  | { op: "addCell"; cell: CellDefinition }
+  | { op: "replaceCell"; cellId: string; cell: CellDefinition }
+  | { op: "removeCell"; cellId: string }
+  | { op: "setRelationship"; relationshipId: string; relationship: RelationshipDefinition }
+  | { op: "removeRelationship"; relationshipId: string }
+  | { op: "setProjection"; projectionId: string; projection: ProjectionDefinition | PresentationProjection }
+  | { op: "removeProjection"; projectionId: string };
+
+export type BlueprintPatch = readonly BlueprintPatchOperation[];
+export type BlueprintPatchOrigin = "authorized" | "runtime";
+
+export interface BlueprintPatchRequest {
+  origin: BlueprintPatchOrigin;
+  patch: BlueprintPatch;
+}
+
+export type BlueprintPatchDecision =
+  | { accepted: true; patch: BlueprintPatch }
+  | { accepted: false; reason: "fixed-structure" | "authorization-required" | "policy-rejected" };
+
 export interface BlueprintDefinition<TRecipe extends LoweringRecipeDefinition = LoweringRecipeDefinition> {
   id: string;
   kind: string;
   version: string;
   structureMode?: BlueprintStructureMode;
+  structurePolicy?: BlueprintStructurePolicy;
   tiers: TierDefinition[];
   recipes: TRecipe[];
   context?: Record<string, Json>;
