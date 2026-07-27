@@ -91,7 +91,7 @@ export class KernelTransportHost implements TransportBroker {
    * client is re-onboarded in full.
    */
   async attach(transport: TransportProvider, fromRev?: number): Promise<() => void> {
-    if (!unwrap(this.document).root) throw new ProjectionUnavailableError();
+    if (!this.kernel.hasProjection()) throw new ProjectionUnavailableError();
     this.ensureBaseline();
     this.connections.add(transport);
     const unsubscribe = transport.subscribe((message) => this.onMessage(message));
@@ -130,8 +130,10 @@ export class KernelTransportHost implements TransportBroker {
     }
 
     // Full onboarding: vocabulary, structure, then the complete current state.
+    const program = this.kernel.program();
+    if (!program.root) throw new ProjectionUnavailableError();
     await transport.send(envelope("vocabulary", unwrap(this.manifest)));
-    await transport.send(envelope("program", unwrap(this.document)));
+    await transport.send(envelope("program", program));
     await transport.send(envelope("patch", this.kernel.snapshotPatch()));
   }
 

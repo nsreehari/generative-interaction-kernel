@@ -43,10 +43,27 @@ import {
   type GraphMutation,
   type GraphNodeExecutionOutcome,
   type ProgramNode,
+  type ProgramPatch,
   type PortToken,
   type TransitionResult,
 } from "./types";
 import { DerivationScheduler } from "./derivations";
+import { applyProgramPatch as applyProgramPatchToDefinition, diffProgram } from "./program-patch";
+
+export interface RuntimeProgramPatchContext {
+  source: "effect" | "graph";
+  actorId?: string;
+  node?: string;
+}
+
+export type ProgramPatchAdmission = (
+  patch: ProgramPatch,
+  context: RuntimeProgramPatchContext,
+) => ProgramPatch | false | Promise<ProgramPatch | false>;
+
+export interface CheckpointOptions {
+  includeProgram?: boolean;
+}
 
 export interface KernelOptions {
   expression?: ExpressionProvider;
@@ -68,6 +85,8 @@ export interface KernelOptions {
   orchestrator?: Orchestrator;
   sink?: TraceSink;
   validate?: boolean;
+  /** Admission for runtime-originated program patches. Omission rejects such patches. */
+  admitProgramPatch?: ProgramPatchAdmission;
 }
 
 export class ProjectionUnavailableError extends Error {
@@ -104,11 +123,11 @@ function flattenState(value: Json, prefix = "", result: Record<PortToken, Json> 
 
 export class Kernel {
   private rev = 0;
-  private readonly doc: ExecutableProgramDefinition;
+  private doc: ExecutableProgramDefinition;
   private readonly manifest: ExecutableVocabularyManifest;
   private readonly store: StateModel;
-  private readonly derivations: DerivationScheduler;
-  private readonly graph?: ContinuousGraphRuntime;
+  private derivations: DerivationScheduler;
+  private graph?: ContinuousGraphRuntime;
   private readonly expr: ExpressionProvider;
   private readonly predicateExpr: ExpressionProvider;
   private readonly registry: CapabilityRegistry;
@@ -137,6 +156,8 @@ export class Kernel {
   private readonly invocationTasks = new Set<Promise<void>>();
   private readonly invocationErrors: unknown[] = [];
   private readonly graphInvocationNodes = new Map<InvocationId, string>();
+  private readonly admitProgramPatch?: ProgramPatchAdmission;
+  private collectingProgramPatch?: ProgramPatch[number][];
 
   constructor(
     manifest: Enveloped<ExecutableVocabularyManifest>,
@@ -163,6 +184,7 @@ export class Kernel {
       : undefined;
     this.orchestrator = opts.orchestrator ?? new NullOrchestrator();
     this.sink = opts.sink;
+    this.admitProgramPatch = opts.admitProgramPatch;
   }
 
   /** Seed initial machine states. Returns the baseline patch (rev 0). */
@@ -207,29 +229,35 @@ export class Kernel {
    */
   dispatch(event: GIKEvent): Promise<Patch> {
     return this.enqueueMutation(async () => {
-      if (!this.reactionsSeeded) await this.seedReactionBaseline();
-      const ops: PatchOp[] = [];
-      const fired: OrchestratorEffect[] = [];
-      const invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }> = [];
-      await this.settle(event, ops, 0, fired, invokes);
-      if (this.graph) {
-        await this.applyGraphResult(
-          await this.graph.publish(flattenState(this.store.snapshot())),
-          ops,
-          fired,
-          invokes,
-        );
-        await this.applyGraphResult(await this.graph.dispatch(event), ops, fired, invokes);
+      const program: ProgramPatch[number][] = [];
+      this.collectingProgramPatch = program;
+      try {
+        if (!this.reactionsSeeded) await this.seedReactionBaseline();
+        const ops: PatchOp[] = [];
+        const fired: OrchestratorEffect[] = [];
+        const invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }> = [];
+        await this.settle(event, ops, 0, fired, invokes);
+        if (this.graph) {
+          await this.applyGraphResult(
+            await this.graph.publish(flattenState(this.store.snapshot())),
+            ops,
+            fired,
+            invokes,
+          );
+          await this.applyGraphResult(await this.graph.dispatch(event), ops, fired, invokes);
+        }
+        this.rev += 1;
+        for (const effect of fired) {
+          const invocationId = invokes.find((entry) => entry.effect === effect)?.id;
+          this.effectLog.push({ rev: this.rev, seq: this.effectSeq++, effect, invocationId });
+        }
+        const patch = { rev: this.rev, ops, ...(program.length > 0 ? { program } : {}) };
+        this.publishPatch(patch);
+        for (const invoke of invokes) this.startInvocation(invoke.effect, invoke.id);
+        return patch;
+      } finally {
+        this.collectingProgramPatch = undefined;
       }
-      this.rev += 1;
-      for (const effect of fired) {
-        const invocationId = invokes.find((entry) => entry.effect === effect)?.id;
-        this.effectLog.push({ rev: this.rev, seq: this.effectSeq++, effect, invocationId });
-      }
-      const patch = { rev: this.rev, ops };
-      this.publishPatch(patch);
-      for (const invoke of invokes) this.startInvocation(invoke.effect, invoke.id);
-      return patch;
     });
   }
 
@@ -247,11 +275,17 @@ export class Kernel {
   }
 
   mutate(mutations: readonly GraphMutation[], budget?: ExecutionBudget): Promise<TransitionResult> {
-    return this.enqueueGraphTransition(async () => {
-      const graph = this.requireGraph();
-      graph.mutate(mutations);
-      return graph.resume(budget);
-    });
+    return this.applyProgramPatch([{ op: "mutateGraph", mutations }], budget);
+  }
+
+  /** Return an immutable snapshot of the current executable program. */
+  program(): ExecutableProgramDefinition {
+    return structuredClone(this.doc);
+  }
+
+  /** Apply an already-authorized program patch as one revisioned Kernel transition. */
+  applyProgramPatch(program: ProgramPatch, budget?: ExecutionBudget): Promise<TransitionResult> {
+    return this.enqueueProgramTransition(program, budget);
   }
 
   resume(budget?: ExecutionBudget): Promise<TransitionResult> {
@@ -367,6 +401,11 @@ export class Kernel {
       if (result.ops?.length) {
         await this.applyAndDerive(result.ops, acc);
       }
+      await this.collectRuntimeProgramPatch(result.program, {
+        source: "effect",
+        actorId: effect.actorId,
+        node: effect.node,
+      });
       for (const followUp of result.events ?? []) {
         await this.settle(followUp, acc, depth + 1, journal, invokes);
       }
@@ -468,32 +507,141 @@ export class Kernel {
     return this.graph;
   }
 
+  private async enqueueProgramTransition(
+    programPatch: ProgramPatch,
+    budget?: ExecutionBudget,
+  ): Promise<TransitionResult> {
+    return this.enqueueMutation(async () => {
+      const previousRevision = this.rev;
+      const effectStart = this.effectLog.length;
+      const program: ProgramPatch[number][] = [...programPatch];
+      this.collectingProgramPatch = program;
+      try {
+        this.commitProgramPatch(programPatch);
+        const graphResult = this.graph ? await this.graph.resume(budget) : undefined;
+        const ops: PatchOp[] = [];
+        const fired: OrchestratorEffect[] = [];
+        const invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }> = [];
+        if (graphResult) await this.applyGraphResult(graphResult, ops, fired, invokes);
+        this.rev += 1;
+        for (const effect of fired) {
+          const invocationId = invokes.find((entry) => entry.effect === effect)?.id;
+          this.effectLog.push({ rev: this.rev, seq: this.effectSeq++, effect, invocationId });
+        }
+        const patch: Patch = { rev: this.rev, ops, program };
+        this.publishPatch(patch);
+        for (const invoke of invokes) this.startInvocation(invoke.effect, invoke.id);
+        return {
+          previousRevision,
+          revision: this.rev,
+          status: graphResult?.status ?? "quiescent",
+          state: cloneJson(this.store.snapshot()),
+          patch,
+          program,
+          effects: this.effectLog.slice(effectStart).map((entry) => ({ ...entry })),
+          execution: this.executionSnapshot(),
+        };
+      } finally {
+        this.collectingProgramPatch = undefined;
+      }
+    });
+  }
+
+  private commitProgramPatch(patch: ProgramPatch): void {
+    if (patch.length === 0) throw new Error("Program patch must contain at least one operation");
+    const candidate = applyProgramPatchToDefinition(this.doc, patch);
+    validateProgramMessage({ gik: "0.1", type: "program", payload: candidate });
+    validateProgramDefinition(candidate, this.manifest.capabilities);
+
+    const graphMutations = patch.length === 1 && patch[0].op === "mutateGraph"
+      ? patch[0].mutations
+      : undefined;
+    const nextDerivations = new DerivationScheduler(candidate.derivations);
+    const graphChanged = JSON.stringify(candidate.graph) !== JSON.stringify(this.doc.graph);
+    const nextGraph = graphChanged && !graphMutations && candidate.graph
+      ? new ContinuousGraphRuntime(candidate.graph, this.expr, (node, inputs, event) =>
+          this.executeGraphNode(node, inputs, event))
+      : undefined;
+
+    if (graphMutations && this.graph) {
+      this.graph.mutate(graphMutations);
+    } else if (graphChanged) {
+      this.graph = nextGraph;
+    }
+    this.doc = candidate;
+    this.derivations = nextDerivations;
+    this.reactionBaseline.clear();
+    this.reactionsSeeded = false;
+  }
+
+  private async admitRuntimeProgramPatch(
+    patch: ProgramPatch | undefined,
+    context: RuntimeProgramPatchContext,
+  ): Promise<ProgramPatch | undefined> {
+    if (!patch?.length) return undefined;
+    if (!this.admitProgramPatch) throw new Error("Runtime program patch has no configured admission hook");
+    const admitted = await this.admitProgramPatch(patch, context);
+    if (admitted === false) throw new Error("Runtime program patch was rejected");
+    return admitted;
+  }
+
+  private async collectRuntimeProgramPatch(
+    patch: ProgramPatch | undefined,
+    context: RuntimeProgramPatchContext,
+  ): Promise<void> {
+    const admitted = await this.admitRuntimeProgramPatch(patch, context);
+    if (!admitted) return;
+    if (!this.collectingProgramPatch) {
+      throw new Error("Runtime program patch was produced outside a Kernel transition");
+    }
+    this.commitProgramPatch(admitted);
+    this.collectingProgramPatch.push(...admitted);
+  }
+
+  private executionSnapshot(): ExecutionSnapshot {
+    return this.graph ? this.execution() : {
+      topologyVersion: 0,
+      status: "quiescent",
+      tokens: {},
+      nodes: {},
+      readyNodes: [],
+      runningInvocations: [...this.activeInvocations.keys()],
+    };
+  }
+
   private enqueueGraphTransition(operation: () => Promise<GraphExecutionResult>): Promise<TransitionResult> {
     return this.enqueueMutation(async () => {
       const previousRevision = this.rev;
       const effectStart = this.effectLog.length;
-      const graphResult = await operation();
-      const ops: PatchOp[] = [];
-      const fired: OrchestratorEffect[] = [];
-      const invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }> = [];
-      await this.applyGraphResult(graphResult, ops, fired, invokes);
-      if (ops.length > 0 || fired.length > 0) this.rev += 1;
-      for (const effect of fired) {
-        const invocationId = invokes.find((entry) => entry.effect === effect)?.id;
-        this.effectLog.push({ rev: this.rev, seq: this.effectSeq++, effect, invocationId });
+      const program: ProgramPatch[number][] = [];
+      this.collectingProgramPatch = program;
+      try {
+        const graphResult = await operation();
+        const ops: PatchOp[] = [];
+        const fired: OrchestratorEffect[] = [];
+        const invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }> = [];
+        await this.applyGraphResult(graphResult, ops, fired, invokes);
+        if (ops.length > 0 || fired.length > 0 || program.length > 0) this.rev += 1;
+        for (const effect of fired) {
+          const invocationId = invokes.find((entry) => entry.effect === effect)?.id;
+          this.effectLog.push({ rev: this.rev, seq: this.effectSeq++, effect, invocationId });
+        }
+        const patch = { rev: this.rev, ops, ...(program.length > 0 ? { program } : {}) };
+        if (ops.length > 0 || program.length > 0) this.publishPatch(patch);
+        for (const invoke of invokes) this.startInvocation(invoke.effect, invoke.id);
+        return {
+          previousRevision,
+          revision: this.rev,
+          status: graphResult.status,
+          state: cloneJson(this.store.snapshot()),
+          patch,
+          ...(program.length > 0 ? { program } : {}),
+          effects: this.effectLog.slice(effectStart).map((entry) => ({ ...entry })),
+          execution: this.executionSnapshot(),
+        };
+      } finally {
+        this.collectingProgramPatch = undefined;
       }
-      const patch = { rev: this.rev, ops };
-      if (ops.length > 0) this.publishPatch(patch);
-      for (const invoke of invokes) this.startInvocation(invoke.effect, invoke.id);
-      return {
-        previousRevision,
-        revision: this.rev,
-        status: graphResult.status,
-        state: cloneJson(this.store.snapshot()),
-        patch,
-        effects: this.effectLog.slice(effectStart).map((entry) => ({ ...entry })),
-        execution: this.execution(),
-      };
     });
   }
 
@@ -512,6 +660,9 @@ export class Kernel {
       operations: [...first.operations, ...second.operations],
       effects: [...first.effects, ...second.effects],
       events: [...first.events, ...second.events],
+      ...((first.program?.length || second.program?.length)
+        ? { program: [...(first.program ?? []), ...(second.program ?? [])] }
+        : {}),
       readyNodes: second.readyNodes,
       nodeExecutions: first.nodeExecutions + second.nodeExecutions,
       publicationCount: first.publicationCount + second.publicationCount,
@@ -524,6 +675,7 @@ export class Kernel {
     fired: OrchestratorEffect[],
     invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }>,
   ): Promise<void> {
+    await this.collectRuntimeProgramPatch(result.program, { source: "graph" });
     await this.applyAndDerive(result.operations, acc);
     this.applyGraphPublications(result, acc);
     const invokeStart = invokes.length;
@@ -670,12 +822,20 @@ export class Kernel {
         if (this.activeInvocations.get(id) !== active || active.controller.signal.aborted) {
           throw new InvocationClosedError(id);
         }
+        const program: ProgramPatch[number][] = [];
+        this.collectingProgramPatch = program;
+        try {
         const ops: PatchOp[] = [];
         const fired: OrchestratorEffect[] = [];
         const invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }> = [];
         if (result.ops?.length) {
           await this.applyAndDerive(result.ops, ops);
         }
+        await this.collectRuntimeProgramPatch(result.program, {
+          source: "effect",
+          actorId: active.effect.actorId,
+          node: active.effect.node,
+        });
         const graphNodeId = this.graphInvocationNodes.get(id);
         if (graphNodeId && this.graph) {
           const graphResult = await this.graph.complete(graphNodeId, result.outputs ?? {});
@@ -704,9 +864,12 @@ export class Kernel {
             ...(result.detail ?? {}),
           },
         });
-        const patch = { rev: this.rev, ops };
+        const patch = { rev: this.rev, ops, ...(program.length > 0 ? { program } : {}) };
         this.publishPatch(patch);
         for (const invoke of invokes) this.startInvocation(invoke.effect, invoke.id);
+        } finally {
+          this.collectingProgramPatch = undefined;
+        }
       });
     } finally {
       this.graphInvocationNodes.delete(id);
@@ -814,8 +977,12 @@ export class Kernel {
    * the checkpoint. Domain- and medium-blind: state is just JSON, so this is a free corollary of
    * determinism (Principle 8), not new domain machinery.
    */
-  checkpoint(): Checkpoint {
-    return { rev: this.rev, state: cloneJson(this.store.snapshot()) };
+  checkpoint(options: CheckpointOptions = {}): Checkpoint {
+    return {
+      rev: this.rev,
+      state: cloneJson(this.store.snapshot()),
+      ...(options.includeProgram ? { program: this.program() } : {}),
+    };
   }
 
   /**
@@ -827,6 +994,8 @@ export class Kernel {
    */
   restore(cp: Checkpoint): Promise<Patch> {
     return this.enqueueMutation(async () => {
+      const program = cp.program ? diffProgram(this.doc, cp.program) : undefined;
+      if (program?.length) this.commitProgramPatch(program);
       const restoreOps: PatchOp[] = Object.entries(cp.state).map(([namespace, value]) => ({
         op: "set" as const,
         path: namespace,
@@ -835,7 +1004,7 @@ export class Kernel {
       const ops: PatchOp[] = [];
       await this.applyAndDerive(restoreOps, ops);
       this.rev += 1;
-      const patch = { rev: this.rev, ops };
+      const patch = { rev: this.rev, ops, ...(program?.length ? { program } : {}) };
       this.publishPatch(patch);
       return patch;
     });

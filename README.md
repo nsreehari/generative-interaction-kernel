@@ -62,6 +62,11 @@ Use `npm run dev` for the complete local stack. It starts those Function apps an
 together, explicitly setting `VITE_GIK_HOST_ENV=local` for the host process. Stopping either process
 stops the other.
 
+Run `npx tsx samples/control-host/structure-modes.ts` for a headless, deterministic demonstration
+of Blueprint structure modes through ControlFace. It shows fixed rejecting a structural change,
+reconfigurable ignoring ordinary runtime activity but accepting an authorized reconfiguration, and
+adaptive applying a policy-admitted runtime program patch and restoring it from a checkpoint.
+
 ### Live portfolio intelligence
 
 The portfolio tracker routes `analyze` and `propose-strategies` through QueueFace. Its Blueprint declares a `deterministic-agent` service for offline execution and attaches the operations to the producing cells. Live deployments replace that declaration with a host-supported kind such as `foundry-agent`; endpoints, model/agent selection, and credential references belong to the Blueprint declaration, while the host authorizes kinds, endpoint origins, and credential resolution.

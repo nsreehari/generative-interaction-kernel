@@ -3,12 +3,17 @@
 // time-travel control-plane operations (checkpoint/restore/effectsSince/compensate).
 
 import type { Checkpoint, GIKEvent, OrchestratorEffect } from "../../../kernel/src/index";
+import type { BlueprintPatch, BlueprintPatchRequest } from "../../../blueprint/src/index";
 import type { McpTool } from "../tool-surface";
 import type { ControlFace } from "./controlface";
 
 export type RuntimeFace = Pick<ControlFace,
   | "getState"
   | "getTree"
+  | "getBlueprint"
+  | "getProgram"
+  | "inspectBlueprintStructureChange"
+  | "reconfigureBlueprint"
   | "describeServiceKinds"
   | "listServiceRequests"
   | "probeService"
@@ -44,6 +49,30 @@ export function runtimeTools(face: RuntimeFace): McpTool[] {
       inputSchema: obj({}),
       handler: () => face.getTree(),
       agentSafe: true,
+    },
+    {
+      name: "getBlueprint",
+      description: "Return the Blueprint attached to this live Face, when present.",
+      inputSchema: obj({}),
+      handler: () => face.getBlueprint(),
+    },
+    {
+      name: "getProgram",
+      description: "Return the current executable program snapshot.",
+      inputSchema: obj({}),
+      handler: () => face.getProgram(),
+    },
+    {
+      name: "inspectBlueprintStructureChange",
+      description: "Evaluate a Blueprint structure patch against its authored mode and policy.",
+      inputSchema: obj({ request: any }, ["request"]),
+      handler: (a) => face.inspectBlueprintStructureChange(a.request as unknown as BlueprintPatchRequest),
+    },
+    {
+      name: "reconfigureBlueprint",
+      description: "Apply an authorized Blueprint structure patch to a reconfigurable or policy-permitted adaptive runtime.",
+      inputSchema: obj({ patch: { type: "array", items: any } }, ["patch"]),
+      handler: (a) => face.reconfigureBlueprint(a.patch as unknown as BlueprintPatch),
     },
     {
       name: "describeServiceKinds",

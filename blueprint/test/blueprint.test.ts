@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   analyzeCellImpact,
   analyzeExploration,
+  admitAdaptiveProgramPatch,
+  admitBlueprintPatch,
+  applyBlueprintPatch,
   assembleBlueprint,
   compileCellTopology,
   createBlueprint,
@@ -45,6 +48,52 @@ describe("@gik/blueprint", () => {
       expect(parseBlueprintJson(stringifyBlueprint(artifact)).payload.structureMode).toBe(structureMode);
     },
   );
+
+  it("enforces fixed and authorized reconfigurable structure modes", () => {
+    const fixed = createBlueprint({ ...blueprint().payload, structureMode: "fixed" });
+    const reconfigurable = createBlueprint({ ...blueprint().payload, structureMode: "reconfigurable" });
+    const patch = [{ op: "addCell" as const, cell: { id: "added" } }];
+
+    expect(admitBlueprintPatch(fixed, { origin: "authorized", patch })).toEqual({
+      accepted: false,
+      reason: "fixed-structure",
+    });
+    expect(admitBlueprintPatch(reconfigurable, { origin: "runtime", patch })).toEqual({
+      accepted: false,
+      reason: "authorization-required",
+    });
+    expect(admitBlueprintPatch(reconfigurable, { origin: "authorized", patch }).accepted).toBe(true);
+    expect(applyBlueprintPatch(reconfigurable, patch).payload.cells?.added.id).toBe("added");
+  });
+
+  it("admits adaptive Blueprint and program patches only through authored policy", () => {
+    const adaptive = createBlueprint({
+      ...blueprint().payload,
+      structureMode: "adaptive",
+      structurePolicy: {
+        allowedBlueprintOperations: ["addCell"],
+        allowedProgramOperations: ["setRoot"],
+      },
+    });
+    const add = [{ op: "addCell" as const, cell: { id: "added" } }];
+    const remove = [{ op: "removeCell" as const, cellId: "added" }];
+
+    expect(admitBlueprintPatch(adaptive, { origin: "runtime", patch: add }).accepted).toBe(true);
+    expect(admitBlueprintPatch(adaptive, { origin: "runtime", patch: remove })).toEqual({
+      accepted: false,
+      reason: "policy-rejected",
+    });
+    expect(admitAdaptiveProgramPatch(adaptive, [{ op: "setRoot", root: { capability: "surface", id: "next" } }])).not.toBe(false);
+    expect(admitAdaptiveProgramPatch(adaptive, [{ op: "removeRoot" }])).toBe(false);
+  });
+
+  it("parks nested child Blueprint mutations while preserving assembled children", () => {
+    const parent = createBlueprint({ ...blueprint("parent").payload, structureMode: "reconfigurable" });
+    expect(() => applyBlueprintPatch(parent, [{
+      op: "addCell",
+      cell: { id: "child", blueprint: { inline: blueprint("child") } },
+    }])).toThrow("Nested child Blueprint mutations are not supported");
+  });
 
   it("assembles referenced child Blueprints without mutating the source", () => {
     const child = blueprint("child");
