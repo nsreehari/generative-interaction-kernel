@@ -89,6 +89,8 @@ artifact_contracts:
       - Backend and worker Blueprints do not require a presentation projection.
       - The serialized lowering-recipe collection is recipes in version 0.1.
       - structureMode is fixed, reconfigurable, or adaptive; the schema default and host interpretation treat omission as fixed.
+      - services carry Blueprint-owned logical configuration and operation contracts, never literal credentials or host execution policy.
+      - Service declarations are preserved into the opened runtime; an outer host owns ServiceHost construction and trusted kind admission.
   - name: BlueprintRuntimeDefinition
     signature: >-
       interface BlueprintRuntimeDefinition { version?: string; expression?: string;

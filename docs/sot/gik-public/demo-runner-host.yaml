@@ -2,7 +2,7 @@ schema_version: 1
 
 package:
   name: "@gik/demo-runner-host"
-  version: "0.1.0"
+  version: "0.1.2"
   purpose: >-
     Add validated demo scenarios, playback controls, human-gate coordination, inspection,
     and presentation selection around an injected Blueprint-compatible React host.
@@ -39,6 +39,7 @@ architecture:
     - Blueprint preparation outside the inspection needed for demo control routing.
     - Kernel execution semantics.
     - Application ownership of navigation after writeDemoNavigation returns a URL string.
+    - ServiceHost construction, service-kind admission, credentials, endpoint policy, or service fixtures.
   dependency_direction:
     - "@gik/demo-runner-host -> @gik/blueprint"
     - "@gik/demo-runner-host -> @gik/controlface"
@@ -57,6 +58,10 @@ host_component_contract:
     primaryInstanceKey?: string | number; className?: string;
     style?: React.CSSProperties; context?: Record<string, Json> }
   rule: Any structurally compatible React component may be supplied as HostComponent.
+  service_rule: >-
+    External-service execution and deterministic service doubles are composed by the outer host
+    through native.wrapOrchestrator. GikDemoBlueprintHost forwards native unchanged and does not
+    depend on a concrete Blueprint host or own service policy.
 
 component:
   name: GikDemoBlueprintHost
@@ -88,7 +93,8 @@ component:
     - Adds demo-runner and control-harness companion bundles; showControlHarness controls harness visibility.
     - Installs a primary bridge that coordinates control requests and human gates.
     - Passes the prepared companions, contexts, bridge, and context to HostComponent.
-    - Increments primaryInstanceKey after built-in reset or apply-state commands so a compatible HostComponent can give the target a fresh mounted identity.
+    - Forwards the caller's primaryInstanceKey unchanged without an active demo.
+    - Preserves the caller's primaryInstanceKey as the base identity and adds the reset epoch after built-in reset or apply-state commands so a compatible HostComponent can give the target a fresh mounted identity.
   built_in_commands:
     - name: "$apply-state"
       behavior: Applies path-value operations to the demo seed without dispatching to the target controller.

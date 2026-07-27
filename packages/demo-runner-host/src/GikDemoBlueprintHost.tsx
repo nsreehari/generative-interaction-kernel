@@ -192,6 +192,7 @@ export function GikDemoBlueprintHost({
   companions = EMPTY_COMPANIONS,
   contexts = EMPTY_CONTEXTS,
   fileServices,
+  primaryInstanceKey,
   className,
   style,
   context,
@@ -227,6 +228,7 @@ export function GikDemoBlueprintHost({
         companions={companions}
         contexts={contexts}
         fileServices={fileServices}
+        primaryInstanceKey={primaryInstanceKey}
         className={className}
         style={style}
         context={context}
@@ -238,6 +240,9 @@ export function GikDemoBlueprintHost({
   const resolvedCatalog = activeDemo.catalog;
   const requestedPresentationContext = presentationContext ?? query.presentationContext;
   const [resetEpoch, setResetEpoch] = React.useState(0);
+  const resolvedPrimaryInstanceKey = primaryInstanceKey === undefined || resetEpoch === 0
+    ? (primaryInstanceKey ?? resetEpoch)
+    : `${primaryInstanceKey}:${resetEpoch}`;
   const baseInitialSeed = React.useMemo(
     () => (context && isJsonRecord(context.initialSeed) ? cloneJsonRecord(context.initialSeed as JsonRecord) : null),
     [context],
@@ -448,7 +453,7 @@ export function GikDemoBlueprintHost({
       contexts={mergedContexts}
       fileServices={fileServices}
       primaryBridge={primaryBridge}
-      primaryInstanceKey={resetEpoch}
+      primaryInstanceKey={resolvedPrimaryInstanceKey}
       className={className}
       style={style ? { ...compositionStyle, ...style } : compositionStyle}
       context={resolvedContext}
