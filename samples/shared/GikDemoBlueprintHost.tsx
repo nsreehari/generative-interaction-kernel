@@ -14,7 +14,6 @@ import { resolveSampleBlueprintSource } from "./blueprints";
 
 export function GikDemoBlueprintHost({
   blueprintId,
-  demoId,
   showControlHarness = false,
   presentationContext,
   className,
@@ -22,8 +21,6 @@ export function GikDemoBlueprintHost({
 }: {
   /** The target Blueprint the demo drives. */
   blueprintId: string;
-  /** The scenario (demo) id that scripts the run. */
-  demoId: string;
   /** Whether to mount the control harness alongside the target + runner. */
   showControlHarness?: boolean;
   /** Requested presentation preset id (raw, from the host's query). */

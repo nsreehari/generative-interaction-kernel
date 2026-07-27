@@ -1,0 +1,572 @@
+schema_version: 1
+
+document:
+  name: gik-durable-runtime
+  status: current-implementation
+  scope: local runtime, notification-driven queue processor, connectors, storage backends, and server transports
+  source_of_truth: >-
+    This file describes the current implementation under
+    packages/durable-runtime. TypeScript source remains authoritative when this
+    document and implementation disagree.
+
+package:
+  name: "@gik/durable-runtime"
+  version: "0.1.1"
+  publication_status: public-workspace-package
+  purpose: >-
+    Run durable kernels and effect handlers locally in a browser while routing durable
+    state, journals, transition leases, engine wake markers, and effect queues to
+    IndexedDB, filesystem MCP, or Azure Functions according to KindValueRef kinds.
+  core_promise: >-
+    The browser owns kernel and effect execution. Providers own persistence, locking,
+    optimistic revision checks, journal access, and queue settlement. A transition never
+    spans provider kinds.
+  public_entrypoint: packages/durable-runtime/src/index.ts
+  implementation_entrypoint: packages/durable-runtime/src/runtime/browser-runtime.ts
+  package_boundary: >-
+    One public package uses explicit subpath exports for connectors, storage backends,
+    and server transports so root browser imports do not load Cosmos or filesystem code.
+  distribution:
+    build: "turbo run build --filter=@gik/durable-runtime"
+    publish: Standard public npm package through the GIK workspace release workflow.
+    pack_command: npm run pack:durable-runtime
+    artifact_policy: >-
+      The pack command builds through Turbo and creates a versioned npm tarball plus a
+      SHA-256 manifest under .artifacts/durable-runtime. Each consumer independently
+      ingests a supplied tarball into its own repository, updates its own dependency and
+      lockfile, and verifies its committed artifact. No repository assumes another
+      repository's source directory exists.
+    optional_dependencies: >-
+      @azure/cosmos is an optional peer dependency of @gik/durable-runtime and a direct
+      dependency of Azure consumers. Browser and filesystem-only consumers do not install it.
+  relationship_to_kernel: >-
+    DurableKernel is the client adapter contract used by this runtime. It is not the
+    @gik/kernel Kernel class. A host that uses @gik/kernel must supply an adapter whose
+    initialState and transition methods satisfy DurableKernel.
+
+api_policy:
+  signature_authority: TypeScript source in packages/durable-runtime/src
+  categories:
+    primary: Supported browser-runtime operation for current samples.
+    provider_extension: Interface implemented by durable storage providers.
+    host_extension: Kernel, effect handler, connection, or authentication behavior supplied by a host.
+    advanced: Provider factory or transition primitive used to compose a host.
+  compatibility: >-
+    Contract changes must update this SOT, package exports, and focused tests together.
+
+architecture:
+  execution_owner: browser
+  provider_owner: durable storage and concurrency
+  boundaries:
+    - Kernels execute only in createBrowserDurableRuntime.runEngine.
+    - Effect handlers execute only in createBrowserDurableRuntime.processQueueLaneItem.
+    - createDurableQueueProcessor owns notification coalescing and drain-until-idle orchestration.
+    - Queue notification subscriptions are supplied by the host and carry no queue item data.
+    - Azure Functions and filesystem MCP do not execute kernels on the browser-runtime path.
+    - IndexedDB is accessed directly by its browser provider.
+    - The filesystem adapter receives an already-connected MCP callTool function from the host.
+    - The Azure adapter receives its base URL, dynamic headers callback, and optional fetch implementation from the host.
+  operation_flow:
+    initialize:
+      - Resolve the provider from stateRef and effectsQueueRef kind.
+      - Obtain initial state from the one host-supplied local kernel.
+      - Create revisioned state only when absent.
+    transition:
+      - Resolve one provider for state, journal, and effects refs.
+      - Acquire a lease and read persisted state plus journal entries after the cursor.
+      - Run the supplied kernel locally.
+      - Commit state, cursor, and effects while releasing the lease.
+      - Abort and release the lease if local execution throws.
+    append_and_wake:
+      - Append the journal event unconditionally.
+      - Advance the provider-owned requestedAt engine wake marker.
+      - Do not acquire the transition lease or execute the kernel from appendJournal.
+    engine_wake:
+      - Read requestedAt and processedAt from the selected provider.
+      - Return idle when requestedAt is absent or is not later than processedAt.
+      - Run one leased engine transition when requestedAt is pending.
+      - Mark the captured requestedAt as processed only after a committed or idle engine result.
+      - Preserve a newer request written while the engine transition is running.
+    effect_processing:
+      - Lease one effect queue message.
+      - Route lease, acknowledgement, and negative acknowledgement through semantic durable-runtime operations.
+      - Resolve those operations to the same provider queue implementation used by transition commit.
+      - Resolve a local handler from message.body.type.
+      - Append every returned event to the journal.
+      - Acknowledge success or negatively acknowledge failure.
+    queue_processor:
+      - Subscribe to a host-supplied notification that means only that a queue may have work.
+      - Coalesce duplicate notifications while one drain is active.
+      - Repeatedly call processQueueLaneItem until it returns idle or retry.
+      - Continue after completed and dead results.
+      - Stop and unsubscribe through an AbortSignal-backed lifecycle.
+
+reference_protocol:
+  encoding: "b64:<base64url(JSON)>"
+  decoded_shape: "{ kind: string; value: string }"
+  supported_provider_kinds:
+    indexed-db: Direct browser IndexedDB provider.
+    fs-path: Filesystem storage exposed through MCP tools.
+    stores-proxy: Azure Functions storage proxy backed by Cosmos DB.
+  routing_rules:
+    - appendJournal requires stateRef, journalRef, and effectsQueueRef to share one kind.
+    - initializeRuntime requires stateRef and effectsQueueRef to share one kind.
+    - runEngine requires stateRef, journalRef, and effectsQueueRef to share one kind.
+    - processEngineWake requires stateRef, journalRef, and effectsQueueRef to share one kind.
+    - processQueueLaneItem currently validates effectsQueueRef and journalRef kinds.
+    - Mixed-kind operations fail before provider I/O.
+
+contracts:
+  - name: KindValueRef
+    signature: "type KindValueRef = { kind: string; value: string }"
+    purpose: Select a provider and carry its provider-specific logical address.
+    source: packages/durable-runtime/src/refs.ts
+
+  - name: JournalEntry
+    signature: "type JournalEntry<T = unknown> = { id: string; payload: T }"
+    purpose: Record one unconditionally appended journal event.
+    guarantees:
+      - appendJournal does not deduplicate entries.
+      - Entry identifiers are assigned by the selected provider.
+
+  - name: RuntimeRefs
+    signature: >-
+      type RuntimeRefs = { stateRef: string; effectsQueueRef: string;
+      effectsLane?: string }
+    purpose: Identify state and effect storage for initialization.
+
+  - name: TransitionRefs
+    signature: "type TransitionRefs = RuntimeRefs & { journalRef: string }"
+    purpose: Identify all durable resources participating in one transition.
+
+  - name: InitializeRuntimeResult
+    signature: "type InitializeRuntimeResult = { created: boolean; revision: string }"
+    purpose: Report whether initial state was created and identify the persisted revision.
+    behavior:
+      - Initialization is create-if-absent.
+      - Repeating initialization for the same kernel preserves existing state and revision.
+      - An existing state owned by another kernel is rejected.
+
+  - name: EngineWakeState
+    signature: >-
+      type EngineWakeState = { requestedAt: string | null;
+      processedAt: string | null }
+    purpose: Represent a coalescing durable request to run the transition engine.
+    pending_rule: requestedAt is non-null and requestedAt > processedAt, with null processedAt treated as unprocessed.
+    exclusions:
+      - It is not a queue.
+      - It has no lease, acknowledgement, or negative acknowledgement.
+
+  - name: TransitionSnapshot
+    signature: >-
+      type TransitionSnapshot<TState, TEvent> = { leaseToken: string;
+      leaseExpiresAt: string; state: TState; revision: string | null;
+      cursor: string | null; entries: JournalEntry<TEvent>[] }
+    purpose: Return leased state and journal work to the local kernel.
+    behavior:
+      - acquireTransition returns null when another active lease owns the transition.
+      - Acquisition fails when the runtime has not been initialized.
+      - entries contains journal records after cursor in provider order.
+
+  - name: TransitionCommit
+    signature: >-
+      type TransitionCommit<TState, TEffect> = TransitionRefs & { kernelId: string;
+      leaseToken: string; expectedRevision: string | null;
+      previousCursor: string | null; nextCursor: string; state: TState;
+      effects: TEffect[] }
+    purpose: Commit one locally computed transition under its acquired lease.
+    exclusions:
+      - initialState is not part of commit.
+      - Kernel execution is not part of commit.
+
+  - name: TransitionCommitResult
+    signature: >-
+      type TransitionCommitResult = { ok: true; revision: string } |
+      { ok: false; reason: "conflict" | "lease-lost"; revision: string | null }
+    purpose: Report an accepted commit or a concurrency failure.
+
+  - name: QueueLeasedMessage
+    signature: >-
+      type QueueLeasedMessage<T> = { id: string; body: T; enqueuedAt: string;
+      attempt: number; leaseToken: string; leaseExpiresAt: string }
+    purpose: Carry one leased effect to a local browser handler.
+
+  - name: DurableKernel
+    category: host_extension
+    signature: >-
+      type DurableKernel<TState, TEvent, TEffect> = { id: string;
+      initialState(): TState; transition(input: { state: TState;
+      revision: string | null; cursor: string | null;
+      entries: JournalEntry<TEvent>[] }): Promise<{ state: TState;
+      effects: TEffect[] }> | { state: TState; effects: TEffect[] } }
+    purpose: Supply local initial state and deterministic transition behavior.
+    behavior:
+      - initialState is evaluated only by explicit initializeRuntime.
+      - transition runs in the browser after provider acquisition.
+
+  - name: DurableEffectHandler
+    category: host_extension
+    signature: >-
+      type DurableEffectHandler<TEffect, TEvent> =
+      (effect: TEffect) => Promise<TEvent[] | void> | TEvent[] | void
+    purpose: Handle one leased effect locally and optionally produce journal events.
+
+  - name: DurableProvider
+    category: provider_extension
+    purpose: Implement persistence and concurrency for one reference kind.
+    methods:
+      - >-
+        appendJournal<T>(request: TransitionRefs & { entry: T }):
+        Promise<JournalEntry<T>>
+      - "readEngineWake(refs: RuntimeRefs): Promise<EngineWakeState>"
+      - "markEngineWakeProcessed(refs: RuntimeRefs, processedAt: string): Promise<void>"
+      - >-
+        initializeRuntime<TState>(request: RuntimeRefs & { kernelId: string;
+        initialState: TState }): Promise<InitializeRuntimeResult>
+      - >-
+        acquireTransition<TState, TEvent>(request: TransitionRefs & {
+        kernelId: string; leaseMs?: number }):
+        Promise<TransitionSnapshot<TState, TEvent> | null>
+      - >-
+        commitTransition<TState, TEffect>(request: TransitionCommit<TState, TEffect>):
+        Promise<TransitionCommitResult>
+      - >-
+        abortTransition(request: TransitionRefs & { kernelId: string;
+        leaseToken: string }): Promise<boolean>
+      - "leaseQueueItem?<TEffect>(request): Promise<QueueLeasedMessage<TEffect> | null>"
+      - "ackQueueItem?(request): Promise<boolean>"
+      - "nackQueueItem?(request): Promise<boolean>"
+    queue_support: >-
+      Queue methods are optional at the interface level. processQueueLaneItem rejects a
+      provider that does not implement all three queue methods.
+
+  - name: QueueProcessResult
+    signature: >-
+      type QueueProcessResult = { status: "idle" | "completed" |
+      "retry" | "dead" }
+    purpose: Minimal result contract consumed by the notification-driven queue processor.
+
+  - name: QueueNotificationSubscription
+    category: host_extension
+    signature: >-
+      type QueueNotificationSubscription = (notify: () => void,
+      signal: AbortSignal) => void | (() => void) |
+      Promise<void | (() => void)>
+    purpose: Notify one processor that its configured queue may contain work.
+    payload_semantics: The notification carries no item, count, lease, or authoritative state.
+
+browser_runtime:
+  factory:
+    name: createBrowserDurableRuntime
+    category: primary
+    source: packages/durable-runtime/src/runtime/browser-runtime.ts
+    signature: >-
+      createBrowserDurableRuntime(options: { providers: Record<string, DurableProvider>;
+      kernel: DurableKernel; effectHandlers?: Record<string, DurableEffectHandler> })
+  methods:
+    - name: appendJournal
+      signature: >-
+        appendJournal<T>(request: TransitionRefs & { entry: T }):
+        Promise<JournalEntry<T>>
+      purpose: Append one event without deduplication and request an engine wake through the selected provider.
+
+    - name: initializeRuntime
+      signature: >-
+        initializeRuntime(request: RuntimeRefs):
+        Promise<InitializeRuntimeResult>
+      purpose: Explicitly create initial durable state for the selected local kernel.
+      behavior:
+        - Calls the supplied kernel.initialState and sends the value only to provider initialization.
+        - Uses the supplied kernel.id as the persisted implementation/version identity.
+        - Does not require journalRef because initialization does not read the journal.
+        - Does not overwrite an existing runtime.
+
+    - name: runEngine
+      signature: >-
+        runEngine(request: TransitionRefs & { leaseMs?: number }):
+        Promise<RunEngineResult>
+      purpose: Acquire durable work, execute one local kernel transition, and commit it.
+      results:
+        busy: Another active transition lease prevented acquisition.
+        idle: No journal entries followed the persisted cursor; the lease was aborted.
+        committed: State, cursor, and effects committed successfully.
+        conflict: Persisted revision or cursor changed before commit.
+        lease-lost: The lease was absent, mismatched, or expired before commit.
+      committed_fields:
+        - revision
+        - cursor
+        - entryCount
+        - effectCount
+      failure_behavior:
+        - A thrown kernel error triggers best-effort abort and is rethrown.
+        - A failed abort does not replace the original kernel error.
+
+    - name: processEngineWake
+      signature: >-
+        processEngineWake(request: TransitionRefs & {
+        leaseMs?: number }): Promise<RunEngineResult | { status: "idle" }>
+      purpose: Run one engine transition only when the durable wake marker is pending.
+      behavior:
+        - Captures requestedAt before acquiring the transition.
+        - Marks only that captured timestamp as processed.
+        - Marks processed after committed and idle results.
+        - Does not mark processed after busy, conflict, or lease-lost results.
+
+    - name: processQueueLaneItem
+      signature: >-
+        processQueueLaneItem(request: { stateRef: string; effectsQueueRef: string;
+        effectsLane?: string; journalRef: string; visibilityMs?: number;
+        maxAttempts?: number }): Promise<ProcessQueueLaneItemResult>
+      purpose: Execute at most one locally registered effect handler.
+      results:
+        idle: No queue message was available.
+        completed: Returned events were appended and the message was acknowledged.
+        retry: Handling failed before maxAttempts and the message was negatively acknowledged.
+        dead: Handling failed at or beyond maxAttempts and the message was dead-lettered.
+      handler_selection: message.body.type
+      default_max_attempts: 5
+      failure_behavior:
+        - Missing or non-object effect types fail handling.
+        - Journal appends happen before queue acknowledgement.
+        - Returned events use semantic appendJournal behavior and therefore request engine wake.
+        - An acknowledgement failure enters the same nack path as handler failure.
+
+queue_processor:
+  generic:
+    factory: createDurableQueueProcessor
+    category: primary
+    source: packages/durable-runtime/src/queue-processor/queue-processor.ts
+    options:
+      - "processNext(): Promise<QueueProcessResult>"
+      - "subscribe: QueueNotificationSubscription"
+      - "onError?: (error: unknown) => void"
+    methods:
+      - "start(): Promise<void>"
+      - "notify(): void"
+      - "drain(): Promise<void>"
+      - "stop(): void"
+      - "isRunning: boolean"
+    behavior:
+      - Starting subscribes once; repeated start calls are idempotent.
+      - No queue read occurs until notify or drain is called.
+      - One processor instance runs at most one drain concurrently.
+      - Duplicate notifications coalesce into pending drain work.
+      - completed and dead results continue draining.
+      - idle and retry results stop the current drain until another notification.
+      - Thrown processNext errors call onError and allow later notification recovery.
+      - Stopping aborts and unsubscribes; repeated stop calls are idempotent.
+  browser_adapter:
+    factory: createBrowserRuntimeQueueProcessor
+    source: packages/durable-runtime/src/queue-processor/browser-runtime-adapter.ts
+    purpose: Bind one queue processor to browserRuntime.processQueueLaneItem and fixed queue refs.
+  scaling:
+    - Multiple processor instances or hosts may respond to the same notification.
+    - Authoritative queue leases determine which processor owns each item.
+    - Notification delivery and queue ownership remain separate concerns.
+  notification_transports: Host-supplied and not implemented by this package.
+
+configured_runtime:
+  factory:
+    name: createConfiguredBrowserDurableRuntime
+    category: primary
+    source: packages/durable-runtime/src/runtime/configured-runtime.ts
+  config:
+    indexedDb:
+      shape: "{ databaseName?: string; indexedDB?: IDBFactory }"
+      registers_kind: indexed-db
+    filesystem:
+      shape: "{ mcpUrl: string; connect: (url: string) => Promise<McpCallTool> | McpCallTool }"
+      registers_kind: fs-path
+      ownership: The host creates and owns the MCP connection lifecycle.
+    azure:
+      shape: >-
+        { baseUrl: string; getHeaders?: () => Record<string, string>;
+        fetch?: typeof globalThis.fetch }
+      registers_kind: stores-proxy
+      ownership: getHeaders is evaluated for every request so credentials may rotate.
+  behavior:
+    - Only configured providers are registered.
+    - Factory setup awaits filesystem MCP connection establishment.
+    - Missing provider kinds fail when an operation attempts to route to them.
+
+connectors_and_storage:
+  - name: IndexedDB
+    kind: indexed-db
+    factory: createIndexedDbStorage
+    connector_export: "@gik/durable-runtime/connectors/browser-indexed-db"
+    storage_export: "@gik/durable-runtime/storage/indexed-db"
+    source: packages/durable-runtime/src/storage/indexed-db.ts
+    default_database: gik-durable-runtime
+    object_store: records
+    transaction_model:
+      - Journal append, its sequence counter, and requestedAt wake update share one readwrite transaction.
+      - requestedAt advances to processedAt plus one millisecond only when wall-clock time is not later than processedAt.
+      - processedAt advances monotonically in a readwrite transaction.
+      - Initialization is create-if-absent in one readwrite transaction.
+      - Acquire validates initialized state and writes the lease in one readwrite transaction.
+      - Commit validates lease, revision, and cursor; writes state and effects; and deletes the lock in one readwrite transaction.
+      - Abort validates the token and deletes the lock in one readwrite transaction.
+    default_transition_lease_ms: 300000
+    default_queue_visibility_ms: 60000
+
+  - name: Filesystem MCP
+    kind: fs-path
+    factory: createFilesystemMcpConnector
+    connector_export: "@gik/durable-runtime/connectors/filesystem-mcp"
+    storage_export: "@gik/durable-runtime/storage/filesystem"
+    source: packages/durable-runtime/src/connectors/filesystem-mcp.ts
+    transport: Host-injected MCP callTool function.
+    tools:
+      append_and_wake: filesystem.journal_append_and_wake
+      wake_read: filesystem.engine_wake_read
+      wake_processed: filesystem.engine_wake_processed
+      initialize: filesystem.runtime_initialize
+      acquire: filesystem.transition_acquire
+      commit: filesystem.transition_commit
+      abort: filesystem.transition_abort
+      effect_lease: filesystem.effect_lease
+      effect_ack: filesystem.effect_ack
+      effect_nack: filesystem.effect_nack
+    response_envelopes:
+      initialize: "{ initialization: InitializeRuntimeResult }"
+      acquire: "{ transition: TransitionSnapshot | null }"
+      abort: "{ aborted: boolean }"
+      append: "{ entry: JournalEntry }"
+      wake_read: "{ wake: EngineWakeState }"
+      wake_processed: "{ processed: true }"
+    journal_behavior:
+      - Journal records are direct newline-delimited fs.appendFile writes without a journal lock.
+      - Append remains independent of the transition lock.
+    wake_behavior:
+      - requestedAt is the modification time of an empty engine-wake-requested.file marker.
+      - processedAt is the modification time of an empty engine-wake-processed.file marker.
+      - Request and processing updates use touch-style file creation plus mtime updates.
+      - Marker contents are empty and are not read to determine wake state.
+      - Marking processed sets the processed marker mtime to the captured requestedAt token.
+    server_implementation: Consumer-owned MCP host using the public storage/filesystem export.
+
+  - name: Azure Functions
+    kind: stores-proxy
+    factory: createAzureFunctionConnector
+    connector_export: "@gik/durable-runtime/connectors/azure-function"
+    storage_export: "@gik/durable-runtime/storage/cosmos"
+    server_transport_export: "@gik/durable-runtime/server/transports/http"
+    source: packages/durable-runtime/src/connectors/azure-function.ts
+    transport: HTTP POST with JSON request and response bodies.
+    routes:
+      append: /api/gik/appendJournal
+      wake_read: /api/gik/engine-wake/read
+      wake_processed: /api/gik/engine-wake/processed
+      initialize: /api/gik/runtime/initialize
+      acquire: /api/gik/transition/acquire
+      commit: /api/gik/transition/commit
+      abort: /api/gik/transition/abort
+      effect_lease: /api/gik/effects/lease
+      effect_ack: /api/gik/effects/ack
+      effect_nack: /api/gik/effects/nack
+    wake_behavior:
+      - Cosmos stores requestedAt and processedAt in one engine wake document.
+      - Wake updates use ETag-conditional replacement or create with bounded conflict retries.
+      - requestedAt advances to processedAt plus one millisecond only when wall-clock time is not later than processedAt.
+      - processedAt advances monotonically.
+      - Journal append and wake request are separate operations and are not one Cosmos transactional batch.
+    authentication: >-
+      The host may return request headers from getHeaders. The adapter does not own or
+      persist credentials.
+    server_implementation: Consumer-owned Azure host using the public storage/cosmos and server transport exports.
+
+concurrency_and_durability:
+  initialization:
+    - Must occur explicitly before acquireTransition or runEngine.
+    - Is create-if-absent and never overwrites existing state.
+    - Produces the first durable revision with a null cursor.
+  transition_lease:
+    - Only one active transition lease may own a runtime namespace.
+    - Lease token and expiry are validated during commit.
+    - Successful commit releases the transition lease.
+    - Conflict releases the transition lease where supported by the provider protocol.
+    - Abort releases a matching lease without changing state or cursor.
+  optimistic_checks:
+    - expectedRevision must equal the persisted revision.
+    - previousCursor must equal the persisted cursor.
+    - nextCursor is the id of the last journal entry processed by the local kernel.
+  effects:
+    - Effects are persisted with state and cursor by the provider commit operation.
+    - Effect handlers run separately through queue leasing.
+    - Provider semantic effect operations use the same physical queue and schema as transition commit.
+  journal:
+    - Append is unconditional.
+    - The runtime does not provide event-level deduplication.
+    - Append does not acquire the transition lease.
+  engine_wake:
+    - requestedAt and processedAt are millisecond ISO timestamps at the cross-provider contract boundary.
+    - Pending means requestedAt is later than processedAt.
+    - Multiple requests may coalesce into one pending marker.
+    - Engine wake has no lease, ack, nack, item identity, or delivery count.
+    - Transition locking remains authoritative when multiple hosts attempt engine work.
+  queue_processing:
+    - Notifications are non-authoritative hints that a configured queue may have work.
+    - Queue lease, ack, nack, visibility timeout, retry, and dead-letter state remain provider-owned.
+    - Multiple processors may drain the same lane concurrently because item leases arbitrate ownership.
+
+host_responsibilities:
+  - Register every DurableKernel by a unique id.
+  - Call initializeRuntime explicitly before runEngine for a new runtime.
+  - Supply effect handlers keyed by effect body type.
+  - Supply queue notification subscriptions and own their transport connectivity.
+  - Supply provider URLs, MCP connection behavior, authentication headers, and optional browser APIs.
+  - Keep all refs in one operation on the same provider kind.
+  - Decide when to call processEngineWake or runEngine.
+  - Start and stop queue processors with the host lifecycle when notification-driven draining is required.
+  - Treat provider errors and kernel errors as operational failures requiring host policy.
+
+non_goals:
+  - Server-side kernel execution on the new browser-runtime transition path.
+  - Cross-provider atomic transitions.
+  - Journal deduplication.
+  - Lease renewal.
+  - Write-ahead logging or filesystem crash recovery.
+  - Transition idempotency keys.
+  - Automatic polling, scheduling, or service-worker ownership.
+  - Built-in SSE, BroadcastChannel, MCP notification, or other queue notification transports.
+  - A provider-neutral durable notification queue; notifications are only wake hints.
+  - Owning MCP transport lifecycle or Azure credentials.
+  - Replacing @gik/kernel public APIs.
+
+limitations:
+  - The workspace package has not yet been released to npm.
+  - Public browser runtime result types are inferred rather than exported as named contracts.
+  - The filesystem server holds transition release closures in process memory; server restart abandons that in-memory ownership and relies on filesystem lock behavior.
+  - Filesystem commit uses staged queue messages but is not a general write-ahead-log recovery protocol.
+  - Effect event appends occur before queue acknowledgement, so a later acknowledgement failure may cause handler retry and duplicate events unless the application handles idempotency.
+  - Queue processors do not renew item leases during long-running handlers.
+  - Queue processors do not add retries or timers after retry, idle, or thrown results; another notification or explicit drain is required.
+  - The Azure journal append and engine wake request are separate operations; a failure between them leaves the event durable without advancing the wake marker until another request or explicit engine run.
+  - The runtime does not automatically initialize state from runEngine.
+  - No provider is selected by configuration alone; selection always comes from the ref kind.
+
+validation:
+  typecheck: "npx tsc -p packages/durable-runtime/tsconfig.json --noEmit"
+  focused_tests: >-
+    npm test --workspace=@gik/durable-runtime
+  last_focused_result: 2 files and 10 tests passed
+  coverage:
+    - Local kernel execution and provider-kind routing.
+    - Explicit initialization and repeat initialization without overwrite.
+    - Abort after local kernel failure.
+    - Mixed-provider rejection.
+    - Engine wake processing and captured-request race preservation.
+    - Busy, conflict, and lease-lost results do not consume engine wake requests.
+    - Direct IndexedDB state, journal, effect, and queue flow.
+    - IndexedDB requestedAt advances beyond processedAt at the millisecond boundary.
+    - Azure route selection and dynamic request headers.
+    - Filesystem MCP response unwrapping and transition payload shape.
+    - Queue drain-until-idle and retry pause behavior.
+    - Duplicate notification coalescing and one active drain per processor.
+    - Stop, abort, unsubscribe, subscription failure, error recovery, and idempotent lifecycle.
+    - Parallel processors handling shared leased items without duplicate ownership.
+    - Browser runtime queue processor adapter request forwarding.
+  packaging_validation:
+    command: npm run pack:durable-runtime
+    artifact: gik-durable-runtime-0.1.1.tgz
+    producer_has_no_consumer_source_paths: true

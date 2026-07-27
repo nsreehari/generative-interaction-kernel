@@ -1,0 +1,86 @@
+{
+  "name": "@gik/durable-runtime",
+  "version": "0.1.1",
+  "description": "Provider-neutral durable runtime, queue processing, connectors, and storage backends for GIK.",
+  "license": "MIT",
+  "author": "nsreehari",
+  "keywords": [
+    "gik",
+    "durable-runtime",
+    "event-journal",
+    "indexeddb",
+    "cosmos"
+  ],
+  "homepage": "https://github.com/nsreehari/generative-interaction-kernel#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nsreehari/generative-interaction-kernel.git",
+    "directory": "packages/durable-runtime"
+  },
+  "bugs": {
+    "url": "https://github.com/nsreehari/generative-interaction-kernel/issues"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "docs"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./connectors/azure-function": {
+      "types": "./dist/connectors/azure-function.d.ts",
+      "import": "./dist/connectors/azure-function.js"
+    },
+    "./connectors/filesystem-mcp": {
+      "types": "./dist/connectors/filesystem-mcp.d.ts",
+      "import": "./dist/connectors/filesystem-mcp.js"
+    },
+    "./connectors/browser-indexed-db": {
+      "types": "./dist/connectors/browser-indexed-db.d.ts",
+      "import": "./dist/connectors/browser-indexed-db.js"
+    },
+    "./storage/indexed-db": {
+      "types": "./dist/storage/indexed-db.d.ts",
+      "import": "./dist/storage/indexed-db.js"
+    },
+    "./storage/cosmos": {
+      "types": "./dist/storage/cosmos.d.ts",
+      "import": "./dist/storage/cosmos.js"
+    },
+    "./storage/filesystem": {
+      "types": "./dist/storage/filesystem.d.ts",
+      "import": "./dist/storage/filesystem.js"
+    },
+    "./server/transports/http": {
+      "types": "./dist/server/transports/http.d.ts",
+      "import": "./dist/server/transports/http.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts src/connectors/azure-function.ts src/connectors/filesystem-mcp.ts src/connectors/browser-indexed-db.ts src/storage/indexed-db.ts src/storage/cosmos.ts src/storage/filesystem.ts src/server/transports/http.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
+    "test": "vitest run --config vitest.config.ts",
+    "prepack": "node ../../scripts/sync-public-docs.mjs packages/durable-runtime"
+  },
+  "peerDependencies": {
+    "@azure/cosmos": "^4.4.1"
+  },
+  "peerDependenciesMeta": {
+    "@azure/cosmos": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@azure/cosmos": "^4.4.1",
+    "fake-indexeddb": "^6.2.5"
+  }
+}

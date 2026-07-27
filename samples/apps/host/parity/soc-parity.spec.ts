@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const standaloneUrl = "/?b=live-workspace-soc";
-const demoUrl = "/?b=live-workspace-soc&demo=soc-executive&gik=1";
+const demoUrl = "/?b=live-workspace-soc&demo=0&gik=1";
 const investigationBoardUrl = "/?b=live-workspace-soc&gik=1&presentation=investigation-board";
 
 async function stabilize(page: Page): Promise<void> {
@@ -70,6 +70,13 @@ test("demo runner expands, collapses, and brokers semantic timeline focus", asyn
   await expect(runnerToggle).toHaveAttribute("aria-expanded", "false");
   await runnerToggle.click();
   await expect(runnerToggle).toHaveAttribute("aria-expanded", "true");
+  const scenarioSelect = page.getByRole("combobox", { name: "Select demo Blueprint" });
+  await expect(scenarioSelect).toHaveValue("soc-t3");
+  const initialUrl = page.url();
+  await scenarioSelect.selectOption("soc-executive");
+  await expect(scenarioSelect).toHaveValue("soc-executive");
+  await expect(page.getByText("Act 1 of 5", { exact: true })).toBeVisible();
+  expect(page.url()).toBe(initialUrl);
   await expect(runner.getByRole("button", { name: "Auto" })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Expand control harness" }).click();
   await page.getByRole("tab", { name: "Blueprint" }).click();
@@ -80,9 +87,12 @@ test("demo runner expands, collapses, and brokers semantic timeline focus", asyn
   await expect(page).toHaveScreenshot("soc-demo-expanded-desktop.png");
 
   await advance(page, 2);
+  await page.getByRole("button", { name: "Reset scenario" }).click();
+  await expect(page.getByText("Act 1 of 5", { exact: true })).toBeVisible();
+  await advance(page, 2);
   await expect(page.getByRole("combobox", { name: "Select presentation context" })).toHaveText("Full substrate");
   await expect(page.getByText("Established investigation intent", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Frame the protected business objective/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Frame the protected business objective/ })).toBeVisible();
   await expect(page.getByText(/organism/i)).toHaveCount(0);
   await page.getByRole("button", { name: "Ledger" }).click();
   const scenarioEntry = page.getByRole("button", { name: /Frame the protected business objective/ });
@@ -93,11 +103,10 @@ test("demo runner expands, collapses, and brokers semantic timeline focus", asyn
   await expect(organismEntry).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator('[data-soc-region="intent"]')).toHaveCSS("outline-style", "solid");
   await page.getByRole("button", { name: "Journal" }).click();
-  await expect(scenarioEntry).toHaveCount(0);
+  await expect(scenarioEntry).toBeVisible();
   await page.getByRole("tab", { name: "Participants" }).click();
   await expect(page.locator('article[data-participant-id="human-morgan"]')).toHaveCSS("outline-style", "solid");
-  await expect(page.getByRole("switch", { name: "Correlation Agent provider mode" })).not.toBeChecked();
-  await expect(page.getByRole("switch", { name: "Response Agent provider mode" })).not.toBeChecked();
+  await expect(page.getByRole("switch")).toHaveCount(0);
 
   await runnerToggle.click();
   await expect(runnerToggle).toHaveAttribute("aria-expanded", "false");
@@ -111,6 +120,7 @@ test("executive demo reaches the governed human gate on a 390px viewport", async
   await assertNoHorizontalOverflow(page);
 
   await page.getByRole("button", { name: "Expand scenario runner" }).click();
+  await page.getByRole("combobox", { name: "Select demo Blueprint" }).selectOption("soc-executive");
   await page.getByRole("button", { name: "Expand control harness" }).click();
 
   for (let act = 2; act <= 4; act += 1) await advance(page, act);
