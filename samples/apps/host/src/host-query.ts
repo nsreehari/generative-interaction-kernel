@@ -9,7 +9,7 @@ export { DEFAULT_PRESENTATION_CONTEXT, resolvePresentationContext, type Presenta
 
 export interface HostQuery {
   targetId: string | null;
-  demoId: string | null;
+  demoEnabled: boolean;
   harnessId: string | null;
   presentationContext: string | null;
 }
@@ -27,7 +27,7 @@ export function readHostQuery(search: string): HostQuery {
   const requestedPresentation = params.get("presentation") ?? params.get("presentationContext");
   return {
     targetId: params.get("b") ?? params.get("bundle"),
-    demoId: params.get("demo"),
+    demoEnabled: params.has("demo"),
     harnessId: isGikEnabled(params) || params.get("harness") === "gik-control-harness" || params.has("plane")
       ? "gik-control-harness"
       : null,

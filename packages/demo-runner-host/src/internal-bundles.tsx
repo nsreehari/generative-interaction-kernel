@@ -5,7 +5,6 @@ import {
   Persona,
   Select,
   Spinner,
-  Switch,
   Tab,
   TabList,
   makeStyles,
@@ -47,15 +46,12 @@ import type {
   InspectionParticipant,
   InspectionStatus,
   ParticipantStatus,
-  ParticipantToggleSetting,
 } from "./control-inspection";
 import type { ControlReceipt, ControlRequest } from "./control-runtime";
 import {
   GIK_DEMO_RESET_STATE_COMMAND,
   isBuiltInDemoCommand,
   scenarioStepCommands,
-  writeDemoNavigation,
-  type DemoCatalogEntry,
   type PresentationPreset,
   type ScenarioPlan,
   type ScenarioStep,
@@ -578,8 +574,6 @@ const useOverlayStyles = makeStyles({
   cardActive: { backgroundColor: "color-mix(in srgb, #315f72 9%, #f7fbfc)", outline: `2px solid ${shellColors.accent}`, outlineOffset: "-2px" },
   persona: { minWidth: 0, "& > div:last-child": { minWidth: 0 }, "& span": { overflowWrap: "anywhere" } },
   details: { marginTop: tokens.spacingVerticalS, color: shellColors.muted, fontSize: tokens.fontSizeBase100, "& summary": { width: "fit-content", color: shellColors.text, cursor: "pointer" }, "& ul": { margin: `${tokens.spacingVerticalXS} 0 0`, paddingLeft: tokens.spacingHorizontalL } },
-  setting: { marginTop: tokens.spacingVerticalS, paddingTop: tokens.spacingVerticalS, borderTop: `1px solid ${shellColors.line}` },
-  settingMessage: { color: shellColors.muted, fontSize: tokens.fontSizeBase100, overflowWrap: "anywhere" },
 });
 
 function isToggleOn(value: unknown, onValue: unknown): boolean {
@@ -730,9 +724,6 @@ const DemoRunner: ProjectionView = ({ node, emit, children }) => {
   const styles = useOverlayStyles();
   const demo = node.props.demo as unknown as DemoState;
   const planValue = node.props.plan as unknown as ScenarioPlan;
-  const catalog = (node.props.catalog ?? []) as unknown as DemoCatalogEntry[];
-  const entry = node.props.entry as unknown as DemoCatalogEntry;
-  const selectedDemoId = String(node.props.selectedDemoId ?? "");
   const [expanded, setExpanded] = React.useState(false);
   const processedAckRef = React.useRef("");
   const act = Number(demo.act ?? 0);
@@ -755,12 +746,6 @@ const DemoRunner: ProjectionView = ({ node, emit, children }) => {
     }, request.waitAfterMs ?? 0);
     return () => window.clearTimeout(timer);
   }, [demo.request, emit, node.props.receipt]);
-
-  React.useEffect(() => {
-    if (!selectedDemoId || selectedDemoId === entry.id) return;
-    const selected = catalog.find((item) => item.id === selectedDemoId);
-    if (selected) window.location.assign(writeDemoNavigation(window.location.href, selected));
-  }, [catalog, entry.id, selectedDemoId]);
 
   return (
     <ViewportPortal>
@@ -952,7 +937,7 @@ const JournalRail: ProjectionView = ({ node, emit }) => {
   const latestEntry = timelineValue.at(-1);
   const selectedEntry = selectedJournalId ? timelineValue.find((item) => item.operationRecordId === selectedJournalId || item.id === selectedJournalId) ?? latestEntry : latestEntry;
   const timelineItems = demoEnabled ? demoTimeline : timelineValue;
-  const visibleTimelineItems = journalMode === "journal" ? timelineItems.filter((item) => item.source === "organism") : timelineItems;
+  const visibleTimelineItems = timelineItems;
   const selectedTimelineItem = demoSelection ? timelineItems.find((item) => item.id === demoSelection.itemId) : selectedEntry ?? timelineItems.at(-1);
   const actorNames = new Map(participants.map((item) => [item.id, item.name]));
 
@@ -1038,20 +1023,6 @@ const Participants: ProjectionView = ({ node, emit }) => {
     </section>;
   }
 
-  const renderSetting = (participant: InspectionParticipant, setting: ParticipantToggleSetting) => <div className={styles.setting} key={setting.id}>
-    <Switch
-      checked={setting.value === setting.onValue}
-      label={setting.value === setting.onValue ? setting.onLabel : setting.offLabel}
-      aria-label={`${participant.name} ${setting.label}`}
-      onChange={(_, data) => emit("configureParticipant", {
-        participantId: participant.id,
-        settingId: setting.id,
-        value: data.checked ? setting.onValue : setting.offValue,
-      })}
-    />
-    {setting.message ? <div className={styles.settingMessage}>{setting.message}</div> : null}
-  </div>;
-
   const renderParticipant = (participant: InspectionParticipant) => {
     const active = participant.focusRef ? selectionContainsFocus(selection, [participant.focusRef]) : false;
     return <article data-participant-id={participant.id} key={participant.id} className={mergeClasses(styles.card, active ? styles.cardActive : undefined)}>
@@ -1067,7 +1038,6 @@ const Participants: ProjectionView = ({ node, emit }) => {
         <summary>Capabilities</summary>
         <ul>{participant.capabilities.map((capability) => <li key={capability}>{capability}</li>)}</ul>
       </details> : null}
-      {participant.settings?.map((setting) => renderSetting(participant, setting))}
     </article>;
   };
 
@@ -1134,7 +1104,7 @@ const demoRunnerDocument = {
             capability: "demo-runner-host:dropdown",
             id: "demo-blueprint-dropdown-region",
             props: { ariaLabel: "Select demo Blueprint", placeholder: "Select a demo" },
-            edges: { read: { value: "runner.entry.id", options: "runner.catalog" }, on: { select: [{ do: "invoke", args: { tool: "selectDemo" } }] } },
+            edges: { read: { value: "runner.selectedDemoId", options: "runner.catalog" }, on: { select: [{ do: "invoke", args: { tool: "selectDemo" } }] } },
           },
           {
             capability: "demo-runner-host:dropdown",
@@ -1188,7 +1158,7 @@ const harnessManifest = {
       "harness:shell": { propsSchema: { type: "object", additionalProperties: true }, slots: ["children"], emits: ["selectTab", "toggleHarness"] },
       "harness:blueprint-inspector": { propsSchema: { type: "object", additionalProperties: true } },
       "harness:journal": { propsSchema: { type: "object", additionalProperties: true }, emits: ["setJournalMode", "selectTimeline", "clearTimelineSelection", "selectJournal"] },
-      "harness:participants": { propsSchema: { type: "object", additionalProperties: true }, emits: ["configureParticipant"] },
+      "harness:participants": { propsSchema: { type: "object", additionalProperties: true } },
     },
     externals: { projectionViews: { harness: { from: "self" } } },
   },
@@ -1236,7 +1206,6 @@ const harnessDocument = {
             id: "control-participants",
             edges: {
               read: { participants: "control.inspection.participants", selection: "demo.selection" },
-              on: { configureParticipant: [{ do: "assign", target: "control.participantConfigurationRequest", args: { from: "$event" } }] },
             },
           },
           {
@@ -1269,7 +1238,6 @@ const harnessState = {
     },
     presentationContext: null,
     presentationPresetId: null,
-    participantConfigurationRequest: null,
     agentModeRequest: null,
     authorizationRequest: null,
   },
@@ -1289,7 +1257,10 @@ const harnessViews = {
   participants: Participants,
 };
 
-export function createDemoRunnerBundle(stateSeed?: Record<string, unknown>): Bundle {
+export function createDemoRunnerBundle(
+  stateSeed?: Record<string, unknown>,
+  onSelectDemo?: (demoId: string) => void,
+): Bundle {
   const state = structuredClone(demoRunnerState) as Record<string, unknown>;
   if (stateSeed) Object.assign(state, stateSeed);
   return bundleFromJson({
@@ -1297,7 +1268,15 @@ export function createDemoRunnerBundle(stateSeed?: Record<string, unknown>): Bun
     program: structuredClone(demoRunnerDocument),
     state,
   }, {
-    effectHandlers: demoRunnerEffects,
+    effectHandlers: {
+      ...demoRunnerEffects,
+      selectDemo(ctx) {
+        const value = String(ctx.payload.value ?? "");
+        if (!value) return { outcome: "ignored" };
+        onSelectDemo?.(value);
+        return { outcome: "selected", ops: [setOp("runner.selectedDemoId", value)] };
+      },
+    },
     projectionViews: demoRunnerViews,
   });
 }

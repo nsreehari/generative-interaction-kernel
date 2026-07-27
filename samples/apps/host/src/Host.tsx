@@ -1,6 +1,6 @@
 // The ONE generic host app opens a Blueprint selected by `?b=<id>` and adapts its lowered runtime
 // to BundleHost. Ordinary Bundle artifacts are previewed inside the manage-bundles Blueprint. A demo
-// run (`?demo=<id>`) is delegated wholesale to GikDemoBlueprintHost; the host keeps only URL
+// run (`?demo=<anything>`) is delegated wholesale to GikDemoBlueprintHost; the host keeps only URL
 // canonicalization, the non-demo mounting paths, and the switcher overlay.
 
 import React from "react";
@@ -43,8 +43,8 @@ export function Host(): React.ReactElement {
   // One registry for the life of the app; every BundleHost and every `embed props.app` resolves it.
   const query = readHostQuery(window.location.search);
   const targetId = query.targetId ?? DEFAULT_BLUEPRINT;
-  const { demoId, harnessId, presentationContext } = query;
-  const registry = React.useMemo(() => createHostRegistry(demoId, targetId), [demoId, targetId]);
+  const { demoEnabled, harnessId, presentationContext } = query;
+  const registry = React.useMemo(() => createHostRegistry(null, targetId), [targetId]);
   const presentationPresets = React.useMemo(
     () => demoCatalog.targets[targetId]?.presentationPresets ?? [],
     [targetId]
@@ -52,7 +52,7 @@ export function Host(): React.ReactElement {
   const resolvedPresentationContext = resolvePresentationContext(presentationContext, presentationPresets);
   // Non-demo shared contexts only; a demo run's contexts are owned by GikDemoBlueprintHost.
   const contexts = React.useMemo<Record<string, SharedContextStore>>(() => {
-    if (demoId) return {};
+    if (demoEnabled) return {};
     const next: Record<string, SharedContextStore> = {};
     const target = registry.get(targetId);
     const targetState = target?.kind === "bundle" ? target.make().state : undefined;
@@ -88,7 +88,6 @@ export function Host(): React.ReactElement {
             commands: {},
             presentationContext: resolvedPresentationContext?.context ?? null,
             presentationPresetId: resolvedPresentationContext?.id ?? null,
-            participantConfigurationRequest: null,
             agentModeRequest: null,
             authorizationRequest: null,
           }),
@@ -108,7 +107,7 @@ export function Host(): React.ReactElement {
       }
     }
     return next;
-  }, [demoId, harnessId, presentationPresets, registry, resolvedPresentationContext, targetId]);
+  }, [demoEnabled, harnessId, presentationPresets, registry, resolvedPresentationContext, targetId]);
   React.useEffect(() => {
     const canonicalUrl = canonicalizeHostUrl(window.location.href);
     if (canonicalUrl !== window.location.href) window.history.replaceState(null, "", canonicalUrl);
@@ -140,7 +139,7 @@ export function Host(): React.ReactElement {
     <BundleRegistryProvider registry={registry} resolveProvider={resolveProvider}>
       <HostView
         contexts={contexts}
-        demoId={demoId}
+        demoEnabled={demoEnabled}
         harnessId={harnessId}
         targetId={targetId}
         presentationContext={presentationContext}
@@ -152,14 +151,14 @@ export function Host(): React.ReactElement {
 
 function HostView({
   contexts,
-  demoId,
+  demoEnabled,
   harnessId,
   targetId,
   presentationContext,
   onPresentationPresetChange,
 }: {
   contexts: Record<string, SharedContextStore>;
-  demoId: string | null;
+  demoEnabled: boolean;
   harnessId: string | null;
   targetId: string;
   presentationContext: string | null;
@@ -172,11 +171,10 @@ function HostView({
   const mounted = React.useMemo(() => {
     if (entry?.kind === "native-root") return <entry.Root />;
     if (entry?.kind === "bundle") {
-      if (demoId) {
+      if (demoEnabled) {
         return (
           <GikDemoBlueprintHost
             blueprintId={id}
-            demoId={demoId}
             showControlHarness={Boolean(harnessId)}
             presentationContext={presentationContext}
             onPresentationPresetChange={onPresentationPresetChange}
@@ -187,7 +185,7 @@ function HostView({
       return <BundleHost bundle={bundle} contexts={contexts} />;
     }
     return <p className={styles.unknownBundle}>Unknown Blueprint: {id}</p>;
-  }, [contexts, demoId, entry, harnessId, id, onPresentationPresetChange, presentationContext, styles.unknownBundle]);
+  }, [contexts, demoEnabled, entry, harnessId, id, onPresentationPresetChange, presentationContext, styles.unknownBundle]);
 
   // The switcher is itself a bundle, mounted through the same host as an overlay — so host chrome
   // rides the ambient, host-owned theme. Its list reacts to runtime register/unregister.
@@ -199,7 +197,7 @@ function HostView({
   return (
     <>
       {mounted}
-      {demoId ? null : <BundleHost bundle={switcher} />}
+      {demoEnabled ? null : <BundleHost bundle={switcher} />}
     </>
   );
 }
