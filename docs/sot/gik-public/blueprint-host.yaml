@@ -33,6 +33,7 @@ architecture:
     - Kernel execution semantics.
     - Demo catalogs, scenario playback, control harnesses, or inspection contracts.
     - Application routing or URL query interpretation.
+    - Service-kind admission, ServiceHost construction, credentials, endpoint authorization, or environment policy.
   dependency_direction:
     - "@gik/blueprint-host -> @gik/blueprint"
     - "@gik/blueprint-host -> @gik/controlface"
@@ -86,6 +87,8 @@ execution_boundary:
     - BlueprintHost does not execute Blueprint JSON directly.
     - Kernel and the React bundle runtime retain ownership of runtime execution and state.
     - BlueprintHost does not choose or construct demo behavior.
+    - BlueprintHost forwards native.wrapOrchestrator through bundleFromJson; an outer host may use that seam to connect one host-owned ServiceHost.
+    - Service-backed hosting follows ADR-0040: the outer host constructs ServiceHost and BlueprintHost remains service-policy agnostic.
 
 public_exports:
   - BlueprintHost

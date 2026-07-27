@@ -1,6 +1,6 @@
 {
   "name": "@gik/demo-runner-host",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Demo scenario runner and control harness host for the Generative Interaction Kernel.",
   "license": "MIT",
   "author": "nsreehari",

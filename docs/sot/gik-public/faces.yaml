@@ -90,6 +90,11 @@ public_packages:
       - QueueFace and service request contracts.
       - ServiceHost and DefaultServiceHost.
       - ServiceKindRegistry and service-kind contracts.
+    service_host_ownership: >-
+      ServiceHost is a host-owned execution capability. An outer host constructs and owns the
+      lifecycle of DefaultServiceHost, registers trusted service-kind factories, and supplies
+      credential resolution, endpoint authorization, and environment policy. Face projections,
+      BlueprintHost, and product Blueprints do not construct it.
     queueface:
       constructor: "new QueueFace(host: ServiceHost)"
       methods:
