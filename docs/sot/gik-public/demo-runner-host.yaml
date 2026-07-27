@@ -63,6 +63,26 @@ host_component_contract:
     through native.wrapOrchestrator. GikDemoBlueprintHost forwards native unchanged and does not
     depend on a concrete Blueprint host or own service policy.
 
+intended_composition:
+  owner: Application host or an application-owned composition component.
+  assembly:
+    - The composition owner imports GikDemoBlueprintHost and its chosen target host independently.
+    - For the standard Blueprint path, the composition owner supplies BlueprintHost as HostComponent.
+    - The composition owner supplies the BlueprintHost-compatible target props directly on GikDemoBlueprintHost, together with demo-specific props such as scenariosJson.
+    - GikDemoBlueprintHost treats the target props as the structural DemoTargetHostProps contract; it does not import, construct, or receive a nested BlueprintHostProps object.
+    - Without an active demo, GikDemoBlueprintHost invokes HostComponent with the unchanged target-host values.
+    - With an active demo, GikDemoBlueprintHost explicitly merges or replaces only demo-owned values such as companions, contexts, primaryBridge, primaryInstanceKey, context, and composition style before invoking HostComponent.
+    - The target host then owns its normal lifecycle. BlueprintHost opens and mounts the supplied Blueprint exactly as it would without the demo wrapper.
+  canonical_shape: >-
+    <GikDemoBlueprintHost HostComponent={BlueprintHost} blueprint={blueprint}
+    native={native} resolveLeavesProvider={resolveLeavesProvider}
+    scenariosJson={scenariosJson} />
+  rules:
+    - GikDemoBlueprintHost remains generic over any React component structurally compatible with DemoTargetHostProps.
+    - Demo-specific props are consumed by GikDemoBlueprintHost and are not blindly spread into HostComponent.
+    - BlueprintHost and BlueprintHostProps are not imported by @gik/demo-runner-host.
+    - The application composition layer may create a local wrapper for repeated setup, but that wrapper does not become a platform package dependency.
+
 component:
   name: GikDemoBlueprintHost
   signature: "function GikDemoBlueprintHost(props: GikDemoBlueprintHostProps): React.ReactElement"
