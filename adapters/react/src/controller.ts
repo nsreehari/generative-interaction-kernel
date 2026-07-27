@@ -29,7 +29,9 @@ export class GenUIController {
     return this.enqueue(async () => {
       this.kernel.init();
       this.lastPatch = await this.kernel.syncExternal();
-      return this.refresh();
+      const tree = await this.refresh();
+      void this.settle().catch(() => undefined);
+      return tree;
     });
   }
 
