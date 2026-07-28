@@ -610,7 +610,6 @@ non_goals:
   - Cross-provider atomic transitions.
   - Journal deduplication.
   - Lease renewal.
-  - Write-ahead logging or filesystem crash recovery.
   - Transition idempotency keys.
   - Automatic polling, scheduling, or service-worker ownership.
   - Built-in SSE, BroadcastChannel, MCP notification, or other queue notification transports.
@@ -622,7 +621,9 @@ limitations:
   - The workspace package has not yet been released to npm.
   - Public browser runtime result types are inferred rather than exported as named contracts.
   - The filesystem server holds transition release closures in process memory; server restart abandons that in-memory ownership and relies on filesystem lock behavior.
-  - Filesystem commit uses staged queue messages but is not a general write-ahead-log recovery protocol.
+  - >-
+    Deferred low-priority follow-up: filesystem crash-consistency hardening. Keep this tracked,
+    but prioritize proving runtime value and operational demand before designing or implementing it.
   - Effect event appends occur before queue acknowledgement, so a later acknowledgement failure may cause handler retry and duplicate events unless the application handles idempotency.
   - Queue processors do not renew item leases during long-running handlers.
   - Queue processors do not add retries or timers after retry, idle, or thrown results; another notification or explicit drain is required.
