@@ -23,10 +23,12 @@ interface RuntimeDocument extends Record<string, unknown> {
 
 interface RuntimeStateDocument extends RuntimeDocument {
   kind: "gik-state";
-  kernelId: string;
+  runtimeId: string;
   revision: string;
   cursor: string | null;
   state: unknown;
+  spec: unknown;
+  specUpdates: unknown[];
 }
 
 interface RuntimeLockDocument extends RuntimeDocument {
@@ -135,27 +137,35 @@ function effectsPartition(
   return `gik:${storage.namespaceForRef(effectsQueueRef)}:queue:${effectsLane}`;
 }
 
-export function createCosmosTransitionStorage<TState = unknown, TEvent = unknown, TEffect = unknown>(
+export function createCosmosTransitionStorage<
+  TState = unknown,
+  TSpec = unknown,
+  TEvent = unknown,
+  TEffect = unknown,
+  TSpecUpdate = unknown,
+>(
   containerInput: unknown,
   storage: Pick<DurableStorageResolver, "journalStorageForRef" | "namespaceForRef">,
-  kernelId: string,
-): LeasedTransitionStorage<TState, TEvent, TEffect> {
+  runtimeId: string,
+): LeasedTransitionStorage<TState, TSpec, TEvent, TEffect, TSpecUpdate> {
   const container = containerInput as Container;
   const stateId = "__state__";
   const lockId = "__transition_lock__";
 
   return {
-    async initialize(refs, initialState) {
+    async initialize(refs, initialState, initialSpec) {
       const partitionKey = cosmosRuntimePartition(storage, refs.stateRef, refs.effectsQueueRef, refs.effectsLane);
       const revision = randomUUID();
       const document: RuntimeStateDocument = {
         id: stateId,
         partitionKey,
         kind: "gik-state",
-        kernelId,
+        runtimeId,
         revision,
         cursor: null,
         state: normalize(initialState),
+        spec: normalize(initialSpec),
+        specUpdates: [],
       };
       const status = await executeBatch(container, [{
         operationType: BulkOperationType.Create,
@@ -165,7 +175,7 @@ export function createCosmosTransitionStorage<TState = unknown, TEvent = unknown
       if (status !== 409) throw new Error(`Cosmos runtime initialization failed with status ${status}.`);
       const current = await readDocument<RuntimeStateDocument>(container, stateId, partitionKey);
       if (!current) throw new Error("Runtime initialization conflicted but no state was found.");
-      if (current.kernelId !== kernelId) throw new Error(`Runtime state belongs to kernel ${current.kernelId}, not ${kernelId}.`);
+      if (current.runtimeId !== runtimeId) throw new Error(`Runtime state belongs to runtime ${current.runtimeId}, not ${runtimeId}.`);
       return { created: false, revision: current.revision };
     },
 
@@ -190,9 +200,9 @@ export function createCosmosTransitionStorage<TState = unknown, TEvent = unknown
         await this.abort(refs, leaseToken);
         throw new Error("Runtime is not initialized.");
       }
-      if (state.kernelId !== kernelId) {
+      if (state.runtimeId !== runtimeId) {
         await this.abort(refs, leaseToken);
-        throw new Error(`Runtime state belongs to kernel ${state.kernelId}, not ${kernelId}.`);
+        throw new Error(`Runtime state belongs to runtime ${state.runtimeId}, not ${runtimeId}.`);
       }
       const cursor = state.cursor || null;
       const journal = await storage.journalStorageForRef(refs.journalRef).readAfter(cursor);
@@ -200,6 +210,7 @@ export function createCosmosTransitionStorage<TState = unknown, TEvent = unknown
         leaseToken,
         leaseExpiresAt,
         state: state.state as TState,
+        spec: state.spec as TSpec,
         revision: state.revision,
         cursor,
         entries: journal.entries as Array<{ id: string; payload: TEvent }>,
@@ -228,8 +239,9 @@ export function createCosmosTransitionStorage<TState = unknown, TEvent = unknown
       }
       const revision = randomUUID();
       const nextState: RuntimeStateDocument = {
-        id: stateId, partitionKey, kind: "gik-state", kernelId, revision,
+        id: stateId, partitionKey, kind: "gik-state", runtimeId, revision,
         cursor: commit.nextCursor, state: normalize(commit.state),
+        spec: normalize(commit.spec), specUpdates: normalize(commit.specUpdates) as unknown[],
       };
       const operations: OperationInput[] = [current ? {
         operationType: BulkOperationType.Replace,

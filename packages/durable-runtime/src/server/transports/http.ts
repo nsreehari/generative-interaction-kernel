@@ -13,7 +13,7 @@ import type {
 } from "../../storage/contracts";
 
 export interface DurableRuntimeServerDependencies extends Pick<DurableStorageResolver, "journalStorageForRef"> {
-  transitionStorage(kernelId: string): LeasedTransitionStorage;
+  transitionStorage(runtimeId: string): LeasedTransitionStorage;
   engineWakeStorage(refs: RuntimeRefs): EngineWakeStorage;
   effectsQueueStorage(effectsQueueRef: string, effectsLane?: string): QueueLaneStorage;
 }
@@ -62,7 +62,7 @@ function transitionStorage(
   dependencies: DurableRuntimeServerDependencies,
   input: Record<string, unknown>,
 ): LeasedTransitionStorage {
-  return dependencies.transitionStorage(requiredString(input.kernelId, "kernelId"));
+  return dependencies.transitionStorage(requiredString(input.runtimeId, "runtimeId"));
 }
 
 export async function dispatchInitializeRuntime(
@@ -73,7 +73,10 @@ export async function dispatchInitializeRuntime(
   if (!Object.prototype.hasOwnProperty.call(input, "initialState")) {
     throw new Error("initialState is required.");
   }
-  return transitionStorage(dependencies, input).initialize(runtimeRefs(input), input.initialState);
+  if (!Object.prototype.hasOwnProperty.call(input, "initialSpec")) {
+    throw new Error("initialSpec is required.");
+  }
+  return transitionStorage(dependencies, input).initialize(runtimeRefs(input), input.initialState, input.initialSpec);
 }
 
 export async function dispatchAcquireTransition(
@@ -92,6 +95,7 @@ export async function dispatchCommitTransition(
 ) {
   const input = record(request, "commitTransition request");
   if (!Array.isArray(input.effects)) throw new Error("effects must be an array.");
+  if (!Array.isArray(input.specUpdates)) throw new Error("specUpdates must be an array.");
   return transitionStorage(dependencies, input).commit({
     ...transitionRefs(input),
     leaseToken: requiredString(input.leaseToken, "leaseToken"),
@@ -103,6 +107,8 @@ export async function dispatchCommitTransition(
       : requiredString(input.previousCursor, "previousCursor"),
     nextCursor: requiredString(input.nextCursor, "nextCursor"),
     state: input.state,
+    spec: input.spec,
+    specUpdates: input.specUpdates,
     effects: input.effects,
   });
 }

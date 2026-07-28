@@ -8,22 +8,25 @@ export type RuntimeRefs = {
 
 export type TransitionRefs = RuntimeRefs & { journalRef: string };
 
-export type TransitionSnapshot<TState = unknown, TEvent = unknown> = {
+export type TransitionSnapshot<TState = unknown, TSpec = unknown, TEvent = unknown> = {
   leaseToken: string;
   leaseExpiresAt: string;
   state: TState;
+  spec: TSpec;
   revision: string | null;
   cursor: string | null;
   entries: JournalEntry<TEvent>[];
 };
 
-export type TransitionCommit<TState = unknown, TEffect = unknown> = TransitionRefs & {
-  kernelId: string;
+export type TransitionCommit<TState = unknown, TSpec = unknown, TEffect = unknown, TSpecUpdate = unknown> = TransitionRefs & {
+  runtimeId: string;
   leaseToken: string;
   expectedRevision: string | null;
   previousCursor: string | null;
   nextCursor: string;
   state: TState;
+  spec: TSpec;
+  specUpdates: TSpecUpdate[];
   effects: TEffect[];
 };
 
@@ -42,14 +45,16 @@ export interface DurableProvider {
   appendJournal<T>(request: TransitionRefs & { entry: T }): Promise<JournalEntry<T>>;
   readEngineWake(refs: RuntimeRefs): Promise<EngineWakeState>;
   markEngineWakeProcessed(refs: RuntimeRefs, processedAt: string): Promise<void>;
-  initializeRuntime<TState>(
-    request: RuntimeRefs & { kernelId: string; initialState: TState }
+  initializeRuntime<TState, TSpec>(
+    request: RuntimeRefs & { runtimeId: string; initialState: TState; initialSpec: TSpec }
   ): Promise<InitializeRuntimeResult>;
-  acquireTransition<TState, TEvent>(
-    request: TransitionRefs & { kernelId: string; leaseMs?: number }
-  ): Promise<TransitionSnapshot<TState, TEvent> | null>;
-  commitTransition<TState, TEffect>(request: TransitionCommit<TState, TEffect>): Promise<TransitionCommitResult>;
-  abortTransition(request: TransitionRefs & { kernelId: string; leaseToken: string }): Promise<boolean>;
+  acquireTransition<TState, TSpec, TEvent>(
+    request: TransitionRefs & { runtimeId: string; leaseMs?: number }
+  ): Promise<TransitionSnapshot<TState, TSpec, TEvent> | null>;
+  commitTransition<TState, TSpec, TEffect, TSpecUpdate>(
+    request: TransitionCommit<TState, TSpec, TEffect, TSpecUpdate>
+  ): Promise<TransitionCommitResult>;
+  abortTransition(request: TransitionRefs & { runtimeId: string; leaseToken: string }): Promise<boolean>;
   leaseQueueItem?<TEffect>(request: {
     effectsQueueRef: string;
     effectsLane?: string;
@@ -82,15 +87,32 @@ export type QueueMessage<T = unknown> = {
   attempt: number;
 };
 
-export type DurableKernel<TState = unknown, TEvent = unknown, TEffect = unknown> = {
-  id: string;
+export type DurableTransitionAdapter<
+  TState = unknown,
+  TSpec = unknown,
+  TEvent = unknown,
+  TEffect = unknown,
+  TSpecUpdate = unknown,
+> = {
   initialState(): TState;
+  initialSpec(): TSpec;
   transition(input: {
     state: TState;
-    revision: string | null;
-    cursor: string | null;
-    entries: JournalEntry<TEvent>[];
-  }): Promise<{ state: TState; effects: TEffect[] }> | { state: TState; effects: TEffect[] };
+    spec: TSpec;
+    events: readonly TEvent[];
+  }): Promise<{
+    state: TState;
+    effects: readonly TEffect[];
+    specUpdates?: readonly TSpecUpdate[];
+  }> | {
+    state: TState;
+    effects: readonly TEffect[];
+    specUpdates?: readonly TSpecUpdate[];
+  };
+  applySpecUpdates(input: {
+    spec: TSpec;
+    updates: readonly TSpecUpdate[];
+  }): Promise<TSpec> | TSpec;
 };
 
 export type DurableEffectHandler<TEffect = unknown, TEvent = unknown> = (

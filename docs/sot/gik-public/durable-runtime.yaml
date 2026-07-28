@@ -11,14 +11,14 @@ document:
 
 package:
   name: "@gik/durable-runtime"
-  version: "0.3.0"
+  version: "0.4.1"
   publication_status: public-workspace-package
   purpose: >-
-    Run durable kernels and effect handlers locally in a browser while routing durable
-    state, journals, transition leases, engine wake markers, and effect queues to
+    Run caller-supplied pure transitions and effect handlers locally while routing durable
+    state, opaque specs, journals, transition leases, engine wake markers, and effect queues to
     IndexedDB, filesystem MCP, or Azure Functions according to KindValueRef kinds.
   core_promise: >-
-    The browser owns kernel and effect execution. Providers own persistence, locking,
+    The host owns transition and effect execution. Providers own persistence, locking,
     optimistic revision checks, journal access, and queue settlement. A transition never
     spans provider kinds.
   public_entrypoint: packages/durable-runtime/src/index.ts
@@ -53,48 +53,49 @@ package:
     - "@gik/durable-runtime/storage/indexed-db"
     - "@gik/durable-runtime/storage/indexed-db/library"
     - "@gik/durable-runtime/storage/indexed-db/api"
-  relationship_to_kernel: >-
-    DurableKernel is the client adapter contract used by this runtime. It is not the
-    @gik/kernel Kernel class. A host that uses @gik/kernel must supply an adapter whose
-    initialState and transition methods satisfy DurableKernel.
+  execution_contract: >-
+    DurableTransitionAdapter is provider-neutral and has no Blueprint or Kernel semantics.
+    The host supplies an opaque declarative spec, a pure transition function, and a pure
+    applySpecUpdates function. Providers persist spec values and updates without interpreting them.
 
 api_policy:
   signature_authority: TypeScript source in packages/durable-runtime/src
   categories:
     primary: Supported browser-runtime operation for current samples.
     provider_extension: Interface implemented by durable storage providers.
-    host_extension: Kernel, effect handler, connection, or authentication behavior supplied by a host.
+    host_extension: Transition, spec-update, effect handler, connection, or authentication behavior supplied by a host.
     advanced: Provider factory or transition primitive used to compose a host.
   compatibility: >-
     Contract changes must update this SOT, package exports, and focused tests together.
 
 architecture:
-  execution_owner: browser
+  execution_owner: host
   provider_owner: durable storage and concurrency
   boundaries:
-    - Kernels execute only in createBrowserDurableRuntime.runEngine.
-    - Effect handlers execute only in createBrowserDurableRuntime.processQueueLaneItem.
+    - Caller-supplied transitions execute only in createDurableRuntime.runEngine.
+    - Effect handlers execute only in createDurableRuntime.processQueueLaneItem.
     - createDurableQueueProcessor owns notification coalescing and drain-until-idle orchestration.
     - Queue notification subscriptions are supplied by the host and carry no queue item data.
-    - Azure Functions and filesystem MCP do not execute kernels on the browser-runtime path.
+    - Azure Functions and filesystem MCP do not execute transitions on the browser-runtime path.
     - IndexedDB is accessed directly by its browser provider.
     - The filesystem adapter receives an already-connected MCP callTool function from the host.
     - The Azure adapter receives its base URL, dynamic headers callback, and optional fetch implementation from the host.
   operation_flow:
     initialize:
       - Resolve the provider from stateRef and effectsQueueRef kind.
-      - Obtain initial state from the one host-supplied local kernel.
-      - Create revisioned state only when absent.
+      - Obtain initial state and initial opaque spec from the host-supplied transition adapter.
+      - Create the revisioned state/spec checkpoint only when absent.
     transition:
       - Resolve one provider for state, journal, and effects refs.
-      - Acquire a lease and read persisted state plus journal entries after the cursor.
-      - Run the supplied kernel locally.
-      - Commit state, cursor, and effects while releasing the lease.
+      - Acquire a lease and read persisted state, spec, and journal entries after the cursor.
+      - Run the supplied transition with state, spec, and the ordered event array.
+      - Apply emitted specUpdates through the caller-supplied applySpecUpdates function.
+      - Atomically commit state, materialized spec, specUpdates, cursor, and effects while releasing the lease.
       - Abort and release the lease if local execution throws.
     append_and_wake:
       - Append the journal event unconditionally.
       - Advance the provider-owned requestedAt engine wake marker.
-      - Do not acquire the transition lease or execute the kernel from appendJournal.
+      - Do not acquire the transition lease or execute the transition from appendJournal.
     engine_wake:
       - Read requestedAt and processedAt from the selected provider.
       - Return idle when requestedAt is absent or is not later than processedAt.
@@ -158,8 +159,8 @@ contracts:
     purpose: Report whether initial state was created and identify the persisted revision.
     behavior:
       - Initialization is create-if-absent.
-      - Repeating initialization for the same kernel preserves existing state and revision.
-      - An existing state owned by another kernel is rejected.
+      - Repeating initialization for the same runtimeId preserves existing state, spec, and revision.
+      - An existing checkpoint owned by another runtimeId is rejected.
 
   - name: EngineWakeState
     signature: >-
@@ -173,10 +174,10 @@ contracts:
 
   - name: TransitionSnapshot
     signature: >-
-      type TransitionSnapshot<TState, TEvent> = { leaseToken: string;
-      leaseExpiresAt: string; state: TState; revision: string | null;
+      type TransitionSnapshot<TState, TSpec, TEvent> = { leaseToken: string;
+      leaseExpiresAt: string; state: TState; spec: TSpec; revision: string | null;
       cursor: string | null; entries: JournalEntry<TEvent>[] }
-    purpose: Return leased state and journal work to the local kernel.
+    purpose: Return leased state, opaque spec, and journal work to the local transition.
     behavior:
       - acquireTransition returns null when another active lease owns the transition.
       - Acquisition fails when the runtime has not been initialized.
@@ -184,14 +185,14 @@ contracts:
 
   - name: TransitionCommit
     signature: >-
-      type TransitionCommit<TState, TEffect> = TransitionRefs & { kernelId: string;
+      type TransitionCommit<TState, TSpec, TEffect, TSpecUpdate> = TransitionRefs & { runtimeId: string;
       leaseToken: string; expectedRevision: string | null;
       previousCursor: string | null; nextCursor: string; state: TState;
-      effects: TEffect[] }
+      spec: TSpec; specUpdates: TSpecUpdate[]; effects: TEffect[] }
     purpose: Commit one locally computed transition under its acquired lease.
     exclusions:
       - initialState is not part of commit.
-      - Kernel execution is not part of commit.
+      - Transition execution and spec-update application are not part of provider commit.
 
   - name: TransitionCommitResult
     signature: >-
@@ -205,18 +206,22 @@ contracts:
       attempt: number; leaseToken: string; leaseExpiresAt: string }
     purpose: Carry one leased effect to a local browser handler.
 
-  - name: DurableKernel
+  - name: DurableTransitionAdapter
     category: host_extension
     signature: >-
-      type DurableKernel<TState, TEvent, TEffect> = { id: string;
-      initialState(): TState; transition(input: { state: TState;
-      revision: string | null; cursor: string | null;
-      entries: JournalEntry<TEvent>[] }): Promise<{ state: TState;
-      effects: TEffect[] }> | { state: TState; effects: TEffect[] } }
-    purpose: Supply local initial state and deterministic transition behavior.
+      type DurableTransitionAdapter<TState, TSpec, TEvent, TEffect, TSpecUpdate> = {
+      initialState(): TState; initialSpec(): TSpec;
+      transition(input: { state: TState; spec: TSpec; events: readonly TEvent[] }):
+      Awaitable<{ state: TState; effects: readonly TEffect[];
+      specUpdates?: readonly TSpecUpdate[] }>;
+      applySpecUpdates(input: { spec: TSpec; updates: readonly TSpecUpdate[] }):
+      Awaitable<TSpec> }
+    purpose: Supply initial values and deterministic, provider-neutral transition behavior.
     behavior:
       - initialState is evaluated only by explicit initializeRuntime.
-      - transition runs in the browser after provider acquisition.
+      - transition runs in the host after provider acquisition.
+      - effects may be an empty array.
+      - applySpecUpdates owns all interpretation of opaque spec updates.
 
   - name: DurableEffectHandler
     category: host_extension
@@ -235,17 +240,18 @@ contracts:
       - "readEngineWake(refs: RuntimeRefs): Promise<EngineWakeState>"
       - "markEngineWakeProcessed(refs: RuntimeRefs, processedAt: string): Promise<void>"
       - >-
-        initializeRuntime<TState>(request: RuntimeRefs & { kernelId: string;
-        initialState: TState }): Promise<InitializeRuntimeResult>
+        initializeRuntime<TState, TSpec>(request: RuntimeRefs & { runtimeId: string;
+        initialState: TState; initialSpec: TSpec }): Promise<InitializeRuntimeResult>
       - >-
-        acquireTransition<TState, TEvent>(request: TransitionRefs & {
-        kernelId: string; leaseMs?: number }):
-        Promise<TransitionSnapshot<TState, TEvent> | null>
+        acquireTransition<TState, TSpec, TEvent>(request: TransitionRefs & {
+        runtimeId: string; leaseMs?: number }):
+        Promise<TransitionSnapshot<TState, TSpec, TEvent> | null>
       - >-
-        commitTransition<TState, TEffect>(request: TransitionCommit<TState, TEffect>):
+        commitTransition<TState, TSpec, TEffect, TSpecUpdate>(request:
+        TransitionCommit<TState, TSpec, TEffect, TSpecUpdate>):
         Promise<TransitionCommitResult>
       - >-
-        abortTransition(request: TransitionRefs & { kernelId: string;
+        abortTransition(request: TransitionRefs & { runtimeId: string;
         leaseToken: string }): Promise<boolean>
       - "leaseQueueItem?<TEffect>(request): Promise<QueueLeasedMessage<TEffect> | null>"
       - "ackQueueItem?(request): Promise<boolean>"
@@ -271,12 +277,15 @@ contracts:
 
 browser_runtime:
   factory:
-    name: createBrowserDurableRuntime
+    name: createDurableRuntime
     category: primary
     source: packages/durable-runtime/src/runtime/browser-runtime.ts
     signature: >-
-      createBrowserDurableRuntime(options: { providers: Record<string, DurableProvider>;
-      kernel: DurableKernel; effectHandlers?: Record<string, DurableEffectHandler> })
+      createDurableRuntime(options: { runtimeId: string;
+      providers: Record<string, DurableProvider>;
+      transitionAdapter: DurableTransitionAdapter;
+      effectHandlers?: Record<string, DurableEffectHandler> })
+    compatibility_alias: createBrowserDurableRuntime
   methods:
     - name: appendJournal
       signature: >-
@@ -288,10 +297,10 @@ browser_runtime:
       signature: >-
         initializeRuntime(request: RuntimeRefs):
         Promise<InitializeRuntimeResult>
-      purpose: Explicitly create initial durable state for the selected local kernel.
+      purpose: Explicitly create initial durable state and opaque spec for the selected runtime.
       behavior:
-        - Calls the supplied kernel.initialState and sends the value only to provider initialization.
-        - Uses the supplied kernel.id as the persisted implementation/version identity.
+        - Calls transitionAdapter.initialState and transitionAdapter.initialSpec.
+        - Uses runtimeId as the persisted implementation/version identity.
         - Does not require journalRef because initialization does not read the journal.
         - Does not overwrite an existing runtime.
 
@@ -299,11 +308,11 @@ browser_runtime:
       signature: >-
         runEngine(request: TransitionRefs & { leaseMs?: number }):
         Promise<RunEngineResult>
-      purpose: Acquire durable work, execute one local kernel transition, and commit it.
+      purpose: Acquire durable work, execute one local transition, apply spec updates, and commit it.
       results:
         busy: Another active transition lease prevented acquisition.
         idle: No journal entries followed the persisted cursor; the lease was aborted.
-        committed: State, cursor, and effects committed successfully.
+        committed: State, spec, specUpdates, cursor, and effects committed successfully.
         conflict: Persisted revision or cursor changed before commit.
         lease-lost: The lease was absent, mismatched, or expired before commit.
       committed_fields:
@@ -312,8 +321,8 @@ browser_runtime:
         - entryCount
         - effectCount
       failure_behavior:
-        - A thrown kernel error triggers best-effort abort and is rethrown.
-        - A failed abort does not replace the original kernel error.
+        - A thrown transition or applySpecUpdates error triggers best-effort abort and is rethrown.
+        - A failed abort does not replace the original execution error.
 
     - name: processEngineWake
       signature: >-
@@ -565,7 +574,7 @@ concurrency_and_durability:
   optimistic_checks:
     - expectedRevision must equal the persisted revision.
     - previousCursor must equal the persisted cursor.
-    - nextCursor is the id of the last journal entry processed by the local kernel.
+    - nextCursor is the id of the last journal entry processed by the local transition.
   effects:
     - Effects are persisted with state and cursor by the provider commit operation.
     - Effect handlers run separately through queue leasing.
@@ -586,7 +595,7 @@ concurrency_and_durability:
     - Multiple processors may drain the same lane concurrently because item leases arbitrate ownership.
 
 host_responsibilities:
-  - Register every DurableKernel by a unique id.
+  - Supply one DurableTransitionAdapter and unique runtimeId for each durable runtime.
   - Call initializeRuntime explicitly before runEngine for a new runtime.
   - Supply effect handlers keyed by effect body type.
   - Supply queue notification subscriptions and own their transport connectivity.
@@ -594,10 +603,10 @@ host_responsibilities:
   - Keep all refs in one operation on the same provider kind.
   - Decide when to call processEngineWake or runEngine.
   - Start and stop queue processors with the host lifecycle when notification-driven draining is required.
-  - Treat provider errors and kernel errors as operational failures requiring host policy.
+  - Treat provider and transition-adapter errors as operational failures requiring host policy.
 
 non_goals:
-  - Server-side kernel execution on the new browser-runtime transition path.
+  - Server-side transition execution on the browser-runtime path.
   - Cross-provider atomic transitions.
   - Journal deduplication.
   - Lease renewal.
@@ -607,7 +616,7 @@ non_goals:
   - Built-in SSE, BroadcastChannel, MCP notification, or other queue notification transports.
   - A provider-neutral durable notification queue; notifications are only wake hints.
   - Owning MCP transport lifecycle or Azure credentials.
-  - Replacing @gik/kernel public APIs.
+  - Interpreting caller-owned specs, events, effects, or spec updates.
 
 limitations:
   - The workspace package has not yet been released to npm.
@@ -628,9 +637,9 @@ validation:
   build_result: Package build passed with all root, connector, and storage subpath declarations emitted.
   last_focused_result: 7 files and 25 tests passed
   coverage:
-    - Local kernel execution and provider-kind routing.
+    - Local transition execution, spec update application, and provider-kind routing.
     - Explicit initialization and repeat initialization without overwrite.
-    - Abort after local kernel failure.
+    - Abort after local transition failure.
     - Mixed-provider rejection.
     - Engine wake processing and captured-request race preservation.
     - Busy, conflict, and lease-lost results do not consume engine wake requests.
@@ -652,9 +661,9 @@ validation:
   packaging_validation:
     status: passed
     command: npm run pack:durable-runtime
-    artifact: gik-durable-runtime-0.3.0.tgz
-    size_bytes: 89306
-    sha256: afba2f56fed9a8d3a2c419c02854c819e1e0dc4eac3032659e2bcd49039236ce
+    artifact: gik-durable-runtime-0.4.1.tgz
+    size_bytes: 90543
+    sha256: 26a59b406d94343c215285b40acbd140e698918f8d030bbcfc6a5857ba417285
     producer_has_no_consumer_source_paths: true
     verified_subpaths:
       - storage/cosmos

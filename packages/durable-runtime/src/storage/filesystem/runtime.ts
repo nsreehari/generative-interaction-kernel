@@ -27,14 +27,16 @@ export interface FilesystemDurableStoragePrimitives {
   lockForRef(ref: string): { tryAcquire(): Promise<Release | null> };
 }
 type PersistedRuntimeState = {
-  kernelId: string;
+  runtimeId: string;
   revision: string;
   cursor: string | null;
   state: unknown;
+  spec: unknown;
+  specUpdates: unknown[];
 };
 type HeldTransition = {
   refsKey: string;
-  kernelId: string;
+  runtimeId: string;
   release: Release;
   timer: ReturnType<typeof setTimeout>;
 };
@@ -86,10 +88,10 @@ export function createFilesystemDurableStorage(
     await held.release();
     return true;
   }
-  function transitionStorage(kernelId: string): LeasedTransitionStorage {
-    if (!kernelId) throw new Error("kernelId must be a non-empty string.");
+  function transitionStorage(runtimeId: string): LeasedTransitionStorage {
+    if (!runtimeId) throw new Error("runtimeId must be a non-empty string.");
     return {
-      async initialize(refs, initialState) {
+      async initialize(refs, initialState, initialSpec) {
         runtimeRefs(refs as Record<string, unknown>);
         const release = await storage.lockForRef(refs.stateRef).tryAcquire();
         if (!release) throw new Error("Runtime is busy.");
@@ -99,18 +101,20 @@ export function createFilesystemDurableStorage(
             runtimeStateKey,
           )) as PersistedRuntimeState | null;
           if (current) {
-            if (current.kernelId !== kernelId)
+            if (current.runtimeId !== runtimeId)
               throw new Error(
-                `Runtime state belongs to kernel ${current.kernelId}, not ${kernelId}.`,
+                `Runtime state belongs to runtime ${current.runtimeId}, not ${runtimeId}.`,
               );
             return { created: false, revision: current.revision };
           }
           const revision = randomUUID();
           await stateStorage.write(runtimeStateKey, {
-            kernelId,
+            runtimeId,
             revision,
             cursor: null,
             state: initialState,
+            spec: initialSpec,
+            specUpdates: [],
           });
           return { created: true, revision };
         } finally {
@@ -131,7 +135,7 @@ export function createFilesystemDurableStorage(
         timer.unref?.();
         transitionTokens.set(leaseToken, {
           refsKey: refsKey(refs),
-          kernelId,
+          runtimeId,
           release,
           timer,
         });
@@ -140,9 +144,9 @@ export function createFilesystemDurableStorage(
             .kvStorageForRef(refs.stateRef)
             .read(runtimeStateKey)) as PersistedRuntimeState | null;
           if (!persisted) throw new Error("Runtime is not initialized.");
-          if (persisted.kernelId !== kernelId)
+          if (persisted.runtimeId !== runtimeId)
             throw new Error(
-              `Runtime state belongs to kernel ${persisted.kernelId}, not ${kernelId}.`,
+              `Runtime state belongs to runtime ${persisted.runtimeId}, not ${runtimeId}.`,
             );
           const journal = await storage
             .journalStorageForRef(refs.journalRef)
@@ -151,6 +155,7 @@ export function createFilesystemDurableStorage(
             leaseToken,
             leaseExpiresAt,
             state: persisted.state,
+            spec: persisted.spec,
             revision: persisted.revision,
             cursor: persisted.cursor,
             entries: journal.entries,
@@ -171,7 +176,7 @@ export function createFilesystemDurableStorage(
         if (
           !held ||
           held.refsKey !== refsKey(refs) ||
-          held.kernelId !== kernelId
+          held.runtimeId !== runtimeId
         )
           return { ok: false, reason: "lease-lost", revision: null };
         try {
@@ -199,10 +204,12 @@ export function createFilesystemDurableStorage(
             }
             const nextRevision = randomUUID();
             await stateStorage.write(runtimeStateKey, {
-              kernelId,
+              runtimeId,
               revision: nextRevision,
               cursor: request.nextCursor,
               state: request.state ?? null,
+              spec: request.spec ?? null,
+              specUpdates: request.specUpdates,
             });
             for (const message of staged) await queue.commitStaged(message.id);
             return { ok: true, revision: nextRevision };
@@ -222,7 +229,7 @@ export function createFilesystemDurableStorage(
         if (
           !held ||
           held.refsKey !== refsKey(refs) ||
-          held.kernelId !== kernelId
+          held.runtimeId !== runtimeId
         )
           return false;
         return releaseTransition(leaseToken);
@@ -262,34 +269,39 @@ export function createFilesystemDurableStorage(
     },
     initializeRuntime(request: Record<string, unknown>) {
       const refs = runtimeRefs(request);
-      if (typeof request.kernelId !== "string" || !request.kernelId)
-        throw new Error("kernelId must be a non-empty string.");
+      if (typeof request.runtimeId !== "string" || !request.runtimeId)
+        throw new Error("runtimeId must be a non-empty string.");
       if (!Object.prototype.hasOwnProperty.call(request, "initialState"))
         throw new Error("initialState is required.");
-      return transitionStorage(request.kernelId).initialize(
+      if (!Object.prototype.hasOwnProperty.call(request, "initialSpec"))
+        throw new Error("initialSpec is required.");
+      return transitionStorage(request.runtimeId).initialize(
         refs,
         request.initialState,
+        request.initialSpec,
       );
     },
     acquireTransition(request: Record<string, unknown>) {
       const refs = transitionRefs(request);
-      if (typeof request.kernelId !== "string" || !request.kernelId)
-        throw new Error("kernelId must be a non-empty string.");
+      if (typeof request.runtimeId !== "string" || !request.runtimeId)
+        throw new Error("runtimeId must be a non-empty string.");
       const leaseMs =
         typeof request.leaseMs === "number" &&
         Number.isInteger(request.leaseMs) &&
         request.leaseMs > 0
           ? request.leaseMs
           : undefined;
-      return transitionStorage(request.kernelId).acquire(refs, { leaseMs });
+      return transitionStorage(request.runtimeId).acquire(refs, { leaseMs });
     },
     commitTransition(request: Record<string, unknown>) {
       const refs = transitionRefs(request);
-      if (typeof request.kernelId !== "string" || !request.kernelId)
-        throw new Error("kernelId must be a non-empty string.");
+      if (typeof request.runtimeId !== "string" || !request.runtimeId)
+        throw new Error("runtimeId must be a non-empty string.");
       if (!Array.isArray(request.effects))
         throw new Error("effects must be an array.");
-      return transitionStorage(request.kernelId).commit({
+      if (!Array.isArray(request.specUpdates))
+        throw new Error("specUpdates must be an array.");
+      return transitionStorage(request.runtimeId).commit({
         ...refs,
         leaseToken: String(request.leaseToken ?? ""),
         expectedRevision:
@@ -302,14 +314,16 @@ export function createFilesystemDurableStorage(
             : String(request.previousCursor),
         nextCursor: String(request.nextCursor),
         state: request.state,
+        spec: request.spec,
+        specUpdates: request.specUpdates,
         effects: request.effects,
       });
     },
     abortTransition(request: Record<string, unknown>) {
       const refs = transitionRefs(request);
-      if (typeof request.kernelId !== "string" || !request.kernelId)
-        throw new Error("kernelId must be a non-empty string.");
-      return transitionStorage(request.kernelId).abort(
+      if (typeof request.runtimeId !== "string" || !request.runtimeId)
+        throw new Error("runtimeId must be a non-empty string.");
+      return transitionStorage(request.runtimeId).abort(
         refs,
         String(request.leaseToken ?? ""),
       );

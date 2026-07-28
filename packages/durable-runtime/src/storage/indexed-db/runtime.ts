@@ -156,9 +156,9 @@ export function createIndexedDbStorage(
           | IndexedDbRecord
           | undefined;
         if (current) {
-          if (current.kernelId !== requestValue.kernelId)
+          if (current.runtimeId !== requestValue.runtimeId)
             throw new Error(
-              `Runtime state belongs to kernel ${String(current.kernelId)}, not ${requestValue.kernelId}.`,
+              `Runtime state belongs to runtime ${String(current.runtimeId)}, not ${requestValue.runtimeId}.`,
             );
           return { created: false, revision: String(current.revision) };
         }
@@ -169,17 +169,19 @@ export function createIndexedDbStorage(
             namespace: stateSpace,
             kind: "runtime-state",
             key: "__state__",
-            kernelId: requestValue.kernelId,
+            runtimeId: requestValue.runtimeId,
             revision,
             cursor: null,
             value: requestValue.initialState,
+            spec: requestValue.initialSpec,
+            specUpdates: [],
           }),
         );
         return { created: true, revision };
       });
     },
-    acquireTransition<TState, TEvent>(
-      requestValue: TransitionRefs & { kernelId: string; leaseMs?: number },
+    acquireTransition<TState, TSpec, TEvent>(
+      requestValue: TransitionRefs & { runtimeId: string; leaseMs?: number },
     ) {
       const stateSpace = runtimeSpace(requestValue.stateRef);
       const journalSpace = namespace(requestValue.journalRef);
@@ -194,9 +196,9 @@ export function createIndexedDbStorage(
           store.get(id("runtime-state", stateSpace, "__state__")),
         )) as IndexedDbRecord | undefined;
         if (!state) throw new Error("Runtime is not initialized.");
-        if (state.kernelId !== requestValue.kernelId)
+        if (state.runtimeId !== requestValue.runtimeId)
           throw new Error(
-            `Runtime state belongs to kernel ${String(state.kernelId)}, not ${requestValue.kernelId}.`,
+            `Runtime state belongs to runtime ${String(state.runtimeId)}, not ${requestValue.runtimeId}.`,
           );
         const leaseToken = crypto.randomUUID();
         const leaseExpiresAt = new Date(
@@ -227,6 +229,7 @@ export function createIndexedDbStorage(
           leaseToken,
           leaseExpiresAt,
           state: state.value as TState,
+          spec: state.spec as TSpec,
           revision: String(state.revision),
           cursor,
           entries: selected.map((record) => ({
@@ -275,10 +278,12 @@ export function createIndexedDbStorage(
             namespace: stateSpace,
             kind: "runtime-state",
             key: "__state__",
-            kernelId: requestValue.kernelId,
+            runtimeId: requestValue.runtimeId,
             revision: nextRevision,
             cursor: requestValue.nextCursor,
             value: requestValue.state,
+            spec: requestValue.spec,
+            specUpdates: requestValue.specUpdates,
           }),
         );
         const enqueuedAt = new Date().toISOString();
