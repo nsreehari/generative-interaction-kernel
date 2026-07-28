@@ -1,5 +1,5 @@
 import React from "react";
-import { prepareBlueprintProgram, type BlueprintArtifact } from "@gik/blueprint";
+import { prepareBlueprintProgram, validateBlueprintArtifact, type BlueprintArtifact } from "@gik/blueprint";
 import type { Json } from "@gik/kernel";
 import { BlueprintController } from "../blueprint-controller";
 import type { ProviderResolver } from "../registry";
@@ -15,6 +15,8 @@ import {
   type OrganismBridge,
 } from "./bundle-composition-host";
 import type { GenUIFileServices } from "./fileServices";
+
+export { validateBlueprintArtifact, type BlueprintArtifact };
 
 const EMPTY_COMPANIONS: CompositionOrganism[] = [];
 const EMPTY_CONTEXTS: BundleContextBindings = {};
