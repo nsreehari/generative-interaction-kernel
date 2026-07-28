@@ -8,7 +8,8 @@ package:
     host, projection, client, and transport interfaces.
   core_promise: >-
     Kernel accepts an ExecutableVocabularyManifest and an ExecutableProgramDefinition.
-    It owns the resulting state, revisions, graph processing, effects, and checkpoints.
+    It owns the current executable program, state, revisions, graph processing, effects,
+    and checkpoints.
   public_entrypoint: packages/kernel/src/index.ts
   implementation_entrypoint: kernel/src/index.ts
 
@@ -98,7 +99,7 @@ contracts:
     signature: >-
       type GraphMutation = addNode | removeNode | replaceNode | addPort |
       removePort | updatePort
-    purpose: Change topology as one serialized mutation batch, then reindex and reschedule.
+    purpose: Change graph topology as one serialized ProgramPatch operation, then reindex and reschedule.
     behavior:
       - A successful batch increments topologyVersion once.
       - addNode rejects a duplicate id; replaceNode rejects an unknown id.
@@ -107,7 +108,23 @@ contracts:
     limitations:
       - Producer cardinality and references to removed ports are not validated.
       - Removing or replacing a suspended node does not cancel its active host invocation.
-      - Topology mutation is not included in checkpoint or restore.
+      - State-only checkpoints do not include topology; program-bearing checkpoints do.
+  - name: ProgramPatch
+    signature: "type ProgramPatch = readonly ProgramPatchOperation[]"
+    purpose: Apply typed structural operations to the current executable program without replacing it wholesale.
+    operations:
+      - mutateGraph, setGraph, removeGraph
+      - setRoot, removeRoot
+      - upsertHandler, removeHandler
+      - upsertReaction, removeReaction
+      - upsertMachine, removeMachine
+      - upsertDerivation, removeDerivation
+    behavior:
+      - Operations are applied in authored array order.
+      - Operations apply to a clone of the current program.
+      - The complete candidate program passes structural and capability validation before commit.
+      - A graph-only mutateGraph operation preserves surviving graph token and node execution state.
+      - Every committed program patch advances the Kernel revision and is carried by Patch.program.
   - name: ExecutionStatus
     signature: >-
       type ExecutionStatus = "quiescent" | "suspended" | "completed" |
@@ -156,8 +173,8 @@ contracts:
     signature: >-
       interface TransitionResult { previousRevision: number; revision: number;
       status: ExecutionStatus; state: Record<string, Json>; patch: Patch;
-      effects: RecordedEffect[]; execution: ExecutionSnapshot }
-    purpose: Return state, patch, effects, and graph status from one transition.
+      effects: RecordedEffect[]; execution: ExecutionSnapshot; program?: ProgramPatch }
+    purpose: Return state, state/program patch, effects, and graph status from one transition.
   - name: GraphInspection
     signature: >-
       interface GraphInspection { topologyVersion: number; diagnostics: GraphDiagnostic[] }
@@ -174,7 +191,7 @@ contracts:
       interface GraphExecutionResult { status: ExecutionStatus;
       publications: Record<PortToken, Json>; operations: PatchOp[];
       effects: OrchestratorEffect[]; events: GIKEvent[]; readyNodes: string[];
-      nodeExecutions: number; publicationCount: number }
+      nodeExecutions: number; publicationCount: number; program?: ProgramPatch }
     purpose: Low-level result returned by one ContinuousGraphRuntime scheduling turn.
     category: advanced
     behavior:
@@ -185,18 +202,20 @@ contracts:
     signature: >-
       interface GraphNodeExecutionOutcome { outputs?: Record<string, Json>;
       operations?: PatchOp[]; effects?: OrchestratorEffect[]; events?: GIKEvent[];
-      suspended?: boolean }
+      program?: ProgramPatch; suspended?: boolean }
     purpose: Result returned by a host executor for actions and invoke nodes.
     category: advanced
   - name: OrchestratorResult
     signature: >-
       interface OrchestratorResult { ops?: PatchOp[]; events?: GIKEvent[];
-      outputs?: Record<string, Json>; outcome?: string; detail?: Record<string, Json> }
+      outputs?: Record<string, Json>; program?: ProgramPatch;
+      outcome?: string; detail?: Record<string, Json> }
     purpose: Settle external work with state operations, follow-up events, or graph-local outputs.
     behavior:
       - outputs is consumed only for a suspended InvokeNodeOperation.
       - ops and events use the existing Kernel settlement path.
       - outcome and detail are observability metadata.
+      - program is a runtime-originated proposal and requires the Kernel admission hook.
   - name: InvocationControl
     signature: >-
       interface InvocationControl { readonly id: InvocationId; readonly signal: AbortSignal;
@@ -339,7 +358,7 @@ classes:
           mutate(mutations: readonly GraphMutation[], budget?: ExecutionBudget):
           Promise<TransitionResult>
         category: primary
-        purpose: Apply one serialized topology batch, advance its version, reindex, and resume.
+        purpose: Apply mutateGraph through the general validated program-patch transition.
         mutates_state: conditional
         increments_revision: only-when-work-settles
       - name: resume
@@ -363,6 +382,8 @@ classes:
           - Publishes current state leaves into the graph before running graph event triggers.
           - Commits and publishes one initiating patch.
           - Starts asynchronous invokes after the initiating patch commits.
+          - Runtime-originated program patches are rejected unless KernelOptions.admitProgramPatch admits them.
+          - An admitted program patch is validated, committed, and published on the same revisioned Patch.
         mutates_state: true
         increments_revision: true
       - name: syncExternal
@@ -386,6 +407,19 @@ classes:
         category: primary
         purpose: Return the current state snapshot.
         mutates_state: false
+      - name: program
+        signature: "program(): ExecutableProgramDefinition"
+        category: primary
+        purpose: Return an immutable snapshot of the current executable program.
+        mutates_state: false
+      - name: applyProgramPatch
+        signature: >-
+          applyProgramPatch(program: ProgramPatch, budget?: ExecutionBudget):
+          Promise<TransitionResult>
+        category: primary
+        purpose: Apply an already-authorized program patch as one validated, revisioned transition.
+        mutates_state: conditional
+        increments_revision: true
       - name: subscribePatches
         signature: "subscribePatches(listener: (patch: Patch) => unknown): () => void"
         category: primary
@@ -407,23 +441,23 @@ classes:
         category: primary
         purpose: Cancel active invocations and remove runtime listeners.
       - name: checkpoint
-        signature: "checkpoint(): Checkpoint"
+        signature: "checkpoint(options?: { includeProgram?: boolean }): Checkpoint"
         category: primary
-        purpose: Capture an immutable revision-keyed snapshot of StateModel state only.
+        purpose: Capture state and, when requested for an adaptive runtime, the current program.
         excludes:
-          - graph topology and topologyVersion
+          - graph token values, node consumption versions, and topologyVersion
           - token values and consumed versions
           - suspended nodes and active invocations
         mutates_state: false
       - name: restore
         signature: "restore(checkpoint: Checkpoint): Promise<Patch>"
         category: primary
-        purpose: Restore pure state as a new revision and settle derivations.
+        purpose: Restore state and an optional checkpoint program through a derived ProgramPatch.
         guarantees:
           - Does not claim to undo external effects.
           - Publishes the resulting patch.
         limitations:
-          - Does not restore or reset graph topology, tokens, node versions, or invocations.
+          - A program-bearing checkpoint restores program structure but not graph token or node execution state.
           - Does not automatically republish restored state into graph tokens.
         mutates_state: true
         increments_revision: true
@@ -467,6 +501,7 @@ classes:
         signature: "getTree(): ResolvedNode | null"
         purpose: Return the latest resolved tree, or null before onboarding.
         headless_program_behavior: Remains null when a headless program is received.
+        adaptive_behavior: Re-resolves after applying Patch.program to the local program replica.
       - name: getRev
         signature: "getRev(): number"
         purpose: Return the last applied revision, or -1 before onboarding.
@@ -502,6 +537,7 @@ classes:
         signature: "attach(transport: TransportProvider, fromRevision?: number): Promise<() => void>"
         purpose: Attach and onboard or resume one connection.
         throws: ProjectionUnavailableError if the supplied program has no projection root.
+        behavior: Full onboarding sends the Kernel's current program, including previously committed patches.
       - name: detach
         signature: "detach(transport: TransportProvider): void"
         purpose: Detach one connection.
@@ -540,6 +576,10 @@ classes:
       and provide an executor for actions or invoke nodes.
 
 host_extension_interfaces:
+  - name: ProgramPatchAdmission
+    purpose: Admit, reject, or constrain runtime-originated program patches without teaching Kernel Blueprint modes.
+    methods:
+      - "(patch: ProgramPatch, context: RuntimeProgramPatchContext): ProgramPatch | false | Promise<ProgramPatch | false>"
   - name: ExpressionProvider
     purpose: Evaluate the expression language selected by the host.
     methods:

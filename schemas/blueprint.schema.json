@@ -23,6 +23,26 @@
           "default": "fixed",
           "description": "Blueprint semantic policy governing whether authored structure may change."
         },
+        "structurePolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "allowedBlueprintOperations": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "enum": ["addCell", "replaceCell", "removeCell", "setRelationship", "removeRelationship", "setProjection", "removeProjection"]
+              }
+            },
+            "allowedProgramOperations": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "enum": ["mutateGraph", "setGraph", "removeGraph", "setRoot", "removeRoot", "upsertHandler", "removeHandler", "upsertReaction", "removeReaction", "upsertMachine", "removeMachine", "upsertDerivation", "removeDerivation"]
+              }
+            }
+          }
+        },
         "tiers": {
           "type": "array",
           "minItems": 1,

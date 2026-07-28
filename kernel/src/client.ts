@@ -16,6 +16,7 @@ import {
   type ResolvedNode,
 } from "./types";
 import type { TransportProvider } from "./transport";
+import { applyProgramPatch } from "./program-patch";
 
 export interface GIKClientOptions {
   expression?: ExpressionProvider;
@@ -127,6 +128,11 @@ export class GIKClient {
         // baseline and always applies to a fresh replica.
         if (message.payload.rev !== 0 && message.payload.rev <= this.rev) return;
         this.store?.apply(message.payload.ops);
+        if (message.payload.program && this.doc) {
+          const program = applyProgramPatch(this.doc, message.payload.program);
+          this.doc = program.root ? program as ProjectedProgramDefinition : undefined;
+          if (!this.doc) this.tree = null;
+        }
         this.rev = message.payload.rev;
         await this.reresolve();
         return;

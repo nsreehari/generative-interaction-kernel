@@ -17,6 +17,7 @@ import type {
   ProgramNode,
   TokenRuntimeState,
 } from "./types";
+import { applyGraphMutations } from "./program-patch";
 
 export type GraphNodeExecutor = (
   node: ProgramNode,
@@ -174,6 +175,7 @@ export class ContinuousGraphRuntime {
     const operations = [] as GraphExecutionResult["operations"];
     const effects = [] as GraphExecutionResult["effects"];
     const events = [] as GraphExecutionResult["events"];
+    const program = [] as NonNullable<GraphExecutionResult["program"]>[number][];
 
     const maxNodeExecutions = budget.maxNodeExecutions ?? DEFAULT_MAX_NODE_EXECUTIONS;
     const maxPublications = budget.maxPublications ?? DEFAULT_MAX_PUBLICATIONS;
@@ -185,7 +187,17 @@ export class ContinuousGraphRuntime {
         this.lastStatus = [...this.nodes.values()].some(({ status }) => status === "suspended")
           ? "suspended"
           : "quiescent";
-        return { status: this.lastStatus, publications, operations, effects, events, readyNodes: [], nodeExecutions, publicationCount };
+        return {
+          status: this.lastStatus,
+          publications,
+          operations,
+          effects,
+          events,
+          ...(program.length > 0 ? { program } : {}),
+          readyNodes: [],
+          nodeExecutions,
+          publicationCount,
+        };
       }
       if (nodeExecutions >= maxNodeExecutions || publicationCount >= maxPublications) {
         this.lastStatus = "yielded";
@@ -195,6 +207,7 @@ export class ContinuousGraphRuntime {
           operations,
           effects,
           events,
+          ...(program.length > 0 ? { program } : {}),
           readyNodes: ready.map((node) => node.id),
           nodeExecutions,
           publicationCount,
@@ -213,6 +226,7 @@ export class ContinuousGraphRuntime {
       operations.push(...(outcome.operations ?? []));
       effects.push(...(outcome.effects ?? []));
       events.push(...(outcome.events ?? []));
+      program.push(...(outcome.program ?? []));
       for (const event of outcome.events ?? []) this.triggerEvent(event);
       for (const [localName, value] of Object.entries(outcome.outputs ?? {})) {
         const declared = node.outputs?.[localName];
@@ -229,34 +243,7 @@ export class ContinuousGraphRuntime {
   }
 
   mutate(mutations: readonly GraphMutation[]): void {
-    const next = structuredClone(this.graph);
-    for (const mutation of mutations) {
-      switch (mutation.op) {
-        case "addNode":
-          if (next.nodes.some(({ id }) => id === mutation.node.id)) throw new Error(`Duplicate graph node '${mutation.node.id}'`);
-          next.nodes.push(mutation.node);
-          break;
-        case "removeNode":
-          next.nodes = next.nodes.filter(({ id }) => id !== mutation.nodeId);
-          break;
-        case "replaceNode": {
-          const index = next.nodes.findIndex(({ id }) => id === mutation.nodeId);
-          if (index === -1) throw new Error(`Unknown graph node '${mutation.nodeId}'`);
-          next.nodes[index] = mutation.node;
-          break;
-        }
-        case "addPort":
-          next.ports = { ...(next.ports ?? {}), [mutation.token]: mutation.definition ?? {} };
-          break;
-        case "removePort":
-          if (next.ports) delete next.ports[mutation.token];
-          break;
-        case "updatePort":
-          next.ports = { ...(next.ports ?? {}), [mutation.token]: mutation.definition };
-          break;
-      }
-    }
-    this.graph = next;
+    this.graph = applyGraphMutations(this.graph, mutations);
     this.topologyVersion += 1;
     this.reindex();
   }

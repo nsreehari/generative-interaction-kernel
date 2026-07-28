@@ -17,12 +17,16 @@ export interface PatchOp {
 export interface Patch {
   rev: number;
   ops: PatchOp[];
+  /** A validated structural update to the live executable program at this revision. */
+  program?: ProgramPatch;
 }
 
-/** An immutable, rev-keyed capture of pure state for time-travel (see Kernel.checkpoint). */
+/** An immutable, rev-keyed capture for time-travel (see Kernel.checkpoint). */
 export interface Checkpoint {
   rev: number;
   state: Record<string, Json>;
+  /** Present when the caller requests an adaptive-program checkpoint. */
+  program?: ExecutableProgramDefinition;
 }
 
 /**
@@ -144,6 +148,7 @@ export interface GraphExecutionResult {
   operations: PatchOp[];
   effects: OrchestratorEffect[];
   events: GIKEvent[];
+  program?: ProgramPatch;
   readyNodes: string[];
   nodeExecutions: number;
   publicationCount: number;
@@ -154,6 +159,7 @@ export interface GraphNodeExecutionOutcome {
   operations?: PatchOp[];
   effects?: OrchestratorEffect[];
   events?: GIKEvent[];
+  program?: ProgramPatch;
   suspended?: boolean;
 }
 
@@ -172,6 +178,7 @@ export interface TransitionResult {
   status: ExecutionStatus;
   state: Record<string, Json>;
   patch: Patch;
+  program?: ProgramPatch;
   effects: RecordedEffect[];
   execution: ExecutionSnapshot;
 }
@@ -194,6 +201,25 @@ export type GraphMutation =
   | { op: "addPort"; token: PortToken; definition?: PortDefinition }
   | { op: "removePort"; token: PortToken }
   | { op: "updatePort"; token: PortToken; definition: PortDefinition };
+
+/** One typed operation against the current executable program. */
+export type ProgramPatchOperation =
+  | { op: "mutateGraph"; mutations: readonly GraphMutation[] }
+  | { op: "setGraph"; graph: ProgramGraph }
+  | { op: "removeGraph" }
+  | { op: "setRoot"; root: DocNode }
+  | { op: "removeRoot" }
+  | { op: "upsertHandler"; handler: RuntimeHandler }
+  | { op: "removeHandler"; id: string }
+  | { op: "upsertReaction"; reaction: RuntimeReaction }
+  | { op: "removeReaction"; id: string }
+  | { op: "upsertMachine"; machine: Machine }
+  | { op: "removeMachine"; id: string }
+  | { op: "upsertDerivation"; derivation: StandingDerivation }
+  | { op: "removeDerivation"; id: string };
+
+/** Ordered patch operations applied to one existing executable program. */
+export type ProgramPatch = readonly ProgramPatchOperation[];
 
 export interface Action {
   do: string;
@@ -326,6 +352,8 @@ export interface OrchestratorEffect {
 export interface OrchestratorResult {
   ops?: PatchOp[];
   events?: GIKEvent[];
+  /** Runtime-originated structural proposal; Kernel applies it only through its admission hook. */
+  program?: ProgramPatch;
   /** Local output-port values returned when settling a graph invoke node. */
   outputs?: Record<string, Json>;
   /** Semantic settlement recorded by observability (for example rejected or confirmation-required). */

@@ -2,6 +2,7 @@ export * from "./types";
 export * from "./providers";
 export * from "./derivations";
 export * from "./graph-runtime";
+export * from "./program-patch";
 export * from "./interpret";
 export * from "./reduce";
 export * from "./validate";
