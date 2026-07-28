@@ -2,7 +2,7 @@ schema_version: 1
 
 package:
   name: "@gik/demo-runner-host"
-  version: "0.1.2"
+  version: "0.1.3"
   purpose: >-
     Add validated demo scenarios, playback controls, human-gate coordination, inspection,
     and presentation selection around an injected Blueprint-compatible React host.
@@ -36,13 +36,12 @@ architecture:
     - The package passes the target Blueprint, companions, contexts, bridge, and host options to HostComponent.
   does_not_own:
     - The concrete Blueprint host implementation.
-    - Blueprint preparation outside the inspection needed for demo control routing.
+    - Blueprint program preparation semantics; control-routing inspection delegates to @gik/blueprint.
     - Kernel execution semantics.
     - Application ownership of navigation after writeDemoNavigation returns a URL string.
     - ServiceHost construction, service-kind admission, credentials, endpoint policy, or service fixtures.
   dependency_direction:
     - "@gik/demo-runner-host -> @gik/blueprint"
-    - "@gik/demo-runner-host -> @gik/controlface"
     - "@gik/demo-runner-host -> @gik/evaluators"
     - "@gik/demo-runner-host -> @gik/kernel"
     - "@gik/demo-runner-host -> @gik/react"
@@ -55,7 +54,7 @@ host_component_contract:
     resolveLeavesProvider?: ProviderResolver; native?: BundleNative;
     companions?: CompositionOrganism[]; contexts?: BundleContextBindings;
     fileServices?: GenUIFileServices; primaryBridge?: OrganismBridge;
-    primaryInstanceKey?: string | number; className?: string;
+    primaryInstanceId?: string | number; className?: string;
     style?: React.CSSProperties; context?: Record<string, Json> }
   rule: Any structurally compatible React component may be supplied as HostComponent.
   service_rule: >-
@@ -71,7 +70,7 @@ intended_composition:
     - The composition owner supplies the BlueprintHost-compatible target props directly on GikDemoBlueprintHost, together with demo-specific props such as scenariosJson.
     - GikDemoBlueprintHost treats the target props as the structural DemoTargetHostProps contract; it does not import, construct, or receive a nested BlueprintHostProps object.
     - Without an active demo, GikDemoBlueprintHost invokes HostComponent with the unchanged target-host values.
-    - With an active demo, GikDemoBlueprintHost explicitly merges or replaces only demo-owned values such as companions, contexts, primaryBridge, primaryInstanceKey, context, and composition style before invoking HostComponent.
+    - With an active demo, GikDemoBlueprintHost explicitly merges or replaces only demo-owned values such as companions, contexts, primaryBridge, primaryInstanceId, context, and composition style before invoking HostComponent.
     - The target host then owns its normal lifecycle. BlueprintHost opens and mounts the supplied Blueprint exactly as it would without the demo wrapper.
   canonical_shape: >-
     <GikDemoBlueprintHost HostComponent={BlueprintHost} blueprint={blueprint}
@@ -113,8 +112,8 @@ component:
     - Adds demo-runner and control-harness companion bundles; showControlHarness controls harness visibility.
     - Installs a primary bridge that coordinates control requests and human gates.
     - Passes the prepared companions, contexts, bridge, and context to HostComponent.
-    - Forwards the caller's primaryInstanceKey unchanged without an active demo.
-    - Preserves the caller's primaryInstanceKey as the base identity and adds the selected scenario id and reset epoch so a compatible HostComponent can give the target a fresh mounted identity.
+    - Forwards the caller's primaryInstanceId unchanged without an active demo.
+    - Preserves the caller's primaryInstanceId as the base identity and adds the selected scenario id and reset epoch so a compatible HostComponent can give the target a fresh mounted identity.
   built_in_commands:
     - name: "$apply-state"
       behavior: Applies path-value operations to the demo seed without dispatching to the target controller.

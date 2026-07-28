@@ -266,14 +266,14 @@ export function validateDemoTargetBundleContract(
   targetId: string,
   target: DemoTargetCatalogEntry,
   manifest: ProjectedVocabularyManifest,
-  document: ProjectedProgramDefinition,
+  program: ProjectedProgramDefinition,
 ): void {
   const nodes = new Map<string, DocNode>();
   const visit = (node: DocNode) => {
     nodes.set(node.id, node);
     for (const child of node.edges?.children ?? []) visit(child);
   };
-  visit(document.root);
+  visit(program.root);
 
   for (const descriptor of target.commands) {
     const node = nodes.get(descriptor.nodeId);

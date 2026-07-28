@@ -1,18 +1,17 @@
 # @gik/react
 
-React renderer and `<BundleHost>` adapter for the **Generative Interaction Kernel**. It paints a
-resolved node tree from a GIK bundle (manifest + document + state) and routes interaction events back
-into the kernel loop.
+React renderer and in-memory Blueprint host for the **Generative Interaction Kernel**. `BlueprintHost`
+owns React-local state, routes interaction events through `@gik/blueprint` `runTransition`, and renders
+the resulting Kernel program. Bundle APIs remain lower-level composition and compatibility primitives.
 
 ```bash
 npm install @gik/react react react-dom @fluentui/react-components
 ```
 
 ```tsx
-import { BundleHost, bundleFromJson } from "@gik/react";
+import { BlueprintHost } from "@gik/react";
 
-const bundle = bundleFromJson(json, native);
-export const App = () => <BundleHost bundle={bundle} />;
+export const App = () => <BlueprintHost blueprint={blueprint} native={native} />;
 ```
 
 ## Peer dependencies

@@ -1,7 +1,7 @@
-// BlueprintHost: compile ONE Blueprint (by id) into a runnable Bundle, then host it — optionally
-// alongside companion organisms that share a common set of contexts. It is the blueprint-level rung
-// above BundleCompositionHost: it knows how to LOWER a Blueprint (ControlFace + native attach), but it
-// knows NOTHING about any specific composition (no demo runner, no control harness). Demo/harness
+// BlueprintHost: prepare ONE Blueprint (by id) as a runnable program, then host it — optionally
+// alongside companion organisms that share a common set of contexts. It is the Blueprint-level rung
+// above BundleCompositionHost: it owns Blueprint transition execution but knows nothing about any
+// specific composition (no demo runner, no control harness). Demo/harness
 // wiring is layered ON TOP by GikDemoBlueprintHost, which passes companions, contexts, and a primary
 // bridge down through the generic props below.
 //
@@ -10,10 +10,13 @@
 // responsible for establishing that context.
 
 import React from "react";
-import type { BundleContextBindings, CompositionOrganism, GenUIFileServices, OrganismBridge } from "@gik/react";
 import {
   BlueprintHost as PublicBlueprintHost,
-} from "@gik/blueprint-host";
+  type BundleContextBindings,
+  type CompositionOrganism,
+  type GenUIFileServices,
+  type OrganismBridge,
+} from "@gik/react";
 import { resolveSampleBlueprintSource } from "./blueprints";
 import { resolveBlueprintNative } from "./sample-bundles";
 

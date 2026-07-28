@@ -55,7 +55,7 @@ async function initializeSession(
         protocolVersion: "2024-11-05",
         capabilities: {},
         clientInfo: {
-          name: "gik-samples-mcp-runtime",
+          name: "@gik/samples",
           version: "0.1.0",
         },
       },
