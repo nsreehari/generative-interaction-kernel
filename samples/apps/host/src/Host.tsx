@@ -13,6 +13,7 @@ import {
 import { FLOOR_COMPONENTS } from "../../../bundles/floor/projection_views";
 import { resolveBlueprintNative } from "../../../shared/sample-bundles";
 import { resolveSampleBlueprintSource } from "../../../shared/blueprints";
+import { demoScenariosJson } from "../../../shared/demo-catalog";
 
 const embeddedHostStyle: React.CSSProperties = { height: "100vh" };
 const { blueprints: blueprintIds, default: DEFAULT_BLUEPRINT } = blueprintRegistry;
@@ -53,6 +54,7 @@ function HostView({
         blueprint={blueprint}
         native={native}
         context={blueprint.payload.context}
+        scenariosJson={demoScenariosJson}
         resolveLeavesProvider={resolveLeavesProvider}
         style={embeddedHostStyle}
       />
