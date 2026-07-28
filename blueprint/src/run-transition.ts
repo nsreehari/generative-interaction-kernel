@@ -16,9 +16,7 @@ import { assembleBlueprint } from "./blueprint";
 import { compileCellTopology } from "./cells";
 import { composeCellProgram } from "./cell-projection";
 import { loadBlueprint } from "./resolution";
-import type { BlueprintArtifact, BlueprintReferenceResolver } from "./types";
-
-export type BlueprintPatch = never;
+import type { BlueprintArtifact, BlueprintPatch, BlueprintReferenceResolver } from "./types";
 
 export interface PrepareBlueprintProgramOptions {
   context?: Record<string, Json>;
