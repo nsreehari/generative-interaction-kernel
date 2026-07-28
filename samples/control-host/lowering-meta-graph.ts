@@ -1,20 +1,69 @@
-// ADR-0044 Phase 2: a Lowering Cell meta-graph (transform / approve / emit-blueprint) running
+// ADR-0045 Phase 2/3: a Lowering Cell meta-graph (transform / approve / emit-blueprint) running
 // as an ordinary Blueprint on the shared Kernel via the `runTransition` / `runLoweringBlueprint`
 // host-side primitives — no new execution engine, no bespoke ControlFace/StateModel wiring.
 //
 // Scenario: lower a "tier 1" artifact (research findings sourced from an agent) into a
-// "tier 2" artifact (a presentation-ready shape) through a compiler Blueprint whose Cells
-// are: two `transform` Cells (JSONata `compute`), one `approve` gate (the Kernel's existing
-// `confirm` action verb), and one `emit-blueprint` Cell (a `compute` Cell that only resolves
-// once approval has landed).
+// "tier 2" artifact — a real, standalone presentation `BlueprintArtifact` — through a compiler
+// Blueprint whose Cells are: two `transform` Cells (JSONata `compute`), one `approve` gate (the
+// Kernel's existing `confirm` action verb), and one `emit-blueprint` Cell that only resolves
+// once approval has landed. Phase 3 proves ADR-0045's core claim: the emitted artifact is
+// handed to the existing, unchanged `openBlueprint` path — compiling and running stay two
+// distinct Kernel instances, and the compiler never gains direct execution authority over the
+// artifact it produces.
 //
 // Run: npx vitest run samples/control-host/lowering-meta-graph.test.ts --project samples
 
-import { createBlueprint, runLoweringBlueprint, type BlueprintArtifact } from "@gik/blueprint";
+import { createBlueprint, defineLoweringCell, runLoweringBlueprint, validateLoweringCellGraph, type BlueprintArtifact, type BlueprintDefinition, type LoweringCellDefinition } from "@gik/blueprint";
+import { openBlueprint, type BlueprintRuntime } from "@gik/controlface";
 import type { ConfirmOutcome } from "@gik/kernel";
 
 export interface LoweringMetaGraphResult {
   artifactAfterApproval: unknown;
+}
+
+/**
+ * ADR-0045 Phase 4: the compiler Blueprint's Lowering Cells declared as authoring-time
+ * `LoweringCellDefinition` metadata (kind, ports, policy) — the artifact-processing contract
+ * ADR-0043 introduced, kept in sync with (but structurally distinct from) the actual runtime
+ * `cells` map in {@link compilerBlueprint}. `agent-tier` is the tier-1 source, not a Lowering
+ * Cell itself, so it is not declared here.
+ */
+export function loweringCellGraph(): readonly LoweringCellDefinition[] {
+  return [
+    defineLoweringCell({
+      id: "transform-rows",
+      kind: "transform",
+      fromTier: "agent-data",
+      toTier: "presentation",
+      inputs: [{ token: "agent-data:findings", artifactType: "finding[]" }],
+      outputs: [{ token: "presentation:rows", artifactType: "row[]" }],
+      policy: { deterministic: true },
+    }),
+    defineLoweringCell({
+      id: "transform-summary",
+      kind: "transform",
+      fromTier: "agent-data",
+      toTier: "presentation",
+      inputs: [{ token: "agent-data:findings", artifactType: "finding[]" }],
+      outputs: [{ token: "presentation:summary", artifactType: "summary" }],
+      policy: { deterministic: true },
+    }),
+    defineLoweringCell({
+      id: "approve",
+      kind: "approve",
+      policy: { requiresApproval: true },
+    }),
+    defineLoweringCell({
+      id: "emit-blueprint",
+      kind: "emit-blueprint",
+      inputs: [
+        { token: "presentation:rows", artifactType: "row[]" },
+        { token: "presentation:summary", artifactType: "summary" },
+      ],
+      outputs: [{ token: "compiled:artifact", artifactType: "BlueprintDefinition" }],
+      policy: { requiresValidation: true },
+    }),
+  ];
 }
 
 export function compilerBlueprint(): BlueprintArtifact {
@@ -113,16 +162,45 @@ export function compilerBlueprint(): BlueprintArtifact {
           },
         },
       },
-      // `emit-blueprint`: only resolves the terminal artifact once approval has landed.
+      // `emit-blueprint`: only resolves the terminal artifact once approval has landed. The
+      // artifact it emits is itself a plain `BlueprintDefinition` shape (a real, standalone
+      // tier-2 presentation Blueprint) — not application data the host must further wrap. The
+      // host driver's only remaining job is `createBlueprint()` (envelope + validate) then
+      // `openBlueprint()`, both already-shipped, unchanged primitives.
       "emit-blueprint": {
         id: "emit-blueprint",
         view: { capability: "workflow:emit-blueprint" },
         inputs: [{ token: "presentation:rows" }, { token: "presentation:summary" }],
+        outputs: [{ token: "compiled:artifact" }],
         compute: [
           {
             id: "emit-terminal-artifact",
-            expression:
-              "compiled.approved = true ? { 'subject': agentData.subject, 'rows': presentation.rows, 'summary': presentation.summary } : compiled.artifact",
+            expression: `compiled.approved = true ? {
+              'id': 'due-diligence-report',
+              'kind': 'presentation-blueprint',
+              'version': '1',
+              'tiers': [{ 'id': 'runtime', 'kind': 'runtime-document' }],
+              'recipes': [],
+              'runtime': {
+                'capabilities': {},
+                'state': {
+                  'report': {
+                    'subject': agentData.subject,
+                    'rows': presentation.rows,
+                    'summary': presentation.summary
+                  }
+                }
+              },
+              'cells': {
+                'report-view': {
+                  'id': 'report-view',
+                  'view': { 'capability': 'workflow:due-diligence-report' }
+                }
+              },
+              'projections': {
+                'presentation': { 'roots': ['report-view'] }
+              }
+            } : compiled.artifact`,
             assign: "compiled.artifact",
             dependencies: ["presentation.rows", "presentation.summary", "compiled.approved"],
           },
@@ -151,19 +229,48 @@ export function compilerBlueprint(): BlueprintArtifact {
 
 /**
  * Runs the compiler Blueprint to completion through the host-side `runLoweringBlueprint`
- * driver (ADR-0044 Phase 2) — a thin wrapper over `runTransition`, replacing the earlier
+ * driver (ADR-0045 Phase 2) — a thin wrapper over `runTransition`, replacing the earlier
  * spike's hand-rolled `ControlFace`/`InMemoryStateModel` wiring.
  *
  * `approve` stands in for the real host-side approval callback (e.g. a human reviewer
  * surfaced through the product UI).
  */
 export async function runLoweringMetaGraph(outcome: ConfirmOutcome = "approved"): Promise<LoweringMetaGraphResult> {
+  const blueprint = compilerBlueprint();
+
+  // ADR-0045 Phase 4: catch drift between the declared Lowering Cell meta-graph and the
+  // runtime Cells that actually execute it before running anything.
+  const issues = validateLoweringCellGraph(loweringCellGraph(), blueprint.payload.cells ?? {});
+  if (issues.length > 0) {
+    throw new Error(`Lowering Cell meta-graph drifted from the compiler Blueprint: ${issues.map((issue) => `${issue.cellId}: ${issue.message}`).join("; ")}`);
+  }
+
   const result = await runLoweringBlueprint({
-    blueprint: compilerBlueprint(),
+    blueprint,
     bootstrapEvent: { node: "agent-tier", name: "start" },
     approveEvent: { node: "approve", name: "approve" },
     approve: async () => outcome,
   });
 
   return { artifactAfterApproval: result.state.compiled?.artifact };
+}
+
+/**
+ * ADR-0045 Phase 3: the hand-off from compiler output to the existing, unchanged
+ * `openBlueprint` path. Runs the compiler Blueprint to completion, validates its
+ * `emit-blueprint` output as a real `BlueprintArtifact` (via `createBlueprint`'s
+ * envelope + schema validation), and opens it as a second, independent Kernel/Face
+ * instance — proving the compiler never gains direct execution authority over the
+ * artifact it produces.
+ *
+ * Throws if approval was withheld (no artifact to open) or if the emitted artifact
+ * fails Blueprint schema validation.
+ */
+export async function runDueDiligenceLoweringPipeline(outcome: ConfirmOutcome = "approved"): Promise<BlueprintRuntime> {
+  const { artifactAfterApproval } = await runLoweringMetaGraph(outcome);
+  if (!artifactAfterApproval) {
+    throw new Error("Lowering meta-graph did not emit a terminal artifact (approval withheld or denied)");
+  }
+  const reportBlueprint = createBlueprint(artifactAfterApproval as BlueprintDefinition);
+  return openBlueprint(reportBlueprint);
 }

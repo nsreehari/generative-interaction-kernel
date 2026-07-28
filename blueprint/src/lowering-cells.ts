@@ -1,4 +1,5 @@
 import type { Json } from "@gik/kernel";
+import type { CellDefinition } from "./types";
 
 export type LoweringCellKind =
   | "transform"
@@ -44,4 +45,44 @@ function validatePorts(cellId: string, direction: "input" | "output", ports: rea
     if (tokens.has(port.token)) throw new Error(`Lowering Cell '${cellId}' has duplicate ${direction} token '${port.token}'`);
     tokens.add(port.token);
   }
+}
+
+export interface LoweringCellGraphIssue {
+  cellId: string;
+  message: string;
+}
+
+/**
+ * ADR-0045 Phase 4: cross-reference a declared Lowering Cell meta-graph (authoring-time
+ * metadata — kind, ports, policy) against the actual runtime `cells` of a hand-authored
+ * compiler Blueprint. The two graphs stay distinct by design (the meta-graph declares intent;
+ * the Blueprint's `cells` map is what actually executes on the Kernel) — this only checks that
+ * they have not drifted apart: every declared Lowering Cell has a matching runtime Cell, and
+ * every declared port token appears on that Cell's actual `inputs`/`outputs`.
+ */
+export function validateLoweringCellGraph(
+  cells: readonly LoweringCellDefinition[],
+  runtimeCells: Readonly<Record<string, CellDefinition>>,
+): readonly LoweringCellGraphIssue[] {
+  const issues: LoweringCellGraphIssue[] = [];
+  for (const cell of cells) {
+    const runtimeCell = runtimeCells[cell.id];
+    if (!runtimeCell) {
+      issues.push({ cellId: cell.id, message: `declared Lowering Cell '${cell.id}' has no matching runtime Cell` });
+      continue;
+    }
+    const runtimeInputTokens = new Set((runtimeCell.inputs ?? []).map((port) => port.token));
+    const runtimeOutputTokens = new Set((runtimeCell.outputs ?? []).map((port) => port.token));
+    for (const port of cell.inputs ?? []) {
+      if (!runtimeInputTokens.has(port.token)) {
+        issues.push({ cellId: cell.id, message: `declared input token '${port.token}' is not among the runtime Cell's inputs` });
+      }
+    }
+    for (const port of cell.outputs ?? []) {
+      if (!runtimeOutputTokens.has(port.token)) {
+        issues.push({ cellId: cell.id, message: `declared output token '${port.token}' is not among the runtime Cell's outputs` });
+      }
+    }
+  }
+  return issues;
 }
