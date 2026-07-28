@@ -1,5 +1,5 @@
 import React from "react";
-import { openBlueprint } from "@gik/controlface/blueprint";
+import { prepareBlueprintProgram, type BlueprintArtifact } from "@gik/blueprint";
 import { unwrap, type Json, type Reaction } from "@gik/kernel";
 import {
   SharedContextStore,
@@ -10,7 +10,6 @@ import {
   type OrganismBridge,
   type ProviderResolver,
 } from "@gik/react";
-import type { BlueprintArtifact } from "@gik/blueprint";
 import { createDemoRunnerBundle, createGikControlHarnessBundle } from "./internal-bundles";
 import { dispatchDemoControlRequest, withDemoHumanGate } from "./internal-demo-control-bridge";
 import type { ControlReceipt, ControlRequest } from "./control-runtime";
@@ -158,7 +157,7 @@ export interface DemoTargetHostProps {
   contexts?: BundleContextBindings;
   fileServices?: GenUIFileServices;
   primaryBridge?: OrganismBridge;
-  primaryInstanceKey?: string | number;
+  primaryInstanceId?: string | number;
   className?: string;
   style?: React.CSSProperties;
   context?: Record<string, Json>;
@@ -188,7 +187,7 @@ export function GikDemoBlueprintHost({
   className,
   style,
   context,
-  primaryInstanceKey,
+  primaryInstanceId,
   resolveLeavesProvider,
   scenariosJson,
   blueprintState,
@@ -213,7 +212,7 @@ export function GikDemoBlueprintHost({
         companions={companions}
         contexts={contexts}
         fileServices={fileServices}
-        primaryInstanceKey={primaryInstanceKey}
+        primaryInstanceId={primaryInstanceId}
         className={className}
         style={style}
         context={context}
@@ -229,6 +228,7 @@ export function GikDemoBlueprintHost({
       companions={companions}
       contexts={contexts}
       fileServices={fileServices}
+      primaryInstanceId={primaryInstanceId}
       className={className}
       style={style}
       context={context}
@@ -251,7 +251,7 @@ function ActiveDemoHost({
   companions = EMPTY_COMPANIONS,
   contexts = EMPTY_CONTEXTS,
   fileServices,
-  primaryInstanceKey,
+  primaryInstanceId,
   className,
   style,
   context,
@@ -277,7 +277,7 @@ function ActiveDemoHost({
 
   const requestedPresentationContext = presentationContext ?? queryPresentationContext;
   const [resetEpoch, setResetEpoch] = React.useState(0);
-  const resolvedPrimaryInstanceKey = `${primaryInstanceKey ?? "demo"}:${selectedDemoId}:${resetEpoch}`;
+  const resolvedPrimaryInstanceId = `${primaryInstanceId ?? "demo"}:${selectedDemoId}:${resetEpoch}`;
   const baseInitialSeed = React.useMemo(
     () => (context && isJsonRecord(context.initialSeed) ? cloneJsonRecord(context.initialSeed as JsonRecord) : null),
     [context],
@@ -397,8 +397,8 @@ function ActiveDemoHost({
   );
 
   const targetHandlesControl = React.useMemo(() => {
-    const runtime = openBlueprint(blueprint);
-    return unwrap(runtime.program).root.edges?.react?.some(
+    const prepared = prepareBlueprintProgram(blueprint);
+    return unwrap(prepared.program).root.edges?.react?.some(
       (reaction: Reaction) => typeof reaction.when === "string" && reaction.when.startsWith("control.commands."),
     ) ?? false;
   }, [blueprint]);
@@ -471,8 +471,8 @@ function ActiveDemoHost({
 
   const packageCompanions = React.useMemo<CompositionOrganism[]>(() => {
     const list = [...companions];
-    list.push({ id: "gik-control-harness", bundle: harnessBundle });
-    list.push({ id: `demo-runner:${selectedDemoId}`, bundle: runnerBundle });
+    list.push({ instanceId: "gik-control-harness", bundle: harnessBundle });
+    list.push({ instanceId: `demo-runner:${selectedDemoId}`, bundle: runnerBundle });
     return list;
   }, [companions, harnessBundle, runnerBundle, selectedDemoId]);
 
@@ -485,7 +485,7 @@ function ActiveDemoHost({
       contexts={mergedContexts}
       fileServices={fileServices}
       primaryBridge={primaryBridge}
-      primaryInstanceKey={resolvedPrimaryInstanceKey}
+      primaryInstanceId={resolvedPrimaryInstanceId}
       className={className}
       style={style ? { ...compositionStyle, ...style } : compositionStyle}
       context={resolvedContext}

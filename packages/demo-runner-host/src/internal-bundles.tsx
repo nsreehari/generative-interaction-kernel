@@ -1078,7 +1078,7 @@ const demoRunnerManifest = {
   },
 } as const;
 
-const demoRunnerDocument = {
+const demoRunnerProgram = {
   gik: "0.1",
   type: "program",
   payload: {
@@ -1164,7 +1164,7 @@ const harnessManifest = {
   },
 } as const;
 
-const harnessDocument = {
+const harnessProgram = {
   gik: "0.1",
   type: "program",
   payload: {
@@ -1265,7 +1265,7 @@ export function createDemoRunnerBundle(
   if (stateSeed) Object.assign(state, stateSeed);
   return bundleFromJson({
     vocabulary: structuredClone(demoRunnerManifest),
-    program: structuredClone(demoRunnerDocument),
+    program: structuredClone(demoRunnerProgram),
     state,
   }, {
     effectHandlers: {
@@ -1286,7 +1286,7 @@ export function createGikControlHarnessBundle(stateSeed?: Record<string, unknown
   if (stateSeed) Object.assign(state, stateSeed);
   return bundleFromJson({
     vocabulary: structuredClone(harnessManifest),
-    program: structuredClone(harnessDocument),
+    program: structuredClone(harnessProgram),
     state,
   }, {
     projectionViews: harnessViews,

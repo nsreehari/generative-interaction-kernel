@@ -6,4 +6,5 @@ export * from "./types";
 export * from "./execution";
 export * from "./cell-impact";
 export * from "./exploration";
-export { composeCellDocument } from "./cell-projection";
+export * from "./run-transition";
+export { composeCellProgram, composeCellDocument } from "./cell-projection";

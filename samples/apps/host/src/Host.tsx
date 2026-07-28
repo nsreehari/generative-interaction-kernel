@@ -2,7 +2,7 @@
 // owns URL canonicalization and the switcher overlay.
 
 import React from "react";
-import { BlueprintHost } from "@gik/blueprint-host";
+import { BlueprintHost } from "@gik/react";
 import { GikDemoBlueprintHost } from "@gik/demo-runner-host";
 import blueprintRegistry from "../../../blueprints/registry.json";
 import { resolveBundleProjectionViews } from "./bundles";

@@ -18,6 +18,7 @@ import {
 } from "./bundle-registry";
 import { GenUIFileServicesProvider, type GenUIFileServices } from "./fileServices";
 
+/** @deprecated Use BlueprintHost for top-level applications. */
 export function BundleHost({
   bundle,
   fileServices,

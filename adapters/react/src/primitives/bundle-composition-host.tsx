@@ -7,7 +7,6 @@
 
 import React from "react";
 import { GenUIRoot, type GenUISource } from "../useGenUI";
-import { GenUIController } from "../controller";
 import { loadBundle, type Bundle, type LoadBundleOptions } from "./bundle";
 import { buildBundleRegistry } from "./registry";
 import {
@@ -26,16 +25,18 @@ import { GenUIFileServicesProvider, type GenUIFileServices } from "./fileService
  *   and returns a cleanup. Runs once per mounted organism.
  */
 export interface OrganismBridge {
-  wrapSource?: (controller: GenUIController, contexts: BundleContextBindings) => GenUISource;
-  connect?: (controller: GenUIController, contexts: BundleContextBindings) => (() => void) | void;
+  wrapSource?: (controller: GenUISource, contexts: BundleContextBindings) => GenUISource;
+  connect?: (controller: GenUISource, contexts: BundleContextBindings) => (() => void) | void;
 }
 
 /** One organism in a composition: a resolved bundle plus its optional bridge and orchestrator wrap. */
 export interface CompositionOrganism {
   /** Stable identity — used as the React key and as the remount boundary. */
-  id: string;
+  instanceId: string;
   /** The resolved bundle to run (already lowered; no ids, no catalog). */
   bundle: Bundle;
+  /** Optional externally owned execution source. Bundle remains the projection/registry input. */
+  source?: GenUISource;
   /** Optional bridge wiring this organism to the shared contexts. */
   bridge?: OrganismBridge;
   /** Optional host-owned orchestrator wrap (policy / services) for this organism. */
@@ -69,7 +70,7 @@ export function BundleCompositionHost({
       <GenUIFileServicesProvider services={fileServices}>
         <div className={className} style={style}>
           {organisms.map((organism) => (
-            <CompositionOrganismRuntime key={organism.id} organism={organism} contexts={contexts} />
+            <CompositionOrganismRuntime key={organism.instanceId} organism={organism} contexts={contexts} />
           ))}
         </div>
       </GenUIFileServicesProvider>
@@ -85,10 +86,10 @@ function CompositionOrganismRuntime({
   contexts: BundleContextBindings;
 }): React.ReactElement {
   const resolveProvider = useProjectionProviderResolver();
-  // Build the runtime once for the life of this organism (keyed by organism.id at the parent).
-  const controller = React.useMemo(
-    () => loadBundle(organism.bundle, { contexts, wrapOrchestrator: organism.wrapOrchestrator }),
-    [] // eslint-disable-line react-hooks/exhaustive-deps
+  // Build the runtime once for the life of this organism (keyed by organism.instanceId at the parent).
+  const controller = React.useMemo<GenUISource>(
+    () => organism.source ?? loadBundle(organism.bundle, { contexts, wrapOrchestrator: organism.wrapOrchestrator }),
+    [organism.source] // eslint-disable-line react-hooks/exhaustive-deps
   );
   useBundleContextSync(controller, contexts);
   const registry = React.useMemo(

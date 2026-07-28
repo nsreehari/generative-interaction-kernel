@@ -20,7 +20,8 @@
     "packages/react",
     "packages/transport-http-sse",
     "packages/transport-mcp-http",
-    "packages/gik"
+    "packages/gik",
+    "samples"
   ],
   "scripts": {
     "conformance": "node schemas/validate.mjs",

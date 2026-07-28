@@ -1,7 +1,7 @@
 // A typed reader for a resolved node's props.
 //
 // `node.props` is `Record<string, Json>` at the generic renderer boundary — a dynamic, possibly
-// agent-authored document — so coercing it is legitimate boundary work. The point of this reader is
+// agent-authored program — so coercing it is legitimate boundary work. The point of this reader is
 // to do that coercion in exactly ONE place: profile components then express the shape they expect
 // (`p.str("label")`, `p.list<Option>("options")`) instead of repeating `String(... ?? "")`,
 // `Array.isArray(...)` and `as unknown as T[]` at every call site. The single unchecked element cast
