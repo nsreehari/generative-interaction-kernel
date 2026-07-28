@@ -1,5 +1,5 @@
 import type { Json, StateModel } from "@gik/kernel";
-import type { GenUIController, GenUISource } from "@gik/react";
+import type { GenUISource } from "@gik/react";
 import type { ControlReceipt, ControlRequest, OrganismControlContract } from "./control-runtime";
 
 export function withDemoHumanGate(
@@ -46,7 +46,7 @@ export function withDemoHumanGate(
 }
 
 export async function dispatchDemoControlRequest(
-  controller: GenUIController,
+  controller: GenUISource,
   control: StateModel,
   contract: OrganismControlContract,
   request: ControlRequest,

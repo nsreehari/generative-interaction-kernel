@@ -1,19 +1,20 @@
 import React from "react";
-import { openBlueprint } from "@gik/controlface/blueprint";
+import { prepareBlueprintProgram, type BlueprintArtifact } from "@gik/blueprint";
 import type { Json } from "@gik/kernel";
+import { BlueprintController } from "../blueprint-controller";
+import type { ProviderResolver } from "../registry";
+import { bundleFromJson, type BundleNative } from "./bundle";
 import {
   BundleRegistryProvider,
-  BundleCompositionHost,
-  bundleFromJson,
   createBundleRegistry,
   type BundleContextBindings,
-  type BundleNative,
+} from "./bundle-registry";
+import {
+  BundleCompositionHost,
   type CompositionOrganism,
-  type GenUIFileServices,
   type OrganismBridge,
-  type ProviderResolver,
-} from "@gik/react";
-import type { BlueprintArtifact } from "@gik/blueprint";
+} from "./bundle-composition-host";
+import type { GenUIFileServices } from "./fileServices";
 
 const EMPTY_COMPANIONS: CompositionOrganism[] = [];
 const EMPTY_CONTEXTS: BundleContextBindings = {};
@@ -26,17 +27,10 @@ export interface BlueprintHostProps {
   contexts?: BundleContextBindings;
   fileServices?: GenUIFileServices;
   primaryBridge?: OrganismBridge;
-  primaryInstanceKey?: string | number;
+  primaryInstanceId?: string | number;
   className?: string;
   style?: React.CSSProperties;
   context?: Record<string, Json>;
-}
-
-function runtimeFromBlueprint(
-  blueprint: BlueprintArtifact,
-  context?: Record<string, Json>,
-) {
-  return openBlueprint(blueprint, context ? { context } : undefined);
 }
 
 export function BlueprintHost({
@@ -47,23 +41,35 @@ export function BlueprintHost({
   contexts = EMPTY_CONTEXTS,
   fileServices,
   primaryBridge,
-  primaryInstanceKey,
+  primaryInstanceId,
   className,
   style,
   context,
 }: BlueprintHostProps): React.ReactElement {
   const registry = React.useMemo(() => createBundleRegistry(), []);
-  const runtime = React.useMemo(() => runtimeFromBlueprint(blueprint, context), [blueprint, context]);
+  const prepared = React.useMemo(
+    () => prepareBlueprintProgram(blueprint, { context }),
+    [blueprint, context],
+  );
   const bundle = React.useMemo(
-    () => bundleFromJson({ vocabulary: runtime.vocabulary, program: runtime.program, state: runtime.state }, native),
-    [runtime, native],
+    () => bundleFromJson({
+      vocabulary: prepared.vocabulary,
+      program: prepared.program,
+      state: prepared.initialState,
+    }, native),
+    [prepared, native],
   );
-  const blueprintId = blueprint.payload.id;
-  const primaryId = primaryInstanceKey === undefined ? blueprintId : `${blueprintId}:${primaryInstanceKey}`;
+  const source = React.useMemo(
+    () => new BlueprintController(prepared.blueprint, { context, contexts, native }),
+    [prepared.blueprint, context, contexts, native],
+  );
+  const blueprintId = prepared.blueprint.payload.id;
+  const primaryInstanceIdResolved = primaryInstanceId === undefined ? blueprintId : `${blueprintId}:${primaryInstanceId}`;
   const primary = React.useMemo<CompositionOrganism>(
-    () => ({ id: primaryId, bundle, bridge: primaryBridge }),
-    [primaryId, bundle, primaryBridge],
+    () => ({ instanceId: primaryInstanceIdResolved, bundle, source, bridge: primaryBridge }),
+    [primaryInstanceIdResolved, bundle, source, primaryBridge],
   );
+
   return (
     <BundleRegistryProvider registry={registry} resolveProvider={resolveLeavesProvider}>
       <BundleCompositionHost

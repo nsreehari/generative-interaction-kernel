@@ -1,8 +1,8 @@
 // The PLATFORM FLOOR, part 3: the bundle model + loader.
 //
-// A BUNDLE is the unit the generic host runs: { vocabulary, program, state, effects }. The console,
-// the playground, preview, and every profile are bundles. `loadBundle` stands up a runtime for one
-// (kernel + shared state + effect dispatcher) and returns a controller the React layer renders.
+// A Bundle is a lower-level runtime/composition unit: { vocabulary, program, state, effects }.
+// `loadBundle` stands up its Kernel, shared state, and effect dispatcher for advanced composition
+// and compatibility paths. Top-level applications are hosted from Blueprints.
 //
 // Bundles COMPOSE: an `embed` primitive embeds a SerializableBundle (vocabulary + program + state,
 // all JSON) as a nested runtime. That is what makes "a JSON bundle can be composed of other JSON

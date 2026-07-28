@@ -2,93 +2,20 @@ schema_version: 1
 
 package:
   name: "@gik/blueprint-host"
-  version: "0.2.0"
-  purpose: Open one Blueprint and mount its projected Kernel program through the React bundle host.
-  core_promise: >-
-    BlueprintHost is a small React adapter from BlueprintArtifact to BundleCompositionHost.
-    It does not provide demo scenarios, controls, inspection, or presentation policy.
+  version: "0.2.2"
+  status: compatibility
+  purpose: Re-export BlueprintHost and BlueprintHostProps from @gik/react during migration.
   public_entrypoint: packages/blueprint-host/src/index.ts
-  implementation_entrypoint: packages/blueprint-host/src/BlueprintHost.tsx
-
-api_policy:
-  signature_authority: generated TypeScript declarations
-  public_surface:
-    - BlueprintHost
-    - BlueprintHostProps
 
 architecture:
-  owns:
-    - Opening the supplied Blueprint for a React host.
-    - Creating one bundle registry per mounted host.
-    - Converting the opened vocabulary, program, and state into a React Bundle.
-    - Mounting one primary composition organism with optional companions and shared contexts.
-  delegates_to_controlface:
-    - Blueprint assembly and preparation through openBlueprint.
+  owns: []
   delegates_to_react:
-    - Bundle construction.
-    - Bundle registry and provider resolution.
-    - Composition hosting, rendering, contexts, bridges, and file services.
-  does_not_own:
-    - Blueprint definition, validation, or lowering contracts.
-    - Kernel execution semantics.
-    - Demo catalogs, scenario playback, control harnesses, or inspection contracts.
-    - Application routing or URL query interpretation.
-    - Service-kind admission, ServiceHost construction, credentials, endpoint authorization, or environment policy.
+    - Blueprint program preparation.
+    - In-memory state and transition execution.
+    - Rendering, composition, contexts, bridges, and file services.
   dependency_direction:
-    - "@gik/blueprint-host -> @gik/blueprint"
-    - "@gik/blueprint-host -> @gik/controlface"
-    - "@gik/blueprint-host -> @gik/kernel"
     - "@gik/blueprint-host -> @gik/react"
-    - "@gik/blueprint-host and @gik/demo-runner-host do not depend on each other"
-
-component:
-  name: BlueprintHost
-  signature: "function BlueprintHost(props: BlueprintHostProps): React.ReactElement"
-  behavior:
-    - Calls openBlueprint with the supplied Blueprint and optional context.
-    - Reopens the Blueprint when the Blueprint object or context object changes.
-    - Passes the opened vocabulary, program, and state to bundleFromJson with optional native capabilities.
-    - Creates a primary CompositionOrganism whose id starts with BlueprintDefinition.id.
-    - Appends primaryInstanceKey to the primary id when the key is supplied.
-    - Mounts BundleCompositionHost inside a BundleRegistryProvider.
-    - Uses an empty companion list and empty context bindings when those props are omitted.
-  lifecycle:
-    - The bundle registry is created once per BlueprintHost mount and is not shared across separate instances.
-    - The opened runtime and Bundle are memoized from their declared inputs.
-    - Changing primaryInstanceKey changes the primary composition id and therefore its mounted identity.
-
-props_contract:
-  name: BlueprintHostProps
-  signature: >-
-    interface BlueprintHostProps { blueprint: BlueprintArtifact;
-    resolveLeavesProvider?: ProviderResolver; native?: BundleNative;
-    companions?: CompositionOrganism[]; contexts?: BundleContextBindings;
-    fileServices?: GenUIFileServices; primaryBridge?: OrganismBridge;
-    primaryInstanceKey?: string | number; className?: string;
-    style?: React.CSSProperties; context?: Record<string, Json> }
-  fields:
-    blueprint: Blueprint artifact to open and host.
-    resolveLeavesProvider: Resolves projection-view providers requested by the opened bundle.
-    native: Supplies native projection views and effect handlers to bundleFromJson.
-    companions: Additional composition organisms mounted beside the primary organism.
-    contexts: Shared context bindings available to the composition.
-    fileServices: File-service capabilities supplied to BundleCompositionHost.
-    primaryBridge: Optional bridge wrapping or connecting the primary organism controller.
-    primaryInstanceKey: Optional suffix used to change the primary organism identity.
-    className: Class name forwarded to BundleCompositionHost.
-    style: React style object forwarded to BundleCompositionHost.
-    context: Host input passed to openBlueprint.
-
-execution_boundary:
-  input: BlueprintArtifact
-  prepared_result: Vocabulary, projected program, and initial state returned by openBlueprint.
-  rendered_result: React composition hosted by BundleCompositionHost.
-  rules:
-    - BlueprintHost does not execute Blueprint JSON directly.
-    - Kernel and the React bundle runtime retain ownership of runtime execution and state.
-    - BlueprintHost does not choose or construct demo behavior.
-    - BlueprintHost forwards native.wrapOrchestrator through bundleFromJson; an outer host may use that seam to connect one host-owned ServiceHost.
-    - Service-backed hosting follows ADR-0040: the outer host constructs ServiceHost and BlueprintHost remains service-policy agnostic.
+  removal_condition: Consumers import BlueprintHost directly from @gik/react.
 
 public_exports:
   - BlueprintHost

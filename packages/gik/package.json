@@ -38,9 +38,9 @@
   "dependencies": {
     "@gik/evaluators": "0.1.1",
     "@gik/kernel": "0.1.1",
-    "@gik/react": "0.1.1",
+    "@gik/react": "0.1.2",
     "@gik/agentface": "0.1.1",
-    "@gik/controlface": "0.1.3",
+    "@gik/controlface": "0.1.4",
     "@gik/transport-http-sse": "0.1.0",
     "@gik/transport-mcp-http": "0.1.0"
   },

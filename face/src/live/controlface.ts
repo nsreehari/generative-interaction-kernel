@@ -38,12 +38,13 @@ import type { ServiceHost } from "../services/service-host";
 import type { ServiceKindDescription } from "../services/service-kinds";
 import {
   compileCellTopology,
-  composeCellDocument,
+  composeCellProgram,
   assembleBlueprint,
   admitAdaptiveProgramPatch,
   admitBlueprintPatch,
   applyBlueprintPatch,
   loadBlueprint,
+  prepareBlueprintProgram,
   type BlueprintArtifact,
   type BlueprintPatch,
   type BlueprintPatchDecision,
@@ -92,41 +93,8 @@ export function defineDeclarativeBlueprint(blueprint: BlueprintSource): LoweredB
 
   return {
     resolved,
-    lower: () => composeCellDocument(definition, compileCellTopology(resolved.artifact.payload.id, definition.cells)),
+    lower: () => composeCellProgram(definition, compileCellTopology(resolved.artifact.payload.id, definition.cells)),
   };
-}
-
-type JsonRecord = Record<string, Json>;
-
-function jsonRecord(value: unknown): JsonRecord | null {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? value as JsonRecord
-    : null;
-}
-
-function mergeJsonRecords(base: JsonRecord, overlay: JsonRecord): JsonRecord {
-  const merged: JsonRecord = structuredClone(base);
-  for (const [key, value] of Object.entries(overlay)) {
-    const existing = merged[key];
-    if (
-      existing !== null
-      && typeof existing === "object"
-      && !Array.isArray(existing)
-      && value !== null
-      && typeof value === "object"
-      && !Array.isArray(value)
-    ) {
-      merged[key] = mergeJsonRecords(existing as JsonRecord, value as JsonRecord);
-      continue;
-    }
-    merged[key] = structuredClone(value);
-  }
-  return merged;
-}
-
-function resolveInitialSeed(context: Record<string, Json> | undefined): JsonRecord {
-  const initialSeed = jsonRecord(context?.initialSeed) ?? jsonRecord(context?.freeContext);
-  return initialSeed ? structuredClone(initialSeed) : {};
 }
 
 export interface OpenBlueprintOptions {
@@ -148,70 +116,22 @@ export interface ControlFaceOptions {
   blueprint?: BlueprintSource;
 }
 
-function runtimeFromLowering(
-  definition: BlueprintSource,
-  instanceId: string,
-  resolved: Pick<ResolvedBlueprint, "artifact" | "services">,
-  program: ProjectedProgramDefinition,
-  context?: Record<string, Json>,
-): BlueprintRuntime {
-  const { id, version, runtime } = resolved.artifact.payload;
-  if (!runtime) throw new Error(`Blueprint '${id}' has no runtime declaration`);
-
-  const vocabulary: ProjectedVocabularyManifest = {
-    version: `${id}/${version}`,
-    expression: runtime.expression,
-    namespaces: runtime.namespaces,
-    contexts: runtime.contexts,
-    actions: runtime.actions,
-    capabilities: structuredClone(runtime.capabilities ?? {}),
-    externals: {
-      ...structuredClone(runtime.externals ?? {}),
-      ...(Object.keys(resolved.services).length > 0
-        ? { services: structuredClone(resolved.services) }
-        : {}),
-    },
-  };
-
-  return {
-    blueprintId: id,
-    instanceId,
-    revision: version,
-    definition,
-    vocabulary: { gik: "0.1", type: "vocabulary", payload: vocabulary },
-    program: {
-      gik: "0.1",
-      type: "program",
-      payload: program,
-    },
-    state: mergeJsonRecords(structuredClone(runtime.state ?? {}), resolveInitialSeed(context)),
-    children: {},
-  };
-}
-
 function openAssembledBlueprint(
   source: BlueprintSource,
   options: Pick<OpenBlueprintOptions, "context" | "instanceId">,
 ): BlueprintRuntime {
   const instanceId = options.instanceId ?? source.payload.id;
-  let runtime: BlueprintRuntime;
-  if (source.payload.recipes.length > 0) {
-    throw new Error(`Blueprint '${source.payload.id}' must be lowered before it is opened`);
-  } else {
-    const definition = defineDeclarativeBlueprint(source);
-    if (!definition) {
-      throw new Error(
-        `Blueprint '${source.payload.id}' has no presentation projection root or lowering recipes`
-      );
-    }
-    runtime = runtimeFromLowering(
-      source,
-      instanceId,
-      definition.resolved,
-      definition.lower(structuredClone(options.context ?? {})),
-      options.context,
-    );
-  }
+  const prepared = prepareBlueprintProgram(source, { context: options.context });
+  const runtime: BlueprintRuntime = {
+    blueprintId: prepared.blueprint.payload.id,
+    instanceId,
+    revision: prepared.blueprint.payload.version,
+    definition: prepared.blueprint,
+    vocabulary: prepared.vocabulary,
+    program: prepared.program,
+    state: prepared.initialState,
+    children: {},
+  };
 
   const children = Object.fromEntries(
     Object.entries(source.payload.cells ?? {}).flatMap(([cellId, cell]) => {
