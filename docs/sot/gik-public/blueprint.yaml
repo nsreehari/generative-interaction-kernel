@@ -5,7 +5,8 @@ package:
   version: "0.1.0"
   purpose: >-
     Define and validate Blueprint JSON, resolve its references and resources, analyze its
-    Cells, and pass it through caller-supplied lowering to a Kernel program.
+    Cells, enforce structural-change policy, and pass it through caller-supplied lowering
+    to a Kernel program.
   core_promise: >-
     A Blueprint is configuration that can be converted to a Kernel program. It is not a
     Kernel program and cannot be executed directly.
@@ -14,7 +15,7 @@ package:
 
 terminology:
   blueprint: A JSON document that describes Cells, resources, services, and how to produce a Kernel program.
-  blueprint_structure_mode: A serialized label describing whether a Blueprint's structure may change.
+  blueprint_structure_mode: Enforceable policy selecting fixed, authorized reconfiguration, or adaptive runtime change.
   cell: A named part of a Blueprint.
   tier: A named representation used while converting a Blueprint.
   lowering_recipe: A declaration connecting one tier to another.
@@ -39,6 +40,8 @@ architecture:
     - Tier and lowering-recipe declarations.
     - Lowering Cell declarations and validation.
     - Blueprint structural and semantic validation.
+    - Semantic Blueprint patch application and structure-mode admission.
+    - Adaptive admission policy for runtime-originated Kernel ProgramPatch operations.
     - Recursive child Blueprint assembly.
     - Calling a supplied lowering function and validating its resulting Kernel program.
   delegates_to_kernel:
@@ -53,7 +56,9 @@ architecture:
     - Rendering, transports, Faces, or host service bindings.
     - Recipe execution or Lowering Cell scheduling.
     - Relationship-specific execution semantics.
-    - Blueprint mutation authorization, application, state, or lifecycle.
+    - Runtime application of executable ProgramPatch operations.
+    - Host identity, credentials, or authorization mechanisms.
+    - Nested child Blueprint mutation routing.
   dependency_direction:
     - "@gik/blueprint -> @gik/kernel"
     - "@gik/blueprint -> @gik/evaluators for declarative schema validation"
@@ -72,6 +77,7 @@ artifact_contracts:
     signature: >-
       interface BlueprintDefinition { id: string; kind: string; version: string;
       structureMode?: BlueprintStructureMode;
+      structurePolicy?: BlueprintStructurePolicy;
       tiers: TierDefinition[]; recipes: LoweringRecipeDefinition[];
       context?: Record<string, Json>;
       resources?: Record<string, BlueprintResource>;
@@ -89,6 +95,7 @@ artifact_contracts:
       - Backend and worker Blueprints do not require a presentation projection.
       - The serialized lowering-recipe collection is recipes in version 0.1.
       - structureMode is fixed, reconfigurable, or adaptive; the schema default and host interpretation treat omission as fixed.
+      - structurePolicy allowlists semantic Blueprint operations and executable program operations for adaptive mode.
       - services carry Blueprint-owned logical configuration and operation contracts, never literal credentials or host execution policy.
       - Service declarations are preserved into the opened runtime; an outer host owns ServiceHost construction and trusted kind admission.
   - name: BlueprintRuntimeDefinition
@@ -179,6 +186,41 @@ artifact_api:
       - Rejects recursive Blueprint identity cycles.
       - Does not mutate source artifacts.
       - Returns a validated self-contained artifact.
+
+structure_patch_api:
+  contracts:
+    - BlueprintStructureOperation
+    - BlueprintStructurePolicy
+    - BlueprintPatchOperation
+    - BlueprintPatch
+    - BlueprintPatchOrigin
+    - BlueprintPatchRequest
+    - BlueprintPatchDecision
+    - BlueprintStructureError
+  functions:
+    - name: admitBlueprintPatch
+      signature: >-
+        admitBlueprintPatch(blueprint: BlueprintArtifact,
+        request: BlueprintPatchRequest): BlueprintPatchDecision
+      behavior:
+        - fixed rejects every semantic structure patch.
+        - reconfigurable accepts only origin authorized and rejects runtime origin.
+        - adaptive accepts only operations listed by structurePolicy.allowedBlueprintOperations.
+    - name: admitAdaptiveProgramPatch
+      signature: >-
+        admitAdaptiveProgramPatch(blueprint: BlueprintArtifact,
+        patch: ProgramPatch): ProgramPatch | false
+      behavior:
+        - fixed and reconfigurable always reject runtime-originated program patches.
+        - adaptive admits only operations listed by structurePolicy.allowedProgramOperations.
+    - name: applyBlueprintPatch
+      signature: >-
+        applyBlueprintPatch(blueprint: BlueprintArtifact,
+        patch: BlueprintPatch): BlueprintArtifact
+      behavior:
+        - Applies Cell, relationship, and projection operations to a clone.
+        - Validates the complete candidate Blueprint before returning it.
+        - Rejects addCell or replaceCell operations containing child Blueprints in this phase.
 
 cell_api:
   - name: defineCell
@@ -356,10 +398,16 @@ structure_mode_contract:
   default_annotation: The JSON schema annotates fixed as the default.
   behavior:
     - Validation preserves an explicit value and leaves an omitted value undefined.
-    - This package does not enforce mode-specific authorization, mutation, migration, or runtime behavior.
+    - Omission is interpreted as fixed by structure admission functions.
+    - fixed means neither runtime behavior nor an authorized Face operation can change the program through Blueprint admission.
+    - reconfigurable means ordinary runtime behavior cannot change the program; an authorized Face or host operation may submit a semantic Blueprint patch.
+    - adaptive means runtime behavior may produce ProgramPatch operations admitted by BlueprintStructurePolicy.
     - Kernel does not receive or interpret Blueprint structure-mode labels through this package.
     - Cell impact and exploration APIs analyze supplied snapshots identically for all structure modes.
-    - After an accepted structural mutation, callers compile or supply the new snapshot and rerun analysis.
+    - Nested child Blueprint mutation remains parked; existing recursive assembly behavior is unchanged.
+  runtime_boundary:
+    - Blueprint admits semantic and executable patches; Kernel validates and applies executable patches.
+    - Reconfiguration updates an existing program through ProgramPatch rather than installing a full replacement program.
 
 public_exports:
   artifact:
@@ -418,6 +466,8 @@ public_exports:
     - resolveResources
   language:
     - BlueprintStructureMode
+    - BlueprintStructurePolicy
+    - BlueprintStructureOperation
     - TierDefinition
     - LoweringRecipeDefinition
     - RelationshipDefinition
@@ -430,3 +480,13 @@ public_exports:
     - LoweringCellKind
     - LoweringCellDefinition
     - defineLoweringCell
+  structure_patch:
+    - BlueprintPatchOperation
+    - BlueprintPatch
+    - BlueprintPatchOrigin
+    - BlueprintPatchRequest
+    - BlueprintPatchDecision
+    - BlueprintStructureError
+    - admitBlueprintPatch
+    - admitAdaptiveProgramPatch
+    - applyBlueprintPatch
