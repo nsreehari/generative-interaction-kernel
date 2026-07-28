@@ -53,8 +53,9 @@ function readDemoQuery(): {
     return { demoEnabled: false, presentationContext: null };
   }
   const params = new URLSearchParams(window.location.search);
+  const demoValue = params.get("demo");
   return {
-    demoEnabled: params.has("demo"),
+    demoEnabled: demoValue !== null && demoValue !== "0",
     presentationContext: params.get("presentation") ?? params.get("presentationContext"),
   };
 }
