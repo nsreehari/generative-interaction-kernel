@@ -1,6 +1,6 @@
-// Spike for ADR-0044: prove that a Lowering Cell meta-graph (transform / approve /
-// emit-blueprint) can run as an ordinary Blueprint on the same Kernel and Face machinery
-// application Blueprints already use — no new execution engine.
+// ADR-0044 Phase 2: a Lowering Cell meta-graph (transform / approve / emit-blueprint) running
+// as an ordinary Blueprint on the shared Kernel via the `runTransition` / `runLoweringBlueprint`
+// host-side primitives — no new execution engine, no bespoke ControlFace/StateModel wiring.
 //
 // Scenario: lower a "tier 1" artifact (research findings sourced from an agent) into a
 // "tier 2" artifact (a presentation-ready shape) through a compiler Blueprint whose Cells
@@ -8,25 +8,18 @@
 // `confirm` action verb), and one `emit-blueprint` Cell (a `compute` Cell that only resolves
 // once approval has landed).
 //
-// Run: npx vitest run samples/control-host/lowering-meta-graph-spike.test.ts --project samples
+// Run: npx vitest run samples/control-host/lowering-meta-graph.test.ts --project samples
 
-import {
-  createBlueprint,
-  type BlueprintArtifact,
-} from "@gik/blueprint";
-import { ControlFace, openBlueprint } from "@gik/controlface";
-import { confirmOutcomeEvent, InMemoryStateModel, type Orchestrator } from "@gik/kernel";
+import { createBlueprint, runLoweringBlueprint, type BlueprintArtifact } from "@gik/blueprint";
+import type { ConfirmOutcome } from "@gik/kernel";
 
-export interface LoweringMetaGraphSpikeResult {
-  rowsBeforeApproval: unknown;
-  summaryBeforeApproval: unknown;
-  artifactBeforeApproval: unknown;
+export interface LoweringMetaGraphResult {
   artifactAfterApproval: unknown;
 }
 
-function compilerBlueprint(): BlueprintArtifact {
+export function compilerBlueprint(): BlueprintArtifact {
   return createBlueprint({
-    id: "due-diligence-lowering-spike",
+    id: "due-diligence-lowering",
     kind: "lowering-blueprint",
     version: "1",
     // The compiler Blueprint is itself hand-authored, zero-recipe Cells — the same
@@ -60,11 +53,11 @@ function compilerBlueprint(): BlueprintArtifact {
     cells: {
       // `transform`: tier-1 source artifact. Also stands in as the presentation root:
       // today's `composeCellProgram` always requires exactly one view-bearing root, even for
-      // a headless compiler graph — `openBlueprint`'s current implementation only knows how to
-      // build a `ProjectedProgramDefinition`, so a fully headless Blueprint isn't wired up yet
-      // either. That view is otherwise inert here. `start` is an explicit bootstrap trigger:
-      // standing derivations only run in response to a dispatched state change, never from
-      // initial seed data alone, so the host driver must fire one after seeding state.
+      // a headless compiler graph. That view is otherwise inert here. `start` is an explicit
+      // bootstrap trigger passed as `runLoweringBlueprint`'s `bootstrapEvent`: standing
+      // derivations only settle in response to a dispatched event, never from seeded state
+      // alone — confirmed empirically against `runTransition`'s zero-events path, which only
+      // seeds the reaction baseline and leaves `compute` derivations unresolved.
       "agent-tier": {
         id: "agent-tier",
         view: { capability: "workflow:compiler-root" },
@@ -156,45 +149,21 @@ function compilerBlueprint(): BlueprintArtifact {
   });
 }
 
-function createFace(blueprint: BlueprintArtifact, orchestrator?: Orchestrator): ControlFace {
-  const runtime = openBlueprint(blueprint);
-  // `ControlFace`/`Kernel` do not read a Blueprint's `runtime.state` automatically — that
-  // wiring only exists today in the React adapter's bundle loader (`seedState()` in
-  // adapters/react/src/primitives/bundle.ts). A caller going straight through `ControlFace`
-  // (as this spike and `structure-modes.ts` both do) must build the seeded `StateModel` itself
-  // and pass it explicitly.
-  const state = new InMemoryStateModel(Object.keys(runtime.state));
-  state.apply(Object.entries(runtime.state).map(([path, value]) => ({ op: "set" as const, path, value })));
-  return new ControlFace(runtime.vocabulary, runtime.program, { blueprint, orchestrator, state });
-}
-
-export async function runLoweringMetaGraphSpike(): Promise<LoweringMetaGraphSpikeResult> {
-  const face = createFace(compilerBlueprint(), {
-    // Stands in for the host-side driver's approval callback described in ADR-0044 Phase 2.
-    async confirm(effect) {
-      return { events: [confirmOutcomeEvent(effect, "approved")] };
-    },
+/**
+ * Runs the compiler Blueprint to completion through the host-side `runLoweringBlueprint`
+ * driver (ADR-0044 Phase 2) — a thin wrapper over `runTransition`, replacing the earlier
+ * spike's hand-rolled `ControlFace`/`InMemoryStateModel` wiring.
+ *
+ * `approve` stands in for the real host-side approval callback (e.g. a human reviewer
+ * surfaced through the product UI).
+ */
+export async function runLoweringMetaGraph(outcome: ConfirmOutcome = "approved"): Promise<LoweringMetaGraphResult> {
+  const result = await runLoweringBlueprint({
+    blueprint: compilerBlueprint(),
+    bootstrapEvent: { node: "agent-tier", name: "start" },
+    approveEvent: { node: "approve", name: "approve" },
+    approve: async () => outcome,
   });
 
-  // The host driver bootstraps the compiler graph explicitly — derivations never run from
-  // initial seed data alone.
-  await face.emit({ node: "agent-tier", name: "start" });
-
-  const beforeState = face.getState();
-  const rowsBeforeApproval = beforeState.presentation?.rows;
-  const summaryBeforeApproval = beforeState.presentation?.summary;
-  const artifactBeforeApproval = beforeState.compiled?.artifact;
-
-  await face.emit({ node: "approve", name: "approve" });
-
-  const afterState = face.getState();
-  const artifactAfterApproval = afterState.compiled?.artifact;
-  face.stop();
-
-  return {
-    rowsBeforeApproval,
-    summaryBeforeApproval,
-    artifactBeforeApproval,
-    artifactAfterApproval,
-  };
+  return { artifactAfterApproval: result.state.compiled?.artifact };
 }
