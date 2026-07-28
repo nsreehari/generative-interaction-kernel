@@ -75,6 +75,13 @@ export type QueueLeasedMessage<T = unknown> = {
   leaseExpiresAt: string;
 };
 
+export type QueueMessage<T = unknown> = {
+  id: string;
+  body: T;
+  enqueuedAt: string;
+  attempt: number;
+};
+
 export type DurableKernel<TState = unknown, TEvent = unknown, TEffect = unknown> = {
   id: string;
   initialState(): TState;

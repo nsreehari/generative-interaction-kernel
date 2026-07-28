@@ -11,7 +11,7 @@ document:
 
 package:
   name: "@gik/durable-runtime"
-  version: "0.1.1"
+  version: "0.3.0"
   publication_status: public-workspace-package
   purpose: >-
     Run durable kernels and effect handlers locally in a browser while routing durable
@@ -37,8 +37,22 @@ package:
       lockfile, and verifies its committed artifact. No repository assumes another
       repository's source directory exists.
     optional_dependencies: >-
-      @azure/cosmos is an optional peer dependency of @gik/durable-runtime and a direct
-      dependency of Azure consumers. Browser and filesystem-only consumers do not install it.
+      @azure/cosmos and @azure/storage-blob are optional peer dependencies of
+      @gik/durable-runtime and direct dependencies of Azure consumers. Browser and
+      filesystem-only consumers do not install them.
+    runtime_dependencies: >-
+      proper-lockfile is a package runtime dependency used by the filesystem storage
+      library. @types/proper-lockfile is development-only declaration support.
+  storage_exports:
+    - "@gik/durable-runtime/storage/cosmos"
+    - "@gik/durable-runtime/storage/cosmos/library"
+    - "@gik/durable-runtime/storage/cosmos/api"
+    - "@gik/durable-runtime/storage/filesystem"
+    - "@gik/durable-runtime/storage/filesystem/library"
+    - "@gik/durable-runtime/storage/filesystem/api"
+    - "@gik/durable-runtime/storage/indexed-db"
+    - "@gik/durable-runtime/storage/indexed-db/library"
+    - "@gik/durable-runtime/storage/indexed-db/api"
   relationship_to_kernel: >-
     DurableKernel is the client adapter contract used by this runtime. It is not the
     @gik/kernel Kernel class. A host that uses @gik/kernel must supply an adapter whose
@@ -395,9 +409,29 @@ connectors_and_storage:
     factory: createIndexedDbStorage
     connector_export: "@gik/durable-runtime/connectors/browser-indexed-db"
     storage_export: "@gik/durable-runtime/storage/indexed-db"
-    source: packages/durable-runtime/src/storage/indexed-db.ts
+    storage_library_export: "@gik/durable-runtime/storage/indexed-db/library"
+    storage_api_export: "@gik/durable-runtime/storage/indexed-db/api"
+    source: packages/durable-runtime/src/storage/indexed-db
     default_database: gik-durable-runtime
     object_store: records
+    api_model: >-
+      Direct browser API. The API subpath exports createIndexedDbStorage,
+      createIndexedDbProvider, and their public options; it does not define a server
+      transport or HTTP dispatcher.
+    storage_layers:
+      runtime:
+        source: packages/durable-runtime/src/storage/indexed-db/runtime.ts
+        responsibility: >-
+          Durable journal/wake, state, transition lease, atomic effect commit, and
+          effect queue settlement semantics.
+      library:
+        source: packages/durable-runtime/src/storage/indexed-db/library
+        responsibility: >-
+          IndexedDB open/upgrade, request completion, transactions, record ids,
+          prefix ranges, and generic record scans without durable-runtime semantics.
+      api:
+        source: packages/durable-runtime/src/storage/indexed-db/api
+        responsibility: Direct provider options and browser factory exports.
     transaction_model:
       - Journal append, its sequence counter, and requestedAt wake update share one readwrite transaction.
       - requestedAt advances to processedAt plus one millisecond only when wall-clock time is not later than processedAt.
@@ -414,6 +448,8 @@ connectors_and_storage:
     factory: createFilesystemMcpConnector
     connector_export: "@gik/durable-runtime/connectors/filesystem-mcp"
     storage_export: "@gik/durable-runtime/storage/filesystem"
+    storage_library_export: "@gik/durable-runtime/storage/filesystem/library"
+    storage_api_export: "@gik/durable-runtime/storage/filesystem/api"
     source: packages/durable-runtime/src/connectors/filesystem-mcp.ts
     transport: Host-injected MCP callTool function.
     tools:
@@ -443,6 +479,24 @@ connectors_and_storage:
       - Request and processing updates use touch-style file creation plus mtime updates.
       - Marker contents are empty and are not read to determine wake state.
       - Marking processed sets the processed marker mtime to the captured requestedAt token.
+    storage_layers:
+      runtime:
+        source: packages/durable-runtime/src/storage/filesystem/runtime.ts
+        responsibility: >-
+          Durable transition leases, state revisions, journal/wake composition, staged
+          effect commit, and semantic effect queue access. The durable effects lane
+          defaults explicitly to effects.
+      library:
+        source: packages/durable-runtime/src/storage/filesystem/library
+        responsibility: >-
+          Root-confined refs and paths, blob, KV, journal, queue, wake, relay lock,
+          JSON, scratch, archive, namespace cleanup, and composed
+          createFilesystemStorageLibrary. All storage is configurable by rootDir.
+      api:
+        source: packages/durable-runtime/src/storage/filesystem/api
+        responsibility: >-
+          Typed storage batch contracts and createFilesystemStorageDispatcher,
+          separated from storage implementation and durable runtime semantics.
     server_implementation: Consumer-owned MCP host using the public storage/filesystem export.
 
   - name: Azure Functions
@@ -450,6 +504,8 @@ connectors_and_storage:
     factory: createAzureFunctionConnector
     connector_export: "@gik/durable-runtime/connectors/azure-function"
     storage_export: "@gik/durable-runtime/storage/cosmos"
+    storage_library_export: "@gik/durable-runtime/storage/cosmos/library"
+    storage_api_export: "@gik/durable-runtime/storage/cosmos/api"
     server_transport_export: "@gik/durable-runtime/server/transports/http"
     source: packages/durable-runtime/src/connectors/azure-function.ts
     transport: HTTP POST with JSON request and response bodies.
@@ -473,7 +529,27 @@ connectors_and_storage:
     authentication: >-
       The host may return request headers from getHeaders. The adapter does not own or
       persist credentials.
-    server_implementation: Consumer-owned Azure host using the public storage/cosmos and server transport exports.
+    storage_layers:
+      runtime:
+        source: packages/durable-runtime/src/storage/cosmos/runtime.ts
+        responsibility: >-
+          Cosmos transition state, leases, atomic effect commit, semantic effect queue
+          settlement, and engine wake storage.
+      library:
+        source: packages/durable-runtime/src/storage/cosmos/library
+        responsibility: >-
+          Cosmos KV, journal, queue, relay lock, JSON, scratch, archive, ref resolution,
+          Blob-backed storage, namespace cleanup, and composed CosmosStorageLibrary.
+      api:
+        source: packages/durable-runtime/src/storage/cosmos/api
+        responsibility: >-
+          Storage HTTP request and response contracts, server dispatch, and the remote
+          storage client. API-facing code depends on library contracts without owning
+          provider implementation.
+    server_implementation: >-
+      Consumer-owned Azure host creates SDK clients, composes createCosmosStorageLibrary,
+      registers Azure Function routes, and imports all reusable storage and runtime behavior
+      from the vendored public package. It has no private durable-runtime workspace package.
 
 concurrency_and_durability:
   initialization:
@@ -549,7 +625,8 @@ validation:
   typecheck: "npx tsc -p packages/durable-runtime/tsconfig.json --noEmit"
   focused_tests: >-
     npm test --workspace=@gik/durable-runtime
-  last_focused_result: 2 files and 10 tests passed
+  build_result: Package build passed with all root, connector, and storage subpath declarations emitted.
+  last_focused_result: 7 files and 25 tests passed
   coverage:
     - Local kernel execution and provider-kind routing.
     - Explicit initialization and repeat initialization without overwrite.
@@ -561,12 +638,31 @@ validation:
     - IndexedDB requestedAt advances beyond processedAt at the millisecond boundary.
     - Azure route selection and dynamic request headers.
     - Filesystem MCP response unwrapping and transition payload shape.
+    - Filesystem ref/path confinement, KV, JSON, blob, journal, wake, queue, lock, scratch, and archive behavior.
+    - Filesystem API ordered batch dispatch, binary encoding, and per-operation error isolation.
+    - IndexedDB generic record ids, ranges, requests, configurable object stores, and transaction completion.
     - Queue drain-until-idle and retry pause behavior.
     - Duplicate notification coalescing and one active drain per processor.
     - Stop, abort, unsubscribe, subscription failure, error recovery, and idempotent lifecycle.
     - Parallel processors handling shared leased items without duplicate ownership.
     - Browser runtime queue processor adapter request forwarding.
+    - Cosmos storage ref encoding and capability routing.
+    - JSON and scratch storage composition.
+    - Storage HTTP batch dispatch, per-operation errors, and remote adapter round trips.
   packaging_validation:
+    status: passed
     command: npm run pack:durable-runtime
-    artifact: gik-durable-runtime-0.1.1.tgz
+    artifact: gik-durable-runtime-0.3.0.tgz
+    size_bytes: 89306
+    sha256: afba2f56fed9a8d3a2c419c02854c819e1e0dc4eac3032659e2bcd49039236ce
     producer_has_no_consumer_source_paths: true
+    verified_subpaths:
+      - storage/cosmos
+      - storage/cosmos/library
+      - storage/cosmos/api
+      - storage/filesystem
+      - storage/filesystem/library
+      - storage/filesystem/api
+      - storage/indexed-db
+      - storage/indexed-db/library
+      - storage/indexed-db/api

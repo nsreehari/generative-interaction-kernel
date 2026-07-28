@@ -1,6 +1,6 @@
 {
   "name": "@gik/durable-runtime",
-  "version": "0.1.1",
+  "version": "0.3.0",
   "description": "Provider-neutral durable runtime, queue processing, connectors, and storage backends for GIK.",
   "license": "MIT",
   "author": "nsreehari",
@@ -47,13 +47,37 @@
       "types": "./dist/storage/indexed-db.d.ts",
       "import": "./dist/storage/indexed-db.js"
     },
+    "./storage/indexed-db/library": {
+      "types": "./dist/storage/indexed-db/library.d.ts",
+      "import": "./dist/storage/indexed-db/library.js"
+    },
+    "./storage/indexed-db/api": {
+      "types": "./dist/storage/indexed-db/api.d.ts",
+      "import": "./dist/storage/indexed-db/api.js"
+    },
     "./storage/cosmos": {
       "types": "./dist/storage/cosmos.d.ts",
       "import": "./dist/storage/cosmos.js"
     },
+    "./storage/cosmos/library": {
+      "types": "./dist/storage/cosmos/library.d.ts",
+      "import": "./dist/storage/cosmos/library.js"
+    },
+    "./storage/cosmos/api": {
+      "types": "./dist/storage/cosmos/api.d.ts",
+      "import": "./dist/storage/cosmos/api.js"
+    },
     "./storage/filesystem": {
       "types": "./dist/storage/filesystem.d.ts",
       "import": "./dist/storage/filesystem.js"
+    },
+    "./storage/filesystem/library": {
+      "types": "./dist/storage/filesystem/library.d.ts",
+      "import": "./dist/storage/filesystem/library.js"
+    },
+    "./storage/filesystem/api": {
+      "types": "./dist/storage/filesystem/api.d.ts",
+      "import": "./dist/storage/filesystem/api.js"
     },
     "./server/transports/http": {
       "types": "./dist/server/transports/http.d.ts",
@@ -67,20 +91,29 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "tsup src/index.ts src/connectors/azure-function.ts src/connectors/filesystem-mcp.ts src/connectors/browser-indexed-db.ts src/storage/indexed-db.ts src/storage/cosmos.ts src/storage/filesystem.ts src/server/transports/http.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
+    "build": "tsup src/index.ts src/connectors/azure-function.ts src/connectors/filesystem-mcp.ts src/connectors/browser-indexed-db.ts src/storage/indexed-db.ts src/storage/indexed-db/library.ts src/storage/indexed-db/api.ts src/storage/cosmos.ts src/storage/cosmos/library.ts src/storage/cosmos/api.ts src/storage/filesystem.ts src/storage/filesystem/library.ts src/storage/filesystem/api.ts src/server/transports/http.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
     "test": "vitest run --config vitest.config.ts",
     "prepack": "node ../../scripts/sync-public-docs.mjs packages/durable-runtime"
   },
   "peerDependencies": {
-    "@azure/cosmos": "^4.4.1"
+    "@azure/cosmos": "^4.4.1",
+    "@azure/storage-blob": "^12.25.0"
   },
   "peerDependenciesMeta": {
     "@azure/cosmos": {
       "optional": true
+    },
+    "@azure/storage-blob": {
+      "optional": true
     }
+  },
+  "dependencies": {
+    "proper-lockfile": "^4.1.2"
   },
   "devDependencies": {
     "@azure/cosmos": "^4.4.1",
+    "@azure/storage-blob": "^12.25.0",
+    "@types/proper-lockfile": "^4.1.4",
     "fake-indexeddb": "^6.2.5"
   }
 }
