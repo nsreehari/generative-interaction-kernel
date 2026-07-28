@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import "fake-indexeddb/auto";
 import { test } from "vitest";
 
-import { createBrowserDurableRuntime } from "../src/runtime/browser-runtime";
+import { createDurableRuntime } from "../src/runtime/browser-runtime";
 import { createAzureFunctionConnector } from "../src/connectors/azure-function";
 import { createFilesystemMcpConnector } from "../src/connectors/filesystem-mcp";
 import { createIndexedDbStorage } from "../src/storage/indexed-db";
@@ -34,28 +34,38 @@ function provider(snapshot: TransitionSnapshot): DurableProvider & { commits: un
   };
 }
 
-const counterKernel = {
-  id: "counter-v1",
+const counterAdapter = {
   initialState: () => ({ count: 0 }),
-  transition: ({ state, entries }: { state: unknown; entries: Array<{ payload: unknown }> }) => {
+  initialSpec: () => ({ multiplier: 1 }),
+  transition: ({ state, spec, events }: { state: unknown; spec: unknown; events: readonly unknown[] }) => {
     const count = (state as { count: number }).count
-      + Number((entries[0].payload as { amount: number }).amount);
-    return { state: { count }, effects: [{ type: "count-changed", count }] };
+      + Number((events[0] as { amount: number }).amount) * (spec as { multiplier: number }).multiplier;
+    return {
+      state: { count },
+      effects: [{ type: "count-changed", count }],
+      specUpdates: [{ multiplier: 2 }],
+    };
   },
+  applySpecUpdates: ({ spec, updates }: { spec: unknown; updates: readonly unknown[] }) => ({
+    ...(spec as object),
+    ...(updates.at(-1) as object | undefined),
+  }),
 };
 
-test("runtime uses its supplied kernel id for local execution", async () => {
+test("runtime applies spec updates and commits opaque transition output", async () => {
   const storage = provider({
     leaseToken: "lease-1",
     leaseExpiresAt: new Date(Date.now() + 60_000).toISOString(),
     state: { count: 1 },
+    spec: { multiplier: 1 },
     revision: "revision-1",
     cursor: null,
     entries: [{ id: "entry-1", payload: { amount: 2 } }],
   });
-  const runtime = createBrowserDurableRuntime({
+  const runtime = createDurableRuntime({
+    runtimeId: "counter-v1",
     providers: { "fs-path": storage },
-    kernel: counterKernel,
+    transitionAdapter: counterAdapter,
   });
   const runtimeRef = ref("fs-path", "counter");
 
@@ -70,12 +80,18 @@ test("runtime uses its supplied kernel id for local execution", async () => {
   });
 
   assert.equal(result.status, "committed");
-  assert.equal((storage.commits[0] as { kernelId: string }).kernelId, "counter-v1");
+  assert.equal((storage.commits[0] as { runtimeId: string }).runtimeId, "counter-v1");
   assert.deepEqual((storage.commits[0] as { state: unknown }).state, { count: 3 });
+  assert.deepEqual((storage.commits[0] as { spec: unknown }).spec, { multiplier: 2 });
+  assert.deepEqual((storage.commits[0] as { specUpdates: unknown }).specUpdates, [{ multiplier: 2 }]);
 });
 
 test("runtime rejects transitions spanning storage kinds", async () => {
-  const runtime = createBrowserDurableRuntime({ providers: {}, kernel: counterKernel });
+  const runtime = createDurableRuntime({
+    runtimeId: "counter-v1",
+    providers: {},
+    transitionAdapter: counterAdapter,
+  });
   await assert.rejects(runtime.runEngine({
     stateRef: ref("indexed-db", "counter"),
     journalRef: ref("fs-path", "counter"),
@@ -107,6 +123,7 @@ test("engine wake preserves a newer request appended during execution", async ()
       leaseToken: "lease-1",
       leaseExpiresAt: "2026-07-24T10:05:00.000Z",
       state: {},
+      spec: {},
       revision: "revision-1",
       cursor: null,
       entries: [{ id: "entry-1", payload: { type: "first" } }],
@@ -114,16 +131,18 @@ test("engine wake preserves a newer request appended during execution", async ()
     commitTransition: async () => ({ ok: true, revision: "revision-2" }),
     abortTransition: async () => true,
   };
-  const runtime = createBrowserDurableRuntime({
+  const runtime = createDurableRuntime({
+    runtimeId: "counter-v1",
     providers: { "indexed-db": storage },
-    kernel: {
-      id: "kernel-v1",
+    transitionAdapter: {
       initialState: () => ({}),
+      initialSpec: () => ({}),
       async transition() {
         transitionStarted();
         await transitionPaused;
         return { state: {}, effects: [] };
       },
+      applySpecUpdates: ({ spec }) => spec,
     },
   });
   const runtimeRef = ref("indexed-db", "runtime");
@@ -142,9 +161,10 @@ test("engine wake preserves a newer request appended during execution", async ()
 test("IndexedDB storage runs a local transition and effect queue", async () => {
   const storage = createIndexedDbStorage({ databaseName: `gik-test-${crypto.randomUUID()}` });
   const runtimeRef = ref("indexed-db", "counter");
-  const runtime = createBrowserDurableRuntime({
+  const runtime = createDurableRuntime({
+    runtimeId: "counter-v1",
     providers: { "indexed-db": storage },
-    kernel: counterKernel,
+    transitionAdapter: counterAdapter,
     effectHandlers: {
       "count-changed": (effect) => [{
         type: "effect-completed",
@@ -159,7 +179,7 @@ test("IndexedDB storage runs a local transition and effect queue", async () => {
   assert.equal((await runtime.processEngineWake(refs)).status, "committed");
   assert.equal((await runtime.processQueueLaneItem(refs)).status, "completed");
 
-  const completed = await storage.acquireTransition({ ...refs, kernelId: counterKernel.id });
+  const completed = await storage.acquireTransition({ ...refs, runtimeId: "counter-v1" });
   assert.deepEqual(completed?.entries.map((entry) => entry.payload), [
     { type: "effect-completed", count: 2 },
   ]);
@@ -191,8 +211,9 @@ test("remote connectors preserve their semantic operation boundaries", async () 
   await azure.initializeRuntime({
     stateRef: runtimeRef,
     effectsQueueRef: runtimeRef,
-    kernelId: "kernel-v1",
+    runtimeId: "runtime-v1",
     initialState: {},
+    initialSpec: {},
   });
   assert.equal(calls[0].url, "https://stores.example.test/api/gik/runtime/initialize");
   assert.equal((await azure.leaseQueueItem?.({ effectsQueueRef: runtimeRef }))?.id, "effect-1");

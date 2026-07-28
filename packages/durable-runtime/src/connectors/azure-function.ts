@@ -39,14 +39,18 @@ export function createAzureFunctionConnector(options: AzureFunctionConnectorOpti
     readEngineWake: (request) => post<EngineWakeState>("/api/gik/engine-wake/read", request),
     markEngineWakeProcessed: (request, processedAt) =>
       post<void>("/api/gik/engine-wake/processed", { ...request, processedAt }),
-    initializeRuntime: <TState>(request: RuntimeRefs & { kernelId: string; initialState: TState }) =>
+    initializeRuntime: <TState, TSpec>(request: RuntimeRefs & {
+      runtimeId: string; initialState: TState; initialSpec: TSpec;
+    }) =>
       post<InitializeRuntimeResult>("/api/gik/runtime/initialize", request),
-    acquireTransition: <TState, TEvent>(request: TransitionRefs & {
-      kernelId: string; leaseMs?: number;
-    }) => post<TransitionSnapshot<TState, TEvent> | null>("/api/gik/transition/acquire", request),
-    commitTransition: <TState, TEffect>(request: TransitionCommit<TState, TEffect>) =>
+    acquireTransition: <TState, TSpec, TEvent>(request: TransitionRefs & {
+      runtimeId: string; leaseMs?: number;
+    }) => post<TransitionSnapshot<TState, TSpec, TEvent> | null>("/api/gik/transition/acquire", request),
+    commitTransition: <TState, TSpec, TEffect, TSpecUpdate>(
+      request: TransitionCommit<TState, TSpec, TEffect, TSpecUpdate>,
+    ) =>
       post<TransitionCommitResult>("/api/gik/transition/commit", request),
-    abortTransition: (request: TransitionRefs & { kernelId: string; leaseToken: string }) =>
+    abortTransition: (request: TransitionRefs & { runtimeId: string; leaseToken: string }) =>
       post<boolean>("/api/gik/transition/abort", request),
     async leaseQueueItem<TEffect>(request: {
       effectsQueueRef: string; effectsLane?: string; visibilityMs?: number;

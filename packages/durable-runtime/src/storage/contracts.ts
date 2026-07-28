@@ -25,18 +25,26 @@ export interface EngineWakeStorage {
   markProcessed(processedAt: string): Promise<void>;
 }
 
-export interface LeasedTransitionStorage<TState = unknown, TEvent = unknown, TEffect = unknown> {
-  initialize(refs: RuntimeRefs, initialState: TState): Promise<InitializeRuntimeResult>;
+export interface LeasedTransitionStorage<
+  TState = unknown,
+  TSpec = unknown,
+  TEvent = unknown,
+  TEffect = unknown,
+  TSpecUpdate = unknown,
+> {
+  initialize(refs: RuntimeRefs, initialState: TState, initialSpec: TSpec): Promise<InitializeRuntimeResult>;
   acquire(
     refs: TransitionRefs,
     options?: { leaseMs?: number },
-  ): Promise<TransitionSnapshot<TState, TEvent> | null>;
+  ): Promise<TransitionSnapshot<TState, TSpec, TEvent> | null>;
   commit(commit: TransitionRefs & {
     leaseToken: string;
     expectedRevision: string | null;
     previousCursor: string | null;
     nextCursor: string;
     state: TState;
+    spec: TSpec;
+    specUpdates: TSpecUpdate[];
     effects: TEffect[];
   }): Promise<TransitionCommitResult>;
   abort(refs: TransitionRefs, leaseToken: string): Promise<boolean>;

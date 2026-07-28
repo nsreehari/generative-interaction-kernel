@@ -1,8 +1,8 @@
-import type { DurableEffectHandler, DurableKernel, DurableProvider } from "../contracts";
+import type { DurableEffectHandler, DurableProvider, DurableTransitionAdapter } from "../contracts";
 import { createAzureFunctionConnector } from "../connectors/azure-function";
 import { createBrowserIndexedDbConnector } from "../connectors/browser-indexed-db";
 import { createFilesystemMcpConnector, type McpCallTool } from "../connectors/filesystem-mcp";
-import { createBrowserDurableRuntime } from "./browser-runtime";
+import { createDurableRuntime } from "./browser-runtime";
 
 export type DurableRuntimeConfig = {
   indexedDb?: { databaseName?: string; indexedDB?: IDBFactory };
@@ -15,8 +15,9 @@ export type DurableRuntimeConfig = {
 };
 
 export async function createConfiguredBrowserDurableRuntime(options: {
+  runtimeId: string;
   config: DurableRuntimeConfig;
-  kernel: DurableKernel;
+  transitionAdapter: DurableTransitionAdapter;
   effectHandlers?: Record<string, DurableEffectHandler>;
 }) {
   const providers: Record<string, DurableProvider> = {};
@@ -30,9 +31,10 @@ export async function createConfiguredBrowserDurableRuntime(options: {
   if (options.config.azure) {
     providers["stores-proxy"] = createAzureFunctionConnector(options.config.azure);
   }
-  return createBrowserDurableRuntime({
+  return createDurableRuntime({
+    runtimeId: options.runtimeId,
     providers,
-    kernel: options.kernel,
+    transitionAdapter: options.transitionAdapter,
     effectHandlers: options.effectHandlers,
   });
 }

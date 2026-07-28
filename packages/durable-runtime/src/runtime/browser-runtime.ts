@@ -1,21 +1,22 @@
 import type {
   DurableEffectHandler,
-  DurableKernel,
   DurableProvider,
+  DurableTransitionAdapter,
   JournalEntry,
   RuntimeRefs,
   TransitionRefs,
 } from "../contracts";
 import { assertSameRefKind, parseRef } from "../refs";
 
-export type BrowserDurableRuntimeOptions = {
+export type DurableRuntimeOptions = {
+  runtimeId: string;
   providers: Record<string, DurableProvider>;
-  kernel: DurableKernel;
+  transitionAdapter: DurableTransitionAdapter;
   effectHandlers?: Record<string, DurableEffectHandler>;
 };
 
-export function createBrowserDurableRuntime(options: BrowserDurableRuntimeOptions) {
-  const kernel = options.kernel;
+export function createDurableRuntime(options: DurableRuntimeOptions) {
+  const adapter = options.transitionAdapter;
 
   function providerFor(ref: string): DurableProvider {
     const kind = parseRef(ref).kind;
@@ -28,25 +29,36 @@ export function createBrowserDurableRuntime(options: BrowserDurableRuntimeOption
     const kind = assertSameRefKind([request.stateRef, request.journalRef, request.effectsQueueRef]);
     const provider = options.providers[kind];
     if (!provider) throw new Error(`No durable provider is configured for ref kind ${kind}.`);
-    const snapshot = await provider.acquireTransition({ ...request, kernelId: kernel.id });
+    const snapshot = await provider.acquireTransition({ ...request, runtimeId: options.runtimeId });
     if (!snapshot) return { status: "busy" as const };
     if (snapshot.entries.length === 0) {
-      await provider.abortTransition({ ...request, kernelId: kernel.id, leaseToken: snapshot.leaseToken });
+      await provider.abortTransition({ ...request, runtimeId: options.runtimeId, leaseToken: snapshot.leaseToken });
       return { status: "idle" as const, revision: snapshot.revision, cursor: snapshot.cursor };
     }
 
     try {
-      const output = await kernel.transition(snapshot);
+      const output = await adapter.transition({
+        state: snapshot.state,
+        spec: snapshot.spec,
+        events: snapshot.entries.map((entry) => entry.payload),
+      });
+      const specUpdates = [...(output.specUpdates ?? [])];
+      const spec = await adapter.applySpecUpdates({
+        spec: snapshot.spec,
+        updates: specUpdates,
+      });
       const nextCursor = snapshot.entries.at(-1)!.id;
       const committed = await provider.commitTransition({
         ...request,
-        kernelId: kernel.id,
+        runtimeId: options.runtimeId,
         leaseToken: snapshot.leaseToken,
         expectedRevision: snapshot.revision,
         previousCursor: snapshot.cursor,
         nextCursor,
         state: output.state,
-        effects: output.effects,
+        spec,
+        specUpdates,
+        effects: [...output.effects],
       });
       if (!committed.ok) return { status: committed.reason, revision: committed.revision, cursor: snapshot.cursor };
       return {
@@ -59,7 +71,7 @@ export function createBrowserDurableRuntime(options: BrowserDurableRuntimeOption
     } catch (error) {
       await provider.abortTransition({
         ...request,
-        kernelId: kernel.id,
+        runtimeId: options.runtimeId,
         leaseToken: snapshot.leaseToken,
       }).catch(() => false);
       throw error;
@@ -77,8 +89,9 @@ export function createBrowserDurableRuntime(options: BrowserDurableRuntimeOption
     initializeRuntime(request: RuntimeRefs) {
       return providerFor(request.stateRef).initializeRuntime({
         ...request,
-        kernelId: kernel.id,
-        initialState: kernel.initialState(),
+        runtimeId: options.runtimeId,
+        initialState: adapter.initialState(),
+        initialSpec: adapter.initialSpec(),
       });
     },
 
@@ -150,3 +163,6 @@ export function createBrowserDurableRuntime(options: BrowserDurableRuntimeOption
     },
   };
 }
+
+export type BrowserDurableRuntimeOptions = DurableRuntimeOptions;
+export const createBrowserDurableRuntime = createDurableRuntime;
