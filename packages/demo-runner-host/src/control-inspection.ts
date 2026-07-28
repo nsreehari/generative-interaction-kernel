@@ -38,12 +38,6 @@ export interface InspectionParticipant {
   settings?: ParticipantSetting[];
 }
 
-export interface ParticipantConfigurationRequest {
-  participantId: string;
-  settingId: string;
-  value: string;
-}
-
 export interface InspectionPresentationContext {
   id: string;
   label: string;

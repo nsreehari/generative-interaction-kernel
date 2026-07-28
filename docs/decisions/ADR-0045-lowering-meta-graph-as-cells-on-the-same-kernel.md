@@ -1,4 +1,4 @@
-# ADR-0044 — The lowering meta-graph runs as Cells on the same Kernel
+# ADR-0045 — The lowering meta-graph runs as Cells on the same Kernel
 
 **Status:** Accepted — 2026-07-28
 

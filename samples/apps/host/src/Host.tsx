@@ -1,205 +1,107 @@
-// The ONE generic host app opens a Blueprint selected by `?b=<id>` and adapts its lowered runtime
-// to BundleHost. Ordinary Bundle artifacts are previewed inside the manage-bundles Blueprint. A demo
-// run (`?demo=<id>`) is delegated wholesale to GikDemoBlueprintHost; the host keeps only URL
-// canonicalization, the non-demo mounting paths, and the switcher overlay.
+// The generic host app opens a Blueprint selected by `?b=<id>` through GikDemoBlueprintHost. The app
+// owns URL canonicalization and the switcher overlay.
 
 import React from "react";
-import { makeStyles, tokens } from "@fluentui/react-components";
-import type { Json } from "@gik/kernel";
-import {
-  BundleHost,
-  BundleRegistryProvider,
-  SharedContextStore,
-  useBundleRegistry,
-  useRegistryIds,
-} from "@gik/react";
-import { createHostRegistry, DEFAULT_BLUEPRINT, resolveBundleProjectionViews } from "./bundles";
-import { createHostCompositionBundle } from "./host-composition";
+import { BlueprintHost } from "@gik/react";
+import { GikDemoBlueprintHost } from "@gik/demo-runner-host";
+import blueprintRegistry from "../../../blueprints/registry.json";
+import { resolveBundleProjectionViews } from "./bundles";
 import {
   canonicalizeHostUrl,
   readHostQuery,
-  resolvePresentationContext,
-  writePresentationNavigation,
 } from "./host-query";
-import { switcherBundle } from "../../../bundles/approot/switcher/projection_views";
 import { FLOOR_COMPONENTS } from "../../../bundles/floor/projection_views";
-import { demoCatalog } from "../../../shared/demo-catalog";
-import { GikDemoBlueprintHost } from "../../../shared/GikDemoBlueprintHost";
+import { resolveBlueprintNative } from "../../../shared/sample-bundles";
+import { resolveSampleBlueprintSource } from "../../../shared/blueprints";
 
-const useStyles = makeStyles({
-  unknownBundle: {
-    padding: tokens.spacingHorizontalXXL,
-    color: "var(--text)",
-  },
-});
-
-/** Reflect the selected presentation preset into the URL (replace, no history entry). */
-function syncPresentationUrl(presetId: string): void {
-  const url = writePresentationNavigation(window.location.href, presetId);
-  if (url !== window.location.href) window.history.replaceState(null, "", url);
-}
+const embeddedHostStyle: React.CSSProperties = { height: "100vh" };
+const { blueprints: blueprintIds, default: DEFAULT_BLUEPRINT } = blueprintRegistry;
 
 export function Host(): React.ReactElement {
-  // One registry for the life of the app; every BundleHost and every `embed props.app` resolves it.
   const query = readHostQuery(window.location.search);
   const targetId = query.targetId ?? DEFAULT_BLUEPRINT;
-  const { demoId, harnessId, presentationContext } = query;
-  const registry = React.useMemo(() => createHostRegistry(demoId, targetId), [demoId, targetId]);
-  const presentationPresets = React.useMemo(
-    () => demoCatalog.targets[targetId]?.presentationPresets ?? [],
-    [targetId]
-  );
-  const resolvedPresentationContext = resolvePresentationContext(presentationContext, presentationPresets);
-  // Non-demo shared contexts only; a demo run's contexts are owned by GikDemoBlueprintHost.
-  const contexts = React.useMemo<Record<string, SharedContextStore>>(() => {
-    if (demoId) return {};
-    const next: Record<string, SharedContextStore> = {};
-    const target = registry.get(targetId);
-    const targetState = target?.kind === "bundle" ? target.make().state : undefined;
-    const harness = harnessId ? registry.get(harnessId) : undefined;
-    const harnessState = harness?.kind === "bundle" ? harness.make().state : undefined;
-    const inspection = targetState?.inspection
-      && typeof targetState.inspection === "object"
-      && !Array.isArray(targetState.inspection)
-      ? structuredClone(targetState.inspection)
-      : { participants: [] };
-    if (!("presentation" in inspection) && presentationPresets.length > 0) {
-      inspection.presentation = {
-        selectedContext: resolvedPresentationContext?.id ?? "",
-        contexts: presentationPresets.map((preset) => ({
-          id: preset.id,
-          label: preset.label ?? preset.id,
-          ...(preset.audience ? { audience: preset.audience } : {}),
-          ...(preset.focus ? { focus: preset.focus } : {}),
-          context: preset.context,
-        })),
-      } as unknown as Json;
-    }
-    if (harnessId || presentationPresets.length > 0 || resolvedPresentationContext) {
-      const control = SharedContextStore.create(["control"]);
-      const controlSeed = {
-        ...(harnessState?.control
-        && typeof harnessState.control === "object"
-        && !Array.isArray(harnessState.control)
-          ? structuredClone(harnessState.control)
-          : {
-            request: null,
-            receipt: null,
-            commands: {},
-            presentationContext: resolvedPresentationContext?.context ?? null,
-            presentationPresetId: resolvedPresentationContext?.id ?? null,
-            participantConfigurationRequest: null,
-            agentModeRequest: null,
-            authorizationRequest: null,
-          }),
-        inspection,
-        presentationContext: (resolvedPresentationContext?.context ?? null) as Json,
-        presentationPresetId: resolvedPresentationContext?.id ?? null,
-      } as unknown as Json;
-      control.apply([{ op: "set", path: "control", value: controlSeed }]);
-      next.control = control;
-    }
-    if (harnessId && targetState) {
-      const seed = targetState.soc;
-      if (seed !== undefined) {
-        const soc = SharedContextStore.create(["soc"]);
-        soc.apply([{ op: "set", path: "soc", value: structuredClone(seed) }]);
-        next.soc = soc;
-      }
-    }
-    return next;
-  }, [demoId, harnessId, presentationPresets, registry, resolvedPresentationContext, targetId]);
   React.useEffect(() => {
     const canonicalUrl = canonicalizeHostUrl(window.location.href);
     if (canonicalUrl !== window.location.href) window.history.replaceState(null, "", canonicalUrl);
   }, []);
-  React.useEffect(() => {
-    const control = contexts.control;
-    if (!control) return;
-    const syncQuery = () => {
-      const selected = control.get("control.presentationPresetId");
-      if (typeof selected !== "string" || !selected) return;
-      syncPresentationUrl(selected);
-    };
-    const unsubscribe = control.subscribe(syncQuery);
-    if (resolvedPresentationContext
-      && control.get("control.presentationPresetId") !== resolvedPresentationContext.id) {
-      control.apply([
-        { op: "set", path: "control.presentationPresetId", value: resolvedPresentationContext.id },
-        { op: "set", path: "control.presentationContext", value: resolvedPresentationContext.context as unknown as import("@gik/kernel").Json },
-      ]);
-    }
-    syncQuery();
-    return unsubscribe;
-  }, [contexts, resolvedPresentationContext]);
   const resolveProvider = React.useCallback(
     (from: string) => (from === "floor" ? FLOOR_COMPONENTS : resolveBundleProjectionViews(from)),
     []
   );
   return (
-    <BundleRegistryProvider registry={registry} resolveProvider={resolveProvider}>
-      <HostView
-        contexts={contexts}
-        demoId={demoId}
-        harnessId={harnessId}
-        targetId={targetId}
-        presentationContext={presentationContext}
-        onPresentationPresetChange={syncPresentationUrl}
-      />
-    </BundleRegistryProvider>
+    <HostView targetId={targetId} resolveLeavesProvider={resolveProvider} />
   );
 }
 
 function HostView({
-  contexts,
-  demoId,
-  harnessId,
   targetId,
-  presentationContext,
-  onPresentationPresetChange,
+  resolveLeavesProvider,
 }: {
-  contexts: Record<string, SharedContextStore>;
-  demoId: string | null;
-  harnessId: string | null;
   targetId: string;
-  presentationContext: string | null;
-  onPresentationPresetChange: (presetId: string) => void;
+  resolveLeavesProvider: (from: string) => ReturnType<typeof resolveBundleProjectionViews>;
 }): React.ReactElement {
-  const styles = useStyles();
-  const registry = useBundleRegistry();
   const id = targetId;
-  const entry = registry?.get(id);
-  const mounted = React.useMemo(() => {
-    if (entry?.kind === "native-root") return <entry.Root />;
-    if (entry?.kind === "bundle") {
-      if (demoId) {
-        return (
-          <GikDemoBlueprintHost
-            blueprintId={id}
-            demoId={demoId}
-            showControlHarness={Boolean(harnessId)}
-            presentationContext={presentationContext}
-            onPresentationPresetChange={onPresentationPresetChange}
-          />
-        );
-      }
-      const bundle = harnessId ? createHostCompositionBundle(id, harnessId, null) : entry.make();
-      return <BundleHost bundle={bundle} contexts={contexts} />;
-    }
-    return <p className={styles.unknownBundle}>Unknown Blueprint: {id}</p>;
-  }, [contexts, demoId, entry, harnessId, id, onPresentationPresetChange, presentationContext, styles.unknownBundle]);
+  const { blueprint, native } = React.useMemo(() => ({
+    blueprint: resolveSampleBlueprintSource(id),
+    native: resolveBlueprintNative(id),
+  }), [id]);
 
-  // The switcher is itself a bundle, mounted through the same host as an overlay — so host chrome
-  // rides the ambient, host-owned theme. Its list reacts to runtime register/unregister.
-  const ids = useRegistryIds({ listable: true });
-  const switcher = React.useMemo(
-    () => switcherBundle([...ids], id),
-    [ids, id]
-  );
   return (
     <>
-      {mounted}
-      {demoId ? null : <BundleHost bundle={switcher} />}
+      <GikDemoBlueprintHost
+        HostComponent={BlueprintHost}
+        blueprint={blueprint}
+        native={native}
+        context={blueprint.payload.context}
+        resolveLeavesProvider={resolveLeavesProvider}
+        style={embeddedHostStyle}
+      />
+      <ApplicationSwitcher currentId={id} />
     </>
+  );
+}
+
+function ApplicationSwitcher({ currentId }: { currentId: string }): React.ReactElement {
+  const [open, setOpen] = React.useState(false);
+  const selectBlueprint = (id: string) => {
+    if (id === currentId) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("b", id);
+    window.location.assign(url.toString());
+  };
+
+  return (
+    <div className="gx-switcher" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      {open ? (
+        <div className="gx-switcher-panel" role="menu" aria-label="Switch application">
+          <div className="gx-switcher-head">Application</div>
+          {blueprintIds.map((id) => {
+            const selected = id === currentId;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="menuitemradio"
+                aria-checked={selected}
+                className={selected ? "gx-switcher-row selected" : "gx-switcher-row"}
+                onClick={() => selectBlueprint(id)}
+              >
+                <span className="gx-switcher-check" aria-hidden="true">{selected ? "\u2713" : ""}</span>
+                <span>{id}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="gx-switcher-bubble"
+          aria-label={`Current application: ${currentId}. Hover to switch.`}
+          onClick={() => setOpen(true)}
+        >
+          <span aria-hidden="true">Layers</span>
+        </button>
+      )}
+    </div>
   );
 }

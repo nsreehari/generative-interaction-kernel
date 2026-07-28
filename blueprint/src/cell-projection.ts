@@ -276,8 +276,8 @@ export function compileCellTopology(
   };
 }
 
-/** Compile a Blueprint's optional presentation into the kernel document projection. */
-export function composeCellDocument(definition: CellProjectionDefinition, topology: ExecutableCellTopology): ProjectedProgramDefinition {
+/** Compile a Blueprint's optional presentation into the executable Kernel program. */
+export function composeCellProgram(definition: CellProjectionDefinition, topology: ExecutableCellTopology): ProjectedProgramDefinition {
   if (topology.diagnostics.length > 0) {
     throw new Error(`Invalid cell topology '${topology.id}': ${topology.diagnostics.map(({ detail }) => detail).join("; ")}`);
   }
@@ -316,6 +316,9 @@ export function composeCellDocument(definition: CellProjectionDefinition, topolo
     ...(derivations.length > 0 ? { derivations } : {}),
   };
 }
+
+/** @deprecated Use composeCellProgram. */
+export const composeCellDocument = composeCellProgram;
 
 function providedTokens(cell: CellDefinition): string[] {
   return (cell.outputs ?? []).map(({ token }) => token);

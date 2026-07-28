@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { InMemoryStateModel } from "@gik/kernel";
 import {
   analyzeCellImpact,
   analyzeExploration,
@@ -13,6 +14,7 @@ import {
   inspectExploration,
   lowerBlueprint,
   parseBlueprintJson,
+  runTransition,
   stringifyBlueprint,
   tokenPattern,
   validateBlueprintArtifact,
@@ -29,7 +31,7 @@ function blueprint(id = "test"): BlueprintArtifact {
     id,
     kind: "test",
     version: "1",
-    tiers: [{ id: "runtime", kind: "runtime-document" }],
+    tiers: [{ id: "runtime", kind: "runtime-program" }],
     recipes: [],
     runtime,
   });
@@ -273,5 +275,43 @@ describe("@gik/blueprint", () => {
     }));
 
     expect(message.payload.root).toEqual({ id: "root", capability: "screen" });
+  });
+
+  it("runs events through the canonical Blueprint transition engine", async () => {
+    const artifact = createBlueprint({
+      id: "counter",
+      kind: "runtime-blueprint",
+      version: "1",
+      tiers: [{ id: "runtime", kind: "runtime-program" }],
+      recipes: [],
+      runtime: { namespaces: ["counter"], contexts: ["shared"], capabilities: {} },
+      cells: {
+        root: {
+          id: "root",
+          view: { capability: "screen" },
+          behavior: {
+            events: {
+              increment: [
+                { do: "assign", target: "counter.value", args: { value: 2 } },
+                { do: "assign", target: "shared.value", args: { value: "updated" } },
+              ],
+            },
+          },
+        },
+      },
+      projections: { presentation: { roots: ["root"] } },
+    });
+    const shared = new InMemoryStateModel(["shared"]);
+    shared.apply([{ op: "set", path: "shared.value", value: "initial" }]);
+
+    const result = await runTransition({
+      blueprint: artifact,
+      state: { counter: { value: 1 } },
+      events: [{ node: "root", name: "increment" }],
+      contexts: { shared },
+    });
+
+    expect(result).toEqual({ state: { counter: { value: 2 } } });
+    expect(shared.snapshot()).toEqual({ shared: { value: "updated" } });
   });
 });

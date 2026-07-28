@@ -2,14 +2,14 @@ schema_version: 1
 
 package:
   name: "@gik/blueprint"
-  version: "0.1.0"
+  version: "0.1.2"
   purpose: >-
     Define and validate Blueprint JSON, resolve its references and resources, analyze its
-    Cells, enforce structural-change policy, and pass it through caller-supplied lowering
-    to a Kernel program.
+    Cells, enforce structural-change policy, prepare its Kernel program through caller-supplied
+    lowering, and run canonical state transitions.
   core_promise: >-
-    A Blueprint is configuration that can be converted to a Kernel program. It is not a
-    Kernel program and cannot be executed directly.
+    A Blueprint remains distinct from its derived Kernel program. The package owns the canonical
+    operation that prepares that program and runs one transition from explicit state and events.
   public_entrypoint: packages/blueprint/src/index.ts
   implementation_entrypoint: blueprint/src/index.ts
 
@@ -44,6 +44,8 @@ architecture:
     - Adaptive admission policy for runtime-originated Kernel ProgramPatch operations.
     - Recursive child Blueprint assembly.
     - Calling a supplied lowering function and validating its resulting Kernel program.
+    - Preparing the executable vocabulary, program, and initial state for a declarative Blueprint.
+    - Running deterministic Blueprint transitions from explicit state and ordered events.
   delegates_to_kernel:
     - Executable vocabulary and program contracts.
     - Program validation after lowering.
@@ -51,8 +53,8 @@ architecture:
     - Event reduction and continuous graph settlement.
     - Patches, effects, invocations, checkpoints, and execution inspection.
   does_not_own:
-    - Blueprint execution.
-    - Runtime state, scheduling, effects, or revisions.
+    - Persisting runtime state, effects, cursors, or revisions.
+    - Executing host effects returned by a transition when no host orchestrator is supplied.
     - Rendering, transports, Faces, or host service bindings.
     - Recipe execution or Lowering Cell scheduling.
     - Relationship-specific execution semantics.
@@ -158,7 +160,7 @@ artifact_contracts:
       - Roots and placements reference Cells in the same Blueprint.
     consumed_by:
       - The reserved `projections.presentation` entry is the layout the current lowering compiles.
-      - composeCellDocument reads only `projections.presentation`, requires exactly one root, and
+      - composeCellProgram reads only `projections.presentation`, requires exactly one root, and
         walks placements into the Kernel projection tree.
 
 artifact_api:
@@ -251,14 +253,30 @@ cell_api:
       - Rejects changed or completed Cell ids absent from the supplied topology snapshot.
       - Does not execute Cells, predict execution outcomes, or mutate the topology or Blueprint.
       - Can be rerun against each accepted fixed, reconfigurable, or adaptive Blueprint snapshot.
-  - name: composeCellDocument
+  - name: composeCellProgram
     signature: >-
-      composeCellDocument(definition: CellProjectionDefinition,
+      composeCellProgram(definition: CellProjectionDefinition,
       topology: ExecutableCellTopology): ProjectedProgramDefinition
     behavior: >-
       Compiles one validated Cell topology and presentation projection into a Kernel
       projected program. CellProjectionDefinition is structural input to this function
       and is not separately exported from the package entrypoint.
+  - name: composeCellDocument
+    status: deprecated alias of composeCellProgram
+
+transition_api:
+  - name: prepareBlueprintProgram
+    purpose: Prepare one assembled declarative Blueprint as vocabulary, program, and initial state.
+  - name: runTransition
+    signature: >-
+      runTransition({ state, blueprint, events, contexts?, createOrchestrator? }):
+      Promise<{ state; effects?; blueprintPatches? }>
+    behavior:
+      - Treats supplied state as authoritative.
+      - Dispatches ordered events through the Kernel program prepared from the Blueprint.
+      - Returns resulting local state and journaled effects.
+      - Executes no host effects unless the caller explicitly supplies createOrchestrator.
+      - Emits no Blueprint patches until Blueprint mutation semantics are defined.
 
 exploration_api:
   contracts:
@@ -444,7 +462,16 @@ public_exports:
     - analyzeCellComposition
     - compileCellTopology
     - analyzeCellImpact
+    - composeCellProgram
     - composeCellDocument
+  transition:
+    - PreparedBlueprintProgram
+    - PrepareBlueprintProgramOptions
+    - BlueprintTransitionInput
+    - BlueprintTransitionResult
+    - BlueprintPatch
+    - prepareBlueprintProgram
+    - runTransition
   exploration:
     - ExplorationDefinition
     - ExplorationNode

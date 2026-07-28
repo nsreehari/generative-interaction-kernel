@@ -12,7 +12,7 @@
 
 import React from "react";
 import type { StateModel } from "@gik/kernel";
-import type { GenUIController } from "../controller";
+import type { GenUISource } from "../useGenUI";
 import type { ProviderResolver } from "../registry";
 import type { Bundle } from "./bundle";
 
@@ -134,7 +134,7 @@ export function useBundleContexts(): BundleContextBindings {
 
 /** Reconcile a runtime whenever an observable shared context is written by any sibling runtime. */
 export function useBundleContextSync(
-  controller: GenUIController | null | undefined,
+  controller: (GenUISource & { resync?: () => unknown }) | null | undefined,
   contexts: BundleContextBindings
 ): void {
   React.useEffect(() => {
@@ -143,7 +143,7 @@ export function useBundleContextSync(
     const unsubscribes = stores.map((store) => {
       const observable = store as StateModel & { subscribe?: (listener: () => void) => () => void };
       return observable.subscribe?.(() => {
-        void controller.resync();
+        void controller.resync?.();
       });
     });
     return () => {

@@ -1,5 +1,5 @@
 import React from "react";
-import { openBlueprint } from "@gik/controlface/blueprint";
+import { prepareBlueprintProgram, type BlueprintArtifact } from "@gik/blueprint";
 import { unwrap, type Json, type Reaction } from "@gik/kernel";
 import {
   SharedContextStore,
@@ -10,7 +10,6 @@ import {
   type OrganismBridge,
   type ProviderResolver,
 } from "@gik/react";
-import type { BlueprintArtifact } from "@gik/blueprint";
 import { createDemoRunnerBundle, createGikControlHarnessBundle } from "./internal-bundles";
 import { dispatchDemoControlRequest, withDemoHumanGate } from "./internal-demo-control-bridge";
 import type { ControlReceipt, ControlRequest } from "./control-runtime";
@@ -46,23 +45,16 @@ export interface DemoComposition {
 }
 
 function readDemoQuery(): {
-  demoId: string | null;
-  demoIndex: number | null;
+  demoEnabled: boolean;
   presentationContext: string | null;
 } {
   if (typeof window === "undefined") {
-    return { demoId: null, demoIndex: null, presentationContext: null };
+    return { demoEnabled: false, presentationContext: null };
   }
   const params = new URLSearchParams(window.location.search);
-  const rawDemoIndex = params.get("demoIndex") ?? params.get("scenarioIndex") ?? params.get("index");
-  let demoIndex: number | null = null;
-  if (rawDemoIndex !== null) {
-    const parsedDemoIndex = Number(rawDemoIndex);
-    demoIndex = Number.isInteger(parsedDemoIndex) && parsedDemoIndex >= 0 ? parsedDemoIndex : 0;
-  }
+  const demoValue = params.get("demo");
   return {
-    demoId: params.get("demo"),
-    demoIndex,
+    demoEnabled: demoValue !== null && demoValue !== "0",
     presentationContext: params.get("presentation") ?? params.get("presentationContext"),
   };
 }
@@ -111,11 +103,6 @@ function mergeDemoContext(baseContext: Record<string, Json> | undefined, demoSee
     : cloneJsonRecord(demoSeed);
   next.initialSeed = mergedSeed;
   return next;
-}
-
-function resolveScenarioIndex(requestedIndex: number | null, stepCount: number): number {
-  if (requestedIndex === null) return 0;
-  return requestedIndex >= 0 && requestedIndex < stepCount ? requestedIndex : 0;
 }
 
 // Deep-merges a presentation preset's context bag into the live shared stores.
@@ -170,7 +157,7 @@ export interface DemoTargetHostProps {
   contexts?: BundleContextBindings;
   fileServices?: GenUIFileServices;
   primaryBridge?: OrganismBridge;
-  primaryInstanceKey?: string | number;
+  primaryInstanceId?: string | number;
   className?: string;
   style?: React.CSSProperties;
   context?: Record<string, Json>;
@@ -185,6 +172,11 @@ export interface GikDemoBlueprintHostProps extends Omit<DemoTargetHostProps, "pr
   onPresentationPresetChange?: (presetId: string) => void;
 }
 
+interface ActiveDemoHostProps extends GikDemoBlueprintHostProps {
+  loadedScenarios: ReturnType<typeof loadDemoScenarios>;
+  queryPresentationContext: string | null;
+}
+
 export function GikDemoBlueprintHost({
   HostComponent,
   blueprint,
@@ -192,10 +184,10 @@ export function GikDemoBlueprintHost({
   companions = EMPTY_COMPANIONS,
   contexts = EMPTY_CONTEXTS,
   fileServices,
-  primaryInstanceKey,
   className,
   style,
   context,
+  primaryInstanceId,
   resolveLeavesProvider,
   scenariosJson,
   blueprintState,
@@ -209,17 +201,9 @@ export function GikDemoBlueprintHost({
     () => scenariosJson ? loadDemoScenarios(scenariosJson) : null,
     [scenariosJson],
   );
-  const activeDemo = React.useMemo(() => {
-    if ((!query.demoId && query.demoIndex === null) || !loadedScenarios) {
-      return null;
-    }
-    return {
-      catalog: loadedScenarios.catalog,
-      composition: loadedScenarios.resolveComposition(query.demoId, blueprintId, query.demoIndex),
-    };
-  }, [blueprintId, loadedScenarios, query.demoId, query.demoIndex]);
+  const hasCompatibleDemo = loadedScenarios?.catalog.entries.some((entry) => entry.targetBlueprintId === blueprintId) ?? false;
 
-  if (!activeDemo) {
+  if (!query.demoEnabled || !loadedScenarios || !hasCompatibleDemo) {
     return (
       <HostComponent
         blueprint={blueprint}
@@ -228,7 +212,7 @@ export function GikDemoBlueprintHost({
         companions={companions}
         contexts={contexts}
         fileServices={fileServices}
-        primaryInstanceKey={primaryInstanceKey}
+        primaryInstanceId={primaryInstanceId}
         className={className}
         style={style}
         context={context}
@@ -236,21 +220,69 @@ export function GikDemoBlueprintHost({
     );
   }
 
-  const resolvedDemo = activeDemo.composition;
-  const resolvedCatalog = activeDemo.catalog;
-  const requestedPresentationContext = presentationContext ?? query.presentationContext;
+  return (
+    <ActiveDemoHost
+      HostComponent={HostComponent}
+      blueprint={blueprint}
+      native={native}
+      companions={companions}
+      contexts={contexts}
+      fileServices={fileServices}
+      primaryInstanceId={primaryInstanceId}
+      className={className}
+      style={style}
+      context={context}
+      resolveLeavesProvider={resolveLeavesProvider}
+      scenariosJson={scenariosJson}
+      blueprintState={blueprintState}
+      showControlHarness={showControlHarness}
+      presentationContext={presentationContext}
+      onPresentationPresetChange={onPresentationPresetChange}
+      loadedScenarios={loadedScenarios}
+      queryPresentationContext={query.presentationContext}
+    />
+  );
+}
+
+function ActiveDemoHost({
+  HostComponent,
+  blueprint,
+  native,
+  companions = EMPTY_COMPANIONS,
+  contexts = EMPTY_CONTEXTS,
+  fileServices,
+  primaryInstanceId,
+  className,
+  style,
+  context,
+  resolveLeavesProvider,
+  blueprintState,
+  showControlHarness = false,
+  presentationContext,
+  onPresentationPresetChange,
+  loadedScenarios,
+  queryPresentationContext,
+}: ActiveDemoHostProps): React.ReactElement {
+  const blueprintId = blueprint.payload.id;
+  const compatibleEntries = React.useMemo(
+    () => loadedScenarios.catalog.entries.filter((entry) => entry.targetBlueprintId === blueprintId),
+    [blueprintId, loadedScenarios.catalog.entries],
+  );
+  const [selectedDemoId, setSelectedDemoId] = React.useState(() => compatibleEntries[0].id);
+  const resolvedDemo = React.useMemo(
+    () => loadedScenarios.resolveComposition(selectedDemoId, blueprintId),
+    [blueprintId, loadedScenarios, selectedDemoId],
+  );
+  const resolvedCatalog = loadedScenarios.catalog;
+
+  const requestedPresentationContext = presentationContext ?? queryPresentationContext;
   const [resetEpoch, setResetEpoch] = React.useState(0);
-  const resolvedPrimaryInstanceKey = primaryInstanceKey === undefined || resetEpoch === 0
-    ? (primaryInstanceKey ?? resetEpoch)
-    : `${primaryInstanceKey}:${resetEpoch}`;
+  const resolvedPrimaryInstanceId = `${primaryInstanceId ?? "demo"}:${selectedDemoId}:${resetEpoch}`;
   const baseInitialSeed = React.useMemo(
     () => (context && isJsonRecord(context.initialSeed) ? cloneJsonRecord(context.initialSeed as JsonRecord) : null),
     [context],
   );
-  const scenarioIndex = React.useMemo(
-    () => resolveScenarioIndex(query.demoIndex, resolvedDemo.scenarioPlan.steps.length),
-    [query.demoIndex, resolvedDemo.scenarioPlan.steps.length],
-  );
+  const scenarioIndex = 0;
   const initialDemoSeed = React.useMemo(
     () => replayScenarioSeed(baseInitialSeed, resolvedDemo.scenarioPlan, scenarioIndex),
     [baseInitialSeed, resolvedDemo.scenarioPlan, scenarioIndex],
@@ -258,7 +290,7 @@ export function GikDemoBlueprintHost({
   const [demoSeed, setDemoSeed] = React.useState<JsonRecord | null>(initialDemoSeed);
   React.useEffect(() => {
     setDemoSeed(initialDemoSeed);
-  }, [activeDemo, initialDemoSeed]);
+  }, [initialDemoSeed]);
   const harnessBundle = React.useMemo(
     () => createGikControlHarnessBundle(),
     [],
@@ -275,12 +307,13 @@ export function GikDemoBlueprintHost({
     () => createDemoRunnerBundle({
       runner: {
         plan: resolvedDemo.scenarioPlan,
-        catalog: resolvedCatalog.entries,
+        catalog: compatibleEntries,
         entry: resolvedDemo.entry,
+        selectedDemoId,
         presentationPresets,
       },
-    }),
-    [presentationPresets, resolvedCatalog.entries, resolvedDemo],
+    }, setSelectedDemoId),
+    [compatibleEntries, presentationPresets, resolvedDemo, selectedDemoId],
   );
   const resolvedPresentationContext = resolvePresentationContext(
     requestedPresentationContext,
@@ -307,18 +340,17 @@ export function GikDemoBlueprintHost({
     }
     const control = SharedContextStore.create(["control"]);
     const controlSeed = {
+      ...(harnessControlState && typeof harnessControlState === "object" && !Array.isArray(harnessControlState)
+        ? structuredClone(harnessControlState)
+        : {}),
       request: null,
       receipt: null,
       commands: {},
       presentationContext: resolvedPresentationContext?.context ?? null,
       presentationPresetId: resolvedPresentationContext?.id ?? null,
-      participantConfigurationRequest: null,
       agentModeRequest: null,
       authorizationRequest: null,
       inspection,
-      ...(harnessControlState && typeof harnessControlState === "object" && !Array.isArray(harnessControlState)
-        ? structuredClone(harnessControlState)
-        : {}),
     } as unknown as Json;
     if (controlSeed && typeof controlSeed === "object" && !Array.isArray(controlSeed)) {
       const controlRecord = controlSeed as Record<string, Json>;
@@ -365,8 +397,8 @@ export function GikDemoBlueprintHost({
   );
 
   const targetHandlesControl = React.useMemo(() => {
-    const runtime = openBlueprint(blueprint);
-    return unwrap(runtime.program).root.edges?.react?.some(
+    const prepared = prepareBlueprintProgram(blueprint);
+    return unwrap(prepared.program).root.edges?.react?.some(
       (reaction: Reaction) => typeof reaction.when === "string" && reaction.when.startsWith("control.commands."),
     ) ?? false;
   }, [blueprint]);
@@ -439,10 +471,10 @@ export function GikDemoBlueprintHost({
 
   const packageCompanions = React.useMemo<CompositionOrganism[]>(() => {
     const list = [...companions];
-    list.push({ id: "gik-control-harness", bundle: harnessBundle });
-    list.push({ id: "demo-runner", bundle: runnerBundle });
+    list.push({ instanceId: "gik-control-harness", bundle: harnessBundle });
+    list.push({ instanceId: `demo-runner:${selectedDemoId}`, bundle: runnerBundle });
     return list;
-  }, [companions, harnessBundle, runnerBundle]);
+  }, [companions, harnessBundle, runnerBundle, selectedDemoId]);
 
   return (
     <HostComponent
@@ -453,7 +485,7 @@ export function GikDemoBlueprintHost({
       contexts={mergedContexts}
       fileServices={fileServices}
       primaryBridge={primaryBridge}
-      primaryInstanceKey={resolvedPrimaryInstanceKey}
+      primaryInstanceId={resolvedPrimaryInstanceId}
       className={className}
       style={style ? { ...compositionStyle, ...style } : compositionStyle}
       context={resolvedContext}

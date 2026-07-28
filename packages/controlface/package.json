@@ -1,6 +1,6 @@
 {
   "name": "@gik/controlface",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Control-plane projection surface (full capability catalog) for the Generative Interaction Kernel.",
   "license": "MIT",
   "author": "nsreehari",
@@ -45,7 +45,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
-    "@gik/blueprint": "0.1.1",
+    "@gik/blueprint": "0.1.2",
     "@gik/evaluators": "0.1.1",
     "@gik/kernel": "0.1.1"
   },
