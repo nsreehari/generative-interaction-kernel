@@ -1,6 +1,6 @@
 // The application host opens only the Blueprints declared in samples/blueprints/registry.json.
-// Bundle JSON discovery below exists solely for hidden host infrastructure (demo runner and control
-// harness). Ordinary Bundle artifacts are catalogued and previewed by the manage-bundles Blueprint.
+// Ordinary Bundle artifacts are catalogued and previewed by the manage-bundles Blueprint. Tooling
+// bundles are created from their canonical @gik/demo-runner-host factories below.
 
 import {
   bundleFromJson,
@@ -11,6 +11,7 @@ import {
   type LoadBundleOptions,
   type ProjectionView,
 } from "@gik/react";
+import { createDemoRunnerBundle, createGikControlHarnessBundle } from "@gik/demo-runner-host";
 import { playgroundApp } from "../../../bundles/floor/projection_views/playground";
 import registry from "../../../blueprints/registry.json";
 import { demoCatalog, resolveDemoComposition } from "../../../shared/demo-catalog";
@@ -26,14 +27,10 @@ type Registry = {
   nativeFrom?: Record<string, string>;
 };
 const REGISTRY = registry as Registry;
-const HOST_INFRASTRUCTURE_BUNDLES = ["demo-runner", "gik-control-harness"] as const;
 
 // Vite build-time discovery of each bundle folder's parts, keyed by folder name. registry.json is the
 // authoritative list; these globs only supply the file contents for a declared bundle. Hosted app-root
 // projections may live under `approot/*`.
-const rawVocabularies = import.meta.glob("../../../bundles/*/vocabulary.json", { eager: true, import: "default" });
-const rawPrograms = import.meta.glob("../../../bundles/*/program.json", { eager: true, import: "default" });
-const rawStates = import.meta.glob("../../../bundles/*/state.json", { eager: true, import: "default" });
 const rawEffectHandlerModules = import.meta.glob("../../../bundles/*/effect_handlers/index.{ts,tsx}", {
   eager: true,
 });
@@ -57,9 +54,6 @@ function byBundleId<T>(glob: Record<string, T>): Record<string, T> {
   return out;
 }
 
-const vocabularies = byBundleId(rawVocabularies);
-const programs = byBundleId(rawPrograms);
-const states = byBundleId(rawStates);
 const effectHandlerModules = byBundleId(rawEffectHandlerModules) as Record<string, {
   default: EffectHandlerMap;
   hydrateState?: (state: Record<string, unknown>) => void;
@@ -114,31 +108,23 @@ export function createHostRegistry(demoId?: string | null, targetBlueprintId?: s
       },
     });
   }
-  for (const id of HOST_INFRASTRUCTURE_BUNDLES) {
-    reg.registerBundle(id, {
-      kind: "bundle",
-      make: () => {
-        const state = structuredClone(states[id]) as Record<string, unknown>;
-        if (id === "demo-runner" && demoComposition) {
-          state.runner = {
-            plan: demoComposition.scenarioPlan,
-            catalog: demoCatalog.entries,
-            entry: demoComposition.entry,
-            presentationPresets: demoComposition.demoContract.presentationPresets,
-          };
-        }
-        return bundleFromJson({
-          vocabulary: structuredClone(vocabularies[id]),
-          program: structuredClone(programs[id]),
-          state,
-        }, {
-          effectHandlers: effectHandlerModules[id]?.default,
-          projectionViews: projectionViews[id],
-        });
+  reg.registerBundle("demo-runner", {
+    kind: "bundle",
+    make: () => createDemoRunnerBundle(demoComposition ? {
+      runner: {
+        plan: demoComposition.scenarioPlan,
+        catalog: demoCatalog.entries,
+        entry: demoComposition.entry,
+        presentationPresets: demoComposition.demoContract.presentationPresets,
       },
-      listable: false,
-    });
-  }
+    } : undefined),
+    listable: false,
+  });
+  reg.registerBundle("gik-control-harness", {
+    kind: "bundle",
+    make: () => createGikControlHarnessBundle(),
+    listable: false,
+  });
   // Platform apps: embeddable bundles the floor itself provides, not owned by any single json bundle.
   // They join the registry `listable: false` — mountable by `embed props.app`, hidden from the switcher.
   reg.registerBundle("playground", { kind: "bundle", make: playgroundApp, listable: false });

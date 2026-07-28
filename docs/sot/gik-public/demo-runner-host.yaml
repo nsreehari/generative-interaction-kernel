@@ -88,15 +88,19 @@ component:
   props_signature: >-
     interface GikDemoBlueprintHostProps extends Omit<DemoTargetHostProps, "primaryBridge"> {
     HostComponent: React.ComponentType<DemoTargetHostProps>;
-    scenariosJson?: DemoScenariosJson; blueprintState?: Record<string, unknown>;
+    scenariosJson?: DemoScenariosJson;
     showControlHarness?: boolean; presentationContext?: string | null;
     onPresentationPresetChange?: (presetId: string) => void }
   common_behavior:
     - Loads and validates scenariosJson whenever it is supplied, whether or not a demo query is present.
     - Reads browser query parameters once per component mount and does not subscribe to URL changes.
-  behavior_without_active_demo:
+  behavior_without_active_tooling:
     - Renders HostComponent with the supplied target-host props.
     - Does not add demo companions, contexts, or a primary bridge.
+  behavior_with_inspector_only:
+    - Activates when the gik query is present with any value other than the exact string 0, or when showControlHarness is true.
+    - Materializes declared target contexts and a generic control context, then mounts only the inspector Bundle under GikToolingShell.
+    - Does not create demo state, install a scenario bridge, or require scenariosJson.
   behavior_with_active_demo:
     - Activates demo mode when scenariosJson is supplied and the demo query parameter is present with an empty value or any value other than the exact string 0.
     - Starts with catalog index 0 among entries compatible with the target Blueprint.
@@ -108,8 +112,12 @@ component:
     - Subscribes to control.presentationPresetId and, whenever it changes, deep-merges the matching preset's context fragment into the live shared contexts as leaf-level set operations that preserve sibling keys, then calls onPresentationPresetChange.
     - Applies a presentation-preset change in place without reopening or remounting the target, so in-progress target state is preserved across presentation changes.
     - Starts scenario playback at act index 0.
-    - Creates control and demo SharedContextStore instances and an optional soc context from blueprintState.
-    - Adds demo-runner and control-harness companion bundles; showControlHarness controls harness visibility.
+    - Creates demo-owned control and demo SharedContextStore instances.
+    - Materializes target context namespaces generically from the Blueprint runtime declaration and initial state; no domain namespace is known by the host.
+    - Activates the scenario runner from the demo query and the inspector independently from the gik query or showControlHarness prop.
+    - Wraps active tooling surfaces in GikToolingShell, which coordinates visibility and non-overlapping placement while preserving separate runner and inspector Bundles.
+    - Keeps scenario state under demo, target command requests and receipts under control, inspector-local UI state under inspector, and target inspection data under control.inspection.
+    - Adds the demo-runner companion and adds the inspector companion only when inspector tooling is active.
     - Installs a primary bridge that coordinates control requests and human gates.
     - Passes the prepared companions, contexts, bridge, and context to HostComponent.
     - Forwards the caller's primaryInstanceId unchanged without an active demo.

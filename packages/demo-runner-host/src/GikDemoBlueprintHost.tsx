@@ -26,6 +26,7 @@ import {
   loadDemoScenarios,
 } from "./demo-runner";
 import type { OrganismControlContract } from "./control-runtime";
+import { GikToolingShell } from "./tooling-shell";
 
 const EMPTY_COMPANIONS: CompositionOrganism[] = [];
 const EMPTY_CONTEXTS: BundleContextBindings = {};
@@ -46,15 +47,18 @@ export interface DemoComposition {
 
 function readDemoQuery(): {
   demoEnabled: boolean;
+  inspectorEnabled: boolean;
   presentationContext: string | null;
 } {
   if (typeof window === "undefined") {
-    return { demoEnabled: false, presentationContext: null };
+    return { demoEnabled: false, inspectorEnabled: false, presentationContext: null };
   }
   const params = new URLSearchParams(window.location.search);
   const demoValue = params.get("demo");
+  const gikValue = params.get("gik");
   return {
     demoEnabled: demoValue !== null && demoValue !== "0",
+    inspectorEnabled: gikValue !== null && gikValue !== "0",
     presentationContext: params.get("presentation") ?? params.get("presentationContext"),
   };
 }
@@ -105,10 +109,49 @@ function mergeDemoContext(baseContext: Record<string, Json> | undefined, demoSee
   return next;
 }
 
+function materializeTargetContexts(
+  blueprint: BlueprintArtifact,
+  supplied: BundleContextBindings,
+): Record<string, SharedContextStore> {
+  const next = { ...supplied } as Record<string, SharedContextStore>;
+  const state = blueprint.payload.runtime.state ?? {};
+  for (const namespace of blueprint.payload.runtime.contexts ?? []) {
+    if (namespace === "control" || namespace === "demo" || namespace === "inspector" || next[namespace]) continue;
+    const seed = state[namespace];
+    if (seed === undefined) continue;
+    const store = SharedContextStore.create([namespace]);
+    store.apply([{ op: "set", path: namespace, value: structuredClone(seed) }]);
+    next[namespace] = store;
+  }
+  return next;
+}
+
+function createControlStore(): SharedContextStore {
+  const store = SharedContextStore.create(["control"]);
+  store.apply([{ op: "set", path: "control", value: {
+    request: null,
+    receipt: null,
+    commands: {},
+    presentationContext: null,
+    presentationPresetId: null,
+    agentModeRequest: null,
+    authorizationRequest: null,
+    inspection: {
+      participants: [],
+      presentation: { selectedContext: "", contexts: [] },
+      blueprint: null,
+      timeline: [],
+      status: null,
+      selection: null,
+    },
+  } }]);
+  return store;
+}
+
 // Deep-merges a presentation preset's context bag into the live shared stores.
-// The bag is a state fragment keyed by namespace (e.g. `{ soc: { presentation: … } }`);
+// The bag is a state fragment keyed by a target-owned namespace;
 // only namespaces that have a matching live store are applied, and only scalar/array
-// leaves are set so sibling keys (e.g. `soc.presentation.contexts`) are preserved.
+// leaves are set so sibling state is preserved.
 function applyPresentationFragment(
   stores: Record<string, SharedContextStore>,
   fragment: Record<string, Json> | undefined,
@@ -166,7 +209,6 @@ export interface DemoTargetHostProps {
 export interface GikDemoBlueprintHostProps extends Omit<DemoTargetHostProps, "primaryBridge"> {
   HostComponent: React.ComponentType<DemoTargetHostProps>;
   scenariosJson?: DemoScenariosJson;
-  blueprintState?: Record<string, unknown>;
   showControlHarness?: boolean;
   presentationContext?: string | null;
   onPresentationPresetChange?: (presetId: string) => void;
@@ -190,7 +232,6 @@ export function GikDemoBlueprintHost({
   primaryInstanceId,
   resolveLeavesProvider,
   scenariosJson,
-  blueprintState,
   showControlHarness = false,
   presentationContext,
   onPresentationPresetChange,
@@ -202,8 +243,10 @@ export function GikDemoBlueprintHost({
     [scenariosJson],
   );
   const hasCompatibleDemo = loadedScenarios?.catalog.entries.some((entry) => entry.targetBlueprintId === blueprintId) ?? false;
+  const demoEnabled = query.demoEnabled && Boolean(loadedScenarios) && hasCompatibleDemo;
+  const inspectorEnabled = showControlHarness || query.inspectorEnabled;
 
-  if (!query.demoEnabled || !loadedScenarios || !hasCompatibleDemo) {
+  if (!demoEnabled && !inspectorEnabled) {
     return (
       <HostComponent
         blueprint={blueprint}
@@ -216,6 +259,24 @@ export function GikDemoBlueprintHost({
         className={className}
         style={style}
         context={context}
+      />
+    );
+  }
+
+  if (!demoEnabled || !loadedScenarios) {
+    return (
+      <InspectorHost
+        HostComponent={HostComponent}
+        blueprint={blueprint}
+        native={native}
+        companions={companions}
+        contexts={contexts}
+        fileServices={fileServices}
+        primaryInstanceId={primaryInstanceId}
+        className={className}
+        style={style}
+        context={context}
+        resolveLeavesProvider={resolveLeavesProvider}
       />
     );
   }
@@ -234,13 +295,52 @@ export function GikDemoBlueprintHost({
       context={context}
       resolveLeavesProvider={resolveLeavesProvider}
       scenariosJson={scenariosJson}
-      blueprintState={blueprintState}
-      showControlHarness={showControlHarness}
+      showControlHarness={inspectorEnabled}
       presentationContext={presentationContext}
       onPresentationPresetChange={onPresentationPresetChange}
       loadedScenarios={loadedScenarios}
       queryPresentationContext={query.presentationContext}
     />
+  );
+}
+
+function InspectorHost({
+  HostComponent,
+  blueprint,
+  native,
+  companions = EMPTY_COMPANIONS,
+  contexts = EMPTY_CONTEXTS,
+  fileServices,
+  primaryInstanceId,
+  className,
+  style,
+  context,
+  resolveLeavesProvider,
+}: GikDemoBlueprintHostProps): React.ReactElement {
+  const harnessBundle = React.useMemo(() => createGikControlHarnessBundle(), []);
+  const targetContexts = React.useMemo(() => materializeTargetContexts(blueprint, contexts), [blueprint, contexts]);
+  const controlStore = React.useMemo(() => contexts.control ?? createControlStore(), [contexts]);
+  const mergedContexts = React.useMemo(() => ({ ...targetContexts, control: controlStore }), [controlStore, targetContexts]);
+  const packageCompanions = React.useMemo<CompositionOrganism[]>(() => [
+    ...companions,
+    { instanceId: "gik-control-harness", bundle: harnessBundle },
+  ], [companions, harnessBundle]);
+
+  return (
+    <GikToolingShell runnerVisible={false} inspectorVisible>
+      <HostComponent
+        blueprint={blueprint}
+        resolveLeavesProvider={resolveLeavesProvider}
+        native={native}
+        companions={packageCompanions}
+        contexts={mergedContexts}
+        fileServices={fileServices}
+        primaryInstanceId={primaryInstanceId}
+        className={className}
+        style={style}
+        context={context}
+      />
+    </GikToolingShell>
   );
 }
 
@@ -256,7 +356,6 @@ function ActiveDemoHost({
   style,
   context,
   resolveLeavesProvider,
-  blueprintState,
   showControlHarness = false,
   presentationContext,
   onPresentationPresetChange,
@@ -295,7 +394,6 @@ function ActiveDemoHost({
     () => createGikControlHarnessBundle(),
     [],
   );
-  const harnessControlState = harnessBundle?.state?.control;
   const presentationPresets = React.useMemo(() => {
     const availablePresets = resolvedDemo.demoContract.presentationPresets
       ?? resolvedCatalog.targets[resolvedDemo.entry.targetBlueprintId]?.presentationPresets
@@ -323,10 +421,9 @@ function ActiveDemoHost({
 
   const demoContexts = React.useMemo<Record<string, SharedContextStore>>(() => {
     const next: Record<string, SharedContextStore> = {};
-    const inspection = blueprintState?.inspection && typeof blueprintState.inspection === "object" && !Array.isArray(blueprintState.inspection)
-      ? structuredClone(blueprintState.inspection) as Record<string, unknown>
-      : { participants: [] };
-    if (!("presentation" in inspection) && presentationPresets.length > 0) {
+    const control = createControlStore();
+    const inspection = control.get("control.inspection") as unknown as Record<string, Json>;
+    if (presentationPresets.length > 0) {
       inspection.presentation = {
         selectedContext: resolvedPresentationContext?.id ?? "",
         contexts: presentationPresets.map((preset) => ({
@@ -338,11 +435,7 @@ function ActiveDemoHost({
         })),
       } as unknown as Json;
     }
-    const control = SharedContextStore.create(["control"]);
     const controlSeed = {
-      ...(harnessControlState && typeof harnessControlState === "object" && !Array.isArray(harnessControlState)
-        ? structuredClone(harnessControlState)
-        : {}),
       request: null,
       receipt: null,
       commands: {},
@@ -352,12 +445,6 @@ function ActiveDemoHost({
       authorizationRequest: null,
       inspection,
     } as unknown as Json;
-    if (controlSeed && typeof controlSeed === "object" && !Array.isArray(controlSeed)) {
-      const controlRecord = controlSeed as Record<string, Json>;
-      const ui = isJsonRecord(controlRecord.ui) ? cloneJsonRecord(controlRecord.ui) : {};
-      ui.gikVisible = showControlHarness;
-      controlRecord.ui = ui;
-    }
     control.apply([{ op: "set", path: "control", value: controlSeed }]);
     next.control = control;
 
@@ -379,17 +466,14 @@ function ActiveDemoHost({
     } }]);
     next.demo = demoContext;
 
-    if (blueprintState?.soc !== undefined) {
-      const soc = SharedContextStore.create(["soc"]);
-      soc.apply([{ op: "set", path: "soc", value: structuredClone(blueprintState.soc) as Json }]);
-      next.soc = soc;
-    }
     return next;
-  }, [blueprintState, harnessControlState, presentationPresets, resolvedDemo, resolvedPresentationContext, scenarioIndex, showControlHarness]);
+  }, [presentationPresets, resolvedDemo, resolvedPresentationContext, scenarioIndex]);
+
+  const targetContexts = React.useMemo(() => materializeTargetContexts(blueprint, contexts), [blueprint, contexts]);
 
   const mergedContexts = React.useMemo(
-    () => ({ ...contexts, ...demoContexts }),
-    [contexts, demoContexts],
+    () => ({ ...targetContexts, ...demoContexts }),
+    [targetContexts, demoContexts],
   );
   const resolvedContext = React.useMemo(
     () => mergeDemoContext(context, demoSeed),
@@ -460,35 +544,37 @@ function ActiveDemoHost({
       if (selected !== appliedPresetId) {
         appliedPresetId = selected;
         const preset = presentationPresets.find((entry) => entry.id === selected);
-        if (preset) applyPresentationFragment(demoContexts, preset.context as Record<string, Json>);
+        if (preset) applyPresentationFragment(mergedContexts, preset.context as Record<string, Json>);
         onPresentationPresetChange?.(selected);
       }
     };
     const unsubscribe = controlStore.subscribe(notify);
     notify();
     return unsubscribe;
-  }, [controlStore, demoContexts, onPresentationPresetChange, presentationPresets, resolvedPresentationContext]);
+  }, [controlStore, mergedContexts, onPresentationPresetChange, presentationPresets, resolvedPresentationContext]);
 
   const packageCompanions = React.useMemo<CompositionOrganism[]>(() => {
     const list = [...companions];
-    list.push({ instanceId: "gik-control-harness", bundle: harnessBundle });
+    if (showControlHarness) list.push({ instanceId: "gik-control-harness", bundle: harnessBundle });
     list.push({ instanceId: `demo-runner:${selectedDemoId}`, bundle: runnerBundle });
     return list;
-  }, [companions, harnessBundle, runnerBundle, selectedDemoId]);
+  }, [companions, harnessBundle, runnerBundle, selectedDemoId, showControlHarness]);
 
   return (
-    <HostComponent
-      blueprint={blueprint}
-      resolveLeavesProvider={resolveLeavesProvider}
-      native={native}
-      companions={packageCompanions}
-      contexts={mergedContexts}
-      fileServices={fileServices}
-      primaryBridge={primaryBridge}
-      primaryInstanceId={resolvedPrimaryInstanceId}
-      className={className}
-      style={style ? { ...compositionStyle, ...style } : compositionStyle}
-      context={resolvedContext}
-    />
+    <GikToolingShell runnerVisible inspectorVisible={showControlHarness}>
+      <HostComponent
+        blueprint={blueprint}
+        resolveLeavesProvider={resolveLeavesProvider}
+        native={native}
+        companions={packageCompanions}
+        contexts={mergedContexts}
+        fileServices={fileServices}
+        primaryBridge={primaryBridge}
+        primaryInstanceId={resolvedPrimaryInstanceId}
+        className={className}
+        style={style ? { ...compositionStyle, ...style } : compositionStyle}
+        context={resolvedContext}
+      />
+    </GikToolingShell>
   );
 }
