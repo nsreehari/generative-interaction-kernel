@@ -22,12 +22,17 @@ function isGikEnabled(params: URLSearchParams): boolean {
   return !Number.isFinite(numeric) || numeric !== 0;
 }
 
+function isDemoEnabled(params: URLSearchParams): boolean {
+  const value = params.get("demo");
+  return value !== null && value !== "0";
+}
+
 export function readHostQuery(search: string): HostQuery {
   const params = new URLSearchParams(search);
   const requestedPresentation = params.get("presentation") ?? params.get("presentationContext");
   return {
     targetId: params.get("b") ?? params.get("bundle"),
-    demoEnabled: params.has("demo"),
+    demoEnabled: isDemoEnabled(params),
     harnessId: isGikEnabled(params) || params.get("harness") === "gik-control-harness" || params.has("plane")
       ? "gik-control-harness"
       : null,

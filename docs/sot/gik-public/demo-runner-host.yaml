@@ -99,7 +99,7 @@ component:
     - Renders HostComponent with the supplied target-host props.
     - Does not add demo companions, contexts, or a primary bridge.
   behavior_with_active_demo:
-    - Activates demo mode when scenariosJson is supplied and the demo query parameter is present, regardless of its value.
+    - Activates demo mode when scenariosJson is supplied and the demo query parameter is present with an empty value or any value other than the exact string 0.
     - Starts with catalog index 0 among entries compatible with the target Blueprint.
     - Owns later scenario selection as internal component state and does not navigate or rewrite the demo query parameter.
     - Rebuilds the selected scenario plan, entry, presets, contexts, and runner bundle, and gives the runner and target scenario-specific mounted identities.

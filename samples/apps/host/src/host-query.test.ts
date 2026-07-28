@@ -29,10 +29,11 @@ test("host query enables GIK controls for any non-zero value", () => {
   assert.equal(readHostQuery("?bundle=live-workspace-soc&gik=0.0").harnessId, null);
 });
 
-test("host query enables demo mode by parameter presence regardless of value", () => {
+test("host query disables demo mode only for an absent parameter or exact zero", () => {
   assert.equal(readHostQuery("?b=live-workspace-soc").demoEnabled, false);
   assert.equal(readHostQuery("?b=live-workspace-soc&demo").demoEnabled, true);
-  assert.equal(readHostQuery("?b=live-workspace-soc&demo=0").demoEnabled, true);
+  assert.equal(readHostQuery("?b=live-workspace-soc&demo=0").demoEnabled, false);
+  assert.equal(readHostQuery("?b=live-workspace-soc&demo=00").demoEnabled, true);
   assert.equal(readHostQuery("?b=live-workspace-soc&demo=anything").demoEnabled, true);
 });
 

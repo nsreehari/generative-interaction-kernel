@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const standaloneUrl = "/?b=live-workspace-soc";
-const demoUrl = "/?b=live-workspace-soc&demo=0&gik=1";
+const demoUrl = "/?b=live-workspace-soc&demo=&gik=1";
 const investigationBoardUrl = "/?b=live-workspace-soc&gik=1&presentation=investigation-board";
 
 async function stabilize(page: Page): Promise<void> {
