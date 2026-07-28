@@ -8,4 +8,4 @@ export * from "./cell-impact";
 export * from "./exploration";
 export * from "./structure-patch";
 export * from "./run-transition";
-export { composeCellProgram, composeCellDocument } from "./cell-projection";
+export { composeCellProgram } from "./cell-projection";

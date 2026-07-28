@@ -59,7 +59,7 @@ function compilerBlueprint(): BlueprintArtifact {
     },
     cells: {
       // `transform`: tier-1 source artifact. Also stands in as the presentation root:
-      // today's `composeCellDocument` always requires exactly one view-bearing root, even for
+      // today's `composeCellProgram` always requires exactly one view-bearing root, even for
       // a headless compiler graph — `openBlueprint`'s current implementation only knows how to
       // build a `ProjectedProgramDefinition`, so a fully headless Blueprint isn't wired up yet
       // either. That view is otherwise inert here. `start` is an explicit bootstrap trigger:
