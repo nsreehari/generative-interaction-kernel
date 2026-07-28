@@ -8,4 +8,5 @@ export * from "./cell-impact";
 export * from "./exploration";
 export * from "./structure-patch";
 export * from "./run-transition";
+export * from "./run-lowering-blueprint";
 export { composeCellProgram } from "./cell-projection";
