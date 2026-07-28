@@ -5,14 +5,19 @@ on:
     tags:
       - "samples-v*"
   workflow_dispatch:
+    inputs:
+      sample_tag:
+        description: "samples-v* tag to publish or backfill"
+        required: true
+        type: string
 
 permissions:
   contents: read
 
-# One in-flight publish at a time; let a newer run supersede an older one.
+# One in-flight publish at a time; every tag must finish so its version remains available.
 concurrency:
   group: publish-gik-pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -20,6 +25,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.sample_tag) || github.ref }}
+          fetch-depth: 0
+
+      - name: Resolve version path
+        shell: bash
+        run: |
+          tag_name="${{ inputs.sample_tag || github.ref_name }}"
+          if [[ ! "$tag_name" =~ ^samples-v[0-9A-Za-z][0-9A-Za-z._-]*$ ]]; then
+            echo "Expected a samples-v* tag, got: $tag_name" >&2
+            exit 1
+          fi
+          echo "SAMPLE_TAG=$tag_name" >> "$GITHUB_ENV"
+          echo "VERSION_PATH=${tag_name#samples-}" >> "$GITHUB_ENV"
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
@@ -43,8 +62,8 @@ jobs:
       - name: Build host (samples/apps/host)
         run: npm run build:host
         env:
-          # Serve under the project Pages path so asset URLs resolve.
-          VITE_BASE: /gik/
+          # Each tag has an immutable project Pages path; the root lists all deployed versions.
+          VITE_BASE: /gik/${{ env.VERSION_PATH }}/
           # Absolute base URL of the deployed foundry-agent-proxy Azure Function. Set the
           # `FOUNDRY_PROXY_BASE` repo variable (Settings > Secrets and variables > Actions > Variables)
           # e.g. https://my-foundry-proxy.azurewebsites.net. The foundry-agent sample calls it at runtime.
@@ -60,8 +79,74 @@ jobs:
       - name: Publish dist
         shell: bash
         run: |
-          find _pages -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-          cp -a samples/apps/host/dist/. _pages/
+          version_dir="_pages/$VERSION_PATH"
+          rm -rf "$version_dir"
+          mkdir -p "$version_dir"
+          cp -a samples/apps/host/dist/. "$version_dir/"
+
+          git fetch --force --tags origin
+          declare -A source_versions=()
+          declare -A source_notes=()
+          while IFS= read -r version; do
+            source_versions["$version"]=1
+          done < <(
+            git ls-remote --refs --tags origin 'refs/tags/samples-v*' \
+              | awk '{ sub(/^refs\/tags\/samples-/, "", $2); print $2 }'
+          )
+          while IFS=$'\t' read -r tag_name object_type tag_note; do
+            if [[ "$object_type" == tag ]]; then
+              source_notes["${tag_name#samples-}"]="$tag_note"
+            fi
+          done < <(
+            git for-each-ref refs/tags/samples-v* \
+              --format='%(refname:strip=2)%09%(objecttype)%09%(contents:subject)'
+          )
+          for deployed_dir in _pages/v*/; do
+            [[ -d "$deployed_dir" ]] || continue
+            deployed_version="${deployed_dir%/}"
+            deployed_version="${deployed_version##*/}"
+            if [[ -z "${source_versions[$deployed_version]+present}" ]]; then
+              echo "Pruning deleted tag deployment: $deployed_version"
+              rm -rf "$deployed_dir"
+            fi
+          done
+
+          # Preserve version directories while replacing the legacy root deployment.
+          find _pages -mindepth 1 -maxdepth 1 ! -name .git ! -name 'v*' -exec rm -rf {} +
+          cat > _pages/index.html <<'EOF'
+          <!doctype html>
+          <html lang="en">
+            <head>
+              <meta charset="UTF-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1" />
+              <title>GIK Samples</title>
+              <style>
+                body { font: 16px/1.5 system-ui, sans-serif; margin: 0 auto; max-width: 48rem; padding: 2rem; }
+                h1 { font-size: 1.75rem; }
+                ul { padding-left: 1.25rem; }
+                li { margin: 0.5rem 0; }
+              </style>
+            </head>
+            <body>
+              <h1>GIK sample releases</h1>
+              <ul>
+          EOF
+          find _pages -mindepth 1 -maxdepth 1 -type d -name 'v*' -printf '%f\n' \
+            | sort -Vr \
+            | while IFS= read -r version; do
+                note="${source_notes[$version]-}"
+                if [[ -n "$note" ]]; then
+                  escaped_note="$(printf '%s' "$note" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g')"
+                  printf '        <li><a href="./%s/">%s</a> — %s</li>\n' "$version" "$version" "$escaped_note" >> _pages/index.html
+                else
+                  printf '        <li><a href="./%s/">%s</a></li>\n' "$version" "$version" >> _pages/index.html
+                fi
+              done
+          cat >> _pages/index.html <<'EOF'
+              </ul>
+            </body>
+          </html>
+          EOF
           touch _pages/.nojekyll
           cd _pages
           git add --all
@@ -71,5 +156,5 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Deploy ${GITHUB_REPOSITORY}@${GITHUB_SHA}"
+          git commit -m "Deploy $SAMPLE_TAG from ${GITHUB_REPOSITORY}@${GITHUB_SHA}"
           git push origin HEAD:main
