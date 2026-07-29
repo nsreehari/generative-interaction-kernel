@@ -2,6 +2,7 @@ import React from "react";
 import { prepareBlueprintProgram, type BlueprintArtifact, type ExternalContext } from "@gik/blueprint";
 import { unwrap, type Json, type Reaction } from "@gik/kernel";
 import {
+  BundleHost,
   SharedContextStore,
   type BundleContextBindings,
   type BundleNative,
@@ -10,7 +11,7 @@ import {
   type OrganismBridge,
   type ProviderResolver,
 } from "@gik/react";
-import { createDemoRunnerBundle, createGikControlHarnessBundle } from "./internal-bundles";
+import { createDemoRunnerHostBundle } from "./demoRunnerEffectHandlers";
 import { dispatchDemoControlRequest, withDemoHumanGate } from "./internal-demo-control-bridge";
 import type { ControlReceipt, ControlRequest } from "./control-runtime";
 import { resolvePresentationContext } from "./presentation";
@@ -323,30 +324,37 @@ function InspectorHost({
   context,
   resolveLeavesProvider,
 }: GikDemoBlueprintHostProps): React.ReactElement {
-  const harnessBundle = React.useMemo(() => createGikControlHarnessBundle(), []);
+  const toolingBundle = React.useMemo(() => createDemoRunnerHostBundle({
+    runner: { visible: false },
+    inspector: {
+      ui: {
+        activeTab: "journal",
+        visible: true,
+        expanded: false,
+        journalMode: "journal",
+        selectedJournalId: null,
+      },
+    },
+  }), []);
   const targetContexts = React.useMemo(() => materializeTargetContexts(blueprint, contexts), [blueprint, contexts]);
   const controlStore = React.useMemo(() => contexts.control ?? createControlStore(), [contexts]);
   const mergedContexts = React.useMemo(() => ({ ...targetContexts, control: controlStore }), [controlStore, targetContexts]);
-  const packageCompanions = React.useMemo<CompositionOrganism[]>(() => [
-    ...companions,
-    { instanceId: "gik-control-harness", bundle: harnessBundle },
-  ], [companions, harnessBundle]);
-
   return (
     <GikToolingShell runnerVisible={false} inspectorVisible>
-      <HostComponent
-        blueprint={blueprint}
-        resolveLeavesProvider={resolveLeavesProvider}
-        native={native}
-        companions={packageCompanions}
-        contexts={mergedContexts}
-        fileServices={fileServices}
-        primaryInstanceId={primaryInstanceId}
-        className={className}
-        style={style}
-        externalContext={externalContext}
-        context={context}
-      />
+        <HostComponent
+          blueprint={blueprint}
+          resolveLeavesProvider={resolveLeavesProvider}
+          native={native}
+          companions={companions}
+          contexts={mergedContexts}
+          fileServices={fileServices}
+          primaryInstanceId={primaryInstanceId}
+          className={className}
+          style={style}
+          externalContext={externalContext}
+          context={context}
+        />
+        <BundleHost bundle={toolingBundle} resolveProvider={resolveLeavesProvider} contexts={mergedContexts} fileServices={fileServices} />
     </GikToolingShell>
   );
 }
@@ -370,6 +378,10 @@ function ActiveDemoHost({
   loadedScenarios,
   queryPresentationContext,
 }: ActiveDemoHostProps): React.ReactElement {
+  const [externalContextState, setExternalContextState] = React.useState<ExternalContext>(
+    () => structuredClone(externalContext ?? {}),
+  );
+  const externalContextKey = JSON.stringify(externalContextState);
   const blueprintId = blueprint.payload.id;
   const compatibleEntries = React.useMemo(
     () => loadedScenarios.catalog.entries.filter((entry) => entry.targetBlueprintId === blueprintId),
@@ -384,7 +396,7 @@ function ActiveDemoHost({
 
   const requestedPresentationContext = presentationContext ?? queryPresentationContext;
   const [resetEpoch, setResetEpoch] = React.useState(0);
-  const resolvedPrimaryInstanceId = `${primaryInstanceId ?? "demo"}:${selectedDemoId}:${resetEpoch}`;
+  const resolvedPrimaryInstanceId = `${primaryInstanceId ?? "demo"}:${selectedDemoId}:${resetEpoch}:${externalContextKey}`;
   const baseInitialSeed = React.useMemo(
     () => (context && isJsonRecord(context.initialSeed) ? cloneJsonRecord(context.initialSeed as JsonRecord) : null),
     [context],
@@ -398,10 +410,6 @@ function ActiveDemoHost({
   React.useEffect(() => {
     setDemoSeed(initialDemoSeed);
   }, [initialDemoSeed]);
-  const harnessBundle = React.useMemo(
-    () => createGikControlHarnessBundle(),
-    [],
-  );
   const presentationPresets = React.useMemo(() => {
     const availablePresets = resolvedDemo.demoContract.presentationPresets
       ?? resolvedCatalog.targets[resolvedDemo.entry.targetBlueprintId]?.presentationPresets
@@ -409,17 +417,32 @@ function ActiveDemoHost({
     const applicableContexts = new Set(resolvedDemo.scenarioPlan.applicableContexts);
     return availablePresets.filter((preset) => applicableContexts.has(preset.id));
   }, [resolvedCatalog.targets, resolvedDemo]);
-  const runnerBundle = React.useMemo(
-    () => createDemoRunnerBundle({
+  const toolingBundle = React.useMemo(
+    () => createDemoRunnerHostBundle({
       runner: {
+        visible: true,
         plan: resolvedDemo.scenarioPlan,
         catalog: compatibleEntries,
         entry: resolvedDemo.entry,
         selectedDemoId,
         presentationPresets,
       },
-    }, setSelectedDemoId),
-    [compatibleEntries, presentationPresets, resolvedDemo, selectedDemoId],
+      inspector: {
+        ui: {
+          activeTab: "journal",
+          visible: showControlHarness,
+          expanded: false,
+          journalMode: "journal",
+          selectedJournalId: null,
+        },
+        contextFormSpec: resolvedDemo.entry.contextFormSpec ?? null,
+        externalContext: externalContextState,
+      },
+    }, {
+      onSelectDemo: setSelectedDemoId,
+      onSetExternalContext: setExternalContextState,
+    }),
+    [compatibleEntries, externalContextState, presentationPresets, resolvedDemo, selectedDemoId, showControlHarness],
   );
   const resolvedPresentationContext = resolvePresentationContext(
     requestedPresentationContext,
@@ -561,29 +584,23 @@ function ActiveDemoHost({
     return unsubscribe;
   }, [controlStore, mergedContexts, onPresentationPresetChange, presentationPresets, resolvedPresentationContext]);
 
-  const packageCompanions = React.useMemo<CompositionOrganism[]>(() => {
-    const list = [...companions];
-    if (showControlHarness) list.push({ instanceId: "gik-control-harness", bundle: harnessBundle });
-    list.push({ instanceId: `demo-runner:${selectedDemoId}`, bundle: runnerBundle });
-    return list;
-  }, [companions, harnessBundle, runnerBundle, selectedDemoId, showControlHarness]);
-
   return (
     <GikToolingShell runnerVisible inspectorVisible={showControlHarness}>
-      <HostComponent
-        blueprint={blueprint}
-        resolveLeavesProvider={resolveLeavesProvider}
-        native={native}
-        companions={packageCompanions}
-        contexts={mergedContexts}
-        fileServices={fileServices}
-        primaryBridge={primaryBridge}
-        primaryInstanceId={resolvedPrimaryInstanceId}
-        className={className}
-        style={style ? { ...compositionStyle, ...style } : compositionStyle}
-        externalContext={externalContext}
-        context={resolvedContext}
-      />
+        <HostComponent
+          blueprint={blueprint}
+          resolveLeavesProvider={resolveLeavesProvider}
+          native={native}
+          companions={companions}
+          contexts={mergedContexts}
+          fileServices={fileServices}
+          primaryBridge={primaryBridge}
+          primaryInstanceId={resolvedPrimaryInstanceId}
+          className={className}
+          style={style ? { ...compositionStyle, ...style } : compositionStyle}
+          externalContext={externalContextState}
+          context={resolvedContext}
+        />
+        <BundleHost key={`demo-tooling:${selectedDemoId}:${externalContextKey}`} bundle={toolingBundle} resolveProvider={resolveLeavesProvider} contexts={mergedContexts} fileServices={fileServices} />
     </GikToolingShell>
   );
 }

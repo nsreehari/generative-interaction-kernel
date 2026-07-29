@@ -1,0 +1,236 @@
+{
+  "vocabulary": {
+    "gik": "0.1",
+    "type": "vocabulary",
+    "payload": {
+      "version": "demo-runner-host/1.0",
+      "expression": "jsonata",
+      "namespaces": ["runner", "inspector"],
+      "contexts": ["demo", "control"],
+      "actions": ["assign", "derive", "emit", "invoke"],
+      "capabilities": {
+        "demo:tooling": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "slots": ["children"]
+        },
+        "demo:runner": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "slots": ["children"],
+          "emits": ["reset", "finishAct"]
+        },
+        "demo:timer-button": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "emits": ["press"]
+        },
+        "demo-runner-host:toggle": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "emits": ["toggle"]
+        },
+        "demo-runner-host:dropdown": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "emits": ["select"]
+        },
+        "harness:shell": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "slots": ["children"],
+          "emits": ["selectTab", "toggleHarness"]
+        },
+        "harness:blueprint-inspector": {
+          "propsSchema": { "type": "object", "additionalProperties": true }
+        },
+        "harness:journal": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "emits": ["setJournalMode", "selectTimeline", "clearTimelineSelection", "selectJournal"]
+        },
+        "harness:participants": {
+          "propsSchema": { "type": "object", "additionalProperties": true }
+        },
+        "ui:form": {
+          "propsSchema": {
+            "$ref": "https://gik.dev/schemas/ui-form.schema.json"
+          },
+          "emits": ["save"]
+        }
+      },
+      "externals": {
+        "effectHandlers": [
+          "requestNextAct",
+          "setPace",
+          "selectDemo",
+          "setPresentationContext",
+          "finishAct",
+          "resetDemo",
+          "setExternalContext"
+        ],
+        "projectionViews": {
+          "demo": { "from": "self" },
+          "demo-runner-host": { "from": "self", "use": ["toggle", "dropdown"] },
+          "harness": { "from": "self" },
+          "ui": { "from": "floor", "use": ["form"] }
+        }
+      }
+    }
+  },
+  "program": {
+    "gik": "0.1",
+    "type": "program",
+    "payload": {
+      "root": {
+        "capability": "demo:tooling",
+        "id": "demo-tooling",
+        "edges": {
+          "children": [
+            {
+              "capability": "demo:runner",
+              "id": "demo-runner",
+              "edges": {
+                "read": {
+                  "demo": "demo",
+                  "visible": "runner.visible",
+                  "receipt": "control.receipt",
+                  "plan": "runner.plan",
+                  "catalog": "runner.catalog",
+                  "entry": "runner.entry",
+                  "selectedDemoId": "runner.selectedDemoId",
+                  "presentationPresetId": "control.presentationPresetId"
+                },
+                "on": {
+                  "reset": [{ "do": "invoke", "args": { "tool": "resetDemo" } }],
+                  "finishAct": [{ "do": "invoke", "args": { "tool": "finishAct" } }]
+                },
+                "children": [
+                  {
+                    "capability": "demo-runner-host:dropdown",
+                    "id": "demo-blueprint-dropdown-region",
+                    "props": { "ariaLabel": "Select demo Blueprint", "placeholder": "Select a demo" },
+                    "edges": {
+                      "read": { "value": "runner.selectedDemoId", "options": "runner.catalog" },
+                      "on": { "select": [{ "do": "invoke", "args": { "tool": "selectDemo" } }] }
+                    }
+                  },
+                  {
+                    "capability": "demo-runner-host:dropdown",
+                    "id": "presentation-context-dropdown-region",
+                    "props": { "ariaLabel": "Select presentation context", "placeholder": "Select a presentation" },
+                    "edges": {
+                      "read": { "value": "control.presentationPresetId", "options": "runner.presentationPresets" },
+                      "on": { "select": [{ "do": "invoke", "args": { "tool": "setPresentationContext" } }] }
+                    }
+                  },
+                  {
+                    "capability": "demo-runner-host:toggle",
+                    "id": "presenter-pace-toggle-region",
+                    "props": { "onValue": "auto", "offValue": "manual", "onLabel": "Auto", "offLabel": "Manual" },
+                    "edges": {
+                      "read": { "value": "demo.presenter.pace" },
+                      "on": { "toggle": [{ "do": "invoke", "args": { "tool": "setPace" } }] }
+                    }
+                  },
+                  {
+                    "capability": "demo:timer-button",
+                    "id": "next-act-timer-region",
+                    "props": { "label": "Next act", "tone": "primary", "showCountdown": true },
+                    "edges": {
+                      "read": {
+                        "durationMs": "demo.presenter.durationMs",
+                        "disabled": "demo.presenter.locked",
+                        "advanceToken": "demo.presenter.advanceToken"
+                      },
+                      "on": { "press": [{ "do": "invoke", "args": { "tool": "requestNextAct" } }] }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "capability": "harness:shell",
+              "id": "gik-control-harness",
+              "edges": {
+                "read": {
+                  "activeTab": "inspector.ui.activeTab",
+                  "expanded": "inspector.ui.expanded",
+                  "visible": "inspector.ui.visible",
+                  "contextFormSpec": "inspector.contextFormSpec"
+                },
+                "on": {
+                  "selectTab": [{ "do": "assign", "target": "inspector.ui.activeTab", "args": { "from": "$event.tab" } }],
+                  "toggleHarness": [{ "do": "assign", "target": "inspector.ui.expanded", "args": { "from": "$event.expanded" } }]
+                },
+                "children": [
+                  {
+                    "capability": "harness:blueprint-inspector",
+                    "id": "control-blueprint-inspector",
+                    "edges": { "read": { "blueprint": "control.inspection.blueprint" } }
+                  },
+                  {
+                    "capability": "harness:journal",
+                    "id": "control-journal",
+                    "edges": {
+                      "read": {
+                        "participants": "control.inspection.participants",
+                        "timeline": "control.inspection.timeline",
+                        "status": "control.inspection.status",
+                        "selection": "control.inspection.selection",
+                        "journalMode": "inspector.ui.journalMode",
+                        "selectedJournalId": "inspector.ui.selectedJournalId"
+                      },
+                      "on": {
+                        "setJournalMode": [{ "do": "assign", "target": "inspector.ui.journalMode", "args": { "from": "$event.mode" } }],
+                        "selectJournal": [{ "do": "assign", "target": "inspector.ui.selectedJournalId", "args": { "from": "$event.id" } }]
+                      }
+                    }
+                  },
+                  {
+                    "capability": "harness:participants",
+                    "id": "control-participants",
+                    "edges": { "read": { "participants": "control.inspection.participants", "selection": "control.inspection.selection" } }
+                  },
+                  {
+                    "capability": "harness:participants",
+                    "id": "control-participant-status",
+                    "props": { "compact": true },
+                    "edges": { "read": { "participants": "control.inspection.participants", "selection": "control.inspection.selection" } }
+                  },
+                  {
+                    "capability": "ui:form",
+                    "id": "control-context-form",
+                    "edges": {
+                      "read": {
+                        "fields": "inspector.contextFormSpec.fields",
+                        "schema": "inspector.contextFormSpec.schema",
+                        "value": "inspector.externalContext",
+                        "saveLabel": "inspector.contextFormSpec.saveLabel",
+                        "discardLabel": "inspector.contextFormSpec.discardLabel"
+                      },
+                      "on": { "save": [{ "do": "invoke", "args": { "tool": "setExternalContext" } }] }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "state": {
+    "runner": {
+      "visible": true,
+      "plan": null,
+      "catalog": [],
+      "entry": null,
+      "presentationPresets": []
+    },
+    "inspector": {
+      "ui": {
+        "activeTab": "journal",
+        "visible": true,
+        "expanded": false,
+        "journalMode": "journal",
+        "selectedJournalId": null
+      },
+      "contextFormSpec": null,
+      "externalContext": {}
+    }
+  }
+}

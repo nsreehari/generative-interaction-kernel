@@ -5,6 +5,7 @@
     "manage-blueprints",
     "vocabulary-lowering",
     "portfolio-tracker",
+    "portfolio-tracker-2tiers",
     "live-workspace-soc",
     "copilot-c2",
     "foundry-agent",
@@ -12,6 +13,7 @@
     "manage-bundles"
   ],
   "nativeFrom": {
-    "foundry-agent-no-cells": "foundry-agent"
+    "foundry-agent-no-cells": "foundry-agent",
+    "portfolio-tracker-2tiers": "portfolio-tracker"
   }
 }

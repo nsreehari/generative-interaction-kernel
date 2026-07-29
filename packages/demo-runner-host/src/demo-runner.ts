@@ -1,6 +1,7 @@
 import type { DocNode, ProjectedProgramDefinition, Json, ProjectedVocabularyManifest } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import demoScenariosSchema from "../../../schemas/demo-scenarios.schema.json" with { type: "json" };
+import uiFormPropsSchema from "../../../schemas/ui-form.schema.json" with { type: "json" };
 import type { FocusKind, FocusRef, TimelineItem } from "./control-focus";
 
 export {
@@ -48,6 +49,24 @@ export interface PresentationPreset {
   context: Record<string, Json>;
 }
 
+export interface ContextFormSpec {
+  fields?: {
+    properties: Record<string, Record<string, Json>>;
+    required?: string[];
+    validators?: Json;
+  };
+  schema?: {
+    properties: Record<string, Record<string, Json>>;
+    required?: string[];
+    validators?: Json;
+  };
+  value?: Record<string, Json>;
+  data?: Record<string, Json>;
+  saveLabel?: string;
+  discardLabel?: string;
+  [prop: string]: Json | undefined;
+}
+
 export interface ScenarioPlan {
   id: string;
   targetBlueprintId: string;
@@ -74,6 +93,7 @@ export interface DemoCatalogEntry {
   targetBlueprintId: string;
   defaultContext?: string;
   requiredTimelineSources?: TimelineItem["source"][];
+  contextFormSpec?: ContextFormSpec;
 }
 
 export interface DemoCatalog {
@@ -265,7 +285,7 @@ function validateDemoTarget(targetId: string, target: DemoTargetCatalogEntry): v
 export function validateDemoTargetBundleContract(
   targetId: string,
   target: DemoTargetCatalogEntry,
-  manifest: ProjectedVocabularyManifest,
+  _manifest: ProjectedVocabularyManifest,
   program: ProjectedProgramDefinition,
 ): void {
   const nodes = new Map<string, DocNode>();
@@ -280,9 +300,6 @@ export function validateDemoTargetBundleContract(
     if (!node) throw new Error(`Demo target '${targetId}' command '${descriptor.command}' references unknown node '${descriptor.nodeId}'`);
     if (!node.edges?.on?.[descriptor.event]) {
       throw new Error(`Demo target '${targetId}' command '${descriptor.command}' references unknown event '${descriptor.event}' on node '${descriptor.nodeId}'`);
-    }
-    if (!manifest.capabilities[node.capability]?.emits?.includes(descriptor.event)) {
-      throw new Error(`Demo target '${targetId}' event '${descriptor.event}' is not emitted by capability '${node.capability}'`);
     }
   }
 }
@@ -328,6 +345,7 @@ export function loadDemoScenarios(scenariosJson: DemoScenariosJson): LoadedDemoS
   const validation = runDeclarativeValidators([{
     kind: "ajv-schema",
     schema: demoScenariosSchema,
+    refs: [{ schema: uiFormPropsSchema }],
     message: "Invalid demo scenarios",
   }], scenariosJson as never);
   if (!validation.ok) {

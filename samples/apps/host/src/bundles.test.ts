@@ -23,7 +23,7 @@ test("host registry exposes only approved Blueprints to the switcher", () => {
   assert.equal(registry.has("vocabulary-lowering"), true);
   assert.deepEqual(
     [...registry.ids({ listable: true })].sort(),
-    ["copilot-c2", "foundry-agent", "foundry-agent-no-cells", "live-workspace-soc", "manage-blueprints", "manage-bundles", "portfolio-tracker", "samples-overview", "vocabulary-lowering"]
+    ["copilot-c2", "foundry-agent", "foundry-agent-no-cells", "live-workspace-soc", "manage-blueprints", "manage-bundles", "portfolio-tracker", "portfolio-tracker-2tiers", "samples-overview", "vocabulary-lowering"]
   );
   assert.equal(registry.has("reactive-demo"), false);
   assert.equal(registry.has("provider-authoring-demo"), false);

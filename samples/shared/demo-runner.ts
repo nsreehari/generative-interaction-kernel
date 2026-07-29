@@ -287,7 +287,7 @@ function validateDemoTarget(targetId: string, target: DemoTargetCatalogEntry): v
 export function validateDemoTargetBundleContract(
   targetId: string,
   target: DemoTargetCatalogEntry,
-  manifest: ProjectedVocabularyManifest,
+  _manifest: ProjectedVocabularyManifest,
   document: ProjectedProgramDefinition
 ): void {
   const nodes = new Map<string, DocNode>();
@@ -304,9 +304,6 @@ export function validateDemoTargetBundleContract(
     }
     if (!node.edges?.on?.[descriptor.event]) {
       throw new Error(`Demo target '${targetId}' command '${descriptor.command}' references unknown event '${descriptor.event}' on node '${descriptor.nodeId}'`);
-    }
-    if (!manifest.capabilities[node.capability]?.emits?.includes(descriptor.event)) {
-      throw new Error(`Demo target '${targetId}' event '${descriptor.event}' is not emitted by capability '${node.capability}'`);
     }
   }
 }

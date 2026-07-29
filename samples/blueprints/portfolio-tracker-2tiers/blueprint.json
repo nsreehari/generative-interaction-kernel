@@ -1,0 +1,235 @@
+{
+  "gik": "0.1",
+  "type": "blueprint",
+  "payload": {
+    "id": "portfolio-tracker-2tiers",
+    "kind": "portfolio-intent-blueprint",
+    "version": "1.0.0",
+    "structureMode": "fixed",
+    "tiers": [
+      { "id": "portfolio-intent", "kind": "portfolio-domain" },
+      { "id": "runtime-document", "kind": "runtime-document" }
+    ],
+    "recipes": [
+      {
+        "id": "portfolio-intent-to-runtime",
+        "from": "portfolio-intent",
+        "to": "runtime-document",
+        "representations": [
+          {
+            "id": "mobile-glanceable",
+            "when": "externalContext.surface = 'mobile' and externalContext.attention = 'glanceable'",
+            "views": {
+              "portfolio-workspace": { "capability": "ui:screen", "props": { "title": "Portfolio", "subtitle": "Mobile · Glanceable" } },
+              "http-proxy-access-gate": { "capability": "http-proxy:access-gate", "bindings": { "status": { "from": "portfolio.httpProxyAccessStatus" }, "error": { "from": "portfolio.httpProxyAccessError" } } },
+              "summary": { "capability": "portfolio:summary", "bindings": { "value": { "from": "portfolio.summary" } } },
+              "portfolio-status": { "capability": "ui:note", "props": { "tone": "info" }, "bindings": { "value": { "from": "portfolio.status.message" } } }
+            },
+            "presentation": {
+              "roots": ["portfolio-workspace"],
+              "placements": [
+                { "cell": "http-proxy-access-gate", "parent": "portfolio-workspace", "slot": "children", "order": 0 },
+                { "cell": "summary", "parent": "portfolio-workspace", "slot": "children", "order": 1 },
+                { "cell": "portfolio-status", "parent": "portfolio-workspace", "slot": "children", "order": 2 }
+              ]
+            }
+          },
+          {
+            "id": "mobile-detailed",
+            "when": "externalContext.surface = 'mobile' and externalContext.attention = 'detailed'",
+            "extends": "mobile-glanceable",
+            "views": {
+              "portfolio-workspace": { "capability": "ui:screen", "props": { "title": "Portfolio", "subtitle": "Mobile · Detailed" } },
+              "holdings": {
+                "capability": "ui:editable-table",
+                "props": { "label": "Holdings", "columns": [{ "key": "ticker", "label": "Ticker" }, { "key": "quantity", "label": "Quantity" }, { "key": "costBasis", "label": "Cost basis" }] },
+                "bindings": { "rows": { "expression": "[portfolio.holdings.*]" } }
+              },
+              "positions": { "capability": "ui:table", "props": { "label": "Positions" }, "bindings": { "rows": { "expression": "[portfolio.positions.*]" } } }
+            },
+            "presentationAppend": [
+              { "cell": "holdings", "parent": "portfolio-workspace", "slot": "children", "order": 3 },
+              { "cell": "positions", "parent": "portfolio-workspace", "slot": "children", "order": 4 }
+            ]
+          },
+          {
+            "id": "laptop-glanceable",
+            "when": "externalContext.surface = 'laptop' and externalContext.attention = 'glanceable'",
+            "extends": "mobile-glanceable",
+            "views": {
+              "portfolio-workspace": { "capability": "ui:screen", "props": { "title": "Portfolio", "subtitle": "Laptop · Glanceable" } },
+              "positions": { "capability": "ui:table", "props": { "label": "Top positions", "maxRows": 5 }, "bindings": { "rows": { "expression": "[portfolio.positions.*]" } } }
+            },
+            "presentationAppend": [
+              { "cell": "positions", "parent": "portfolio-workspace", "slot": "children", "order": 3 }
+            ]
+          },
+          {
+            "id": "desktop-glanceable",
+            "when": "externalContext.surface = 'desktop' and externalContext.attention = 'glanceable'",
+            "extends": "laptop-glanceable",
+            "views": {
+              "portfolio-workspace": { "capability": "ui:screen", "props": { "title": "Portfolio", "subtitle": "Desktop · Glanceable" } }
+            }
+          },
+          {
+            "id": "laptop-detailed",
+            "when": "externalContext.surface = 'laptop' and externalContext.attention = 'detailed'",
+            "extends": "mobile-detailed",
+            "views": {
+              "portfolio-workspace": { "capability": "ui:screen", "props": { "title": "Portfolio", "subtitle": "Laptop · Detailed" } },
+              "market-prices": { "capability": "ui:table", "props": { "label": "Market prices" }, "bindings": { "rows": { "expression": "[portfolio.quotes.*]" } } }
+            },
+            "presentationAppend": [
+              { "cell": "market-prices", "parent": "portfolio-workspace", "slot": "children", "order": 5 }
+            ]
+          },
+          {
+            "id": "desktop-detailed",
+            "when": "externalContext.surface = 'desktop' and externalContext.attention = 'detailed'",
+            "extends": "laptop-detailed",
+            "views": {
+              "portfolio-workspace": { "capability": "ui:screen", "props": { "title": "Portfolio", "subtitle": "Desktop · Detailed" } }
+            }
+          }
+        ],
+        "fallback": "desktop-detailed"
+      }
+    ],
+    "services": {
+      "portfolio-market-data": {
+        "kind": "http-service",
+        "version": "1",
+        "operations": {
+          "checkHttpProxyAccess": { "operation": "check-access", "contract": "http-proxy-access-check/v1" },
+          "refreshPrices": { "operation": "fetch-quotes", "contract": "portfolio-market-quotes/v1" }
+        },
+        "config": { "endpoint": "${GIK_HTTP_PROXY_ORIGIN}", "credentialRef": "http-proxy/access-key" },
+        "scope": "per-blueprint"
+      }
+    },
+    "runtime": {
+      "expression": "jsonata",
+      "namespaces": ["portfolio"],
+      "contexts": ["control"],
+      "actions": ["assign", "invoke"],
+      "capabilities": {
+        "ui:screen": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"] },
+        "ui:editable-table": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"], "dataProp": "rows" },
+        "ui:table": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "rows" },
+        "ui:note": { "propsSchema": { "type": "object", "additionalProperties": true } },
+        "http-proxy:access-gate": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["accessRequested", "accessCleared"] },
+        "portfolio:summary": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" }
+      },
+      "externals": {
+        "projectionViews": {
+          "ui": { "from": "floor", "use": ["screen", "editable-table", "table", "note"] },
+          "http-proxy": { "from": "http-proxy", "use": ["access-gate"] },
+          "portfolio": { "from": "self", "use": ["summary"] }
+        },
+        "effectHandlers": ["setHoldings", "saveHoldings"]
+      },
+      "state": {
+        "portfolio": {
+          "httpProxyAccessStatus": "checking",
+          "httpProxyAccessError": "",
+          "holdings": {
+            "AAPL": { "ticker": "AAPL", "quantity": 10, "costBasis": 182.5 },
+            "MSFT": { "ticker": "MSFT", "quantity": 5, "costBasis": 420 }
+          },
+          "quotes": {
+            "AAPL": { "ticker": "AAPL", "price": 218.42 },
+            "MSFT": { "ticker": "MSFT", "price": 447.31 }
+          },
+          "positions": {
+            "AAPL": { "ticker": "AAPL", "quantity": 10, "price": 218.42, "value": 2184.2, "costBasis": 1825, "gainLoss": 359.2 },
+            "MSFT": { "ticker": "MSFT", "quantity": 5, "price": 447.31, "value": 2236.55, "costBasis": 2100, "gainLoss": 136.55 }
+          },
+          "summary": { "marketValue": 4420.75, "costBasis": 3925, "gainLoss": 495.75 },
+          "status": { "tone": "positive", "message": "Portfolio is above cost basis." }
+        }
+      }
+    },
+    "cells": {
+      "portfolio-workspace": {
+        "id": "portfolio-workspace",
+        "kind": "portfolio-cell",
+        "metadata": { "role": "workspace" },
+        "behavior": {
+          "events": {
+            "setHoldings": [{ "do": "invoke", "args": { "tool": "setHoldings" } }]
+          }
+        }
+      },
+      "http-proxy-access-gate": {
+        "id": "http-proxy-access-gate",
+        "kind": "portfolio-cell",
+        "metadata": { "role": "authorize-market-data" },
+        "outputs": [{ "token": "http-proxy-access", "from": "portfolio.httpProxyAccessStatus", "when": "portfolio.httpProxyAccessStatus = 'ready'" }],
+        "behavior": {
+          "events": {
+            "accessRequested": [{ "do": "invoke", "args": { "tool": "checkHttpProxyAccess" } }],
+            "accessCleared": [
+              { "do": "assign", "target": "portfolio.httpProxyAccessStatus", "args": { "value": "required" } },
+              { "do": "assign", "target": "portfolio.httpProxyAccessError", "args": { "value": "" } }
+            ]
+          }
+        }
+      },
+      "holdings": {
+        "id": "holdings",
+        "kind": "portfolio-cell",
+        "metadata": { "role": "manage-holdings" },
+        "outputs": [{ "token": "holding:$TICKER" }],
+        "behavior": { "events": { "save": [{ "do": "invoke", "args": { "tool": "saveHoldings" } }] } }
+      },
+      "market-prices": {
+        "id": "market-prices",
+        "kind": "portfolio-cell",
+        "metadata": { "role": "acquire-market-prices" },
+        "inputs": [{ "token": "http-proxy-access" }, { "token": "holding:$TICKER" }],
+        "sources": [{ "id": "market-prices.source", "service": "portfolio-market-data", "operation": "refreshPrices", "contract": "portfolio-market-quotes/v1" }],
+        "outputs": [{ "token": "quote:$TICKER" }]
+      },
+      "positions": {
+        "id": "positions",
+        "kind": "portfolio-cell",
+        "metadata": { "role": "derive-positions" },
+        "inputs": [{ "token": "holding:$TICKER" }, { "token": "quote:$TICKER" }],
+        "outputs": [{ "token": "position:$TICKER" }],
+        "compute": [{
+          "id": "positions-by-ticker",
+          "expression": "($holdings := portfolio.holdings; $quotes := portfolio.quotes; $rows := $each($holdings, function($holding, $ticker) { $lookup($quotes, $ticker) ? {$ticker:{'ticker':$ticker,'quantity':$holding.quantity,'price':$lookup($quotes, $ticker).price,'value':$round($holding.quantity * $lookup($quotes, $ticker).price, 2),'costBasis':$round($holding.quantity * $holding.costBasis, 2),'gainLoss':$round(($holding.quantity * $lookup($quotes, $ticker).price) - ($holding.quantity * $holding.costBasis), 2)}} : {} }); $count($rows) > 0 ? $merge($rows) : {})",
+          "assign": "portfolio.positions",
+          "dependencies": ["portfolio.holdings", "portfolio.quotes"]
+        }]
+      },
+      "summary": {
+        "id": "summary",
+        "kind": "portfolio-cell",
+        "metadata": { "role": "summarize-portfolio" },
+        "inputs": [{ "token": "position:$TICKER" }],
+        "outputs": [{ "token": "portfolio-summary" }],
+        "compute": [{
+          "id": "portfolio-totals",
+          "expression": "{'marketValue':$count(portfolio.positions.*) > 0 ? $round($sum(portfolio.positions.*.value), 2) : 0,'costBasis':$count(portfolio.positions.*) > 0 ? $round($sum(portfolio.positions.*.costBasis), 2) : 0,'gainLoss':$count(portfolio.positions.*) > 0 ? $round($sum(portfolio.positions.*.gainLoss), 2) : 0}",
+          "assign": "portfolio.summary",
+          "dependencies": ["portfolio.positions"]
+        }]
+      },
+      "portfolio-status": {
+        "id": "portfolio-status",
+        "kind": "portfolio-cell",
+        "metadata": { "role": "classify-performance" },
+        "inputs": [{ "token": "portfolio-summary" }],
+        "outputs": [{ "token": "portfolio-status" }],
+        "compute": [{
+          "id": "classify-gain-loss",
+          "expression": "{'tone':portfolio.summary.gainLoss > 0 ? 'positive' : portfolio.summary.gainLoss < 0 ? 'negative' : 'neutral','message':portfolio.summary.gainLoss > 0 ? 'Portfolio is above cost basis.' : portfolio.summary.gainLoss < 0 ? 'Portfolio is below cost basis.' : 'Portfolio is at cost basis.'}",
+          "assign": "portfolio.status",
+          "dependencies": ["portfolio.summary"]
+        }]
+      }
+    }
+  }
+}
