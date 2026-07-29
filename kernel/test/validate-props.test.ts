@@ -35,6 +35,16 @@ test("valid static props pass the boundary", () => {
   assert.doesNotThrow(() => new Kernel(manifestMsg(), doc));
 });
 
+test("cloned capability schemas with the same $id reuse their compiled validator", () => {
+  const manifest = manifestMsg();
+  (manifest.payload.capabilities.metric.propsSchema as Record<string, unknown>).$id =
+    "https://gik.dev/tests/metric-props.schema.json";
+  const doc = board([node("metric", "m1", { props: { label: "CPU", value: 42 } })]);
+
+  assert.doesNotThrow(() => new Kernel(structuredClone(manifest), doc));
+  assert.doesNotThrow(() => new Kernel(structuredClone(manifest), doc));
+});
+
 test("an invalid static prop (wrong type) is rejected at construction", () => {
   const doc = board([node("metric", "m1", { props: { label: "CPU", value: "high" } })]);
   assert.throws(() => new Kernel(manifestMsg(), doc), ValidationError);
