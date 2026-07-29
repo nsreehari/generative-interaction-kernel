@@ -3,6 +3,7 @@
   "blueprints": [
     "samples-overview",
     "manage-blueprints",
+    "vocabulary-lowering",
     "portfolio-tracker",
     "live-workspace-soc",
     "copilot-c2",

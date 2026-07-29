@@ -132,3 +132,12 @@ batch.
 - Event-level deduplication, transition idempotency keys, lease renewal, or batch-size policy.
 - Backend-specific durability hardening and recovery mechanisms.
 - Long-running workflow semantics inside a transition adapter.
+
+## Amendment (2026-07-29): portable Blueprint materialization as opaque spec
+
+ADR-0046 defines one Blueprint binding without changing this provider-neutral contract. A host may
+use `{ authoredBlueprint, externalContext, materializedBlueprint }` as `TSpec`, run the shared
+`@gik/blueprint` materialized transition, and represent admitted authored patches as `TSpecUpdate`.
+The provider atomically stores the caller-materialized next spec with state, cursor, and effects.
+It never parses the terminal Blueprint. Stateless workers read the portable materialization from
+the acquired spec and need no process-local cache.

@@ -26,6 +26,11 @@ export interface LoweringRecipeDefinition {
   to: string;
 }
 
+/** A deterministic tier transition expressed entirely in the shared Blueprint vocabulary. */
+export interface VocabularyLoweringRecipeDefinition extends LoweringRecipeDefinition {
+  patch: BlueprintPatch;
+}
+
 export type BlueprintResource = { inline: Json } | { $ref: string };
 
 export interface BlueprintRuntimeDefinition {

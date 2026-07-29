@@ -162,3 +162,27 @@ Proof: `samples/control-host/lowering-meta-graph.ts` + `.test.ts` (8 tests) exer
 above — bootstrap-event settling, approval gating via `confirm`, the tier-2 artifact opening
 through the unmodified `openBlueprint` path, and both a missing-Cell and a mismatched-token drift
 case for `validateLoweringCellGraph`.
+
+## Amendment (2026-07-29): materialization becomes the stable execution boundary
+
+ADR-0046 packages terminal Blueprint preparation as a deterministic portable materialization.
+`runTransition` materializes internally, while React and durable hosts may call
+`materializeBlueprint` once and reuse `runMaterializedTransition`. The Phase 2 host driver remains
+evidence for executing a Lowering Cell compiler Blueprint; connecting non-empty authored recipe
+chains to those compiler Blueprints is intentionally the next phase. When connected, compiler
+decisions must be pinned in authored data or immutable external context, and semantic patch
+proposals must target the authored Blueprint before rematerialization.
+
+## Amendment (2026-07-29): common fixed meta-graph integration
+
+The unresolved per-recipe `compilerBlueprintRef` and per-domain compiler alternatives are closed.
+`@gik/blueprint` owns one common compiler meta-graph Blueprint. Recipes do not select compiler
+Blueprints; they carry vocabulary-driven transformation data between declared tiers. The common
+meta-graph walks any connected, non-branching recipe chain and produces the terminal Blueprint.
+
+The due-diligence spike remains evidence that compiler Cells execute through ordinary Kernel
+mechanisms, but its domain-specific transforms are not the scalable authoring model. The runtime
+integration uses a fixed package meta-graph and synchronous deterministic materialization. Hosts
+do not supply it on individual calls. Reconfiguring that meta-graph, proposing patches to it, or
+running its agent/human pipelines is deferred until after fixed lowering is complete; when enabled,
+the meta-graph will be reconfigurable under host authority, never adaptive.

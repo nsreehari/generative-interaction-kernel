@@ -6,14 +6,18 @@ import {
   admitAdaptiveProgramPatch,
   admitBlueprintPatch,
   applyBlueprintPatch,
+  applyBlueprintPatches,
   assembleBlueprint,
   compileCellTopology,
+  createBlueprintDurableTransitionAdapter,
   createBlueprint,
   defineLoweringCell,
   defineExploration,
   inspectExploration,
   lowerBlueprint,
+  materializeBlueprint,
   parseBlueprintJson,
+  runMaterializedTransition,
   runTransition,
   stringifyBlueprint,
   tokenPattern,
@@ -313,5 +317,137 @@ describe("@gik/blueprint", () => {
 
     expect(result).toEqual({ state: { counter: { value: 2 } } });
     expect(shared.snapshot()).toEqual({ shared: { value: "updated" } });
+  });
+
+  it("materializes deterministically into a portable value and runs the trusted fast path", async () => {
+    const artifact = createBlueprint({
+      id: "materialized-counter",
+      kind: "runtime-blueprint",
+      version: "1",
+      tiers: [{ id: "runtime", kind: "runtime-program" }],
+      recipes: [],
+      runtime: { namespaces: ["counter"], capabilities: {}, state: { counter: { value: 1 } } },
+      cells: {
+        root: {
+          id: "root",
+          view: { capability: "screen" },
+          behavior: {
+            events: {
+              increment: [{ do: "assign", target: "counter.value", args: { from: "externalContext.policy.nextValue" } }],
+            },
+          },
+        },
+      },
+      projections: { presentation: { roots: ["root"] } },
+    });
+    const externalContext = { policy: { nextValue: 2 } };
+    const first = materializeBlueprint({ blueprint: artifact, externalContext });
+    const second = materializeBlueprint({ blueprint: artifact, externalContext });
+
+    expect(JSON.parse(JSON.stringify(first))).toEqual(second);
+    externalContext.policy.nextValue = 99;
+    const result = await runMaterializedTransition({
+      materializedBlueprint: first,
+      state: first.payload.initialState,
+      events: [{ node: "root", name: "increment" }],
+    });
+    expect(result.state).toEqual({ counter: { value: 2 } });
+  });
+
+  it("keeps externalContext read-only and outside returned mutable state", async () => {
+    const artifact = createBlueprint({
+      id: "context-write",
+      kind: "runtime-blueprint",
+      version: "1",
+      tiers: [{ id: "runtime", kind: "runtime-program" }],
+      recipes: [],
+      runtime: { namespaces: ["local"], capabilities: {}, state: { local: {} } },
+      cells: {
+        root: {
+          id: "root",
+          view: { capability: "screen" },
+          behavior: {
+            events: {
+              mutate: [{ do: "assign", target: "externalContext.policy.allowed", args: { value: false } }],
+            },
+          },
+        },
+      },
+      projections: { presentation: { roots: ["root"] } },
+    });
+    const materializedBlueprint = materializeBlueprint({
+      blueprint: artifact,
+      externalContext: { policy: { allowed: true } },
+    });
+
+    await expect(runMaterializedTransition({
+      materializedBlueprint,
+      state: materializedBlueprint.payload.initialState,
+      events: [{ node: "root", name: "mutate" }],
+    })).rejects.toThrow("externalContext is read-only");
+    expect(materializedBlueprint.payload.initialState).toEqual({ local: {} });
+  });
+
+  it("applies semantic patches to the authored Blueprint and rematerializes", () => {
+    const artifact = createBlueprint({
+      id: "reconfigurable",
+      kind: "runtime-blueprint",
+      version: "1",
+      structureMode: "reconfigurable",
+      tiers: [{ id: "runtime", kind: "runtime-program" }],
+      recipes: [],
+      runtime: { capabilities: {}, state: {} },
+      cells: { root: { id: "root", view: { capability: "screen" } } },
+      projections: { presentation: { roots: ["root"] } },
+    });
+    const applied = applyBlueprintPatches({
+      blueprint: artifact,
+      externalContext: { tenant: "one" },
+      state: {},
+      origin: "authorized",
+      patch: [{ op: "addCell", cell: { id: "added" } }],
+    });
+
+    expect(artifact.payload.cells?.added).toBeUndefined();
+    expect(applied.blueprint.payload.cells?.added?.id).toBe("added");
+    expect(applied.materializedBlueprint.payload.terminalBlueprint).toEqual(applied.blueprint);
+    expect(applied.materializedBlueprint.payload.externalContext).toEqual({ tenant: "one" });
+  });
+
+  it("provides a portable adapter spec for stateless durable transition hosts", async () => {
+    const artifact = createBlueprint({
+      id: "durable-counter",
+      kind: "runtime-blueprint",
+      version: "1",
+      tiers: [{ id: "runtime", kind: "runtime-program" }],
+      recipes: [],
+      runtime: { namespaces: ["counter"], capabilities: {}, state: { counter: { value: 1 } } },
+      cells: {
+        root: {
+          id: "root",
+          view: { capability: "screen" },
+          behavior: {
+            events: {
+              increment: [{ do: "assign", target: "counter.value", args: { from: "externalContext.nextValue" } }],
+            },
+          },
+        },
+      },
+      projections: { presentation: { roots: ["root"] } },
+    });
+    const adapter = createBlueprintDurableTransitionAdapter({
+      blueprint: artifact,
+      externalContext: { nextValue: 2 },
+    });
+    const spec = JSON.parse(JSON.stringify(adapter.initialSpec()));
+    const result = await adapter.transition({
+      spec,
+      state: adapter.initialState(),
+      events: [{ node: "root", name: "increment" }],
+    });
+
+    expect(result.state).toEqual({ counter: { value: 2 } });
+    expect(result.effects).toEqual([]);
+    expect(adapter.applySpecUpdates({ spec, updates: [] })).toEqual(spec);
   });
 });

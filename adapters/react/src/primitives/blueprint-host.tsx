@@ -1,5 +1,5 @@
 import React from "react";
-import { prepareBlueprintProgram, validateBlueprintArtifact, type BlueprintArtifact } from "@gik/blueprint";
+import { materializeBlueprint, prepareBlueprintProgram, validateBlueprintArtifact, type BlueprintArtifact, type ExternalContext } from "@gik/blueprint";
 import type { Json } from "@gik/kernel";
 import { BlueprintController } from "../blueprint-controller";
 import type { ProviderResolver } from "../registry";
@@ -32,6 +32,8 @@ export interface BlueprintHostProps {
   primaryInstanceId?: string | number;
   className?: string;
   style?: React.CSSProperties;
+  externalContext?: ExternalContext;
+  /** @deprecated Initial-state seed compatibility. Use externalContext for immutable inputs. */
   context?: Record<string, Json>;
 }
 
@@ -46,12 +48,24 @@ export function BlueprintHost({
   primaryInstanceId,
   className,
   style,
+  externalContext,
   context,
 }: BlueprintHostProps): React.ReactElement {
   const registry = React.useMemo(() => createBundleRegistry(), []);
+  const materializedBlueprint = React.useMemo(
+    () => materializeBlueprint({ blueprint, externalContext }),
+    [blueprint, externalContext],
+  );
   const prepared = React.useMemo(
-    () => prepareBlueprintProgram(blueprint, { context }),
-    [blueprint, context],
+    () => context
+      ? prepareBlueprintProgram(blueprint, { context })
+      : {
+          blueprint: materializedBlueprint.payload.terminalBlueprint,
+          vocabulary: materializedBlueprint.payload.vocabulary,
+          program: materializedBlueprint.payload.program,
+          initialState: materializedBlueprint.payload.initialState,
+        },
+    [blueprint, context, materializedBlueprint],
   );
   const bundle = React.useMemo(
     () => bundleFromJson({
@@ -62,8 +76,14 @@ export function BlueprintHost({
     [prepared, native],
   );
   const source = React.useMemo(
-    () => new BlueprintController(prepared.blueprint, { context, contexts, native }),
-    [prepared.blueprint, context, contexts, native],
+    () => new BlueprintController(blueprint, {
+      externalContext,
+      materializedBlueprint,
+      context,
+      contexts,
+      native,
+    }),
+    [blueprint, externalContext, materializedBlueprint, context, contexts, native],
   );
   const blueprintId = prepared.blueprint.payload.id;
   const primaryInstanceIdResolved = primaryInstanceId === undefined ? blueprintId : `${blueprintId}:${primaryInstanceId}`;
