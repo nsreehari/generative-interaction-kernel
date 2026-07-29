@@ -631,6 +631,16 @@ export function createSocEffects(
       const journalOp = result?.ops?.find((op) => op.path === "soc.journal" && Array.isArray(op.value));
       const journal = Array.isArray(journalOp?.value) ? journalOp.value : [];
       const journalEntry = journal.at(-1) as RecordValue | undefined;
+      const actorId = String(journalEntry?.actorId ?? "");
+      const focusRefs = journalEntry ? [
+        { namespace: "soc", kind: "actor", id: actorId, relation: "origin" },
+        ...(Array.isArray(journalEntry.affected) ? journalEntry.affected : []).map((id) => ({
+          namespace: "soc",
+          kind: "record",
+          id: String(id),
+          relation: "affected",
+        })),
+      ] : [];
       return {
         ...(result ?? {}),
         ops: [
@@ -641,7 +651,13 @@ export function createSocEffects(
             command,
             status: "completed",
             outcome: String(result?.outcome ?? "completed"),
-            ...(command !== "$reset" && journalEntry ? { result: journalEntry } : {}),
+            ...(command !== "$reset" && journalEntry ? {
+              result: {
+                ...journalEntry,
+                actorRef: { namespace: "soc", kind: "actor", id: actorId, relation: "origin" },
+                focusRefs,
+              },
+            } : {}),
           }),
         ],
       };
