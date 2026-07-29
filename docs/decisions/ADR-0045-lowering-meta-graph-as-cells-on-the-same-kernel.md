@@ -186,3 +186,24 @@ integration uses a fixed package meta-graph and synchronous deterministic materi
 do not supply it on individual calls. Reconfiguring that meta-graph, proposing patches to it, or
 running its agent/human pipelines is deferred until after fixed lowering is complete; when enabled,
 the meta-graph will be reconfigurable under host authority, never adaptive.
+
+## Amendment (2026-07-30): stable Cells permit inner-program lowering
+
+The stable-Cell invariant applies to a Cell's semantic and data-flow contracts, not to one fixed
+implementation program across every tier. Lowering may select or emit a different inner program for
+the same Cell when every candidate preserves:
+
+- the Cell id and semantic responsibility;
+- input and output ports and their token contracts;
+- the Cell's position in the logical data-flow topology; and
+- the observable contract relied on by downstream Cells.
+
+Contract-compatible variants may differ in source mode, service or provider binding, computation,
+or other internal execution details. The fixed lowering meta-graph makes that selection from static
+recipe vocabulary and immutable external context. It must not add, remove, merge, split, or replace
+the Cell to express the variation, and it must not route around the Cell by writing its outputs from
+outside its selected program.
+
+This is compile-time specialization of a stable Cell, not runtime reconfiguration. The emitted
+terminal Blueprint contains one selected program, and a different context requires a new
+materialization.

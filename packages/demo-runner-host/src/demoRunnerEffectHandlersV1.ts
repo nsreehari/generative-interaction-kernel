@@ -74,6 +74,7 @@ export interface DemoRunnerEffectCallbacksV1 {
   getExpressionScope(): DemoRunnerExpressionScope | Promise<DemoRunnerExpressionScope>;
   waitUntil(
     predicate: (scope: DemoRunnerExpressionScope) => boolean | Promise<boolean>,
+    signal?: AbortSignal,
   ): Promise<DemoRunnerExpressionScope>;
   setExternalContext(values: Record<string, Json>): void | Promise<void>;
 }
@@ -137,8 +138,15 @@ async function evaluate(expression: string, scope: DemoRunnerExpressionScope): P
 export function createDemoRunnerEffectHandlersV1(
   callbacks: DemoRunnerEffectCallbacksV1,
 ): EffectHandlerMap {
+  let activeRun: AbortController | undefined;
+  const cancelActiveRun = () => {
+    activeRun?.abort();
+    activeRun = undefined;
+  };
+
   return {
     async resetRunner() {
+      cancelActiveRun();
       return {
         outcome: "reset",
         ops: [
@@ -153,6 +161,9 @@ export function createDemoRunnerEffectHandlersV1(
       };
     },
     async runSequenceEntry(ctx) {
+      cancelActiveRun();
+      const run = new AbortController();
+      activeRun = run;
       const scenario = scenarioFrom(ctx.get("runner.scenario"));
       let entryIndex = Number(ctx.get("runner.currentEntryIndex") ?? 0);
       let entry = scenario?.sequence[entryIndex];
@@ -168,28 +179,41 @@ export function createDemoRunnerEffectHandlersV1(
         execution.resetBlueprintStateAtStartApplied = true;
       }
 
-      do {
-        setJournalStatus(execution, scenario, entry, entryIndex + 1, "running");
+      try {
+        do {
+          setJournalStatus(execution, scenario, entry, entryIndex + 1, "running");
 
-        let observations: Record<string, Json> | undefined;
-        if (entry.kind === "act") {
-          await callbacks.runTransition(structuredClone(entry.event));
-        } else if (entry.kind === "wait") {
-          const waitExpression = entry.when;
-          await callbacks.waitUntil(async (scope) => await evaluate(waitExpression, scope) === true);
-        } else {
-          const scope = await callbacks.getExpressionScope();
-          observations = {};
-          for (const [name, expression] of Object.entries(entry.select)) {
-            observations[name] = await evaluate(expression, scope);
+          let observations: Record<string, Json> | undefined;
+          if (entry.kind === "act") {
+            await callbacks.runTransition(structuredClone(entry.event));
+          } else if (entry.kind === "wait") {
+            const waitExpression = entry.when;
+            await callbacks.waitUntil(async (scope) => await evaluate(waitExpression, scope) === true, run.signal);
+          } else {
+            const scope = await callbacks.getExpressionScope();
+            observations = {};
+            for (const [name, expression] of Object.entries(entry.select)) {
+              observations[name] = await evaluate(expression, scope);
+            }
           }
-        }
 
-        execution.completedEntryIds = [...new Set([...execution.completedEntryIds, entry.id])];
-        setJournalStatus(execution, scenario, entry, entryIndex + 1, "completed", observations);
-        entryIndex += 1;
-        entry = scenario.sequence[entryIndex];
-      } while (entry && entry.kind !== "act");
+          run.signal.throwIfAborted();
+          execution.completedEntryIds = [...new Set([...execution.completedEntryIds, entry.id])];
+          setJournalStatus(execution, scenario, entry, entryIndex + 1, "completed", observations);
+          entryIndex += 1;
+          entry = scenario.sequence[entryIndex];
+        } while (entry && entry.kind !== "act");
+      } catch (error) {
+        if (run.signal.aborted) return { outcome: "cancelled" };
+        setJournalStatus(execution, scenario, entry, entryIndex + 1, "failed");
+        return {
+          outcome: "failed",
+          detail: { message: error instanceof Error ? error.message : String(error) },
+          ops: [setOp("runner.execution", execution as unknown as Json)],
+        };
+      } finally {
+        if (activeRun === run) activeRun = undefined;
+      }
 
       return {
         outcome: "completed",
@@ -200,7 +224,31 @@ export function createDemoRunnerEffectHandlersV1(
       };
     },
 
+    async selectScenario(ctx) {
+      cancelActiveRun();
+      const id = String(ctx.payload.value ?? "");
+      const scenarios = Array.isArray(ctx.get("runner.scenarios"))
+        ? ctx.get("runner.scenarios") as Json[]
+        : [];
+      const scenario = scenarios.find((candidate) => scenarioFrom(candidate)?.id === id) ?? null;
+      return {
+        outcome: scenario ? "selected" : "ignored",
+        ops: scenario ? [
+          setOp("runner.selectedScenarioId", id),
+          setOp("runner.scenario", structuredClone(scenario)),
+          setOp("runner.currentEntryIndex", 0),
+          setOp("runner.execution", {
+            resetBlueprintStateAtStartApplied: false,
+            completedEntryIds: [],
+            journal: [],
+          }),
+          setOp("runner.control.selectedJournalId", ""),
+        ] : [],
+      };
+    },
+
     async applyNamedContext(ctx) {
+      cancelActiveRun();
       const id = String(ctx.payload.value ?? "");
       const namedContexts = ctx.get("runner.namedPresetContexts");
       const namedContext = Array.isArray(namedContexts)
@@ -221,6 +269,7 @@ export function createDemoRunnerEffectHandlersV1(
     },
 
     async saveExternalContext(ctx) {
+      cancelActiveRun();
       const values = record(ctx.payload.values as Json);
       await callbacks.setExternalContext(structuredClone(values));
       return {

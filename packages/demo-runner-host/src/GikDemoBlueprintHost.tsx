@@ -56,6 +56,7 @@ export interface DemoTargetHostProps {
 export interface GikDemoBlueprintHostProps extends Omit<DemoTargetHostProps, "primaryBridge" | "onTransition"> {
   HostComponent: React.ComponentType<DemoTargetHostProps>;
   scenariosJson?: DemoRunnerDocument;
+  resolveNative?: (materializedBlueprint: MaterializedBlueprint) => BundleNative;
 }
 
 interface TargetSource extends GenUISource {
@@ -93,13 +94,30 @@ export function GikDemoBlueprintHost({
   externalContext,
   context,
   scenariosJson,
+  resolveNative,
 }: GikDemoBlueprintHostProps): React.ReactElement {
   const enabled = React.useMemo(demoEnabled, []);
   if (!enabled || !scenariosJson) {
-    return <HostComponent blueprint={blueprint} resolveLeavesProvider={resolveLeavesProvider} native={native} contexts={contexts} fileServices={fileServices} primaryInstanceId={primaryInstanceId} className={className} style={style} externalContext={externalContext} context={context} />;
+    return <ResolvedTargetHost HostComponent={HostComponent} blueprint={blueprint} resolveLeavesProvider={resolveLeavesProvider} native={native} resolveNative={resolveNative} contexts={contexts} fileServices={fileServices} primaryInstanceId={primaryInstanceId} className={className} style={style} externalContext={externalContext} context={context} />;
   }
 
-  return <ActiveDemoHost HostComponent={HostComponent} blueprint={blueprint} resolveLeavesProvider={resolveLeavesProvider} native={native} contexts={contexts} fileServices={fileServices} primaryInstanceId={primaryInstanceId} className={className} style={style} externalContext={externalContext} context={context} scenariosJson={scenariosJson} />;
+  return <ActiveDemoHost HostComponent={HostComponent} blueprint={blueprint} resolveLeavesProvider={resolveLeavesProvider} native={native} resolveNative={resolveNative} contexts={contexts} fileServices={fileServices} primaryInstanceId={primaryInstanceId} className={className} style={style} externalContext={externalContext} context={context} scenariosJson={scenariosJson} />;
+}
+
+function ResolvedTargetHost({
+  HostComponent,
+  resolveNative,
+  ...props
+}: GikDemoBlueprintHostProps): React.ReactElement {
+  const materialized = React.useMemo(
+    () => materializeBlueprint({ blueprint: props.blueprint, externalContext: props.externalContext }),
+    [props.blueprint, props.externalContext],
+  );
+  const resolvedNative = React.useMemo(
+    () => resolveNative?.(materialized) ?? props.native,
+    [materialized, props.native, resolveNative],
+  );
+  return <HostComponent {...props} native={resolvedNative} />;
 }
 
 function ActiveDemoHost({
@@ -115,6 +133,7 @@ function ActiveDemoHost({
   externalContext,
   context,
   scenariosJson,
+  resolveNative,
 }: GikDemoBlueprintHostProps & { scenariosJson: DemoRunnerDocument }): React.ReactElement {
   const [externalContextState, setExternalContextState] = React.useState<ExternalContext>(() => structuredClone(externalContext ?? {}));
   const [targetEpoch, setTargetEpoch] = React.useState(0);
@@ -124,6 +143,10 @@ function ActiveDemoHost({
   const materializedBlueprint = React.useMemo(
     () => materializeBlueprint({ blueprint, externalContext: externalContextState }),
     [blueprint, externalContextState],
+  );
+  const resolvedNative = React.useMemo(
+    () => resolveNative?.(materializedBlueprint) ?? native,
+    [materializedBlueprint, native, resolveNative],
   );
   const ledgerStore = React.useMemo(() => {
     const store = SharedContextStore.create(["demoLedger"]);
@@ -171,6 +194,7 @@ function ActiveDemoHost({
 
   const waitUntil = React.useCallback(async (
     predicate: (scope: DemoRunnerExpressionScope) => boolean | Promise<boolean>,
+    signal?: AbortSignal,
   ): Promise<DemoRunnerExpressionScope> => {
     const source = targetRef.current;
     if (!source) throw new Error("Target Blueprint is not connected");
@@ -178,6 +202,10 @@ function ActiveDemoHost({
     if (await predicate(current)) return current;
     return await new Promise<DemoRunnerExpressionScope>((resolve, reject) => {
       let evaluating = false;
+      const abort = () => {
+        unsubscribe();
+        reject(signal?.reason instanceof Error ? signal.reason : new DOMException("Runner wait cancelled", "AbortError"));
+      };
       const unsubscribe = source.subscribe(() => {
         if (evaluating) return;
         evaluating = true;
@@ -186,12 +214,16 @@ function ActiveDemoHost({
           evaluating = false;
           if (!satisfied) return;
           unsubscribe();
+          signal?.removeEventListener("abort", abort);
           resolve(scope);
         }, (error: unknown) => {
           unsubscribe();
+          signal?.removeEventListener("abort", abort);
           reject(error instanceof Error ? error : new Error(String(error)));
         });
       });
+      if (signal?.aborted) abort();
+      else signal?.addEventListener("abort", abort, { once: true });
     });
   }, [getExpressionScope]);
 
@@ -238,7 +270,7 @@ function ActiveDemoHost({
 
   return (
     <GikToolingShell runnerVisible inspectorVisible>
-      <HostComponent key={resolvedPrimaryInstanceId} blueprint={blueprint} resolveLeavesProvider={resolveLeavesProvider} native={native} contexts={mergedContexts} fileServices={fileServices} primaryBridge={primaryBridge} primaryInstanceId={resolvedPrimaryInstanceId} className={className} style={style} externalContext={externalContextState} context={context} onTransition={onTransition} />
+      <HostComponent key={resolvedPrimaryInstanceId} blueprint={blueprint} resolveLeavesProvider={resolveLeavesProvider} native={resolvedNative} contexts={mergedContexts} fileServices={fileServices} primaryBridge={primaryBridge} primaryInstanceId={resolvedPrimaryInstanceId} className={className} style={style} externalContext={externalContextState} context={context} onTransition={onTransition} />
       <BundleHost bundle={toolingBundle} resolveProvider={resolveLeavesProvider} contexts={mergedContexts} fileServices={fileServices} />
     </GikToolingShell>
   );

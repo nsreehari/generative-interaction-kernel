@@ -62,7 +62,7 @@
         }
       },
       "externals": {
-        "effectHandlers": ["resetRunner", "runSequenceEntry", "applyNamedContext", "saveExternalContext"],
+        "effectHandlers": ["resetRunner", "runSequenceEntry", "selectScenario", "applyNamedContext", "saveExternalContext"],
         "projectionViews": {
           "demo": {
             "from": "self",
@@ -121,9 +121,7 @@
                       "read": { "value": "runner.selectedScenarioId", "options": "runner.scenarios" },
                       "on": {
                         "select": [
-                          { "do": "assign", "target": "runner.selectedScenarioId", "args": { "from": "$event.value" } },
-                          { "do": "derive", "target": "runner.scenario", "args": { "expr": "runner.scenarios[id = $event.value][0]" } },
-                          { "do": "invoke", "args": { "tool": "resetRunner" } }
+                          { "do": "invoke", "args": { "tool": "selectScenario" } }
                         ]
                       }
                     }

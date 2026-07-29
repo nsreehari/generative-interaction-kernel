@@ -14,6 +14,8 @@ import {
   type EffectHandlerMap,
   type ProjectionView,
 } from "@gik/react";
+import type { MaterializedBlueprint } from "@gik/blueprint";
+import { openBlueprint } from "@gik/controlface/blueprint";
 import registry from "../blueprints/registry.json";
 import { openSampleBlueprint } from "./blueprints";
 import { browserServiceRegistryOptions, declarativeServiceOrchestrator } from "./service-runtime";
@@ -66,6 +68,20 @@ const projectionViews = byBundleId({
 
 export function resolveBlueprintNative(id: string): BundleNative {
   const runtime = openSampleBlueprint(id);
+  return resolveBlueprintNativeFromRuntime(id, runtime);
+}
+
+export function resolveBlueprintNativeFromMaterialized(
+  id: string,
+  materializedBlueprint: MaterializedBlueprint,
+): BundleNative {
+  return resolveBlueprintNativeFromRuntime(
+    id,
+    openBlueprint(materializedBlueprint.payload.terminalBlueprint),
+  );
+}
+
+function resolveBlueprintNativeFromRuntime(id: string, runtime: ReturnType<typeof openSampleBlueprint>): BundleNative {
   const nativeId = REGISTRY.nativeFrom?.[id] ?? id;
   return {
     effectHandlers: effectHandlerModules[nativeId]?.default,

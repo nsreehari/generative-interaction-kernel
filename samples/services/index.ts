@@ -4,6 +4,10 @@ import { copilotAgentKind } from "./copilot-agent";
 import { createDeterministicAgentKind, type DeterministicServiceHandler } from "./deterministic-agent";
 import { foundryAgentKind } from "./foundry-agent";
 import {
+  MOCK_MARKET_DATA_PROVIDER,
+  mockMarketDataHandler,
+} from "./mock-market-data";
+import {
   DETERMINISTIC_PORTFOLIO_PROVIDER,
   portfolioIntelligenceHandler,
 } from "./portfolio-intelligence";
@@ -39,6 +43,7 @@ export function createSampleServiceKindRegistry(
     const factory = kind === "deterministic-agent"
       ? createDeterministicAgentKind({
           [DETERMINISTIC_PORTFOLIO_PROVIDER]: portfolioIntelligenceHandler,
+          [MOCK_MARKET_DATA_PROVIDER]: mockMarketDataHandler,
           ...options.deterministicHandlers,
         })
       : factories[kind];
@@ -49,5 +54,6 @@ export function createSampleServiceKindRegistry(
 }
 
 export * from "./deterministic-agent";
+export * from "./mock-market-data";
 export * from "./portfolio-intelligence";
 export * from "./worker-service-kind";

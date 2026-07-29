@@ -5,8 +5,10 @@ import { resolveBlueprintExecution } from "./execution";
 import { applyBlueprintPatch } from "./structure-patch";
 import type {
   BlueprintArtifact,
+  BlueprintImplementationProgram,
   BlueprintPatch,
   BlueprintRepresentation,
+  CellDefinition,
   RepresentationLoweringRecipeDefinition,
   VocabularyLoweringRecipeDefinition,
 } from "./types";
@@ -140,5 +142,88 @@ function applyRepresentationRecipe(
   }
   if (!presentation) throw new Error(`Blueprint representation '${selected.id}' produced no presentation`);
   artifact.payload.projections = { ...artifact.payload.projections, presentation };
+  applyImplementationProgram(artifact, recipe, externalContext);
   return artifact;
+}
+
+function applyImplementationProgram(
+  artifact: BlueprintArtifact,
+  recipe: RepresentationLoweringRecipeDefinition,
+  externalContext: Readonly<Record<string, Json>>,
+): void {
+  if (!recipe.implementationPrograms?.length) return;
+  const programs = new Map(recipe.implementationPrograms.map((program) => [program.id, program]));
+  const selected = recipe.implementationPrograms.find((program) => program.when
+    ? evalSyncJsonata(program.when, { externalContext } as Json) === true
+    : false) ?? (recipe.implementationFallback ? programs.get(recipe.implementationFallback) : undefined);
+  if (!selected) {
+    throw new Error(`Blueprint lowering recipe '${recipe.id}' has no matching implementation program`);
+  }
+
+  applyCellImplementationOverrides(artifact, selected);
+  applyServiceImplementationOverrides(artifact, selected);
+}
+
+function applyCellImplementationOverrides(
+  artifact: BlueprintArtifact,
+  program: BlueprintImplementationProgram,
+): void {
+  for (const [cellId, override] of Object.entries(program.cells ?? {})) {
+    const cell = artifact.payload.cells?.[cellId];
+    if (!cell) throw new Error(`Blueprint implementation program '${program.id}' references unknown Cell '${cellId}'`);
+    if (override.sources) assertStableSourceContracts(program.id, cell, override.sources);
+    if (override.sources) cell.sources = structuredClone(override.sources);
+    if (override.compute) cell.compute = structuredClone(override.compute);
+    if (override.behavior) cell.behavior = structuredClone(override.behavior);
+  }
+}
+
+function assertStableSourceContracts(
+  programId: string,
+  cell: CellDefinition,
+  sources: NonNullable<CellDefinition["sources"]>,
+): void {
+  const authored = new Map((cell.sources ?? []).map((source) => [source.id, source.contract]));
+  const selected = new Map(sources.map((source) => [source.id, source.contract]));
+  if (authored.size !== selected.size
+    || [...authored].some(([id, contract]) => selected.get(id) !== contract)) {
+    throw new Error(`Blueprint implementation program '${programId}' changes source contracts for Cell '${cell.id}'`);
+  }
+}
+
+function applyServiceImplementationOverrides(
+  artifact: BlueprintArtifact,
+  program: BlueprintImplementationProgram,
+): void {
+  for (const [serviceId, declaration] of Object.entries(program.services ?? {})) {
+    const authored = artifact.payload.services?.[serviceId];
+    if (!authored) throw new Error(`Blueprint implementation program '${program.id}' references unknown service '${serviceId}'`);
+    assertStableServiceContracts(program.id, serviceId, authored, declaration);
+    artifact.payload.services = {
+      ...artifact.payload.services,
+      [serviceId]: structuredClone(declaration),
+    };
+  }
+}
+
+function assertStableServiceContracts(
+  programId: string,
+  serviceId: string,
+  authored: { operations?: unknown },
+  selected: { operations?: unknown },
+): void {
+  if (!isOperationMap(authored.operations) || !isOperationMap(selected.operations)) {
+    throw new Error(`Blueprint implementation program '${programId}' requires service declarations for '${serviceId}'`);
+  }
+  const authoredContracts = new Map(Object.entries(authored.operations).map(([id, operation]) => [id, operation.contract]));
+  const selectedContracts = new Map(Object.entries(selected.operations).map(([id, operation]) => [id, operation.contract]));
+  if (authoredContracts.size !== selectedContracts.size
+    || [...authoredContracts].some(([id, contract]) => selectedContracts.get(id) !== contract)) {
+    throw new Error(`Blueprint implementation program '${programId}' changes operation contracts for service '${serviceId}'`);
+  }
+}
+
+function isOperationMap(value: unknown): value is Record<string, { contract: string }> {
+  return !!value && typeof value === "object" && !Array.isArray(value)
+    && Object.values(value).every((operation) => !!operation && typeof operation === "object" && "contract" in operation);
 }

@@ -5,8 +5,8 @@ package:
   version: "0.1.2"
   purpose: >-
     Define and validate Blueprint JSON, resolve its references and resources, analyze its
-    Cells, enforce structural-change policy, prepare its Kernel program through caller-supplied
-    lowering, materialize portable execution values, and run canonical state transitions.
+    Cells, enforce structural-change policy, lower tier chains through the package-owned fixed
+    meta-graph, materialize portable execution values, and run canonical state transitions.
   core_promise: >-
     An authored Blueprint remains distinct from its derived terminal Blueprint and Kernel program.
     The package deterministically materializes authored Blueprint plus immutable external context,
@@ -22,6 +22,8 @@ terminology:
   lowering_recipe: A declaration connecting one tier to another.
   lowering_cell: A declaration for an operation that processes artifacts during conversion.
   external_context: Immutable JSON input readable by materialization and runtime expressions through externalContext.*.
+  cell_semantic_contract: The stable Cell identity, responsibility, input and output contracts, and logical data-flow role preserved across tiers.
+  cell_implementation_program: The contract-compatible inner source, service or provider binding, computation, and execution details selected during materialization.
   materialized_blueprint: Portable derived execution value containing terminal Blueprint, immutable context, prepared vocabulary, program, and initial state.
   relationship: A typed connection among Cells. Blueprint validates participants but not kind-specific behavior.
   cell_impact: Static downstream analysis over one compiled Cell topology snapshot.
@@ -34,6 +36,9 @@ terminology:
     - Public Blueprint contracts use tiers and lowering recipes.
     - Lowering Cells use fromTier and toTier.
     - Cells are declared directly in a Blueprint; there is no separate Organism document.
+    - Tiers and recipes are static authored materialization data.
+    - Immutable external context may select a Cell implementation program but never changes its semantic contract.
+    - Changing a context-selected implementation program requires a new materialization, not a runtime state write.
 
 architecture:
   owns:
@@ -48,7 +53,8 @@ architecture:
     - Recursive child Blueprint assembly.
     - Calling a supplied lowering function and validating its resulting Kernel program.
     - Preparing the executable vocabulary, program, and initial state for a declarative Blueprint.
-    - Deterministically materializing a recipe-free authored Blueprint and immutable external context into a portable execution value.
+    - Deterministically materializing authored Blueprint tier chains and immutable external context into a portable execution value.
+    - Selecting contract-compatible Cell implementation programs through static recipe vocabulary and immutable external context.
     - Running deterministic Blueprint transitions from explicit state and ordered events.
     - Providing a Blueprint-owned adapter compatible with provider-neutral durable transition hosts.
   delegates_to_kernel:
@@ -61,7 +67,7 @@ architecture:
     - Persisting runtime state, effects, cursors, or revisions.
     - Executing host effects returned by a transition when no host orchestrator is supplied.
     - Rendering, transports, Faces, or host service bindings.
-    - Recipe execution or Lowering Cell scheduling.
+    - Asynchronous, agent-driven, human-gated, or reconfigurable Lowering Cell scheduling.
     - Relationship-specific execution semantics.
     - Runtime application of executable ProgramPatch operations.
     - Host identity, credentials, or authorization mechanisms.
@@ -147,6 +153,29 @@ artifact_contracts:
     purpose: >-
       Express one deterministic tier transition with existing Cell, relationship, and projection
       vocabulary rather than selecting a tier-pair-specific compiler.
+    guarantees:
+      - May select a contract-compatible Cell implementation program from immutable external context.
+      - May vary source mode, service or provider binding, computation, and internal execution details.
+      - Must preserve Cell identity, semantic responsibility, input and output contracts, and logical data-flow role.
+      - Must not add, remove, merge, split, replace, or route around a Cell to express an implementation variant.
+  - name: RepresentationLoweringRecipeDefinition
+    signature: >-
+      interface RepresentationLoweringRecipeDefinition extends LoweringRecipeDefinition {
+      representations: BlueprintRepresentation[]; fallback: string;
+      implementationPrograms?: BlueprintImplementationProgram[];
+      implementationFallback?: string }
+    purpose: >-
+      Select presentation and contract-compatible Cell implementation programs as independent,
+      deterministic materialization axes.
+  - name: BlueprintImplementationProgram
+    signature: >-
+      interface BlueprintImplementationProgram { id: string; when?: string;
+      cells?: Record<string, { sources?; compute?; behavior? }>;
+      services?: Record<string, ServiceRequirement | ServiceDeclaration> }
+    guarantees:
+      - Cell overrides are limited to inner-program facets.
+      - Source ids and contracts remain identical to the authored Cell.
+      - Replacement service declarations preserve the authored logical operation names and contracts.
   - name: CellDefinition
     purpose: Describe one cohesive participant without making it intrinsically a graph node, workflow step, or visual component.
     facets:
@@ -161,6 +190,7 @@ artifact_contracts:
     guarantees:
       - A Cell may be viewless, state-free, service-only, computational, or recursively composed.
       - Cell map keys equal Cell ids.
+      - A Cell's semantic contract is stable across tiers even when lowering selects a different contract-compatible implementation program.
   - name: RelationshipDefinition
     signature: >-
       interface RelationshipDefinition { kind: string; participants: readonly string[];
@@ -298,6 +328,7 @@ transition_api:
       - Clones the immutable external context snapshot.
       - Assembles the authored Blueprint.
       - Synchronously folds any non-empty connected recipe chain through the package-owned fixed lowering meta-graph.
+      - Resolves context-selected Cell implementation programs while preserving Cell semantic and data-flow contracts.
       - Prepares terminal vocabulary, program, and initial state from the emitted recipe-free Blueprint.
       - Reserves externalContext as a read-only runtime namespace.
   - name: runMaterializedTransition
