@@ -31,6 +31,21 @@ export interface VocabularyLoweringRecipeDefinition extends LoweringRecipeDefini
   patch: BlueprintPatch;
 }
 
+export interface BlueprintRepresentation {
+  id: string;
+  when?: string;
+  extends?: string;
+  views?: Record<string, CellView>;
+  presentation?: PresentationProjection;
+  presentationAppend?: PresentationProjection["placements"];
+}
+
+/** A deterministic tier transition that preserves Cells and lowers only their representation. */
+export interface RepresentationLoweringRecipeDefinition extends LoweringRecipeDefinition {
+  representations: BlueprintRepresentation[];
+  fallback: string;
+}
+
 export type BlueprintResource = { inline: Json } | { $ref: string };
 
 export interface BlueprintRuntimeDefinition {

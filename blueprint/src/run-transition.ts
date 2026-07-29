@@ -42,6 +42,7 @@ export interface MaterializeBlueprintInput {
 
 export interface PrepareBlueprintProgramOptions {
   context?: Record<string, Json>;
+  externalContext?: ExternalContext;
   resolveBlueprint?: BlueprintReferenceResolver;
 }
 
@@ -122,7 +123,7 @@ export function prepareBlueprintProgram(
 ): PreparedBlueprintProgram {
   const assembled = assembleBlueprint(source, options.resolveBlueprint);
   const blueprint = assembled.payload.recipes.length > 0
-    ? lowerWithFixedMetaGraph(assembled)
+    ? lowerWithFixedMetaGraph(assembled, options.externalContext)
     : assembled;
   if (!blueprint.payload.cells || !blueprint.payload.projections?.presentation) {
     throw new Error(`Blueprint '${blueprint.payload.id}' has no executable presentation projection`);
@@ -169,7 +170,7 @@ export function materializeBlueprint({
   if (Object.prototype.hasOwnProperty.call(blueprint.payload.runtime.state ?? {}, "externalContext")) {
     throw new Error(`Blueprint '${blueprint.payload.id}' reserves state namespace 'externalContext' for immutable external context`);
   }
-  const prepared = prepareBlueprintProgram(blueprint, { resolveBlueprint });
+  const prepared = prepareBlueprintProgram(blueprint, { externalContext, resolveBlueprint });
   return {
     gik: "0.1",
     type: "materialized-blueprint",
