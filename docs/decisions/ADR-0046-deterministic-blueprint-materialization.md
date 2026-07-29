@@ -81,5 +81,24 @@ derived execution data; the authored Blueprint remains the patchable authority.
 - Durable providers remain unaware of Blueprint semantics.
 - External context changes require a new materialization; they are not runtime state writes.
 - Fixed and reconfigurable runtimes avoid repeated preparation between structure revisions.
-- Recipe executors and compiler versions must be deterministic inputs to materialization when
-  recipe scheduling is connected.
+- The package-owned lowering meta-graph and recipe vocabulary implementation are versioned,
+  deterministic parts of materialization.
+
+## Amendment (2026-07-30): context-selected Cell implementation programs
+
+The deterministic function $M(A, C) = T$ may specialize the inner program of a Cell from immutable
+external context. Authored tiers and recipes define the finite selection rules and
+contract-compatible candidates; context supplies the materialization-time facts used by those
+rules. The terminal Blueprint contains the selected source mode, service or provider binding,
+computation, or other internal program details.
+
+Such specialization preserves the Cell's identity, semantic responsibility, input and output
+contracts, and logical data-flow role. It is an authored lowering transformation that preserves the
+stable-Cell invariant, not a runtime reconfiguration. A different context value produces a new
+terminal Blueprint through a new materialization; the selected program does not switch in response
+to mutable runtime state.
+
+Whether authorization, readiness, busy, dead, or wiped Cell conditions are represented as external
+control context, declarative gates, or another control-plane vocabulary is not decided here. In
+particular, this amendment does not settle the `http-proxy-access-gate` model or authorize control
+values to be carried through application data-flow state.

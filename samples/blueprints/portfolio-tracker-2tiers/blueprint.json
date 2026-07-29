@@ -93,7 +93,39 @@
             }
           }
         ],
-        "fallback": "desktop-detailed"
+        "fallback": "desktop-detailed",
+        "implementationPrograms": [
+          {
+            "id": "live-market",
+            "when": "externalContext.marketMode = 'live'"
+          },
+          {
+            "id": "mock-market",
+            "when": "externalContext.marketMode = 'mock'",
+            "services": {
+              "portfolio-market-data": {
+                "kind": "deterministic-agent",
+                "version": "1",
+                "operations": {
+                  "checkHttpProxyAccess": {
+                    "operation": "check-access",
+                    "contract": "http-proxy-access-check/v1",
+                    "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'portfolio.httpProxyAccessStatus','value':'ready'},{'op':'set','path':'portfolio.httpProxyAccessError','value':''}]}" } }
+                  },
+                  "refreshPrices": {
+                    "operation": "fetch-quotes",
+                    "contract": "portfolio-market-quotes/v1",
+                    "request": { "transform": { "kind": "jsonata", "expr": "{'holdings':state.portfolio.holdings}" } },
+                    "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'portfolio.quotes','value':response.quotes}],'detail':{'provider':response.provider,'quoteCount':$count(response.quotes.*)}}" } }
+                  }
+                },
+                "config": { "handler": "portfolio-market-data-mock" },
+                "scope": "per-blueprint"
+              }
+            }
+          }
+        ],
+        "implementationFallback": "live-market"
       }
     ],
     "services": {

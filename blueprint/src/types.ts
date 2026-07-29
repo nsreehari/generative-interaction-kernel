@@ -40,10 +40,25 @@ export interface BlueprintRepresentation {
   presentationAppend?: PresentationProjection["placements"];
 }
 
-/** A deterministic tier transition that preserves Cells and lowers only their representation. */
+export interface CellImplementationOverride {
+  sources?: readonly CellSource[];
+  compute?: readonly CellComputation[];
+  behavior?: CellBehavior;
+}
+
+export interface BlueprintImplementationProgram {
+  id: string;
+  when?: string;
+  cells?: Record<string, CellImplementationOverride>;
+  services?: Record<string, ServiceRequirement | ServiceDeclaration>;
+}
+
+/** A deterministic tier transition that preserves Cell contracts while lowering representation and inner programs. */
 export interface RepresentationLoweringRecipeDefinition extends LoweringRecipeDefinition {
   representations: BlueprintRepresentation[];
   fallback: string;
+  implementationPrograms?: BlueprintImplementationProgram[];
+  implementationFallback?: string;
 }
 
 export type BlueprintResource = { inline: Json } | { $ref: string };

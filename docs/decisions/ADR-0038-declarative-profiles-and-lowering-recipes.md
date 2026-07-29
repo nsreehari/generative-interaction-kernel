@@ -129,3 +129,21 @@ synchronous lowering during `materializeBlueprint`. Meta-graph reconfiguration, 
 pipelines, fallback-driven patch suggestions, and durable meta-graph revision management are
 deferred. They may later change the shared reconfigurable meta-graph under host authority, but do
 not change the recipe contract or make individual materialization calls select a compiler.
+
+## Amendment (2026-07-30): recipes may select contract-compatible Cell programs
+
+Tiers and recipes are static authored materialization data. A recipe may use immutable external
+context to select the implementation program by which a Cell fulfills its semantic responsibility.
+This includes selecting among source modes, service or provider bindings, computations, and other
+inner program variants declared by the recipe vocabulary.
+
+This selection does not replace the Cell or change its semantic contract. Across tiers, the Cell
+retains its identity, input and output ports, token contracts, and role in the data-flow graph. Each
+selectable inner program must satisfy those same contracts. For example, a market-price Cell may
+select a live service binding or a mock service binding while accepting the same holdings input and
+emitting the same quote output.
+
+The selected program is fixed in the emitted terminal Blueprint. Changing the relevant external
+context requires a new materialization; it is not a runtime state transition or an adaptive change.
+This amendment distinguishes a Cell's stable semantic behavior from the contract-compatible inner
+program selected to perform it.

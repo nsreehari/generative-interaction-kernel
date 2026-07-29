@@ -54,7 +54,7 @@ test("two-tier portfolio supplies controlled desktop detailed context defaults",
   try {
     renderToStaticMarkup(React.createElement(Host));
     assert.deepEqual(capturedProps.scenariosJson, portfolioTwoTierDemo);
-    assert.deepEqual(capturedProps.externalContext, { view: "desktop", attention: "detailed" });
+    assert.deepEqual(capturedProps.externalContext, { view: "desktop", attention: "detailed", marketMode: "live" });
   } finally {
     Object.defineProperty(globalThis, "window", { configurable: true, value: previousWindow });
   }

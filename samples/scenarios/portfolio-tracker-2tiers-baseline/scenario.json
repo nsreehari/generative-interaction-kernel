@@ -13,9 +13,15 @@
           "title": "Attention",
           "enum": ["glanceable", "detailed"],
           "enumNames": ["Glanceable", "Detailed"]
+        },
+        "marketMode": {
+          "type": "string",
+          "title": "Market mode",
+          "enum": ["mock", "live"],
+          "enumNames": ["Mock", "Live"]
         }
       },
-      "required": ["view", "attention"]
+      "required": ["view", "attention", "marketMode"]
     },
     "saveLabel": "Apply context",
     "discardLabel": "Discard"
@@ -23,15 +29,19 @@
   "namedPresetContexts": {
     "desktop-detailed": {
       "label": "Desktop, detailed",
-      "context": { "view": "desktop", "attention": "detailed" }
+      "context": { "view": "desktop", "attention": "detailed", "marketMode": "mock" }
     },
     "laptop-detailed": {
       "label": "Laptop, detailed",
-      "context": { "view": "laptop", "attention": "detailed" }
+      "context": { "view": "laptop", "attention": "detailed", "marketMode": "mock" }
     },
     "mobile-glanceable": {
       "label": "Mobile, glanceable",
-      "context": { "view": "mobile", "attention": "glanceable" }
+      "context": { "view": "mobile", "attention": "glanceable", "marketMode": "mock" }
+    },
+    "desktop-detailed-live": {
+      "label": "Desktop, detailed, live market",
+      "context": { "view": "desktop", "attention": "detailed", "marketMode": "live" }
     }
   },
   "scenarios": [
