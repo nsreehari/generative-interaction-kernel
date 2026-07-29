@@ -6,10 +6,11 @@ package:
   purpose: >-
     Define and validate Blueprint JSON, resolve its references and resources, analyze its
     Cells, enforce structural-change policy, prepare its Kernel program through caller-supplied
-    lowering, and run canonical state transitions.
+    lowering, materialize portable execution values, and run canonical state transitions.
   core_promise: >-
-    A Blueprint remains distinct from its derived Kernel program. The package owns the canonical
-    operation that prepares that program and runs one transition from explicit state and events.
+    An authored Blueprint remains distinct from its derived terminal Blueprint and Kernel program.
+    The package deterministically materializes authored Blueprint plus immutable external context,
+    and runs pure transitions from portable materialization, explicit state, and ordered events.
   public_entrypoint: packages/blueprint/src/index.ts
   implementation_entrypoint: blueprint/src/index.ts
 
@@ -20,6 +21,8 @@ terminology:
   tier: A named representation used while converting a Blueprint.
   lowering_recipe: A declaration connecting one tier to another.
   lowering_cell: A declaration for an operation that processes artifacts during conversion.
+  external_context: Immutable JSON input readable by materialization and runtime expressions through externalContext.*.
+  materialized_blueprint: Portable derived execution value containing terminal Blueprint, immutable context, prepared vocabulary, program, and initial state.
   relationship: A typed connection among Cells. Blueprint validates participants but not kind-specific behavior.
   cell_impact: Static downstream analysis over one compiled Cell topology snapshot.
   exploration: A validated possibility-space snapshot with gated choices and option-driven unlocks.
@@ -45,7 +48,9 @@ architecture:
     - Recursive child Blueprint assembly.
     - Calling a supplied lowering function and validating its resulting Kernel program.
     - Preparing the executable vocabulary, program, and initial state for a declarative Blueprint.
+    - Deterministically materializing a recipe-free authored Blueprint and immutable external context into a portable execution value.
     - Running deterministic Blueprint transitions from explicit state and ordered events.
+    - Providing a Blueprint-owned adapter compatible with provider-neutral durable transition hosts.
   delegates_to_kernel:
     - Executable vocabulary and program contracts.
     - Program validation after lowering.
@@ -75,6 +80,19 @@ artifact_contracts:
       - Portable JSON envelope.
       - Can be lowered to either a projected or headless Kernel program.
       - Supports inline or referenced child Blueprints through Cells.
+  - name: MaterializedBlueprint
+    signature: >-
+      interface MaterializedBlueprint { gik: "0.1"; type: "materialized-blueprint";
+      payload: { terminalBlueprint: BlueprintArtifact;
+      externalContext: Record<string, Json>;
+      vocabulary: Enveloped<ProjectedVocabularyManifest>;
+      program: Enveloped<ProjectedProgramDefinition>;
+      initialState: Record<string, Json> } }
+    guarantees:
+      - Portable JSON derived deterministically from authored Blueprint and external context.
+      - Trusted by runMaterializedTransition without source hashing, assembly, or recompilation.
+      - Is not an authored authority and receives no semantic Blueprint patches.
+      - May be retained in memory or persisted opaquely by a stateless host.
   - name: BlueprintDefinition
     signature: >-
       interface BlueprintDefinition { id: string; kind: string; version: string;
@@ -121,7 +139,14 @@ artifact_contracts:
     schema_requirement: >-
       Serialized recipes may carry additional declarative properties. Callers represent a
       stronger recipe dialect by extending LoweringRecipeDefinition through BlueprintArtifact's
-      generic recipe parameter; Blueprint core does not select or run executors.
+      generic recipe parameter.
+  - name: VocabularyLoweringRecipeDefinition
+    signature: >-
+      interface VocabularyLoweringRecipeDefinition extends LoweringRecipeDefinition {
+      patch: BlueprintPatch }
+    purpose: >-
+      Express one deterministic tier transition with existing Cell, relationship, and projection
+      vocabulary rather than selecting a tier-pair-specific compiler.
   - name: CellDefinition
     purpose: Describe one cohesive participant without making it intrinsically a graph node, workflow step, or visual component.
     facets:
@@ -265,18 +290,52 @@ cell_api:
     status: deprecated alias of composeCellProgram
 
 transition_api:
+  - name: materializeBlueprint
+    signature: >-
+      materializeBlueprint({ blueprint, externalContext?, resolveBlueprint? }):
+      MaterializedBlueprint
+    behavior:
+      - Clones the immutable external context snapshot.
+      - Assembles the authored Blueprint.
+      - Synchronously folds any non-empty connected recipe chain through the package-owned fixed lowering meta-graph.
+      - Prepares terminal vocabulary, program, and initial state from the emitted recipe-free Blueprint.
+      - Reserves externalContext as a read-only runtime namespace.
+  - name: runMaterializedTransition
+    signature: >-
+      runMaterializedTransition({ state, materializedBlueprint, events,
+      contexts?, createOrchestrator? }): Promise<BlueprintTransitionResult>
+    behavior:
+      - Trusts the portable materialization and performs no authored-source hash check.
+      - Makes externalContext.* readable while rejecting writes to it.
+      - Returns only mutable local state; immutable external context is not copied into state.
   - name: prepareBlueprintProgram
     purpose: Prepare one assembled declarative Blueprint as vocabulary, program, and initial state.
+    status: Compatibility preparation primitive; new hosts should materialize explicitly when reuse matters.
   - name: runTransition
     signature: >-
-      runTransition({ state, blueprint, events, contexts?, createOrchestrator? }):
-      Promise<{ state; effects?; blueprintPatches? }>
+      runTransition({ state, blueprint, externalContext?, events, contexts?, createOrchestrator? }):
+      Promise<{ state; effects?; blueprintPatchProposals? }>
     behavior:
+      - Materializes the authored Blueprint internally and delegates to runMaterializedTransition.
       - Treats supplied state as authoritative.
       - Dispatches ordered events through the Kernel program prepared from the Blueprint.
       - Returns resulting local state and journaled effects.
       - Executes no host effects unless the caller explicitly supplies createOrchestrator.
-      - Emits no Blueprint patches until Blueprint mutation semantics are defined.
+      - Semantic Blueprint patch proposals, when present, target the authored Blueprint.
+  - name: applyBlueprintPatches
+    signature: >-
+      applyBlueprintPatches({ blueprint, externalContext?, state, patch, origin,
+      resolveBlueprint? }): { blueprint; materializedBlueprint; state }
+    behavior:
+      - Admits and applies semantic operations against the authored Blueprint.
+      - Rematerializes the accepted authored candidate with the same immutable external context.
+      - Preserves mutable state as an independent cloned value.
+      - Rejects patches according to fixed, reconfigurable, or adaptive structure policy.
+  - name: createBlueprintDurableTransitionAdapter
+    purpose: >-
+      Return a structurally compatible DurableTransitionAdapter whose portable opaque spec carries
+      authored Blueprint, external context, and MaterializedBlueprint without adding a dependency
+      from @gik/blueprint to @gik/durable-runtime.
 
 exploration_api:
   contracts:
@@ -360,7 +419,23 @@ lowering_cell_api:
       - Requires unique valid input and output ports.
       - Requires validation policy for emit-blueprint Cells.
       - Uses fromTier and toTier for tier boundaries.
-  boundary: The package declares Lowering Cells but does not schedule a compiler meta-graph.
+  fixed_meta_graph:
+    function: fixedLoweringMetaGraphBlueprint
+    structure_mode: fixed
+    cells:
+      - resolve-stage
+      - apply-vocabulary-patch
+      - emit-blueprint
+    behavior:
+      - Is package-owned and is never supplied by an individual materialization call.
+      - Uses one graph for arbitrary connected, non-branching tier chains.
+      - Applies each recipe's semantic Blueprint patch in resolved stage order.
+      - Validates the emitted terminal Blueprint before executable preparation.
+  deferred:
+    - Reconfiguring the shared meta-graph.
+    - Suggested patches targeting the meta-graph.
+    - Agent, service, or human pipelines in the meta-graph.
+    - Durable meta-graph revision management.
 
 lowering_api:
   type:
@@ -380,7 +455,8 @@ lowering_api:
     - Delegates terminal executable-program validation to Kernel lowerToProgram.
     - Preserves projected versus headless program message typing.
   boundary:
-    - This package does not select strategies, synthesize strategies, or execute recipe semantics.
+    - The fixed materialization meta-graph executes only synchronous vocabulary-patch recipes.
+    - This phase does not select or synthesize strategies and performs no asynchronous effects.
     - Kernel validation rejects invalid lowering output before lowerBlueprint returns a program message.
 
 validation:
@@ -406,8 +482,8 @@ execution_boundary:
   kernel_input: ExecutableProgramDefinition accepted by Kernel.
   rules:
     - A BlueprintArtifact is not an ExecutableProgramDefinition.
-    - "@gik/blueprint does not export an open or execute API."
-    - A host supplies lowering, resource resolution, service bindings, initial state, and Kernel construction.
+    - "@gik/blueprint exports pure materialize and transition APIs, but no renderer or live host."
+    - A host supplies recipe resources, service bindings, durable persistence, and effect execution.
     - Kernel owns runtime state, revisions, event processing, effects, and checkpoints.
 
 structure_mode_contract:
@@ -465,13 +541,26 @@ public_exports:
     - composeCellProgram
     - composeCellDocument
   transition:
+    - ExternalContext
+    - MaterializedBlueprint
+    - MaterializeBlueprintInput
+    - MaterializedBlueprintTransitionInput
     - PreparedBlueprintProgram
     - PrepareBlueprintProgramOptions
     - BlueprintTransitionInput
     - BlueprintTransitionResult
     - BlueprintPatch
+    - AppliedBlueprintPatches
+    - ApplyBlueprintPatchesInput
+    - materializeBlueprint
+    - runMaterializedTransition
+    - applyBlueprintPatches
     - prepareBlueprintProgram
     - runTransition
+    - DurableBlueprintSpec
+    - DurableBlueprintSpecUpdate
+    - BlueprintDurableTransitionAdapter
+    - createBlueprintDurableTransitionAdapter
   exploration:
     - ExplorationDefinition
     - ExplorationNode

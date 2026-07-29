@@ -1,0 +1,85 @@
+# ADR-0046: Deterministic Blueprint materialization and portable execution values
+
+**Status:** Accepted — 2026-07-29
+
+## Context
+
+`runTransition` previously prepared an assembled Blueprint, vocabulary, and program on every call.
+That hid the authored-to-executable boundary, mixed initial-state seeding with ambient context, and
+gave in-memory React hosts and stateless durable workers no common value to reuse. Tiers and recipes
+also require an explicit invariant before their executor is connected: the same authored Blueprint
+and immutable context must produce the same terminal Blueprint.
+
+## Decision
+
+Blueprint materialization is the deterministic pure function $M(A, C) = T$, where $A$ is the
+authored Blueprint, $C$ is immutable external context, and $T$ is one portable
+`MaterializedBlueprint`. The value contains the assembled terminal Blueprint, immutable context
+snapshot, prepared vocabulary and program, and initial state. It is derived data, not a second
+authored authority, but may be retained in memory or persisted opaquely for stateless execution.
+
+`@gik/blueprint` exposes three execution paths:
+
+- `materializeBlueprint({ blueprint, externalContext })` creates the portable value once;
+- `runMaterializedTransition({ materializedBlueprint, state, events })` trusts that value and does
+  no source hashing, assembly, or recompilation; and
+- `runTransition({ blueprint, externalContext, state, events })` is the convenience path that
+  materializes internally and delegates to the trusted path.
+
+Runtime expressions read immutable context through `externalContext.*`. It is never merged into or
+returned as mutable state, and writes targeting that namespace fail.
+
+Semantic `BlueprintPatch` proposals always target the authored Blueprint. Applying an admitted
+patch creates a new authored Blueprint and a new materialization in one pure operation. Fixed
+Blueprints reject semantic patches; reconfigurable Blueprints rematerialize only after an
+authorized patch; adaptive Blueprints may propose policy-admitted authored patches. Executable
+`ProgramPatch` remains revision-local and distinct.
+
+`@gik/react` materializes once per controller and reuses the trusted path. `@gik/durable-runtime`
+remains generic: a Blueprint host stores authored Blueprint, external context, and portable
+materialization inside its opaque spec and commits spec updates atomically with state, cursor, and
+effects. A cold Azure Function can therefore read the value and execute without process memory.
+
+The first implementation packages the existing recipe-free terminal preparation. Connecting a
+non-empty recipe chain to Lowering Cell compiler Blueprints is a subsequent implementation phase;
+until then the existing “must be lowered before its program can run” rejection remains.
+
+## Amendment (2026-07-29): synchronous fixed-meta-graph lowering
+
+`materializeBlueprint` is always synchronous. It lowers recipe-bearing authored Blueprints through
+one fixed, package-owned compiler meta-graph Blueprint before preparing the terminal vocabulary and
+program. Individual calls provide only the authored Blueprint and immutable external context; they
+do not select or supply a compiler meta-graph.
+
+The fixed meta-graph interprets vocabulary-driven recipes across an arbitrary ordered tier chain.
+It performs no service invocation, agent synthesis, human approval, or self-modification during
+materialization. Reconfigurable meta-graph ownership, deterministic fallbacks, and suggested
+meta-graph patches are subsequent work. This amendment supersedes the temporary recipe rejection
+above and the assumption that recipe executors are selected independently per stage.
+
+## Alternatives considered
+
+### A. Hash authored Blueprint and context on every transition
+
+Rejected because fixed and unchanged reconfigurable runtimes already possess a trusted portable
+materialization. Rechecking source identity on every event adds cost without strengthening a
+provider transaction that stores the coherent spec revision.
+
+### B. Keep materialization process-local
+
+Rejected because stateless workers have no warm-memory guarantee and would recompile on every
+invocation. The value must survive JSON persistence and transport.
+
+### C. Persist only the terminal Blueprint as authority
+
+Rejected because semantic adaptation would lose its authored target. The terminal Blueprint is
+derived execution data; the authored Blueprint remains the patchable authority.
+
+## Consequences
+
+- Deleting a cached materialization changes performance, not the deterministic result.
+- Durable providers remain unaware of Blueprint semantics.
+- External context changes require a new materialization; they are not runtime state writes.
+- Fixed and reconfigurable runtimes avoid repeated preparation between structure revisions.
+- Recipe executors and compiler versions must be deterministic inputs to materialization when
+  recipe scheduling is connected.

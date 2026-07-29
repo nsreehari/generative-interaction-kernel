@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { prepareBlueprintProgram, runTransition, validateLoweringCellGraph, type BlueprintDefinition } from "@gik/blueprint";
+import type { Json } from "@gik/kernel";
 import { compilerBlueprint, loweringCellGraph, runDueDiligenceLoweringPipeline, runLoweringMetaGraph } from "./lowering-meta-graph";
 
 test("ADR-0045: transform Cells settle via runTransition once the bootstrap event lands, artifact withheld pre-approval", async () => {
@@ -15,10 +16,12 @@ test("ADR-0045: transform Cells settle via runTransition once the bootstrap even
 
   // transform Cells resolve without any approval — pure JSONata compute, same as any
   // application Blueprint's compute Cells.
-  const rows = bootstrapped.state.presentation?.rows as unknown[];
+  const presentation = bootstrapped.state.presentation as Record<string, Json>;
+  const compiled = bootstrapped.state.compiled as Record<string, Json>;
+  const rows = presentation.rows as unknown[];
   assert.equal(Array.isArray(rows), true);
   assert.equal(rows.length, 3);
-  assert.deepEqual({ ...(bootstrapped.state.presentation?.summary as object) }, {
+  assert.deepEqual({ ...(presentation.summary as object) }, {
     findingCount: 3,
     riskFlagCount: 1,
     hasRisk: true,
@@ -26,7 +29,7 @@ test("ADR-0045: transform Cells settle via runTransition once the bootstrap even
 
   // emit-blueprint withholds the terminal artifact until the approve gate (the Kernel's
   // existing `confirm` verb) resolves.
-  assert.equal(bootstrapped.state.compiled?.artifact, undefined);
+  assert.equal(compiled.artifact, undefined);
 });
 
 test("ADR-0045: runLoweringBlueprint drives a Lowering Cell meta-graph through approval as an ordinary Blueprint transition", async () => {

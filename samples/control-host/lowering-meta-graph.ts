@@ -15,7 +15,7 @@
 
 import { createBlueprint, defineLoweringCell, runLoweringBlueprint, validateLoweringCellGraph, type BlueprintArtifact, type BlueprintDefinition, type LoweringCellDefinition } from "@gik/blueprint";
 import { openBlueprint, type BlueprintRuntime } from "@gik/controlface";
-import type { ConfirmOutcome } from "@gik/kernel";
+import type { ConfirmOutcome, Json } from "@gik/kernel";
 
 export interface LoweringMetaGraphResult {
   artifactAfterApproval: unknown;
@@ -252,7 +252,8 @@ export async function runLoweringMetaGraph(outcome: ConfirmOutcome = "approved")
     approve: async () => outcome,
   });
 
-  return { artifactAfterApproval: result.state.compiled?.artifact };
+  const compiled = result.state.compiled as Record<string, Json> | undefined;
+  return { artifactAfterApproval: compiled?.artifact };
 }
 
 /**

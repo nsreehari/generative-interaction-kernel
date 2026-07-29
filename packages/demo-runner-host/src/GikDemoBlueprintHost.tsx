@@ -1,5 +1,5 @@
 import React from "react";
-import { prepareBlueprintProgram, type BlueprintArtifact } from "@gik/blueprint";
+import { prepareBlueprintProgram, type BlueprintArtifact, type ExternalContext } from "@gik/blueprint";
 import { unwrap, type Json, type Reaction } from "@gik/kernel";
 import {
   SharedContextStore,
@@ -203,6 +203,7 @@ export interface DemoTargetHostProps {
   primaryInstanceId?: string | number;
   className?: string;
   style?: React.CSSProperties;
+  externalContext?: ExternalContext;
   context?: Record<string, Json>;
 }
 
@@ -228,6 +229,7 @@ export function GikDemoBlueprintHost({
   fileServices,
   className,
   style,
+  externalContext,
   context,
   primaryInstanceId,
   resolveLeavesProvider,
@@ -258,6 +260,7 @@ export function GikDemoBlueprintHost({
         primaryInstanceId={primaryInstanceId}
         className={className}
         style={style}
+        externalContext={externalContext}
         context={context}
       />
     );
@@ -275,6 +278,7 @@ export function GikDemoBlueprintHost({
         primaryInstanceId={primaryInstanceId}
         className={className}
         style={style}
+        externalContext={externalContext}
         context={context}
         resolveLeavesProvider={resolveLeavesProvider}
       />
@@ -292,6 +296,7 @@ export function GikDemoBlueprintHost({
       primaryInstanceId={primaryInstanceId}
       className={className}
       style={style}
+      externalContext={externalContext}
       context={context}
       resolveLeavesProvider={resolveLeavesProvider}
       scenariosJson={scenariosJson}
@@ -314,6 +319,7 @@ function InspectorHost({
   primaryInstanceId,
   className,
   style,
+  externalContext,
   context,
   resolveLeavesProvider,
 }: GikDemoBlueprintHostProps): React.ReactElement {
@@ -338,6 +344,7 @@ function InspectorHost({
         primaryInstanceId={primaryInstanceId}
         className={className}
         style={style}
+        externalContext={externalContext}
         context={context}
       />
     </GikToolingShell>
@@ -354,6 +361,7 @@ function ActiveDemoHost({
   primaryInstanceId,
   className,
   style,
+  externalContext,
   context,
   resolveLeavesProvider,
   showControlHarness = false,
@@ -573,6 +581,7 @@ function ActiveDemoHost({
         primaryInstanceId={resolvedPrimaryInstanceId}
         className={className}
         style={style ? { ...compositionStyle, ...style } : compositionStyle}
+        externalContext={externalContext}
         context={resolvedContext}
       />
     </GikToolingShell>

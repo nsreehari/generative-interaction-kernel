@@ -109,3 +109,23 @@ reviewed, diffed, and stored independently of handwritten TypeScript.
 - Existing ADRs that described profile translation in terms of `binding` need refinement, not
   reversal.
 - The kernel grammar and wire protocol remain unchanged.
+
+## Amendment (2026-07-29): deterministic materialization context
+
+ADR-0046 fixes the execution invariant for these recipes: an authored Blueprint and immutable
+external context deterministically produce one terminal Blueprint. Context carries pinned profile,
+policy, capability, locale, and strategy decisions; mutable runtime state is not a recipe input.
+Recipe scheduling remains declarative lowering inside `@gik/blueprint`, not host-specific logic.
+
+## Amendment (2026-07-29): one vocabulary-driven compiler meta-graph
+
+All tier chains are lowered by one package-owned compiler meta-graph Blueprint. Recipes remain
+portable transformation data expressed in the shared vocabulary; they do not name or embed a
+compiler for each `from`/`to` pair. The same fixed meta-graph interprets an ordered chain of any
+length, carrying each emitted artifact into the next tier until it reaches the terminal tier.
+
+The first runtime implementation keeps that meta-graph fixed and executes only deterministic,
+synchronous lowering during `materializeBlueprint`. Meta-graph reconfiguration, agent or human
+pipelines, fallback-driven patch suggestions, and durable meta-graph revision management are
+deferred. They may later change the shared reconfigurable meta-graph under host authority, but do
+not change the recipe contract or make individual materialization calls select a compiler.

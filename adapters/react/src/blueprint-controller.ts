@@ -1,7 +1,10 @@
 import {
+  materializeBlueprint,
   prepareBlueprintProgram,
-  runTransition,
+  runMaterializedTransition,
   type BlueprintArtifact,
+  type ExternalContext,
+  type MaterializedBlueprint,
 } from "@gik/blueprint";
 import {
   CompositeStateModel,
@@ -19,21 +22,27 @@ import type { BundleContextBindings } from "./primitives/bundle-registry";
 import type { BundleNative } from "./primitives/bundle";
 
 export interface BlueprintControllerOptions {
+  externalContext?: ExternalContext;
+  materializedBlueprint?: MaterializedBlueprint;
+  /** @deprecated Use externalContext for immutable transition inputs. This remains initial-state seeding only. */
   context?: Record<string, Json>;
   contexts?: BundleContextBindings;
   native?: BundleNative;
 }
 
 export class BlueprintController implements GenUISource {
-  private blueprint: BlueprintArtifact;
+  private readonly materializedBlueprint: MaterializedBlueprint;
   private state: Record<string, Json>;
   private tree: ResolvedNode | null = null;
   private readonly listeners = new Set<() => void>();
   private operation: Promise<void> = Promise.resolve();
 
   constructor(blueprint: BlueprintArtifact, private readonly options: BlueprintControllerOptions = {}) {
+    this.materializedBlueprint = options.materializedBlueprint ?? materializeBlueprint({
+      blueprint,
+      externalContext: options.externalContext,
+    });
     const prepared = prepareBlueprintProgram(blueprint, { context: options.context });
-    this.blueprint = prepared.blueprint;
     this.state = prepared.initialState;
   }
 
@@ -80,9 +89,9 @@ export class BlueprintController implements GenUISource {
 
   private async transition(events: readonly GIKEvent[]): Promise<void> {
     const native = this.options.native;
-    const result = await runTransition({
+    const result = await runMaterializedTransition({
       state: this.state,
-      blueprint: this.blueprint,
+      materializedBlueprint: this.materializedBlueprint,
       events,
       contexts: this.options.contexts,
       ...(native ? {
@@ -102,14 +111,16 @@ export class BlueprintController implements GenUISource {
   }
 
   private async refresh(): Promise<ResolvedNode> {
-    const prepared = prepareBlueprintProgram(this.blueprint);
-    const local = new InMemoryStateModel(unwrap(prepared.vocabulary).namespaces ?? []);
+    const { vocabulary, program, externalContext } = this.materializedBlueprint.payload;
+    const local = new InMemoryStateModel(unwrap(vocabulary).namespaces ?? []);
     local.apply(Object.entries(this.state).map(([path, value]) => ({ op: "set", path, value })));
-    const contexts = this.options.contexts;
-    const runtimeState = contexts && Object.keys(contexts).length > 0
-      ? new CompositeStateModel(local, contexts)
-      : local;
-    const kernel = new Kernel(prepared.vocabulary, prepared.program, { state: runtimeState });
+    const externalContextStore = new InMemoryStateModel(["externalContext"]);
+    externalContextStore.apply([{ op: "set", path: "externalContext", value: structuredClone(externalContext) }]);
+    const runtimeState = new CompositeStateModel(local, {
+      ...this.options.contexts,
+      externalContext: externalContextStore,
+    });
+    const kernel = new Kernel(vocabulary, program, { state: runtimeState });
     this.tree = await kernel.resolve();
     for (const listener of this.listeners) listener();
     return this.tree;
