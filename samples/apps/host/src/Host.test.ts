@@ -16,10 +16,10 @@ vi.mock("@gik/demo-runner-host", () => ({
   },
 }));
 
-import { demoScenariosJson } from "../../../shared/demo-catalog";
+import portfolioTwoTierDemo from "../../../scenarios/portfolio-tracker-2tiers-baseline/scenario.json" with { type: "json" };
 import { Host } from "./Host";
 
-test("sample host supplies scenarios to the public demo host", () => {
+test("unmigrated samples do not receive legacy demo scenarios", () => {
   const previousWindow = globalThis.window;
   Object.defineProperty(globalThis, "window", {
     configurable: true,
@@ -33,7 +33,7 @@ test("sample host supplies scenarios to the public demo host", () => {
 
   try {
     renderToStaticMarkup(React.createElement(Host));
-    assert.equal(capturedProps.scenariosJson, demoScenariosJson);
+    assert.equal(capturedProps.scenariosJson, undefined);
   } finally {
     Object.defineProperty(globalThis, "window", { configurable: true, value: previousWindow });
   }
@@ -53,7 +53,8 @@ test("two-tier portfolio supplies controlled desktop detailed context defaults",
 
   try {
     renderToStaticMarkup(React.createElement(Host));
-    assert.deepEqual(capturedProps.externalContext, { surface: "desktop", attention: "detailed" });
+    assert.deepEqual(capturedProps.scenariosJson, portfolioTwoTierDemo);
+    assert.deepEqual(capturedProps.externalContext, { view: "desktop", attention: "detailed" });
   } finally {
     Object.defineProperty(globalThis, "window", { configurable: true, value: previousWindow });
   }

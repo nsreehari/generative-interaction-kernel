@@ -13,12 +13,12 @@ import {
 import { FLOOR_COMPONENTS } from "../../../bundles/floor/projection_views";
 import { resolveBlueprintNative } from "../../../shared/sample-bundles";
 import { resolveSampleBlueprintSource } from "../../../shared/blueprints";
-import { demoScenariosJson } from "../../../shared/demo-catalog";
+import portfolioTwoTierDemo from "../../../scenarios/portfolio-tracker-2tiers-baseline/scenario.json" with { type: "json" };
 
 const embeddedHostStyle: React.CSSProperties = { height: "100vh" };
 const { blueprints: blueprintIds, default: DEFAULT_BLUEPRINT } = blueprintRegistry;
 const defaultExternalContextByBlueprint = {
-  "portfolio-tracker-2tiers": { surface: "desktop", attention: "detailed" },
+  "portfolio-tracker-2tiers": { view: "desktop", attention: "detailed" },
 } as const;
 
 export function Host(): React.ReactElement {
@@ -49,6 +49,9 @@ function HostView({
     blueprint: resolveSampleBlueprintSource(id),
     native: resolveBlueprintNative(id),
   }), [id]);
+  const demoRunnerDocument = id === "portfolio-tracker-2tiers"
+    ? portfolioTwoTierDemo
+    : undefined;
 
   return (
     <>
@@ -58,7 +61,7 @@ function HostView({
         native={native}
         context={blueprint.payload.context}
         externalContext={defaultExternalContextByBlueprint[id as keyof typeof defaultExternalContextByBlueprint]}
-        scenariosJson={demoScenariosJson}
+        scenariosJson={demoRunnerDocument as never}
         resolveLeavesProvider={resolveLeavesProvider}
         style={embeddedHostStyle}
       />

@@ -1,6 +1,6 @@
 // The application host opens only the Blueprints declared in samples/blueprints/registry.json.
 // Ordinary Bundle artifacts are catalogued and previewed by the manage-bundles Blueprint. Tooling
-// bundles are created from their canonical @gik/demo-runner-host factories below.
+// The V1 demo runner is composed directly by GikDemoBlueprintHost rather than registered as a bundle.
 
 import {
   bundleFromJson,
@@ -11,10 +11,8 @@ import {
   type LoadBundleOptions,
   type ProjectionView,
 } from "@gik/react";
-import { createDemoRunnerBundle, createGikControlHarnessBundle } from "@gik/demo-runner-host";
 import { playgroundApp } from "../../../bundles/floor/projection_views/playground";
 import registry from "../../../blueprints/registry.json";
-import { demoCatalog, resolveDemoComposition } from "../../../shared/demo-catalog";
 import { hasSampleBlueprint, openSampleBlueprint } from "../../../shared/blueprints";
 import {
   browserServiceRegistryOptions,
@@ -84,7 +82,6 @@ export function resolveBundleProjectionViews(id: string): Record<string, Project
  *  rows). The returned registry is mutable — runtime code may register/unregister further bundles. */
 export function createHostRegistry(demoId?: string | null, targetBlueprintId?: string | null): BundleRegistry {
   const reg = createBundleRegistry();
-  const demoComposition = demoId ? resolveDemoComposition(demoId, targetBlueprintId) : undefined;
   for (const id of REGISTRY.blueprints) {
     if (!hasSampleBlueprint(id)) {
       throw new Error(`createHostRegistry: Blueprint '${id}' has no supported declarative or approved legacy definition`);
@@ -108,23 +105,6 @@ export function createHostRegistry(demoId?: string | null, targetBlueprintId?: s
       },
     });
   }
-  reg.registerBundle("demo-runner", {
-    kind: "bundle",
-    make: () => createDemoRunnerBundle(demoComposition ? {
-      runner: {
-        plan: demoComposition.scenarioPlan,
-        catalog: demoCatalog.entries,
-        entry: demoComposition.entry,
-        presentationPresets: demoComposition.demoContract.presentationPresets,
-      },
-    } : undefined),
-    listable: false,
-  });
-  reg.registerBundle("gik-control-harness", {
-    kind: "bundle",
-    make: () => createGikControlHarnessBundle(),
-    listable: false,
-  });
   // Platform apps: embeddable bundles the floor itself provides, not owned by any single json bundle.
   // They join the registry `listable: false` — mountable by `embed props.app`, hidden from the switcher.
   reg.registerBundle("playground", { kind: "bundle", make: playgroundApp, listable: false });

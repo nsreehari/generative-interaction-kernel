@@ -28,6 +28,7 @@ export interface BlueprintControllerOptions {
   context?: Record<string, Json>;
   contexts?: BundleContextBindings;
   native?: BundleNative;
+  onTransition?: (event: GIKEvent | null, result: Awaited<ReturnType<typeof runMaterializedTransition>>) => void;
 }
 
 export class BlueprintController implements GenUISource {
@@ -102,6 +103,7 @@ export class BlueprintController implements GenUISource {
       } : {}),
     });
     this.state = result.state;
+    this.options.onTransition?.(events[0] ? structuredClone(events[0]) : null, result);
   }
 
   private enqueue<T>(operation: () => Promise<T>): Promise<T> {

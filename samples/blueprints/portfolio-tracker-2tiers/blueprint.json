@@ -18,7 +18,7 @@
         "representations": [
           {
             "id": "mobile-glanceable",
-            "when": "externalContext.surface = 'mobile' and externalContext.attention = 'glanceable'",
+            "when": "externalContext.view = 'mobile' and externalContext.attention = 'glanceable'",
             "views": {
               "portfolio-workspace": { "capability": "ui:screen", "props": { "title": "Portfolio", "subtitle": "Mobile · Glanceable" } },
               "http-proxy-access-gate": { "capability": "http-proxy:access-gate", "bindings": { "status": { "from": "portfolio.httpProxyAccessStatus" }, "error": { "from": "portfolio.httpProxyAccessError" } } },
@@ -36,7 +36,7 @@
           },
           {
             "id": "mobile-detailed",
-            "when": "externalContext.surface = 'mobile' and externalContext.attention = 'detailed'",
+            "when": "externalContext.view = 'mobile' and externalContext.attention = 'detailed'",
             "extends": "mobile-glanceable",
             "views": {
               "portfolio-workspace": { "capability": "ui:screen", "props": { "title": "Portfolio", "subtitle": "Mobile · Detailed" } },
@@ -54,7 +54,7 @@
           },
           {
             "id": "laptop-glanceable",
-            "when": "externalContext.surface = 'laptop' and externalContext.attention = 'glanceable'",
+            "when": "externalContext.view = 'laptop' and externalContext.attention = 'glanceable'",
             "extends": "mobile-glanceable",
             "views": {
               "portfolio-workspace": { "capability": "ui:screen", "props": { "title": "Portfolio", "subtitle": "Laptop · Glanceable" } },
@@ -66,7 +66,7 @@
           },
           {
             "id": "desktop-glanceable",
-            "when": "externalContext.surface = 'desktop' and externalContext.attention = 'glanceable'",
+            "when": "externalContext.view = 'desktop' and externalContext.attention = 'glanceable'",
             "extends": "laptop-glanceable",
             "views": {
               "portfolio-workspace": { "capability": "ui:screen", "props": { "title": "Portfolio", "subtitle": "Desktop · Glanceable" } }
@@ -74,7 +74,7 @@
           },
           {
             "id": "laptop-detailed",
-            "when": "externalContext.surface = 'laptop' and externalContext.attention = 'detailed'",
+            "when": "externalContext.view = 'laptop' and externalContext.attention = 'detailed'",
             "extends": "mobile-detailed",
             "views": {
               "portfolio-workspace": { "capability": "ui:screen", "props": { "title": "Portfolio", "subtitle": "Laptop · Detailed" } },
@@ -86,7 +86,7 @@
           },
           {
             "id": "desktop-detailed",
-            "when": "externalContext.surface = 'desktop' and externalContext.attention = 'detailed'",
+            "when": "externalContext.view = 'desktop' and externalContext.attention = 'detailed'",
             "extends": "laptop-detailed",
             "views": {
               "portfolio-workspace": { "capability": "ui:screen", "props": { "title": "Portfolio", "subtitle": "Desktop · Detailed" } }
@@ -101,8 +101,39 @@
         "kind": "http-service",
         "version": "1",
         "operations": {
-          "checkHttpProxyAccess": { "operation": "check-access", "contract": "http-proxy-access-check/v1" },
-          "refreshPrices": { "operation": "fetch-quotes", "contract": "portfolio-market-quotes/v1" }
+          "checkHttpProxyAccess": {
+            "operation": "check-access",
+            "contract": "http-proxy-access-check/v1",
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'portfolio.httpProxyAccessStatus','value':'ready'},{'op':'set','path':'portfolio.httpProxyAccessError','value':''}]}"
+              }
+            },
+            "failureSettlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($rejected := error.status = 401 or error.status = 403; $missing := error.message = 'HTTP proxy access is required'; {'ops':[{'op':'set','path':'portfolio.httpProxyAccessStatus','value':($rejected or $missing) ? 'required' : 'error'},{'op':'set','path':'portfolio.httpProxyAccessError','value':$rejected ? 'That access key was rejected.' : ($missing ? 'HTTP proxy access is required.' : error.message)}]})"
+              }
+            },
+            "onViolation": { "action": "fail" }
+          },
+          "refreshPrices": {
+            "operation": "fetch-quotes",
+            "contract": "portfolio-market-quotes/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'requests':state.portfolio.holdings.*.{'key':ticker,'url':'https://query1.finance.yahoo.com/v8/finance/chart/' & ticker & '?interval=1d&range=1d','headers':{'User-Agent':'Mozilla/5.0 (compatible; portfolio-tracker-demo/1.0)'},'meta':{'quantity':quantity,'costBasis':costBasis}}}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'portfolio.quotes','value':$count(response.results) > 0 ? $merge(response.results.{key:{'ticker':key,'price':$round(body.chart.result[0].meta.regularMarketPrice, 2)}}) : {}}],'detail':{'provider':'yahoo-finance-http-service','quoteCount':$count(response.results)}}"
+              }
+            }
+          }
         },
         "config": { "endpoint": "${GIK_HTTP_PROXY_ORIGIN}", "credentialRef": "http-proxy/access-key" },
         "scope": "per-blueprint"
@@ -189,7 +220,13 @@
         "metadata": { "role": "acquire-market-prices" },
         "inputs": [{ "token": "http-proxy-access" }, { "token": "holding:$TICKER" }],
         "sources": [{ "id": "market-prices.source", "service": "portfolio-market-data", "operation": "refreshPrices", "contract": "portfolio-market-quotes/v1" }],
-        "outputs": [{ "token": "quote:$TICKER" }]
+        "outputs": [{ "token": "quote:$TICKER" }],
+        "behavior": {
+          "reactions": [{
+            "when": "portfolio.httpProxyAccessStatus = 'ready' ? $string(portfolio.holdings) : null",
+            "run": [{ "do": "invoke", "args": { "tool": "refreshPrices" } }]
+          }]
+        }
       },
       "positions": {
         "id": "positions",
