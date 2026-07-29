@@ -24,11 +24,11 @@ test("portfolio tracker lowers representation while preserving all seven Cells",
 
   const desktop = materializeBlueprint({
     blueprint: authored,
-    externalContext: { surface: "desktop", attention: "detailed" },
+    externalContext: { view: "desktop", attention: "detailed" },
   }).payload.terminalBlueprint;
   const mobile = materializeBlueprint({
     blueprint: authored,
-    externalContext: { surface: "mobile", attention: "glanceable" },
+    externalContext: { view: "mobile", attention: "glanceable" },
   }).payload.terminalBlueprint;
 
   assert.deepEqual(Object.keys(authoredCells), [
@@ -53,4 +53,14 @@ test("portfolio tracker falls back to desktop detailed without context", () => {
   const terminal = materializeBlueprint({ blueprint: authored }).payload.terminalBlueprint;
 
   assert.equal(terminal.payload.cells?.["portfolio-workspace"].view?.props?.subtitle, "Desktop · Detailed");
+});
+
+test("portfolio tracker declares complete HTTP service operation transforms", () => {
+  const authored = parseBlueprintJson<RepresentationLoweringRecipeDefinition>(readFileSync(sampleUrl, "utf8"));
+  const operations = authored.payload.services?.["portfolio-market-data"]?.operations;
+
+  assert.equal(operations?.checkHttpProxyAccess?.settlement?.transform.kind, "jsonata");
+  assert.equal(operations?.checkHttpProxyAccess?.failureSettlement?.transform.kind, "jsonata");
+  assert.equal(operations?.refreshPrices?.request?.transform.kind, "jsonata");
+  assert.equal(operations?.refreshPrices?.settlement?.transform.kind, "jsonata");
 });

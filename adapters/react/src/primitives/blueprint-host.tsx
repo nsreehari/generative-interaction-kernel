@@ -2,6 +2,7 @@ import React from "react";
 import { materializeBlueprint, prepareBlueprintProgram, validateBlueprintArtifact, type BlueprintArtifact, type ExternalContext } from "@gik/blueprint";
 import type { Json } from "@gik/kernel";
 import { BlueprintController } from "../blueprint-controller";
+import type { BlueprintControllerOptions } from "../blueprint-controller";
 import type { ProviderResolver } from "../registry";
 import { bundleFromJson, type BundleNative } from "./bundle";
 import {
@@ -35,6 +36,7 @@ export interface BlueprintHostProps {
   externalContext?: ExternalContext;
   /** @deprecated Initial-state seed compatibility. Use externalContext for immutable inputs. */
   context?: Record<string, Json>;
+  onTransition?: BlueprintControllerOptions["onTransition"];
 }
 
 export function BlueprintHost({
@@ -50,6 +52,7 @@ export function BlueprintHost({
   style,
   externalContext,
   context,
+  onTransition,
 }: BlueprintHostProps): React.ReactElement {
   const registry = React.useMemo(() => createBundleRegistry(), []);
   const materializedBlueprint = React.useMemo(
@@ -82,8 +85,9 @@ export function BlueprintHost({
       context,
       contexts,
       native,
+      onTransition,
     }),
-    [blueprint, externalContext, materializedBlueprint, context, contexts, native],
+    [blueprint, externalContext, materializedBlueprint, context, contexts, native, onTransition],
   );
   const blueprintId = prepared.blueprint.payload.id;
   const primaryInstanceIdResolved = primaryInstanceId === undefined ? blueprintId : `${blueprintId}:${primaryInstanceId}`;
