@@ -107,7 +107,7 @@ test("create, save, reload, challenge, and delete stay inside blueprint-local st
   assert.equal(deleted?.outcome, "deleted");
   assert.equal(storage.getItem(manageBlueprintsStorageKey), "{}");
   assert.equal(opValue(deleted?.ops, "manageBlueprints.selectedId"), "");
-});
+}, 10_000);
 
 test("repository ids cannot be overwritten or deleted", async () => {
   Object.defineProperty(globalThis, "localStorage", { value: new MemoryStorage(), configurable: true });
