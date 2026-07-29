@@ -1,5 +1,4 @@
 import React from "react";
-import { createPortal } from "react-dom";
 import {
   Button,
   Persona,
@@ -37,8 +36,8 @@ import {
 } from "@gik/react";
 import {
   selectionContainsFocus,
-  selectionFromTimelineItem,
   type ControlSelection,
+  type FocusRef,
   type TimelineItem,
 } from "./control-focus";
 import type {
@@ -56,6 +55,7 @@ import {
   type ScenarioPlan,
   type ScenarioStep,
 } from "./demo-runner";
+import { ToolingPortal } from "./tooling-shell";
 
 type RecordValue = Record<string, Json>;
 
@@ -190,6 +190,10 @@ const demoRunnerEffects: EffectHandlerMap = {
       return { outcome: "ignored" };
     }
     const result = record(receipt.result as Json);
+    const actorRef = isFocusRef(result.actorRef) ? result.actorRef : undefined;
+    const focusRefs: FocusRef[] = Array.isArray(result.focusRefs)
+      ? result.focusRefs.flatMap((value) => isFocusRef(value) ? [value] : [])
+      : [];
     const resultItem: TimelineItem | undefined = Object.keys(result).length > 0 ? {
       id: `organism:${String(result.id ?? receipt.requestId)}`,
       source: "organism",
@@ -198,11 +202,8 @@ const demoRunnerEffects: EffectHandlerMap = {
       status: String(result.result ?? receipt.status),
       operationRecordId: String(result.id ?? ""),
       timestamp: String(result.time ?? ""),
-      actorRef: { namespace: "soc", kind: "actor", id: String(result.actorId ?? ""), relation: "origin" },
-      focusRefs: [
-        { namespace: "soc", kind: "actor", id: String(result.actorId ?? ""), relation: "origin" },
-        ...(Array.isArray(result.affected) ? result.affected : []).map((id) => ({ namespace: "soc", kind: "record" as const, id: String(id), relation: "affected" as const })),
-      ],
+      actorRef,
+      focusRefs,
       correlationId: String(request.correlationId ?? ""),
     } : undefined;
     const commands = Array.isArray(request.commands) ? request.commands.map(String) : [String(request.command ?? "")];
@@ -265,6 +266,14 @@ const demoRunnerEffects: EffectHandlerMap = {
     };
   },
 };
+
+function isFocusRef(value: unknown): value is FocusRef {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.namespace === "string"
+    && typeof candidate.kind === "string"
+    && typeof candidate.id === "string";
+}
 
 const shellColors = {
   line: "#abc1ca",
@@ -590,21 +599,6 @@ function isToggleOn(value: unknown, onValue: unknown): boolean {
   return false;
 }
 
-function ViewportPortal({ children }: { children: React.ReactNode }): React.ReactElement | null {
-  const anchorRef = React.useRef<HTMLSpanElement>(null);
-  const [target, setTarget] = React.useState<Element | null>(null);
-  React.useLayoutEffect(() => {
-    setTarget(anchorRef.current?.closest(".fui-FluentProvider") ?? document.body);
-  }, []);
-  if (typeof document === "undefined") return null;
-  return (
-    <>
-      <span ref={anchorRef} hidden />
-      {target ? createPortal(children, target) : null}
-    </>
-  );
-}
-
 function statusLabel(status: ParticipantStatus): string {
   return status.replaceAll("-", " ");
 }
@@ -748,7 +742,7 @@ const DemoRunner: ProjectionView = ({ node, emit, children }) => {
   }, [demo.request, emit, node.props.receipt]);
 
   return (
-    <ViewportPortal>
+    <ToolingPortal surface="runner">
       <aside
         aria-label="Scenario runner"
         className={mergeClasses(styles.runnerDrawer, expanded ? styles.runnerExpanded : styles.runnerCollapsed)}
@@ -787,7 +781,7 @@ const DemoRunner: ProjectionView = ({ node, emit, children }) => {
         <div className={mergeClasses(styles.floorControls, styles.floorControlsCompact, !expanded ? styles.floorControlsCollapsed : undefined)}>{floorControls}</div>
       </div>
       </aside>
-    </ViewportPortal>
+    </ToolingPortal>
   );
 };
 
@@ -843,12 +837,12 @@ const ControlHarnessShell: ProjectionView = ({ node, emit, children }) => {
   };
 
   return (
-    <ViewportPortal>
+    <ToolingPortal surface="inspector">
       <>
       <div aria-label="Harness context" className={styles.contextStrip}>
         {panels[3]}
       </div>
-      <aside ref={harnessRef} aria-label="GIK control harness" className={styles.harness} style={{ position: "fixed", inset: "64px 0 72px auto", zIndex: 30, width: expanded ? "min(500px, calc(100vw - 32px))" : "48px", height: expanded ? "calc(100dvh - 136px)" : "48px", display: "grid", gridTemplateRows: "auto minmax(0, 1fr)", overflow: "hidden", border: "1px solid color-mix(in srgb, #315f72 42%, var(--line))", borderRight: 0, borderRadius: "8px 0 0 8px", background: "linear-gradient(180deg, #f9fcfd 0%, var(--panel) 28%, #f2f7f9 100%)", boxShadow: "-3px 3px 7px rgba(31, 67, 83, .14), -14px 18px 34px rgba(31, 67, 83, .16)", ["--accent" as string]: shellColors.accent, ["--panel" as string]: shellColors.panel, ["--panel-2" as string]: shellColors.panel2, ["--line" as string]: shellColors.line } as React.CSSProperties}>
+      <aside ref={harnessRef} aria-label="GIK control harness" className={styles.harness} style={{ position: "fixed", inset: "64px 0 var(--gik-tooling-runner-offset, 8px) auto", zIndex: 30, width: expanded ? "min(500px, calc(100vw - 32px))" : "48px", height: expanded ? "calc(100dvh - 64px - var(--gik-tooling-runner-offset, 8px))" : "48px", display: "grid", gridTemplateRows: "auto minmax(0, 1fr)", overflow: "hidden", border: "1px solid color-mix(in srgb, #315f72 42%, var(--line))", borderRight: 0, borderRadius: "8px 0 0 8px", background: "linear-gradient(180deg, #f9fcfd 0%, var(--panel) 28%, #f2f7f9 100%)", boxShadow: "-3px 3px 7px rgba(31, 67, 83, .14), -14px 18px 34px rgba(31, 67, 83, .16)", ["--accent" as string]: shellColors.accent, ["--panel" as string]: shellColors.panel, ["--panel-2" as string]: shellColors.panel2, ["--line" as string]: shellColors.line } as React.CSSProperties}>
         <header style={{ position: "relative", display: "grid", gap: "12px", padding: expanded ? "12px 14px 0" : 0, borderBottom: expanded ? "1px solid var(--line)" : 0, background: "color-mix(in srgb, #d7e8ee 72%, var(--panel))" }}>
           <div style={{ minHeight: "32px", display: "flex", alignItems: "center", paddingRight: "44px" }}>
             {expanded ? <strong>GIK control harness</strong> : null}
@@ -872,7 +866,7 @@ const ControlHarnessShell: ProjectionView = ({ node, emit, children }) => {
         </div> : null}
       </aside>
       </>
-    </ViewportPortal>
+    </ToolingPortal>
   );
 };
 
@@ -929,16 +923,12 @@ const JournalRail: ProjectionView = ({ node, emit }) => {
   const participants = (node.props.participants ?? []) as unknown as InspectionParticipant[];
   const timelineValue = (node.props.timeline ?? []) as unknown as TimelineItem[];
   const status = node.props.status as unknown as InspectionStatus | null | undefined;
-  const demoEnabled = node.props.demoEnabled === true;
-  const demoTimeline = (node.props.demoTimeline ?? []) as unknown as TimelineItem[];
-  const demoSelection = (node.props.demoSelection ?? undefined) as unknown as ControlSelection | undefined;
+  const selection = (node.props.selection ?? undefined) as unknown as ControlSelection | undefined;
   const selectedJournalId = typeof node.props.selectedJournalId === "string" ? node.props.selectedJournalId : null;
   const journalMode = node.props.journalMode === "ledger" ? "ledger" : "journal";
   const latestEntry = timelineValue.at(-1);
   const selectedEntry = selectedJournalId ? timelineValue.find((item) => item.operationRecordId === selectedJournalId || item.id === selectedJournalId) ?? latestEntry : latestEntry;
-  const timelineItems = demoEnabled ? demoTimeline : timelineValue;
-  const visibleTimelineItems = timelineItems;
-  const selectedTimelineItem = demoSelection ? timelineItems.find((item) => item.id === demoSelection.itemId) : selectedEntry ?? timelineItems.at(-1);
+  const selectedTimelineItem = selection ? timelineValue.find((item) => item.id === selection.itemId) : selectedEntry;
   const actorNames = new Map(participants.map((item) => [item.id, item.name]));
 
   return (
@@ -947,25 +937,25 @@ const JournalRail: ProjectionView = ({ node, emit }) => {
         <header className={styles.journalHeader}>
           <div><div className={styles.eyebrow}>Causal record</div><strong>Journal / Ledger</strong></div>
           <div className={styles.journalTabs}>
-            {(demoSelection || selectedJournalId) ? <Button size="small" appearance="subtle" onClick={() => demoEnabled ? emit("clearTimelineSelection", {}) : emit("selectJournal", { id: null })}>Latest</Button> : null}
+            {(selection || selectedJournalId) ? <Button size="small" appearance="subtle" onClick={() => emit("selectJournal", { id: null })}>Latest</Button> : null}
             <Button size="small" appearance={journalMode === "journal" ? "primary" : "subtle"} onClick={() => emit("setJournalMode", { mode: "journal" })}>Journal</Button>
             <Button size="small" appearance={journalMode === "ledger" ? "primary" : "subtle"} onClick={() => emit("setJournalMode", { mode: "ledger" })}>Ledger</Button>
           </div>
         </header>
         <GrowingContainer ariaLabel="Journal timeline">
           <div className={styles.journalList}>
-            {visibleTimelineItems.length === 0 ? <div className={styles.empty}><Clock20Regular /><p>The first attributable action will appear here.</p></div> : visibleTimelineItems.map((item) => (
+            {timelineValue.length === 0 ? <div className={styles.empty}><Clock20Regular /><p>The first attributable action will appear here.</p></div> : timelineValue.map((item) => (
               <button
                 type="button"
                 aria-pressed={selectedTimelineItem?.id === item.id}
                 aria-label={`${item.status}: ${item.title}`}
-                onClick={() => demoEnabled ? emit("selectTimeline", { selection: selectionFromTimelineItem(item) }) : emit("selectJournal", { id: item.operationRecordId ?? item.id })}
+                onClick={() => emit("selectJournal", { id: item.operationRecordId ?? item.id })}
                 key={item.id}
                 className={mergeClasses(styles.journalEntry, selectedTimelineItem?.id === item.id ? styles.journalEntryActive : undefined)}
               >
                 <span className={styles.journalTime}>{item.timestamp ?? `#${item.sequence ?? "-"}`}</span>
                 <div>
-                  <div className={styles.journalResult}>{journalMode === "ledger" ? `${item.source === "scenario" ? "Scenario instruction" : "SOC outcome"} · ` : ""}{item.status}{item.actorRef ? ` · ${actorNames.get(item.actorRef.id) ?? item.actorRef.id}` : ""}</div>
+                  <div className={styles.journalResult}>{journalMode === "ledger" ? `${item.source === "scenario" ? "Scenario instruction" : "Target outcome"} · ` : ""}{item.status}{item.actorRef ? ` · ${actorNames.get(item.actorRef.id) ?? item.actorRef.id}` : ""}</div>
                   <div className={styles.journalSummary}>{item.summary}</div>
                   {journalMode === "ledger" ? <div className={styles.ledgerMeta}>item={item.scenarioStepId ?? item.operationRecordId ?? item.id}<br />focus={item.focusRefs.map((ref) => `${ref.kind}:${ref.id}`).join(", ")}{item.correlationId ? <><br />correlation={item.correlationId}</> : null}</div> : null}
                 </div>
@@ -1119,12 +1109,6 @@ const demoRunnerProgram = {
             edges: { read: { value: "demo.presenter.pace" }, on: { toggle: [{ do: "invoke", args: { tool: "setPace" } }] } },
           },
           {
-            capability: "demo-runner-host:toggle",
-            id: "gik-visibility-toggle-region",
-            props: { hidden: true, onValue: true, offValue: false, onLabel: "Hide GIK", offLabel: "Show GIK" },
-            edges: { read: { value: "control.ui.gikVisible" }, on: { toggle: [{ do: "assign", target: "control.ui.gikVisible", args: { from: "$event.value" } }] } },
-          },
-          {
             capability: "demo:timer-button",
             id: "next-act-timer-region",
             props: { label: "Next act", tone: "primary", showCountdown: true },
@@ -1151,8 +1135,8 @@ const harnessManifest = {
   payload: {
     version: "gik-control-harness/1.0",
     expression: "jsonata",
-    namespaces: ["control"],
-    contexts: ["soc", "control", "demo"],
+    namespaces: ["inspector"],
+    contexts: ["control"],
     actions: ["assign"],
     capabilities: {
       "harness:shell": { propsSchema: { type: "object", additionalProperties: true }, slots: ["children"], emits: ["selectTab", "toggleHarness"] },
@@ -1172,10 +1156,10 @@ const harnessProgram = {
       capability: "harness:shell",
       id: "gik-control-harness",
       edges: {
-        read: { activeTab: "control.ui.activeTab", expanded: "control.ui.harnessExpanded", visible: "control.ui.gikVisible" },
+        read: { activeTab: "inspector.ui.activeTab", expanded: "inspector.ui.expanded", visible: "inspector.ui.visible" },
         on: {
-          selectTab: [{ do: "assign", target: "control.ui.activeTab", args: { from: "$event.tab" } }],
-          toggleHarness: [{ do: "assign", target: "control.ui.harnessExpanded", args: { from: "$event.expanded" } }],
+          selectTab: [{ do: "assign", target: "inspector.ui.activeTab", args: { from: "$event.tab" } }],
+          toggleHarness: [{ do: "assign", target: "inspector.ui.expanded", args: { from: "$event.expanded" } }],
         },
         children: [
           { capability: "harness:blueprint-inspector", id: "control-blueprint-inspector", edges: { read: { blueprint: "control.inspection.blueprint" } } },
@@ -1187,17 +1171,13 @@ const harnessProgram = {
                 participants: "control.inspection.participants",
                 timeline: "control.inspection.timeline",
                 status: "control.inspection.status",
-                journalMode: "control.ui.journalMode",
-                selectedJournalId: "control.ui.selectedJournalId",
-                demoEnabled: "demo.enabled",
-                demoTimeline: "demo.timeline",
-                demoSelection: "demo.selection",
+                selection: "control.inspection.selection",
+                journalMode: "inspector.ui.journalMode",
+                selectedJournalId: "inspector.ui.selectedJournalId",
               },
               on: {
-                setJournalMode: [{ do: "assign", target: "control.ui.journalMode", args: { from: "$event.mode" } }],
-                selectTimeline: [{ do: "assign", target: "demo.selection", args: { from: "$event.selection" } }],
-                clearTimelineSelection: [{ do: "assign", target: "demo.selection", args: { value: null } }],
-                selectJournal: [{ do: "assign", target: "control.ui.selectedJournalId", args: { from: "$event.id" } }],
+                setJournalMode: [{ do: "assign", target: "inspector.ui.journalMode", args: { from: "$event.mode" } }],
+                selectJournal: [{ do: "assign", target: "inspector.ui.selectedJournalId", args: { from: "$event.id" } }],
               },
             },
           },
@@ -1205,14 +1185,14 @@ const harnessProgram = {
             capability: "harness:participants",
             id: "control-participants",
             edges: {
-              read: { participants: "control.inspection.participants", selection: "demo.selection" },
+              read: { participants: "control.inspection.participants", selection: "control.inspection.selection" },
             },
           },
           {
             capability: "harness:participants",
             id: "control-participant-status",
             props: { compact: true },
-            edges: { read: { participants: "control.inspection.participants", selection: "demo.selection" } },
+            edges: { read: { participants: "control.inspection.participants", selection: "control.inspection.selection" } },
           },
         ],
       },
@@ -1221,25 +1201,14 @@ const harnessProgram = {
 } as const;
 
 const harnessState = {
-  control: {
+  inspector: {
     ui: {
       activeTab: "journal",
-      gikVisible: false,
-      harnessExpanded: false,
+      visible: true,
+      expanded: false,
       journalMode: "journal",
       selectedJournalId: null,
     },
-    inspection: {
-      participants: [],
-      presentation: { selectedContext: "", contexts: [] },
-      blueprint: null,
-      timeline: [],
-      status: null,
-    },
-    presentationContext: null,
-    presentationPresetId: null,
-    agentModeRequest: null,
-    authorizationRequest: null,
   },
 } as const;
 

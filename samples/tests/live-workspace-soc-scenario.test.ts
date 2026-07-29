@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import type { Json } from "@gik/kernel";
+import { unwrap, type Json } from "@gik/kernel";
 import { bundleFromJson, loadBundleRuntime, SharedContextStore } from "@gik/react";
+import { createDemoRunnerBundle } from "../../packages/demo-runner-host/src";
 import { t3ScenarioPlan } from "../scenarios/live-workspace-soc-t3/compile";
 import { socExecutiveScenarioPlan } from "../scenarios/live-workspace-soc-executive/compile";
 import { openSampleBlueprint } from "../shared/blueprints";
@@ -14,10 +15,6 @@ import effects, {
   createSocEffects,
   socOrganismEffects,
 } from "../bundles/live-workspace-soc/effect_handlers";
-import runnerDocument from "../bundles/demo-runner/program.json";
-import runnerEffects from "../bundles/demo-runner/effect_handlers";
-import runnerManifest from "../bundles/demo-runner/vocabulary.json";
-import runnerState from "../bundles/demo-runner/state.json";
 
 function runtime(effectHandlers = effects) {
   const { vocabulary, program, state } = openSampleBlueprint("live-workspace-soc");
@@ -52,32 +49,24 @@ function demoRuntimes(scenarioPlan: ScenarioPlan = t3ScenarioPlan) {
     program: structuredClone(program),
     state: structuredClone(state),
   }, { effectHandlers: createSocEffects() }), contexts);
-  const runnerSeed = structuredClone(runnerState) as Record<string, unknown>;
-  runnerSeed.runner = {
-    plan: scenarioPlan,
-    catalog: [],
-    entry: null,
-    presentationPresets: [
-      { id: "full-substrate", label: "Full substrate", context: { id: "full-substrate", arrangement: "inspection" } },
-      { id: "war-room", label: "War room", context: { id: "war-room", arrangement: "war-room" } },
-    ],
-  };
-  const runner = loadBundleRuntime(bundleFromJson({
-    vocabulary: structuredClone(runnerManifest),
-    program: structuredClone(runnerDocument),
-    state: runnerSeed,
-  }, { effectHandlers: runnerEffects }), contexts);
+  const runner = loadBundleRuntime(createDemoRunnerBundle({
+    runner: {
+      plan: scenarioPlan,
+      catalog: [],
+      entry: null,
+      presentationPresets: [
+        { id: "full-substrate", label: "Full substrate", context: { id: "full-substrate", arrangement: "inspection" } },
+        { id: "war-room", label: "War room", context: { id: "war-room", arrangement: "war-room" } },
+      ],
+    },
+  }), contexts);
   return { shared, soc, runner };
 }
 
 test("SOC organism and demo runner expose independent effect surfaces", () => {
-  assert.deepEqual(Object.keys(runnerEffects).sort(), [
-    "finishAct",
-    "requestNextAct",
-    "resetDemo",
-    "selectDemo",
-    "setPace",
-    "setPresentationContext",
+  const runner = createDemoRunnerBundle();
+  assert.deepEqual((unwrap(runner.vocabulary).externals?.effectHandlers ?? []).slice().sort(), [
+    "finishAct", "requestNextAct", "resetDemo", "selectDemo", "setPace", "setPresentationContext",
   ]);
   assert.equal("establishIntent" in socOrganismEffects, true);
   assert.equal("authorizeContainment" in socOrganismEffects, true);

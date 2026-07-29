@@ -5,7 +5,16 @@
     "id": "live-workspace-soc-t3",
     "targetBlueprintId": "live-workspace-soc",
     "title": "Governed SOC investigation",
-    "applicableContexts": ["war-room"],
+    "applicableContexts": [
+      "full-substrate",
+      "war-room",
+      "priya-mobile",
+      "priya-laptop",
+      "morgan-pager",
+      "morgan-workstation",
+      "correlation-agent",
+      "response-agent"
+    ],
     "pace": {
       "manualDurationMs": 120000,
       "autoDurationMs": 2000,
