@@ -1,5 +1,9 @@
 export * from "./GikDemoBlueprintHost";
-export { createDemoRunnerBundle, createGikControlHarnessBundle } from "./internal-bundles";
+export {
+	createDemoRunnerBundle,
+	createGikControlHarnessBundle,
+} from "./demoRunnerLeaves";
+export { createDemoRunnerHostBundle } from "./demoRunnerEffectHandlers";
 export { dispatchDemoControlRequest, withDemoHumanGate } from "./internal-demo-control-bridge";
 export { GikToolingShell } from "./tooling-shell";
 export * from "./control-runtime";

@@ -11,7 +11,7 @@ import {
   writeDemoNavigation,
   type ScenarioPlan,
 } from "../shared/demo-runner";
-import { demoCatalog, resolveDemoComposition } from "../shared/demo-catalog";
+import { demoCatalog, demoScenariosJson, resolveDemoComposition } from "../shared/demo-catalog";
 import { openSampleBlueprint } from "../shared/blueprints";
 import { unwrap } from "@gik/kernel";
 
@@ -176,6 +176,21 @@ test("demo target mappings must reference declared Bundle node events", () => {
   );
 });
 
+test("injected demo commands do not need to be emitted by the node projection", () => {
+  const runtime = openSampleBlueprint("portfolio-tracker");
+  const manifest = structuredClone(unwrap(runtime.vocabulary));
+  const target = structuredClone(demoCatalog.targets["portfolio-tracker"]);
+  const rootCapability = unwrap(runtime.program).root.capability;
+  manifest.capabilities[rootCapability].emits = [];
+
+  assert.doesNotThrow(() => validateDemoTargetBundleContract(
+    "portfolio-tracker",
+    target,
+    manifest,
+    unwrap(runtime.program)
+  ));
+});
+
 test("host demo resolution accepts bundle-scoped IDs and zero-based indices", () => {
   const intelligenceRebalance = resolveDemoComposition("portfolio-intelligence-rebalance", "portfolio-tracker");
   assert.equal(intelligenceRebalance.entry.id, "portfolio-intelligence-rebalance");
@@ -231,5 +246,30 @@ test("scenario JSON accepts a focus reference without a relation", () => {
     }],
   };
 
+  assert.doesNotThrow(() => loadDemoScenarios(scenarios));
+});
+
+test("scenario JSON accepts the canonical ui:form props as contextFormSpec", () => {
+  const scenarios = structuredClone(demoScenariosJson) as DemoScenariosJson;
+  const entry = scenarios.catalog.entries[0];
+  entry.contextFormSpec = {
+    fields: {
+      properties: {
+        surface: {
+          type: "string",
+          title: "Surface",
+          enum: ["mobile", "laptop", "desktop"],
+          enumNames: ["Mobile", "Laptop", "Desktop"],
+        },
+        attention: {
+          type: "string",
+          title: "Attention",
+          enum: ["glanceable", "detailed"],
+        },
+      },
+      required: ["surface", "attention"],
+    },
+    saveLabel: "Apply context",
+  };
   assert.doesNotThrow(() => loadDemoScenarios(scenarios));
 });

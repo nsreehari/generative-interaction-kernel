@@ -54,6 +54,19 @@
       ],
       "focusKinds": ["actor", "cell", "token", "record", "region", "action"],
       "timelineSources": ["scenario"]
+    },
+    "portfolio-tracker-2tiers": {
+      "commands": [
+        { "command": "setHoldings", "nodeId": "portfolio-workspace", "event": "setHoldings" }
+      ],
+      "humanGates": [],
+      "observableOutcomes": ["portfolio.holdings", "portfolio.positions", "portfolio.summary", "portfolio.status"],
+      "actors": ["human-investor"],
+      "presentationPresets": [
+        { "id": "portfolio-overview", "label": "Portfolio overview", "context": {} }
+      ],
+      "focusKinds": ["actor", "cell", "token", "record", "region", "action"],
+      "timelineSources": ["scenario"]
     }
   },
   "entries": [
@@ -96,6 +109,35 @@
       "targetBlueprintId": "portfolio-tracker",
       "defaultContext": "portfolio-advisor",
       "requiredTimelineSources": ["scenario"]
+    },
+    {
+      "id": "portfolio-2tiers-baseline",
+      "label": "Two-tier portfolio tracker",
+      "scenarioBlueprintId": "portfolio-tracker-2tiers-baseline",
+      "targetBlueprintId": "portfolio-tracker-2tiers",
+      "defaultContext": "portfolio-overview",
+      "requiredTimelineSources": ["scenario"],
+      "contextFormSpec": {
+        "fields": {
+          "properties": {
+            "surface": {
+              "type": "string",
+              "title": "Surface",
+              "enum": ["mobile", "laptop", "desktop"],
+              "enumNames": ["Mobile", "Laptop", "Desktop"]
+            },
+            "attention": {
+              "type": "string",
+              "title": "Attention",
+              "enum": ["glanceable", "detailed"],
+              "enumNames": ["Glanceable", "Detailed"]
+            }
+          },
+          "required": ["surface", "attention"]
+        },
+        "saveLabel": "Apply context",
+        "discardLabel": "Discard"
+      }
     }
   ]
 }

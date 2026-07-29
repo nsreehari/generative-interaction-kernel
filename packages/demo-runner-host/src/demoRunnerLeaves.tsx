@@ -56,6 +56,7 @@ import {
   type ScenarioStep,
 } from "./demo-runner";
 import { ToolingPortal } from "./tooling-shell";
+import uiFormPropsSchema from "../../../schemas/ui-form.schema.json" with { type: "json" };
 
 type RecordValue = Record<string, Json>;
 
@@ -84,7 +85,7 @@ function timeline(ctx: Parameters<EffectHandlerMap[string]>[0]): TimelineItem[] 
   return Array.isArray(value) ? value as unknown as TimelineItem[] : [];
 }
 
-const demoRunnerEffects: EffectHandlerMap = {
+export const demoRunnerEffects: EffectHandlerMap = {
   requestNextAct(ctx) {
     const presenter = record(ctx.get("demo.presenter"));
     const act = Number(ctx.get("demo.act") ?? 0);
@@ -613,7 +614,7 @@ function statusBadge(status: ParticipantStatus): string {
   return "ready";
 }
 
-const NativeDropdown: ProjectionView = ({ node, emit }) => {
+export const NativeDropdown: ProjectionView = ({ node, emit }) => {
   const styles = useOverlayStyles();
   const value = node.props.value;
   const options = Array.isArray(node.props.options) ? node.props.options as Array<Record<string, unknown>> : [];
@@ -638,7 +639,7 @@ const NativeDropdown: ProjectionView = ({ node, emit }) => {
   );
 };
 
-const NativeToggle: ProjectionView = ({ node, emit }) => {
+export const NativeToggle: ProjectionView = ({ node, emit }) => {
   const styles = useOverlayStyles();
   if (node.props.hidden === true) return null;
   const value = node.props.value;
@@ -662,7 +663,7 @@ const NativeToggle: ProjectionView = ({ node, emit }) => {
 
 const timerDeadlines = new Map<string, { durationMs: number; deadline: number }>();
 
-function TimerButton({ node, emit }: ProjectionViewProps) {
+export function TimerButton({ node, emit }: ProjectionViewProps) {
   const styles = useOverlayStyles();
   const p = readProps(node);
   const label = p.str("label");
@@ -715,6 +716,7 @@ function TimerButton({ node, emit }: ProjectionViewProps) {
 }
 
 const DemoRunner: ProjectionView = ({ node, emit, children }) => {
+  if (node.props.visible === false) return null;
   const styles = useOverlayStyles();
   const demo = node.props.demo as unknown as DemoState;
   const planValue = node.props.plan as unknown as ScenarioPlan;
@@ -809,11 +811,12 @@ const ControlHarnessShell: ProjectionView = ({ node, emit, children }) => {
   const styles = useOverlayStyles();
   const harnessRef = React.useRef<HTMLElement>(null);
   const requestedTab = String(node.props.activeTab ?? "journal");
-  const activeTab = requestedTab === "blueprint" || requestedTab === "participants" ? requestedTab : "journal";
+  const hasContextForm = node.props.contextFormSpec != null;
+  const activeTab = requestedTab === "blueprint" || requestedTab === "participants" || (requestedTab === "context" && hasContextForm) ? requestedTab : "journal";
   const expanded = node.props.expanded !== false;
   const visible = isToggleOn(node.props.visible, true);
   const panels = React.Children.toArray(children);
-  const activePanel = activeTab === "blueprint" ? panels[0] : activeTab === "participants" ? panels[2] : panels[1];
+  const activePanel = activeTab === "blueprint" ? panels[0] : activeTab === "participants" ? panels[2] : activeTab === "context" ? panels[4] : panels[1];
 
   if (!visible) return null;
 
@@ -859,9 +862,10 @@ const ControlHarnessShell: ProjectionView = ({ node, emit, children }) => {
             <Tab value="journal">Journal / Ledger</Tab>
             <Tab value="blueprint">Blueprint</Tab>
             <Tab value="participants">Participants</Tab>
+            {hasContextForm ? <Tab value="context">Context</Tab> : null}
           </TabList> : null}
         </header>
-        {expanded ? <div role="tabpanel" aria-label={activeTab === "blueprint" ? "Blueprint" : activeTab === "participants" ? "Participants" : "Journal and Ledger"} className={styles.harnessPanel}>
+        {expanded ? <div role="tabpanel" aria-label={activeTab === "blueprint" ? "Blueprint" : activeTab === "participants" ? "Participants" : activeTab === "context" ? "Context" : "Journal and Ledger"} className={styles.harnessPanel}>
           {activeTab === "journal" ? <div className={styles.harnessJournalPanel}>{activePanel}</div> : <GrowingContainer><div className={styles.harnessScrollPanel}>{activePanel}</div></GrowingContainer>}
         </div> : null}
       </aside>
@@ -1137,14 +1141,18 @@ const harnessManifest = {
     expression: "jsonata",
     namespaces: ["inspector"],
     contexts: ["control"],
-    actions: ["assign"],
+    actions: ["assign", "invoke"],
     capabilities: {
       "harness:shell": { propsSchema: { type: "object", additionalProperties: true }, slots: ["children"], emits: ["selectTab", "toggleHarness"] },
       "harness:blueprint-inspector": { propsSchema: { type: "object", additionalProperties: true } },
       "harness:journal": { propsSchema: { type: "object", additionalProperties: true }, emits: ["setJournalMode", "selectTimeline", "clearTimelineSelection", "selectJournal"] },
       "harness:participants": { propsSchema: { type: "object", additionalProperties: true } },
+      "ui:form": { propsSchema: uiFormPropsSchema, emits: ["save"] },
     },
-    externals: { projectionViews: { harness: { from: "self" } } },
+    externals: {
+      effectHandlers: ["setExternalContext"],
+      projectionViews: { harness: { from: "self" }, ui: { from: "floor", use: ["form"] } },
+    },
   },
 } as const;
 
@@ -1156,7 +1164,7 @@ const harnessProgram = {
       capability: "harness:shell",
       id: "gik-control-harness",
       edges: {
-        read: { activeTab: "inspector.ui.activeTab", expanded: "inspector.ui.expanded", visible: "inspector.ui.visible" },
+        read: { activeTab: "inspector.ui.activeTab", expanded: "inspector.ui.expanded", visible: "inspector.ui.visible", contextFormSpec: "inspector.contextFormSpec" },
         on: {
           selectTab: [{ do: "assign", target: "inspector.ui.activeTab", args: { from: "$event.tab" } }],
           toggleHarness: [{ do: "assign", target: "inspector.ui.expanded", args: { from: "$event.expanded" } }],
@@ -1194,6 +1202,20 @@ const harnessProgram = {
             props: { compact: true },
             edges: { read: { participants: "control.inspection.participants", selection: "control.inspection.selection" } },
           },
+          {
+            capability: "ui:form",
+            id: "control-context-form",
+            edges: {
+              read: {
+                fields: "inspector.contextFormSpec.fields",
+                schema: "inspector.contextFormSpec.schema",
+                value: "inspector.externalContext",
+                saveLabel: "inspector.contextFormSpec.saveLabel",
+                discardLabel: "inspector.contextFormSpec.discardLabel",
+              },
+              on: { save: [{ do: "invoke", args: { tool: "setExternalContext" } }] },
+            },
+          },
         ],
       },
     },
@@ -1226,6 +1248,14 @@ const harnessViews = {
   participants: Participants,
 };
 
+const ToolingRoot: ProjectionView = ({ children }) => <>{children}</>;
+
+export const demoRunnerLeaves = {
+  tooling: ToolingRoot,
+  runner: DemoRunner,
+  ...harnessViews,
+};
+
 export function createDemoRunnerBundle(
   stateSeed?: Record<string, unknown>,
   onSelectDemo?: (demoId: string) => void,
@@ -1250,7 +1280,10 @@ export function createDemoRunnerBundle(
   });
 }
 
-export function createGikControlHarnessBundle(stateSeed?: Record<string, unknown>): Bundle {
+export function createGikControlHarnessBundle(
+  stateSeed?: Record<string, unknown>,
+  onSetExternalContext?: (values: Record<string, Json>) => void,
+): Bundle {
   const state = structuredClone(harnessState) as Record<string, unknown>;
   if (stateSeed) Object.assign(state, stateSeed);
   return bundleFromJson({
@@ -1258,6 +1291,13 @@ export function createGikControlHarnessBundle(stateSeed?: Record<string, unknown
     program: structuredClone(harnessProgram),
     state,
   }, {
+    effectHandlers: {
+      setExternalContext(ctx) {
+        const values = record(ctx.payload.values as Json);
+        onSetExternalContext?.(structuredClone(values));
+        return { outcome: "updated" };
+      },
+    },
     projectionViews: harnessViews,
   });
 }

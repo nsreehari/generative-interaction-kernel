@@ -1,0 +1,27 @@
+{
+  "gik": "0.1",
+  "type": "scenario-blueprint",
+  "payload": {
+    "id": "portfolio-tracker-2tiers-baseline",
+    "targetBlueprintId": "portfolio-tracker-2tiers",
+    "title": "Two-tier portfolio valuation",
+    "applicableContexts": ["portfolio-overview"],
+    "pace": { "manualDurationMs": 60000, "autoDurationMs": 1600, "default": "manual" },
+    "steps": [
+      {
+        "id": "act-01",
+        "title": "Update AAPL and MSFT holdings",
+        "kind": "dispatch",
+        "command": "setHoldings",
+        "payload": {
+          "holdings": [
+            { "ticker": "AAPL", "quantity": 12, "costBasis": 182.5 },
+            { "ticker": "MSFT", "quantity": 6, "costBasis": 420 }
+          ]
+        },
+        "actorRef": { "namespace": "portfolio", "kind": "actor", "id": "human-investor", "relation": "origin" },
+        "focusRefs": [{ "namespace": "portfolio", "kind": "cell", "id": "holdings", "relation": "affected" }]
+      }
+    ]
+  }
+}

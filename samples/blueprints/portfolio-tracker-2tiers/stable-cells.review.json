@@ -1,0 +1,194 @@
+{
+  "portfolio-workspace": {
+    "id": "portfolio-workspace",
+    "kind": "portfolio-cell",
+    "metadata": {
+      "role": "workspace"
+    }
+  },
+  "http-proxy-access-gate": {
+    "id": "http-proxy-access-gate",
+    "kind": "portfolio-cell",
+    "metadata": {
+      "role": "authorize-market-data"
+    },
+    "outputs": [
+      {
+        "token": "http-proxy-access",
+        "from": "portfolio.httpProxyAccessStatus",
+        "when": "portfolio.httpProxyAccessStatus = 'ready'"
+      }
+    ],
+    "behavior": {
+      "events": {
+        "accessRequested": [
+          {
+            "do": "invoke",
+            "args": {
+              "tool": "checkHttpProxyAccess"
+            }
+          }
+        ],
+        "accessCleared": [
+          {
+            "do": "assign",
+            "target": "portfolio.httpProxyAccessStatus",
+            "args": {
+              "value": "required"
+            }
+          },
+          {
+            "do": "assign",
+            "target": "portfolio.httpProxyAccessError",
+            "args": {
+              "value": ""
+            }
+          }
+        ]
+      }
+    }
+  },
+  "holdings": {
+    "id": "holdings",
+    "kind": "portfolio-cell",
+    "metadata": {
+      "role": "manage-holdings"
+    },
+    "outputs": [
+      {
+        "token": "holding:$TICKER"
+      }
+    ],
+    "behavior": {
+      "events": {
+        "save": [
+          {
+            "do": "invoke",
+            "args": {
+              "tool": "saveHoldings"
+            }
+          },
+          {
+            "do": "invoke",
+            "args": {
+              "tool": "refreshPrices"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "market-prices": {
+    "id": "market-prices",
+    "kind": "portfolio-cell",
+    "metadata": {
+      "role": "acquire-market-prices"
+    },
+    "inputs": [
+      {
+        "token": "http-proxy-access"
+      },
+      {
+        "token": "holding:$TICKER"
+      }
+    ],
+    "sources": [
+      {
+        "id": "market-prices.source",
+        "service": "portfolio-market-data",
+        "operation": "refreshPrices",
+        "contract": "portfolio-market-quotes/v1"
+      }
+    ],
+    "outputs": [
+      {
+        "token": "quote:$TICKER"
+      }
+    ]
+  },
+  "positions": {
+    "id": "positions",
+    "kind": "portfolio-cell",
+    "metadata": {
+      "role": "derive-positions"
+    },
+    "inputs": [
+      {
+        "token": "holding:$TICKER"
+      },
+      {
+        "token": "quote:$TICKER"
+      }
+    ],
+    "outputs": [
+      {
+        "token": "position:$TICKER"
+      }
+    ],
+    "compute": [
+      {
+        "id": "positions-by-ticker",
+        "expression": "($holdings := portfolio.holdings; $quotes := portfolio.quotes; $rows := $each($holdings, function($holding, $ticker) { $lookup($quotes, $ticker) ? {$ticker:{'ticker':$ticker,'quantity':$holding.quantity,'price':$lookup($quotes, $ticker).price,'value':$round($holding.quantity * $lookup($quotes, $ticker).price, 2),'costBasis':$round($holding.quantity * $holding.costBasis, 2),'gainLoss':$round(($holding.quantity * $lookup($quotes, $ticker).price) - ($holding.quantity * $holding.costBasis), 2)}} : {} }); $count($rows) > 0 ? $merge($rows) : {})",
+        "assign": "portfolio.positions",
+        "dependencies": [
+          "portfolio.holdings",
+          "portfolio.quotes"
+        ]
+      }
+    ]
+  },
+  "summary": {
+    "id": "summary",
+    "kind": "portfolio-cell",
+    "metadata": {
+      "role": "summarize-portfolio"
+    },
+    "inputs": [
+      {
+        "token": "position:$TICKER"
+      }
+    ],
+    "outputs": [
+      {
+        "token": "portfolio-summary"
+      }
+    ],
+    "compute": [
+      {
+        "id": "portfolio-totals",
+        "expression": "{'marketValue':$count(portfolio.positions.*) > 0 ? $round($sum(portfolio.positions.*.value), 2) : 0,'costBasis':$count(portfolio.positions.*) > 0 ? $round($sum(portfolio.positions.*.costBasis), 2) : 0,'gainLoss':$count(portfolio.positions.*) > 0 ? $round($sum(portfolio.positions.*.gainLoss), 2) : 0}",
+        "assign": "portfolio.summary",
+        "dependencies": [
+          "portfolio.positions"
+        ]
+      }
+    ]
+  },
+  "portfolio-status": {
+    "id": "portfolio-status",
+    "kind": "portfolio-cell",
+    "metadata": {
+      "role": "classify-performance"
+    },
+    "inputs": [
+      {
+        "token": "portfolio-summary"
+      }
+    ],
+    "outputs": [
+      {
+        "token": "portfolio-status"
+      }
+    ],
+    "compute": [
+      {
+        "id": "classify-gain-loss",
+        "expression": "{'tone':portfolio.summary.gainLoss > 0 ? 'positive' : portfolio.summary.gainLoss < 0 ? 'negative' : 'neutral','message':portfolio.summary.gainLoss > 0 ? 'Portfolio is above cost basis.' : portfolio.summary.gainLoss < 0 ? 'Portfolio is below cost basis.' : 'Portfolio is at cost basis.'}",
+        "assign": "portfolio.status",
+        "dependencies": [
+          "portfolio.summary"
+        ]
+      }
+    ]
+  }
+}

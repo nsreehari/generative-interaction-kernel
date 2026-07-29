@@ -17,6 +17,9 @@ import { demoScenariosJson } from "../../../shared/demo-catalog";
 
 const embeddedHostStyle: React.CSSProperties = { height: "100vh" };
 const { blueprints: blueprintIds, default: DEFAULT_BLUEPRINT } = blueprintRegistry;
+const defaultExternalContextByBlueprint = {
+  "portfolio-tracker-2tiers": { surface: "desktop", attention: "detailed" },
+} as const;
 
 export function Host(): React.ReactElement {
   const query = readHostQuery(window.location.search);
@@ -54,6 +57,7 @@ function HostView({
         blueprint={blueprint}
         native={native}
         context={blueprint.payload.context}
+        externalContext={defaultExternalContextByBlueprint[id as keyof typeof defaultExternalContextByBlueprint]}
         scenariosJson={demoScenariosJson}
         resolveLeavesProvider={resolveLeavesProvider}
         style={embeddedHostStyle}
