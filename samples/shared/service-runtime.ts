@@ -13,65 +13,20 @@ import {
   createSampleServiceKindRegistry,
   type SampleServiceRegistryOptions,
 } from "../services";
-import { executeHttpServiceInvocation } from "../services/http-service/runtime";
 import { executeMcpServiceInvocation } from "../services/mcp/runtime";
 import {
-  clearFunctionAccessKey,
-  FUNCTION_ACCESS,
-  getFunctionAccessKey,
-  type FunctionAccessScope,
+  clearBrowserCredential,
+  resolveBrowserCredential,
 } from "./function-access";
 import { hostConfig } from "./host-config";
+import { createSampleServiceRegistryOptions } from "./service-registry-options";
 
-const FOUNDRY_CREDENTIAL_REF = "foundry-agent/access-key";
-const HTTP_CREDENTIAL_REF = "http-proxy/access-key";
-const CREDENTIAL_SCOPES: Record<string, FunctionAccessScope> = {
-  [FOUNDRY_CREDENTIAL_REF]: "foundry",
-  [HTTP_CREDENTIAL_REF]: "http-proxy",
-};
-const FOUNDRY_ORIGIN = new URL(hostConfig.foundryProxyOrigin).origin;
-const HTTP_PROXY_ORIGIN = new URL(hostConfig.httpProxyOrigin).origin;
+export { createSampleServiceRegistryOptions } from "./service-registry-options";
 
-export const browserServiceRegistryOptions: SampleServiceRegistryOptions = {
-  hostCapabilities: ["foundry-executor", "credential-resolver", "http-executor", "mcp-executor"],
-  resolveCredential: async (reference) => {
-    const scope = CREDENTIAL_SCOPES[reference];
-    if (!scope) throw new Error(`Unknown credential reference '${reference}'`);
-    const key = getFunctionAccessKey(scope).trim();
-    if (!key) throw new Error(`${FUNCTION_ACCESS[scope].label} access is required`);
-    return key;
-  },
-  clearCredential: (reference) => {
-    const scope = CREDENTIAL_SCOPES[reference];
-    if (!scope) throw new Error(`Unknown credential reference '${reference}'`);
-    clearFunctionAccessKey(scope);
-  },
-  authorizeEndpoint: (kind, endpoint) =>
-    (kind === "foundry-agent" && endpoint.origin === FOUNDRY_ORIGIN)
-    || (kind === "http-service" && endpoint.origin === HTTP_PROXY_ORIGIN),
-  execute: async (request) => {
-    const invocation = request as Parameters<typeof executeHttpServiceInvocation>[0];
-    if (invocation.kind === "http-service") {
-      const config = invocation.declaration.config as Record<string, Json> | undefined;
-      const endpoint = String(config?.endpoint ?? "");
-      const credentialRef = String(config?.credentialRef ?? "");
-      if (new URL(endpoint).origin !== HTTP_PROXY_ORIGIN) throw new Error(`HTTP proxy endpoint '${endpoint}' is not authorized by the host`);
-      const accessKey = String(await browserServiceRegistryOptions.resolveCredential!(credentialRef));
-      try {
-        return await executeHttpServiceInvocation(invocation, { proxyOrigin: endpoint, accessKey });
-      } catch (error) {
-        if (error && typeof error === "object" && "status" in error && (error.status === 401 || error.status === 403)) {
-          clearFunctionAccessKey("http-proxy");
-        }
-        throw error;
-      }
-    }
-    if (invocation.kind === "mcp") {
-      return executeMcpServiceInvocation(request as Parameters<typeof executeMcpServiceInvocation>[0]);
-    }
-    throw new Error(`Unsupported sample service execution kind '${String(invocation.kind ?? "unknown")}'`);
-  },
-};
+export const browserServiceRegistryOptions = createSampleServiceRegistryOptions({
+  resolveCredential: resolveBrowserCredential,
+  clearCredential: clearBrowserCredential,
+}, hostConfig);
 
 function mergeRegistryOptions(
   registryOptions: SampleServiceRegistryOptions = {},
