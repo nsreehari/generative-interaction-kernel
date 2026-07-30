@@ -70,3 +70,38 @@ test("BlueprintController reuses materialized execution with immutable externalC
   await controller.emit("root", "increment");
   assert.deepEqual(controller.getState(), { counter: { value: 2 } });
 });
+
+test("BlueprintController seeds state on the materialized terminal Blueprint", async () => {
+  const blueprint = createBlueprint({
+    id: "lowered-counter",
+    kind: "intent-blueprint",
+    version: "1",
+    tiers: [
+      { id: "intent", kind: "interaction-intent" },
+      { id: "runtime", kind: "runtime-program" },
+    ],
+    recipes: [{
+      id: "intent-to-runtime",
+      from: "intent",
+      to: "runtime",
+      patch: [{
+        op: "replaceCell",
+        cellId: "root",
+        cell: {
+          id: "root",
+          kind: "runtime-cell",
+          view: { capability: "screen", bindings: { value: { from: "counter.value" } } },
+        },
+      }],
+    }],
+    runtime: { namespaces: ["counter"], state: { counter: { value: 1 } }, capabilities: {} },
+    cells: { root: { id: "root", kind: "intent-cell" } },
+    projections: { presentation: { roots: ["root"] } },
+  });
+  const controller = new BlueprintController(blueprint, {
+    context: { initialSeed: { counter: { value: 7 } } },
+  });
+
+  assert.equal((await controller.start()).props.value, 7);
+  assert.deepEqual(controller.getState(), { counter: { value: 7 } });
+});

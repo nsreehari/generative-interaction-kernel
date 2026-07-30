@@ -11,7 +11,11 @@ import {
   readHostQuery,
 } from "./host-query";
 import { FLOOR_COMPONENTS } from "../../../bundles/floor/projection_views";
-import { resolveBlueprintNative, resolveBlueprintNativeFromMaterialized } from "../../../shared/sample-bundles";
+import {
+  resolveBlueprintInitialContext,
+  resolveBlueprintNative,
+  resolveBlueprintNativeFromMaterialized,
+} from "../../../shared/sample-bundles";
 import { resolveSampleBlueprintSource } from "../../../shared/blueprints";
 import portfolioTwoTierDemo from "../../../scenarios/portfolio-tracker-2tiers-baseline/scenario.json" with { type: "json" };
 
@@ -45,10 +49,15 @@ function HostView({
   resolveLeavesProvider: (from: string) => ReturnType<typeof resolveBundleProjectionViews>;
 }): React.ReactElement {
   const id = targetId;
+  const externalContext = defaultExternalContextByBlueprint[id as keyof typeof defaultExternalContextByBlueprint];
   const { blueprint, native } = React.useMemo(() => ({
     blueprint: resolveSampleBlueprintSource(id),
     native: resolveBlueprintNative(id),
   }), [id]);
+  const context = React.useMemo(
+    () => resolveBlueprintInitialContext(id, externalContext),
+    [externalContext, id],
+  );
   const demoRunnerDocument = id === "portfolio-tracker-2tiers"
     ? portfolioTwoTierDemo
     : undefined;
@@ -59,8 +68,8 @@ function HostView({
         HostComponent={BlueprintHost}
         blueprint={blueprint}
         native={native}
-        context={blueprint.payload.context}
-        externalContext={defaultExternalContextByBlueprint[id as keyof typeof defaultExternalContextByBlueprint]}
+        context={context}
+        externalContext={externalContext}
         resolveNative={id === "portfolio-tracker-2tiers"
           ? (materializedBlueprint) => resolveBlueprintNativeFromMaterialized(id, materializedBlueprint)
           : undefined}
