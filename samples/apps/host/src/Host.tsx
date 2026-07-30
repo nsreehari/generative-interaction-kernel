@@ -120,7 +120,7 @@ function ApplicationSwitcher({ currentId }: { currentId: string }): React.ReactE
           aria-label={`Current application: ${currentId}. Hover to switch.`}
           onClick={() => setOpen(true)}
         >
-          <span aria-hidden="true">Layers</span>
+          <span aria-hidden="true">&nbsp;</span>
         </button>
       )}
     </div>
