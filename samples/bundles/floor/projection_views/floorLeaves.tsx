@@ -434,12 +434,55 @@ function renderInline(text: string): React.ReactNode {
   return nodes.length === 1 ? nodes[0] : nodes;
 }
 
+let mermaidInitialized = false;
+
+function MermaidDiagram({ source }: { source: string }) {
+  const diagramId = React.useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const [svg, setSvg] = React.useState<string | null>(null);
+  const [failed, setFailed] = React.useState(false);
+
+  React.useEffect(() => {
+    let active = true;
+    setSvg(null);
+    setFailed(false);
+
+    void import("mermaid")
+      .then(async ({ default: mermaid }) => {
+        if (!mermaidInitialized) {
+          mermaid.initialize({ startOnLoad: false, securityLevel: "strict" });
+          mermaidInitialized = true;
+        }
+        const rendered = await mermaid.render(`gx-mermaid-${diagramId}`, source);
+        if (active) setSvg(rendered.svg);
+      })
+      .catch(() => {
+        if (active) setFailed(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [diagramId, source]);
+
+  if (!svg || failed) {
+    return (
+      <pre className="gx-markdown-code" data-mermaid-fallback>
+        <code className="language-mermaid">{source}</code>
+      </pre>
+    );
+  }
+
+  return <div className="gx-mermaid" role="img" aria-label="Mermaid diagram" dangerouslySetInnerHTML={{ __html: svg }} />;
+}
+
 function renderMarkdownBlocks(value: string): React.ReactNode[] {
   const lines = value.replace(/\r\n/g, "\n").split("\n");
   const nodes: React.ReactNode[] = [];
   let paragraph: string[] = [];
   let listItems: string[] = [];
   let listOrdered = false;
+  let fenceLanguage: string | null = null;
+  let fenceLines: string[] = [];
 
   const flushParagraph = () => {
     if (paragraph.length > 0) {
@@ -458,9 +501,38 @@ function renderMarkdownBlocks(value: string): React.ReactNode[] {
       listItems = [];
     }
   };
+  const flushFence = () => {
+    if (fenceLanguage === null) return;
+    const source = fenceLines.join("\n");
+    nodes.push(
+      fenceLanguage.toLowerCase() === "mermaid"
+        ? <MermaidDiagram key={`fence-${nodes.length}`} source={source} />
+        : (
+          <pre key={`fence-${nodes.length}`} className="gx-markdown-code">
+            <code className={fenceLanguage ? `language-${fenceLanguage}` : undefined}>{source}</code>
+          </pre>
+        ),
+    );
+    fenceLanguage = null;
+    fenceLines = [];
+  };
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
+    if (fenceLanguage !== null) {
+      if (/^```\s*$/.test(line)) flushFence();
+      else fenceLines.push(rawLine);
+      continue;
+    }
+
+    const fence = /^```([^\s`]*)\s*$/.exec(line);
+    if (fence) {
+      flushParagraph();
+      flushList();
+      fenceLanguage = fence[1];
+      continue;
+    }
+
     if (!line) {
       flushParagraph();
       flushList();
@@ -501,6 +573,7 @@ function renderMarkdownBlocks(value: string): React.ReactNode[] {
 
   flushParagraph();
   flushList();
+  flushFence();
   return nodes;
 }
 

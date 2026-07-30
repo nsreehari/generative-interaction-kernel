@@ -54,6 +54,19 @@ test("markdown renders ordered lists distinct from bullet lists", () => {
   assert.match(bullets, /<ul>.*<li>a<\/li>.*<li>b<\/li>.*<\/ul>/s);
 });
 
+test("markdown recognizes Mermaid and ordinary fenced code blocks", () => {
+  const mermaid = render("ui:markdown", {
+    value: "## Graph\n\n```mermaid\ngraph LR\n  attacker --> mailbox\n```",
+  });
+  assert.match(mermaid, /data-mermaid-fallback/);
+  assert.match(mermaid, /class="language-mermaid"/);
+  assert.match(mermaid, /graph LR\n  attacker --&gt; mailbox/);
+
+  const code = render("ui:markdown", { value: "```typescript\nconst answer = 42;\n```" });
+  assert.match(code, /class="gx-markdown-code"/);
+  assert.match(code, /class="language-typescript"/);
+});
+
 // --- Field-level diff ------------------------------------------------------------
 
 test("diff of two objects shows per-field change / add / remove rows", () => {

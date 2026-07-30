@@ -93,6 +93,9 @@ ${root} .gx-metric-detail { font-size: var(--fontSizeBase200); }
 /* Markdown inline formatting: links are the only interactive inline element. */
 ${root} .gx-link { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
 ${root} .gx-link:hover { text-decoration-thickness: 2px; }
+${root} .gx-markdown-code { overflow: auto; padding: var(--spacingVerticalM) var(--spacingHorizontalM); background: var(--field-bg); border: var(--strokeWidthThin) solid var(--line); border-radius: var(--borderRadiusMedium); }
+${root} .gx-mermaid { overflow: auto; margin: var(--spacingVerticalM) 0; text-align: center; }
+${root} .gx-mermaid svg { display: inline-block; max-width: 100%; height: auto; }
 
 /* Field-level diff: one row per key, colored by add / remove / change. */
 ${root} .gx-diff { display: flex; flex-direction: column; }
