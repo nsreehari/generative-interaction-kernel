@@ -1,0 +1,199 @@
+{
+  "gik": "0.1",
+  "type": "blueprint",
+  "payload": {
+    "id": "incident-report-explorer-2",
+    "kind": "incident-semantic-blueprint",
+    "version": "1.0.0",
+    "structureMode": "fixed",
+    "tiers": [
+      {
+        "id": "incident-semantic",
+        "kind": "incident-semantic-model",
+        "description": "Normalized incident facts, relationships, evidence, response actions, and explicit representation notes."
+      },
+      { "id": "runtime-document", "kind": "runtime-document" }
+    ],
+    "recipes": [
+      {
+        "id": "incident-semantic-to-runtime",
+        "from": "incident-semantic",
+        "to": "runtime-document",
+        "representations": [
+          {
+            "id": "operational",
+            "when": "externalContext.attention = 'operational'",
+            "views": {
+              "incident-workspace": { "capability": "incident2:workspace", "props": { "title": "Incident intelligence", "preset": "operational" } },
+              "incident-source": { "capability": "incident2:editor", "props": { "title": "Investigation source" }, "bindings": { "value": { "from": "incident2.content" } } },
+              "incident-source-selector": { "capability": "fluent:dropdown", "props": { "ariaLabel": "Choose sample incident", "options": [{ "value": "password-spray-mailbox", "label": "Password spray and mailbox compromise" }, { "value": "blob-storage-exfiltration", "label": "Blob storage exfiltration" }, { "value": "identity-compromise", "label": "Identity and cloud resource compromise" }, { "value": "device-code-bec", "label": "Device-code phishing and BEC" }, { "value": "supply-chain-sap-bec", "label": "Supply-chain SAP and procurement BEC" }] }, "bindings": { "value": { "from": "incident2.selectedSampleId" } }, "visibility": "true" },
+              "incident-source-markdown": { "capability": "ui:markdown", "bindings": { "value": { "from": "incident2.content" } } },
+              "incident-source-form": { "capability": "ui:form", "props": { "fields": { "properties": { "content": { "title": "Markdown content", "type": "string", "format": "textarea", "rows": 34, "minLength": 1, "span": 12 } }, "required": ["content"] }, "saveLabel": "Save report", "discardLabel": "Discard changes" }, "bindings": { "value": { "from": "incident2.formValue" } } },
+              "foundry-access-gate": { "capability": "foundry:access-gate", "bindings": { "status": { "from": "incident2.foundryAccessStatus" }, "error": { "from": "incident2.foundryAccessError" } } },
+              "incident-semantic-analyzer": { "capability": "incident2:report", "props": { "title": "Operational assessment" }, "bindings": { "value": { "from": "incident2.model" }, "content": { "from": "incident2.content" }, "analyzedContent": { "from": "incident2.analyzedContent" }, "error": { "from": "incident2.error" } } },
+              "incident-verdict": { "capability": "incident2:verdict-brief", "bindings": { "value": { "from": "incident2.model" } } },
+              "incident-attack-path": { "capability": "incident2:attack-path", "bindings": { "value": { "from": "incident2.model" } } },
+              "incident-blast-radius": { "capability": "incident2:blast-radius", "bindings": { "value": { "from": "incident2.model" } } },
+              "incident-timeline": { "capability": "incident2:phase-timeline", "bindings": { "value": { "from": "incident2.model" } } },
+              "incident-techniques": { "capability": "incident2:ttp-chain", "bindings": { "value": { "from": "incident2.model" } } },
+              "incident-response": { "capability": "incident2:response-plan", "bindings": { "value": { "from": "incident2.model" } } },
+              "incident-notes": { "capability": "incident2:representation-notes", "bindings": { "value": { "from": "incident2.model" } } }
+            },
+            "presentation": {
+              "roots": ["incident-workspace"],
+              "placements": [
+                { "cell": "incident-source", "parent": "incident-workspace", "slot": "children", "order": 0 },
+                { "cell": "incident-source-selector", "parent": "incident-source", "slot": "children", "order": 0 },
+                { "cell": "incident-source-markdown", "parent": "incident-source", "slot": "children", "order": 1 },
+                { "cell": "incident-source-form", "parent": "incident-source", "slot": "children", "order": 2 },
+                { "cell": "foundry-access-gate", "parent": "incident-workspace", "slot": "children", "order": 1 },
+                { "cell": "incident-semantic-analyzer", "parent": "foundry-access-gate", "slot": "children", "order": 0 },
+                { "cell": "incident-verdict", "parent": "incident-semantic-analyzer", "slot": "children", "order": 0 },
+                { "cell": "incident-attack-path", "parent": "incident-semantic-analyzer", "slot": "children", "order": 1 },
+                { "cell": "incident-blast-radius", "parent": "incident-semantic-analyzer", "slot": "children", "order": 2 },
+                { "cell": "incident-timeline", "parent": "incident-semantic-analyzer", "slot": "children", "order": 3 },
+                { "cell": "incident-techniques", "parent": "incident-semantic-analyzer", "slot": "children", "order": 4 },
+                { "cell": "incident-response", "parent": "incident-semantic-analyzer", "slot": "children", "order": 5 },
+                { "cell": "incident-notes", "parent": "incident-semantic-analyzer", "slot": "children", "order": 6 }
+              ]
+            }
+          },
+          {
+            "id": "brief",
+            "when": "externalContext.attention = 'brief'",
+            "extends": "operational",
+            "views": {
+              "incident-workspace": { "capability": "incident2:workspace", "props": { "title": "Incident intelligence", "preset": "brief" } },
+              "incident-semantic-analyzer": { "capability": "incident2:report", "props": { "title": "Incident brief" }, "bindings": { "value": { "from": "incident2.model" }, "content": { "from": "incident2.content" }, "analyzedContent": { "from": "incident2.analyzedContent" }, "error": { "from": "incident2.error" } } }
+            },
+            "presentation": {
+              "roots": ["incident-workspace"],
+              "placements": [
+                { "cell": "incident-source", "parent": "incident-workspace", "slot": "children", "order": 0 },
+                { "cell": "incident-source-selector", "parent": "incident-source", "slot": "children", "order": 0 },
+                { "cell": "incident-source-markdown", "parent": "incident-source", "slot": "children", "order": 1 },
+                { "cell": "incident-source-form", "parent": "incident-source", "slot": "children", "order": 2 },
+                { "cell": "foundry-access-gate", "parent": "incident-workspace", "slot": "children", "order": 1 },
+                { "cell": "incident-semantic-analyzer", "parent": "foundry-access-gate", "slot": "children", "order": 0 },
+                { "cell": "incident-verdict", "parent": "incident-semantic-analyzer", "slot": "children", "order": 0 },
+                { "cell": "incident-attack-path", "parent": "incident-semantic-analyzer", "slot": "children", "order": 1 },
+                { "cell": "incident-response", "parent": "incident-semantic-analyzer", "slot": "children", "order": 2 },
+                { "cell": "incident-notes", "parent": "incident-semantic-analyzer", "slot": "children", "order": 3 }
+              ]
+            }
+          }
+        ],
+        "fallback": "operational"
+      }
+    ],
+    "services": {
+      "incident-semantic-analysis": {
+        "kind": "foundry-agent",
+        "version": "1",
+        "operations": {
+          "analyzeReport": {
+            "operation": "chat",
+            "contract": "incident-semantic-model/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'message':'Extract a normalized incident semantic model from this investigation report. Report Markdown:\n\n' & state.incident2.pendingContent,'instructions':'Return semantic facts only. Do not choose components, layouts, disclosure, colors, or presentation candidates. Preserve causal ordering and typed references. Put any source ambiguity, normalization loss, unsupported concept, conflicting evidence, or schema gap in representationNotes rather than silently dropping it. Use stable concise ids and reference only ids declared in this response.','maxOutputTokens':5000}"
+              }
+            },
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "code": "provider-structured-output",
+                  "message": "Incident semantic model is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": ["identity", "verdict", "summary", "phases", "entities", "relationships", "events", "techniques", "alerts", "evidence", "indicators", "impacts", "actions", "representationNotes"],
+                    "properties": {
+                      "identity": { "type": "object", "required": ["incidentId", "title", "startTime", "endTime"], "properties": { "incidentId": { "type": "string", "minLength": 1 }, "title": { "type": "string", "minLength": 1 }, "startTime": { "type": "string" }, "endTime": { "type": "string" } }, "additionalProperties": false },
+                      "verdict": { "type": "object", "required": ["classification", "determination", "confidence", "rationale", "impact"], "properties": { "classification": { "type": "string", "minLength": 1 }, "determination": { "type": "string", "minLength": 1 }, "confidence": { "type": "string", "enum": ["high", "medium", "low"] }, "rationale": { "type": "string", "minLength": 1 }, "impact": { "type": "string", "minLength": 1 } }, "additionalProperties": false },
+                      "summary": { "type": "string", "minLength": 1 },
+                      "phases": { "type": "array", "items": { "type": "object", "required": ["id", "name", "order", "summary"], "properties": { "id": { "type": "string", "minLength": 1 }, "name": { "type": "string", "minLength": 1 }, "order": { "type": "integer", "minimum": 0 }, "summary": { "type": "string", "minLength": 1 } }, "additionalProperties": false } },
+                      "entities": { "type": "array", "items": { "type": "object", "required": ["id", "type", "label", "status", "role", "description", "confidence"], "properties": { "id": { "type": "string", "minLength": 1 }, "type": { "type": "string", "enum": ["actor", "ip", "user", "mailbox", "device", "virtual-machine", "managed-identity", "service-principal", "application", "secret", "storage", "data-asset", "cloud-resource", "other"] }, "label": { "type": "string", "minLength": 1 }, "status": { "type": "string", "enum": ["compromised", "affected", "targeted", "observed", "unknown"] }, "role": { "type": "string" }, "description": { "type": "string", "minLength": 1 }, "confidence": { "type": "string", "enum": ["high", "medium", "low"] } }, "additionalProperties": false } },
+                      "relationships": { "type": "array", "items": { "type": "object", "required": ["id", "sourceId", "targetId", "kind", "label", "phaseId", "evidenceIds"], "properties": { "id": { "type": "string", "minLength": 1 }, "sourceId": { "type": "string", "minLength": 1 }, "targetId": { "type": "string", "minLength": 1 }, "kind": { "type": "string", "enum": ["targeted", "sprayed", "authenticated-to", "stole-token-from", "enumerated", "retrieved-secret-from", "retrieved-keys-for", "accessed", "collected-from", "exfiltrated-from", "pivoted-to", "other"] }, "label": { "type": "string", "minLength": 1 }, "phaseId": { "type": "string" }, "evidenceIds": { "type": "array", "items": { "type": "string" } } }, "additionalProperties": false } },
+                      "events": { "type": "array", "items": { "type": "object", "required": ["id", "time", "title", "detail", "phaseId", "entityIds", "evidenceIds", "confidence"], "properties": { "id": { "type": "string", "minLength": 1 }, "time": { "type": "string" }, "title": { "type": "string", "minLength": 1 }, "detail": { "type": "string", "minLength": 1 }, "phaseId": { "type": "string" }, "entityIds": { "type": "array", "items": { "type": "string" } }, "evidenceIds": { "type": "array", "items": { "type": "string" } }, "confidence": { "type": "string", "enum": ["high", "medium", "low"] } }, "additionalProperties": false } },
+                      "techniques": { "type": "array", "items": { "type": "object", "required": ["id", "tactic", "technique", "techniqueId", "description", "phaseId", "evidenceIds", "confidence"], "properties": { "id": { "type": "string", "minLength": 1 }, "tactic": { "type": "string", "minLength": 1 }, "technique": { "type": "string", "minLength": 1 }, "techniqueId": { "type": "string", "minLength": 1 }, "description": { "type": "string", "minLength": 1 }, "phaseId": { "type": "string" }, "evidenceIds": { "type": "array", "items": { "type": "string" } }, "confidence": { "type": "string", "enum": ["high", "medium", "low"] } }, "additionalProperties": false } },
+                      "alerts": { "type": "array", "items": { "type": "object", "required": ["id", "title", "verdict", "summary", "eventIds", "evidenceIds"], "properties": { "id": { "type": "string", "minLength": 1 }, "title": { "type": "string", "minLength": 1 }, "verdict": { "type": "string", "minLength": 1 }, "summary": { "type": "string", "minLength": 1 }, "eventIds": { "type": "array", "items": { "type": "string" } }, "evidenceIds": { "type": "array", "items": { "type": "string" } } }, "additionalProperties": false } },
+                      "evidence": { "type": "array", "items": { "type": "object", "required": ["id", "sourceType", "timestamp", "summary", "correlationId"], "properties": { "id": { "type": "string", "minLength": 1 }, "sourceType": { "type": "string", "minLength": 1 }, "timestamp": { "type": "string" }, "summary": { "type": "string", "minLength": 1 }, "correlationId": { "type": "string" } }, "additionalProperties": false } },
+                      "indicators": { "type": "array", "items": { "type": "object", "required": ["id", "type", "value", "context", "confidence"], "properties": { "id": { "type": "string", "minLength": 1 }, "type": { "type": "string", "minLength": 1 }, "value": { "type": "string", "minLength": 1 }, "context": { "type": "string", "minLength": 1 }, "confidence": { "type": "string", "enum": ["high", "medium", "low"] } }, "additionalProperties": false } },
+                      "impacts": { "type": "array", "items": { "type": "object", "required": ["id", "category", "title", "detail", "severity", "entityIds"], "properties": { "id": { "type": "string", "minLength": 1 }, "category": { "type": "string", "enum": ["credential-exposure", "data-access", "data-exfiltration", "identity-compromise", "resource-compromise", "business-impact", "other"] }, "title": { "type": "string", "minLength": 1 }, "detail": { "type": "string", "minLength": 1 }, "severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] }, "entityIds": { "type": "array", "items": { "type": "string" } } }, "additionalProperties": false } },
+                      "actions": { "type": "array", "items": { "type": "object", "required": ["id", "priority", "category", "title", "detail", "entityIds"], "properties": { "id": { "type": "string", "minLength": 1 }, "priority": { "type": "string", "enum": ["immediate", "next", "follow-up"] }, "category": { "type": "string", "enum": ["containment", "investigation", "recovery", "hardening"] }, "title": { "type": "string", "minLength": 1 }, "detail": { "type": "string", "minLength": 1 }, "entityIds": { "type": "array", "items": { "type": "string" } } }, "additionalProperties": false } },
+                      "representationNotes": { "type": "array", "items": { "type": "object", "required": ["id", "category", "severity", "sourceSection", "commentary", "suggestedVocabularyExtension"], "properties": { "id": { "type": "string", "minLength": 1 }, "category": { "type": "string", "enum": ["source-ambiguity", "insufficient-evidence", "normalization-loss", "unsupported-concept", "conflicting-evidence", "schema-gap"] }, "severity": { "type": "string", "enum": ["info", "warning", "critical"] }, "sourceSection": { "type": "string" }, "commentary": { "type": "string", "minLength": 1 }, "suggestedVocabularyExtension": { "type": "string" } }, "additionalProperties": false } }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              ]
+            },
+            "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'incident2.model','value':response},{'op':'set','path':'incident2.analyzedContent','value':state.incident2.pendingContent},{'op':'set','path':'incident2.pendingContent','value':null},{'op':'set','path':'incident2.error','value':''}]}" } },
+            "failureSettlement": { "transform": { "kind": "jsonata", "expr": "($access := error.message = 'Foundry access is required' or error.status = 401 or error.status = 403; {'ops':[{'op':'set','path':'incident2.pendingContent','value':null},{'op':'set','path':'incident2.error','value':$access ? '' : error.message},{'op':'set','path':'incident2.foundryAccessStatus','value':$access ? 'required' : state.incident2.foundryAccessStatus},{'op':'set','path':'incident2.foundryAccessError','value':$access ? (error.status = 401 or error.status = 403 ? 'That access key was rejected.' : 'Foundry access is required.') : state.incident2.foundryAccessError}]})" } },
+            "onViolation": { "action": "fail" }
+          },
+          "checkFoundryAccess": {
+            "operation": "check-access",
+            "contract": "foundry-access-check/v1",
+            "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'incident2.foundryAccessStatus','value':'ready'},{'op':'set','path':'incident2.foundryAccessError','value':''}]}" } },
+            "failureSettlement": { "transform": { "kind": "jsonata", "expr": "($rejected := error.status = 401 or error.status = 403; $missing := error.message = 'Foundry access is required'; {'ops':[{'op':'set','path':'incident2.foundryAccessStatus','value':($rejected or $missing) ? 'required' : 'error'},{'op':'set','path':'incident2.foundryAccessError','value':$rejected ? 'That access key was rejected.' : ($missing ? 'Foundry access is required.' : error.message)}]})" } },
+            "onViolation": { "action": "fail" }
+          }
+        },
+        "config": { "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}", "agent": "Incident-Report-Semantic-Agent", "credentialRef": "foundry-agent/access-key" },
+        "scope": "per-blueprint"
+      }
+    },
+    "runtime": {
+      "expression": "jsonata",
+      "namespaces": ["incident2"],
+      "actions": ["assign", "invoke"],
+      "capabilities": {
+        "incident2:workspace": { "propsSchema": { "type": "object", "required": ["title", "preset"], "properties": { "title": { "type": "string" }, "preset": { "type": "string", "enum": ["operational", "brief"] } }, "additionalProperties": false }, "slots": ["children"] },
+        "incident2:editor": { "propsSchema": { "type": "object", "required": ["title"], "properties": { "title": { "type": "string" }, "value": { "type": "string" } }, "additionalProperties": false }, "slots": ["children"], "dataProp": "value" },
+        "incident2:report": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["analyze"], "slots": ["children"], "dataProp": "value" },
+        "incident2:verdict-brief": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
+        "incident2:attack-path": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
+        "incident2:blast-radius": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
+        "incident2:phase-timeline": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
+        "incident2:ttp-chain": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
+        "incident2:response-plan": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
+        "incident2:representation-notes": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
+        "foundry:access-gate": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["accessRequested", "accessCleared"], "slots": ["children"] },
+        "fluent:dropdown": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["select"], "dataProp": "value" },
+        "ui:markdown": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
+        "ui:form": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"] }
+      },
+      "externals": {
+        "projectionViews": { "incident2": { "from": "self" }, "foundry": { "from": "foundry", "use": ["access-gate"] }, "fluent": { "from": "fluent", "use": ["dropdown"] }, "ui": { "from": "floor", "use": ["markdown", "form"] } },
+        "effectHandlers": ["selectSampleReport", "saveReport", "prepareAnalysis"]
+      },
+      "state": {
+        "incident2": { "selectedSampleId": "password-spray-mailbox", "content": "# Loading incident report…", "formValue": { "content": "# Loading incident report…" }, "model": null, "analyzedContent": null, "pendingContent": null, "foundryAccessStatus": "checking", "foundryAccessError": "", "error": "" }
+      }
+    },
+    "cells": {
+      "incident-workspace": { "id": "incident-workspace", "kind": "workspace" },
+      "incident-source": { "id": "incident-source", "kind": "incident-source", "outputs": [{ "token": "incident-report-content", "from": "incident2.content", "when": "$length(incident2.content) > 0" }] },
+      "incident-source-selector": { "id": "incident-source-selector", "kind": "source-selector", "behavior": { "events": { "select": [{ "do": "invoke", "args": { "tool": "selectSampleReport" } }] } } },
+      "incident-source-markdown": { "id": "incident-source-markdown", "kind": "source-reader", "inputs": [{ "token": "incident-report-content" }] },
+      "incident-source-form": { "id": "incident-source-form", "kind": "source-editor", "inputs": [{ "token": "incident-report-content" }], "behavior": { "events": { "save": [{ "do": "invoke", "args": { "tool": "saveReport" } }] } } },
+      "foundry-access-gate": { "id": "foundry-access-gate", "kind": "access-gate", "behavior": { "events": { "accessRequested": [{ "do": "assign", "target": "incident2.foundryAccessStatus", "args": { "value": "checking" } }, { "do": "assign", "target": "incident2.foundryAccessError", "args": { "value": "" } }, { "do": "invoke", "args": { "tool": "checkFoundryAccess" } }], "accessCleared": [{ "do": "assign", "target": "incident2.foundryAccessStatus", "args": { "value": "required" } }, { "do": "assign", "target": "incident2.foundryAccessError", "args": { "value": "" } }] }, "reactions": [{ "when": "incident2.foundryAccessStatus = 'checking' ? 'check' : null", "run": [{ "do": "invoke", "args": { "tool": "checkFoundryAccess" } }] }] } },
+      "incident-semantic-analyzer": { "id": "incident-semantic-analyzer", "kind": "semantic-analysis-agent", "inputs": [{ "token": "incident-report-content" }], "sources": [{ "id": "incident-semantic-analyzer.source", "service": "incident-semantic-analysis", "operation": "analyzeReport", "contract": "incident-semantic-model/v1" }], "behavior": { "events": { "analyze": [{ "do": "invoke", "args": { "tool": "prepareAnalysis" } }, { "do": "invoke", "args": { "tool": "analyzeReport" } }] } }, "outputs": [{ "token": "incident-semantic-model", "from": "incident2.model", "when": "incident2.model != null" }] },
+      "incident-verdict": { "id": "incident-verdict", "kind": "semantic-leaf", "inputs": [{ "token": "incident-semantic-model" }] },
+      "incident-attack-path": { "id": "incident-attack-path", "kind": "semantic-leaf", "inputs": [{ "token": "incident-semantic-model" }] },
+      "incident-blast-radius": { "id": "incident-blast-radius", "kind": "semantic-leaf", "inputs": [{ "token": "incident-semantic-model" }] },
+      "incident-timeline": { "id": "incident-timeline", "kind": "semantic-leaf", "inputs": [{ "token": "incident-semantic-model" }] },
+      "incident-techniques": { "id": "incident-techniques", "kind": "semantic-leaf", "inputs": [{ "token": "incident-semantic-model" }] },
+      "incident-response": { "id": "incident-response", "kind": "semantic-leaf", "inputs": [{ "token": "incident-semantic-model" }] },
+      "incident-notes": { "id": "incident-notes", "kind": "semantic-leaf", "inputs": [{ "token": "incident-semantic-model" }] }
+    },
+    "metadata": {
+      "closedGrammarOwnership": "Blueprint authors tiers, recipes, cells, leaves, presets, layout, interactions, and responsive behavior; the agent emits incident-semantic-model/v1 only.",
+      "agentOutput": "semantic-tokens-and-representation-notes",
+      "presentationPresets": ["operational", "brief"]
+    }
+  }
+}

@@ -13,6 +13,7 @@ import copilotC2Blueprint from "../blueprints/copilot-c2/blueprint.json";
 import foundryAgentNoCellsBlueprint from "../blueprints/foundry-agent-no-cells/blueprint.json";
 import foundryAgentBlueprint from "../blueprints/foundry-agent/blueprint.json";
 import incidentReportExplorerBlueprint from "../blueprints/incident-report-explorer/blueprint.json";
+import incidentReportExplorer2Blueprint from "../blueprints/incident-report-explorer-2/blueprint.json";
 import liveCardsBlueprint from "../blueprints/live-cards/blueprint.json";
 import liveWorkspaceSocBlueprint from "../blueprints/live-workspace-soc/blueprint.json";
 import manageBlueprintsBlueprint from "../blueprints/manage-blueprints/blueprint.json";
@@ -29,6 +30,7 @@ export const sampleBlueprints: Readonly<Record<string, BlueprintArtifact>> = {
   "foundry-agent": foundryAgentBlueprint as unknown as BlueprintArtifact,
   "foundry-agent-no-cells": foundryAgentNoCellsBlueprint as unknown as BlueprintArtifact,
   "incident-report-explorer": incidentReportExplorerBlueprint as unknown as BlueprintArtifact,
+  "incident-report-explorer-2": incidentReportExplorer2Blueprint as unknown as BlueprintArtifact,
   "live-cards": liveCardsBlueprint as unknown as BlueprintArtifact,
   "live-workspace-soc": liveWorkspaceSocBlueprint as unknown as BlueprintArtifact,
   "manage-blueprints": manageBlueprintsBlueprint as unknown as BlueprintArtifact,
