@@ -14,8 +14,10 @@ const useStyles = makeStyles({
   pane: { minWidth: 0, minHeight: 0, display: "grid", gridTemplateRows: "52px minmax(0, 1fr)", backgroundColor: "#ffffff" },
   paneHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: tokens.spacingHorizontalM, padding: `0 ${tokens.spacingHorizontalL}`, borderBottom: "1px solid #e1e5e2", backgroundColor: "#fafbfa" },
   paneTitle: { margin: 0, fontSize: tokens.fontSizeBase300, fontWeight: tokens.fontWeightSemibold },
+  paneActions: { minWidth: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: tokens.spacingHorizontalS },
   paneBody: { minHeight: 0, overflow: "auto", padding: tokens.spacingHorizontalXL },
   editorBody: { "& .gx-markdown": { maxWidth: "78ch", margin: "0 auto" }, "& .gx-form-grid": { display: "block" }, "& textarea": { minHeight: "calc(100vh - 190px)", resize: "vertical", fontFamily: "Cascadia Code, Consolas, monospace", fontSize: tokens.fontSizeBase200, lineHeight: 1.55 } },
+  sampleSelector: { width: "min(280px, 38vw)", minWidth: "150px", "& .gx-fluent-dropdown": { width: "100%", maxWidth: "280px" }, "@media (max-width: 520px)": { width: "150px", minWidth: "0" } },
   iconButton: { width: "34px", height: "34px", display: "inline-grid", placeItems: "center", border: "1px solid #c6ccc8", borderRadius: tokens.borderRadiusMedium, backgroundColor: "#ffffff", color: "#27312c", cursor: "pointer", ":hover": { backgroundColor: "#f0f3f1" } },
   textButton: { minHeight: "34px", padding: `0 ${tokens.spacingHorizontalM}`, border: "1px solid #c6ccc8", borderRadius: tokens.borderRadiusMedium, backgroundColor: "#ffffff", color: "#27312c", font: "inherit", fontWeight: tokens.fontWeightSemibold, cursor: "pointer", ":hover": { backgroundColor: "#f0f3f1" } },
   analyzeButton: { minWidth: "132px", minHeight: "34px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: tokens.spacingHorizontalS, padding: `0 ${tokens.spacingHorizontalM}`, border: 0, borderRadius: tokens.borderRadiusMedium, backgroundColor: "#0b6a6c", color: "#ffffff", font: "inherit", fontWeight: tokens.fontWeightSemibold, cursor: "pointer", ":hover": { backgroundColor: "#07585a" }, ":disabled": { backgroundColor: "#d8ddda", color: "#747c77", cursor: "default" } },
@@ -135,7 +137,7 @@ export const EditorView: ProjectionView = ({ node, children }) => {
     previousContent.current = content;
   }, [content]);
   return <section className={styles.pane}>
-    <header className={styles.paneHeader}><h2 className={styles.paneTitle}>{String(node.props.title ?? "Investigation report")}</h2>{editing ? <button className={styles.textButton} type="button" onClick={() => setEditing(false)}>Cancel</button> : <button className={styles.iconButton} type="button" title="Edit report" aria-label="Edit report" onClick={() => setEditing(true)}><EditRegular /></button>}</header>
+    <header className={styles.paneHeader}><h2 className={styles.paneTitle}>{String(node.props.title ?? "Investigation report")}</h2><div className={styles.paneActions}><div className={styles.sampleSelector}>{cells.get("incident-report-selector")}</div>{editing ? <button className={styles.textButton} type="button" onClick={() => setEditing(false)}>Cancel</button> : <button className={styles.iconButton} type="button" title="Edit report" aria-label="Edit report" onClick={() => setEditing(true)}><EditRegular /></button>}</div></header>
     <div className={`${styles.paneBody} ${styles.editorBody}`}>{editing ? cells.get("incident-report-form") : cells.get("incident-report-markdown")}</div>
   </section>;
 };

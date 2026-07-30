@@ -148,18 +148,21 @@
         "incident:projections": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["analyze"], "dataProp": "value" },
         "foundry:access-gate": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["accessRequested", "accessCleared"], "slots": ["children"] },
         "ui:markdown": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
+        "fluent:dropdown": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["select"], "dataProp": "value" },
         "ui:form": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"] }
       },
       "externals": {
         "projectionViews": {
           "incident": { "from": "self" },
           "foundry": { "from": "foundry", "use": ["access-gate"] },
+          "fluent": { "from": "fluent", "use": ["dropdown"] },
           "ui": { "from": "floor", "use": ["markdown", "form"] }
         },
-        "effectHandlers": ["saveReport", "prepareAnalysis"]
+        "effectHandlers": ["selectSampleReport", "saveReport", "prepareAnalysis"]
       },
       "state": {
         "incident": {
+          "selectedSampleId": "password-spray-mailbox",
           "content": "# Loading incident report…",
           "formValue": { "content": "# Loading incident report…" },
           "intelligence": null,
@@ -184,6 +187,28 @@
           "capability": "incident:editor",
           "props": { "title": "Investigation report" },
           "bindings": { "value": { "from": "incident.content" } }
+        }
+      },
+      "incident-report-selector": {
+        "id": "incident-report-selector",
+        "behavior": {
+          "events": {
+            "select": [{ "do": "invoke", "args": { "tool": "selectSampleReport" } }]
+          }
+        },
+        "view": {
+          "capability": "fluent:dropdown",
+          "props": {
+            "ariaLabel": "Choose sample incident",
+            "options": [
+              { "value": "password-spray-mailbox", "label": "Password spray and mailbox compromise" },
+              { "value": "blob-storage-exfiltration", "label": "Blob storage exfiltration" },
+              { "value": "identity-compromise", "label": "Identity and cloud resource compromise" },
+              { "value": "device-code-bec", "label": "Device-code phishing and BEC" },
+              { "value": "supply-chain-sap-bec", "label": "Supply-chain SAP and procurement BEC" }
+            ]
+          },
+          "bindings": { "value": { "from": "incident.selectedSampleId" } }
         }
       },
       "incident-report-markdown": {
@@ -273,8 +298,9 @@
         "roots": ["incident-workspace"],
         "placements": [
           { "cell": "incident-report", "parent": "incident-workspace", "slot": "children", "order": 0 },
-          { "cell": "incident-report-markdown", "parent": "incident-report", "slot": "children", "order": 0 },
-          { "cell": "incident-report-form", "parent": "incident-report", "slot": "children", "order": 1 },
+          { "cell": "incident-report-selector", "parent": "incident-report", "slot": "children", "order": 0 },
+          { "cell": "incident-report-markdown", "parent": "incident-report", "slot": "children", "order": 1 },
+          { "cell": "incident-report-form", "parent": "incident-report", "slot": "children", "order": 2 },
           { "cell": "foundry-access-gate", "parent": "incident-workspace", "slot": "children", "order": 1 },
           { "cell": "incident-intelligence", "parent": "foundry-access-gate", "slot": "children", "order": 0 }
         ]

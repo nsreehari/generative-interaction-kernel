@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import projectionViews, { analysisIsStale, IncidentProjectionsView, selectIncidentProjection } from "./incidentReportExplorerLeaves";
+import projectionViews, { analysisIsStale, EditorView, IncidentProjectionsView, selectIncidentProjection } from "./incidentReportExplorerLeaves";
 
 const value = {
   asOf: "2026-07-17 23:09:24",
@@ -32,6 +32,19 @@ describe("incident report projections", () => {
     expect(selectIncidentProjection(value, recipe).map((section) => section.id)).toEqual(["timeline", "actions"]);
     expect(analysisIsStale("new report", "old report")).toBe(true);
     expect(analysisIsStale("same report", "same report")).toBe(false);
+  });
+
+  it("renders the Fluent sample dropdown beside edit in the pane header", () => {
+    const Cell = ({ label }: { label: string; node: { id: string } }) => <span>{label}</span>;
+    const markup = renderToStaticMarkup(
+      <EditorView node={{ id: "incident-report", props: { title: "Investigation report", value: "report" } } as never} emit={async () => undefined}>
+        <Cell node={{ id: "incident-report-selector" }} label="Sample selector" />
+        <Cell node={{ id: "incident-report-markdown" }} label="Report Markdown" />
+      </EditorView>,
+    );
+
+    expect(markup).toMatch(/<header[^>]*>.*Sample selector.*Edit report.*<\/header>/);
+    expect(markup).toMatch(/<span>Report Markdown<\/span>/);
   });
 
   it("renders agent output, progressive disclosure, and the current-state button", () => {

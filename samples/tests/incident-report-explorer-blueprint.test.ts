@@ -12,6 +12,7 @@ describe("incident-report-explorer Blueprint", () => {
     expect(cells.map((cell) => cell.id)).toEqual([
       "incident-workspace",
       "incident-report",
+      "incident-report-selector",
       "incident-report-markdown",
       "incident-report-form",
       "foundry-access-gate",
@@ -28,6 +29,7 @@ describe("incident-report-explorer Blueprint", () => {
       "foundry-access-gate",
     ]);
     expect(program.root.edges?.children?.[0]?.edges?.children?.map((node) => node.id)).toEqual([
+      "incident-report-selector",
       "incident-report-markdown",
       "incident-report-form",
     ]);
@@ -46,6 +48,19 @@ describe("incident-report-explorer Blueprint", () => {
       },
       bindings: { value: { from: "incident.formValue" } },
     });
+    const selector = cells.find((cell) => cell.id === "incident-report-selector");
+    expect(selector).toMatchObject({
+      behavior: { events: { select: [{ do: "invoke", args: { tool: "selectSampleReport" } }] } },
+      view: {
+        capability: "fluent:dropdown",
+        props: { ariaLabel: "Choose sample incident" },
+        bindings: { value: { from: "incident.selectedSampleId" } },
+      },
+    });
+    expect((selector?.view?.props as { options?: unknown[] })?.options).toEqual(expect.arrayContaining([
+      expect.objectContaining({ value: "blob-storage-exfiltration" }),
+      expect.objectContaining({ value: "device-code-bec" }),
+    ]));
     expect(cells.find((cell) => cell.id === "incident-intelligence")).toMatchObject({
       inputs: [{ token: "incident-report-content" }],
       sources: [{ service: "incident-report-intelligence", operation: "analyzeReport" }],
@@ -70,6 +85,7 @@ describe("incident-report-explorer Blueprint", () => {
   it("starts with stale-aware analysis state", () => {
     const runtime = openSampleBlueprint("incident-report-explorer");
     expect(runtime.state.incident).toMatchObject({
+      selectedSampleId: "password-spray-mailbox",
       content: "# Loading incident report…",
       intelligence: null,
       analyzedContent: null,
