@@ -1,8 +1,12 @@
 import {
+  materializeBlueprint,
+  type ExternalContext,
+  type BlueprintArtifact,
+} from "@gik/blueprint";
+import {
   openBlueprint,
   type BlueprintRuntime,
 } from "@gik/controlface/blueprint";
-import type { BlueprintArtifact } from "@gik/blueprint";
 import { applyHostConfig } from "./host-config";
 
 const blueprintArtifacts = import.meta.glob("../blueprints/*/blueprint.json", {
@@ -28,6 +32,13 @@ export function resolveSampleBlueprintSource(id: string): BlueprintArtifact {
   return applyHostConfig(blueprint);
 }
 
-export function openSampleBlueprint(id: string): BlueprintRuntime {
-  return openBlueprint(resolveSampleBlueprintSource(id));
+export function openSampleBlueprint(
+  id: string,
+  externalContext?: ExternalContext,
+): BlueprintRuntime {
+  const materialized = materializeBlueprint({
+    blueprint: resolveSampleBlueprintSource(id),
+    externalContext,
+  });
+  return openBlueprint(materialized.payload.terminalBlueprint);
 }

@@ -10,6 +10,7 @@
 // documents can wire `on` handlers to them.
 
 import type { CapabilityDescriptor, Enveloped, ProjectedVocabularyManifest } from "@gik/kernel";
+import uiFormPropsSchema from "../../../../schemas/ui-form.schema.json" with { type: "json" };
 
 const anyProps = { type: "object", additionalProperties: true } as const;
 
@@ -70,7 +71,7 @@ export const PRIMITIVE_CAPABILITIES: Record<string, CapabilityDescriptor> = {
   field: { propsSchema: anyProps, emits: ["input"] }, // label + value + placeholder
   textarea: { propsSchema: anyProps, emits: ["input"] },
   select: { propsSchema: anyProps, emits: ["change"] }, // label + value + options
-  form: { propsSchema: anyProps, emits: ["save"] }, // schema-ish committed form, emits save {values}
+  form: { propsSchema: uiFormPropsSchema, emits: ["save"] }, // committed form, emits save {values}
   "json-field": { propsSchema: anyProps, emits: ["save"], dataProp: "value" }, // single json textarea = one-field committed form, emits save {values}
   button: { propsSchema: anyProps, emits: ["press"] }, // label + tone + disabled
   "timer-button": { propsSchema: anyProps, emits: ["press"] }, // countdown button, emits press {reason}

@@ -1,0 +1,329 @@
+{
+  "vocabulary": {
+    "gik": "0.1",
+    "type": "vocabulary",
+    "payload": {
+      "version": "demo-runner-host/2.0",
+      "expression": "jsonata",
+      "namespaces": ["runner"],
+      "contexts": ["demoLedger", "demoTarget"],
+      "actions": ["assign", "derive", "invoke"],
+      "capabilities": {
+        "demo:tooling": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "slots": ["children"]
+        },
+        "demo:runner-panel": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "slots": ["children"],
+          "emits": ["reset"]
+        },
+        "demo:control-panel": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "slots": ["children"],
+          "emits": ["toggle"]
+        },
+        "demo:growing-container": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "slots": ["children"]
+        },
+        "demo:timer-button": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "emits": ["press"]
+        },
+        "demo:lowered-blueprint": {
+          "propsSchema": { "type": "object", "additionalProperties": true }
+        },
+        "demo:act-journal": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "emits": ["select"]
+        },
+        "demo:runtime-ledger": {
+          "propsSchema": { "type": "object", "additionalProperties": true }
+        },
+        "demo:actors": {
+          "propsSchema": { "type": "object", "additionalProperties": true }
+        },
+        "fluent:dropdown": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "emits": ["select"]
+        },
+        "fluent:tab-list": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "slots": ["children"],
+          "emits": ["select"]
+        },
+        "fluent:tab": {
+          "propsSchema": { "type": "object", "additionalProperties": true }
+        },
+        "ui:form": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "emits": ["save"]
+        }
+      },
+      "externals": {
+        "effectHandlers": ["resetRunner", "runSequenceEntry", "selectScenario", "applyNamedContext", "saveExternalContext"],
+        "projectionViews": {
+          "demo": {
+            "from": "self",
+            "use": ["tooling", "runner-panel", "control-panel", "growing-container", "timer-button", "lowered-blueprint", "act-journal", "runtime-ledger", "actors"]
+          },
+          "fluent": {
+            "from": "self",
+            "use": ["dropdown", "tab-list", "tab"]
+          },
+          "ui": {
+            "from": "floor",
+            "use": ["form"]
+          }
+        }
+      }
+    }
+  },
+  "program": {
+    "gik": "0.1",
+    "type": "program",
+    "payload": {
+      "vocabulary": "demo-runner-host/2.0",
+      "root": {
+        "capability": "demo:tooling",
+        "id": "demo-runner-tooling",
+        "edges": {
+          "children": [
+            {
+              "capability": "demo:runner-panel",
+              "id": "demo-runner-panel",
+              "props": {
+                "ariaLabel": "Scenario runner"
+              },
+              "edges": {
+                "readExpr": {
+                  "hidden": "runner.visible = false",
+                  "currentActNumber": "runner.currentEntryIndex + 1",
+                  "totalActs": "$count(runner.scenario.sequence)",
+                  "complete": "runner.currentEntryIndex >= $count(runner.scenario.sequence)",
+                  "currentKind": "runner.scenario.sequence[$$.runner.currentEntryIndex].kind",
+                  "actTitle": "runner.scenario.sequence[$$.runner.currentEntryIndex].shortDescription",
+                  "actDescription": "runner.scenario.sequence[$$.runner.currentEntryIndex].longDescription"
+                },
+                "on": {
+                  "reset": [{ "do": "invoke", "args": { "tool": "resetRunner" } }]
+                },
+                "children": [
+                  {
+                    "capability": "fluent:dropdown",
+                    "id": "scenario-selector",
+                    "props": {
+                      "ariaLabel": "Select scenario",
+                      "placeholder": "Select a scenario"
+                    },
+                    "edges": {
+                      "read": { "value": "runner.selectedScenarioId", "options": "runner.scenarios" },
+                      "on": {
+                        "select": [
+                          { "do": "invoke", "args": { "tool": "selectScenario" } }
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "capability": "demo:timer-button",
+                    "id": "run-current-act",
+                    "props": {
+                      "label": "Next",
+                      "appearance": "primary",
+                      "defaultPace": "manual",
+                      "autoDurationMs": 3000,
+                      "showCountdown": true,
+                      "showPaceSwitch": true
+                    },
+                    "edges": {
+                      "readExpr": {
+                        "disabled": "runner.scenario = null or runner.currentEntryIndex >= $count(runner.scenario.sequence)",
+                        "resetKey": "runner.currentEntryIndex"
+                      },
+                      "on": {
+                        "press": [{ "do": "invoke", "args": { "tool": "runSequenceEntry" } }]
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "capability": "demo:control-panel",
+              "id": "demo-control-panel",
+              "props": { "title": "GIK control panel" },
+              "edges": {
+                "readExpr": { "hidden": "runner.control.visible = false" },
+                "read": { "expanded": "runner.control.expanded" },
+                "on": {
+                  "toggle": [{ "do": "assign", "target": "runner.control.expanded", "args": { "from": "$event.expanded" } }]
+                },
+                "children": [
+                  {
+                    "capability": "fluent:tab-list",
+                    "id": "control-panel-tabs",
+                    "props": { "ariaLabel": "Control panel views" },
+                    "edges": {
+                      "read": { "value": "runner.control.activeTab" },
+                      "on": {
+                        "select": [{ "do": "assign", "target": "runner.control.activeTab", "args": { "from": "$event.value" } }]
+                      },
+                      "children": [
+                        { "capability": "fluent:tab", "id": "journal-tab", "props": { "value": "journal", "label": "Journal" } },
+                        { "capability": "fluent:tab", "id": "ledger-tab", "props": { "value": "ledger", "label": "Ledger" } },
+                        { "capability": "fluent:tab", "id": "blueprint-tab", "props": { "value": "blueprint", "label": "Blueprint" } },
+                        { "capability": "fluent:tab", "id": "actors-tab", "props": { "value": "actors", "label": "Actors" } },
+                        { "capability": "fluent:tab", "id": "context-tab", "props": { "value": "context", "label": "Context" } }
+                      ]
+                    }
+                  },
+                  {
+                    "capability": "demo:growing-container",
+                    "id": "ledger-panel",
+                    "props": { "ariaLabel": "Ledger panel" },
+                    "edges": {
+                      "gate": "runner.control.activeTab = 'ledger'",
+                      "children": [
+                        {
+                          "capability": "demo:runtime-ledger",
+                          "id": "runtime-ledger",
+                          "edges": { "read": { "entries": "demoLedger.entries" } }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "capability": "demo:growing-container",
+                    "id": "journal-panel",
+                    "props": { "ariaLabel": "Journal panel" },
+                    "edges": {
+                      "gate": "runner.control.activeTab = 'journal'",
+                      "children": [
+                        {
+                          "capability": "demo:act-journal",
+                          "id": "act-journal",
+                          "edges": {
+                            "read": {
+                              "entries": "runner.execution.journal",
+                              "selectedId": "runner.control.selectedJournalId"
+                            },
+                            "on": {
+                              "select": [{ "do": "assign", "target": "runner.control.selectedJournalId", "args": { "from": "$event.id" } }]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "capability": "demo:growing-container",
+                    "id": "blueprint-panel",
+                    "props": { "ariaLabel": "Blueprint panel" },
+                    "edges": {
+                      "gate": "runner.control.activeTab = 'blueprint'",
+                      "children": [
+                        {
+                          "capability": "demo:lowered-blueprint",
+                          "id": "lowered-blueprint",
+                          "edges": { "read": { "blueprint": "demoTarget.materializedBlueprint" } }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "capability": "demo:growing-container",
+                    "id": "actors-panel",
+                    "props": { "ariaLabel": "Actors panel" },
+                    "edges": {
+                      "gate": "runner.control.activeTab = 'actors'",
+                      "children": [
+                        {
+                          "capability": "demo:actors",
+                          "id": "scenario-actors",
+                          "edges": {
+                            "readExpr": {
+                              "actors": "runner.scenario.participants",
+                              "currentParticipantId": "runner.scenario.sequence[$$.runner.currentEntryIndex].participantId"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "capability": "demo:growing-container",
+                    "id": "context-panel",
+                    "props": { "ariaLabel": "Context panel" },
+                    "edges": {
+                      "gate": "runner.control.activeTab = 'context' and runner.contextFormSpec != null",
+                      "children": [
+                        {
+                          "capability": "fluent:dropdown",
+                          "id": "named-context-selector",
+                          "props": {
+                            "ariaLabel": "Select context",
+                            "placeholder": "Select a context"
+                          },
+                          "edges": {
+                            "read": { "value": "runner.selectedContextId" },
+                            "readExpr": { "options": "runner.namedPresetContexts" },
+                            "on": {
+                              "select": [{ "do": "invoke", "args": { "tool": "applyNamedContext" } }]
+                            }
+                          }
+                        },
+                        {
+                          "capability": "ui:form",
+                          "id": "external-context-form",
+                          "edges": {
+                            "read": {
+                              "fields": "runner.contextFormSpec.fields",
+                              "schema": "runner.contextFormSpec.schema",
+                              "value": "runner.externalContext",
+                              "saveLabel": "runner.contextFormSpec.saveLabel",
+                              "discardLabel": "runner.contextFormSpec.discardLabel"
+                            },
+                            "on": {
+                              "save": [{ "do": "invoke", "args": { "tool": "saveExternalContext" } }]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "state": {
+    "runner": {
+      "visible": true,
+      "scenarios": [],
+      "selectedScenarioId": "",
+      "scenario": null,
+      "currentEntryIndex": 0,
+      "execution": {
+        "resetBlueprintStateAtStartApplied": false,
+        "completedEntryIds": [],
+        "journal": []
+      },
+      "namedPresetContexts": [],
+      "selectedContextId": "",
+      "contextFormSpec": null,
+      "externalContext": {},
+      "materializedBlueprint": null,
+      "control": {
+        "visible": true,
+        "expanded": true,
+        "activeTab": "journal",
+        "selectedJournalId": ""
+      }
+    }
+  }
+}

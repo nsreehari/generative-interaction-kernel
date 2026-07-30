@@ -27,9 +27,26 @@ export function validateProgramMessage(message: unknown): void {
 // Per-capability props validators, compiled once per `propsSchema` object (schemas are stable manifest
 // data, so the object identity is a sound cache key).
 const propsValidators = new WeakMap<object, ValidateFunction>();
+const propsValidatorsById = new Map<string, { source: string; validate: ValidateFunction }>();
 function propsValidator(schema: object): ValidateFunction {
   let v = propsValidators.get(schema);
   if (!v) {
+    const schemaId = (schema as { $id?: unknown }).$id;
+    if (typeof schemaId === "string") {
+      const source = JSON.stringify(schema);
+      const existing = propsValidatorsById.get(schemaId);
+      if (existing) {
+        if (existing.source !== source) {
+          throw new Error(`Conflicting props schemas declare $id ${JSON.stringify(schemaId)}`);
+        }
+        propsValidators.set(schema, existing.validate);
+        return existing.validate;
+      }
+      v = ajv.compile(schema);
+      propsValidatorsById.set(schemaId, { source, validate: v });
+      propsValidators.set(schema, v);
+      return v;
+    }
     v = ajv.compile(schema);
     propsValidators.set(schema, v);
   }

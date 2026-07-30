@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://gik.dev/schemas/ui-form.schema.json",
+  "title": "ui:form props",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "fields": { "$ref": "#/definitions/formSchema" },
+    "schema": { "$ref": "#/definitions/formSchema" },
+    "value": { "type": "object" },
+    "data": { "type": "object" },
+    "saveLabel": { "type": "string" },
+    "discardLabel": { "type": "string" }
+  },
+  "definitions": {
+    "formSchema": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["properties"],
+      "properties": {
+        "properties": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "$ref": "#/definitions/field" }
+        },
+        "required": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "validators": {}
+      }
+    },
+    "field": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "type": { "enum": ["string", "number", "integer", "boolean", "array", "json"] },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "hint": { "type": "string" },
+        "format": { "type": "string" },
+        "placeholder": { "type": "string" },
+        "enum": { "type": "array", "minItems": 1, "uniqueItems": true },
+        "enumNames": { "type": "array", "items": { "type": "string" } },
+        "oneOf": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["const"],
+            "properties": {
+              "const": {},
+              "title": { "type": "string" }
+            }
+          }
+        },
+        "options": { "type": "array", "minItems": 1 },
+        "items": { "type": "object" },
+        "readOnly": { "type": "boolean" },
+        "disabled": { "type": "boolean" },
+        "multiline": { "type": "boolean" },
+        "rows": { "type": ["number", "string"] },
+        "colSpan": { "type": "number", "minimum": 1, "maximum": 12 },
+        "minimum": { "type": "number" },
+        "maximum": { "type": "number" },
+        "minLength": { "type": "number", "minimum": 0 },
+        "maxLength": { "type": "number", "minimum": 0 },
+        "pattern": { "type": "string" }
+      }
+    }
+  }
+}

@@ -57,6 +57,10 @@ package:
     DurableTransitionAdapter is provider-neutral and has no Blueprint or Kernel semantics.
     The host supplies an opaque declarative spec, a pure transition function, and a pure
     applySpecUpdates function. Providers persist spec values and updates without interpreting them.
+  blueprint_binding: >-
+    @gik/blueprint may supply a structurally compatible adapter whose opaque spec contains an
+    authored Blueprint, immutable external context, and portable MaterializedBlueprint. This is a
+    caller binding, not a dependency or Blueprint semantic added to durable-runtime.
 
 api_policy:
   signature_authority: TypeScript source in packages/durable-runtime/src
@@ -92,6 +96,8 @@ architecture:
       - Apply emitted specUpdates through the caller-supplied applySpecUpdates function.
       - Atomically commit state, materialized spec, specUpdates, cursor, and effects while releasing the lease.
       - Abort and release the lease if local execution throws.
+      - A Blueprint-bound stateless worker may execute a trusted portable materialization read from
+        spec without process-local memory or per-transition source hashing.
     append_and_wake:
       - Append the journal event unconditionally.
       - Advance the provider-owned requestedAt engine wake marker.
@@ -222,6 +228,8 @@ contracts:
       - transition runs in the host after provider acquisition.
       - effects may be an empty array.
       - applySpecUpdates owns all interpretation of opaque spec updates.
+      - For a Blueprint binding, semantic spec updates target the authored Blueprint and the
+        caller atomically supplies the resulting authored Blueprint plus new materialization.
 
   - name: DurableEffectHandler
     category: host_extension
