@@ -38,36 +38,11 @@ jobs:
             exit 1
           fi
           echo "SAMPLE_TAG=$tag_name" >> "$GITHUB_ENV"
-          echo "VERSION_PATH=${tag_name#samples-}" >> "$GITHUB_ENV"
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: '24'
-
-      # npm install (not ci): the rolldown/vite wasm optional-binding tree resolves to
-      # slightly different nested native-dep versions across platforms, which makes strict
-      # `npm ci` fail on Linux against a lock generated elsewhere. install reconciles in-runner.
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Build public packages
-        # Build the workspace packages first so non-aliased barrels (e.g. @gik/kernel,
-        # resolved via the workspace's dist/) exist before the host bundles them.
-        run: npm run build:public-packages
-
-      - name: Test sample startup contracts
-        run: npx vitest run --project samples samples/apps/host/src/bundles.test.ts samples/scenarios/catalog.test.ts --reporter=dot
-
-      - name: Build host (samples/apps/host)
-        run: npm run build:host
-        env:
-          # Each tag has an immutable project Pages path; the root lists all deployed versions.
-          VITE_BASE: /gik/${{ env.VERSION_PATH }}/
-          # Absolute base URL of the deployed foundry-agent-proxy Azure Function. Set the
-          # `FOUNDRY_PROXY_BASE` repo variable (Settings > Secrets and variables > Actions > Variables)
-          # e.g. https://my-foundry-proxy.azurewebsites.net. The foundry-agent sample calls it at runtime.
-          VITE_FOUNDRY_PROXY_BASE: ${{ vars.FOUNDRY_PROXY_BASE }}
 
       - name: Checkout public Pages repository
         uses: actions/checkout@v5
@@ -75,24 +50,28 @@ jobs:
           repository: nsreehari/gik
           ssh-key: ${{ secrets.GIK_DEPLOY_KEY }}
           path: _pages
+          fetch-depth: 0
 
-      - name: Publish dist
+      - name: Build and publish all tagged samples
         shell: bash
+        env:
+          # Absolute base URL of the deployed foundry-agent-proxy Azure Function. Set the
+          # `FOUNDRY_PROXY_BASE` repo variable (Settings > Secrets and variables > Actions > Variables)
+          # e.g. https://my-foundry-proxy.azurewebsites.net. The foundry-agent sample calls it at runtime.
+          VITE_FOUNDRY_PROXY_BASE: ${{ vars.FOUNDRY_PROXY_BASE }}
         run: |
-          version_dir="_pages/$VERSION_PATH"
-          rm -rf "$version_dir"
-          mkdir -p "$version_dir"
-          cp -a samples/apps/host/dist/. "$version_dir/"
-
           git fetch --force --tags origin
           declare -A source_versions=()
           declare -A source_notes=()
-          while IFS= read -r version; do
+          mapfile -t sample_tags < <(git tag --list 'samples-v*' --sort=version:refname)
+          if (( ${#sample_tags[@]} == 0 )); then
+            echo "No samples-v* tags found" >&2
+            exit 1
+          fi
+          for tag_name in "${sample_tags[@]}"; do
+            version="${tag_name#samples-}"
             source_versions["$version"]=1
-          done < <(
-            git ls-remote --refs --tags origin 'refs/tags/samples-v*' \
-              | awk '{ sub(/^refs\/tags\/samples-/, "", $2); print $2 }'
-          )
+          done
           while IFS=$'\t' read -r tag_name object_type tag_note; do
             if [[ "$object_type" == tag ]]; then
               source_notes["${tag_name#samples-}"]="$tag_note"
@@ -109,6 +88,25 @@ jobs:
               echo "Pruning deleted tag deployment: $deployed_version"
               rm -rf "$deployed_dir"
             fi
+          done
+
+          # npm install (not ci): the rolldown/vite wasm optional-binding tree resolves to
+          # slightly different nested native-dep versions across platforms, which makes strict
+          # `npm ci` fail on Linux against a lock generated elsewhere. install reconciles in-runner.
+          for tag_name in "${sample_tags[@]}"; do
+            version="${tag_name#samples-}"
+            echo "Building $tag_name into /gik/$version/"
+            git checkout --force "refs/tags/$tag_name"
+            npm install --no-audit --no-fund
+            # Older tags predate the Turbo dependency graph and may need a second pass after
+            # the first pass materializes declarations for downstream workspace packages.
+            npm run build:public-packages || npm run build:public-packages
+            VITE_BASE="/gik/$version/" npm run build:host
+
+            version_dir="_pages/$version"
+            rm -rf "$version_dir"
+            mkdir -p "$version_dir"
+            cp -a samples/apps/host/dist/. "$version_dir/"
           done
 
           # Preserve version directories while replacing the legacy root deployment.
