@@ -4,7 +4,7 @@ import { unwrap } from "@gik/kernel";
 import { bundleFromJson, loadBundleRuntime, seedState } from "@gik/react";
 
 import { resolveBundleProjectionViews } from "./bundles";
-import { copilotC2StateStorageKey } from "../../../bundles/copilot-c2/effect_handlers";
+import { copilotC2StateStorageKey } from "../../../blueprints/copilot-c2/native/effect_handlers/copilotC2EffectHandlers";
 import { openSampleBlueprint } from "../../../shared/blueprints";
 import { resolveBlueprintInitialContext, resolveBlueprintNative } from "../../../shared/sample-bundles";
 import { createBlueprintServiceHost } from "../../../shared/service-runtime";

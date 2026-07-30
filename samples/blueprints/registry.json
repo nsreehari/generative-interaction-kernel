@@ -9,8 +9,7 @@
     "live-workspace-soc",
     "copilot-c2",
     "foundry-agent",
-    "foundry-agent-no-cells",
-    "manage-bundles"
+    "foundry-agent-no-cells"
   ],
   "nativeFrom": {
     "foundry-agent-no-cells": "foundry-agent",

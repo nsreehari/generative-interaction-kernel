@@ -3,8 +3,8 @@ import { test } from "vitest";
 import { bundleFromJson, loadBundleRuntime } from "@gik/react";
 import { createHeadlessControlRuntime } from "../shared/control-runtime";
 import { openSampleBlueprint } from "../shared/blueprints";
-import { socControlContract } from "../bundles/live-workspace-soc/projection_views/control-contract";
-import effects from "../bundles/live-workspace-soc/effect_handlers";
+import effects from "../blueprints/live-workspace-soc/native/effect_handlers/liveWorkspaceSocEffectHandlers";
+import { socControlContract } from "../blueprints/live-workspace-soc/native/projection_views/control-contract";
 
 function headlessSoc() {
   const { vocabulary, program, state } = openSampleBlueprint("live-workspace-soc");

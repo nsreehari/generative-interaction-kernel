@@ -10,7 +10,7 @@ import {
 } from "@gik/blueprint";
 import { openBlueprint } from "@gik/controlface/blueprint";
 import { bundleFromJson, loadBundleRuntime } from "@gik/react";
-import effects from "../bundles/portfolio-tracker/effect_handlers";
+import effects from "../blueprints/portfolio-tracker/native/effect_handlers/portfolioTrackerEffectHandlers";
 import { mockMarketDataHandler, MOCK_MARKET_DATA_PROVIDER } from "../services/mock-market-data";
 import { declarativeServiceOrchestrator } from "../shared/service-runtime";
 

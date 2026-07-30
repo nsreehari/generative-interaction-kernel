@@ -6,7 +6,7 @@ import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blu
 import { FUNCTION_ACCESS } from "../shared/function-access";
 
 const FOUNDRY_ACCESS_STORAGE_KEY = FUNCTION_ACCESS.foundry.storageKey;
-import effects from "../bundles/foundry-agent/effect_handlers";
+import effects from "../blueprints/foundry-agent/native/effect_handlers/foundryAgentEffectHandlers";
 import { createFoundryAgentKind } from "../services/foundry-agent";
 import {
   browserServiceRegistryOptions,

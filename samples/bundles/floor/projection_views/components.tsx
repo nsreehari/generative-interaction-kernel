@@ -6,7 +6,7 @@ import {
   type ComponentRegistry,
   type ProviderMap,
 } from "@gik/react";
-import { FLOOR_COMPONENTS } from "./index";
+import { FLOOR_COMPONENTS } from "./floorLeaves";
 
 export function Board({ node, children }: ProjectionViewProps) {
   const title = readProps(node).str("title");

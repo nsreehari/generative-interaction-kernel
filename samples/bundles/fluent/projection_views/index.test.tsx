@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { Json } from "@gik/kernel";
 import { FallbackView, buildRegistryFromImports, renderNode } from "@gik/react";
 
-import fluentViews from "./index";
+import fluentViews from "./fluentLeaves";
 
 function leaf(capability: string, value: string, extraProps: Record<string, Json> = {}) {
   return {

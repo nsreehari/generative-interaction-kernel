@@ -29,7 +29,7 @@ vi.mock("@fluentui/react-components", () => {
   };
 });
 
-import foundryViews from "./index";
+import foundryViews from "./foundryLeaves";
 import { FUNCTION_ACCESS } from "../../../shared/function-access";
 
 function gate(status: string, children: ResolvedNode[] = []): ResolvedNode {

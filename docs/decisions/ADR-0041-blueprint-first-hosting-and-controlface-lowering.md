@@ -45,8 +45,8 @@ Application selection therefore uses Blueprint identity through the single canon
 (for example, `b=portfolio-tracker`). During migration the application host may parse the legacy
 `bundle` query key, but it immediately canonicalizes that input to `b`; generated links, persisted
 navigation, and documentation use only `b`. The host does not interpret the value as a Bundle
-identity. Ordinary Bundles are inspected and previewed inside the `manage-bundles` Blueprint rather
-than becoming a second top-level hosting path.
+identity. The former `manage-bundles` inspection surface was retired rather than becoming a second
+top-level hosting path.
 
 ### ControlFace owns opening and lowering lifecycle
 

@@ -9,7 +9,7 @@ import {
   appendEditableRowOnLastRowFocus,
   committedEditableRows,
   withTrailingEditableRow,
-} from "./index";
+} from "./floorLeaves";
 
 const registry = buildRegistryFromImports(
   { ui: { from: "floor" } },
