@@ -303,7 +303,7 @@ export function composeCellProgram(definition: CellProjectionDefinition, topolog
     const children = (byParent.get(cellId) ?? [])
       .sort((left, right) => (left.order ?? 0) - (right.order ?? 0))
       .map(({ cell: childId }) => compile(childId, [...ancestors, cellId]));
-    return toDocNode(cell, children);
+    return toProgramNode(cell, children);
   };
   const derivations = topology.cells.flatMap((cell) => (cell.compute ?? []).map((computation) => ({
     id: `${cell.id}-${computation.id}`,
@@ -317,14 +317,11 @@ export function composeCellProgram(definition: CellProjectionDefinition, topolog
   };
 }
 
-/** @deprecated Use composeCellProgram. */
-export const composeCellDocument = composeCellProgram;
-
 function providedTokens(cell: CellDefinition): string[] {
   return (cell.outputs ?? []).map(({ token }) => token);
 }
 
-function toDocNode(cell: CellDefinition, children: readonly DocNode[]): DocNode {
+function toProgramNode(cell: CellDefinition, children: readonly DocNode[]): DocNode {
   const source = cell.sources?.[0];
   const directBindings = Object.entries(cell.view?.bindings ?? {})
     .filter(([, binding]) => binding.from !== undefined)

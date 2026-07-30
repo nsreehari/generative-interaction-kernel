@@ -11,12 +11,19 @@ import {
   readHostQuery,
 } from "./host-query";
 import { FLOOR_COMPONENTS } from "../../../bundles/floor/projection_views";
-import { resolveBlueprintNative } from "../../../shared/sample-bundles";
+import {
+  resolveBlueprintInitialContext,
+  resolveBlueprintNative,
+  resolveBlueprintNativeFromMaterialized,
+} from "../../../shared/sample-bundles";
 import { resolveSampleBlueprintSource } from "../../../shared/blueprints";
-import { demoScenariosJson } from "../../../shared/demo-catalog";
+import portfolioTwoTierDemo from "../../../scenarios/portfolio-tracker-2tiers-baseline/scenario.json" with { type: "json" };
 
 const embeddedHostStyle: React.CSSProperties = { height: "100vh" };
 const { blueprints: blueprintIds, default: DEFAULT_BLUEPRINT } = blueprintRegistry;
+const defaultExternalContextByBlueprint = {
+  "portfolio-tracker-2tiers": { view: "desktop", attention: "detailed", marketMode: "live" },
+} as const;
 
 export function Host(): React.ReactElement {
   const query = readHostQuery(window.location.search);
@@ -42,10 +49,18 @@ function HostView({
   resolveLeavesProvider: (from: string) => ReturnType<typeof resolveBundleProjectionViews>;
 }): React.ReactElement {
   const id = targetId;
+  const externalContext = defaultExternalContextByBlueprint[id as keyof typeof defaultExternalContextByBlueprint];
   const { blueprint, native } = React.useMemo(() => ({
     blueprint: resolveSampleBlueprintSource(id),
     native: resolveBlueprintNative(id),
   }), [id]);
+  const context = React.useMemo(
+    () => resolveBlueprintInitialContext(id, externalContext),
+    [externalContext, id],
+  );
+  const demoRunnerDocument = id === "portfolio-tracker-2tiers"
+    ? portfolioTwoTierDemo
+    : undefined;
 
   return (
     <>
@@ -53,8 +68,12 @@ function HostView({
         HostComponent={BlueprintHost}
         blueprint={blueprint}
         native={native}
-        context={blueprint.payload.context}
-        scenariosJson={demoScenariosJson}
+        context={context}
+        externalContext={externalContext}
+        resolveNative={id === "portfolio-tracker-2tiers"
+          ? (materializedBlueprint) => resolveBlueprintNativeFromMaterialized(id, materializedBlueprint)
+          : undefined}
+        scenariosJson={demoRunnerDocument as never}
         resolveLeavesProvider={resolveLeavesProvider}
         style={embeddedHostStyle}
       />

@@ -37,3 +37,71 @@ test("BlueprintController renders and transitions Blueprint-owned in-memory stat
   assert.equal((await controller.emit("root", "increment")).props.value, 2);
   assert.deepEqual(controller.getState(), { counter: { value: 2 } });
 });
+
+test("BlueprintController reuses materialized execution with immutable externalContext", async () => {
+  const blueprint = createBlueprint({
+    id: "external-context",
+    kind: "runtime-blueprint",
+    version: "1",
+    tiers: [{ id: "runtime", kind: "runtime-program" }],
+    recipes: [],
+    runtime: { namespaces: ["counter"], state: { counter: { value: 1 } }, capabilities: {} },
+    cells: {
+      root: {
+        id: "root",
+        view: {
+          capability: "screen",
+          bindings: { policyValue: { from: "externalContext.policy.nextValue" } },
+        },
+        behavior: {
+          events: {
+            increment: [{ do: "assign", target: "counter.value", args: { from: "externalContext.policy.nextValue" } }],
+          },
+        },
+      },
+    },
+    projections: { presentation: { roots: ["root"] } },
+  });
+  const externalContext = { policy: { nextValue: 2 } };
+  const controller = new BlueprintController(blueprint, { externalContext });
+  externalContext.policy.nextValue = 99;
+
+  assert.equal((await controller.start()).props.policyValue, 2);
+  await controller.emit("root", "increment");
+  assert.deepEqual(controller.getState(), { counter: { value: 2 } });
+});
+
+test("BlueprintController seeds state on the materialized terminal Blueprint", async () => {
+  const blueprint = createBlueprint({
+    id: "lowered-counter",
+    kind: "intent-blueprint",
+    version: "1",
+    tiers: [
+      { id: "intent", kind: "interaction-intent" },
+      { id: "runtime", kind: "runtime-program" },
+    ],
+    recipes: [{
+      id: "intent-to-runtime",
+      from: "intent",
+      to: "runtime",
+      patch: [{
+        op: "replaceCell",
+        cellId: "root",
+        cell: {
+          id: "root",
+          kind: "runtime-cell",
+          view: { capability: "screen", bindings: { value: { from: "counter.value" } } },
+        },
+      }],
+    }],
+    runtime: { namespaces: ["counter"], state: { counter: { value: 1 } }, capabilities: {} },
+    cells: { root: { id: "root", kind: "intent-cell" } },
+    projections: { presentation: { roots: ["root"] } },
+  });
+  const controller = new BlueprintController(blueprint, {
+    context: { initialSeed: { counter: { value: 7 } } },
+  });
+
+  assert.equal((await controller.start()).props.value, 7);
+  assert.deepEqual(controller.getState(), { counter: { value: 7 } });
+});

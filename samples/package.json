@@ -21,6 +21,7 @@
     "@gik/component-infinite-canvas": "0.1.0",
     "@gik/controlface": "0.1.4",
     "@gik/demo-runner-host": "0.1.3",
+    "@gik/durable-runtime": "0.4.1",
     "@gik/evaluators": "0.1.1",
     "@gik/kernel": "0.1.1",
     "@gik/blueprint": "0.1.2",

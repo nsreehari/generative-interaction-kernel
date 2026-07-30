@@ -8,6 +8,7 @@
 
 import React from "react";
 import { GenUIRoot } from "../useGenUI";
+import type { ProviderResolver } from "../registry";
 import { loadBundle, type Bundle, type LoadBundleOptions } from "./bundle";
 import { buildBundleRegistry } from "./registry";
 import {
@@ -21,11 +22,14 @@ import { GenUIFileServicesProvider, type GenUIFileServices } from "./fileService
 /** @deprecated Use BlueprintHost for top-level applications. */
 export function BundleHost({
   bundle,
+  resolveProvider,
   fileServices,
   contexts = {},
   wrapOrchestrator,
 }: {
   bundle: Bundle;
+  /** Host-owned resolver for projection providers imported by this bundle. */
+  resolveProvider?: ProviderResolver;
   /** Optional host-level file helpers consumed by `multi-file-upload` / file-link leaves. */
   fileServices?: GenUIFileServices;
   /** Shared namespace stores inherited by this bundle and any nested `ui:embed` runtimes. */
@@ -33,7 +37,8 @@ export function BundleHost({
   /** Optional host-owned service or policy wrapper around the bundle's native dispatcher. */
   wrapOrchestrator?: LoadBundleOptions["wrapOrchestrator"];
 }): React.ReactElement {
-  const resolveProvider = useProjectionProviderResolver();
+  const ambientResolveProvider = useProjectionProviderResolver();
+  const resolvedProvider = resolveProvider ?? ambientResolveProvider;
   // Build the runtime once for the life of the host.
   const controller = React.useMemo(
     () => loadBundle(bundle, { contexts, wrapOrchestrator }),
@@ -43,8 +48,8 @@ export function BundleHost({
   // Namespaced model: resolve every `alias:name` through the manifest `externals.projectionViews` (the
   // floor is the `floor` provider, the bundle's own projection views are `self`). Nothing is ambient.
   const registry = React.useMemo(
-    () => buildBundleRegistry(bundle, resolveProvider ?? undefined),
-    [bundle, resolveProvider]
+    () => buildBundleRegistry(bundle, resolvedProvider ?? undefined),
+    [bundle, resolvedProvider]
   );
   const tree = <GenUIRoot source={controller} registry={registry} />;
   return (

@@ -1,42 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { unwrap } from "@gik/kernel";
-import { loadBundleRuntime, seedState } from "@gik/react";
+import { bundleFromJson, loadBundleRuntime, seedState } from "@gik/react";
 
-import { createHostRegistry, DEFAULT_BLUEPRINT, resolveBundleProjectionViews } from "./bundles";
+import { resolveBundleProjectionViews } from "./bundles";
 import { copilotC2StateStorageKey } from "../../../bundles/copilot-c2/effect_handlers";
 import { openSampleBlueprint } from "../../../shared/blueprints";
+import { resolveBlueprintInitialContext, resolveBlueprintNative } from "../../../shared/sample-bundles";
 import { createBlueprintServiceHost } from "../../../shared/service-runtime";
 
-test("host registry exposes only approved Blueprints to the switcher", () => {
-  const registry = createHostRegistry();
-
-  assert.equal(DEFAULT_BLUEPRINT, "samples-overview");
-  assert.equal(registry.has("samples-overview"), true);
-  assert.equal(registry.has("manage-blueprints"), true);
-  assert.equal(registry.has("manage-bundles"), true);
-  assert.equal(registry.has("copilot-c2"), true);
-  assert.equal(registry.has("foundry-agent"), true);
-  assert.equal(registry.has("foundry-agent-no-cells"), true);
-  assert.equal(registry.has("live-workspace-soc"), true);
-  assert.equal(registry.has("portfolio-tracker"), true);
-  assert.deepEqual(
-    [...registry.ids({ listable: true })].sort(),
-    ["copilot-c2", "foundry-agent", "foundry-agent-no-cells", "live-workspace-soc", "manage-blueprints", "manage-bundles", "portfolio-tracker", "samples-overview"]
-  );
-  assert.equal(registry.has("reactive-demo"), false);
-  assert.equal(registry.has("provider-authoring-demo"), false);
-});
-
-test("host registry keeps playground embed-only instead of switcher-visible", () => {
-  const registry = createHostRegistry();
-
-  assert.equal(registry.has("playground"), true);
-  assert.equal(registry.ids({ listable: true }).includes("playground"), false);
-  assert.equal(registry.ids().includes("playground"), true);
-});
-
-test("host registry hydrates and persists durable copilot-c2 state only", () => {
+test("production native resolution hydrates and persists durable copilot-c2 state only", () => {
   const values = new Map<string, string>([[
     copilotC2StateStorageKey,
     JSON.stringify({
@@ -60,18 +33,23 @@ test("host registry hydrates and persists durable copilot-c2 state only", () => 
   const previousStorage = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
   Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
   try {
-    const entry = createHostRegistry().get("copilot-c2");
-    if (!entry || entry.kind !== "bundle") throw new Error("copilot-c2 bundle is unavailable");
-    const bundle = entry.make();
-    const hydrated = bundle.state?.copilotC2 as Record<string, unknown>;
+    const blueprintRuntime = openSampleBlueprint("copilot-c2");
+    const context = resolveBlueprintInitialContext("copilot-c2");
+    const state = context.initialSeed as Record<string, unknown>;
+    const hydrated = state.copilotC2 as Record<string, unknown>;
     assert.equal(hydrated.mcpServer, "https://mcp.example.test/mcp");
     assert.equal(hydrated.workingDir, "C:/work/demo");
     assert.deepEqual(hydrated.agents, [{ id: "reviewer", name: "Reviewer" }]);
     assert.equal(hydrated.view, "dashboard");
     assert.equal(hydrated.runStatus, "No Copilot run selected.");
 
-    const runtime = loadBundleRuntime(bundle);
-    runtime.state.apply([{ op: "set", path: "copilotC2.model", value: "gpt-5.5" }]);
+    const bundle = bundleFromJson({
+      vocabulary: blueprintRuntime.vocabulary,
+      program: blueprintRuntime.program,
+      state,
+    }, resolveBlueprintNative("copilot-c2"));
+    const bundleRuntime = loadBundleRuntime(bundle);
+    bundleRuntime.state.apply([{ op: "set", path: "copilotC2.model", value: "gpt-5.5" }]);
     const afterDurableChange = values.get(copilotC2StateStorageKey) ?? "";
     const persisted = JSON.parse(afterDurableChange);
     assert.equal(persisted.copilotC2.mcpServer, "https://mcp.example.test/mcp");
@@ -79,7 +57,7 @@ test("host registry hydrates and persists durable copilot-c2 state only", () => 
     assert.equal(persisted.copilotC2.view, undefined);
     assert.equal(persisted.copilotC2.runStatus, undefined);
 
-    runtime.state.apply([{ op: "set", path: "copilotC2.runStatus", value: "Running" }]);
+    bundleRuntime.state.apply([{ op: "set", path: "copilotC2.runStatus", value: "Running" }]);
     assert.equal(values.get(copilotC2StateStorageKey), afterDurableChange);
   } finally {
     if (previousStorage) Object.defineProperty(globalThis, "localStorage", previousStorage);

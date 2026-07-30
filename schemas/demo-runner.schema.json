@@ -1,0 +1,149 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://gik.dev/schemas/demo-runner.schema.json",
+  "title": "GIK demo runner",
+  "description": "External context controls and event-driven scenarios for the GIK demo runner.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contextFormSpec", "namedPresetContexts", "scenarios"],
+  "properties": {
+    "contextFormSpec": {
+      "$ref": "https://gik.dev/schemas/ui-form.schema.json",
+      "description": "Form specification used by GikControlPanel to edit externalContextState."
+    },
+    "namedPresetContexts": {
+      "type": "object",
+      "description": "Named external-context patches available to the demo runner.",
+      "minProperties": 1,
+      "propertyNames": { "$ref": "#/definitions/nonEmptyString" },
+      "additionalProperties": { "$ref": "#/definitions/namedContext" }
+    },
+    "scenarios": {
+      "type": "array",
+      "description": "Event-driven demo scenarios.",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/scenario" }
+    }
+  },
+  "definitions": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "jsonataExpression": {
+      "type": "string",
+      "minLength": 1,
+      "description": "A JSONata expression evaluated against the demo runner expression scope."
+    },
+    "namedContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "context"],
+      "properties": {
+        "label": { "$ref": "#/definitions/nonEmptyString" },
+        "context": {
+          "type": "object",
+          "description": "A partial externalContextState value merged when this context is selected."
+        }
+      }
+    },
+    "participant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type"],
+      "properties": {
+        "name": { "$ref": "#/definitions/nonEmptyString" },
+        "type": { "enum": ["human", "agent", "service"] },
+        "description": { "type": "string" }
+      }
+    },
+    "act": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "participantId", "event"],
+      "properties": {
+        "kind": { "const": "act" },
+        "id": { "$ref": "#/definitions/nonEmptyString" },
+        "participantId": {
+          "$ref": "#/definitions/nonEmptyString",
+          "description": "Key of the participant performing this act."
+        },
+        "shortDescription": { "type": "string" },
+        "longDescription": { "type": "string" },
+        "event": {
+          "$ref": "https://genui.dev/gik/0.1/event.schema.json",
+          "description": "GIK event passed unchanged to Blueprint runTransition."
+        }
+      }
+    },
+    "wait": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "when"],
+      "properties": {
+        "kind": { "const": "wait" },
+        "id": { "$ref": "#/definitions/nonEmptyString" },
+        "participantId": {
+          "$ref": "#/definitions/nonEmptyString",
+          "description": "Optional participant whose independently produced response is being awaited."
+        },
+        "shortDescription": { "type": "string" },
+        "longDescription": { "type": "string" },
+        "when": { "$ref": "#/definitions/jsonataExpression" }
+      }
+    },
+    "observe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "select"],
+      "properties": {
+        "kind": { "const": "observe" },
+        "id": { "$ref": "#/definitions/nonEmptyString" },
+        "shortDescription": { "type": "string" },
+        "longDescription": { "type": "string" },
+        "select": {
+          "type": "object",
+          "description": "Named JSONata expressions captured without blocking scenario execution.",
+          "minProperties": 1,
+          "propertyNames": { "$ref": "#/definitions/nonEmptyString" },
+          "additionalProperties": { "$ref": "#/definitions/jsonataExpression" }
+        }
+      }
+    },
+    "sequenceEntry": {
+      "oneOf": [
+        { "$ref": "#/definitions/act" },
+        { "$ref": "#/definitions/wait" },
+        { "$ref": "#/definitions/observe" }
+      ]
+    },
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "shortDescription", "participants", "sequence"],
+      "properties": {
+        "id": { "$ref": "#/definitions/nonEmptyString" },
+        "shortDescription": { "$ref": "#/definitions/nonEmptyString" },
+        "longDescription": { "type": "string" },
+        "resetBlueprintStateAtStart": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, the host-injected reset-state transition runs once before the first sequence entry."
+        },
+        "participants": {
+          "type": "object",
+          "description": "Participants that can perform acts in this scenario.",
+          "minProperties": 1,
+          "propertyNames": { "$ref": "#/definitions/nonEmptyString" },
+          "additionalProperties": { "$ref": "#/definitions/participant" }
+        },
+        "sequence": {
+          "type": "array",
+          "description": "Ordered acts, blocking waits, and non-blocking observations.",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/sequenceEntry" }
+        }
+      }
+    }
+  }
+}

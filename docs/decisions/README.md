@@ -50,6 +50,7 @@ rejected options were set aside, and the consequences.
 | [0043](ADR-0043-lowering-compiler-plane-and-artifact-cells.md) | Lowering compiler plane and artifact Cells | Accepted |
 | [0044](ADR-0044-provider-neutral-durable-transition-runtime.md) | Provider-neutral durable transition runtime | Accepted |
 | [0045](ADR-0045-lowering-meta-graph-as-cells-on-the-same-kernel.md) | The lowering meta-graph runs as Cells on the same Kernel — no second execution engine | Accepted |
+| [0046](ADR-0046-deterministic-blueprint-materialization.md) | Deterministic Blueprint materialization and portable execution values | Accepted |
 
 ## Format
 

@@ -1,19 +1,15 @@
-// Build-time discovery + assembly of the sample bundles, factored out of the app host so any host
-// component (BlueprintHost, GikDemoBlueprintHost) can assemble a bundle without the full host registry.
-// Two assembly paths:
-//   - resolveBlueprintBundle(id): compile a Blueprint's lowered runtime via ControlFace, then attach
-//     native code + the declarative service orchestrator.
-//   - buildInfrastructureBundle(id, seed?): assemble a raw JSON bundle (vocabulary/program/state) + its
-//     native code, cloning the on-disk state so each mount starts fresh (with an optional seed merge —
-//     e.g. the demo-runner's `runner` slice).
+// Build-time discovery and assembly of Blueprint-owned native code, factored out of the app host so
+// BlueprintHost and GikDemoBlueprintHost use the same projection, effect, service, and persistence hooks.
 
 import {
-  bundleFromJson,
-  type Bundle,
   type BundleNative,
+  type LoadBundleOptions,
   type EffectHandlerMap,
   type ProjectionView,
 } from "@gik/react";
+import type { ExternalContext, MaterializedBlueprint } from "@gik/blueprint";
+import type { Json } from "@gik/kernel";
+import { openBlueprint } from "@gik/controlface/blueprint";
 import registry from "../blueprints/registry.json";
 import { openSampleBlueprint } from "./blueprints";
 import { browserServiceRegistryOptions, declarativeServiceOrchestrator } from "./service-runtime";
@@ -28,9 +24,6 @@ const REGISTRY = registry as Registry;
 // Build-time discovery of each bundle folder's parts, keyed by folder name (paths relative to
 // samples/shared). A Blueprint's native code may live under a DIFFERENT bundle id via `nativeFrom`
 // (e.g. a `*-no-cells` Blueprint reuses its base bundle's handlers and views).
-const rawVocabularies = import.meta.glob("../bundles/*/vocabulary.json", { eager: true, import: "default" });
-const rawPrograms = import.meta.glob("../bundles/*/program.json", { eager: true, import: "default" });
-const rawStates = import.meta.glob("../bundles/*/state.json", { eager: true, import: "default" });
 const rawEffectHandlerModules = import.meta.glob("../bundles/*/effect_handlers/index.{ts,tsx}", {
   eager: true,
 });
@@ -53,11 +46,12 @@ function byBundleId<T>(glob: Record<string, T>): Record<string, T> {
   return out;
 }
 
-const vocabularies = byBundleId(rawVocabularies);
-const programs = byBundleId(rawPrograms);
-const states = byBundleId(rawStates);
 const effectHandlerModules = byBundleId(rawEffectHandlerModules) as Record<string, {
   default: EffectHandlerMap;
+  hydrateState?: (state: Record<string, unknown>) => void;
+  wrapOrchestrator?: (
+    next: NonNullable<LoadBundleOptions["wrapOrchestrator"]>
+  ) => NonNullable<LoadBundleOptions["wrapOrchestrator"]>;
 }>;
 const projectionViews = byBundleId({
   ...rawProjectionViews,
@@ -66,37 +60,36 @@ const projectionViews = byBundleId({
 
 export function resolveBlueprintNative(id: string): BundleNative {
   const runtime = openSampleBlueprint(id);
+  return resolveBlueprintNativeFromRuntime(id, runtime);
+}
+
+export function resolveBlueprintNativeFromMaterialized(
+  id: string,
+  materializedBlueprint: MaterializedBlueprint,
+): BundleNative {
+  return resolveBlueprintNativeFromRuntime(
+    id,
+    openBlueprint(materializedBlueprint.payload.terminalBlueprint),
+  );
+}
+
+function resolveBlueprintNativeFromRuntime(id: string, runtime: ReturnType<typeof openSampleBlueprint>): BundleNative {
   const nativeId = REGISTRY.nativeFrom?.[id] ?? id;
+  const effectModule = effectHandlerModules[nativeId];
+  const serviceOrchestrator = declarativeServiceOrchestrator(runtime, browserServiceRegistryOptions);
   return {
-    effectHandlers: effectHandlerModules[nativeId]?.default,
+    effectHandlers: effectModule?.default,
     projectionViews: projectionViews[nativeId],
-    wrapOrchestrator: declarativeServiceOrchestrator(runtime, browserServiceRegistryOptions),
+    wrapOrchestrator: effectModule?.wrapOrchestrator?.(serviceOrchestrator) ?? serviceOrchestrator,
   };
 }
 
-/** Resolve a bundle's native projection views by id (for a cross-bundle provider resolver). */
-export function resolveSampleProjectionViews(id: string): Record<string, ProjectionView> | undefined {
-  return projectionViews[id];
-}
-
-/** Compile a Blueprint id into a runnable Bundle with its native code attached. */
-export function resolveBlueprintBundle(id: string): Bundle {
-  const runtime = openSampleBlueprint(id);
-  const { vocabulary, program, state } = runtime;
-  return bundleFromJson({ vocabulary, program, state }, resolveBlueprintNative(id));
-}
-
-/** Assemble a raw JSON bundle (vocabulary/program/state) + native code. State is cloned per call so each
- *  mount starts fresh; `stateSeed` is merged onto the cloned state (e.g. the demo-runner `runner` slice). */
-export function buildInfrastructureBundle(id: string, stateSeed?: Record<string, unknown>): Bundle {
-  const state = structuredClone(states[id]) as Record<string, unknown>;
-  if (stateSeed) Object.assign(state, stateSeed);
-  return bundleFromJson({
-    vocabulary: structuredClone(vocabularies[id]),
-    program: structuredClone(programs[id]),
-    state,
-  }, {
-    effectHandlers: effectHandlerModules[id]?.default,
-    projectionViews: projectionViews[id],
-  });
+export function resolveBlueprintInitialContext(
+  id: string,
+  externalContext?: ExternalContext,
+): Record<string, Json> {
+  const runtime = openSampleBlueprint(id, externalContext);
+  const nativeId = REGISTRY.nativeFrom?.[id] ?? id;
+  effectHandlerModules[nativeId]?.hydrateState?.(runtime.state);
+  return { initialSeed: structuredClone(runtime.state) as Json };
 }

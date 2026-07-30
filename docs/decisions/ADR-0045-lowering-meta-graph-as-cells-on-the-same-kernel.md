@@ -103,3 +103,107 @@ existing validated open/reconfigure path — exactly the risk ADR-0043 was writt
   Cells) ships under `samples/bundles/`, or each domain hand-authors its own compiler Blueprint.
 - Physical package placement of the host-side driver (`@gik/blueprint` vs. a new package) — deferred
   until the driver exists and its dependency shape is known.
+
+## Amendment (2026-07-28): findings from the first spike (`samples/control-host/lowering-meta-graph.ts`)
+
+Building a full, tested, end-to-end spike (host driver → Lowering Cell meta-graph → tier-2 artifact
+→ `openBlueprint`) surfaced three platform findings and one deliberate implementation deviation from
+this ADR's mapping table. None of them change the core decision above; they are constraints on *how*
+to build compiler Blueprints and the host driver correctly.
+
+**1. Standing `compute` derivations require a real dispatched event to settle — `runTransition`'s
+zero-events path does not do this, no matter how it's called.** Each `runTransition` call constructs
+a fresh `Kernel` instance, so `reactionsSeeded` is always `false`. `syncExternal()`'s
+`if (!this.reactionsSeeded)` branch runs `seedReactionBaseline()` + `runInitialReactions()` (for
+`edges.react`-style reactions) but never reaches the `else` branch's `derivations.settleAll()` call —
+and JSONata `compute` derivations are settled only by that call, not by reaction seeding. Concretely:
+seeding `agentData.findings` into initial state and calling `runTransition({..., events: []})` leaves
+`presentation.rows` empty; dispatching any event that touches the graph (e.g. a Cell's own `start`
+handler assigning to itself) settles it correctly. The host driver (`runLoweringBlueprint`) therefore
+always requires and dispatches a caller-supplied `bootstrapEvent` before doing anything else — this
+is not a workaround to remove later, it's a hard consequence of derivations vs. reactions being
+different settling mechanisms in the current Kernel.
+
+**2. Event-bearing Cells need explicit `placements` (with a `view`) to be reachable, even in a
+compiler Blueprint with no visual surface.** A Cell's inputs/outputs wire up via the token graph
+regardless of where (or whether) it's placed, but a Cell that owns `behavior.events` handlers (the
+`agent-tier` bootstrap handler, the `approve` Cell's `approve`/`confirmed`/`dismissed` handlers) is
+only dispatchable if it appears under `projections.presentation.placements` with some `view` value —
+the same constraint application Blueprints have, even though a compiler Blueprint has no real UI.
+The spike's `compilerBlueprint()` places all four Cells as children of `agent-tier` for exactly this
+reason.
+
+**3. `emit-blueprint` was implemented as a `compute` Cell, not the `effect_handlers` leaf this ADR's
+mapping table suggests — a deliberate, documented simplification.** The mapping table describes
+`emit-blueprint` as "an `effect_handlers` leaf that hands off the finished artifact," implying an
+`invoke`-style async effect. The spike instead makes it an ordinary JSONata `compute` Cell that
+constructs the terminal `BlueprintDefinition` directly (guarded on `compiled.approved`), because the
+host driver (`runLoweringBlueprint`) already reads final state at the transition boundary — there is
+no independent async hand-off to model for a single-Kernel-instance compiler run. This is
+functionally equivalent for the scenario tested but is a real deviation from the literal mapping
+table, not an oversight; a design that needs `emit-blueprint` to hand off to something outside the
+compiler Kernel's own transition (e.g. writing to durable storage, notifying a separate service)
+would need the `effect_handlers`/`invoke` shape instead.
+
+**4. `LoweringCellDefinition` (ADR-0043) metadata and the hand-authored runtime Cells it describes
+can drift silently — a conservative cross-reference validator closes part of this gap without
+requiring codegen.** `defineLoweringCell()` produces descriptive metadata only (kind, ports, policy);
+nothing previously checked that a runtime Cell with a matching `id` actually exists, or that its
+declared input/output tokens match the runtime Cell's real `inputs`/`outputs`. The spike adds
+`validateLoweringCellGraph(declaredCells, runtimeCells)` (`blueprint/src/lowering-cells.ts`), a pure
+function that reports `{cellId, message}` issues for missing runtime Cells and mismatched port
+tokens; `runLoweringMetaGraph()` calls it before running the driver and throws on drift. This does
+**not** attempt to generate runtime Cells from `LoweringCellDefinition` metadata (no JSONata
+expression or confirm config lives on that type today, and adding one is exactly the
+`compilerBlueplateRef`-style schema question already flagged above as "Not decided here") — it only
+catches drift between the two once both are hand-authored.
+
+Proof: `samples/control-host/lowering-meta-graph.ts` + `.test.ts` (8 tests) exercise all of the
+above — bootstrap-event settling, approval gating via `confirm`, the tier-2 artifact opening
+through the unmodified `openBlueprint` path, and both a missing-Cell and a mismatched-token drift
+case for `validateLoweringCellGraph`.
+
+## Amendment (2026-07-29): materialization becomes the stable execution boundary
+
+ADR-0046 packages terminal Blueprint preparation as a deterministic portable materialization.
+`runTransition` materializes internally, while React and durable hosts may call
+`materializeBlueprint` once and reuse `runMaterializedTransition`. The Phase 2 host driver remains
+evidence for executing a Lowering Cell compiler Blueprint; connecting non-empty authored recipe
+chains to those compiler Blueprints is intentionally the next phase. When connected, compiler
+decisions must be pinned in authored data or immutable external context, and semantic patch
+proposals must target the authored Blueprint before rematerialization.
+
+## Amendment (2026-07-29): common fixed meta-graph integration
+
+The unresolved per-recipe `compilerBlueprintRef` and per-domain compiler alternatives are closed.
+`@gik/blueprint` owns one common compiler meta-graph Blueprint. Recipes do not select compiler
+Blueprints; they carry vocabulary-driven transformation data between declared tiers. The common
+meta-graph walks any connected, non-branching recipe chain and produces the terminal Blueprint.
+
+The due-diligence spike remains evidence that compiler Cells execute through ordinary Kernel
+mechanisms, but its domain-specific transforms are not the scalable authoring model. The runtime
+integration uses a fixed package meta-graph and synchronous deterministic materialization. Hosts
+do not supply it on individual calls. Reconfiguring that meta-graph, proposing patches to it, or
+running its agent/human pipelines is deferred until after fixed lowering is complete; when enabled,
+the meta-graph will be reconfigurable under host authority, never adaptive.
+
+## Amendment (2026-07-30): stable Cells permit inner-program lowering
+
+The stable-Cell invariant applies to a Cell's semantic and data-flow contracts, not to one fixed
+implementation program across every tier. Lowering may select or emit a different inner program for
+the same Cell when every candidate preserves:
+
+- the Cell id and semantic responsibility;
+- input and output ports and their token contracts;
+- the Cell's position in the logical data-flow topology; and
+- the observable contract relied on by downstream Cells.
+
+Contract-compatible variants may differ in source mode, service or provider binding, computation,
+or other internal execution details. The fixed lowering meta-graph makes that selection from static
+recipe vocabulary and immutable external context. It must not add, remove, merge, split, or replace
+the Cell to express the variation, and it must not route around the Cell by writing its outputs from
+outside its selected program.
+
+This is compile-time specialization of a stable Cell, not runtime reconfiguration. The emitted
+terminal Blueprint contains one selected program, and a different context requires a new
+materialization.

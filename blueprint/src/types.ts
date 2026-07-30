@@ -26,6 +26,41 @@ export interface LoweringRecipeDefinition {
   to: string;
 }
 
+/** A deterministic tier transition expressed entirely in the shared Blueprint vocabulary. */
+export interface VocabularyLoweringRecipeDefinition extends LoweringRecipeDefinition {
+  patch: BlueprintPatch;
+}
+
+export interface BlueprintRepresentation {
+  id: string;
+  when?: string;
+  extends?: string;
+  views?: Record<string, CellView>;
+  presentation?: PresentationProjection;
+  presentationAppend?: PresentationProjection["placements"];
+}
+
+export interface CellImplementationOverride {
+  sources?: readonly CellSource[];
+  compute?: readonly CellComputation[];
+  behavior?: CellBehavior;
+}
+
+export interface BlueprintImplementationProgram {
+  id: string;
+  when?: string;
+  cells?: Record<string, CellImplementationOverride>;
+  services?: Record<string, ServiceRequirement | ServiceDeclaration>;
+}
+
+/** A deterministic tier transition that preserves Cell contracts while lowering representation and inner programs. */
+export interface RepresentationLoweringRecipeDefinition extends LoweringRecipeDefinition {
+  representations: BlueprintRepresentation[];
+  fallback: string;
+  implementationPrograms?: BlueprintImplementationProgram[];
+  implementationFallback?: string;
+}
+
 export type BlueprintResource = { inline: Json } | { $ref: string };
 
 export interface BlueprintRuntimeDefinition {

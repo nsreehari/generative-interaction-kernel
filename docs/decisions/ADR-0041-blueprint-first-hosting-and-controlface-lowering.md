@@ -166,3 +166,11 @@ belongs to the Bundle manager.
 - Tests open the Blueprint through ControlFace and exercise the resulting runtime; synchronization
   tests against copied runtime JSON are removed.
 - The kernel, closed action grammar, wire messages, and renderer protocol are unchanged.
+
+## Amendment (2026-07-29): hosts consume portable materializations
+
+ADR-0046 makes Blueprint preparation an explicit `@gik/blueprint` operation. Public React hosting
+materializes an authored Blueprint plus immutable external context once and reuses the portable
+value for transitions. Stateless hosts may persist the same value. Host adapters do not implement
+recipe lowering, and generated terminal output remains derived data rather than a second authored
+surface. This applies to `@gik/react`; the deprecated `@gik/blueprint-host` package is not revived.

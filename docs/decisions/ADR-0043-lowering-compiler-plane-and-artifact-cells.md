@@ -102,3 +102,24 @@ require a projection.
 - Candidate scoring, caching, incremental recompilation, retry, or provenance storage formats.
 - Whether compiler orchestration eventually reuses `ContinuousGraphRuntime` internally.
 - Physical package names or release boundaries for authoring and compiler APIs.
+
+## Amendment (2026-07-29): deterministic inputs to the compiler plane
+
+ADR-0046 requires materialization to be deterministic for authored Blueprint plus immutable
+external context. Any agent synthesis, strategy selection, validation outcome, or approval that
+would otherwise be nondeterministic must be pinned into authored data or external context before
+the trusted materialization is reused. Compiler provenance remains derived evidence and does not
+grant the terminal artifact independent authored authority.
+
+## Amendment (2026-07-29): fixed common meta-graph for runtime lowering
+
+The compiler plane has one package-owned meta-graph Blueprint, expressed as Cells and prepared by
+the same Blueprint/Kernel machinery as application graphs. It is not a catalog of pair-specific
+compilers. Tier definitions provide representation contracts, recipes provide vocabulary-driven
+transformation data, and the common meta-graph interprets every ordered stage.
+
+`materializeBlueprint` always considers this common meta-graph internally; callers do not supply a
+compiler or meta-graph per call. For the first implementation its structure is fixed and its
+deterministic lowering path is synchronous. Agent calls, human approval, strategy synthesis, and
+host-authorized reconfiguration remain compiler-plane capabilities for a later phase and cannot
+block the runtime materialization path.
