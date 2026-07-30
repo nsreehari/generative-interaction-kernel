@@ -4,7 +4,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { Json } from "@gik/kernel";
 
 import { FallbackView, buildRegistryFromImports, renderNode } from "@gik/react";
-import { FLOOR_COMPONENTS } from "./index";
+import {
+  FLOOR_COMPONENTS,
+  appendEditableRowOnLastRowFocus,
+  committedEditableRows,
+  withTrailingEditableRow,
+} from "./index";
 
 const registry = buildRegistryFromImports(
   { ui: { from: "floor" } },
@@ -50,6 +55,31 @@ test("editable-table renders schema-defined columns when rows are empty", () => 
   assert.match(markup, /<th>ticker<\/th>/i);
   assert.match(markup, /<th>quantity<\/th>/i);
   assert.match(markup, /<th>costBasis<\/th>/i);
+  assert.doesNotMatch(markup, />No data</i);
+  assert.equal((markup.match(/<input/g) ?? []).length, 3);
+});
+
+test("editable-table maintains one trailing draft row and omits blank rows when committed", () => {
+  const columns = ["ticker", "quantity"];
+  const rows = withTrailingEditableRow([{ ticker: "MSFT", quantity: 2 }], columns);
+
+  assert.deepEqual(rows, [
+    { ticker: "MSFT", quantity: 2 },
+    { ticker: "", quantity: "" },
+  ]);
+  assert.equal(withTrailingEditableRow(rows, columns), rows);
+  assert.deepEqual(committedEditableRows(rows), [{ ticker: "MSFT", quantity: 2 }]);
+});
+
+test("editable-table appends a fresh row only when the last row receives focus", () => {
+  const columns = ["ticker"];
+  const rows = [{ ticker: "MSFT" }, { ticker: "" }];
+
+  assert.equal(appendEditableRowOnLastRowFocus(rows, columns, 0), rows);
+  assert.deepEqual(appendEditableRowOnLastRowFocus(rows, columns, 1), [
+    ...rows,
+    { ticker: "" },
+  ]);
 });
 
 test("editable-table renders themed table + inputs (no inline styles)", () => {

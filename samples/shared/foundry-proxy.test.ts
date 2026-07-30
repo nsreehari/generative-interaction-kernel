@@ -51,6 +51,39 @@ test("Foundry proxy chat sends agent name, conversation, and per-turn instructio
   assert.equal(result.responseId, "resp-1");
 });
 
+test("Foundry proxy allows chat to outlive the short access timeout", async () => {
+  const proxy = createFoundryProxy({
+    baseUrl: "https://proxy.example/",
+    key: "function-key",
+    timeoutMs: 5,
+    chatTimeoutMs: 50,
+    fetch: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 15));
+      return Response.json({ conversationId: "conv-1", responseId: "resp-1", reply: "{}" });
+    },
+  });
+
+  const result = await proxy.chat({ message: "portfolio", agentName: "Portfolio-Intelligence-2-Agent" });
+
+  assert.equal(result.responseId, "resp-1");
+});
+
+test("Foundry proxy identifies chat timeouts as response failures", async () => {
+  const proxy = createFoundryProxy({
+    baseUrl: "https://proxy.example/",
+    key: "function-key",
+    chatTimeoutMs: 5,
+    fetch: async () => new Promise<Response>(() => {}),
+  });
+
+  await assert.rejects(
+    proxy.chat({ message: "portfolio", agentName: "Portfolio-Intelligence-2-Agent" }),
+    (error: unknown) => error instanceof FoundryProxyError
+      && error.status === 408
+      && error.message === "Foundry agent response timed out. Retry analysis."
+  );
+});
+
 test("Foundry proxy exposes service errors without leaking response bodies", async () => {
   const proxy = createFoundryProxy({
     baseUrl: "https://proxy.example",

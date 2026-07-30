@@ -116,7 +116,9 @@ beforeEach(() => {
     const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
     foundryRequests.push(body);
     const message = String(body.message ?? "");
-    const reply = message.includes("propose useful semantic projections")
+    const reply = message.includes("engaging, high-signal portfolio pulse")
+      ? intelligence2Response
+      : message.includes("propose useful semantic projections")
       ? intelligence2Response
       : message.includes("Analyze")
         ? intelligenceResponse
@@ -276,6 +278,15 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
     expect(String(foundryRequests[0]?.message)).toContain("NVDA");
     expect(String(foundryRequests[0]?.instructions)).toContain("Analyze only the supplied portfolio data");
     expect((foundryRequests[0]?.responseSchema as { strict?: boolean }).strict).toBe(true);
+    expect(foundryRequests[1]).toMatchObject({ agentName: "Portfolio-Intelligence-2-Agent" });
+    expect(String(foundryRequests[1]?.message)).toContain("Input to Portfolio Intelligence 1 JSON");
+    expect(String(foundryRequests[1]?.message)).toContain("Output from Portfolio Intelligence 1 JSON");
+    expect(String(foundryRequests[1]?.message)).toContain(intelligenceResponse.summary);
+    expect(String(foundryRequests[1]?.instructions)).toContain("engaging portfolio pulse");
+    expect(portfolio.state.get("portfolio.intelligence1b")).toMatchObject({
+      provider: "foundry-agent:Portfolio-Intelligence-2-Agent",
+      headline: intelligence2Response.headline,
+    });
 
     await portfolio.controller.emit(blueprintId, "requestIntelligence2", {}, "agent-portfolio-intelligence");
     await portfolio.controller.settle();
@@ -299,8 +310,8 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
       intelligence: { headline: intelligence2Response.headline },
     });
     expect(portfolio.state.get("portfolio.pendingStrategyInputs")).toBeNull();
-    expect(foundryRequests[2]).toMatchObject({ agentName: "Portfolio-Strategy-Agent" });
-    expect(String(foundryRequests[2]?.message)).toContain("Portfolio intelligence source: portfolio-intelligence-2");
+    expect(foundryRequests[3]).toMatchObject({ agentName: "Portfolio-Strategy-Agent" });
+    expect(String(foundryRequests[3]?.message)).toContain("Portfolio intelligence source: portfolio-intelligence-2");
 
     await portfolio.controller.emit("rebalance-comparison", "apply", {}, "human-investor");
     await portfolio.controller.settle();

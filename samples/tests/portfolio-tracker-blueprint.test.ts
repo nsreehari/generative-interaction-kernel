@@ -3,6 +3,7 @@ import {
   analyzeCellComposition,
   type CellDefinition,
 } from "@gik/blueprint";
+import { unwrap } from "@gik/kernel";
 
 import { openSampleBlueprint } from "../shared/blueprints";
 import { applyHostConfig } from "../shared/host-config";
@@ -22,6 +23,7 @@ describe("portfolio-tracker Blueprint", () => {
       "summary",
       "portfolio-intelligence",
       "portfolio-intelligence-2",
+      "portfolio-intelligence-1b",
       "conservative-rebalance",
       "growth-rebalance",
       "rebalance-comparison",
@@ -32,10 +34,21 @@ describe("portfolio-tracker Blueprint", () => {
   });
 
   it("composes the runtime directly from Blueprint-owned cell bodies", () => {
-    const program = openSampleBlueprint("portfolio-tracker").program.payload;
-    expect(program.root.edges?.children?.map((node) => node.id)).toEqual(
-      portfolioCells.slice(1).map((cell) => cell.id)
-    );
+    const program = unwrap(openSampleBlueprint("portfolio-tracker").program);
+    expect(program.root.edges?.children?.map((node) => node.id)).toEqual([
+      "http-proxy-access-gate",
+      "foundry-access-gate",
+      "holdings",
+      "market-prices",
+      "positions",
+      "summary",
+      "portfolio-intelligence",
+      "portfolio-intelligence-2",
+      "conservative-rebalance",
+      "growth-rebalance",
+      "rebalance-comparison",
+      "portfolio-intelligence-1b",
+    ]);
     const marketPrices = program.root.edges?.children?.find((node) => node.id === "market-prices");
     const accessGate = portfolioCells.find((cell) => cell.id === "http-proxy-access-gate");
     const foundryAccessGate = portfolioCells.find((cell) => cell.id === "foundry-access-gate");
@@ -78,6 +91,25 @@ describe("portfolio-tracker Blueprint", () => {
         "portfolio-advisor": { attention: "focused", maxSections: 8 },
       },
     });
+    const intelligence1b = portfolioCells.find((cell) => cell.id === "portfolio-intelligence-1b");
+    expect(intelligence1b).toMatchObject({
+      inputs: expect.arrayContaining([
+        { token: "foundry-access" },
+        { token: "portfolio-summary" },
+        { token: "position:$TICKER" },
+        { token: "investor-profile" },
+        { token: "portfolio-intelligence" },
+      ]),
+      sources: [{ service: "portfolio-intelligence-1b", operation: "chat", contract: "portfolio-intelligence-1b/v1" }],
+      outputs: [{ token: "portfolio-intelligence-1b" }],
+      view: {
+        capability: "portfolio:intelligence-projections",
+        bindings: {
+          value: { from: "portfolio.intelligence1b" },
+          error: { from: "portfolio.intelligence1bError" },
+        },
+      },
+    });
     const comparison = portfolioCells.find((cell) => cell.id === "rebalance-comparison");
     expect(comparison?.inputs).toEqual(expect.arrayContaining([
       { token: "portfolio-intelligence" },
@@ -115,7 +147,7 @@ describe("portfolio-tracker Blueprint", () => {
   });
 
   it("lowers the empty holdings editor with an explicit row schema", () => {
-    const holdings = openSampleBlueprint("portfolio-tracker").program.payload.root.edges?.children?.find((node) => node.id === "holdings");
+    const holdings = unwrap(openSampleBlueprint("portfolio-tracker").program).root.edges?.children?.find((node) => node.id === "holdings");
     expect(holdings?.props?.spec).toEqual({
       schema: {
         properties: {
