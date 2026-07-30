@@ -67,6 +67,17 @@ test("markdown recognizes Mermaid and ordinary fenced code blocks", () => {
   assert.match(code, /class="language-typescript"/);
 });
 
+test("markdown renders GFM tables with inline formatting", () => {
+  const markup = render("ui:markdown", {
+    value: "| Alert | Verdict | Evidence |\n|---|:---:|---|\n| Password spray | **True Positive** | 14 failed sign-ins |\n| Mailbox | High | Graph \\| audit |",
+  });
+  assert.match(markup, /class="gx-markdown-table-wrap"/);
+  assert.match(markup, /<th>Alert<\/th>.*<th>Verdict<\/th>.*<th>Evidence<\/th>/s);
+  assert.match(markup, /<td>Password spray<\/td>.*<strong>True Positive<\/strong>.*14 failed sign-ins/s);
+  assert.match(markup, /<td>Mailbox<\/td>.*Graph \| audit/s);
+  assert.doesNotMatch(markup, /\|---\|/);
+});
+
 // --- Field-level diff ------------------------------------------------------------
 
 test("diff of two objects shows per-field change / add / remove rows", () => {
