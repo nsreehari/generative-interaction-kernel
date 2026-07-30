@@ -61,14 +61,14 @@ export function BlueprintHost({
   );
   const prepared = React.useMemo(
     () => context
-      ? prepareBlueprintProgram(blueprint, { context })
+      ? prepareBlueprintProgram(materializedBlueprint.payload.terminalBlueprint, { context })
       : {
           blueprint: materializedBlueprint.payload.terminalBlueprint,
           vocabulary: materializedBlueprint.payload.vocabulary,
           program: materializedBlueprint.payload.program,
           initialState: materializedBlueprint.payload.initialState,
         },
-    [blueprint, context, materializedBlueprint],
+    [context, materializedBlueprint],
   );
   const bundle = React.useMemo(
     () => bundleFromJson({

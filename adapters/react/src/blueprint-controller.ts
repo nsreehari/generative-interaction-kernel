@@ -43,8 +43,11 @@ export class BlueprintController implements GenUISource {
       blueprint,
       externalContext: options.externalContext,
     });
-    const prepared = prepareBlueprintProgram(blueprint, { context: options.context });
-    this.state = prepared.initialState;
+    this.state = options.context
+      ? prepareBlueprintProgram(this.materializedBlueprint.payload.terminalBlueprint, {
+          context: options.context,
+        }).initialState
+      : structuredClone(this.materializedBlueprint.payload.initialState);
   }
 
   getTree(): ResolvedNode | null {
