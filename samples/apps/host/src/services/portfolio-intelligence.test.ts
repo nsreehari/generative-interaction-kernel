@@ -15,17 +15,19 @@ describe("portfolio intelligence service declarations", () => {
     const serviceHost = createBlueprintServiceHost(runtime, seedState(typedManifest, runtime.state));
     const description = await serviceHost.describeServices();
 
-    expect(description).toHaveLength(4);
+    expect(description).toHaveLength(5);
     expect(description[0]?.provider.id).toBe("http-service:portfolio-market-data");
     expect(description[0]?.capabilities.map(({ operation }) => operation)).toEqual(["check-access", "fetch-quotes"]);
     expect(description.slice(1).map(({ provider }) => provider.id)).toEqual([
       "foundry-agent:portfolio-intelligence",
       "foundry-agent:portfolio-intelligence-2",
+      "foundry-agent:portfolio-intelligence-1b",
       "foundry-agent:portfolio-strategies",
     ]);
     expect(description[1]?.capabilities.map(({ operation }) => operation)).toEqual(["check-access", "chat", "propose-strategies"]);
     expect(description[2]?.capabilities.map(({ operation }) => operation)).toEqual(["chat"]);
     expect(description[3]?.capabilities.map(({ operation }) => operation)).toEqual(["chat"]);
+    expect(description[4]?.capabilities.map(({ operation }) => operation)).toEqual(["chat"]);
   });
 
   it("rejects a Foundry declaration whose endpoint is invalid", async () => {

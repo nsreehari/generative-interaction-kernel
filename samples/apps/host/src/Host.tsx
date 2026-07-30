@@ -10,7 +10,7 @@ import {
   canonicalizeHostUrl,
   readHostQuery,
 } from "./host-query";
-import { FLOOR_COMPONENTS } from "../../../bundles/floor/projection_views";
+import { FLOOR_COMPONENTS } from "../../../bundles/floor/projection_views/floorLeaves";
 import {
   resolveBlueprintInitialContext,
   resolveBlueprintNative,

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { buildProviderAuthoringPlan } from "./index";
+import { buildProviderAuthoringPlan } from "./providerAuthoringDemoLeaves";
 
 test("graph-driven mode builds Cell impact and exploration args without a Blueprint artifact seed", () => {
   const plan = buildProviderAuthoringPlan({

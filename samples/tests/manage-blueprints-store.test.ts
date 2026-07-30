@@ -3,7 +3,7 @@ import { test } from "vitest";
 
 import type { Json, PatchOp } from "@gik/kernel";
 import { openSampleBlueprint } from "../shared/blueprints";
-import { manageBlueprintsEffects, manageBlueprintsStorageKey } from "../bundles/manage-blueprints/effect_handlers/store";
+import { manageBlueprintsEffects, manageBlueprintsStorageKey } from "../blueprints/manage-blueprints/native/effect_handlers/manageBlueprintsEffectHandlers";
 
 type JsonRecord = Record<string, Json>;
 const initialState = openSampleBlueprint("manage-blueprints").state;

@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { Json } from "@gik/kernel";
 
 import { FallbackView, buildRegistryFromImports, renderNode } from "@gik/react";
-import { FLOOR_COMPONENTS, sortRows } from "./index";
+import { FLOOR_COMPONENTS, sortRows } from "./floorLeaves";
 
 const registry = buildRegistryFromImports(
   { ui: { from: "floor" } },

@@ -6,14 +6,14 @@ import effects, {
   readStoredPortfolioState,
   wrapOrchestrator,
   writeStoredPortfolioState,
-} from "../bundles/portfolio-tracker/effect_handlers";
+} from "../blueprints/portfolio-tracker/native/effect_handlers/portfolioTrackerEffectHandlers";
 import {
   formatIntelligenceMetric,
   safeEvidenceUrl,
   strategyActionDisabled,
   strategyInputSnapshot,
   strategyInputsEqual,
-} from "../bundles/portfolio-tracker/projection_views";
+} from "../blueprints/portfolio-tracker/native/projection_views/portfolioTrackerLeaves";
 import { openSampleBlueprint } from "../shared/blueprints";
 import { declarativeServiceOrchestrator } from "../shared/service-runtime";
 import type { SampleServiceRegistryOptions } from "../services";

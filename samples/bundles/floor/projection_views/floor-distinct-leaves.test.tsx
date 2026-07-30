@@ -5,7 +5,7 @@ import type { ReactElement } from "react";
 import type { Json } from "@gik/kernel";
 
 import { FallbackView, buildRegistryFromImports, renderNode, type ProjectionViewProps } from "@gik/react";
-import { FLOOR_COMPONENTS } from "./index";
+import { FLOOR_COMPONENTS } from "./floorLeaves";
 
 const registry = buildRegistryFromImports(
   { ui: { from: "floor" } },

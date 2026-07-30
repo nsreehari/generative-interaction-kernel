@@ -11,7 +11,7 @@ import type {
   TransportBroker,
   TransportListener,
   TransportProvider,
-} from "../../../kernel/src/index";
+} from "@gik/kernel";
 import { encodeSseFrame } from "./codec";
 
 class SseServerEndpoint implements TransportProvider {
