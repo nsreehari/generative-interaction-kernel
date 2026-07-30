@@ -30,6 +30,13 @@ test("floor stylesheet is scoped to .gx-host by default", () => {
   assert.ok(FLOOR_STYLESHEET.includes(".gx-host .gx-badge"));
 });
 
+test("panel action rows stay layout-only without an inset surface", () => {
+  const blocks = [...FLOOR_STYLESHEET.matchAll(/\.gx-host \.gx-panel-actions\s*\{([^}]*)\}/g)];
+  assert.equal(blocks.length, 1);
+  assert.match(blocks[0][1], /display:\s*flex/);
+  assert.doesNotMatch(blocks[0][1], /background|border|padding/);
+});
+
 test("floorStylesheet re-scopes every rule under a custom root", () => {
   const css = floorStylesheet(".app-scope");
   assert.ok(css.includes(".app-scope .gx-badge"));

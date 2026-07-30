@@ -47,14 +47,17 @@ const HOST_THEME_CSS = `
 .gx-host .gx-panel-rail { background: var(--panel); border-right: var(--strokeWidthThin) solid var(--line); }
 .gx-host .gx-panel-detail { display: flex; flex-direction: column; gap: var(--spacingVerticalL); }
 .gx-host .gx-panel-inset,
-.gx-host .gx-panel-tab,
-.gx-host .gx-panel-actions {
+.gx-host .gx-panel-tab {
   background: var(--panel-2);
   border: var(--strokeWidthThin) solid var(--line);
   border-radius: var(--borderRadiusLarge);
   padding: var(--spacingHorizontalM);
 }
-.gx-host .gx-panel-actions { display: flex; gap: var(--spacingHorizontalS); flex-wrap: wrap; }
+.gx-host .gx-panel-actions {
+  display: flex;
+  gap: var(--spacingHorizontalS);
+  flex-wrap: wrap;
+}
 .gx-host .gx-panel-detail-body { display: flex; flex-direction: column; gap: var(--spacingVerticalM); }
 .gx-host .gx-panel-footer {
   position: sticky;
