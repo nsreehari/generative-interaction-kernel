@@ -96,6 +96,11 @@ ${root} .gx-link:hover { text-decoration-thickness: 2px; }
 ${root} .gx-markdown-code { overflow: auto; padding: var(--spacingVerticalM) var(--spacingHorizontalM); background: var(--field-bg); border: var(--strokeWidthThin) solid var(--line); border-radius: var(--borderRadiusMedium); }
 ${root} .gx-mermaid { overflow: auto; margin: var(--spacingVerticalM) 0; text-align: center; }
 ${root} .gx-mermaid svg { display: inline-block; max-width: 100%; height: auto; }
+${root} .gx-markdown-table-wrap { max-width: 100%; overflow-x: auto; margin: var(--spacingVerticalM) 0; }
+${root} .gx-markdown-table { width: 100%; border-collapse: collapse; font-size: var(--fontSizeBase200); }
+${root} .gx-markdown-table th { padding: var(--spacingVerticalS) var(--spacingHorizontalS); border-bottom: var(--strokeWidthThick) solid var(--line); text-align: left; white-space: nowrap; }
+${root} .gx-markdown-table td { padding: var(--spacingVerticalS) var(--spacingHorizontalS); border-bottom: var(--strokeWidthThin) solid var(--line); text-align: left; vertical-align: top; }
+${root} .gx-markdown-table tbody tr:hover { background: var(--panel-2); }
 
 /* Field-level diff: one row per key, colored by add / remove / change. */
 ${root} .gx-diff { display: flex; flex-direction: column; }

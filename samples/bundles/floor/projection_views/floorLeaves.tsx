@@ -475,6 +475,34 @@ function MermaidDiagram({ source }: { source: string }) {
   return <div className="gx-mermaid" role="img" aria-label="Mermaid diagram" dangerouslySetInnerHTML={{ __html: svg }} />;
 }
 
+function parseMarkdownTableRow(line: string): string[] {
+  const trimmed = line.trim().replace(/^\|/, "").replace(/\|$/, "");
+  const cells: string[] = [];
+  let cell = "";
+  let escaped = false;
+  for (const character of trimmed) {
+    if (escaped) {
+      cell += character;
+      escaped = false;
+    } else if (character === "\\") {
+      escaped = true;
+    } else if (character === "|") {
+      cells.push(cell.trim());
+      cell = "";
+    } else {
+      cell += character;
+    }
+  }
+  if (escaped) cell += "\\";
+  cells.push(cell.trim());
+  return cells;
+}
+
+function isMarkdownTableSeparator(line: string, columns: number): boolean {
+  const cells = parseMarkdownTableRow(line);
+  return cells.length === columns && cells.every((cell) => /^:?-{3,}:?$/.test(cell));
+}
+
 function renderMarkdownBlocks(value: string): React.ReactNode[] {
   const lines = value.replace(/\r\n/g, "\n").split("\n");
   const nodes: React.ReactNode[] = [];
@@ -517,7 +545,8 @@ function renderMarkdownBlocks(value: string): React.ReactNode[] {
     fenceLines = [];
   };
 
-  for (const rawLine of lines) {
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const rawLine = lines[lineIndex];
     const line = rawLine.trim();
     if (fenceLanguage !== null) {
       if (/^```\s*$/.test(line)) flushFence();
@@ -536,6 +565,39 @@ function renderMarkdownBlocks(value: string): React.ReactNode[] {
     if (!line) {
       flushParagraph();
       flushList();
+      continue;
+    }
+
+    const tableHeaders = line.includes("|") ? parseMarkdownTableRow(line) : [];
+    const tableSeparator = lines[lineIndex + 1]?.trim() ?? "";
+    if (tableHeaders.length > 1 && isMarkdownTableSeparator(tableSeparator, tableHeaders.length)) {
+      flushParagraph();
+      flushList();
+      const rows: string[][] = [];
+      lineIndex += 2;
+      while (lineIndex < lines.length && lines[lineIndex].trim().includes("|")) {
+        const cells = parseMarkdownTableRow(lines[lineIndex]);
+        if (cells.length !== tableHeaders.length) break;
+        rows.push(cells);
+        lineIndex += 1;
+      }
+      lineIndex -= 1;
+      nodes.push(
+        <div key={`table-${nodes.length}`} className="gx-markdown-table-wrap">
+          <table className="gx-markdown-table">
+            <thead>
+              <tr>{tableHeaders.map((header, index) => <th key={index}>{renderInline(header)}</th>)}</tr>
+            </thead>
+            <tbody>
+              {rows.map((row, rowIndex) => (
+                <tr key={rowIndex}>
+                  {row.map((cell, cellIndex) => <td key={cellIndex}>{renderInline(cell)}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>,
+      );
       continue;
     }
 
