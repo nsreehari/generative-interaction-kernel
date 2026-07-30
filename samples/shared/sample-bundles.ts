@@ -12,6 +12,7 @@ import { openBlueprint } from "@gik/controlface/blueprint";
 import registry from "../blueprints/registry.json";
 import * as copilotC2EffectModule from "../blueprints/copilot-c2/native/effect_handlers/copilotC2EffectHandlers";
 import * as foundryAgentEffectModule from "../blueprints/foundry-agent/native/effect_handlers/foundryAgentEffectHandlers";
+import * as incidentReportExplorerEffectModule from "../blueprints/incident-report-explorer/native/effect_handlers/incidentReportExplorerEffectHandlers";
 import * as liveWorkspaceSocEffectModule from "../blueprints/live-workspace-soc/native/effect_handlers/liveWorkspaceSocEffectHandlers";
 import * as manageBlueprintsEffectModule from "../blueprints/manage-blueprints/native/effect_handlers/manageBlueprintsEffectHandlers";
 import * as portfolioTrackerEffectModule from "../blueprints/portfolio-tracker/native/effect_handlers/portfolioTrackerEffectHandlers";
@@ -37,6 +38,7 @@ type NativeEffectModule = {
 const effectHandlerModules: Record<string, NativeEffectModule> = {
   "copilot-c2": copilotC2EffectModule,
   "foundry-agent": foundryAgentEffectModule,
+  "incident-report-explorer": incidentReportExplorerEffectModule,
   "live-workspace-soc": liveWorkspaceSocEffectModule,
   "manage-blueprints": manageBlueprintsEffectModule,
   "portfolio-tracker": portfolioTrackerEffectModule,

@@ -1,0 +1,81 @@
+import { describe, expect, it } from "vitest";
+import { analyzeCellComposition, type CellDefinition } from "@gik/blueprint";
+import { unwrap } from "@gik/kernel";
+
+import blueprint from "../blueprints/incident-report-explorer/blueprint.json" with { type: "json" };
+import { openSampleBlueprint } from "../shared/blueprints";
+
+const cells = Object.values(blueprint.payload.cells) as unknown as CellDefinition[];
+
+describe("incident-report-explorer Blueprint", () => {
+  it("composes an editable report into a dependent agent analysis", () => {
+    expect(cells.map((cell) => cell.id)).toEqual([
+      "incident-workspace",
+      "incident-report",
+      "incident-report-markdown",
+      "incident-report-form",
+      "foundry-access-gate",
+      "incident-intelligence",
+    ]);
+    expect(analyzeCellComposition(cells)).toMatchObject({
+      externalInputs: [],
+      diagnostics: [],
+    });
+
+    const program = unwrap(openSampleBlueprint("incident-report-explorer").program);
+    expect(program.root.edges?.children?.map((node) => node.id)).toEqual([
+      "incident-report",
+      "foundry-access-gate",
+    ]);
+    expect(program.root.edges?.children?.[0]?.edges?.children?.map((node) => node.id)).toEqual([
+      "incident-report-markdown",
+      "incident-report-form",
+    ]);
+    expect(program.root.edges?.children?.[1]?.edges?.children?.map((node) => node.id)).toEqual([
+      "incident-intelligence",
+    ]);
+    expect(cells.find((cell) => cell.id === "incident-report")?.outputs).toEqual([{
+      token: "incident-report-content",
+      from: "incident.content",
+      when: "$length(incident.content) > 0",
+    }]);
+    expect(cells.find((cell) => cell.id === "incident-report-form")?.view).toMatchObject({
+      capability: "ui:form",
+      props: {
+        fields: { properties: { content: { format: "textarea", rows: 34 } } },
+      },
+      bindings: { value: { from: "incident.formValue" } },
+    });
+    expect(cells.find((cell) => cell.id === "incident-intelligence")).toMatchObject({
+      inputs: [{ token: "incident-report-content" }],
+      sources: [{ service: "incident-report-intelligence", operation: "analyzeReport" }],
+      view: {
+        bindings: {
+          content: { from: "incident.content" },
+          analyzedContent: { from: "incident.analyzedContent" },
+        },
+      },
+    });
+    expect(cells.find((cell) => cell.id === "foundry-access-gate")).toMatchObject({
+      view: {
+        capability: "foundry:access-gate",
+        bindings: {
+          status: { from: "incident.foundryAccessStatus" },
+          error: { from: "incident.foundryAccessError" },
+        },
+      },
+    });
+  });
+
+  it("starts with stale-aware analysis state", () => {
+    const runtime = openSampleBlueprint("incident-report-explorer");
+    expect(runtime.state.incident).toMatchObject({
+      content: "# Loading incident report…",
+      intelligence: null,
+      analyzedContent: null,
+      pendingContent: null,
+      foundryAccessStatus: "required",
+      foundryAccessError: "",
+    });
+  });
+});
