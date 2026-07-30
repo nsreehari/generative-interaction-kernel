@@ -39,14 +39,17 @@ ${root} .gx-code { font-family: var(--fontFamilyMonospace); font-size: var(--fon
 ${root} .gx-code pre { margin: 0; white-space: pre-wrap; word-break: break-word; }
 
 ${root} .gx-panel-inset,
-${root} .gx-panel-tab,
-${root} .gx-panel-actions {
+${root} .gx-panel-tab {
   background: var(--panel-2);
   border: var(--strokeWidthThin) solid var(--line);
   border-radius: var(--borderRadiusLarge);
   padding: var(--spacingHorizontalM);
 }
-${root} .gx-panel-actions { display: flex; gap: var(--spacingHorizontalS); flex-wrap: wrap; }
+${root} .gx-panel-actions {
+  display: flex;
+  gap: var(--spacingHorizontalS);
+  flex-wrap: wrap;
+}
 ${root} .gx-text { display: inline-block; }
 ${root} .gx-text-title { font-weight: var(--fontWeightSemibold); font-size: var(--fontSizeBase300); }
 ${root} .gx-text-subtitle,
