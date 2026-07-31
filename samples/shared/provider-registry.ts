@@ -4,6 +4,7 @@ import copilotC2Leaves from "../blueprints/copilot-c2/native/projection_views/co
 import foundryAgentLeaves from "../blueprints/foundry-agent/native/projection_views/foundryAgentLeaves";
 import incidentReportExplorerLeaves from "../blueprints/incident-report-explorer/native/projection_views/incidentReportExplorerLeaves";
 import incidentReportExplorer2Leaves from "../blueprints/incident-report-explorer-2/native/projection_views/incidentReportExplorer2Leaves";
+import incidentReportExplorer3Leaves from "../blueprints/incident-report-explorer-3/native/projection_views/incidentReportExplorer3Leaves";
 import liveWorkspaceSocLeaves from "../blueprints/live-workspace-soc/native/projection_views/liveWorkspaceSocLeaves";
 import manageBlueprintsLeaves from "../blueprints/manage-blueprints/native/projection_views/manageBlueprintsLeaves";
 import portfolioTrackerLeaves from "../blueprints/portfolio-tracker/native/projection_views/portfolioTrackerLeaves";
@@ -24,6 +25,7 @@ const projectionProviders: Record<string, Record<string, ProjectionView>> = {
   "http-proxy": httpProxyLeaves,
   "incident-report-explorer": incidentReportExplorerLeaves,
   "incident-report-explorer-2": incidentReportExplorer2Leaves,
+  "incident-report-explorer-3": incidentReportExplorer3Leaves,
   "live-workspace-soc": liveWorkspaceSocLeaves,
   "manage-blueprints": manageBlueprintsLeaves,
   "portfolio-tracker": portfolioTrackerLeaves,
