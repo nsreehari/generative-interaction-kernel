@@ -18,13 +18,13 @@ import {
   clearBrowserCredential,
   resolveBrowserCredential,
 } from "./function-access";
-import { hostConfig } from "./host-config";
+import { hostConfig, hostEnvironment } from "./host-config";
 import { createSampleServiceRegistryOptions } from "./service-registry-options";
 
 export { createSampleServiceRegistryOptions } from "./service-registry-options";
 
 export const browserServiceRegistryOptions = createSampleServiceRegistryOptions({
-  resolveCredential: resolveBrowserCredential,
+  resolveCredential: hostEnvironment === "local" ? async () => "" : resolveBrowserCredential,
   clearCredential: clearBrowserCredential,
 }, hostConfig);
 
