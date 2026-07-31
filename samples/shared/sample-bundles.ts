@@ -14,6 +14,7 @@ import * as copilotC2EffectModule from "../blueprints/copilot-c2/native/effect_h
 import * as foundryAgentEffectModule from "../blueprints/foundry-agent/native/effect_handlers/foundryAgentEffectHandlers";
 import * as incidentReportExplorerEffectModule from "../blueprints/incident-report-explorer/native/effect_handlers/incidentReportExplorerEffectHandlers";
 import * as incidentReportExplorer2EffectModule from "../blueprints/incident-report-explorer-2/native/effect_handlers/incidentReportExplorer2EffectHandlers";
+import * as incidentReportExplorer3EffectModule from "../blueprints/incident-report-explorer-3/native/effect_handlers/incidentReportExplorer3EffectHandlers";
 import * as liveWorkspaceSocEffectModule from "../blueprints/live-workspace-soc/native/effect_handlers/liveWorkspaceSocEffectHandlers";
 import * as manageBlueprintsEffectModule from "../blueprints/manage-blueprints/native/effect_handlers/manageBlueprintsEffectHandlers";
 import * as portfolioTrackerEffectModule from "../blueprints/portfolio-tracker/native/effect_handlers/portfolioTrackerEffectHandlers";
@@ -41,6 +42,7 @@ const effectHandlerModules: Record<string, NativeEffectModule> = {
   "foundry-agent": foundryAgentEffectModule,
   "incident-report-explorer": incidentReportExplorerEffectModule,
   "incident-report-explorer-2": incidentReportExplorer2EffectModule,
+  "incident-report-explorer-3": incidentReportExplorer3EffectModule,
   "live-workspace-soc": liveWorkspaceSocEffectModule,
   "manage-blueprints": manageBlueprintsEffectModule,
   "portfolio-tracker": portfolioTrackerEffectModule,
