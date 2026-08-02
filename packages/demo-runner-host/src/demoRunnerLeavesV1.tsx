@@ -7,11 +7,9 @@ import {
   Badge,
   Button,
   Persona,
-  ToggleButton,
   makeStyles,
   mergeClasses,
   tokens,
-  type ButtonProps,
 } from "@fluentui/react-components";
 import {
   ChevronLeft20Regular,
@@ -21,10 +19,10 @@ import {
   Sparkle20Regular,
 } from "@fluentui/react-icons";
 import type { MaterializedBlueprint } from "@gik/blueprint";
+import { GrowingContainerPrimitive, TimerButton } from "@gik/components/primitives";
 import { unwrap } from "@gik/kernel";
 import {
   readProps,
-  useCountdownTimer,
   type ProjectionViewProps,
   type ProviderMap,
 } from "@gik/react";
@@ -187,7 +185,7 @@ function JournalLeaf({ node, emit }: ProjectionViewProps) {
   return (
     <section className={styles.journal} aria-label={props.str("ariaLabel", "Scenario journal")}>
       <header className={styles.journalHeader}><strong>{props.str("title", "Journal")}</strong>{selectedId ? <Button appearance="subtle" size="small" onClick={() => emit("select", { id: null })}>Latest</Button> : null}</header>
-      <GrowingContainerLeaf node={{ ...node, props: { ariaLabel: "Journal timeline" } }} emit={emit}>
+      <GrowingContainerPrimitive node={{ ...node, props: { ariaLabel: "Journal timeline" } }} emit={emit}>
         <div className={styles.journalList}>
           {entries.length === 0 ? <span className={styles.muted}>{props.str("emptyLabel", "No acts have run")}</span> : entries.map((entry) => (
             <button key={entry.id} type="button" className={mergeClasses(styles.journalItem, entry.id === selectedId ? styles.journalItemSelected : undefined)} aria-pressed={entry.id === selectedId} onClick={() => emit("select", { id: entry.id })}>
@@ -201,7 +199,7 @@ function JournalLeaf({ node, emit }: ProjectionViewProps) {
           ))}
           {selected ? <details open><summary>Entry details</summary><pre className={styles.code}>{JSON.stringify({ event: selected.event, condition: selected.condition, observations: selected.observations }, null, 2)}</pre></details> : null}
         </div>
-      </GrowingContainerLeaf>
+      </GrowingContainerPrimitive>
     </section>
   );
 }
@@ -214,7 +212,7 @@ function RuntimeLedgerLeaf({ node }: ProjectionViewProps) {
   return (
     <section className={styles.journal} aria-label={props.str("ariaLabel", "Runtime ledger")}>
       <header className={styles.journalHeader}><strong>{props.str("title", "Ledger")}</strong></header>
-      <GrowingContainerLeaf node={{ ...node, props: { ariaLabel: "Runtime event and effect ledger" } }} emit={() => undefined}>
+      <GrowingContainerPrimitive node={{ ...node, props: { ariaLabel: "Runtime event and effect ledger" } }} emit={() => undefined}>
         <div className={styles.journalList}>
           {entries.length === 0 ? <span className={styles.muted}>No runtime transitions</span> : entries.map((entry) => (
             <article key={entry.id} className={styles.journalItem}>
@@ -226,7 +224,7 @@ function RuntimeLedgerLeaf({ node }: ProjectionViewProps) {
             </article>
           ))}
         </div>
-      </GrowingContainerLeaf>
+      </GrowingContainerPrimitive>
     </section>
   );
 }
@@ -247,107 +245,14 @@ function ActorsLeaf({ node }: ProjectionViewProps) {
   })}</section>;
 }
 
-function TimerButtonLeaf({ node, emit }: ProjectionViewProps) {
-  const props = readProps(node);
-  const styles = useStyles();
-  const [pace, setPace] = React.useState<"manual" | "auto">(
-    () => node.props.defaultPace === "auto" ? "auto" : "manual",
-  );
-  const configuredDuration = Number(
-    pace === "auto"
-      ? node.props.autoDurationMs ?? node.props.durationMs ?? 3000
-      : node.props.manualDurationMs ?? node.props.durationMs ?? 3000,
-  );
-  const durationMs = Number.isFinite(configuredDuration) ? Math.max(0, configuredDuration) : 3000;
-  const disabled = props.bool("disabled");
-  const showCountdown = node.props.showCountdown !== false;
-  const showPaceSwitch = node.props.showPaceSwitch !== false;
-  const externalResetKey = node.props.resetKey ?? node.props.advanceToken ?? "";
-  const previousResetKey = React.useRef(externalResetKey);
-  React.useEffect(() => {
-    const previous = Number(previousResetKey.current);
-    const current = Number(externalResetKey);
-    previousResetKey.current = externalResetKey;
-    if (Number.isFinite(previous) && Number.isFinite(current) && current < previous) {
-      setPace(node.props.defaultPace === "auto" ? "auto" : "manual");
-    }
-  }, [externalResetKey, node.props.defaultPace]);
-  const timer = useCountdownTimer({
-    durationMs,
-    running: pace === "auto" && node.props.autoStart !== false && !disabled,
-    resetKey: `${String(externalResetKey)}:${pace}`,
-    onElapsed: () => emit("press", { reason: "timeout" }),
-  });
-  if (props.bool("hidden")) return null;
-
-  const label = props.str("label");
-  return (
-    <div className={styles.controls}>
-      {showPaceSwitch ? <ToggleButton
-        checked={pace === "auto"}
-        size="small"
-        aria-label="Automatically advance sequence"
-        onClick={() => setPace((current) => current === "auto" ? "manual" : "auto")}
-      >
-        {pace === "auto" ? "Auto" : "Manual"}
-      </ToggleButton> : null}
-      <Button
-        appearance={props.str("appearance", "secondary") as ButtonProps["appearance"]}
-        aria-label={pace === "auto" && showCountdown ? `${label}, ${timer.remainingSeconds} seconds remaining` : props.str("ariaLabel") || label}
-        disabled={disabled}
-        size={props.str("size", "small") as ButtonProps["size"]}
-        onClick={() => {
-          emit("press", { reason: "manual" });
-          timer.restart();
-        }}
-      >
-        {label}
-        {pace === "auto" && showCountdown ? ` · ${timer.remainingSeconds}` : null}
-      </Button>
-    </div>
-  );
-}
-
-function GrowingContainerLeaf({ node, children }: ProjectionViewProps) {
-  const props = readProps(node);
-  const viewportRef = React.useRef<HTMLDivElement>(null);
-  const contentRef = React.useRef<HTMLDivElement>(null);
-
-  React.useLayoutEffect(() => {
-    const viewport = viewportRef.current;
-    const content = contentRef.current;
-    if (!viewport || !content) return;
-
-    const observer = new ResizeObserver(() => {
-      viewport.scrollTop = viewport.scrollHeight;
-    });
-    observer.observe(content);
-    return () => observer.disconnect();
-  }, []);
-
-  if (props.bool("hidden")) return null;
-  const ariaLabel = props.str("ariaLabel") || undefined;
-
-  return (
-    <div
-      ref={viewportRef}
-      role={ariaLabel ? "region" : undefined}
-      aria-label={ariaLabel}
-      style={{ height: "100%", minHeight: 0, overflow: "auto" }}
-    >
-      <div ref={contentRef}>{children}</div>
-    </div>
-  );
-}
-
 export const demoRunnerLeavesV1: ProviderMap = {
   actors: ActorsLeaf,
   "control-panel": ControlPanelLeaf,
-  "growing-container": GrowingContainerLeaf,
+  "growing-container": GrowingContainerPrimitive,
   "act-journal": JournalLeaf,
   "runtime-ledger": RuntimeLedgerLeaf,
   "lowered-blueprint": LoweredBlueprintLeaf,
   "runner-panel": RunnerPanelLeaf,
-  "timer-button": TimerButtonLeaf,
+  "timer-button": TimerButton,
   tooling: ToolingLeaf,
 };

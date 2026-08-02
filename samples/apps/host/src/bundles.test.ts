@@ -79,6 +79,12 @@ test("host projection imports can resolve another bundle by id", () => {
   assert.equal(typeof fluentViews?.dropdown, "function");
   assert.equal(typeof fluentViews?.switch, "function");
   assert.equal(typeof fluentViews?.toggle, "function");
+  const primitiveViews = resolveBundleProjectionViews("primitive");
+  assert.equal(typeof primitiveViews?.chart, "function");
+  assert.equal(typeof primitiveViews?.["growing-container"], "function");
+  const semanticViews = resolveBundleProjectionViews("semantic");
+  assert.equal(typeof semanticViews?.timeline, "function");
+  assert.equal(typeof semanticViews?.["semantic-graph"], "function");
   assert.equal(resolveBundleProjectionViews("missing-bundle"), undefined);
 });
 

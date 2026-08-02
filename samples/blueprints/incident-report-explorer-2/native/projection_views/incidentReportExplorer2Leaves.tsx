@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  Badge,
   Button,
   MessageBar,
   MessageBarBody,
@@ -160,18 +159,6 @@ const ReportView: ProjectionView = ({ node, emit, children }) => {
   </section>;
 };
 
-const VerdictBriefView: ProjectionView = ({ node }) => {
-  const styles = useStyles();
-  const model = record(node.props.value);
-  const verdict = record(model.verdict);
-  const identity = record(model.identity);
-  if (!Object.keys(verdict).length) return null;
-  return <section className={`${styles.leaf} ${styles.verdict}`} aria-labelledby="incident-verdict-title">
-    <div><p className={styles.eyebrow}>{String(verdict.classification)} · {String(verdict.confidence)} confidence</p><h2 id="incident-verdict-title" className={styles.verdictTitle}>{String(identity.title || "Confirmed incident")}</h2><p className={styles.summary}>{String(model.summary)}</p></div>
-    <div className={styles.verdictFacts}><div><span className={styles.factLabel}>Impact</span><span className={styles.factValue}>{String(verdict.impact)}</span></div><div><span className={styles.factLabel}>Window</span><span className={styles.factValue}>{String(identity.startTime)} – {String(identity.endTime)}</span></div></div>
-  </section>;
-};
-
 const AttackPathView: ProjectionView = ({ node }) => {
   const styles = useStyles();
   const model = record(node.props.value);
@@ -185,39 +172,6 @@ const AttackPathView: ProjectionView = ({ node }) => {
   </section>;
 };
 
-const BlastRadiusView: ProjectionView = ({ node }) => {
-  const styles = useStyles();
-  const entities = records(record(node.props.value).entities);
-  const statuses = ["compromised", "affected", "targeted"];
-  if (!entities.length) return null;
-  return <section className={styles.leaf} aria-labelledby="blast-radius-title"><header className={styles.sectionHead}><h3 id="blast-radius-title" className={styles.sectionTitle}>Blast radius</h3><span className={styles.sectionMeta}>{entities.length} entities</span></header><div className={styles.entityGroups}>{statuses.map((status) => {
-    const group = entities.filter((entity) => entity.status === status);
-    return group.length ? <section className={styles.entityGroup} key={status}><h4 className={styles.groupTitle}>{status} · {group.length}</h4><ul className={styles.itemList}>{group.map((entity) => <li key={String(entity.id)}><Badge appearance="tint" color={status === "compromised" ? "danger" : status === "affected" ? "warning" : "informative"}>{String(entity.type)}</Badge><span className={styles.itemTitle}>{String(entity.label)}</span><p className={styles.itemDetail}>{String(entity.description)}</p></li>)}</ul></section> : null;
-  })}</div></section>;
-};
-
-const PhaseTimelineView: ProjectionView = ({ node }) => {
-  const styles = useStyles();
-  const events = records(record(node.props.value).events);
-  if (!events.length) return null;
-  return <section className={styles.leaf} aria-labelledby="timeline-title"><header className={styles.sectionHead}><h3 id="timeline-title" className={styles.sectionTitle}>Incident timeline</h3><span className={styles.sectionMeta}>{events.length} normalized events</span></header><ol className={styles.timeline}>{events.map((event) => <li className={styles.timelineItem} key={String(event.id)}><time className={styles.time}>{String(event.time)}</time><span className={styles.timelineMarker} /><div><span className={styles.itemTitle}>{String(event.title)}</span><p className={styles.itemDetail}>{String(event.detail)}</p></div></li>)}</ol></section>;
-};
-
-const TtpChainView: ProjectionView = ({ node }) => {
-  const styles = useStyles();
-  const techniques = records(record(node.props.value).techniques);
-  if (!techniques.length) return null;
-  return <section className={styles.leaf} aria-labelledby="ttp-title"><header className={styles.sectionHead}><h3 id="ttp-title" className={styles.sectionTitle}>ATT&amp;CK progression</h3><span className={styles.sectionMeta}>{techniques.length} techniques</span></header><div className={styles.techniqueRail}>{techniques.map((technique) => <article className={styles.technique} key={String(technique.id)}><span className={styles.techniqueId}>{String(technique.techniqueId)}</span><span className={styles.itemTitle}>{String(technique.technique)}</span><p className={styles.itemDetail}>{String(technique.tactic)} · {String(technique.description)}</p></article>)}</div></section>;
-};
-
-const ResponsePlanView: ProjectionView = ({ node }) => {
-  const styles = useStyles();
-  const actions = records(record(node.props.value).actions);
-  const priorities = ["immediate", "next", "follow-up"];
-  if (!actions.length) return null;
-  return <section className={styles.leaf} aria-labelledby="response-title"><header className={styles.sectionHead}><h3 id="response-title" className={styles.sectionTitle}>Response plan</h3><span className={styles.sectionMeta}>Ordered by urgency</span></header><div className={styles.actionColumns}>{priorities.map((priority) => <section className={styles.actionGroup} key={priority}><h4 className={styles.actionHeading}>{priority}</h4><ol className={styles.itemList}>{actions.filter((action) => action.priority === priority).map((action) => <li key={String(action.id)}><Badge appearance="filled" color={priority === "immediate" ? "danger" : priority === "next" ? "warning" : "informative"}>{String(action.category)}</Badge><span className={styles.itemTitle}>{String(action.title)}</span><p className={styles.itemDetail}>{String(action.detail)}</p></li>)}</ol></section>)}</div></section>;
-};
-
 const RepresentationNotesView: ProjectionView = ({ node }) => {
   const styles = useStyles();
   const notes = records(record(node.props.value).representationNotes);
@@ -229,11 +183,6 @@ export default {
   workspace: WorkspaceView,
   editor: EditorView,
   report: ReportView,
-  "verdict-brief": VerdictBriefView,
   "attack-path": AttackPathView,
-  "blast-radius": BlastRadiusView,
-  "phase-timeline": PhaseTimelineView,
-  "ttp-chain": TtpChainView,
-  "response-plan": ResponsePlanView,
   "representation-notes": RepresentationNotesView,
 };

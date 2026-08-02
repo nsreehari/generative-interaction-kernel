@@ -8,6 +8,7 @@
 
 import React from "react";
 import "@xyflow/react/dist/style.css";
+import { GrowingContainerPrimitive, TimerButton as PrimitiveTimerButton } from "@gik/components/primitives";
 import { unwrap, type Json, type ResolvedNode } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import {
@@ -20,7 +21,6 @@ import {
   useBundleContexts,
   useBundleContextSync,
   useBundleRegistry,
-  useCountdownTimer,
   useGenUIFileServices,
   useProjectionProviderResolver,
   type Bundle,
@@ -28,7 +28,9 @@ import {
   type ProjectionView,
   type ProjectionViewProps,
 } from "@gik/react";
-import { formatCountdown } from "../../../shared/countdown";
+
+export { GrowingContainer, GrowingContainerPrimitive } from "@gik/components/primitives";
+export type { GrowingContainerFollowEnd, GrowingContainerProps } from "@gik/components/primitives";
 
 interface Option {
   value: string;
@@ -800,81 +802,6 @@ function Col({ node, children }: ProjectionViewProps) {
       {children}
     </div>
   );
-}
-
-export type GrowingContainerFollowEnd = "always" | "when-at-end" | "off";
-
-export interface GrowingContainerProps {
-  children?: React.ReactNode;
-  className?: string;
-  followEnd?: GrowingContainerFollowEnd;
-  ariaLabel?: string;
-}
-
-export function GrowingContainer({
-  children,
-  className,
-  followEnd = "always",
-  ariaLabel,
-}: GrowingContainerProps): React.ReactElement {
-  const viewportRef = React.useRef<HTMLDivElement>(null);
-  const contentRef = React.useRef<HTMLDivElement>(null);
-  const pinnedToEndRef = React.useRef(true);
-
-  const scrollToEnd = React.useCallback(() => {
-    const viewport = viewportRef.current;
-    if (viewport) viewport.scrollTop = viewport.scrollHeight;
-  }, []);
-
-  React.useLayoutEffect(() => {
-    const viewport = viewportRef.current;
-    const content = contentRef.current;
-    if (!viewport || !content || followEnd === "off") return;
-    const observer = new ResizeObserver(() => {
-      if (followEnd === "always" || pinnedToEndRef.current) scrollToEnd();
-    });
-    observer.observe(content);
-    scrollToEnd();
-    return () => observer.disconnect();
-  }, [followEnd, scrollToEnd]);
-
-  const onScroll = () => {
-    const viewport = viewportRef.current;
-    if (!viewport) return;
-    pinnedToEndRef.current = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight <= 8;
-  };
-
-  return (
-    <div
-      ref={viewportRef}
-      className={["gx-growing-container", className].filter(Boolean).join(" ")}
-      role={ariaLabel ? "region" : undefined}
-      aria-label={ariaLabel}
-      onScroll={onScroll}
-      style={{
-        boxSizing: "border-box",
-        width: "100%",
-        height: "100%",
-        minWidth: 0,
-        minHeight: 0,
-        maxWidth: "100%",
-        maxHeight: "100%",
-        overflow: "auto",
-        overscrollBehavior: "contain",
-      }}
-    >
-      <div ref={contentRef} className="gx-growing-container-content" style={{ minWidth: 0, minHeight: "100%" }}>{children}</div>
-    </div>
-  );
-}
-
-function GrowingContainerPrimitive({ node, children }: ProjectionViewProps) {
-  const p = readProps(node);
-  const requestedFollowEnd = p.str("followEnd", "always");
-  const followEnd: GrowingContainerFollowEnd = requestedFollowEnd === "off" || requestedFollowEnd === "when-at-end"
-    ? requestedFollowEnd
-    : "always";
-  return <GrowingContainer followEnd={followEnd} ariaLabel={p.str("ariaLabel") || undefined}>{children}</GrowingContainer>;
 }
 
 function Panel({ node, children }: ProjectionViewProps) {
@@ -1984,40 +1911,22 @@ function Button({ node, emit }: ProjectionViewProps) {
 
 function TimerButton({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
-  const label = p.str("label");
   const configuredDuration = Number(node.props.durationMs ?? node.props.duration ?? 3000);
   const durationMs = Number.isFinite(configuredDuration) ? Math.max(250, configuredDuration) : 3000;
-  const disabled = p.bool("disabled");
-  const running = node.props.autoStart !== false && !disabled;
-  const timer = useCountdownTimer({
-    durationMs,
-    running,
-    onElapsed: () => {
-      emit("press", { reason: "timeout" });
-      timer.restart();
+  const appearance = p.str("tone") === "primary" ? "primary" : "secondary";
+  return <PrimitiveTimerButton node={{
+    ...node,
+    capability: "primitive:timer-button",
+    props: {
+      label: p.str("label"),
+      durationMs,
+      disabled: p.bool("disabled"),
+      autoStart: node.props.autoStart !== false,
+      repeat: true,
+      showCountdown: node.props.showCountdown !== false,
+      appearance,
     },
-  });
-  const countdown = formatCountdown(timer.remainingSeconds);
-
-  const press = () => {
-    emit("press", { reason: "manual" });
-    timer.restart();
-  };
-
-  return (
-    <button
-      className={`gx-btn gx-btn-${p.str("tone", "default")}`}
-      disabled={disabled}
-      aria-label={`${label}, ${timer.remainingSeconds} seconds remaining`}
-      onClick={press}
-    >
-      <span className="gx-timer-label">{label}</span>
-      {node.props.showCountdown !== false ? <>
-        <span className="gx-timer-separator" aria-hidden="true"> · </span>
-        <span className="gx-timer-count">{countdown}</span>
-      </> : null}
-    </button>
-  );
+  }} emit={emit} children={undefined} />;
 }
 
 function MathChallenge({ node, emit }: ProjectionViewProps) {

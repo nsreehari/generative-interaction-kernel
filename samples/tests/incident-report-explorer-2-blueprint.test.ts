@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { analyzeCellComposition, materializeBlueprint, type BlueprintArtifact, type CellDefinition } from "@gik/blueprint";
+import { semanticComponentDefinitions } from "@gik/components";
 
 import blueprintJson from "../blueprints/incident-report-explorer-2/blueprint.json" with { type: "json" };
 
@@ -33,5 +34,25 @@ describe("incident-report-explorer-2 Blueprint", () => {
     expect(terminal.payload.recipes).toEqual([]);
     const placements = terminal.payload.projections?.presentation?.placements ?? [];
     expect(placements.filter(({ parent }) => parent === "incident-semantic-analyzer").map(({ cell }) => cell)).toEqual(expectedLeaves);
+  });
+
+  it("authors valid specs for the imported semantic component provider", () => {
+    const operational = blueprint.payload.recipes[0].representations[0];
+    const views = operational.views ?? {};
+    const cases = [
+      ["incident-verdict", "decision-summary"],
+      ["incident-blast-radius", "entity-constellation"],
+      ["incident-timeline", "timeline"],
+      ["incident-techniques", "sequence"],
+      ["incident-response", "action-board"],
+    ] as const;
+
+    for (const [viewId, definitionId] of cases) {
+      const view = views[viewId];
+      const dataProp = semanticComponentDefinitions[definitionId].dataProp;
+      const props = { ...view.props, [dataProp]: [] };
+      if (definitionId === "decision-summary") props[dataProp] = {};
+      expect(semanticComponentDefinitions[definitionId].validate(props).ok, viewId).toBe(true);
+    }
   });
 });

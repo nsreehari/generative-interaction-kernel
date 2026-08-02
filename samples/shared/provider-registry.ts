@@ -13,8 +13,10 @@ import floorLeaves from "../bundles/floor/projection_views/floorLeaves";
 import fluentLeaves from "../bundles/fluent/projection_views/fluentLeaves";
 import foundryLeaves from "../bundles/foundry/projection_views/foundryLeaves";
 import httpProxyLeaves from "../bundles/http-proxy/projection_views/httpProxyLeaves";
+import primitiveLeaves from "../bundles/primitive/projection_views/primitiveLeaves";
 import providerAuthoringDemoLeaves from "../bundles/provider-authoring-demo/projection_views/providerAuthoringDemoLeaves";
 import reactiveDemoLeaves from "../bundles/reactive-demo/projection_views/reactiveDemoLeaves";
+import semanticLeaves from "../bundles/semantic/projection_views/semanticLeaves";
 
 const projectionProviders: Record<string, Record<string, ProjectionView>> = {
   "copilot-c2": copilotC2Leaves,
@@ -30,7 +32,9 @@ const projectionProviders: Record<string, Record<string, ProjectionView>> = {
   "manage-blueprints": manageBlueprintsLeaves,
   "portfolio-tracker": portfolioTrackerLeaves,
   "provider-authoring-demo": providerAuthoringDemoLeaves,
+  primitive: primitiveLeaves,
   "reactive-demo": reactiveDemoLeaves,
+  semantic: semanticLeaves,
   "samples-overview": samplesOverviewLeaves,
 };
 

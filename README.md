@@ -27,6 +27,7 @@ In this repo, the concrete shape is:
 - [packages/controlface](packages/controlface) = the public `@gik/controlface` package
 - [packages/agentface](packages/agentface) = the public `@gik/agentface` package
 - [packages/react](packages/react) = the public `@gik/react` package
+- [packages/components](packages/components) = the public Fluent 2 `@gik/components` package
 - [packages/provider-step-orchestrator](packages/provider-step-orchestrator) = the public `@gik/provider-step-orchestrator` package
 - [packages/provider-profile-authoring](packages/provider-profile-authoring) = the public `@gik/provider-profile-authoring` package
 - [packages/transport-http-sse](packages/transport-http-sse) = the public `@gik/transport-http-sse` package
@@ -45,6 +46,9 @@ If you are deciding what to consume:
 Run `npm run dev:host` in [generative-interaction-kernel](.) and select a hosted Blueprint with
 `/?b=<id>`. The default is `samples-overview`; the application switcher lists the approved Blueprint
 catalog. Open `/?b=manage-bundles` to inspect and preview ordinary Bundle artifacts.
+The same host serves the semantic component Storybook at `/storybook/`; no second development
+server is required. Host development and production builds generate the Storybook assets first and
+include them in the host artifact.
 
 The sample host defaults to [`samples/config/host.production.json`](samples/config/host.production.json)
 in both development and production modes. Use `npm run dev:host:local` or
@@ -188,6 +192,7 @@ generative-interaction-kernel/
     agentface/                  ← @gik/agentface
     evaluators/                 ← @gik/evaluators (JSONata evaluators + declarative validators)
     react/                      ← @gik/react
+    components/                 ← @gik/components (self-describing Fluent 2 projection components)
     profile/                    ← @gik/profile (generic profile machinery, GenUI interpreters, template loaders, authoring runner)
     provider-step-orchestrator/ ← @gik/provider-step-orchestrator
     provider-profile-authoring/ ← @gik/provider-profile-authoring
