@@ -14,6 +14,7 @@ package:
   public_subpaths:
     semantic: "@gik/components/semantic"
     primitives: "@gik/components/primitives"
+    fluent: "@gik/components/fluent"
   generic_react_adapter:
     export: GikComponent
     entrypoint: "@gik/components"
@@ -38,7 +39,9 @@ api_policy:
     - semanticComponentAuthoringTools as the semantic-components convenience AgentFace tool catalog.
     - primitiveComponentViews, primitiveComponentDefinitions, and primitiveComponentCapabilities.
     - primitiveComponentAuthoringTools as the primitive-components convenience AgentFace tool catalog.
-    - componentViews, componentDefinitions, and componentCapabilities as aggregate compatibility registries.
+    - fluentComponentViews, fluentComponentDefinitions, and fluentComponentCapabilities.
+    - fluentComponentAuthoringTools as the Fluent-controls convenience AgentFace tool catalog.
+    - componentViews, componentDefinitions, and componentCapabilities as aggregate Fluent, primitive, and semantic compatibility registries.
   authoring_functions:
     - listSemanticComponents
     - describeSemanticComponent
@@ -56,6 +59,14 @@ api_policy:
     - getPrimitiveComponentAgentInstructions
     - createPrimitiveComponentAuthoringTools
     - getPrimitiveComponentAgentKit
+    - listFluentComponents
+    - describeFluentComponent
+    - validateFluentComponentProps
+    - preflightFluentComponent
+    - materializeFluentComponentTrial
+    - getFluentComponentAgentInstructions
+    - createFluentComponentAuthoringTools
+    - getFluentComponentAgentKit
   gik_component_props:
     required: [kind]
     structured: [spec, data, componentProps]
@@ -79,6 +90,9 @@ api_policy:
 
 architecture:
   layers:
+    fluent:
+      definition: Reusable Fluent 2 controls that retain fluent provider capability names.
+      current: [button, dropdown, icon-button, switch, toggle]
     primitives:
       definition: Domain-neutral rendering and interaction mechanics without business meaning.
       current: [chart, editable-table, form, growing-container, timer-button]

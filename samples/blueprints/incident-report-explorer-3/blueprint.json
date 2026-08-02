@@ -30,7 +30,7 @@
               "incident-edit-report": { "capability": "fluent:icon-button", "props": { "icon": "edit", "ariaLabel": "Edit report" }, "visibility": "$not(incident3.editing)" },
               "incident-cancel-edit": { "capability": "fluent:button", "props": { "label": "Cancel", "appearance": "subtle" }, "visibility": "incident3.editing" },
               "incident-source-markdown": { "capability": "ui:markdown", "bindings": { "value": { "from": "incident3.content" } } },
-              "incident-source-form": { "capability": "ui:form", "props": { "fields": { "properties": { "content": { "title": "Markdown content", "type": "string", "format": "textarea", "rows": 34, "minLength": 1, "span": 12 } }, "required": ["content"] }, "saveLabel": "Save report", "discardLabel": "Discard changes" }, "bindings": { "value": { "from": "incident3.formValue" } } },
+              "incident-source-form": { "capability": "primitive:form", "props": { "fields": { "properties": { "content": { "title": "Markdown content", "type": "string", "format": "textarea", "rows": 34, "minLength": 1, "span": 12 } }, "required": ["content"] }, "saveLabel": "Save report", "discardLabel": "Discard changes" }, "bindings": { "value": { "from": "incident3.formValue" } } },
               "foundry-access-gate": { "capability": "foundry:access-gate", "bindings": { "status": { "from": "incident3.foundryAccessStatus" }, "error": { "from": "incident3.foundryAccessError" } } },
               "incident-semantic-analyzer": { "capability": "incident3:report", "props": { "title": "Two flights · one source" }, "bindings": { "value": { "from": "incident3.model" }, "content": { "from": "incident3.content" }, "analyzedContent": { "from": "incident3.analyzedContent" }, "error": { "from": "incident3.error" }, "fullscreen": { "from": "incident3.fullscreen" }, "pending": { "from": "incident3.analysisPending" } } },
               "incident-analyze-report": { "capability": "fluent:button", "props": { "label": "Analyze report", "appearance": "primary" }, "bindings": { "disabled": { "from": "incident3.analysisPending" } }, "visibility": "incident3.model = null or incident3.content != incident3.analyzedContent" },
@@ -171,10 +171,10 @@
         "fluent:dropdown": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["select"], "dataProp": "value" },
         "fluent:icon-button": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["press"] },
         "ui:markdown": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
-        "ui:form": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"] }
+        "primitive:form": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"] }
       },
       "externals": {
-        "projectionViews": { "incident3": { "from": "self" }, "foundry": { "from": "foundry", "use": ["access-gate"] }, "fluent": { "from": "fluent", "use": ["button", "dropdown", "icon-button"] }, "ui": { "from": "floor", "use": ["markdown", "form"] } },
+        "projectionViews": { "incident3": { "from": "self" }, "foundry": { "from": "foundry", "use": ["access-gate"] }, "fluent": { "from": "fluent", "use": ["button", "dropdown", "icon-button"] }, "ui": { "from": "floor", "use": ["markdown"] }, "primitive": { "from": "primitive", "use": ["form"] } },
         "effectHandlers": ["selectSampleReport", "saveReport", "prepareAnalysis"]
       },
       "state": {

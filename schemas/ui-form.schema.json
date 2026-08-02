@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://gik.dev/schemas/ui-form.schema.json",
-  "title": "ui:form props",
+  "title": "primitive:form props",
   "type": "object",
   "additionalProperties": true,
   "properties": {

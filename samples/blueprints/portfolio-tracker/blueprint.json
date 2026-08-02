@@ -711,7 +711,7 @@
           "propsSchema": { "type": "object", "additionalProperties": true },
           "emits": ["accessRequested", "accessCleared"]
         },
-        "ui:editable-table": {
+        "primitive:editable-table": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -766,6 +766,12 @@
         "projectionViews": {
           "ui": {
             "from": "floor"
+          },
+          "primitive": {
+            "from": "primitive",
+            "use": [
+              "editable-table"
+            ]
           },
           "http-proxy": {
             "from": "http-proxy"
@@ -1053,7 +1059,7 @@
           }
         },
         "view": {
-          "capability": "ui:editable-table",
+          "capability": "primitive:editable-table",
           "props": {
             "label": "holdings",
             "spec": {

@@ -109,15 +109,16 @@ test("component schemas reject semantic tokens outside each component vocabulary
   assert.equal(actionBoardDefinition.validate(board.props).ok, false);
 });
 
-test("public registries separate primitives from semantic structures and expose an aggregate", () => {
+test("public registries separate component layers and expose an aggregate", () => {
   const semantic = ["action-board", "annotated-source-excerpt", "decision-summary", "entity-constellation", "evidence-trail", "metric-comparison", "narrative-section", "semantic-graph", "sequence", "timeline"];
   const primitives = ["chart", "editable-table", "form", "growing-container", "timer-button"];
+  const fluent = ["button", "dropdown", "icon-button", "switch", "toggle"];
   assert.deepEqual(Object.keys(semanticComponentViews).sort(), semantic);
   assert.deepEqual(Object.keys(semanticComponentDefinitions).sort(), semantic);
-  assert.deepEqual(Object.keys(primitiveComponentViews), primitives);
-  assert.deepEqual(Object.keys(primitiveComponentDefinitions), primitives);
-  assert.deepEqual(Object.keys(componentViews).sort(), [...primitives, ...semantic].sort());
-  assert.deepEqual(Object.keys(componentDefinitions).sort(), [...primitives, ...semantic].sort());
+  assert.deepEqual(Object.keys(primitiveComponentViews).sort(), primitives);
+  assert.deepEqual(Object.keys(primitiveComponentDefinitions).sort(), primitives);
+  assert.deepEqual(Object.keys(componentViews).sort(), [...fluent, ...primitives, ...semantic].sort());
+  assert.deepEqual(Object.keys(componentDefinitions).sort(), [...fluent, ...primitives, ...semantic].sort());
   assert.equal(chartDefinition.capability, "primitive:chart");
   assert.deepEqual(growingContainerDefinition.slots, ["children"]);
   assert.deepEqual(timerButtonDefinition.events, ["press"]);
@@ -134,7 +135,7 @@ test("Fluent components forward root className and style overrides", () => {
     const Component = definition.component;
     const markup = renderToStaticMarkup(<Component node={trial} emit={() => {}} children={undefined} />);
     assert.match(markup, /class="[^"]*callsite-override[^"]*"/, definition.capability);
-    assert.match(markup, /style="max-width:40rem"/, definition.capability);
+    assert.match(markup, /style="[^"]*max-width:40rem[^"]*"/, definition.capability);
   }
 });
 

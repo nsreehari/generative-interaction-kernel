@@ -187,75 +187,6 @@ ${root} .gx-table th.gx-table-sortable { cursor: pointer; user-select: none; whi
 ${root} .gx-table th.gx-table-sortable:hover { color: var(--text); }
 ${root} .gx-table-overflow { margin-top: var(--spacingVerticalXS); font-size: var(--fontSizeBase100); }
 
-${root} .gx-editable-table { display: flex; flex-direction: column; gap: var(--spacingVerticalS); }
-${root} .gx-table-editable tbody tr { cursor: default; }
-${root} .gx-table-editable tbody tr:hover { background: transparent; }
-${root} .gx-table-editable td { padding: 0; }
-${root} .gx-table-editable td input {
-  width: 100%;
-  background: transparent;
-  color: var(--text);
-  border: var(--strokeWidthThin) solid transparent;
-  border-radius: var(--borderRadiusSmall);
-  padding: var(--spacingVerticalXS) var(--spacingHorizontalS);
-  font: inherit;
-}
-${root} .gx-table-editable td input:focus {
-  outline: none;
-  border-color: var(--accent);
-  background: var(--field-bg);
-}
-${root} .gx-table-editable .gx-cell-delete {
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-  padding: 0 var(--spacingHorizontalXS);
-  line-height: 1;
-}
-${root} .gx-table-editable .gx-cell-delete:hover { color: var(--bad); }
-
-/* Data-visualization categorical palette — NOT theme roles. These named colors are chart *series*
-   colors chosen for categorical distinguishability; they intentionally stay fixed rather than
-   recoloring with the theme. They are the ONLY literal colors in this sheet, and they are named so
-   nothing color-related here is anonymous. */
-${root} {
-  --gx-dataviz-violet: #8b5cf6;
-  --gx-dataviz-cyan: #06b6d4;
-  --gx-dataviz-magenta: #ec4899;
-  --gx-dataviz-lime: #84cc16;
-  --gx-dataviz-amber: #f59e0b;
-  --gx-dataviz-slate: #64748b;
-}
-
-/* Chart series slots — 1-4 follow the theme's semantic roles (recolor with the theme); 5-10 draw
-   from the categorical data-viz palette above. No raw hex lives in the chart component. */
-${root} {
-  --gx-chart-1: var(--accent);
-  --gx-chart-2: var(--good);
-  --gx-chart-3: var(--warn);
-  --gx-chart-4: var(--bad);
-  --gx-chart-5: var(--gx-dataviz-violet);
-  --gx-chart-6: var(--gx-dataviz-cyan);
-  --gx-chart-7: var(--gx-dataviz-magenta);
-  --gx-chart-8: var(--gx-dataviz-lime);
-  --gx-chart-9: var(--gx-dataviz-amber);
-  --gx-chart-10: var(--gx-dataviz-slate);
-}
-${root} .gx-chart { display: flex; flex-direction: column; gap: var(--spacingVerticalS); }
-${root} .gx-chart-grid { stroke: var(--line); stroke-width: 1; opacity: 0.5; }
-${root} .gx-chart-axis-line { stroke: var(--muted); stroke-width: 1; opacity: 0.7; }
-${root} .gx-chart-axis-label { fill: var(--muted); font-size: 9px; }
-${root} .gx-chart-legend { display: flex; flex-wrap: wrap; gap: var(--spacingHorizontalM); }
-${root} .gx-chart-legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacingHorizontalXS);
-  font-size: var(--fontSizeBase100);
-  color: var(--muted);
-}
-${root} .gx-chart-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
-
 ${root} .gx-field {
   display: flex;
   flex-direction: column;
@@ -279,36 +210,6 @@ ${root} .gx-field textarea:read-only,
 ${root} .gx-field select:disabled,
 ${root} .gx-field-check input:disabled { opacity: 0.55; cursor: not-allowed; }
 
-/* Schema form: 12-column responsive grid + per-field helper text and checkbox rows. */
-${root} .gx-form-grid {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: var(--spacingVerticalS) var(--spacingHorizontalM);
-}
-${root} .gx-field-cell { min-width: 0; }
-${root} .gx-field-hint { font-size: var(--fontSizeBase100); color: var(--muted); }
-${root} .gx-field-check {
-  display: flex;
-  align-items: center;
-  gap: var(--spacingHorizontalS);
-  margin-bottom: var(--spacingVerticalMNudge);
-}
-${root} .gx-col-span-1 { grid-column: span 1; }
-${root} .gx-col-span-2 { grid-column: span 2; }
-${root} .gx-col-span-3 { grid-column: span 3; }
-${root} .gx-col-span-4 { grid-column: span 4; }
-${root} .gx-col-span-5 { grid-column: span 5; }
-${root} .gx-col-span-6 { grid-column: span 6; }
-${root} .gx-col-span-7 { grid-column: span 7; }
-${root} .gx-col-span-8 { grid-column: span 8; }
-${root} .gx-col-span-9 { grid-column: span 9; }
-${root} .gx-col-span-10 { grid-column: span 10; }
-${root} .gx-col-span-11 { grid-column: span 11; }
-${root} .gx-col-span-12 { grid-column: span 12; }
-@media (max-width: 640px) {
-  ${root} .gx-form-grid > * { grid-column: span 12; }
-}
-
 ${root} .gx-json-field textarea.gx-json-input {
   font-family: var(--fontFamilyMonospace, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
   font-size: var(--fontSizeBase200);
@@ -323,8 +224,6 @@ ${root} .gx-json-error {
   font-size: var(--fontSizeBase100);
   color: var(--colorPaletteRedForeground1, var(--bad));
 }
-${root} .gx-form-errors { display: flex; flex-direction: column; gap: 2px; }
-
 ${root} .gx-btn {
   background: var(--colorNeutralBackground3);
   color: var(--text);

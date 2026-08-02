@@ -42,7 +42,7 @@ describe("incident-report-explorer Blueprint", () => {
       when: "$length(incident.content) > 0",
     }]);
     expect(cells.find((cell) => cell.id === "incident-report-form")?.view).toMatchObject({
-      capability: "ui:form",
+      capability: "primitive:form",
       props: {
         fields: { properties: { content: { format: "textarea", rows: 34 } } },
       },

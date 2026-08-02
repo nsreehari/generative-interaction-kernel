@@ -2,17 +2,20 @@
 
 Public, self-describing declarative components for GIK React hosts.
 
-The package has two public layers:
+The package has three public layers:
 
 - `@gik/components/primitives`: domain-neutral UI mechanics such as chart, form, editable table,
   growing container, and timer button.
 - `@gik/components/semantic`: domain-neutral information structures such as timeline, sequence,
   metric comparison, and relationship graph. Bundles supply meanings such as incident, alert, or
   consequence through data, labels, mappings, tokens, and behavior.
+- `@gik/components/fluent`: reusable Fluent 2 controls that retain `fluent:*` capability names:
+  button, dropdown, icon button, switch, and toggle.
 
 `@gik/components` re-exports both layers and aggregate `component*` registries for compatibility.
 New consumers should import the narrow subpath and register `primitiveComponentViews` and
-`semanticComponentViews` under separate provider aliases.
+`semanticComponentViews` under separate provider aliases. Register `fluentComponentViews` under a
+`fluent` provider alias when documents use the Fluent control layer.
 
 The package uses Fluent 2 React v9 through `@fluentui/react-components`. It assumes the host wraps
 rendering in a Fluent `FluentProvider`; it does not create a theme or introduce a semantic provider.
@@ -36,6 +39,10 @@ import {
 import {
   primitiveComponentViews,
 } from "@gik/components/primitives";
+
+import {
+  fluentComponentViews,
+} from "@gik/components/fluent";
 
 const timeline = semanticComponentDefinitions.timeline;
 const guidance = timeline.describe();
@@ -130,6 +137,7 @@ catalogs have parallel, layer-specific APIs:
 ```ts
 import { getSemanticComponentAgentKit } from "@gik/components/semantic";
 import { getPrimitiveComponentAgentKit } from "@gik/components/primitives";
+import { getFluentComponentAgentKit } from "@gik/components/fluent";
 
 const kit = getSemanticComponentAgentKit([
   "semantic:timeline",
@@ -139,6 +147,11 @@ const kit = getSemanticComponentAgentKit([
 const primitiveKit = getPrimitiveComponentAgentKit([
   "primitive:form",
   "primitive:editable-table",
+]);
+
+const fluentKit = getFluentComponentAgentKit([
+  "fluent:button",
+  "fluent:dropdown",
 ]);
 
 // Add kit.instructions to the agent's authoring context.
@@ -168,9 +181,17 @@ The package also exports the underlying pure APIs:
 - `getPrimitiveComponentAgentInstructions(components?)`
 - `createPrimitiveComponentAuthoringTools(components?)`
 - `getPrimitiveComponentAgentKit(components?)`
+- `listFluentComponents()`
+- `describeFluentComponent(capability)`
+- `validateFluentComponentProps(capability, props)`
+- `preflightFluentComponent(capability, props)`
+- `materializeFluentComponentTrial(capability, variant?)`
+- `getFluentComponentAgentInstructions(components?)`
+- `createFluentComponentAuthoringTools(components?)`
+- `getFluentComponentAgentKit(components?)`
 
-`semanticComponentAuthoringTools` and `primitiveComponentAuthoringTools` are convenience catalogs for
-their complete registries.
+`semanticComponentAuthoringTools`, `primitiveComponentAuthoringTools`, and
+`fluentComponentAuthoringTools` are convenience catalogs for their complete registries.
 These are ACX authoring tools, not live AX runtime tools. The package does not create
 `copilot-instructions.md`, `SKILL.md`, or other host-specific agent customization files.
 
@@ -215,7 +236,7 @@ semantic events that its view may emit; the generated capability descriptor expo
 `emits`. A bundle may map those events to closed-grammar actions or external effect handlers in its
 behavior graph. Components do not execute bundle effects directly.
 
-Timeline, sequence, entity constellation, and decision summary are currently render-only leaves.
+Semantic timeline, sequence, entity constellation, and decision summary are currently render-only leaves.
 Action board additionally emits `action`; a consuming bundle decides whether and how that event
 causes state changes or external effects.
 
@@ -225,6 +246,7 @@ Primitive components:
 - `editable-table`
 - `form`
 - `growing-container`
+- `timeline`
 - `timer-button`
 
 Semantic components pending the catalog naming review described above:

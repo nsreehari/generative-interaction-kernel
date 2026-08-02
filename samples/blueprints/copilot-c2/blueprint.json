@@ -823,7 +823,7 @@
             "press"
           ]
         },
-        "ui:timer-button": {
+        "primitive:timer-button": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -876,6 +876,12 @@
         "projectionViews": {
           "ui": {
             "from": "floor"
+          },
+          "primitive": {
+            "from": "primitive",
+            "use": [
+              "timer-button"
+            ]
           },
           "c2": {
             "from": "self"
@@ -971,13 +977,14 @@
           }
         },
         "view": {
-          "capability": "ui:timer-button",
+          "capability": "primitive:timer-button",
           "props": {
             "label": "Refresh activity",
             "durationMs": 300000,
             "autoStart": true,
+            "repeat": true,
             "showCountdown": true,
-            "tone": "primary"
+            "appearance": "primary"
           }
         }
       },
@@ -1134,11 +1141,12 @@
           }
         },
         "view": {
-          "capability": "ui:timer-button",
+          "capability": "primitive:timer-button",
           "props": {
             "label": "Refresh run",
             "durationMs": 300000,
             "autoStart": true,
+            "repeat": true,
             "showCountdown": true
           },
           "visibility": "copilotC2.selectedRunId != ''"

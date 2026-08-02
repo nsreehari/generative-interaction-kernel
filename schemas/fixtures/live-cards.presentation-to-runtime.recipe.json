@@ -27,7 +27,7 @@
       {
         "slot": "region",
         "match": { "region": "relationships" },
-        "emit": { "capability": "ui:chart", "read": { "data": "{{region.dataPath}}" } }
+        "emit": { "capability": "primitive:chart", "props": { "spec": { "kind": "bar", "fields": { "label": "label", "value": "value" } } }, "read": { "points": "{{region.dataPath}}" } }
       },
       {
         "slot": "region",
@@ -145,7 +145,7 @@
       { "slot": "region", "match": { "role": "timeline" }, "emit": { "capability": "ui:table", "read": { "rows": "{{region.dataPath}}" } } },
       { "slot": "region", "match": { "role": "comparison" }, "emit": { "capability": "ui:table", "read": { "rows": "{{region.dataPath}}" } } },
       { "slot": "region", "match": { "role": "actions" }, "emit": { "capability": "ui:actions" } },
-      { "slot": "region", "match": { "role": "graph" }, "emit": { "capability": "ui:chart", "read": { "data": "{{region.dataPath}}" } } },
+      { "slot": "region", "match": { "role": "graph" }, "emit": { "capability": "primitive:chart", "props": { "spec": { "kind": "bar", "fields": { "label": "label", "value": "value" } } }, "read": { "points": "{{region.dataPath}}" } } },
       {
         "slot": "region",
         "match": {},
