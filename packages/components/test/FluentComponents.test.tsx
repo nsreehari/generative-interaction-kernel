@@ -8,12 +8,17 @@ import {
   createFluentComponentAuthoringTools,
   describeFluentComponent,
   fluentButtonDefinition,
+  fluentChipsDefinition,
   fluentComponentAuthoringTools,
   fluentComponentDefinitions,
   fluentComponentViews,
   fluentDropdownDefinition,
   fluentIconButtonDefinition,
+  fluentSearchboxDefinition,
   fluentSwitchDefinition,
+  fluentTabBarDefinition,
+  fluentTextFieldDefinition,
+  fluentTextareaDefinition,
   fluentToggleDefinition,
   getFluentComponentAgentKit,
   listFluentComponents,
@@ -23,12 +28,17 @@ import {
 } from "../src/fluent";
 
 test("fluent entrypoint exposes all views and closed definitions", () => {
-  const controls = ["button", "dropdown", "icon-button", "switch", "toggle"];
+  const controls = ["button", "chips", "dropdown", "icon-button", "searchbox", "switch", "tab-bar", "text-field", "textarea", "toggle"];
   const events: Record<string, string> = {
     button: "press",
+    chips: "remove",
     dropdown: "select",
     "icon-button": "press",
+    searchbox: "submit",
     switch: "toggle",
+    "tab-bar": "select",
+    "text-field": "input",
+    textarea: "input",
     toggle: "toggle",
   };
   assert.deepEqual(Object.keys(fluentComponentViews).sort(), controls);
@@ -44,12 +54,15 @@ test("fluent entrypoint exposes all views and closed definitions", () => {
 
 test("moved Fluent input controls retain their rendering contracts", () => {
   const dropdownTrial = fluentDropdownDefinition.materializeTrial();
+  dropdownTrial.props.label = "Investigation";
+  dropdownTrial.props.required = true;
   const DropdownComponent = fluentDropdownDefinition.component;
   const dropdownMarkup = renderToStaticMarkup(
     <DropdownComponent node={dropdownTrial} emit={() => undefined} children={undefined} />,
   );
   assert.match(dropdownMarkup, /class="[^"]*gx-fluent-dropdown/);
   assert.match(dropdownMarkup, /role="combobox"/);
+  assert.match(dropdownMarkup, /Investigation/);
   assert.match(dropdownMarkup, /Governed SOC investigation/);
 
   const switchTrial = fluentSwitchDefinition.materializeTrial();
@@ -94,12 +107,38 @@ test("FluentIconButton renders a declared icon and accessible name", () => {
   assert.match(markup, /<svg/);
 });
 
+test("basic Fluent controls render their public trials", () => {
+  const definitions = [
+    [fluentTextFieldDefinition, /Name/],
+    [fluentTextareaDefinition, /Notes/],
+    [fluentSearchboxDefinition, /type="search"/],
+    [fluentTabBarDefinition, /role="tablist"/],
+    [fluentChipsDefinition, /Credential access/],
+  ] as const;
+
+  for (const [definition, expected] of definitions) {
+    const trial = definition.materializeTrial();
+    const Component = definition.component;
+    const markup = renderToStaticMarkup(<Component node={trial} emit={() => undefined} children={undefined} />);
+    assert.match(markup, expected);
+  }
+
+  assert.equal(fluentSearchboxDefinition.validate({ actionLabel: "Search" }).ok, false);
+  assert.equal(fluentChipsDefinition.validate({ items: [{ id: "alpha", label: "Alpha" }] }).ok, false);
+  assert.equal(fluentChipsDefinition.validate({ items: [], emptyText: "None" }).ok, false);
+});
+
 test("Fluent authoring APIs expose complete contracts and scoped agent tools", () => {
   assert.deepEqual(listFluentComponents().map((entry) => entry.id), [
     "button",
+    "chips",
     "dropdown",
     "icon-button",
+    "searchbox",
     "switch",
+    "tab-bar",
+    "text-field",
+    "textarea",
     "toggle",
   ]);
 

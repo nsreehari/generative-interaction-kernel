@@ -138,13 +138,9 @@ test("selection leaf emits select {value}", () => {
   assert.deepEqual(calls, [{ name: "select", payload: { value: "closed" } }]);
 });
 
-test("query/searchbox alias renders the committed search leaf", () => {
-  const markup = renderToStaticMarkup(renderNode(leaf("ui:query", {
-    fields: { properties: { limit: { title: "Limit", type: "number" } } },
-    value: "42",
-    actionLabel: "Run",
-  }), registry, () => {}));
-
-  assert.match(markup, /type="number"/);
-  assert.match(markup, />Run<\/button>/);
+test("migrated controls are not exposed by the floor provider", () => {
+  for (const capability of ["field", "textarea", "select", "button", "tabBar", "chips", "searchbox", "query"]) {
+    assert.equal(FLOOR_COMPONENTS[capability], undefined);
+  }
 });
+

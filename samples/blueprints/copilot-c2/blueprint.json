@@ -796,7 +796,7 @@
             "select"
           ]
         },
-        "ui:field": {
+        "fluent:text-field": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -805,7 +805,7 @@
             "input"
           ]
         },
-        "ui:textarea": {
+        "fluent:textarea": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -814,7 +814,7 @@
             "input"
           ]
         },
-        "ui:button": {
+        "fluent:button": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -832,7 +832,7 @@
             "press"
           ]
         },
-        "ui:tabBar": {
+        "fluent:tab-bar": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -876,6 +876,15 @@
         "projectionViews": {
           "ui": {
             "from": "floor"
+          },
+          "fluent": {
+            "from": "fluent",
+            "use": [
+              "button",
+              "tab-bar",
+              "text-field",
+              "textarea"
+            ]
           },
           "primitive": {
             "from": "primitive",
@@ -1004,7 +1013,7 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
             "label": "Settings"
           }
@@ -1120,7 +1129,7 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
             "label": "All agents"
           }
@@ -1168,7 +1177,7 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
             "label": "Settings"
           }
@@ -1229,7 +1238,7 @@
           }
         },
         "view": {
-          "capability": "ui:textarea",
+          "capability": "fluent:textarea",
           "props": {
             "label": "Task for this agent",
             "rows": 6
@@ -1262,10 +1271,10 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
             "label": "Start task",
-            "tone": "primary"
+            "appearance": "primary"
           }
         }
       },
@@ -1284,10 +1293,9 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
-            "label": "Cancel run",
-            "tone": "danger"
+            "label": "Cancel run"
           },
           "visibility": "copilotC2.currentRun.status = 'running'"
         }
@@ -1315,7 +1323,7 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
             "label": "Back to agents"
           }
@@ -1348,7 +1356,7 @@
           }
         },
         "view": {
-          "capability": "ui:field",
+          "capability": "fluent:text-field",
           "props": {
             "label": "MCP server URL"
           },
@@ -1375,7 +1383,7 @@
           }
         },
         "view": {
-          "capability": "ui:field",
+          "capability": "fluent:text-field",
           "props": {
             "label": "Model"
           },
@@ -1402,7 +1410,7 @@
           }
         },
         "view": {
-          "capability": "ui:field",
+          "capability": "fluent:text-field",
           "props": {
             "label": "Working directory"
           },
@@ -1492,7 +1500,7 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
             "label": "Discover agents"
           }
@@ -1629,7 +1637,7 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
             "label": "Refresh roots"
           }
@@ -1650,10 +1658,10 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
             "label": "Add or update root",
-            "tone": "primary"
+            "appearance": "primary"
           }
         }
       },
@@ -1672,10 +1680,9 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
-            "label": "Remove selected root",
-            "tone": "danger"
+            "label": "Remove selected root"
           },
           "visibility": "copilotC2.selectedSourceRootId != ''"
         }
@@ -1696,7 +1703,7 @@
           }
         },
         "view": {
-          "capability": "ui:field",
+          "capability": "fluent:text-field",
           "props": {
             "label": "Root id"
           },
@@ -1723,7 +1730,7 @@
           }
         },
         "view": {
-          "capability": "ui:field",
+          "capability": "fluent:text-field",
           "props": {
             "label": "Root label"
           },
@@ -1750,7 +1757,7 @@
           }
         },
         "view": {
-          "capability": "ui:field",
+          "capability": "fluent:text-field",
           "props": {
             "label": "Root path"
           },
@@ -1867,7 +1874,7 @@
           }
         },
         "view": {
-          "capability": "ui:tabBar",
+          "capability": "fluent:tab-bar",
           "props": {
             "options": [
               {
@@ -1944,7 +1951,7 @@
           }
         },
         "view": {
-          "capability": "ui:field",
+          "capability": "fluent:text-field",
           "props": {
             "label": "Model"
           },
@@ -1971,7 +1978,7 @@
           }
         },
         "view": {
-          "capability": "ui:field",
+          "capability": "fluent:text-field",
           "props": {
             "label": "Working directory"
           },
@@ -1998,7 +2005,7 @@
           }
         },
         "view": {
-          "capability": "ui:textarea",
+          "capability": "fluent:textarea",
           "props": {
             "label": "Prompt",
             "rows": 10
@@ -2031,10 +2038,10 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
             "label": "Start async run",
-            "tone": "primary"
+            "appearance": "primary"
           }
         }
       },
@@ -2053,7 +2060,7 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
             "label": "Refresh runs"
           }
@@ -2141,7 +2148,7 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
             "label": "Refresh runs"
           }
@@ -2162,10 +2169,9 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
-            "label": "Cancel selected run",
-            "tone": "danger"
+            "label": "Cancel selected run"
           },
           "visibility": "copilotC2.selectedRunId != ''"
         }

@@ -293,55 +293,8 @@ ${root} .gx-challenge-dialog input[aria-invalid="true"] { border-color: var(--ba
 ${root} .gx-challenge-error { min-height: 1.25em; color: var(--bad); font-size: var(--fontSizeBase200); }
 ${root} .gx-challenge-actions { display: flex; justify-content: flex-end; gap: var(--spacingHorizontalS); }
 
-${root} .gx-tabs {
-  display: flex;
-  gap: var(--spacingHorizontalXXS);
-  border-bottom: var(--strokeWidthThin) solid var(--line);
-  margin-bottom: var(--spacingVerticalM);
-}
-${root} .gx-tabs button {
-  background: transparent;
-  border: none;
-  border-bottom: var(--strokeWidthThick) solid transparent;
-  border-radius: 0;
-  padding: var(--spacingVerticalSNudge) var(--spacingHorizontalM);
-  color: var(--muted);
-  cursor: pointer;
-  font: inherit;
-}
-${root} .gx-tabs button:hover { color: var(--text); }
-${root} .gx-tabs button.active { color: var(--text); border-bottom-color: var(--accent); }
-
 ${root} .gx-searchbox { display: flex; gap: var(--spacingHorizontalS); }
 ${root} .gx-searchbox input { flex: 1; }
-
-${root} .gx-chips {
-  list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacingHorizontalSNudge);
-  margin: 0 0 var(--spacingVerticalMNudge);
-  padding: 0;
-}
-${root} .gx-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacingHorizontalSNudge);
-  background: var(--field-bg);
-  border: var(--strokeWidthThin) solid var(--line);
-  border-radius: var(--borderRadiusCircular);
-  padding: var(--spacingVerticalXXS) var(--spacingHorizontalSNudge) var(--spacingVerticalXXS) var(--spacingHorizontalMNudge);
-}
-${root} .gx-chip code { color: var(--accent); }
-${root} .gx-chip-remove {
-  background: transparent;
-  border: none;
-  padding: 0 var(--spacingHorizontalXS);
-  color: var(--muted);
-  line-height: 1;
-  cursor: pointer;
-}
-${root} .gx-chip-remove:hover { color: var(--bad); }
 
 /* Todo list rows. */
 ${root} .gx-todo-text { flex: 1; }

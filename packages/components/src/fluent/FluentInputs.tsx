@@ -1,5 +1,5 @@
 import React from "react";
-import { Dropdown, Option, Switch, ToggleButton, mergeClasses } from "@fluentui/react-components";
+import { Dropdown, Field, Option, Switch, ToggleButton, mergeClasses } from "@fluentui/react-components";
 import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import { readProps, type ProjectionView, type ProjectionViewProps } from "@gik/react";
@@ -127,31 +127,35 @@ export const FluentDropdown: ProjectionView = ({ node, emit }) => {
   const value = props.str("value");
   const selected = options.find((option) => option.value === value);
 
+  const label = props.str("label");
   return (
-    <Dropdown
-      {...componentRootProps(node, "gx-fluent-dropdown")}
-      open={open}
-      button={{
-        onPointerDown: (event) => {
-          if (event.button === 0 && !open) setOpen(true);
-        },
-      }}
-      onOpenChange={(_, data) => setOpen(data.open)}
-      aria-label={props.str("ariaLabel") || undefined}
-      placeholder={props.str("placeholder") || undefined}
-      value={selected?.label ?? ""}
-      selectedOptions={value ? [value] : []}
-      onOptionSelect={(_, data) => {
-        if (!data.optionValue) return;
-        const option = options.find((candidate) => candidate.value === data.optionValue);
-        setOpen(false);
-        void emit("select", { value: data.optionValue, label: option?.label ?? data.optionText });
-      }}
-    >
-      {options.map((option) => (
-        <Option key={option.value} value={option.value} disabled={option.disabled}>{option.label}</Option>
-      ))}
-    </Dropdown>
+    <Field {...componentRootProps(node)} label={label || undefined} required={props.bool("required")}>
+      <Dropdown
+        className="gx-fluent-dropdown"
+        open={open}
+        button={{
+          onPointerDown: (event) => {
+            if (event.button === 0 && !open) setOpen(true);
+          },
+        }}
+        onOpenChange={(_, data) => setOpen(data.open)}
+        aria-label={props.str("ariaLabel") || label || undefined}
+        placeholder={props.str("placeholder") || undefined}
+        disabled={props.bool("disabled")}
+        value={selected?.label ?? ""}
+        selectedOptions={value ? [value] : []}
+        onOptionSelect={(_, data) => {
+          if (!data.optionValue) return;
+          const option = options.find((candidate) => candidate.value === data.optionValue);
+          setOpen(false);
+          void emit("select", { value: data.optionValue, label: option?.label ?? data.optionText });
+        }}
+      >
+        {options.map((option) => (
+          <Option key={option.value} value={option.value} disabled={option.disabled}>{option.label}</Option>
+        ))}
+      </Dropdown>
+    </Field>
   );
 };
 
@@ -202,8 +206,11 @@ const dropdownSchema = withComponentStylePropsSchema({
         anyOf: [{ required: ["value"] }, { required: ["id"] }],
       },
     },
+    label: { type: "string" },
     placeholder: { type: "string" },
     ariaLabel: { type: "string" },
+    required: { type: "boolean" },
+    disabled: { type: "boolean" },
   },
   required: ["options"],
 } as const);
@@ -248,7 +255,7 @@ const dropdownDescription = description(
   "Renders a single-select Fluent 2 dropdown from declarative options.",
   "select",
   "A user selects one value from a small option set",
-  ["Provide stable option values", "Provide ariaLabel when no visible label surrounds the control", "Handle select outside the component"],
+  ["Provide stable option values", "Provide label or ariaLabel", "Handle select outside the component"],
 );
 
 function validate(schema: Record<string, unknown>, capability: string, props: unknown): ComponentValidationReport {

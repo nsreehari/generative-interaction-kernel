@@ -80,7 +80,7 @@
             "select"
           ]
         },
-        "ui:field": {
+        "fluent:text-field": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -89,7 +89,7 @@
             "input"
           ]
         },
-        "ui:textarea": {
+        "fluent:textarea": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -98,7 +98,7 @@
             "input"
           ]
         },
-        "ui:button": {
+        "fluent:button": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -107,7 +107,7 @@
             "press"
           ]
         },
-        "ui:tabBar": {
+        "fluent:tab-bar": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -146,6 +146,15 @@
         "projectionViews": {
           "ui": {
             "from": "floor"
+          },
+          "fluent": {
+            "from": "fluent",
+            "use": [
+              "button",
+              "tab-bar",
+              "text-field",
+              "textarea"
+            ]
           },
           "manage-blueprints": {
             "from": "self"
@@ -275,7 +284,7 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
             "label": "Refresh"
           }
@@ -296,10 +305,10 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
             "label": "New local blueprint",
-            "tone": "primary"
+            "appearance": "primary"
           }
         }
       },
@@ -391,7 +400,7 @@
           }
         },
         "view": {
-          "capability": "ui:tabBar",
+          "capability": "fluent:tab-bar",
           "props": {
             "options": [
               {
@@ -529,7 +538,7 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
             "label": "Clone to local draft"
           }
@@ -550,10 +559,9 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
-            "label": "Delete local blueprint",
-            "tone": "danger"
+            "label": "Delete local blueprint"
           }
         }
       },
@@ -613,7 +621,7 @@
           }
         },
         "view": {
-          "capability": "ui:field",
+          "capability": "fluent:text-field",
           "props": {
             "label": "Local blueprint id"
           },
@@ -640,7 +648,7 @@
           }
         },
         "view": {
-          "capability": "ui:textarea",
+          "capability": "fluent:textarea",
           "props": {
             "label": "Blueprint JSON",
             "rows": 22
@@ -717,7 +725,7 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
             "label": "Validate"
           }
@@ -738,10 +746,10 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
             "label": "Save locally",
-            "tone": "primary"
+            "appearance": "primary"
           }
         }
       },
@@ -760,7 +768,7 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
             "label": "Preview"
           }
@@ -781,7 +789,7 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
             "label": "Export JSON"
           }

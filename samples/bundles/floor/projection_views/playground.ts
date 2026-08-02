@@ -8,8 +8,9 @@
 // so the whole surface stays JSON — no bespoke React, no effect handlers, and it composes via the
 // same bundle-in-bundle mechanism the console already uses.
 
-import { assign, authorProjectedProgram, node, type DocNode } from "@gik/kernel";
+import { assign, authorProjectedProgram, node, unwrap, type DocNode } from "@gik/kernel";
 import type { SerializableBundle } from "@gik/react";
+import { fluentComponentCapabilities } from "@gik/components/fluent";
 import { bundleManifest } from "./capabilities";
 
 export type PlaygroundMode = "preview" | "interactive";
@@ -41,8 +42,8 @@ function interactiveCard(cap: string): DocNode {
   return node("ui:panel", `card-${cap}`, {
     props: { variant: "preview-card" },
     children: [
-      node("ui:button", `pick-${cap}`, {
-        props: { label: cap, tone: "default" },
+      node("fluent:button", `pick-${cap}`, {
+        props: { label: cap },
         on: { press: [assign("pg.selected", cap)] },
       }),
       node("ui:text", `slot-${cap}`, { props: { value: "click to select", variant: "caption" } }),
@@ -91,8 +92,22 @@ export function buildPlaygroundBundle(spec: PlaygroundSpec): SerializableBundle 
     children,
   });
 
+  const vocabulary = bundleManifest({
+    version: PLAYGROUND_VERSION,
+    namespaces: ["pg"],
+    extraCapabilities: { "fluent:button": fluentComponentCapabilities.button },
+  });
+  const manifest = unwrap(vocabulary);
+  manifest.externals = {
+    ...manifest.externals,
+    projectionViews: {
+      ...manifest.externals?.projectionViews,
+      fluent: { from: "fluent", use: ["button"] },
+    },
+  };
+
   return {
-    vocabulary: bundleManifest({ version: PLAYGROUND_VERSION, namespaces: ["pg"] }),
+    vocabulary,
     program: authorProjectedProgram(root, { vocabulary: PLAYGROUND_VERSION }),
     state: { pg: { selected: "" } },
   };

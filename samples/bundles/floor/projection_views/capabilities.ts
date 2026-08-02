@@ -63,16 +63,8 @@ export const PRIMITIVE_CAPABILITIES: Record<string, CapabilityDescriptor> = {
   selection: { propsSchema: anyProps, emits: ["select"], dataProp: "options" }, // single-field committed picker
 
   // --- Inputs (emit interaction; documents route via `on`) ---
-  field: { propsSchema: anyProps, emits: ["input"] }, // label + value + placeholder
-  textarea: { propsSchema: anyProps, emits: ["input"] },
-  select: { propsSchema: anyProps, emits: ["change"] }, // label + value + options
   "json-field": { propsSchema: anyProps, emits: ["save"], dataProp: "value" }, // single json textarea = one-field committed form, emits save {values}
-  button: { propsSchema: anyProps, emits: ["press"] }, // label + tone + disabled
   "math-challenge": { propsSchema: anyProps, emits: ["confirm", "cancel"] }, // destructive confirmation gate
-  tabBar: { propsSchema: anyProps, emits: ["select"] }, // active + options, emits select {value}
-  chips: { propsSchema: anyProps, emits: ["remove"] }, // items + emits remove {value}
-  searchbox: { propsSchema: anyProps, emits: ["submit"], dataProp: "value" }, // committed single-field search input
-  query: { propsSchema: anyProps, emits: ["submit"], dataProp: "value" }, // explicit alias of searchbox
 
   // --- Composition: embed a whole bundle/app as a nested runtime ---
   embed: { propsSchema: anyProps }, // props.app: registered app by name | props.bundle: inline { vocabulary, program, state }
@@ -113,13 +105,8 @@ export const FLOOR_READ_KEYS: Record<string, string[]> = {
   table: ["rows", "columns"],
   selection: ["options", "value"],
   // inputs
-  field: ["value"],
-  textarea: ["value"],
-  select: ["value", "options"],
   "math-challenge": ["message"],
   "json-field": ["value", "data"],
-  searchbox: ["value"],
-  query: ["value"],
 };
 
 export interface BundleManifestOptions {

@@ -18,7 +18,6 @@ import {
   GenUIRoot,
   loadBundle,
   readProps,
-  useAsyncEmit,
   useBundleContexts,
   useBundleContextSync,
   useBundleRegistry,
@@ -383,15 +382,6 @@ function getSingleFieldConfig(node: ProjectionViewProps["node"]): SingleFieldCon
     options,
     isRequired: Array.isArray(schema.required) && schema.required.includes(fieldKey),
   };
-}
-
-function coerceFieldValue(raw: string, prop: Record<string, unknown>): string | number {
-  const type = prop.type;
-  if (type === "number" || type === "integer") {
-    return raw === "" ? "" : Number.parseFloat(raw);
-  }
-
-  return raw;
 }
 
 function formatFileSize(size: number): string {
@@ -903,46 +893,6 @@ function Table({ node, emit }: ProjectionViewProps) {
   );
 }
 
-// --- Inputs -------------------------------------------------------------------------
-
-function Field({ node, emit }: ProjectionViewProps) {
-  const p = readProps(node);
-  const [value, setValue] = useSyncedValue(p.str("value"));
-  return (
-    <label className="gx-field">
-      {p.str("label") ? <span className="gx-field-label">{p.str("label")}</span> : null}
-      <input
-        {...(p.bool("secret") ? { type: "password" } : {})}
-        value={value}
-        placeholder={p.str("placeholder")}
-        onChange={(e) => {
-          setValue(e.target.value);
-          emit("input", { value: e.target.value });
-        }}
-      />
-    </label>
-  );
-}
-
-function TextArea({ node, emit }: ProjectionViewProps) {
-  const p = readProps(node);
-  const [value, setValue] = useSyncedValue(p.str("value"));
-  return (
-    <label className="gx-field">
-      {p.str("label") ? <span className="gx-field-label">{p.str("label")}</span> : null}
-      <textarea
-        rows={Number(node.props.rows ?? 3)}
-        value={value}
-        placeholder={p.str("placeholder")}
-        onChange={(e) => {
-          setValue(e.target.value);
-          emit("input", { value: e.target.value });
-        }}
-      />
-    </label>
-  );
-}
-
 // A JSON text field: sugar for a single-field committed `Form` whose one field is a `json` textarea.
 // It is a reusable floor input (not console-specific): reads `value`/`data` (a parsed object or raw
 // JSON text), renders one JSON field with live parse validation, and — like any Form — emits
@@ -975,24 +925,6 @@ function JsonField({ node, emit }: ProjectionViewProps) {
   return <PrimitiveForm node={formNode} emit={emit} children={undefined} />;
 }
 
-function Select({ node, emit }: ProjectionViewProps) {
-  const p = readProps(node);
-  const options = toOptions(p.list<unknown>("options"));
-  const value = p.str("value");
-  return (
-    <label className="gx-field">
-      {p.str("label") ? <span className="gx-field-label">{p.str("label")}</span> : null}
-      <select value={value} onChange={(e) => emit("change", { value: e.target.value })}>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
 function Selection({ node, emit }: ProjectionViewProps) {
   const field = getSingleFieldConfig(node);
   if (!field) {
@@ -1020,25 +952,6 @@ function Selection({ node, emit }: ProjectionViewProps) {
         ))}
       </select>
     </label>
-  );
-}
-
-function Button({ node, emit }: ProjectionViewProps) {
-  const p = readProps(node);
-  // Every button awaits its own dispatch: if the press triggers an async invoke, the emit promise
-  // resolves only after that effect settles, so we get an in-flight spinner for free. The 120ms
-  // delay keeps trivial synchronous presses (pure state changes) from flashing the spinner.
-  const { pending, run } = useAsyncEmit(emit, { delayMs: 120 });
-  return (
-    <button
-      className={`gx-btn gx-btn-${p.str("tone", "default")}`}
-      disabled={p.bool("disabled") || pending}
-      aria-busy={pending || undefined}
-      onClick={() => void run("press", {})}
-    >
-      {pending ? <span className="gx-btn-spinner" aria-hidden="true" /> : null}
-      {p.str("label")}
-    </button>
   );
 }
 
@@ -1099,69 +1012,6 @@ function MathChallenge({ node, emit }: ProjectionViewProps) {
         </form>
       </div>
     </div>
-  );
-}
-
-function TabBar({ node, emit }: ProjectionViewProps) {
-  const p = readProps(node);
-  const active = p.str("active");
-  const options = toOptions(p.list<unknown>("options"));
-  return (
-    <nav className="gx-tabs">
-      {options.map((o) => (
-        <button
-          key={o.value}
-          className={o.value === active ? "active" : ""}
-          onClick={() => emit("select", { value: o.value })}
-        >
-          {o.label}
-        </button>
-      ))}
-    </nav>
-  );
-}
-
-function Searchbox({ node, emit }: ProjectionViewProps) {
-  const field = getSingleFieldConfig(node);
-  const p = readProps(node);
-  const buttonLabel = p.str("actionLabel", "Search");
-  const [journalValue, setJournalValue] = useSyncedValue(field?.currentValue ?? "");
-
-  const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!field) return;
-    emit("submit", { value: coerceFieldValue(journalValue, field.prop) });
-  };
-
-  if (!field) {
-    return <p className="gx-muted">No search field configured</p>;
-  }
-
-  const placeholder = String(field.prop.placeholder ?? field.prop.title ?? field.fieldKey);
-  const type = field.prop.format === "date"
-    ? "date"
-    : field.prop.type === "number" || field.prop.type === "integer"
-      ? "number"
-      : "search";
-  const value = type === "date"
-    ? (journalValue ? String(journalValue).slice(0, 10) : "")
-    : journalValue;
-
-  return (
-    <form className="gx-searchbox" onSubmit={handleSubmit}>
-      <input
-        type={type}
-        value={value}
-        min={typeof field.prop.minimum === "number" ? field.prop.minimum : undefined}
-        max={typeof field.prop.maximum === "number" ? field.prop.maximum : undefined}
-        step={field.prop.type === "integer" ? "1" : (field.prop.type === "number" ? "any" : undefined)}
-        placeholder={placeholder}
-        aria-label={String(field.prop.title ?? field.fieldKey)}
-        required={field.isRequired}
-        onChange={(e) => setJournalValue(e.target.value)}
-      />
-      <button type="submit" aria-label={buttonLabel} title={buttonLabel}>{buttonLabel}</button>
-    </form>
   );
 }
 
@@ -1480,29 +1330,6 @@ function MultiFileUpload({ node, emit }: ProjectionViewProps) {
   );
 }
 
-function Chips({ node, emit }: ProjectionViewProps) {
-  const p = readProps(node);
-  const items = toOptions(p.list<unknown>("items"));
-  const empty = p.str("emptyText", "None yet.");
-  if (items.length === 0) return <p className="gx-muted">{empty}</p>;
-  return (
-    <ul className="gx-chips">
-      {items.map((it) => (
-        <li key={it.value} className="gx-chip">
-          <code>{it.label}</code>
-          <button
-            className="gx-chip-remove"
-            aria-label={`remove ${it.label}`}
-            onClick={() => emit("remove", { value: it.value })}
-          >
-            ✕
-          </button>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 // --- Composition: embed a whole bundle/app -----------------------------------------
 
 function Embed({ node }: ProjectionViewProps) {
@@ -1574,16 +1401,8 @@ export const FLOOR_COMPONENTS: Record<string, ProjectionView> = {
   list: List,
   table: Table,
   selection: Selection,
-  field: Field,
-  textarea: TextArea,
   "json-field": JsonField,
-  select: Select,
-  button: Button,
   "math-challenge": MathChallenge,
-  tabBar: TabBar,
-  chips: Chips,
-  searchbox: Searchbox,
-  query: Searchbox,
   embed: Embed,
 };
 

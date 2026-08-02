@@ -112,7 +112,7 @@ test("component schemas reject semantic tokens outside each component vocabulary
 test("public registries separate component layers and expose an aggregate", () => {
   const semantic = ["action-board", "annotated-source-excerpt", "decision-summary", "entity-constellation", "evidence-trail", "metric-comparison", "narrative-section", "semantic-graph", "sequence", "timeline"];
   const primitives = ["chart", "editable-table", "form", "growing-container", "timer-button"];
-  const fluent = ["button", "dropdown", "icon-button", "switch", "toggle"];
+  const fluent = ["button", "chips", "dropdown", "icon-button", "searchbox", "switch", "tab-bar", "text-field", "textarea", "toggle"];
   assert.deepEqual(Object.keys(semanticComponentViews).sort(), semantic);
   assert.deepEqual(Object.keys(semanticComponentDefinitions).sort(), semantic);
   assert.deepEqual(Object.keys(primitiveComponentViews).sort(), primitives);
