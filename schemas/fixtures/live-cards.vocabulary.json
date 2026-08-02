@@ -9,6 +9,7 @@
     "externals": {
       "projectionViews": {
         "ui": { "from": "floor" },
+        "fluent": { "from": "fluent", "use": ["searchbox"] },
         "primitive": { "from": "primitive", "use": ["chart"] }
       }
     },
@@ -42,7 +43,7 @@
         "emits": ["select"],
         "dataProp": "options"
       },
-      "ui:searchbox": {
+      "fluent:searchbox": {
         "propsSchema": { "type": "object", "additionalProperties": true },
         "emits": ["submit"],
         "dataProp": "value"

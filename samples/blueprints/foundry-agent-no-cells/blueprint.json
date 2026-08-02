@@ -205,7 +205,7 @@
             "additionalProperties": true
           }
         },
-        "ui:field": {
+        "fluent:text-field": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -255,7 +255,7 @@
             "press"
           ]
         },
-        "ui:button": {
+        "fluent:button": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -275,6 +275,13 @@
         "projectionViews": {
           "ui": {
             "from": "floor"
+          },
+          "fluent": {
+            "from": "fluent",
+            "use": [
+              "button",
+              "text-field"
+            ]
           },
           "agent": {
             "from": "self"
@@ -468,7 +475,7 @@
           }
         },
         "view": {
-          "capability": "ui:field",
+          "capability": "fluent:text-field",
           "props": {
             "label": "Message",
             "placeholder": "Ask the agent something..."
@@ -495,10 +502,10 @@
           }
         },
         "view": {
-          "capability": "ui:button",
+          "capability": "fluent:button",
           "props": {
             "label": "Ask",
-            "tone": "primary"
+            "appearance": "primary"
           }
         }
       },

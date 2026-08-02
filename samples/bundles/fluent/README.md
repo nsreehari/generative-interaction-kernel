@@ -11,7 +11,7 @@ Import controls through a manifest alias:
 {
   "externals": {
     "projectionViews": {
-      "fluent": { "from": "fluent", "use": ["button", "dropdown", "icon-button", "switch", "toggle"] }
+      "fluent": { "from": "fluent", "use": ["button", "chips", "dropdown", "icon-button", "searchbox", "switch", "tab-bar", "text-field", "textarea", "toggle"] }
     }
   }
 }
@@ -29,3 +29,16 @@ can change without shifting adjacent controls. Both emit `toggle` with the next
 `title`, and `disabled`. It emits `press`.
 
 `fluent:button` accepts `label`, `appearance`, `ariaLabel`, and `disabled`. It emits `press`.
+
+`fluent:text-field` and `fluent:textarea` accept `value`, `label`, `placeholder`, `required`, and
+`disabled`; text fields also accept `secret`, and textareas accept `rows`. Both emit `input` with
+`{ "value": string }`.
+
+`fluent:searchbox` accepts `value`, `label`, `placeholder`, `ariaLabel`, `required`, and `disabled`.
+It emits `submit` with `{ "value": string }` when its form is submitted.
+
+`fluent:tab-bar` accepts `active`, `ariaLabel`, `disabled`, and `options`
+(`{ value, label, disabled? }[]`). It emits `select` with `{ "value": string }`.
+
+`fluent:chips` accepts `ariaLabel`, `disabled`, and `items` (`{ value, label, disabled? }[]`). It
+emits `remove` with `{ "value": string }` when a Fluent tag is dismissed.

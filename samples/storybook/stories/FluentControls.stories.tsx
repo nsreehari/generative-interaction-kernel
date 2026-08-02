@@ -1,9 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import {
   fluentButtonDefinition,
+  fluentChipsDefinition,
   fluentDropdownDefinition,
   fluentIconButtonDefinition,
+  fluentSearchboxDefinition,
   fluentSwitchDefinition,
+  fluentTabBarDefinition,
+  fluentTextFieldDefinition,
+  fluentTextareaDefinition,
   fluentToggleDefinition,
 } from "@gik/components/fluent";
 
@@ -23,5 +28,10 @@ type Story = StoryObj<typeof meta>;
 export const Button: Story = {};
 export const IconButton: Story = { args: { definition: fluentIconButtonDefinition } };
 export const Dropdown: Story = { args: { definition: fluentDropdownDefinition } };
+export const TextField: Story = { args: { definition: fluentTextFieldDefinition } };
+export const Textarea: Story = { args: { definition: fluentTextareaDefinition } };
+export const Searchbox: Story = { args: { definition: fluentSearchboxDefinition } };
+export const TabBar: Story = { args: { definition: fluentTabBarDefinition } };
+export const Chips: Story = { args: { definition: fluentChipsDefinition } };
 export const Switch: Story = { args: { definition: fluentSwitchDefinition } };
 export const Toggle: Story = { args: { definition: fluentToggleDefinition } };

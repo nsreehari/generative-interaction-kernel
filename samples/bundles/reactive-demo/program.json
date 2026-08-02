@@ -70,7 +70,7 @@
                   "edges": {
                     "children": [
                       {
-                        "capability": "ui:select",
+                        "capability": "fluent:dropdown",
                         "id": "reactive-sample-select",
                         "props": {
                           "label": "Sample",
@@ -82,7 +82,7 @@
                         "edges": {
                           "read": { "value": "demo.sample" },
                           "on": {
-                            "change": [
+                            "select": [
                               {
                                 "do": "assign",
                                 "target": "demo.sample",
@@ -121,7 +121,7 @@
                           "gate": "demo.sample = 'profile-form'",
                           "children": [
                             {
-                              "capability": "ui:field",
+                              "capability": "fluent:text-field",
                               "id": "reactive-form-first",
                               "props": { "label": "First name" },
                               "edges": {
@@ -138,7 +138,7 @@
                               }
                             },
                             {
-                              "capability": "ui:field",
+                              "capability": "fluent:text-field",
                               "id": "reactive-form-last",
                               "props": { "label": "Last name" },
                               "edges": {
@@ -155,7 +155,7 @@
                               }
                             },
                             {
-                              "capability": "ui:select",
+                              "capability": "fluent:dropdown",
                               "id": "reactive-form-consent",
                               "props": {
                                 "label": "Consent",
@@ -167,7 +167,7 @@
                               "edges": {
                                 "read": { "value": "demo.consent" },
                                 "on": {
-                                  "change": [
+                                  "select": [
                                     {
                                       "do": "assign",
                                       "target": "demo.consent",
@@ -188,7 +188,7 @@
                           "gate": "demo.sample = 'capacity-banner'",
                           "children": [
                             {
-                              "capability": "ui:field",
+                              "capability": "fluent:text-field",
                               "id": "reactive-metrics-approved",
                               "props": { "label": "Approved" },
                               "edges": {
@@ -205,7 +205,7 @@
                               }
                             },
                             {
-                              "capability": "ui:field",
+                              "capability": "fluent:text-field",
                               "id": "reactive-metrics-pending",
                               "props": { "label": "Pending" },
                               "edges": {
@@ -222,7 +222,7 @@
                               }
                             },
                             {
-                              "capability": "ui:field",
+                              "capability": "fluent:text-field",
                               "id": "reactive-metrics-limit",
                               "props": { "label": "Limit" },
                               "edges": {

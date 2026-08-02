@@ -24,7 +24,7 @@
                   "edges": {
                     "children": [
                       {
-                        "capability": "ui:select",
+                        "capability": "fluent:dropdown",
                         "id": "provider-authoring-mode",
                         "props": {
                           "label": "Demo mode",
@@ -36,7 +36,7 @@
                         "edges": {
                           "read": { "value": "demo.mode" },
                           "on": {
-                            "change": [
+                            "select": [
                               {
                                 "do": "assign",
                                 "target": "demo.mode",
@@ -47,7 +47,7 @@
                         }
                       },
                       {
-                        "capability": "ui:field",
+                        "capability": "fluent:text-field",
                         "id": "provider-authoring-objective",
                         "props": { "label": "Objective" },
                         "edges": {
@@ -64,7 +64,7 @@
                         }
                       },
                       {
-                        "capability": "ui:select",
+                        "capability": "fluent:dropdown",
                         "id": "provider-authoring-surface",
                         "props": {
                           "label": "Surface",
@@ -77,7 +77,7 @@
                         "edges": {
                           "read": { "value": "demo.surface" },
                           "on": {
-                            "change": [
+                            "select": [
                               {
                                 "do": "assign",
                                 "target": "demo.surface",
@@ -88,7 +88,7 @@
                         }
                       },
                       {
-                        "capability": "ui:select",
+                        "capability": "fluent:dropdown",
                         "id": "provider-authoring-change",
                         "props": {
                           "label": "Consequence trigger",
@@ -101,7 +101,7 @@
                         "edges": {
                           "read": { "value": "demo.changedSource" },
                           "on": {
-                            "change": [
+                            "select": [
                               {
                                 "do": "assign",
                                 "target": "demo.changedSource",
@@ -112,7 +112,7 @@
                         }
                       },
                       {
-                        "capability": "ui:select",
+                        "capability": "fluent:dropdown",
                         "id": "provider-authoring-stream",
                         "props": {
                           "label": "Exploratory choice",
@@ -126,7 +126,7 @@
                         "edges": {
                           "read": { "value": "demo.stream" },
                           "on": {
-                            "change": [
+                            "select": [
                               {
                                 "do": "assign",
                                 "target": "demo.stream",
@@ -137,7 +137,7 @@
                         }
                       },
                       {
-                        "capability": "ui:select",
+                        "capability": "fluent:dropdown",
                         "id": "provider-authoring-blueprint-seed",
                         "props": {
                           "label": "Blueprint artifact",
@@ -149,7 +149,7 @@
                           "gate": "demo.mode = 'blueprint-artifact'",
                           "read": { "value": "demo.blueprintSeed" },
                           "on": {
-                            "change": [
+                            "select": [
                               {
                                 "do": "assign",
                                 "target": "demo.blueprintSeed",
