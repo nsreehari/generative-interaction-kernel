@@ -25,7 +25,7 @@ function leaf(capability: string, value: string, extraProps: Record<string, Json
 }
 
 const registry = buildRegistryFromImports(
-  { fluent: { from: "fluent", use: ["dropdown", "switch", "toggle"] } },
+  { fluent: { from: "fluent", use: ["button", "dropdown", "icon-button", "switch", "toggle"] } },
   (from) => from === "fluent" ? fluentViews : undefined,
   FallbackView
 );
@@ -70,4 +70,34 @@ test("fluent:dropdown renders declarative options and the selected label", () =>
   assert.match(markup, /aria-label="Select demo Blueprint"/);
   assert.match(markup, /Governed SOC investigation/);
   assert.doesNotMatch(markup, /SOC executive walkthrough/);
+});
+
+test("fluent:icon-button renders a named icon-only command", () => {
+  const markup = renderToStaticMarkup(renderNode(
+    leaf("fluent:icon-button", "", {
+      icon: "full-screen-minimize",
+      ariaLabel: "Exit full screen",
+    }),
+    registry,
+    () => {}
+  ));
+
+  assert.match(markup, /class="[^"]*gx-fluent-icon-button/);
+  assert.match(markup, /aria-label="Exit full screen"/);
+  assert.match(markup, /title="Exit full screen"/);
+  assert.match(markup, /<svg/);
+});
+
+test("fluent:button renders a labeled command", () => {
+  const markup = renderToStaticMarkup(renderNode(
+    leaf("fluent:button", "", {
+      label: "Analyze report",
+      appearance: "primary",
+    }),
+    registry,
+    () => {}
+  ));
+
+  assert.match(markup, /class="[^"]*gx-fluent-button/);
+  assert.match(markup, />Analyze report<\/button>/);
 });

@@ -1,5 +1,10 @@
 import React from "react";
-import { Dropdown, Option, Switch, ToggleButton } from "@fluentui/react-components";
+import { Button, Dropdown, Option, Switch, ToggleButton } from "@fluentui/react-components";
+import {
+  EditRegular,
+  FullScreenMaximizeRegular,
+  FullScreenMinimizeRegular,
+} from "@fluentui/react-icons";
 import { readProps, type ProjectionView, type ProjectionViewProps } from "@gik/react";
 
 export interface FluentSwitchControlProps {
@@ -135,8 +140,50 @@ const FluentDropdown: ProjectionView = ({ node, emit }) => {
   );
 };
 
+const FluentIconButton: ProjectionView = ({ node, emit }) => {
+  const props = readProps(node);
+  const iconName = props.str("icon");
+  const icon = iconName === "full-screen-minimize"
+    ? <FullScreenMinimizeRegular />
+    : iconName === "edit"
+      ? <EditRegular />
+      : <FullScreenMaximizeRegular />;
+  const ariaLabel = props.str("ariaLabel");
+  return (
+    <Button
+      className="gx-fluent-icon-button"
+      appearance="subtle"
+      shape="circular"
+      size="small"
+      icon={icon}
+      disabled={props.bool("disabled")}
+      aria-label={ariaLabel}
+      title={props.str("title", ariaLabel)}
+      onClick={() => emit("press", {})}
+    />
+  );
+};
+
+const FluentButton: ProjectionView = ({ node, emit }) => {
+  const props = readProps(node);
+  const appearance = props.str("appearance") as "primary" | "secondary" | "subtle" | "transparent" | "outline";
+  return (
+    <Button
+      className="gx-fluent-button"
+      appearance={appearance || "secondary"}
+      disabled={props.bool("disabled")}
+      aria-label={props.str("ariaLabel") || undefined}
+      onClick={() => emit("press", {})}
+    >
+      {props.str("label")}
+    </Button>
+  );
+};
+
 const projectionViews: Record<string, ProjectionView> = {
+  button: FluentButton,
   dropdown: FluentDropdown,
+  "icon-button": FluentIconButton,
   switch: FluentSwitch,
   toggle: FluentToggle,
 };

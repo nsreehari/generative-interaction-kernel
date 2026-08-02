@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { analyzeCellComposition, materializeBlueprint, type BlueprintArtifact, type CellDefinition } from "@gik/blueprint";
+import { BlueprintController } from "@gik/react";
 
 import blueprintJson from "../blueprints/incident-report-explorer-3/blueprint.json" with { type: "json" };
 
@@ -34,11 +35,31 @@ describe("incident-report-explorer-3 Blueprint", () => {
   it.each(["operational", "brief"])("materializes both authored flights in the %s representation", (attention) => {
     const terminal = materializeBlueprint({ blueprint, externalContext: { attention } }).payload.terminalBlueprint;
     const placements = terminal.payload.projections?.presentation?.placements ?? [];
-    expect(placements.filter(({ parent }) => parent === "incident-semantic-analyzer").map(({ cell }) => cell)).toEqual([
+    const analyzerCells = placements.filter(({ parent }) => parent === "incident-semantic-analyzer").map(({ cell }) => cell);
+    expect(analyzerCells.filter((cell) => cell.startsWith("incident-flight-"))).toEqual([
       "incident-flight-a",
       "incident-flight-b",
     ]);
+    expect(analyzerCells.filter((cell) => !cell.startsWith("incident-flight-"))).toEqual([
+      "incident-analyze-report",
+      "incident-view-fullscreen",
+      "incident-exit-fullscreen",
+    ]);
     expect(terminal.payload.runtime.capabilities).toHaveProperty("incident3:incident-story");
     expect(terminal.payload.runtime.capabilities).toHaveProperty("incident3:investigation-canvas");
+  });
+
+  it("owns edit and fullscreen command state in the Blueprint", async () => {
+    const controller = new BlueprintController(blueprint, { externalContext: { attention: "operational" } });
+    await controller.start();
+
+    await controller.emit("incident-edit-report", "press", {});
+    expect(controller.getState().incident3).toMatchObject({ editing: true, fullscreen: false });
+
+    await controller.emit("incident-view-fullscreen", "press", {});
+    expect(controller.getState().incident3).toMatchObject({ editing: true, fullscreen: true });
+
+    await controller.emit("incident-exit-fullscreen", "press", {});
+    expect(controller.getState().incident3).toMatchObject({ editing: true, fullscreen: false });
   });
 });

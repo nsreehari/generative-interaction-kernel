@@ -58,8 +58,11 @@ describe("incident-report-explorer-3 leaves", () => {
     >
       <div node={projectionNode("incident-flight-a", {}) as never}>Story</div>
       <div node={projectionNode("incident-flight-b", {}) as never}>Canvas</div>
+      <button node={projectionNode("incident-view-fullscreen", {}) as never}>View full screen</button>
+      <button node={projectionNode("incident-analyze-report", {}) as never}>Analyze report</button>
     </Report>);
     expect(report).toMatch(/Flight A · Story.*Flight B · Canvas.*Story/s);
+    expect(report).toContain("View full screen");
     const canvas = renderLeaf("investigation-canvas");
     expect(canvas).toContain("react-flow__renderer");
     expect(canvas).toContain("react-flow__controls");
