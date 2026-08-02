@@ -16,12 +16,16 @@
 
 import { createServer } from "node:http";
 import { createStatelessAgentFaceDispatcher } from "@gik/agentface";
+import { getSemanticComponentAgentKit } from "@gik/components/semantic";
 import { McpHttpServer } from "@gik/transport-mcp-http";
 
 const port = Number(process.env.GENUI_MCP_PORT || 8787);
 const host = process.env.GENUI_MCP_HOST || "127.0.0.1";
 
-const mcp = new McpHttpServer({ handler: createStatelessAgentFaceDispatcher().handleMcpMessage });
+const componentAgentKit = getSemanticComponentAgentKit();
+const mcp = new McpHttpServer({
+  handler: createStatelessAgentFaceDispatcher(componentAgentKit.tools).handleMcpMessage,
+});
 
 const server = createServer(async (req, res) => {
   if (await mcp.handle(req, res)) return;

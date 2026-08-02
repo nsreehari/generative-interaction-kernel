@@ -43,10 +43,10 @@ test("growing container composes children inside the floor-owned scroll viewport
     children: [child],
   };
   const markup = renderToStaticMarkup(renderNode(container, registry, () => {}));
-  assert.match(markup, /class="gx-growing-container"/);
+  assert.match(markup, /class="gik-growing-container"/);
   assert.match(markup, /role="region"/);
   assert.match(markup, /aria-label="Activity stream"/);
-  assert.match(markup, /class="gx-growing-container-content"/);
+  assert.match(markup, /class="gik-growing-container-content"/);
   assert.match(markup, /Latest activity/);
 });
 

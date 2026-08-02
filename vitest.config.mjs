@@ -50,6 +50,13 @@ export default defineConfig({
         },
       },
       {
+        test: {
+          name: "components",
+          environment: "node",
+          include: ["packages/components/test/**/*.test.tsx"],
+        },
+      },
+      {
         resolve: {
           alias: {
             "@gik/blueprint": blueprintPackage,

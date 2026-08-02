@@ -28,18 +28,12 @@ function renderLeaf(name: keyof typeof leaves) {
 describe("incident-report-explorer-2 leaves", () => {
   it("exports the closed authored leaf vocabulary", () => {
     expect(Object.keys(leaves)).toEqual([
-      "workspace", "editor", "report", "verdict-brief", "attack-path", "blast-radius",
-      "phase-timeline", "ttp-chain", "response-plan", "representation-notes",
+      "workspace", "editor", "report", "attack-path", "representation-notes",
     ]);
   });
 
-  it("renders semantic structures without agent-authored presentation candidates", () => {
-    expect(renderLeaf("verdict-brief")).toMatch(/Mailbox and identity compromise/);
+  it("renders the remaining incident-specific structures", () => {
     expect(renderLeaf("attack-path")).toMatch(/Credential Access.*185\.220\.101\.34.*accessed mailbox/s);
-    expect(renderLeaf("blast-radius")).toMatch(/Blast radius.*m\.fischer@contoso\.com/s);
-    expect(renderLeaf("phase-timeline")).toMatch(/Incident timeline.*Mailbox accessed/s);
-    expect(renderLeaf("ttp-chain")).toMatch(/T1114\.002.*Remote Email Collection/s);
-    expect(renderLeaf("response-plan")).toMatch(/Response plan.*Revoke sessions/s);
     expect(renderLeaf("representation-notes")).toMatch(/schema-gap.*Business ownership was not modeled/s);
   });
 

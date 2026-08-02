@@ -98,8 +98,7 @@ test("timer-button leaf renders its initial countdown", () => {
   }), registry, () => {}));
 
   assert.match(markup, /aria-label="Auto next, 300 seconds remaining"/);
-  assert.match(markup, /class="gx-timer-label">Auto next<\/span>/);
-  assert.match(markup, /class="gx-timer-count">5:00<\/span>/);
+  assert.match(markup, />Auto next · 5:00<\/button>/);
 });
 
 test("math-challenge leaf renders an accessible deterministic confirmation gate", () => {
