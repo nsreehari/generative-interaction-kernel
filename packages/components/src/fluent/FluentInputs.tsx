@@ -1,51 +1,11 @@
-import React from "react";
-import { Dropdown, Field, Option, Switch, ToggleButton, mergeClasses } from "@fluentui/react-components";
-import type { Json } from "@gik/kernel";
-import { runDeclarativeValidators } from "@gik/evaluators";
+import { Dropdown, Field, Option, Switch, ToggleButton } from "@fluentui/react-components";
 import { readProps, type ProjectionView, type ProjectionViewProps } from "@gik/react";
 
-import {
-  trialNode,
-  type ComponentDescription,
-  type ComponentValidationReport,
-  type DeclarativeComponentDefinition,
-} from "../definition";
-import { componentRootProps, withComponentStylePropsSchema } from "../shared";
-
-export interface FluentSwitchControlProps {
-  checked: boolean;
-  onLabel: string;
-  offLabel: string;
-  onToggle: (checked: boolean) => void;
-  disabled?: boolean;
-  ariaLabel?: string;
-  className?: string;
-  style?: React.CSSProperties;
-}
-
-export function FluentSwitchControl({
-  checked,
-  onLabel,
-  offLabel,
-  onToggle,
-  disabled = false,
-  ariaLabel,
-  className,
-  style,
-}: FluentSwitchControlProps): React.ReactElement {
-  return (
-    <Switch
-      className={mergeClasses("gx-fluent-switch", className)}
-      style={style}
-      checked={checked}
-      disabled={disabled}
-      label={checked ? onLabel : offLabel}
-      labelPosition="after"
-      aria-label={ariaLabel}
-      onChange={(_, data) => onToggle(data.checked)}
-    />
-  );
-}
+import type { ComponentDescription } from "../shared/definition";
+import { componentRootProps, withComponentStylePropsSchema } from "../shared/component";
+import { defineFluentComponent } from "./defineFluentComponent";
+import { FLUENT_CONTROL_SIZES, resolveControlSize, STANDARD_COMPACT_VARIANTS } from "./fluentVariants";
+import { fluentOptionSchema, readFluentOptions } from "./readFluentOptions";
 
 function readToggleState(node: ProjectionViewProps["node"]): {
   checked: boolean;
@@ -71,18 +31,17 @@ export const FluentSwitch: ProjectionView = ({ node, emit }) => {
   const props = readProps(node);
   const state = readToggleState(node);
   const name = props.str("name");
-  const rootProps = componentRootProps(node, "gx-fluent-switch");
   return (
-    <FluentSwitchControl
-      {...rootProps}
+    <Switch
+      {...componentRootProps(node)}
       checked={state.checked}
+      size={resolveControlSize(props.str("size"), node.props.variant) === "small" ? "small" : undefined}
       disabled={props.bool("disabled")}
-      onLabel={props.str("onLabel", props.str("label"))}
-      offLabel={props.str("offLabel", props.str("label"))}
-      ariaLabel={props.str("ariaLabel") || undefined}
-      onToggle={(checked) => void emit("toggle", {
-        checked,
-        value: checked ? state.onValue : state.offValue,
+      label={state.label}
+      aria-label={props.str("ariaLabel") || undefined}
+      onChange={(_, data) => void emit("toggle", {
+        checked: data.checked,
+        value: data.checked ? state.onValue : state.offValue,
         ...(name ? { name } : {}),
       })}
     />
@@ -92,17 +51,12 @@ export const FluentSwitch: ProjectionView = ({ node, emit }) => {
 export const FluentToggle: ProjectionView = ({ node, emit }) => {
   const props = readProps(node);
   const state = readToggleState(node);
-  const minWidth = typeof node.props.minWidth === "number" || typeof node.props.minWidth === "string"
-    ? node.props.minWidth
-    : undefined;
-  const rootProps = componentRootProps(node, "gx-fluent-toggle");
   return (
     <ToggleButton
-      {...rootProps}
+      {...componentRootProps(node)}
       checked={state.checked}
+      size={resolveControlSize(props.str("size"), node.props.variant)}
       disabled={props.bool("disabled")}
-      size="small"
-      style={{ minWidth, ...rootProps.style }}
       onClick={() => void emit("toggle", {
         checked: !state.checked,
         value: state.checked ? state.offValue : state.onValue,
@@ -115,15 +69,7 @@ export const FluentToggle: ProjectionView = ({ node, emit }) => {
 
 export const FluentDropdown: ProjectionView = ({ node, emit }) => {
   const props = readProps(node);
-  const [open, setOpen] = React.useState(false);
-  const options = Array.isArray(node.props.options)
-    ? node.props.options.flatMap((item) => {
-      if (!item || typeof item !== "object" || Array.isArray(item)) return [];
-      const value = String(item.value ?? item.id ?? "");
-      if (!value) return [];
-      return [{ value, label: String(item.label ?? value), disabled: item.disabled === true }];
-    })
-    : [];
+  const options = readFluentOptions(node.props.options);
   const value = props.str("value");
   const selected = options.find((option) => option.value === value);
 
@@ -131,15 +77,8 @@ export const FluentDropdown: ProjectionView = ({ node, emit }) => {
   return (
     <Field {...componentRootProps(node)} label={label || undefined} required={props.bool("required")}>
       <Dropdown
-        className="gx-fluent-dropdown"
-        open={open}
-        button={{
-          onPointerDown: (event) => {
-            if (event.button === 0 && !open) setOpen(true);
-          },
-        }}
-        onOpenChange={(_, data) => setOpen(data.open)}
         aria-label={props.str("ariaLabel") || label || undefined}
+        size={resolveControlSize(props.str("size"), node.props.variant)}
         placeholder={props.str("placeholder") || undefined}
         disabled={props.bool("disabled")}
         value={selected?.label ?? ""}
@@ -147,7 +86,6 @@ export const FluentDropdown: ProjectionView = ({ node, emit }) => {
         onOptionSelect={(_, data) => {
           if (!data.optionValue) return;
           const option = options.find((candidate) => candidate.value === data.optionValue);
-          setOpen(false);
           void emit("select", { value: data.optionValue, label: option?.label ?? data.optionText });
         }}
       >
@@ -170,6 +108,7 @@ const toggleProperties = {
   disabled: { type: "boolean" },
   ariaLabel: { type: "string" },
   name: { type: "string" },
+  size: { type: "string", enum: FLUENT_CONTROL_SIZES },
 } as const;
 
 const switchSchema = withComponentStylePropsSchema({
@@ -181,10 +120,7 @@ const switchSchema = withComponentStylePropsSchema({
 const toggleSchema = withComponentStylePropsSchema({
   type: "object",
   additionalProperties: false,
-  properties: {
-    ...toggleProperties,
-    minWidth: { type: ["string", "number"] },
-  },
+  properties: toggleProperties,
 } as const);
 
 const dropdownSchema = withComponentStylePropsSchema({
@@ -194,17 +130,7 @@ const dropdownSchema = withComponentStylePropsSchema({
     value: { type: "string" },
     options: {
       type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          value: { type: "string" },
-          id: { type: "string" },
-          label: { type: "string" },
-          disabled: { type: "boolean" },
-        },
-        anyOf: [{ required: ["value"] }, { required: ["id"] }],
-      },
+      items: fluentOptionSchema,
     },
     label: { type: "string" },
     placeholder: { type: "string" },
@@ -227,7 +153,8 @@ function description(
     summary,
     events: [event],
     semanticTokens: [],
-    variants: [],
+    defaultVariant: "standard",
+    variants: STANDARD_COMPACT_VARIANTS,
     authoring: {
       useWhen: [useWhen],
       avoidWhen: ["A domain-specific component owns the interaction contract"],
@@ -248,7 +175,7 @@ const toggleDescription = description(
   "Renders a compact Fluent 2 pressed-state toggle button.",
   "toggle",
   "A binary mode needs a compact button presentation",
-  ["Declare stable on and off values", "Use minWidth when labels change width", "Handle toggle outside the component"],
+  ["Declare stable on and off values", "Handle toggle outside the component"],
 );
 const dropdownDescription = description(
   "fluent:dropdown",
@@ -258,38 +185,7 @@ const dropdownDescription = description(
   ["Provide stable option values", "Provide label or ariaLabel", "Handle select outside the component"],
 );
 
-function validate(schema: Record<string, unknown>, capability: string, props: unknown): ComponentValidationReport {
-  return runDeclarativeValidators([{
-    kind: "ajv-schema",
-    schema,
-    message: `Invalid ${capability} props`,
-    code: `${capability.replace(":", "-")}-schema`,
-  }], props as Json);
-}
-
-function definition(
-  componentDescription: ComponentDescription,
-  schema: Record<string, unknown>,
-  component: ProjectionView,
-  trialProps: Record<string, Json>,
-): DeclarativeComponentDefinition {
-  return {
-    capability: componentDescription.capability,
-    version: "1.0.0",
-    summary: componentDescription.summary,
-    events: componentDescription.events,
-    semanticTokens: componentDescription.semanticTokens,
-    variants: componentDescription.variants,
-    authoring: componentDescription.authoring,
-    component,
-    describe: () => componentDescription,
-    getSchema: () => schema,
-    validate: (props) => validate(schema, componentDescription.capability, props),
-    materializeTrial: () => trialNode(componentDescription.capability, trialProps),
-  };
-}
-
-export const fluentSwitchDefinition = definition(switchDescription, switchSchema, FluentSwitch, {
+export const fluentSwitchDefinition = defineFluentComponent(switchDescription, switchSchema, FluentSwitch, {
   value: "auto",
   onValue: "auto",
   offValue: "manual",
@@ -297,16 +193,15 @@ export const fluentSwitchDefinition = definition(switchDescription, switchSchema
   offLabel: "Manual",
 });
 
-export const fluentToggleDefinition = definition(toggleDescription, toggleSchema, FluentToggle, {
+export const fluentToggleDefinition = defineFluentComponent(toggleDescription, toggleSchema, FluentToggle, {
   value: "auto",
   onValue: "auto",
   offValue: "manual",
   onLabel: "Auto",
   offLabel: "Manual",
-  minWidth: 72,
 });
 
-export const fluentDropdownDefinition = definition(dropdownDescription, dropdownSchema, FluentDropdown, {
+export const fluentDropdownDefinition = defineFluentComponent(dropdownDescription, dropdownSchema, FluentDropdown, {
   value: "soc-t3",
   ariaLabel: "Select demo Blueprint",
   options: [

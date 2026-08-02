@@ -16,6 +16,7 @@ import {
   SemanticGraph,
   Sequence,
   TimerButton,
+  TodoList,
   Form,
   EditableTable,
   appendEditableRowOnLastRowFocus,
@@ -57,13 +58,15 @@ import {
   semanticGraphDefinition,
   sequenceDefinition,
   timerButtonDefinition,
+  todoListDefinition,
+  updateTodoListValues,
   formDefinition,
   editableTableDefinition,
   withTrailingEditableRow,
   preflightSemanticComponent,
   shouldGrowingContainerFollowEnd,
   validateSemanticComponentProps,
-} from "../src";
+} from "../src/shared";
 
 const cases = [
   { definition: sequenceDefinition, Component: Sequence, materialize: materializeSequenceTrial, expected: "Response sequence" },
@@ -111,8 +114,8 @@ test("component schemas reject semantic tokens outside each component vocabulary
 
 test("public registries separate component layers and expose an aggregate", () => {
   const semantic = ["action-board", "annotated-source-excerpt", "decision-summary", "entity-constellation", "evidence-trail", "metric-comparison", "narrative-section", "semantic-graph", "sequence", "timeline"];
-  const primitives = ["chart", "editable-table", "form", "growing-container", "timer-button"];
-  const fluent = ["button", "chips", "dropdown", "icon-button", "searchbox", "switch", "tab-bar", "text-field", "textarea", "toggle"];
+  const primitives = ["chart", "editable-table", "form", "growing-container", "timer-button", "todo-list"];
+  const fluent = ["badge", "button", "chips", "data-grid", "dropdown", "list", "persona", "searchbox", "spinner", "switch", "tab-bar", "table", "text-field", "textarea", "toggle"];
   assert.deepEqual(Object.keys(semanticComponentViews).sort(), semantic);
   assert.deepEqual(Object.keys(semanticComponentDefinitions).sort(), semantic);
   assert.deepEqual(Object.keys(primitiveComponentViews).sort(), primitives);
@@ -122,7 +125,22 @@ test("public registries separate component layers and expose an aggregate", () =
   assert.equal(chartDefinition.capability, "primitive:chart");
   assert.deepEqual(growingContainerDefinition.slots, ["children"]);
   assert.deepEqual(timerButtonDefinition.events, ["press"]);
+  assert.deepEqual(todoListDefinition.events, ["save"]);
   assert.deepEqual(actionBoardDefinition.events, ["action"]);
+});
+
+test("todo-list shares form field and value shapes while committing each checkbox change", () => {
+  const trial = todoListDefinition.materializeTrial();
+  assert.equal(todoListDefinition.validate(trial.props).ok, true);
+  assert.equal(todoListDefinition.validate({ fields: { properties: { task: { type: "string", title: "Task" } } }, value: { task: false } }).ok, false);
+  assert.equal(todoListDefinition.validate({ fields: { properties: { task: { type: "boolean", title: "Task" } } }, value: { task: "no" } }).ok, false);
+  assert.deepEqual(updateTodoListValues({ first: false, second: true }, "first", true), { first: true, second: true });
+
+  const markup = renderToStaticMarkup(<TodoList node={trial} emit={() => {}} children={undefined} />);
+  assert.match(markup, /Ship the component/);
+  assert.match(markup, /Publish the docs/);
+  assert.doesNotMatch(markup, />Save</);
+  assert.doesNotMatch(markup, />Discard</);
 });
 
 test("Fluent components forward root className and style overrides", () => {

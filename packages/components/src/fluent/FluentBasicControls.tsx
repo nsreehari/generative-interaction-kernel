@@ -9,17 +9,13 @@ import {
   TagGroup,
   Textarea,
 } from "@fluentui/react-components";
-import type { Json } from "@gik/kernel";
-import { runDeclarativeValidators } from "@gik/evaluators";
 import { readProps, type ProjectionView } from "@gik/react";
 
-import {
-  trialNode,
-  type ComponentDescription,
-  type ComponentValidationReport,
-  type DeclarativeComponentDefinition,
-} from "../definition";
-import { componentRootProps, withComponentStylePropsSchema } from "../shared";
+import type { ComponentDescription } from "../shared/definition";
+import { componentRootProps, withComponentStylePropsSchema } from "../shared/component";
+import { defineFluentComponent } from "./defineFluentComponent";
+import { FLUENT_CONTROL_SIZES, resolveControlSize, STANDARD_COMPACT_VARIANTS } from "./fluentVariants";
+import { fluentOptionSchema, readFluentOptions } from "./readFluentOptions";
 
   function useSyncedValue(incoming: string): [string, React.Dispatch<React.SetStateAction<string>>] {
     const [value, setValue] = React.useState(incoming);
@@ -29,18 +25,15 @@ import { componentRootProps, withComponentStylePropsSchema } from "../shared";
 
   export const FluentTextField: ProjectionView = ({ node, emit }) => {
     const props = readProps(node);
-    const [value, setValue] = useSyncedValue(props.str("value"));
     return (
       <Field {...componentRootProps(node)} label={props.str("label") || undefined} required={props.bool("required")}>
         <Input
           type={props.bool("secret") ? "password" : "text"}
-          value={value}
+          size={resolveControlSize(props.str("size"), node.props.variant)}
+          value={props.str("value")}
           placeholder={props.str("placeholder") || undefined}
           disabled={props.bool("disabled")}
-          onChange={(_, data) => {
-            setValue(data.value);
-            void emit("input", { value: data.value });
-          }}
+          onChange={(_, data) => void emit("input", { value: data.value })}
         />
       </Field>
     );
@@ -48,19 +41,16 @@ import { componentRootProps, withComponentStylePropsSchema } from "../shared";
 
   export const FluentTextarea: ProjectionView = ({ node, emit }) => {
     const props = readProps(node);
-    const [value, setValue] = useSyncedValue(props.str("value"));
     const rows = typeof node.props.rows === "number" ? node.props.rows : undefined;
     return (
       <Field {...componentRootProps(node)} label={props.str("label") || undefined} required={props.bool("required")}>
         <Textarea
           rows={rows}
-          value={value}
+          size={resolveControlSize(props.str("size"), node.props.variant)}
+          value={props.str("value")}
           placeholder={props.str("placeholder") || undefined}
           disabled={props.bool("disabled")}
-          onChange={(_, data) => {
-            setValue(data.value);
-            void emit("input", { value: data.value });
-          }}
+          onChange={(_, data) => void emit("input", { value: data.value })}
         />
       </Field>
     );
@@ -81,6 +71,7 @@ import { componentRootProps, withComponentStylePropsSchema } from "../shared";
         <Field label={label || undefined} required={props.bool("required")}>
           <SearchBox
             value={value}
+            size={resolveControlSize(props.str("size"), node.props.variant)}
             placeholder={props.str("placeholder") || undefined}
             disabled={props.bool("disabled")}
             aria-label={props.str("ariaLabel") || label || undefined}
@@ -91,28 +82,14 @@ import { componentRootProps, withComponentStylePropsSchema } from "../shared";
     );
   };
 
-  interface FluentOption {
-    value: string;
-    label: string;
-    disabled?: boolean;
-  }
-
-  function readOptions(value: Json | undefined): FluentOption[] {
-    if (!Array.isArray(value)) return [];
-    return value.flatMap((item) => {
-      if (!item || typeof item !== "object" || Array.isArray(item)) return [];
-      if (typeof item.value !== "string" || typeof item.label !== "string") return [];
-      return [{ value: item.value, label: item.label, disabled: item.disabled === true }];
-    });
-  }
-
   export const FluentTabBar: ProjectionView = ({ node, emit }) => {
     const props = readProps(node);
-    const options = readOptions(node.props.options);
+    const options = readFluentOptions(node.props.options);
     return (
       <TabList
         {...componentRootProps(node)}
         selectedValue={props.str("active") || undefined}
+        size={resolveControlSize(props.str("size"), node.props.variant)}
         aria-label={props.str("ariaLabel") || undefined}
         disabled={props.bool("disabled")}
         onTabSelect={(_, data) => void emit("select", { value: String(data.value) })}
@@ -126,7 +103,11 @@ import { componentRootProps, withComponentStylePropsSchema } from "../shared";
 
   export const FluentChips: ProjectionView = ({ node, emit }) => {
     const props = readProps(node);
-    const items = readOptions(node.props.items);
+    const items = readFluentOptions(node.props.items);
+    const size = props.str("size");
+    const resolvedSize = size === "extra-small" || size === "small" || size === "medium"
+      ? size
+      : node.props.variant === "compact" ? "small" : undefined;
     return (
       <TagGroup
         {...componentRootProps(node)}
@@ -135,7 +116,7 @@ import { componentRootProps, withComponentStylePropsSchema } from "../shared";
         aria-label={props.str("ariaLabel") || undefined}
         onDismiss={(_, data) => void emit("remove", { value: String(data.value) })}
       >
-        {items.map((item) => <Tag key={item.value} value={item.value} disabled={item.disabled}>{item.label}</Tag>)}
+        {items.map((item) => <Tag key={item.value} value={item.value} disabled={item.disabled} size={resolvedSize}>{item.label}</Tag>)}
       </TagGroup>
     );
   };
@@ -147,18 +128,8 @@ import { componentRootProps, withComponentStylePropsSchema } from "../shared";
     placeholder: stringProperty,
     required: { type: "boolean" },
     disabled: { type: "boolean" },
+    size: { type: "string", enum: FLUENT_CONTROL_SIZES },
   } as const;
-  const optionSchema = {
-    type: "object",
-    additionalProperties: false,
-    required: ["value", "label"],
-    properties: {
-      value: stringProperty,
-      label: stringProperty,
-      disabled: { type: "boolean" },
-    },
-  } as const;
-
   const textFieldSchema = withComponentStylePropsSchema({
     type: "object",
     additionalProperties: false,
@@ -182,7 +153,8 @@ import { componentRootProps, withComponentStylePropsSchema } from "../shared";
       active: stringProperty,
       ariaLabel: stringProperty,
       disabled: { type: "boolean" },
-      options: { type: "array", items: optionSchema },
+      size: { type: "string", enum: FLUENT_CONTROL_SIZES },
+      options: { type: "array", items: fluentOptionSchema },
     },
   } as const);
   const chipsSchema = withComponentStylePropsSchema({
@@ -192,41 +164,10 @@ import { componentRootProps, withComponentStylePropsSchema } from "../shared";
     properties: {
       ariaLabel: stringProperty,
       disabled: { type: "boolean" },
-      items: { type: "array", items: optionSchema },
+      size: { type: "string", enum: ["extra-small", ...FLUENT_CONTROL_SIZES] },
+      items: { type: "array", items: fluentOptionSchema },
     },
   } as const);
-
-  function validate(schema: Record<string, unknown>, capability: string, props: unknown): ComponentValidationReport {
-    return runDeclarativeValidators([{
-      kind: "ajv-schema",
-      schema,
-      message: `Invalid ${capability} props`,
-      code: `${capability.replace(":", "-")}-schema`,
-    }], props as Json);
-  }
-
-  function define(
-    description: ComponentDescription,
-    schema: Record<string, unknown>,
-    component: ProjectionView,
-    trialProps: Record<string, Json>,
-  ): DeclarativeComponentDefinition {
-    return {
-      capability: description.capability,
-      version: "1.0.0",
-      summary: description.summary,
-      dataProp: description.dataProp,
-      events: description.events,
-      semanticTokens: description.semanticTokens,
-      variants: description.variants,
-      authoring: description.authoring,
-      component,
-      describe: () => description,
-      getSchema: () => schema,
-      validate: (props) => validate(schema, description.capability, props),
-      materializeTrial: () => trialNode(description.capability, trialProps),
-    };
-  }
 
   const textFieldDescription: ComponentDescription = {
     capability: "fluent:text-field",
@@ -234,7 +175,8 @@ import { componentRootProps, withComponentStylePropsSchema } from "../shared";
     dataProp: "value",
     events: ["input"],
     semanticTokens: [],
-    variants: [],
+    defaultVariant: "standard",
+    variants: STANDARD_COMPACT_VARIANTS,
     authoring: {
       useWhen: ["A short text value must update as the user types"],
       avoidWhen: ["The value requires multiple lines", "The value should commit only on form submission"],
@@ -247,7 +189,8 @@ import { componentRootProps, withComponentStylePropsSchema } from "../shared";
     dataProp: "value",
     events: ["input"],
     semanticTokens: [],
-    variants: [],
+    defaultVariant: "standard",
+    variants: STANDARD_COMPACT_VARIANTS,
     authoring: {
       useWhen: ["A multiline text value must update as the user types"],
       avoidWhen: ["The value is short enough for a text field", "The value should commit only on form submission"],
@@ -260,7 +203,8 @@ import { componentRootProps, withComponentStylePropsSchema } from "../shared";
     dataProp: "value",
     events: ["submit"],
     semanticTokens: [],
-    variants: [],
+    defaultVariant: "standard",
+    variants: STANDARD_COMPACT_VARIANTS,
     authoring: {
       useWhen: ["A search or filtering value should be committed explicitly"],
       avoidWhen: ["Every keystroke must update the result set; use text-field"],
@@ -273,7 +217,8 @@ import { componentRootProps, withComponentStylePropsSchema } from "../shared";
     dataProp: "options",
     events: ["select"],
     semanticTokens: [],
-    variants: [],
+    defaultVariant: "standard",
+    variants: STANDARD_COMPACT_VARIANTS,
     authoring: {
       useWhen: ["Peer views share one region and exactly one is active"],
       avoidWhen: ["The choices set a form value rather than switching views"],
@@ -286,7 +231,8 @@ import { componentRootProps, withComponentStylePropsSchema } from "../shared";
     dataProp: "items",
     events: ["remove"],
     semanticTokens: [],
-    variants: [],
+    defaultVariant: "standard",
+    variants: STANDARD_COMPACT_VARIANTS,
     authoring: {
       useWhen: ["Users need to review and remove a compact set of discrete values"],
       avoidWhen: ["Values are read-only", "Users must add values within the same control"],
@@ -294,25 +240,25 @@ import { componentRootProps, withComponentStylePropsSchema } from "../shared";
     },
   };
 
-  export const fluentTextFieldDefinition = define(textFieldDescription, textFieldSchema, FluentTextField, {
+  export const fluentTextFieldDefinition = defineFluentComponent(textFieldDescription, textFieldSchema, FluentTextField, {
     label: "Name",
     value: "Ada",
   });
-  export const fluentTextareaDefinition = define(textareaDescription, textareaSchema, FluentTextarea, {
+  export const fluentTextareaDefinition = defineFluentComponent(textareaDescription, textareaSchema, FluentTextarea, {
     label: "Notes",
     value: "Draft",
     rows: 4,
   });
-  export const fluentSearchboxDefinition = define(searchboxDescription, searchboxSchema, FluentSearchbox, {
+  export const fluentSearchboxDefinition = defineFluentComponent(searchboxDescription, searchboxSchema, FluentSearchbox, {
     label: "Search incidents",
     value: "credential access",
   });
-  export const fluentTabBarDefinition = define(tabBarDescription, tabBarSchema, FluentTabBar, {
+  export const fluentTabBarDefinition = defineFluentComponent(tabBarDescription, tabBarSchema, FluentTabBar, {
     active: "all",
     ariaLabel: "Incident views",
     options: [{ value: "all", label: "All" }, { value: "open", label: "Open" }],
   });
-  export const fluentChipsDefinition = define(chipsDescription, chipsSchema, FluentChips, {
+  export const fluentChipsDefinition = defineFluentComponent(chipsDescription, chipsSchema, FluentChips, {
     ariaLabel: "Selected techniques",
     items: [{ value: "credential-access", label: "Credential access" }],
   });

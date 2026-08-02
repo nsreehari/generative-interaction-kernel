@@ -21,6 +21,7 @@ test("primitive bundle exposes every declared component capability", () => {
     "form",
     "growing-container",
     "timer-button",
+    "todo-list",
   ]);
 });
 

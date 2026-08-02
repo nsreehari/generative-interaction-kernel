@@ -7,6 +7,7 @@ import {
   type MaterializedBlueprint,
 } from "@gik/blueprint";
 import type { GIKEvent, Json } from "@gik/kernel";
+import { fluentComponentViews } from "@gik/components/fluent";
 import {
   BundleHost,
   SharedContextStore,
@@ -22,7 +23,6 @@ import {
 import demoRunnerBundleJson from "./demoRunnerBundleV1.json" with { type: "json" };
 import { createDemoRunnerEffectHandlersV1, type DemoRunnerEvent, type DemoRunnerExpressionScope } from "./demoRunnerEffectHandlersV1";
 import { demoRunnerLeavesV1 } from "./demoRunnerLeavesV1";
-import { fluentLeavesV1 } from "./fluentLeavesV1";
 import { GikToolingShell } from "./tooling-shell";
 
 const EMPTY_CONTEXTS: BundleContextBindings = {};
@@ -261,7 +261,7 @@ function ActiveDemoHost({
     json.state.runner.externalContext = structuredClone(externalContextState) as never;
     return bundleFromJson(json, {
       effectHandlers: createDemoRunnerEffectHandlersV1({ runTransition, getExpressionScope, waitUntil, setExternalContext }),
-      projectionViews: { ...demoRunnerLeavesV1, ...fluentLeavesV1 },
+      projectionViews: { ...demoRunnerLeavesV1, ...fluentComponentViews },
     });
   }, []); // The runner owns its live state after its initial seed.
 

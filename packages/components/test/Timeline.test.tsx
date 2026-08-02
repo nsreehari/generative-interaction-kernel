@@ -8,7 +8,7 @@ import {
   materializeTimelineTrial,
   timelineDefinition,
   validateTimeline,
-} from "../src";
+} from "../src/shared";
 
 test("timeline definition describes its closed authoring contract", () => {
   assert.equal(timelineDefinition.capability, "semantic:timeline");
