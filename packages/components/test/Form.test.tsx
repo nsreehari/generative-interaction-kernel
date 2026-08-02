@@ -5,7 +5,7 @@ import { test } from "vitest";
 
 import type { Json, ResolvedNode } from "@gik/kernel";
 
-import { Form, formDefinition } from "../src/form";
+import { Form, formDefinition } from "../src/primitives/form";
 
 function node(props: Record<string, unknown>): ResolvedNode {
   return {

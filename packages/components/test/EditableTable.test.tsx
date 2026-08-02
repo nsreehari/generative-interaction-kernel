@@ -13,7 +13,7 @@ import {
   editableTableDefinition,
   isEmptyEditableRow,
   withTrailingEditableRow,
-} from "../src/editable-table";
+} from "../src/primitives/editable-table";
 
 function node(props: Record<string, unknown>): ResolvedNode {
   return {

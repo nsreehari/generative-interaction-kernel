@@ -48,13 +48,9 @@
           "propsSchema": { "type": "object", "additionalProperties": true },
           "emits": ["select"]
         },
-        "fluent:tab-list": {
+        "fluent:tab-bar": {
           "propsSchema": { "type": "object", "additionalProperties": true },
-          "slots": ["children"],
           "emits": ["select"]
-        },
-        "fluent:tab": {
-          "propsSchema": { "type": "object", "additionalProperties": true }
         },
         "primitive:form": {
           "propsSchema": { "type": "object", "additionalProperties": true },
@@ -118,7 +114,8 @@
                       "placeholder": "Select a scenario"
                     },
                     "edges": {
-                      "read": { "value": "runner.selectedScenarioId", "options": "runner.scenarios" },
+                      "read": { "value": "runner.selectedScenarioId" },
+                      "readExpr": { "options": "runner.scenarios.{\"value\": id, \"label\": shortDescription}" },
                       "on": {
                         "select": [
                           { "do": "invoke", "args": { "tool": "selectScenario" } }
@@ -162,21 +159,23 @@
                 },
                 "children": [
                   {
-                    "capability": "fluent:tab-list",
+                    "capability": "fluent:tab-bar",
                     "id": "control-panel-tabs",
-                    "props": { "ariaLabel": "Control panel views" },
+                    "props": {
+                      "ariaLabel": "Control panel views",
+                      "options": [
+                        { "value": "journal", "label": "Journal" },
+                        { "value": "ledger", "label": "Ledger" },
+                        { "value": "blueprint", "label": "Blueprint" },
+                        { "value": "actors", "label": "Actors" },
+                        { "value": "context", "label": "Context" }
+                      ]
+                    },
                     "edges": {
-                      "read": { "value": "runner.control.activeTab" },
+                      "read": { "active": "runner.control.activeTab" },
                       "on": {
                         "select": [{ "do": "assign", "target": "runner.control.activeTab", "args": { "from": "$event.value" } }]
-                      },
-                      "children": [
-                        { "capability": "fluent:tab", "id": "journal-tab", "props": { "value": "journal", "label": "Journal" } },
-                        { "capability": "fluent:tab", "id": "ledger-tab", "props": { "value": "ledger", "label": "Ledger" } },
-                        { "capability": "fluent:tab", "id": "blueprint-tab", "props": { "value": "blueprint", "label": "Blueprint" } },
-                        { "capability": "fluent:tab", "id": "actors-tab", "props": { "value": "actors", "label": "Actors" } },
-                        { "capability": "fluent:tab", "id": "context-tab", "props": { "value": "context", "label": "Context" } }
-                      ]
+                      }
                     }
                   },
                   {
@@ -268,7 +267,7 @@
                           },
                           "edges": {
                             "read": { "value": "runner.selectedContextId" },
-                            "readExpr": { "options": "runner.namedPresetContexts" },
+                            "readExpr": { "options": "runner.namedPresetContexts.{\"value\": id, \"label\": label}" },
                             "on": {
                               "select": [{ "do": "invoke", "args": { "tool": "applyNamedContext" } }]
                             }

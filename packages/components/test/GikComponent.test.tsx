@@ -9,7 +9,7 @@ import {
   GikComponent,
   createGikComponentDeclarativeBundle,
   materializeActionBoardTrial,
-} from "../src";
+} from "../src/shared";
 
 test("GikComponent maps typed data and spec to a primitive contract", () => {
   const markup = renderToStaticMarkup(

@@ -10,7 +10,8 @@ The package has three public layers:
   metric comparison, and relationship graph. Bundles supply meanings such as incident, alert, or
   consequence through data, labels, mappings, tokens, and behavior.
 - `@gik/components/fluent`: reusable Fluent 2 controls that retain `fluent:*` capability names:
-  button, dropdown, icon button, switch, and toggle.
+  badges, buttons, inputs, personas, spinners, tabs, tags, lists, tables, and data grids. Presentation choices are closed
+  variants backed by native Fluent props; icon buttons are `fluent:button` variants.
 
 `@gik/components` re-exports both layers and aggregate `component*` registries for compatibility.
 New consumers should import the narrow subpath and register `primitiveComponentViews` and

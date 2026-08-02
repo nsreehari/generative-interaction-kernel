@@ -1,4 +1,5 @@
 import type { ProjectionView } from "@gik/react";
+import { fluentComponentViews } from "@gik/components/fluent";
 
 import copilotC2Leaves from "../blueprints/copilot-c2/native/projection_views/copilotC2Leaves";
 import foundryAgentLeaves from "../blueprints/foundry-agent/native/projection_views/foundryAgentLeaves";
@@ -10,7 +11,6 @@ import manageBlueprintsLeaves from "../blueprints/manage-blueprints/native/proje
 import portfolioTrackerLeaves from "../blueprints/portfolio-tracker/native/projection_views/portfolioTrackerLeaves";
 import samplesOverviewLeaves from "../blueprints/samples-overview/native/projection_views/samplesOverviewLeaves";
 import floorLeaves from "../bundles/floor/projection_views/floorLeaves";
-import fluentLeaves from "../bundles/fluent/projection_views/fluentLeaves";
 import foundryLeaves from "../bundles/foundry/projection_views/foundryLeaves";
 import httpProxyLeaves from "../bundles/http-proxy/projection_views/httpProxyLeaves";
 import primitiveLeaves from "../bundles/primitive/projection_views/primitiveLeaves";
@@ -21,7 +21,7 @@ import semanticLeaves from "../bundles/semantic/projection_views/semanticLeaves"
 const projectionProviders: Record<string, Record<string, ProjectionView>> = {
   "copilot-c2": copilotC2Leaves,
   floor: floorLeaves,
-  fluent: fluentLeaves,
+  fluent: fluentComponentViews,
   foundry: foundryLeaves,
   "foundry-agent": foundryAgentLeaves,
   "http-proxy": httpProxyLeaves,

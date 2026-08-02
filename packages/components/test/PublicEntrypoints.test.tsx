@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import * as rootEntryPoint from "../src";
+import * as rootEntryPoint from "../src/shared";
 import * as primitiveEntryPoint from "../src/primitives";
 import * as semanticEntryPoint from "../src/semantic";
 
@@ -14,6 +14,7 @@ test("semantic and primitive entry points expose distinct component layers", () 
   assert.ok("chart" in primitiveComponentDefinitions);
   assert.ok(!("timeline" in primitiveComponentDefinitions));
   assert.ok("timer-button" in primitiveComponentDefinitions);
+  assert.ok("todo-list" in primitiveComponentDefinitions);
   assert.equal(primitiveComponentDefinitions.chart.capability, "primitive:chart");
 });
 
@@ -21,6 +22,7 @@ test("primitive authoring APIs expose closed contracts and scoped agent tools", 
   const catalog = primitiveEntryPoint.listPrimitiveComponents();
   assert.ok(catalog.some((entry) => entry.id === "form" && entry.capability === "primitive:form"));
   assert.ok(catalog.some((entry) => entry.id === "editable-table" && entry.capability === "primitive:editable-table"));
+  assert.ok(catalog.some((entry) => entry.id === "todo-list" && entry.capability === "primitive:todo-list"));
 
   const description = primitiveEntryPoint.describePrimitiveComponent("form");
   assert.equal(description.capability, "primitive:form");
