@@ -41,7 +41,7 @@
             "views": {
               "portfolio-workspace": { "capability": "ui:screen", "props": { "title": "Portfolio", "subtitle": "Mobile · Detailed" } },
               "holdings": {
-                "capability": "ui:editable-table",
+                "capability": "primitive:editable-table",
                 "props": { "label": "Holdings", "columns": [{ "key": "ticker", "label": "Ticker" }, { "key": "quantity", "label": "Quantity" }, { "key": "costBasis", "label": "Cost basis" }] },
                 "bindings": { "rows": { "expression": "[portfolio.holdings.*]" } }
               },
@@ -178,7 +178,7 @@
       "actions": ["assign", "invoke"],
       "capabilities": {
         "ui:screen": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"] },
-        "ui:editable-table": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"], "dataProp": "rows" },
+        "primitive:editable-table": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"], "dataProp": "rows" },
         "ui:table": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "rows" },
         "ui:note": { "propsSchema": { "type": "object", "additionalProperties": true } },
         "http-proxy:access-gate": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["accessRequested", "accessCleared"] },
@@ -186,7 +186,8 @@
       },
       "externals": {
         "projectionViews": {
-          "ui": { "from": "floor", "use": ["screen", "editable-table", "table", "note"] },
+          "ui": { "from": "floor", "use": ["screen", "table", "note"] },
+          "primitive": { "from": "primitive", "use": ["editable-table"] },
           "http-proxy": { "from": "http-proxy", "use": ["access-gate"] },
           "portfolio": { "from": "self", "use": ["summary"] }
         },

@@ -1,8 +1,9 @@
 # Fluent projection provider
 
-This provider supplies Fluent UI-specific projection views without adding framework-branded controls
-to the platform floor. It is discovered by the host's projection-view provider resolver but is not
-listed in the hosted Blueprint registry, so it is not a mountable or switcher-visible application.
+This provider exposes `fluentComponentViews` from `@gik/components/fluent` without adding
+framework-branded controls to the platform floor. The package owns each renderer, schema,
+description, event contract, agent guidance, validator, and trial materializer. The provider is
+discovered by the host's projection-view resolver but is not a mountable application.
 
 Import controls through a manifest alias:
 

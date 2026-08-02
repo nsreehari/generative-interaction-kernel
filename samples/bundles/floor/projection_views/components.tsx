@@ -101,7 +101,6 @@ export const floorComponents: ProviderMap = {
   board: Board,
   metric: Metric,
   table: Table,
-  chart: FLOOR_COMPONENTS.chart,
   markdown: FLOOR_COMPONENTS.markdown,
   markup: FLOOR_COMPONENTS.markup,
   todo: FLOOR_COMPONENTS.todo,

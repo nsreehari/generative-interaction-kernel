@@ -9,10 +9,7 @@
 import React from "react";
 import "@xyflow/react/dist/style.css";
 import {
-  EditableTable as PrimitiveEditableTable,
   Form as PrimitiveForm,
-  GrowingContainerPrimitive,
-  TimerButton as PrimitiveTimerButton,
 } from "@gik/components/primitives";
 import { unwrap, type Json, type ResolvedNode } from "@gik/kernel";
 import {
@@ -33,15 +30,6 @@ import {
   type ProjectionViewProps,
 } from "@gik/react";
 
-export { GrowingContainer, GrowingContainerPrimitive } from "@gik/components/primitives";
-export {
-  appendEditableRowOnLastRowFocus,
-  committedEditableRows,
-  isEmptyEditableRow,
-  withTrailingEditableRow,
-} from "@gik/components/primitives";
-export type { GrowingContainerFollowEnd, GrowingContainerProps } from "@gik/components/primitives";
-
 interface Option {
   value: string;
   label: string;
@@ -50,12 +38,6 @@ interface Column {
   key: string;
   label: string;
   classPrefix?: string;
-}
-
-interface ChartModel {
-  rows: Array<Record<string, unknown>>;
-  labelKey: string;
-  seriesKeys: string[];
 }
 
 interface SingleFieldSchema {
@@ -132,128 +114,6 @@ export function sortRows<T extends Record<string, unknown>>(rows: T[], key: stri
   return rows.map((row, index) => ({ row, index }))
     .sort((a, b) => compareCells(a.row[key], b.row[key], dir) || a.index - b.index)
     .map((entry) => entry.row);
-}
-
-// Categorical series colors come from the ThemeProvider (--gx-chart-1..10 role vars) so charts
-// recolor with the theme instead of hardcoding a palette in the component.
-const CHART_SERIES_COUNT = 10;
-function chartColor(index: number): string {
-  return `var(--gx-chart-${(index % CHART_SERIES_COUNT) + 1})`;
-}
-
-function detectChartType(rows: Array<Record<string, unknown>>): string {
-  if (!rows.length) return "bar";
-  const sample = rows[0] ?? {};
-  if (sample.label !== undefined && sample.value !== undefined && sample.x === undefined && sample.date === undefined) {
-    return "pie";
-  }
-  if (sample.x !== undefined || sample.date !== undefined) return "line";
-  return "bar";
-}
-
-function normalizeChartData(data: unknown, viewData: Record<string, unknown>): ChartModel | null {
-  if (data && typeof data === "object" && !Array.isArray(data)) {
-    const map = data as Record<string, unknown>;
-    if (Array.isArray(map.labels) && Array.isArray(map.datasets)) {
-      const labels = map.labels;
-      const datasets = map.datasets as Array<Record<string, unknown>>;
-      const seriesNames = datasets.map((dataset, index) => String(dataset?.label ?? `series${index + 1}`));
-      const rows = labels.map((label, index) => {
-        const row: Record<string, unknown> = { __label: label };
-        datasets.forEach((dataset, seriesIndex) => {
-          const values = Array.isArray(dataset?.data) ? dataset.data : [];
-          row[seriesNames[seriesIndex]] = values[index];
-        });
-        return row;
-      });
-      return { rows, labelKey: "__label", seriesKeys: seriesNames };
-    }
-  }
-
-  if (!Array.isArray(data) || data.length === 0) {
-    return null;
-  }
-
-  if (typeof data[0] !== "object" || data[0] === null) {
-    return {
-      rows: data.map((value, index) => ({ __label: String(index + 1), value })),
-      labelKey: "__label",
-      seriesKeys: ["value"],
-    };
-  }
-
-  const rows = data as Array<Record<string, unknown>>;
-  const columns = Array.isArray(viewData.columns) ? viewData.columns.map(String) : null;
-  const allKeys = Object.keys(rows[0] ?? {});
-  const labelKey = columns?.[0] ?? String(viewData.labelKey ?? viewData.xKey ?? allKeys[0] ?? "");
-  let seriesKeys: string[];
-  if (Array.isArray(viewData.series) && viewData.series.length > 0) {
-    seriesKeys = viewData.series.map(String);
-  } else if (columns && columns.length > 1) {
-    seriesKeys = columns.slice(1);
-  } else {
-    seriesKeys = allKeys.filter((key) => key !== labelKey && typeof rows[0][key] === "number");
-    if (seriesKeys.length === 0) {
-      seriesKeys = allKeys.filter((key) => key !== labelKey).slice(0, 1);
-    }
-  }
-
-  return { rows, labelKey, seriesKeys };
-}
-
-function toNumber(value: unknown): number {
-  if (typeof value === "number") return value;
-  if (typeof value === "string" && value.trim() !== "") {
-    const parsed = Number.parseFloat(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-  if (typeof value === "boolean") return value ? 1 : 0;
-  return 0;
-}
-
-function maxChartValue(model: ChartModel, stacked: boolean): number {
-  let max = 0;
-  for (const row of model.rows) {
-    if (stacked) {
-      const sum = model.seriesKeys.reduce((acc, key) => acc + Math.max(0, toNumber(row[key])), 0);
-      max = Math.max(max, sum);
-    } else {
-      for (const key of model.seriesKeys) {
-        max = Math.max(max, toNumber(row[key]));
-      }
-    }
-  }
-  return max;
-}
-
-function chartLabel(row: Record<string, unknown>, key: string): string {
-  const value = row[key];
-  return value == null ? "" : String(value);
-}
-
-// A "nice" rounded step (1/2/5 x 10^n) so axis ticks land on readable values.
-function niceStep(raw: number): number {
-  if (!(raw > 0)) return 1;
-  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
-  const norm = raw / mag;
-  const nice = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
-  return nice * mag;
-}
-
-// Evenly spaced axis ticks from 0 up to (at least) max, using a nice step. The last tick is the
-// value chart series are scaled against, so bars/lines align to the gridlines.
-function niceTicks(max: number, count = 4): number[] {
-  if (!(max > 0)) return [0];
-  const step = niceStep(max / count);
-  const ticks: number[] = [];
-  for (let v = 0; v <= max + step * 1e-6; v += step) ticks.push(Number(v.toFixed(6)));
-  if (ticks[ticks.length - 1] < max) ticks.push(ticks[ticks.length - 1] + step);
-  return ticks;
-}
-
-function formatTick(value: number): string {
-  if (Number.isInteger(value)) return String(value);
-  return value.toFixed(Math.abs(value) < 1 ? 2 : 1);
 }
 
 // Only allow link schemes that can't execute script. Anything else (e.g. `javascript:`) falls back
@@ -783,220 +643,6 @@ function CodeBlock({ node }: ProjectionViewProps) {
   );
 }
 
-function ChartPrimitive({ node }: ProjectionViewProps) {
-  const spec = (node.props ?? {}) as Record<string, unknown>;
-  const model = normalizeChartData(spec.data, spec);
-  if (!model || model.rows.length === 0 || model.seriesKeys.length === 0) {
-    return <p className="gx-muted">No chart data</p>;
-  }
-
-  const width = 360;
-  const height = typeof spec.height === "number" ? spec.height : 220;
-  const variant = typeof spec.chartType === "string" && spec.chartType.length > 0
-    ? spec.chartType
-    : detectChartType(model.rows);
-  const stacked = spec.stacked === true;
-  const isPie = variant === "pie" || variant === "doughnut";
-  const showLegend = spec.legend !== false && (model.seriesKeys.length > 1 || isPie);
-  const showGrid = spec.grid !== false && !isPie;
-
-  // Cartesian charts reserve a left gutter for Y-axis tick labels; pie/doughnut use the full box.
-  const left = isPie ? 6 : 34;
-  const top = 8;
-  const right = 10;
-  const bottom = 20;
-  const plotW = width - left - right;
-  const plotH = height - top - bottom;
-
-  const rawMax = maxChartValue(model, stacked);
-  const ticks = isPie ? [] : niceTicks(rawMax, 4);
-  const axisMax = ticks.length ? ticks[ticks.length - 1] : rawMax;
-  const scaleMax = axisMax > 0 ? axisMax : 1;
-  const yFor = (value: number) => top + plotH - (value / scaleMax) * plotH;
-
-  const legendLabels = isPie
-    ? model.rows.map((row) => chartLabel(row, model.labelKey))
-    : model.seriesKeys;
-
-  // Y-axis gridlines + tick labels (Cartesian only). The tick=0 line doubles as the baseline.
-  const axis = showGrid
-    ? ticks.flatMap((tick, i) => {
-        const y = yFor(tick);
-        return [
-          <line
-            key={`grid-${i}`}
-            className={tick === 0 ? "gx-chart-axis-line" : "gx-chart-grid"}
-            x1={left}
-            x2={left + plotW}
-            y1={y}
-            y2={y}
-          />,
-          <text key={`ytick-${i}`} className="gx-chart-axis-label" x={left - 5} y={y + 3} textAnchor="end">
-            {formatTick(tick)}
-          </text>,
-        ];
-      })
-    : [];
-
-  const groupW = plotW / model.rows.length;
-  const xAt = (rowIndex: number): number => variant === "bar"
-    ? left + rowIndex * groupW + groupW / 2
-    : model.rows.length <= 1
-      ? left + plotW / 2
-      : left + rowIndex * (plotW / (model.rows.length - 1));
-
-  // X-axis category labels (Cartesian only).
-  const xLabels = !isPie
-    ? model.rows.map((row, rowIndex) => (
-        <text key={`x-${rowIndex}`} className="gx-chart-axis-label" x={xAt(rowIndex)} y={top + plotH + 13} textAnchor="middle">
-          {chartLabel(row, model.labelKey)}
-        </text>
-      ))
-    : [];
-
-  const bars = variant === "bar"
-    ? model.rows.flatMap((row, rowIndex) => {
-        let runningBottom = top + plotH;
-        return model.seriesKeys.flatMap((key, seriesIndex) => {
-          const value = Math.max(0, toNumber(row[key]));
-          const barHeight = (value / scaleMax) * plotH;
-          if (barHeight <= 0) return [];
-          let x: number;
-          let y: number;
-          let barWidth: number;
-          if (stacked) {
-            barWidth = groupW * 0.6;
-            x = left + rowIndex * groupW + groupW * 0.2;
-            runningBottom -= barHeight;
-            y = runningBottom;
-          } else {
-            barWidth = (groupW * 0.8) / model.seriesKeys.length;
-            x = left + rowIndex * groupW + groupW * 0.1 + seriesIndex * barWidth;
-            y = top + plotH - barHeight;
-          }
-          return [
-            <rect
-              key={`bar-${rowIndex}-${seriesIndex}`}
-              x={x}
-              y={y}
-              width={Math.max(1, barWidth * 0.9)}
-              height={barHeight}
-              fill={chartColor(seriesIndex)}
-            >
-              <title>{`${chartLabel(row, model.labelKey)} · ${key}: ${formatTick(value)}`}</title>
-            </rect>,
-          ];
-        });
-      })
-    : [];
-
-  const linePoints = (seriesIndex: number) => model.rows
-    .map((row, rowIndex) => `${xAt(rowIndex)},${yFor(toNumber(row[model.seriesKeys[seriesIndex]]))}`)
-    .join(" ");
-
-  const lines = variant === "line" || variant === "area"
-    ? model.seriesKeys.flatMap((key, seriesIndex) => {
-        const points = linePoints(seriesIndex);
-        const elements: React.ReactNode[] = [];
-        if (variant === "area") {
-          const firstX = model.rows.length <= 1 ? left + plotW / 2 : left;
-          const lastX = model.rows.length <= 1 ? left + plotW / 2 : left + plotW;
-          elements.push(
-            <polygon
-              key={`area-${key}`}
-              points={`${points} ${lastX},${top + plotH} ${firstX},${top + plotH}`}
-              fill={chartColor(seriesIndex)}
-              opacity="0.3"
-            />
-          );
-        }
-        elements.push(
-          <polyline key={`line-${key}`} points={points} fill="none" stroke={chartColor(seriesIndex)} strokeWidth="2" />
-        );
-        model.rows.forEach((row, rowIndex) => {
-          const value = toNumber(row[key]);
-          elements.push(
-            <circle key={`pt-${key}-${rowIndex}`} cx={xAt(rowIndex)} cy={yFor(value)} r="3" fill={chartColor(seriesIndex)}>
-              <title>{`${chartLabel(row, model.labelKey)} · ${key}: ${formatTick(value)}`}</title>
-            </circle>
-          );
-        });
-        return elements;
-      })
-    : [];
-
-  const scatter = variant === "scatter"
-    ? model.rows.map((row, rowIndex) => {
-        const value = toNumber(row[model.seriesKeys[0]]);
-        return (
-          <circle key={`pt-${rowIndex}`} cx={xAt(rowIndex)} cy={yFor(value)} r="4" fill={chartColor(0)}>
-            <title>{`${chartLabel(row, model.labelKey)}: ${formatTick(value)}`}</title>
-          </circle>
-        );
-      })
-    : [];
-
-  const pie = isPie
-    ? (() => {
-        const total = model.rows.reduce((acc, row) => acc + Math.max(0, toNumber(row[model.seriesKeys[0]])), 0);
-        if (total <= 0) return [];
-        const cx = width / 2;
-        const cy = height / 2;
-        const radius = Math.min(width, height) / 2 * 0.8;
-        const innerRadius = variant === "doughnut" ? radius * 0.55 : 0;
-        let angle = -Math.PI / 2;
-        return model.rows.flatMap((row, rowIndex) => {
-          const value = Math.max(0, toNumber(row[model.seriesKeys[0]]));
-          if (value <= 0) return [];
-          const sweep = (value / total) * Math.PI * 2;
-          const start = angle;
-          const end = angle + sweep;
-          angle = end;
-          const x1 = cx + radius * Math.cos(start);
-          const y1 = cy + radius * Math.sin(start);
-          const x2 = cx + radius * Math.cos(end);
-          const y2 = cy + radius * Math.sin(end);
-          const largeArc = sweep > Math.PI ? 1 : 0;
-          const path = innerRadius > 0
-            ? (() => {
-                const ix2 = cx + innerRadius * Math.cos(start);
-                const iy2 = cy + innerRadius * Math.sin(start);
-                const ix1 = cx + innerRadius * Math.cos(end);
-                const iy1 = cy + innerRadius * Math.sin(end);
-                return `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} L ${ix1} ${iy1} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${ix2} ${iy2} Z`;
-              })()
-            : `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
-          const pct = Math.round((value / total) * 100);
-          return [
-            <path key={`slice-${rowIndex}`} d={path} fill={chartColor(rowIndex)}>
-              <title>{`${chartLabel(row, model.labelKey)}: ${formatTick(value)} (${pct}%)`}</title>
-            </path>,
-          ];
-        });
-      })()
-    : [];
-
-  const body = isPie ? pie : [...axis, ...bars, ...lines, ...scatter, ...xLabels];
-
-  return (
-    <div className="gx-chart">
-      <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} role="img" aria-label="chart">
-        {body}
-      </svg>
-      {showLegend ? (
-        <div className="gx-chart-legend">
-          {legendLabels.map((label, index) => (
-            <span key={`${label}-${index}`} className="gx-chart-legend-item">
-              <span className="gx-chart-swatch" style={{ background: chartColor(index) }} />
-              {label}
-            </span>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 function Markdown({ node }: ProjectionViewProps) {
   const p = readProps(node);
   const value = p.str("value", p.str("text"));
@@ -1068,57 +714,6 @@ function List({ node, emit }: ProjectionViewProps) {
         );
       })}
     </Tag>
-  );
-}
-
-function Timeline({ node }: ProjectionViewProps) {
-  const p = readProps(node);
-  const items = p.list<unknown>("items");
-  const empty = p.str("emptyText", "No timeline data.");
-  if (items.length === 0) return <p className="gx-muted">{empty}</p>;
-
-  const headlineOf = (entry: Record<string, unknown>, index: number) =>
-    String(
-      entry.title ??
-      entry.label ??
-      entry.name ??
-      entry.event ??
-      entry.step ??
-      entry.id ??
-      `Item ${index + 1}`
-    );
-
-  const metaOf = (entry: Record<string, unknown>) => {
-    const meta = entry.at ?? entry.time ?? entry.date ?? entry.timestamp;
-    return meta == null ? "" : String(meta);
-  };
-
-  const detailOf = (entry: Record<string, unknown>) => {
-    const detail = entry.detail ?? entry.summary ?? entry.description ?? entry.value ?? entry.status;
-    return detail == null ? "" : String(detail);
-  };
-
-  return (
-    <ol className="gx-list">
-      {items.map((raw, index) => {
-        const entry =
-          raw && typeof raw === "object" && !Array.isArray(raw)
-            ? (raw as Record<string, unknown>)
-            : { value: raw };
-        const headline = headlineOf(entry, index);
-        const meta = metaOf(entry);
-        const detail = detailOf(entry);
-        return (
-          <li key={String(entry.id ?? entry.key ?? index)}>
-            <span className="gx-list-row">
-              <span className="gx-list-primary">{headline}</span>
-              {meta ? <span className="gx-list-secondary gx-muted">{meta}</span> : null}
-              {detail ? <span className="gx-list-value gx-muted">{detail}</span> : null}
-            </span>
-          </li>
-        );
-      })}
-    </ol>
   );
 }
 
@@ -1445,26 +1040,6 @@ function Button({ node, emit }: ProjectionViewProps) {
       {p.str("label")}
     </button>
   );
-}
-
-function TimerButton({ node, emit }: ProjectionViewProps) {
-  const p = readProps(node);
-  const configuredDuration = Number(node.props.durationMs ?? node.props.duration ?? 3000);
-  const durationMs = Number.isFinite(configuredDuration) ? Math.max(250, configuredDuration) : 3000;
-  const appearance = p.str("tone") === "primary" ? "primary" : "secondary";
-  return <PrimitiveTimerButton node={{
-    ...node,
-    capability: "primitive:timer-button",
-    props: {
-      label: p.str("label"),
-      durationMs,
-      disabled: p.bool("disabled"),
-      autoStart: node.props.autoStart !== false,
-      repeat: true,
-      showCountdown: node.props.showCountdown !== false,
-      appearance,
-    },
-  }} emit={emit} children={undefined} />;
 }
 
 function MathChallenge({ node, emit }: ProjectionViewProps) {
@@ -1977,7 +1552,6 @@ export const FLOOR_COMPONENTS: Record<string, ProjectionView> = {
   row: Row,
   col: Col,
   panel: Panel,
-  "growing-container": GrowingContainerPrimitive,
   text: Text,
   heading: Heading,
   note: Note,
@@ -1987,18 +1561,15 @@ export const FLOOR_COMPONENTS: Record<string, ProjectionView> = {
   narrative: Narrative,
   property: Property,
   maplist: MapList,
-  timeline: Timeline,
   stats: Stats,
   diff: Diff,
   vocabulary: Vocabulary,
   codeBlock: CodeBlock,
-  chart: ChartPrimitive,
   markdown: Markdown,
   markup: Markdown,
   todo: Todo,
   actions: Actions,
   notes: Notes,
-  "editable-table": PrimitiveEditableTable,
   "multi-file-upload": MultiFileUpload,
   list: List,
   table: Table,
@@ -2007,9 +1578,7 @@ export const FLOOR_COMPONENTS: Record<string, ProjectionView> = {
   textarea: TextArea,
   "json-field": JsonField,
   select: Select,
-  form: PrimitiveForm,
   button: Button,
-  "timer-button": TimerButton,
   "math-challenge": MathChallenge,
   tabBar: TabBar,
   chips: Chips,

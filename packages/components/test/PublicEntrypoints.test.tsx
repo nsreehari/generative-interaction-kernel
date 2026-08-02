@@ -12,6 +12,7 @@ test("semantic and primitive entry points expose distinct component layers", () 
   assert.ok("timeline" in semanticComponentDefinitions);
   assert.ok(!("chart" in semanticComponentDefinitions));
   assert.ok("chart" in primitiveComponentDefinitions);
+  assert.ok(!("timeline" in primitiveComponentDefinitions));
   assert.ok("timer-button" in primitiveComponentDefinitions);
   assert.equal(primitiveComponentDefinitions.chart.capability, "primitive:chart");
 });

@@ -51,21 +51,6 @@ test("narrative leaf renders empty placeholder when text is blank", () => {
   assert.match(markup, /Nothing to explain\./);
 });
 
-test("chart leaf renders an svg chart with axis labels", () => {
-  const markup = renderToStaticMarkup(renderNode(leaf("ui:chart", {
-    chartType: "bar",
-    columns: ["month", "sales"],
-    data: [
-      { month: "Jan", sales: 3 },
-      { month: "Feb", sales: 5 },
-    ],
-  }), registry, () => {}));
-
-  assert.match(markup, /<svg/);
-  assert.match(markup, />Jan<\/text>/);
-  assert.match(markup, />Feb<\/text>/);
-});
-
 test("todo leaf emits committed items on add", () => {
   const calls: Array<{ nodeId: string; name: string; payload?: Record<string, unknown> }> = [];
   const markup = renderToStaticMarkup(renderNode(leaf("ui:todo", {
@@ -91,16 +76,6 @@ test("actions leaf renders button row labels", () => {
   assert.match(markup, />Reject<\/button>/);
 });
 
-test("timer-button leaf renders its initial countdown", () => {
-  const markup = renderToStaticMarkup(renderNode(leaf("ui:timer-button", {
-    label: "Auto next",
-    durationMs: 300000,
-  }), registry, () => {}));
-
-  assert.match(markup, /aria-label="Auto next, 300 seconds remaining"/);
-  assert.match(markup, />Auto next · 5:00<\/button>/);
-});
-
 test("math-challenge leaf renders an accessible deterministic confirmation gate", () => {
   const markup = renderToStaticMarkup(renderNode(leaf("ui:math-challenge", {
     message: "Delete local blueprint 'draft-one'?",
@@ -114,23 +89,6 @@ test("math-challenge leaf renders an accessible deterministic confirmation gate"
   assert.match(markup, /type="submit" disabled=""/);
 });
 
-test("form leaf renders schema-driven fields and save shell", () => {
-  const markup = renderToStaticMarkup(renderNode(leaf("ui:form", {
-    fields: {
-      properties: {
-        status: { title: "Status", enum: ["open", "closed"] },
-        notes: { title: "Notes", format: "textarea" },
-      },
-      required: ["status"],
-    },
-    value: { status: "open", notes: "hello" },
-  }), registry, () => {}));
-
-  assert.match(markup, /Status/);
-  assert.match(markup, /Notes/);
-  assert.match(markup, /textarea/);
-});
-
 test("notes leaf renders textarea shell", () => {
   const markup = renderToStaticMarkup(renderNode(leaf("ui:notes", {
     content: "Draft note",
@@ -139,18 +97,6 @@ test("notes leaf renders textarea shell", () => {
 
   assert.match(markup, /textarea/);
   assert.match(markup, /Draft note/);
-});
-
-test("editable-table leaf renders headers and save affordance shell", () => {
-  const markup = renderToStaticMarkup(renderNode(leaf("ui:editable-table", {
-    spec: { columns: ["name", "amount"] },
-    rows: [{ name: "Budget", amount: 3 }],
-  }), registry, () => {}));
-
-  assert.match(markup, /<th[^>]*>.*name.*<\/th>/is);
-  assert.match(markup, /<th[^>]*>.*amount.*<\/th>/is);
-  assert.match(markup, /\+ Add row/);
-  assert.match(markup, /value="Budget"/);
 });
 
 test("multi-file-upload leaf renders grouped files and upload affordance", () => {
