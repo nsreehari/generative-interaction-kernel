@@ -1,11 +1,11 @@
 import React from "react";
-import { Badge, Card, CardHeader, Divider, Text, makeStyles, tokens } from "@fluentui/react-components";
+import { Badge, Card, CardHeader, Divider, Text, makeStyles, mergeClasses, tokens } from "@fluentui/react-components";
 import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
 import { trialNode, type ComponentDescription, type ComponentValidationReport, type DeclarativeComponentDefinition } from "../definition";
-import { records, textAt, type BadgeColor } from "../shared";
+import { componentRootProps, componentStylePropsSchema, records, textAt, type BadgeColor } from "../shared";
 
 export const SEQUENCE_SEMANTIC_TOKENS = ["complete", "current", "upcoming", "blocked", "skipped", "unknown"] as const;
 export const SEQUENCE_VARIANTS = ["standard", "compact"] as const;
@@ -18,6 +18,7 @@ const sequencePropsSchema = {
   additionalProperties: false,
   required: ["items", "spec"],
   properties: {
+    ...componentStylePropsSchema,
     items: { type: "array", items: { type: "object" } },
     variant: { enum: SEQUENCE_VARIANTS },
     spec: {
@@ -74,17 +75,17 @@ export const Sequence: ProjectionView = ({ node }) => {
   const items = records(node.props.items);
   const spec = (node.props.spec ?? {}) as SequenceSpec;
   const variant = (node.props.variant ?? "standard") as SequenceVariant;
-  if (!spec.fields || items.length === 0) return <Text>{spec.emptyText ?? "No sequence data."}</Text>;
+  if (!spec.fields || items.length === 0) return <Text {...componentRootProps(node)}>{spec.emptyText ?? "No sequence data."}</Text>;
   const ordered = spec.fields.order ? [...items].sort((left, right) => Number(textAt(left, spec.fields.order)) - Number(textAt(right, spec.fields.order))) : items;
-  return <Card className={`${styles.root} ${variant === "compact" ? styles.compactRoot : ""}`} appearance="outline">
+  return <Card {...componentRootProps(node, mergeClasses(styles.root, variant === "compact" && styles.compactRoot))} appearance="outline">
     {spec.title || spec.description ? <CardHeader header={<div className={styles.heading}>{spec.title ? <Text weight="semibold" size={500}>{spec.title}</Text> : null}{spec.description ? <Text>{spec.description}</Text> : null}</div>} /> : null}
-    <ol className={`${styles.list} ${variant === "compact" ? styles.compactList : ""} ${spec.orientation === "vertical" ? styles.vertical : ""}`}>
+    <ol className={mergeClasses(styles.list, variant === "compact" && styles.compactList, spec.orientation === "vertical" && styles.vertical)}>
       {ordered.map((item, index) => {
         const status = textAt(item, spec.fields.status);
         const token = spec.toneMap?.[status];
         return <React.Fragment key={textAt(item, spec.fields.id) || index}>
           {index > 0 ? <Divider vertical={spec.orientation !== "vertical"} /> : null}
-          <li className={`${styles.step} ${variant === "compact" ? styles.compactStep : ""}`}>
+          <li className={mergeClasses(styles.step, variant === "compact" && styles.compactStep)}>
             <div className={styles.titleRow}><Text weight="semibold">{textAt(item, spec.fields.title)}</Text>{token ? <Badge appearance="tint" color={tokenColor(token)}>{status}</Badge> : null}</div>
             {spec.fields.reference && textAt(item, spec.fields.reference) ? <Text size={200}>{textAt(item, spec.fields.reference)}</Text> : null}
             {spec.fields.detail && textAt(item, spec.fields.detail) ? <Text className={styles.detail}>{textAt(item, spec.fields.detail)}</Text> : null}

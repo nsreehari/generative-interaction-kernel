@@ -5,6 +5,7 @@ import {
   CardHeader,
   Text,
   makeStyles,
+  mergeClasses,
   tokens,
 } from "@fluentui/react-components";
 import type { Json } from "@gik/kernel";
@@ -17,6 +18,7 @@ import {
   type ComponentValidationReport,
   type DeclarativeComponentDefinition,
 } from "../definition";
+import { componentRootProps, componentStylePropsSchema } from "../shared";
 
 export const TIMELINE_SEMANTIC_TOKENS = ["past", "current", "upcoming", "blocked", "unknown"] as const;
 export const TIMELINE_VARIANTS = ["standard", "compact", "minimal"] as const;
@@ -28,6 +30,7 @@ const timelinePropsSchema = {
   additionalProperties: false,
   required: ["items", "spec"],
   properties: {
+    ...componentStylePropsSchema,
     items: { type: "array", items: { type: "object" } },
     variant: { enum: TIMELINE_VARIANTS },
     spec: {
@@ -126,12 +129,12 @@ export const Timeline: ProjectionView = ({ node }) => {
   const fields = spec.fields;
 
   if (!fields || items.length === 0) {
-    return <Text>{spec.emptyText ?? "No timeline data."}</Text>;
+    return <Text {...componentRootProps(node)}>{spec.emptyText ?? "No timeline data."}</Text>;
   }
 
   const ordered = sortItems(items, fields, spec.sort?.direction ?? "ascending");
   return (
-    <Card className={`${styles.root} ${variant === "compact" ? styles.compactRoot : ""} ${variant === "minimal" ? styles.minimalRoot : ""}`} appearance="outline">
+    <Card {...componentRootProps(node, mergeClasses(styles.root, variant === "compact" && styles.compactRoot, variant === "minimal" && styles.minimalRoot))} appearance="outline">
       {spec.title || spec.description ? (
         <CardHeader header={<div className={styles.heading}>{spec.title ? <Text weight="semibold" size={500}>{spec.title}</Text> : null}{spec.description ? <Text>{spec.description}</Text> : null}</div>} />
       ) : null}
@@ -141,7 +144,7 @@ export const Timeline: ProjectionView = ({ node }) => {
           const status = fields.status ? String(item[fields.status] ?? "") : "";
           const token = spec.toneMap?.[status];
           return (
-            <li className={`${styles.item} ${variant === "compact" ? styles.compactItem : ""} ${variant === "minimal" ? styles.minimalItem : ""}`} key={id}>
+            <li className={mergeClasses(styles.item, variant === "compact" && styles.compactItem, variant === "minimal" && styles.minimalItem)} key={id}>
               <time className={styles.time}><Text>{String(item[fields.timestamp] ?? "")}</Text></time>
               <div className={styles.content}>
                 <div className={styles.titleRow}>

@@ -16,6 +16,10 @@ import {
   SemanticGraph,
   Sequence,
   TimerButton,
+  Form,
+  EditableTable,
+  appendEditableRowOnLastRowFocus,
+  committedEditableRows,
   actionBoardDefinition,
   annotatedSourceExcerptDefinition,
   chartDefinition,
@@ -53,6 +57,9 @@ import {
   semanticGraphDefinition,
   sequenceDefinition,
   timerButtonDefinition,
+  formDefinition,
+  editableTableDefinition,
+  withTrailingEditableRow,
   preflightSemanticComponent,
   shouldGrowingContainerFollowEnd,
   validateSemanticComponentProps,
@@ -104,7 +111,7 @@ test("component schemas reject semantic tokens outside each component vocabulary
 
 test("public registries separate primitives from semantic structures and expose an aggregate", () => {
   const semantic = ["action-board", "annotated-source-excerpt", "decision-summary", "entity-constellation", "evidence-trail", "metric-comparison", "narrative-section", "semantic-graph", "sequence", "timeline"];
-  const primitives = ["chart", "growing-container", "timer-button"];
+  const primitives = ["chart", "editable-table", "form", "growing-container", "timer-button"];
   assert.deepEqual(Object.keys(semanticComponentViews).sort(), semantic);
   assert.deepEqual(Object.keys(semanticComponentDefinitions).sort(), semantic);
   assert.deepEqual(Object.keys(primitiveComponentViews), primitives);
@@ -115,6 +122,20 @@ test("public registries separate primitives from semantic structures and expose 
   assert.deepEqual(growingContainerDefinition.slots, ["children"]);
   assert.deepEqual(timerButtonDefinition.events, ["press"]);
   assert.deepEqual(actionBoardDefinition.events, ["action"]);
+});
+
+test("Fluent components forward root className and style overrides", () => {
+  for (const definition of Object.values(componentDefinitions)) {
+    const trial = definition.materializeTrial();
+    trial.props.className = "callsite-override";
+    trial.props.style = { maxWidth: "40rem" };
+
+    assert.equal(definition.validate(trial.props).ok, true, definition.capability);
+    const Component = definition.component;
+    const markup = renderToStaticMarkup(<Component node={trial} emit={() => {}} children={undefined} />);
+    assert.match(markup, /class="[^"]*callsite-override[^"]*"/, definition.capability);
+    assert.match(markup, /style="max-width:40rem"/, definition.capability);
+  }
 });
 
 test("component definitions expose closed agent-facing variant contracts", () => {
@@ -246,8 +267,8 @@ test("growing container exposes closed props and accessible slot rendering", () 
   const markup = renderToStaticMarkup(
     <GrowingContainerPrimitive node={trial} emit={() => {}}>Appended output</GrowingContainerPrimitive>,
   );
-  assert.match(markup, /class="gik-growing-container"/);
-  assert.match(markup, /class="gik-growing-container-content"/);
+  assert.match(markup, /class="[^"]*gik-growing-container(?:\s|\")/);
+  assert.match(markup, /class="[^"]*gik-growing-container-content(?:\s|\")/);
   assert.match(markup, /role="region"/);
   assert.match(markup, /aria-label="Streaming output"/);
   assert.match(markup, /Appended output/);
@@ -282,4 +303,27 @@ test("timer button exposes a closed countdown action contract", () => {
   assert.match(autoOnlyMarkup, /5 seconds remaining/);
   assert.equal(formatTimerButtonCountdown(59), "59");
   assert.equal(formatTimerButtonCountdown(300), "5:00");
+});
+
+test("form renders schema fields with Fluent controls", () => {
+  const trial = formDefinition.materializeTrial();
+  assert.equal(formDefinition.validate(trial.props).ok, true);
+  assert.equal(formDefinition.validate({ fields: {}, extra: true }).ok, false);
+  const markup = renderToStaticMarkup(<Form node={trial} emit={() => {}} children={undefined} />);
+  assert.match(markup, /Name/);
+  assert.match(markup, /Active/);
+  assert.match(markup, /fui-Input/);
+  assert.match(markup, /fui-Checkbox/);
+});
+
+test("editable table preserves draft row helpers and renders Fluent controls", () => {
+  const trial = editableTableDefinition.materializeTrial();
+  assert.equal(editableTableDefinition.validate(trial.props).ok, true);
+  const markup = renderToStaticMarkup(<EditableTable node={trial} emit={() => {}} children={undefined} />);
+  assert.match(markup, /fui-Table/);
+  assert.match(markup, /fui-Input/);
+  assert.match(markup, /Add row/);
+  const rows = withTrailingEditableRow([{ name: "Budget" }], ["name"]);
+  assert.deepEqual(committedEditableRows(rows), [{ name: "Budget" }]);
+  assert.deepEqual(appendEditableRowOnLastRowFocus(rows, ["name"], 1), [...rows, { name: "" }]);
 });

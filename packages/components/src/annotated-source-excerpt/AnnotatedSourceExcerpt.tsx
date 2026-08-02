@@ -1,18 +1,18 @@
 import React from "react";
-import { Badge, Text, makeStyles, tokens } from "@fluentui/react-components";
+import { Badge, Text, makeStyles, mergeClasses, tokens } from "@fluentui/react-components";
 import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
 import { trialNode, type ComponentDescription, type ComponentValidationReport, type DeclarativeComponentDefinition } from "../definition";
-import { records, textAt, type BadgeColor } from "../shared";
+import { componentRootProps, componentStylePropsSchema, records, textAt, type BadgeColor } from "../shared";
 
 export const ANNOTATED_SOURCE_EXCERPT_SEMANTIC_TOKENS = ["highlight", "warning", "critical", "context", "positive"] as const;
 export const ANNOTATED_SOURCE_EXCERPT_VARIANTS = ["annotated", "compact"] as const;
 type SourceToken = typeof ANNOTATED_SOURCE_EXCERPT_SEMANTIC_TOKENS[number];
 const schema = {
   $schema: "http://json-schema.org/draft-07/schema#", type: "object", additionalProperties: false, required: ["lines", "spec"],
-  properties: { lines: { type: "array", items: { type: "object" } }, variant: { enum: ANNOTATED_SOURCE_EXCERPT_VARIANTS }, spec: { type: "object", additionalProperties: false, required: ["fields"], properties: {
+  properties: { ...componentStylePropsSchema, lines: { type: "array", items: { type: "object" } }, variant: { enum: ANNOTATED_SOURCE_EXCERPT_VARIANTS }, spec: { type: "object", additionalProperties: false, required: ["fields"], properties: {
     title: { type: "string" }, language: { type: "string" }, sourceLabel: { type: "string" }, emptyText: { type: "string" }, fields: { type: "object", additionalProperties: false, required: ["number", "text"], properties: { number: { type: "string", minLength: 1 }, text: { type: "string", minLength: 1 }, annotation: { type: "string", minLength: 1 }, tone: { type: "string", minLength: 1 } } }, toneMap: { type: "object", additionalProperties: { enum: ANNOTATED_SOURCE_EXCERPT_SEMANTIC_TOKENS } },
   } } },
 } as const;
@@ -21,8 +21,8 @@ const useStyles = makeStyles({ root: { display: "grid", gap: tokens.spacingVerti
 function color(token: SourceToken): BadgeColor { if (token === "critical") return "danger"; if (token === "warning") return "warning"; if (token === "positive") return "success"; if (token === "highlight") return "brand"; return "informative"; }
 export const AnnotatedSourceExcerpt: ProjectionView = ({ node }) => {
   const styles = useStyles(); const lines = records(node.props.lines); const spec = (node.props.spec ?? {}) as SourceSpec; const compact = (node.props.variant ?? "annotated") === "compact";
-  if (!spec.fields || lines.length === 0) return <Text>{spec.emptyText ?? "No source excerpt available."}</Text>;
-  return <figure className={styles.root} aria-label={spec.title ?? "Annotated source excerpt"}><figcaption className={styles.header}><div>{spec.title ? <Text weight="semibold">{spec.title}</Text> : null}{spec.language ? <Badge appearance="outline">{spec.language}</Badge> : null}</div>{spec.sourceLabel ? <Text className={styles.source} size={200}>{spec.sourceLabel}</Text> : null}</figcaption><div className={styles.code}>{lines.map((line, index) => { const annotation = textAt(line, spec.fields.annotation); const toneValue = textAt(line, spec.fields.tone); const token = toneValue ? spec.toneMap?.[toneValue] : undefined; return <div className={`${styles.line} ${compact ? styles.compactLine : ""}`} key={`${textAt(line, spec.fields.number)}-${index}`}><Text className={styles.number}>{textAt(line, spec.fields.number)}</Text><Text className={styles.text}>{textAt(line, spec.fields.text)}</Text>{!compact ? <div className={styles.annotation}>{token ? <Badge appearance="tint" color={color(token)}>{toneValue}</Badge> : null}{annotation ? <Text size={200}>{annotation}</Text> : null}</div> : null}</div>; })}</div></figure>;
+  if (!spec.fields || lines.length === 0) return <Text {...componentRootProps(node)}>{spec.emptyText ?? "No source excerpt available."}</Text>;
+  return <figure {...componentRootProps(node, styles.root)} aria-label={spec.title ?? "Annotated source excerpt"}><figcaption className={styles.header}><div>{spec.title ? <Text weight="semibold">{spec.title}</Text> : null}{spec.language ? <Badge appearance="outline">{spec.language}</Badge> : null}</div>{spec.sourceLabel ? <Text className={styles.source} size={200}>{spec.sourceLabel}</Text> : null}</figcaption><div className={styles.code}>{lines.map((line, index) => { const annotation = textAt(line, spec.fields.annotation); const toneValue = textAt(line, spec.fields.tone); const token = toneValue ? spec.toneMap?.[toneValue] : undefined; return <div className={mergeClasses(styles.line, compact && styles.compactLine)} key={`${textAt(line, spec.fields.number)}-${index}`}><Text className={styles.number}>{textAt(line, spec.fields.number)}</Text><Text className={styles.text}>{textAt(line, spec.fields.text)}</Text>{!compact ? <div className={styles.annotation}>{token ? <Badge appearance="tint" color={color(token)}>{toneValue}</Badge> : null}{annotation ? <Text size={200}>{annotation}</Text> : null}</div> : null}</div>; })}</div></figure>;
 };
 const description: ComponentDescription = { capability: "semantic:annotated-source-excerpt", summary: "Displays exact source lines with stable line numbers and optional inline semantic annotations.", dataProp: "lines", events: [], semanticTokens: ANNOTATED_SOURCE_EXCERPT_SEMANTIC_TOKENS, defaultVariant: "annotated", variants: [{ value: "annotated", summary: "Source lines and a dedicated annotation column.", useWhen: ["Users must inspect commentary beside exact lines", "Annotations are central evidence"] }, { value: "compact", summary: "Line-numbered source without annotation details.", useWhen: ["The excerpt is supporting context", "Annotations are summarized elsewhere"] }], authoring: { useWhen: ["Exact source wording and line references matter", "Findings attach to individual lines"], avoidWhen: ["Evidence spans independent sources; use evidence-trail", "Content is explanatory prose rather than quoted source; use narrative-section"], rules: ["Preserve source text exactly", "Supply stable displayed line numbers", "Do not execute or syntax-highlight source content", "Map annotation tones only to recognized tokens"] } };
 export function describeAnnotatedSourceExcerpt() { return description; }

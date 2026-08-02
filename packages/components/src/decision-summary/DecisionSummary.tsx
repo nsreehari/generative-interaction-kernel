@@ -1,11 +1,11 @@
 import React from "react";
-import { Badge, Card, CardHeader, Divider, Text, makeStyles, tokens } from "@fluentui/react-components";
+import { Badge, Card, CardHeader, Divider, Text, makeStyles, mergeClasses, tokens } from "@fluentui/react-components";
 import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
 import { trialNode, type ComponentDescription, type ComponentValidationReport, type DeclarativeComponentDefinition } from "../definition";
-import { asRecord, textAt, type BadgeColor } from "../shared";
+import { asRecord, componentRootProps, componentStylePropsSchema, textAt, type BadgeColor } from "../shared";
 
 export const DECISION_SUMMARY_SEMANTIC_TOKENS = ["affirmative", "cautionary", "negative", "uncertain", "neutral"] as const;
 export const DECISION_SUMMARY_VARIANTS = ["detailed", "concise"] as const;
@@ -14,6 +14,7 @@ type DecisionSummaryVariant = typeof DECISION_SUMMARY_VARIANTS[number];
 const decisionSummaryPropsSchema = {
   $schema: "http://json-schema.org/draft-07/schema#", type: "object", additionalProperties: false, required: ["decision", "spec"],
   properties: {
+    ...componentStylePropsSchema,
     decision: { type: "object" },
     variant: { enum: DECISION_SUMMARY_VARIANTS },
     spec: { type: "object", additionalProperties: false, required: ["fields"], properties: {
@@ -33,10 +34,10 @@ function tokenColor(token: DecisionToken): BadgeColor { if (token === "affirmati
 export const DecisionSummary: ProjectionView = ({ node }) => {
   const styles = useStyles(); const decision = asRecord(node.props.decision); const spec = (node.props.spec ?? {}) as DecisionSpec;
   const variant = (node.props.variant ?? "detailed") as DecisionSummaryVariant;
-  if (!spec.fields || Object.keys(decision).length === 0) return <Text>{spec.emptyText ?? "No decision available."}</Text>;
+  if (!spec.fields || Object.keys(decision).length === 0) return <Text {...componentRootProps(node)}>{spec.emptyText ?? "No decision available."}</Text>;
   const outcome = textAt(decision, spec.fields.outcome); const toneValue = textAt(decision, spec.fields.tone) || outcome; const token = spec.toneMap?.[toneValue];
   const facts = [[spec.labels?.confidence ?? "Confidence", spec.fields.confidence], [spec.labels?.impact ?? "Impact", spec.fields.impact], [spec.labels?.rationale ?? "Rationale", spec.fields.rationale]] as const;
-  return <Card className={`${styles.root} ${variant === "concise" ? styles.conciseRoot : ""}`} appearance="outline"><CardHeader header={<div className={styles.header}>{spec.eyebrow ? <Text className={styles.eyebrow} size={200}>{spec.eyebrow}</Text> : null}<Text weight="semibold" size={600}>{textAt(decision, spec.fields.title)}</Text><div>{token ? <Badge appearance="filled" color={tokenColor(token)}>{outcome}</Badge> : <Badge appearance="outline">{outcome}</Badge>}</div><Text className={styles.summary}>{textAt(decision, spec.fields.summary)}</Text></div>} />{variant === "detailed" ? <><Divider /><div className={styles.facts}>{facts.flatMap(([label, field]) => field && textAt(decision, field) ? [<div className={styles.fact} key={label}><Text className={styles.label} size={200}>{label}</Text><Text weight="semibold">{textAt(decision, field)}</Text></div>] : [])}</div></> : null}</Card>;
+  return <Card {...componentRootProps(node, mergeClasses(styles.root, variant === "concise" && styles.conciseRoot))} appearance="outline"><CardHeader header={<div className={styles.header}>{spec.eyebrow ? <Text className={styles.eyebrow} size={200}>{spec.eyebrow}</Text> : null}<Text weight="semibold" size={600}>{textAt(decision, spec.fields.title)}</Text><div>{token ? <Badge appearance="filled" color={tokenColor(token)}>{outcome}</Badge> : <Badge appearance="outline">{outcome}</Badge>}</div><Text className={styles.summary}>{textAt(decision, spec.fields.summary)}</Text></div>} />{variant === "detailed" ? <><Divider /><div className={styles.facts}>{facts.flatMap(([label, field]) => field && textAt(decision, field) ? [<div className={styles.fact} key={label}><Text className={styles.label} size={200}>{label}</Text><Text weight="semibold">{textAt(decision, field)}</Text></div>] : [])}</div></> : null}</Card>;
 };
 const description: ComponentDescription = { capability: "semantic:decision-summary", summary: "Summarizes a decision, its outcome, rationale, confidence, and impact.", dataProp: "decision", events: [], semanticTokens: DECISION_SUMMARY_SEMANTIC_TOKENS, defaultVariant: "detailed", variants: [{ value: "detailed", summary: "Complete decision context including rationale, confidence, and impact.", useWhen: ["The decision is a primary result", "Users must assess supporting reasoning"] }, { value: "concise", summary: "Decision title, outcome, and summary without supporting facts.", useWhen: ["The decision is repeated in a list or dashboard", "Supporting facts are available elsewhere"] }], authoring: { useWhen: ["One decision or determination is the focal result", "Users need rationale and confidence together"], avoidWhen: ["Several metrics are the focal comparison; use metric-comparison", "Users must choose among options; use a selection component"], rules: ["Map title, summary, and outcome", "Use dotted field paths for nested records", "Choose only a declared variant", "Map outcome or tone values only to recognized decision tokens"] } };
 export function describeDecisionSummary() { return description; }

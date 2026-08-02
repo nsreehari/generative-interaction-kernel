@@ -1,11 +1,11 @@
 import React from "react";
-import { Badge, Card, Text, makeStyles, tokens } from "@fluentui/react-components";
+import { Badge, Card, Text, makeStyles, mergeClasses, tokens } from "@fluentui/react-components";
 import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
 import { trialNode, type ComponentDescription, type ComponentValidationReport, type DeclarativeComponentDefinition } from "../definition";
-import { records, textAt, type BadgeColor } from "../shared";
+import { componentRootProps, componentStylePropsSchema, records, textAt, type BadgeColor } from "../shared";
 
 export const METRIC_COMPARISON_SEMANTIC_TOKENS = ["positive", "negative", "warning", "neutral", "unknown"] as const;
 export const METRIC_COMPARISON_VARIANTS = ["standard", "compact", "ranked"] as const;
@@ -18,6 +18,7 @@ const metricComparisonPropsSchema = {
   additionalProperties: false,
   required: ["metrics", "spec"],
   properties: {
+    ...componentStylePropsSchema,
     metrics: { type: "array", items: { type: "object" } },
     variant: { enum: METRIC_COMPARISON_VARIANTS },
     spec: {
@@ -80,11 +81,11 @@ export const MetricComparison: ProjectionView = ({ node }) => {
   const metrics = records(node.props.metrics);
   const spec = (node.props.spec ?? {}) as MetricSpec;
   const variant = (node.props.variant ?? "standard") as MetricComparisonVariant;
-  if (!spec.fields || metrics.length === 0) return <Text>{spec.emptyText ?? "No metrics available."}</Text>;
+  if (!spec.fields || metrics.length === 0) return <Text {...componentRootProps(node)}>{spec.emptyText ?? "No metrics available."}</Text>;
 
-  return <section className={styles.root} aria-label={spec.title ?? "Metric comparison"}>
+  return <section {...componentRootProps(node, styles.root)} aria-label={spec.title ?? "Metric comparison"}>
     {spec.title ? <Text weight="semibold" size={500}>{spec.title}</Text> : null}
-    <div className={`${styles.grid} ${variant !== "standard" ? styles.compactGrid : ""}`}>
+    <div className={mergeClasses(styles.grid, variant !== "standard" && styles.compactGrid)}>
       {metrics.map((metric, index) => {
         const toneValue = textAt(metric, spec.fields.tone);
         const token = toneValue ? spec.toneMap?.[toneValue] : undefined;
@@ -99,7 +100,7 @@ export const MetricComparison: ProjectionView = ({ node }) => {
         </div>;
         return <Card
           key={`${textAt(metric, spec.fields.label)}-${index}`}
-          className={`${styles.metric} ${variant === "compact" ? styles.compactMetric : ""} ${variant === "ranked" ? styles.rankedMetric : ""}`}
+          className={mergeClasses(styles.metric, variant === "compact" && styles.compactMetric, variant === "ranked" && styles.rankedMetric)}
           appearance="outline"
         >
           {variant === "ranked" ? <Text className={styles.rank} size={500} weight="semibold">{index + 1}</Text> : null}

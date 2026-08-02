@@ -37,6 +37,7 @@ api_policy:
     - semanticComponentCapabilities for programmatic manifest construction.
     - semanticComponentAuthoringTools as the semantic-components convenience AgentFace tool catalog.
     - primitiveComponentViews, primitiveComponentDefinitions, and primitiveComponentCapabilities.
+    - primitiveComponentAuthoringTools as the primitive-components convenience AgentFace tool catalog.
     - componentViews, componentDefinitions, and componentCapabilities as aggregate compatibility registries.
   authoring_functions:
     - listSemanticComponents
@@ -47,6 +48,14 @@ api_policy:
     - getSemanticComponentAgentInstructions
     - createSemanticComponentAuthoringTools
     - getSemanticComponentAgentKit
+    - listPrimitiveComponents
+    - describePrimitiveComponent
+    - validatePrimitiveComponentProps
+    - preflightPrimitiveComponent
+    - materializePrimitiveComponentTrial
+    - getPrimitiveComponentAgentInstructions
+    - createPrimitiveComponentAuthoringTools
+    - getPrimitiveComponentAgentKit
   gik_component_props:
     required: [kind]
     structured: [spec, data, componentProps]
@@ -72,7 +81,7 @@ architecture:
   layers:
     primitives:
       definition: Domain-neutral rendering and interaction mechanics without business meaning.
-      current: [chart, growing-container, timer-button]
+      current: [chart, editable-table, form, growing-container, timer-button]
       candidates: [badge, list, card]
     semantic:
       definition: Domain-neutral information structures whose meaning is supplied by bundle data and configuration.
@@ -89,6 +98,12 @@ architecture:
   host_assumptions:
     - A FluentProvider supplies the active Fluent 2 theme.
     - Projection providers are registered explicitly; nothing is ambient.
+  styling_contract:
+    - Components use Fluent makeStyles and theme tokens for component-owned visual treatment.
+    - Every component accepts native root className and style props.
+    - Root classes use mergeClasses with the consumer class last so callsite Griffel rules win.
+    - Nested customization uses declared Fluent slot props where a component exposes slots.
+    - The package does not expose a synthetic or Fluent v8-style styles prop.
   does_not_own:
     - A theme or palette.
     - A global semantic provider.
@@ -144,6 +159,8 @@ agent_authoring:
 
 primitive_components:
   - chart
+  - editable-table
+  - form
   - growing-container
   - timer-button
 

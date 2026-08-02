@@ -147,8 +147,8 @@ test("editable-table leaf renders headers and save affordance shell", () => {
     rows: [{ name: "Budget", amount: 3 }],
   }), registry, () => {}));
 
-  assert.match(markup, /<th>name<\/th>/i);
-  assert.match(markup, /<th>amount<\/th>/i);
+  assert.match(markup, /<th[^>]*>.*name.*<\/th>/is);
+  assert.match(markup, /<th[^>]*>.*amount.*<\/th>/is);
   assert.match(markup, /\+ Add row/);
   assert.match(markup, /value="Budget"/);
 });

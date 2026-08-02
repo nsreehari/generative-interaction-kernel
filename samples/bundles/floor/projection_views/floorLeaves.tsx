@@ -8,9 +8,13 @@
 
 import React from "react";
 import "@xyflow/react/dist/style.css";
-import { GrowingContainerPrimitive, TimerButton as PrimitiveTimerButton } from "@gik/components/primitives";
+import {
+  EditableTable as PrimitiveEditableTable,
+  Form as PrimitiveForm,
+  GrowingContainerPrimitive,
+  TimerButton as PrimitiveTimerButton,
+} from "@gik/components/primitives";
 import { unwrap, type Json, type ResolvedNode } from "@gik/kernel";
-import { runDeclarativeValidators } from "@gik/evaluators";
 import {
   buildBundleRegistry,
   bundleSignature,
@@ -30,6 +34,12 @@ import {
 } from "@gik/react";
 
 export { GrowingContainer, GrowingContainerPrimitive } from "@gik/components/primitives";
+export {
+  appendEditableRowOnLastRowFocus,
+  committedEditableRows,
+  isEmptyEditableRow,
+  withTrailingEditableRow,
+} from "@gik/components/primitives";
 export type { GrowingContainerFollowEnd, GrowingContainerProps } from "@gik/components/primitives";
 
 interface Option {
@@ -61,26 +71,6 @@ interface SingleFieldConfig {
   isRequired: boolean;
 }
 
-interface EditableTableSpec {
-  schema?: { properties?: Record<string, Record<string, unknown>> };
-  columns?: string[];
-  addRow?: boolean;
-  deleteRow?: boolean;
-  placeholder?: string;
-}
-
-interface FormSchema {
-  properties?: Record<string, Record<string, unknown>>;
-  required?: string[];
-  // Declarative validators. Legacy JSONata shorthands (`[expr, message]`, `{ expr, message }`) still
-  // normalize to `{ kind: "jsonata", ... }`. Explicit validator objects may also use
-  // `{ kind: "ajv-schema", schema, message? }`,
-  // `{ kind: "typedef", type, message? }`, or
-  // `{ kind: "jsonata-expression", mode?: "full" | "safe", message? }`.
-  // Runtime JSONata validators run with the SAFE subset.
-  validators?: unknown;
-}
-
 interface MultiFileUploadGroup {
   message?: string;
   file_idxs?: number[];
@@ -99,85 +89,10 @@ function useSyncedValue(incoming: string): [string, (v: string) => void] {
   return [local, setLocal];
 }
 
-interface DraftState<T> {
-  /** The working copy the editor renders and mutates. */
-  draft: T;
-  /** Raw setter (value or updater); does NOT flag dirty — for internal derived writes. */
-  setDraft: React.Dispatch<React.SetStateAction<T>>;
-  /** Whether the draft has diverged from the last upstream value. */
-  dirty: boolean;
-  setDirty: React.Dispatch<React.SetStateAction<boolean>>;
-  /** Apply a user edit: writes the value AND flags dirty. */
-  update: (next: T) => void;
-  /** Revert to the current upstream value and clear dirty. */
-  reset: () => void;
-}
-
-// Shared committed-editor draft state (Form, EditableTable). Holds a working copy of `incoming`,
-// tracks whether it diverged, and re-syncs (clearing dirty) whenever the upstream value changes —
-// keyed on a JSON signature so a fresh server value replaces an untouched draft.
-function useDraftState<T>(incoming: T): DraftState<T> {
-  const signature = JSON.stringify(incoming);
-  const [draft, setDraft] = React.useState<T>(incoming);
-  const [dirty, setDirty] = React.useState(false);
-  React.useEffect(() => {
-    setDraft(incoming);
-    setDirty(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature]);
-  const update = React.useCallback((next: T) => {
-    setDraft(next);
-    setDirty(true);
-  }, []);
-  const reset = React.useCallback(() => {
-    setDraft(incoming);
-    setDirty(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature]);
-  return { draft, setDraft, dirty, setDirty, update, reset };
-}
-
 function toOptions(raw: unknown[]): Option[] {
   return raw.map((o) =>
     typeof o === "string" ? { value: o, label: o } : (o as Option)
   );
-}
-
-function buildFieldOptions(prop: Record<string, unknown>): unknown[] | null {
-  if (Array.isArray(prop.oneOf)) {
-    return prop.oneOf.map((item) => {
-      const record = item as Record<string, unknown>;
-      return { value: String(record.const ?? ""), label: String(record.title ?? record.const ?? "") };
-    });
-  }
-  if (Array.isArray(prop.options)) return prop.options as unknown[];
-  if (Array.isArray(prop.enum)) {
-    const enumNames = Array.isArray(prop.enumNames) ? prop.enumNames : null;
-    return (prop.enum as unknown[]).map((value, index) => ({
-      value: String(value ?? ""),
-      label: String(enumNames?.[index] ?? value ?? ""),
-    }));
-  }
-  return null;
-}
-
-function buildMultiOptions(prop: Record<string, unknown>): unknown[] {
-  const items = (prop.items ?? {}) as Record<string, unknown>;
-  if (Array.isArray(items.oneOf)) {
-    return items.oneOf.map((item) => {
-      const record = item as Record<string, unknown>;
-      return { value: String(record.const ?? ""), label: String(record.title ?? record.const ?? "") };
-    });
-  }
-  if (Array.isArray(prop.options)) return prop.options as unknown[];
-  if (Array.isArray(items.enum)) {
-    const enumNames = Array.isArray(items.enumNames) ? items.enumNames : null;
-    return (items.enum as unknown[]).map((value, index) => ({
-      value: String(value ?? ""),
-      label: String(enumNames?.[index] ?? value ?? ""),
-    }));
-  }
-  return [];
 }
 
 function toColumns(raw: unknown[]): Column[] {
@@ -217,57 +132,6 @@ export function sortRows<T extends Record<string, unknown>>(rows: T[], key: stri
   return rows.map((row, index) => ({ row, index }))
     .sort((a, b) => compareCells(a.row[key], b.row[key], dir) || a.index - b.index)
     .map((entry) => entry.row);
-}
-
-function isMultiSelect(prop: Record<string, unknown>): boolean {
-  const items = (prop.items ?? {}) as Record<string, unknown>;
-  return prop.type === "array" && (Array.isArray(items.enum) || Array.isArray(items.oneOf) || Array.isArray(prop.options));
-}
-
-function isSelectField(prop: Record<string, unknown>): boolean {
-  return buildFieldOptions(prop) != null;
-}
-
-function isTextareaField(prop: Record<string, unknown>): boolean {
-  return prop.format === "textarea" || prop.multiline === true;
-}
-
-function inputTypeFor(prop: Record<string, unknown>): string {
-  if (prop.format === "date") return "date";
-  if (prop.format === "time") return "time";
-  if (prop.format === "date-time" || prop.format === "datetime") return "datetime-local";
-  if (prop.type === "number" || prop.type === "integer") return "number";
-  return "text";
-}
-
-function formatTemporalValue(prop: Record<string, unknown>, value: unknown): string {
-  if (value == null) return "";
-  const text = String(value);
-  if (prop.format === "date") return text.slice(0, 10);
-  if (prop.format === "date-time" || prop.format === "datetime") return text.slice(0, 16);
-  if (prop.format === "time") return text.slice(0, 5);
-  return text;
-}
-
-// Grid width (1–12 columns) for a form field. Honors an explicit `colSpan` (clamped); otherwise
-// compact controls (numbers, selects, temporal) default to half width and text/textarea span full.
-function formFieldSpan(prop: Record<string, unknown>): number {
-  const raw = prop.colSpan;
-  if (typeof raw === "number" && Number.isFinite(raw)) {
-    return Math.min(12, Math.max(1, Math.round(raw)));
-  }
-  const compact = prop.type === "number" || prop.type === "integer"
-    || isSelectField(prop) || isMultiSelect(prop)
-    || prop.format === "date" || prop.format === "time"
-    || prop.format === "date-time" || prop.format === "datetime";
-  return compact && !isTextareaField(prop) ? 6 : 12;
-}
-
-// Optional helper text shown under a field: JSON Schema `description`, or a plain `hint`.
-function fieldHint(prop: Record<string, unknown>): string {
-  if (typeof prop.description === "string") return prop.description;
-  if (typeof prop.hint === "string") return prop.hint;
-  return "";
 }
 
 // Categorical series colors come from the ThemeProvider (--gx-chart-1..10 role vars) so charts
@@ -668,77 +532,6 @@ function coerceFieldValue(raw: string, prop: Record<string, unknown>): string | 
   }
 
   return raw;
-}
-
-function editableRowsFrom(source: unknown[]): Array<Record<string, unknown>> {
-  return source.map((row) => {
-    if (!row || typeof row !== "object" || Array.isArray(row)) {
-      return { value: row ?? "" };
-    }
-
-    return { ...(row as Record<string, unknown>) };
-  });
-}
-
-function blankEditableRow(columns: string[]): Record<string, unknown> {
-  return Object.fromEntries(columns.map((column) => [column, ""]));
-}
-
-export function isEmptyEditableRow(row: Record<string, unknown>): boolean {
-  return Object.values(row).every((value) =>
-    value == null || (typeof value === "string" && value.trim() === "")
-  );
-}
-
-export function withTrailingEditableRow(
-  rows: Array<Record<string, unknown>>,
-  columns: string[]
-): Array<Record<string, unknown>> {
-  if (rows.length > 0 && isEmptyEditableRow(rows[rows.length - 1])) {
-    return rows;
-  }
-
-  return [...rows, blankEditableRow(columns)];
-}
-
-export function committedEditableRows(
-  rows: Array<Record<string, unknown>>
-): Array<Record<string, unknown>> {
-  return rows.filter((row) => !isEmptyEditableRow(row));
-}
-
-export function appendEditableRowOnLastRowFocus(
-  rows: Array<Record<string, unknown>>,
-  columns: string[],
-  rowIndex: number
-): Array<Record<string, unknown>> {
-  return rowIndex === rows.length - 1
-    ? [...rows, blankEditableRow(columns)]
-    : rows;
-}
-
-function editableColumns(spec: EditableTableSpec, rows: Array<Record<string, unknown>>): string[] {
-  if (Array.isArray(spec.columns) && spec.columns.length > 0) {
-    return spec.columns.map(String);
-  }
-
-  const schemaColumns = Object.keys(spec.schema?.properties ?? {});
-  if (schemaColumns.length > 0) {
-    return schemaColumns;
-  }
-
-  // Derive from the union of keys across ALL rows (first-seen order), not just the first row, so a
-  // ragged dataset where later rows introduce new fields still exposes every editable column.
-  const seen = new Set<string>();
-  const cols: string[] = [];
-  for (const row of rows) {
-    for (const key of Object.keys(row ?? {})) {
-      if (seen.has(key)) continue;
-      seen.add(key);
-      cols.push(key);
-    }
-  }
-  return cols;
 }
 
 function formatFileSize(size: number): string {
@@ -1555,11 +1348,6 @@ function TextArea({ node, emit }: ProjectionViewProps) {
   );
 }
 
-/** A `json` field renders a JSON textarea whose parse-validity gates the enclosing form's Save. */
-function isJsonField(prop: Record<string, unknown>): boolean {
-  return prop.format === "json" || prop.type === "json";
-}
-
 // A JSON text field: sugar for a single-field committed `Form` whose one field is a `json` textarea.
 // It is a reusable floor input (not console-specific): reads `value`/`data` (a parsed object or raw
 // JSON text), renders one JSON field with live parse validation, and — like any Form — emits
@@ -1589,257 +1377,7 @@ function JsonField({ node, emit }: ProjectionViewProps) {
     discardLabel: p.str("discardLabel", "Reset"),
   };
   const formNode: ResolvedNode = { ...node, props: formProps };
-  return <Form node={formNode} emit={emit} children={undefined} />;
-}
-
-function Form({ node, emit }: ProjectionViewProps) {
-  const p = readProps(node);
-  // Canonical schema prop is `fields`; `schema` is accepted as a defensive alias so a lowering
-  // recipe that binds `read.schema` (a natural authoring mistake) still renders instead of blanking.
-  const schema = p.obj<FormSchema>("fields", p.obj<FormSchema>("schema", {}));
-  const props = schema.properties ?? {};
-  const required = Array.isArray(schema.required) ? schema.required : [];
-  const incoming = p.obj<Record<string, unknown>>("value", p.obj<Record<string, unknown>>("data", {}));
-
-  // `json` fields keep their raw textarea text apart from the parsed `values` so an in-progress /
-  // invalid edit doesn't clobber the last parsed value or fight the controlled textarea.
-  const jsonKeys = React.useMemo(
-    () => Object.entries(props).filter(([, prop]) => isJsonField(prop ?? {})).map(([key]) => key),
-    [JSON.stringify(props)],
-  );
-  const jsonTextFrom = React.useCallback((source: Record<string, unknown>): Record<string, string> => {
-    const out: Record<string, string> = {};
-    for (const key of jsonKeys) {
-      const v = source[key];
-      out[key] = v === null || v === undefined ? "" : typeof v === "string" ? v : JSON.stringify(v, null, 2);
-    }
-    return out;
-  }, [jsonKeys]);
-
-  const validators = schema.validators;
-
-  const { draft: values, setDraft: setValues, dirty, setDirty, reset: resetValues } =
-    useDraftState<Record<string, unknown>>(incoming ?? {});
-  const [jsonText, setJsonText] = React.useState<Record<string, string>>(() => jsonTextFrom(incoming ?? {}));
-  const [jsonErrors, setJsonErrors] = React.useState<Record<string, string>>({});
-  const [validation, setValidation] = React.useState<{ checked: boolean; errors: string[] }>({ checked: false, errors: [] });
-
-  // Aux editor state (json text buffers, parse/validation errors) re-syncs alongside the shared draft
-  // whenever a fresh upstream value arrives.
-  React.useEffect(() => {
-    setJsonText(jsonTextFrom(incoming ?? {}));
-    setJsonErrors({});
-    setValidation({ checked: false, errors: [] });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(incoming)]);
-
-  const setField = (key: string, nextValue: unknown) => {
-    setValues((current) => ({ ...current, [key]: nextValue }));
-    setDirty(true);
-  };
-
-  const setJsonField = (key: string, text: string) => {
-    setJsonText((current) => ({ ...current, [key]: text }));
-    setDirty(true);
-    const trimmed = text.trim();
-    if (trimmed === "") {
-      setJsonErrors((cur) => ({ ...cur, [key]: "" }));
-      setValues((cur) => ({ ...cur, [key]: undefined }));
-      return;
-    }
-    try {
-      const parsed = JSON.parse(trimmed) as unknown;
-      setJsonErrors((cur) => ({ ...cur, [key]: "" }));
-      setValues((cur) => ({ ...cur, [key]: parsed }));
-    } catch (err) {
-      setJsonErrors((cur) => ({ ...cur, [key]: err instanceof Error ? err.message : "Invalid JSON" }));
-    }
-  };
-
-  const hasJsonError = Object.values(jsonErrors).some((message) => message);
-
-  // Re-run declarative validators whenever the committed values settle. Keyed on serialized values so
-  // the Save gate stays live without running per keystroke inside each field.
-  React.useEffect(() => {
-    if (!Array.isArray(validators) || validators.length === 0) return;
-    const report = runDeclarativeValidators(validators, values as Json);
-    setValidation({ checked: true, errors: report.errors.map((issue) => issue.detail) });
-  }, [validators, JSON.stringify(values)]);
-
-  const submitDisabled = hasJsonError || (validation.checked && validation.errors.length > 0);
-
-  const reset = () => {
-    resetValues();
-    setJsonText(jsonTextFrom(incoming ?? {}));
-    setJsonErrors({});
-    setValidation({ checked: false, errors: [] });
-  };
-
-  const submit = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (hasJsonError) return;
-    const report = runDeclarativeValidators(validators, values as Json);
-    setValidation({ checked: true, errors: report.errors.map((issue) => issue.detail) });
-    if (!report.ok) return;
-    emit("save", { values });
-    setDirty(false);
-  };
-
-  return (
-    <form className="gx-col" onSubmit={submit}>
-      <div className="gx-form-grid">
-      {Object.entries(props).map(([key, prop]) => {
-        const field = prop ?? {};
-        const title = String(field.title ?? key);
-        const isRequired = required.includes(key);
-        const current = values[key];
-        const disabled = field.readOnly === true || field.disabled === true;
-        const hint = fieldHint(field);
-        const cellClass = `gx-field-cell gx-col-span-${formFieldSpan(field)}`;
-        const hintNode = hint ? <span className="gx-field-hint">{hint}</span> : null;
-
-        if (isJsonField(field)) {
-          const rowsRaw = Number.parseInt(String(field.rows ?? 8), 10);
-          const rows = Number.isFinite(rowsRaw) && rowsRaw > 0 ? rowsRaw : 8;
-          const err = jsonErrors[key];
-          return (
-            <label key={key} className={`${cellClass} gx-field gx-json-field`}>
-              {field.title ? <span className="gx-field-label">{title}</span> : null}
-              <textarea
-                className={err ? "gx-json-input invalid" : "gx-json-input"}
-                spellCheck={false}
-                rows={rows}
-                value={jsonText[key] ?? ""}
-                placeholder={String(field.placeholder ?? "")}
-                required={isRequired}
-                readOnly={disabled}
-                onChange={(event) => setJsonField(key, event.target.value)}
-              />
-              {err ? <span className="gx-json-error" role="alert">{err}</span> : null}
-              {hintNode}
-            </label>
-          );
-        }
-
-        if (field.type === "boolean") {
-          return (
-            <label key={key} className={`${cellClass} gx-field-check`}>
-              <input
-                type="checkbox"
-                checked={Boolean(current)}
-                disabled={disabled}
-                onChange={(event) => setField(key, event.target.checked)}
-              />
-              <span className="gx-field-label">{title}</span>
-              {hintNode}
-            </label>
-          );
-        }
-
-        if (isMultiSelect(field)) {
-          const selected = Array.isArray(current) ? current.map(String) : [];
-          const options = toOptions(buildMultiOptions(field));
-          return (
-            <label key={key} className={`${cellClass} gx-field`}>
-              <span className="gx-field-label">{title}</span>
-              <select
-                multiple
-                value={selected}
-                required={isRequired}
-                disabled={disabled}
-                onChange={(event) => setField(key, Array.from(event.target.selectedOptions).map((option) => option.value))}
-              >
-                {options.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-              {hintNode}
-            </label>
-          );
-        }
-
-        if (isSelectField(field)) {
-          const options = toOptions(buildFieldOptions(field) ?? []);
-          const value = current == null ? "" : String(current);
-          return (
-            <label key={key} className={`${cellClass} gx-field`}>
-              <span className="gx-field-label">{title}</span>
-              <select value={value} required={isRequired} disabled={disabled} onChange={(event) => setField(key, event.target.value)}>
-                {isRequired ? null : <option value="">{String(field.placeholder ?? "All")}</option>}
-                {options.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-              {hintNode}
-            </label>
-          );
-        }
-
-        if (isTextareaField(field)) {
-          return (
-            <label key={key} className={`${cellClass} gx-field`}>
-              <span className="gx-field-label">{title}</span>
-              <textarea
-                rows={Number.parseInt(String(field.rows ?? 4), 10) || 4}
-                value={current == null ? "" : String(current)}
-                placeholder={String(field.placeholder ?? "")}
-                required={isRequired}
-                readOnly={disabled}
-                minLength={typeof field.minLength === "number" ? field.minLength : undefined}
-                maxLength={typeof field.maxLength === "number" ? field.maxLength : undefined}
-                onChange={(event) => setField(key, event.target.value)}
-              />
-              {hintNode}
-            </label>
-          );
-        }
-
-        const type = inputTypeFor(field);
-        const isText = type === "text";
-        const value = type === "date" || type === "time" || type === "datetime-local"
-          ? formatTemporalValue(field, current)
-          : current == null ? "" : String(current);
-        return (
-          <label key={key} className={`${cellClass} gx-field`}>
-            <span className="gx-field-label">{title}</span>
-            <input
-              type={type}
-              value={value}
-              placeholder={String(field.placeholder ?? "")}
-              required={isRequired}
-              readOnly={disabled}
-              min={typeof field.minimum === "number" ? field.minimum : undefined}
-              max={typeof field.maximum === "number" ? field.maximum : undefined}
-              step={field.type === "integer" ? "1" : (field.type === "number" ? "any" : undefined)}
-              minLength={isText && typeof field.minLength === "number" ? field.minLength : undefined}
-              maxLength={isText && typeof field.maxLength === "number" ? field.maxLength : undefined}
-              pattern={isText && typeof field.pattern === "string" ? field.pattern : undefined}
-              onChange={(event) => setField(key, coerceFieldValue(event.target.value, field))}
-            />
-            {hintNode}
-          </label>
-        );
-      })}
-      </div>
-      {validation.checked && validation.errors.length > 0 ? (
-        <div className="gx-form-errors" role="alert">
-          {validation.errors.map((message, index) => (
-            <span key={index} className="gx-json-error">{message}</span>
-          ))}
-        </div>
-      ) : null}
-      {dirty ? (
-        <DirtyActionRow
-          dirty={dirty}
-          discardLabel={p.str("discardLabel", "Discard")}
-          saveLabel={p.str("saveLabel", "Save")}
-          onDiscard={reset}
-          saveType="submit"
-          saveDisabled={submitDisabled}
-        />
-      ) : null}
-    </form>
-  );
+  return <PrimitiveForm node={formNode} emit={emit} children={undefined} />;
 }
 
 function Select({ node, emit }: ProjectionViewProps) {
@@ -2259,152 +1797,6 @@ function Notes({ node, emit }: ProjectionViewProps) {
   );
 }
 
-interface EditableTableRowProps {
-  row: Record<string, unknown>;
-  rowIndex: number;
-  isLastRow: boolean;
-  columns: string[];
-  schemaProps: Record<string, Record<string, unknown>>;
-  canDelete: boolean;
-  onCellChange: (rowIndex: number, column: string, value: string, isNumber: boolean) => void;
-  onDelete: (rowIndex: number) => void;
-  onLastRowFocus: (rowIndex: number) => void;
-}
-
-const EditableTableRow = React.memo(function EditableTableRow({
-  row,
-  rowIndex,
-  isLastRow,
-  columns,
-  schemaProps,
-  canDelete,
-  onCellChange,
-  onDelete,
-  onLastRowFocus,
-}: EditableTableRowProps) {
-  return (
-    <tr>
-      {columns.map((column) => {
-        const prop = schemaProps[column] ?? {};
-        const isNumber = prop.type === "number" || prop.type === "integer" || typeof row[column] === "number";
-        return (
-          <td key={column}>
-            <input
-              type={isNumber ? "number" : "text"}
-              step={isNumber ? "any" : undefined}
-              value={row[column] == null ? "" : String(row[column])}
-              onFocus={isLastRow ? () => onLastRowFocus(rowIndex) : undefined}
-              onChange={(event) => onCellChange(rowIndex, column, event.target.value, isNumber)}
-            />
-          </td>
-        );
-      })}
-      {canDelete ? (
-        <td>
-          <button type="button" className="gx-cell-delete" aria-label={`remove row ${rowIndex + 1}`} onClick={() => onDelete(rowIndex)}>
-            ✕
-          </button>
-        </td>
-      ) : null}
-    </tr>
-  );
-});
-
-function EditableTable({ node, emit }: ProjectionViewProps) {
-  const p = readProps(node);
-  const spec = p.obj<EditableTableSpec>("spec", {});
-  const incomingRows = editableRowsFrom(
-    p.list<unknown>("rows").length > 0 ? p.list<unknown>("rows") : p.list<unknown>("baseRows")
-  );
-  const incomingColumns = editableColumns(spec, incomingRows);
-  const visibleIncomingRows = withTrailingEditableRow(incomingRows, incomingColumns);
-  const { draft: rows, setDraft: setRows, dirty, setDirty, update: updateRows, reset } = useDraftState(visibleIncomingRows);
-
-  const columnsSignature = incomingColumns.join("\u0000");
-  const columns = React.useMemo(() => incomingColumns, [columnsSignature]);
-  const canAdd = spec.addRow !== false;
-  const canDelete = spec.deleteRow !== false;
-  const placeholder = spec.placeholder ?? "No data";
-  const schemaProps = spec.schema?.properties ?? {};
-  const handleCellChange = React.useCallback((rowIndex: number, column: string, value: string, isNumber: boolean) => {
-    setRows((currentRows) => {
-      const next = currentRows.map((entry) => ({ ...entry }));
-      next[rowIndex] = {
-        ...next[rowIndex],
-        [column]: isNumber && value !== "" ? Number.parseFloat(value) : value,
-      };
-      return next;
-    });
-    setDirty(true);
-  }, [setDirty, setRows]);
-  const handleLastRowFocus = React.useCallback((rowIndex: number) => {
-    setRows((currentRows) => appendEditableRowOnLastRowFocus(currentRows, columns, rowIndex));
-  }, [columns, setRows]);
-  const handleDelete = React.useCallback((rowIndex: number) => {
-    setRows((currentRows) => withTrailingEditableRow(
-      currentRows.filter((_, index) => index !== rowIndex),
-      columns
-    ));
-    setDirty(true);
-  }, [columns, setDirty, setRows]);
-
-  if (columns.length === 0 && !canAdd) {
-    return <p className="gx-muted">{placeholder}</p>;
-  }
-
-  return (
-    <div className="gx-editable-table">
-      <table className="gx-table gx-table-editable">
-        <thead>
-          <tr>
-            {columns.map((column) => <th key={column}>{column}</th>)}
-            {canDelete ? <th aria-label="actions" /> : null}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length === 0 ? (
-            <tr>
-              <td className="gx-muted" colSpan={columns.length + (canDelete ? 1 : 0)}>{placeholder}</td>
-            </tr>
-          ) : rows.map((row, rowIndex) => (
-            <EditableTableRow
-              key={rowIndex}
-              row={row}
-              rowIndex={rowIndex}
-              isLastRow={rowIndex === rows.length - 1}
-              columns={columns}
-              schemaProps={schemaProps}
-              canDelete={canDelete}
-              onCellChange={handleCellChange}
-              onDelete={handleDelete}
-              onLastRowFocus={handleLastRowFocus}
-            />
-          ))}
-        </tbody>
-      </table>
-      <DirtyActionRow
-        dirty={dirty}
-        discardLabel={p.str("discardLabel", "Discard")}
-        saveLabel={p.str("saveLabel", "Save")}
-        onDiscard={reset}
-        onSave={() => { emit("save", { rows: committedEditableRows(rows) }); setDirty(false); }}
-        leading={canAdd ? (
-          <button
-            type="button"
-            className="gx-btn"
-            onClick={() => {
-              const blank = blankEditableRow(columns);
-              updateRows([...rows, blank]);
-            }}
-          >
-            + Add row
-          </button>
-        ) : null}
-      />
-    </div>
-  );
-}
-
 function MultiFileUpload({ node, emit }: ProjectionViewProps) {
   const p = readProps(node);
   const fileServices = useGenUIFileServices();
@@ -2606,7 +1998,7 @@ export const FLOOR_COMPONENTS: Record<string, ProjectionView> = {
   todo: Todo,
   actions: Actions,
   notes: Notes,
-  "editable-table": EditableTable,
+  "editable-table": PrimitiveEditableTable,
   "multi-file-upload": MultiFileUpload,
   list: List,
   table: Table,
@@ -2615,7 +2007,7 @@ export const FLOOR_COMPONENTS: Record<string, ProjectionView> = {
   textarea: TextArea,
   "json-field": JsonField,
   select: Select,
-  form: Form,
+  form: PrimitiveForm,
   button: Button,
   "timer-button": TimerButton,
   "math-challenge": MathChallenge,

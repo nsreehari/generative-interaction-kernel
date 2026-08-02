@@ -1,4 +1,5 @@
 import React from "react";
+import { makeStyles, mergeClasses } from "@fluentui/react-components";
 import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
@@ -9,6 +10,7 @@ import {
   type ComponentValidationReport,
   type DeclarativeComponentDefinition,
 } from "../definition";
+import { componentRootProps, componentStylePropsSchema } from "../shared";
 
 export const GROWING_CONTAINER_FOLLOW_END = ["always", "when-at-end", "off"] as const;
 export type GrowingContainerFollowEnd = typeof GROWING_CONTAINER_FOLLOW_END[number];
@@ -22,9 +24,25 @@ export interface GrowingContainerScrollMetrics {
 export interface GrowingContainerProps {
   children?: React.ReactNode;
   className?: string;
+  style?: React.CSSProperties;
   followEnd?: GrowingContainerFollowEnd;
   ariaLabel?: string;
 }
+
+const useStyles = makeStyles({
+  root: {
+    boxSizing: "border-box",
+    width: "100%",
+    height: "100%",
+    minWidth: 0,
+    minHeight: 0,
+    maxWidth: "100%",
+    maxHeight: "100%",
+    overflow: "auto",
+    overscrollBehavior: "contain",
+  },
+  content: { minWidth: 0, minHeight: "100%" },
+});
 
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
 
@@ -45,9 +63,11 @@ export function shouldGrowingContainerFollowEnd(
 export function GrowingContainer({
   children,
   className,
+  style,
   followEnd = "always",
   ariaLabel,
 }: GrowingContainerProps): React.ReactElement {
+  const styles = useStyles();
   const viewportRef = React.useRef<HTMLDivElement>(null);
   const contentRef = React.useRef<HTMLDivElement>(null);
   const pinnedToEndRef = React.useRef(true);
@@ -78,26 +98,15 @@ export function GrowingContainer({
   return (
     <div
       ref={viewportRef}
-      className={["gik-growing-container", className].filter(Boolean).join(" ")}
+      className={mergeClasses(styles.root, "gik-growing-container", className)}
+      style={style}
       role={ariaLabel ? "region" : undefined}
       aria-label={ariaLabel}
       onScroll={onScroll}
-      style={{
-        boxSizing: "border-box",
-        width: "100%",
-        height: "100%",
-        minWidth: 0,
-        minHeight: 0,
-        maxWidth: "100%",
-        maxHeight: "100%",
-        overflow: "auto",
-        overscrollBehavior: "contain",
-      }}
     >
       <div
         ref={contentRef}
-        className="gik-growing-container-content"
-        style={{ minWidth: 0, minHeight: "100%" }}
+        className={mergeClasses(styles.content, "gik-growing-container-content")}
       >
         {children}
       </div>
@@ -111,7 +120,7 @@ export const GrowingContainerPrimitive: ProjectionView = ({ node, children }) =>
     ? requestedFollowEnd as GrowingContainerFollowEnd
     : "always";
   const ariaLabel = typeof node.props.ariaLabel === "string" ? node.props.ariaLabel : undefined;
-  return <GrowingContainer followEnd={followEnd} ariaLabel={ariaLabel}>{children}</GrowingContainer>;
+  return <GrowingContainer {...componentRootProps(node)} followEnd={followEnd} ariaLabel={ariaLabel}>{children}</GrowingContainer>;
 };
 
 const schema = {
@@ -119,6 +128,7 @@ const schema = {
   type: "object",
   additionalProperties: false,
   properties: {
+    ...componentStylePropsSchema,
     followEnd: { enum: GROWING_CONTAINER_FOLLOW_END },
     ariaLabel: { type: "string", minLength: 1 },
   },

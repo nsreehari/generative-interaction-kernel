@@ -1,11 +1,11 @@
 import React from "react";
-import { Badge, Button, Card, CardHeader, Text, makeStyles, tokens } from "@fluentui/react-components";
+import { Badge, Button, Card, CardHeader, Text, makeStyles, mergeClasses, tokens } from "@fluentui/react-components";
 import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
 import { trialNode, type ComponentDescription, type ComponentValidationReport, type DeclarativeComponentDefinition } from "../definition";
-import { records, textAt, type BadgeColor, type DataRecord } from "../shared";
+import { componentRootProps, componentStylePropsSchema, records, textAt, type BadgeColor, type DataRecord } from "../shared";
 
 export const ACTION_BOARD_SEMANTIC_TOKENS = ["urgent", "active", "planned", "complete", "blocked", "neutral"] as const;
 export const ACTION_BOARD_VARIANTS = ["board", "list"] as const;
@@ -14,6 +14,7 @@ type ActionBoardVariant = typeof ACTION_BOARD_VARIANTS[number];
 const actionBoardPropsSchema = {
   $schema: "http://json-schema.org/draft-07/schema#", type: "object", additionalProperties: false, required: ["items", "spec"],
   properties: {
+    ...componentStylePropsSchema,
     items: { type: "array", items: { type: "object" } }, selectedId: { type: "string" },
     variant: { enum: ACTION_BOARD_VARIANTS },
     spec: { type: "object", additionalProperties: false, required: ["fields", "columns"], properties: {
@@ -32,8 +33,8 @@ function ordered(items: DataRecord[], field?: string) { return field ? [...items
 export const ActionBoard: ProjectionView = ({ node, emit }) => {
   const styles = useStyles(); const items = records(node.props.items); const spec = (node.props.spec ?? {}) as ActionSpec;
   const variant = (node.props.variant ?? "board") as ActionBoardVariant;
-  if (!spec.fields || !spec.columns || items.length === 0) return <Text>{spec.emptyText ?? "No actions."}</Text>;
-  return <section className={styles.root}>{spec.title || spec.description ? <header className={styles.heading}>{spec.title ? <Text weight="semibold" size={500}>{spec.title}</Text> : null}{spec.description ? <Text>{spec.description}</Text> : null}</header> : null}<div className={`${styles.columns} ${variant === "list" ? styles.listColumns : ""}`}>{spec.columns.map((column) => {
+  if (!spec.fields || !spec.columns || items.length === 0) return <Text {...componentRootProps(node)}>{spec.emptyText ?? "No actions."}</Text>;
+  return <section {...componentRootProps(node, styles.root)}>{spec.title || spec.description ? <header className={styles.heading}>{spec.title ? <Text weight="semibold" size={500}>{spec.title}</Text> : null}{spec.description ? <Text>{spec.description}</Text> : null}</header> : null}<div className={mergeClasses(styles.columns, variant === "list" && styles.listColumns)}>{spec.columns.map((column) => {
     const members = ordered(items.filter((item) => textAt(item, spec.fields.group) === column.value), spec.fields.order);
     return <section className={styles.column} key={column.value}><div className={styles.columnHead}><Text weight="semibold">{column.label}</Text><Badge appearance="tint" color={column.token ? tokenColor(column.token) : undefined}>{members.length}</Badge></div><div className={styles.items}>{members.map((item, index) => {
       const id = textAt(item, spec.fields.id) || String(index); const status = textAt(item, spec.fields.status); const token = spec.toneMap?.[status];

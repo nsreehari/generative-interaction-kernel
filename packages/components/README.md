@@ -4,8 +4,8 @@ Public, self-describing declarative components for GIK React hosts.
 
 The package has two public layers:
 
-- `@gik/components/primitives`: domain-neutral UI mechanics such as chart and growing container,
-  and eventually badge, list, and card when the kernel floor does not already provide the required contract.
+- `@gik/components/primitives`: domain-neutral UI mechanics such as chart, form, editable table,
+  growing container, and timer button.
 - `@gik/components/semantic`: domain-neutral information structures such as timeline, sequence,
   metric comparison, and relationship graph. Bundles supply meanings such as incident, alert, or
   consequence through data, labels, mappings, tokens, and behavior.
@@ -17,6 +17,11 @@ New consumers should import the narrow subpath and register `primitiveComponentV
 The package uses Fluent 2 React v9 through `@fluentui/react-components`. It assumes the host wraps
 rendering in a Fluent `FluentProvider`; it does not create a theme or introduce a semantic provider.
 Components use Fluent theme tokens and contain no independent palette.
+
+Every component accepts native root `className` and `style` props. Internal styles use `makeStyles`;
+root classes use Fluent `mergeClasses` with the consumer class last so callsite Griffel rules can
+override component defaults. Use exported slot props for nested customization when a component
+declares slots. The package does not expose a synthetic or Fluent v8-style `styles` bag.
 
 Each component exports one definition containing its renderer, closed props schema, recognized
 semantic tokens, closed variants where applicable, emitted events, slots, agent-facing authoring
@@ -119,14 +124,21 @@ bundle imports only the capabilities it uses. Nothing is ambient.
 
 ## Agent authoring kit
 
-Generate instructions and tools for only the components an agent may author:
+Generate instructions and tools for only the components an agent may author. Semantic and primitive
+catalogs have parallel, layer-specific APIs:
 
 ```ts
 import { getSemanticComponentAgentKit } from "@gik/components/semantic";
+import { getPrimitiveComponentAgentKit } from "@gik/components/primitives";
 
 const kit = getSemanticComponentAgentKit([
   "semantic:timeline",
   "semantic:action-board",
+]);
+
+const primitiveKit = getPrimitiveComponentAgentKit([
+  "primitive:form",
+  "primitive:editable-table",
 ]);
 
 // Add kit.instructions to the agent's authoring context.
@@ -147,8 +159,18 @@ The package also exports the underlying pure APIs:
 - `materializeSemanticComponentTrial(capability, variant?)`
 - `getSemanticComponentAgentInstructions(components?)`
 - `createSemanticComponentAuthoringTools(components?)`
+- `getSemanticComponentAgentKit(components?)`
+- `listPrimitiveComponents()`
+- `describePrimitiveComponent(capability)`
+- `validatePrimitiveComponentProps(capability, props)`
+- `preflightPrimitiveComponent(capability, props)`
+- `materializePrimitiveComponentTrial(capability, variant?)`
+- `getPrimitiveComponentAgentInstructions(components?)`
+- `createPrimitiveComponentAuthoringTools(components?)`
+- `getPrimitiveComponentAgentKit(components?)`
 
-`semanticComponentAuthoringTools` remains a convenience catalog for all registered semantic components.
+`semanticComponentAuthoringTools` and `primitiveComponentAuthoringTools` are convenience catalogs for
+their complete registries.
 These are ACX authoring tools, not live AX runtime tools. The package does not create
 `copilot-instructions.md`, `SKILL.md`, or other host-specific agent customization files.
 
@@ -182,6 +204,10 @@ Timer button emits `press` with reason `manual` or `timeout`. It supports a simp
 optional repeating timeout behavior, or a user-selectable manual/auto pace. Timer state is
 projection-local; durable scheduling remains a runtime or service responsibility.
 
+Form renders a schema-driven committed object editor and emits `save` with `{ values }`. Editable
+table renders a committed row editor and emits `save` with `{ rows }`. Both keep draft state local;
+bundle reactions own persistence and external effects.
+
 ## Events and effects
 
 These projection components are declarative leaves. A definition's `events` list describes the
@@ -196,6 +222,8 @@ causes state changes or external effects.
 Primitive components:
 
 - `chart`
+- `editable-table`
+- `form`
 - `growing-container`
 - `timer-button`
 
