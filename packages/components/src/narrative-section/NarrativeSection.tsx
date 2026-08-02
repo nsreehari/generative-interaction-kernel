@@ -1,11 +1,11 @@
 import React from "react";
-import { Badge, Divider, Text, makeStyles, tokens } from "@fluentui/react-components";
+import { Badge, Divider, Text, makeStyles, mergeClasses, tokens } from "@fluentui/react-components";
 import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
 import { trialNode, type ComponentDescription, type ComponentValidationReport, type DeclarativeComponentDefinition } from "../definition";
-import { records, textAt, type BadgeColor } from "../shared";
+import { componentRootProps, componentStylePropsSchema, records, textAt, type BadgeColor } from "../shared";
 
 export const NARRATIVE_SECTION_SEMANTIC_TOKENS = ["primary", "supporting", "caution", "critical", "neutral"] as const;
 export const NARRATIVE_SECTION_VARIANTS = ["standard", "compact"] as const;
@@ -14,6 +14,7 @@ type NarrativeToken = typeof NARRATIVE_SECTION_SEMANTIC_TOKENS[number];
 const schema = {
   $schema: "http://json-schema.org/draft-07/schema#", type: "object", additionalProperties: false, required: ["sections", "spec"],
   properties: {
+    ...componentStylePropsSchema,
     sections: { type: "array", items: { type: "object" } }, variant: { enum: NARRATIVE_SECTION_VARIANTS },
     spec: { type: "object", additionalProperties: false, required: ["fields"], properties: {
       title: { type: "string" }, emptyText: { type: "string" },
@@ -27,8 +28,8 @@ const useStyles = makeStyles({ root: { display: "grid", gap: tokens.spacingVerti
 function color(token: NarrativeToken): BadgeColor { if (token === "critical") return "danger"; if (token === "caution") return "warning"; if (token === "primary") return "brand"; return "informative"; }
 export const NarrativeSection: ProjectionView = ({ node }) => {
   const styles = useStyles(); const sections = records(node.props.sections); const spec = (node.props.spec ?? {}) as NarrativeSpec; const compact = (node.props.variant ?? "standard") === "compact";
-  if (!spec.fields || sections.length === 0) return <Text>{spec.emptyText ?? "No narrative available."}</Text>;
-  return <article className={`${styles.root} ${compact ? styles.compact : ""}`} aria-label={spec.title ?? "Narrative"}>
+  if (!spec.fields || sections.length === 0) return <Text {...componentRootProps(node)}>{spec.emptyText ?? "No narrative available."}</Text>;
+  return <article {...componentRootProps(node, mergeClasses(styles.root, compact && styles.compact))} aria-label={spec.title ?? "Narrative"}>
     {spec.title ? <Text as="h2" weight="semibold" size={600}>{spec.title}</Text> : null}
     {sections.map((section, index) => { const toneValue = textAt(section, spec.fields.tone); const token = toneValue ? spec.toneMap?.[toneValue] : undefined; return <React.Fragment key={`${textAt(section, spec.fields.heading)}-${index}`}>
       {index > 0 && !compact ? <Divider /> : null}

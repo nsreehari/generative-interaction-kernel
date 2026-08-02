@@ -1,11 +1,11 @@
 import React from "react";
-import { Badge, Card, CardHeader, Text, makeStyles, tokens } from "@fluentui/react-components";
+import { Badge, Card, CardHeader, Text, makeStyles, mergeClasses, tokens } from "@fluentui/react-components";
 import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
 import { trialNode, type ComponentDescription, type ComponentValidationReport, type DeclarativeComponentDefinition } from "../definition";
-import { records, textAt, type BadgeColor, type DataRecord } from "../shared";
+import { componentRootProps, componentStylePropsSchema, records, textAt, type BadgeColor, type DataRecord } from "../shared";
 
 export const ENTITY_CONSTELLATION_SEMANTIC_TOKENS = ["affected", "at-risk", "observed", "positive", "unknown"] as const;
 export const ENTITY_CONSTELLATION_VARIANTS = ["grouped", "compact"] as const;
@@ -15,6 +15,7 @@ type EntityConstellationVariant = typeof ENTITY_CONSTELLATION_VARIANTS[number];
 const entityConstellationPropsSchema = {
   $schema: "http://json-schema.org/draft-07/schema#", type: "object", additionalProperties: false, required: ["items", "spec"],
   properties: {
+    ...componentStylePropsSchema,
     items: { type: "array", items: { type: "object" } },
     variant: { enum: ENTITY_CONSTELLATION_VARIANTS },
     spec: { type: "object", additionalProperties: false, required: ["fields"], properties: {
@@ -59,14 +60,14 @@ function groupValues(items: DataRecord[], spec: EntitySpec): Array<{ value: stri
 export const EntityConstellation: ProjectionView = ({ node }) => {
   const styles = useStyles(); const items = records(node.props.items); const spec = (node.props.spec ?? {}) as EntitySpec;
   const variant = (node.props.variant ?? "grouped") as EntityConstellationVariant;
-  if (!spec.fields || items.length === 0) return <Text>{spec.emptyText ?? "No entities."}</Text>;
-  return <section className={styles.root}>
+  if (!spec.fields || items.length === 0) return <Text {...componentRootProps(node)}>{spec.emptyText ?? "No entities."}</Text>;
+  return <section {...componentRootProps(node, styles.root)}>
     {spec.title || spec.description ? <header className={styles.heading}>{spec.title ? <Text weight="semibold" size={500}>{spec.title}</Text> : null}{spec.description ? <Text>{spec.description}</Text> : null}</header> : null}
-    <div className={`${styles.groups} ${variant === "compact" ? styles.compactGroups : ""}`}>{groupValues(items, spec).map((group) => {
+    <div className={mergeClasses(styles.groups, variant === "compact" && styles.compactGroups)}>{groupValues(items, spec).map((group) => {
       const members = items.filter((item) => !spec.fields.group || textAt(item, spec.fields.group) === group.value);
-      return members.length ? <section className={`${styles.group} ${variant === "compact" ? styles.compactGroup : ""}`} key={group.value}><div className={styles.groupTitle}><Text weight="semibold">{group.label}</Text><Badge appearance="outline">{members.length}</Badge></div><div className={`${styles.entities} ${variant === "compact" ? styles.compactEntities : ""}`}>{members.map((item, index) => {
+      return members.length ? <section className={mergeClasses(styles.group, variant === "compact" && styles.compactGroup)} key={group.value}><div className={styles.groupTitle}><Text weight="semibold">{group.label}</Text><Badge appearance="outline">{members.length}</Badge></div><div className={mergeClasses(styles.entities, variant === "compact" && styles.compactEntities)}>{members.map((item, index) => {
         const status = textAt(item, spec.fields.status); const token = spec.toneMap?.[status];
-        return <Card className={`${styles.entity} ${variant === "compact" ? styles.compactEntity : ""}`} appearance="outline" key={textAt(item, spec.fields.id) || index}><CardHeader header={<div className={styles.titleRow}>{spec.fields.type && textAt(item, spec.fields.type) ? <Badge appearance="tint">{textAt(item, spec.fields.type)}</Badge> : null}<Text weight="semibold">{textAt(item, spec.fields.label)}</Text>{token ? <Badge appearance="tint" color={tokenColor(token)}>{status}</Badge> : null}</div>} />{spec.fields.description && textAt(item, spec.fields.description) ? <Text className={styles.detail}>{textAt(item, spec.fields.description)}</Text> : null}</Card>;
+        return <Card className={mergeClasses(styles.entity, variant === "compact" && styles.compactEntity)} appearance="outline" key={textAt(item, spec.fields.id) || index}><CardHeader header={<div className={styles.titleRow}>{spec.fields.type && textAt(item, spec.fields.type) ? <Badge appearance="tint">{textAt(item, spec.fields.type)}</Badge> : null}<Text weight="semibold">{textAt(item, spec.fields.label)}</Text>{token ? <Badge appearance="tint" color={tokenColor(token)}>{status}</Badge> : null}</div>} />{spec.fields.description && textAt(item, spec.fields.description) ? <Text className={styles.detail}>{textAt(item, spec.fields.description)}</Text> : null}</Card>;
       })}</div></section> : null;
     })}</div>
   </section>;

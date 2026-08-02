@@ -12,12 +12,12 @@ Import only the primitives a vocabulary uses:
     "projectionViews": {
       "primitive": {
         "from": "primitive",
-        "use": ["chart", "growing-container", "timer-button"]
+        "use": ["chart", "editable-table", "form", "growing-container", "timer-button"]
       }
     }
   }
 }
 ```
 
-Documents reference the imported capabilities as `primitive:chart` and
-`primitive:growing-container`, or `primitive:timer-button`.
+Documents reference the imported capabilities as `primitive:chart`, `primitive:editable-table`,
+`primitive:form`, `primitive:growing-container`, or `primitive:timer-button`.

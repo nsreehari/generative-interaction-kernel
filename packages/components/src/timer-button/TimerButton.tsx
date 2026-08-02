@@ -16,6 +16,7 @@ import {
   type ComponentValidationReport,
   type DeclarativeComponentDefinition,
 } from "../definition";
+import { componentRootProps, componentStylePropsSchema } from "../shared";
 
 export const TIMER_BUTTON_PACES = ["manual", "auto"] as const;
 export const TIMER_BUTTON_VARIANTS = ["standard", "auto-only"] as const;
@@ -84,7 +85,7 @@ export const TimerButton: ProjectionView = ({ node, emit }) => {
   const ariaLabel = props.str("ariaLabel") || label;
 
   return (
-    <div className={styles.root}>
+    <div {...componentRootProps(node, styles.root)}>
       {showPaceSwitch ? (
         <ToggleButton
           checked={effectivePace === "auto"}
@@ -118,6 +119,7 @@ const schema = {
   additionalProperties: false,
   required: ["label"],
   properties: {
+    ...componentStylePropsSchema,
     label: { type: "string", minLength: 1 },
     variant: { enum: TIMER_BUTTON_VARIANTS },
     ariaLabel: { type: "string", minLength: 1 },
