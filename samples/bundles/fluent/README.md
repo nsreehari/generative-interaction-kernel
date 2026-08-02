@@ -10,7 +10,7 @@ Import controls through a manifest alias:
 {
   "externals": {
     "projectionViews": {
-      "fluent": { "from": "fluent", "use": ["dropdown", "switch", "toggle"] }
+      "fluent": { "from": "fluent", "use": ["button", "dropdown", "icon-button", "switch", "toggle"] }
     }
   }
 }
@@ -23,3 +23,8 @@ can change without shifting adjacent controls. Both emit `toggle` with the next
 
 `fluent:dropdown` accepts `value`, `options` (`{ value, label, disabled? }[]`), `placeholder`, and
 `ariaLabel`. It emits `select` with `{ "value": string, "label": string }`.
+
+`fluent:icon-button` accepts `icon` (`edit`, `full-screen-maximize`, or `full-screen-minimize`), `ariaLabel`,
+`title`, and `disabled`. It emits `press`.
+
+`fluent:button` accepts `label`, `appearance`, `ariaLabel`, and `disabled`. It emits `press`.

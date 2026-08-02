@@ -33,6 +33,7 @@ const handlers: EffectHandlerMap = {
       ctx.set("incident3.selectedSampleId", sample.id),
       ctx.set("incident3.content", sample.content),
       ctx.set("incident3.formValue", { content: sample.content } as Json),
+      ctx.set("incident3.editing", false),
       ctx.set("incident3.error", ""),
     ] };
   },
@@ -45,6 +46,7 @@ const handlers: EffectHandlerMap = {
     return { ops: [
       ctx.set("incident3.content", content),
       ctx.set("incident3.formValue", { content } as Json),
+      ctx.set("incident3.editing", false),
       ctx.set("incident3.error", ""),
     ] };
   },
