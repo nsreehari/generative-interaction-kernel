@@ -11,6 +11,9 @@ import type { Json } from "@gik/kernel";
 import { openBlueprint } from "@gik/controlface/blueprint";
 import registry from "../blueprints/registry.json";
 import * as copilotC2EffectModule from "../blueprints/copilot-c2/native/effect_handlers/copilotC2EffectHandlers";
+import * as cachedIncidentReportExplorerEffectModule from "../blueprints/cached-incident-report-explorer/native/effect_handlers/cachedIncidentReportExplorerEffectHandlers";
+import * as cachedIncidentReportExplorer2EffectModule from "../blueprints/cached-incident-report-explorer-2/native/effect_handlers/cachedIncidentReportExplorer2EffectHandlers";
+import * as cachedIncidentReportExplorer3EffectModule from "../blueprints/cached-incident-report-explorer-3/native/effect_handlers/cachedIncidentReportExplorer3EffectHandlers";
 import * as foundryAgentEffectModule from "../blueprints/foundry-agent/native/effect_handlers/foundryAgentEffectHandlers";
 import * as incidentReportExplorerEffectModule from "../blueprints/incident-report-explorer/native/effect_handlers/incidentReportExplorerEffectHandlers";
 import * as incidentReportExplorer2EffectModule from "../blueprints/incident-report-explorer-2/native/effect_handlers/incidentReportExplorer2EffectHandlers";
@@ -26,6 +29,7 @@ type Registry = {
   default: string;
   blueprints: string[];
   nativeFrom?: Record<string, string>;
+  projectionFrom?: Record<string, string>;
 };
 const REGISTRY = registry as Registry;
 
@@ -38,6 +42,9 @@ type NativeEffectModule = {
 };
 
 const effectHandlerModules: Record<string, NativeEffectModule> = {
+  "cached-incident-report-explorer": cachedIncidentReportExplorerEffectModule,
+  "cached-incident-report-explorer-2": cachedIncidentReportExplorer2EffectModule,
+  "cached-incident-report-explorer-3": cachedIncidentReportExplorer3EffectModule,
   "copilot-c2": copilotC2EffectModule,
   "foundry-agent": foundryAgentEffectModule,
   "incident-report-explorer": incidentReportExplorerEffectModule,
@@ -64,11 +71,12 @@ export function resolveBlueprintNativeFromMaterialized(
 
 function resolveBlueprintNativeFromRuntime(id: string, runtime: ReturnType<typeof openSampleBlueprint>): BundleNative {
   const nativeId = REGISTRY.nativeFrom?.[id] ?? id;
+  const projectionId = REGISTRY.projectionFrom?.[id] ?? nativeId;
   const effectModule = effectHandlerModules[nativeId];
   const serviceOrchestrator = declarativeServiceOrchestrator(runtime, browserServiceRegistryOptions);
   return {
     effectHandlers: effectModule?.default,
-    projectionViews: resolveBundleProjectionViews(nativeId),
+    projectionViews: resolveBundleProjectionViews(projectionId),
     wrapOrchestrator: effectModule?.wrapOrchestrator?.(serviceOrchestrator) ?? serviceOrchestrator,
   };
 }

@@ -100,7 +100,7 @@
             "request": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "{'message':'Extract a source-faithful incident semantic model from this investigation report. Report Markdown:\n\n' & state.incident3.pendingContent,'instructions':'Return only facts, relationships, verdicts, impacts, priorities, and actions explicitly asserted by the source document. Do not infer causality, compromise status, severity, urgency, attribution, or recommendations. Do not choose components, layouts, disclosure, colors, flights, or presentation candidates. Preserve source ordering and typed references. Put ambiguity, missing linkage, normalization loss, unsupported concepts, conflicting evidence, and schema gaps in representationNotes rather than resolving them. Use stable concise ids and reference only ids declared in this response.','maxOutputTokens':5000}"
+                "expr": "{'message':'Extract a source-faithful incident semantic model from this investigation report. Report Markdown:\n\n' & state.incident3.pendingContent,'instructions':'Return only facts, relationships, verdicts, impacts, priorities, and actions explicitly asserted by the source document. Do not infer causality, compromise status, severity, urgency, attribution, or recommendations. Do not choose components, layouts, disclosure, colors, flights, or presentation candidates. Preserve source ordering and typed references. Put ambiguity, missing linkage, normalization loss, unsupported concepts, conflicting evidence, and schema gaps in representationNotes rather than resolving them. Use stable concise ids and reference only ids declared in this response.','maxOutputTokens':10000}"
               }
             },
             "response": {

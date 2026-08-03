@@ -1,0 +1,600 @@
+{
+  "identity": {
+    "incidentId": "5b170d32-9ca0-51f3-a6c5-6c05d0df696d",
+    "title": "Investigation Report — Incident 5b170d32-9ca0-51f3-a6c5-6c05d0df696d",
+    "startTime": "2026-07-17 22:58:30",
+    "endTime": "2026-07-17 22:58:32"
+  },
+  "verdict": {
+    "classification": "True Positive",
+    "determination": "Other",
+    "confidence": "high",
+    "rationale": "Confirmed malicious attack with successful sensitive data access.",
+    "impact": "Data access/exfiltration confirmed."
+  },
+  "summary": "During 2026-07-17 22:58:30 – 2026-07-17 22:58:32, a confirmed true-positive attack from 185.220.101.42 progressed through Initial Access, Credential Access, and Collection. Observable source events show device-code authentication, managed identity token retrieval via IMDS for Microsoft Graph, and repeated mailbox item access against victim@contoso.com.",
+  "phases": [
+    {
+      "id": "ph1",
+      "name": "Initial Access",
+      "order": 1,
+      "summary": "Device-code authentication completed from 185.220.101.42 against app d3590ed6-52b3-4102-aeff-aad2292ab01c."
+    },
+    {
+      "id": "ph2",
+      "name": "Credential Access",
+      "order": 2,
+      "summary": "Managed identity token obtained via IMDS from 185.220.101.42 for resource hxxps://graph[.]microsoft[.]com using webapp-vm-001 / clientId 11111111-2222-3333-4444-555555555555."
+    },
+    {
+      "id": "ph3",
+      "name": "Collection",
+      "order": 3,
+      "summary": "Mailbox items were accessed from victim@contoso.com in four OfficeActivity records."
+    }
+  ],
+  "entities": [
+    {
+      "id": "ent1",
+      "type": "ip",
+      "label": "185.220.101.42",
+      "status": "observed",
+      "role": "source IP",
+      "description": "Public IP observed in initial access and IMDS token retrieval.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent2",
+      "type": "application",
+      "label": "d3590ed6-52b3-4102-aeff-aad2292ab01c",
+      "status": "compromised",
+      "role": "cloud app",
+      "description": "Cloud app identified in AAD sign-in event. ResourceDisplayName=Device Code App.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent3",
+      "type": "managed-identity",
+      "label": "11111111-2222-3333-4444-555555555555",
+      "status": "compromised",
+      "role": "managed identity",
+      "description": "Managed identity credential compromised during credential access; token obtained via IMDS for hxxps://graph[.]microsoft[.]com.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent4",
+      "type": "virtual-machine",
+      "label": "/SUBSCRIPTIONS/12345678-1234-1234-1234-123456789ABC/RESOURCEGROUPS/PRODUCTION-RG/PROVIDERS/MICROSOFT.COMPUTE/VIRTUALMACHINES/WEBAPP-VM-001",
+      "status": "affected",
+      "role": "resource involved in credential access",
+      "description": "Virtual machine webapp-vm-001 involved in IMDS token retrieval.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent5",
+      "type": "mailbox",
+      "label": "victim@contoso.com",
+      "status": "affected",
+      "role": "impacted mailbox",
+      "description": "Mailbox targeted during collection; source records show items read.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent6",
+      "type": "other",
+      "label": "hxxps://graph[.]microsoft[.]com",
+      "status": "observed",
+      "role": "token resource",
+      "description": "Resource requested in IMDS token retrieval.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent7",
+      "type": "application",
+      "label": "58538002-3eda-4c5f-92c2-b5d4dec799dd",
+      "status": "observed",
+      "role": "app id in mailbox access",
+      "description": "OfficeActivity AppId associated with mailbox access at 2026-07-17 22:58:31.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent8",
+      "type": "application",
+      "label": "bf639aa2-d2f3-4a61-96e7-3938ded3cf02",
+      "status": "observed",
+      "role": "app id in mailbox access",
+      "description": "OfficeActivity AppId associated with mailbox access at 2026-07-17 22:58:32.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent9",
+      "type": "application",
+      "label": "8b0501d4-7825-4e2c-9c97-453f1bc6f6b3",
+      "status": "observed",
+      "role": "app id in mailbox access",
+      "description": "OfficeActivity AppId associated with mailbox access at 2026-07-17 22:58:32.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent10",
+      "type": "application",
+      "label": "f6db002e-f2be-4a5b-a809-1936272a6631",
+      "status": "observed",
+      "role": "app id in mailbox access",
+      "description": "OfficeActivity AppId associated with mailbox access at 2026-07-17 22:58:32.",
+      "confidence": "high"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel1",
+      "sourceId": "ent1",
+      "targetId": "ent2",
+      "kind": "targeted",
+      "label": "initial access via device-code authentication",
+      "phaseId": "ph1",
+      "evidenceIds": [
+        "ev1"
+      ]
+    },
+    {
+      "id": "rel2",
+      "sourceId": "ent1",
+      "targetId": "ent4",
+      "kind": "stole-token-from",
+      "label": "managed identity token obtained via IMDS from webapp-vm-001",
+      "phaseId": "ph2",
+      "evidenceIds": [
+        "ev2"
+      ]
+    },
+    {
+      "id": "rel3",
+      "sourceId": "ent1",
+      "targetId": "ent5",
+      "kind": "accessed",
+      "label": "accessed mailbox",
+      "phaseId": "ph3",
+      "evidenceIds": [
+        "ev3",
+        "ev4",
+        "ev5",
+        "ev6"
+      ]
+    },
+    {
+      "id": "rel4",
+      "sourceId": "ent4",
+      "targetId": "ent3",
+      "kind": "other",
+      "label": "VM associated with managed identity clientId",
+      "phaseId": "ph2",
+      "evidenceIds": [
+        "ev2"
+      ]
+    },
+    {
+      "id": "rel5",
+      "sourceId": "ent3",
+      "targetId": "ent6",
+      "kind": "authenticated-to",
+      "label": "token requested for resource",
+      "phaseId": "ph2",
+      "evidenceIds": [
+        "ev2"
+      ]
+    },
+    {
+      "id": "rel6",
+      "sourceId": "ent7",
+      "targetId": "ent5",
+      "kind": "accessed",
+      "label": "OfficeActivity AppId accessed mailbox",
+      "phaseId": "ph3",
+      "evidenceIds": [
+        "ev3"
+      ]
+    },
+    {
+      "id": "rel7",
+      "sourceId": "ent8",
+      "targetId": "ent5",
+      "kind": "accessed",
+      "label": "OfficeActivity AppId accessed mailbox",
+      "phaseId": "ph3",
+      "evidenceIds": [
+        "ev4"
+      ]
+    },
+    {
+      "id": "rel8",
+      "sourceId": "ent9",
+      "targetId": "ent5",
+      "kind": "accessed",
+      "label": "OfficeActivity AppId accessed mailbox",
+      "phaseId": "ph3",
+      "evidenceIds": [
+        "ev5"
+      ]
+    },
+    {
+      "id": "rel9",
+      "sourceId": "ent10",
+      "targetId": "ent5",
+      "kind": "accessed",
+      "label": "OfficeActivity AppId accessed mailbox",
+      "phaseId": "ph3",
+      "evidenceIds": [
+        "ev6"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "evt1",
+      "time": "2026-07-17 22:58:30",
+      "title": "Device-code authentication completed",
+      "detail": "AADSignInLogs: OperationName=Sign-in activity, ResultDescription=Device code authentication completed, ResultType=0, IPAddress=185.220.101.42, AppId=d3590ed6-52b3-4102-aeff-aad2292ab01c, CorrelationId=b60cf603-93d8-4899-8600-f933f4a2b4cd, ResourceId=d3590ed6-52b3-4102-aeff-aad2292ab01c, AuthenticationProtocol=deviceCode, ResourceDisplayName=Device Code App.",
+      "phaseId": "ph1",
+      "entityIds": [
+        "ent1",
+        "ent2"
+      ],
+      "evidenceIds": [
+        "ev1"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt2",
+      "time": "2026-07-17 22:58:31",
+      "title": "Managed identity token obtained via IMDS",
+      "detail": "AzureIMDSAccessLogs: OperationName=IMDS.GetToken, ResultType=Success, CallerIpAddress=185.220.101.42, CorrelationId=ef51d0b3-a572-4466-8422-02fd07d161a0, ResourceId=/SUBSCRIPTIONS/12345678-1234-1234-1234-123456789ABC/RESOURCEGROUPS/PRODUCTION-RG/PROVIDERS/MICROSOFT.COMPUTE/VIRTUALMACHINES/WEBAPP-VM-001, Properties.clientId=11111111-2222-3333-4444-555555555555, Properties.endpoint=/metadata/identity/oauth2/token?resource=hxxps://graph[.]microsoft[.]com&identity=system-assigned, Properties.resource=hxxps://graph[.]microsoft[.]com, Properties.userAgent=curl/8.5.0, Properties.vmName=webapp-vm-001, Category=InstanceMetadata.",
+      "phaseId": "ph2",
+      "entityIds": [
+        "ent1",
+        "ent3",
+        "ent4",
+        "ent6"
+      ],
+      "evidenceIds": [
+        "ev2"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt3",
+      "time": "2026-07-17 22:58:31",
+      "title": "Mailbox access: 3 items read",
+      "detail": "OfficeActivity: ResultStatus=Succeeded, AppId=58538002-3eda-4c5f-92c2-b5d4dec799dd, MailboxOwnerUPN=victim@contoso.com, Operation=MailItemsAccessed, OperationCount=3.",
+      "phaseId": "ph3",
+      "entityIds": [
+        "ent5",
+        "ent7"
+      ],
+      "evidenceIds": [
+        "ev3"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt4",
+      "time": "2026-07-17 22:58:32",
+      "title": "Mailbox access: 3 items read",
+      "detail": "OfficeActivity: ResultStatus=Succeeded, AppId=bf639aa2-d2f3-4a61-96e7-3938ded3cf02, MailboxOwnerUPN=victim@contoso.com, Operation=MailItemsAccessed, OperationCount=3.",
+      "phaseId": "ph3",
+      "entityIds": [
+        "ent5",
+        "ent8"
+      ],
+      "evidenceIds": [
+        "ev4"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt5",
+      "time": "2026-07-17 22:58:32",
+      "title": "Mailbox access: 3 items read",
+      "detail": "OfficeActivity: ResultStatus=Succeeded, AppId=8b0501d4-7825-4e2c-9c97-453f1bc6f6b3, MailboxOwnerUPN=victim@contoso.com, Operation=MailItemsAccessed, OperationCount=3.",
+      "phaseId": "ph3",
+      "entityIds": [
+        "ent5",
+        "ent9"
+      ],
+      "evidenceIds": [
+        "ev5"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt6",
+      "time": "2026-07-17 22:58:32",
+      "title": "Mailbox access: 3 items read",
+      "detail": "OfficeActivity: ResultStatus=Succeeded, AppId=f6db002e-f2be-4a5b-a809-1936272a6631, MailboxOwnerUPN=victim@contoso.com, Operation=MailItemsAccessed, OperationCount=3.",
+      "phaseId": "ph3",
+      "entityIds": [
+        "ent5",
+        "ent10"
+      ],
+      "evidenceIds": [
+        "ev6"
+      ],
+      "confidence": "high"
+    }
+  ],
+  "techniques": [
+    {
+      "id": "tech1",
+      "tactic": "Initial Access",
+      "technique": "Phishing: Spearphishing Link (Device Code)",
+      "techniqueId": "T1566.002",
+      "description": "Device-code authentication completed from 185.220.101.42 against app d3590ed6-52b3-4102-aeff-aad2292ab01c.",
+      "phaseId": "ph1",
+      "evidenceIds": [
+        "ev1"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "tech2",
+      "tactic": "Credential Access",
+      "technique": "Unsecured Credentials: Cloud Instance Metadata API",
+      "techniqueId": "T1552.005",
+      "description": "Managed identity token obtained via IMDS from 185.220.101.42 for hxxps://graph[.]microsoft[.]com using webapp-vm-001.",
+      "phaseId": "ph2",
+      "evidenceIds": [
+        "ev2"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "tech3",
+      "tactic": "Collection",
+      "technique": "Remote Email Collection",
+      "techniqueId": "T1114.002",
+      "description": "Mailbox items accessed from victim@contoso.com.",
+      "phaseId": "ph3",
+      "evidenceIds": [
+        "ev3"
+      ],
+      "confidence": "high"
+    }
+  ],
+  "alerts": [
+    {
+      "id": "al1",
+      "title": "Device Code Flow Authentication (IA-ALERT-001)",
+      "verdict": "True Positive",
+      "summary": "Device-code authentication completed from 185.220.101.42.",
+      "eventIds": [
+        "evt1"
+      ],
+      "evidenceIds": [
+        "ev1"
+      ]
+    },
+    {
+      "id": "al2",
+      "title": "Unusual metadata service access (IA-ALERT-002)",
+      "verdict": "True Positive",
+      "summary": "Managed identity token obtained via IMDS from 185.220.101.42 (resource: hxxps://graph[.]microsoft[.]com).",
+      "eventIds": [
+        "evt2"
+      ],
+      "evidenceIds": [
+        "ev2"
+      ]
+    },
+    {
+      "id": "al3",
+      "title": "Anomalous data access on a messaging resource (IA-ALERT-003)",
+      "verdict": "True Positive",
+      "summary": "Mailbox access: 3 items read from victim@contoso.com.",
+      "eventIds": [
+        "evt3",
+        "evt4",
+        "evt5",
+        "evt6"
+      ],
+      "evidenceIds": [
+        "ev3",
+        "ev4",
+        "ev5",
+        "ev6"
+      ]
+    },
+    {
+      "id": "al4",
+      "title": "Anomalous data access on a messaging resource (IA-ALERT-004)",
+      "verdict": "True Positive",
+      "summary": "Mailbox access: 3 items read from victim@contoso.com.",
+      "eventIds": [
+        "evt3",
+        "evt4",
+        "evt5",
+        "evt6"
+      ],
+      "evidenceIds": [
+        "ev3",
+        "ev4",
+        "ev5",
+        "ev6"
+      ]
+    },
+    {
+      "id": "al5",
+      "title": "Anomalous data access on a messaging resource (IA-ALERT-005)",
+      "verdict": "True Positive",
+      "summary": "Mailbox access: 3 items read from victim@contoso.com.",
+      "eventIds": [
+        "evt3",
+        "evt4",
+        "evt5",
+        "evt6"
+      ],
+      "evidenceIds": [
+        "ev3",
+        "ev4",
+        "ev5",
+        "ev6"
+      ]
+    },
+    {
+      "id": "al6",
+      "title": "Anomalous data access on a messaging resource (IA-ALERT-006)",
+      "verdict": "True Positive",
+      "summary": "Mailbox access: 3 items read from victim@contoso.com.",
+      "eventIds": [
+        "evt3",
+        "evt4",
+        "evt5",
+        "evt6"
+      ],
+      "evidenceIds": [
+        "ev3",
+        "ev4",
+        "ev5",
+        "ev6"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev1",
+      "sourceType": "AADSignInLogs",
+      "timestamp": "2026-07-17 22:58:30",
+      "summary": "OperationName=Sign-in activity; ResultDescription=Device code authentication completed; ResultType=0; IPAddress=185.220.101.42; AppId=d3590ed6-52b3-4102-aeff-aad2292ab01c; CorrelationId=b60cf603-93d8-4899-8600-f933f4a2b4cd; ResourceId=d3590ed6-52b3-4102-aeff-aad2292ab01c; AuthenticationProtocol=deviceCode; ResourceDisplayName=Device Code App.",
+      "correlationId": "b60cf603-93d8-4899-8600-f933f4a2b4cd"
+    },
+    {
+      "id": "ev2",
+      "sourceType": "AzureIMDSAccessLogs",
+      "timestamp": "2026-07-17 22:58:31",
+      "summary": "OperationName=IMDS.GetToken; ResultType=Success; CallerIpAddress=185.220.101.42; CorrelationId=ef51d0b3-a572-4466-8422-02fd07d161a0; ResourceId=/SUBSCRIPTIONS/12345678-1234-1234-1234-123456789ABC/RESOURCEGROUPS/PRODUCTION-RG/PROVIDERS/MICROSOFT.COMPUTE/VIRTUALMACHINES/WEBAPP-VM-001; Properties.clientId=11111111-2222-3333-4444-555555555555; Properties.endpoint=/metadata/identity/oauth2/token?resource=hxxps://graph[.]microsoft[.]com&identity=system-assigned; Properties.resource=hxxps://graph[.]microsoft[.]com; Properties.userAgent=curl/8.5.0; Properties.vmName=webapp-vm-001; Category=InstanceMetadata.",
+      "correlationId": "ef51d0b3-a572-4466-8422-02fd07d161a0"
+    },
+    {
+      "id": "ev3",
+      "sourceType": "OfficeActivity",
+      "timestamp": "2026-07-17 22:58:31",
+      "summary": "ResultStatus=Succeeded; AppId=58538002-3eda-4c5f-92c2-b5d4dec799dd; MailboxOwnerUPN=victim@contoso.com; Operation=MailItemsAccessed; OperationCount=3.",
+      "correlationId": ""
+    },
+    {
+      "id": "ev4",
+      "sourceType": "OfficeActivity",
+      "timestamp": "2026-07-17 22:58:32",
+      "summary": "ResultStatus=Succeeded; AppId=bf639aa2-d2f3-4a61-96e7-3938ded3cf02; MailboxOwnerUPN=victim@contoso.com; Operation=MailItemsAccessed; OperationCount=3.",
+      "correlationId": ""
+    },
+    {
+      "id": "ev5",
+      "sourceType": "OfficeActivity",
+      "timestamp": "2026-07-17 22:58:32",
+      "summary": "ResultStatus=Succeeded; AppId=8b0501d4-7825-4e2c-9c97-453f1bc6f6b3; MailboxOwnerUPN=victim@contoso.com; Operation=MailItemsAccessed; OperationCount=3.",
+      "correlationId": ""
+    },
+    {
+      "id": "ev6",
+      "sourceType": "OfficeActivity",
+      "timestamp": "2026-07-17 22:58:32",
+      "summary": "ResultStatus=Succeeded; AppId=f6db002e-f2be-4a5b-a809-1936272a6631; MailboxOwnerUPN=victim@contoso.com; Operation=MailItemsAccessed; OperationCount=3.",
+      "correlationId": ""
+    }
+  ],
+  "indicators": [
+    {
+      "id": "ioc1",
+      "type": "ip",
+      "value": "185.220.101.42",
+      "context": "Observed in Initial Access.",
+      "confidence": "high"
+    }
+  ],
+  "impacts": [
+    {
+      "id": "imp1",
+      "category": "data-access",
+      "title": "Mailbox data accessed",
+      "detail": "Source records show mailbox access with 3 items read from victim@contoso.com in four OfficeActivity events.",
+      "severity": "medium",
+      "entityIds": [
+        "ent5"
+      ]
+    },
+    {
+      "id": "imp2",
+      "category": "data-exfiltration",
+      "title": "Data access/exfiltration confirmed",
+      "detail": "The report summary explicitly states data access/exfiltration confirmed.",
+      "severity": "medium",
+      "entityIds": [
+        "ent5"
+      ]
+    },
+    {
+      "id": "imp3",
+      "category": "credential-exposure",
+      "title": "Cloud app credential compromised",
+      "detail": "Compromised Entities lists cloud app d3590ed6-52b3-4102-aeff-aad2292ab01c as compromised during initial access.",
+      "severity": "medium",
+      "entityIds": [
+        "ent2"
+      ]
+    },
+    {
+      "id": "imp4",
+      "category": "credential-exposure",
+      "title": "Managed identity credential compromised",
+      "detail": "Compromised Entities lists managed identity 11111111-2222-3333-4444-555555555555 as compromised during credential access.",
+      "severity": "medium",
+      "entityIds": [
+        "ent3"
+      ]
+    }
+  ],
+  "actions": [],
+  "representationNotes": [
+    {
+      "id": "rn1",
+      "category": "schema-gap",
+      "severity": "warning",
+      "sourceSection": "Compromised Entities",
+      "commentary": "Entity type 'Cloud App' was normalized to schema type 'application' because the schema has no dedicated cloud-app type.",
+      "suggestedVocabularyExtension": "Add entity type 'cloud-app'."
+    },
+    {
+      "id": "rn2",
+      "category": "schema-gap",
+      "severity": "warning",
+      "sourceSection": "Summary",
+      "commentary": "The summary states 'Data access/exfiltration confirmed' but the detailed timeline explicitly shows mailbox item access only; no separate exfiltration event artifact is provided.",
+      "suggestedVocabularyExtension": "Allow explicit distinction between asserted impact statements and evidenced transfer events."
+    },
+    {
+      "id": "rn3",
+      "category": "insufficient-evidence",
+      "severity": "warning",
+      "sourceSection": "Timeline / OfficeActivity",
+      "commentary": "Four mailbox access events use four different AppIds, but the source does not explicitly link them to the managed identity, cloud app, or source IP beyond incident-level correlation.",
+      "suggestedVocabularyExtension": "Support incident-level correlation links with weaker provenance semantics."
+    },
+    {
+      "id": "rn4",
+      "category": "normalization-loss",
+      "severity": "info",
+      "sourceSection": "Attack Graph",
+      "commentary": "Attack graph edge 'stole token from webapp-vm-001' was represented with relationship kind 'stole-token-from' from IP to VM; the schema cannot directly encode the exact graph phrasing plus token object in one relation.",
+      "suggestedVocabularyExtension": "Add first-class token/credential artifact entity and token theft relation."
+    },
+    {
+      "id": "rn5",
+      "category": "insufficient-evidence",
+      "severity": "warning",
+      "sourceSection": "Timeline / Alerts",
+      "commentary": "Alerts IA-ALERT-003 through IA-ALERT-006 are each attached to all four mailbox access events because the source groups them together and does not map individual alerts to individual OfficeActivity records.",
+      "suggestedVocabularyExtension": "Support grouped alert-to-event correlation with unknown per-event mapping."
+    }
+  ]
+}

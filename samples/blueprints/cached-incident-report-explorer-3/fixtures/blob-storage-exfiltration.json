@@ -1,0 +1,1074 @@
+{
+  "identity": {
+    "incidentId": "747607f8-7174-5d3c-8e47-43aeafa09448",
+    "title": "Investigation Report — Incident 747607f8-7174-5d3c-8e47-43aeafa09448",
+    "startTime": "2026-07-17 22:56:17",
+    "endTime": "2026-07-17 22:56:34"
+  },
+  "verdict": {
+    "classification": "True Positive",
+    "determination": "Other",
+    "confidence": "high",
+    "rationale": "Confirmed malicious multi-stage attack resulting in data exfiltration.",
+    "impact": "Data access/exfiltration confirmed."
+  },
+  "summary": "Confirmed true-positive multi-stage attack from 185.220.101.42 during 2026-07-17 22:56:17–22:56:34. Source reports progression through Reconnaissance, Exfiltration, Credential Access, and Discovery, with data access/exfiltration confirmed and 15 observable events.",
+  "phases": [
+    {
+      "id": "ph1",
+      "name": "Reconnaissance",
+      "order": 1,
+      "summary": "Anonymous/public blob enumeration against proddata001 containers and account root."
+    },
+    {
+      "id": "ph2",
+      "name": "Exfiltration",
+      "order": 2,
+      "summary": "Data staged to cloud storage and blob data exfiltrated from customer-pii."
+    },
+    {
+      "id": "ph3",
+      "name": "Credential Access",
+      "order": 3,
+      "summary": "Service principal authenticated via client_secret, IMDS token obtained from webapp-vm-001, and storage account keys retrieved for PRODDATA001."
+    },
+    {
+      "id": "ph4",
+      "name": "Discovery",
+      "order": 4,
+      "summary": "ARM enumeration burst against subscription and storage account resources."
+    }
+  ],
+  "entities": [
+    {
+      "id": "ent1",
+      "type": "ip",
+      "label": "185.220.101.42",
+      "status": "observed",
+      "role": "source",
+      "description": "Public IP observed in reconnaissance and subsequent activity.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent2",
+      "type": "storage",
+      "label": "proddata001",
+      "status": "compromised",
+      "role": "storage-account",
+      "description": "Storage account /SUBSCRIPTIONS/12345678-1234-1234-1234-123456789ABC/RESOURCEGROUPS/PRODUCTION-RG/PROVIDERS/MICROSOFT.STORAGE/STORAGEACCOUNTS/PRODDATA001; source marks compromised and involved in reconnaissance, discovery, and credential access.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent3",
+      "type": "service-principal",
+      "label": "aabbccdd-1122-3344-5566-778899aabbcc",
+      "status": "affected",
+      "role": "service-principal",
+      "description": "Service Principal App; source marks affected and involved in credential access.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent4",
+      "type": "application",
+      "label": "Service Principal App",
+      "status": "affected",
+      "role": "resource-display-name",
+      "description": "ResourceDisplayName associated with service principal sign-in activity.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent5",
+      "type": "managed-identity",
+      "label": "11111111-2222-3333-4444-555555555555",
+      "status": "compromised",
+      "role": "managed-identity",
+      "description": "System-assigned managed identity token obtained via IMDS for resource hxxps://management[.]azure[.]com/ from webapp-vm-001.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent6",
+      "type": "virtual-machine",
+      "label": "webapp-vm-001",
+      "status": "affected",
+      "role": "vm",
+      "description": "Virtual machine /SUBSCRIPTIONS/12345678-1234-1234-1234-123456789ABC/RESOURCEGROUPS/PRODUCTION-RG/PROVIDERS/MICROSOFT.COMPUTE/VIRTUALMACHINES/WEBAPP-VM-001; source marks affected and involved in credential access.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent7",
+      "type": "cloud-resource",
+      "label": "production-rg",
+      "status": "affected",
+      "role": "resource-group",
+      "description": "Cloud resource marked affected and involved in discovery.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent8",
+      "type": "cloud-resource",
+      "label": "12345678-1234-1234-1234-123456789abc",
+      "status": "affected",
+      "role": "subscription",
+      "description": "Cloud resource marked affected and involved in discovery.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent9",
+      "type": "cloud-resource",
+      "label": "public-assets",
+      "status": "affected",
+      "role": "container",
+      "description": "Public-assets container on proddata001; source marks affected and involved in reconnaissance.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent10",
+      "type": "other",
+      "label": "SAS:deployments",
+      "status": "compromised",
+      "role": "sas-token",
+      "description": "SAS credential for deployments; source marks compromised during initial access.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent11",
+      "type": "cloud-resource",
+      "label": "deployments",
+      "status": "affected",
+      "role": "container",
+      "description": "Deployments container on proddata001; source marks affected and involved in initial access.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent12",
+      "type": "cloud-resource",
+      "label": "database-backups",
+      "status": "affected",
+      "role": "container",
+      "description": "Database-backups container on proddata001; source marks affected and involved in reconnaissance.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent13",
+      "type": "data-asset",
+      "label": "customer-pii/customers-2026-q1.csv",
+      "status": "affected",
+      "role": "blob-object",
+      "description": "Blob object in customer-pii container; source marks impacted asset targeted during collection.",
+      "confidence": "high"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel1",
+      "sourceId": "ent1",
+      "targetId": "ent2",
+      "kind": "enumerated",
+      "label": "enumerated public container/account root on proddata001",
+      "phaseId": "ph1",
+      "evidenceIds": [
+        "ev1"
+      ]
+    },
+    {
+      "id": "rel2",
+      "sourceId": "ent1",
+      "targetId": "ent2",
+      "kind": "exfiltrated-from",
+      "label": "data staged to cloud storage on proddata001",
+      "phaseId": "ph2",
+      "evidenceIds": [
+        "ev2"
+      ]
+    },
+    {
+      "id": "rel3",
+      "sourceId": "ent3",
+      "targetId": "ent4",
+      "kind": "authenticated-to",
+      "label": "authenticated to Service Principal App",
+      "phaseId": "ph3",
+      "evidenceIds": [
+        "ev3",
+        "ev4",
+        "ev6",
+        "ev7"
+      ]
+    },
+    {
+      "id": "rel4",
+      "sourceId": "ent1",
+      "targetId": "ent6",
+      "kind": "stole-token-from",
+      "label": "managed identity token obtained via IMDS from webapp-vm-001",
+      "phaseId": "ph3",
+      "evidenceIds": [
+        "ev5"
+      ]
+    },
+    {
+      "id": "rel5",
+      "sourceId": "ent1",
+      "targetId": "ent2",
+      "kind": "enumerated",
+      "label": "enumerated proddata001",
+      "phaseId": "ph4",
+      "evidenceIds": [
+        "ev8"
+      ]
+    },
+    {
+      "id": "rel6",
+      "sourceId": "ent1",
+      "targetId": "ent7",
+      "kind": "enumerated",
+      "label": "enumerated production-rg",
+      "phaseId": "ph4",
+      "evidenceIds": [
+        "ev8"
+      ]
+    },
+    {
+      "id": "rel7",
+      "sourceId": "ent1",
+      "targetId": "ent8",
+      "kind": "enumerated",
+      "label": "enumerated subscription 12345678-1234-1234-1234-123456789abc",
+      "phaseId": "ph4",
+      "evidenceIds": [
+        "ev8"
+      ]
+    },
+    {
+      "id": "rel8",
+      "sourceId": "ent1",
+      "targetId": "ent9",
+      "kind": "enumerated",
+      "label": "enumerated public-assets",
+      "phaseId": "ph1",
+      "evidenceIds": [
+        "ev9"
+      ]
+    },
+    {
+      "id": "rel9",
+      "sourceId": "ent1",
+      "targetId": "ent11",
+      "kind": "accessed",
+      "label": "accessed deployments via SAS",
+      "phaseId": "ph3",
+      "evidenceIds": [
+        "ev10"
+      ]
+    },
+    {
+      "id": "rel10",
+      "sourceId": "ent1",
+      "targetId": "ent2",
+      "kind": "retrieved-keys-for",
+      "label": "retrieved storage account keys for PRODDATA001",
+      "phaseId": "ph3",
+      "evidenceIds": [
+        "ev11",
+        "ev12",
+        "ev13"
+      ]
+    },
+    {
+      "id": "rel11",
+      "sourceId": "ent1",
+      "targetId": "ent12",
+      "kind": "enumerated",
+      "label": "enumerated database-backups",
+      "phaseId": "ph1",
+      "evidenceIds": [
+        "ev14"
+      ]
+    },
+    {
+      "id": "rel12",
+      "sourceId": "ent1",
+      "targetId": "ent13",
+      "kind": "collected-from",
+      "label": "blob data exfiltrated from customer-pii object",
+      "phaseId": "ph2",
+      "evidenceIds": [
+        "ev15"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "evt1",
+      "time": "2026-07-17 22:56:17",
+      "title": "Public blob enumeration of storage account root on proddata001",
+      "detail": "Anonymous/public blob enumeration of storage account root on proddata001.",
+      "phaseId": "ph1",
+      "entityIds": [
+        "ent1",
+        "ent2"
+      ],
+      "evidenceIds": [
+        "ev1"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt2",
+      "time": "2026-07-17 22:56:17",
+      "title": "Data staged to cloud storage",
+      "detail": "Data staged to cloud storage by 185.220.101.42 with 19 PutBlob operations to app-logs, customer-pii, database-backups; timeline examples include deployments and public-assets writes.",
+      "phaseId": "ph2",
+      "entityIds": [
+        "ent1",
+        "ent2",
+        "ent11",
+        "ent9"
+      ],
+      "evidenceIds": [
+        "ev2"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt3",
+      "time": "2026-07-17 22:56:33",
+      "title": "Service principal authenticated via client_secret",
+      "detail": "Service principal aabbccdd-1122-3344-5566-778899aabbcc authenticated non-interactively from 185.220.101.42.",
+      "phaseId": "ph3",
+      "entityIds": [
+        "ent1",
+        "ent3",
+        "ent4"
+      ],
+      "evidenceIds": [
+        "ev3"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt4",
+      "time": "2026-07-17 22:56:33",
+      "title": "Service principal authenticated via client_secret",
+      "detail": "Service principal aabbccdd-1122-3344-5566-778899aabbcc authenticated non-interactively from 185.220.101.42.",
+      "phaseId": "ph3",
+      "entityIds": [
+        "ent1",
+        "ent3",
+        "ent4"
+      ],
+      "evidenceIds": [
+        "ev4"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt5",
+      "time": "2026-07-17 22:56:33",
+      "title": "Managed identity token obtained via IMDS",
+      "detail": "Managed identity token obtained via IMDS from 185.220.101.42 for resource hxxps://management[.]azure[.]com/.",
+      "phaseId": "ph3",
+      "entityIds": [
+        "ent1",
+        "ent5",
+        "ent6"
+      ],
+      "evidenceIds": [
+        "ev5"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt6",
+      "time": "2026-07-17 22:56:33",
+      "title": "Service principal authenticated via client_secret",
+      "detail": "Service principal aabbccdd-1122-3344-5566-778899aabbcc authenticated non-interactively from 185.220.101.42.",
+      "phaseId": "ph3",
+      "entityIds": [
+        "ent1",
+        "ent3",
+        "ent4"
+      ],
+      "evidenceIds": [
+        "ev6"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt7",
+      "time": "2026-07-17 22:56:33",
+      "title": "Service principal authenticated via client_secret",
+      "detail": "Service principal aabbccdd-1122-3344-5566-778899aabbcc authenticated non-interactively from 185.220.101.42.",
+      "phaseId": "ph3",
+      "entityIds": [
+        "ent1",
+        "ent3",
+        "ent4"
+      ],
+      "evidenceIds": [
+        "ev7"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt8",
+      "time": "2026-07-17 22:56:33",
+      "title": "ARM enumeration burst",
+      "detail": "ARM enumeration burst of 10 operations from 185.220.101.42 including subscription read and storage account read.",
+      "phaseId": "ph4",
+      "entityIds": [
+        "ent1",
+        "ent2",
+        "ent7",
+        "ent8"
+      ],
+      "evidenceIds": [
+        "ev8"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt9",
+      "time": "2026-07-17 22:56:33",
+      "title": "Public blob enumeration of public-assets",
+      "detail": "Public blob enumeration of public-assets on proddata001, including reads of robots.txt and setup-guide.txt.",
+      "phaseId": "ph1",
+      "entityIds": [
+        "ent1",
+        "ent2",
+        "ent9"
+      ],
+      "evidenceIds": [
+        "ev9"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt10",
+      "time": "2026-07-17 22:56:33",
+      "title": "SAS token used to access deployments container",
+      "detail": "SAS token used to access deployments container with 2 operations: ListBlobs and GetBlob for pipeline-config.json.",
+      "phaseId": "ph3",
+      "entityIds": [
+        "ent1",
+        "ent10",
+        "ent11",
+        "ent2"
+      ],
+      "evidenceIds": [
+        "ev10"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt11",
+      "time": "2026-07-17 22:56:34",
+      "title": "Storage account keys retrieved for PRODDATA001",
+      "detail": "Storage account keys retrieved for PRODDATA001 from 185.220.101.42.",
+      "phaseId": "ph3",
+      "entityIds": [
+        "ent1",
+        "ent2"
+      ],
+      "evidenceIds": [
+        "ev11"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt12",
+      "time": "2026-07-17 22:56:34",
+      "title": "Storage account keys retrieved for PRODDATA001",
+      "detail": "Storage account keys retrieved for PRODDATA001 from 185.220.101.42.",
+      "phaseId": "ph3",
+      "entityIds": [
+        "ent1",
+        "ent2"
+      ],
+      "evidenceIds": [
+        "ev12"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt13",
+      "time": "2026-07-17 22:56:34",
+      "title": "Storage account keys retrieved for PRODDATA001",
+      "detail": "Storage account keys retrieved for PRODDATA001 from 185.220.101.42.",
+      "phaseId": "ph3",
+      "entityIds": [
+        "ent1",
+        "ent2"
+      ],
+      "evidenceIds": [
+        "ev13"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt14",
+      "time": "2026-07-17 22:56:34",
+      "title": "Public blob enumeration of database-backups",
+      "detail": "Public blob enumeration of database-backups on proddata001, including access to prod-db-backup-20260227.sql.",
+      "phaseId": "ph1",
+      "entityIds": [
+        "ent1",
+        "ent2",
+        "ent12"
+      ],
+      "evidenceIds": [
+        "ev14"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt15",
+      "time": "2026-07-17 22:56:34",
+      "title": "Blob data exfiltrated from customer-pii",
+      "detail": "Blob data exfiltrated from customer-pii with 2 GetBlob operations for customers-2026-q1.csv.",
+      "phaseId": "ph2",
+      "entityIds": [
+        "ent1",
+        "ent2",
+        "ent13"
+      ],
+      "evidenceIds": [
+        "ev15"
+      ],
+      "confidence": "high"
+    }
+  ],
+  "techniques": [
+    {
+      "id": "tec1",
+      "tactic": "Reconnaissance",
+      "technique": "Active Scanning: Wordlist Scanning",
+      "techniqueId": "T1595.003",
+      "description": "Public blob/account root enumeration activity against proddata001.",
+      "phaseId": "ph1",
+      "evidenceIds": [
+        "ev1"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "tec2",
+      "tactic": "Exfiltration",
+      "technique": "Exfiltration Over Web Service: to Cloud Storage",
+      "techniqueId": "T1567.002",
+      "description": "PutBlob operations used to stage data to cloud storage.",
+      "phaseId": "ph2",
+      "evidenceIds": [
+        "ev2"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "tec3",
+      "tactic": "Credential Access",
+      "technique": "Valid Accounts: Cloud Accounts",
+      "techniqueId": "T1078.004",
+      "description": "Service principal authenticated non-interactively via client_secret from 185.220.101.42.",
+      "phaseId": "ph3",
+      "evidenceIds": [
+        "ev3"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "tec4",
+      "tactic": "Credential Access",
+      "technique": "Unsecured Credentials: Cloud Instance Metadata API",
+      "techniqueId": "T1552.005",
+      "description": "Managed identity token obtained from IMDS on webapp-vm-001.",
+      "phaseId": "ph3",
+      "evidenceIds": [
+        "ev5"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "tec5",
+      "tactic": "Discovery",
+      "technique": "Account Discovery: Cloud Account",
+      "techniqueId": "T1087.004",
+      "description": "ARM enumeration burst including subscription read and storage account read.",
+      "phaseId": "ph4",
+      "evidenceIds": [
+        "ev8"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "tec6",
+      "tactic": "Credential Access",
+      "technique": "Steal Application Access Token",
+      "techniqueId": "T1528",
+      "description": "Storage account keys retrieved for PRODDATA001 from 185.220.101.42.",
+      "phaseId": "ph3",
+      "evidenceIds": [
+        "ev11"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "tec7",
+      "tactic": "Collection",
+      "technique": "Data from Cloud Storage Object",
+      "techniqueId": "T1530",
+      "description": "Blob data collected from customer-pii object customers-2026-q1.csv.",
+      "phaseId": "ph2",
+      "evidenceIds": [
+        "ev15"
+      ],
+      "confidence": "high"
+    }
+  ],
+  "alerts": [
+    {
+      "id": "al1",
+      "title": "Anonymous Blob Container Enumeration (IA-ALERT-001)",
+      "verdict": "True Positive",
+      "summary": "Public blob enumeration of storage account root on proddata001.",
+      "eventIds": [
+        "evt1"
+      ],
+      "evidenceIds": [
+        "ev1"
+      ]
+    },
+    {
+      "id": "al2",
+      "title": "Bulk Blob Downloads with Account Key (IA-ALERT-002)",
+      "verdict": "True Positive",
+      "summary": "Data staged to cloud storage by 185.220.101.42 (19 PutBlob ops to app-logs, customer-pii, database-backups).",
+      "eventIds": [
+        "evt2"
+      ],
+      "evidenceIds": [
+        "ev2"
+      ]
+    },
+    {
+      "id": "al3",
+      "title": "SAS Token Access to Non-Public Container (IA-ALERT-003)",
+      "verdict": "True Positive",
+      "summary": "Service principal aabbccdd-1122-3344-5566-778899aabbcc authenticated non-interactively from 185.220.101.42.",
+      "eventIds": [
+        "evt3",
+        "evt4",
+        "evt6",
+        "evt7"
+      ],
+      "evidenceIds": [
+        "ev3",
+        "ev4",
+        "ev6",
+        "ev7"
+      ]
+    },
+    {
+      "id": "al4",
+      "title": "SAS Token Access to Non-Public Container (IA-ALERT-004)",
+      "verdict": "True Positive",
+      "summary": "Service principal aabbccdd-1122-3344-5566-778899aabbcc authenticated non-interactively from 185.220.101.42.",
+      "eventIds": [
+        "evt3",
+        "evt4",
+        "evt6",
+        "evt7"
+      ],
+      "evidenceIds": [
+        "ev3",
+        "ev4",
+        "ev6",
+        "ev7"
+      ]
+    },
+    {
+      "id": "al5",
+      "title": "Unusual metadata service access (IA-ALERT-005)",
+      "verdict": "True Positive",
+      "summary": "Managed identity token obtained via IMDS from 185.220.101.42 (resource: hxxps://management[.]azure[.]com/).",
+      "eventIds": [
+        "evt5"
+      ],
+      "evidenceIds": [
+        "ev5"
+      ]
+    },
+    {
+      "id": "al6",
+      "title": "SAS Token Access to Non-Public Container (IA-ALERT-006)",
+      "verdict": "True Positive",
+      "summary": "Service principal aabbccdd-1122-3344-5566-778899aabbcc authenticated non-interactively from 185.220.101.42.",
+      "eventIds": [
+        "evt3",
+        "evt4",
+        "evt6",
+        "evt7"
+      ],
+      "evidenceIds": [
+        "ev3",
+        "ev4",
+        "ev6",
+        "ev7"
+      ]
+    },
+    {
+      "id": "al7",
+      "title": "SAS Token Access to Non-Public Container (IA-ALERT-007)",
+      "verdict": "True Positive",
+      "summary": "Service principal aabbccdd-1122-3344-5566-778899aabbcc authenticated non-interactively from 185.220.101.42.",
+      "eventIds": [
+        "evt3",
+        "evt4",
+        "evt6",
+        "evt7"
+      ],
+      "evidenceIds": [
+        "ev3",
+        "ev4",
+        "ev6",
+        "ev7"
+      ]
+    },
+    {
+      "id": "al8",
+      "title": "Unusual account enumeration activity (IA-ALERT-008)",
+      "verdict": "True Positive",
+      "summary": "ARM enumeration burst (10 ops) from 185.220.101.42: read, read, read, read.",
+      "eventIds": [
+        "evt8"
+      ],
+      "evidenceIds": [
+        "ev8"
+      ]
+    },
+    {
+      "id": "al9",
+      "title": "Anonymous Blob Container Enumeration (IA-ALERT-009)",
+      "verdict": "True Positive",
+      "summary": "Public blob enumeration of public-assets on proddata001.",
+      "eventIds": [
+        "evt9"
+      ],
+      "evidenceIds": [
+        "ev9"
+      ]
+    },
+    {
+      "id": "al10",
+      "title": "SAS Token Access to Non-Public Container (IA-ALERT-010)",
+      "verdict": "True Positive",
+      "summary": "SAS token used to access deployments container (2 operations).",
+      "eventIds": [
+        "evt10"
+      ],
+      "evidenceIds": [
+        "ev10"
+      ]
+    },
+    {
+      "id": "al11",
+      "title": "Service Principal Token Request to ARM (IA-ALERT-011)",
+      "verdict": "True Positive",
+      "summary": "Storage account keys retrieved for PRODDATA001 from 185.220.101.42.",
+      "eventIds": [
+        "evt11",
+        "evt12",
+        "evt13"
+      ],
+      "evidenceIds": [
+        "ev11",
+        "ev12",
+        "ev13"
+      ]
+    },
+    {
+      "id": "al12",
+      "title": "Service Principal Token Request to ARM (IA-ALERT-012)",
+      "verdict": "True Positive",
+      "summary": "Storage account keys retrieved for PRODDATA001 from 185.220.101.42.",
+      "eventIds": [
+        "evt11",
+        "evt12",
+        "evt13"
+      ],
+      "evidenceIds": [
+        "ev11",
+        "ev12",
+        "ev13"
+      ]
+    },
+    {
+      "id": "al13",
+      "title": "Service Principal Token Request to ARM (IA-ALERT-013)",
+      "verdict": "True Positive",
+      "summary": "Storage account keys retrieved for PRODDATA001 from 185.220.101.42.",
+      "eventIds": [
+        "evt11",
+        "evt12",
+        "evt13"
+      ],
+      "evidenceIds": [
+        "ev11",
+        "ev12",
+        "ev13"
+      ]
+    },
+    {
+      "id": "al14",
+      "title": "Anonymous Blob Container Enumeration (IA-ALERT-014)",
+      "verdict": "True Positive",
+      "summary": "Public blob enumeration of database-backups on proddata001.",
+      "eventIds": [
+        "evt14"
+      ],
+      "evidenceIds": [
+        "ev14"
+      ]
+    },
+    {
+      "id": "al15",
+      "title": "SAS Token Access to Non-Public Container (IA-ALERT-015)",
+      "verdict": "True Positive",
+      "summary": "Blob data exfiltrated from customer-pii (2 objects).",
+      "eventIds": [
+        "evt15"
+      ],
+      "evidenceIds": [
+        "ev15"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev1",
+      "sourceType": "StorageBlobLogs",
+      "timestamp": "2026-07-17 22:56:17",
+      "summary": "GetBlob / from 185.220.101.42 returned 400; related GetBlob account properties request at 22:56:33 against proddata001 returned 403.",
+      "correlationId": ""
+    },
+    {
+      "id": "ev2",
+      "sourceType": "StorageBlobLogs",
+      "timestamp": "2026-07-17 22:56:17",
+      "summary": "PutBlob activity from 185.220.101.42 to proddata001; alert states 19 PutBlob ops to app-logs, customer-pii, database-backups; timeline examples show deployments container and objects plus public-assets container writes.",
+      "correlationId": ""
+    },
+    {
+      "id": "ev3",
+      "sourceType": "AADSignInLogs",
+      "timestamp": "2026-07-17 22:56:33",
+      "summary": "Service principal aabbccdd-1122-3344-5566-778899aabbcc authenticated via client_secret from 185.220.101.42 to Service Principal App.",
+      "correlationId": "97763097-17e3-42d4-bfe1-45fef6fd920b"
+    },
+    {
+      "id": "ev4",
+      "sourceType": "AADSignInLogs",
+      "timestamp": "2026-07-17 22:56:33",
+      "summary": "Service principal aabbccdd-1122-3344-5566-778899aabbcc authenticated via client_secret from 185.220.101.42 to Service Principal App.",
+      "correlationId": "606f930e-b862-48d4-98d7-9f98e5fb0606"
+    },
+    {
+      "id": "ev5",
+      "sourceType": "AzureIMDSAccessLogs",
+      "timestamp": "2026-07-17 22:56:33",
+      "summary": "IMDS.GetToken success from 185.220.101.42 on webapp-vm-001 for managed identity 11111111-2222-3333-4444-555555555555 and resource hxxps://management[.]azure[.]com/.",
+      "correlationId": "8cb4bd8f-1e51-4653-8148-fcdf07a9611b"
+    },
+    {
+      "id": "ev6",
+      "sourceType": "AADSignInLogs",
+      "timestamp": "2026-07-17 22:56:33",
+      "summary": "Service principal aabbccdd-1122-3344-5566-778899aabbcc authenticated via client_secret from 185.220.101.42 to Service Principal App.",
+      "correlationId": "5389ca20-c751-479c-bfd4-ddddedf31fbe"
+    },
+    {
+      "id": "ev7",
+      "sourceType": "AADSignInLogs",
+      "timestamp": "2026-07-17 22:56:33",
+      "summary": "Service principal aabbccdd-1122-3344-5566-778899aabbcc authenticated via client_secret from 185.220.101.42 to Service Principal App.",
+      "correlationId": "54ec5f2f-2391-46fd-bc25-bf09caa2caf1"
+    },
+    {
+      "id": "ev8",
+      "sourceType": "AzureActivityLogs",
+      "timestamp": "2026-07-17 22:56:33",
+      "summary": "ARM enumeration burst from 185.220.101.42 including Microsoft.Resources/subscriptions/read at 22:56:33 and Microsoft.Storage/storageAccounts/read at 22:56:34.",
+      "correlationId": "36e92e0a-2687-4203-9298-d09da7599a77"
+    },
+    {
+      "id": "ev9",
+      "sourceType": "StorageBlobLogs",
+      "timestamp": "2026-07-17 22:56:33",
+      "summary": "ListBlobs and GetBlob activity from 185.220.101.42 against public-assets on proddata001, including robots.txt and setup-guide.txt.",
+      "correlationId": ""
+    },
+    {
+      "id": "ev10",
+      "sourceType": "StorageBlobLogs",
+      "timestamp": "2026-07-17 22:56:33",
+      "summary": "SAS-authenticated ListBlobs and GetBlob activity from 185.220.101.42 against deployments on proddata001.",
+      "correlationId": ""
+    },
+    {
+      "id": "ev11",
+      "sourceType": "AzureActivityLogs",
+      "timestamp": "2026-07-17 22:56:34",
+      "summary": "Microsoft.Storage/storageAccounts/listKeys/action success from 185.220.101.42 for PRODDATA001.",
+      "correlationId": "58e58f7f-d9f1-4e79-9264-7e46cd9e714c"
+    },
+    {
+      "id": "ev12",
+      "sourceType": "AzureActivityLogs",
+      "timestamp": "2026-07-17 22:56:34",
+      "summary": "Microsoft.Storage/storageAccounts/listKeys/action success from 185.220.101.42 for PRODDATA001.",
+      "correlationId": "d48d04e7-4540-4a24-9b0a-d5b3d5c5cc53"
+    },
+    {
+      "id": "ev13",
+      "sourceType": "AzureActivityLogs",
+      "timestamp": "2026-07-17 22:56:34",
+      "summary": "Microsoft.Storage/storageAccounts/listKeys/action success from 185.220.101.42 for PRODDATA001.",
+      "correlationId": "1709cb5b-5451-49b9-a9d1-ecdd7809b35c"
+    },
+    {
+      "id": "ev14",
+      "sourceType": "StorageBlobLogs",
+      "timestamp": "2026-07-17 22:56:34",
+      "summary": "ListBlobs and GetBlob activity from 185.220.101.42 against database-backups on proddata001, including prod-db-backup-20260227.sql.",
+      "correlationId": ""
+    },
+    {
+      "id": "ev15",
+      "sourceType": "StorageBlobLogs",
+      "timestamp": "2026-07-17 22:56:34",
+      "summary": "Two GetBlob operations from 185.220.101.42 against customer-pii/customers-2026-q1.csv on proddata001.",
+      "correlationId": ""
+    }
+  ],
+  "indicators": [
+    {
+      "id": "ioc1",
+      "type": "Public IP",
+      "value": "185.220.101.42",
+      "context": "Observed in Reconnaissance.",
+      "confidence": "high"
+    }
+  ],
+  "impacts": [
+    {
+      "id": "imp1",
+      "category": "data-access",
+      "title": "Data access confirmed",
+      "detail": "Summary states data access/exfiltration confirmed.",
+      "severity": "high",
+      "entityIds": [
+        "ent2",
+        "ent13"
+      ]
+    },
+    {
+      "id": "imp2",
+      "category": "data-exfiltration",
+      "title": "Blob data exfiltrated from customer-pii",
+      "detail": "Alert IA-ALERT-015 states blob data exfiltrated from customer-pii (2 objects).",
+      "severity": "high",
+      "entityIds": [
+        "ent13"
+      ]
+    },
+    {
+      "id": "imp3",
+      "category": "credential-exposure",
+      "title": "Managed identity token obtained via IMDS",
+      "detail": "Managed identity token for 11111111-2222-3333-4444-555555555555 obtained via IMDS from webapp-vm-001.",
+      "severity": "high",
+      "entityIds": [
+        "ent5",
+        "ent6"
+      ]
+    },
+    {
+      "id": "imp4",
+      "category": "credential-exposure",
+      "title": "Storage account keys retrieved for PRODDATA001",
+      "detail": "Storage account keys retrieved for PRODDATA001 from 185.220.101.42.",
+      "severity": "high",
+      "entityIds": [
+        "ent2"
+      ]
+    },
+    {
+      "id": "imp5",
+      "category": "identity-compromise",
+      "title": "SAS credential for deployments marked compromised",
+      "detail": "Compromised entities section marks SAS:deployments compromised during initial access.",
+      "severity": "high",
+      "entityIds": [
+        "ent10"
+      ]
+    }
+  ],
+  "actions": [],
+  "representationNotes": [
+    {
+      "id": "rn1",
+      "category": "source-ambiguity",
+      "severity": "warning",
+      "sourceSection": "Summary",
+      "commentary": "Source summary orders phases as Reconnaissance, Exfiltration, Credential Access, Discovery, while event timestamps show overlapping and interleaved activity. Phase order preserved from source wording.",
+      "suggestedVocabularyExtension": ""
+    },
+    {
+      "id": "rn2",
+      "category": "conflicting-evidence",
+      "severity": "warning",
+      "sourceSection": "Attack Graph vs Timeline/Alerts",
+      "commentary": "Attack graph edge says 'exfiltrated to proddata001' while timeline and summary describe data staged to cloud storage and exfiltration from customer-pii. Relationship rel2 retains source wording at storage-account level without resolving destination/source inconsistency.",
+      "suggestedVocabularyExtension": ""
+    },
+    {
+      "id": "rn3",
+      "category": "normalization-loss",
+      "severity": "info",
+      "sourceSection": "Attack Graph",
+      "commentary": "Attack graph label 'enumerated public co' appears truncated. Normalized as public container enumeration in relationship labels where supported.",
+      "suggestedVocabularyExtension": ""
+    },
+    {
+      "id": "rn4",
+      "category": "schema-gap",
+      "severity": "warning",
+      "sourceSection": "Compromised Entities",
+      "commentary": "Schema lacks first-class container and blob URL resource subtypes and lacks explicit SAS credential type; represented as cloud-resource, data-asset, and other respectively.",
+      "suggestedVocabularyExtension": "Add entity types for blob-container, blob-object-url, and sas-token"
+    },
+    {
+      "id": "rn5",
+      "category": "insufficient-evidence",
+      "severity": "warning",
+      "sourceSection": "Timeline / IA-ALERT-002",
+      "commentary": "Alert IA-ALERT-002 states 19 PutBlob operations to app-logs, customer-pii, database-backups, but provided timeline examples show deployments and public-assets writes. Model preserves both by summarizing as source-reported without reconciling exact target set.",
+      "suggestedVocabularyExtension": ""
+    },
+    {
+      "id": "rn6",
+      "category": "source-ambiguity",
+      "severity": "warning",
+      "sourceSection": "Correlated Incidents and Alerts / Timeline",
+      "commentary": "Alerts IA-ALERT-003, 004, 006, and 007 all share the same summary and are linked to four sign-in events. Source does not map each alert to a specific sign-in record; model associates each alert to the set of four related events.",
+      "suggestedVocabularyExtension": ""
+    },
+    {
+      "id": "rn7",
+      "category": "unsupported-concept",
+      "severity": "info",
+      "sourceSection": "Compromised Entities",
+      "commentary": "Source uses statuses Compromised and Affected plus phrases such as 'resource involved in credential access' and 'targeted during collection'. These are retained in descriptions; schema does not directly encode all involvement semantics beyond status/role/relationships.",
+      "suggestedVocabularyExtension": ""
+    }
+  ]
+}

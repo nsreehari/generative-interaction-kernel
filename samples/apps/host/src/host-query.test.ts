@@ -47,6 +47,17 @@ test("host query selects Blueprints with canonical b and legacy bundle parameter
   );
 });
 
+test("host query resolves cached Blueprint paths", () => {
+  assert.equal(
+    readHostQuery("", "/cached/incident-report-explorer-3/").targetId,
+    "cached-incident-report-explorer-3",
+  );
+  assert.equal(
+    readHostQuery("?b=incident-report-explorer-3", "/cached/incident-report-explorer-3/").targetId,
+    "incident-report-explorer-3",
+  );
+});
+
 test("host query canonicalizes legacy controls and redundant presentation state", () => {
   assert.equal(
     canonicalizeHostUrl(

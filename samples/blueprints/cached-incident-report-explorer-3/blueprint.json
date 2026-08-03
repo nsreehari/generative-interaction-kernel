@@ -1,0 +1,699 @@
+{
+  "gik": "0.1",
+  "type": "blueprint",
+  "payload": {
+    "id": "cached-incident-report-explorer-3",
+    "kind": "incident-semantic-blueprint",
+    "version": "1.0.0",
+    "structureMode": "fixed",
+    "tiers": [
+      {
+        "id": "incident-semantic",
+        "kind": "incident-semantic-model",
+        "description": "Normalized incident facts, relationships, evidence, response actions, and explicit representation notes."
+      },
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document"
+      }
+    ],
+    "recipes": [
+      {
+        "id": "incident-semantic-to-runtime",
+        "from": "incident-semantic",
+        "to": "runtime-document",
+        "representations": [
+          {
+            "id": "operational",
+            "when": "externalContext.attention = 'operational'",
+            "views": {
+              "incident-workspace": {
+                "capability": "incident3:workspace",
+                "props": {
+                  "title": "Cached incident intelligence",
+                  "preset": "flights"
+                },
+                "bindings": {
+                  "fullscreen": {
+                    "from": "incident3.fullscreen"
+                  }
+                }
+              },
+              "incident-source": {
+                "capability": "incident3:editor",
+                "props": {
+                  "title": "Investigation source"
+                },
+                "bindings": {
+                  "value": {
+                    "from": "incident3.content"
+                  },
+                  "editing": {
+                    "from": "incident3.editing"
+                  }
+                }
+              },
+              "incident-source-selector": {
+                "capability": "fluent:dropdown",
+                "props": {
+                  "ariaLabel": "Choose sample incident",
+                  "options": [
+                    {
+                      "value": "password-spray-mailbox",
+                      "label": "Password spray and mailbox compromise"
+                    },
+                    {
+                      "value": "blob-storage-exfiltration",
+                      "label": "Blob storage exfiltration"
+                    },
+                    {
+                      "value": "identity-compromise",
+                      "label": "Identity and cloud resource compromise"
+                    },
+                    {
+                      "value": "device-code-bec",
+                      "label": "Device-code phishing and BEC"
+                    },
+                    {
+                      "value": "supply-chain-sap-bec",
+                      "label": "Supply-chain SAP and procurement BEC"
+                    }
+                  ]
+                },
+                "bindings": {
+                  "value": {
+                    "from": "incident3.selectedSampleId"
+                  }
+                },
+                "visibility": "true"
+              },
+              "incident-source-markdown": {
+                "capability": "ui:markdown",
+                "bindings": {
+                  "value": {
+                    "from": "incident3.content"
+                  }
+                }
+              },
+              "incident-semantic-analyzer": {
+                "capability": "incident3:report",
+                "props": {
+                  "title": "Cached analysis · Two flights"
+                },
+                "bindings": {
+                  "value": {
+                    "from": "incident3.model"
+                  },
+                  "content": {
+                    "from": "incident3.content"
+                  },
+                  "analyzedContent": {
+                    "from": "incident3.analyzedContent"
+                  },
+                  "error": {
+                    "from": "incident3.error"
+                  },
+                  "fullscreen": {
+                    "from": "incident3.fullscreen"
+                  },
+                  "pending": {
+                    "from": "incident3.analysisPending"
+                  }
+                }
+              },
+              "incident-view-fullscreen": {
+                "capability": "fluent:button",
+                "props": {
+                  "variant": "icon",
+                  "icon": "full-screen-maximize",
+                  "ariaLabel": "View full screen"
+                },
+                "visibility": "incident3.model != null and $not(incident3.fullscreen)"
+              },
+              "incident-exit-fullscreen": {
+                "capability": "fluent:button",
+                "props": {
+                  "variant": "icon",
+                  "icon": "full-screen-minimize",
+                  "ariaLabel": "Exit full screen"
+                },
+                "visibility": "incident3.fullscreen"
+              },
+              "incident-flight-a": {
+                "capability": "incident3:incident-story",
+                "bindings": {
+                  "value": {
+                    "from": "incident3.model"
+                  }
+                }
+              },
+              "incident-flight-b": {
+                "capability": "incident3:investigation-canvas",
+                "bindings": {
+                  "value": {
+                    "from": "incident3.model"
+                  }
+                }
+              }
+            },
+            "presentation": {
+              "roots": [
+                "incident-workspace"
+              ],
+              "placements": [
+                {
+                  "cell": "incident-source",
+                  "parent": "incident-workspace",
+                  "slot": "children",
+                  "order": 0
+                },
+                {
+                  "cell": "incident-source-selector",
+                  "parent": "incident-source",
+                  "slot": "children",
+                  "order": 0
+                },
+                {
+                  "cell": "incident-source-markdown",
+                  "parent": "incident-source",
+                  "slot": "children",
+                  "order": 1
+                },
+                {
+                  "cell": "incident-semantic-analyzer",
+                  "parent": "incident-workspace",
+                  "slot": "children",
+                  "order": 1
+                },
+                {
+                  "cell": "incident-flight-a",
+                  "parent": "incident-semantic-analyzer",
+                  "slot": "children",
+                  "order": 0
+                },
+                {
+                  "cell": "incident-flight-b",
+                  "parent": "incident-semantic-analyzer",
+                  "slot": "children",
+                  "order": 1
+                },
+                {
+                  "cell": "incident-view-fullscreen",
+                  "parent": "incident-semantic-analyzer",
+                  "slot": "children",
+                  "order": 3
+                },
+                {
+                  "cell": "incident-exit-fullscreen",
+                  "parent": "incident-semantic-analyzer",
+                  "slot": "children",
+                  "order": 4
+                }
+              ]
+            }
+          },
+          {
+            "id": "brief",
+            "when": "externalContext.attention = 'brief'",
+            "extends": "operational",
+            "views": {
+              "incident-workspace": {
+                "capability": "incident3:workspace",
+                "props": {
+                  "title": "Cached incident intelligence",
+                  "preset": "flights"
+                },
+                "bindings": {
+                  "fullscreen": {
+                    "from": "incident3.fullscreen"
+                  }
+                }
+              },
+              "incident-semantic-analyzer": {
+                "capability": "incident3:report",
+                "props": {
+                  "title": "Cached analysis · Two flights"
+                },
+                "bindings": {
+                  "value": {
+                    "from": "incident3.model"
+                  },
+                  "content": {
+                    "from": "incident3.content"
+                  },
+                  "analyzedContent": {
+                    "from": "incident3.analyzedContent"
+                  },
+                  "error": {
+                    "from": "incident3.error"
+                  },
+                  "fullscreen": {
+                    "from": "incident3.fullscreen"
+                  },
+                  "pending": {
+                    "from": "incident3.analysisPending"
+                  }
+                }
+              }
+            },
+            "presentation": {
+              "roots": [
+                "incident-workspace"
+              ],
+              "placements": [
+                {
+                  "cell": "incident-source",
+                  "parent": "incident-workspace",
+                  "slot": "children",
+                  "order": 0
+                },
+                {
+                  "cell": "incident-source-selector",
+                  "parent": "incident-source",
+                  "slot": "children",
+                  "order": 0
+                },
+                {
+                  "cell": "incident-source-markdown",
+                  "parent": "incident-source",
+                  "slot": "children",
+                  "order": 1
+                },
+                {
+                  "cell": "incident-semantic-analyzer",
+                  "parent": "incident-workspace",
+                  "slot": "children",
+                  "order": 1
+                },
+                {
+                  "cell": "incident-flight-a",
+                  "parent": "incident-semantic-analyzer",
+                  "slot": "children",
+                  "order": 0
+                },
+                {
+                  "cell": "incident-flight-b",
+                  "parent": "incident-semantic-analyzer",
+                  "slot": "children",
+                  "order": 1
+                },
+                {
+                  "cell": "incident-view-fullscreen",
+                  "parent": "incident-semantic-analyzer",
+                  "slot": "children",
+                  "order": 3
+                },
+                {
+                  "cell": "incident-exit-fullscreen",
+                  "parent": "incident-semantic-analyzer",
+                  "slot": "children",
+                  "order": 4
+                }
+              ]
+            }
+          }
+        ],
+        "fallback": "operational"
+      }
+    ],
+    "services": {},
+    "runtime": {
+      "expression": "jsonata",
+      "namespaces": [
+        "incident3"
+      ],
+      "actions": [
+        "assign",
+        "invoke"
+      ],
+      "capabilities": {
+        "incident3:workspace": {
+          "propsSchema": {
+            "type": "object",
+            "required": [
+              "title",
+              "preset"
+            ],
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "preset": {
+                "type": "string",
+                "enum": [
+                  "flights"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "incident3:editor": {
+          "propsSchema": {
+            "type": "object",
+            "required": [
+              "title"
+            ],
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "slots": [
+            "children"
+          ],
+          "dataProp": "value"
+        },
+        "incident3:report": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "analyze"
+          ],
+          "slots": [
+            "children"
+          ],
+          "dataProp": "value"
+        },
+        "incident3:incident-story": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "value"
+        },
+        "incident3:investigation-canvas": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "value"
+        },
+        "incident3:verdict-brief": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "value"
+        },
+        "incident3:attack-path": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "value"
+        },
+        "incident3:blast-radius": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "value"
+        },
+        "incident3:phase-timeline": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "value"
+        },
+        "incident3:ttp-chain": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "value"
+        },
+        "incident3:response-plan": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "value"
+        },
+        "incident3:representation-notes": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "value"
+        },
+        "fluent:button": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "press"
+          ]
+        },
+        "fluent:dropdown": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "select"
+          ],
+          "dataProp": "value"
+        },
+        "ui:markdown": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "value"
+        }
+      },
+      "externals": {
+        "projectionViews": {
+          "incident3": {
+            "from": "self"
+          },
+          "fluent": {
+            "from": "fluent",
+            "use": [
+              "button",
+              "dropdown"
+            ]
+          },
+          "ui": {
+            "from": "floor",
+            "use": [
+              "markdown"
+            ]
+          }
+        },
+        "effectHandlers": [
+          "selectCachedSampleReport"
+        ]
+      },
+      "state": {
+        "incident3": {
+          "selectedSampleId": "password-spray-mailbox",
+          "content": "# Loading cached incident report…",
+          "model": null,
+          "analyzedContent": null,
+          "fullscreen": false,
+          "analysisPending": false,
+          "error": ""
+        }
+      }
+    },
+    "cells": {
+      "incident-workspace": {
+        "id": "incident-workspace",
+        "kind": "workspace"
+      },
+      "incident-source": {
+        "id": "incident-source",
+        "kind": "incident-source",
+        "outputs": [
+          {
+            "token": "incident-report-content",
+            "from": "incident3.content",
+            "when": "$length(incident3.content) > 0"
+          }
+        ]
+      },
+      "incident-source-selector": {
+        "id": "incident-source-selector",
+        "kind": "source-selector",
+        "behavior": {
+          "events": {
+            "select": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "selectCachedSampleReport"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "incident-source-markdown": {
+        "id": "incident-source-markdown",
+        "kind": "source-reader",
+        "inputs": [
+          {
+            "token": "incident-report-content"
+          }
+        ]
+      },
+      "incident-semantic-analyzer": {
+        "id": "incident-semantic-analyzer",
+        "kind": "semantic-analysis-agent",
+        "inputs": [
+          {
+            "token": "incident-report-content"
+          }
+        ],
+        "outputs": [
+          {
+            "token": "incident-semantic-model",
+            "from": "incident3.model",
+            "when": "incident3.model != null"
+          }
+        ]
+      },
+      "incident-view-fullscreen": {
+        "id": "incident-view-fullscreen",
+        "kind": "command",
+        "behavior": {
+          "events": {
+            "press": [
+              {
+                "do": "assign",
+                "target": "incident3.fullscreen",
+                "args": {
+                  "value": true
+                }
+              }
+            ]
+          }
+        }
+      },
+      "incident-exit-fullscreen": {
+        "id": "incident-exit-fullscreen",
+        "kind": "command",
+        "behavior": {
+          "events": {
+            "press": [
+              {
+                "do": "assign",
+                "target": "incident3.fullscreen",
+                "args": {
+                  "value": false
+                }
+              }
+            ]
+          }
+        }
+      },
+      "incident-flight-a": {
+        "id": "incident-flight-a",
+        "kind": "source-faithful-story-flight",
+        "inputs": [
+          {
+            "token": "incident-semantic-model"
+          }
+        ]
+      },
+      "incident-flight-b": {
+        "id": "incident-flight-b",
+        "kind": "source-faithful-canvas-flight",
+        "inputs": [
+          {
+            "token": "incident-semantic-model"
+          }
+        ]
+      },
+      "incident-verdict": {
+        "id": "incident-verdict",
+        "kind": "semantic-leaf",
+        "inputs": [
+          {
+            "token": "incident-semantic-model"
+          }
+        ]
+      },
+      "incident-attack-path": {
+        "id": "incident-attack-path",
+        "kind": "semantic-leaf",
+        "inputs": [
+          {
+            "token": "incident-semantic-model"
+          }
+        ]
+      },
+      "incident-blast-radius": {
+        "id": "incident-blast-radius",
+        "kind": "semantic-leaf",
+        "inputs": [
+          {
+            "token": "incident-semantic-model"
+          }
+        ]
+      },
+      "incident-timeline": {
+        "id": "incident-timeline",
+        "kind": "semantic-leaf",
+        "inputs": [
+          {
+            "token": "incident-semantic-model"
+          }
+        ]
+      },
+      "incident-techniques": {
+        "id": "incident-techniques",
+        "kind": "semantic-leaf",
+        "inputs": [
+          {
+            "token": "incident-semantic-model"
+          }
+        ]
+      },
+      "incident-response": {
+        "id": "incident-response",
+        "kind": "semantic-leaf",
+        "inputs": [
+          {
+            "token": "incident-semantic-model"
+          }
+        ]
+      },
+      "incident-notes": {
+        "id": "incident-notes",
+        "kind": "semantic-leaf",
+        "inputs": [
+          {
+            "token": "incident-semantic-model"
+          }
+        ]
+      }
+    },
+    "metadata": {
+      "closedGrammarOwnership": "Blueprint authors both flights, cells, leaves, layout, interactions, and responsive behavior; the agent emits source-faithful incident-semantic-model/v1 only.",
+      "agentOutput": "source-supported-semantic-tokens-and-representation-notes",
+      "presentationPresets": [
+        "operational",
+        "brief"
+      ],
+      "flights": [
+        "incident-story",
+        "investigation-canvas"
+      ]
+    }
+  }
+}
