@@ -1,11 +1,11 @@
 import React from "react";
-import { Button, type ButtonProps } from "@fluentui/react-components";
+import { Button, Spinner, type ButtonProps } from "@fluentui/react-components";
 import {
   EditRegular,
   FullScreenMaximizeRegular,
   FullScreenMinimizeRegular,
 } from "@fluentui/react-icons";
-import { readProps, type ProjectionView } from "@gik/react";
+import { readProps, useAsyncEmit, type ProjectionView } from "@gik/react";
 
 import type { ComponentDescription } from "../shared/definition";
 import { componentRootProps, withComponentStylePropsSchema } from "../shared/component";
@@ -30,12 +30,15 @@ const BUTTON_VARIANTS = [
 
 export const FluentButton: ProjectionView = ({ node, emit }) => {
   const props = readProps(node);
+  const { pending, run } = useAsyncEmit(emit);
   const variant = props.str("variant", "action");
   const appearance = props.str("appearance") as FluentButtonAppearance;
   const shape = props.str("shape") as FluentButtonShape;
   const size = props.str("size") as FluentButtonSize;
   const iconName = props.str("icon") as keyof typeof icons;
   const iconOnly = variant === "icon" || variant === "circular" || variant === "floating";
+  const showSpinnerOnPress = props.bool("showSpinnerOnPress");
+  const showSpinner = showSpinnerOnPress && pending;
   const preset: Partial<Pick<ButtonProps, "appearance" | "shape" | "size">> =
     variant === "primary" ? { appearance: "primary" }
       : variant === "subtle" ? { appearance: "subtle" }
@@ -49,10 +52,11 @@ export const FluentButton: ProjectionView = ({ node, emit }) => {
       appearance={appearance || preset.appearance}
       shape={shape || preset.shape}
       size={size || preset.size}
-      icon={icons[iconName]}
-      disabled={props.bool("disabled")}
+      icon={showSpinner ? <Spinner size="tiny" /> : icons[iconName]}
+      disabled={props.bool("disabled") || showSpinner}
+      aria-busy={showSpinner || undefined}
       aria-label={props.str("ariaLabel") || undefined}
-      onClick={() => void emit("press", {})}
+      onClick={() => void (showSpinnerOnPress ? run("press", {}) : emit("press", {}))}
     >
       {iconOnly ? null : props.str("label")}
     </Button>
@@ -74,6 +78,7 @@ const buttonSchema = withComponentStylePropsSchema({
     appearance: { type: "string", enum: appearances },
     ariaLabel: { type: "string" },
     disabled: { type: "boolean" },
+    showSpinnerOnPress: { type: "boolean" },
     shape: { type: "string", enum: shapes },
     size: { type: "string", enum: sizes },
   },
@@ -93,7 +98,7 @@ const buttonDescription: ComponentDescription = {
   authoring: {
     useWhen: ["A user invokes a command through a label or familiar icon"],
     avoidWhen: ["The interaction is a persistent binary state; use switch or toggle"],
-    rules: ["Use a concise label for labeled variants", "Always provide ariaLabel for icon-only variants", "Handle press outside the component"],
+    rules: ["Use a concise label for labeled variants", "Always provide ariaLabel for icon-only variants", "Set showSpinnerOnPress for commands that await asynchronous work", "Handle press outside the component"],
   },
 };
 

@@ -116,6 +116,22 @@ test("FluentButton renders its icon variant with an accessible name", () => {
   assert.match(markup, /<svg/);
 });
 
+test("FluentButton accepts opt-in asynchronous press progress", () => {
+  const schema = fluentButtonDefinition.getSchema() as {
+    properties: Record<string, unknown>;
+  };
+
+  assert.ok("showSpinnerOnPress" in schema.properties);
+  assert.equal(fluentButtonDefinition.validate({
+    label: "Analyze report",
+    showSpinnerOnPress: true,
+  }).ok, true);
+  assert.equal(fluentButtonDefinition.validate({
+    label: "Analyze report",
+    showSpinnerOnPress: "yes",
+  }).ok, false);
+});
+
 test("basic Fluent controls render their public trials", () => {
   const definitions = [
     [fluentTextFieldDefinition, /Name/],
