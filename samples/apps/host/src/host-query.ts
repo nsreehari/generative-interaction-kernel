@@ -28,7 +28,7 @@ function isDemoEnabled(params: URLSearchParams): boolean {
 }
 
 function cachedBlueprintFromPath(pathname: string): string | null {
-  const match = /^\/cached\/([^/]+)\/?$/.exec(pathname);
+  const match = /(?:^|\/)cached\/([^/]+)\/?$/.exec(pathname);
   return match ? `cached-${decodeURIComponent(match[1])}` : null;
 }
 
