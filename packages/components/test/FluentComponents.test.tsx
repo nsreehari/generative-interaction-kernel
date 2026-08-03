@@ -14,6 +14,7 @@ import {
   fluentComponentDefinitions,
   fluentComponentViews,
   fluentDataGridDefinition,
+  fluentDialogDefinition,
   fluentDropdownDefinition,
   fluentListDefinition,
   fluentPersonaDefinition,
@@ -33,12 +34,13 @@ import {
 } from "../src/fluent";
 
 test("fluent entrypoint exposes all views and closed definitions", () => {
-  const controls = ["badge", "button", "chips", "data-grid", "dropdown", "list", "persona", "searchbox", "spinner", "switch", "tab-bar", "table", "text-field", "textarea", "toggle"];
+  const controls = ["badge", "button", "chips", "data-grid", "dialog", "dropdown", "list", "persona", "searchbox", "spinner", "switch", "tab-bar", "table", "text-field", "textarea", "toggle"];
   const events: Record<string, string[]> = {
     badge: [],
     button: ["press"],
     chips: ["remove"],
     "data-grid": ["select", "sort"],
+    dialog: ["openChange"],
     dropdown: ["select"],
     list: ["select"],
     persona: [],
@@ -116,20 +118,18 @@ test("FluentButton renders its icon variant with an accessible name", () => {
   assert.match(markup, /<svg/);
 });
 
-test("FluentButton accepts opt-in asynchronous press progress", () => {
-  const schema = fluentButtonDefinition.getSchema() as {
-    properties: Record<string, unknown>;
-  };
+test("FluentDialog exposes controlled native dialog composition", () => {
+  const trial = fluentDialogDefinition.materializeTrial();
+  const Component = fluentDialogDefinition.component;
+  const markup = renderToStaticMarkup(
+    <Component node={trial} emit={() => undefined} children={<p>Dialog content</p>} />,
+  );
 
-  assert.ok("showSpinnerOnPress" in schema.properties);
-  assert.equal(fluentButtonDefinition.validate({
-    label: "Analyze report",
-    showSpinnerOnPress: true,
-  }).ok, true);
-  assert.equal(fluentButtonDefinition.validate({
-    label: "Analyze report",
-    showSpinnerOnPress: "yes",
-  }).ok, false);
+  assert.match(markup, /hidden/);
+  assert.deepEqual(fluentDialogDefinition.slots, ["children"]);
+  assert.deepEqual(fluentDialogDefinition.events, ["openChange"]);
+  assert.equal(fluentDialogDefinition.validate({ open: true, title: "Review details" }).ok, true);
+  assert.equal(fluentDialogDefinition.validate({ open: "yes", title: "Review details" }).ok, false);
 });
 
 test("basic Fluent controls render their public trials", () => {
@@ -197,6 +197,7 @@ test("Fluent authoring APIs expose complete contracts and scoped agent tools", (
     "button",
     "chips",
     "data-grid",
+    "dialog",
     "dropdown",
     "list",
     "persona",

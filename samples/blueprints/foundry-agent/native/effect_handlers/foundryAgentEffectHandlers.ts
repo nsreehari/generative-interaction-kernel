@@ -6,6 +6,7 @@
 // effects run) and returns store deltas.
 //
 import { setOp, type EffectHandlerMap } from "@gik/react";
+import { clearFunctionAccessKey } from "../../../../shared/function-access";
 
 export const effects: EffectHandlerMap = {
   clearFoundryAccess() {
@@ -23,6 +24,7 @@ export const effects: EffectHandlerMap = {
   },
 
   signOut() {
+    clearFunctionAccessKey("foundry");
     return {
       ops: [
         setOp("agent.accessStatus", "required"),

@@ -101,7 +101,8 @@ function isTextarea(field: Record<string, unknown>) {
   return field.format === "textarea" || field.multiline === true;
 }
 
-function inputType(field: Record<string, unknown>): "text" | "number" | "date" | "time" | "datetime-local" {
+function inputType(field: Record<string, unknown>): "text" | "password" | "number" | "date" | "time" | "datetime-local" {
+  if (field.format === "password" || field.secret === true) return "password";
   if (field.format === "date") return "date";
   if (field.format === "time") return "time";
   if (field.format === "date-time" || field.format === "datetime") return "datetime-local";

@@ -33,6 +33,7 @@ import {
   fluentListDefinition,
   fluentTableDefinition,
 } from "./FluentDataControls";
+import { FluentDialog, fluentDialogDefinition } from "./FluentDialog";
 import {
   FluentBadge,
   FluentPersona,
@@ -47,6 +48,7 @@ export const fluentComponentViews: Record<string, ProjectionView> = {
   button: FluentButton,
   chips: FluentChips,
   "data-grid": FluentDataGrid,
+  dialog: FluentDialog,
   dropdown: FluentDropdown,
   list: FluentList,
   persona: FluentPersona,
@@ -65,6 +67,7 @@ export const fluentComponentDefinitions = {
   button: fluentButtonDefinition,
   chips: fluentChipsDefinition,
   "data-grid": fluentDataGridDefinition,
+  dialog: fluentDialogDefinition,
   dropdown: fluentDropdownDefinition,
   list: fluentListDefinition,
   persona: fluentPersonaDefinition,

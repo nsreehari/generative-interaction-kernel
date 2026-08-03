@@ -1,6 +1,7 @@
 export * from "../shared/definition";
 export * from "./authoring";
 export * from "./registry";
+export * from "./access-gate";
 export * from "./chart";
 export * from "./editable-table";
 export * from "./form";

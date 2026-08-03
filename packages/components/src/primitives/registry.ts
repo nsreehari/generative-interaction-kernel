@@ -1,6 +1,7 @@
 import type { CapabilityDescriptor } from "@gik/kernel";
 import type { ProjectionView } from "@gik/react";
 
+import { AccessGate, accessGateDefinition } from "./access-gate";
 import { Chart, chartDefinition } from "./chart";
 import { EditableTable, editableTableDefinition } from "./editable-table";
 import { Form, formDefinition } from "./form";
@@ -9,6 +10,7 @@ import { TimerButton, timerButtonDefinition } from "./timer-button";
 import { TodoList, todoListDefinition } from "./todo-list";
 
 export const primitiveComponentViews: Record<string, ProjectionView> = {
+  "access-gate": AccessGate,
   chart: Chart,
   "editable-table": EditableTable,
   form: Form,
@@ -18,6 +20,7 @@ export const primitiveComponentViews: Record<string, ProjectionView> = {
 };
 
 export const primitiveComponentDefinitions = {
+  "access-gate": accessGateDefinition,
   chart: chartDefinition,
   "editable-table": editableTableDefinition,
   form: formDefinition,

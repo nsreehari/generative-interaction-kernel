@@ -150,7 +150,7 @@ test("access check and agent discovery run as separate phases", async () => {
   }
 });
 
-test("sign out resets the ask session and returns access state to required", async () => {
+test("sign out clears shared access and resets the ask session", async () => {
   const values = installLocalStorage();
   values.set(FOUNDRY_ACCESS_STORAGE_KEY, "access-key");
   const { controller, state: store } = runtime(blueprintId);
@@ -158,7 +158,7 @@ test("sign out resets the ask session and returns access state to required", asy
   await controller.emit("agent-signout-btn", "press", {});
   await controller.settle();
 
-  assert.equal(values.has(FOUNDRY_ACCESS_STORAGE_KEY), true);
+  assert.equal(values.has(FOUNDRY_ACCESS_STORAGE_KEY), false);
   assert.equal(store.get("agent.key"), null);
   assert.equal(store.get("agent.accessStatus"), "required");
   assert.equal(store.get("agent.agentName"), "");

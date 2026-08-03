@@ -374,11 +374,8 @@
         "view": {
           "capability": "foundry:access-gate",
           "bindings": {
-            "status": {
-              "from": "agent.accessStatus"
-            },
-            "error": {
-              "from": "agent.accessError"
+            "access": {
+              "expression": "($s := agent.accessStatus; {'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': agent.accessError})"
             }
           }
         }
