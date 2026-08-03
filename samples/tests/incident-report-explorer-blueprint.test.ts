@@ -75,8 +75,9 @@ describe("incident-report-explorer Blueprint", () => {
       view: {
         capability: "foundry:access-gate",
         bindings: {
-          status: { from: "incident.foundryAccessStatus" },
-          error: { from: "incident.foundryAccessError" },
+          access: {
+            expression: expect.stringContaining("'triggered': $s != 'ready' and $s != 'empty'"),
+          },
         },
       },
     });

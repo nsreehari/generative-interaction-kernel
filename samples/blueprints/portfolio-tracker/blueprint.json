@@ -996,11 +996,8 @@
         "view": {
           "capability": "http-proxy:access-gate",
           "bindings": {
-            "status": {
-              "from": "portfolio.httpProxyAccessStatus"
-            },
-            "error": {
-              "from": "portfolio.httpProxyAccessError"
+            "access": {
+              "expression": "($s := portfolio.httpProxyAccessStatus; {'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': portfolio.httpProxyAccessError})"
             }
           }
         }
@@ -1028,8 +1025,7 @@
         "view": {
           "capability": "foundry:access-gate",
           "bindings": {
-            "status": { "from": "portfolio.foundryAccessStatus" },
-            "error": { "from": "portfolio.foundryAccessError" }
+            "access": { "expression": "($s := portfolio.foundryAccessStatus; {'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': portfolio.foundryAccessError})" }
           }
         }
       },

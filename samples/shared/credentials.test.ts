@@ -19,6 +19,7 @@ import {
 } from "./function-access";
 import { createHeadlessServiceRegistryOptions } from "./headless-service-runtime";
 import { createSampleServiceRegistryOptions } from "./service-registry-options";
+import { browserServiceRegistryOptions } from "./service-runtime";
 
 function collectCredentialReferences(value: unknown, references: string[] = []): string[] {
   if (!value || typeof value !== "object") return references;
@@ -153,4 +154,8 @@ test("HTTP authentication failures clear the credential through the active host 
   } finally {
     globalThis.fetch = previousFetch;
   }
+});
+
+test("browser services require the host-owned credential resolver in every environment", () => {
+  assert.equal(browserServiceRegistryOptions.resolveCredential, resolveBrowserCredential);
 });

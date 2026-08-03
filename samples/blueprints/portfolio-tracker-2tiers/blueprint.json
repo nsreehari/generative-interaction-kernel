@@ -21,7 +21,7 @@
             "when": "externalContext.view = 'mobile' and externalContext.attention = 'glanceable'",
             "views": {
               "portfolio-workspace": { "capability": "ui:screen", "props": { "title": "Portfolio", "subtitle": "Mobile · Glanceable" } },
-              "http-proxy-access-gate": { "capability": "http-proxy:access-gate", "bindings": { "status": { "from": "portfolio.httpProxyAccessStatus" }, "error": { "from": "portfolio.httpProxyAccessError" } } },
+              "http-proxy-access-gate": { "capability": "http-proxy:access-gate", "bindings": { "access": { "expression": "($s := portfolio.httpProxyAccessStatus; {'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': portfolio.httpProxyAccessError})" } } },
               "summary": { "capability": "portfolio:summary", "bindings": { "value": { "from": "portfolio.summary" } } },
               "portfolio-status": { "capability": "ui:note", "props": { "tone": "info" }, "bindings": { "value": { "from": "portfolio.status.message" } } }
             },

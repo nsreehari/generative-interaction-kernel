@@ -11,6 +11,7 @@ vi.mock("@fluentui/react-components", () => {
 
   return {
     Button: element("button"),
+    Checkbox: element("input"),
     Dialog: element("div"),
     DialogActions: element("div"),
     DialogBody: element("div"),
@@ -19,12 +20,16 @@ vi.mock("@fluentui/react-components", () => {
     DialogTitle: element("h2"),
     Field: element("label"),
     Input: (props: Record<string, unknown>) => React.createElement("input", props),
+    Dropdown: element("div"),
+    Option: element("div"),
     MessageBar: element("div"),
     MessageBarActions: element("div"),
     MessageBarBody: element("div"),
     Spinner: ({ label }: { label?: string }) => React.createElement("div", null, label ?? "Loading"),
     Text: element("p"),
+    Textarea: element("textarea"),
     makeStyles: () => () => ({ stack: "stack", actions: "actions" }),
+    mergeClasses: (...classes: Array<string | undefined | false>) => classes.filter(Boolean).join(" "),
     tokens: { spacingVerticalM: "12px" },
   };
 });
@@ -36,7 +41,13 @@ function gate(status: string, children: ResolvedNode[] = []): ResolvedNode {
   return {
     capability: "foundry:access-gate",
     id: "foundry-access-gate",
-    props: { status, error: "" } as Record<string, Json>,
+    props: {
+      access: {
+        triggered: status !== "ready" && status !== "empty",
+        status: status === "checking" ? "checking" : status === "required" ? "required" : "error",
+        error: "",
+      },
+    } as Record<string, Json>,
     visible: true,
     fallback: false,
     children,
@@ -96,7 +107,6 @@ test("foundry:access-gate offers reset key in the modal when a cached key exists
     const markup = renderToStaticMarkup(renderNode(gate("error"), registry, () => {}));
 
     assert.match(markup, /Reset Key/);
-    assert.match(markup, /Cancel/);
     assert.match(markup, /Retry/);
   } finally {
     Reflect.deleteProperty(globalThis, "localStorage");

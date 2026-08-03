@@ -12,6 +12,7 @@ test("semantic and primitive entry points expose distinct component layers", () 
   assert.ok("timeline" in semanticComponentDefinitions);
   assert.ok(!("chart" in semanticComponentDefinitions));
   assert.ok("chart" in primitiveComponentDefinitions);
+  assert.ok("access-gate" in primitiveComponentDefinitions);
   assert.ok(!("timeline" in primitiveComponentDefinitions));
   assert.ok("timer-button" in primitiveComponentDefinitions);
   assert.ok("todo-list" in primitiveComponentDefinitions);
@@ -21,6 +22,7 @@ test("semantic and primitive entry points expose distinct component layers", () 
 test("primitive authoring APIs expose closed contracts and scoped agent tools", () => {
   const catalog = primitiveEntryPoint.listPrimitiveComponents();
   assert.ok(catalog.some((entry) => entry.id === "form" && entry.capability === "primitive:form"));
+  assert.ok(catalog.some((entry) => entry.id === "access-gate" && entry.capability === "primitive:access-gate"));
   assert.ok(catalog.some((entry) => entry.id === "editable-table" && entry.capability === "primitive:editable-table"));
   assert.ok(catalog.some((entry) => entry.id === "todo-list" && entry.capability === "primitive:todo-list"));
 

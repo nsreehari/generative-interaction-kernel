@@ -3,6 +3,7 @@ export * from "./authoring";
 export * from "./FluentButtons";
 export * from "./FluentBasicControls";
 export * from "./FluentDataControls";
+export * from "./FluentDialog";
 export * from "./FluentDisplayControls";
 export * from "./FluentInputs";
 export * from "./registry";

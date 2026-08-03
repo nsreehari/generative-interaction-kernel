@@ -1,23 +1,7 @@
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogBody,
-  DialogContent,
-  DialogSurface,
-  DialogTitle,
-  Field,
-  Input,
-  MessageBar,
-  MessageBarActions,
-  MessageBarBody,
-  Spinner,
-  Text,
-  makeStyles,
-  tokens,
-} from "@fluentui/react-components";
-import { type ProjectionView, useAsyncEmit } from "@gik/react";
-import * as React from "react";
+import React from "react";
+import { AccessGate } from "@gik/components/primitives";
+import type { Json, ResolvedNode } from "@gik/kernel";
+import type { ProjectionView } from "@gik/react";
 
 import {
   FUNCTION_ACCESS,
@@ -26,212 +10,112 @@ import {
   type FunctionAccessScope,
 } from "../../../shared/function-access";
 
-function accessErrorMessage(reason: unknown, serviceName: string): string {
-  if (reason instanceof Error && reason.message.trim() !== "") return reason.message;
-  return `Couldn't verify ${serviceName} access.`;
+function accessGateNode(id: string, access: Record<string, Json>): ResolvedNode {
+  return {
+    id,
+    capability: "primitive:access-gate",
+    props: { access },
+    visible: true,
+    fallback: false,
+    children: [],
+  };
 }
 
-const useStyles = makeStyles({
-  stack: { display: "grid", gap: tokens.spacingVerticalM },
-  actions: { paddingTop: tokens.spacingVerticalM },
-});
+function jsonRecord(value: Json | undefined): Record<string, Json> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, Json> : {};
+}
 
 export const FunctionAccessGate: ProjectionView = ({ node, emit, children }) => {
-  const styles = useStyles();
   const scope: FunctionAccessScope = node.capability.startsWith("http-proxy:") ? "http-proxy" : "foundry";
-  const access = FUNCTION_ACCESS[scope];
-  const getAccessKey = () => getFunctionAccessKey(scope);
-  const setAccessKey = (value: string) => setFunctionAccessKey(scope, value);
-  const serviceName = access.label;
-  const status = String(node.props.status ?? "checking");
-  const error = String(node.props.error ?? "");
-  const [enteredKey, setEnteredKey] = React.useState("");
-  const [hasStoredKey, setHasStoredKey] = React.useState(() => getAccessKey().trim() !== "");
-  const [fallbackStatus, setFallbackStatus] = React.useState<"idle" | "checking" | "error">("idle");
-  const [fallbackError, setFallbackError] = React.useState("");
-  const [dialogOpen, setDialogOpen] = React.useState(true);
-  const previousStatus = React.useRef(status);
+  const service = FUNCTION_ACCESS[scope];
+  const authoredAccess = jsonRecord(node.props.access);
+  const status = String(authoredAccess.status ?? "checking");
+  const storedCredential = getFunctionAccessKey(scope).trim();
+  const requiresCredential = status === "required";
   const emitRef = React.useRef(emit);
   emitRef.current = emit;
-  const { pending, run } = useAsyncEmit(emit);
 
   React.useEffect(() => {
-    const storedKey = getAccessKey().trim();
-    setHasStoredKey(storedKey !== "");
-    let disposed = false;
-    queueMicrotask(() => {
-      if (!disposed) {
-        void emitRef.current(storedKey ? "accessRequested" : "accessCleared", {});
-      }
-    });
-
-    const accessChanged = (event: Event) => {
-      const available = Boolean((event as CustomEvent<{ available?: boolean }>).detail?.available);
-      setHasStoredKey(available);
-      if (!available) void emitRef.current("accessCleared", {});
+    const requestAccess = () => {
+      const event = getFunctionAccessKey(scope).trim() ? "accessRequested" : "accessCleared";
+      void emitRef.current(event, {});
     };
+    queueMicrotask(requestAccess);
+    const accessChanged = () => requestAccess();
     const storageChanged = (event: StorageEvent) => {
-      if (event.key === access.storageKey) {
-        const available = Boolean(event.newValue?.trim());
-        setHasStoredKey(available);
-        if (!available) {
-          void emitRef.current("accessCleared", {});
-        }
-      }
+      if (event.key === service.storageKey) requestAccess();
     };
-    globalThis.addEventListener?.(access.changeEvent, accessChanged);
+    globalThis.addEventListener?.(service.changeEvent, accessChanged);
     globalThis.addEventListener?.("storage", storageChanged);
     return () => {
-      disposed = true;
-      globalThis.removeEventListener?.(access.changeEvent, accessChanged);
+      globalThis.removeEventListener?.(service.changeEvent, accessChanged);
       globalThis.removeEventListener?.("storage", storageChanged);
     };
-  }, []);
+  }, [scope, service.changeEvent, service.storageKey]);
 
-  React.useEffect(() => {
-    if (status !== "required") {
-      setFallbackStatus("idle");
-      setFallbackError("");
-    }
-  }, [status]);
-
-  React.useEffect(() => {
-    const previous = previousStatus.current;
-    previousStatus.current = status;
-    if ((previous === "ready" || previous === "empty") && status !== "ready" && status !== "empty") {
-      setDialogOpen(true);
-    }
-  }, [status]);
-
-  const continueWithKey = () => {
-    const key = enteredKey.trim();
-    if (!key || pending) return;
-    setFallbackStatus("checking");
-    setFallbackError("");
-    setAccessKey(key);
-    setHasStoredKey(true);
-    setEnteredKey("");
-    void run("accessRequested", {}).catch((reason) => {
-      setFallbackStatus("error");
-      setFallbackError(accessErrorMessage(reason, serviceName));
-    });
+  const sourceAccess: Record<string, Json> = {
+    title: `Connect to ${service.label}`,
+    message: requiresCredential
+      ? "Enter your access key to continue."
+      : status === "checking"
+        ? `Checking ${service.label} access...`
+        : `Couldn't verify ${service.label} access.`,
+    inputFormSpec: requiresCredential ? {
+      fields: {
+        properties: {
+          credential: {
+            type: "string",
+            title: "Access key",
+            format: "password",
+            placeholder: "Paste your access key",
+          },
+        },
+        required: ["credential"],
+      },
+      value: { credential: "" },
+      saveLabel: "Continue",
+      discardLabel: "Cancel",
+    } : {},
+    actions: { retry: status === "error", retryLabel: "Retry" },
+    ...authoredAccess,
   };
-
-  const retry = () => {
-    if (pending) return;
-    if (!getAccessKey().trim()) {
-      setFallbackStatus("idle");
-      setFallbackError("");
-      void run("accessCleared", {});
-      return;
-    }
-    setFallbackStatus("checking");
-    setFallbackError("");
-    void run("accessRequested", {}).catch((reason) => {
-      setFallbackStatus("error");
-      setFallbackError(accessErrorMessage(reason, serviceName));
-    });
+  const access: Record<string, Json> = {
+    ...sourceAccess,
+    actions: {
+      ...jsonRecord(sourceAccess.actions),
+      reset: storedCredential !== "",
+      resetLabel: "Reset Key",
+    },
   };
-
-  const useDifferentKey = () => {
-    if (pending) return;
-    setAccessKey("");
-    setHasStoredKey(false);
-    setFallbackStatus("idle");
-    setFallbackError("");
-    setEnteredKey("");
-    void run("accessCleared", {});
-  };
-
-  const effectiveStatus = status === "required" && fallbackStatus !== "idle"
-    ? fallbackStatus
-    : status;
-  const effectiveError = status === "required" && fallbackStatus === "error" && fallbackError
-    ? fallbackError
-    : error;
-
-  if (effectiveStatus === "ready" || effectiveStatus === "empty") return <>{children}</>;
-
-  const requiresKey = effectiveStatus === "required";
-  const title = effectiveStatus === "unconfigured" ? `${serviceName} is unavailable` : `Connect to ${serviceName}`;
-  const message = requiresKey
-    ? effectiveError || `${serviceName} access is required to continue.`
-    : effectiveError || (effectiveStatus === "checking" ? `Checking ${serviceName} access...` : `Couldn't verify ${serviceName} access.`);
 
   return (
-    <>
-      {!dialogOpen ? (
-        <MessageBar intent={effectiveStatus === "checking" ? "info" : "warning"}>
-          <MessageBarBody>{message}</MessageBarBody>
-          <MessageBarActions
-            containerAction={(
-              <Button appearance="transparent" onClick={() => setDialogOpen(true)}>
-                {requiresKey ? "Enter Access Key" : "Open"}
-              </Button>
-            )}
-          />
-        </MessageBar>
-      ) : null}
-      <Dialog open={dialogOpen} modalType="modal" onOpenChange={(_event, data) => setDialogOpen(data.open)}>
-        <DialogSurface aria-label={`${serviceName} access required`}>
-          <DialogBody>
-            <DialogTitle>{title}</DialogTitle>
-            <DialogContent className={styles.stack}>
-              {effectiveStatus === "checking" ? (
-                <Spinner labelPosition="after" label="Checking access..." />
-              ) : effectiveStatus === "unconfigured" || effectiveStatus === "error" ? (
-                <MessageBar intent="error"><MessageBarBody>{message}</MessageBarBody></MessageBar>
-              ) : (
-                <>
-                  <Text>Enter your access key to continue.</Text>
-                  <Field label="Access key">
-                    <Input
-                      type="password"
-                      autoFocus
-                      value={enteredKey}
-                      placeholder="Paste your access key"
-                      onChange={(_event, data) => setEnteredKey(data.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") continueWithKey();
-                      }}
-                    />
-                  </Field>
-                  {error ? <MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar> : null}
-                </>
-              )}
-            </DialogContent>
-            <DialogActions className={styles.actions}>
-              {hasStoredKey ? <Button onClick={useDifferentKey} disabled={pending}>Reset Key</Button> : null}
-              <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-              {requiresKey ? (
-                <Button
-                  appearance="primary"
-                  aria-busy={pending || undefined}
-                  disabled={enteredKey.trim() === "" || pending}
-                  icon={pending ? <Spinner size="tiny" /> : undefined}
-                  onClick={continueWithKey}
-                >
-                  {pending ? "Connecting..." : "Continue"}
-                </Button>
-              ) : effectiveStatus === "error" ? (
-                <Button
-                  appearance="primary"
-                  aria-busy={pending || undefined}
-                  disabled={pending}
-                  icon={pending ? <Spinner size="tiny" /> : undefined}
-                  onClick={retry}
-                >
-                  {pending ? "Retrying..." : "Retry"}
-                </Button>
-              ) : null}
-            </DialogActions>
-          </DialogBody>
-        </DialogSurface>
-      </Dialog>
-    </>
+    <AccessGate
+      node={accessGateNode(`${node.id}-primitive`, access)}
+      emit={async (event, payload) => {
+        if (event === "submit") {
+          const values = payload && typeof payload === "object" && !Array.isArray(payload)
+            ? (payload as Record<string, Json>).values
+            : undefined;
+          const credential = values && typeof values === "object" && !Array.isArray(values)
+            ? String((values as Record<string, Json>).credential ?? "").trim()
+            : "";
+          if (!credential) return;
+          setFunctionAccessKey(scope, credential);
+          await emit("accessRequested", {});
+        } else if (event === "retry") {
+          await emit("accessRequested", {});
+        } else if (event === "reset") {
+          setFunctionAccessKey(scope, "");
+          await emit("accessCleared", {});
+        }
+      }}
+      children={children}
+    />
   );
 };
 
-export default {
+const views: Record<string, ProjectionView> = {
   "access-gate": FunctionAccessGate,
 };
+
+export default views;

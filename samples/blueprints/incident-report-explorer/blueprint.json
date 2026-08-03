@@ -258,8 +258,7 @@
         "view": {
           "capability": "foundry:access-gate",
           "bindings": {
-            "status": { "from": "incident.foundryAccessStatus" },
-            "error": { "from": "incident.foundryAccessError" }
+            "access": { "expression": "($s := incident.foundryAccessStatus; {'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': incident.foundryAccessError})" }
           }
         }
       },
