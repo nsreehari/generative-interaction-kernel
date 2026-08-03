@@ -1,0 +1,788 @@
+{
+  "gik": "0.1",
+  "type": "blueprint",
+  "payload": {
+    "id": "cached-incident-report-explorer-2",
+    "kind": "incident-semantic-blueprint",
+    "version": "1.0.0",
+    "structureMode": "fixed",
+    "tiers": [
+      {
+        "id": "incident-semantic",
+        "kind": "incident-semantic-model",
+        "description": "Normalized incident facts, relationships, evidence, response actions, and explicit representation notes."
+      },
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document"
+      }
+    ],
+    "recipes": [
+      {
+        "id": "incident-semantic-to-runtime",
+        "from": "incident-semantic",
+        "to": "runtime-document",
+        "representations": [
+          {
+            "id": "operational",
+            "when": "externalContext.attention = 'operational'",
+            "views": {
+              "incident-workspace": {
+                "capability": "incident2:workspace",
+                "props": {
+                  "title": "Cached incident intelligence",
+                  "preset": "operational"
+                }
+              },
+              "incident-source": {
+                "capability": "incident2:editor",
+                "props": {
+                  "title": "Investigation source",
+                  "readonly": true
+                },
+                "bindings": {
+                  "value": {
+                    "from": "incident2.content"
+                  }
+                }
+              },
+              "incident-source-selector": {
+                "capability": "fluent:dropdown",
+                "props": {
+                  "ariaLabel": "Choose sample incident",
+                  "options": [
+                    {
+                      "value": "password-spray-mailbox",
+                      "label": "Password spray and mailbox compromise"
+                    },
+                    {
+                      "value": "blob-storage-exfiltration",
+                      "label": "Blob storage exfiltration"
+                    },
+                    {
+                      "value": "identity-compromise",
+                      "label": "Identity and cloud resource compromise"
+                    },
+                    {
+                      "value": "device-code-bec",
+                      "label": "Device-code phishing and BEC"
+                    },
+                    {
+                      "value": "supply-chain-sap-bec",
+                      "label": "Supply-chain SAP and procurement BEC"
+                    }
+                  ]
+                },
+                "bindings": {
+                  "value": {
+                    "from": "incident2.selectedSampleId"
+                  }
+                },
+                "visibility": "true"
+              },
+              "incident-source-markdown": {
+                "capability": "ui:markdown",
+                "bindings": {
+                  "value": {
+                    "from": "incident2.content"
+                  }
+                }
+              },
+              "incident-semantic-analyzer": {
+                "capability": "incident2:report",
+                "props": {
+                  "title": "Cached Operational assessment",
+                  "readonly": true
+                },
+                "bindings": {
+                  "value": {
+                    "from": "incident2.model"
+                  },
+                  "content": {
+                    "from": "incident2.content"
+                  },
+                  "analyzedContent": {
+                    "from": "incident2.analyzedContent"
+                  },
+                  "error": {
+                    "from": "incident2.error"
+                  }
+                }
+              },
+              "incident-verdict": {
+                "capability": "semantic:decision-summary",
+                "props": {
+                  "spec": {
+                    "eyebrow": "Incident determination",
+                    "fields": {
+                      "title": "identity.title",
+                      "summary": "summary",
+                      "outcome": "verdict.classification",
+                      "rationale": "verdict.rationale",
+                      "confidence": "verdict.confidence",
+                      "impact": "verdict.impact",
+                      "tone": "verdict.confidence"
+                    },
+                    "labels": {
+                      "rationale": "Rationale",
+                      "confidence": "Confidence",
+                      "impact": "Impact"
+                    },
+                    "toneMap": {
+                      "high": "affirmative",
+                      "medium": "cautionary",
+                      "low": "uncertain"
+                    }
+                  }
+                },
+                "bindings": {
+                  "decision": {
+                    "from": "incident2.model"
+                  }
+                }
+              },
+              "incident-attack-path": {
+                "capability": "incident2:attack-path",
+                "bindings": {
+                  "value": {
+                    "from": "incident2.model"
+                  }
+                }
+              },
+              "incident-blast-radius": {
+                "capability": "semantic:entity-constellation",
+                "props": {
+                  "spec": {
+                    "title": "Blast radius",
+                    "description": "Entities grouped by observed condition",
+                    "fields": {
+                      "id": "id",
+                      "label": "label",
+                      "description": "description",
+                      "type": "type",
+                      "status": "status",
+                      "group": "status"
+                    },
+                    "groups": [
+                      {
+                        "value": "compromised",
+                        "label": "Compromised"
+                      },
+                      {
+                        "value": "affected",
+                        "label": "Affected"
+                      },
+                      {
+                        "value": "targeted",
+                        "label": "Targeted"
+                      },
+                      {
+                        "value": "observed",
+                        "label": "Observed"
+                      },
+                      {
+                        "value": "unknown",
+                        "label": "Unknown"
+                      }
+                    ],
+                    "toneMap": {
+                      "compromised": "affected",
+                      "affected": "affected",
+                      "targeted": "at-risk",
+                      "observed": "observed",
+                      "unknown": "unknown"
+                    }
+                  }
+                },
+                "bindings": {
+                  "items": {
+                    "from": "incident2.model.entities"
+                  }
+                }
+              },
+              "incident-timeline": {
+                "capability": "semantic:timeline",
+                "props": {
+                  "spec": {
+                    "title": "Incident timeline",
+                    "description": "Normalized events",
+                    "fields": {
+                      "id": "id",
+                      "title": "title",
+                      "timestamp": "time",
+                      "detail": "detail",
+                      "status": "confidence"
+                    },
+                    "sort": {
+                      "direction": "ascending"
+                    },
+                    "toneMap": {
+                      "high": "current",
+                      "medium": "upcoming",
+                      "low": "unknown"
+                    }
+                  }
+                },
+                "bindings": {
+                  "items": {
+                    "from": "incident2.model.events"
+                  }
+                }
+              },
+              "incident-techniques": {
+                "capability": "semantic:sequence",
+                "props": {
+                  "spec": {
+                    "title": "ATT&CK progression",
+                    "description": "Techniques in reported order",
+                    "fields": {
+                      "id": "id",
+                      "title": "technique",
+                      "detail": "description",
+                      "reference": "techniqueId",
+                      "status": "confidence"
+                    },
+                    "toneMap": {
+                      "high": "complete",
+                      "medium": "current",
+                      "low": "unknown"
+                    }
+                  }
+                },
+                "bindings": {
+                  "items": {
+                    "from": "incident2.model.techniques"
+                  }
+                }
+              },
+              "incident-response": {
+                "capability": "semantic:action-board",
+                "props": {
+                  "spec": {
+                    "title": "Response plan",
+                    "description": "Actions ordered by urgency",
+                    "fields": {
+                      "id": "id",
+                      "title": "title",
+                      "detail": "detail",
+                      "group": "priority",
+                      "category": "category"
+                    },
+                    "columns": [
+                      {
+                        "value": "immediate",
+                        "label": "Immediate",
+                        "token": "urgent"
+                      },
+                      {
+                        "value": "next",
+                        "label": "Next",
+                        "token": "active"
+                      },
+                      {
+                        "value": "follow-up",
+                        "label": "Follow-up",
+                        "token": "planned"
+                      }
+                    ]
+                  }
+                },
+                "bindings": {
+                  "items": {
+                    "from": "incident2.model.actions"
+                  }
+                }
+              },
+              "incident-notes": {
+                "capability": "incident2:representation-notes",
+                "bindings": {
+                  "value": {
+                    "from": "incident2.model"
+                  }
+                }
+              }
+            },
+            "presentation": {
+              "roots": [
+                "incident-workspace"
+              ],
+              "placements": [
+                {
+                  "cell": "incident-source",
+                  "parent": "incident-workspace",
+                  "slot": "children",
+                  "order": 0
+                },
+                {
+                  "cell": "incident-source-selector",
+                  "parent": "incident-source",
+                  "slot": "children",
+                  "order": 0
+                },
+                {
+                  "cell": "incident-source-markdown",
+                  "parent": "incident-source",
+                  "slot": "children",
+                  "order": 1
+                },
+                {
+                  "cell": "incident-semantic-analyzer",
+                  "parent": "incident-workspace",
+                  "slot": "children",
+                  "order": 1
+                },
+                {
+                  "cell": "incident-verdict",
+                  "parent": "incident-semantic-analyzer",
+                  "slot": "children",
+                  "order": 0
+                },
+                {
+                  "cell": "incident-attack-path",
+                  "parent": "incident-semantic-analyzer",
+                  "slot": "children",
+                  "order": 1
+                },
+                {
+                  "cell": "incident-blast-radius",
+                  "parent": "incident-semantic-analyzer",
+                  "slot": "children",
+                  "order": 2
+                },
+                {
+                  "cell": "incident-timeline",
+                  "parent": "incident-semantic-analyzer",
+                  "slot": "children",
+                  "order": 3
+                },
+                {
+                  "cell": "incident-techniques",
+                  "parent": "incident-semantic-analyzer",
+                  "slot": "children",
+                  "order": 4
+                },
+                {
+                  "cell": "incident-response",
+                  "parent": "incident-semantic-analyzer",
+                  "slot": "children",
+                  "order": 5
+                },
+                {
+                  "cell": "incident-notes",
+                  "parent": "incident-semantic-analyzer",
+                  "slot": "children",
+                  "order": 6
+                }
+              ]
+            }
+          },
+          {
+            "id": "brief",
+            "when": "externalContext.attention = 'brief'",
+            "extends": "operational",
+            "views": {
+              "incident-workspace": {
+                "capability": "incident2:workspace",
+                "props": {
+                  "title": "Cached incident intelligence",
+                  "preset": "brief"
+                }
+              },
+              "incident-semantic-analyzer": {
+                "capability": "incident2:report",
+                "props": {
+                  "title": "Cached Incident brief",
+                  "readonly": true
+                },
+                "bindings": {
+                  "value": {
+                    "from": "incident2.model"
+                  },
+                  "content": {
+                    "from": "incident2.content"
+                  },
+                  "analyzedContent": {
+                    "from": "incident2.analyzedContent"
+                  },
+                  "error": {
+                    "from": "incident2.error"
+                  }
+                }
+              }
+            },
+            "presentation": {
+              "roots": [
+                "incident-workspace"
+              ],
+              "placements": [
+                {
+                  "cell": "incident-source",
+                  "parent": "incident-workspace",
+                  "slot": "children",
+                  "order": 0
+                },
+                {
+                  "cell": "incident-source-selector",
+                  "parent": "incident-source",
+                  "slot": "children",
+                  "order": 0
+                },
+                {
+                  "cell": "incident-source-markdown",
+                  "parent": "incident-source",
+                  "slot": "children",
+                  "order": 1
+                },
+                {
+                  "cell": "incident-semantic-analyzer",
+                  "parent": "incident-workspace",
+                  "slot": "children",
+                  "order": 1
+                },
+                {
+                  "cell": "incident-verdict",
+                  "parent": "incident-semantic-analyzer",
+                  "slot": "children",
+                  "order": 0
+                },
+                {
+                  "cell": "incident-attack-path",
+                  "parent": "incident-semantic-analyzer",
+                  "slot": "children",
+                  "order": 1
+                },
+                {
+                  "cell": "incident-response",
+                  "parent": "incident-semantic-analyzer",
+                  "slot": "children",
+                  "order": 2
+                },
+                {
+                  "cell": "incident-notes",
+                  "parent": "incident-semantic-analyzer",
+                  "slot": "children",
+                  "order": 3
+                }
+              ]
+            }
+          }
+        ],
+        "fallback": "operational"
+      }
+    ],
+    "services": {},
+    "runtime": {
+      "expression": "jsonata",
+      "namespaces": [
+        "incident2"
+      ],
+      "actions": [
+        "assign",
+        "invoke"
+      ],
+      "capabilities": {
+        "incident2:workspace": {
+          "propsSchema": {
+            "type": "object",
+            "required": [
+              "title",
+              "preset"
+            ],
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "preset": {
+                "type": "string",
+                "enum": [
+                  "operational",
+                  "brief"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "incident2:editor": {
+          "propsSchema": {
+            "type": "object",
+            "required": [
+              "title"
+            ],
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              },
+              "readonly": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "slots": [
+            "children"
+          ],
+          "dataProp": "value"
+        },
+        "incident2:report": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "analyze"
+          ],
+          "slots": [
+            "children"
+          ],
+          "dataProp": "value"
+        },
+        "incident2:attack-path": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "value"
+        },
+        "incident2:representation-notes": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "value"
+        },
+        "semantic:timeline": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "items"
+        },
+        "semantic:sequence": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "items"
+        },
+        "semantic:entity-constellation": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "items"
+        },
+        "semantic:decision-summary": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "decision"
+        },
+        "semantic:action-board": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "action"
+          ],
+          "dataProp": "items"
+        },
+        "fluent:dropdown": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "select"
+          ],
+          "dataProp": "value"
+        },
+        "ui:markdown": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "value"
+        }
+      },
+      "externals": {
+        "projectionViews": {
+          "incident2": {
+            "from": "self"
+          },
+          "fluent": {
+            "from": "fluent",
+            "use": [
+              "dropdown"
+            ]
+          },
+          "ui": {
+            "from": "floor",
+            "use": [
+              "markdown"
+            ]
+          },
+          "semantic": {
+            "from": "semantic",
+            "use": [
+              "decision-summary",
+              "entity-constellation",
+              "timeline",
+              "sequence",
+              "action-board"
+            ]
+          }
+        },
+        "effectHandlers": [
+          "selectCachedSampleReport2"
+        ]
+      },
+      "state": {
+        "incident2": {
+          "selectedSampleId": "password-spray-mailbox",
+          "content": "# Loading cached incident report…",
+          "model": null,
+          "analyzedContent": null,
+          "error": ""
+        }
+      }
+    },
+    "cells": {
+      "incident-workspace": {
+        "id": "incident-workspace",
+        "kind": "workspace"
+      },
+      "incident-source": {
+        "id": "incident-source",
+        "kind": "incident-source",
+        "outputs": [
+          {
+            "token": "incident-report-content",
+            "from": "incident2.content",
+            "when": "$length(incident2.content) > 0"
+          }
+        ]
+      },
+      "incident-source-selector": {
+        "id": "incident-source-selector",
+        "kind": "source-selector",
+        "behavior": {
+          "events": {
+            "select": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "selectCachedSampleReport2"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "incident-source-markdown": {
+        "id": "incident-source-markdown",
+        "kind": "source-reader",
+        "inputs": [
+          {
+            "token": "incident-report-content"
+          }
+        ]
+      },
+      "incident-semantic-analyzer": {
+        "id": "incident-semantic-analyzer",
+        "kind": "semantic-analysis-agent",
+        "inputs": [
+          {
+            "token": "incident-report-content"
+          }
+        ],
+        "outputs": [
+          {
+            "token": "incident-semantic-model",
+            "from": "incident2.model",
+            "when": "incident2.model != null"
+          }
+        ]
+      },
+      "incident-verdict": {
+        "id": "incident-verdict",
+        "kind": "semantic-leaf",
+        "inputs": [
+          {
+            "token": "incident-semantic-model"
+          }
+        ]
+      },
+      "incident-attack-path": {
+        "id": "incident-attack-path",
+        "kind": "semantic-leaf",
+        "inputs": [
+          {
+            "token": "incident-semantic-model"
+          }
+        ]
+      },
+      "incident-blast-radius": {
+        "id": "incident-blast-radius",
+        "kind": "semantic-leaf",
+        "inputs": [
+          {
+            "token": "incident-semantic-model"
+          }
+        ]
+      },
+      "incident-timeline": {
+        "id": "incident-timeline",
+        "kind": "semantic-leaf",
+        "inputs": [
+          {
+            "token": "incident-semantic-model"
+          }
+        ]
+      },
+      "incident-techniques": {
+        "id": "incident-techniques",
+        "kind": "semantic-leaf",
+        "inputs": [
+          {
+            "token": "incident-semantic-model"
+          }
+        ]
+      },
+      "incident-response": {
+        "id": "incident-response",
+        "kind": "semantic-leaf",
+        "inputs": [
+          {
+            "token": "incident-semantic-model"
+          }
+        ]
+      },
+      "incident-notes": {
+        "id": "incident-notes",
+        "kind": "semantic-leaf",
+        "inputs": [
+          {
+            "token": "incident-semantic-model"
+          }
+        ]
+      }
+    },
+    "metadata": {
+      "closedGrammarOwnership": "Blueprint authors tiers, recipes, cells, leaves, presets, layout, interactions, and responsive behavior; the agent emits incident-semantic-model/v1 only.",
+      "agentOutput": "semantic-tokens-and-representation-notes",
+      "presentationPresets": [
+        "operational",
+        "brief"
+      ]
+    }
+  }
+}

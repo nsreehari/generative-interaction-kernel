@@ -1,0 +1,549 @@
+{
+  "headline": "True-positive cloud-to-mailbox attack with confirmed data access from 185.220.101.42",
+  "summary": "Between 2026-07-17 22:53:46 and 2026-07-17 22:53:48, a confirmed malicious attack from 185.220.101.42 progressed through credential access, discovery, initial access, lateral movement, and collection. Evidence shows managed identity token theft from webapp-vm-001, ARM enumeration, device-code sign-in to graph-mail-reader-app-id, retrieval of Key Vault secret graph-sp-secret, storage account key retrieval for PRODDATA001, and mailbox access to cfo@contoso.com. Sensitive data access/exfiltration is confirmed in the report.",
+  "asOf": "2026-07-17 22:53:48",
+  "items": [
+    {
+      "id": "itm-judgment-verdict",
+      "kind": "judgment",
+      "title": "Incident verdict",
+      "detail": "Incident classified as True Positive / Other because the report states a confirmed malicious attack with successful sensitive data access.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "True Positive / Other",
+      "unit": "",
+      "date": "2026-07-17 22:53:48"
+    },
+    {
+      "id": "itm-judgment-confidence",
+      "kind": "judgment",
+      "title": "Assessment confidence",
+      "detail": "Overall verdict confidence is High.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "High",
+      "unit": "",
+      "date": "2026-07-17 22:53:48"
+    },
+    {
+      "id": "itm-fact-window",
+      "kind": "fact",
+      "title": "Observed incident window",
+      "detail": "Confirmed attack activity occurred during the reported time window.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "2026-07-17 22:53:46 – 2026-07-17 22:53:48",
+      "unit": "",
+      "date": "2026-07-17 22:53:48"
+    },
+    {
+      "id": "itm-fact-source-ip",
+      "kind": "entity",
+      "title": "Source public IP",
+      "detail": "Public IP observed across credential access, enumeration, authentication, secret retrieval, key retrieval, and mailbox access activity.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "185.220.101.42",
+      "unit": "",
+      "date": "2026-07-17 22:53:48"
+    },
+    {
+      "id": "itm-fact-events",
+      "kind": "fact",
+      "title": "Total observable events",
+      "detail": "Total observable events reported for the incident.",
+      "salience": "medium",
+      "confidence": "high",
+      "value": "13",
+      "unit": "events",
+      "date": "2026-07-17 22:53:48"
+    },
+    {
+      "id": "itm-fact-alerts",
+      "kind": "fact",
+      "title": "Correlated true-positive alerts",
+      "detail": "Correlated alerts IA-ALERT-001 through IA-ALERT-013 are all marked True Positive.",
+      "salience": "medium",
+      "confidence": "high",
+      "value": "13",
+      "unit": "alerts",
+      "date": "2026-07-17 22:53:48"
+    },
+    {
+      "id": "itm-risk-data-access",
+      "kind": "risk",
+      "title": "Sensitive data access confirmed",
+      "detail": "The report explicitly states data access/exfiltration confirmed and successful sensitive data access.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "confirmed",
+      "unit": "",
+      "date": "2026-07-17 22:53:48"
+    },
+    {
+      "id": "itm-fact-mail-items",
+      "kind": "fact",
+      "title": "Mailbox items read",
+      "detail": "Mailbox access events show 2 items read on each of 4 OfficeActivity records for cfo@contoso.com.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "8",
+      "unit": "items",
+      "date": "2026-07-17 22:53:48"
+    },
+    {
+      "id": "itm-entity-vm",
+      "kind": "entity",
+      "title": "Affected virtual machine",
+      "detail": "webapp-vm-001 was involved in IMDS token access and is listed as Affected.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "webapp-vm-001",
+      "unit": "",
+      "date": "2026-07-17 22:53:46"
+    },
+    {
+      "id": "itm-entity-managed-identity",
+      "kind": "entity",
+      "title": "Compromised managed identity",
+      "detail": "Managed identity 11111111-2222-3333-4444-555555555555 is listed as Compromised during credential access.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "11111111-2222-3333-4444-555555555555",
+      "unit": "",
+      "date": "2026-07-17 22:53:46"
+    },
+    {
+      "id": "itm-entity-app",
+      "kind": "entity",
+      "title": "Compromised cloud app",
+      "detail": "graph-mail-reader-app-id is listed as Compromised during initial access.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "graph-mail-reader-app-id",
+      "unit": "",
+      "date": "2026-07-17 22:53:46"
+    },
+    {
+      "id": "itm-entity-sp",
+      "kind": "entity",
+      "title": "Affected service principal",
+      "detail": "Service Principal graph-mail-reader-app-id is listed as Affected during credential access.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "graph-mail-reader-app-id",
+      "unit": "",
+      "date": "2026-07-17 22:53:47"
+    },
+    {
+      "id": "itm-entity-kv-secret",
+      "kind": "entity",
+      "title": "Compromised Key Vault secret",
+      "detail": "Key Vault secret graph-sp-secret in PROD-SECRETS-KV was retrieved successfully and is listed as Compromised.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "graph-sp-secret",
+      "unit": "",
+      "date": "2026-07-17 22:53:47"
+    },
+    {
+      "id": "itm-entity-storage",
+      "kind": "entity",
+      "title": "Compromised storage account",
+      "detail": "PRODDATA001 is listed as Compromised and storage account keys were retrieved successfully.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "PRODDATA001",
+      "unit": "",
+      "date": "2026-07-17 22:53:47"
+    },
+    {
+      "id": "itm-entity-mailbox",
+      "kind": "entity",
+      "title": "Affected mailbox",
+      "detail": "cfo@contoso.com was accessed via Graph API and is listed as Affected.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "cfo@contoso.com",
+      "unit": "",
+      "date": "2026-07-17 22:53:47"
+    },
+    {
+      "id": "itm-entity-subscription",
+      "kind": "entity",
+      "title": "Affected subscription resource",
+      "detail": "Cloud resource 12345678-1234-1234-1234-123456789abc is listed as Affected during discovery.",
+      "salience": "medium",
+      "confidence": "high",
+      "value": "12345678-1234-1234-1234-123456789abc",
+      "unit": "",
+      "date": "2026-07-17 22:53:46"
+    },
+    {
+      "id": "itm-entity-kv",
+      "kind": "entity",
+      "title": "Affected discovered vault resource",
+      "detail": "Cloud resource prod-credentials-kv is listed as Affected during discovery.",
+      "salience": "medium",
+      "confidence": "high",
+      "value": "prod-credentials-kv",
+      "unit": "",
+      "date": "2026-07-17 22:53:46"
+    },
+    {
+      "id": "itm-entity-rg",
+      "kind": "entity",
+      "title": "Affected resource group",
+      "detail": "Cloud resource rg-production is listed as Affected during discovery.",
+      "salience": "medium",
+      "confidence": "high",
+      "value": "rg-production",
+      "unit": "",
+      "date": "2026-07-17 22:53:46"
+    },
+    {
+      "id": "itm-event-imds-token",
+      "kind": "event",
+      "title": "Managed identity token obtained via IMDS",
+      "detail": "IMDS.GetToken succeeded from 185.220.101.42 against webapp-vm-001 for resource hxxps://management[.]azure[.]com.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "IMDS.GetToken success",
+      "unit": "",
+      "date": "2026-07-17 22:53:46"
+    },
+    {
+      "id": "itm-event-enumeration",
+      "kind": "event",
+      "title": "ARM enumeration burst",
+      "detail": "Azure Activity showed an enumeration burst of 22 operations from 185.220.101.42.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "22",
+      "unit": "ops",
+      "date": "2026-07-17 22:53:46"
+    },
+    {
+      "id": "itm-event-devicecode-1",
+      "kind": "event",
+      "title": "Device-code authentication completed",
+      "detail": "AAD sign-in completed from 185.220.101.42 for app graph-mail-reader-app-id using device code.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "deviceCode",
+      "unit": "",
+      "date": "2026-07-17 22:53:46"
+    },
+    {
+      "id": "itm-event-clientsecret",
+      "kind": "event",
+      "title": "Service principal authenticated via client_secret",
+      "detail": "AAD sign-in for graph-mail-reader-app-id authenticated non-interactively from 185.220.101.42 via client_secret.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "client_secret",
+      "unit": "",
+      "date": "2026-07-17 22:53:47"
+    },
+    {
+      "id": "itm-event-devicecode-2",
+      "kind": "event",
+      "title": "Second device-code authentication observed",
+      "detail": "AAD sign-in completed again from 185.220.101.42 for app graph-mail-reader-app-id using device code.",
+      "salience": "medium",
+      "confidence": "high",
+      "value": "deviceCode",
+      "unit": "",
+      "date": "2026-07-17 22:53:47"
+    },
+    {
+      "id": "itm-event-secretget",
+      "kind": "event",
+      "title": "Key Vault secret retrieved",
+      "detail": "SecretGet succeeded for graph-sp-secret from 185.220.101.42.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "SecretGet success",
+      "unit": "",
+      "date": "2026-07-17 22:53:47"
+    },
+    {
+      "id": "itm-event-listkeys",
+      "kind": "event",
+      "title": "Storage account keys retrieved",
+      "detail": "Microsoft.Storage/storageAccounts/listKeys/action succeeded for PRODDATA001 from 185.220.101.42.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "listKeys success",
+      "unit": "",
+      "date": "2026-07-17 22:53:47"
+    },
+    {
+      "id": "itm-event-mailaccess-1",
+      "kind": "event",
+      "title": "Mailbox access observed",
+      "detail": "OfficeActivity recorded MailItemsAccessed for cfo@contoso.com with 2 items read.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "2",
+      "unit": "items",
+      "date": "2026-07-17 22:53:47"
+    },
+    {
+      "id": "itm-event-mailaccess-2",
+      "kind": "event",
+      "title": "Additional mailbox access observed",
+      "detail": "OfficeActivity recorded further MailItemsAccessed for cfo@contoso.com with 2 items read.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "2",
+      "unit": "items",
+      "date": "2026-07-17 22:53:48"
+    },
+    {
+      "id": "itm-tech-t1552-005",
+      "kind": "technique",
+      "title": "T1552.005 Unsecured Credentials: Cloud Instance Metadata API",
+      "detail": "IMDS token theft from webapp-vm-001 managed identity.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "T1552.005",
+      "unit": "",
+      "date": "2026-07-17 22:53:46"
+    },
+    {
+      "id": "itm-tech-t1087-004",
+      "kind": "technique",
+      "title": "T1087.004 Account Discovery: Cloud Account",
+      "detail": "Subscription and resource group enumeration from 185.220.101.42.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "T1087.004",
+      "unit": "",
+      "date": "2026-07-17 22:53:46"
+    },
+    {
+      "id": "itm-tech-t1566-002",
+      "kind": "technique",
+      "title": "T1566.002 Phishing: Spearphishing Link (Device Code)",
+      "detail": "Device-code authentication completed for graph-mail-reader-app-id.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "T1566.002",
+      "unit": "",
+      "date": "2026-07-17 22:53:46"
+    },
+    {
+      "id": "itm-tech-t1078-004",
+      "kind": "technique",
+      "title": "T1078.004 Valid Accounts: Cloud Accounts",
+      "detail": "Service principal authenticated via client_secret from 185.220.101.42.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "T1078.004",
+      "unit": "",
+      "date": "2026-07-17 22:53:47"
+    },
+    {
+      "id": "itm-tech-t1534",
+      "kind": "technique",
+      "title": "T1534 Internal Spearphishing",
+      "detail": "Second device-code authentication is mapped to lateral movement.",
+      "salience": "medium",
+      "confidence": "high",
+      "value": "T1534",
+      "unit": "",
+      "date": "2026-07-17 22:53:47"
+    },
+    {
+      "id": "itm-tech-t1552-004",
+      "kind": "technique",
+      "title": "T1552.004 Unsecured Credentials: Private Keys",
+      "detail": "Key Vault secret graph-sp-secret retrieved successfully.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "T1552.004",
+      "unit": "",
+      "date": "2026-07-17 22:53:47"
+    },
+    {
+      "id": "itm-tech-t1528",
+      "kind": "technique",
+      "title": "T1528 Steal Application Access Token",
+      "detail": "Storage account keys retrieved for PRODDATA001.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "T1528",
+      "unit": "",
+      "date": "2026-07-17 22:53:47"
+    },
+    {
+      "id": "itm-tech-t1114-002",
+      "kind": "technique",
+      "title": "T1114.002 Remote Email Collection",
+      "detail": "MailItemsAccessed recorded for cfo@contoso.com.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "T1114.002",
+      "unit": "",
+      "date": "2026-07-17 22:53:47"
+    },
+    {
+      "id": "itm-action-contain-scope",
+      "kind": "action",
+      "title": "Prioritize immediate containment on compromised identities and accessed data stores",
+      "detail": "Operational focus should center on the compromised managed identity, graph-mail-reader-app-id/service principal, retrieved Key Vault secret, PRODDATA001, and cfo@contoso.com because these assets are explicitly involved in successful malicious activity and confirmed data access.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "managed identity, app/SP, secret, storage, mailbox",
+      "unit": "",
+      "date": "2026-07-17 22:53:48"
+    }
+  ],
+  "projectionCandidates": [
+    {
+      "id": "cand-glanceable",
+      "label": "Glanceable incident brief",
+      "attention": "glanceable",
+      "rationale": "Surfaces the verdict, confirmed data impact, blast radius, and the immediate containment focus in three always-visible sections.",
+      "sections": [
+        {
+          "id": "sec-hero",
+          "title": "Verdict",
+          "primitive": "hero-signal",
+          "priority": "primary",
+          "disclosure": "always",
+          "contentIds": [
+            "itm-judgment-verdict",
+            "itm-risk-data-access",
+            "itm-fact-source-ip",
+            "itm-fact-window"
+          ]
+        },
+        {
+          "id": "sec-metrics",
+          "title": "Blast radius",
+          "primitive": "metric-strip",
+          "priority": "primary",
+          "disclosure": "always",
+          "contentIds": [
+            "itm-fact-events",
+            "itm-fact-alerts",
+            "itm-fact-mail-items"
+          ]
+        },
+        {
+          "id": "sec-actions",
+          "title": "Immediate focus",
+          "primitive": "action-list",
+          "priority": "primary",
+          "disclosure": "always",
+          "contentIds": [
+            "itm-action-contain-scope",
+            "itm-entity-managed-identity",
+            "itm-entity-storage",
+            "itm-entity-mailbox"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cand-focused",
+      "label": "Focused investigation view",
+      "attention": "focused",
+      "rationale": "Preserves the attack sequence, affected entities, ATT&CK mapping, and response focus with progressive disclosure for analysts.",
+      "sections": [
+        {
+          "id": "sec-hero-focused",
+          "title": "Incident assessment",
+          "primitive": "hero-signal",
+          "priority": "primary",
+          "disclosure": "always",
+          "contentIds": [
+            "itm-judgment-verdict",
+            "itm-judgment-confidence",
+            "itm-risk-data-access",
+            "itm-fact-source-ip",
+            "itm-fact-window"
+          ]
+        },
+        {
+          "id": "sec-sequence",
+          "title": "Attack sequence",
+          "primitive": "timeline",
+          "priority": "primary",
+          "disclosure": "always",
+          "contentIds": [
+            "itm-event-imds-token",
+            "itm-event-enumeration",
+            "itm-event-devicecode-1",
+            "itm-event-clientsecret",
+            "itm-event-devicecode-2",
+            "itm-event-secretget",
+            "itm-event-listkeys",
+            "itm-event-mailaccess-1",
+            "itm-event-mailaccess-2"
+          ]
+        },
+        {
+          "id": "sec-entities",
+          "title": "Affected entities",
+          "primitive": "entity-grid",
+          "priority": "primary",
+          "disclosure": "always",
+          "contentIds": [
+            "itm-entity-managed-identity",
+            "itm-entity-vm",
+            "itm-entity-app",
+            "itm-entity-sp",
+            "itm-entity-kv-secret",
+            "itm-entity-storage",
+            "itm-entity-mailbox",
+            "itm-entity-subscription",
+            "itm-entity-kv",
+            "itm-entity-rg"
+          ]
+        },
+        {
+          "id": "sec-techniques",
+          "title": "ATT&CK techniques",
+          "primitive": "technique-list",
+          "priority": "secondary",
+          "disclosure": "collapsed",
+          "contentIds": [
+            "itm-tech-t1552-005",
+            "itm-tech-t1087-004",
+            "itm-tech-t1566-002",
+            "itm-tech-t1078-004",
+            "itm-tech-t1534",
+            "itm-tech-t1552-004",
+            "itm-tech-t1528",
+            "itm-tech-t1114-002"
+          ]
+        },
+        {
+          "id": "sec-actions-focused",
+          "title": "Response focus",
+          "primitive": "action-list",
+          "priority": "secondary",
+          "disclosure": "collapsed",
+          "contentIds": [
+            "itm-action-contain-scope"
+          ]
+        },
+        {
+          "id": "sec-summary",
+          "title": "Analyst summary",
+          "primitive": "narrative",
+          "priority": "tertiary",
+          "disclosure": "on-demand",
+          "contentIds": [
+            "itm-fact-events",
+            "itm-fact-alerts",
+            "itm-fact-mail-items"
+          ]
+        }
+      ]
+    }
+  ]
+}

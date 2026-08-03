@@ -8,6 +8,9 @@
     "incident-report-explorer",
     "incident-report-explorer-2",
     "incident-report-explorer-3",
+    "cached-incident-report-explorer",
+    "cached-incident-report-explorer-2",
+    "cached-incident-report-explorer-3",
     "portfolio-tracker-2tiers",
     "live-workspace-soc",
     "copilot-c2",
@@ -17,5 +20,10 @@
   "nativeFrom": {
     "foundry-agent-no-cells": "foundry-agent",
     "portfolio-tracker-2tiers": "portfolio-tracker"
+  },
+  "projectionFrom": {
+    "cached-incident-report-explorer": "incident-report-explorer",
+    "cached-incident-report-explorer-2": "incident-report-explorer-2",
+    "cached-incident-report-explorer-3": "incident-report-explorer-3"
   }
 }

@@ -9,6 +9,9 @@ import {
 } from "@gik/controlface/blueprint";
 import fourLayersBlueprint from "../blueprints/4layers/blueprint.json";
 import briefingBlueprint from "../blueprints/briefing/blueprint.json";
+import cachedIncidentReportExplorerBlueprint from "../blueprints/cached-incident-report-explorer/blueprint.json";
+import cachedIncidentReportExplorer2Blueprint from "../blueprints/cached-incident-report-explorer-2/blueprint.json";
+import cachedIncidentReportExplorer3Blueprint from "../blueprints/cached-incident-report-explorer-3/blueprint.json";
 import copilotC2Blueprint from "../blueprints/copilot-c2/blueprint.json";
 import foundryAgentNoCellsBlueprint from "../blueprints/foundry-agent-no-cells/blueprint.json";
 import foundryAgentBlueprint from "../blueprints/foundry-agent/blueprint.json";
@@ -27,6 +30,9 @@ import { applyHostConfig } from "./host-config";
 export const sampleBlueprints: Readonly<Record<string, BlueprintArtifact>> = {
   "4layers": fourLayersBlueprint as unknown as BlueprintArtifact,
   briefing: briefingBlueprint as unknown as BlueprintArtifact,
+  "cached-incident-report-explorer": cachedIncidentReportExplorerBlueprint as unknown as BlueprintArtifact,
+  "cached-incident-report-explorer-2": cachedIncidentReportExplorer2Blueprint as unknown as BlueprintArtifact,
+  "cached-incident-report-explorer-3": cachedIncidentReportExplorer3Blueprint as unknown as BlueprintArtifact,
   "copilot-c2": copilotC2Blueprint as unknown as BlueprintArtifact,
   "foundry-agent": foundryAgentBlueprint as unknown as BlueprintArtifact,
   "foundry-agent-no-cells": foundryAgentNoCellsBlueprint as unknown as BlueprintArtifact,
