@@ -53,6 +53,10 @@ test("host query resolves cached Blueprint paths", () => {
     "cached-incident-report-explorer-3",
   );
   assert.equal(
+    readHostQuery("", "/v1.0.10/cached/incident-report-explorer-3/").targetId,
+    "cached-incident-report-explorer-3",
+  );
+  assert.equal(
     readHostQuery("?b=incident-report-explorer-3", "/cached/incident-report-explorer-3/").targetId,
     "incident-report-explorer-3",
   );
