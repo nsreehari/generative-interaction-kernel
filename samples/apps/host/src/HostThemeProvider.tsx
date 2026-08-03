@@ -1,7 +1,6 @@
 import React from "react";
 import {
   FluentProvider,
-  mergeClasses,
   makeStyles,
   tokens,
   webLightTheme,
@@ -31,7 +30,7 @@ const HOST_THEME_CSS = `
   .gx-host:has([aria-label="Harness context"]) main { padding-top: 56px; }
 }
 
-.gx-host > .gx-switcher {
+.gx-host .gx-switcher {
   position: fixed;
   right: var(--spacingHorizontalL);
   bottom: var(--spacingVerticalL);
@@ -289,10 +288,12 @@ export function HostThemeProvider({ children }: HostThemeProviderProps): React.R
   }, []);
 
   return (
-    <FluentProvider theme={webLightTheme} className={mergeClasses("gx-host", styles.host)} style={roleVars(tokens)}>
-      <FloorStyleSheet />
-      <style>{HOST_THEME_CSS}</style>
-      {children}
+    <FluentProvider theme={webLightTheme} className="gx-host" style={roleVars(tokens)}>
+      <div className={styles.host}>
+        <FloorStyleSheet />
+        <style>{HOST_THEME_CSS}</style>
+        {children}
+      </div>
     </FluentProvider>
   );
 }
