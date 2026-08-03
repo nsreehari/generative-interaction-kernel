@@ -4,7 +4,7 @@ import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
-import { trialNode, type ComponentDescription, type ComponentValidationReport, type DeclarativeComponentDefinition } from "../../shared/definition";
+import { defineComponent, trialNode, type ComponentDescription, type ComponentValidationReport } from "../../shared/definition";
 import { componentRootProps, componentStylePropsSchema, records, textAt, type BadgeColor } from "../../shared/component";
 
 export const METRIC_COMPARISON_SEMANTIC_TOKENS = ["positive", "negative", "warning", "neutral", "unknown"] as const;
@@ -147,19 +147,11 @@ export function materializeMetricComparisonTrial() {
     spec: { title: "Incident metrics", fields: { label: "label", value: "value", comparison: "baseline", delta: "delta", unit: "unit", tone: "direction" }, toneMap: { adverse: "negative", favorable: "positive" } },
   });
 }
-export const metricComparisonDefinition: DeclarativeComponentDefinition = {
-  capability: description.capability,
+export const metricComparisonDefinition = defineComponent({
+  description,
   version: "1.0.0",
-  summary: description.summary,
-  dataProp: description.dataProp,
-  events: description.events,
-  semanticTokens: description.semanticTokens,
-  defaultVariant: description.defaultVariant,
-  variants: description.variants,
-  authoring: description.authoring,
   component: MetricComparison,
-  describe: describeMetricComparison,
   getSchema: getMetricComparisonSchema,
   validate: validateMetricComparison,
   materializeTrial: materializeMetricComparisonTrial,
-};
+});

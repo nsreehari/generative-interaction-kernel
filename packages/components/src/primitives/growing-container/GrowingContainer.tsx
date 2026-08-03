@@ -5,10 +5,10 @@ import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
 import {
+  defineComponent,
   trialNode,
   type ComponentDescription,
   type ComponentValidationReport,
-  type DeclarativeComponentDefinition,
 } from "../../shared/definition";
 import { componentRootProps, componentStylePropsSchema } from "../../shared/component";
 
@@ -184,18 +184,11 @@ export function materializeGrowingContainerTrial() {
   });
 }
 
-export const growingContainerDefinition: DeclarativeComponentDefinition = {
-  capability: description.capability,
+export const growingContainerDefinition = defineComponent({
+  description,
   version: "1.0.0",
-  summary: description.summary,
-  slots: description.slots,
-  events: description.events,
-  semanticTokens: description.semanticTokens,
-  variants: description.variants,
-  authoring: description.authoring,
   component: GrowingContainerPrimitive,
-  describe: describeGrowingContainer,
   getSchema: getGrowingContainerSchema,
   validate: validateGrowingContainer,
   materializeTrial: materializeGrowingContainerTrial,
-};
+});

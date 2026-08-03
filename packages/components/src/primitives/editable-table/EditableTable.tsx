@@ -18,10 +18,10 @@ import { runDeclarativeValidators } from "@gik/evaluators";
 import { readProps, type ProjectionView } from "@gik/react";
 
 import {
+  defineComponent,
   trialNode,
   type ComponentDescription,
   type ComponentValidationReport,
-  type DeclarativeComponentDefinition,
 } from "../../shared/definition";
 import { componentRootProps, withComponentStylePropsSchema } from "../../shared/component";
 
@@ -169,9 +169,11 @@ export function materializeEditableTableTrial() {
   });
 }
 
-export const editableTableDefinition: DeclarativeComponentDefinition = {
-  capability: description.capability, version: "1.0.0", summary: description.summary, dataProp: description.dataProp,
-  events: description.events, semanticTokens: description.semanticTokens, variants: description.variants,
-  authoring: description.authoring, component: EditableTable, describe: () => description, getSchema: () => publicSchema,
-  validate: validateEditableTable, materializeTrial: materializeEditableTableTrial,
-};
+export const editableTableDefinition = defineComponent({
+  description,
+  version: "1.0.0",
+  component: EditableTable,
+  getSchema: () => publicSchema,
+  validate: validateEditableTable,
+  materializeTrial: materializeEditableTableTrial,
+});

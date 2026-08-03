@@ -7,9 +7,42 @@ import { loadBundleRuntime } from "@gik/react";
 
 import {
   GikComponent,
+  componentDefinitions,
   createGikComponentDeclarativeBundle,
   materializeActionBoardTrial,
 } from "../src/shared";
+
+test("every canonical component renders through GikComponent", () => {
+  for (const definition of Object.values(componentDefinitions)) {
+    const trial = definition.materializeTrial();
+    const markup = renderToStaticMarkup(
+      <GikComponent
+        kind={definition.capability as React.ComponentProps<typeof GikComponent>["kind"]}
+        componentProps={trial.props}
+      />,
+    );
+
+    assert.ok(markup.length > 0, definition.capability);
+  }
+});
+
+test("every canonical component is addressable through GikComponentDeclarative", () => {
+  for (const definition of Object.values(componentDefinitions)) {
+    const trial = definition.materializeTrial();
+    const bundle = createGikComponentDeclarativeBundle({
+      id: trial.id,
+      capability: definition.capability,
+      props: trial.props,
+    });
+    const vocabulary = unwrap(bundle.vocabulary);
+    const [layer, name] = definition.capability.split(":");
+
+    assert.ok(definition.capability in vocabulary.capabilities, definition.capability);
+    assert.deepEqual(vocabulary.externals?.projectionViews, {
+      [layer]: { from: layer, use: [name] },
+    });
+  }
+});
 
 test("GikComponent maps typed data and spec to a primitive contract", () => {
   const markup = renderToStaticMarkup(
@@ -26,6 +59,18 @@ test("GikComponent maps typed data and spec to a primitive contract", () => {
 
   assert.match(markup, /Requests/);
   assert.match(markup, /09:00/);
+});
+
+test("GikComponent renders a Fluent component through its canonical contract", () => {
+  const markup = renderToStaticMarkup(
+    <GikComponent
+      kind="fluent:button"
+      variant="primary"
+      componentProps={{ label: "Analyze report" }}
+    />,
+  );
+
+  assert.match(markup, /Analyze report/);
 });
 
 test("GikComponent maps generic data to a semantic component's declared data prop", () => {
@@ -92,6 +137,20 @@ test("GikComponentDeclarative wraps one canonical nodeJson with package vocabula
   const runtime = loadBundleRuntime(bundle);
   await runtime.controller.start();
   assert.deepEqual(runtime.controller.getTree()?.props.points, [{ name: "API", count: 7 }]);
+});
+
+test("GikComponentDeclarative exposes Fluent components through the fluent provider", () => {
+  const bundle = createGikComponentDeclarativeBundle({
+    id: "analyze-report",
+    capability: "fluent:button",
+    props: { label: "Analyze report", variant: "primary" },
+  });
+
+  const vocabulary = unwrap(bundle.vocabulary);
+  assert.deepEqual(vocabulary.externals?.projectionViews, {
+    fluent: { from: "fluent", use: ["button"] },
+  });
+  assert.ok("fluent:button" in vocabulary.capabilities);
 });
 
 test("GikComponentDeclarative routes canonical edges.on invoke actions to runtime handlers", async () => {

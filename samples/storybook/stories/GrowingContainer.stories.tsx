@@ -105,9 +105,11 @@ function GrowingContainerStory() {
 
 const meta = {
   title: "Primitive Components/Growing Container",
-  component: GrowingContainerStory,
+  component: ComponentStory,
   tags: ["autodocs"],
-} satisfies Meta<typeof GrowingContainerStory>;
+  args: { definition: growingContainerDefinition },
+  render: () => <GrowingContainerStory />,
+} satisfies Meta<typeof ComponentStory>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

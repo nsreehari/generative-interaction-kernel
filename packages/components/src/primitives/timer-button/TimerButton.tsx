@@ -11,10 +11,10 @@ import { runDeclarativeValidators } from "@gik/evaluators";
 import { readProps, useCountdownTimer, type ProjectionView } from "@gik/react";
 
 import {
+  defineComponent,
   trialNode,
   type ComponentDescription,
   type ComponentValidationReport,
-  type DeclarativeComponentDefinition,
 } from "../../shared/definition";
 import { componentRootProps, componentStylePropsSchema } from "../../shared/component";
 
@@ -207,18 +207,11 @@ export function materializeTimerButtonTrial() {
   });
 }
 
-export const timerButtonDefinition: DeclarativeComponentDefinition = {
-  capability: description.capability,
+export const timerButtonDefinition = defineComponent({
+  description,
   version: "1.1.0",
-  summary: description.summary,
-  events: description.events,
-  semanticTokens: description.semanticTokens,
-  defaultVariant: description.defaultVariant,
-  variants: description.variants,
-  authoring: description.authoring,
   component: TimerButton,
-  describe: describeTimerButton,
   getSchema: getTimerButtonSchema,
   validate: validateTimerButton,
   materializeTrial: materializeTimerButtonTrial,
-};
+});

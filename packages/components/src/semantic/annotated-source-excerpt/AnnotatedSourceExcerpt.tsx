@@ -4,7 +4,7 @@ import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
-import { trialNode, type ComponentDescription, type ComponentValidationReport, type DeclarativeComponentDefinition } from "../../shared/definition";
+import { defineComponent, trialNode, type ComponentDescription, type ComponentValidationReport } from "../../shared/definition";
 import { componentRootProps, componentStylePropsSchema, records, textAt, type BadgeColor } from "../../shared/component";
 
 export const ANNOTATED_SOURCE_EXCERPT_SEMANTIC_TOKENS = ["highlight", "warning", "critical", "context", "positive"] as const;
@@ -29,4 +29,4 @@ export function describeAnnotatedSourceExcerpt() { return description; }
 export function getAnnotatedSourceExcerptSchema(): Record<string, unknown> { return schema as unknown as Record<string, unknown>; }
 export function validateAnnotatedSourceExcerpt(props: unknown): ComponentValidationReport { return runDeclarativeValidators([{ kind: "ajv-schema", schema: getAnnotatedSourceExcerptSchema(), message: "Invalid semantic:annotated-source-excerpt props", code: "semantic-annotated-source-excerpt-schema" }], props as Json); }
 export function materializeAnnotatedSourceExcerptTrial() { return trialNode("semantic:annotated-source-excerpt", { variant: "annotated", lines: [{ line: 41, text: "if (riskScore >= containmentThreshold) {", note: "Containment threshold reached", tone: "attention" }, { line: 42, text: "  await disableIdentity(subjectId);", note: "External effect boundary", tone: "critical" }, { line: 43, text: "}", note: "", tone: "context" }], spec: { title: "Containment policy", language: "TypeScript", sourceLabel: "policies/containment.ts", fields: { number: "line", text: "text", annotation: "note", tone: "tone" }, toneMap: { attention: "warning", critical: "critical", context: "context" } } }); }
-export const annotatedSourceExcerptDefinition: DeclarativeComponentDefinition = { capability: description.capability, version: "1.0.0", summary: description.summary, dataProp: description.dataProp, events: description.events, semanticTokens: description.semanticTokens, defaultVariant: description.defaultVariant, variants: description.variants, authoring: description.authoring, component: AnnotatedSourceExcerpt, describe: describeAnnotatedSourceExcerpt, getSchema: getAnnotatedSourceExcerptSchema, validate: validateAnnotatedSourceExcerpt, materializeTrial: materializeAnnotatedSourceExcerptTrial };
+export const annotatedSourceExcerptDefinition = defineComponent({ description, version: "1.0.0", component: AnnotatedSourceExcerpt, getSchema: getAnnotatedSourceExcerptSchema, validate: validateAnnotatedSourceExcerpt, materializeTrial: materializeAnnotatedSourceExcerptTrial });

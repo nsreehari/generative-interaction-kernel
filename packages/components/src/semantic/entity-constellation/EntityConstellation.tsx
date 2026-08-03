@@ -4,7 +4,7 @@ import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
-import { trialNode, type ComponentDescription, type ComponentValidationReport, type DeclarativeComponentDefinition } from "../../shared/definition";
+import { defineComponent, trialNode, type ComponentDescription, type ComponentValidationReport } from "../../shared/definition";
 import { componentRootProps, componentStylePropsSchema, records, textAt, type BadgeColor, type DataRecord } from "../../shared/component";
 
 export const ENTITY_CONSTELLATION_SEMANTIC_TOKENS = ["affected", "at-risk", "observed", "positive", "unknown"] as const;
@@ -85,4 +85,4 @@ export function describeEntityConstellation() { return description; }
 export function getEntityConstellationSchema(): Record<string, unknown> { return entityConstellationPropsSchema as unknown as Record<string, unknown>; }
 export function validateEntityConstellation(props: unknown): ComponentValidationReport { return runDeclarativeValidators([{ kind: "ajv-schema", schema: getEntityConstellationSchema(), message: "Invalid semantic:entity-constellation props", code: "semantic-entity-constellation-schema" }], props as Json); }
 export function materializeEntityConstellationTrial() { return trialNode("semantic:entity-constellation", { variant: "grouped", items: [{ key: "u1", name: "Admin account", kind: "identity", condition: "compromised", group: "impacted", detail: "Privileged account" }], spec: { title: "Entity constellation", fields: { id: "key", label: "name", type: "kind", status: "condition", group: "group", description: "detail" }, groups: [{ value: "impacted", label: "Impacted" }], toneMap: { compromised: "affected" } } }); }
-export const entityConstellationDefinition: DeclarativeComponentDefinition = { capability: description.capability, version: "1.1.0", summary: description.summary, dataProp: description.dataProp, events: description.events, semanticTokens: description.semanticTokens, defaultVariant: description.defaultVariant, variants: description.variants, authoring: description.authoring, component: EntityConstellation, describe: describeEntityConstellation, getSchema: getEntityConstellationSchema, validate: validateEntityConstellation, materializeTrial: materializeEntityConstellationTrial };
+export const entityConstellationDefinition = defineComponent({ description, version: "1.1.0", component: EntityConstellation, getSchema: getEntityConstellationSchema, validate: validateEntityConstellation, materializeTrial: materializeEntityConstellationTrial });

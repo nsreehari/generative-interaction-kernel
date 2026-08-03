@@ -4,7 +4,7 @@ import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
-import { trialNode, type ComponentDescription, type ComponentValidationReport, type DeclarativeComponentDefinition } from "../../shared/definition";
+import { defineComponent, trialNode, type ComponentDescription, type ComponentValidationReport } from "../../shared/definition";
 import { componentRootProps, componentStylePropsSchema, records, textAt, type BadgeColor } from "../../shared/component";
 
 export const EVIDENCE_TRAIL_SEMANTIC_TOKENS = ["corroborating", "contradicting", "uncertain", "primary", "context"] as const;
@@ -31,4 +31,4 @@ export function describeEvidenceTrail() { return description; }
 export function getEvidenceTrailSchema(): Record<string, unknown> { return schema as unknown as Record<string, unknown>; }
 export function validateEvidenceTrail(props: unknown): ComponentValidationReport { return runDeclarativeValidators([{ kind: "ajv-schema", schema: getEvidenceTrailSchema(), message: "Invalid semantic:evidence-trail props", code: "semantic-evidence-trail-schema" }], props as Json); }
 export function materializeEvidenceTrailTrial() { return trialNode("semantic:evidence-trail", { variant: "detailed", evidence: [{ id: "ev-1", title: "Unfamiliar device registration", source: "Identity audit log", at: "09:14 UTC", excerpt: "Device credential registered after the first anomalous sign-in.", role: "corroborates" }, { id: "ev-2", title: "Conditional access challenge", source: "Sign-in log", at: "09:16 UTC", excerpt: "Challenge originated from the same network and user session.", role: "primary" }], spec: { title: "Evidence trail", fields: { id: "id", title: "title", source: "source", timestamp: "at", excerpt: "excerpt", tone: "role" }, toneMap: { corroborates: "corroborating", primary: "primary" } } }); }
-export const evidenceTrailDefinition: DeclarativeComponentDefinition = { capability: description.capability, version: "1.0.0", summary: description.summary, dataProp: description.dataProp, events: description.events, semanticTokens: description.semanticTokens, defaultVariant: description.defaultVariant, variants: description.variants, authoring: description.authoring, component: EvidenceTrail, describe: describeEvidenceTrail, getSchema: getEvidenceTrailSchema, validate: validateEvidenceTrail, materializeTrial: materializeEvidenceTrailTrial };
+export const evidenceTrailDefinition = defineComponent({ description, version: "1.0.0", component: EvidenceTrail, getSchema: getEvidenceTrailSchema, validate: validateEvidenceTrail, materializeTrial: materializeEvidenceTrailTrial });

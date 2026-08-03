@@ -4,7 +4,7 @@ import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
-import { trialNode, type ComponentDescription, type ComponentValidationReport, type DeclarativeComponentDefinition } from "../../shared/definition";
+import { defineComponent, trialNode, type ComponentDescription, type ComponentValidationReport } from "../../shared/definition";
 import { asRecord, componentRootProps, componentStylePropsSchema, textAt, type BadgeColor } from "../../shared/component";
 
 export const DECISION_SUMMARY_SEMANTIC_TOKENS = ["affirmative", "cautionary", "negative", "uncertain", "neutral"] as const;
@@ -44,4 +44,4 @@ export function describeDecisionSummary() { return description; }
 export function getDecisionSummarySchema(): Record<string, unknown> { return decisionSummaryPropsSchema as unknown as Record<string, unknown>; }
 export function validateDecisionSummary(props: unknown): ComponentValidationReport { return runDeclarativeValidators([{ kind: "ajv-schema", schema: getDecisionSummarySchema(), message: "Invalid semantic:decision-summary props", code: "semantic-decision-summary-schema" }], props as Json); }
 export function materializeDecisionSummaryTrial() { return trialNode("semantic:decision-summary", { variant: "detailed", decision: { title: "Contain affected identity", summary: "Evidence supports immediate containment.", verdict: { outcome: "approved", confidence: "high", rationale: "Correlated sign-in evidence" }, impact: "Reduces lateral movement risk" }, spec: { eyebrow: "Decision", fields: { title: "title", summary: "summary", outcome: "verdict.outcome", confidence: "verdict.confidence", rationale: "verdict.rationale", impact: "impact" }, toneMap: { approved: "affirmative" } } }); }
-export const decisionSummaryDefinition: DeclarativeComponentDefinition = { capability: description.capability, version: "1.1.0", summary: description.summary, dataProp: description.dataProp, events: description.events, semanticTokens: description.semanticTokens, defaultVariant: description.defaultVariant, variants: description.variants, authoring: description.authoring, component: DecisionSummary, describe: describeDecisionSummary, getSchema: getDecisionSummarySchema, validate: validateDecisionSummary, materializeTrial: materializeDecisionSummaryTrial };
+export const decisionSummaryDefinition = defineComponent({ description, version: "1.1.0", component: DecisionSummary, getSchema: getDecisionSummarySchema, validate: validateDecisionSummary, materializeTrial: materializeDecisionSummaryTrial });

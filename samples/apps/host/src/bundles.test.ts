@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { unwrap } from "@gik/kernel";
 import { bundleFromJson, loadBundleRuntime, seedState } from "@gik/react";
+import { fluentComponentViews } from "@gik/components/fluent";
+import { primitiveComponentViews } from "@gik/components/primitives";
+import { semanticComponentViews } from "@gik/components/semantic";
 
 import { resolveBundleProjectionViews } from "./bundles";
 import { copilotC2StateStorageKey } from "../../../blueprints/copilot-c2/native/effect_handlers/copilotC2EffectHandlers";
@@ -76,13 +79,16 @@ test("host projection imports can resolve another bundle by id", () => {
   assert.equal(foundryViews?.["access-modal"], undefined);
   assert.equal(typeof foundryViews?.["agent-selector"], "function");
   const fluentViews = resolveBundleProjectionViews("fluent");
+  assert.deepEqual(Object.keys(fluentViews ?? {}).sort(), Object.keys(fluentComponentViews).sort());
   assert.equal(typeof fluentViews?.dropdown, "function");
   assert.equal(typeof fluentViews?.switch, "function");
   assert.equal(typeof fluentViews?.toggle, "function");
   const primitiveViews = resolveBundleProjectionViews("primitive");
+  assert.deepEqual(Object.keys(primitiveViews ?? {}).sort(), Object.keys(primitiveComponentViews).sort());
   assert.equal(typeof primitiveViews?.chart, "function");
   assert.equal(typeof primitiveViews?.["growing-container"], "function");
   const semanticViews = resolveBundleProjectionViews("semantic");
+  assert.deepEqual(Object.keys(semanticViews ?? {}).sort(), Object.keys(semanticComponentViews).sort());
   assert.equal(typeof semanticViews?.timeline, "function");
   assert.equal(typeof semanticViews?.["semantic-graph"], "function");
   assert.equal(resolveBundleProjectionViews("missing-bundle"), undefined);

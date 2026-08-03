@@ -16,10 +16,10 @@ import { runDeclarativeValidators } from "@gik/evaluators";
 import { readProps, type ProjectionView } from "@gik/react";
 
 import {
+  defineComponent,
   trialNode,
   type ComponentDescription,
   type ComponentValidationReport,
-  type DeclarativeComponentDefinition,
 } from "../../shared/definition";
 import { componentRootProps, withComponentStylePropsSchema } from "../../shared/component";
 
@@ -281,9 +281,11 @@ export function materializeFormTrial() {
   });
 }
 
-export const formDefinition: DeclarativeComponentDefinition = {
-  capability: description.capability, version: "1.0.0", summary: description.summary, dataProp: description.dataProp,
-  events: description.events, semanticTokens: description.semanticTokens, variants: description.variants,
-  authoring: description.authoring, component: Form, describe: () => description, getSchema: () => publicSchema,
-  validate: validateForm, materializeTrial: materializeFormTrial,
-};
+export const formDefinition = defineComponent({
+  description,
+  version: "1.0.0",
+  component: Form,
+  getSchema: () => publicSchema,
+  validate: validateForm,
+  materializeTrial: materializeFormTrial,
+});

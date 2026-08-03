@@ -13,10 +13,10 @@ import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
 import {
+  defineComponent,
   trialNode,
   type ComponentDescription,
   type ComponentValidationReport,
-  type DeclarativeComponentDefinition,
 } from "../../shared/definition";
 import { componentRootProps, componentStylePropsSchema } from "../../shared/component";
 
@@ -212,19 +212,11 @@ export function materializeTimelineTrial() {
   });
 }
 
-export const timelineDefinition: DeclarativeComponentDefinition = {
-  capability: description.capability,
+export const timelineDefinition = defineComponent({
+  description,
   version: "1.1.0",
-  summary: description.summary,
-  dataProp: description.dataProp,
-  events: description.events,
-  semanticTokens: description.semanticTokens,
-  defaultVariant: description.defaultVariant,
-  variants: description.variants,
-  authoring: description.authoring,
   component: Timeline,
-  describe: describeTimeline,
   getSchema: getTimelineSchema,
   validate: validateTimeline,
   materializeTrial: materializeTimelineTrial,
-};
+});

@@ -54,13 +54,53 @@ export interface DeclarativeComponentDefinition {
   materializeTrial(): ResolvedNode;
 }
 
-export function trialNode(capability: string, props: Record<string, Json>): ResolvedNode {
+export interface ComponentDefinitionOptions {
+  description: ComponentDescription;
+  version: string;
+  component: ProjectionView;
+  getSchema(): Record<string, unknown>;
+  validate(props: unknown): ComponentValidationReport;
+  materializeTrial(): ResolvedNode;
+}
+
+export function defineComponent({
+  description,
+  version,
+  component,
+  getSchema,
+  validate,
+  materializeTrial,
+}: ComponentDefinitionOptions): DeclarativeComponentDefinition {
   return {
-    id: `${capability}-trial`,
+    capability: description.capability,
+    version,
+    summary: description.summary,
+    dataProp: description.dataProp,
+    slots: description.slots,
+    events: description.events,
+    semanticTokens: description.semanticTokens,
+    defaultVariant: description.defaultVariant,
+    variants: description.variants,
+    authoring: description.authoring,
+    component,
+    describe: () => description,
+    getSchema,
+    validate,
+    materializeTrial,
+  };
+}
+
+export function componentNode(id: string, capability: string, props: Record<string, Json>): ResolvedNode {
+  return {
+    id,
     capability,
     props,
     visible: true,
     fallback: false,
     children: [],
   };
+}
+
+export function trialNode(capability: string, props: Record<string, Json>): ResolvedNode {
+  return componentNode(`${capability.replace(/[^A-Za-z0-9_-]/g, "-")}-trial`, capability, props);
 }
