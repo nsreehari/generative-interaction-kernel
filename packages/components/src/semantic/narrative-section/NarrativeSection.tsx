@@ -4,7 +4,7 @@ import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
-import { trialNode, type ComponentDescription, type ComponentValidationReport, type DeclarativeComponentDefinition } from "../../shared/definition";
+import { defineComponent, trialNode, type ComponentDescription, type ComponentValidationReport } from "../../shared/definition";
 import { componentRootProps, componentStylePropsSchema, records, textAt, type BadgeColor } from "../../shared/component";
 
 export const NARRATIVE_SECTION_SEMANTIC_TOKENS = ["primary", "supporting", "caution", "critical", "neutral"] as const;
@@ -46,4 +46,4 @@ export function describeNarrativeSection() { return description; }
 export function getNarrativeSectionSchema(): Record<string, unknown> { return schema as unknown as Record<string, unknown>; }
 export function validateNarrativeSection(props: unknown): ComponentValidationReport { return runDeclarativeValidators([{ kind: "ajv-schema", schema: getNarrativeSectionSchema(), message: "Invalid semantic:narrative-section props", code: "semantic-narrative-section-schema" }], props as Json); }
 export function materializeNarrativeSectionTrial() { return trialNode("semantic:narrative-section", { variant: "standard", sections: [{ kind: "Finding", heading: "Initial access", body: "The investigation links the first anomalous sign-in to a newly registered device.", tone: "primary" }, { kind: "Assessment", heading: "Containment posture", body: "Current controls limit further access while identity review continues.", tone: "supporting" }], spec: { title: "Incident narrative", fields: { eyebrow: "kind", heading: "heading", body: "body", tone: "tone" }, toneMap: { primary: "primary", supporting: "supporting" } } }); }
-export const narrativeSectionDefinition: DeclarativeComponentDefinition = { capability: description.capability, version: "1.0.0", summary: description.summary, dataProp: description.dataProp, events: description.events, semanticTokens: description.semanticTokens, defaultVariant: description.defaultVariant, variants: description.variants, authoring: description.authoring, component: NarrativeSection, describe: describeNarrativeSection, getSchema: getNarrativeSectionSchema, validate: validateNarrativeSection, materializeTrial: materializeNarrativeSectionTrial };
+export const narrativeSectionDefinition = defineComponent({ description, version: "1.0.0", component: NarrativeSection, getSchema: getNarrativeSectionSchema, validate: validateNarrativeSection, materializeTrial: materializeNarrativeSectionTrial });

@@ -16,13 +16,17 @@ import {
 } from "@gik/react";
 
 import {
+  fluentComponentCapabilities,
+  fluentComponentViews,
+} from "./fluent/registry";
+import {
   primitiveComponentCapabilities,
   primitiveComponentViews,
-} from "../primitives/registry";
+} from "./primitives/registry";
 import {
   semanticComponentCapabilities,
   semanticComponentViews,
-} from "../semantic/registry";
+} from "./semantic/registry";
 
 const DECLARATIVE_ACTIONS = ["assign", "assignFrom", "derive", "invoke", "route", "confirm", "emit"];
 
@@ -94,6 +98,10 @@ function componentContract(capability: string) {
   const separator = capability.indexOf(":");
   const layer = capability.slice(0, separator);
   const name = capability.slice(separator + 1);
+  if (layer === "fluent") {
+    const descriptor = fluentComponentCapabilities[name];
+    if (descriptor) return { layer, name, descriptor };
+  }
   if (layer === "primitive") {
     const descriptor = primitiveComponentCapabilities[name];
     if (descriptor) return { layer, name, descriptor };
@@ -160,6 +168,7 @@ export function GikComponentDeclarative({ nodeJson }: GikComponentDeclarativePro
     [nodeJson, runtime],
   );
   const resolveProvider = React.useCallback<ProviderResolver>((from) => {
+    if (from === "fluent") return fluentComponentViews;
     if (from === "primitive") return primitiveComponentViews;
     if (from === "semantic") return semanticComponentViews;
     return runtime.resolveProvider?.(from);

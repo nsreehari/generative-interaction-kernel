@@ -1,10 +1,11 @@
 import React from "react";
-import { Badge, Button, Card, CardHeader, Text, makeStyles, mergeClasses, tokens } from "@fluentui/react-components";
+import { Badge, Card, CardHeader, Text, makeStyles, mergeClasses, tokens } from "@fluentui/react-components";
 import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
-import { trialNode, type ComponentDescription, type ComponentValidationReport, type DeclarativeComponentDefinition } from "../../shared/definition";
+import { FluentButton } from "../../fluent/FluentButtons";
+import { componentNode, defineComponent, trialNode, type ComponentDescription, type ComponentValidationReport } from "../../shared/definition";
 import { componentRootProps, componentStylePropsSchema, records, textAt, type BadgeColor, type DataRecord } from "../../shared/component";
 
 export const ACTION_BOARD_SEMANTIC_TOKENS = ["urgent", "active", "planned", "complete", "blocked", "neutral"] as const;
@@ -38,7 +39,7 @@ export const ActionBoard: ProjectionView = ({ node, emit }) => {
     const members = ordered(items.filter((item) => textAt(item, spec.fields.group) === column.value), spec.fields.order);
     return <section className={styles.column} key={column.value}><div className={styles.columnHead}><Text weight="semibold">{column.label}</Text><Badge appearance="tint" color={column.token ? tokenColor(column.token) : undefined}>{members.length}</Badge></div><div className={styles.items}>{members.map((item, index) => {
       const id = textAt(item, spec.fields.id) || String(index); const status = textAt(item, spec.fields.status); const token = spec.toneMap?.[status];
-      return <Card className={styles.item} appearance={node.props.selectedId === id ? "filled-alternative" : "outline"} key={id}><CardHeader header={<div className={styles.titleRow}>{spec.fields.category && textAt(item, spec.fields.category) ? <Badge appearance="outline">{textAt(item, spec.fields.category)}</Badge> : null}<Text weight="semibold">{textAt(item, spec.fields.title)}</Text>{token ? <Badge appearance="tint" color={tokenColor(token)}>{status}</Badge> : null}</div>} />{spec.fields.detail && textAt(item, spec.fields.detail) ? <Text className={styles.detail}>{textAt(item, spec.fields.detail)}</Text> : null}{spec.actions?.length ? <div className={styles.actions}>{spec.actions.map((action) => <Button key={action.id} size="small" appearance={action.appearance ?? "secondary"} onClick={() => emit("action", { actionId: action.id, id, item })}>{action.label}</Button>)}</div> : null}</Card>;
+      return <Card className={styles.item} appearance={node.props.selectedId === id ? "filled-alternative" : "outline"} key={id}><CardHeader header={<div className={styles.titleRow}>{spec.fields.category && textAt(item, spec.fields.category) ? <Badge appearance="outline">{textAt(item, spec.fields.category)}</Badge> : null}<Text weight="semibold">{textAt(item, spec.fields.title)}</Text>{token ? <Badge appearance="tint" color={tokenColor(token)}>{status}</Badge> : null}</div>} />{spec.fields.detail && textAt(item, spec.fields.detail) ? <Text className={styles.detail}>{textAt(item, spec.fields.detail)}</Text> : null}{spec.actions?.length ? <div className={styles.actions}>{spec.actions.map((action) => <FluentButton key={action.id} node={componentNode(`${node.id}-${id}-${action.id}`, "fluent:button", { label: action.label, size: "small", appearance: action.appearance ?? "secondary" })} emit={(event) => event === "press" ? emit("action", { actionId: action.id, id, item }) : undefined} children={undefined} />)}</div> : null}</Card>;
     })}</div></section>;
   })}</div></section>;
 };
@@ -47,4 +48,4 @@ export function describeActionBoard() { return description; }
 export function getActionBoardSchema(): Record<string, unknown> { return actionBoardPropsSchema as unknown as Record<string, unknown>; }
 export function validateActionBoard(props: unknown): ComponentValidationReport { return runDeclarativeValidators([{ kind: "ajv-schema", schema: getActionBoardSchema(), message: "Invalid semantic:action-board props", code: "semantic-action-board-schema" }], props as Json); }
 export function materializeActionBoardTrial() { return trialNode("semantic:action-board", { variant: "board", items: [{ key: "a1", title: "Disable account", detail: "Contain the affected identity", lane: "now", state: "ready", category: "containment" }], spec: { title: "Action board", fields: { id: "key", title: "title", detail: "detail", group: "lane", status: "state", category: "category" }, columns: [{ value: "now", label: "Immediate", token: "urgent" }], toneMap: { ready: "active" }, actions: [{ id: "open", label: "Open", appearance: "primary" }] } }); }
-export const actionBoardDefinition: DeclarativeComponentDefinition = { capability: description.capability, version: "1.1.0", summary: description.summary, dataProp: description.dataProp, events: description.events, semanticTokens: description.semanticTokens, defaultVariant: description.defaultVariant, variants: description.variants, authoring: description.authoring, component: ActionBoard, describe: describeActionBoard, getSchema: getActionBoardSchema, validate: validateActionBoard, materializeTrial: materializeActionBoardTrial };
+export const actionBoardDefinition = defineComponent({ description, version: "1.1.0", component: ActionBoard, getSchema: getActionBoardSchema, validate: validateActionBoard, materializeTrial: materializeActionBoardTrial });

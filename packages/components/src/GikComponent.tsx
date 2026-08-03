@@ -1,14 +1,17 @@
 import React from "react";
 import type { Json, ResolvedNode } from "@gik/kernel";
 
-import { primitiveComponentDefinitions } from "../primitives/registry";
-import { semanticComponentDefinitions } from "../semantic/registry";
-import type { DeclarativeComponentDefinition } from "./definition";
+import { fluentComponentDefinitions } from "./fluent/registry";
+import { primitiveComponentDefinitions } from "./primitives/registry";
+import { semanticComponentDefinitions } from "./semantic/registry";
+import type { DeclarativeComponentDefinition } from "./shared/definition";
 
+type FluentComponentName = keyof typeof fluentComponentDefinitions & string;
 type PrimitiveComponentName = keyof typeof primitiveComponentDefinitions & string;
 type SemanticComponentName = keyof typeof semanticComponentDefinitions & string;
 
 export type GikComponentKind =
+  | `fluent:${FluentComponentName}`
   | `primitive:${PrimitiveComponentName}`
   | `semantic:${SemanticComponentName}`;
 
@@ -34,9 +37,11 @@ function resolveDefinition(kind: GikComponentKind): DeclarativeComponentDefiniti
   const separator = kind.indexOf(":");
   const layer = kind.slice(0, separator);
   const name = kind.slice(separator + 1);
-  const definition = layer === "primitive"
-    ? primitiveComponentDefinitions[name as PrimitiveComponentName]
-    : semanticComponentDefinitions[name as SemanticComponentName];
+  const definition = layer === "fluent"
+    ? fluentComponentDefinitions[name as FluentComponentName]
+    : layer === "primitive"
+      ? primitiveComponentDefinitions[name as PrimitiveComponentName]
+      : semanticComponentDefinitions[name as SemanticComponentName];
 
   if (!definition || definition.capability !== kind) {
     throw new Error(`Unknown GikComponent kind: ${kind}`);

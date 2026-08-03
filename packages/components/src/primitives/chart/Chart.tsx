@@ -4,7 +4,7 @@ import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
-import { trialNode, type ComponentDescription, type ComponentValidationReport, type DeclarativeComponentDefinition } from "../../shared/definition";
+import { defineComponent, trialNode, type ComponentDescription, type ComponentValidationReport } from "../../shared/definition";
 import { componentRootProps, componentStylePropsSchema, readPath, records, textAt } from "../../shared/component";
 
 export const CHART_SEMANTIC_TOKENS = ["accent", "positive", "negative", "warning", "neutral"] as const;
@@ -46,4 +46,4 @@ export function validateChart(props: unknown): ComponentValidationReport { retur
   { kind: "jsonata", expr: "($field := data.spec.fields.value; $count(data.points[$type($lookup($, $field)) = 'number' and $lookup($, $field) >= 0]) = $count(data.points))", message: "Chart values must be finite non-negative numbers", code: "semantic-chart-values" },
 ], props as Json); }
 export function materializeChartTrial() { return trialNode("primitive:chart", { variant: "standard", points: [{ hour: "08:00", count: 7, posture: "normal" }, { hour: "09:00", count: 18, posture: "elevated" }, { hour: "10:00", count: 31, posture: "critical" }, { hour: "11:00", count: 12, posture: "normal" }], spec: { kind: "line", title: "Risk events by hour", description: "Observed events during the response window", fields: { label: "hour", value: "count", tone: "posture" }, toneMap: { normal: "accent", elevated: "warning", critical: "negative" } } }); }
-export const chartDefinition: DeclarativeComponentDefinition = { capability: description.capability, version: "1.1.0", summary: description.summary, dataProp: description.dataProp, events: description.events, semanticTokens: description.semanticTokens, defaultVariant: description.defaultVariant, variants: description.variants, authoring: description.authoring, component: Chart, describe: describeChart, getSchema: getChartSchema, validate: validateChart, materializeTrial: materializeChartTrial };
+export const chartDefinition = defineComponent({ description, version: "1.1.0", component: Chart, getSchema: getChartSchema, validate: validateChart, materializeTrial: materializeChartTrial });

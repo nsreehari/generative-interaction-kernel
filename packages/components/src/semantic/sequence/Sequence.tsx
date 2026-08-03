@@ -4,7 +4,7 @@ import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
-import { trialNode, type ComponentDescription, type ComponentValidationReport, type DeclarativeComponentDefinition } from "../../shared/definition";
+import { defineComponent, trialNode, type ComponentDescription, type ComponentValidationReport } from "../../shared/definition";
 import { componentRootProps, componentStylePropsSchema, records, textAt, type BadgeColor } from "../../shared/component";
 
 export const SEQUENCE_SEMANTIC_TOKENS = ["complete", "current", "upcoming", "blocked", "skipped", "unknown"] as const;
@@ -121,4 +121,4 @@ export function materializeSequenceTrial() {
     spec: { title: "Response sequence", fields: { id: "key", title: "label", order: "order", detail: "detail", status: "state" }, toneMap: { done: "complete", active: "current" } },
   });
 }
-export const sequenceDefinition: DeclarativeComponentDefinition = { capability: description.capability, version: "1.1.0", summary: description.summary, dataProp: description.dataProp, events: description.events, semanticTokens: description.semanticTokens, defaultVariant: description.defaultVariant, variants: description.variants, authoring: description.authoring, component: Sequence, describe: describeSequence, getSchema: getSequenceSchema, validate: validateSequence, materializeTrial: materializeSequenceTrial };
+export const sequenceDefinition = defineComponent({ description, version: "1.1.0", component: Sequence, getSchema: getSequenceSchema, validate: validateSequence, materializeTrial: materializeSequenceTrial });

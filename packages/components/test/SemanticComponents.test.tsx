@@ -45,6 +45,7 @@ import {
   semanticComponentAuthoringTools,
   componentDefinitions,
   componentViews,
+  fluentComponentDefinitions,
   primitiveComponentDefinitions,
   primitiveComponentViews,
   semanticComponentDefinitions,
@@ -127,6 +128,31 @@ test("public registries separate component layers and expose an aggregate", () =
   assert.deepEqual(timerButtonDefinition.events, ["press"]);
   assert.deepEqual(todoListDefinition.events, ["save"]);
   assert.deepEqual(actionBoardDefinition.events, ["action"]);
+});
+
+test("every registry entry exposes a complete standardized contract", () => {
+  const layers = [
+    ["fluent", fluentComponentDefinitions],
+    ["primitive", primitiveComponentDefinitions],
+    ["semantic", semanticComponentDefinitions],
+  ] as const;
+
+  for (const [layer, definitions] of layers) {
+    for (const [name, definition] of Object.entries(definitions)) {
+      const description = definition.describe();
+      const trial = definition.materializeTrial();
+
+      assert.equal(definition.capability, `${layer}:${name}`);
+      assert.equal(description.capability, definition.capability);
+      assert.equal(description.summary, definition.summary);
+      assert.ok(description.summary.length > 0, definition.capability);
+      assert.ok(description.authoring.useWhen.length > 0, definition.capability);
+      assert.ok(description.authoring.avoidWhen.length > 0, definition.capability);
+      assert.ok(description.authoring.rules.length > 0, definition.capability);
+      assert.equal(trial.capability, definition.capability);
+      assert.equal(definition.validate(trial.props).ok, true, definition.capability);
+    }
+  }
 });
 
 test("todo-list shares form field and value shapes while committing each checkbox change", () => {
