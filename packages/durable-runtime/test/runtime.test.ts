@@ -7,6 +7,7 @@ import { createAzureFunctionConnector } from "../src/connectors/azure-function";
 import { createFilesystemMcpConnector } from "../src/connectors/filesystem-mcp";
 import { createIndexedDbStorage } from "../src/storage/indexed-db";
 import type { DurableProvider, TransitionSnapshot } from "../src/contracts";
+import { applyRuntimeSnapshotChanges } from "../src/snapshot-changes";
 
 function ref(kind: string, value: string): string {
   return `b64:${Buffer.from(JSON.stringify({ kind, value })).toString("base64url")}`;
@@ -27,6 +28,19 @@ function provider(snapshot: TransitionSnapshot): DurableProvider & { commits: un
       spec: snapshot.spec as TSpec,
       revision: snapshot.revision ?? "revision-1",
     }),
+    readSnapshotChanges: async <TState, TSpec>(request) => {
+      const revision = snapshot.revision ?? "revision-1";
+      return request.afterRevision === revision
+        ? { kind: "unchanged" as const, revision }
+        : {
+            kind: "reset" as const,
+            snapshot: {
+              state: snapshot.state as TState,
+              spec: snapshot.spec as TSpec,
+              revision,
+            },
+          };
+    },
     acquireTransition: async () => snapshot as never,
     async commitTransition(request) {
       commits.push(request);
@@ -129,6 +143,12 @@ test("engine wake preserves a newer request appended during execution", async ()
       spec: {} as TSpec,
       revision: "revision-1",
     }),
+    readSnapshotChanges: async <TState, TSpec>(request) => request.afterRevision === "revision-1"
+      ? { kind: "unchanged", revision: "revision-1" }
+      : {
+          kind: "reset",
+          snapshot: { state: {} as TState, spec: {} as TSpec, revision: "revision-1" },
+        },
     acquireTransition: async () => ({
       leaseToken: "lease-1",
       leaseExpiresAt: "2026-07-24T10:05:00.000Z",
@@ -185,8 +205,24 @@ test("IndexedDB storage runs a local transition and effect queue", async () => {
   const refs = { stateRef: runtimeRef, journalRef: runtimeRef, effectsQueueRef: runtimeRef };
 
   await runtime.appendJournal({ ...refs, entry: { type: "increment", amount: 2 } });
-  await runtime.initializeRuntime({ stateRef: runtimeRef, effectsQueueRef: runtimeRef });
-  assert.equal((await runtime.processEngineWake(refs)).status, "committed");
+  const initialized = await runtime.initializeRuntime({ stateRef: runtimeRef, effectsQueueRef: runtimeRef });
+  const processed = await runtime.processEngineWake(refs);
+  assert.equal(processed.status, "committed");
+  const changes = await runtime.readSnapshotChanges<{ count: number }, { multiplier: number }>({
+    stateRef: runtimeRef,
+    effectsQueueRef: runtimeRef,
+    afterRevision: initialized.revision,
+  });
+  assert.equal(changes.kind, "changes");
+  assert.deepEqual(applyRuntimeSnapshotChanges({
+    state: { count: 0 },
+    spec: { multiplier: 1 },
+    revision: initialized.revision,
+  }, changes), {
+    state: { count: 2 },
+    spec: { multiplier: 2 },
+    revision: processed.revision,
+  });
   assert.equal((await runtime.processQueueLaneItem(refs)).status, "completed");
 
   const completed = await storage.acquireTransition({ ...refs, runtimeId: "counter-v1" });
@@ -218,8 +254,79 @@ test("IndexedDB reads a committed snapshot while a transition lease is held", as
     spec: { multiplier: 2 },
     revision: lease.revision,
   });
+  assert.deepEqual(await storage.readSnapshotChanges({
+    stateRef: runtimeRef,
+    effectsQueueRef: runtimeRef,
+    runtimeId: "snapshot-v1",
+    afterRevision: lease.revision,
+  }), {
+    kind: "unchanged",
+    revision: lease.revision,
+  });
+  assert.deepEqual(await storage.readSnapshotChanges({
+    stateRef: runtimeRef,
+    effectsQueueRef: runtimeRef,
+    runtimeId: "snapshot-v1",
+    afterRevision: null,
+  }), {
+    kind: "reset",
+    snapshot: {
+      state: { count: 1 },
+      spec: { multiplier: 2 },
+      revision: lease.revision,
+    },
+  });
 
   await storage.abortTransition({ ...refs, runtimeId: "snapshot-v1", leaseToken: lease.leaseToken });
+});
+
+test("runtime reads and subscribes to revision-aware snapshot changes", async () => {
+  let revision = "revision-1";
+  let count = 1;
+  const storage = provider({
+    leaseToken: "lease-1",
+    leaseExpiresAt: new Date(Date.now() + 60_000).toISOString(),
+    state: { count },
+    spec: {},
+    revision,
+    cursor: null,
+    entries: [],
+  });
+  storage.readSnapshotChanges = async <TState, TSpec>(request) => request.afterRevision === revision
+    ? { kind: "unchanged", revision }
+    : {
+        kind: "reset",
+        snapshot: { state: { count } as TState, spec: {} as TSpec, revision },
+      };
+  const runtime = createDurableRuntime({
+    runtimeId: "counter-v1",
+    providers: { "indexed-db": storage },
+    transitionAdapter: counterAdapter,
+  });
+  const runtimeRef = ref("indexed-db", "runtime");
+  const refs = { stateRef: runtimeRef, effectsQueueRef: runtimeRef };
+
+  assert.deepEqual(await runtime.readSnapshotChanges({ ...refs, afterRevision: "revision-1" }), {
+    kind: "unchanged",
+    revision: "revision-1",
+  });
+
+  const received: unknown[] = [];
+  const changed = new Promise<void>((resolve) => {
+    const unsubscribe = runtime.subscribe(refs, (changes) => {
+      received.push(changes);
+      unsubscribe();
+      resolve();
+    }, { afterRevision: "revision-1", pollIntervalMs: 1 });
+    revision = "revision-2";
+    count = 2;
+  });
+  await changed;
+
+  assert.deepEqual(received, [{
+    kind: "reset",
+    snapshot: { state: { count: 2 }, spec: {}, revision: "revision-2" },
+  }]);
 });
 
 test("remote connectors preserve their semantic operation boundaries", async () => {
@@ -255,8 +362,15 @@ test("remote connectors preserve their semantic operation boundaries", async () 
   assert.equal(calls[0].url, "https://stores.example.test/api/gik/runtime/initialize");
   await azure.readSnapshot({ stateRef: runtimeRef, effectsQueueRef: runtimeRef, runtimeId: "runtime-v1" });
   assert.equal(calls[1].url, "https://stores.example.test/api/gik/runtime/snapshot");
+  await azure.readSnapshotChanges({
+    stateRef: runtimeRef,
+    effectsQueueRef: runtimeRef,
+    runtimeId: "runtime-v1",
+    afterRevision: "initial",
+  });
+  assert.equal(calls[2].url, "https://stores.example.test/api/gik/runtime/snapshot/changes");
   assert.equal((await azure.leaseQueueItem?.({ effectsQueueRef: runtimeRef }))?.id, "effect-1");
-  assert.equal(calls[2].url, "https://stores.example.test/api/gik/effects/lease");
+  assert.equal(calls[3].url, "https://stores.example.test/api/gik/effects/lease");
 
   const mcpCalls: string[] = [];
   const filesystem = createFilesystemMcpConnector(async (name) => {
@@ -270,10 +384,17 @@ test("remote connectors preserve their semantic operation boundaries", async () 
     effectsQueueRef: ref("fs-path", "runtime"),
     runtimeId: "runtime-v1",
   });
+  await filesystem.readSnapshotChanges({
+    stateRef: ref("fs-path", "runtime"),
+    effectsQueueRef: ref("fs-path", "runtime"),
+    runtimeId: "runtime-v1",
+    afterRevision: "initial",
+  });
   await filesystem.leaseQueueItem?.({ effectsQueueRef: ref("fs-path", "runtime") });
   assert.deepEqual(mcpCalls, [
     "filesystem.engine_wake_read",
     "filesystem.runtime_snapshot",
+    "filesystem.runtime_snapshot_changes",
     "filesystem.effect_lease",
   ]);
 });

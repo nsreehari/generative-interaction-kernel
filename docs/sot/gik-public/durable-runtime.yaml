@@ -11,7 +11,7 @@ document:
 
 package:
   name: "@gik/durable-runtime"
-  version: "0.4.1"
+  version: "0.6.2"
   publication_status: public-workspace-package
   purpose: >-
     Run caller-supplied pure transitions and effect handlers locally while routing durable
@@ -121,6 +121,14 @@ architecture:
       - Repeatedly call processQueueLaneItem until it returns idle or retry.
       - Continue after completed and dead results.
       - Stop and unsubscribe through an AbortSignal-backed lifecycle.
+    snapshot_subscription:
+      - Read snapshot changes after an opaque committed revision.
+      - Return unchanged without transferring state when that revision is still current.
+      - Return JSON Patch operations when the revision is exactly one retained commit behind.
+      - Return a reset snapshot when the revision is older, unknown, or not supplied.
+      - Poll serially so one subscription never overlaps provider reads.
+      - Advance the local revision before notifying the subscriber.
+      - Stop future polls synchronously when the returned unsubscribe function is called.
 
 reference_protocol:
   encoding: "b64:<base64url(JSON)>"
@@ -187,6 +195,32 @@ contracts:
       - Reading a snapshot does not inspect, acquire, release, or modify a transition lock.
       - Pending journal entries are excluded.
       - A missing runtime or mismatched runtimeId is rejected.
+
+  - name: RuntimeSnapshotChanges
+    signature: >-
+      type RuntimeSnapshotChanges<TState, TSpec> =
+      { kind: "unchanged"; revision: string } |
+      { kind: "changes"; baseRevision: string; revision: string;
+      operations: RuntimeSnapshotPatchOperation[] } |
+      { kind: "reset"; snapshot: RuntimeSnapshot<TState, TSpec> }
+    purpose: Conditionally synchronize a consumer from an opaque committed revision.
+    behavior:
+      - unchanged carries no state or spec payload.
+      - changes contains RFC 6902 add, remove, and replace operations over
+        the document { state, spec }.
+      - reset is authoritative and replaces the consumer's cached snapshot.
+      - Reads do not inspect, acquire, release, or modify a transition lock.
+      - Providers retain only the latest committed patch, keeping storage bounded.
+      - Missing more than one commit produces reset rather than an incomplete patch chain.
+
+  - name: applyRuntimeSnapshotChanges
+    signature: >-
+      applyRuntimeSnapshotChanges<TState, TSpec>(current: RuntimeSnapshot<TState, TSpec>,
+      changes: RuntimeSnapshotChanges<TState, TSpec>): RuntimeSnapshot<TState, TSpec>
+    purpose: Apply unchanged, one-revision patch, or reset results through one validated consumer helper.
+    behavior:
+      - Patch application rejects a base revision that does not match the current snapshot.
+      - Patch operations are validated before application and do not mutate the input snapshot.
 
   - name: TransitionSnapshot
     signature: >-
@@ -264,6 +298,9 @@ contracts:
         readSnapshot<TState, TSpec>(request: RuntimeRefs & { runtimeId: string }):
         Promise<RuntimeSnapshot<TState, TSpec>>
       - >-
+        readSnapshotChanges<TState, TSpec>(request: RuntimeRefs & { runtimeId: string;
+        afterRevision: string | null }): Promise<RuntimeSnapshotChanges<TState, TSpec>>
+      - >-
         acquireTransition<TState, TSpec, TEvent>(request: TransitionRefs & {
         runtimeId: string; leaseMs?: number }):
         Promise<TransitionSnapshot<TState, TSpec, TEvent> | null>
@@ -330,6 +367,26 @@ browser_runtime:
         readSnapshot<TState, TSpec>(request: RuntimeRefs):
         Promise<RuntimeSnapshot<TState, TSpec>>
       purpose: Read committed state, opaque spec, and revision without acquiring a transition lease.
+
+    - name: readSnapshotChanges
+      signature: >-
+        readSnapshotChanges<TState, TSpec>(request: RuntimeRefs & {
+        afterRevision: string | null }): Promise<RuntimeSnapshotChanges<TState, TSpec>>
+      purpose: Transfer one retained state/spec patch when possible while preserving authoritative reset behavior.
+
+    - name: subscribe
+      signature: >-
+        subscribe<TState, TSpec>(request: RuntimeRefs,
+        listener: (changes: RuntimeSnapshotChanges<TState, TSpec>) => Awaitable<void>,
+        options?: { afterRevision?: string | null; pollIntervalMs?: number;
+        onError?: (error: unknown) => void }): () => void
+      purpose: Notify any UI, backend, worker, CLI, or headless consumer when committed snapshot state changes.
+      behavior:
+        - Uses serialized provider-neutral polling over readSnapshotChanges.
+        - Suppresses listener calls for unchanged revisions.
+        - Delivers an initial reset when afterRevision is omitted.
+        - Reports read or listener failures through onError and continues polling.
+        - The returned function prevents future listener calls and polling.
 
     - name: runEngine
       signature: >-

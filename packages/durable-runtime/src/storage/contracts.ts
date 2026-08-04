@@ -5,6 +5,7 @@ import type {
   QueueLeasedMessage,
   RuntimeRefs,
   RuntimeSnapshot,
+  RuntimeSnapshotChanges,
   TransitionCommitResult,
   TransitionRefs,
   TransitionSnapshot,
@@ -35,6 +36,10 @@ export interface LeasedTransitionStorage<
 > {
   initialize(refs: RuntimeRefs, initialState: TState, initialSpec: TSpec): Promise<InitializeRuntimeResult>;
   readSnapshot(refs: RuntimeRefs): Promise<RuntimeSnapshot<TState, TSpec>>;
+  readSnapshotChanges(
+    refs: RuntimeRefs,
+    afterRevision: string | null,
+  ): Promise<RuntimeSnapshotChanges<TState, TSpec>>;
   acquire(
     refs: TransitionRefs,
     options?: { leaseMs?: number },

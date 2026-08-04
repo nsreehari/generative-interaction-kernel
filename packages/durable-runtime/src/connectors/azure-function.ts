@@ -6,6 +6,7 @@ import type {
   QueueLeasedMessage,
   RuntimeRefs,
   RuntimeSnapshot,
+  RuntimeSnapshotChanges,
   TransitionCommit,
   TransitionCommitResult,
   TransitionRefs,
@@ -46,6 +47,12 @@ export function createAzureFunctionConnector(options: AzureFunctionConnectorOpti
       post<InitializeRuntimeResult>("/api/gik/runtime/initialize", request),
     readSnapshot: <TState, TSpec>(request: RuntimeRefs & { runtimeId: string }) =>
       post<RuntimeSnapshot<TState, TSpec>>("/api/gik/runtime/snapshot", request),
+    readSnapshotChanges: <TState, TSpec>(request: RuntimeRefs & {
+      runtimeId: string; afterRevision: string | null;
+    }) => post<RuntimeSnapshotChanges<TState, TSpec>>(
+      "/api/gik/runtime/snapshot/changes",
+      request,
+    ),
     acquireTransition: <TState, TSpec, TEvent>(request: TransitionRefs & {
       runtimeId: string; leaseMs?: number;
     }) => post<TransitionSnapshot<TState, TSpec, TEvent> | null>("/api/gik/transition/acquire", request),

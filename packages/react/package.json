@@ -1,6 +1,6 @@
 {
   "name": "@gik/react",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "React renderer and in-memory Blueprint host for the Generative Interaction Kernel.",
   "license": "MIT",
   "author": "nsreehari",
@@ -50,7 +50,7 @@
   },
   "dependencies": {
     "@gik/blueprint": "0.1.2",
-    "@gik/durable-runtime": "0.5.0",
+    "@gik/durable-runtime": "0.6.2",
     "@gik/kernel": "0.1.1"
   },
   "scripts": {

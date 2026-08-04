@@ -14,6 +14,21 @@ export type RuntimeSnapshot<TState = unknown, TSpec = unknown> = {
   revision: string;
 };
 
+export type RuntimeSnapshotPatchOperation =
+  | { op: "add" | "replace"; path: string; value: unknown }
+  | { op: "remove"; path: string };
+
+export type RuntimeSnapshotPatch = {
+  baseRevision: string;
+  revision: string;
+  operations: RuntimeSnapshotPatchOperation[];
+};
+
+export type RuntimeSnapshotChanges<TState = unknown, TSpec = unknown> =
+  | { kind: "unchanged"; revision: string }
+  | ({ kind: "changes" } & RuntimeSnapshotPatch)
+  | { kind: "reset"; snapshot: RuntimeSnapshot<TState, TSpec> };
+
 export type TransitionSnapshot<TState = unknown, TSpec = unknown, TEvent = unknown> = {
   leaseToken: string;
   leaseExpiresAt: string;
@@ -57,6 +72,9 @@ export interface DurableProvider {
   readSnapshot<TState, TSpec>(
     request: RuntimeRefs & { runtimeId: string }
   ): Promise<RuntimeSnapshot<TState, TSpec>>;
+  readSnapshotChanges<TState, TSpec>(
+    request: RuntimeRefs & { runtimeId: string; afterRevision: string | null }
+  ): Promise<RuntimeSnapshotChanges<TState, TSpec>>;
   acquireTransition<TState, TSpec, TEvent>(
     request: TransitionRefs & { runtimeId: string; leaseMs?: number }
   ): Promise<TransitionSnapshot<TState, TSpec, TEvent> | null>;

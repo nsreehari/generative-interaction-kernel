@@ -6,7 +6,8 @@ import {
 } from "@azure/cosmos";
 import { randomUUID } from "node:crypto";
 
-import type { QueueLeasedMessage, RuntimeRefs } from "../../contracts";
+import type { QueueLeasedMessage, RuntimeRefs, RuntimeSnapshotPatch } from "../../contracts";
+import { createRuntimeSnapshotPatch } from "../../snapshot-changes";
 import type {
   DurableStorageResolver,
   EngineWakeStorage,
@@ -29,6 +30,7 @@ interface RuntimeStateDocument extends RuntimeDocument {
   state: unknown;
   spec: unknown;
   specUpdates: unknown[];
+  snapshotChange?: RuntimeSnapshotPatch;
 }
 
 interface RuntimeLockDocument extends RuntimeDocument {
@@ -193,6 +195,30 @@ export function createCosmosTransitionStorage<
       };
     },
 
+    async readSnapshotChanges(refs, afterRevision) {
+      const partitionKey = cosmosRuntimePartition(storage, refs.stateRef, refs.effectsQueueRef, refs.effectsLane);
+      const state = await readDocument<RuntimeStateDocument>(container, stateId, partitionKey);
+      if (!state) throw new Error("Runtime is not initialized.");
+      if (state.runtimeId !== runtimeId) {
+        throw new Error(`Runtime state belongs to runtime ${state.runtimeId}, not ${runtimeId}.`);
+      }
+      if (afterRevision === state.revision) {
+        return { kind: "unchanged", revision: state.revision };
+      }
+      if (
+        state.snapshotChange?.baseRevision === afterRevision &&
+        state.snapshotChange.revision === state.revision
+      ) return { kind: "changes", ...state.snapshotChange };
+      return {
+        kind: "reset",
+        snapshot: {
+          state: state.state as TState,
+          spec: state.spec as TSpec,
+          revision: state.revision,
+        },
+      };
+    },
+
     async acquire(refs, options) {
       const partitionKey = cosmosRuntimePartition(storage, refs.stateRef, refs.effectsQueueRef, refs.effectsLane);
       const currentLock = await readDocument<RuntimeLockDocument>(container, lockId, partitionKey);
@@ -252,10 +278,17 @@ export function createCosmosTransitionStorage<
         return { ok: false, reason: "conflict", revision: currentRevision };
       }
       const revision = randomUUID();
+      const snapshotChange = current && currentRevision
+        ? createRuntimeSnapshotPatch(
+            { state: current.state, spec: current.spec, revision: currentRevision },
+            { state: commit.state, spec: commit.spec, revision },
+          )
+        : undefined;
       const nextState: RuntimeStateDocument = {
         id: stateId, partitionKey, kind: "gik-state", runtimeId, revision,
         cursor: commit.nextCursor, state: normalize(commit.state),
         spec: normalize(commit.spec), specUpdates: normalize(commit.specUpdates) as unknown[],
+        snapshotChange,
       };
       const operations: OperationInput[] = [current ? {
         operationType: BulkOperationType.Replace,
