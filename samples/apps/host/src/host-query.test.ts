@@ -29,6 +29,17 @@ test("host query enables GIK controls for any non-zero value", () => {
   assert.equal(readHostQuery("?bundle=live-workspace-soc&gik=0.0").harnessId, null);
 });
 
+test("host query enables durable IndexedDB mode for any non-zero value", () => {
+  assert.equal(readHostQuery("?b=samples-overview").durableEnabled, false);
+  assert.equal(readHostQuery("?b=samples-overview&durable").durableEnabled, true);
+  assert.equal(readHostQuery("?b=samples-overview&durable=1").durableEnabled, true);
+  assert.equal(readHostQuery("?b=samples-overview&durable=-1").durableEnabled, true);
+  assert.equal(readHostQuery("?b=samples-overview&durable=enabled").durableEnabled, true);
+  assert.equal(readHostQuery("?b=samples-overview&durable=0").durableEnabled, false);
+  assert.equal(readHostQuery("?b=samples-overview&durable=00").durableEnabled, false);
+  assert.equal(readHostQuery("?b=samples-overview&durable=0.0").durableEnabled, false);
+});
+
 test("host query disables demo mode only for an absent parameter or exact zero", () => {
   assert.equal(readHostQuery("?b=live-workspace-soc").demoEnabled, false);
   assert.equal(readHostQuery("?b=live-workspace-soc&demo").demoEnabled, true);
