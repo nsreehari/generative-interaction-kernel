@@ -179,6 +179,20 @@ export function createCosmosTransitionStorage<
       return { created: false, revision: current.revision };
     },
 
+    async readSnapshot(refs) {
+      const partitionKey = cosmosRuntimePartition(storage, refs.stateRef, refs.effectsQueueRef, refs.effectsLane);
+      const state = await readDocument<RuntimeStateDocument>(container, stateId, partitionKey);
+      if (!state) throw new Error("Runtime is not initialized.");
+      if (state.runtimeId !== runtimeId) {
+        throw new Error(`Runtime state belongs to runtime ${state.runtimeId}, not ${runtimeId}.`);
+      }
+      return {
+        state: state.state as TState,
+        spec: state.spec as TSpec,
+        revision: state.revision,
+      };
+    },
+
     async acquire(refs, options) {
       const partitionKey = cosmosRuntimePartition(storage, refs.stateRef, refs.effectsQueueRef, refs.effectsLane);
       const currentLock = await readDocument<RuntimeLockDocument>(container, lockId, partitionKey);

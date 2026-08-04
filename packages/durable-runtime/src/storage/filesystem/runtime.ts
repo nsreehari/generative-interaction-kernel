@@ -121,6 +121,22 @@ export function createFilesystemDurableStorage(
           await release();
         }
       },
+      async readSnapshot(refs) {
+        runtimeRefs(refs as Record<string, unknown>);
+        const persisted = (await storage
+          .kvStorageForRef(refs.stateRef)
+          .read(runtimeStateKey)) as PersistedRuntimeState | null;
+        if (!persisted) throw new Error("Runtime is not initialized.");
+        if (persisted.runtimeId !== runtimeId)
+          throw new Error(
+            `Runtime state belongs to runtime ${persisted.runtimeId}, not ${runtimeId}.`,
+          );
+        return {
+          state: persisted.state,
+          spec: persisted.spec,
+          revision: persisted.revision,
+        };
+      },
       async acquire(refs, options) {
         transitionRefs(refs as Record<string, unknown>);
         const release = await storage.lockForRef(refs.stateRef).tryAcquire();
@@ -280,6 +296,12 @@ export function createFilesystemDurableStorage(
         request.initialState,
         request.initialSpec,
       );
+    },
+    readSnapshot(request: Record<string, unknown>) {
+      const refs = runtimeRefs(request);
+      if (typeof request.runtimeId !== "string" || !request.runtimeId)
+        throw new Error("runtimeId must be a non-empty string.");
+      return transitionStorage(request.runtimeId).readSnapshot(refs);
     },
     acquireTransition(request: Record<string, unknown>) {
       const refs = transitionRefs(request);

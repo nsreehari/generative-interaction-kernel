@@ -22,6 +22,11 @@ function provider(snapshot: TransitionSnapshot): DurableProvider & { commits: un
     readEngineWake: async () => ({ requestedAt: null, processedAt: null }),
     markEngineWakeProcessed: async () => {},
     initializeRuntime: async () => ({ created: true, revision: "revision-1" }),
+    readSnapshot: async <TState, TSpec>() => ({
+      state: snapshot.state as TState,
+      spec: snapshot.spec as TSpec,
+      revision: snapshot.revision ?? "revision-1",
+    }),
     acquireTransition: async () => snapshot as never,
     async commitTransition(request) {
       commits.push(request);
@@ -119,6 +124,11 @@ test("engine wake preserves a newer request appended during execution", async ()
       wake = { ...wake, processedAt };
     },
     initializeRuntime: async () => ({ created: true, revision: "revision-1" }),
+    readSnapshot: async <TState, TSpec>() => ({
+      state: {} as TState,
+      spec: {} as TSpec,
+      revision: "revision-1",
+    }),
     acquireTransition: async () => ({
       leaseToken: "lease-1",
       leaseExpiresAt: "2026-07-24T10:05:00.000Z",
@@ -185,6 +195,33 @@ test("IndexedDB storage runs a local transition and effect queue", async () => {
   ]);
 });
 
+test("IndexedDB reads a committed snapshot while a transition lease is held", async () => {
+  const storage = createIndexedDbStorage({ databaseName: `gik-snapshot-${crypto.randomUUID()}` });
+  const runtimeRef = ref("indexed-db", "snapshot");
+  const refs = { stateRef: runtimeRef, journalRef: runtimeRef, effectsQueueRef: runtimeRef };
+  await storage.initializeRuntime({
+    stateRef: runtimeRef,
+    effectsQueueRef: runtimeRef,
+    runtimeId: "snapshot-v1",
+    initialState: { count: 1 },
+    initialSpec: { multiplier: 2 },
+  });
+  const lease = await storage.acquireTransition({ ...refs, runtimeId: "snapshot-v1" });
+  assert.ok(lease);
+
+  assert.deepEqual(await storage.readSnapshot({
+    stateRef: runtimeRef,
+    effectsQueueRef: runtimeRef,
+    runtimeId: "snapshot-v1",
+  }), {
+    state: { count: 1 },
+    spec: { multiplier: 2 },
+    revision: lease.revision,
+  });
+
+  await storage.abortTransition({ ...refs, runtimeId: "snapshot-v1", leaseToken: lease.leaseToken });
+});
+
 test("remote connectors preserve their semantic operation boundaries", async () => {
   const calls: Array<{ url: string; init: RequestInit }> = [];
   const azure = createAzureFunctionConnector({
@@ -216,8 +253,10 @@ test("remote connectors preserve their semantic operation boundaries", async () 
     initialSpec: {},
   });
   assert.equal(calls[0].url, "https://stores.example.test/api/gik/runtime/initialize");
+  await azure.readSnapshot({ stateRef: runtimeRef, effectsQueueRef: runtimeRef, runtimeId: "runtime-v1" });
+  assert.equal(calls[1].url, "https://stores.example.test/api/gik/runtime/snapshot");
   assert.equal((await azure.leaseQueueItem?.({ effectsQueueRef: runtimeRef }))?.id, "effect-1");
-  assert.equal(calls[1].url, "https://stores.example.test/api/gik/effects/lease");
+  assert.equal(calls[2].url, "https://stores.example.test/api/gik/effects/lease");
 
   const mcpCalls: string[] = [];
   const filesystem = createFilesystemMcpConnector(async (name) => {
@@ -226,6 +265,15 @@ test("remote connectors preserve their semantic operation boundaries", async () 
     return { structuredContent: { wake: { requestedAt: null, processedAt: null } } };
   });
   await filesystem.readEngineWake({ stateRef: ref("fs-path", "runtime"), effectsQueueRef: ref("fs-path", "runtime") });
+  await filesystem.readSnapshot({
+    stateRef: ref("fs-path", "runtime"),
+    effectsQueueRef: ref("fs-path", "runtime"),
+    runtimeId: "runtime-v1",
+  });
   await filesystem.leaseQueueItem?.({ effectsQueueRef: ref("fs-path", "runtime") });
-  assert.deepEqual(mcpCalls, ["filesystem.engine_wake_read", "filesystem.effect_lease"]);
+  assert.deepEqual(mcpCalls, [
+    "filesystem.engine_wake_read",
+    "filesystem.runtime_snapshot",
+    "filesystem.effect_lease",
+  ]);
 });

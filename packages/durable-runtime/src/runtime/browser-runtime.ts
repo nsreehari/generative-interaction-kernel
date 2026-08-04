@@ -95,6 +95,13 @@ export function createDurableRuntime(options: DurableRuntimeOptions) {
       });
     },
 
+    readSnapshot<TState, TSpec>(request: RuntimeRefs) {
+      return providerFor(request.stateRef).readSnapshot<TState, TSpec>({
+        ...request,
+        runtimeId: options.runtimeId,
+      });
+    },
+
     runEngine: executeEngine,
 
     async processEngineWake(request: TransitionRefs & { leaseMs?: number }) {

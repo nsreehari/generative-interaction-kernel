@@ -5,6 +5,7 @@ import type {
   JournalEntry,
   QueueLeasedMessage,
   RuntimeRefs,
+  RuntimeSnapshot,
   TransitionCommit,
   TransitionCommitResult,
   TransitionRefs,
@@ -41,6 +42,12 @@ export function createFilesystemMcpConnector(callTool: McpCallTool): DurableProv
         "filesystem.runtime_initialize", request
       );
       return payload.initialization;
+    },
+    async readSnapshot<TState, TSpec>(request: RuntimeRefs & { runtimeId: string }) {
+      const payload = await call<{ snapshot: RuntimeSnapshot<TState, TSpec> }>(
+        "filesystem.runtime_snapshot", request
+      );
+      return payload.snapshot;
     },
     async acquireTransition<TState, TSpec, TEvent>(request: TransitionRefs & {
       runtimeId: string; leaseMs?: number;

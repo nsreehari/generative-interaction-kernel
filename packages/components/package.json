@@ -1,6 +1,6 @@
 {
   "name": "@gik/components",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Self-describing declarative Fluent components for the Generative Interaction Kernel.",
   "license": "MIT",
   "author": "nsreehari",
@@ -60,7 +60,7 @@
   "dependencies": {
     "@gik/evaluators": "0.1.1",
     "@gik/kernel": "0.1.1",
-    "@gik/react": "0.1.3"
+    "@gik/react": "0.2.0"
   },
   "scripts": {
     "build": "tsup",
