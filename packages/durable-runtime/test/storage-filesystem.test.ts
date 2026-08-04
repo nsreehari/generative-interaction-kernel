@@ -5,6 +5,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createFilesystemStorageDispatcher } from "../src/storage/filesystem/api";
+import { createFilesystemDurableStorage } from "../src/storage/filesystem";
 import {
   createFilesystemRef,
   createFilesystemStorageLibrary,
@@ -146,6 +147,37 @@ describe("filesystem storage library", () => {
     expect(releaseSecond).not.toBeNull();
     expect(await first.tryAcquire()).toBeNull();
     await releaseSecond!();
+  });
+
+  it("reads committed runtime snapshots while a transition lease is held", async () => {
+    const { storage, ref } = await fixture();
+    const durable = createFilesystemDurableStorage(storage);
+    const refs = { stateRef: ref, journalRef: ref, effectsQueueRef: ref };
+    await durable.initializeRuntime({
+      stateRef: ref,
+      effectsQueueRef: ref,
+      runtimeId: "snapshot-v1",
+      initialState: { count: 1 },
+      initialSpec: { multiplier: 2 },
+    });
+    const lease = await durable.acquireTransition({ ...refs, runtimeId: "snapshot-v1" });
+    expect(lease).not.toBeNull();
+
+    expect(await durable.readSnapshot({
+      stateRef: ref,
+      effectsQueueRef: ref,
+      runtimeId: "snapshot-v1",
+    })).toEqual({
+      state: { count: 1 },
+      spec: { multiplier: 2 },
+      revision: lease!.revision,
+    });
+
+    expect(await durable.abortTransition({
+      ...refs,
+      runtimeId: "snapshot-v1",
+      leaseToken: lease!.leaseToken,
+    })).toBe(true);
   });
 });
 

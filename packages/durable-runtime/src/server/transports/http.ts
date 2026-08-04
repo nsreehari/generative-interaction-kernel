@@ -79,6 +79,14 @@ export async function dispatchInitializeRuntime(
   return transitionStorage(dependencies, input).initialize(runtimeRefs(input), input.initialState, input.initialSpec);
 }
 
+export async function dispatchReadSnapshot(
+  dependencies: DurableRuntimeServerDependencies,
+  request: unknown,
+) {
+  const input = record(request, "readSnapshot request");
+  return transitionStorage(dependencies, input).readSnapshot(runtimeRefs(input));
+}
+
 export async function dispatchAcquireTransition(
   dependencies: DurableRuntimeServerDependencies,
   request: unknown,

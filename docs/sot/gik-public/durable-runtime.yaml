@@ -178,6 +178,16 @@ contracts:
       - It is not a queue.
       - It has no lease, acknowledgement, or negative acknowledgement.
 
+  - name: RuntimeSnapshot
+    signature: >-
+      type RuntimeSnapshot<TState, TSpec> = { state: TState; spec: TSpec;
+      revision: string }
+    purpose: Read the currently committed runtime state and opaque spec without acquiring a transition lease.
+    behavior:
+      - Reading a snapshot does not inspect, acquire, release, or modify a transition lock.
+      - Pending journal entries are excluded.
+      - A missing runtime or mismatched runtimeId is rejected.
+
   - name: TransitionSnapshot
     signature: >-
       type TransitionSnapshot<TState, TSpec, TEvent> = { leaseToken: string;
@@ -251,6 +261,9 @@ contracts:
         initializeRuntime<TState, TSpec>(request: RuntimeRefs & { runtimeId: string;
         initialState: TState; initialSpec: TSpec }): Promise<InitializeRuntimeResult>
       - >-
+        readSnapshot<TState, TSpec>(request: RuntimeRefs & { runtimeId: string }):
+        Promise<RuntimeSnapshot<TState, TSpec>>
+      - >-
         acquireTransition<TState, TSpec, TEvent>(request: TransitionRefs & {
         runtimeId: string; leaseMs?: number }):
         Promise<TransitionSnapshot<TState, TSpec, TEvent> | null>
@@ -311,6 +324,12 @@ browser_runtime:
         - Uses runtimeId as the persisted implementation/version identity.
         - Does not require journalRef because initialization does not read the journal.
         - Does not overwrite an existing runtime.
+
+    - name: readSnapshot
+      signature: >-
+        readSnapshot<TState, TSpec>(request: RuntimeRefs):
+        Promise<RuntimeSnapshot<TState, TSpec>>
+      purpose: Read committed state, opaque spec, and revision without acquiring a transition lease.
 
     - name: runEngine
       signature: >-

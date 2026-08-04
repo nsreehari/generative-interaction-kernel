@@ -180,6 +180,29 @@ export function createIndexedDbStorage(
         return { created: true, revision };
       });
     },
+    readSnapshot<TState, TSpec>(requestValue: {
+      stateRef: string;
+      effectsQueueRef: string;
+      effectsLane?: string;
+      runtimeId: string;
+    }) {
+      const stateSpace = runtimeSpace(requestValue.stateRef);
+      return transaction("readonly", async (store) => {
+        const state = (await request(
+          store.get(id("runtime-state", stateSpace, "__state__")),
+        )) as IndexedDbRecord | undefined;
+        if (!state) throw new Error("Runtime is not initialized.");
+        if (state.runtimeId !== requestValue.runtimeId)
+          throw new Error(
+            `Runtime state belongs to runtime ${String(state.runtimeId)}, not ${requestValue.runtimeId}.`,
+          );
+        return {
+          state: state.value as TState,
+          spec: state.spec as TSpec,
+          revision: String(state.revision),
+        };
+      });
+    },
     acquireTransition<TState, TSpec, TEvent>(
       requestValue: TransitionRefs & { runtimeId: string; leaseMs?: number },
     ) {

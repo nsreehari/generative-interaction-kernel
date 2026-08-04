@@ -8,6 +8,12 @@ export type RuntimeRefs = {
 
 export type TransitionRefs = RuntimeRefs & { journalRef: string };
 
+export type RuntimeSnapshot<TState = unknown, TSpec = unknown> = {
+  state: TState;
+  spec: TSpec;
+  revision: string;
+};
+
 export type TransitionSnapshot<TState = unknown, TSpec = unknown, TEvent = unknown> = {
   leaseToken: string;
   leaseExpiresAt: string;
@@ -48,6 +54,9 @@ export interface DurableProvider {
   initializeRuntime<TState, TSpec>(
     request: RuntimeRefs & { runtimeId: string; initialState: TState; initialSpec: TSpec }
   ): Promise<InitializeRuntimeResult>;
+  readSnapshot<TState, TSpec>(
+    request: RuntimeRefs & { runtimeId: string }
+  ): Promise<RuntimeSnapshot<TState, TSpec>>;
   acquireTransition<TState, TSpec, TEvent>(
     request: TransitionRefs & { runtimeId: string; leaseMs?: number }
   ): Promise<TransitionSnapshot<TState, TSpec, TEvent> | null>;
