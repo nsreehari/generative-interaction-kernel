@@ -57,6 +57,10 @@ import {
   primitiveComponentViews,
   semanticComponentDefinitions,
   semanticComponentViews,
+  securityComponentDefinitions,
+  securityComponentViews,
+  softwareComponentDefinitions,
+  softwareComponentViews,
   measureSetDefinition,
   milestonesDefinition,
   evidenceCaseDefinition,
@@ -82,7 +86,7 @@ import {
   shouldGrowingContainerFollowEnd,
   validateSemanticComponentProps,
 } from "../src/shared";
-import { buildAttackGraphCanvasModel } from "../src/semantic/attack-graph";
+import { buildAttackGraphCanvasModel } from "../src/security/attack-graph";
 
 const cases = [
   { definition: processDefinition, Component: Process, materialize: materializeProcessTrial, expected: "Response process" },
@@ -152,15 +156,21 @@ test("component schemas reject semantic tokens outside each component vocabulary
 });
 
 test("public registries separate component layers and expose an aggregate", () => {
-  const semantic = ["attack-path", "decision", "entity-set", "event-series", "evidence-case", "measure-set", "milestones", "narrative", "process", "relationship-set", "source-comparison", "source-findings", "work-set"];
-  const primitives = ["access-gate", "chart", "collection-board", "datetime", "editable-table", "form", "gantt", "growing-container", "infinite-canvas", "source-viewer", "timer-button", "todo-list"];
+  const semantic = ["decision", "entity-set", "event-series", "evidence-case", "measure-set", "milestones", "narrative", "process", "relationship-set", "work-set"];
+  const security = ["attack-path"];
+  const software = ["source-comparison", "source-findings"];
+  const primitives = ["access-gate", "chart", "collection-board", "datetime", "editable-table", "form", "gantt", "graph-diagram", "growing-container", "infinite-canvas", "source-viewer", "timer-button", "todo-list"];
   const fluent = ["badge", "button", "chips", "data-grid", "dialog", "dropdown", "list", "persona", "searchbox", "spinner", "switch", "tab-bar", "table", "text-field", "textarea", "toggle"];
   assert.deepEqual(Object.keys(semanticComponentViews).sort(), semantic);
   assert.deepEqual(Object.keys(semanticComponentDefinitions).sort(), semantic);
+  assert.deepEqual(Object.keys(securityComponentViews).sort(), security);
+  assert.deepEqual(Object.keys(securityComponentDefinitions).sort(), security);
+  assert.deepEqual(Object.keys(softwareComponentViews).sort(), software);
+  assert.deepEqual(Object.keys(softwareComponentDefinitions).sort(), software);
   assert.deepEqual(Object.keys(primitiveComponentViews).sort(), primitives);
   assert.deepEqual(Object.keys(primitiveComponentDefinitions).sort(), primitives);
-  assert.deepEqual(Object.keys(componentViews).sort(), [...fluent, ...primitives, ...semantic].sort());
-  assert.deepEqual(Object.keys(componentDefinitions).sort(), [...fluent, ...primitives, ...semantic].sort());
+  assert.deepEqual(Object.keys(componentViews).sort(), [...fluent, ...primitives, ...semantic, ...security, ...software].sort());
+  assert.deepEqual(Object.keys(componentDefinitions).sort(), [...fluent, ...primitives, ...semantic, ...security, ...software].sort());
   assert.equal(chartDefinition.capability, "primitive:chart");
   assert.deepEqual(growingContainerDefinition.slots, ["children"]);
   assert.deepEqual(timerButtonDefinition.events, ["press"]);
@@ -173,6 +183,8 @@ test("every registry entry exposes a complete standardized contract", () => {
     ["fluent", fluentComponentDefinitions],
     ["primitive", primitiveComponentDefinitions],
     ["semantic", semanticComponentDefinitions],
+    ["security", securityComponentDefinitions],
+    ["software", softwareComponentDefinitions],
   ] as const;
 
   for (const [layer, definitions] of layers) {
@@ -249,7 +261,7 @@ test("component definitions expose closed agent-facing variant contracts", () =>
 
 test("agent authoring APIs discover, describe, validate, and materialize components", () => {
   const catalog = listSemanticComponents();
-  assert.equal(catalog.length, 13);
+  assert.equal(catalog.length, 10);
   assert.ok(!catalog.some((entry) => entry.id === "chart"));
   assert.deepEqual(catalog.find((entry) => entry.id === "event-series")?.variants, ["chronology", "axis", "text"]);
   assert.deepEqual(catalog.find((entry) => entry.id === "milestones")?.variants, ["rail", "timeline", "list", "axis", "text"]);
@@ -436,8 +448,8 @@ test("attack graph lowers each relationship to matching source and target port t
   });
 
   assert.equal(canvas.nodes.length, 2);
-  assert.deepEqual(canvas.nodePorts.attacker?.right, [{ id: "access:source", token: "relationship:access", label: "accessed" }]);
-  assert.deepEqual(canvas.nodePorts.mailbox?.left, [{ id: "access:target", token: "relationship:access", label: "accessed" }]);
+  assert.deepEqual(canvas.nodePorts.attacker?.right, [{ id: "access:source", token: "edge:access", label: "accessed" }]);
+  assert.deepEqual(canvas.nodePorts.mailbox?.left, [{ id: "access:target", token: "edge:access", label: "accessed" }]);
 });
 
 test("attack graph variants render distinct canvas, diagram, relation, Gantt, and text representations", () => {

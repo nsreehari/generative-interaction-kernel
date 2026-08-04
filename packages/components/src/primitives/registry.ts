@@ -8,6 +8,7 @@ import { DateTime, dateTimeDefinition } from "./datetime";
 import { EditableTable, editableTableDefinition } from "./editable-table";
 import { Form, formDefinition } from "./form";
 import { Gantt, ganttDefinition } from "./gantt";
+import { GraphDiagram, graphDiagramDefinition } from "./graph-diagram";
 import { GrowingContainerPrimitive, growingContainerDefinition } from "./growing-container";
 import { InfiniteCanvasPrimitive, infiniteCanvasDefinition } from "./infinite-canvas";
 import { SourceViewer, sourceViewerDefinition } from "./source-viewer";
@@ -22,6 +23,7 @@ export const primitiveComponentViews: Record<string, ProjectionView> = {
   "editable-table": EditableTable,
   form: Form,
   gantt: Gantt,
+  "graph-diagram": GraphDiagram,
   "growing-container": GrowingContainerPrimitive,
   "infinite-canvas": InfiniteCanvasPrimitive,
   "source-viewer": SourceViewer,
@@ -37,6 +39,7 @@ export const primitiveComponentDefinitions = {
   "editable-table": editableTableDefinition,
   form: formDefinition,
   gantt: ganttDefinition,
+  "graph-diagram": graphDiagramDefinition,
   "growing-container": growingContainerDefinition,
   "infinite-canvas": infiniteCanvasDefinition,
   "source-viewer": sourceViewerDefinition,

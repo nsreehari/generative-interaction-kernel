@@ -4,8 +4,9 @@ import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
+import { GraphDiagram, type GraphDiagramModel } from "../../primitives/graph-diagram";
 import { asRecord, componentRootProps, componentStylePropsSchema, records, textAt, type BadgeColor, type DataRecord } from "../../shared/component";
-import { defineComponent, trialNode, type ComponentDescription, type ComponentValidationReport } from "../../shared/definition";
+import { componentNode, defineComponent, trialNode, type ComponentDescription, type ComponentValidationReport } from "../../shared/definition";
 
 export const RELATIONSHIP_SET_SEMANTIC_TOKENS = ["central", "related", "risk", "positive", "neutral"] as const;
 export const RELATIONSHIP_SET_VARIANTS = ["network", "matrix", "relations", "text"] as const;
@@ -40,7 +41,6 @@ const useStyles = makeStyles({
   root: { display: "grid", gap: tokens.spacingVerticalM, minWidth: 0 },
   header: { display: "grid", gap: tokens.spacingVerticalXXS },
   description: { color: tokens.colorNeutralForeground3 },
-  network: { width: "100%", minHeight: "20rem", backgroundColor: tokens.colorNeutralBackground2, border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`, borderRadius: tokens.borderRadiusMedium },
   matrixWrap: { overflowX: "auto" },
   matrix: { width: "100%", borderCollapse: "collapse" },
   matrixCell: { minWidth: "7rem", padding: tokens.spacingVerticalS, textAlign: "left", border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}` },
@@ -58,16 +58,6 @@ function tokenColor(token: RelationshipToken | undefined): BadgeColor {
   if (token === "positive") return "success";
   return "informative";
 }
-
-function fill(token: RelationshipToken | undefined): string {
-  if (token === "central") return tokens.colorBrandBackground;
-  if (token === "risk") return tokens.colorPaletteRedBackground3;
-  if (token === "positive") return tokens.colorPaletteGreenBackground3;
-  if (token === "related") return tokens.colorPaletteLightTealBackground2;
-  return tokens.colorNeutralBackground4;
-}
-
-function foreground(token: RelationshipToken | undefined): string { return token === "central" ? tokens.colorNeutralForegroundOnBrand : tokens.colorNeutralForeground1; }
 
 export const RelationshipSet: ProjectionView = ({ node }) => {
   const styles = useStyles();
@@ -88,8 +78,37 @@ export const RelationshipSet: ProjectionView = ({ node }) => {
 
   if (variant === "relations") return <section {...root}>{header}<div className={styles.relations}>{relationships.map((relationship) => { const source = byId.get(textAt(relationship, spec.relationshipFields.source)); const target = byId.get(textAt(relationship, spec.relationshipFields.target)); if (!source || !target) return null; const sourceTone = textAt(source, spec.entityFields.tone); const targetTone = textAt(target, spec.entityFields.tone); return <Card appearance="outline" className={styles.relation} key={textAt(relationship, spec.relationshipFields.id)}><div className={styles.endpoint}><Text weight="semibold">{textAt(source, spec.entityFields.label)}</Text>{sourceTone ? <Badge appearance="tint" color={tokenColor(spec.toneMap?.[sourceTone])}>{sourceTone}</Badge> : null}</div><Text className={styles.relationLabel} size={200}>{textAt(relationship, spec.relationshipFields.label) || "related to"}</Text><div className={mergeClasses(styles.endpoint, styles.target)}><Text weight="semibold">{textAt(target, spec.entityFields.label)}</Text>{targetTone ? <Badge appearance="tint" color={tokenColor(spec.toneMap?.[targetTone])}>{targetTone}</Badge> : null}</div></Card>; })}</div></section>;
 
-  const positions = new Map(entities.map((entity, index) => { const angle = (Math.PI * 2 * index) / entities.length - Math.PI / 2; const radius = entities.length <= 3 ? 105 : 135; return [textAt(entity, spec.entityFields.id), { x: 320 + Math.cos(angle) * radius, y: 180 + Math.sin(angle) * radius }] as const; }));
-  return <section {...root}>{header}<svg className={styles.network} viewBox="0 0 640 360" role="img"><title>{spec.title ?? "Relationship set"}</title><desc>{spec.description ?? `${entities.length} entities and ${relationships.length} relationships`}</desc>{relationships.map((relationship) => { const source = positions.get(textAt(relationship, spec.relationshipFields.source)); const target = positions.get(textAt(relationship, spec.relationshipFields.target)); if (!source || !target) return null; const label = textAt(relationship, spec.relationshipFields.label); return <g key={textAt(relationship, spec.relationshipFields.id)}><line x1={source.x} y1={source.y} x2={target.x} y2={target.y} stroke={tokens.colorNeutralStroke1} strokeWidth="2" />{label ? <text x={(source.x + target.x) / 2} y={(source.y + target.y) / 2 - 6} textAnchor="middle" fill={tokens.colorNeutralForeground3} fontSize="11">{label}</text> : null}</g>; })}{entities.map((entity) => { const id = textAt(entity, spec.entityFields.id); const position = positions.get(id)!; const toneValue = textAt(entity, spec.entityFields.tone); const token = toneValue ? spec.toneMap?.[toneValue] : undefined; return <g key={id}><circle cx={position.x} cy={position.y} r="46" fill={fill(token)} stroke={tokens.colorNeutralStroke1} /><text x={position.x} y={position.y} textAnchor="middle" dominantBaseline="middle" fill={foreground(token)} fontSize="13">{textAt(entity, spec.entityFields.label).slice(0, 18)}</text></g>; })}</svg></section>;
+  const graphModel: GraphDiagramModel = {
+    nodes: entities.map((entity) => {
+      const token = spec.toneMap?.[textAt(entity, spec.entityFields.tone)];
+      return {
+        id: textAt(entity, spec.entityFields.id),
+        label: textAt(entity, spec.entityFields.label),
+        detail: textAt(entity, spec.entityFields.detail) || undefined,
+        category: textAt(entity, spec.entityFields.type) || undefined,
+        tone: token === "central" ? "accent" : token === "risk" ? "danger" : token === "positive" ? "success" : "neutral",
+      };
+    }),
+    edges: relationships.map((relationship) => ({
+      id: textAt(relationship, spec.relationshipFields.id),
+      source: textAt(relationship, spec.relationshipFields.source),
+      target: textAt(relationship, spec.relationshipFields.target),
+      label: textAt(relationship, spec.relationshipFields.label) || undefined,
+      directed: true,
+    })),
+  };
+  return <GraphDiagram node={componentNode(`${node.id}-network`, "primitive:graph-diagram", {
+    graph: graphModel as unknown as Json,
+    variant: "diagram",
+    spec: {
+      ...(spec.title ? { title: spec.title } : {}),
+      ...(spec.description ? { description: spec.description } : {}),
+      ...(spec.emptyText ? { emptyText: spec.emptyText } : {}),
+      layout: "radial",
+    },
+    ...(typeof node.props.className === "string" ? { className: node.props.className } : {}),
+    ...(node.props.style ? { style: node.props.style } : {}),
+  })} emit={() => undefined} children={undefined} />;
 };
 
 const description: ComponentDescription = {

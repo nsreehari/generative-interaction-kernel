@@ -4,15 +4,11 @@ import type { Json, ResolvedNode } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
-import {
-  InfiniteCanvasPrimitive,
-  type DeclarativeInfiniteCanvasModel,
-  type DeclarativeInfiniteCanvasNode,
-} from "../../primitives/infinite-canvas";
+import { GraphDiagram, buildGraphCanvasModel, type GraphDiagramModel } from "../../primitives/graph-diagram";
 import { formatTimestamp } from "../../primitives/datetime";
 import { Gantt, validateGantt, type GanttScale } from "../../primitives/gantt";
-import { RelationshipSet } from "../relationship-set";
-import type { ComponentValidationReport } from "../../shared/definition";
+import { RelationshipSet } from "../../semantic/relationship-set";
+import { componentNode, type ComponentValidationReport } from "../../shared/definition";
 import { asRecord, componentRootProps, componentStylePropsSchema, readPath, records, textAt } from "../../shared/component";
 
 export const ATTACK_GRAPH_VARIANTS = ["canvas", "diagram", "relations", "gantt", "text"] as const;
@@ -201,61 +197,38 @@ function renderGanttGraph(node: ResolvedNode, graph: Record<string, unknown>, sp
   return <Gantt node={primitiveNode} emit={() => undefined} children={undefined} />;
 }
 
-function appendPort(
-  nodePorts: DeclarativeInfiniteCanvasModel["nodePorts"],
-  nodeId: string,
-  side: "left" | "right",
-  port: { id: string; token: string; label: string },
-): void {
-  const ports = nodePorts[nodeId] ?? {};
-  const rail = ports[side] ?? [];
-  nodePorts[nodeId] = { ...ports, [side]: [...rail, port] };
-}
-
-export function buildAttackGraphCanvasModel(graphValue: unknown, spec: AttackGraphSpec): DeclarativeInfiniteCanvasModel {
+export function buildAttackGraphModel(graphValue: unknown, spec: AttackGraphSpec): GraphDiagramModel {
   const graph = asRecord(graphValue);
   const entities = records(graph.entities);
   const relationships = records(graph.relationships);
-  const declaredIds = new Set(entities.map((entity) => textAt(entity, spec.entityFields.id)));
-  const nodes: DeclarativeInfiniteCanvasNode[] = entities.map((entity) => {
+  return { nodes: entities.map((entity) => {
     const toneValue = textAt(entity, spec.entityFields.tone);
     return {
       id: textAt(entity, spec.entityFields.id),
-      title: textAt(entity, spec.entityFields.label),
+      label: textAt(entity, spec.entityFields.label),
       detail: textAt(entity, spec.entityFields.detail) || undefined,
-      eyebrow: textAt(entity, spec.entityFields.type) || undefined,
+      category: textAt(entity, spec.entityFields.type) || undefined,
       tone: spec.toneMap?.[toneValue] ?? "neutral",
-      width: 250,
     };
-  });
-  const nodePorts: DeclarativeInfiniteCanvasModel["nodePorts"] = Object.fromEntries(nodes.map((node) => [node.id, {}]));
+  }), edges: relationships.map((relationship) => ({ id: textAt(relationship, spec.relationshipFields.id), source: textAt(relationship, spec.relationshipFields.source), target: textAt(relationship, spec.relationshipFields.target), label: textAt(relationship, spec.relationshipFields.label) || undefined, directed: true })) };
+}
 
-  for (const relationship of relationships) {
-    const id = textAt(relationship, spec.relationshipFields.id);
-    const source = textAt(relationship, spec.relationshipFields.source);
-    const target = textAt(relationship, spec.relationshipFields.target);
-    if (!id || !declaredIds.has(source) || !declaredIds.has(target) || source === target) continue;
-    const label = textAt(relationship, spec.relationshipFields.label);
-    const token = `relationship:${id}`;
-    appendPort(nodePorts, source, "right", { id: `${id}:source`, token, label });
-    appendPort(nodePorts, target, "left", { id: `${id}:target`, token, label });
-  }
-
-  return { nodes, nodePorts };
+export function buildAttackGraphCanvasModel(graphValue: unknown, spec: AttackGraphSpec) {
+  return buildGraphCanvasModel(buildAttackGraphModel(graphValue, spec));
 }
 
 export const AttackGraph: ProjectionView = ({ node, emit }) => {
   const styles = useStyles();
   const graph = asRecord(node.props.graph);
   const spec = node.props.spec as unknown as AttackGraphSpec;
-  const model = buildAttackGraphCanvasModel(graph, spec);
-  if (model.nodes.length === 0) return <p>{spec.emptyText ?? "No attack graph data available."}</p>;
+  const graphModel = buildAttackGraphModel(graph, spec);
+  if (graphModel.nodes.length === 0) return <p>{spec.emptyText ?? "No attack graph data available."}</p>;
   const variant = ATTACK_GRAPH_VARIANTS.includes(node.props.variant as typeof ATTACK_GRAPH_VARIANTS[number])
     ? node.props.variant as typeof ATTACK_GRAPH_VARIANTS[number]
     : "canvas";
   if (variant === "text") return renderTextGraph(node, graph, spec, styles);
   if (variant === "gantt") return renderGanttGraph(node, graph, spec);
-  if (variant !== "canvas") {
+  if (variant === "relations") {
     const relationshipSetNode: ResolvedNode = {
       ...node,
       capability: "semantic:relationship-set",
@@ -264,7 +237,7 @@ export const AttackGraph: ProjectionView = ({ node, emit }) => {
           entities: records(graph.entities) as unknown as Json,
           relationships: records(graph.relationships) as unknown as Json,
         },
-        variant: variant === "diagram" ? "network" : "relations",
+        variant: "relations",
         spec: {
           ...(spec.title ? { title: spec.title } : {}),
           ...(spec.description ? { description: spec.description } : {}),
@@ -289,25 +262,13 @@ export const AttackGraph: ProjectionView = ({ node, emit }) => {
     };
     return <RelationshipSet node={relationshipSetNode} emit={emit} children={undefined} />;
   }
-  const primitiveNode: ResolvedNode = {
-    ...node,
-    capability: "primitive:infinite-canvas",
-    props: {
-      nodes: model.nodes as unknown as Json,
-      nodePorts: model.nodePorts as unknown as Json,
-      stateKey: String(node.props.stateKey ?? node.id),
-      variant: "standard",
-      canvasState: (node.props.canvasState ?? null) as Json,
-      height: node.props.height ?? "34rem",
-      miniMap: node.props.miniMap ?? true,
-      controls: node.props.controls ?? true,
-      background: node.props.background ?? true,
-      ariaLabel: node.props.ariaLabel ?? spec.title ?? "Attack graph",
-      ...(typeof node.props.className === "string" ? { className: node.props.className } : {}),
-      ...(node.props.style ? { style: node.props.style } : {}),
-    },
-  };
-  return <InfiniteCanvasPrimitive node={primitiveNode} emit={emit} children={undefined} />;
+  return <GraphDiagram node={componentNode(`${node.id}-graph`, "primitive:graph-diagram", {
+    graph: graphModel as unknown as Json,
+    variant: variant === "canvas" ? "canvas" : "diagram",
+    spec: { ...(spec.title ? { title: spec.title } : {}), ...(spec.description ? { description: spec.description } : {}), ...(spec.emptyText ? { emptyText: spec.emptyText } : {}), layout: "hierarchical" },
+    stateKey: String(node.props.stateKey ?? node.id), canvasState: (node.props.canvasState ?? null) as Json, height: node.props.height ?? "34rem", miniMap: node.props.miniMap ?? true, controls: node.props.controls ?? true, background: node.props.background ?? true,
+    ...(typeof node.props.className === "string" ? { className: node.props.className } : {}), ...(node.props.style ? { style: node.props.style } : {}),
+  })} emit={emit} children={undefined} />;
 };
 
 export function getAttackGraphSchema(): Record<string, unknown> { return schema as unknown as Record<string, unknown>; }

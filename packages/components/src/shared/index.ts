@@ -5,3 +5,5 @@ export * from "./registry";
 export * from "../semantic";
 export * from "../primitives";
 export * from "../fluent";
+export * from "../security";
+export * from "../software";

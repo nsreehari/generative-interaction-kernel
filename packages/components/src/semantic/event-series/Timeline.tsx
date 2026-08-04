@@ -15,12 +15,14 @@ import type { ProjectionView } from "@gik/react";
 import type { ComponentValidationReport } from "../../shared/definition";
 import { componentRootProps, componentStylePropsSchema, readPath } from "../../shared/component";
 import {
-  MAX_GANTT_TICKS,
-  formatGanttAxisCoordinate,
-  formatGanttCoordinate,
-  parseGanttCoordinate,
-  type GanttScale,
-} from "../../primitives/gantt";
+  MAX_COORDINATE_TICKS,
+  formatAxisCoordinate,
+  formatCoordinate,
+  parseCoordinate,
+  type CoordinateScale,
+} from "../../shared/coordinateScale";
+
+const MAX_TIMELINE_TICKS = MAX_COORDINATE_TICKS;
 
 export const TIMELINE_SEMANTIC_TOKENS = ["past", "current", "upcoming", "blocked", "unknown"] as const;
 export const TIMELINE_VARIANTS = ["standard", "compact", "minimal", "axis"] as const;
@@ -98,7 +100,7 @@ type TimelineSpec = {
   title?: string;
   description?: string;
   emptyText?: string;
-  scale?: GanttScale;
+  scale?: CoordinateScale;
   fields: TimelineFields;
   sort?: { direction: "ascending" | "descending" | "none" };
   toneMap?: Record<string, typeof TIMELINE_SEMANTIC_TOKENS[number]>;
@@ -148,10 +150,10 @@ function badgeColor(token: typeof TIMELINE_SEMANTIC_TOKENS[number]): "brand" | "
   return "informative";
 }
 
-function sortItems(items: TimelineItem[], fields: TimelineFields, direction: "ascending" | "descending" | "none", scale?: GanttScale): TimelineItem[] {
+function sortItems(items: TimelineItem[], fields: TimelineFields, direction: "ascending" | "descending" | "none", scale?: CoordinateScale): TimelineItem[] {
   if (direction === "none") return items;
   const multiplier = direction === "descending" ? -1 : 1;
-  if (scale) return [...items].sort((left, right) => (parseGanttCoordinate(readPath(left, fields.timestamp), scale) - parseGanttCoordinate(readPath(right, fields.timestamp), scale)) * multiplier);
+  if (scale) return [...items].sort((left, right) => (parseCoordinate(readPath(left, fields.timestamp), scale) - parseCoordinate(readPath(right, fields.timestamp), scale)) * multiplier);
   return [...items].sort((left, right) => String(left[fields.timestamp] ?? "").localeCompare(String(right[fields.timestamp] ?? "")) * multiplier);
 }
 
@@ -159,16 +161,16 @@ function renderAxisTimeline(items: TimelineItem[], spec: TimelineSpec, styles: R
   const scale = spec.scale ?? { kind: "datetime" };
   const events = items.map((item, index) => {
     const rawCoordinate = readPath(item, spec.fields.timestamp);
-    return { id: String(readPath(item, spec.fields.id) ?? index), title: String(readPath(item, spec.fields.title) ?? ""), coordinate: parseGanttCoordinate(rawCoordinate, scale), coordinateText: formatGanttCoordinate(rawCoordinate, scale) };
+    return { id: String(readPath(item, spec.fields.id) ?? index), title: String(readPath(item, spec.fields.title) ?? ""), coordinate: parseCoordinate(rawCoordinate, scale), coordinateText: formatCoordinate(rawCoordinate, scale) };
   }).filter((event) => event.title && Number.isFinite(event.coordinate));
   if (events.length === 0) return <Text>{spec.emptyText ?? "No timeline data."}</Text>;
   const minimum = scale.kind === "linear" && scale.minimum !== undefined ? scale.minimum : Math.min(...events.map((event) => event.coordinate));
   const maximum = scale.kind === "linear" && scale.maximum !== undefined ? scale.maximum : Math.max(...events.map((event) => event.coordinate));
   const span = Math.max(1, maximum - minimum);
   const tickStep = scale.tickStep;
-  const ticks = tickStep ? Array.from({ length: Math.min(MAX_GANTT_TICKS, Math.floor(span / tickStep) + 1) }, (_, index) => minimum + index * tickStep).filter((value) => value <= maximum) : [];
+  const ticks = tickStep ? Array.from({ length: Math.min(MAX_TIMELINE_TICKS, Math.floor(span / tickStep) + 1) }, (_, index) => minimum + index * tickStep).filter((value) => value <= maximum) : [];
   return <div className={styles.axisViewport}><div className={styles.axis} role="group" aria-label={spec.title ?? "Timeline axis"}><div className={styles.axisLine} aria-hidden="true" />
-    {ticks.map((tick) => { const left = ((tick - minimum) / span) * 100; return <React.Fragment key={tick}><span className={styles.axisTick} style={{ left: `${left}%` }} aria-hidden="true" /><Text className={styles.axisTickLabel} size={200} style={{ left: `${left}%` }}>{formatGanttAxisCoordinate(tick, scale)}</Text></React.Fragment>; })}
+    {ticks.map((tick) => { const left = ((tick - minimum) / span) * 100; return <React.Fragment key={tick}><span className={styles.axisTick} style={{ left: `${left}%` }} aria-hidden="true" /><Text className={styles.axisTickLabel} size={200} style={{ left: `${left}%` }}>{formatAxisCoordinate(tick, scale)}</Text></React.Fragment>; })}
     {events.map((event, index) => { const left = ((event.coordinate - minimum) / span) * 100; const above = index % 2 === 0; return <div className={styles.axisEvent} style={{ left: `${left}%` }} key={event.id}><span className={above ? styles.axisStemAbove : styles.axisStemBelow} aria-hidden="true" /><span className={styles.axisMarker} aria-hidden="true" /><div className={mergeClasses(styles.axisLabel, above ? styles.axisLabelAbove : styles.axisLabelBelow, event.coordinate === minimum && styles.axisFirstLabel, event.coordinate === maximum && styles.axisLastLabel)}><Text weight="semibold">{event.title}</Text><Text className={styles.axisTime} size={200}>{event.coordinateText}</Text></div></div>; })}
   </div></div>;
 }
@@ -228,14 +230,14 @@ export function validateTimeline(props: unknown): ComponentValidationReport {
   if (value.variant !== "axis") return report;
   const spec = asObject(value.spec) as TimelineSpec;
   const scale = spec.scale ?? { kind: "datetime" };
-  const coordinates = (Array.isArray(value.items) ? value.items.map(asObject) : []).map((item) => parseGanttCoordinate(readPath(item, spec.fields.timestamp), scale));
+  const coordinates = (Array.isArray(value.items) ? value.items.map(asObject) : []).map((item) => parseCoordinate(readPath(item, spec.fields.timestamp), scale));
   const minimum = scale.kind === "linear" ? scale.minimum : undefined;
   const maximum = scale.kind === "linear" ? scale.maximum : undefined;
   const domainMinimum = minimum ?? Math.min(...coordinates);
   const domainMaximum = maximum ?? Math.max(...coordinates);
   const invalid = coordinates.some((coordinate) => !Number.isFinite(coordinate) || (minimum !== undefined && coordinate < minimum) || (maximum !== undefined && coordinate > maximum));
   const invalidDomain = minimum !== undefined && maximum !== undefined && maximum <= minimum;
-  const invalidTickCount = scale.tickStep !== undefined && Math.floor((domainMaximum - domainMinimum) / scale.tickStep) + 1 > MAX_GANTT_TICKS;
+  const invalidTickCount = scale.tickStep !== undefined && Math.floor((domainMaximum - domainMinimum) / scale.tickStep) + 1 > MAX_TIMELINE_TICKS;
   if (invalid || invalidDomain || invalidTickCount) { report.ok = false; report.errors.push({ detail: "Axis timeline events must use valid coordinates within the configured scale bounds", code: "timeline-valid-coordinate" }); }
   return report;
 }

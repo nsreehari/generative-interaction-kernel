@@ -181,7 +181,7 @@ test("GikComponentDeclarative routes canonical edges.on invoke actions to runtim
 });
 
 test("GikComponentDeclarative resolves datetime, Gantt, infinite canvas, and attack path through canonical providers", () => {
-  for (const capability of ["primitive:datetime", "primitive:gantt", "primitive:infinite-canvas", "semantic:attack-path"] as const) {
+  for (const capability of ["primitive:datetime", "primitive:gantt", "primitive:infinite-canvas", "security:attack-path"] as const) {
     const definition = componentDefinitions[capability.split(":")[1] as keyof typeof componentDefinitions];
     const trial = definition.materializeTrial();
     const bundle = createGikComponentDeclarativeBundle({ id: trial.id, capability, props: trial.props });

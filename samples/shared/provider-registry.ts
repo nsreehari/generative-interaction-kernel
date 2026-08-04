@@ -1,5 +1,7 @@
 import type { ProjectionView } from "@gik/react";
 import { fluentComponentViews } from "@gik/components/fluent";
+import { securityComponentViews } from "@gik/components/security";
+import { softwareComponentViews } from "@gik/components/software";
 
 import copilotC2Leaves from "../blueprints/copilot-c2/native/projection_views/copilotC2Leaves";
 import foundryAgentLeaves from "../blueprints/foundry-agent/native/projection_views/foundryAgentLeaves";
@@ -37,6 +39,8 @@ const projectionProviders: Record<string, Record<string, ProjectionView>> = {
   primitive: primitiveLeaves,
   "reactive-demo": reactiveDemoLeaves,
   semantic: semanticLeaves,
+  security: securityComponentViews,
+  software: softwareComponentViews,
   "samples-overview": samplesOverviewLeaves,
 };
 

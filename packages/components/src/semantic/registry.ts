@@ -7,9 +7,9 @@ import { Narrative, narrativeDefinition } from "./narrative";
 import { RelationshipSet, relationshipSetDefinition } from "./relationship-set";
 import { WorkSet, workSetDefinition } from "./work-set";
 import {
-  AttackPath, Decision, EntitySet, EventSeries, EvidenceCase, Process, SourceComparison, SourceFindings,
-  attackPathDefinition, decisionDefinition, entitySetDefinition, eventSeriesDefinition,
-  evidenceCaseDefinition, processDefinition, sourceComparisonDefinition, sourceFindingsDefinition,
+  Decision, EntitySet, EventSeries, EvidenceCase, Process,
+  decisionDefinition, entitySetDefinition, eventSeriesDefinition,
+  evidenceCaseDefinition, processDefinition,
 } from "./canonical-adapters";
 
 export const semanticComponentViews: Record<string, ProjectionView> = {
@@ -21,11 +21,8 @@ export const semanticComponentViews: Record<string, ProjectionView> = {
   "event-series": EventSeries,
   process: Process,
   "entity-set": EntitySet,
-  "attack-path": AttackPath,
   "evidence-case": EvidenceCase,
   decision: Decision,
-  "source-findings": SourceFindings,
-  "source-comparison": SourceComparison,
 };
 
 export const semanticComponentDefinitions = {
@@ -37,11 +34,8 @@ export const semanticComponentDefinitions = {
   "event-series": eventSeriesDefinition,
   process: processDefinition,
   "entity-set": entitySetDefinition,
-  "attack-path": attackPathDefinition,
   "evidence-case": evidenceCaseDefinition,
   decision: decisionDefinition,
-  "source-findings": sourceFindingsDefinition,
-  "source-comparison": sourceComparisonDefinition,
 } as const;
 
 export const semanticComponentCapabilities: Record<string, CapabilityDescriptor> = Object.fromEntries(
