@@ -174,7 +174,7 @@ const description: ComponentDescription = {
   ],
   authoring: {
     useWhen: ["Records have meaningful start and end coordinates", "Users need to compare duration, span, or overlap"],
-    avoidWhen: ["Records are point events; use semantic:timeline", "Order is non-temporal; use semantic:sequence"],
+    avoidWhen: ["Records are point events; use semantic:event-series", "Order is non-temporal; use semantic:process"],
     rules: ["Provide unique stable ids", "Use datetime for actual timestamps and numeric linear coordinates for logical order or progress", "Use displayPrefix only to format linear coordinates, such as showing 1 as T1", "Set a positive tickStep in milliseconds for datetime or coordinate units for linear when the scale should show shared column markers", "Ensure each end is not earlier than its start", "Use one consistent scale across all intervals"],
   },
 };

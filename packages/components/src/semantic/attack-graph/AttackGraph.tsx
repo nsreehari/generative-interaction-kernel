@@ -12,12 +12,7 @@ import {
 import { formatTimestamp } from "../../primitives/datetime";
 import { Gantt, validateGantt, type GanttScale } from "../../primitives/gantt";
 import { SemanticGraph } from "../semantic-graph";
-import {
-  defineComponent,
-  trialNode,
-  type ComponentDescription,
-  type ComponentValidationReport,
-} from "../../shared/definition";
+import type { ComponentValidationReport } from "../../shared/definition";
 import { asRecord, componentRootProps, componentStylePropsSchema, readPath, records, textAt } from "../../shared/component";
 
 export const ATTACK_GRAPH_VARIANTS = ["canvas", "diagram", "relations", "gantt", "text"] as const;
@@ -314,32 +309,10 @@ export const AttackGraph: ProjectionView = ({ node, emit }) => {
   return <InfiniteCanvasPrimitive node={primitiveNode} emit={emit} children={undefined} />;
 };
 
-const description: ComponentDescription = {
-  capability: "semantic:attack-graph",
-  summary: "Presents incident relationships as an exploratory canvas, static diagram, relation cards, interval Gantt, or plain text.",
-  dataProp: "graph",
-  events: ["node", "edge", "layout"],
-  semanticTokens: ATTACK_GRAPH_SEMANTIC_TOKENS,
-  defaultVariant: "canvas",
-  variants: [
-    { value: "canvas", summary: "Interactive pan-and-zoom graph with port-derived edges and persistent layout.", useWhen: ["Users need to explore or reposition a larger attack topology", "Spatial investigation is part of the workflow"] },
-    { value: "diagram", summary: "Static node-link diagram requiring no canvas interaction.", useWhen: ["The attack path is small and topology should be immediately visible", "A deterministic read-only overview is preferred"] },
-    { value: "relations", summary: "Accessible source-predicate-target cards without drawn edges.", useWhen: ["Precise textual reading matters more than spatial topology", "The surface is narrow, printable, or assistive-technology focused"] },
-    { value: "gantt", summary: "Relationship intervals on a shared datetime or linear scale.", useWhen: ["Relationships have trustworthy start and end coordinates", "Users need to compare overlap and span across attack activity"] },
-    { value: "text", summary: "Plain ordered source-predicate-target statements.", useWhen: ["A portable, printable, or low-decoration representation is required", "Graph meaning must remain readable without visual geometry"] },
-  ],
-  authoring: {
-    useWhen: ["An incident contains directed entity-to-entity activity", "Users need to understand an attack path in a representation appropriate to their context"],
-    avoidWhen: ["Only chronological events matter; use semantic:timeline", "Relationships are absent or untrusted"],
-    rules: ["Provide stable unique entity and relationship ids", "Reference only declared entity ids from relationships", "Map domain status values through toneMap", "Choose canvas for interactive topology, diagram for a static overview, relations for card-based reading, gantt for intervals, or text for plain statements", "Treat datetime and linear Gantt scales as configuration of the gantt variant, not separate variants", "Map relationship start and end fields and declare ganttScale when using linear coordinates", "Do not author canvas ports or edges; the canvas representation derives both", "Persist layout events only when the canvas representation should retain user positioning"],
-  },
-};
-
-export function describeAttackGraph(): ComponentDescription { return description; }
 export function getAttackGraphSchema(): Record<string, unknown> { return schema as unknown as Record<string, unknown>; }
 export function validateAttackGraph(props: unknown): ComponentValidationReport {
   const report = runDeclarativeValidators([
-    { kind: "ajv-schema", schema: getAttackGraphSchema(), message: "Invalid semantic:attack-graph props", code: "semantic-attack-graph-schema" },
+    { kind: "ajv-schema", schema: getAttackGraphSchema(), message: "Invalid attack-path renderer props", code: "attack-path-renderer-schema" },
     { kind: "jsonata", expr: "($field := data.spec.entityFields.id; $ids := data.graph.entities.$lookup($, $field); $count($ids) = $count($distinct($ids)))", message: "Attack graph entity ids must be unique", code: "attack-graph-unique-entity-id" },
     { kind: "jsonata", expr: "($entityField := data.spec.entityFields.id; $sourceField := data.spec.relationshipFields.source; $targetField := data.spec.relationshipFields.target; $ids := data.graph.entities.$lookup($, $entityField); $count(data.graph.relationships[$lookup($, $sourceField) in $ids and $lookup($, $targetField) in $ids]) = $count(data.graph.relationships))", message: "Attack graph relationships must reference declared entity ids", code: "attack-graph-relationship-reference" },
   ], props as Json);
@@ -365,27 +338,3 @@ export function validateAttackGraph(props: unknown): ComponentValidationReport {
   report.warnings.push(...ganttReport.warnings);
   return report;
 }
-export function materializeAttackGraphTrial() {
-  return trialNode("semantic:attack-graph", {
-    variant: "canvas",
-    stateKey: "attack-graph-trial",
-    graph: {
-      entities: [
-        { id: "attacker", label: "Threat actor", detail: "Observed source", type: "Actor", status: "observed" },
-        { id: "identity", label: "Admin identity", detail: "Compromised principal", type: "Identity", status: "compromised" },
-        { id: "mailbox", label: "Finance mailbox", detail: "Accessed resource", type: "Mailbox", status: "affected" },
-      ],
-      relationships: [
-        { id: "authenticate", sourceId: "attacker", targetId: "identity", label: "authenticated as", start: "2026-07-17T23:09:23Z", end: "2026-07-17T23:09:27Z" },
-        { id: "access", sourceId: "identity", targetId: "mailbox", label: "accessed", start: "2026-07-17T23:09:25Z", end: "2026-07-17T23:09:34Z" },
-      ],
-    },
-    spec: {
-      title: "Attack path",
-      entityFields: { id: "id", label: "label", detail: "detail", type: "type", tone: "status" },
-      relationshipFields: { id: "id", source: "sourceId", target: "targetId", label: "label", start: "start", end: "end" },
-      toneMap: { observed: "neutral", compromised: "danger", affected: "warning" },
-    },
-  });
-}
-export const attackGraphDefinition = defineComponent({ description, version: "1.7.0", component: AttackGraph, getSchema: getAttackGraphSchema, validate: validateAttackGraph, materializeTrial: materializeAttackGraphTrial });

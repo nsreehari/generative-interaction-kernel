@@ -9,7 +9,7 @@ import {
   GikComponent,
   componentDefinitions,
   createGikComponentDeclarativeBundle,
-  materializeActionBoardTrial,
+  materializeWorkSetTrial,
 } from "../src/shared";
 
 test("every canonical component renders through GikComponent", () => {
@@ -76,8 +76,8 @@ test("GikComponent renders a Fluent component through its canonical contract", (
 test("GikComponent maps generic data to a semantic component's declared data prop", () => {
   const markup = renderToStaticMarkup(
     <GikComponent
-      kind="semantic:timeline"
-      variant="compact"
+      kind="semantic:event-series"
+      variant="chronology"
       spec={JSON.parse(JSON.stringify({
         title: "Release history",
         fields: { id: "id", title: "title", timestamp: "time" },
@@ -155,14 +155,14 @@ test("GikComponentDeclarative exposes Fluent components through the fluent provi
 
 test("GikComponentDeclarative routes canonical edges.on invoke actions to runtime handlers", async () => {
   let receivedPayload: Record<string, Json> | undefined;
-  const props = materializeActionBoardTrial().props;
+  const props = materializeWorkSetTrial().props;
   const bundle = createGikComponentDeclarativeBundle({
-    id: "action-board",
-    capability: "semantic:action-board",
+    id: "work-set",
+    capability: "semantic:work-set",
     props,
     edges: {
       on: {
-        action: [{ do: "invoke", args: { tool: "captureAction" } }],
+        move: [{ do: "invoke", args: { tool: "captureAction" } }],
       },
     },
   }, {
@@ -176,12 +176,12 @@ test("GikComponentDeclarative routes canonical edges.on invoke actions to runtim
   assert.deepEqual(unwrap(bundle.vocabulary).externals?.effectHandlers, ["captureAction"]);
   const runtime = loadBundleRuntime(bundle);
   await runtime.controller.start();
-  await runtime.controller.emit("action-board", "action", { id: "disable-account" });
+  await runtime.controller.emit("work-set", "move", { id: "disable-account" });
   assert.deepEqual(receivedPayload, { id: "disable-account" });
 });
 
-test("GikComponentDeclarative resolves datetime, Gantt, infinite canvas, and attack graph through canonical providers", () => {
-  for (const capability of ["primitive:datetime", "primitive:gantt", "primitive:infinite-canvas", "semantic:attack-graph"] as const) {
+test("GikComponentDeclarative resolves datetime, Gantt, infinite canvas, and attack path through canonical providers", () => {
+  for (const capability of ["primitive:datetime", "primitive:gantt", "primitive:infinite-canvas", "semantic:attack-path"] as const) {
     const definition = componentDefinitions[capability.split(":")[1] as keyof typeof componentDefinitions];
     const trial = definition.materializeTrial();
     const bundle = createGikComponentDeclarativeBundle({ id: trial.id, capability, props: trial.props });

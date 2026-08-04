@@ -5,7 +5,7 @@ import { createStatelessAgentFaceDispatcher } from "@gik/agentface";
 import { getSemanticComponentAgentKit } from "@gik/components";
 
 test("semantic component tools compose into AgentFace and dispatch over MCP", () => {
-  const componentAgentKit = getSemanticComponentAgentKit(["timeline", "action-board"]);
+  const componentAgentKit = getSemanticComponentAgentKit(["event-series", "work-set"]);
   const dispatcher = createStatelessAgentFaceDispatcher(componentAgentKit.tools);
   const list = dispatcher.handleMcpMessage({
     jsonrpc: "2.0",
@@ -30,7 +30,7 @@ test("semantic component tools compose into AgentFace and dispatch over MCP", ()
     method: "tools/call",
     params: {
       name: "materializeSemanticComponentTrial",
-      arguments: { capability: "semantic:timeline", variant: "minimal" },
+      arguments: { capability: "semantic:event-series", variant: "text" },
     },
   }) as {
     result: {
@@ -39,7 +39,7 @@ test("semantic component tools compose into AgentFace and dispatch over MCP", ()
     };
   };
 
-  assert.equal(call.result.structuredContent.capability, "semantic:timeline");
-  assert.equal(call.result.structuredContent.props.variant, "minimal");
+  assert.equal(call.result.structuredContent.capability, "semantic:event-series");
+  assert.equal(call.result.structuredContent.props.variant, "text");
   assert.equal(call.result.content[0].type, "text");
 });
