@@ -2,8 +2,10 @@
 // owns URL canonicalization and the switcher overlay.
 
 import React from "react";
-import { BlueprintHost } from "@gik/react";
-import { GikDemoBlueprintHost } from "@gik/demo-runner-host";
+import { BlueprintHost as InMemoryBlueprintHost } from "@gik/react";
+import { BlueprintHost as DurableBlueprintHost } from "@gik/react/durable";
+import { createIndexedDbProvider } from "@gik/durable-runtime/storage/indexed-db";
+import { GikDemoBlueprintHost, type DemoTargetHostProps } from "@gik/demo-runner-host";
 import blueprintRegistry from "../../../blueprints/registry.json";
 import { resolveBundleProjectionViews } from "./bundles";
 import {
@@ -20,6 +22,7 @@ import { resolveSampleBlueprintSource } from "../../../shared/blueprints";
 import portfolioTwoTierDemo from "../../../scenarios/portfolio-tracker-2tiers-baseline/scenario.json" with { type: "json" };
 
 const embeddedHostStyle: React.CSSProperties = { height: "100vh" };
+const indexedDbProvider = createIndexedDbProvider({ databaseName: "gik-samples-host" });
 const { blueprints: blueprintIds, default: DEFAULT_BLUEPRINT } = blueprintRegistry;
 const defaultExternalContextByBlueprint = {
   "portfolio-tracker-2tiers": { view: "desktop", attention: "detailed", marketMode: "live" },
@@ -28,6 +31,7 @@ const defaultExternalContextByBlueprint = {
 export function Host(): React.ReactElement {
   const query = readHostQuery(window.location.search, window.location.pathname);
   const targetId = query.targetId ?? DEFAULT_BLUEPRINT;
+  const HostComponent = query.durableEnabled ? DurableIndexedDbHost : InMemoryBlueprintHost;
   React.useEffect(() => {
     const canonicalUrl = canonicalizeHostUrl(window.location.href);
     if (canonicalUrl !== window.location.href) window.history.replaceState(null, "", canonicalUrl);
@@ -37,15 +41,36 @@ export function Host(): React.ReactElement {
     []
   );
   return (
-    <HostView targetId={targetId} resolveLeavesProvider={resolveProvider} />
+    <HostView targetId={targetId} HostComponent={HostComponent} resolveLeavesProvider={resolveProvider} />
   );
+}
+
+function durableRef(value: string): string {
+  const bytes = new TextEncoder().encode(JSON.stringify({ kind: "indexed-db", value }));
+  const encoded = btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+  return `b64:${encoded}`;
+}
+
+function DurableIndexedDbHost({ context: _context, onTransition: _onTransition, ...props }: DemoTargetHostProps): React.ReactElement {
+  const blueprintId = props.blueprint.payload.id;
+  const runtime = React.useMemo(() => {
+    const ref = durableRef(`samples:${blueprintId}`);
+    return {
+      runtimeId: `samples:${blueprintId}:v1`,
+      providers: { "indexed-db": indexedDbProvider },
+      refs: { stateRef: ref, journalRef: ref, effectsQueueRef: ref },
+    };
+  }, [blueprintId]);
+  return <DurableBlueprintHost {...props} runtime={runtime} />;
 }
 
 function HostView({
   targetId,
+  HostComponent,
   resolveLeavesProvider,
 }: {
   targetId: string;
+  HostComponent: React.ComponentType<DemoTargetHostProps>;
   resolveLeavesProvider: (from: string) => ReturnType<typeof resolveBundleProjectionViews>;
 }): React.ReactElement {
   const id = targetId;
@@ -65,7 +90,7 @@ function HostView({
   return (
     <>
       <GikDemoBlueprintHost
-        HostComponent={BlueprintHost}
+        HostComponent={HostComponent}
         blueprint={blueprint}
         native={native}
         context={context}

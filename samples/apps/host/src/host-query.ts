@@ -10,12 +10,13 @@ export { DEFAULT_PRESENTATION_CONTEXT, resolvePresentationContext, type Presenta
 export interface HostQuery {
   targetId: string | null;
   demoEnabled: boolean;
+  durableEnabled: boolean;
   harnessId: string | null;
   presentationContext: string | null;
 }
 
-function isGikEnabled(params: URLSearchParams): boolean {
-  const value = params.get("gik");
+function isNonZeroEnabled(params: URLSearchParams, name: string): boolean {
+  const value = params.get(name);
   if (value === null) return false;
   if (value === "") return true;
   const numeric = Number(value);
@@ -38,7 +39,8 @@ export function readHostQuery(search: string, pathname = ""): HostQuery {
   return {
     targetId: params.get("b") ?? params.get("bundle") ?? cachedBlueprintFromPath(pathname),
     demoEnabled: isDemoEnabled(params),
-    harnessId: isGikEnabled(params) || params.get("harness") === "gik-control-harness" || params.has("plane")
+    durableEnabled: isNonZeroEnabled(params, "durable"),
+    harnessId: isNonZeroEnabled(params, "gik") || params.get("harness") === "gik-control-harness" || params.has("plane")
       ? "gik-control-harness"
       : null,
     presentationContext: requestedPresentation || null,
