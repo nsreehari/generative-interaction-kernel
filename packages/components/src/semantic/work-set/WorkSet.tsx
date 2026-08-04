@@ -4,7 +4,7 @@ import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
-import { CollectionBoard } from "../../primitives/collection-board";
+import { CollectionBoard, collectionBoardDefinition } from "../../primitives/collection-board";
 import { componentRootProps, componentStylePropsSchema, records, textAt, type DataRecord } from "../../shared/component";
 import { componentNode, defineComponent, trialNode, type ComponentDescription, type ComponentValidationReport } from "../../shared/definition";
 
@@ -92,6 +92,7 @@ const description: ComponentDescription = {
   summary: "Presents actionable work records as a board, queue, list, or textual projection.",
   dataProp: "items",
   events: ["select", "activate", "reorder", "move"],
+  eventContracts: collectionBoardDefinition.eventContracts,
   semanticTokens: [],
   defaultVariant: "board",
   variants: [

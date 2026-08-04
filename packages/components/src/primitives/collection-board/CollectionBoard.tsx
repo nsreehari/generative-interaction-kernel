@@ -10,7 +10,7 @@ import {
   type CollectionBoardPlacement,
 } from "../../shared/collectionBoard";
 import { componentRootProps, componentStylePropsSchema, records, textAt, type DataRecord } from "../../shared/component";
-import { defineComponent, trialNode, type ComponentDescription, type ComponentValidationReport } from "../../shared/definition";
+import { defineComponent, eventContract, trialNode, type ComponentDescription, type ComponentValidationReport } from "../../shared/definition";
 
 export const COLLECTION_BOARD_VARIANTS = ["standard", "compact"] as const;
 type CollectionBoardVariant = typeof COLLECTION_BOARD_VARIANTS[number];
@@ -192,6 +192,12 @@ const description: ComponentDescription = {
   summary: "Arranges mapped records in declared columns and emits selection, activation, reorder, and cross-column move intents.",
   dataProp: "items",
   events: ["select", "activate", "reorder", "move"],
+  eventContracts: {
+    select: eventContract("The selected board item changes.", { itemId: { type: "string" } }),
+    activate: eventContract("The user activates a board item.", { itemId: { type: "string" } }),
+    reorder: eventContract("An item moves within its current column.", { itemId: { type: "string" }, fromColumnId: { type: "string" }, toColumnId: { type: "string" }, fromIndex: { type: "integer" }, toIndex: { type: "integer" } }),
+    move: eventContract("An item moves to another column.", { itemId: { type: "string" }, fromColumnId: { type: "string" }, toColumnId: { type: "string" }, fromIndex: { type: "integer" }, toIndex: { type: "integer" } }),
+  },
   semanticTokens: [],
   defaultVariant: "standard",
   variants: [

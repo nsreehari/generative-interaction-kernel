@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { test } from "vitest";
 
 import { componentDefinitions } from "@gik/components";
+import { ComponentStory, createAuthoredBlueprint, createEventSignature } from "../storybook/stories/ComponentStory";
 
 interface ComponentStoryModule {
   default?: {
@@ -34,4 +37,28 @@ test("every canonical component has exactly one autodocs story", () => {
     storyCapabilities.toSorted(),
     expectedCapabilities.toSorted(),
   );
+});
+
+test("component stories show authored blueprints and concise emit contracts", () => {
+  const definition = componentDefinitions.button;
+  const trial = definition.materializeTrial();
+
+  assert.deepEqual(createAuthoredBlueprint(trial), {
+    views: {
+      "fluent-button-example": {
+        capability: "fluent:button",
+        props: trial.props,
+      },
+    },
+  });
+  assert.equal(createEventSignature({
+    type: "object",
+    required: ["itemId"],
+    properties: { itemId: { type: "string" }, reason: { enum: ["manual", "timeout"] }, index: { type: "integer" } },
+  }), '{ itemId: string, reason?: "manual" | "timeout", index?: number }');
+
+  const markup = renderToStaticMarkup(React.createElement(ComponentStory, { definition }));
+  assert.match(markup, /Authored blueprint/);
+  assert.match(markup, /Emit contracts/);
+  assert.match(markup, /press/);
 });

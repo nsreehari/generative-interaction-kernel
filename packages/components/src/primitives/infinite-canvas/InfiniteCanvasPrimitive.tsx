@@ -15,6 +15,7 @@ import {
 } from "./InfiniteCanvas";
 import {
   defineComponent,
+  eventContract,
   trialNode,
   type ComponentDescription,
   type ComponentValidationReport,
@@ -218,6 +219,11 @@ const description: ComponentDescription = {
   summary: "Renders declarative node cards on a persistent pan-and-zoom canvas and derives edges from matching node-port tokens.",
   dataProp: "nodes",
   events: ["node", "edge", "layout"],
+  eventContracts: {
+    node: eventContract("The user selects a canvas node.", { id: { type: "string" } }),
+    edge: eventContract("The user selects a derived canvas edge.", { id: { type: "string" } }),
+    layout: eventContract("The canvas commits its current viewport and node positions.", { value: { type: "object", additionalProperties: true } }),
+  },
   semanticTokens: INFINITE_CANVAS_SEMANTIC_TOKENS,
   defaultVariant: "standard",
   variants: [

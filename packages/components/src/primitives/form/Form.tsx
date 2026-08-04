@@ -17,6 +17,7 @@ import { readProps, type ProjectionView } from "@gik/react";
 
 import {
   defineComponent,
+  eventContract,
   trialNode,
   type ComponentDescription,
   type ComponentValidationReport,
@@ -260,6 +261,7 @@ const description: ComponentDescription = {
   summary: "Renders a schema-driven committed form using Fluent 2 controls and emits saved values.",
   dataProp: "value",
   events: ["save"],
+  eventContracts: { save: eventContract("The user commits the edited form values.", { values: { type: "object", additionalProperties: true } }) },
   semanticTokens: [],
   variants: [],
   authoring: {
