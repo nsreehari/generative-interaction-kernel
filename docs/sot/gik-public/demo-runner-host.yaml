@@ -2,7 +2,7 @@ schema_version: 1
 
 package:
   name: "@gik/demo-runner-host"
-  version: "0.1.3"
+  version: "0.1.5"
   purpose: >-
     Add validated demo scenarios, playback controls, human-gate coordination, inspection,
     and presentation selection around an injected Blueprint-compatible React host.
@@ -45,7 +45,8 @@ architecture:
     - "@gik/demo-runner-host -> @gik/evaluators"
     - "@gik/demo-runner-host -> @gik/kernel"
     - "@gik/demo-runner-host -> @gik/react"
-    - "@gik/demo-runner-host and @gik/blueprint-host do not depend on each other"
+    - "@gik/react does not depend on @gik/demo-runner-host"
+    - "The compatibility-only @gik/blueprint-host package is not an architecture boundary"
 
 host_component_contract:
   name: DemoTargetHostProps

@@ -1,0 +1,129 @@
+schema_version: 1
+
+package:
+  name: "@gik/react"
+  version: "0.2.1"
+  status: current
+  purpose: >-
+    Render resolved GIK trees in React and provide Blueprint-first in-memory and durable host
+    entrypoints over the same bundle-composition surface.
+  root_entrypoint: packages/react/src/index.ts
+  root_implementation_entrypoint: adapters/react/src/index.ts
+  durable_entrypoint: packages/react/src/durable.ts
+
+api_policy:
+  signature_authority: generated TypeScript declarations
+  imports:
+    in_memory: 'import { BlueprintHost } from "@gik/react"'
+    durable: 'import { BlueprintHost } from "@gik/react/durable"'
+  categories:
+    rendering: Component registry, resolved-node renderer, useGenUI, and GenUIRoot.
+    sources: GenUISource, GenUIController, BlueprintController, and source lifecycle contracts.
+    blueprint_host: In-memory BlueprintHost and BlueprintHostProps from the root entrypoint.
+    durable_blueprint_host: Durable BlueprintHost and BlueprintHostProps from the durable subpath.
+    composition: Bundle, bundle registry, BundleCompositionHost, organisms, contexts, and bridges.
+    host_services: Effect dispatch, leaf providers, native hooks, and file services.
+
+architecture:
+  owns:
+    - React projection of resolved GIK nodes through a component registry.
+    - The thin useGenUI binding from a structural GenUISource to React state and event emission.
+    - React bundle registration and multi-organism composition.
+    - Blueprint-first React hosts for in-memory and durable execution.
+    - React-facing provider, context, bridge, native-effect, and file-service integration.
+  does_not_own:
+    - Blueprint validation, deterministic materialization, lowering, or transition semantics.
+    - Kernel resolution or state-reduction semantics.
+    - Durable checkpoint persistence, leasing, revisions, snapshot patches, or subscriptions.
+    - Storage, transport, credentials, deployment, or provider selection policy.
+  dependency_direction:
+    - "@gik/react -> @gik/blueprint"
+    - "@gik/react -> @gik/kernel"
+    - "@gik/react/durable -> @gik/durable-runtime"
+    - "@gik/blueprint-host -> @gik/react (compatibility only)"
+  invariants:
+    - Rendering depends on the structural GenUISource contract, not a concrete transport or store.
+    - Both Blueprint hosts materialize through @gik/blueprint and render through BundleCompositionHost.
+    - The durable subpath changes transition-state ownership, not the React composition model.
+    - Infrastructure adapters stay below @gik/durable-runtime and are supplied through runtime options.
+
+blueprint_host:
+  import: "@gik/react"
+  implementation: adapters/react/src/primitives/blueprint-host.tsx
+  controller: adapters/react/src/blueprint-controller.ts
+  state_ownership: React-local in-memory state owned by BlueprintController.
+  transition_flow:
+    - Materialize the Blueprint once for the current blueprint and externalContext inputs.
+    - Seed local state from materialized initialState or deprecated context compatibility input.
+    - Run materialized transitions through @gik/blueprint.
+    - Resolve the resulting program through @gik/kernel.
+    - Notify the React binding and render through the shared bundle-composition host.
+  props:
+    required:
+      - blueprint
+    composition:
+      - resolveLeavesProvider
+      - native
+      - companions
+      - contexts
+      - fileServices
+      - primaryBridge
+      - primaryInstanceId
+      - className
+      - style
+      - externalContext
+    in_memory_only:
+      - "context (deprecated initial-state seed compatibility)"
+      - onTransition
+
+durable_blueprint_host:
+  import: "@gik/react/durable"
+  implementation: adapters/react/src/primitives/durable-blueprint-host.tsx
+  controller: adapters/react/src/durable-blueprint-controller.ts
+  exported_surface:
+    - BlueprintHost
+    - BlueprintHostProps
+  state_ownership: Committed state and materialized spec owned by the configured durable provider.
+  transition_flow:
+    - Materialize the Blueprint for bundle rendering through the shared @gik/blueprint path.
+    - Create a provider-neutral durable runtime with the Blueprint transition adapter.
+    - Initialize the runtime and process pending journal work on start.
+    - Append UI events to the durable journal and process an engine wake.
+    - Read the committed snapshot without acquiring or aborting a writer lease.
+    - Rebuild the resolved Kernel tree and notify the shared React binding.
+  props:
+    required:
+      - blueprint
+      - runtime
+    runtime:
+      shape: "{ runtimeId: string; providers: Record<string, DurableProvider>; refs: TransitionRefs }"
+    shared_composition: >-
+      All root BlueprintHost composition props are shared except context and onTransition, which are
+      omitted because durable-runtime owns state and commit results.
+  synchronization:
+    available_below_host: >-
+      @gik/durable-runtime exposes readSnapshotChanges, applyRuntimeSnapshotChanges, and subscribe
+      as framework-neutral APIs.
+    current_host_behavior: >-
+      DurableBlueprintController refreshes after its own startup and emitted transitions; automatic
+      subscription to commits made by other processes is not yet part of this host.
+
+compatibility_package:
+  name: "@gik/blueprint-host"
+  version: "0.2.4"
+  status: deprecated_compatibility
+  entrypoint: packages/blueprint-host/src/index.ts
+  exports:
+    - BlueprintHost
+    - BlueprintHostProps
+  behavior: Re-exports the in-memory Blueprint host from @gik/react and owns no behavior.
+  durable_support: none
+  removal_condition: Consumers import the in-memory host from @gik/react directly.
+
+related_decisions:
+  - ADR-0006-render-adapter-infra-agnostic.md
+  - ADR-0008-first-render-adapter-react.md
+  - ADR-0041-blueprint-first-hosting-and-controlface-lowering.md
+  - ADR-0044-provider-neutral-durable-transition-runtime.md
+  - ADR-0046-deterministic-blueprint-materialization.md
+  - ADR-0047-durable-snapshot-synchronization.md
