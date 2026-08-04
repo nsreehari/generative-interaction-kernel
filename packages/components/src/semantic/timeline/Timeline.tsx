@@ -12,12 +12,7 @@ import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
-import {
-  defineComponent,
-  trialNode,
-  type ComponentDescription,
-  type ComponentValidationReport,
-} from "../../shared/definition";
+import type { ComponentValidationReport } from "../../shared/definition";
 import { componentRootProps, componentStylePropsSchema, readPath } from "../../shared/component";
 import {
   MAX_GANTT_TICKS,
@@ -219,38 +214,14 @@ export const Timeline: ProjectionView = ({ node }) => {
   );
 };
 
-const description: ComponentDescription = {
-  capability: "semantic:timeline",
-  summary: "Presents records whose primary relationship is chronological progression.",
-  dataProp: "items",
-  events: [],
-  semanticTokens: TIMELINE_SEMANTIC_TOKENS,
-  defaultVariant: "standard",
-  variants: [
-    { value: "standard", summary: "Full timeline spacing for primary chronological analysis.", useWhen: ["The timeline is a primary view", "Space is available for sustained reading"] },
-    { value: "compact", summary: "Tighter chronology for constrained or supporting surfaces.", useWhen: ["The timeline appears in a sidebar or dense dashboard", "Users need to scan many nearby sections"] },
-    { value: "minimal", summary: "Timestamp and title only for embedded chronological context.", useWhen: ["The timeline is an overview or navigation aid", "Details and statuses are available in another view"] },
-    { value: "axis", summary: "Point events placed as labeled markers on a shared horizontal datetime or linear scale.", useWhen: ["Users need to compare spacing between events", "Events use timestamps or meaningful numeric coordinates"] },
-  ],
-  authoring: {
-    useWhen: ["Records have meaningful timestamps", "Users need to inspect change or progression over time"],
-    avoidWhen: ["Order is logical but not temporal; use sequence", "Relationships form a network; use semantic-graph"],
-    rules: ["Bind records to items", "Map stable identity, title, and timestamp fields", "Choose only a declared variant", "Use datetime for timestamps and numeric linear coordinates for logical event order", "Use displayPrefix only to format linear coordinates", "Set tickStep in milliseconds for datetime or coordinate units for linear when shared markers are needed", "Map domain statuses only to recognized timeline tokens"],
-  },
-};
-
-export function describeTimeline(): ComponentDescription {
-  return description;
-}
-
 export function getTimelineSchema(): Record<string, unknown> {
   return timelinePropsSchema as unknown as Record<string, unknown>;
 }
 
 export function validateTimeline(props: unknown): ComponentValidationReport {
   const report = runDeclarativeValidators([
-    { kind: "ajv-schema", schema: getTimelineSchema(), message: "Invalid semantic:timeline props", code: "semantic-timeline-schema" },
-    { kind: "jsonata", expr: "($field := data.spec.fields.id; $ids := data.items.$lookup($, $field); $count($ids) = $count($distinct($ids)))", message: "Timeline item identities must be unique", code: "semantic-timeline-unique-id" },
+    { kind: "ajv-schema", schema: getTimelineSchema(), message: "Invalid timeline renderer props", code: "timeline-schema" },
+    { kind: "jsonata", expr: "($field := data.spec.fields.id; $ids := data.items.$lookup($, $field); $count($ids) = $count($distinct($ids)))", message: "Timeline item identities must be unique", code: "timeline-unique-id" },
   ], props as Json);
   if (!report.ok) return report;
   const value = asObject(props);
@@ -265,33 +236,6 @@ export function validateTimeline(props: unknown): ComponentValidationReport {
   const invalid = coordinates.some((coordinate) => !Number.isFinite(coordinate) || (minimum !== undefined && coordinate < minimum) || (maximum !== undefined && coordinate > maximum));
   const invalidDomain = minimum !== undefined && maximum !== undefined && maximum <= minimum;
   const invalidTickCount = scale.tickStep !== undefined && Math.floor((domainMaximum - domainMinimum) / scale.tickStep) + 1 > MAX_GANTT_TICKS;
-  if (invalid || invalidDomain || invalidTickCount) { report.ok = false; report.errors.push({ detail: "Axis timeline events must use valid coordinates within the configured scale bounds", code: "semantic-timeline-valid-coordinate" }); }
+  if (invalid || invalidDomain || invalidTickCount) { report.ok = false; report.errors.push({ detail: "Axis timeline events must use valid coordinates within the configured scale bounds", code: "timeline-valid-coordinate" }); }
   return report;
 }
-
-export function materializeTimelineTrial() {
-  return trialNode("semantic:timeline", {
-    variant: "standard",
-    items: [
-      { eventKey: "evt-1", at: "2026-08-04T09:10:00Z", title: "Signal detected", detail: "An anomalous sign-in was observed.", state: "resolved" },
-      { eventKey: "evt-2", at: "2026-08-04T09:24:00Z", title: "Investigation opened", detail: "The identity team began triage.", state: "active" },
-    ],
-    spec: {
-      title: "Investigation timeline",
-      description: "Ordered operational events",
-      fields: { id: "eventKey", title: "title", timestamp: "at", detail: "detail", status: "state" },
-      scale: { kind: "datetime" },
-      sort: { direction: "ascending" },
-      toneMap: { resolved: "past", active: "current" },
-    },
-  });
-}
-
-export const timelineDefinition = defineComponent({
-  description,
-  version: "1.2.0",
-  component: Timeline,
-  getSchema: getTimelineSchema,
-  validate: validateTimeline,
-  materializeTrial: materializeTimelineTrial,
-});

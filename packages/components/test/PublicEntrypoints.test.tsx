@@ -9,13 +9,13 @@ const { primitiveComponentDefinitions } = primitiveEntryPoint;
 const { semanticComponentDefinitions } = semanticEntryPoint;
 
 test("semantic and primitive entry points expose distinct component layers", () => {
-  assert.ok("timeline" in semanticComponentDefinitions);
+  assert.ok("event-series" in semanticComponentDefinitions);
   assert.ok(!("chart" in semanticComponentDefinitions));
   assert.ok("chart" in primitiveComponentDefinitions);
   assert.ok("collection-board" in primitiveComponentDefinitions);
   assert.ok("source-viewer" in primitiveComponentDefinitions);
   assert.ok("access-gate" in primitiveComponentDefinitions);
-  assert.ok(!("timeline" in primitiveComponentDefinitions));
+  assert.ok(!("event-series" in primitiveComponentDefinitions));
   assert.ok("timer-button" in primitiveComponentDefinitions);
   assert.ok("todo-list" in primitiveComponentDefinitions);
   assert.equal(primitiveComponentDefinitions.chart.capability, "primitive:chart");
@@ -76,5 +76,5 @@ test("primitive entry point exports the complete primitive authoring API only", 
   assert.equal(rootEntryPoint.listPrimitiveComponents, primitiveEntryPoint.listPrimitiveComponents);
   assert.equal(rootEntryPoint.getPrimitiveComponentAgentKit, primitiveEntryPoint.getPrimitiveComponentAgentKit);
   assert.equal("listPrimitiveComponents" in semanticEntryPoint, false);
-  assert.throws(() => primitiveEntryPoint.describePrimitiveComponent("semantic:timeline"), /Unknown primitive component/);
+  assert.throws(() => primitiveEntryPoint.describePrimitiveComponent("semantic:event-series"), /Unknown primitive component/);
 });

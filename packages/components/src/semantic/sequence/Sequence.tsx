@@ -4,7 +4,7 @@ import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
-import { defineComponent, trialNode, type ComponentDescription, type ComponentValidationReport } from "../../shared/definition";
+import type { ComponentValidationReport } from "../../shared/definition";
 import { componentRootProps, componentStylePropsSchema, records, textAt, type BadgeColor } from "../../shared/component";
 
 export const SEQUENCE_SEMANTIC_TOKENS = ["complete", "current", "upcoming", "blocked", "skipped", "unknown"] as const;
@@ -96,29 +96,7 @@ export const Sequence: ProjectionView = ({ node }) => {
   </Card>;
 };
 
-const description: ComponentDescription = {
-  capability: "semantic:sequence", summary: "Presents records whose primary relationship is logical or procedural order.", dataProp: "items", events: [], semanticTokens: SEQUENCE_SEMANTIC_TOKENS,
-  defaultVariant: "standard",
-  variants: [
-    { value: "standard", summary: "Full procedural sequence for a primary workflow view.", useWhen: ["The sequence is central to the task", "Step detail should remain prominent"] },
-    { value: "compact", summary: "Denser procedural sequence for supporting surfaces.", useWhen: ["The sequence shares space with other evidence", "Rapid step scanning matters more than emphasis"] },
-  ],
-  authoring: {
-    useWhen: ["Steps have meaningful logical order", "Users need to understand progression or dependency"],
-    avoidWhen: ["Timestamp is the primary relationship; use timeline", "Records form a network; use semantic-graph"],
-    rules: ["Map a stable identity and title", "Use order only for sortable numeric values", "Choose only a declared variant", "Map statuses only to recognized sequence tokens"],
-  },
-};
-export function describeSequence() { return description; }
 export function getSequenceSchema(): Record<string, unknown> { return sequencePropsSchema as unknown as Record<string, unknown>; }
 export function validateSequence(props: unknown): ComponentValidationReport {
-  return runDeclarativeValidators([{ kind: "ajv-schema", schema: getSequenceSchema(), message: "Invalid semantic:sequence props", code: "semantic-sequence-schema" }], props as Json);
+  return runDeclarativeValidators([{ kind: "ajv-schema", schema: getSequenceSchema(), message: "Invalid sequence renderer props", code: "sequence-schema" }], props as Json);
 }
-export function materializeSequenceTrial() {
-  return trialNode("semantic:sequence", {
-    variant: "standard",
-    items: [{ key: "s1", order: 1, label: "Detect", state: "done", detail: "Signal identified" }, { key: "s2", order: 2, label: "Investigate", state: "active", detail: "Evidence under review" }],
-    spec: { title: "Response sequence", fields: { id: "key", title: "label", order: "order", detail: "detail", status: "state" }, toneMap: { done: "complete", active: "current" } },
-  });
-}
-export const sequenceDefinition = defineComponent({ description, version: "1.1.0", component: Sequence, getSchema: getSequenceSchema, validate: validateSequence, materializeTrial: materializeSequenceTrial });

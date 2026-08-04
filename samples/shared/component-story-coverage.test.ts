@@ -20,10 +20,10 @@ const storyModules = import.meta.glob<ComponentStoryModule>(
 );
 
 test("every canonical component has exactly one autodocs story", () => {
-  const storyCapabilities = Object.values(storyModules).map((storyModule) => {
-    assert.ok(storyModule.default?.tags?.includes("autodocs"));
+  const storyCapabilities = Object.entries(storyModules).map(([path, storyModule]) => {
+    assert.ok(storyModule.default?.tags?.includes("autodocs"), path);
     const capability = storyModule.default?.args?.definition?.capability;
-    assert.ok(capability);
+    assert.ok(capability, path);
     return capability;
   });
   const expectedCapabilities = Object.values(componentDefinitions).map(

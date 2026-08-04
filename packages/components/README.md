@@ -76,7 +76,7 @@ import { GikComponent } from "@gik/components";
 
 The public props are:
 
-- `kind`: required closed capability ID, such as `primitive:chart` or `semantic:timeline`.
+- `kind`: required closed capability ID, such as `primitive:chart` or `semantic:event-series`.
 - `spec`: component-specific declarative specification, assigned to the component's `spec` prop.
 - `data`: generic component data, assigned to the selected definition's declared `dataProp`.
 - `variant`: an optional declared presentation variant.
@@ -141,8 +141,8 @@ import { getPrimitiveComponentAgentKit } from "@gik/components/primitives";
 import { getFluentComponentAgentKit } from "@gik/components/fluent";
 
 const kit = getSemanticComponentAgentKit([
-  "semantic:timeline",
-  "semantic:action-board",
+  "semantic:event-series",
+  "semantic:work-set",
 ]);
 
 const primitiveKit = getPrimitiveComponentAgentKit([
@@ -161,7 +161,7 @@ const fluentKit = getFluentComponentAgentKit([
 
 The generated instructions derive from each selected definition's `describe()` metadata. Tool
 schemas and handlers are restricted to the same selected capabilities. Short registry IDs such as
-`timeline` and full IDs such as `semantic:timeline` are accepted and deduplicated. Omitting the list
+`event-series` and full IDs such as `semantic:event-series` are accepted and deduplicated. Omitting the list
 selects the complete registry; an explicit empty list is rejected.
 
 The package also exports the underlying pure APIs:
@@ -301,15 +301,20 @@ Primitive components:
 - `infinite-canvas`
 - `timer-button`
 
-Semantic components pending the catalog naming review described above:
+Canonical semantic components:
 
-- `timeline`
-- `sequence`
-- `entity-constellation`
-- `decision-summary`
-- `action-board`
+- `event-series` (`chronology`, `axis`, `text`)
+- `process` (`flow`, `stages`, `text`)
+- `work-set` (`board`, `queue`, `list`, `text`)
+- `entity-set` (`clusters`, `matrix`, `list`, `text`)
+- `attack-path` (`canvas`, `diagram`, `relations`, `gantt`, `text`)
+- `evidence-case` (`case`, `sources`, `chain`, `text`)
+- `decision` (`summary`, `rationale-chain`, `text`)
+- `source-findings` (`findings`, `text`)
+- `source-comparison` (`unified-diff`, `split-diff`, `text`)
+
+Held semantic components pending redesign:
+
 - `metric-comparison`
 - `narrative-section`
-- `evidence-trail`
-- `annotated-source-excerpt`
 - `semantic-graph`

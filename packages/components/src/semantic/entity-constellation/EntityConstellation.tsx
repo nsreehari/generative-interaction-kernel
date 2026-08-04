@@ -4,7 +4,7 @@ import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
-import { defineComponent, trialNode, type ComponentDescription, type ComponentValidationReport } from "../../shared/definition";
+import type { ComponentValidationReport } from "../../shared/definition";
 import { componentRootProps, componentStylePropsSchema, records, textAt, type BadgeColor, type DataRecord } from "../../shared/component";
 
 export const ENTITY_CONSTELLATION_SEMANTIC_TOKENS = ["affected", "at-risk", "observed", "positive", "unknown"] as const;
@@ -72,17 +72,5 @@ export const EntityConstellation: ProjectionView = ({ node }) => {
     })}</div>
   </section>;
 };
-const description: ComponentDescription = {
-  capability: "semantic:entity-constellation", summary: "Groups entities for comparison by role, category, or condition.", dataProp: "items", events: [], semanticTokens: ENTITY_CONSTELLATION_SEMANTIC_TOKENS,
-  defaultVariant: "grouped",
-  variants: [
-    { value: "grouped", summary: "Roomy grouped cards for comparing entity populations.", useWhen: ["Entity groups are a primary analytical view", "Descriptions and statuses need visual separation"] },
-    { value: "compact", summary: "Dense grouped cards for broad population scanning.", useWhen: ["Many entities or groups share one surface", "The constellation supports another primary view"] },
-  ],
-  authoring: { useWhen: ["Users need to inspect a population of entities", "Grouping communicates distribution or impact"], avoidWhen: ["Edges between entities are primary; use semantic-graph", "Temporal order is primary; use timeline"], rules: ["Map stable identity and label fields", "Declare groups when order and labels matter", "Choose only a declared variant", "Map statuses only to recognized constellation tokens"] },
-};
-export function describeEntityConstellation() { return description; }
 export function getEntityConstellationSchema(): Record<string, unknown> { return entityConstellationPropsSchema as unknown as Record<string, unknown>; }
-export function validateEntityConstellation(props: unknown): ComponentValidationReport { return runDeclarativeValidators([{ kind: "ajv-schema", schema: getEntityConstellationSchema(), message: "Invalid semantic:entity-constellation props", code: "semantic-entity-constellation-schema" }], props as Json); }
-export function materializeEntityConstellationTrial() { return trialNode("semantic:entity-constellation", { variant: "grouped", items: [{ key: "u1", name: "Admin account", kind: "identity", condition: "compromised", group: "impacted", detail: "Privileged account" }], spec: { title: "Entity constellation", fields: { id: "key", label: "name", type: "kind", status: "condition", group: "group", description: "detail" }, groups: [{ value: "impacted", label: "Impacted" }], toneMap: { compromised: "affected" } } }); }
-export const entityConstellationDefinition = defineComponent({ description, version: "1.1.0", component: EntityConstellation, getSchema: getEntityConstellationSchema, validate: validateEntityConstellation, materializeTrial: materializeEntityConstellationTrial });
+export function validateEntityConstellation(props: unknown): ComponentValidationReport { return runDeclarativeValidators([{ kind: "ajv-schema", schema: getEntityConstellationSchema(), message: "Invalid entity-set renderer props", code: "entity-set-renderer-schema" }], props as Json); }

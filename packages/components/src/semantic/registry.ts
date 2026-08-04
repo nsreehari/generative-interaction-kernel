@@ -1,44 +1,44 @@
 import type { CapabilityDescriptor } from "@gik/kernel";
 import type { ProjectionView } from "@gik/react";
 
-import { ActionBoard, actionBoardDefinition } from "./action-board";
-import { AnnotatedSourceExcerpt, annotatedSourceExcerptDefinition } from "./annotated-source-excerpt";
-import { AttackGraph, attackGraphDefinition } from "./attack-graph";
-import { DecisionSummary, decisionSummaryDefinition } from "./decision-summary";
-import { EntityConstellation, entityConstellationDefinition } from "./entity-constellation";
-import { EvidenceTrail, evidenceTrailDefinition } from "./evidence-trail";
 import { MetricComparison, metricComparisonDefinition } from "./metric-comparison";
 import { NarrativeSection, narrativeSectionDefinition } from "./narrative-section";
 import { SemanticGraph, semanticGraphDefinition } from "./semantic-graph";
-import { Sequence, sequenceDefinition } from "./sequence";
-import { Timeline, timelineDefinition } from "./timeline";
+import { WorkSet, workSetDefinition } from "./work-set";
+import {
+  AttackPath, Decision, EntitySet, EventSeries, EvidenceCase, Process, SourceComparison, SourceFindings,
+  attackPathDefinition, decisionDefinition, entitySetDefinition, eventSeriesDefinition,
+  evidenceCaseDefinition, processDefinition, sourceComparisonDefinition, sourceFindingsDefinition,
+} from "./canonical-adapters";
 
 export const semanticComponentViews: Record<string, ProjectionView> = {
-  "action-board": ActionBoard,
-  "annotated-source-excerpt": AnnotatedSourceExcerpt,
-  "attack-graph": AttackGraph,
-  "decision-summary": DecisionSummary,
-  "entity-constellation": EntityConstellation,
-  "evidence-trail": EvidenceTrail,
   "metric-comparison": MetricComparison,
   "narrative-section": NarrativeSection,
   "semantic-graph": SemanticGraph,
-  sequence: Sequence,
-  timeline: Timeline,
+  "work-set": WorkSet,
+  "event-series": EventSeries,
+  process: Process,
+  "entity-set": EntitySet,
+  "attack-path": AttackPath,
+  "evidence-case": EvidenceCase,
+  decision: Decision,
+  "source-findings": SourceFindings,
+  "source-comparison": SourceComparison,
 };
 
 export const semanticComponentDefinitions = {
-  "action-board": actionBoardDefinition,
-  "annotated-source-excerpt": annotatedSourceExcerptDefinition,
-  "attack-graph": attackGraphDefinition,
-  "decision-summary": decisionSummaryDefinition,
-  "entity-constellation": entityConstellationDefinition,
-  "evidence-trail": evidenceTrailDefinition,
   "metric-comparison": metricComparisonDefinition,
   "narrative-section": narrativeSectionDefinition,
   "semantic-graph": semanticGraphDefinition,
-  sequence: sequenceDefinition,
-  timeline: timelineDefinition,
+  "work-set": workSetDefinition,
+  "event-series": eventSeriesDefinition,
+  process: processDefinition,
+  "entity-set": entitySetDefinition,
+  "attack-path": attackPathDefinition,
+  "evidence-case": evidenceCaseDefinition,
+  decision: decisionDefinition,
+  "source-findings": sourceFindingsDefinition,
+  "source-comparison": sourceComparisonDefinition,
 } as const;
 
 export const semanticComponentCapabilities: Record<string, CapabilityDescriptor> = Object.fromEntries(

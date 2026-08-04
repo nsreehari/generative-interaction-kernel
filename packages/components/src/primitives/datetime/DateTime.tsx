@@ -57,7 +57,7 @@ const description: ComponentDescription = {
   ],
   authoring: {
     useWhen: ["A scalar temporal value needs consistent human-readable presentation", "Semantic HTML time metadata should preserve the source instant"],
-    avoidWhen: ["Users must edit the value; use primitive:form", "Multiple temporal records form a chronology; use semantic:timeline"],
+    avoidWhen: ["Users must edit the value; use primitive:form", "Multiple temporal records form a chronology; use semantic:event-series"],
     rules: ["Provide a parseable ISO timestamp or epoch value", "Choose date, time, or timestamp according to the surrounding semantic context", "Time uses 24-hour format by default; set hourFormat to 12 for locale-appropriate AM/PM output", "Time and timestamp omit seconds by default; set showSeconds when second-level precision is meaningful", "Formatting follows the browser locale and local timezone; set showTimeZone only when the timezone label is useful"],
   },
 };
