@@ -5,13 +5,16 @@ import {
   AccordionItem,
   AccordionPanel,
   Badge,
+  Button,
   Divider,
   MessageBar,
   MessageBarBody,
   Text,
+  Tooltip,
   makeStyles,
   tokens,
 } from "@fluentui/react-components";
+import { CheckmarkRegular, CopyRegular } from "@fluentui/react-icons";
 import type { DeclarativeComponentDefinition } from "@gik/components";
 import type { ResolvedNode } from "@gik/kernel";
 
@@ -67,13 +70,14 @@ const useStyles = makeStyles({
     border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
     borderRadius: tokens.borderRadiusMedium,
     backgroundColor: tokens.colorNeutralBackground1,
+    overflow: "hidden",
   },
   tokenList: {
     display: "flex",
     gap: tokens.spacingHorizontalXS,
     flexWrap: "wrap",
   },
-  contractMessage: { minWidth: 0, maxWidth: "100%", overflowWrap: "anywhere" },
+  contractMessage: { width: "100%", minWidth: 0, maxWidth: "100%", boxSizing: "border-box", overflow: "hidden", overflowWrap: "anywhere" },
   section: {
     display: "grid",
     gap: tokens.spacingVerticalS,
@@ -95,10 +99,86 @@ const useStyles = makeStyles({
     fontFamily: tokens.fontFamilyMonospace,
     fontSize: tokens.fontSizeBase100,
   },
+  codeBlock: {
+    position: "relative",
+    minWidth: 0,
+  },
+  copyButton: {
+    position: "absolute",
+    top: tokens.spacingVerticalXS,
+    right: tokens.spacingHorizontalXS,
+    zIndex: 1,
+  },
+  eventContracts: {
+    display: "grid",
+    gap: tokens.spacingVerticalL,
+  },
+  eventHeading: {
+    display: "flex",
+    gap: tokens.spacingHorizontalS,
+    alignItems: "baseline",
+    flexWrap: "wrap",
+  },
+  signature: {
+    fontFamily: tokens.fontFamilyMonospace,
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground2,
+  },
 });
 
 function GuidanceList({ items, className }: { items: readonly string[]; className: string }) {
   return <ul className={className}>{items.map((item) => <li key={item}>{item}</li>)}</ul>;
+}
+
+function CopyableCode({ value, label, className, codeClassName, buttonClassName }: { value: string; label: string; className: string; codeClassName: string; buttonClassName: string }) {
+  const [copied, setCopied] = React.useState(false);
+  const copy = async () => {
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+  };
+  return <div className={className}>
+    <Tooltip content={copied ? "Copied" : `Copy ${label}`} relationship="label">
+      <Button
+        className={buttonClassName}
+        appearance="subtle"
+        size="small"
+        icon={copied ? <CheckmarkRegular /> : <CopyRegular />}
+        aria-label={copied ? "Copied" : `Copy ${label}`}
+        onClick={() => void copy()}
+      />
+    </Tooltip>
+    <pre className={codeClassName}>{value}</pre>
+  </div>;
+}
+
+export function createAuthoredBlueprint(trial: ResolvedNode): Record<string, unknown> {
+  const viewId = `${trial.capability.replace(/[^A-Za-z0-9_-]/g, "-")}-example`;
+  return {
+    views: {
+      [viewId]: {
+        capability: trial.capability,
+        props: trial.props,
+      },
+    },
+  };
+}
+
+function schemaType(schema: unknown): string {
+  if (!schema || typeof schema !== "object") return "unknown";
+  const value = schema as Record<string, unknown>;
+  if (Array.isArray(value.enum)) return value.enum.map((entry) => JSON.stringify(entry)).join(" | ");
+  if (value.type === "array") return `${schemaType(value.items)}[]`;
+  if (value.type === "object") return "object";
+  if (value.type === "integer") return "number";
+  return typeof value.type === "string" ? value.type : "unknown";
+}
+
+export function createEventSignature(payloadSchema: Record<string, unknown>): string {
+  const properties = payloadSchema.properties;
+  if (!properties || typeof properties !== "object" || Array.isArray(properties)) return "{}";
+  const required = new Set(Array.isArray(payloadSchema.required) ? payloadSchema.required : []);
+  const fields = Object.entries(properties).map(([name, schema]) => `${name}${required.has(name) ? "" : "?"}: ${schemaType(schema)}`);
+  return `{ ${fields.join(", ")} }`;
 }
 
 export interface ComponentStoryExample {
@@ -122,6 +202,7 @@ export function ComponentStory({ definition, variant, configureTrial, preview, e
   const allValid = report.ok && (exampleTrials?.every((entry) => entry.report.ok) ?? true);
   const description = definition.describe();
   const Component = definition.component;
+  const authoredBlueprint = JSON.stringify(createAuthoredBlueprint(trial), null, 2);
 
   return (
     <div className={styles.page}>
@@ -197,9 +278,39 @@ export function ComponentStory({ definition, variant, configureTrial, preview, e
             <AccordionHeader>Rules</AccordionHeader>
             <AccordionPanel><GuidanceList items={description.authoring.rules} className={styles.list} /></AccordionPanel>
           </AccordionItem>
-          <AccordionItem value="trial">
-            <AccordionHeader>Trial props</AccordionHeader>
-            <AccordionPanel><pre className={styles.code}>{JSON.stringify(trial.props, null, 2)}</pre></AccordionPanel>
+          <AccordionItem value="blueprint">
+            <AccordionHeader>Authored blueprint</AccordionHeader>
+            <AccordionPanel>
+              <CopyableCode value={authoredBlueprint} label="authored blueprint" className={styles.codeBlock} codeClassName={styles.code} buttonClassName={styles.copyButton} />
+            </AccordionPanel>
+          </AccordionItem>
+          <AccordionItem value="events">
+            <AccordionHeader>Emit contracts</AccordionHeader>
+            <AccordionPanel>
+              {description.events.length === 0 ? <Text>This component emits no events.</Text> : (
+                <div className={styles.eventContracts}>
+                  {description.events.map((event) => {
+                    const contract = definition.eventContracts[event];
+                    const schema = JSON.stringify(contract.payloadSchema, null, 2);
+                    return <section className={styles.section} key={event}>
+                      <div className={styles.eventHeading}>
+                        <Text weight="semibold">{event}</Text>
+                        <Text className={styles.signature}>{createEventSignature(contract.payloadSchema)}</Text>
+                      </div>
+                      <Text>{contract.summary}</Text>
+                      <Accordion collapsible>
+                        <AccordionItem value={`${event}-schema`}>
+                          <AccordionHeader size="small">Payload schema</AccordionHeader>
+                          <AccordionPanel>
+                            <CopyableCode value={schema} label={`${event} payload schema`} className={styles.codeBlock} codeClassName={styles.code} buttonClassName={styles.copyButton} />
+                          </AccordionPanel>
+                        </AccordionItem>
+                      </Accordion>
+                    </section>;
+                  })}
+                </div>
+              )}
+            </AccordionPanel>
           </AccordionItem>
           <AccordionItem value="schema">
             <AccordionHeader>Validator schema</AccordionHeader>

@@ -1,7 +1,7 @@
 import { Dropdown, Field, Option, Switch, ToggleButton } from "@fluentui/react-components";
 import { readProps, type ProjectionView, type ProjectionViewProps } from "@gik/react";
 
-import type { ComponentDescription } from "../shared/definition";
+import { eventContract, type ComponentDescription } from "../shared/definition";
 import { componentRootProps, withComponentStylePropsSchema } from "../shared/component";
 import { defineFluentComponent } from "./defineFluentComponent";
 import { FLUENT_CONTROL_SIZES, resolveControlSize, STANDARD_COMPACT_VARIANTS } from "./fluentVariants";
@@ -145,6 +145,9 @@ function description(
   capability: string,
   summary: string,
   event: string,
+  eventSummary: string,
+  eventProperties: Record<string, unknown>,
+  requiredProperties: readonly string[],
   useWhen: string,
   rules: string[],
 ): ComponentDescription {
@@ -152,6 +155,7 @@ function description(
     capability,
     summary,
     events: [event],
+    eventContracts: { [event]: eventContract(eventSummary, eventProperties, requiredProperties) },
     semanticTokens: [],
     defaultVariant: "standard",
     variants: STANDARD_COMPACT_VARIANTS,
@@ -167,6 +171,9 @@ const switchDescription = description(
   "fluent:switch",
   "Renders a Fluent 2 binary switch with value-derived state.",
   "toggle",
+  "The switch changes between its authored values.",
+  { checked: { type: "boolean" }, value: { type: "string" }, name: { type: "string" } },
+  ["checked", "value"],
   "A binary setting benefits from a track-and-thumb control",
   ["Declare stable on and off values", "Handle toggle outside the component"],
 );
@@ -174,6 +181,9 @@ const toggleDescription = description(
   "fluent:toggle",
   "Renders a compact Fluent 2 pressed-state toggle button.",
   "toggle",
+  "The pressed state changes between its authored values.",
+  { checked: { type: "boolean" }, value: { type: "string" } },
+  ["checked", "value"],
   "A binary mode needs a compact button presentation",
   ["Declare stable on and off values", "Handle toggle outside the component"],
 );
@@ -181,6 +191,9 @@ const dropdownDescription = description(
   "fluent:dropdown",
   "Renders a single-select Fluent 2 dropdown from declarative options.",
   "select",
+  "The selected option changes.",
+  { value: { type: "string" }, label: { type: "string" } },
+  ["value", "label"],
   "A user selects one value from a small option set",
   ["Provide stable option values", "Provide label or ariaLabel", "Handle select outside the component"],
 );

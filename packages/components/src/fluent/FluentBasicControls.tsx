@@ -11,7 +11,7 @@ import {
 } from "@fluentui/react-components";
 import { readProps, type ProjectionView } from "@gik/react";
 
-import type { ComponentDescription } from "../shared/definition";
+import { eventContract, type ComponentDescription } from "../shared/definition";
 import { componentRootProps, withComponentStylePropsSchema } from "../shared/component";
 import { defineFluentComponent } from "./defineFluentComponent";
 import { FLUENT_CONTROL_SIZES, resolveControlSize, STANDARD_COMPACT_VARIANTS } from "./fluentVariants";
@@ -174,6 +174,7 @@ import { fluentOptionSchema, readFluentOptions } from "./readFluentOptions";
     summary: "Renders a Fluent 2 text input that emits each edited value.",
     dataProp: "value",
     events: ["input"],
+    eventContracts: { input: eventContract("The edited text value changes.", { value: { type: "string" } }) },
     semanticTokens: [],
     defaultVariant: "standard",
     variants: STANDARD_COMPACT_VARIANTS,
@@ -188,6 +189,7 @@ import { fluentOptionSchema, readFluentOptions } from "./readFluentOptions";
     summary: "Renders a Fluent 2 multiline input that emits each edited value.",
     dataProp: "value",
     events: ["input"],
+    eventContracts: { input: eventContract("The edited multiline value changes.", { value: { type: "string" } }) },
     semanticTokens: [],
     defaultVariant: "standard",
     variants: STANDARD_COMPACT_VARIANTS,
@@ -202,6 +204,7 @@ import { fluentOptionSchema, readFluentOptions } from "./readFluentOptions";
     summary: "Renders a Fluent 2 search box that emits its value when submitted.",
     dataProp: "value",
     events: ["submit"],
+    eventContracts: { submit: eventContract("The user submits the search value.", { value: { type: "string" } }) },
     semanticTokens: [],
     defaultVariant: "standard",
     variants: STANDARD_COMPACT_VARIANTS,
@@ -216,6 +219,7 @@ import { fluentOptionSchema, readFluentOptions } from "./readFluentOptions";
     summary: "Renders a Fluent 2 tab list for selecting one authored view.",
     dataProp: "options",
     events: ["select"],
+    eventContracts: { select: eventContract("The active tab changes.", { value: { type: "string" } }) },
     semanticTokens: [],
     defaultVariant: "standard",
     variants: STANDARD_COMPACT_VARIANTS,
@@ -230,6 +234,7 @@ import { fluentOptionSchema, readFluentOptions } from "./readFluentOptions";
     summary: "Renders a Fluent 2 group of dismissible tags.",
     dataProp: "items",
     events: ["remove"],
+    eventContracts: { remove: eventContract("The user removes a chip.", { value: { type: "string" } }) },
     semanticTokens: [],
     defaultVariant: "standard",
     variants: STANDARD_COMPACT_VARIANTS,

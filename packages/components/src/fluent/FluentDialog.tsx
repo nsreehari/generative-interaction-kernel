@@ -9,7 +9,7 @@ import {
 } from "@fluentui/react-components";
 import { readProps, type ProjectionView } from "@gik/react";
 
-import type { ComponentDescription } from "../shared/definition";
+import { eventContract, type ComponentDescription } from "../shared/definition";
 import { componentRootProps, withComponentStylePropsSchema } from "../shared/component";
 import { defineFluentComponent } from "./defineFluentComponent";
 
@@ -54,6 +54,7 @@ const dialogDescription: ComponentDescription = {
   summary: "Renders a controlled Fluent 2 dialog whose native surface owns modality, focus, and dismissal.",
   slots: ["children"],
   events: ["openChange"],
+  eventContracts: { openChange: eventContract("The dialog requests a change to its controlled open state.", { open: { type: "boolean" } }) },
   semanticTokens: [],
   defaultVariant: "standard",
   variants: [
