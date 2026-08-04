@@ -4,8 +4,8 @@ Public, self-describing declarative components for GIK React hosts.
 
 The package has three public layers:
 
-- `@gik/components/primitives`: domain-neutral UI mechanics such as chart, form, editable table,
-  growing container, infinite canvas, and timer button.
+- `@gik/components/primitives`: domain-neutral UI mechanics such as chart, collection board, form,
+  editable table, growing container, infinite canvas, source viewer, and timer button.
 - `@gik/components/semantic`: domain-neutral information structures such as timeline, sequence,
   metric comparison, and relationship graph. Bundles supply meanings such as incident, alert, or
   consequence through data, labels, mappings, tokens, and behavior.
@@ -213,10 +213,12 @@ not change domain meaning, semantic status mapping, event contracts, or host the
 - Evidence trail: `detailed`, `compact`
 - Annotated source excerpt: `annotated`, `compact`
 - Chart: `standard`, `compact`
+- Collection board: `standard`, `compact`
 - Date time: `date`, `time`, `timestamp`
 - Gantt: `standard`, `compact`
 - Semantic graph: `network`, `relations`
 - Infinite canvas: `standard`, `compact`, `minimal`
+- Source viewer: `standard`, `compact`
 - Attack graph: `canvas`, `diagram`, `relations`, `gantt`, `text`
 
 Timeline's `axis` variant places point events as labeled markers on one horizontal scale. Its
@@ -266,6 +268,16 @@ projection-local; durable scheduling remains a runtime or service responsibility
 Form renders a schema-driven committed object editor and emits `save` with `{ values }`. Editable
 table renders a committed row editor and emits `save` with `{ rows }`. Both keep draft state local;
 bundle reactions own persistence and external effects.
+
+Collection board arranges records in declared columns. Its optional interaction configuration enables
+single selection, ordering within a column, and movement between columns without assigning workflow
+meaning to those columns. It emits `select`, `activate`, `reorder`, and `move`; bundle reactions validate
+business transitions and persist the resulting placement. `standard` and `compact` are density variants.
+
+Source viewer renders exact mapped source rows and precomputed diffs. Set `spec.kind` to `source`,
+`unified-diff`, or `split-diff`; these are representations of one source-row model, while `standard`
+and `compact` remain density variants. Diff rows must already contain aligned before/after content and
+a recognized change value. The primitive presents changes but does not calculate or interpret them.
 
 ## Events and effects
 
