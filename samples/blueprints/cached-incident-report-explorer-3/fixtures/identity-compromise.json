@@ -1,0 +1,1113 @@
+{
+  "identity": {
+    "incidentId": "4dd35869-7f13-5cb0-8ca7-efe3d3a9e628",
+    "title": "Investigation Report — Incident 4dd35869-7f13-5cb0-8ca7-efe3d3a9e628",
+    "startTime": "2026-07-17 22:53:46",
+    "endTime": "2026-07-17 22:53:48"
+  },
+  "verdict": {
+    "classification": "True Positive",
+    "determination": "Other",
+    "confidence": "high",
+    "rationale": "Confirmed malicious attack with successful sensitive data access.",
+    "impact": "Data access/exfiltration confirmed."
+  },
+  "summary": "During 2026-07-17 22:53:46 – 2026-07-17 22:53:48, a confirmed true-positive attack from 185.220.101.42 progressed through Credential Access, Discovery, Initial Access, and Lateral Movement. Observable activity included managed identity token acquisition from IMDS, ARM enumeration, device-code and client_secret sign-ins involving graph-mail-reader-app-id, Key Vault secret retrieval, storage account key retrieval for PRODDATA001, and mailbox access to cfo@contoso.com.",
+  "phases": [
+    {
+      "id": "ph1",
+      "name": "Credential Access",
+      "order": 1,
+      "summary": "Managed identity token obtained from IMDS; service principal authenticated via client_secret; Key Vault secret retrieved; storage account keys retrieved."
+    },
+    {
+      "id": "ph2",
+      "name": "Discovery",
+      "order": 2,
+      "summary": "ARM enumeration burst including subscription and resource group reads; attack graph lists enumeration of proddata001, subscription identifier, prod-credentials-kv, and rg-production."
+    },
+    {
+      "id": "ph3",
+      "name": "Initial Access",
+      "order": 3,
+      "summary": "Device-code authentication completed for graph-mail-reader-app-id from 185.220.101.42."
+    },
+    {
+      "id": "ph4",
+      "name": "Lateral Movement",
+      "order": 4,
+      "summary": "Additional device-code authentication and subsequent mailbox access activity are associated with lateral movement in source TTPs."
+    },
+    {
+      "id": "ph5",
+      "name": "Collection",
+      "order": 5,
+      "summary": "Mailbox items were accessed from cfo@contoso.com."
+    }
+  ],
+  "entities": [
+    {
+      "id": "ent1",
+      "type": "ip",
+      "label": "185.220.101.42",
+      "status": "observed",
+      "role": "source IP",
+      "description": "Public IP observed across incident activity.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent2",
+      "type": "managed-identity",
+      "label": "11111111-2222-3333-4444-555555555555",
+      "status": "compromised",
+      "role": "",
+      "description": "Managed identity credential compromised during credential access. Additional identifiers: hxxps://management[.]azure[.]com; /SUBSCRIPTIONS/12345678-1234-1234-1234-123456789ABC/RESOURCEGROUPS/PRODUCTION-RG/PROVIDERS/MICROSOFT.COMPUTE/VIRTUALMACHINES/WEBAPP-VM-001; webapp-vm-001.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent3",
+      "type": "virtual-machine",
+      "label": "/SUBSCRIPTIONS/12345678-1234-1234-1234-123456789ABC/RESOURCEGROUPS/PRODUCTION-RG/PROVIDERS/MICROSOFT.COMPUTE/VIRTUALMACHINES/WEBAPP-VM-001",
+      "status": "affected",
+      "role": "",
+      "description": "Virtual machine involved in credential access. Additional identifiers: webapp-vm-001; 11111111-2222-3333-4444-555555555555; hxxps://management[.]azure[.]com.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent4",
+      "type": "storage",
+      "label": "/SUBSCRIPTIONS/12345678-1234-1234-1234-123456789ABC/RESOURCEGROUPS/RG-PRODUCTION/PROVIDERS/MICROSOFT.STORAGE/STORAGEACCOUNTS/PRODDATA001",
+      "status": "compromised",
+      "role": "",
+      "description": "Storage account involved in discovery and credential access. Additional identifiers: proddata001; PRODDATA001.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent5",
+      "type": "cloud-resource",
+      "label": "12345678-1234-1234-1234-123456789abc",
+      "status": "affected",
+      "role": "",
+      "description": "Cloud resource involved in discovery.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent6",
+      "type": "cloud-resource",
+      "label": "prod-credentials-kv",
+      "status": "affected",
+      "role": "",
+      "description": "Cloud resource involved in discovery.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent7",
+      "type": "cloud-resource",
+      "label": "rg-production",
+      "status": "affected",
+      "role": "",
+      "description": "Cloud resource involved in discovery.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent8",
+      "type": "application",
+      "label": "graph-mail-reader-app-id",
+      "status": "compromised",
+      "role": "",
+      "description": "Cloud app credential compromised during initial access. Additional identifier: 185.220.101.42.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent9",
+      "type": "service-principal",
+      "label": "graph-mail-reader-app-id",
+      "status": "affected",
+      "role": "",
+      "description": "Service principal involved in credential access. Additional identifiers: Service Principal App; 185.220.101.42.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent10",
+      "type": "secret",
+      "label": "/SUBSCRIPTIONS/12345678-1234-1234-1234-123456789ABC/RESOURCEGROUPS/PRODUCTION-RG/PROVIDERS/MICROSOFT.KEYVAULT/VAULTS/PROD-SECRETS-KV",
+      "status": "compromised",
+      "role": "",
+      "description": "Key Vault / secret involved in credential access. Additional identifier: graph-sp-secret.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent11",
+      "type": "mailbox",
+      "label": "cfo@contoso.com",
+      "status": "affected",
+      "role": "",
+      "description": "Mailbox targeted during collection. Additional identifier: 3cbaa028-f049-4c3b-b260-85a7c91069f8.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent12",
+      "type": "application",
+      "label": "Service Principal App",
+      "status": "observed",
+      "role": "resource display name",
+      "description": "ResourceDisplayName observed in AAD sign-in logs for graph-mail-reader-app-id.",
+      "confidence": "medium"
+    },
+    {
+      "id": "ent13",
+      "type": "other",
+      "label": "graph-sp-secret",
+      "status": "observed",
+      "role": "secret name",
+      "description": "Secret name retrieved from Key Vault.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent14",
+      "type": "application",
+      "label": "Device Code App",
+      "status": "observed",
+      "role": "resource display name",
+      "description": "ResourceDisplayName observed in device-code sign-in logs.",
+      "confidence": "medium"
+    },
+    {
+      "id": "ent15",
+      "type": "application",
+      "label": "3cbaa028-f049-4c3b-b260-85a7c91069f8",
+      "status": "observed",
+      "role": "mail access app id",
+      "description": "OfficeActivity AppId observed during mailbox access.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent16",
+      "type": "application",
+      "label": "c7ae7f2e-4936-4560-ad6f-a4f8f70de3b2",
+      "status": "observed",
+      "role": "mail access app id",
+      "description": "OfficeActivity AppId observed during mailbox access.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent17",
+      "type": "application",
+      "label": "d61f0245-26a7-4bf5-805f-110e4206bc9d",
+      "status": "observed",
+      "role": "mail access app id",
+      "description": "OfficeActivity AppId observed during mailbox access.",
+      "confidence": "high"
+    },
+    {
+      "id": "ent18",
+      "type": "application",
+      "label": "862c933f-818c-4cb9-90fb-be9e3cdcd384",
+      "status": "observed",
+      "role": "mail access app id",
+      "description": "OfficeActivity AppId observed during mailbox access.",
+      "confidence": "high"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel1",
+      "sourceId": "ent1",
+      "targetId": "ent3",
+      "kind": "stole-token-from",
+      "label": "stole token from",
+      "phaseId": "ph1",
+      "evidenceIds": [
+        "ev1"
+      ]
+    },
+    {
+      "id": "rel2",
+      "sourceId": "ent1",
+      "targetId": "ent4",
+      "kind": "enumerated",
+      "label": "enumerated",
+      "phaseId": "ph2",
+      "evidenceIds": [
+        "ev2"
+      ]
+    },
+    {
+      "id": "rel3",
+      "sourceId": "ent1",
+      "targetId": "ent5",
+      "kind": "enumerated",
+      "label": "enumerated",
+      "phaseId": "ph2",
+      "evidenceIds": [
+        "ev2"
+      ]
+    },
+    {
+      "id": "rel4",
+      "sourceId": "ent1",
+      "targetId": "ent6",
+      "kind": "enumerated",
+      "label": "enumerated",
+      "phaseId": "ph2",
+      "evidenceIds": [
+        "ev2"
+      ]
+    },
+    {
+      "id": "rel5",
+      "sourceId": "ent1",
+      "targetId": "ent7",
+      "kind": "enumerated",
+      "label": "enumerated",
+      "phaseId": "ph2",
+      "evidenceIds": [
+        "ev2"
+      ]
+    },
+    {
+      "id": "rel6",
+      "sourceId": "ent1",
+      "targetId": "ent8",
+      "kind": "targeted",
+      "label": "initial access via",
+      "phaseId": "ph3",
+      "evidenceIds": [
+        "ev3",
+        "ev5"
+      ]
+    },
+    {
+      "id": "rel7",
+      "sourceId": "ent8",
+      "targetId": "ent9",
+      "kind": "authenticated-to",
+      "label": "authenticated to",
+      "phaseId": "ph1",
+      "evidenceIds": [
+        "ev4",
+        "ev6",
+        "ev7"
+      ]
+    },
+    {
+      "id": "rel8",
+      "sourceId": "ent1",
+      "targetId": "ent8",
+      "kind": "pivoted-to",
+      "label": "pivoted to",
+      "phaseId": "ph4",
+      "evidenceIds": [
+        "ev5"
+      ]
+    },
+    {
+      "id": "rel9",
+      "sourceId": "ent1",
+      "targetId": "ent13",
+      "kind": "retrieved-secret-from",
+      "label": "retrieved secret",
+      "phaseId": "ph1",
+      "evidenceIds": [
+        "ev8"
+      ]
+    },
+    {
+      "id": "rel10",
+      "sourceId": "ent1",
+      "targetId": "ent4",
+      "kind": "retrieved-keys-for",
+      "label": "retrieved keys for",
+      "phaseId": "ph1",
+      "evidenceIds": [
+        "ev9"
+      ]
+    },
+    {
+      "id": "rel11",
+      "sourceId": "ent1",
+      "targetId": "ent11",
+      "kind": "accessed",
+      "label": "accessed mailbox",
+      "phaseId": "ph5",
+      "evidenceIds": [
+        "ev10",
+        "ev11",
+        "ev12",
+        "ev13"
+      ]
+    },
+    {
+      "id": "rel12",
+      "sourceId": "ent15",
+      "targetId": "ent11",
+      "kind": "accessed",
+      "label": "MailItemsAccessed",
+      "phaseId": "ph5",
+      "evidenceIds": [
+        "ev10"
+      ]
+    },
+    {
+      "id": "rel13",
+      "sourceId": "ent16",
+      "targetId": "ent11",
+      "kind": "accessed",
+      "label": "MailItemsAccessed",
+      "phaseId": "ph5",
+      "evidenceIds": [
+        "ev11"
+      ]
+    },
+    {
+      "id": "rel14",
+      "sourceId": "ent17",
+      "targetId": "ent11",
+      "kind": "accessed",
+      "label": "MailItemsAccessed",
+      "phaseId": "ph5",
+      "evidenceIds": [
+        "ev12"
+      ]
+    },
+    {
+      "id": "rel15",
+      "sourceId": "ent18",
+      "targetId": "ent11",
+      "kind": "accessed",
+      "label": "MailItemsAccessed",
+      "phaseId": "ph5",
+      "evidenceIds": [
+        "ev13"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "evt1",
+      "time": "2026-07-17 22:53:46",
+      "title": "Managed identity token obtained via IMDS",
+      "detail": "Managed identity token obtained via IMDS from 185.220.101.42 for resource hxxps://management[.]azure[.]com.",
+      "phaseId": "ph1",
+      "entityIds": [
+        "ent1",
+        "ent2",
+        "ent3"
+      ],
+      "evidenceIds": [
+        "ev1"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt2",
+      "time": "2026-07-17 22:53:46",
+      "title": "ARM enumeration burst",
+      "detail": "ARM enumeration burst (22 ops) from 185.220.101.42 including Microsoft.Resources/subscriptions/read and Microsoft.Resources/resourceGroups/read.",
+      "phaseId": "ph2",
+      "entityIds": [
+        "ent1",
+        "ent5",
+        "ent7"
+      ],
+      "evidenceIds": [
+        "ev2"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt3",
+      "time": "2026-07-17 22:53:46",
+      "title": "Device-code authentication completed",
+      "detail": "Device-code authentication completed from 185.220.101.42 for AppId graph-mail-reader-app-id.",
+      "phaseId": "ph3",
+      "entityIds": [
+        "ent1",
+        "ent8",
+        "ent14"
+      ],
+      "evidenceIds": [
+        "ev3"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt4",
+      "time": "2026-07-17 22:53:47",
+      "title": "Service principal authenticated via client_secret",
+      "detail": "Service principal graph-mail-reader-app-id authenticated non-interactively from 185.220.101.42 via client_secret.",
+      "phaseId": "ph1",
+      "entityIds": [
+        "ent1",
+        "ent8",
+        "ent9",
+        "ent12"
+      ],
+      "evidenceIds": [
+        "ev4"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt5",
+      "time": "2026-07-17 22:53:47",
+      "title": "Device-code authentication completed",
+      "detail": "Device-code authentication completed from 185.220.101.42 for AppId graph-mail-reader-app-id.",
+      "phaseId": "ph4",
+      "entityIds": [
+        "ent1",
+        "ent8",
+        "ent14"
+      ],
+      "evidenceIds": [
+        "ev5"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt6",
+      "time": "2026-07-17 22:53:47",
+      "title": "Service principal authenticated via client_secret",
+      "detail": "Service principal graph-mail-reader-app-id authenticated non-interactively from 185.220.101.42 via client_secret.",
+      "phaseId": "ph1",
+      "entityIds": [
+        "ent1",
+        "ent8",
+        "ent9",
+        "ent12"
+      ],
+      "evidenceIds": [
+        "ev6"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt7",
+      "time": "2026-07-17 22:53:47",
+      "title": "Service principal authenticated via client_secret",
+      "detail": "Service principal graph-mail-reader-app-id authenticated non-interactively from 185.220.101.42 via client_secret.",
+      "phaseId": "ph1",
+      "entityIds": [
+        "ent1",
+        "ent8",
+        "ent9",
+        "ent12"
+      ],
+      "evidenceIds": [
+        "ev7"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt8",
+      "time": "2026-07-17 22:53:47",
+      "title": "Key Vault secret retrieved",
+      "detail": "Key Vault secret retrieved: graph-sp-secret.",
+      "phaseId": "ph1",
+      "entityIds": [
+        "ent1",
+        "ent10",
+        "ent13"
+      ],
+      "evidenceIds": [
+        "ev8"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt9",
+      "time": "2026-07-17 22:53:47",
+      "title": "Storage account keys retrieved",
+      "detail": "Storage account keys retrieved for PRODDATA001 from 185.220.101.42.",
+      "phaseId": "ph1",
+      "entityIds": [
+        "ent1",
+        "ent4"
+      ],
+      "evidenceIds": [
+        "ev9"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt10",
+      "time": "2026-07-17 22:53:47",
+      "title": "Mailbox items accessed",
+      "detail": "Mailbox access: 2 items read from cfo@contoso.com. OfficeActivity AppId 3cbaa028-f049-4c3b-b260-85a7c91069f8.",
+      "phaseId": "ph5",
+      "entityIds": [
+        "ent11",
+        "ent15"
+      ],
+      "evidenceIds": [
+        "ev10"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt11",
+      "time": "2026-07-17 22:53:47",
+      "title": "Mailbox items accessed",
+      "detail": "Mailbox access: 2 items read from cfo@contoso.com. OfficeActivity AppId c7ae7f2e-4936-4560-ad6f-a4f8f70de3b2.",
+      "phaseId": "ph5",
+      "entityIds": [
+        "ent11",
+        "ent16"
+      ],
+      "evidenceIds": [
+        "ev11"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt12",
+      "time": "2026-07-17 22:53:48",
+      "title": "Mailbox items accessed",
+      "detail": "Mailbox access: 2 items read from cfo@contoso.com. OfficeActivity AppId d61f0245-26a7-4bf5-805f-110e4206bc9d.",
+      "phaseId": "ph5",
+      "entityIds": [
+        "ent11",
+        "ent17"
+      ],
+      "evidenceIds": [
+        "ev12"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "evt13",
+      "time": "2026-07-17 22:53:48",
+      "title": "Mailbox items accessed",
+      "detail": "Mailbox access: 2 items read from cfo@contoso.com. OfficeActivity AppId 862c933f-818c-4cb9-90fb-be9e3cdcd384.",
+      "phaseId": "ph5",
+      "entityIds": [
+        "ent11",
+        "ent18"
+      ],
+      "evidenceIds": [
+        "ev13"
+      ],
+      "confidence": "high"
+    }
+  ],
+  "techniques": [
+    {
+      "id": "tech1",
+      "tactic": "Credential Access",
+      "technique": "Unsecured Credentials: Cloud Instance Metadata API",
+      "techniqueId": "T1552.005",
+      "description": "Managed identity token obtained via IMDS from 185.220.101.42.",
+      "phaseId": "ph1",
+      "evidenceIds": [
+        "ev1"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "tech2",
+      "tactic": "Discovery",
+      "technique": "Account Discovery: Cloud Account",
+      "techniqueId": "T1087.004",
+      "description": "ARM enumeration including subscription and resource group reads from 185.220.101.42.",
+      "phaseId": "ph2",
+      "evidenceIds": [
+        "ev2"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "tech3",
+      "tactic": "Initial Access",
+      "technique": "Phishing: Spearphishing Link (Device Code)",
+      "techniqueId": "T1566.002",
+      "description": "Device code authentication completed from 185.220.101.42 for graph-mail-reader-app-id.",
+      "phaseId": "ph3",
+      "evidenceIds": [
+        "ev3"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "tech4",
+      "tactic": "Credential Access",
+      "technique": "Valid Accounts: Cloud Accounts",
+      "techniqueId": "T1078.004",
+      "description": "Service principal graph-mail-reader-app-id authenticated non-interactively via client_secret from 185.220.101.42.",
+      "phaseId": "ph1",
+      "evidenceIds": [
+        "ev4"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "tech5",
+      "tactic": "Lateral Movement",
+      "technique": "Internal Spearphishing",
+      "techniqueId": "T1534",
+      "description": "Device code authentication completed from 185.220.101.42 associated with lateral movement in source TTPs.",
+      "phaseId": "ph4",
+      "evidenceIds": [
+        "ev5"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "tech6",
+      "tactic": "Credential Access",
+      "technique": "Unsecured Credentials: Private Keys",
+      "techniqueId": "T1552.004",
+      "description": "Key Vault secret graph-sp-secret retrieved from PROD-SECRETS-KV.",
+      "phaseId": "ph1",
+      "evidenceIds": [
+        "ev8"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "tech7",
+      "tactic": "Credential Access",
+      "technique": "Steal Application Access Token",
+      "techniqueId": "T1528",
+      "description": "Storage account keys retrieved for PRODDATA001 from 185.220.101.42.",
+      "phaseId": "ph1",
+      "evidenceIds": [
+        "ev9"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "tech8",
+      "tactic": "Collection",
+      "technique": "Remote Email Collection",
+      "techniqueId": "T1114.002",
+      "description": "MailItemsAccessed succeeded for cfo@contoso.com.",
+      "phaseId": "ph5",
+      "evidenceIds": [
+        "ev10"
+      ],
+      "confidence": "high"
+    }
+  ],
+  "alerts": [
+    {
+      "id": "al1",
+      "title": "Unusual metadata service access (IA-ALERT-001)",
+      "verdict": "True Positive",
+      "summary": "Managed identity token obtained via IMDS from 185.220.101.42 (resource: hxxps://management[.]azure[.]com).",
+      "eventIds": [
+        "evt1"
+      ],
+      "evidenceIds": [
+        "ev1"
+      ]
+    },
+    {
+      "id": "al2",
+      "title": "Unusual account enumeration activity (IA-ALERT-002)",
+      "verdict": "True Positive",
+      "summary": "ARM enumeration burst (22 ops) from 185.220.101.42: read, read, read, read.",
+      "eventIds": [
+        "evt2"
+      ],
+      "evidenceIds": [
+        "ev2"
+      ]
+    },
+    {
+      "id": "al3",
+      "title": "Device Code Authentication to ARM (IA-ALERT-003)",
+      "verdict": "True Positive",
+      "summary": "Device-code authentication completed from 185.220.101.42.",
+      "eventIds": [
+        "evt3",
+        "evt5"
+      ],
+      "evidenceIds": [
+        "ev3",
+        "ev5"
+      ]
+    },
+    {
+      "id": "al4",
+      "title": "Device Code Authentication to Key Vault (IA-ALERT-004)",
+      "verdict": "True Positive",
+      "summary": "Service principal graph-mail-reader-app-id authenticated non-interactively from 185.220.101.42.",
+      "eventIds": [
+        "evt4",
+        "evt6",
+        "evt7"
+      ],
+      "evidenceIds": [
+        "ev4",
+        "ev6",
+        "ev7"
+      ]
+    },
+    {
+      "id": "al5",
+      "title": "Device Code Authentication to Key Vault (IA-ALERT-005)",
+      "verdict": "True Positive",
+      "summary": "Device-code authentication completed from 185.220.101.42.",
+      "eventIds": [
+        "evt3",
+        "evt5"
+      ],
+      "evidenceIds": [
+        "ev3",
+        "ev5"
+      ]
+    },
+    {
+      "id": "al6",
+      "title": "Device Code Authentication to Key Vault (IA-ALERT-006)",
+      "verdict": "True Positive",
+      "summary": "Service principal graph-mail-reader-app-id authenticated non-interactively from 185.220.101.42.",
+      "eventIds": [
+        "evt4",
+        "evt6",
+        "evt7"
+      ],
+      "evidenceIds": [
+        "ev4",
+        "ev6",
+        "ev7"
+      ]
+    },
+    {
+      "id": "al7",
+      "title": "Device Code Authentication to Key Vault (IA-ALERT-007)",
+      "verdict": "True Positive",
+      "summary": "Service principal graph-mail-reader-app-id authenticated non-interactively from 185.220.101.42.",
+      "eventIds": [
+        "evt4",
+        "evt6",
+        "evt7"
+      ],
+      "evidenceIds": [
+        "ev4",
+        "ev6",
+        "ev7"
+      ]
+    },
+    {
+      "id": "al8",
+      "title": "Key Vault Secret Retrieval (IA-ALERT-008)",
+      "verdict": "True Positive",
+      "summary": "Key Vault secret retrieved: graph-sp-secret.",
+      "eventIds": [
+        "evt8"
+      ],
+      "evidenceIds": [
+        "ev8"
+      ]
+    },
+    {
+      "id": "al9",
+      "title": "Anomalous application token usage (IA-ALERT-009)",
+      "verdict": "True Positive",
+      "summary": "Storage account keys retrieved for PRODDATA001 from 185.220.101.42.",
+      "eventIds": [
+        "evt9"
+      ],
+      "evidenceIds": [
+        "ev9"
+      ]
+    },
+    {
+      "id": "al10",
+      "title": "Mailbox Access via Graph API (IA-ALERT-010)",
+      "verdict": "True Positive",
+      "summary": "Mailbox access: 2 items read from cfo@contoso.com.",
+      "eventIds": [
+        "evt10",
+        "evt11",
+        "evt12",
+        "evt13"
+      ],
+      "evidenceIds": [
+        "ev10",
+        "ev11",
+        "ev12",
+        "ev13"
+      ]
+    },
+    {
+      "id": "al11",
+      "title": "Mailbox Access via Graph API (IA-ALERT-011)",
+      "verdict": "True Positive",
+      "summary": "Mailbox access: 2 items read from cfo@contoso.com.",
+      "eventIds": [
+        "evt10",
+        "evt11",
+        "evt12",
+        "evt13"
+      ],
+      "evidenceIds": [
+        "ev10",
+        "ev11",
+        "ev12",
+        "ev13"
+      ]
+    },
+    {
+      "id": "al12",
+      "title": "Mailbox Access via Graph API (IA-ALERT-012)",
+      "verdict": "True Positive",
+      "summary": "Mailbox access: 2 items read from cfo@contoso.com.",
+      "eventIds": [
+        "evt10",
+        "evt11",
+        "evt12",
+        "evt13"
+      ],
+      "evidenceIds": [
+        "ev10",
+        "ev11",
+        "ev12",
+        "ev13"
+      ]
+    },
+    {
+      "id": "al13",
+      "title": "Mailbox Access via Graph API (IA-ALERT-013)",
+      "verdict": "True Positive",
+      "summary": "Mailbox access: 2 items read from cfo@contoso.com.",
+      "eventIds": [
+        "evt10",
+        "evt11",
+        "evt12",
+        "evt13"
+      ],
+      "evidenceIds": [
+        "ev10",
+        "ev11",
+        "ev12",
+        "ev13"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev1",
+      "sourceType": "AzureIMDSAccessLogs",
+      "timestamp": "2026-07-17 22:53:46",
+      "summary": "OperationName=IMDS.GetToken, ResultType=Success, CallerIpAddress=185.220.101.42, CorrelationId=3adece5e-d8f7-4df9-aa76-e77dc72cfbe1, ResourceId=/SUBSCRIPTIONS/12345678-1234-1234-1234-123456789ABC/RESOURCEGROUPS/PRODUCTION-RG/PROVIDERS/MICROSOFT.COMPUTE/VIRTUALMACHINES/WEBAPP-VM-001, Properties.clientId=11111111-2222-3333-4444-555555555555, Properties.endpoint=/metadata/identity/oauth2/token?resource=hxxps://management[.]azure[.]com&identity=system-assigned, Properties.resource=hxxps://management[.]azure[.]com, Properties.userAgent=curl/8.5.0, Properties.vmName=webapp-vm-001, Category=InstanceMetadata",
+      "correlationId": "3adece5e-d8f7-4df9-aa76-e77dc72cfbe1"
+    },
+    {
+      "id": "ev2",
+      "sourceType": "AzureActivityLogs",
+      "timestamp": "2026-07-17 22:53:46",
+      "summary": "Enumeration evidence: OperationName=Microsoft.Resources/subscriptions/read, ResultType=Success, CallerIpAddress=185.220.101.42, CorrelationId=63354f31-86b3-465b-a223-8230443265af, ResourceId=/SUBSCRIPTIONS, Properties.httpMethod=GET, Properties.statusCode=OK; OperationName=Microsoft.Resources/resourceGroups/read, ResultType=Success, CallerIpAddress=185.220.101.42, CorrelationId=cd0aa25f-5469-4b1e-bb0a-d29e9d8a41e0, ResourceId=/SUBSCRIPTIONS/12345678-1234-1234-1234-123456789ABC, Properties.httpMethod=GET, Properties.statusCode=OK",
+      "correlationId": "63354f31-86b3-465b-a223-8230443265af"
+    },
+    {
+      "id": "ev3",
+      "sourceType": "AADSignInLogs",
+      "timestamp": "2026-07-17 22:53:46",
+      "summary": "OperationName=Sign-in activity, ResultDescription=Device code authentication completed, ResultType=0, IPAddress=185.220.101.42, AppId=graph-mail-reader-app-id, CorrelationId=58aed6f1-5f94-41b8-a4aa-5c9d386ea19c, ResourceId=graph-mail-reader-app-id, AuthenticationProtocol=deviceCode, ResourceDisplayName=Device Code App",
+      "correlationId": "58aed6f1-5f94-41b8-a4aa-5c9d386ea19c"
+    },
+    {
+      "id": "ev4",
+      "sourceType": "AADSignInLogs",
+      "timestamp": "2026-07-17 22:53:47",
+      "summary": "OperationName=Sign-in activity, ResultDescription=Authenticated via client_secret, ResultType=0, IPAddress=185.220.101.42, AppId=graph-mail-reader-app-id, ServicePrincipalId=graph-mail-reader-app-id, CorrelationId=b162df76-2b3c-4c82-931c-ef7e25bf1741, ResourceId=graph-mail-reader-app-id, AuthenticationProtocol=oAuth2, ResourceDisplayName=Service Principal App",
+      "correlationId": "b162df76-2b3c-4c82-931c-ef7e25bf1741"
+    },
+    {
+      "id": "ev5",
+      "sourceType": "AADSignInLogs",
+      "timestamp": "2026-07-17 22:53:47",
+      "summary": "OperationName=Sign-in activity, ResultDescription=Device code authentication completed, ResultType=0, IPAddress=185.220.101.42, AppId=graph-mail-reader-app-id, CorrelationId=3602db7c-cbf2-47d4-b33e-18c14136a395, ResourceId=graph-mail-reader-app-id, AuthenticationProtocol=deviceCode, ResourceDisplayName=Device Code App",
+      "correlationId": "3602db7c-cbf2-47d4-b33e-18c14136a395"
+    },
+    {
+      "id": "ev6",
+      "sourceType": "AADSignInLogs",
+      "timestamp": "2026-07-17 22:53:47",
+      "summary": "OperationName=Sign-in activity, ResultDescription=Authenticated via client_secret, ResultType=0, IPAddress=185.220.101.42, AppId=graph-mail-reader-app-id, ServicePrincipalId=graph-mail-reader-app-id, CorrelationId=ecca17bf-cc96-4f6a-a1fd-e997d02a9e44, ResourceId=graph-mail-reader-app-id, AuthenticationProtocol=oAuth2, ResourceDisplayName=Service Principal App",
+      "correlationId": "ecca17bf-cc96-4f6a-a1fd-e997d02a9e44"
+    },
+    {
+      "id": "ev7",
+      "sourceType": "AADSignInLogs",
+      "timestamp": "2026-07-17 22:53:47",
+      "summary": "OperationName=Sign-in activity, ResultDescription=Authenticated via client_secret, ResultType=0, IPAddress=185.220.101.42, AppId=graph-mail-reader-app-id, ServicePrincipalId=graph-mail-reader-app-id, CorrelationId=c890a3b5-2068-46c4-804e-fbe8ecf849d5, ResourceId=graph-mail-reader-app-id, AuthenticationProtocol=oAuth2, ResourceDisplayName=Service Principal App",
+      "correlationId": "c890a3b5-2068-46c4-804e-fbe8ecf849d5"
+    },
+    {
+      "id": "ev8",
+      "sourceType": "AzureKeyVaultAuditLogs",
+      "timestamp": "2026-07-17 22:53:47",
+      "summary": "SecretGet success from 185.220.101.42 for hxxps://prod-secrets-kv[.]vault[.]azure[.]net/secrets/graph-sp-secret. CorrelationIds: 87ab0238-cb44-4c3b-8f11-1ae09e3857e8 and 288bd78b-4657-4d41-af49-38fdd8450419. ResourceId=/SUBSCRIPTIONS/12345678-1234-1234-1234-123456789ABC/RESOURCEGROUPS/PRODUCTION-RG/PROVIDERS/MICROSOFT.KEYVAULT/VAULTS/PROD-SECRETS-KV, Properties.clientInfo=curl/8.5.0, Properties.httpStatusCode=200, Properties.isAccessPolicyMatch=True",
+      "correlationId": "87ab0238-cb44-4c3b-8f11-1ae09e3857e8"
+    },
+    {
+      "id": "ev9",
+      "sourceType": "AzureActivityLogs",
+      "timestamp": "2026-07-17 22:53:47",
+      "summary": "OperationName=Microsoft.Storage/storageAccounts/listKeys/action, ResultType=Success, CallerIpAddress=185.220.101.42, CorrelationId=689d85b7-8b11-413f-a396-87b848b66b9a, ResourceId=/SUBSCRIPTIONS/12345678-1234-1234-1234-123456789ABC/RESOURCEGROUPS/RG-PRODUCTION/PROVIDERS/MICROSOFT.STORAGE/STORAGEACCOUNTS/PRODDATA001, Properties.httpMethod=POST, Properties.statusCode=OK",
+      "correlationId": "689d85b7-8b11-413f-a396-87b848b66b9a"
+    },
+    {
+      "id": "ev10",
+      "sourceType": "OfficeActivity",
+      "timestamp": "2026-07-17 22:53:47",
+      "summary": "ResultStatus=Succeeded, AppId=3cbaa028-f049-4c3b-b260-85a7c91069f8, MailboxOwnerUPN=cfo@contoso.com, Operation=MailItemsAccessed, OperationCount=2",
+      "correlationId": ""
+    },
+    {
+      "id": "ev11",
+      "sourceType": "OfficeActivity",
+      "timestamp": "2026-07-17 22:53:47",
+      "summary": "ResultStatus=Succeeded, AppId=c7ae7f2e-4936-4560-ad6f-a4f8f70de3b2, MailboxOwnerUPN=cfo@contoso.com, Operation=MailItemsAccessed, OperationCount=2",
+      "correlationId": ""
+    },
+    {
+      "id": "ev12",
+      "sourceType": "OfficeActivity",
+      "timestamp": "2026-07-17 22:53:48",
+      "summary": "ResultStatus=Succeeded, AppId=d61f0245-26a7-4bf5-805f-110e4206bc9d, MailboxOwnerUPN=cfo@contoso.com, Operation=MailItemsAccessed, OperationCount=2",
+      "correlationId": ""
+    },
+    {
+      "id": "ev13",
+      "sourceType": "OfficeActivity",
+      "timestamp": "2026-07-17 22:53:48",
+      "summary": "ResultStatus=Succeeded, AppId=862c933f-818c-4cb9-90fb-be9e3cdcd384, MailboxOwnerUPN=cfo@contoso.com, Operation=MailItemsAccessed, OperationCount=2",
+      "correlationId": ""
+    }
+  ],
+  "indicators": [
+    {
+      "id": "ioc1",
+      "type": "Public IP",
+      "value": "185.220.101.42",
+      "context": "Observed in Credential Access",
+      "confidence": "high"
+    }
+  ],
+  "impacts": [
+    {
+      "id": "imp1",
+      "category": "data-access",
+      "title": "Sensitive data access confirmed",
+      "detail": "The verdict states confirmed malicious attack with successful sensitive data access.",
+      "severity": "high",
+      "entityIds": [
+        "ent11"
+      ]
+    },
+    {
+      "id": "imp2",
+      "category": "data-exfiltration",
+      "title": "Data access/exfiltration confirmed",
+      "detail": "Incident summary states data access/exfiltration confirmed.",
+      "severity": "high",
+      "entityIds": [
+        "ent11"
+      ]
+    },
+    {
+      "id": "imp3",
+      "category": "credential-exposure",
+      "title": "Managed identity credential compromised",
+      "detail": "Managed identity 11111111-2222-3333-4444-555555555555 is listed as compromised.",
+      "severity": "high",
+      "entityIds": [
+        "ent2"
+      ]
+    },
+    {
+      "id": "imp4",
+      "category": "credential-exposure",
+      "title": "Key Vault secret compromised",
+      "detail": "Key Vault / secret resource is listed as compromised and graph-sp-secret was retrieved.",
+      "severity": "high",
+      "entityIds": [
+        "ent10",
+        "ent13"
+      ]
+    },
+    {
+      "id": "imp5",
+      "category": "credential-exposure",
+      "title": "Cloud app credential compromised",
+      "detail": "Cloud app graph-mail-reader-app-id is listed as compromised during initial access.",
+      "severity": "high",
+      "entityIds": [
+        "ent8"
+      ]
+    },
+    {
+      "id": "imp6",
+      "category": "resource-compromise",
+      "title": "Storage account compromised",
+      "detail": "Storage account PRODDATA001 is listed as compromised.",
+      "severity": "high",
+      "entityIds": [
+        "ent4"
+      ]
+    }
+  ],
+  "actions": [],
+  "representationNotes": [
+    {
+      "id": "rn1",
+      "category": "source-ambiguity",
+      "severity": "warning",
+      "sourceSection": "Attack Graph / Compromised Entities",
+      "commentary": "Attack graph names Key Vault resource as prod-credentials-kv, while compromised entities and evidence identify /.../VAULTS/PROD-SECRETS-KV with secret graph-sp-secret. Both labels are retained separately without asserting equivalence.",
+      "suggestedVocabularyExtension": ""
+    },
+    {
+      "id": "rn2",
+      "category": "source-ambiguity",
+      "severity": "warning",
+      "sourceSection": "Compromised Entities / Timeline",
+      "commentary": "Entity label 12345678-1234-1234-1234-123456789abc differs from subscription identifiers shown elsewhere ending in 123456789ABC. Case and value normalization were not resolved beyond source-faithful retention.",
+      "suggestedVocabularyExtension": ""
+    },
+    {
+      "id": "rn3",
+      "category": "schema-gap",
+      "severity": "info",
+      "sourceSection": "Compromised Entities",
+      "commentary": "Source entity types 'Cloud App' and 'Key Vault / Secret' were mapped to supported schema types application and secret, causing normalization loss.",
+      "suggestedVocabularyExtension": "Add native entity types for cloud-app and key-vault-secret"
+    },
+    {
+      "id": "rn4",
+      "category": "insufficient-evidence",
+      "severity": "warning",
+      "sourceSection": "Summary / Timeline / TTPs",
+      "commentary": "Summary states data access/exfiltration confirmed, but the timeline explicitly evidences mailbox item access and key/secret retrieval; no explicit exfiltration event with transferred data volume or destination is provided.",
+      "suggestedVocabularyExtension": ""
+    },
+    {
+      "id": "rn5",
+      "category": "source-ambiguity",
+      "severity": "warning",
+      "sourceSection": "OfficeActivity / Compromised Entities",
+      "commentary": "Mailbox entity lists additional identifier 3cbaa028-f049-4c3b-b260-85a7c91069f8 only, while timeline shows four distinct OfficeActivity AppIds accessing the mailbox. All four AppIds are retained as separate observed application entities.",
+      "suggestedVocabularyExtension": ""
+    },
+    {
+      "id": "rn6",
+      "category": "normalization-loss",
+      "severity": "info",
+      "sourceSection": "Evidence",
+      "commentary": "Evidence item ev8 consolidates two Key Vault SecretGet records into one normalized evidence record to preserve event ordering without duplicating the same source action title.",
+      "suggestedVocabularyExtension": "Support grouped evidence arrays per event"
+    },
+    {
+      "id": "rn7",
+      "category": "source-ambiguity",
+      "severity": "warning",
+      "sourceSection": "Attack Graph / Timeline",
+      "commentary": "Attack graph relation 'retrieved secret' points to graph-sp-secret rather than the Key Vault container resource. Relationship rel9 targets the secret-name entity to match graph wording, while event evt8 references both secret name and Key Vault resource.",
+      "suggestedVocabularyExtension": ""
+    }
+  ]
+}

@@ -179,3 +179,15 @@ test("GikComponentDeclarative routes canonical edges.on invoke actions to runtim
   await runtime.controller.emit("action-board", "action", { id: "disable-account" });
   assert.deepEqual(receivedPayload, { id: "disable-account" });
 });
+
+test("GikComponentDeclarative resolves datetime, Gantt, infinite canvas, and attack graph through canonical providers", () => {
+  for (const capability of ["primitive:datetime", "primitive:gantt", "primitive:infinite-canvas", "semantic:attack-graph"] as const) {
+    const definition = componentDefinitions[capability.split(":")[1] as keyof typeof componentDefinitions];
+    const trial = definition.materializeTrial();
+    const bundle = createGikComponentDeclarativeBundle({ id: trial.id, capability, props: trial.props });
+    const [layer, name] = capability.split(":");
+    assert.deepEqual(unwrap(bundle.vocabulary).externals?.projectionViews, {
+      [layer]: { from: layer, use: [name] },
+    });
+  }
+});

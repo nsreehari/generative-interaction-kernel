@@ -26,7 +26,7 @@ const defaultExternalContextByBlueprint = {
 } as const;
 
 export function Host(): React.ReactElement {
-  const query = readHostQuery(window.location.search);
+  const query = readHostQuery(window.location.search, window.location.pathname);
   const targetId = query.targetId ?? DEFAULT_BLUEPRINT;
   React.useEffect(() => {
     const canonicalUrl = canonicalizeHostUrl(window.location.href);

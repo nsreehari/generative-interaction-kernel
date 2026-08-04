@@ -97,7 +97,7 @@
             "request": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "{'message':'Extract a normalized incident semantic model from this investigation report. Report Markdown:\n\n' & state.incident2.pendingContent,'instructions':'Return semantic facts only. Do not choose components, layouts, disclosure, colors, or presentation candidates. Preserve causal ordering and typed references. Put any source ambiguity, normalization loss, unsupported concept, conflicting evidence, or schema gap in representationNotes rather than silently dropping it. Use stable concise ids and reference only ids declared in this response.','maxOutputTokens':5000}"
+                "expr": "{'message':'Extract a normalized incident semantic model from this investigation report. Report Markdown:\n\n' & state.incident2.pendingContent,'instructions':'Return semantic facts only. Do not choose components, layouts, disclosure, colors, or presentation candidates. Preserve causal ordering and typed references. Put any source ambiguity, normalization loss, unsupported concept, conflicting evidence, or schema gap in representationNotes rather than silently dropping it. Use stable concise ids and reference only ids declared in this response.','maxOutputTokens':10000}"
               }
             },
             "response": {

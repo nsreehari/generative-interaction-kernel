@@ -50,7 +50,7 @@
   },
   "dependencies": {
     "@gik/blueprint": "0.1.2",
-    "@gik/durable-runtime": "0.6.2",
+    "@gik/durable-runtime": "0.7.0",
     "@gik/kernel": "0.1.1"
   },
   "scripts": {

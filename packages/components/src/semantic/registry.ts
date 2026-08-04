@@ -3,6 +3,7 @@ import type { ProjectionView } from "@gik/react";
 
 import { ActionBoard, actionBoardDefinition } from "./action-board";
 import { AnnotatedSourceExcerpt, annotatedSourceExcerptDefinition } from "./annotated-source-excerpt";
+import { AttackGraph, attackGraphDefinition } from "./attack-graph";
 import { DecisionSummary, decisionSummaryDefinition } from "./decision-summary";
 import { EntityConstellation, entityConstellationDefinition } from "./entity-constellation";
 import { EvidenceTrail, evidenceTrailDefinition } from "./evidence-trail";
@@ -15,6 +16,7 @@ import { Timeline, timelineDefinition } from "./timeline";
 export const semanticComponentViews: Record<string, ProjectionView> = {
   "action-board": ActionBoard,
   "annotated-source-excerpt": AnnotatedSourceExcerpt,
+  "attack-graph": AttackGraph,
   "decision-summary": DecisionSummary,
   "entity-constellation": EntityConstellation,
   "evidence-trail": EvidenceTrail,
@@ -28,6 +30,7 @@ export const semanticComponentViews: Record<string, ProjectionView> = {
 export const semanticComponentDefinitions = {
   "action-board": actionBoardDefinition,
   "annotated-source-excerpt": annotatedSourceExcerptDefinition,
+  "attack-graph": attackGraphDefinition,
   "decision-summary": decisionSummaryDefinition,
   "entity-constellation": entityConstellationDefinition,
   "evidence-trail": evidenceTrailDefinition,

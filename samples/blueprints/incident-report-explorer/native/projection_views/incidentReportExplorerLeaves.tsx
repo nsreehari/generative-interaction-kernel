@@ -128,6 +128,7 @@ function childrenById(children: React.ReactNode): Map<string, React.ReactElement
 
 export const EditorView: ProjectionView = ({ node, children }) => {
   const styles = useStyles();
+  const readonly = node.props.readonly === true;
   const [editing, setEditing] = React.useState(false);
   const content = String(node.props.value ?? "");
   const previousContent = React.useRef(content);
@@ -137,13 +138,14 @@ export const EditorView: ProjectionView = ({ node, children }) => {
     previousContent.current = content;
   }, [content]);
   return <section className={styles.pane}>
-    <header className={styles.paneHeader}><h2 className={styles.paneTitle}>{String(node.props.title ?? "Investigation report")}</h2><div className={styles.paneActions}><div className={styles.sampleSelector}>{cells.get("incident-report-selector")}</div>{editing ? <button className={styles.textButton} type="button" onClick={() => setEditing(false)}>Cancel</button> : <button className={styles.iconButton} type="button" title="Edit report" aria-label="Edit report" onClick={() => setEditing(true)}><EditRegular /></button>}</div></header>
+    <header className={styles.paneHeader}><h2 className={styles.paneTitle}>{String(node.props.title ?? "Investigation report")}</h2><div className={styles.paneActions}><div className={styles.sampleSelector}>{cells.get("incident-report-selector")}</div>{readonly ? null : editing ? <button className={styles.textButton} type="button" onClick={() => setEditing(false)}>Cancel</button> : <button className={styles.iconButton} type="button" title="Edit report" aria-label="Edit report" onClick={() => setEditing(true)}><EditRegular /></button>}</div></header>
     <div className={`${styles.paneBody} ${styles.editorBody}`}>{editing ? cells.get("incident-report-form") : cells.get("incident-report-markdown")}</div>
   </section>;
 };
 
 export const IncidentProjectionsView: ProjectionView = ({ node, emit }) => {
   const styles = useStyles();
+  const readonly = node.props.readonly === true;
   const value = asRecord(node.props.value);
   const hasResult = Object.keys(value).length > 0;
   const stale = analysisIsStale(node.props.content, node.props.analyzedContent);
@@ -157,7 +159,7 @@ export const IncidentProjectionsView: ProjectionView = ({ node, emit }) => {
   const sections = selectIncidentProjection(value, node.props.projectionRecipe);
   const items = itemsFrom(value.items);
   return <section className={styles.pane}>
-    <header className={styles.paneHeader}><div><h2 className={styles.paneTitle}>{String(node.props.title ?? "Agent analysis")}</h2><span className={styles.status}>{hasResult ? (stale ? "Source changed" : "Up to date") : "Not analyzed"}</span></div><button className={styles.analyzeButton} type="button" disabled={pending || (hasResult && !stale)} aria-busy={pending || undefined} onClick={() => void run()}>{pending ? <span className={styles.spinner} aria-hidden="true" /> : null}{buttonLabel}</button></header>
+    <header className={styles.paneHeader}><div><h2 className={styles.paneTitle}>{String(node.props.title ?? "Agent analysis")}</h2><span className={styles.status}>{hasResult ? (stale ? "Source changed" : "Up to date") : "Not analyzed"}</span></div>{readonly ? null : <button className={styles.analyzeButton} type="button" disabled={pending || (hasResult && !stale)} aria-busy={pending || undefined} onClick={() => void run()}>{pending ? <span className={styles.spinner} aria-hidden="true" /> : null}{buttonLabel}</button>}</header>
     <div className={styles.paneBody}>{error ? <p className={styles.error}>{error}</p> : null}{hasResult ? <><div className={styles.analysisHeader}><p className={styles.analysisEyebrow}>Incident intelligence</p><h2 className={styles.analysisTitle}>{String(value.headline ?? "Structured assessment")}</h2><p className={styles.analysisSummary}>{String(value.summary ?? "")}</p></div><div className={styles.projectionGrid}>{sections.map((section) => <SectionView section={section} items={items} key={section.id} />)}</div><p className={styles.provenance}>Generated from the report in the left pane. Refresh is enabled whenever that source changes.</p></> : <div className={styles.empty}><div className={styles.emptyInner}><p className={styles.emptyKicker}>Ready</p><h3 className={styles.emptyTitle}>Turn the report into an operational view</h3><p className={styles.emptyText}>Analyze the Markdown to surface the verdict, attack sequence, entities, techniques, and containment priorities.</p></div></div>}</div>
   </section>;
 };
@@ -165,7 +167,7 @@ export const IncidentProjectionsView: ProjectionView = ({ node, emit }) => {
 const WorkspaceView: ProjectionView = ({ node, children }) => {
   const styles = useStyles();
   const cells = childrenById(children);
-  return <main className={styles.workspace}><header className={styles.header}><div className={styles.brand}><span className={styles.brandMark} /><h1 className={styles.title}>{String(node.props.title ?? "Incident report intelligence")}</h1></div><span className={styles.headerMeta}>Source → Agent projection</span></header><div className={styles.panes}>{cells.get("incident-report")}{cells.get("foundry-access-gate")}</div></main>;
+  return <main className={styles.workspace}><header className={styles.header}><div className={styles.brand}><span className={styles.brandMark} /><h1 className={styles.title}>{String(node.props.title ?? "Incident report intelligence")}</h1></div><span className={styles.headerMeta}>Source → Agent projection</span></header><div className={styles.panes}>{cells.get("incident-report")}{cells.get("foundry-access-gate") ?? cells.get("incident-intelligence")}</div></main>;
 };
 
 export default { workspace: WorkspaceView, editor: EditorView, projections: IncidentProjectionsView };

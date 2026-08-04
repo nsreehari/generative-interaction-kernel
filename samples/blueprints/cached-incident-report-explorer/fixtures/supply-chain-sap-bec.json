@@ -1,0 +1,380 @@
+{
+  "headline": "True-positive attack from 91.132.147.22 led to managed identity token theft and confirmed mailbox data access",
+  "summary": "Between 2026-07-17 23:06:13 and 2026-07-17 23:06:26, a confirmed malicious attack from 91.132.147.22 progressed from password spraying against three accounts to successful IMDS token acquisition on webapp-vm-001 and mailbox item access in procurement@contoso.com. Sensitive data access/exfiltration was confirmed. Total observable events: 6.",
+  "asOf": "2026-07-17 23:06:26",
+  "items": [
+    {
+      "id": "itm-001",
+      "kind": "judgment",
+      "title": "Incident verdict",
+      "detail": "Incident classified as True Positive / Other with high confidence because a confirmed malicious attack achieved successful sensitive data access.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "True Positive / Other",
+      "unit": "",
+      "date": "2026-07-17 23:06:26"
+    },
+    {
+      "id": "itm-002",
+      "kind": "risk",
+      "title": "Confirmed data access/exfiltration",
+      "detail": "The report states data access/exfiltration confirmed following mailbox access activity against procurement@contoso.com.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "confirmed",
+      "unit": "",
+      "date": "2026-07-17 23:06:26"
+    },
+    {
+      "id": "itm-003",
+      "kind": "fact",
+      "title": "Observed source IP",
+      "detail": "Public IP 91.132.147.22 was observed in credential access activity and throughout the incident sequence.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "91.132.147.22",
+      "unit": "ip",
+      "date": "2026-07-17 23:06:13"
+    },
+    {
+      "id": "itm-004",
+      "kind": "fact",
+      "title": "Incident time window",
+      "detail": "Attack activity occurred during the reported incident window.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "2026-07-17 23:06:13 – 2026-07-17 23:06:26",
+      "unit": "time window",
+      "date": "2026-07-17 23:06:26"
+    },
+    {
+      "id": "itm-005",
+      "kind": "fact",
+      "title": "Total observable events",
+      "detail": "The report lists 6 total observable events.",
+      "salience": "medium",
+      "confidence": "high",
+      "value": "6",
+      "unit": "events",
+      "date": "2026-07-17 23:06:26"
+    },
+    {
+      "id": "itm-006",
+      "kind": "fact",
+      "title": "Blast radius summary",
+      "detail": "Three accounts were targeted during password spraying; one mailbox had confirmed items read; one managed identity was compromised; one virtual machine was involved.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "3 targeted accounts, 1 mailbox accessed, 1 managed identity compromised, 1 VM affected",
+      "unit": "",
+      "date": "2026-07-17 23:06:26"
+    },
+    {
+      "id": "itm-007",
+      "kind": "entity",
+      "title": "Targeted user",
+      "detail": "ap-team@contoso.com was targeted during credential access from 91.132.147.22 using graph-mail-client-id.",
+      "salience": "medium",
+      "confidence": "high",
+      "value": "ap-team@contoso.com",
+      "unit": "user",
+      "date": "2026-07-17 23:06:13"
+    },
+    {
+      "id": "itm-008",
+      "kind": "entity",
+      "title": "Targeted mailbox",
+      "detail": "procurement@contoso.com was targeted during credential access and later accessed during collection.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "procurement@contoso.com",
+      "unit": "mailbox",
+      "date": "2026-07-17 23:06:18"
+    },
+    {
+      "id": "itm-009",
+      "kind": "entity",
+      "title": "Targeted user",
+      "detail": "vendor-mgmt@contoso.com was targeted during credential access from 91.132.147.22 using graph-mail-client-id.",
+      "salience": "medium",
+      "confidence": "high",
+      "value": "vendor-mgmt@contoso.com",
+      "unit": "user",
+      "date": "2026-07-17 23:06:13"
+    },
+    {
+      "id": "itm-010",
+      "kind": "entity",
+      "title": "Compromised managed identity",
+      "detail": "Managed identity 11111111-2222-3333-4444-555555555555 was compromised via IMDS token retrieval for hxxps://graph[.]microsoft[.]com.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "11111111-2222-3333-4444-555555555555",
+      "unit": "managed identity",
+      "date": "2026-07-17 23:06:14"
+    },
+    {
+      "id": "itm-011",
+      "kind": "entity",
+      "title": "Affected virtual machine",
+      "detail": "Virtual machine webapp-vm-001 was involved in successful IMDS token access.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "webapp-vm-001",
+      "unit": "virtual machine",
+      "date": "2026-07-17 23:06:14"
+    },
+    {
+      "id": "itm-012",
+      "kind": "event",
+      "title": "Password spray against multiple accounts",
+      "detail": "At 2026-07-17 23:06:13, 4 failed sign-ins targeted 3 accounts from 91.132.147.22. Alert: IA-ALERT-001. AADSignInLogs showed ResultType 50126 and AuthenticationProtocol=ropc.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "4",
+      "unit": "failed sign-ins",
+      "date": "2026-07-17 23:06:13"
+    },
+    {
+      "id": "itm-013",
+      "kind": "event",
+      "title": "Managed identity token obtained via IMDS",
+      "detail": "At 2026-07-17 23:06:14, IMDS.GetToken succeeded from 91.132.147.22 against webapp-vm-001 for resource hxxps://graph[.]microsoft[.]com using user agent curl/8.5.0. Alert: IA-ALERT-002.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "Success",
+      "unit": "IMDS.GetToken",
+      "date": "2026-07-17 23:06:14"
+    },
+    {
+      "id": "itm-014",
+      "kind": "event",
+      "title": "Mailbox items accessed",
+      "detail": "At 2026-07-17 23:06:18, OfficeActivity recorded MailItemsAccessed with OperationCount=3 for procurement@contoso.com. Alerts: IA-ALERT-003, IA-ALERT-004, IA-ALERT-005, IA-ALERT-006.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "3",
+      "unit": "items read",
+      "date": "2026-07-17 23:06:18"
+    },
+    {
+      "id": "itm-015",
+      "kind": "event",
+      "title": "Mailbox items accessed",
+      "detail": "At 2026-07-17 23:06:18, OfficeActivity recorded a second MailItemsAccessed event with OperationCount=3 for procurement@contoso.com.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "3",
+      "unit": "items read",
+      "date": "2026-07-17 23:06:18"
+    },
+    {
+      "id": "itm-016",
+      "kind": "event",
+      "title": "Mailbox items accessed",
+      "detail": "At 2026-07-17 23:06:25, OfficeActivity recorded MailItemsAccessed with OperationCount=3 for procurement@contoso.com.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "3",
+      "unit": "items read",
+      "date": "2026-07-17 23:06:25"
+    },
+    {
+      "id": "itm-017",
+      "kind": "event",
+      "title": "Mailbox items accessed",
+      "detail": "At 2026-07-17 23:06:26, OfficeActivity recorded MailItemsAccessed with OperationCount=3 for procurement@contoso.com.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "3",
+      "unit": "items read",
+      "date": "2026-07-17 23:06:26"
+    },
+    {
+      "id": "itm-018",
+      "kind": "technique",
+      "title": "Brute Force: Password Spraying",
+      "detail": "MITRE ATT&CK T1110.003. Evidence comes from AADSignInLogs showing 4 failed sign-ins targeting 3 accounts from 91.132.147.22.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "T1110.003",
+      "unit": "ATT&CK",
+      "date": "2026-07-17 23:06:13"
+    },
+    {
+      "id": "itm-019",
+      "kind": "technique",
+      "title": "Unsecured Credentials: Cloud Instance Metadata API",
+      "detail": "MITRE ATT&CK T1552.005. Evidence comes from successful IMDS.GetToken activity against webapp-vm-001 from 91.132.147.22.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "T1552.005",
+      "unit": "ATT&CK",
+      "date": "2026-07-17 23:06:14"
+    },
+    {
+      "id": "itm-020",
+      "kind": "technique",
+      "title": "Remote Email Collection",
+      "detail": "MITRE ATT&CK T1114.002. Evidence comes from successful MailItemsAccessed events for procurement@contoso.com.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "T1114.002",
+      "unit": "ATT&CK",
+      "date": "2026-07-17 23:06:18"
+    },
+    {
+      "id": "itm-021",
+      "kind": "action",
+      "title": "Immediate containment priority",
+      "detail": "Prioritize containment around the confirmed source IP 91.132.147.22, compromised managed identity 11111111-2222-3333-4444-555555555555, affected VM webapp-vm-001, and accessed mailbox procurement@contoso.com.",
+      "salience": "critical",
+      "confidence": "medium",
+      "value": "contain source, identity, VM, and mailbox",
+      "unit": "",
+      "date": "2026-07-17 23:06:26"
+    },
+    {
+      "id": "itm-022",
+      "kind": "uncertainty",
+      "title": "Determination category is broad",
+      "detail": "The report determination is 'Other'; no narrower incident determination is provided in the source.",
+      "salience": "low",
+      "confidence": "high",
+      "value": "Other",
+      "unit": "determination",
+      "date": "2026-07-17 23:06:26"
+    }
+  ],
+  "projectionCandidates": [
+    {
+      "id": "cand-001",
+      "label": "Glanceable executive incident card",
+      "attention": "glanceable",
+      "rationale": "Optimized for fast triage by surfacing verdict, blast radius, and immediate containment priorities in no more than three always-visible sections.",
+      "sections": [
+        {
+          "id": "sec-001",
+          "title": "Verdict",
+          "primitive": "hero-signal",
+          "priority": "primary",
+          "disclosure": "always",
+          "contentIds": [
+            "itm-001",
+            "itm-002",
+            "itm-003",
+            "itm-004"
+          ]
+        },
+        {
+          "id": "sec-002",
+          "title": "Blast Radius",
+          "primitive": "metric-strip",
+          "priority": "primary",
+          "disclosure": "always",
+          "contentIds": [
+            "itm-005",
+            "itm-006"
+          ]
+        },
+        {
+          "id": "sec-003",
+          "title": "Immediate Action",
+          "primitive": "action-list",
+          "priority": "primary",
+          "disclosure": "always",
+          "contentIds": [
+            "itm-021",
+            "itm-008",
+            "itm-010",
+            "itm-011"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cand-002",
+      "label": "Focused analyst investigation view",
+      "attention": "focused",
+      "rationale": "Preserves the attack sequence, affected entities, ATT&CK techniques, and response priorities with progressive disclosure for detailed investigation.",
+      "sections": [
+        {
+          "id": "sec-101",
+          "title": "Incident Overview",
+          "primitive": "hero-signal",
+          "priority": "primary",
+          "disclosure": "always",
+          "contentIds": [
+            "itm-001",
+            "itm-002",
+            "itm-003",
+            "itm-004",
+            "itm-006"
+          ]
+        },
+        {
+          "id": "sec-102",
+          "title": "Attack Sequence",
+          "primitive": "timeline",
+          "priority": "primary",
+          "disclosure": "always",
+          "contentIds": [
+            "itm-012",
+            "itm-013",
+            "itm-014",
+            "itm-015",
+            "itm-016",
+            "itm-017"
+          ]
+        },
+        {
+          "id": "sec-103",
+          "title": "Affected Entities",
+          "primitive": "entity-grid",
+          "priority": "primary",
+          "disclosure": "always",
+          "contentIds": [
+            "itm-007",
+            "itm-008",
+            "itm-009",
+            "itm-010",
+            "itm-011"
+          ]
+        },
+        {
+          "id": "sec-104",
+          "title": "ATT&CK Techniques",
+          "primitive": "technique-list",
+          "priority": "secondary",
+          "disclosure": "collapsed",
+          "contentIds": [
+            "itm-018",
+            "itm-019",
+            "itm-020"
+          ]
+        },
+        {
+          "id": "sec-105",
+          "title": "Response Priorities",
+          "primitive": "action-list",
+          "priority": "secondary",
+          "disclosure": "collapsed",
+          "contentIds": [
+            "itm-021"
+          ]
+        },
+        {
+          "id": "sec-106",
+          "title": "Assessment Notes",
+          "primitive": "narrative",
+          "priority": "tertiary",
+          "disclosure": "on-demand",
+          "contentIds": [
+            "itm-022",
+            "itm-005"
+          ]
+        }
+      ]
+    }
+  ]
+}

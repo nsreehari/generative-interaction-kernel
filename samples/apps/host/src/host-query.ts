@@ -27,11 +27,16 @@ function isDemoEnabled(params: URLSearchParams): boolean {
   return value !== null && value !== "0";
 }
 
-export function readHostQuery(search: string): HostQuery {
+function cachedBlueprintFromPath(pathname: string): string | null {
+  const match = /(?:^|\/)cached\/([^/]+)\/?$/.exec(pathname);
+  return match ? `cached-${decodeURIComponent(match[1])}` : null;
+}
+
+export function readHostQuery(search: string, pathname = ""): HostQuery {
   const params = new URLSearchParams(search);
   const requestedPresentation = params.get("presentation") ?? params.get("presentationContext");
   return {
-    targetId: params.get("b") ?? params.get("bundle"),
+    targetId: params.get("b") ?? params.get("bundle") ?? cachedBlueprintFromPath(pathname),
     demoEnabled: isDemoEnabled(params),
     harnessId: isGikEnabled(params) || params.get("harness") === "gik-control-harness" || params.has("plane")
       ? "gik-control-harness"

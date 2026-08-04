@@ -1,0 +1,559 @@
+{
+  "headline": "True-positive multi-stage cloud attack with confirmed data access/exfiltration against proddata001",
+  "summary": "Between 2026-07-17 22:56:17 and 2026-07-17 22:56:34, the report confirms a true-positive multi-stage attack from 185.220.101.42 involving reconnaissance, credential access, discovery, collection, and exfiltration activity. Evidence shows SAS access to a non-public container, service principal authentication via client_secret, IMDS token retrieval from webapp-vm-001, storage account key retrieval for PRODDATA001, and blob access including customer-pii and database-backups. Data access/exfiltration is confirmed.",
+  "asOf": "2026-07-17 22:56:34",
+  "items": [
+    {
+      "id": "i1",
+      "kind": "judgment",
+      "title": "Incident verdict",
+      "detail": "Incident classified as True Positive / Other because the report states a confirmed malicious multi-stage attack resulting in data exfiltration.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "True Positive / Other",
+      "unit": "",
+      "date": "2026-07-17 22:56:34"
+    },
+    {
+      "id": "i2",
+      "kind": "fact",
+      "title": "Incident confidence",
+      "detail": "Investigation confidence is High.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "High",
+      "unit": "",
+      "date": "2026-07-17 22:56:34"
+    },
+    {
+      "id": "i3",
+      "kind": "fact",
+      "title": "Attack source IP",
+      "detail": "Public IP 185.220.101.42 was observed across reconnaissance, credential access, discovery, and blob access activity.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "185.220.101.42",
+      "unit": "",
+      "date": "2026-07-17 22:56:17"
+    },
+    {
+      "id": "i4",
+      "kind": "fact",
+      "title": "Incident time window",
+      "detail": "Observed activity occurred during 2026-07-17 22:56:17 – 2026-07-17 22:56:34.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "17",
+      "unit": "seconds",
+      "date": "2026-07-17 22:56:17 – 2026-07-17 22:56:34"
+    },
+    {
+      "id": "i5",
+      "kind": "fact",
+      "title": "Observable events",
+      "detail": "Total observable events recorded in the report.",
+      "salience": "medium",
+      "confidence": "high",
+      "value": "15",
+      "unit": "events",
+      "date": "2026-07-17 22:56:34"
+    },
+    {
+      "id": "i6",
+      "kind": "fact",
+      "title": "Confirmed data access/exfiltration",
+      "detail": "The report explicitly states data access/exfiltration confirmed, including blob data exfiltrated from customer-pii and staged data to cloud storage.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "confirmed",
+      "unit": "",
+      "date": "2026-07-17 22:56:34"
+    },
+    {
+      "id": "i7",
+      "kind": "fact",
+      "title": "Compromised storage account",
+      "detail": "Storage account PRODDATA001 / proddata001 is marked Compromised and involved in reconnaissance, discovery, credential access, and key retrieval.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "proddata001",
+      "unit": "",
+      "date": "2026-07-17 22:56:34"
+    },
+    {
+      "id": "i8",
+      "kind": "fact",
+      "title": "Affected service principal",
+      "detail": "Service principal aabbccdd-1122-3344-5566-778899aabbcc (Service Principal App) authenticated non-interactively from 185.220.101.42 via client_secret.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "aabbccdd-1122-3344-5566-778899aabbcc",
+      "unit": "",
+      "date": "2026-07-17 22:56:33"
+    },
+    {
+      "id": "i9",
+      "kind": "fact",
+      "title": "Compromised managed identity",
+      "detail": "Managed identity 11111111-2222-3333-4444-555555555555 on webapp-vm-001 is marked Compromised after successful IMDS token retrieval for management.azure.com.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "11111111-2222-3333-4444-555555555555",
+      "unit": "",
+      "date": "2026-07-17 22:56:33"
+    },
+    {
+      "id": "i10",
+      "kind": "fact",
+      "title": "Affected virtual machine",
+      "detail": "Virtual machine webapp-vm-001 is marked Affected in credential access activity tied to IMDS token acquisition.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "webapp-vm-001",
+      "unit": "",
+      "date": "2026-07-17 22:56:33"
+    },
+    {
+      "id": "i11",
+      "kind": "fact",
+      "title": "Affected resource group",
+      "detail": "production-rg is listed as an affected cloud resource involved in discovery.",
+      "salience": "medium",
+      "confidence": "high",
+      "value": "production-rg",
+      "unit": "",
+      "date": "2026-07-17 22:56:33"
+    },
+    {
+      "id": "i12",
+      "kind": "fact",
+      "title": "Affected subscription",
+      "detail": "Subscription 12345678-1234-1234-1234-123456789abc is listed as an affected cloud resource involved in discovery.",
+      "salience": "medium",
+      "confidence": "high",
+      "value": "12345678-1234-1234-1234-123456789abc",
+      "unit": "",
+      "date": "2026-07-17 22:56:33"
+    },
+    {
+      "id": "i13",
+      "kind": "fact",
+      "title": "Compromised SAS credential",
+      "detail": "SAS:deployments is marked Compromised and used to access the non-public deployments container.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "SAS:deployments",
+      "unit": "",
+      "date": "2026-07-17 22:56:33"
+    },
+    {
+      "id": "i14",
+      "kind": "fact",
+      "title": "Affected deployments container",
+      "detail": "deployments container on proddata001 was accessed via SAS and is marked Affected.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "deployments",
+      "unit": "",
+      "date": "2026-07-17 22:56:33"
+    },
+    {
+      "id": "i15",
+      "kind": "fact",
+      "title": "Affected public-assets container",
+      "detail": "public-assets on proddata001 was publicly enumerated and is marked Affected.",
+      "salience": "medium",
+      "confidence": "high",
+      "value": "public-assets",
+      "unit": "",
+      "date": "2026-07-17 22:56:33"
+    },
+    {
+      "id": "i16",
+      "kind": "fact",
+      "title": "Affected database-backups container",
+      "detail": "database-backups on proddata001 was publicly enumerated and accessed.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "database-backups",
+      "unit": "",
+      "date": "2026-07-17 22:56:34"
+    },
+    {
+      "id": "i17",
+      "kind": "fact",
+      "title": "Impacted customer-pii object",
+      "detail": "customer-pii/customers-2026-q1.csv on proddata001 is listed as an affected asset targeted during collection.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "customer-pii/customers-2026-q1.csv",
+      "unit": "",
+      "date": "2026-07-17 22:56:34"
+    },
+    {
+      "id": "i18",
+      "kind": "event",
+      "title": "Public blob enumeration of storage account root",
+      "detail": "Anonymous/public blob enumeration of the storage account root on proddata001 was observed.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "IA-ALERT-001",
+      "unit": "",
+      "date": "2026-07-17 22:56:17"
+    },
+    {
+      "id": "i19",
+      "kind": "event",
+      "title": "Data staged to cloud storage",
+      "detail": "19 PutBlob operations from 185.220.101.42 staged data to app-logs, customer-pii, and database-backups.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "19",
+      "unit": "PutBlob ops",
+      "date": "2026-07-17 22:56:17"
+    },
+    {
+      "id": "i20",
+      "kind": "event",
+      "title": "Service principal sign-in activity",
+      "detail": "Service principal aabbccdd-1122-3344-5566-778899aabbcc authenticated non-interactively from 185.220.101.42 via client_secret.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "4",
+      "unit": "sign-ins",
+      "date": "2026-07-17 22:56:33"
+    },
+    {
+      "id": "i21",
+      "kind": "event",
+      "title": "Managed identity token obtained via IMDS",
+      "detail": "Successful IMDS.GetToken from 185.220.101.42 against webapp-vm-001 for resource hxxps://management[.]azure[.]com/.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "Success",
+      "unit": "",
+      "date": "2026-07-17 22:56:33"
+    },
+    {
+      "id": "i22",
+      "kind": "event",
+      "title": "ARM enumeration burst",
+      "detail": "Azure ARM enumeration burst from 185.220.101.42 with 10 operations, including subscriptions/read and storageAccounts/read.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "10",
+      "unit": "ops",
+      "date": "2026-07-17 22:56:33"
+    },
+    {
+      "id": "i23",
+      "kind": "event",
+      "title": "Public-assets enumeration",
+      "detail": "ListBlobs and GetBlob activity enumerated public-assets on proddata001.",
+      "salience": "medium",
+      "confidence": "high",
+      "value": "IA-ALERT-009",
+      "unit": "",
+      "date": "2026-07-17 22:56:33"
+    },
+    {
+      "id": "i24",
+      "kind": "event",
+      "title": "SAS access to deployments",
+      "detail": "SAS token used to list and read from the non-public deployments container.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "2",
+      "unit": "operations",
+      "date": "2026-07-17 22:56:33"
+    },
+    {
+      "id": "i25",
+      "kind": "event",
+      "title": "Storage account keys retrieved",
+      "detail": "Microsoft.Storage/storageAccounts/listKeys/action succeeded for PRODDATA001 from 185.220.101.42.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "3",
+      "unit": "listKeys actions",
+      "date": "2026-07-17 22:56:34"
+    },
+    {
+      "id": "i26",
+      "kind": "event",
+      "title": "Database-backups enumeration",
+      "detail": "ListBlobs and GetBlob activity enumerated database-backups including prod-db-backup-20260227.sql.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "IA-ALERT-014",
+      "unit": "",
+      "date": "2026-07-17 22:56:34"
+    },
+    {
+      "id": "i27",
+      "kind": "event",
+      "title": "Blob data exfiltrated from customer-pii",
+      "detail": "GetBlob activity accessed customer-pii/customers-2026-q1.csv; the alert states blob data exfiltrated from customer-pii.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "2",
+      "unit": "objects",
+      "date": "2026-07-17 22:56:34"
+    },
+    {
+      "id": "i28",
+      "kind": "technique",
+      "title": "T1595.003 Active Scanning: Wordlist Scanning",
+      "detail": "Reconnaissance against blob storage root and account properties on proddata001.",
+      "salience": "medium",
+      "confidence": "high",
+      "value": "T1595.003",
+      "unit": "",
+      "date": "2026-07-17 22:56:17"
+    },
+    {
+      "id": "i29",
+      "kind": "technique",
+      "title": "T1567.002 Exfiltration Over Web Service: to Cloud Storage",
+      "detail": "PutBlob activity staged data to cloud storage on proddata001.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "T1567.002",
+      "unit": "",
+      "date": "2026-07-17 22:56:17"
+    },
+    {
+      "id": "i30",
+      "kind": "technique",
+      "title": "T1078.004 Valid Accounts: Cloud Accounts",
+      "detail": "Service principal authenticated non-interactively via client_secret from the source IP.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "T1078.004",
+      "unit": "",
+      "date": "2026-07-17 22:56:33"
+    },
+    {
+      "id": "i31",
+      "kind": "technique",
+      "title": "T1552.005 Unsecured Credentials: Cloud Instance Metadata API",
+      "detail": "Managed identity token obtained through IMDS on webapp-vm-001.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "T1552.005",
+      "unit": "",
+      "date": "2026-07-17 22:56:33"
+    },
+    {
+      "id": "i32",
+      "kind": "technique",
+      "title": "T1087.004 Account Discovery: Cloud Account",
+      "detail": "Subscriptions/read and storageAccounts/read enumeration from the source IP.",
+      "salience": "medium",
+      "confidence": "high",
+      "value": "T1087.004",
+      "unit": "",
+      "date": "2026-07-17 22:56:33"
+    },
+    {
+      "id": "i33",
+      "kind": "technique",
+      "title": "T1528 Steal Application Access Token",
+      "detail": "Storage account key retrieval for PRODDATA001 via listKeys/action.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "T1528",
+      "unit": "",
+      "date": "2026-07-17 22:56:34"
+    },
+    {
+      "id": "i34",
+      "kind": "technique",
+      "title": "T1530 Data from Cloud Storage Object",
+      "detail": "GetBlob access to customer-pii/customers-2026-q1.csv during collection.",
+      "salience": "high",
+      "confidence": "high",
+      "value": "T1530",
+      "unit": "",
+      "date": "2026-07-17 22:56:34"
+    },
+    {
+      "id": "i35",
+      "kind": "risk",
+      "title": "Blast radius includes storage, identities, and compute",
+      "detail": "Affected/compromised entities span proddata001, service principal, managed identity, webapp-vm-001, deployments, public-assets, database-backups, customer-pii, production-rg, and the subscription.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "10",
+      "unit": "entities/assets",
+      "date": "2026-07-17 22:56:34"
+    },
+    {
+      "id": "i36",
+      "kind": "action",
+      "title": "Immediate containment priority",
+      "detail": "Prioritize containment around the active source IP and all affected credentials/assets explicitly identified in the report: SAS:deployments, managed identity on webapp-vm-001, service principal aabbccdd-1122-3344-5566-778899aabbcc, and storage account PRODDATA001.",
+      "salience": "critical",
+      "confidence": "high",
+      "value": "containment",
+      "unit": "",
+      "date": "2026-07-17 22:56:34"
+    }
+  ],
+  "projectionCandidates": [
+    {
+      "id": "p1",
+      "label": "Glanceable executive triage",
+      "attention": "glanceable",
+      "rationale": "Optimized for fast verdict, blast radius, and immediate containment with only three always-visible sections.",
+      "sections": [
+        {
+          "id": "p1s1",
+          "title": "Incident verdict",
+          "primitive": "hero-signal",
+          "priority": "primary",
+          "disclosure": "always",
+          "contentIds": [
+            "i1",
+            "i6",
+            "i3"
+          ]
+        },
+        {
+          "id": "p1s2",
+          "title": "Blast radius",
+          "primitive": "metric-strip",
+          "priority": "primary",
+          "disclosure": "always",
+          "contentIds": [
+            "i4",
+            "i5",
+            "i35"
+          ]
+        },
+        {
+          "id": "p1s3",
+          "title": "Immediate action focus",
+          "primitive": "action-list",
+          "priority": "primary",
+          "disclosure": "always",
+          "contentIds": [
+            "i36",
+            "i7",
+            "i9",
+            "i13",
+            "i17"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p2",
+      "label": "Focused incident intelligence view",
+      "attention": "focused",
+      "rationale": "Preserves attack sequence, affected entities, ATT&CK techniques, and response focus with progressive disclosure.",
+      "sections": [
+        {
+          "id": "p2s1",
+          "title": "Executive assessment",
+          "primitive": "hero-signal",
+          "priority": "primary",
+          "disclosure": "always",
+          "contentIds": [
+            "i1",
+            "i2",
+            "i6",
+            "i3"
+          ]
+        },
+        {
+          "id": "p2s2",
+          "title": "Key metrics",
+          "primitive": "metric-strip",
+          "priority": "secondary",
+          "disclosure": "always",
+          "contentIds": [
+            "i4",
+            "i5",
+            "i35"
+          ]
+        },
+        {
+          "id": "p2s3",
+          "title": "Attack sequence",
+          "primitive": "timeline",
+          "priority": "primary",
+          "disclosure": "always",
+          "contentIds": [
+            "i18",
+            "i19",
+            "i20",
+            "i21",
+            "i22",
+            "i23",
+            "i24",
+            "i25",
+            "i26",
+            "i27"
+          ]
+        },
+        {
+          "id": "p2s4",
+          "title": "Affected and compromised entities",
+          "primitive": "entity-grid",
+          "priority": "primary",
+          "disclosure": "collapsed",
+          "contentIds": [
+            "i7",
+            "i8",
+            "i9",
+            "i10",
+            "i11",
+            "i12",
+            "i13",
+            "i14",
+            "i15",
+            "i16",
+            "i17"
+          ]
+        },
+        {
+          "id": "p2s5",
+          "title": "ATT&CK techniques",
+          "primitive": "technique-list",
+          "priority": "secondary",
+          "disclosure": "collapsed",
+          "contentIds": [
+            "i28",
+            "i29",
+            "i30",
+            "i31",
+            "i32",
+            "i33",
+            "i34"
+          ]
+        },
+        {
+          "id": "p2s6",
+          "title": "Response focus",
+          "primitive": "action-list",
+          "priority": "secondary",
+          "disclosure": "collapsed",
+          "contentIds": [
+            "i36"
+          ]
+        },
+        {
+          "id": "p2s7",
+          "title": "Analyst narrative",
+          "primitive": "narrative",
+          "priority": "tertiary",
+          "disclosure": "on-demand",
+          "contentIds": [
+            "i35"
+          ]
+        }
+      ]
+    }
+  ]
+}
