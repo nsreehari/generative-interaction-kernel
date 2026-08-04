@@ -4,44 +4,48 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { test } from "vitest";
 
 import {
-  ActionBoard,
-  AttackGraph,
-  AnnotatedSourceExcerpt,
+  Argument,
+  AttackPath,
   Chart,
   DateTime,
-  DecisionSummary,
-  EntityConstellation,
-  EvidenceTrail,
+  Decision,
+  EntitySet,
+  EvidenceCase,
   Gantt,
   GrowingContainerPrimitive,
   InfiniteCanvasPrimitive,
-  MetricComparison,
-  NarrativeSection,
-  SemanticGraph,
-  Sequence,
+  MeasureSet,
+  Milestones,
+  Narrative,
+  RelationshipSet,
+  Process,
+  SourceFindings,
+  WorkSet,
   TimerButton,
   TodoList,
   Form,
   EditableTable,
   appendEditableRowOnLastRowFocus,
+  argumentDefinition,
   committedEditableRows,
-  actionBoardDefinition,
-  attackGraphDefinition,
-  annotatedSourceExcerptDefinition,
+  attackPathDefinition,
   chartDefinition,
   dateTimeDefinition,
-  decisionSummaryDefinition,
-  entityConstellationDefinition,
-  materializeActionBoardTrial,
-  materializeAnnotatedSourceExcerptTrial,
+  decisionDefinition,
+  entitySetDefinition,
+  materializeAttackPathTrial,
+  materializeArgumentTrial,
+  materializeDecisionTrial,
+  materializeEntitySetTrial,
+  materializeEvidenceCaseTrial,
+  materializeProcessTrial,
+  materializeSourceFindingsTrial,
+  materializeWorkSetTrial,
   materializeChartTrial,
-  materializeDecisionSummaryTrial,
-  materializeEntityConstellationTrial,
-  materializeEvidenceTrailTrial,
-  materializeMetricComparisonTrial,
-  materializeNarrativeSectionTrial,
-  materializeSemanticGraphTrial,
-  materializeSequenceTrial,
+  materializeMeasureSetTrial,
+  materializeMilestonesTrial,
+  materializeNarrativeTrial,
+  materializeRelationshipSetTrial,
   describeSemanticComponent,
   createSemanticComponentAuthoringTools,
   getSemanticComponentAgentInstructions,
@@ -56,8 +60,13 @@ import {
   primitiveComponentViews,
   semanticComponentDefinitions,
   semanticComponentViews,
-  metricComparisonDefinition,
-  evidenceTrailDefinition,
+  securityComponentDefinitions,
+  securityComponentViews,
+  softwareComponentDefinitions,
+  softwareComponentViews,
+  measureSetDefinition,
+  milestonesDefinition,
+  evidenceCaseDefinition,
   formatTimerButtonCountdown,
   formatDateTime,
   growingContainerDefinition,
@@ -65,9 +74,11 @@ import {
   infiniteCanvasDefinition,
   INFINITE_CANVAS_THEME_COLORS,
   isGrowingContainerPinnedToEnd,
-  narrativeSectionDefinition,
-  semanticGraphDefinition,
-  sequenceDefinition,
+  narrativeDefinition,
+  relationshipSetDefinition,
+  processDefinition,
+  sourceFindingsDefinition,
+  workSetDefinition,
   timerButtonDefinition,
   todoListDefinition,
   updateTodoListValues,
@@ -77,23 +88,25 @@ import {
   preflightSemanticComponent,
   shouldGrowingContainerFollowEnd,
   validateSemanticComponentProps,
-  buildAttackGraphCanvasModel,
 } from "../src/shared";
+import { buildAttackGraphCanvasModel } from "../src/security/attack-graph";
 
 const cases = [
-  { definition: sequenceDefinition, Component: Sequence, materialize: materializeSequenceTrial, expected: "Response sequence" },
-  { definition: entityConstellationDefinition, Component: EntityConstellation, materialize: materializeEntityConstellationTrial, expected: "Admin account" },
-  { definition: decisionSummaryDefinition, Component: DecisionSummary, materialize: materializeDecisionSummaryTrial, expected: "Contain affected identity" },
-  { definition: actionBoardDefinition, Component: ActionBoard, materialize: materializeActionBoardTrial, expected: "Disable account" },
-  { definition: annotatedSourceExcerptDefinition, Component: AnnotatedSourceExcerpt, materialize: materializeAnnotatedSourceExcerptTrial, expected: "Containment threshold reached" },
+  { definition: argumentDefinition, Component: Argument, materialize: materializeArgumentTrial, expected: "Contain the affected identity" },
+  { definition: processDefinition, Component: Process, materialize: materializeProcessTrial, expected: "Response process" },
+  { definition: entitySetDefinition, Component: EntitySet, materialize: materializeEntitySetTrial, expected: "Admin account" },
+  { definition: decisionDefinition, Component: Decision, materialize: materializeDecisionTrial, expected: "Contain affected identity" },
+  { definition: workSetDefinition, Component: WorkSet, materialize: materializeWorkSetTrial, expected: "Investigate sign-in" },
+  { definition: sourceFindingsDefinition, Component: SourceFindings, materialize: materializeSourceFindingsTrial, expected: "Inclusive threshold" },
   { definition: chartDefinition, Component: Chart, materialize: materializeChartTrial, expected: "Risk events by hour" },
   { definition: dateTimeDefinition, Component: DateTime, materialize: () => dateTimeDefinition.materializeTrial(), expected: "Jul" },
   { definition: ganttDefinition, Component: Gantt, materialize: () => ganttDefinition.materializeTrial(), expected: "Mailbox collection" },
-  { definition: metricComparisonDefinition, Component: MetricComparison, materialize: materializeMetricComparisonTrial, expected: "Affected identities" },
-  { definition: narrativeSectionDefinition, Component: NarrativeSection, materialize: materializeNarrativeSectionTrial, expected: "Initial access" },
-  { definition: evidenceTrailDefinition, Component: EvidenceTrail, materialize: materializeEvidenceTrailTrial, expected: "Unfamiliar device registration" },
-  { definition: semanticGraphDefinition, Component: SemanticGraph, materialize: materializeSemanticGraphTrial, expected: "Incident relationships" },
-  { definition: attackGraphDefinition, Component: AttackGraph, materialize: () => attackGraphDefinition.materializeTrial(), expected: "Admin identity" },
+  { definition: measureSetDefinition, Component: MeasureSet, materialize: materializeMeasureSetTrial, expected: "Affected identities" },
+  { definition: milestonesDefinition, Component: Milestones, materialize: materializeMilestonesTrial, expected: "Loading presets" },
+  { definition: narrativeDefinition, Component: Narrative, materialize: materializeNarrativeTrial, expected: "Initial access" },
+  { definition: evidenceCaseDefinition, Component: EvidenceCase, materialize: materializeEvidenceCaseTrial, expected: "Unfamiliar device registration" },
+  { definition: relationshipSetDefinition, Component: RelationshipSet, materialize: materializeRelationshipSetTrial, expected: "Incident relationships" },
+  { definition: attackPathDefinition, Component: AttackPath, materialize: materializeAttackPathTrial, expected: "Admin identity" },
   { definition: infiniteCanvasDefinition, Component: InfiniteCanvasPrimitive, materialize: () => infiniteCanvasDefinition.materializeTrial(), expected: "Source system" },
 ] as const;
 
@@ -109,40 +122,65 @@ for (const entry of cases) {
   });
 }
 
+test("canonical semantic variants share one invariant authored data payload", () => {
+  const entries = [
+    { definition: argumentDefinition, expected: ["Contain the affected identity", "A new credential was registered", "supports", "opposes"] },
+    { definition: narrativeDefinition, expected: ["Initial access", "Containment posture"] },
+    { definition: measureSetDefinition, expected: ["Affected identities", "Contained", "Mean response"] },
+    { definition: milestonesDefinition, expected: ["Loading presets", "Building manager", "Building open services", "Building preview"] },
+    { definition: relationshipSetDefinition, expected: ["Admin identity", "New device", "Finance app", "registered", "accessed"] },
+  ] as const;
+
+  for (const { definition, expected } of entries) {
+    const base = definition.materializeTrial();
+    const dataProp = definition.dataProp!;
+    const authoredData = structuredClone(base.props[dataProp]);
+    for (const { value: variant } of definition.variants) {
+      const props: typeof base.props = { ...structuredClone(base.props), variant };
+      const node = { ...base, props };
+      assert.equal(definition.validate(node.props).ok, true, `${definition.capability}:${variant}`);
+      const markup = renderToStaticMarkup(<definition.component node={node} emit={() => {}} children={undefined} />);
+      for (const text of expected) assert.match(markup, new RegExp(text), `${definition.capability}:${variant}:${text}`);
+      assert.deepEqual(node.props[dataProp], authoredData, `${definition.capability}:${variant}`);
+    }
+  }
+});
+
 test("component schemas reject semantic tokens outside each component vocabulary", () => {
-  const sequence = materializeSequenceTrial();
+  const sequence = materializeProcessTrial();
   (sequence.props.spec as Record<string, unknown>).toneMap = { active: "urgent" };
-  assert.equal(sequenceDefinition.validate(sequence.props).ok, false);
+  assert.equal(processDefinition.validate(sequence.props).ok, false);
 
-  const constellation = materializeEntityConstellationTrial();
+  const constellation = materializeEntitySetTrial();
   (constellation.props.spec as Record<string, unknown>).toneMap = { compromised: "blocked" };
-  assert.equal(entityConstellationDefinition.validate(constellation.props).ok, false);
+  assert.equal(entitySetDefinition.validate(constellation.props).ok, false);
 
-  const decision = materializeDecisionSummaryTrial();
+  const decision = materializeDecisionTrial();
   (decision.props.spec as Record<string, unknown>).toneMap = { approved: "complete" };
-  assert.equal(decisionSummaryDefinition.validate(decision.props).ok, false);
-
-  const board = materializeActionBoardTrial();
-  const boardSpec = board.props.spec as Record<string, unknown>;
-  boardSpec.columns = [{ value: "now", label: "Immediate", token: "negative" }];
-  assert.equal(actionBoardDefinition.validate(board.props).ok, false);
+  assert.equal(decisionDefinition.validate(decision.props).ok, false);
 });
 
 test("public registries separate component layers and expose an aggregate", () => {
-  const semantic = ["action-board", "annotated-source-excerpt", "attack-graph", "decision-summary", "entity-constellation", "evidence-trail", "metric-comparison", "narrative-section", "semantic-graph", "sequence", "timeline"];
-  const primitives = ["access-gate", "chart", "datetime", "editable-table", "form", "gantt", "growing-container", "infinite-canvas", "timer-button", "todo-list"];
+  const semantic = ["argument", "decision", "entity-set", "event-series", "evidence-case", "measure-set", "milestones", "narrative", "process", "relationship-set", "work-set"];
+  const security = ["attack-path"];
+  const software = ["source-comparison", "source-findings"];
+  const primitives = ["access-gate", "chart", "collection-board", "datetime", "editable-table", "form", "gantt", "graph-diagram", "growing-container", "infinite-canvas", "source-viewer", "timer-button", "todo-list"];
   const fluent = ["badge", "button", "chips", "data-grid", "dialog", "dropdown", "list", "persona", "searchbox", "spinner", "switch", "tab-bar", "table", "text-field", "textarea", "toggle"];
   assert.deepEqual(Object.keys(semanticComponentViews).sort(), semantic);
   assert.deepEqual(Object.keys(semanticComponentDefinitions).sort(), semantic);
+  assert.deepEqual(Object.keys(securityComponentViews).sort(), security);
+  assert.deepEqual(Object.keys(securityComponentDefinitions).sort(), security);
+  assert.deepEqual(Object.keys(softwareComponentViews).sort(), software);
+  assert.deepEqual(Object.keys(softwareComponentDefinitions).sort(), software);
   assert.deepEqual(Object.keys(primitiveComponentViews).sort(), primitives);
   assert.deepEqual(Object.keys(primitiveComponentDefinitions).sort(), primitives);
-  assert.deepEqual(Object.keys(componentViews).sort(), [...fluent, ...primitives, ...semantic].sort());
-  assert.deepEqual(Object.keys(componentDefinitions).sort(), [...fluent, ...primitives, ...semantic].sort());
+  assert.deepEqual(Object.keys(componentViews).sort(), [...fluent, ...primitives, ...semantic, ...security, ...software].sort());
+  assert.deepEqual(Object.keys(componentDefinitions).sort(), [...fluent, ...primitives, ...semantic, ...security, ...software].sort());
   assert.equal(chartDefinition.capability, "primitive:chart");
   assert.deepEqual(growingContainerDefinition.slots, ["children"]);
   assert.deepEqual(timerButtonDefinition.events, ["press"]);
   assert.deepEqual(todoListDefinition.events, ["save"]);
-  assert.deepEqual(actionBoardDefinition.events, ["action"]);
+  assert.deepEqual(workSetDefinition.events, ["select", "activate", "reorder", "move"]);
 });
 
 test("every registry entry exposes a complete standardized contract", () => {
@@ -150,6 +188,8 @@ test("every registry entry exposes a complete standardized contract", () => {
     ["fluent", fluentComponentDefinitions],
     ["primitive", primitiveComponentDefinitions],
     ["semantic", semanticComponentDefinitions],
+    ["security", securityComponentDefinitions],
+    ["software", softwareComponentDefinitions],
   ] as const;
 
   for (const [layer, definitions] of layers) {
@@ -229,18 +269,20 @@ test("component definitions expose closed agent-facing variant contracts", () =>
 test("agent authoring APIs discover, describe, validate, and materialize components", () => {
   const catalog = listSemanticComponents();
   assert.equal(catalog.length, 11);
+  assert.deepEqual(catalog.find((entry) => entry.id === "argument")?.variants, ["map", "outline", "text"]);
   assert.ok(!catalog.some((entry) => entry.id === "chart"));
-  assert.deepEqual(catalog.find((entry) => entry.id === "timeline")?.variants, ["standard", "compact", "minimal"]);
-  assert.equal(catalog.find((entry) => entry.id === "timeline")?.dataProp, "items");
+  assert.deepEqual(catalog.find((entry) => entry.id === "event-series")?.variants, ["chronology", "axis", "text"]);
+  assert.deepEqual(catalog.find((entry) => entry.id === "milestones")?.variants, ["rail", "timeline", "list", "axis", "text"]);
+  assert.equal(catalog.find((entry) => entry.id === "event-series")?.dataProp, "items");
 
-  const description = describeSemanticComponent("semantic:timeline");
-  assert.equal(description.defaultVariant, "standard");
+  const description = describeSemanticComponent("semantic:event-series");
+  assert.equal(description.defaultVariant, "chronology");
   assert.equal((description.propsSchema.properties as Record<string, unknown>).variant != null, true);
 
-  const trial = materializeSemanticComponentTrial("semantic:timeline", "minimal");
-  assert.equal(trial.props.variant, "minimal");
-  assert.equal(validateSemanticComponentProps("semantic:timeline", trial.props).ok, true);
-  assert.throws(() => materializeSemanticComponentTrial("semantic:timeline", "unknown"));
+  const trial = materializeSemanticComponentTrial("semantic:event-series", "text");
+  assert.equal(trial.props.variant, "text");
+  assert.equal(validateSemanticComponentProps("semantic:event-series", trial.props).ok, true);
+  assert.throws(() => materializeSemanticComponentTrial("semantic:event-series", "unknown"));
   assert.throws(() => describeSemanticComponent("semantic:not-real"), /Unknown semantic component/);
 });
 
@@ -254,16 +296,16 @@ test("component authoring tools expose the complete agent-safe surface", () => {
   ]);
   assert.ok(semanticComponentAuthoringTools.every((tool) => tool.agentSafe));
   const list = semanticComponentAuthoringTools[0].handler({}) as Array<{ capability: string }>;
-  assert.ok(list.some((entry) => entry.capability === "semantic:action-board"));
+  assert.ok(list.some((entry) => entry.capability === "semantic:work-set"));
 });
 
 test("agent kit scopes generated instructions and tools to requested components", () => {
-  const kit = getSemanticComponentAgentKit(["timeline", "semantic:sequence", "semantic:timeline"]);
-  assert.deepEqual(kit.capabilities, ["semantic:timeline", "semantic:sequence"]);
-  assert.match(kit.instructions, /## semantic:timeline/);
-  assert.match(kit.instructions, /## semantic:sequence/);
-  assert.doesNotMatch(kit.instructions, /semantic:action-board/);
-  assert.match(kit.instructions, /minimal \(default\)|standard \(default\)/);
+  const kit = getSemanticComponentAgentKit(["event-series", "semantic:process", "semantic:event-series"]);
+  assert.deepEqual(kit.capabilities, ["semantic:event-series", "semantic:process"]);
+  assert.match(kit.instructions, /## semantic:event-series/);
+  assert.match(kit.instructions, /## semantic:process/);
+  assert.doesNotMatch(kit.instructions, /semantic:work-set/);
+  assert.match(kit.instructions, /chronology \(default\)|flow \(default\)/);
 
   const list = kit.tools.find((tool) => tool.name === "listSemanticComponents")!.handler({}) as Array<{ capability: string }>;
   assert.deepEqual(list.map((entry) => entry.capability), kit.capabilities);
@@ -271,27 +313,27 @@ test("agent kit scopes generated instructions and tools to requested components"
   const describe = kit.tools.find((tool) => tool.name === "describeSemanticComponent")!;
   const capability = (describe.inputSchema.properties as Record<string, { enum: string[] }>).capability;
   assert.deepEqual(capability.enum, kit.capabilities);
-  assert.throws(() => describe.handler({ capability: "semantic:action-board" }), /outside this agent kit/);
+  assert.throws(() => describe.handler({ capability: "semantic:work-set" }), /outside this agent kit/);
   assert.throws(() => getSemanticComponentAgentInstructions([]), /At least one/);
 });
 
 test("semantic component preflight reports validation and effective variant", () => {
-  const trial = materializeSemanticComponentTrial("semantic:timeline");
+  const trial = materializeSemanticComponentTrial("semantic:event-series");
   delete trial.props.variant;
-  const report = preflightSemanticComponent("semantic:timeline", trial.props);
+  const report = preflightSemanticComponent("semantic:event-series", trial.props);
   assert.equal(report.ok, true);
-  assert.equal(report.effectiveVariant, "standard");
+  assert.equal(report.effectiveVariant, "chronology");
   assert.deepEqual(report.declaredEvents, []);
 
-  const scopedTools = createSemanticComponentAuthoringTools(["action-board"]);
+  const scopedTools = createSemanticComponentAuthoringTools(["work-set"]);
   const preflight = scopedTools.find((tool) => tool.name === "preflightSemanticComponent")!;
-  const actionTrial = materializeActionBoardTrial();
-  const toolReport = preflight.handler({ capability: "semantic:action-board", props: actionTrial.props }) as {
+  const actionTrial = materializeWorkSetTrial();
+  const toolReport = preflight.handler({ capability: "semantic:work-set", props: actionTrial.props }) as {
     ok: boolean;
     declaredEvents: string[];
   };
   assert.equal(toolReport.ok, true);
-  assert.deepEqual(toolReport.declaredEvents, ["action"]);
+  assert.deepEqual(toolReport.declaredEvents, ["select", "activate", "reorder", "move"]);
 });
 
 test("chart rejects nonnumeric values selected by its field mapping", () => {
@@ -302,13 +344,21 @@ test("chart rejects nonnumeric values selected by its field mapping", () => {
   assert.ok(report.errors.some((error) => error.code === "semantic-chart-values"));
 });
 
-test("semantic graph rejects edges that reference undeclared nodes", () => {
-  const trial = materializeSemanticGraphTrial();
-  const graph = trial.props.graph as { edges: Array<Record<string, unknown>> };
-  graph.edges[0].to = "missing-node";
-  const report = semanticGraphDefinition.validate(trial.props);
+test("relationship set rejects relationships that reference undeclared entities", () => {
+  const trial = materializeRelationshipSetTrial();
+  const graph = trial.props.graph as { relationships: Array<Record<string, unknown>> };
+  graph.relationships[0].to = "missing-entity";
+  const report = relationshipSetDefinition.validate(trial.props);
   assert.equal(report.ok, false);
-  assert.ok(report.errors.some((error) => error.code === "semantic-graph-edge-reference"));
+  assert.ok(report.errors.some((error) => error.code === "relationship-set-reference"));
+});
+
+test("milestones reject invalid authored temporal coordinates", () => {
+  const trial = materializeMilestonesTrial();
+  (trial.props.milestones as Array<Record<string, unknown>>)[0].at = "not-a-date";
+  const report = milestonesDefinition.validate(trial.props);
+  assert.equal(report.ok, false);
+  assert.ok(report.errors.some((error) => error.code === "timeline-valid-coordinate"));
 });
 
 test("chart accepts and renders pie as a spec kind", () => {
@@ -406,15 +456,15 @@ test("attack graph lowers each relationship to matching source and target port t
   });
 
   assert.equal(canvas.nodes.length, 2);
-  assert.deepEqual(canvas.nodePorts.attacker?.right, [{ id: "access:source", token: "relationship:access", label: "accessed" }]);
-  assert.deepEqual(canvas.nodePorts.mailbox?.left, [{ id: "access:target", token: "relationship:access", label: "accessed" }]);
+  assert.deepEqual(canvas.nodePorts.attacker?.right, [{ id: "access:source", token: "edge:access", label: "accessed" }]);
+  assert.deepEqual(canvas.nodePorts.mailbox?.left, [{ id: "access:target", token: "edge:access", label: "accessed" }]);
 });
 
 test("attack graph variants render distinct canvas, diagram, relation, Gantt, and text representations", () => {
   const renderVariant = (variant: "canvas" | "diagram" | "relations" | "gantt" | "text") => {
-    const trial = attackGraphDefinition.materializeTrial();
+    const trial = attackPathDefinition.materializeTrial();
     trial.props.variant = variant;
-    return renderToStaticMarkup(<AttackGraph node={trial} emit={() => {}} children={undefined} />);
+    return renderToStaticMarkup(<AttackPath node={trial} emit={() => {}} children={undefined} />);
   };
 
   const canvas = renderVariant("canvas");
@@ -448,13 +498,13 @@ test("attack graph variants render distinct canvas, diagram, relation, Gantt, an
 });
 
 test("attack graph Gantt requires relationship start and end mappings", () => {
-  const trial = attackGraphDefinition.materializeTrial();
+  const trial = attackPathDefinition.materializeTrial();
   trial.props.variant = "gantt";
   const spec = trial.props.spec as Record<string, unknown>;
   const relationshipFields = spec.relationshipFields as Record<string, unknown>;
   delete relationshipFields.start;
   delete relationshipFields.end;
-  assert.equal(attackGraphDefinition.validate(trial.props).ok, false);
+  assert.equal(attackPathDefinition.validate(trial.props).ok, false);
 });
 
 test("Gantt rejects reversed temporal intervals", () => {
@@ -501,7 +551,7 @@ test("Gantt renders numeric linear coordinates with a presentation prefix", () =
 });
 
 test("attack graph Gantt delegates linear coordinates to primitive:gantt", () => {
-  const trial = attackGraphDefinition.materializeTrial();
+  const trial = attackPathDefinition.materializeTrial();
   trial.props.variant = "gantt";
   const graph = trial.props.graph as Record<string, unknown>;
   const relationships = graph.relationships as Array<Record<string, unknown>>;
@@ -511,8 +561,8 @@ test("attack graph Gantt delegates linear coordinates to primitive:gantt", () =>
   relationships[1].end = 5;
   const spec = trial.props.spec as Record<string, unknown>;
   spec.ganttScale = { kind: "linear", displayPrefix: "T", minimum: 0 };
-  assert.equal(attackGraphDefinition.validate(trial.props).ok, true);
-  const html = renderToStaticMarkup(<AttackGraph node={trial} emit={() => undefined} children={undefined} />);
+  assert.equal(attackPathDefinition.validate(trial.props).ok, true);
+  const html = renderToStaticMarkup(<AttackPath node={trial} emit={() => undefined} children={undefined} />);
   assert.match(html, /T1 - T2/);
   assert.match(html, /T2 - T5/);
 });
@@ -522,4 +572,16 @@ test("infinite canvas exposes resolvable theme colors", () => {
   assert.match(INFINITE_CANVAS_THEME_COLORS.accent, /--colorBrandStroke1/);
   assert.match(INFINITE_CANVAS_THEME_COLORS.backgroundDot, /--colorNeutralStroke2/);
   assert.doesNotMatch(Object.values(INFINITE_CANVAS_THEME_COLORS).join(" "), /var\(--line\)|var\(--accent\)/);
+});
+
+test("argument rejects duplicate claims and relations to undeclared claims", () => {
+  const duplicate = materializeArgumentTrial();
+  const duplicateArgument = duplicate.props.argument as { claims: Array<Record<string, unknown>> };
+  duplicateArgument.claims[1].id = duplicateArgument.claims[0].id;
+  assert.ok(argumentDefinition.validate(duplicate.props).errors.some((error) => error.code === "argument-unique-claim-id"));
+
+  const missing = materializeArgumentTrial();
+  const missingArgument = missing.props.argument as { relations: Array<Record<string, unknown>> };
+  missingArgument.relations[0].target = "missing-claim";
+  assert.ok(argumentDefinition.validate(missing.props).errors.some((error) => error.code === "argument-reference"));
 });

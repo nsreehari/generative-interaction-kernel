@@ -12,12 +12,12 @@ Import only the semantic structures a vocabulary uses:
     "projectionViews": {
       "semantic": {
         "from": "semantic",
-        "use": ["timeline", "sequence", "semantic-graph"]
+        "use": ["event-series", "process", "relationship-set"]
       }
     }
   }
 }
 ```
 
-Documents reference the imported capabilities as `semantic:timeline`, `semantic:sequence`, and
-`semantic:semantic-graph`.
+Documents reference the imported capabilities as `semantic:event-series`, `semantic:process`, and
+`semantic:relationship-set`.

@@ -6,21 +6,19 @@ import type { ProjectionView } from "@gik/react";
 
 import { defineComponent, trialNode, type ComponentDescription, type ComponentValidationReport } from "../../shared/definition";
 import { asRecord, componentRootProps, componentStylePropsSchema, readPath, records, textAt } from "../../shared/component";
-import { formatTime, formatTimestamp } from "../datetime";
+import {
+  MAX_COORDINATE_TICKS,
+  coordinateTickCountExceedsLimit,
+  coordinateTicks,
+  formatAxisCoordinate,
+  formatCoordinate,
+  parseCoordinate,
+  type CoordinateScale,
+} from "../../shared/coordinateScale";
 
 export const GANTT_VARIANTS = ["standard", "compact"] as const;
-const MAX_GANTT_TICKS = 101;
-
-export interface GanttScale {
-  kind: "datetime" | "linear";
-  hourFormat?: "24" | "12";
-  displayPrefix?: string;
-  minimum?: number;
-  maximum?: number;
-  tickStep?: number;
-  showSeconds?: boolean;
-  showTimeZone?: boolean;
-}
+export const MAX_GANTT_TICKS = MAX_COORDINATE_TICKS;
+export type GanttScale = CoordinateScale;
 
 export interface GanttSpec {
   title?: string;
@@ -108,19 +106,16 @@ const useStyles = makeStyles({
   bar: { position: "absolute", top: "0.25rem", bottom: "0.25rem", minWidth: "3px", borderRadius: tokens.borderRadiusSmall, backgroundColor: tokens.colorBrandBackground },
 });
 
-function parseCoordinate(value: unknown, scale: GanttScale): number {
-  if (scale.kind === "datetime") return typeof value === "string" ? Date.parse(value) : Number.NaN;
-  return typeof value === "number" ? value : Number.NaN;
+export function parseGanttCoordinate(value: unknown, scale: GanttScale): number {
+  return parseCoordinate(value, scale);
 }
 
-function formatCoordinate(value: unknown, scale: GanttScale): string {
-  const text = value == null ? "" : String(value);
-  if (scale.kind === "datetime") return formatTimestamp(text, { hourFormat: scale.hourFormat, showSeconds: scale.showSeconds, showTimeZone: scale.showTimeZone });
-  return scale.kind === "linear" && scale.displayPrefix ? `${scale.displayPrefix}${text}` : text;
+export function formatGanttCoordinate(value: unknown, scale: GanttScale): string {
+  return formatCoordinate(value, scale);
 }
 
-function formatAxisCoordinate(value: number, scale: GanttScale): string {
-  return scale.kind === "datetime" ? formatTime(value, { hourFormat: scale.hourFormat, showSeconds: scale.showSeconds, showTimeZone: scale.showTimeZone }) : formatCoordinate(value, scale);
+export function formatGanttAxisCoordinate(value: number, scale: GanttScale): string {
+  return formatAxisCoordinate(value, scale);
 }
 
 export const Gantt: ProjectionView = ({ node }) => {
@@ -135,10 +130,10 @@ export const Gantt: ProjectionView = ({ node }) => {
       id: textAt(item, spec.fields?.id) || String(index),
       label: textAt(item, spec.fields?.label),
       detail: textAt(item, spec.fields?.detail),
-      startText: formatCoordinate(startValue, scale),
-      endText: formatCoordinate(endValue, scale),
-      start: parseCoordinate(startValue, scale),
-      end: parseCoordinate(endValue, scale),
+      startText: formatGanttCoordinate(startValue, scale),
+      endText: formatGanttCoordinate(endValue, scale),
+      start: parseGanttCoordinate(startValue, scale),
+      end: parseGanttCoordinate(endValue, scale),
     };
   }).filter((interval) => interval.label && Number.isFinite(interval.start) && Number.isFinite(interval.end) && interval.end >= interval.start);
 
@@ -146,18 +141,14 @@ export const Gantt: ProjectionView = ({ node }) => {
   const minimum = scale.kind === "linear" && scale.minimum !== undefined ? scale.minimum : Math.min(...intervals.map((interval) => interval.start));
   const maximum = scale.kind === "linear" && scale.maximum !== undefined ? scale.maximum : Math.max(...intervals.map((interval) => interval.end));
   const span = Math.max(1, maximum - minimum);
-  const tickStep = scale.tickStep;
-  const ticks = tickStep
-    ? Array.from({ length: Math.min(MAX_GANTT_TICKS, Math.floor(span / tickStep) + 1) }, (_, index) => minimum + index * tickStep)
-      .filter((value) => value <= maximum)
-    : [];
+  const ticks = coordinateTicks(minimum, maximum, scale.tickStep);
 
   return <figure {...componentRootProps(node, mergeClasses(styles.root, compact && styles.compactRoot))} aria-label={spec.title ?? "Gantt chart"}>
     {spec.title || spec.description ? <figcaption className={styles.header}>{spec.title ? <Text weight="semibold" size={500}>{spec.title}</Text> : null}{spec.description ? <Text className={styles.description}>{spec.description}</Text> : null}</figcaption> : null}
     <div className={mergeClasses(styles.rows, compact && styles.compactRows)}>
       {ticks.length > 0 ? <div className={styles.axisRow} aria-label="Gantt scale"><div className={styles.axisSpacer} /><div className={styles.axis}>{ticks.map((tick, index) => {
         const left = ((tick - minimum) / span) * 100;
-        return <React.Fragment key={tick}><span className={styles.tick} style={{ left: `${left}%` }} aria-hidden="true" /><Text className={mergeClasses(styles.tickLabel, index === 0 && styles.firstTickLabel, index === ticks.length - 1 && styles.lastTickLabel)} size={200} style={{ left: `${left}%` }}>{formatAxisCoordinate(tick, scale)}</Text></React.Fragment>;
+        return <React.Fragment key={tick}><span className={styles.tick} style={{ left: `${left}%` }} aria-hidden="true" /><Text className={mergeClasses(styles.tickLabel, index === 0 && styles.firstTickLabel, index === ticks.length - 1 && styles.lastTickLabel)} size={200} style={{ left: `${left}%` }}>{formatGanttAxisCoordinate(tick, scale)}</Text></React.Fragment>;
       })}</div></div> : null}
       {intervals.map((interval) => {
       const left = ((interval.start - minimum) / span) * 100;
@@ -183,7 +174,7 @@ const description: ComponentDescription = {
   ],
   authoring: {
     useWhen: ["Records have meaningful start and end coordinates", "Users need to compare duration, span, or overlap"],
-    avoidWhen: ["Records are point events; use semantic:timeline", "Order is non-temporal; use semantic:sequence"],
+    avoidWhen: ["Records are point events; use semantic:event-series", "Order is non-temporal; use semantic:process"],
     rules: ["Provide unique stable ids", "Use datetime for actual timestamps and numeric linear coordinates for logical order or progress", "Use displayPrefix only to format linear coordinates, such as showing 1 as T1", "Set a positive tickStep in milliseconds for datetime or coordinate units for linear when the scale should show shared column markers", "Ensure each end is not earlier than its start", "Use one consistent scale across all intervals"],
   },
 };
@@ -207,13 +198,12 @@ export function validateGantt(props: unknown): ComponentValidationReport {
   const maximum = scale.kind === "linear" ? scale.maximum : undefined;
   const invalidDomain = minimum !== undefined && maximum !== undefined && maximum <= minimum;
   const parsedIntervals = records(propsRecord.items).map((item) => ({
-    start: parseCoordinate(readPath(item, String(fields.start)), scale),
-    end: parseCoordinate(readPath(item, String(fields.end)), scale),
+    start: parseGanttCoordinate(readPath(item, String(fields.start)), scale),
+    end: parseGanttCoordinate(readPath(item, String(fields.end)), scale),
   }));
   const domainMinimum = minimum ?? Math.min(...parsedIntervals.map((interval) => interval.start));
   const domainMaximum = maximum ?? Math.max(...parsedIntervals.map((interval) => interval.end));
-  const invalidTickCount = scale.tickStep !== undefined
-    && Math.floor((domainMaximum - domainMinimum) / scale.tickStep) + 1 > MAX_GANTT_TICKS;
+  const invalidTickCount = coordinateTickCountExceedsLimit(domainMinimum, domainMaximum, scale.tickStep);
   const invalidInterval = parsedIntervals.some(({ start, end }) => {
     return !Number.isFinite(start) || !Number.isFinite(end) || end < start
       || (minimum !== undefined && start < minimum)

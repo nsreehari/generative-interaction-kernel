@@ -40,18 +40,17 @@ describe("incident-report-explorer-2 Blueprint", () => {
     const operational = blueprint.payload.recipes[0].representations[0];
     const views = operational.views ?? {};
     const cases = [
-      ["incident-verdict", "decision-summary"],
-      ["incident-blast-radius", "entity-constellation"],
-      ["incident-timeline", "timeline"],
-      ["incident-techniques", "sequence"],
-      ["incident-response", "action-board"],
+      ["incident-verdict", "decision"],
+      ["incident-blast-radius", "entity-set"],
+      ["incident-timeline", "event-series"],
+      ["incident-techniques", "process"],
+      ["incident-response", "work-set"],
     ] as const;
 
     for (const [viewId, definitionId] of cases) {
       const view = views[viewId];
       const dataProp = semanticComponentDefinitions[definitionId].dataProp;
-      const props = { ...view.props, [dataProp]: [] };
-      if (definitionId === "decision-summary") props[dataProp] = {};
+      const props = { ...view.props, [dataProp]: dataProp === "decision" ? {} : [] };
       expect(semanticComponentDefinitions[definitionId].validate(props).ok, viewId).toBe(true);
     }
   });
