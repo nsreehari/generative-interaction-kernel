@@ -1,4 +1,6 @@
 import {
+  createBlueprintDurableBootstrapEvent,
+  createBlueprintDurableEffectSettlementEvent,
   createBlueprintDurableTransitionAdapter,
   type BlueprintArtifact,
   type DurableBlueprintSpec,
@@ -16,10 +18,15 @@ import {
   Kernel,
   unwrap,
   type GIKEvent,
+  type InvocationControl,
   type Json,
+  type OrchestratorEffect,
+  type OrchestratorResult,
   type ResolvedNode,
 } from "@gik/kernel";
 import type { BundleContextBindings } from "./primitives/bundle-registry";
+import type { BundleNative } from "./primitives/bundle";
+import { createEffectDispatcher } from "./primitives/effects";
 import type { GenUISource } from "./useGenUI";
 
 export interface DurableBlueprintRuntimeOptions {
@@ -32,6 +39,7 @@ export interface DurableBlueprintControllerOptions {
   runtime: DurableBlueprintRuntimeOptions;
   externalContext?: ExternalContext;
   contexts?: BundleContextBindings;
+  native?: BundleNative;
 }
 
 export class DurableBlueprintController implements GenUISource {
@@ -53,6 +61,7 @@ export class DurableBlueprintController implements GenUISource {
         blueprint,
         externalContext: options.externalContext,
       }),
+      effectHandlers: options.native ? { "*": (effect) => this.executeEffect(effect) } : undefined,
     });
   }
 
@@ -67,8 +76,15 @@ export class DurableBlueprintController implements GenUISource {
 
   start(): Promise<ResolvedNode> {
     return this.enqueue(async () => {
-      await this.runtime.initializeRuntime(this.options.runtime.refs);
+      const initialized = await this.runtime.initializeRuntime(this.options.runtime.refs);
+      if (initialized.created) {
+        await this.runtime.appendJournal({
+          ...this.options.runtime.refs,
+          entry: createBlueprintDurableBootstrapEvent(),
+        });
+      }
       await this.runtime.processEngineWake(this.options.runtime.refs);
+      await this.processEffects();
       const tree = await this.refresh();
       if (!this.unsubscribeSnapshot) {
         this.unsubscribeSnapshot = this.runtime.subscribe<Record<string, Json>, DurableBlueprintSpec>(
@@ -101,6 +117,7 @@ export class DurableBlueprintController implements GenUISource {
       if (result.status !== "committed" && result.status !== "idle") {
         throw new Error(`Durable Blueprint transition did not commit: ${result.status}.`);
       }
+      await this.processEffects();
       return this.refresh();
     });
   }
@@ -109,6 +126,54 @@ export class DurableBlueprintController implements GenUISource {
     const next = this.operation.then(operation, operation);
     this.operation = next.then(() => undefined, () => undefined);
     return next;
+  }
+
+  private async processEffects(): Promise<void> {
+    if (!this.options.native) return;
+    for (let count = 0; count < 100; count += 1) {
+      const result = await this.runtime.processQueueLaneItem(this.options.runtime.refs);
+      if (result.status === "idle") return;
+      if (result.status !== "completed") {
+        throw new Error(`Durable Blueprint effect did not complete: ${result.status}${"error" in result ? ` (${result.error})` : ""}.`);
+      }
+      const transition = await this.runtime.processEngineWake(this.options.runtime.refs);
+      if (transition.status !== "committed" && transition.status !== "idle") {
+        throw new Error(`Durable Blueprint effect settlement did not commit: ${transition.status}.`);
+      }
+    }
+    throw new Error("Durable Blueprint effect processing exceeded 100 items.");
+  }
+
+  private async executeEffect(value: unknown): Promise<GIKEvent[]> {
+    const effect = value as OrchestratorEffect;
+    const snapshot = await this.runtime.readSnapshot<Record<string, Json>, DurableBlueprintSpec>(
+      this.options.runtime.refs,
+    );
+    const { vocabulary, externalContext } = snapshot.spec.materializedBlueprint.payload;
+    const local = new InMemoryStateModel(unwrap(vocabulary).namespaces ?? []);
+    local.apply(Object.entries(snapshot.state).map(([path, stateValue]) => ({ op: "set", path, value: stateValue })));
+    const externalContextStore = new InMemoryStateModel(["externalContext"]);
+    externalContextStore.apply([{ op: "set", path: "externalContext", value: structuredClone(externalContext) }]);
+    const state = new CompositeStateModel(local, {
+      ...this.options.contexts,
+      externalContext: externalContextStore,
+    });
+    const fallback = createEffectDispatcher(state, this.options.native?.effectHandlers ?? {});
+    const orchestrator = this.options.native?.wrapOrchestrator?.(fallback, state) ?? fallback;
+    let emitted: OrchestratorResult | undefined;
+    const control: InvocationControl = {
+      id: crypto.randomUUID(),
+      signal: new AbortController().signal,
+      emitProgress: async () => undefined,
+      emit: async (result = {}) => { emitted = result; },
+    };
+    const returned = effect.kind === "invoke"
+      ? await orchestrator.invoke?.(effect, control)
+      : effect.kind === "confirm"
+        ? await orchestrator.confirm?.(effect)
+        : await orchestrator.route?.(effect);
+    const result = returned ?? emitted;
+    return result ? [createBlueprintDurableEffectSettlementEvent(result)] : [];
   }
 
   private async refresh(): Promise<ResolvedNode> {

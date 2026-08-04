@@ -397,8 +397,12 @@ export function createIndexedDbStorage(
           }),
         );
         const enqueuedAt = new Date().toISOString();
+        const counterId = id("runtime-effect-counter", effectsSpace, "__counter__");
+        const counter = (await request(store.get(counterId))) as IndexedDbRecord | undefined;
+        let sequence = Number(counter?.sequence ?? 0);
         for (const effect of requestValue.effects) {
           const effectId = crypto.randomUUID();
+          sequence += 1;
           await request(
             store.add({
               id: id("runtime-effect", effectsSpace, effectId),
@@ -407,10 +411,20 @@ export function createIndexedDbStorage(
               key: effectId,
               body: effect,
               enqueuedAt,
+              sequence,
               attempt: 0,
               state: "active",
             }),
           );
+        }
+        if (requestValue.effects.length > 0) {
+          await request(store.put({
+            id: counterId,
+            namespace: effectsSpace,
+            kind: "runtime-effect-counter",
+            key: "__counter__",
+            sequence,
+          }));
         }
         await request(store.delete(lockId));
         return { ok: true, revision: nextRevision };
@@ -453,7 +467,8 @@ export function createIndexedDbStorage(
                 Date.parse(String(record.leaseExpiresAt)) <= now),
           )
           .sort((left, right) =>
-            String(left.enqueuedAt).localeCompare(String(right.enqueuedAt)),
+            Number(left.sequence ?? 0) - Number(right.sequence ?? 0)
+            || String(left.enqueuedAt).localeCompare(String(right.enqueuedAt)),
           );
         if (!current) return null;
         const leaseToken = crypto.randomUUID();

@@ -243,6 +243,37 @@ test("IndexedDB storage runs a local transition and effect queue", async () => {
   ]);
 });
 
+test("IndexedDB processes effects from one transition in declaration order", async () => {
+  const storage = createIndexedDbStorage({ databaseName: `gik-effect-order-${crypto.randomUUID()}` });
+  const runtimeRef = ref("indexed-db", "effect-order");
+  const processed: string[] = [];
+  const runtime = createDurableRuntime({
+    runtimeId: "effect-order-v1",
+    providers: { "indexed-db": storage },
+    transitionAdapter: {
+      initialState: () => ({}),
+      initialSpec: () => ({}),
+      transition: () => ({
+        state: {},
+        effects: [{ type: "first" }, { type: "second" }],
+      }),
+      applySpecUpdates: ({ spec }) => spec,
+    },
+    effectHandlers: {
+      first: () => { processed.push("first"); },
+      second: () => { processed.push("second"); },
+    },
+  });
+  const refs = { stateRef: runtimeRef, journalRef: runtimeRef, effectsQueueRef: runtimeRef };
+
+  await runtime.initializeRuntime(refs);
+  await runtime.appendJournal({ ...refs, entry: { type: "start" } });
+  assert.equal((await runtime.processEngineWake(refs)).status, "committed");
+  assert.equal((await runtime.processQueueLaneItem(refs)).status, "completed");
+  assert.equal((await runtime.processQueueLaneItem(refs)).status, "completed");
+  assert.deepEqual(processed, ["first", "second"]);
+});
+
 test("IndexedDB reads a committed snapshot while a transition lease is held", async () => {
   const storage = createIndexedDbStorage({ databaseName: `gik-snapshot-${crypto.randomUUID()}` });
   const runtimeRef = ref("indexed-db", "snapshot");

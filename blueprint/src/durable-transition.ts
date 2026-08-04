@@ -1,4 +1,11 @@
-import type { GIKEvent, Json, OrchestratorEffect } from "@gik/kernel";
+import {
+  InMemoryStateModel,
+  unwrap,
+  type GIKEvent,
+  type Json,
+  type OrchestratorEffect,
+  type OrchestratorResult,
+} from "@gik/kernel";
 import {
   applyBlueprintPatches,
   materializeBlueprint,
@@ -17,6 +24,32 @@ export interface DurableBlueprintSpec {
 export interface DurableBlueprintSpecUpdate {
   patch: BlueprintPatch;
   origin: BlueprintPatchOrigin;
+}
+
+const DURABLE_EFFECT_NODE = "$gik.durable-effect";
+const DURABLE_EFFECT_SETTLED = "settled";
+const DURABLE_BOOTSTRAP = "bootstrap";
+
+export function createBlueprintDurableBootstrapEvent(): GIKEvent {
+  return { node: DURABLE_EFFECT_NODE, name: DURABLE_BOOTSTRAP };
+}
+
+export function createBlueprintDurableEffectSettlementEvent(result: OrchestratorResult): GIKEvent {
+  if (result.program) throw new Error("Durable Blueprint effects cannot settle with runtime program patches.");
+  return {
+    node: DURABLE_EFFECT_NODE,
+    name: DURABLE_EFFECT_SETTLED,
+    payload: { result: structuredClone(result) as unknown as Json },
+  };
+}
+
+function durableEffectSettlement(event: GIKEvent): OrchestratorResult | undefined {
+  if (event.node !== DURABLE_EFFECT_NODE || event.name !== DURABLE_EFFECT_SETTLED) return undefined;
+  const result = event.payload?.result;
+  if (!result || typeof result !== "object" || Array.isArray(result)) {
+    throw new Error("Durable Blueprint effect settlement is missing its result.");
+  }
+  return result as unknown as OrchestratorResult;
 }
 
 export interface BlueprintDurableTransitionAdapter {
@@ -52,10 +85,25 @@ export function createBlueprintDurableTransitionAdapter(input: {
     initialState: () => structuredClone(materializedBlueprint.payload.initialState),
     initialSpec: () => structuredClone(initialSpec),
     async transition({ state, spec, events }) {
+      const settlements = events.map(durableEffectSettlement);
+      const regularEvents = events.filter((event, index) =>
+        settlements[index] === undefined
+        && !(event.node === DURABLE_EFFECT_NODE && event.name === DURABLE_BOOTSTRAP));
+      const settlementResults = settlements.filter((result): result is OrchestratorResult => result !== undefined);
+      let nextState = state;
+      if (settlementResults.some((result) => result.ops?.length)) {
+        const store = new InMemoryStateModel(unwrap(spec.materializedBlueprint.payload.vocabulary).namespaces ?? []);
+        store.apply(Object.entries(state).map(([path, value]) => ({ op: "set", path, value })));
+        for (const result of settlementResults) {
+          if (result.ops?.length) store.apply(result.ops);
+        }
+        nextState = store.snapshot();
+      }
+      const followUpEvents = settlementResults.flatMap((result) => result.events ?? []);
       const result = await runMaterializedTransition({
-        state,
+        state: nextState,
         materializedBlueprint: spec.materializedBlueprint,
-        events,
+        events: [...followUpEvents, ...regularEvents],
       });
       const proposals = result.blueprintPatchProposals ?? result.blueprintPatches;
       return {

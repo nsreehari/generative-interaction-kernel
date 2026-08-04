@@ -41,8 +41,8 @@ export function BlueprintHost({
     [prepared, native],
   );
   const source = React.useMemo(
-    () => new DurableBlueprintController(blueprint, { runtime, externalContext, contexts }),
-    [blueprint, runtime, externalContext, contexts],
+    () => new DurableBlueprintController(blueprint, { runtime, externalContext, contexts, native }),
+    [blueprint, runtime, externalContext, contexts, native],
   );
   const blueprintId = prepared.terminalBlueprint.payload.id;
   const instanceId = primaryInstanceId === undefined ? blueprintId : `${blueprintId}:${primaryInstanceId}`;
