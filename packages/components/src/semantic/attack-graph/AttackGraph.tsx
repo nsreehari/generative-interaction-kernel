@@ -11,7 +11,7 @@ import {
 } from "../../primitives/infinite-canvas";
 import { formatTimestamp } from "../../primitives/datetime";
 import { Gantt, validateGantt, type GanttScale } from "../../primitives/gantt";
-import { SemanticGraph } from "../semantic-graph";
+import { RelationshipSet } from "../relationship-set";
 import type { ComponentValidationReport } from "../../shared/definition";
 import { asRecord, componentRootProps, componentStylePropsSchema, readPath, records, textAt } from "../../shared/component";
 
@@ -256,26 +256,27 @@ export const AttackGraph: ProjectionView = ({ node, emit }) => {
   if (variant === "text") return renderTextGraph(node, graph, spec, styles);
   if (variant === "gantt") return renderGanttGraph(node, graph, spec);
   if (variant !== "canvas") {
-    const semanticGraphNode: ResolvedNode = {
+    const relationshipSetNode: ResolvedNode = {
       ...node,
-      capability: "semantic:semantic-graph",
+      capability: "semantic:relationship-set",
       props: {
         graph: {
-          nodes: records(graph.entities) as unknown as Json,
-          edges: records(graph.relationships) as unknown as Json,
+          entities: records(graph.entities) as unknown as Json,
+          relationships: records(graph.relationships) as unknown as Json,
         },
         variant: variant === "diagram" ? "network" : "relations",
         spec: {
           ...(spec.title ? { title: spec.title } : {}),
           ...(spec.description ? { description: spec.description } : {}),
           ...(spec.emptyText ? { emptyText: spec.emptyText } : {}),
-          nodeFields: {
+          entityFields: {
             id: spec.entityFields.id,
             label: spec.entityFields.label,
             ...(spec.entityFields.detail ? { detail: spec.entityFields.detail } : {}),
             ...(spec.entityFields.tone ? { tone: spec.entityFields.tone } : {}),
           },
-          edgeFields: {
+          relationshipFields: {
+            id: spec.relationshipFields.id,
             source: spec.relationshipFields.source,
             target: spec.relationshipFields.target,
             ...(spec.relationshipFields.label ? { label: spec.relationshipFields.label } : {}),
@@ -286,7 +287,7 @@ export const AttackGraph: ProjectionView = ({ node, emit }) => {
         ...(node.props.style ? { style: node.props.style } : {}),
       },
     };
-    return <SemanticGraph node={semanticGraphNode} emit={emit} children={undefined} />;
+    return <RelationshipSet node={relationshipSetNode} emit={emit} children={undefined} />;
   }
   const primitiveNode: ResolvedNode = {
     ...node,
