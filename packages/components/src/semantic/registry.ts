@@ -1,9 +1,10 @@
 import type { CapabilityDescriptor } from "@gik/kernel";
 import type { ProjectionView } from "@gik/react";
 
-import { MetricComparison, metricComparisonDefinition } from "./metric-comparison";
-import { NarrativeSection, narrativeSectionDefinition } from "./narrative-section";
-import { SemanticGraph, semanticGraphDefinition } from "./semantic-graph";
+import { MeasureSet, measureSetDefinition } from "./measure-set";
+import { Milestones, milestonesDefinition } from "./milestones";
+import { Narrative, narrativeDefinition } from "./narrative";
+import { RelationshipSet, relationshipSetDefinition } from "./relationship-set";
 import { WorkSet, workSetDefinition } from "./work-set";
 import {
   AttackPath, Decision, EntitySet, EventSeries, EvidenceCase, Process, SourceComparison, SourceFindings,
@@ -12,9 +13,10 @@ import {
 } from "./canonical-adapters";
 
 export const semanticComponentViews: Record<string, ProjectionView> = {
-  "metric-comparison": MetricComparison,
-  "narrative-section": NarrativeSection,
-  "semantic-graph": SemanticGraph,
+  "measure-set": MeasureSet,
+  milestones: Milestones,
+  narrative: Narrative,
+  "relationship-set": RelationshipSet,
   "work-set": WorkSet,
   "event-series": EventSeries,
   process: Process,
@@ -27,9 +29,10 @@ export const semanticComponentViews: Record<string, ProjectionView> = {
 };
 
 export const semanticComponentDefinitions = {
-  "metric-comparison": metricComparisonDefinition,
-  "narrative-section": narrativeSectionDefinition,
-  "semantic-graph": semanticGraphDefinition,
+  "measure-set": measureSetDefinition,
+  milestones: milestonesDefinition,
+  narrative: narrativeDefinition,
+  "relationship-set": relationshipSetDefinition,
   "work-set": workSetDefinition,
   "event-series": eventSeriesDefinition,
   process: processDefinition,

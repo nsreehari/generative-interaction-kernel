@@ -312,9 +312,7 @@ Canonical semantic components:
 - `decision` (`summary`, `rationale-chain`, `text`)
 - `source-findings` (`findings`, `text`)
 - `source-comparison` (`unified-diff`, `split-diff`, `text`)
-
-Held semantic components pending redesign:
-
-- `metric-comparison`
-- `narrative-section`
-- `semantic-graph`
+- `narrative` (`article`, `outline`, `briefing`, `text`)
+- `measure-set` (`tiles`, `table`, `ranking`, `text`)
+- `milestones` (`rail`, `timeline`, `list`, `axis`, `text`)
+- `relationship-set` (`network`, `matrix`, `relations`, `text`)

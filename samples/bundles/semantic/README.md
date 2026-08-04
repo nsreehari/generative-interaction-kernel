@@ -12,7 +12,7 @@ Import only the semantic structures a vocabulary uses:
     "projectionViews": {
       "semantic": {
         "from": "semantic",
-        "use": ["event-series", "process", "semantic-graph"]
+        "use": ["event-series", "process", "relationship-set"]
       }
     }
   }
@@ -20,4 +20,4 @@ Import only the semantic structures a vocabulary uses:
 ```
 
 Documents reference the imported capabilities as `semantic:event-series`, `semantic:process`, and
-`semantic:semantic-graph`.
+`semantic:relationship-set`.
