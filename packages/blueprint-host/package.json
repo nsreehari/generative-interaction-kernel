@@ -1,6 +1,6 @@
 {
   "name": "@gik/blueprint-host",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Compatibility re-export of BlueprintHost from @gik/react.",
   "license": "MIT",
   "author": "nsreehari",
@@ -44,7 +44,7 @@
     "react-dom": "^18.3.1"
   },
   "dependencies": {
-    "@gik/react": "0.2.0"
+    "@gik/react": "0.2.1"
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",

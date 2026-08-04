@@ -4,6 +4,7 @@ import type {
   DurableTransitionAdapter,
   JournalEntry,
   RuntimeRefs,
+  RuntimeSnapshotChanges,
   TransitionRefs,
 } from "../contracts";
 import { assertSameRefKind, parseRef } from "../refs";
@@ -23,6 +24,15 @@ export function createDurableRuntime(options: DurableRuntimeOptions) {
     const provider = options.providers[kind];
     if (!provider) throw new Error(`No durable provider is configured for ref kind ${kind}.`);
     return provider;
+  }
+
+  function readSnapshotChanges<TState, TSpec>(
+    request: RuntimeRefs & { afterRevision: string | null },
+  ): Promise<RuntimeSnapshotChanges<TState, TSpec>> {
+    return providerFor(request.stateRef).readSnapshotChanges<TState, TSpec>({
+      ...request,
+      runtimeId: options.runtimeId,
+    });
   }
 
   async function executeEngine(request: TransitionRefs & { leaseMs?: number }) {
@@ -100,6 +110,48 @@ export function createDurableRuntime(options: DurableRuntimeOptions) {
         ...request,
         runtimeId: options.runtimeId,
       });
+    },
+
+    readSnapshotChanges,
+
+    subscribe<TState, TSpec>(
+      request: RuntimeRefs,
+      listener: (changes: RuntimeSnapshotChanges<TState, TSpec>) => void | Promise<void>,
+      subscriptionOptions?: {
+        afterRevision?: string | null;
+        pollIntervalMs?: number;
+        onError?: (error: unknown) => void;
+      },
+    ): () => void {
+      let stopped = false;
+      let revision = subscriptionOptions?.afterRevision ?? null;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const pollIntervalMs = Math.max(1, subscriptionOptions?.pollIntervalMs ?? 1_000);
+
+      const poll = async (): Promise<void> => {
+        try {
+          const changes = await readSnapshotChanges<TState, TSpec>({
+            ...request,
+            afterRevision: revision,
+          });
+          if (!stopped && changes.kind !== "unchanged") {
+            revision = changes.kind === "reset"
+              ? changes.snapshot.revision
+              : changes.revision;
+            await listener(changes);
+          }
+        } catch (error) {
+          if (!stopped) subscriptionOptions?.onError?.(error);
+        } finally {
+          if (!stopped) timer = setTimeout(() => void poll(), pollIntervalMs);
+        }
+      };
+
+      void poll();
+      return () => {
+        stopped = true;
+        if (timer) clearTimeout(timer);
+      };
     },
 
     runEngine: executeEngine,

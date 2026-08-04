@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
-import type { RuntimeRefs, TransitionRefs } from "../../contracts";
+import type { RuntimeRefs, RuntimeSnapshotPatch, TransitionRefs } from "../../contracts";
+import { createRuntimeSnapshotPatch } from "../../snapshot-changes";
 import type {
   EngineWakeStorage,
   JournalStorage,
@@ -33,6 +34,7 @@ type PersistedRuntimeState = {
   state: unknown;
   spec: unknown;
   specUpdates: unknown[];
+  snapshotChange?: RuntimeSnapshotPatch;
 };
 type HeldTransition = {
   refsKey: string;
@@ -137,6 +139,32 @@ export function createFilesystemDurableStorage(
           revision: persisted.revision,
         };
       },
+      async readSnapshotChanges(refs, afterRevision) {
+        runtimeRefs(refs as Record<string, unknown>);
+        const persisted = (await storage
+          .kvStorageForRef(refs.stateRef)
+          .read(runtimeStateKey)) as PersistedRuntimeState | null;
+        if (!persisted) throw new Error("Runtime is not initialized.");
+        if (persisted.runtimeId !== runtimeId)
+          throw new Error(
+            `Runtime state belongs to runtime ${persisted.runtimeId}, not ${runtimeId}.`,
+          );
+        if (afterRevision === persisted.revision) {
+          return { kind: "unchanged", revision: persisted.revision };
+        }
+        if (
+          persisted.snapshotChange?.baseRevision === afterRevision &&
+          persisted.snapshotChange.revision === persisted.revision
+        ) return { kind: "changes", ...persisted.snapshotChange };
+        return {
+          kind: "reset",
+          snapshot: {
+            state: persisted.state,
+            spec: persisted.spec,
+            revision: persisted.revision,
+          },
+        };
+      },
       async acquire(refs, options) {
         transitionRefs(refs as Record<string, unknown>);
         const release = await storage.lockForRef(refs.stateRef).tryAcquire();
@@ -219,6 +247,12 @@ export function createFilesystemDurableStorage(
               staged.push(message);
             }
             const nextRevision = randomUUID();
+            const snapshotChange = current && revision
+              ? createRuntimeSnapshotPatch(
+                  { state: current.state, spec: current.spec, revision },
+                  { state: request.state, spec: request.spec, revision: nextRevision },
+                )
+              : undefined;
             await stateStorage.write(runtimeStateKey, {
               runtimeId,
               revision: nextRevision,
@@ -226,6 +260,7 @@ export function createFilesystemDurableStorage(
               state: request.state ?? null,
               spec: request.spec ?? null,
               specUpdates: request.specUpdates,
+              snapshotChange,
             });
             for (const message of staged) await queue.commitStaged(message.id);
             return { ok: true, revision: nextRevision };
@@ -302,6 +337,19 @@ export function createFilesystemDurableStorage(
       if (typeof request.runtimeId !== "string" || !request.runtimeId)
         throw new Error("runtimeId must be a non-empty string.");
       return transitionStorage(request.runtimeId).readSnapshot(refs);
+    },
+    readSnapshotChanges(request: Record<string, unknown>) {
+      const refs = runtimeRefs(request);
+      if (typeof request.runtimeId !== "string" || !request.runtimeId)
+        throw new Error("runtimeId must be a non-empty string.");
+      if (
+        request.afterRevision !== null &&
+        (typeof request.afterRevision !== "string" || !request.afterRevision)
+      ) throw new Error("afterRevision must be null or a non-empty string.");
+      return transitionStorage(request.runtimeId).readSnapshotChanges(
+        refs,
+        request.afterRevision,
+      );
     },
     acquireTransition(request: Record<string, unknown>) {
       const refs = transitionRefs(request);

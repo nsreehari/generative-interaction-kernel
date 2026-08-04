@@ -1,10 +1,12 @@
 import type {
   DurableProvider,
   QueueLeasedMessage,
+  RuntimeSnapshotPatch,
   TransitionCommit,
   TransitionRefs,
 } from "../../contracts";
 import { parseRef } from "../../refs";
+import { createRuntimeSnapshotPatch } from "../../snapshot-changes";
 import type { IndexedDbStorageOptions } from "./api/contracts";
 import {
   createIndexedDbRecordLibrary,
@@ -203,6 +205,42 @@ export function createIndexedDbStorage(
         };
       });
     },
+    readSnapshotChanges<TState, TSpec>(requestValue: {
+      stateRef: string;
+      effectsQueueRef: string;
+      effectsLane?: string;
+      runtimeId: string;
+      afterRevision: string | null;
+    }) {
+      const stateSpace = runtimeSpace(requestValue.stateRef);
+      return transaction("readonly", async (store) => {
+        const state = (await request(
+          store.get(id("runtime-state", stateSpace, "__state__")),
+        )) as IndexedDbRecord | undefined;
+        if (!state) throw new Error("Runtime is not initialized.");
+        if (state.runtimeId !== requestValue.runtimeId)
+          throw new Error(
+            `Runtime state belongs to runtime ${String(state.runtimeId)}, not ${requestValue.runtimeId}.`,
+          );
+        const revision = String(state.revision);
+        if (requestValue.afterRevision === revision) {
+          return { kind: "unchanged" as const, revision };
+        }
+        const snapshotChange = state.snapshotChange as RuntimeSnapshotPatch | undefined;
+        if (
+          snapshotChange?.baseRevision === requestValue.afterRevision &&
+          snapshotChange.revision === revision
+        ) return { kind: "changes" as const, ...snapshotChange };
+        return {
+          kind: "reset" as const,
+          snapshot: {
+            state: state.value as TState,
+            spec: state.spec as TSpec,
+            revision,
+          },
+        };
+      });
+    },
     acquireTransition<TState, TSpec, TEvent>(
       requestValue: TransitionRefs & { runtimeId: string; leaseMs?: number },
     ) {
@@ -295,6 +333,12 @@ export function createIndexedDbStorage(
           return { ok: false, reason: "conflict" as const, revision };
         }
         const nextRevision = crypto.randomUUID();
+        const snapshotChange = current && revision
+          ? createRuntimeSnapshotPatch(
+              { state: current.value, spec: current.spec, revision },
+              { state: requestValue.state, spec: requestValue.spec, revision: nextRevision },
+            )
+          : undefined;
         await request(
           store.put({
             id: stateId,
@@ -307,6 +351,7 @@ export function createIndexedDbStorage(
             value: requestValue.state,
             spec: requestValue.spec,
             specUpdates: requestValue.specUpdates,
+            snapshotChange,
           }),
         );
         const enqueuedAt = new Date().toISOString();

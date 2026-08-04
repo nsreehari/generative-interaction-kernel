@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { createFilesystemStorageDispatcher } from "../src/storage/filesystem/api";
 import { createFilesystemDurableStorage } from "../src/storage/filesystem";
+import { applyRuntimeSnapshotChanges } from "../src/snapshot-changes";
 import {
   createFilesystemRef,
   createFilesystemStorageLibrary,
@@ -172,12 +173,58 @@ describe("filesystem storage library", () => {
       spec: { multiplier: 2 },
       revision: lease!.revision,
     });
+    expect(await durable.readSnapshotChanges({
+      stateRef: ref,
+      effectsQueueRef: ref,
+      runtimeId: "snapshot-v1",
+      afterRevision: lease!.revision,
+    })).toEqual({
+      kind: "unchanged",
+      revision: lease!.revision,
+    });
+    expect(await durable.readSnapshotChanges({
+      stateRef: ref,
+      effectsQueueRef: ref,
+      runtimeId: "snapshot-v1",
+      afterRevision: null,
+    })).toEqual({
+      kind: "reset",
+      snapshot: {
+        state: { count: 1 },
+        spec: { multiplier: 2 },
+        revision: lease!.revision,
+      },
+    });
 
-    expect(await durable.abortTransition({
+    const committed = await durable.commitTransition({
       ...refs,
       runtimeId: "snapshot-v1",
       leaseToken: lease!.leaseToken,
-    })).toBe(true);
+      expectedRevision: lease!.revision,
+      previousCursor: lease!.cursor,
+      nextCursor: "cursor-1",
+      state: { count: 2 },
+      spec: { multiplier: 3 },
+      specUpdates: [],
+      effects: [],
+    });
+    expect(committed.ok).toBe(true);
+    const changes = await durable.readSnapshotChanges({
+      stateRef: ref,
+      effectsQueueRef: ref,
+      runtimeId: "snapshot-v1",
+      afterRevision: lease!.revision,
+    });
+    expect(changes.kind).toBe("changes");
+    expect(applyRuntimeSnapshotChanges({
+      state: { count: 1 },
+      spec: { multiplier: 2 },
+      revision: lease!.revision!,
+    }, changes)).toEqual({
+      state: { count: 2 },
+      spec: { multiplier: 3 },
+      revision: committed.revision,
+    });
   });
 });
 
