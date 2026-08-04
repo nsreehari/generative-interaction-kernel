@@ -8,6 +8,7 @@ export * from "./datetime";
 export * from "./editable-table";
 export * from "./form";
 export * from "./gantt";
+export * from "./graph-diagram";
 export * from "./growing-container";
 export * from "./infinite-canvas";
 export * from "./source-viewer";

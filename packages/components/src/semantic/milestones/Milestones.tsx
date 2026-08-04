@@ -6,7 +6,7 @@ import type { ProjectionView } from "@gik/react";
 
 import { componentRootProps, componentStylePropsSchema, records, textAt, type BadgeColor, type DataRecord } from "../../shared/component";
 import { componentNode, defineComponent, trialNode, type ComponentDescription, type ComponentValidationReport } from "../../shared/definition";
-import { Timeline, validateTimeline } from "../timeline";
+import { Timeline, validateTimeline } from "../event-series";
 
 export const MILESTONE_SEMANTIC_TOKENS = ["achieved", "current", "upcoming", "blocked", "unknown"] as const;
 export const MILESTONE_VARIANTS = ["rail", "timeline", "list", "axis", "text"] as const;

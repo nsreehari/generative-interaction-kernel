@@ -4,30 +4,23 @@ import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView, ProjectionViewProps } from "@gik/react";
 
-import { SourceViewer, getSourceViewerSchema, validateSourceViewer } from "../primitives/source-viewer";
-import { infiniteCanvasDefinition } from "../primitives/infinite-canvas";
 import { componentRootProps, records, textAt, type DataRecord } from "../shared/component";
 import { componentNode, defineComponent, trialNode, type ComponentDescription, type ComponentValidationReport } from "../shared/definition";
-import { AttackGraph, ATTACK_GRAPH_SEMANTIC_TOKENS, getAttackGraphSchema, validateAttackGraph } from "./attack-graph";
-import { DecisionSummary, DECISION_SUMMARY_SEMANTIC_TOKENS, getDecisionSummarySchema, validateDecisionSummary } from "./decision-summary";
-import { EntityConstellation, ENTITY_CONSTELLATION_SEMANTIC_TOKENS, getEntityConstellationSchema, validateEntityConstellation } from "./entity-constellation";
-import { EvidenceTrail, EVIDENCE_TRAIL_SEMANTIC_TOKENS, getEvidenceTrailSchema, validateEvidenceTrail } from "./evidence-trail";
-import { Sequence, SEQUENCE_SEMANTIC_TOKENS, getSequenceSchema, validateSequence } from "./sequence";
-import { Timeline, TIMELINE_SEMANTIC_TOKENS, getTimelineSchema, validateTimeline } from "./timeline";
+import { DecisionSummary, DECISION_SUMMARY_SEMANTIC_TOKENS, getDecisionSummarySchema, validateDecisionSummary } from "./decision";
+import { EntityConstellation, ENTITY_CONSTELLATION_SEMANTIC_TOKENS, getEntityConstellationSchema, validateEntityConstellation } from "./entity-set";
+import { EvidenceTrail, EVIDENCE_TRAIL_SEMANTIC_TOKENS, getEvidenceTrailSchema, validateEvidenceTrail } from "./evidence-case";
+import { Sequence, SEQUENCE_SEMANTIC_TOKENS, getSequenceSchema, validateSequence } from "./process";
+import { Timeline, TIMELINE_SEMANTIC_TOKENS, getTimelineSchema, validateTimeline } from "./event-series";
 
 type Schema = Record<string, any>;
 type VariantMap = Record<string, string>;
 
 const densitySchema = { enum: ["comfortable", "compact"] } as const;
 
-function canonicalSchema(baseSchema: Record<string, unknown>, variants: readonly string[], removeSpecKind = false): Record<string, unknown> {
+function canonicalSchema(baseSchema: Record<string, unknown>, variants: readonly string[]): Record<string, unknown> {
   const schema = JSON.parse(JSON.stringify(baseSchema)) as Schema;
   schema.properties.variant = { enum: variants };
   schema.properties.spec.properties.density = densitySchema;
-  if (removeSpecKind) {
-    delete schema.properties.spec.properties.kind;
-    schema.properties.spec.required = schema.properties.spec.required.filter((name: string) => name !== "kind");
-  }
   return schema;
 }
 
@@ -117,13 +110,6 @@ const entitySetDescription: ComponentDescription = { capability: "semantic:entit
 export function materializeEntitySetTrial() { return trialNode("semantic:entity-set", { variant: "clusters", items: [{ key: "u1", name: "Admin account", kind: "identity", condition: "compromised", group: "impacted", detail: "Privileged account" }], spec: { title: "Entity set", density: "comfortable", fields: { id: "key", label: "name", type: "kind", status: "condition", group: "group", description: "detail" }, groups: [{ value: "impacted", label: "Impacted" }], toneMap: { compromised: "affected" } } }); }
 export const entitySetDefinition = definition(entitySetDescription, EntitySet, entitySetSchema, (props) => validateCanonical("semantic:entity-set", entitySetSchema, props, (value) => delegatedProps(value, "grouped"), validateEntityConstellation), materializeEntitySetTrial);
 
-export const ATTACK_PATH_VARIANTS = ["canvas", "diagram", "relations", "gantt", "text"] as const;
-const attackPathSchema = canonicalSchema(getAttackGraphSchema(), ATTACK_PATH_VARIANTS);
-export const AttackPath: ProjectionView = ({ node, emit }) => delegate(AttackGraph, node, emit, canonicalVariant(node.props, "canvas"));
-const attackPathDescription: ComponentDescription = { capability: "semantic:attack-path", summary: "Presents an attack path through the established attack-graph representations.", dataProp: "graph", events: ["node", "edge", "layout"], eventContracts: infiniteCanvasDefinition.eventContracts, semanticTokens: ATTACK_GRAPH_SEMANTIC_TOKENS, defaultVariant: "canvas", variants: variants(ATTACK_PATH_VARIANTS), authoring: { useWhen: ["Directed adversarial activity connects entities"], avoidWhen: ["Only event chronology matters"], rules: ["Attack-path variants map one-to-one to attack-graph", "Preserve stable entity and relationship identities"] } };
-export function materializeAttackPathTrial() { return trialNode("semantic:attack-path", { variant: "canvas", stateKey: "attack-path-trial", graph: { entities: [{ id: "attacker", label: "Threat actor", detail: "Observed source", type: "Actor", status: "observed" }, { id: "identity", label: "Admin identity", detail: "Compromised principal", type: "Identity", status: "compromised" }, { id: "mailbox", label: "Finance mailbox", detail: "Accessed resource", type: "Mailbox", status: "affected" }], relationships: [{ id: "authenticate", sourceId: "attacker", targetId: "identity", label: "authenticated as", start: "2026-07-17T23:09:23Z", end: "2026-07-17T23:09:27Z" }, { id: "access", sourceId: "identity", targetId: "mailbox", label: "accessed", start: "2026-07-17T23:09:25Z", end: "2026-07-17T23:09:34Z" }] }, spec: { title: "Attack path", density: "comfortable", entityFields: { id: "id", label: "label", detail: "detail", type: "type", tone: "status" }, relationshipFields: { id: "id", source: "sourceId", target: "targetId", label: "label", start: "start", end: "end" }, toneMap: { observed: "neutral", compromised: "danger", affected: "warning" } } }); }
-export const attackPathDefinition = definition(attackPathDescription, AttackPath, attackPathSchema, (props) => validateCanonical("semantic:attack-path", attackPathSchema, props, (value) => delegatedProps(value, canonicalVariant(value, "canvas")), validateAttackGraph), materializeAttackPathTrial);
-
 export const EVIDENCE_CASE_VARIANTS = ["case", "sources", "chain", "text"] as const;
 const evidenceCaseSchema = canonicalSchema(getEvidenceTrailSchema(), EVIDENCE_CASE_VARIANTS);
 export const EvidenceCase: ProjectionView = ({ node, emit }) => {
@@ -151,22 +137,3 @@ export const Decision: ProjectionView = ({ node, emit }) => {
 const decisionDescription: ComponentDescription = { capability: "semantic:decision", summary: "Presents a decision as a summary, rationale chain, or text.", dataProp: "decision", events: [], semanticTokens: DECISION_SUMMARY_SEMANTIC_TOKENS, defaultVariant: "summary", variants: variants(DECISION_VARIANTS), authoring: { useWhen: ["One decision and its justification are the focal result"], avoidWhen: ["Users must choose among interactive options"], rules: ["Map title, summary, outcome, and rationale", "Use rationale-chain only when reasoning order is meaningful"] } };
 export function materializeDecisionTrial() { return trialNode("semantic:decision", { variant: "summary", decision: { title: "Contain affected identity", summary: "Evidence supports immediate containment.", verdict: { outcome: "approved", confidence: "high", rationale: "Correlated sign-in evidence" }, impact: "Reduces lateral movement risk" }, spec: { eyebrow: "Decision", density: "comfortable", fields: { title: "title", summary: "summary", outcome: "verdict.outcome", confidence: "verdict.confidence", rationale: "verdict.rationale", impact: "impact" }, toneMap: { approved: "affirmative" } } }); }
 export const decisionDefinition = definition(decisionDescription, Decision, decisionSchema, (props) => validateCanonical("semantic:decision", decisionSchema, props, (value) => delegatedProps(value, "detailed"), validateDecisionSummary), materializeDecisionTrial);
-
-export const SOURCE_FINDINGS_VARIANTS = ["findings", "text"] as const;
-const sourceFindingsSchema = canonicalSchema(getSourceViewerSchema(), SOURCE_FINDINGS_VARIANTS, true);
-function sourceProps(value: Record<string, Json>, kind: "source" | "unified-diff" | "split-diff") { const mapped = delegatedProps(value, (value.spec as any).density === "compact" ? "compact" : "standard"); (mapped.spec as Record<string, Json>).kind = kind; return mapped; }
-export const SourceFindings: ProjectionView = ({ node, emit }) => canonicalVariant(node.props, "findings") === "text"
-  ? textItems(node, "lines", String((node.props.spec as any).fields.text), (node.props.spec as any).fields.annotation)
-  : <SourceViewer node={componentNode(`${node.id}-source`, "primitive:source-viewer", sourceProps(node.props, "source"))} emit={emit} children={undefined} />;
-const sourceFindingsDescription: ComponentDescription = { capability: "semantic:source-findings", summary: "Presents line-addressable source findings or a textual fallback.", dataProp: "lines", events: [], semanticTokens: [], defaultVariant: "findings", variants: variants(SOURCE_FINDINGS_VARIANTS), authoring: { useWhen: ["Findings attach to exact source lines"], avoidWhen: ["Evidence spans unrelated sources without line references"], rules: ["Use annotated-source-excerpt-compatible number, text, and annotation fields", "The findings variant delegates with source-viewer kind source"] } };
-export function materializeSourceFindingsTrial() { return trialNode("semantic:source-findings", { variant: "findings", lines: [{ line: 41, text: "if (riskScore >= threshold) {", note: "Inclusive threshold" }], spec: { title: "Source findings", density: "comfortable", fields: { number: "line", text: "text", annotation: "note" } } }); }
-export const sourceFindingsDefinition = definition(sourceFindingsDescription, SourceFindings, sourceFindingsSchema, (props) => validateCanonical("semantic:source-findings", sourceFindingsSchema, props, (value) => sourceProps(value, "source"), validateSourceViewer), materializeSourceFindingsTrial);
-
-export const SOURCE_COMPARISON_VARIANTS = ["unified-diff", "split-diff", "text"] as const;
-const sourceComparisonSchema = canonicalSchema(getSourceViewerSchema(), SOURCE_COMPARISON_VARIANTS, true);
-export const SourceComparison: ProjectionView = ({ node, emit }) => canonicalVariant(node.props, "unified-diff") === "text"
-  ? textItems(node, "lines", String((node.props.spec as any).fields.afterText), (node.props.spec as any).fields.beforeText)
-  : <SourceViewer node={componentNode(`${node.id}-diff`, "primitive:source-viewer", sourceProps(node.props, canonicalVariant(node.props, "unified-diff") as "unified-diff" | "split-diff"))} emit={emit} children={undefined} />;
-const sourceComparisonDescription: ComponentDescription = { capability: "semantic:source-comparison", summary: "Presents precomputed source changes as unified diff, split diff, or text.", dataProp: "lines", events: [], semanticTokens: [], defaultVariant: "unified-diff", variants: variants(SOURCE_COMPARISON_VARIANTS), authoring: { useWhen: ["Users need to compare two aligned source versions"], avoidWhen: ["Only one source is present"], rules: ["Supply precomputed aligned diff rows", "Diff variants map directly to source-viewer spec.kind"] } };
-export function materializeSourceComparisonTrial() { return trialNode("semantic:source-comparison", { variant: "unified-diff", lines: [{ id: "41", beforeLine: 41, before: "riskScore > threshold", afterLine: 41, after: "riskScore >= threshold", change: "modified" }], spec: { title: "Policy comparison", density: "comfortable", fields: { id: "id", beforeNumber: "beforeLine", beforeText: "before", afterNumber: "afterLine", afterText: "after", change: "change" } } }); }
-export const sourceComparisonDefinition = definition(sourceComparisonDescription, SourceComparison, sourceComparisonSchema, (props) => validateCanonical("semantic:source-comparison", sourceComparisonSchema, props, (value) => { const variant = canonicalVariant(value, "unified-diff"); return sourceProps(value, variant === "text" ? "unified-diff" : variant as "unified-diff" | "split-diff"); }, validateSourceViewer), materializeSourceComparisonTrial);

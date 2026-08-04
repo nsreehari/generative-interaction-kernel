@@ -11,7 +11,7 @@ import {
 } from "../src/semantic/registry";
 
 const canonical = [
-  "event-series", "process", "work-set", "entity-set", "attack-path", "evidence-case", "decision", "source-findings", "source-comparison",
+  "event-series", "process", "work-set", "entity-set", "evidence-case", "decision",
 ] as const;
 
 test("canonical semantic definitions validate and render every declared variant", () => {

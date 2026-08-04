@@ -27,6 +27,8 @@ import {
   semanticComponentCapabilities,
   semanticComponentViews,
 } from "./semantic/registry";
+import { securityComponentCapabilities, securityComponentViews } from "./security/registry";
+import { softwareComponentCapabilities, softwareComponentViews } from "./software/registry";
 
 const DECLARATIVE_ACTIONS = ["assign", "assignFrom", "derive", "invoke", "route", "confirm", "emit"];
 
@@ -110,6 +112,14 @@ function componentContract(capability: string) {
     const descriptor = semanticComponentCapabilities[name];
     if (descriptor) return { layer, name, descriptor };
   }
+  if (layer === "security") {
+    const descriptor = securityComponentCapabilities[name];
+    if (descriptor) return { layer, name, descriptor };
+  }
+  if (layer === "software") {
+    const descriptor = softwareComponentCapabilities[name];
+    if (descriptor) return { layer, name, descriptor };
+  }
   throw new Error(`GikComponentDeclarative does not recognize capability: ${capability}`);
 }
 
@@ -171,6 +181,8 @@ export function GikComponentDeclarative({ nodeJson }: GikComponentDeclarativePro
     if (from === "fluent") return fluentComponentViews;
     if (from === "primitive") return primitiveComponentViews;
     if (from === "semantic") return semanticComponentViews;
+    if (from === "security") return securityComponentViews;
+    if (from === "software") return softwareComponentViews;
     return runtime.resolveProvider?.(from);
   }, [runtime.resolveProvider]);
   const signature = JSON.stringify([nodeJson, runtime.state]);

@@ -4,6 +4,8 @@ export default defineConfig({
   entry: {
     index: "src/shared/index.ts",
     semantic: "src/semantic/index.ts",
+    security: "src/security/index.ts",
+    software: "src/software/index.ts",
     primitives: "src/primitives/index.ts",
     fluent: "src/fluent/index.ts",
   },
