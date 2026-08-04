@@ -2,7 +2,9 @@ import type {
   DurableProvider,
   QueueLeasedMessage,
   RuntimeSnapshotPatch,
+  RuntimeSnapshotInvalidation,
   TransitionCommit,
+  TransitionCommitResult,
   TransitionRefs,
 } from "../../contracts";
 import { parseRef } from "../../refs";
@@ -18,10 +20,25 @@ export function createIndexedDbStorage(
 ): DurableProvider {
   const library = createIndexedDbRecordLibrary(options);
   const { id, records, request, transaction } = library;
+  const broadcastChannelName = `gik-durable-runtime:${library.databaseName}:${library.objectStoreName}`;
+  const createBroadcastChannel = options.createBroadcastChannel ?? ((name: string) =>
+    typeof globalThis.BroadcastChannel === "undefined" ? null : new BroadcastChannel(name));
   const namespace = (ref: string) => parseRef(ref).value;
   const runtimeSpace = (ref: string) => `${namespace(ref)}:state`;
   const queueSpace = (ref: string, lane = "effects") =>
     `${namespace(ref)}:queue:${lane}`;
+
+  function publishInvalidation(invalidation: RuntimeSnapshotInvalidation): void {
+    let channel;
+    try {
+      channel = createBroadcastChannel(broadcastChannelName);
+      channel?.postMessage(invalidation);
+    } catch {
+      // Notifications are hints; committed IndexedDB state remains authoritative.
+    } finally {
+      channel?.close();
+    }
+  }
 
   async function finishQueue(
     requestValue: {
@@ -63,6 +80,31 @@ export function createIndexedDbStorage(
   }
 
   return {
+    subscribeSnapshotInvalidations(requestValue, listener, subscriptionOptions) {
+      const channel = createBroadcastChannel(broadcastChannelName);
+      if (!channel) return;
+      const onMessage = (event: MessageEvent<unknown>) => {
+        const invalidation = event.data as Partial<RuntimeSnapshotInvalidation> | null;
+        if (
+          invalidation?.runtimeId === requestValue.runtimeId &&
+          invalidation.stateRef === requestValue.stateRef
+        ) listener(invalidation as RuntimeSnapshotInvalidation);
+      };
+      let closed = false;
+      const cleanup = () => {
+        if (closed) return;
+        closed = true;
+        channel.removeEventListener("message", onMessage);
+        channel.close();
+      };
+      channel.addEventListener("message", onMessage);
+      if (subscriptionOptions.signal.aborted) {
+        cleanup();
+        return;
+      }
+      subscriptionOptions.signal.addEventListener("abort", cleanup, { once: true });
+      return cleanup;
+    },
     appendJournal<T>(requestValue: {
       stateRef: string;
       journalRef: string;
@@ -300,13 +342,13 @@ export function createIndexedDbStorage(
         };
       });
     },
-    commitTransition(requestValue: TransitionCommit) {
+    async commitTransition(requestValue: TransitionCommit): Promise<TransitionCommitResult> {
       const stateSpace = runtimeSpace(requestValue.stateRef);
       const effectsSpace = queueSpace(
         requestValue.effectsQueueRef,
         requestValue.effectsLane,
       );
-      return transaction("readwrite", async (store) => {
+      const result = await transaction<TransitionCommitResult>("readwrite", async (store) => {
         const lockId = id("runtime-lock", stateSpace, "__lock__");
         const lock = (await request(store.get(lockId))) as
           | IndexedDbRecord
@@ -373,6 +415,12 @@ export function createIndexedDbStorage(
         await request(store.delete(lockId));
         return { ok: true, revision: nextRevision };
       });
+      if (result.ok) publishInvalidation({
+        runtimeId: requestValue.runtimeId,
+        stateRef: requestValue.stateRef,
+        observedRevision: result.revision,
+      });
+      return result;
     },
     abortTransition(requestValue) {
       const stateSpace = runtimeSpace(requestValue.stateRef);

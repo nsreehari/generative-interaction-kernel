@@ -29,6 +29,22 @@ export type RuntimeSnapshotChanges<TState = unknown, TSpec = unknown> =
   | ({ kind: "changes" } & RuntimeSnapshotPatch)
   | { kind: "reset"; snapshot: RuntimeSnapshot<TState, TSpec> };
 
+export type RuntimeSnapshotInvalidation = {
+  runtimeId: string;
+  stateRef: string;
+  observedRevision?: string;
+};
+
+export type RuntimeSnapshotInvalidationSubscription = (
+  request: RuntimeRefs & { runtimeId: string },
+  listener: (invalidation: RuntimeSnapshotInvalidation) => void,
+  options: {
+    signal: AbortSignal;
+    onError?: (error: unknown) => void;
+    onReconnect?: () => void;
+  },
+) => void | (() => void) | Promise<void | (() => void)>;
+
 export type TransitionSnapshot<TState = unknown, TSpec = unknown, TEvent = unknown> = {
   leaseToken: string;
   leaseExpiresAt: string;
@@ -75,6 +91,7 @@ export interface DurableProvider {
   readSnapshotChanges<TState, TSpec>(
     request: RuntimeRefs & { runtimeId: string; afterRevision: string | null }
   ): Promise<RuntimeSnapshotChanges<TState, TSpec>>;
+  subscribeSnapshotInvalidations?: RuntimeSnapshotInvalidationSubscription;
   acquireTransition<TState, TSpec, TEvent>(
     request: TransitionRefs & { runtimeId: string; leaseMs?: number }
   ): Promise<TransitionSnapshot<TState, TSpec, TEvent> | null>;

@@ -40,4 +40,62 @@ test("DurableBlueprintController persists Blueprint state", async () => {
 
   const reopened = new DurableBlueprintController(blueprint, { runtime });
   assert.equal((await reopened.start()).props.value, 2);
+  first.stop();
+  reopened.stop();
+});
+
+test("DurableBlueprintController refreshes after another controller commits", async () => {
+  const blueprint = createBlueprint({
+    id: "durable-shared-counter",
+    kind: "runtime-blueprint",
+    version: "1",
+    tiers: [{ id: "runtime", kind: "runtime-program" }],
+    recipes: [],
+    runtime: { namespaces: ["counter"], state: { counter: { value: 1 } }, capabilities: {} },
+    cells: {
+      root: {
+        id: "root",
+        view: { capability: "screen", bindings: { value: { from: "counter.value" } } },
+        behavior: { events: { increment: [{ do: "assign", target: "counter.value", args: { value: 2 } }] } },
+      },
+    },
+    projections: { presentation: { roots: ["root"] } },
+  });
+  const listeners = new Set<(event: MessageEvent<unknown>) => void>();
+  const provider = createIndexedDbStorage({
+    databaseName: `gik-react-shared-${crypto.randomUUID()}`,
+    createBroadcastChannel: () => ({
+      postMessage(message) {
+        const event = { data: message } as MessageEvent<unknown>;
+        for (const listener of listeners) listener(event);
+      },
+      addEventListener(_type, listener) { listeners.add(listener); },
+      removeEventListener(_type, listener) { listeners.delete(listener); },
+      close() {},
+    }),
+  });
+  const runtimeRef = ref("durable-shared-counter");
+  const runtime = {
+    runtimeId: "durable-shared-counter/v1",
+    providers: { "indexed-db": provider },
+    refs: { stateRef: runtimeRef, journalRef: runtimeRef, effectsQueueRef: runtimeRef },
+  };
+  const writer = new DurableBlueprintController(blueprint, { runtime });
+  const follower = new DurableBlueprintController(blueprint, { runtime });
+  await writer.start();
+  await follower.start();
+  const refreshed = new Promise<void>((resolve) => {
+    const unsubscribe = follower.subscribe(() => {
+      if (follower.getTree()?.props.value === 2) {
+        unsubscribe();
+        resolve();
+      }
+    });
+  });
+
+  await writer.emit("root", "increment");
+  await refreshed;
+  assert.equal(follower.getTree()?.props.value, 2);
+  writer.stop();
+  follower.stop();
 });

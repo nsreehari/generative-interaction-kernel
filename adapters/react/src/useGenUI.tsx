@@ -16,6 +16,7 @@ export interface GenUISource {
   subscribe(listener: () => void): () => void;
   emit(node: string, name: string, payload?: Record<string, unknown>, actorId?: string): void | Promise<unknown>;
   start(): void | Promise<unknown>;
+  stop?(): void;
 }
 
 export function useGenUI(source: GenUISource): {
@@ -27,7 +28,10 @@ export function useGenUI(source: GenUISource): {
   useEffect(() => {
     const unsubscribe = source.subscribe(() => setTree(source.getTree()));
     void source.start();
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      source.stop?.();
+    };
   }, [source]);
 
   const emit = (node: string, name: string, payload?: Record<string, unknown>, actorId?: string) =>

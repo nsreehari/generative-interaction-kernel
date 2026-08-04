@@ -4,9 +4,17 @@ import { test } from "vitest";
 
 import { createDurableRuntime } from "../src/runtime/browser-runtime";
 import { createAzureFunctionConnector } from "../src/connectors/azure-function";
-import { createFilesystemMcpConnector } from "../src/connectors/filesystem-mcp";
+import {
+  createFilesystemMcpConnector,
+  FILESYSTEM_MCP_SNAPSHOT_INVALIDATION_NOTIFICATION,
+} from "../src/connectors/filesystem-mcp";
 import { createIndexedDbStorage } from "../src/storage/indexed-db";
-import type { DurableProvider, TransitionSnapshot } from "../src/contracts";
+import type {
+  DurableProvider,
+  RuntimeRefs,
+  RuntimeSnapshotInvalidation,
+  TransitionSnapshot,
+} from "../src/contracts";
 import { applyRuntimeSnapshotChanges } from "../src/snapshot-changes";
 
 function ref(kind: string, value: string): string {
@@ -28,7 +36,9 @@ function provider(snapshot: TransitionSnapshot): DurableProvider & { commits: un
       spec: snapshot.spec as TSpec,
       revision: snapshot.revision ?? "revision-1",
     }),
-    readSnapshotChanges: async <TState, TSpec>(request) => {
+    readSnapshotChanges: async <TState, TSpec>(request: RuntimeRefs & {
+      runtimeId: string; afterRevision: string | null;
+    }) => {
       const revision = snapshot.revision ?? "revision-1";
       return request.afterRevision === revision
         ? { kind: "unchanged" as const, revision }
@@ -143,7 +153,9 @@ test("engine wake preserves a newer request appended during execution", async ()
       spec: {} as TSpec,
       revision: "revision-1",
     }),
-    readSnapshotChanges: async <TState, TSpec>(request) => request.afterRevision === "revision-1"
+    readSnapshotChanges: async <TState, TSpec>(request: RuntimeRefs & {
+      runtimeId: string; afterRevision: string | null;
+    }) => request.afterRevision === "revision-1"
       ? { kind: "unchanged", revision: "revision-1" }
       : {
           kind: "reset",
@@ -280,6 +292,60 @@ test("IndexedDB reads a committed snapshot while a transition lease is held", as
   await storage.abortTransition({ ...refs, runtimeId: "snapshot-v1", leaseToken: lease.leaseToken });
 });
 
+test("IndexedDB publishes snapshot invalidations after successful commits", async () => {
+  const listeners = new Set<(event: MessageEvent<unknown>) => void>();
+  const storage = createIndexedDbStorage({
+    databaseName: `gik-invalidations-${crypto.randomUUID()}`,
+    createBroadcastChannel: () => ({
+      postMessage(message) {
+        const event = { data: message } as MessageEvent<unknown>;
+        for (const listener of listeners) listener(event);
+      },
+      addEventListener(_type, listener) { listeners.add(listener); },
+      removeEventListener(_type, listener) { listeners.delete(listener); },
+      close() {},
+    }),
+  });
+  const runtimeRef = ref("indexed-db", "invalidations");
+  const refs = { stateRef: runtimeRef, journalRef: runtimeRef, effectsQueueRef: runtimeRef };
+  const initialized = await storage.initializeRuntime({
+    stateRef: runtimeRef,
+    effectsQueueRef: runtimeRef,
+    runtimeId: "invalidations-v1",
+    initialState: { count: 1 },
+    initialSpec: {},
+  });
+  const abortController = new AbortController();
+  const received: RuntimeSnapshotInvalidation[] = [];
+  const cleanup = await storage.subscribeSnapshotInvalidations?.(
+    { stateRef: runtimeRef, effectsQueueRef: runtimeRef, runtimeId: "invalidations-v1" },
+    (invalidation) => received.push(invalidation),
+    { signal: abortController.signal },
+  );
+  const lease = await storage.acquireTransition({ ...refs, runtimeId: "invalidations-v1" });
+  assert.ok(lease);
+  const committed = await storage.commitTransition({
+    ...refs,
+    runtimeId: "invalidations-v1",
+    leaseToken: lease.leaseToken,
+    expectedRevision: initialized.revision,
+    previousCursor: null,
+    nextCursor: "cursor-1",
+    state: { count: 2 },
+    spec: {},
+    specUpdates: [],
+    effects: [],
+  });
+
+  assert.equal(committed.ok, true);
+  assert.deepEqual(received, [{
+    runtimeId: "invalidations-v1",
+    stateRef: runtimeRef,
+    observedRevision: committed.revision,
+  }]);
+  cleanup?.();
+});
+
 test("runtime reads and subscribes to revision-aware snapshot changes", async () => {
   let revision = "revision-1";
   let count = 1;
@@ -292,7 +358,9 @@ test("runtime reads and subscribes to revision-aware snapshot changes", async ()
     cursor: null,
     entries: [],
   });
-  storage.readSnapshotChanges = async <TState, TSpec>(request) => request.afterRevision === revision
+  storage.readSnapshotChanges = async <TState, TSpec>(request: RuntimeRefs & {
+    runtimeId: string; afterRevision: string | null;
+  }) => request.afterRevision === revision
     ? { kind: "unchanged", revision }
     : {
         kind: "reset",
@@ -327,6 +395,68 @@ test("runtime reads and subscribes to revision-aware snapshot changes", async ()
     kind: "reset",
     snapshot: { state: { count: 2 }, spec: {}, revision: "revision-2" },
   }]);
+});
+
+test("runtime subscription uses invalidations for coalesced catch-up and cleans up", async () => {
+  let revision = "revision-1";
+  let count = 1;
+  let reads = 0;
+  let notify: ((invalidation: RuntimeSnapshotInvalidation) => void) | undefined;
+  let reconnect: (() => void) | undefined;
+  let cleanedUp = false;
+  const storage = provider({
+    leaseToken: "lease-1",
+    leaseExpiresAt: new Date(Date.now() + 60_000).toISOString(),
+    state: { count },
+    spec: {},
+    revision,
+    cursor: null,
+    entries: [],
+  });
+  storage.readSnapshotChanges = async <TState, TSpec>(request: RuntimeRefs & {
+    runtimeId: string; afterRevision: string | null;
+  }) => {
+    reads += 1;
+    return request.afterRevision === revision
+      ? { kind: "unchanged", revision }
+      : {
+          kind: "reset",
+          snapshot: { state: { count } as TState, spec: {} as TSpec, revision },
+        };
+  };
+  storage.subscribeSnapshotInvalidations = (_request, listener, options) => {
+    notify = listener;
+    reconnect = options.onReconnect;
+    return () => { cleanedUp = true; };
+  };
+  const runtime = createDurableRuntime({
+    runtimeId: "counter-v1",
+    providers: { "indexed-db": storage },
+    transitionAdapter: counterAdapter,
+  });
+  const runtimeRef = ref("indexed-db", "runtime");
+  const refs = { stateRef: runtimeRef, effectsQueueRef: runtimeRef };
+  const received: unknown[] = [];
+  const unsubscribe = runtime.subscribe(refs, (changes) => {
+    received.push(changes);
+  }, { afterRevision: revision, pollIntervalMs: 60_000 });
+
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(reads, 1);
+  revision = "revision-2";
+  count = 2;
+  notify?.({ runtimeId: "counter-v1", stateRef: runtimeRef, observedRevision: revision });
+  notify?.({ runtimeId: "counter-v1", stateRef: runtimeRef, observedRevision: revision });
+  reconnect?.();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.equal(reads, 2);
+  assert.deepEqual(received, [{
+    kind: "reset",
+    snapshot: { state: { count: 2 }, spec: {}, revision: "revision-2" },
+  }]);
+  unsubscribe();
+  assert.equal(cleanedUp, true);
 });
 
 test("remote connectors preserve their semantic operation boundaries", async () => {
@@ -397,4 +527,79 @@ test("remote connectors preserve their semantic operation boundaries", async () 
     "filesystem.runtime_snapshot_changes",
     "filesystem.effect_lease",
   ]);
+});
+
+test("remote connectors adapt transport invalidations without carrying snapshots", async () => {
+  const runtimeRef = ref("fs-path", "runtime");
+  let azureListener: ((invalidation: RuntimeSnapshotInvalidation) => void) | undefined;
+  const azure = createAzureFunctionConnector({
+    baseUrl: "https://stores.example.test",
+    fetch: async () => new Response("{}"),
+    subscribeSnapshotInvalidations: (_request, listener) => {
+      azureListener = listener;
+    },
+  });
+  const azureReceived: RuntimeSnapshotInvalidation[] = [];
+  await azure.subscribeSnapshotInvalidations?.(
+    { stateRef: runtimeRef, effectsQueueRef: runtimeRef, runtimeId: "runtime-v1" },
+    (invalidation) => azureReceived.push(invalidation),
+    { signal: new AbortController().signal },
+  );
+  azureListener?.({ runtimeId: "runtime-v1", stateRef: runtimeRef, observedRevision: "revision-2" });
+  assert.equal(azureReceived.length, 1);
+
+  let notificationListener: ((params: unknown) => void) | undefined;
+  let notificationMethod = "";
+  const filesystem = createFilesystemMcpConnector(async () => ({}), {
+    subscribeNotification(method, listener) {
+      notificationMethod = method;
+      notificationListener = listener;
+    },
+  });
+  const filesystemReceived: RuntimeSnapshotInvalidation[] = [];
+  await filesystem.subscribeSnapshotInvalidations?.(
+    { stateRef: runtimeRef, effectsQueueRef: runtimeRef, runtimeId: "runtime-v1" },
+    (invalidation) => filesystemReceived.push(invalidation),
+    { signal: new AbortController().signal },
+  );
+  notificationListener?.({ runtimeId: "other", stateRef: runtimeRef });
+  notificationListener?.({ runtimeId: "runtime-v1", stateRef: runtimeRef, observedRevision: "revision-2" });
+
+  assert.equal(notificationMethod, FILESYSTEM_MCP_SNAPSHOT_INVALIDATION_NOTIFICATION);
+  assert.deepEqual(filesystemReceived, [{
+    runtimeId: "runtime-v1",
+    stateRef: runtimeRef,
+    observedRevision: "revision-2",
+  }]);
+});
+
+test("Azure SignalR invalidations negotiate through the configured Function endpoint", async () => {
+  const runtimeRef = ref("stores-proxy", "runtime");
+  let requestedUrl = "";
+  let requestedInit: RequestInit | undefined;
+  const azure = createAzureFunctionConnector({
+    baseUrl: "https://stores.example.test/",
+    getHeaders: () => ({ "x-functions-key": "function-key" }),
+    fetch: async (input, init) => {
+      requestedUrl = String(input);
+      requestedInit = init;
+      return new Response(null, { status: 503 });
+    },
+    signalR: {},
+  });
+
+  await assert.rejects(
+    azure.subscribeSnapshotInvalidations?.(
+      { stateRef: runtimeRef, effectsQueueRef: runtimeRef, runtimeId: "runtime-v1" },
+      () => {},
+      { signal: new AbortController().signal },
+    ),
+    /negotiation failed with status 503/,
+  );
+  assert.equal(
+    requestedUrl,
+    "https://stores.example.test/api/gik/runtime/invalidations/negotiate",
+  );
+  assert.equal(requestedInit?.method, "POST");
+  assert.deepEqual(requestedInit?.headers, { "x-functions-key": "function-key" });
 });
