@@ -141,3 +141,16 @@ use `{ authoredBlueprint, externalContext, materializedBlueprint }` as `TSpec`, 
 The provider atomically stores the caller-materialized next spec with state, cursor, and effects.
 It never parses the terminal Blueprint. Stateless workers read the portable materialization from
 the acquired spec and need no process-local cache.
+
+## Amendment (2026-08-04): lock-free committed reads and synchronization metadata
+
+ADR-0047 extends provider ownership to committed snapshot reads and bounded synchronization
+metadata without changing execution ownership. `readSnapshot` and `readSnapshotChanges` never
+acquire a transition lease; transition leases remain exclusive writer coordination. A provider
+atomically stores the latest one-revision RFC 6902 checkpoint patch with the resulting committed
+state, opaque spec, and revision, and returns a full reset when that patch cannot advance the
+consumer safely.
+
+The runtime's framework-neutral subscription is layered over these provider reads. Neither the
+provider nor its patch interprets Blueprint, Kernel, or application semantics, and this checkpoint
+synchronization contract remains distinct from the Kernel transport reconnection model in ADR-0012.
