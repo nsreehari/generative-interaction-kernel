@@ -9,7 +9,7 @@ import { asRecord, componentRootProps, componentStylePropsSchema, readPath, reco
 import { formatTime, formatTimestamp } from "../datetime";
 
 export const GANTT_VARIANTS = ["standard", "compact"] as const;
-const MAX_GANTT_TICKS = 101;
+export const MAX_GANTT_TICKS = 101;
 
 export interface GanttScale {
   kind: "datetime" | "linear";
@@ -108,19 +108,19 @@ const useStyles = makeStyles({
   bar: { position: "absolute", top: "0.25rem", bottom: "0.25rem", minWidth: "3px", borderRadius: tokens.borderRadiusSmall, backgroundColor: tokens.colorBrandBackground },
 });
 
-function parseCoordinate(value: unknown, scale: GanttScale): number {
+export function parseGanttCoordinate(value: unknown, scale: GanttScale): number {
   if (scale.kind === "datetime") return typeof value === "string" ? Date.parse(value) : Number.NaN;
   return typeof value === "number" ? value : Number.NaN;
 }
 
-function formatCoordinate(value: unknown, scale: GanttScale): string {
+export function formatGanttCoordinate(value: unknown, scale: GanttScale): string {
   const text = value == null ? "" : String(value);
   if (scale.kind === "datetime") return formatTimestamp(text, { hourFormat: scale.hourFormat, showSeconds: scale.showSeconds, showTimeZone: scale.showTimeZone });
   return scale.kind === "linear" && scale.displayPrefix ? `${scale.displayPrefix}${text}` : text;
 }
 
-function formatAxisCoordinate(value: number, scale: GanttScale): string {
-  return scale.kind === "datetime" ? formatTime(value, { hourFormat: scale.hourFormat, showSeconds: scale.showSeconds, showTimeZone: scale.showTimeZone }) : formatCoordinate(value, scale);
+export function formatGanttAxisCoordinate(value: number, scale: GanttScale): string {
+  return scale.kind === "datetime" ? formatTime(value, { hourFormat: scale.hourFormat, showSeconds: scale.showSeconds, showTimeZone: scale.showTimeZone }) : formatGanttCoordinate(value, scale);
 }
 
 export const Gantt: ProjectionView = ({ node }) => {
@@ -135,10 +135,10 @@ export const Gantt: ProjectionView = ({ node }) => {
       id: textAt(item, spec.fields?.id) || String(index),
       label: textAt(item, spec.fields?.label),
       detail: textAt(item, spec.fields?.detail),
-      startText: formatCoordinate(startValue, scale),
-      endText: formatCoordinate(endValue, scale),
-      start: parseCoordinate(startValue, scale),
-      end: parseCoordinate(endValue, scale),
+      startText: formatGanttCoordinate(startValue, scale),
+      endText: formatGanttCoordinate(endValue, scale),
+      start: parseGanttCoordinate(startValue, scale),
+      end: parseGanttCoordinate(endValue, scale),
     };
   }).filter((interval) => interval.label && Number.isFinite(interval.start) && Number.isFinite(interval.end) && interval.end >= interval.start);
 
@@ -157,7 +157,7 @@ export const Gantt: ProjectionView = ({ node }) => {
     <div className={mergeClasses(styles.rows, compact && styles.compactRows)}>
       {ticks.length > 0 ? <div className={styles.axisRow} aria-label="Gantt scale"><div className={styles.axisSpacer} /><div className={styles.axis}>{ticks.map((tick, index) => {
         const left = ((tick - minimum) / span) * 100;
-        return <React.Fragment key={tick}><span className={styles.tick} style={{ left: `${left}%` }} aria-hidden="true" /><Text className={mergeClasses(styles.tickLabel, index === 0 && styles.firstTickLabel, index === ticks.length - 1 && styles.lastTickLabel)} size={200} style={{ left: `${left}%` }}>{formatAxisCoordinate(tick, scale)}</Text></React.Fragment>;
+        return <React.Fragment key={tick}><span className={styles.tick} style={{ left: `${left}%` }} aria-hidden="true" /><Text className={mergeClasses(styles.tickLabel, index === 0 && styles.firstTickLabel, index === ticks.length - 1 && styles.lastTickLabel)} size={200} style={{ left: `${left}%` }}>{formatGanttAxisCoordinate(tick, scale)}</Text></React.Fragment>;
       })}</div></div> : null}
       {intervals.map((interval) => {
       const left = ((interval.start - minimum) / span) * 100;
@@ -207,8 +207,8 @@ export function validateGantt(props: unknown): ComponentValidationReport {
   const maximum = scale.kind === "linear" ? scale.maximum : undefined;
   const invalidDomain = minimum !== undefined && maximum !== undefined && maximum <= minimum;
   const parsedIntervals = records(propsRecord.items).map((item) => ({
-    start: parseCoordinate(readPath(item, String(fields.start)), scale),
-    end: parseCoordinate(readPath(item, String(fields.end)), scale),
+    start: parseGanttCoordinate(readPath(item, String(fields.start)), scale),
+    end: parseGanttCoordinate(readPath(item, String(fields.end)), scale),
   }));
   const domainMinimum = minimum ?? Math.min(...parsedIntervals.map((interval) => interval.start));
   const domainMaximum = maximum ?? Math.max(...parsedIntervals.map((interval) => interval.end));

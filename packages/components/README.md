@@ -203,7 +203,7 @@ authoring agent should inspect `describe().variants`, select a value whose `useW
 the target surface, and use `defaultVariant` when no alternate presentation is required. Variants do
 not change domain meaning, semantic status mapping, event contracts, or host theme ownership.
 
-- Timeline: `standard`, `compact`, `minimal`
+- Timeline: `standard`, `compact`, `minimal`, `axis`
 - Sequence: `standard`, `compact`
 - Entity constellation: `grouped`, `compact`
 - Decision summary: `detailed`, `concise`
@@ -218,6 +218,10 @@ not change domain meaning, semantic status mapping, event contracts, or host the
 - Semantic graph: `network`, `relations`
 - Infinite canvas: `standard`, `compact`, `minimal`
 - Attack graph: `canvas`, `diagram`, `relations`, `gantt`, `text`
+
+Timeline's `axis` variant places point events as labeled markers on one horizontal scale. Its
+`spec.scale` uses the same datetime and numeric linear coordinate options as Gantt, including
+fractional values, shared `tickStep` markers, and presentation-only `displayPrefix` labels.
 
 Chart's visualization kind is independent of
 presentation variant. Set `spec.kind` to `bar`, `line`,
