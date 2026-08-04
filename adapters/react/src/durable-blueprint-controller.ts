@@ -7,6 +7,7 @@ import {
 import {
   createDurableRuntime,
   type DurableProvider,
+  type RuntimeSnapshotChanges,
   type TransitionRefs,
 } from "@gik/durable-runtime";
 import {
@@ -38,6 +39,8 @@ export class DurableBlueprintController implements GenUISource {
   private tree: ResolvedNode | null = null;
   private readonly listeners = new Set<() => void>();
   private operation: Promise<void> = Promise.resolve();
+  private revision: string | null = null;
+  private unsubscribeSnapshot: (() => void) | undefined;
 
   constructor(
     blueprint: BlueprintArtifact,
@@ -66,8 +69,23 @@ export class DurableBlueprintController implements GenUISource {
     return this.enqueue(async () => {
       await this.runtime.initializeRuntime(this.options.runtime.refs);
       await this.runtime.processEngineWake(this.options.runtime.refs);
-      return this.refresh();
+      const tree = await this.refresh();
+      if (!this.unsubscribeSnapshot) {
+        this.unsubscribeSnapshot = this.runtime.subscribe<Record<string, Json>, DurableBlueprintSpec>(
+          this.options.runtime.refs,
+          async (changes) => {
+            await this.enqueue(() => this.refreshExternal(changes));
+          },
+          { afterRevision: this.revision },
+        );
+      }
+      return tree;
     });
+  }
+
+  stop(): void {
+    this.unsubscribeSnapshot?.();
+    this.unsubscribeSnapshot = undefined;
   }
 
   emit(node: string, name: string, payload?: Record<string, unknown>, actorId?: string): Promise<ResolvedNode> {
@@ -97,6 +115,7 @@ export class DurableBlueprintController implements GenUISource {
     const snapshot = await this.runtime.readSnapshot<Record<string, Json>, DurableBlueprintSpec>(
       this.options.runtime.refs,
     );
+    this.revision = snapshot.revision;
     const { vocabulary, program, externalContext } = snapshot.spec.materializedBlueprint.payload;
     const local = new InMemoryStateModel(unwrap(vocabulary).namespaces ?? []);
     local.apply(Object.entries(snapshot.state).map(([path, value]) => ({ op: "set", path, value })));
@@ -109,5 +128,11 @@ export class DurableBlueprintController implements GenUISource {
     this.tree = await new Kernel(vocabulary, program, { state }).resolve();
     for (const listener of this.listeners) listener();
     return this.tree!;
+  }
+
+  private refreshExternal(changes: RuntimeSnapshotChanges): Promise<ResolvedNode> {
+    const nextRevision = changes.kind === "reset" ? changes.snapshot.revision : changes.revision;
+    if (nextRevision === this.revision && this.tree) return Promise.resolve(this.tree);
+    return this.refresh();
   }
 }

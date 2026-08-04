@@ -126,31 +126,89 @@ export function createDurableRuntime(options: DurableRuntimeOptions) {
       let stopped = false;
       let revision = subscriptionOptions?.afterRevision ?? null;
       let timer: ReturnType<typeof setTimeout> | undefined;
+      let pending = false;
+      let draining: Promise<void> | null = null;
+      let drainScheduled = false;
+      let unsubscribeInvalidations: (() => void) | undefined;
+      const abortController = new AbortController();
       const pollIntervalMs = Math.max(1, subscriptionOptions?.pollIntervalMs ?? 1_000);
+      const provider = providerFor(request.stateRef);
 
-      const poll = async (): Promise<void> => {
-        try {
-          const changes = await readSnapshotChanges<TState, TSpec>({
-            ...request,
-            afterRevision: revision,
-          });
-          if (!stopped && changes.kind !== "unchanged") {
-            revision = changes.kind === "reset"
-              ? changes.snapshot.revision
-              : changes.revision;
-            await listener(changes);
+      const drain = async (): Promise<void> => {
+        if (draining) return draining;
+        draining = (async () => {
+          while (!stopped && pending) {
+            pending = false;
+            try {
+              const changes = await readSnapshotChanges<TState, TSpec>({
+                ...request,
+                afterRevision: revision,
+              });
+              if (!stopped && changes.kind !== "unchanged") {
+                revision = changes.kind === "reset"
+                  ? changes.snapshot.revision
+                  : changes.revision;
+                await listener(changes);
+              }
+            } catch (error) {
+              if (!stopped) subscriptionOptions?.onError?.(error);
+            }
           }
-        } catch (error) {
-          if (!stopped) subscriptionOptions?.onError?.(error);
-        } finally {
-          if (!stopped) timer = setTimeout(() => void poll(), pollIntervalMs);
-        }
+        })().finally(() => {
+          draining = null;
+          if (!stopped && pending) scheduleRead();
+        });
+        return draining;
       };
 
-      void poll();
+      const scheduleRead = (): void => {
+        if (stopped) return;
+        pending = true;
+        if (draining || drainScheduled) return;
+        drainScheduled = true;
+        queueMicrotask(() => {
+          drainScheduled = false;
+          if (!stopped) void drain();
+        });
+      };
+
+      const scheduleSafetyPoll = (): void => {
+        timer = setTimeout(() => {
+          scheduleRead();
+          if (!stopped) scheduleSafetyPoll();
+        }, pollIntervalMs);
+      };
+
+      const startInvalidations = async (): Promise<void> => {
+        if (provider.subscribeSnapshotInvalidations) {
+          try {
+            const cleanup = await provider.subscribeSnapshotInvalidations(
+              { ...request, runtimeId: options.runtimeId },
+              () => scheduleRead(),
+              {
+                signal: abortController.signal,
+                onError: subscriptionOptions?.onError,
+                onReconnect: scheduleRead,
+              },
+            );
+            if (stopped) cleanup?.();
+            else unsubscribeInvalidations = cleanup ?? undefined;
+          } catch (error) {
+            if (!stopped) subscriptionOptions?.onError?.(error);
+          }
+        }
+        scheduleRead();
+      };
+
+      scheduleSafetyPoll();
+      void startInvalidations();
       return () => {
         stopped = true;
+        pending = false;
+        abortController.abort();
         if (timer) clearTimeout(timer);
+        unsubscribeInvalidations?.();
+        unsubscribeInvalidations = undefined;
       };
     },
 

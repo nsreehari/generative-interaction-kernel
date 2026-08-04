@@ -126,7 +126,9 @@ architecture:
       - Return unchanged without transferring state when that revision is still current.
       - Return JSON Patch operations when the revision is exactly one retained commit behind.
       - Return a reset snapshot when the revision is older, unknown, or not supplied.
-      - Poll serially so one subscription never overlaps provider reads.
+      - Serialize provider reads so polling and invalidation wakeups never overlap.
+      - Coalesce invalidation bursts and catch up immediately after attachment or reconnection.
+      - Retain periodic safety polling because invalidations are lossy hints.
       - Advance the local revision before notifying the subscriber.
       - Stop future polls synchronously when the returned unsubscribe function is called.
 
@@ -314,6 +316,9 @@ contracts:
       - "leaseQueueItem?<TEffect>(request): Promise<QueueLeasedMessage<TEffect> | null>"
       - "ackQueueItem?(request): Promise<boolean>"
       - "nackQueueItem?(request): Promise<boolean>"
+      - >-
+        subscribeSnapshotInvalidations?(request, listener, options):
+        void | (() => void) | Promise<void | (() => void)>
     queue_support: >-
       Queue methods are optional at the interface level. processQueueLaneItem rejects a
       provider that does not implement all three queue methods.
@@ -332,6 +337,12 @@ contracts:
       Promise<void | (() => void)>
     purpose: Notify one processor that its configured queue may contain work.
     payload_semantics: The notification carries no item, count, lease, or authoritative state.
+
+  - name: RuntimeSnapshotInvalidation
+    signature: >-
+      type RuntimeSnapshotInvalidation = { runtimeId: string; stateRef: string;
+      observedRevision?: string }
+    purpose: Lossy wake hint that causes an authoritative readSnapshotChanges catch-up.
 
 browser_runtime:
   factory:
@@ -382,7 +393,9 @@ browser_runtime:
         onError?: (error: unknown) => void }): () => void
       purpose: Notify any UI, backend, worker, CLI, or headless consumer when committed snapshot state changes.
       behavior:
-        - Uses serialized provider-neutral polling over readSnapshotChanges.
+        - Uses serialized provider-neutral reads over readSnapshotChanges.
+        - Wakes from optional provider invalidations and retains periodic safety polling.
+        - Coalesces bursts and catches up after invalidation attachment and reconnection.
         - Suppresses listener calls for unchanged revisions.
         - Delivers an initial reset when afterRevision is omitted.
         - Reports read or listener failures through onError and continues polling.
@@ -533,6 +546,9 @@ connectors_and_storage:
       - Acquire validates initialized state and writes the lease in one readwrite transaction.
       - Commit validates lease, revision, and cursor; writes state and effects; and deletes the lock in one readwrite transaction.
       - Abort validates the token and deletes the lock in one readwrite transaction.
+    snapshot_invalidations: >-
+      BroadcastChannel publishes runtimeId, stateRef, and resulting revision only after a
+      successful committed transaction. Delivery and publication are best effort.
     default_transition_lease_ms: 300000
     default_queue_visibility_ms: 60000
 
@@ -591,6 +607,9 @@ connectors_and_storage:
           Typed storage batch contracts and createFilesystemStorageDispatcher,
           separated from storage implementation and durable runtime semantics.
     server_implementation: Consumer-owned MCP host using the public storage/filesystem export.
+    snapshot_invalidations: >-
+      The connector can adapt notifications/gik/runtime_snapshot_invalidated from the MCP
+      transport. The current server watches committed checkpoint files and emits debounced hints.
 
   - name: Azure Functions
     kind: stores-proxy
@@ -613,6 +632,7 @@ connectors_and_storage:
       effect_lease: /api/gik/effects/lease
       effect_ack: /api/gik/effects/ack
       effect_nack: /api/gik/effects/nack
+      invalidation_negotiate: /api/gik/runtime/invalidations/negotiate
     wake_behavior:
       - Cosmos stores requestedAt and processedAt in one engine wake document.
       - Wake updates use ETag-conditional replacement or create with bounded conflict retries.
@@ -622,6 +642,10 @@ connectors_and_storage:
     authentication: >-
       The host may return request headers from getHeaders. The adapter does not own or
       persist credentials.
+    snapshot_invalidations: >-
+      Optional SignalR mode negotiates through the Functions endpoint and listens for
+      gikRuntimeSnapshotInvalidated. The server publishes through managed-identity REST only
+      after successful commits; publication failure does not alter the commit result.
     storage_layers:
       runtime:
         source: packages/durable-runtime/src/storage/cosmos/runtime.ts
@@ -684,6 +708,7 @@ host_responsibilities:
   - Supply effect handlers keyed by effect body type.
   - Supply queue notification subscriptions and own their transport connectivity.
   - Supply provider URLs, MCP connection behavior, authentication headers, and optional browser APIs.
+  - Configure optional snapshot invalidation transports when lower-latency catch-up is required.
   - Keep all refs in one operation on the same provider kind.
   - Decide when to call processEngineWake or runEngine.
   - Start and stop queue processors with the host lifecycle when notification-driven draining is required.
@@ -698,6 +723,7 @@ non_goals:
   - Automatic polling, scheduling, or service-worker ownership.
   - Built-in SSE, BroadcastChannel, MCP notification, or other queue notification transports.
   - A provider-neutral durable notification queue; notifications are only wake hints.
+  - Firestore snapshot invalidation or storage integration.
   - Owning MCP transport lifecycle or Azure credentials.
   - Interpreting caller-owned specs, events, effects, or spec updates.
 
@@ -720,7 +746,7 @@ validation:
   focused_tests: >-
     npm test --workspace=@gik/durable-runtime
   build_result: Package build passed with all root, connector, and storage subpath declarations emitted.
-  last_focused_result: 7 files and 25 tests passed
+  last_focused_result: 7 files and 32 tests passed
   coverage:
     - Local transition execution, spec update application, and provider-kind routing.
     - Explicit initialization and repeat initialization without overwrite.

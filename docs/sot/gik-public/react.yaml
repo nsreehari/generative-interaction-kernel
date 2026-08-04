@@ -104,8 +104,9 @@ durable_blueprint_host:
       @gik/durable-runtime exposes readSnapshotChanges, applyRuntimeSnapshotChanges, and subscribe
       as framework-neutral APIs.
     current_host_behavior: >-
-      DurableBlueprintController refreshes after its own startup and emitted transitions; automatic
-      subscription to commits made by other processes is not yet part of this host.
+      DurableBlueprintController subscribes after startup, refreshes from authoritative snapshot
+      changes after commits made by other processes, and stops the subscription with the GenUISource
+      lifecycle.
 
 related_decisions:
   - ADR-0006-render-adapter-infra-agnostic.md

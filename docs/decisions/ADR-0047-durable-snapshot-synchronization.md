@@ -64,14 +64,21 @@ baseline implementation performs serialized polling over `readSnapshotChanges`:
 - errors are reported through `onError` and polling continues; and
 - the returned unsubscribe function prevents future polling and delivery.
 
-Polling is the portable baseline, not a requirement that every transport remain polling-only. A
-future provider notification, SSE, WebSocket, filesystem watcher, or `BroadcastChannel` adapter may
-wake or replace the polling scheduler while preserving the same revision-aware read contract.
-Notifications are invalidations, not authoritative snapshot payloads.
+Polling is the portable safety baseline, not a requirement that every transport remain polling-only.
+A provider may implement `subscribeSnapshotInvalidations` to wake the same serialized scheduler.
+The runtime coalesces notification bursts, performs immediate catch-up after attachment and
+reconnection, and retains periodic safety polling for missed notifications. Notifications carry
+only `runtimeId`, `stateRef`, and an optional advisory revision; they are invalidations, not
+authoritative snapshot payloads.
 
-React is one possible consumer. `@gik/react/durable` may translate durable-runtime changes into its
-existing `GenUISource` tree notification, but neither the durable provider contract nor subscription
-semantics depend on React or another UI framework.
+The initial adapters use `BroadcastChannel` after committed IndexedDB transactions, a custom MCP
+notification driven by the filesystem server's checkpoint watcher, and Azure SignalR after
+successful Cosmos-backed commits. Notification publication failure never changes commit success.
+
+React is one possible consumer. `@gik/react/durable` translates durable-runtime changes into its
+existing `GenUISource` tree notification and stops its subscription with the source lifecycle, but
+neither the durable provider contract nor subscription semantics depend on React or another UI
+framework.
 
 ## Alternatives considered
 
@@ -115,15 +122,16 @@ Kernel, Blueprint, and durable checkpoint revisions have different ownership and
 - Provider storage growth is constant because only one patch is retained.
 - State and spec changes are synchronized atomically under one resulting revision.
 - Providers and remote protocols add a required `readSnapshotChanges` operation.
-- Polling latency and load are configurable baseline tradeoffs; push wakeups remain a compatible
-  future optimization.
+- Polling latency and load remain configurable safety tradeoffs when push wakeups are attached.
+- IndexedDB, filesystem MCP, and Azure SignalR can reduce synchronization latency without becoming
+  authoritative state transports.
 - Durable snapshot patches must not be interpreted as application commands or Kernel protocol
   patches.
 
 ## Not decided here
 
 - A longer retained patch history or provider-specific compaction policy.
-- Push notification transport selection and delivery guarantees.
+- Delivery guarantees beyond lossy invalidation and future transport adapters such as Firestore.
 - Cross-runtime fan-out infrastructure or subscription authorization.
-- Automatic subscription wiring in a particular React, server, worker, or CLI host.
+- Automatic subscription wiring in server, worker, or CLI hosts beyond the implemented React host.
 - Snapshot compression, field projection, or partial-spec synchronization.

@@ -7,6 +7,8 @@ import type {
   RuntimeRefs,
   RuntimeSnapshot,
   RuntimeSnapshotChanges,
+  RuntimeSnapshotInvalidation,
+  RuntimeSnapshotInvalidationSubscription,
   TransitionCommit,
   TransitionCommitResult,
   TransitionRefs,
@@ -18,13 +20,53 @@ export type McpCallTool = (
   args: Record<string, unknown>
 ) => Promise<{ structuredContent?: unknown }>;
 
-export function createFilesystemMcpConnector(callTool: McpCallTool): DurableProvider {
+export const FILESYSTEM_MCP_SNAPSHOT_INVALIDATION_NOTIFICATION =
+  "notifications/gik/runtime_snapshot_invalidated";
+
+export type McpNotificationSubscription = (
+  method: string,
+  listener: (params: unknown) => void,
+  options: Parameters<RuntimeSnapshotInvalidationSubscription>[2],
+) => void | (() => void) | Promise<void | (() => void)>;
+
+export type FilesystemMcpConnectorOptions = {
+  subscribeSnapshotInvalidations?: RuntimeSnapshotInvalidationSubscription;
+  subscribeNotification?: McpNotificationSubscription;
+};
+
+export function createFilesystemMcpSnapshotInvalidationSubscription(
+  subscribeNotification: McpNotificationSubscription,
+): RuntimeSnapshotInvalidationSubscription {
+  return (request, listener, options) => subscribeNotification(
+    FILESYSTEM_MCP_SNAPSHOT_INVALIDATION_NOTIFICATION,
+    (params) => {
+      const invalidation = params as Partial<RuntimeSnapshotInvalidation> | null;
+      if (
+        invalidation?.runtimeId === request.runtimeId &&
+        invalidation.stateRef === request.stateRef
+      ) listener(invalidation as RuntimeSnapshotInvalidation);
+    },
+    options,
+  );
+}
+
+export function createFilesystemMcpConnector(
+  callTool: McpCallTool,
+  options: FilesystemMcpConnectorOptions = {},
+): DurableProvider {
+  const subscribeSnapshotInvalidations = options.subscribeSnapshotInvalidations
+    ?? (options.subscribeNotification
+      ? createFilesystemMcpSnapshotInvalidationSubscription(options.subscribeNotification)
+      : undefined);
   async function call<T>(name: string, args: Record<string, unknown>): Promise<T> {
     const response = await callTool(name, args);
     return response.structuredContent as T;
   }
 
   return {
+    ...(subscribeSnapshotInvalidations
+      ? { subscribeSnapshotInvalidations }
+      : {}),
     async appendJournal<T>(request: TransitionRefs & { entry: T }) {
       const payload = await call<{ entry: JournalEntry<T> }>("filesystem.journal_append_and_wake", request);
       return payload.entry;
