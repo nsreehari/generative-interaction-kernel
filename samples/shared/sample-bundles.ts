@@ -16,6 +16,7 @@ import * as cachedIncidentReportExplorer2EffectModule from "../blueprints/cached
 import * as cachedIncidentReportExplorer3EffectModule from "../blueprints/cached-incident-report-explorer-3/native/effect_handlers/cachedIncidentReportExplorer3EffectHandlers";
 import * as foundryAgentEffectModule from "../blueprints/foundry-agent/native/effect_handlers/foundryAgentEffectHandlers";
 import * as incidentReportExplorerEffectModule from "../blueprints/incident-report-explorer/native/effect_handlers/incidentReportExplorerEffectHandlers";
+import * as incidentReportExplorer1aEffectModule from "../blueprints/incident-report-explorer-1a/native/effect_handlers/incidentReportExplorer1aEffectHandlers";
 import * as incidentReportExplorer2EffectModule from "../blueprints/incident-report-explorer-2/native/effect_handlers/incidentReportExplorer2EffectHandlers";
 import * as incidentReportExplorer3EffectModule from "../blueprints/incident-report-explorer-3/native/effect_handlers/incidentReportExplorer3EffectHandlers";
 import * as liveWorkspaceSocEffectModule from "../blueprints/live-workspace-soc/native/effect_handlers/liveWorkspaceSocEffectHandlers";
@@ -48,6 +49,7 @@ const effectHandlerModules: Record<string, NativeEffectModule> = {
   "copilot-c2": copilotC2EffectModule,
   "foundry-agent": foundryAgentEffectModule,
   "incident-report-explorer": incidentReportExplorerEffectModule,
+  "incident-report-explorer-1a": incidentReportExplorer1aEffectModule,
   "incident-report-explorer-2": incidentReportExplorer2EffectModule,
   "incident-report-explorer-3": incidentReportExplorer3EffectModule,
   "live-workspace-soc": liveWorkspaceSocEffectModule,

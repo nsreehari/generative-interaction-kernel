@@ -3,6 +3,7 @@ export * from "./authoring";
 export * from "./registry";
 export * from "./action-board";
 export * from "./annotated-source-excerpt";
+export * from "./attack-graph";
 export * from "./decision-summary";
 export * from "./entity-constellation";
 export * from "./evidence-trail";

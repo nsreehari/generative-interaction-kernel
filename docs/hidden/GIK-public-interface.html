@@ -182,7 +182,7 @@
 <body>
 
 <h1>GIK Public Interface</h1>
-<div class="subtitle">Consumer Manual · Public packages: <code>gik</code> (meta) · <code>@gik/kernel</code> · <code>@gik/react</code> · <code>@gik/controlface</code> · <code>@gik/agentface</code> · <code>@gik/transport-*</code> · <code>@gik/profile</code> · <code>@gik/profile-genui</code> · <code>@gik/provider-*</code> · <code>@gik/component-infinite-canvas</code></div>
+<div class="subtitle">Consumer Manual · Public packages: <code>gik</code> (meta) · <code>@gik/kernel</code> · <code>@gik/react</code> · <code>@gik/components</code> · <code>@gik/controlface</code> · <code>@gik/agentface</code> · <code>@gik/transport-*</code> · <code>@gik/profile</code> · <code>@gik/profile-genui</code> · <code>@gik/provider-*</code></div>
 
 <div class="description">
 This page is a <strong>practical manual</strong> for consuming GenUI. It answers one question at each
@@ -241,7 +241,7 @@ repo — pick a row by what you are building.</p>
 <tr><td><code>SseTransportServer</code></td><td><code>@gik/transport-http-sse/server</code></td><td>You stream the render/patch feed to a renderer over SSE.</td></tr>
 <tr><td><code>McpHttpServer</code></td><td><code>@gik/transport-mcp-http</code></td><td>You carry a projection's tool dispatcher over MCP/HTTP.</td></tr>
 <tr><td><code>GIKClient</code> · <code>KernelTransportHost</code></td><td><code>@gik/kernel</code></td><td>You connect a remote renderer to an authoritative host over the GIK protocol.</td></tr>
-<tr><td><code>InfiniteCanvas</code></td><td><code>@gik/component-infinite-canvas</code></td><td>You render a pan/zoom node canvas inside a React surface (used by <code>@gik/react</code>).</td></tr>
+<tr><td><code>InfiniteCanvas</code> · <code>primitive:infinite-canvas</code></td><td><code>@gik/components/primitives</code></td><td>You render a pan/zoom node canvas or author its JSON-native node-and-port contract.</td></tr>
 <tr><td>profile / lowering</td><td><code>@gik/profile</code> · <code>@gik/profile-genui</code></td><td>You compile a higher-level DSL down to a kernel document (Task → Domain → Interaction → UI).</td></tr>
 <tr><td>provider engines</td><td><code>@gik/provider-*</code></td><td>You plug a ready-made <code>Orchestrator</code> / <code>StateModel</code> / graph engine into a kernel seam (§14).</td></tr>
 <tr><td><code>gik</code></td><td><code>gik</code></td><td>You want one batteries-included install that re-exports the core packages under namespaces.</td></tr>
@@ -602,7 +602,7 @@ provider</code> — or authoring a domain DSL that compiles to a kernel document
 <tr><td><code>@gik/provider-step-orchestrator</code></td><td>A flow/step <code>Orchestrator</code>: registers named flows and drives multi-step effects through the kernel dispatch seam.</td><td><code>StepOrchestrator</code>, <code>FlowRegistry</code></td><td><code>Orchestrator</code></td></tr>
 <tr><td><code>@gik/blueprint</code></td><td>Declarative Blueprint authoring, validation, Cell topology, Cell-impact analysis, and exploration snapshot analysis.</td><td><code>compileCellTopology</code>, <code>analyzeCellImpact</code>, <code>analyzeExploration</code>, <code>inspectExploration</code></td><td>Lowering and analysis (above the kernel)</td></tr>
 <tr><td><code>@gik/provider-profile-authoring</code></td><td>The profile-authoring flow: builds an authoring registry and summarizes profile artifacts (used by the Profiles console).</td><td><code>profileAuthoringFlow</code>, <code>createProfileAuthoringRegistry</code>, <code>summarizeProfileArtifacts</code></td><td>Authoring engine</td></tr>
-<tr><td><code>@gik/component-infinite-canvas</code></td><td>An infinite pan/zoom canvas React component (xyflow-based) used to render node/graph surfaces.</td><td><code>InfiniteCanvas</code> (+ <code>InfiniteCanvasProps</code>, <code>InfiniteCanvasRef</code>)</td><td>React surface (peer: react)</td></tr>
+<tr><td><code>@gik/components</code></td><td>Self-describing Fluent, primitive, and semantic components, including a port-derived infinite canvas and semantic attack graph.</td><td><code>InfiniteCanvas</code>, <code>InfiniteCanvasPrimitive</code>, <code>AttackGraph</code>, component definitions and registries</td><td>Declarative React projection providers</td></tr>
 </table>
 
 <div class="callout"><strong>Meta-package.</strong> <code>gik</code> is a batteries-included convenience wrapper — it re-exports the
@@ -617,7 +617,7 @@ import { kernel, react } from "gik";
 import { Kernel } from "@gik/kernel";
 import { ReactiveStateModel } from "@gik/provider-reactive-state-model";
 import { StepOrchestrator } from "@gik/provider-step-orchestrator";
-import { InfiniteCanvas } from "@gik/component-infinite-canvas";</code></pre></div>
+import { InfiniteCanvas } from "@gik/components/primitives";</code></pre></div>
 
 </body>
 </html>
