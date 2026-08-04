@@ -2,8 +2,9 @@
 // owns URL canonicalization and the switcher overlay.
 
 import React from "react";
+import { materializeBlueprint, prepareBlueprintProgram } from "@gik/blueprint";
 import { BlueprintHost as InMemoryBlueprintHost } from "@gik/react";
-import { BlueprintHost as DurableBlueprintHost } from "@gik/react/durable";
+import { BlueprintHost as DurableBlueprintHost, createNativeBlueprintWorker } from "@gik/react/durable";
 import { createIndexedDbProvider } from "@gik/durable-runtime/storage/indexed-db";
 import { GikDemoBlueprintHost, type DemoTargetHostProps } from "@gik/demo-runner-host";
 import blueprintRegistry from "../../../blueprints/registry.json";
@@ -22,7 +23,6 @@ import { resolveSampleBlueprintSource } from "../../../shared/blueprints";
 import portfolioTwoTierDemo from "../../../scenarios/portfolio-tracker-2tiers-baseline/scenario.json" with { type: "json" };
 
 const embeddedHostStyle: React.CSSProperties = { height: "100vh" };
-const indexedDbProvider = createIndexedDbProvider({ databaseName: "gik-samples-host" });
 const { blueprints: blueprintIds, default: DEFAULT_BLUEPRINT } = blueprintRegistry;
 const defaultExternalContextByBlueprint = {
   "portfolio-tracker-2tiers": { view: "desktop", attention: "detailed", marketMode: "live" },
@@ -51,17 +51,57 @@ function durableRef(value: string): string {
   return `b64:${encoded}`;
 }
 
-function DurableIndexedDbHost({ context: _context, onTransition: _onTransition, ...props }: DemoTargetHostProps): React.ReactElement {
+function DurableIndexedDbHost(props: DemoTargetHostProps): React.ReactElement {
   const blueprintId = props.blueprint.payload.id;
-  const runtime = React.useMemo(() => {
-    const ref = durableRef(`samples:${blueprintId}`);
+  const [indexedDbProvider] = React.useState(() =>
+    createIndexedDbProvider({ databaseName: "gik-samples-host" }));
+  const materializedBlueprint = React.useMemo(() => {
+    const materialized = materializeBlueprint({
+      blueprint: props.blueprint,
+      externalContext: props.externalContext,
+    });
+    if (!props.context) return materialized;
+    const initialState = prepareBlueprintProgram(materialized.payload.terminalBlueprint, {
+      context: props.context,
+    }).initialState;
     return {
-      runtimeId: `samples:${blueprintId}:v1`,
+      ...materialized,
+      payload: { ...materialized.payload, initialState: structuredClone(initialState) },
+    };
+  }, [props.blueprint, props.context, props.externalContext]);
+  const runtime = React.useMemo(() => {
+    const identity = JSON.stringify({
+      blueprintId,
+      instanceId: props.primaryInstanceId ?? "default",
+      externalContext: props.externalContext ?? {},
+      context: props.context ?? {},
+    });
+    const ref = durableRef(`samples:${identity}`);
+    return {
+      runtimeId: ref,
       providers: { "indexed-db": indexedDbProvider },
       refs: { stateRef: ref, journalRef: ref, effectsQueueRef: ref },
     };
-  }, [blueprintId]);
-  return <DurableBlueprintHost {...props} runtime={runtime} />;
+  }, [blueprintId, indexedDbProvider, props.context, props.externalContext, props.primaryInstanceId]);
+  const worker = React.useMemo(() => props.native
+    ? createNativeBlueprintWorker({
+        blueprint: props.blueprint,
+        runtime,
+        native: props.native,
+        externalContext: props.externalContext,
+        materializedBlueprint,
+        contexts: props.contexts,
+      })
+    : undefined,
+  [materializedBlueprint, props.blueprint, props.contexts, props.externalContext, props.native, runtime]);
+  return (
+    <DurableBlueprintHost
+      {...props}
+      runtime={runtime}
+      worker={worker}
+      materializedBlueprint={materializedBlueprint}
+    />
+  );
 }
 
 function HostView({

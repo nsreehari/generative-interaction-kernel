@@ -2,7 +2,7 @@ schema_version: 1
 
 package:
   name: "@gik/react"
-  version: "0.2.1"
+  version: "0.3.0"
   status: current
   purpose: >-
     Render resolved GIK trees in React and provide Blueprint-first in-memory and durable host
@@ -44,17 +44,20 @@ architecture:
     - Rendering depends on the structural GenUISource contract, not a concrete transport or store.
     - Both Blueprint hosts materialize through @gik/blueprint and render through BundleCompositionHost.
     - The durable subpath changes transition-state ownership, not the React composition model.
+    - React controllers never implement queue leasing, acknowledgement, retries, or engine-wake loops.
     - Infrastructure adapters stay below @gik/durable-runtime and are supplied through runtime options.
 
 blueprint_host:
   import: "@gik/react"
   implementation: adapters/react/src/primitives/blueprint-host.tsx
   controller: adapters/react/src/blueprint-controller.ts
-  state_ownership: React-local in-memory state owned by BlueprintController.
+  state_ownership: Process-local durable state owned by an ephemeral in-memory provider.
   transition_flow:
     - Materialize the Blueprint once for the current blueprint and externalContext inputs.
     - Seed local state from materialized initialState or deprecated context compatibility input.
-    - Run materialized transitions through @gik/blueprint.
+    - Append UI events to the in-memory journal inbox.
+    - Run materialized transitions and effects through the same BlueprintWorker contract as durable hosts.
+    - Append effect settlements to the journal and apply them through a later transition.
     - Resolve the resulting program through @gik/kernel.
     - Notify the React binding and render through the shared bundle-composition host.
   props:
@@ -82,18 +85,21 @@ durable_blueprint_host:
   exported_surface:
     - BlueprintHost
     - BlueprintHostProps
+    - createNativeBlueprintWorker
   state_ownership: Committed state and materialized spec owned by the configured durable provider.
   transition_flow:
     - Materialize the Blueprint for bundle rendering through the shared @gik/blueprint path.
     - Create a provider-neutral durable runtime with the Blueprint transition adapter.
-    - Initialize the runtime and process pending journal work on start.
-    - Append UI events to the durable journal and process an engine wake.
+    - Initialize the runtime and append the bootstrap event when newly created.
+    - Append UI events to the durable journal and notify an optional locally mounted worker.
     - Read the committed snapshot without acquiring or aborting a writer lease.
     - Rebuild the resolved Kernel tree and notify the shared React binding.
   props:
     required:
       - blueprint
       - runtime
+    optional:
+      - worker
     runtime:
       shape: "{ runtimeId: string; providers: Record<string, DurableProvider>; refs: TransitionRefs }"
     shared_composition: >-
@@ -107,6 +113,10 @@ durable_blueprint_host:
       DurableBlueprintController subscribes after startup, refreshes from authoritative snapshot
       changes after commits made by other processes, and stops the subscription with the GenUISource
       lifecycle.
+  worker_ownership: >-
+    BlueprintHost starts and stops only a supplied local BlueprintWorker. Omitting worker supports
+    middleware, backend, or Azure Function execution using the same runtimeId and refs. The
+    controller appends and notifies but never executes queue items or engine transitions.
 
 related_decisions:
   - ADR-0006-render-adapter-infra-agnostic.md

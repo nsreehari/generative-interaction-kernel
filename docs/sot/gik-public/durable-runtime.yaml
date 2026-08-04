@@ -11,7 +11,7 @@ document:
 
 package:
   name: "@gik/durable-runtime"
-  version: "0.7.0"
+  version: "0.8.0"
   publication_status: public-workspace-package
   purpose: >-
     Run caller-supplied pure transitions and effect handlers locally while routing durable
@@ -78,7 +78,7 @@ architecture:
   boundaries:
     - Caller-supplied transitions execute only in createDurableRuntime.runEngine.
     - Effect handlers execute only in createDurableRuntime.processQueueLaneItem.
-    - createDurableQueueProcessor owns notification coalescing and drain-until-idle orchestration.
+    - createDurableQueueProcessor coalesces notifications and processes one item per pending notification.
     - Queue notification subscriptions are supplied by the host and carry no queue item data.
     - Azure Functions and filesystem MCP do not execute transitions on the browser-runtime path.
     - IndexedDB is accessed directly by its browser provider.
@@ -117,9 +117,8 @@ architecture:
       - Acknowledge success or negatively acknowledge failure.
     queue_processor:
       - Subscribe to a host-supplied notification that means only that a queue may have work.
-      - Coalesce duplicate notifications while one drain is active.
-      - Repeatedly call processQueueLaneItem until it returns idle or retry.
-      - Continue after completed and dead results.
+      - Coalesce duplicate notifications while one processing cycle is active.
+      - Call processNext exactly once for each pending notification.
       - Stop and unsubscribe through an AbortSignal-backed lifecycle.
     snapshot_subscription:
       - Read snapshot changes after an opaque committed revision.
@@ -281,8 +280,12 @@ contracts:
     category: host_extension
     signature: >-
       type DurableEffectHandler<TEffect, TEvent> =
-      (effect: TEffect) => Promise<TEvent[] | void> | TEvent[] | void
-    purpose: Handle one leased effect locally and optionally produce journal events.
+      (effect: TEffect, execution: { messageId: string; attempt: number; signal?: AbortSignal }) =>
+      Promise<TEvent[] | void> | TEvent[] | void
+    purpose: >-
+      Handle one leased effect locally and optionally produce journal events. messageId remains
+      stable across retries and is the idempotency key for external side effects. signal is aborted
+      when the owning worker stops so cooperative handlers can stop without publishing settlement.
 
   - name: DurableProvider
     category: provider_extension
@@ -463,16 +466,14 @@ queue_processor:
     methods:
       - "start(): Promise<void>"
       - "notify(): void"
-      - "drain(): Promise<void>"
       - "stop(): void"
       - "isRunning: boolean"
     behavior:
       - Starting subscribes once; repeated start calls are idempotent.
-      - No queue read occurs until notify or drain is called.
-      - One processor instance runs at most one drain concurrently.
-      - Duplicate notifications coalesce into pending drain work.
-      - completed and dead results continue draining.
-      - idle and retry results stop the current drain until another notification.
+      - No queue read occurs until notify is called.
+      - One processor instance runs at most one processing cycle concurrently.
+      - Duplicate notifications coalesce into one pending follow-up cycle.
+      - An effect is marked dead only after its terminal failure is appended to the journal inbox; unavailable or missing failure reporting leaves it retryable.
       - Thrown processNext errors call onError and allow later notification recovery.
       - Stopping aborts and unsubscribes; repeated stop calls are idempotent.
   browser_adapter:
@@ -510,6 +511,18 @@ configured_runtime:
     - Missing provider kinds fail when an operation attempts to route to them.
 
 connectors_and_storage:
+  - name: In-memory
+    kind: memory
+    factory: createInMemoryProvider
+    connector_export: "@gik/durable-runtime/connectors/in-memory"
+    source: packages/durable-runtime/src/storage/memory.ts
+    purpose: >-
+      Ephemeral host-local provider implementing the same journal, engine-wake, transition lease,
+      atomic checkpoint/effect commit, queue lease/ack/nack, snapshot change, and invalidation
+      contracts as persistent providers.
+    durability: Process lifetime only; intended for tests, backend-local execution, and explicitly
+      non-durable hosts.
+
   - name: IndexedDB
     kind: indexed-db
     factory: createIndexedDbStorage
@@ -700,18 +713,20 @@ concurrency_and_durability:
   queue_processing:
     - Notifications are non-authoritative hints that a configured queue may have work.
     - Queue lease, ack, nack, visibility timeout, retry, and dead-letter state remain provider-owned.
-    - Multiple processors may drain the same lane concurrently because item leases arbitrate ownership.
+    - Multiple processors may process the same lane concurrently because item leases arbitrate ownership.
 
 host_responsibilities:
   - Supply one DurableTransitionAdapter and unique runtimeId for each durable runtime.
   - Call initializeRuntime explicitly before runEngine for a new runtime.
   - Supply effect handlers keyed by effect body type.
+  - Supply a terminal effect failure reporter whenever effect handlers are configured.
   - Supply queue notification subscriptions and own their transport connectivity.
   - Supply provider URLs, MCP connection behavior, authentication headers, and optional browser APIs.
   - Configure optional snapshot invalidation transports when lower-latency catch-up is required.
   - Keep all refs in one operation on the same provider kind.
   - Decide when to call processEngineWake or runEngine.
-  - Start and stop queue processors with the host lifecycle when notification-driven draining is required.
+  - Start and stop queue processors with the host lifecycle when notification-driven processing is required.
+  - Compose @gik/blueprint/worker when Blueprint engine and effect work needs host-owned execution.
   - Treat provider and transition-adapter errors as operational failures requiring host policy.
 
 non_goals:
@@ -734,9 +749,9 @@ limitations:
   - >-
     Deferred low-priority follow-up: filesystem crash-consistency hardening. Keep this tracked,
     but prioritize proving runtime value and operational demand before designing or implementing it.
-  - Effect event appends occur before queue acknowledgement, so a later acknowledgement failure may cause handler retry and duplicate events unless the application handles idempotency.
+  - Effect event appends occur before queue acknowledgement. A later acknowledgement failure returns retry without reclassifying the completed effect as failed; DurableEffectHandler receives a stable messageId and the Blueprint worker skips invocation after that settlement identity is committed.
   - Queue processors do not renew item leases during long-running handlers.
-  - Queue processors do not add retries or timers after retry, idle, or thrown results; another notification or explicit drain is required.
+  - Generic queue processors do not add retries or timers after retry, idle, or thrown results; another notification is required. BlueprintWorker schedules a delayed wake hint for retry and engine-ownership contention, without draining unrelated backlog.
   - The Azure journal append and engine wake request are separate operations; a failure between them leaves the event durable without advancing the wake marker until another request or explicit engine run.
   - The runtime does not automatically initialize state from runEngine.
   - No provider is selected by configuration alone; selection always comes from the ref kind.
@@ -761,8 +776,8 @@ validation:
     - Filesystem ref/path confinement, KV, JSON, blob, journal, wake, queue, lock, scratch, and archive behavior.
     - Filesystem API ordered batch dispatch, binary encoding, and per-operation error isolation.
     - IndexedDB generic record ids, ranges, requests, configurable object stores, and transaction completion.
-    - Queue drain-until-idle and retry pause behavior.
-    - Duplicate notification coalescing and one active drain per processor.
+    - One processing cycle per notification and retry pause behavior.
+    - Duplicate notification coalescing and one active cycle per processor.
     - Stop, abort, unsubscribe, subscription failure, error recovery, and idempotent lifecycle.
     - Parallel processors handling shared leased items without duplicate ownership.
     - Browser runtime queue processor adapter request forwarding.

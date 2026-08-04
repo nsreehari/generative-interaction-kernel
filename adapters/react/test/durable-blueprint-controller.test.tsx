@@ -4,10 +4,23 @@ import { test } from "vitest";
 import { createBlueprint } from "@gik/blueprint";
 import { createIndexedDbStorage } from "@gik/durable-runtime/storage/indexed-db";
 import { DurableBlueprintController } from "../src/durable-blueprint-controller";
+import { createNativeBlueprintWorker } from "../src/durable-blueprint-worker";
 import type { BundleNative } from "../src/primitives/bundle";
 
 function ref(value: string): string {
   return `b64:${Buffer.from(JSON.stringify({ kind: "indexed-db", value })).toString("base64url")}`;
+}
+
+function waitForValue(controller: DurableBlueprintController, value: number): Promise<void> {
+  if (controller.getTree()?.props.value === value) return Promise.resolve();
+  return new Promise((resolve) => {
+    const unsubscribe = controller.subscribe(() => {
+      if (controller.getTree()?.props.value === value) {
+        unsubscribe();
+        resolve();
+      }
+    });
+  });
 }
 
 test("DurableBlueprintController persists Blueprint state", async () => {
@@ -35,14 +48,20 @@ test("DurableBlueprintController persists Blueprint state", async () => {
     refs: { stateRef: runtimeRef, journalRef: runtimeRef, effectsQueueRef: runtimeRef },
   };
 
-  const first = new DurableBlueprintController(blueprint, { runtime });
+  const worker = createNativeBlueprintWorker({ blueprint, runtime, native: {} });
+  await worker.start();
+  const first = new DurableBlueprintController(blueprint, { runtime, worker });
   assert.equal((await first.start()).props.value, 1);
-  assert.equal((await first.emit("root", "increment")).props.value, 2);
+  const committed = waitForValue(first, 2);
+  assert.equal((await first.emit("root", "increment")).props.value, 1);
+  await committed;
+  assert.equal((await first.start()).props.value, 2);
 
-  const reopened = new DurableBlueprintController(blueprint, { runtime });
+  const reopened = new DurableBlueprintController(blueprint, { runtime, worker });
   assert.equal((await reopened.start()).props.value, 2);
   first.stop();
   reopened.stop();
+  worker.stop();
 });
 
 test("DurableBlueprintController persists native effect settlements", async () => {
@@ -75,14 +94,63 @@ test("DurableBlueprintController persists native effect settlements", async () =
     },
   };
 
-  const first = new DurableBlueprintController(blueprint, { runtime, native });
+  const worker = createNativeBlueprintWorker({ blueprint, runtime, native });
+  await worker.start();
+  const first = new DurableBlueprintController(blueprint, { runtime, worker });
   await first.start();
-  assert.equal((await first.emit("root", "save")).props.value, 7);
+  const settled = waitForValue(first, 7);
+  assert.equal((await first.emit("root", "save")).props.value, 1);
+  await settled;
 
-  const reopened = new DurableBlueprintController(blueprint, { runtime, native });
+  const reopened = new DurableBlueprintController(blueprint, { runtime, worker });
   assert.equal((await reopened.start()).props.value, 7);
   first.stop();
   reopened.stop();
+  worker.stop();
+});
+
+test("DurableBlueprintController leaves work for an externally owned worker", async () => {
+  const blueprint = createBlueprint({
+    id: "remote-worker-counter",
+    kind: "runtime-blueprint",
+    version: "1",
+    tiers: [{ id: "runtime", kind: "runtime-program" }],
+    recipes: [],
+    runtime: { namespaces: ["counter"], state: { counter: { value: 1 } }, capabilities: {} },
+    cells: {
+      root: {
+        id: "root",
+        view: { capability: "screen", bindings: { value: { from: "counter.value" } } },
+        behavior: { events: { save: [{ do: "invoke", args: { tool: "saveValue" } }] } },
+      },
+    },
+    projections: { presentation: { roots: ["root"] } },
+  });
+  const runtimeRef = ref("remote-worker-counter");
+  const provider = createIndexedDbStorage({ databaseName: `gik-react-remote-${crypto.randomUUID()}` });
+  const runtime = {
+    runtimeId: "remote-worker-counter/v1",
+    providers: { "indexed-db": provider },
+    refs: { stateRef: runtimeRef, journalRef: runtimeRef, effectsQueueRef: runtimeRef },
+  };
+  const controller = new DurableBlueprintController(blueprint, { runtime });
+
+  await controller.start();
+  assert.equal((await controller.emit("root", "save")).props.value, 1);
+
+  const worker = createNativeBlueprintWorker({
+    blueprint,
+    runtime,
+    native: { effectHandlers: { saveValue: (context) => ({ ops: [context.set("counter.value", 7)] }) } },
+  });
+  const settled = waitForValue(controller, 7);
+  await worker.start();
+  await settled;
+  const reopened = new DurableBlueprintController(blueprint, { runtime });
+  assert.equal((await reopened.start()).props.value, 7);
+  controller.stop();
+  reopened.stop();
+  worker.stop();
 });
 
 test("DurableBlueprintController refreshes after another controller commits", async () => {
@@ -121,8 +189,10 @@ test("DurableBlueprintController refreshes after another controller commits", as
     providers: { "indexed-db": provider },
     refs: { stateRef: runtimeRef, journalRef: runtimeRef, effectsQueueRef: runtimeRef },
   };
-  const writer = new DurableBlueprintController(blueprint, { runtime });
-  const follower = new DurableBlueprintController(blueprint, { runtime });
+  const worker = createNativeBlueprintWorker({ blueprint, runtime, native: {} });
+  await worker.start();
+  const writer = new DurableBlueprintController(blueprint, { runtime, worker });
+  const follower = new DurableBlueprintController(blueprint, { runtime, worker });
   await writer.start();
   await follower.start();
   const refreshed = new Promise<void>((resolve) => {
@@ -139,4 +209,5 @@ test("DurableBlueprintController refreshes after another controller commits", as
   assert.equal(follower.getTree()?.props.value, 2);
   writer.stop();
   follower.stop();
+  worker.stop();
 });

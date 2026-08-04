@@ -81,6 +81,175 @@ const counterAdapter = {
   }),
 };
 
+function queuedFailureProvider(options?: { failJournalAppend?: boolean }) {
+  const journal: unknown[] = [];
+  const nacks: Array<{ dead?: boolean; reason?: string }> = [];
+  const storage = {
+    ...provider({
+      leaseToken: "transition-lease",
+      leaseExpiresAt: new Date(Date.now() + 60_000).toISOString(),
+      state: {},
+      spec: {},
+      revision: "revision-1",
+      cursor: null,
+      entries: [],
+    }),
+    journal,
+    nacks,
+    async appendJournal<T>(request: { entry: T }) {
+      if (options?.failJournalAppend) throw new Error("journal unavailable");
+      journal.push(request.entry);
+      return { id: "failure-entry", payload: request.entry };
+    },
+    async leaseQueueItem<TEffect>() {
+      return {
+        id: "effect-1",
+        body: { type: "failing-effect" } as TEffect,
+        enqueuedAt: new Date().toISOString(),
+        attempt: 1,
+        leaseToken: "queue-lease",
+        leaseExpiresAt: new Date(Date.now() + 60_000).toISOString(),
+      };
+    },
+    async ackQueueItem() {
+      return true;
+    },
+    async nackQueueItem(request: { dead?: boolean; reason?: string }) {
+      nacks.push({ dead: request.dead, reason: request.reason });
+      return true;
+    },
+  };
+  return storage;
+}
+
+test("terminal effect failure is journaled before the queue item becomes dead", async () => {
+  const storage = queuedFailureProvider();
+  const runtime = createDurableRuntime({
+    runtimeId: "failure-v1",
+    providers: { "fs-path": storage },
+    transitionAdapter: counterAdapter,
+    effectHandlers: { "failing-effect": () => { throw new Error("effect failed"); } },
+    effectFailureHandler: (_effect, failure) => [{ type: "effect-failed", error: failure.error }],
+  });
+  const runtimeRef = ref("fs-path", "failure");
+
+  const result = await runtime.processQueueLaneItem({
+    stateRef: runtimeRef,
+    journalRef: runtimeRef,
+    effectsQueueRef: runtimeRef,
+    maxAttempts: 1,
+  });
+
+  assert.equal(result.status, "dead");
+  assert.deepEqual(storage.journal, [{ type: "effect-failed", error: "effect failed" }]);
+  assert.deepEqual(storage.nacks, [{ dead: true, reason: "effect failed" }]);
+});
+
+test("terminal effect remains retryable when its failure cannot reach the journal", async () => {
+  const storage = queuedFailureProvider({ failJournalAppend: true });
+  const runtime = createDurableRuntime({
+    runtimeId: "failure-v1",
+    providers: { "fs-path": storage },
+    transitionAdapter: counterAdapter,
+    effectHandlers: { "failing-effect": () => { throw new Error("effect failed"); } },
+    effectFailureHandler: (_effect, failure) => [{ type: "effect-failed", error: failure.error }],
+  });
+  const runtimeRef = ref("fs-path", "failure");
+
+  const result = await runtime.processQueueLaneItem({
+    stateRef: runtimeRef,
+    journalRef: runtimeRef,
+    effectsQueueRef: runtimeRef,
+    maxAttempts: 1,
+  });
+
+  assert.equal(result.status, "retry");
+  assert.deepEqual(storage.nacks, [{ dead: undefined, reason: "journal unavailable" }]);
+});
+
+test("terminal effect cannot become dead without a journal failure reporter", async () => {
+  const storage = queuedFailureProvider();
+  assert.throws(() => createDurableRuntime({
+    runtimeId: "failure-v1",
+    providers: { "fs-path": storage },
+    transitionAdapter: counterAdapter,
+    effectHandlers: { "failing-effect": () => { throw new Error("effect failed"); } },
+  }), /effectFailureHandler is required/);
+});
+
+test("acknowledgement loss retries without reporting a completed effect as failed", async () => {
+  const storage = queuedFailureProvider();
+  storage.leaseQueueItem = async <TEffect>() => ({
+    id: "effect-1",
+    body: { type: "successful-effect" } as TEffect,
+    enqueuedAt: new Date().toISOString(),
+    attempt: 1,
+    leaseToken: "queue-lease",
+    leaseExpiresAt: new Date(Date.now() + 1_000).toISOString(),
+  });
+  storage.ackQueueItem = async () => false;
+  let failureReports = 0;
+  const runtime = createDurableRuntime({
+    runtimeId: "ack-loss-v1",
+    providers: { "fs-path": storage },
+    transitionAdapter: counterAdapter,
+    effectHandlers: { "successful-effect": () => [{ type: "effect-completed" }] },
+    effectFailureHandler: () => {
+      failureReports += 1;
+      return [{ type: "effect-failed" }];
+    },
+  });
+  const runtimeRef = ref("fs-path", "ack-loss");
+
+  const result = await runtime.processQueueLaneItem({
+    stateRef: runtimeRef,
+    journalRef: runtimeRef,
+    effectsQueueRef: runtimeRef,
+  });
+
+  assert.equal(result.status, "retry");
+  assert.deepEqual(storage.journal, [{ type: "effect-completed" }]);
+  assert.equal(failureReports, 0);
+  assert.ok(result.retryAfterMs && result.retryAfterMs > 0);
+});
+
+test("stopping effect execution prevents its settlement from being appended", async () => {
+  const storage = queuedFailureProvider();
+  storage.leaseQueueItem = async <TEffect>() => ({
+    id: "effect-1",
+    body: { type: "successful-effect" } as TEffect,
+    enqueuedAt: new Date().toISOString(),
+    attempt: 1,
+    leaseToken: "queue-lease",
+    leaseExpiresAt: new Date(Date.now() + 1_000).toISOString(),
+  });
+  const abortController = new AbortController();
+  abortController.abort();
+  const runtime = createDurableRuntime({
+    runtimeId: "stopped-v1",
+    providers: { "fs-path": storage },
+    transitionAdapter: counterAdapter,
+    effectHandlers: {
+      "successful-effect": (_effect, execution) => {
+        if (execution.signal?.aborted) throw new Error("aborted by worker");
+        return [{ type: "effect-completed" }];
+      },
+    },
+    effectFailureHandler: () => [{ type: "effect-failed" }],
+  });
+  const runtimeRef = ref("fs-path", "stopped");
+
+  const result = await runtime.processQueueLaneItem({
+    stateRef: runtimeRef,
+    journalRef: runtimeRef,
+    effectsQueueRef: runtimeRef,
+    signal: abortController.signal,
+  });
+
+  assert.equal(result.status, "retry");
+  assert.deepEqual(storage.journal, []);
+});
+
 test("runtime applies spec updates and commits opaque transition output", async () => {
   const storage = provider({
     leaseToken: "lease-1",
@@ -213,6 +382,7 @@ test("IndexedDB storage runs a local transition and effect queue", async () => {
         count: (effect as { count: number }).count,
       }],
     },
+    effectFailureHandler: (_effect, failure) => [{ type: "effect-failed", error: failure.error }],
   });
   const refs = { stateRef: runtimeRef, journalRef: runtimeRef, effectsQueueRef: runtimeRef };
 
@@ -263,6 +433,7 @@ test("IndexedDB processes effects from one transition in declaration order", asy
       first: () => { processed.push("first"); },
       second: () => { processed.push("second"); },
     },
+    effectFailureHandler: (_effect, failure) => [{ type: "effect-failed", error: failure.error }],
   });
   const refs = { stateRef: runtimeRef, journalRef: runtimeRef, effectsQueueRef: runtimeRef };
 
@@ -426,6 +597,42 @@ test("runtime reads and subscribes to revision-aware snapshot changes", async ()
     kind: "reset",
     snapshot: { state: { count: 2 }, spec: {}, revision: "revision-2" },
   }]);
+});
+
+test("runtime subscription retries a revision when its listener rejects", async () => {
+  let revision = "revision-2";
+  let attempts = 0;
+  const storage = provider({
+    leaseToken: "lease-1",
+    leaseExpiresAt: new Date(Date.now() + 60_000).toISOString(),
+    state: {}, spec: {}, revision, cursor: null, entries: [],
+  });
+  storage.readSnapshotChanges = async <TState, TSpec>(request: RuntimeRefs & {
+    runtimeId: string; afterRevision: string | null;
+  }) => request.afterRevision === revision
+    ? { kind: "unchanged", revision }
+    : { kind: "reset", snapshot: { state: {} as TState, spec: {} as TSpec, revision } };
+  const runtime = createDurableRuntime({
+    runtimeId: "listener-retry-v1",
+    providers: { "indexed-db": storage },
+    transitionAdapter: counterAdapter,
+  });
+  const runtimeRef = ref("indexed-db", "listener-retry");
+  const delivered = new Promise<void>((resolve) => {
+    const unsubscribe = runtime.subscribe(
+      { stateRef: runtimeRef, effectsQueueRef: runtimeRef },
+      () => {
+        attempts += 1;
+        if (attempts === 1) throw new Error("listener unavailable");
+        unsubscribe();
+        resolve();
+      },
+      { afterRevision: "revision-1", pollIntervalMs: 1 },
+    );
+  });
+
+  await delivered;
+  assert.equal(attempts, 2);
 });
 
 test("runtime subscription uses invalidations for coalesced catch-up and cleans up", async () => {

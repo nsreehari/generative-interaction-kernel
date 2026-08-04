@@ -1,5 +1,6 @@
 import type {
   DurableEffectHandler,
+  DurableEffectFailureHandler,
   DurableProvider,
   DurableTransitionAdapter,
   JournalEntry,
@@ -14,9 +15,13 @@ export type DurableRuntimeOptions = {
   providers: Record<string, DurableProvider>;
   transitionAdapter: DurableTransitionAdapter;
   effectHandlers?: Record<string, DurableEffectHandler>;
+  effectFailureHandler?: DurableEffectFailureHandler;
 };
 
 export function createDurableRuntime(options: DurableRuntimeOptions) {
+  if (options.effectHandlers && !options.effectFailureHandler) {
+    throw new Error("effectFailureHandler is required when effectHandlers are configured.");
+  }
   const adapter = options.transitionAdapter;
 
   function providerFor(ref: string): DurableProvider {
@@ -145,10 +150,10 @@ export function createDurableRuntime(options: DurableRuntimeOptions) {
                 afterRevision: revision,
               });
               if (!stopped && changes.kind !== "unchanged") {
+                await listener(changes);
                 revision = changes.kind === "reset"
                   ? changes.snapshot.revision
                   : changes.revision;
-                await listener(changes);
               }
             } catch (error) {
               if (!stopped) subscriptionOptions?.onError?.(error);
@@ -236,6 +241,7 @@ export function createDurableRuntime(options: DurableRuntimeOptions) {
       journalRef: string;
       visibilityMs?: number;
       maxAttempts?: number;
+      signal?: AbortSignal;
     }) {
       const kind = assertSameRefKind([request.effectsQueueRef, request.journalRef]);
       const provider = options.providers[kind];
@@ -248,6 +254,7 @@ export function createDurableRuntime(options: DurableRuntimeOptions) {
         visibilityMs: request.visibilityMs,
       });
       if (!message) return { status: "idle" as const };
+      let appended: unknown[] = [];
       try {
         const effectType = typeof message.body === "object" && message.body !== null
           ? String((message.body as { type?: unknown; tool?: unknown; kind?: unknown }).type
@@ -257,19 +264,58 @@ export function createDurableRuntime(options: DurableRuntimeOptions) {
           : "";
         const handler = options.effectHandlers?.[effectType] ?? options.effectHandlers?.["*"];
         if (!handler) throw new Error(`Unknown local effect handler: ${effectType || "<missing type>"}.`);
-        const events = await handler(message.body) ?? [];
-        const appended = [];
-        for (const event of events) appended.push(await provider.appendJournal({ ...request, entry: event }));
-        if (!await provider.ackQueueItem({
-          effectsQueueRef: request.effectsQueueRef,
-          effectsLane: request.effectsLane,
+        const events = await handler(message.body, {
           messageId: message.id,
-          leaseToken: message.leaseToken,
-        })) throw new Error(`Queue acknowledgement lost for message ${message.id}.`);
-        return { status: "completed" as const, messageId: message.id, appended };
+          attempt: message.attempt,
+          signal: request.signal,
+        }) ?? [];
+        if (request.signal?.aborted) {
+          await provider.nackQueueItem({
+            effectsQueueRef: request.effectsQueueRef,
+            effectsLane: request.effectsLane,
+            messageId: message.id,
+            leaseToken: message.leaseToken,
+            reason: "Effect execution was stopped.",
+          });
+          return { status: "retry" as const, messageId: message.id, error: "Effect execution was stopped." };
+        }
+        for (const event of events) appended.push(await provider.appendJournal({ ...request, entry: event }));
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
+        if (request.signal?.aborted) {
+          await provider.nackQueueItem({
+            effectsQueueRef: request.effectsQueueRef,
+            effectsLane: request.effectsLane,
+            messageId: message.id,
+            leaseToken: message.leaseToken,
+            reason: "Effect execution was stopped.",
+          });
+          return { status: "retry" as const, messageId: message.id, error: "Effect execution was stopped." };
+        }
         const dead = message.attempt >= Math.max(1, request.maxAttempts ?? 5);
+        appended = [];
+        if (dead) {
+          try {
+            if (!options.effectFailureHandler) throw new Error("Terminal effect failure reporter is not configured.");
+            const events = await options.effectFailureHandler(message.body, {
+              messageId: message.id,
+              attempt: message.attempt,
+              error: reason,
+            }) ?? [];
+            if (events.length === 0) throw new Error("Terminal effect failure reporter produced no journal event.");
+            for (const event of events) appended.push(await provider.appendJournal({ ...request, entry: event }));
+          } catch (reportError) {
+            const reportReason = reportError instanceof Error ? reportError.message : String(reportError);
+            await provider.nackQueueItem({
+              effectsQueueRef: request.effectsQueueRef,
+              effectsLane: request.effectsLane,
+              messageId: message.id,
+              leaseToken: message.leaseToken,
+              reason: reportReason,
+            });
+            return { status: "retry" as const, messageId: message.id, error: reportReason };
+          }
+        }
         await provider.nackQueueItem({
           effectsQueueRef: request.effectsQueueRef,
           effectsLane: request.effectsLane,
@@ -278,8 +324,29 @@ export function createDurableRuntime(options: DurableRuntimeOptions) {
           dead,
           reason,
         });
-        return { status: dead ? "dead" as const : "retry" as const, messageId: message.id, error: reason };
+        return {
+          status: dead ? "dead" as const : "retry" as const,
+          messageId: message.id,
+          error: reason,
+          appended,
+        };
       }
+      const acknowledged = await provider.ackQueueItem({
+        effectsQueueRef: request.effectsQueueRef,
+        effectsLane: request.effectsLane,
+        messageId: message.id,
+        leaseToken: message.leaseToken,
+      });
+      if (!acknowledged) {
+        return {
+          status: "retry" as const,
+          messageId: message.id,
+          error: `Queue acknowledgement lost for message ${message.id}.`,
+          appended,
+          retryAfterMs: Math.max(1, Date.parse(message.leaseExpiresAt) - Date.now()),
+        };
+      }
+      return { status: "completed" as const, messageId: message.id, appended };
     },
   };
 }

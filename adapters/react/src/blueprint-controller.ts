@@ -1,25 +1,18 @@
 import {
   materializeBlueprint,
   prepareBlueprintProgram,
-  runMaterializedTransition,
   type BlueprintArtifact,
   type ExternalContext,
   type MaterializedBlueprint,
 } from "@gik/blueprint";
-import {
-  CompositeStateModel,
-  InMemoryStateModel,
-  Kernel,
-  unwrap,
-  type GIKEvent,
-  type Json,
-  type ResolvedNode,
-  type StateModel,
-} from "@gik/kernel";
-import type { GenUISource } from "./useGenUI";
-import { createEffectDispatcher } from "./primitives/effects";
-import type { BundleContextBindings } from "./primitives/bundle-registry";
+import type { BlueprintWorker } from "@gik/blueprint/worker";
+import { createInMemoryProvider } from "@gik/durable-runtime/connectors/in-memory";
+import type { Json, ResolvedNode } from "@gik/kernel";
+import { DurableBlueprintController } from "./durable-blueprint-controller";
+import { createNativeBlueprintWorker } from "./durable-blueprint-worker";
 import type { BundleNative } from "./primitives/bundle";
+import type { BundleContextBindings } from "./primitives/bundle-registry";
+import type { GenUISource } from "./useGenUI";
 
 export interface BlueprintControllerOptions {
   externalContext?: ExternalContext;
@@ -28,106 +21,87 @@ export interface BlueprintControllerOptions {
   context?: Record<string, Json>;
   contexts?: BundleContextBindings;
   native?: BundleNative;
-  onTransition?: (event: GIKEvent | null, result: Awaited<ReturnType<typeof runMaterializedTransition>>) => void;
+  onTransition?: NonNullable<ConstructorParameters<typeof DurableBlueprintController>[1]["onTransition"]>;
+}
+
+function memoryRef(value: string): string {
+  const bytes = new TextEncoder().encode(JSON.stringify({ kind: "memory", value }));
+  const encoded = btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+  return `b64:${encoded}`;
 }
 
 export class BlueprintController implements GenUISource {
-  private readonly materializedBlueprint: MaterializedBlueprint;
-  private state: Record<string, Json>;
-  private tree: ResolvedNode | null = null;
-  private readonly listeners = new Set<() => void>();
-  private operation: Promise<void> = Promise.resolve();
+  private readonly controller: DurableBlueprintController;
+  readonly worker: BlueprintWorker;
 
-  constructor(blueprint: BlueprintArtifact, private readonly options: BlueprintControllerOptions = {}) {
-    this.materializedBlueprint = options.materializedBlueprint ?? materializeBlueprint({
+  constructor(blueprint: BlueprintArtifact, options: BlueprintControllerOptions = {}) {
+    const materialized = options.materializedBlueprint ?? materializeBlueprint({
       blueprint,
       externalContext: options.externalContext,
     });
-    this.state = options.context
-      ? prepareBlueprintProgram(this.materializedBlueprint.payload.terminalBlueprint, {
-          context: options.context,
-        }).initialState
-      : structuredClone(this.materializedBlueprint.payload.initialState);
+    const initialState = options.context
+      ? prepareBlueprintProgram(materialized.payload.terminalBlueprint, { context: options.context }).initialState
+      : materialized.payload.initialState;
+    const materializedBlueprint: MaterializedBlueprint = {
+      ...materialized,
+      payload: { ...materialized.payload, initialState: structuredClone(initialState) },
+    };
+    const runtimeRef = memoryRef(crypto.randomUUID());
+    const runtime = {
+      runtimeId: `in-memory:${materialized.payload.terminalBlueprint.payload.id}:${crypto.randomUUID()}`,
+      providers: { memory: createInMemoryProvider() },
+      refs: { stateRef: runtimeRef, journalRef: runtimeRef, effectsQueueRef: runtimeRef },
+    };
+    this.worker = createNativeBlueprintWorker({
+      blueprint,
+      runtime,
+      native: options.native ?? {},
+      externalContext: options.externalContext,
+      materializedBlueprint,
+      contexts: options.contexts,
+    });
+    this.controller = new DurableBlueprintController(blueprint, {
+      runtime,
+      worker: this.worker,
+      externalContext: options.externalContext,
+      materializedBlueprint,
+      contexts: options.contexts,
+      onTransition: options.onTransition,
+    });
   }
 
   getTree(): ResolvedNode | null {
-    return this.tree;
+    return this.controller.getTree();
   }
 
   getState(): Record<string, Json> {
-    return structuredClone(this.state);
+    return this.controller.getState();
   }
 
   subscribe(listener: () => void): () => void {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    return this.controller.subscribe(listener);
   }
 
-  start(): Promise<ResolvedNode> {
-    return this.enqueue(async () => {
-      await this.transition([]);
-      return this.refresh();
-    });
+  async start(): Promise<ResolvedNode> {
+    const tree = await this.controller.start();
+    await this.worker.start();
+    return tree;
   }
 
   emit(node: string, name: string, payload?: Record<string, unknown>, actorId?: string): Promise<ResolvedNode> {
-    const event: GIKEvent = {
-      node,
-      name,
-      ...(payload ? { payload: payload as Record<string, Json> } : {}),
-      ...(actorId ? { actorId } : {}),
-    };
-    return this.enqueue(async () => {
-      await this.transition([event]);
-      return this.refresh();
-    });
+    return this.controller.emit(node, name, payload, actorId);
   }
 
   resync(): Promise<ResolvedNode> {
-    return this.enqueue(() => this.refresh());
+    return this.controller.resync();
   }
 
   settle(): Promise<ResolvedNode> {
-    return this.enqueue(() => this.refresh());
+    return this.controller.resync();
   }
 
-  private async transition(events: readonly GIKEvent[]): Promise<void> {
-    const native = this.options.native;
-    const result = await runMaterializedTransition({
-      state: this.state,
-      materializedBlueprint: this.materializedBlueprint,
-      events,
-      contexts: this.options.contexts,
-      ...(native ? {
-        createOrchestrator: (store: StateModel) => {
-          const fallback = createEffectDispatcher(store, native.effectHandlers ?? {});
-          return native.wrapOrchestrator?.(fallback, store) ?? fallback;
-        },
-      } : {}),
-    });
-    this.state = result.state;
-    this.options.onTransition?.(events[0] ? structuredClone(events[0]) : null, result);
-  }
-
-  private enqueue<T>(operation: () => Promise<T>): Promise<T> {
-    const next = this.operation.then(operation, operation);
-    this.operation = next.then(() => undefined, () => undefined);
-    return next;
-  }
-
-  private async refresh(): Promise<ResolvedNode> {
-    const { vocabulary, program, externalContext } = this.materializedBlueprint.payload;
-    const local = new InMemoryStateModel(unwrap(vocabulary).namespaces ?? []);
-    local.apply(Object.entries(this.state).map(([path, value]) => ({ op: "set", path, value })));
-    const externalContextStore = new InMemoryStateModel(["externalContext"]);
-    externalContextStore.apply([{ op: "set", path: "externalContext", value: structuredClone(externalContext) }]);
-    const runtimeState = new CompositeStateModel(local, {
-      ...this.options.contexts,
-      externalContext: externalContextStore,
-    });
-    const kernel = new Kernel(vocabulary, program, { state: runtimeState });
-    this.tree = await kernel.resolve();
-    for (const listener of this.listeners) listener();
-    return this.tree;
+  stop(): void {
+    this.controller.stop();
+    this.worker.stop();
   }
 }

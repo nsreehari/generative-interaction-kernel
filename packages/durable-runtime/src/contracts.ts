@@ -160,5 +160,11 @@ export type DurableTransitionAdapter<
 };
 
 export type DurableEffectHandler<TEffect = unknown, TEvent = unknown> = (
-  effect: TEffect
+  effect: TEffect,
+  execution: { messageId: string; attempt: number; signal?: AbortSignal },
+) => Promise<TEvent[] | void> | TEvent[] | void;
+
+export type DurableEffectFailureHandler<TEffect = unknown, TEvent = unknown> = (
+  effect: TEffect,
+  failure: { messageId: string; attempt: number; error: string },
 ) => Promise<TEvent[] | void> | TEvent[] | void;

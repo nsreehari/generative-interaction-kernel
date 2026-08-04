@@ -36,10 +36,10 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "dependencies": {
-    "@gik/components": "0.1.2",
+    "@gik/components": "0.2.0",
     "@gik/evaluators": "0.1.1",
     "@gik/kernel": "0.1.1",
-    "@gik/react": "0.2.1",
+    "@gik/react": "0.3.0",
     "@gik/agentface": "0.1.1",
     "@gik/controlface": "0.1.4",
     "@gik/transport-http-sse": "0.1.0",

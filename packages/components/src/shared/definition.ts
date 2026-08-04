@@ -13,12 +13,34 @@ export interface ComponentVariantDescription {
   useWhen: readonly string[];
 }
 
+export interface ComponentEventContract {
+  summary: string;
+  payloadSchema: Record<string, unknown>;
+}
+
+export function eventContract(
+  summary: string,
+  properties: Record<string, unknown> = {},
+  required: readonly string[] = Object.keys(properties),
+): ComponentEventContract {
+  return {
+    summary,
+    payloadSchema: {
+      type: "object",
+      additionalProperties: false,
+      ...(required.length > 0 ? { required } : {}),
+      properties,
+    },
+  };
+}
+
 export interface ComponentDescription {
   capability: string;
   summary: string;
   dataProp?: string;
   slots?: readonly string[];
   events: readonly string[];
+  eventContracts?: Readonly<Record<string, ComponentEventContract>>;
   semanticTokens: readonly string[];
   defaultVariant?: string;
   variants: readonly ComponentVariantDescription[];
@@ -43,6 +65,7 @@ export interface DeclarativeComponentDefinition {
   dataProp?: string;
   slots?: readonly string[];
   events: readonly string[];
+  eventContracts: Readonly<Record<string, ComponentEventContract>>;
   semanticTokens: readonly string[];
   defaultVariant?: string;
   variants: readonly ComponentVariantDescription[];
@@ -78,6 +101,7 @@ export function defineComponent({
     dataProp: description.dataProp,
     slots: description.slots,
     events: description.events,
+    eventContracts: description.eventContracts ?? {},
     semanticTokens: description.semanticTokens,
     defaultVariant: description.defaultVariant,
     variants: description.variants,

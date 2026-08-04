@@ -12,6 +12,7 @@ import { readProps, type ProjectionView } from "@gik/react";
 
 import {
   defineComponent,
+  eventContract,
   trialNode,
   type ComponentDescription,
   type ComponentValidationReport,
@@ -111,6 +112,7 @@ const description: ComponentDescription = {
   summary: "Renders boolean form fields as a todo list and immediately saves each changed value.",
   dataProp: "value",
   events: ["save"],
+  eventContracts: { save: eventContract("A todo change commits the complete next values object.", { values: { type: "object", additionalProperties: { type: "boolean" } } }) },
   semanticTokens: [],
   defaultVariant: "standard",
   variants: [

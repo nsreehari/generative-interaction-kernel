@@ -7,7 +7,7 @@ import {
 } from "@fluentui/react-icons";
 import { readProps, type ProjectionView } from "@gik/react";
 
-import type { ComponentDescription } from "../shared/definition";
+import { eventContract, type ComponentDescription } from "../shared/definition";
 import { componentRootProps, withComponentStylePropsSchema } from "../shared/component";
 import { defineFluentComponent } from "./defineFluentComponent";
 
@@ -95,6 +95,7 @@ const buttonDescription: ComponentDescription = {
   capability: "fluent:button",
   summary: "Renders a Fluent 2 action or icon button through closed native variants.",
   events: ["press"],
+  eventContracts: { press: eventContract("The user invokes the button.") },
   semanticTokens: [],
   defaultVariant: "action",
   variants: BUTTON_VARIANTS,

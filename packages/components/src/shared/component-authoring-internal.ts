@@ -2,6 +2,7 @@ import type { Json, ResolvedNode } from "@gik/kernel";
 
 import type {
   ComponentDescription,
+  ComponentEventContract,
   ComponentValidationReport,
   DeclarativeComponentDefinition,
 } from "./definition";
@@ -16,11 +17,13 @@ export interface ComponentCatalogEntry {
   defaultVariant?: string;
   variants: readonly string[];
   events: readonly string[];
+  eventContracts: Readonly<Record<string, ComponentEventContract>>;
 }
 
 export interface ComponentAuthoringDescription extends ComponentDescription {
   version: string;
   propsSchema: Record<string, unknown>;
+  eventContracts: Readonly<Record<string, ComponentEventContract>>;
 }
 
 export interface ComponentAuthoringTool {
@@ -35,6 +38,7 @@ export interface ComponentPreflightReport extends ComponentValidationReport {
   capability: string;
   effectiveVariant?: string;
   declaredEvents: readonly string[];
+  eventContracts: Readonly<Record<string, ComponentEventContract>>;
 }
 
 export interface ComponentAgentKit {
@@ -103,11 +107,17 @@ export function createComponentAuthoringApi(config: ComponentAuthoringApiConfig)
       defaultVariant: definition.defaultVariant,
       variants: definition.variants.map((variant) => variant.value),
       events: definition.events,
+      eventContracts: definition.eventContracts,
     }));
 
   const describe = (capability: string): ComponentAuthoringDescription => {
     const definition = resolveDefinition(capability);
-    return { ...definition.describe(), version: definition.version, propsSchema: definition.getSchema() };
+    return {
+      ...definition.describe(),
+      eventContracts: definition.eventContracts,
+      version: definition.version,
+      propsSchema: definition.getSchema(),
+    };
   };
 
   const materialize = (capability: string, variant?: string): ResolvedNode => {
@@ -126,6 +136,7 @@ export function createComponentAuthoringApi(config: ComponentAuthoringApiConfig)
       capability: definition.capability,
       effectiveVariant: typeof candidate.variant === "string" ? candidate.variant : definition.defaultVariant,
       declaredEvents: definition.events,
+      eventContracts: definition.eventContracts,
       ...definition.validate(props),
     };
   };
@@ -137,12 +148,17 @@ export function createComponentAuthoringApi(config: ComponentAuthoringApiConfig)
       const variants = description.variants.map((variant) =>
         `  - ${variant.value}${variant.value === description.defaultVariant ? " (default)" : ""}: ${variant.summary} Use when: ${variant.useWhen.join("; ")}`
       ).join("\n");
+      const eventContracts = Object.entries(definition.eventContracts).map(([event, contract]) =>
+        `  - ${event}: ${contract.summary} Payload schema: ${JSON.stringify(contract.payloadSchema)}`
+      );
       return [
         `## ${description.capability}`,
         description.summary,
         `- Data prop: ${description.dataProp ?? "none"}`,
         `- Slots: ${description.slots?.join(", ") || "none"}`,
         `- Emitted events: ${description.events.length > 0 ? description.events.join(", ") : "none"}`,
+        "- Event payload contracts:",
+        ...(eventContracts.length > 0 ? eventContracts : ["  - none"]),
         `- Semantic tokens: ${description.semanticTokens.join(", ")}`,
         "- Use when:",
         ...description.authoring.useWhen.map((rule) => `  - ${rule}`),
@@ -179,7 +195,7 @@ export function createComponentAuthoringApi(config: ComponentAuthoringApiConfig)
 
     return [{
       name: toolNames.list,
-      description: `List the ${config.kind} projection components assigned to this authoring context, including variants and emitted events.`,
+      description: `List the ${config.kind} projection components assigned to this authoring context, including variants, emitted events, and event payload contracts.`,
       inputSchema: objectSchema({}),
       handler: () => catalogEntries(selected),
       agentSafe: true,
@@ -189,7 +205,12 @@ export function createComponentAuthoringApi(config: ComponentAuthoringApiConfig)
       inputSchema: objectSchema({ capability: capabilitySchema }, ["capability"]),
       handler: (args) => {
         const definition = resolveSelected(String(args.capability));
-        return { ...definition.describe(), version: definition.version, propsSchema: definition.getSchema() };
+        return {
+          ...definition.describe(),
+          eventContracts: definition.eventContracts,
+          version: definition.version,
+          propsSchema: definition.getSchema(),
+        };
       },
       agentSafe: true,
     }, {
@@ -209,6 +230,7 @@ export function createComponentAuthoringApi(config: ComponentAuthoringApiConfig)
           capability: definition.capability,
           effectiveVariant: typeof candidate.variant === "string" ? candidate.variant : definition.defaultVariant,
           declaredEvents: definition.events,
+          eventContracts: definition.eventContracts,
           ...definition.validate(args.props),
         } satisfies ComponentPreflightReport;
       },

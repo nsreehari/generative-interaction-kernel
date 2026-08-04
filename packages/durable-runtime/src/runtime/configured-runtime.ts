@@ -1,4 +1,9 @@
-import type { DurableEffectHandler, DurableProvider, DurableTransitionAdapter } from "../contracts";
+import type {
+  DurableEffectFailureHandler,
+  DurableEffectHandler,
+  DurableProvider,
+  DurableTransitionAdapter,
+} from "../contracts";
 import { createAzureFunctionConnector } from "../connectors/azure-function";
 import { createBrowserIndexedDbConnector } from "../connectors/browser-indexed-db";
 import { createFilesystemMcpConnector, type McpCallTool } from "../connectors/filesystem-mcp";
@@ -19,6 +24,7 @@ export async function createConfiguredBrowserDurableRuntime(options: {
   config: DurableRuntimeConfig;
   transitionAdapter: DurableTransitionAdapter;
   effectHandlers?: Record<string, DurableEffectHandler>;
+  effectFailureHandler?: DurableEffectFailureHandler;
 }) {
   const providers: Record<string, DurableProvider> = {};
   if (options.config.indexedDb) {
@@ -36,5 +42,6 @@ export async function createConfiguredBrowserDurableRuntime(options: {
     providers,
     transitionAdapter: options.transitionAdapter,
     effectHandlers: options.effectHandlers,
+    effectFailureHandler: options.effectFailureHandler,
   });
 }
