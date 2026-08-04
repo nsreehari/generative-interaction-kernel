@@ -1,6 +1,7 @@
 export * from "../shared/definition";
 export * from "./authoring";
 export * from "./registry";
+export * from "./argument";
 export * from "./measure-set";
 export * from "./milestones";
 export * from "./narrative";

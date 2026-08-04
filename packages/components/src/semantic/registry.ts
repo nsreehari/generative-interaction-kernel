@@ -1,6 +1,7 @@
 import type { CapabilityDescriptor } from "@gik/kernel";
 import type { ProjectionView } from "@gik/react";
 
+import { Argument, argumentDefinition } from "./argument";
 import { MeasureSet, measureSetDefinition } from "./measure-set";
 import { Milestones, milestonesDefinition } from "./milestones";
 import { Narrative, narrativeDefinition } from "./narrative";
@@ -13,6 +14,7 @@ import {
 } from "./canonical-adapters";
 
 export const semanticComponentViews: Record<string, ProjectionView> = {
+  argument: Argument,
   "measure-set": MeasureSet,
   milestones: Milestones,
   narrative: Narrative,
@@ -26,6 +28,7 @@ export const semanticComponentViews: Record<string, ProjectionView> = {
 };
 
 export const semanticComponentDefinitions = {
+  argument: argumentDefinition,
   "measure-set": measureSetDefinition,
   milestones: milestonesDefinition,
   narrative: narrativeDefinition,

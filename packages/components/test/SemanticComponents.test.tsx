@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { test } from "vitest";
 
 import {
+  Argument,
   AttackPath,
   Chart,
   DateTime,
@@ -25,6 +26,7 @@ import {
   Form,
   EditableTable,
   appendEditableRowOnLastRowFocus,
+  argumentDefinition,
   committedEditableRows,
   attackPathDefinition,
   chartDefinition,
@@ -32,6 +34,7 @@ import {
   decisionDefinition,
   entitySetDefinition,
   materializeAttackPathTrial,
+  materializeArgumentTrial,
   materializeDecisionTrial,
   materializeEntitySetTrial,
   materializeEvidenceCaseTrial,
@@ -89,6 +92,7 @@ import {
 import { buildAttackGraphCanvasModel } from "../src/security/attack-graph";
 
 const cases = [
+  { definition: argumentDefinition, Component: Argument, materialize: materializeArgumentTrial, expected: "Contain the affected identity" },
   { definition: processDefinition, Component: Process, materialize: materializeProcessTrial, expected: "Response process" },
   { definition: entitySetDefinition, Component: EntitySet, materialize: materializeEntitySetTrial, expected: "Admin account" },
   { definition: decisionDefinition, Component: Decision, materialize: materializeDecisionTrial, expected: "Contain affected identity" },
@@ -120,6 +124,7 @@ for (const entry of cases) {
 
 test("canonical semantic variants share one invariant authored data payload", () => {
   const entries = [
+    { definition: argumentDefinition, expected: ["Contain the affected identity", "A new credential was registered", "supports", "opposes"] },
     { definition: narrativeDefinition, expected: ["Initial access", "Containment posture"] },
     { definition: measureSetDefinition, expected: ["Affected identities", "Contained", "Mean response"] },
     { definition: milestonesDefinition, expected: ["Loading presets", "Building manager", "Building open services", "Building preview"] },
@@ -156,7 +161,7 @@ test("component schemas reject semantic tokens outside each component vocabulary
 });
 
 test("public registries separate component layers and expose an aggregate", () => {
-  const semantic = ["decision", "entity-set", "event-series", "evidence-case", "measure-set", "milestones", "narrative", "process", "relationship-set", "work-set"];
+  const semantic = ["argument", "decision", "entity-set", "event-series", "evidence-case", "measure-set", "milestones", "narrative", "process", "relationship-set", "work-set"];
   const security = ["attack-path"];
   const software = ["source-comparison", "source-findings"];
   const primitives = ["access-gate", "chart", "collection-board", "datetime", "editable-table", "form", "gantt", "graph-diagram", "growing-container", "infinite-canvas", "source-viewer", "timer-button", "todo-list"];
@@ -261,7 +266,8 @@ test("component definitions expose closed agent-facing variant contracts", () =>
 
 test("agent authoring APIs discover, describe, validate, and materialize components", () => {
   const catalog = listSemanticComponents();
-  assert.equal(catalog.length, 10);
+  assert.equal(catalog.length, 11);
+  assert.deepEqual(catalog.find((entry) => entry.id === "argument")?.variants, ["map", "outline", "text"]);
   assert.ok(!catalog.some((entry) => entry.id === "chart"));
   assert.deepEqual(catalog.find((entry) => entry.id === "event-series")?.variants, ["chronology", "axis", "text"]);
   assert.deepEqual(catalog.find((entry) => entry.id === "milestones")?.variants, ["rail", "timeline", "list", "axis", "text"]);
@@ -564,4 +570,16 @@ test("infinite canvas exposes resolvable theme colors", () => {
   assert.match(INFINITE_CANVAS_THEME_COLORS.accent, /--colorBrandStroke1/);
   assert.match(INFINITE_CANVAS_THEME_COLORS.backgroundDot, /--colorNeutralStroke2/);
   assert.doesNotMatch(Object.values(INFINITE_CANVAS_THEME_COLORS).join(" "), /var\(--line\)|var\(--accent\)/);
+});
+
+test("argument rejects duplicate claims and relations to undeclared claims", () => {
+  const duplicate = materializeArgumentTrial();
+  const duplicateArgument = duplicate.props.argument as { claims: Array<Record<string, unknown>> };
+  duplicateArgument.claims[1].id = duplicateArgument.claims[0].id;
+  assert.ok(argumentDefinition.validate(duplicate.props).errors.some((error) => error.code === "argument-unique-claim-id"));
+
+  const missing = materializeArgumentTrial();
+  const missingArgument = missing.props.argument as { relations: Array<Record<string, unknown>> };
+  missingArgument.relations[0].target = "missing-claim";
+  assert.ok(argumentDefinition.validate(missing.props).errors.some((error) => error.code === "argument-reference"));
 });

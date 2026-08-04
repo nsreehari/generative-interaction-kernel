@@ -91,12 +91,26 @@ function toneFill(tone: GraphDiagramTone | undefined): string {
   return tokens.colorNeutralBackground4;
 }
 
+function toneForeground(tone: GraphDiagramTone | undefined): string {
+  return tone && tone !== "neutral" ? tokens.colorNeutralForegroundOnBrand : tokens.colorNeutralForeground1;
+}
+
 function positions(nodes: GraphDiagramNode[], layout: GraphDiagramSpec["layout"]) {
   if (layout === "hierarchical") {
     const columns = Math.max(1, Math.ceil(Math.sqrt(nodes.length)));
-    return new Map(nodes.map((node, index) => [node.id, { x: 100 + (index % columns) * (440 / Math.max(1, columns - 1)), y: 80 + Math.floor(index / columns) * 150 }]));
+    return new Map(nodes.map((node, index) => [node.id, { x: columns === 1 ? 320 : 120 + (index % columns) * (400 / (columns - 1)), y: 80 + Math.floor(index / columns) * 150 }]));
   }
   return new Map(nodes.map((node, index) => { const angle = (Math.PI * 2 * index) / Math.max(1, nodes.length) - Math.PI / 2; const radius = nodes.length <= 3 ? 105 : 135; return [node.id, { x: 320 + Math.cos(angle) * radius, y: 180 + Math.sin(angle) * radius }]; }));
+}
+
+function wrapLabel(label: string, maxLineLength = 26): string[] {
+  const words = label.split(/\s+/).flatMap((word) => word.length <= maxLineLength ? [word] : word.match(new RegExp(`.{1,${maxLineLength}}`, "g")) ?? [word]);
+  return words.reduce<string[]>((lines, word) => {
+    const current = lines.at(-1);
+    if (!current || current.length + word.length + 1 > maxLineLength) lines.push(word);
+    else lines[lines.length - 1] = `${current} ${word}`;
+    return lines;
+  }, []);
 }
 
 export function buildGraphCanvasModel(graph: GraphDiagramModel): DeclarativeInfiniteCanvasModel {
@@ -132,7 +146,7 @@ export const GraphDiagram: ProjectionView = ({ node, emit }) => {
   return <section {...componentRootProps(node, styles.root)}>{header}<svg className={styles.diagram} viewBox="0 0 640 360" role="img"><title>{spec.title ?? "Graph diagram"}</title><desc>{spec.description ?? `${graph.nodes.length} nodes and ${graph.edges.length} edges`}</desc>
     <defs><marker id={`${node.id}-arrow`} markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill={tokens.colorNeutralStroke1} /></marker></defs>
     {graph.edges.map((edge) => { const source = byId.get(edge.source); const target = byId.get(edge.target); if (!source || !target) return null; return <g key={edge.id}><line x1={source.x} y1={source.y} x2={target.x} y2={target.y} stroke={tokens.colorNeutralStroke1} strokeWidth="2" markerEnd={edge.directed ? `url(#${node.id}-arrow)` : undefined} />{edge.label ? <text x={(source.x + target.x) / 2} y={(source.y + target.y) / 2 - 6} textAnchor="middle" fill={tokens.colorNeutralForeground3} fontSize="11">{edge.label}</text> : null}</g>; })}
-    {graph.nodes.map((item) => { const position = byId.get(item.id)!; return <g key={item.id}><circle cx={position.x} cy={position.y} r="46" fill={toneFill(item.tone)} stroke={tokens.colorNeutralStroke1} /><text x={position.x} y={position.y} textAnchor="middle" dominantBaseline="middle" fill={item.tone === "accent" ? tokens.colorNeutralForegroundOnBrand : tokens.colorNeutralForeground1} fontSize="13">{item.label.slice(0, 18)}</text></g>; })}
+    {graph.nodes.map((item) => { const position = byId.get(item.id)!; const lines = wrapLabel(item.label); const longLabel = lines.length > 1; const textY = position.y - ((lines.length - 1) * 7); return <g key={item.id} aria-label={item.label}><title>{item.label}</title>{longLabel ? <rect x={position.x - 105} y={position.y - 42} width="210" height="84" rx="8" fill={toneFill(item.tone)} stroke={tokens.colorNeutralStroke1} /> : <circle cx={position.x} cy={position.y} r="46" fill={toneFill(item.tone)} stroke={tokens.colorNeutralStroke1} />}<text x={position.x} y={textY} textAnchor="middle" dominantBaseline="middle" fill={toneForeground(item.tone)} fontSize="13">{lines.map((line, index) => <tspan x={position.x} dy={index === 0 ? 0 : 14} key={`${item.id}-${index}`}>{line}</tspan>)}</text></g>; })}
   </svg></section>;
 };
 

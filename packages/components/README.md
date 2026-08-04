@@ -309,6 +309,7 @@ Primitive components:
 
 Canonical semantic components:
 
+- `argument` (`map`, `outline`, `text`)
 - `event-series` (`chronology`, `axis`, `text`)
 - `process` (`flow`, `stages`, `text`)
 - `work-set` (`board`, `queue`, `list`, `text`)

@@ -13,6 +13,7 @@ const { securityComponentDefinitions } = securityEntryPoint;
 const { softwareComponentDefinitions } = softwareEntryPoint;
 
 test("semantic and primitive entry points expose distinct component layers", () => {
+  assert.ok("argument" in semanticComponentDefinitions);
   assert.ok("event-series" in semanticComponentDefinitions);
   assert.ok(!("chart" in semanticComponentDefinitions));
   assert.ok("chart" in primitiveComponentDefinitions);
