@@ -273,13 +273,14 @@ export function materializeTimelineTrial() {
   return trialNode("semantic:timeline", {
     variant: "standard",
     items: [
-      { eventKey: "evt-1", at: "09:10", title: "Signal detected", detail: "An anomalous sign-in was observed.", state: "resolved" },
-      { eventKey: "evt-2", at: "09:24", title: "Investigation opened", detail: "The identity team began triage.", state: "active" },
+      { eventKey: "evt-1", at: "2026-08-04T09:10:00Z", title: "Signal detected", detail: "An anomalous sign-in was observed.", state: "resolved" },
+      { eventKey: "evt-2", at: "2026-08-04T09:24:00Z", title: "Investigation opened", detail: "The identity team began triage.", state: "active" },
     ],
     spec: {
       title: "Investigation timeline",
       description: "Ordered operational events",
       fields: { id: "eventKey", title: "title", timestamp: "at", detail: "detail", status: "state" },
+      scale: { kind: "datetime" },
       sort: { direction: "ascending" },
       toneMap: { resolved: "past", active: "current" },
     },

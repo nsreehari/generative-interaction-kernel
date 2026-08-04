@@ -130,7 +130,7 @@ test("component schemas reject semantic tokens outside each component vocabulary
 
 test("public registries separate component layers and expose an aggregate", () => {
   const semantic = ["action-board", "annotated-source-excerpt", "attack-graph", "decision-summary", "entity-constellation", "evidence-trail", "metric-comparison", "narrative-section", "semantic-graph", "sequence", "timeline"];
-  const primitives = ["access-gate", "chart", "datetime", "editable-table", "form", "gantt", "growing-container", "infinite-canvas", "timer-button", "todo-list"];
+  const primitives = ["access-gate", "chart", "collection-board", "datetime", "editable-table", "form", "gantt", "growing-container", "infinite-canvas", "source-viewer", "timer-button", "todo-list"];
   const fluent = ["badge", "button", "chips", "data-grid", "dialog", "dropdown", "list", "persona", "searchbox", "spinner", "switch", "tab-bar", "table", "text-field", "textarea", "toggle"];
   assert.deepEqual(Object.keys(semanticComponentViews).sort(), semantic);
   assert.deepEqual(Object.keys(semanticComponentDefinitions).sort(), semantic);
@@ -228,7 +228,7 @@ test("agent authoring APIs discover, describe, validate, and materialize compone
   const catalog = listSemanticComponents();
   assert.equal(catalog.length, 11);
   assert.ok(!catalog.some((entry) => entry.id === "chart"));
-  assert.deepEqual(catalog.find((entry) => entry.id === "timeline")?.variants, ["standard", "compact", "minimal"]);
+  assert.deepEqual(catalog.find((entry) => entry.id === "timeline")?.variants, ["standard", "compact", "minimal", "axis"]);
   assert.equal(catalog.find((entry) => entry.id === "timeline")?.dataProp, "items");
 
   const description = describeSemanticComponent("semantic:timeline");

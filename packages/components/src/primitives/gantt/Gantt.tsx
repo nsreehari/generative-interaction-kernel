@@ -6,21 +6,19 @@ import type { ProjectionView } from "@gik/react";
 
 import { defineComponent, trialNode, type ComponentDescription, type ComponentValidationReport } from "../../shared/definition";
 import { asRecord, componentRootProps, componentStylePropsSchema, readPath, records, textAt } from "../../shared/component";
-import { formatTime, formatTimestamp } from "../datetime";
+import {
+  MAX_COORDINATE_TICKS,
+  coordinateTickCountExceedsLimit,
+  coordinateTicks,
+  formatAxisCoordinate,
+  formatCoordinate,
+  parseCoordinate,
+  type CoordinateScale,
+} from "../../shared/coordinateScale";
 
 export const GANTT_VARIANTS = ["standard", "compact"] as const;
-export const MAX_GANTT_TICKS = 101;
-
-export interface GanttScale {
-  kind: "datetime" | "linear";
-  hourFormat?: "24" | "12";
-  displayPrefix?: string;
-  minimum?: number;
-  maximum?: number;
-  tickStep?: number;
-  showSeconds?: boolean;
-  showTimeZone?: boolean;
-}
+export const MAX_GANTT_TICKS = MAX_COORDINATE_TICKS;
+export type GanttScale = CoordinateScale;
 
 export interface GanttSpec {
   title?: string;
@@ -109,18 +107,15 @@ const useStyles = makeStyles({
 });
 
 export function parseGanttCoordinate(value: unknown, scale: GanttScale): number {
-  if (scale.kind === "datetime") return typeof value === "string" ? Date.parse(value) : Number.NaN;
-  return typeof value === "number" ? value : Number.NaN;
+  return parseCoordinate(value, scale);
 }
 
 export function formatGanttCoordinate(value: unknown, scale: GanttScale): string {
-  const text = value == null ? "" : String(value);
-  if (scale.kind === "datetime") return formatTimestamp(text, { hourFormat: scale.hourFormat, showSeconds: scale.showSeconds, showTimeZone: scale.showTimeZone });
-  return scale.kind === "linear" && scale.displayPrefix ? `${scale.displayPrefix}${text}` : text;
+  return formatCoordinate(value, scale);
 }
 
 export function formatGanttAxisCoordinate(value: number, scale: GanttScale): string {
-  return scale.kind === "datetime" ? formatTime(value, { hourFormat: scale.hourFormat, showSeconds: scale.showSeconds, showTimeZone: scale.showTimeZone }) : formatGanttCoordinate(value, scale);
+  return formatAxisCoordinate(value, scale);
 }
 
 export const Gantt: ProjectionView = ({ node }) => {
@@ -146,11 +141,7 @@ export const Gantt: ProjectionView = ({ node }) => {
   const minimum = scale.kind === "linear" && scale.minimum !== undefined ? scale.minimum : Math.min(...intervals.map((interval) => interval.start));
   const maximum = scale.kind === "linear" && scale.maximum !== undefined ? scale.maximum : Math.max(...intervals.map((interval) => interval.end));
   const span = Math.max(1, maximum - minimum);
-  const tickStep = scale.tickStep;
-  const ticks = tickStep
-    ? Array.from({ length: Math.min(MAX_GANTT_TICKS, Math.floor(span / tickStep) + 1) }, (_, index) => minimum + index * tickStep)
-      .filter((value) => value <= maximum)
-    : [];
+  const ticks = coordinateTicks(minimum, maximum, scale.tickStep);
 
   return <figure {...componentRootProps(node, mergeClasses(styles.root, compact && styles.compactRoot))} aria-label={spec.title ?? "Gantt chart"}>
     {spec.title || spec.description ? <figcaption className={styles.header}>{spec.title ? <Text weight="semibold" size={500}>{spec.title}</Text> : null}{spec.description ? <Text className={styles.description}>{spec.description}</Text> : null}</figcaption> : null}
@@ -212,8 +203,7 @@ export function validateGantt(props: unknown): ComponentValidationReport {
   }));
   const domainMinimum = minimum ?? Math.min(...parsedIntervals.map((interval) => interval.start));
   const domainMaximum = maximum ?? Math.max(...parsedIntervals.map((interval) => interval.end));
-  const invalidTickCount = scale.tickStep !== undefined
-    && Math.floor((domainMaximum - domainMinimum) / scale.tickStep) + 1 > MAX_GANTT_TICKS;
+  const invalidTickCount = coordinateTickCountExceedsLimit(domainMinimum, domainMaximum, scale.tickStep);
   const invalidInterval = parsedIntervals.some(({ start, end }) => {
     return !Number.isFinite(start) || !Number.isFinite(end) || end < start
       || (minimum !== undefined && start < minimum)
