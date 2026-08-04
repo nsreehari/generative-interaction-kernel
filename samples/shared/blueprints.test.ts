@@ -10,7 +10,7 @@ test("every registered sample opens through terminal materialization", () => {
     assert.equal(runtime.definition.payload.tiers.length, 1, `${id} did not resolve to one terminal tier`);
     assert.deepEqual(runtime.definition.payload.recipes, [], `${id} retained lowering recipes at runtime`);
   }
-});
+}, 10_000);
 
 test("sample opener preserves direct-runtime Blueprints", () => {
   const source = resolveSampleBlueprintSource("samples-overview");

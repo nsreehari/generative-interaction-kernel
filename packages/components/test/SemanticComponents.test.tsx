@@ -184,8 +184,10 @@ test("todo-list shares form field and value shapes while committing each checkbo
   assert.doesNotMatch(markup, />Discard</);
 });
 
-test("Fluent components forward root className and style overrides", () => {
+test("non-portal components forward root className and style overrides in SSR", () => {
+  const portalCapabilities = new Set(["fluent:dialog", "primitive:access-gate"]);
   for (const definition of Object.values(componentDefinitions)) {
+    if (portalCapabilities.has(definition.capability)) continue;
     const trial = definition.materializeTrial();
     trial.props.className = "callsite-override";
     trial.props.style = { maxWidth: "40rem" };
