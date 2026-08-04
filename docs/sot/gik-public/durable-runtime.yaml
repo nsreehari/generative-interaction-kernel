@@ -11,7 +11,7 @@ document:
 
 package:
   name: "@gik/durable-runtime"
-  version: "0.6.2"
+  version: "0.7.0"
   publication_status: public-workspace-package
   purpose: >-
     Run caller-supplied pure transitions and effect handlers locally while routing durable
