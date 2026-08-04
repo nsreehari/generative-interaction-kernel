@@ -18,6 +18,7 @@ import type { ResolvedNode } from "@gik/kernel";
 const useStyles = makeStyles({
   page: {
     width: "min(1180px, 100%)",
+    minWidth: 0,
     margin: "0 auto",
     display: "grid",
     gridTemplateColumns: "minmax(0, 1.5fr) minmax(280px, 0.65fr)",
@@ -56,7 +57,10 @@ const useStyles = makeStyles({
     gap: tokens.spacingVerticalXXS,
   },
   contract: {
+    width: "100%",
+    boxSizing: "border-box",
     minWidth: 0,
+    gridTemplateColumns: "minmax(0, 1fr)",
     display: "grid",
     gap: tokens.spacingVerticalM,
     padding: tokens.spacingHorizontalL,
@@ -69,6 +73,7 @@ const useStyles = makeStyles({
     gap: tokens.spacingHorizontalXS,
     flexWrap: "wrap",
   },
+  contractMessage: { minWidth: 0, maxWidth: "100%", overflowWrap: "anywhere" },
   section: {
     display: "grid",
     gap: tokens.spacingVerticalS,
@@ -142,8 +147,8 @@ export function ComponentStory({ definition, variant, configureTrial, preview, e
 
       <aside className={styles.contract} aria-label="Declarative component contract">
         <Text as="h2" size={500} weight="semibold">Authoring contract</Text>
-        <MessageBar intent={allValid ? "success" : "error"}>
-          <MessageBarBody>
+        <MessageBar className={styles.contractMessage} intent={allValid ? "success" : "error"}>
+          <MessageBarBody className={styles.contractMessage}>
             {allValid
               ? "All displayed examples pass the exported validator."
               : "At least one displayed example violates the exported contract."}
