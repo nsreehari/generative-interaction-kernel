@@ -60,7 +60,8 @@
   "dependencies": {
     "@gik/evaluators": "0.1.1",
     "@gik/kernel": "0.1.1",
-    "@gik/react": "0.1.3"
+    "@gik/react": "0.1.3",
+    "@xyflow/react": "^12.11.2"
   },
   "scripts": {
     "build": "tsup",

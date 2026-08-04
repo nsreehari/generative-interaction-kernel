@@ -23,7 +23,6 @@
     "@fluentui/react-icons": "^2.0.312",
     "@gik/agentface": "0.1.1",
     "@gik/blueprint": "0.1.2",
-    "@gik/component-infinite-canvas": "0.1.0",
     "@gik/components": "0.1.0",
     "@gik/controlface": "0.1.4",
     "@gik/demo-runner-host": "0.1.3",

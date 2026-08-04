@@ -63,6 +63,11 @@ const preview: Preview = {
     layout: "fullscreen",
     controls: { expanded: true },
     a11y: { test: "error" },
+    options: {
+      storySort: {
+        order: ["Semantic Components", "Primitive Components", "*"],
+      },
+    },
   },
 };
 

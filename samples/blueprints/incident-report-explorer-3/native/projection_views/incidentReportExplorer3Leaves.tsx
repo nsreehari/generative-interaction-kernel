@@ -19,7 +19,7 @@ import {
   InfiniteCanvas,
   type InfiniteCanvasNodeDescriptor,
   type InfiniteCanvasPortMap,
-} from "@gik/component-infinite-canvas";
+} from "@gik/components/primitives";
 import type { ProjectionView, ProjectionViewProps } from "@gik/react";
 import { Handle } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
