@@ -105,6 +105,17 @@ test("FluentButton renders its public trial and forwards root styling", () => {
   assert.match(markup, />Analyze report<\/button>/);
 });
 
+test("FluentButton renders a spinner for controlled loading", () => {
+  const trial = fluentButtonDefinition.materializeTrial();
+  trial.props.loading = true;
+  const Component = fluentButtonDefinition.component;
+  const markup = renderToStaticMarkup(<Component node={trial} emit={() => undefined} children={undefined} />);
+  delete trial.props.loading;
+
+  assert.match(markup, /role="progressbar"/);
+  assert.equal(fluentButtonDefinition.validate({ label: "Improve report", loading: true }).ok, true);
+});
+
 test("FluentButton renders its icon variant with an accessible name", () => {
   const trial = fluentButtonDefinition.materializeTrial();
   trial.props.variant = "icon";

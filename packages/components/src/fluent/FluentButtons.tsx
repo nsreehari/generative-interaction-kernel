@@ -30,7 +30,8 @@ const BUTTON_VARIANTS = [
 
 export const FluentButton: ProjectionView = ({ node, emit }) => {
   const props = readProps(node);
-  const [loading, setLoading] = React.useState(false);
+  const [emitting, setEmitting] = React.useState(false);
+  const loading = props.bool("loading") || emitting;
   const variant = props.str("variant", "action");
   const appearance = props.str("appearance") as FluentButtonAppearance;
   const shape = props.str("shape") as FluentButtonShape;
@@ -54,11 +55,11 @@ export const FluentButton: ProjectionView = ({ node, emit }) => {
       disabled={props.bool("disabled")}
       aria-label={props.str("ariaLabel") || undefined}
       onClick={async () => {
-        setLoading(true);
+        setEmitting(true);
         try {
           await emit("press", {});
         } finally {
-          setLoading(false);
+          setEmitting(false);
         }
       }}
     >
@@ -82,6 +83,7 @@ const buttonSchema = withComponentStylePropsSchema({
     appearance: { type: "string", enum: appearances },
     ariaLabel: { type: "string" },
     disabled: { type: "boolean" },
+    loading: { type: "boolean" },
     shape: { type: "string", enum: shapes },
     size: { type: "string", enum: sizes },
   },
