@@ -49,8 +49,8 @@ export interface ComponentAgentKit {
 
 interface ComponentAuthoringApiConfig {
   definitions: Record<string, DeclarativeComponentDefinition>;
-  kind: "semantic" | "primitive" | "fluent";
-  toolKind: "Semantic" | "Primitive" | "Fluent";
+  kind: "semantic" | "primitive" | "fluent" | "security" | "software";
+  toolKind: "Semantic" | "Primitive" | "Fluent" | "Security" | "Software";
 }
 
 const objectSchema = (

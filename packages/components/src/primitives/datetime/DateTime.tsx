@@ -5,49 +5,22 @@ import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 
 import { componentRootProps, componentStylePropsSchema } from "../../shared/component";
+import {
+  DATE_TIME_PRESENTATIONS,
+  formatDateTime,
+  type DateTimePresentation,
+} from "../../shared/dateTimeFormat";
 import { defineComponent, trialNode, type ComponentDescription, type ComponentValidationReport } from "../../shared/definition";
 
-export const DATETIME_VARIANTS = ["date", "time", "timestamp"] as const;
-export type DateTimeVariant = typeof DATETIME_VARIANTS[number];
-
-export interface DateTimeFormatOptions {
-  hourFormat?: "24" | "12";
-  locale?: Intl.LocalesArgument;
-  now?: Date;
-  showSeconds?: boolean;
-  showTimeZone?: boolean;
-}
-
-function timeOptions({ hourFormat = "24", showSeconds = false, showTimeZone = false }: DateTimeFormatOptions): Intl.DateTimeFormatOptions {
-  return {
-    hour: "numeric",
-    minute: "2-digit",
-    ...(showSeconds ? { second: "2-digit" as const } : {}),
-    ...(showTimeZone ? { timeZoneName: "short" as const } : {}),
-    hourCycle: hourFormat === "12" ? "h12" : "h23",
-  };
-}
-
-function dateOptions(date: Date, now: Date): Intl.DateTimeFormatOptions {
-  return {
-    month: "short",
-    day: "numeric",
-    ...(date.getFullYear() === now.getFullYear() ? {} : { year: "numeric" as const }),
-  };
-}
-
-export function formatDateTime(value: string | number | Date, variant: DateTimeVariant, options: DateTimeFormatOptions = {}): string {
-  const date = value instanceof Date ? value : new Date(value);
-  if (!Number.isFinite(date.getTime())) return String(value);
-  const now = options.now ?? new Date();
-  if (variant === "date") return new Intl.DateTimeFormat(options.locale, dateOptions(date, now)).format(date);
-  if (variant === "time") return new Intl.DateTimeFormat(options.locale, timeOptions(options)).format(date);
-  return new Intl.DateTimeFormat(options.locale, { ...dateOptions(date, now), ...timeOptions(options) }).format(date);
-}
-
-export function formatDate(value: string | number | Date, options?: DateTimeFormatOptions): string { return formatDateTime(value, "date", options); }
-export function formatTime(value: string | number | Date, options?: DateTimeFormatOptions): string { return formatDateTime(value, "time", options); }
-export function formatTimestamp(value: string | number | Date, options?: DateTimeFormatOptions): string { return formatDateTime(value, "timestamp", options); }
+export const DATETIME_VARIANTS = DATE_TIME_PRESENTATIONS;
+export type DateTimeVariant = DateTimePresentation;
+export {
+  formatDate,
+  formatDateTime,
+  formatTime,
+  formatTimestamp,
+  type DateTimeFormatOptions,
+} from "../../shared/dateTimeFormat";
 
 const schema = {
   $schema: "http://json-schema.org/draft-07/schema#",
@@ -84,7 +57,7 @@ const description: ComponentDescription = {
   ],
   authoring: {
     useWhen: ["A scalar temporal value needs consistent human-readable presentation", "Semantic HTML time metadata should preserve the source instant"],
-    avoidWhen: ["Users must edit the value; use primitive:form", "Multiple temporal records form a chronology; use semantic:timeline"],
+    avoidWhen: ["Users must edit the value; use primitive:form", "Multiple temporal records form a chronology; use semantic:event-series"],
     rules: ["Provide a parseable ISO timestamp or epoch value", "Choose date, time, or timestamp according to the surrounding semantic context", "Time uses 24-hour format by default; set hourFormat to 12 for locale-appropriate AM/PM output", "Time and timestamp omit seconds by default; set showSeconds when second-level precision is meaningful", "Formatting follows the browser locale and local timezone; set showTimeZone only when the timezone label is useful"],
   },
 };

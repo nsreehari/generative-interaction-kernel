@@ -110,8 +110,9 @@
                 }
               },
               "incident-verdict": {
-                "capability": "semantic:decision-summary",
+                "capability": "semantic:decision",
                 "props": {
+                  "variant": "summary",
                   "spec": {
                     "eyebrow": "Incident determination",
                     "fields": {
@@ -150,8 +151,9 @@
                 }
               },
               "incident-blast-radius": {
-                "capability": "semantic:entity-constellation",
+                "capability": "semantic:entity-set",
                 "props": {
+                  "variant": "clusters",
                   "spec": {
                     "title": "Blast radius",
                     "description": "Entities grouped by observed condition",
@@ -201,8 +203,9 @@
                 }
               },
               "incident-timeline": {
-                "capability": "semantic:timeline",
+                "capability": "semantic:event-series",
                 "props": {
+                  "variant": "chronology",
                   "spec": {
                     "title": "Incident timeline",
                     "description": "Normalized events",
@@ -230,8 +233,9 @@
                 }
               },
               "incident-techniques": {
-                "capability": "semantic:sequence",
+                "capability": "semantic:process",
                 "props": {
+                  "variant": "flow",
                   "spec": {
                     "title": "ATT&CK progression",
                     "description": "Techniques in reported order",
@@ -256,8 +260,9 @@
                 }
               },
               "incident-response": {
-                "capability": "semantic:action-board",
+                "capability": "semantic:work-set",
                 "props": {
+                  "variant": "board",
                   "spec": {
                     "title": "Response plan",
                     "description": "Actions ordered by urgency",
@@ -265,24 +270,20 @@
                       "id": "id",
                       "title": "title",
                       "detail": "detail",
-                      "group": "priority",
-                      "category": "category"
+                      "group": "priority"
                     },
-                    "columns": [
+                    "groups": [
                       {
                         "value": "immediate",
-                        "label": "Immediate",
-                        "token": "urgent"
+                        "label": "Immediate"
                       },
                       {
                         "value": "next",
-                        "label": "Next",
-                        "token": "active"
+                        "label": "Next"
                       },
                       {
                         "value": "follow-up",
-                        "label": "Follow-up",
-                        "token": "planned"
+                        "label": "Follow-up"
                       }
                     ]
                   }
@@ -557,41 +558,44 @@
           },
           "dataProp": "value"
         },
-        "semantic:timeline": {
+        "semantic:event-series": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           },
           "dataProp": "items"
         },
-        "semantic:sequence": {
+        "semantic:process": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           },
           "dataProp": "items"
         },
-        "semantic:entity-constellation": {
+        "semantic:entity-set": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           },
           "dataProp": "items"
         },
-        "semantic:decision-summary": {
+        "semantic:decision": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           },
           "dataProp": "decision"
         },
-        "semantic:action-board": {
+        "semantic:work-set": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           },
           "emits": [
-            "action"
+            "select",
+            "activate",
+            "reorder",
+            "move"
           ],
           "dataProp": "items"
         },
@@ -633,11 +637,11 @@
           "semantic": {
             "from": "semantic",
             "use": [
-              "decision-summary",
-              "entity-constellation",
-              "timeline",
-              "sequence",
-              "action-board"
+              "decision",
+              "entity-set",
+              "event-series",
+              "process",
+              "work-set"
             ]
           }
         },

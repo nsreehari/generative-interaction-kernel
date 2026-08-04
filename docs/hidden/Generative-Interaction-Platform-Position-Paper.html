@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A Governed Interaction Substrate for Human-Agent Systems</title>
+<style>
+  :root {
+    --bg: #f5f4f2;
+    --surface: #ebe9e4;
+    --border: #e0ddd8;
+    --text: #2c2a27;
+    --text-secondary: #7a756d;
+    --accent: #3a3530;
+    --silver: #3d3832;
+    --code-bg: #2c2a27;
+    --code-fg: #e8e4dd;
+    --gold-bg: #f6edd6;
+    --gold-border: #cbb98a;
+    --gold-text: #8a7c55;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 3rem 2rem;
+    color: var(--text);
+    line-height: 1.7;
+    background: var(--bg);
+  }
+  h1 {
+    font-size: 1.45rem;
+    font-weight: 400;
+    color: #1a1816;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.3rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  h2 {
+    font-size: 1.02rem;
+    font-weight: 500;
+    color: #1a1816;
+    margin-top: 3rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin-top: 1.75rem;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.03em;
+  }
+  .subtitle {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    margin-bottom: 2.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  p { font-size: 0.92rem; color: var(--silver); }
+  a { color: var(--accent); text-decoration-color: var(--gold-border); text-underline-offset: 0.18em; }
+  .description {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1rem 1.25rem;
+    border-radius: 4px;
+    margin-bottom: 2rem;
+    font-size: 0.92rem;
+    color: var(--silver);
+    line-height: 1.65;
+  }
+  .description strong { color: var(--accent); font-weight: 600; }
+  .callout {
+    background: var(--surface);
+    border-left: 3px solid var(--accent);
+    padding: 0.85rem 1.15rem;
+    border-radius: 0 4px 4px 0;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+    color: var(--silver);
+  }
+  .example {
+    background: var(--gold-bg);
+    border-left: 3px solid var(--gold-border);
+    padding: 0.85rem 1.15rem;
+    border-radius: 0 4px 4px 0;
+    margin: 1.25rem 0;
+    font-size: 0.9rem;
+    color: #5f5636;
+  }
+  .example strong { color: #6f6330; font-weight: 600; }
+  .example .tag {
+    display: inline-block;
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold-text);
+    margin-bottom: 0.35rem;
+  }
+  .focus-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.85rem 1.15rem;
+    margin: 1.25rem 0;
+    color: var(--accent);
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    margin: 1.25rem 0;
+  }
+  th {
+    text-align: left;
+    background: #ece9e4;
+    color: var(--accent);
+    padding: 0.6rem 0.85rem;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 2px solid var(--border);
+  }
+  td {
+    padding: 0.65rem 0.85rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--silver);
+    vertical-align: top;
+    line-height: 1.6;
+  }
+  td:first-child { font-weight: 500; color: var(--accent); }
+  tr:last-child td { border-bottom: none; }
+  code {
+    background: var(--surface);
+    color: var(--accent);
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.82em;
+  }
+  ul, ol { font-size: 0.92rem; color: var(--silver); padding-left: 1.25rem; }
+  li { margin-bottom: 0.4rem; }
+  figure.svg-figure {
+    margin: 1.5rem 0;
+    padding: 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    text-align: center;
+  }
+  figure.svg-figure svg {
+    max-width: 100%;
+    height: auto;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+  figure.svg-figure figcaption {
+    margin-top: 0.85rem;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .scenario-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 1.25rem 0;
+  }
+  .scenario {
+    padding: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+  .scenario h3 { margin-top: 0; }
+  .scenario p { margin-bottom: 0; }
+  .posture-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin: 1.25rem 0;
+  }
+  .posture {
+    padding: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top-width: 3px;
+    border-radius: 4px;
+  }
+  .posture h3 { margin-top: 0; }
+  .posture p { margin-bottom: 0; }
+  .posture.blue { border-top-color: #5d7896; }
+  .posture.red { border-top-color: #a65c55; }
+  .posture.green { border-top-color: #5f8469; }
+  @media (max-width: 680px) {
+    body { padding: 2rem 1rem; }
+    .scenario-grid, .posture-grid { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media print {
+    body { max-width: 100%; padding: 1rem; }
+    h2 { break-after: avoid; }
+    figure, table, .scenario { break-inside: avoid; }
+    a { color: inherit; text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+<h1>A Governed Interaction Substrate for Human-Agent Systems</h1>
+<div class="subtitle">Preserving meaning from semantic intent to deterministic interaction and governed effect &middot; Technical position paper &middot; 2026</div>
+
+<div class="description">
+  <strong>Thesis.</strong> Humans and agents should participate through one governed interaction substrate rather than parallel application models. Agents contribute typed meaning at bounded semantic tiers; deterministic lowering turns that meaning into interaction and executable actions; humans receive predictable projections of the same authoritative state; and a separate control plane determines who may view, propose, delegate, approve, or execute.
+</div>
+
+<h2 id="problem">1. The Semantic Split</h2>
+<p>Most agentic systems give humans and agents different application models. Humans receive screens, forms, dashboards, and approval dialogs. Agents receive prompts, APIs, tools, and loosely structured context. Each path develops its own representation of state, available action, progress, and policy. A recommendation described in prose may not correspond to an executable operation; an API call may bypass the interaction contract visible to a human; and generated presentation may imply meaning the runtime cannot enforce.</p>
+<p>Adding orchestration does not close this split. Passing text among agents coordinates conversation, but it does not establish shared semantics, legal transitions, or authority. The architectural requirement is a common substrate in which human and agent participation has the same computational meaning while each participant receives an appropriate projection.</p>
+
+<div class="focus-block">
+  One authoritative interaction state; bounded semantic contribution; deterministic lowering; contextual projection; explicit authority; attributable effects.
+</div>
+
+<h2 id="substrate">2. The Shared Interaction Substrate</h2>
+<p>The substrate is a medium-blind transition system. It does not privilege a screen, conversation, agent protocol, or device. It evaluates typed events against authoritative state and produces a new state plus effect requests:</p>
+
+<div class="description"><strong>Transition rule.</strong> <code>(state, event) &rarr; (state', effects)</code></div>
+
+<p>State carries domain evidence, semantic artifacts, interaction progress, proposals, approvals, results, and causal relationships. Humans and agents enter events through the same validation boundary. Effects execute outside pure reduction and settle back as validated events, preserving deterministic replay without pretending that networks, models, or tools are deterministic.</p>
+
+<figure class="svg-figure">
+<svg viewBox="0 0 780 420" role="img" aria-label="One authoritative state projected to human, agent, and control experiences with effects settling at the runtime edge">
+  <defs>
+    <marker id="stateArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1,1 L8,5 L1,9" fill="none" stroke="#7a756d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <rect x="15" y="15" width="750" height="390" rx="8" fill="#ffffff" stroke="#e0ddd8"/>
+  <text x="40" y="48" fill="#7a756d" font-size="11" letter-spacing="1.6">ONE COMPUTATIONAL PROCESS</text>
+  <rect x="245" y="72" width="290" height="92" rx="6" fill="#2c2a27"/>
+  <text x="390" y="106" text-anchor="middle" fill="#f0ede8" font-size="18" font-weight="600">Authoritative Interaction State</text>
+  <text x="390" y="130" text-anchor="middle" fill="#c9c3ba" font-size="11">evidence &middot; artifacts &middot; progress &middot; proposals</text>
+  <text x="390" y="148" text-anchor="middle" fill="#c9c3ba" font-size="11">approvals &middot; settlements &middot; causal history</text>
+
+  <line x1="288" y1="166" x2="170" y2="226" stroke="#7a756d" marker-end="url(#stateArrow)"/>
+  <line x1="390" y1="166" x2="390" y2="226" stroke="#7a756d" marker-end="url(#stateArrow)"/>
+  <line x1="492" y1="166" x2="610" y2="226" stroke="#7a756d" marker-end="url(#stateArrow)"/>
+
+  <rect x="60" y="230" width="220" height="76" rx="6" fill="#f6edd6" stroke="#cbb98a"/>
+  <text x="170" y="260" text-anchor="middle" fill="#2c2a27" font-size="16" font-weight="600">Human Projection</text>
+  <text x="170" y="283" text-anchor="middle" fill="#8a7c55" font-size="10">comprehension &middot; action &middot; control</text>
+  <rect x="280" y="230" width="220" height="76" rx="6" fill="#f5f4f2" stroke="#bdb6ac"/>
+  <text x="390" y="260" text-anchor="middle" fill="#2c2a27" font-size="16" font-weight="600">Agent Projection</text>
+  <text x="390" y="283" text-anchor="middle" fill="#7a756d" font-size="10">allowlisted context &middot; semantic operations</text>
+  <rect x="500" y="230" width="220" height="76" rx="6" fill="#f5f4f2" stroke="#bdb6ac"/>
+  <text x="610" y="260" text-anchor="middle" fill="#2c2a27" font-size="16" font-weight="600">Control Projection</text>
+  <text x="610" y="283" text-anchor="middle" fill="#7a756d" font-size="10">identity &middot; grants &middot; policy &middot; lifecycle</text>
+
+  <line x1="170" y1="308" x2="170" y2="342" stroke="#7a756d" marker-end="url(#stateArrow)"/>
+  <line x1="390" y1="308" x2="390" y2="342" stroke="#7a756d" marker-end="url(#stateArrow)"/>
+  <line x1="610" y1="308" x2="610" y2="342" stroke="#7a756d" marker-end="url(#stateArrow)"/>
+  <text x="170" y="369" text-anchor="middle" fill="#7a756d" font-size="11">typed human events</text>
+  <text x="390" y="369" text-anchor="middle" fill="#7a756d" font-size="11">typed agent events</text>
+  <text x="610" y="369" text-anchor="middle" fill="#7a756d" font-size="11">governance decisions</text>
+</svg>
+<figcaption>Different projections participate in one state transition and causal model</figcaption>
+</figure>
+
+<p>A projection is a capability boundary, not a copy of the application. A human projection optimizes comprehension and predictable interaction. An agent projection exposes only the semantic context and operations granted to that participant. A control projection exposes trusted administrative capabilities. Transport carries a selected projection; it does not own policy or create authority.</p>
+
+<h2 id="tiers">3. Semantic Tiers and Meaning Preservation</h2>
+<p>Agents are most useful when they work at the level of domain meaning: <em>investigate this incident</em>, <em>construct the attack path</em>, <em>explain this timeline</em>, or <em>propose remediation</em>. They should not need to choose UI components, mutate application state directly, or generate unrestricted tool calls.</p>
+<p>A declarative interaction specification defines a sequence of semantic tiers. Every tier has a controlled vocabulary and a contract. A declared lowering recipe transforms a valid artifact at one tier into a valid artifact at the next:</p>
+
+<div class="description"><strong>Tier chain.</strong> <code>A<sub>n</sub> &rarr; A<sub>n-1</sub> &rarr; &hellip; &rarr; A<sub>1</sub> &rarr; T</code>, where <code>T</code> is validated runtime interaction.</div>
+
+<figure class="svg-figure">
+<svg viewBox="0 0 780 350" role="img" aria-label="Semantic artifacts lowered through validated tiers into presentation and a closed runtime grammar">
+  <defs>
+    <marker id="tierArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1,1 L8,5 L1,9" fill="none" stroke="#7a756d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <rect x="15" y="15" width="750" height="320" rx="8" fill="#ffffff" stroke="#e0ddd8"/>
+  <rect x="46" y="65" width="190" height="90" rx="6" fill="#f6edd6" stroke="#cbb98a"/>
+  <text x="141" y="94" text-anchor="middle" fill="#2c2a27" font-size="16" font-weight="600">Semantic Artifact</text>
+  <text x="141" y="118" text-anchor="middle" fill="#8a7c55" font-size="10">attack path &middot; finding &middot; timeline</text>
+  <text x="141" y="136" text-anchor="middle" fill="#8a7c55" font-size="10">decision &middot; remediation plan</text>
+  <line x1="238" y1="110" x2="292" y2="110" stroke="#7a756d" marker-end="url(#tierArrow)"/>
+  <rect x="294" y="65" width="190" height="90" rx="6" fill="#f5f4f2" stroke="#bdb6ac"/>
+  <text x="389" y="94" text-anchor="middle" fill="#2c2a27" font-size="16" font-weight="600">Validated Lowering</text>
+  <text x="389" y="118" text-anchor="middle" fill="#7a756d" font-size="10">schema &middot; integrity &middot; coverage</text>
+  <text x="389" y="136" text-anchor="middle" fill="#7a756d" font-size="10">identity &middot; provenance &middot; policy</text>
+  <line x1="486" y1="110" x2="540" y2="110" stroke="#7a756d" marker-end="url(#tierArrow)"/>
+  <rect x="542" y="65" width="190" height="90" rx="6" fill="#2c2a27"/>
+  <text x="637" y="94" text-anchor="middle" fill="#f0ede8" font-size="16" font-weight="600">Runtime Interaction</text>
+  <text x="637" y="118" text-anchor="middle" fill="#c9c3ba" font-size="10">presentation &middot; state &middot; events</text>
+  <text x="637" y="136" text-anchor="middle" fill="#c9c3ba" font-size="10">closed action grammar</text>
+
+  <line x1="141" y1="157" x2="141" y2="212" stroke="#7a756d" marker-end="url(#tierArrow)"/>
+  <line x1="637" y1="157" x2="637" y2="212" stroke="#7a756d" marker-end="url(#tierArrow)"/>
+  <rect x="46" y="216" width="190" height="70" rx="6" fill="#f5f4f2" stroke="#bdb6ac"/>
+  <text x="141" y="245" text-anchor="middle" fill="#2c2a27" font-size="14" font-weight="600">Meaning</text>
+  <text x="141" y="266" text-anchor="middle" fill="#7a756d" font-size="10">stable across representations</text>
+  <rect x="542" y="216" width="190" height="70" rx="6" fill="#f5f4f2" stroke="#bdb6ac"/>
+  <text x="637" y="245" text-anchor="middle" fill="#2c2a27" font-size="14" font-weight="600">Materialization</text>
+  <text x="637" y="266" text-anchor="middle" fill="#7a756d" font-size="10">contextual but reproducible</text>
+  <line x1="238" y1="251" x2="540" y2="251" stroke="#cbb98a" stroke-width="2"/>
+  <text x="389" y="242" text-anchor="middle" fill="#8a7c55" font-size="10" letter-spacing="1">PRESERVATION INVARIANT</text>
+</svg>
+<figcaption>Agents contribute meaning; lowering selects interaction and presentation</figcaption>
+</figure>
+
+<p>An attack path is a semantic artifact; an infinite canvas is one possible presentation. A timeline may become a visual sequence for a human and a structured event list for another agent. Analyze or refresh behavior belongs to the surrounding interaction program, not to a new semantic concept. Factual preservation, omissions, ordering, and semantic coverage belong to validators, not decorative status widgets.</p>
+
+<div class="callout">
+  <strong>Meaning-preservation invariant.</strong> Lowering may specialize structure and presentation, but it must preserve stable semantic identity, responsibility, ports, token contracts, provenance, and declared purpose. Probabilistic generation never bypasses terminal validation.
+</div>
+
+<h2 id="grammar">4. Deterministic Runtime and Governed Effects</h2>
+<p>The terminal interaction program uses a deliberately closed action grammar: <code>assign</code>, <code>derive</code>, <code>emit</code>, <code>invoke</code>, <code>route</code>, and <code>confirm</code>. This is the point at which high-level intent becomes inspectable behavior rather than arbitrary generated code.</p>
+
+<div class="description"><strong>Action path.</strong> <code>intent &rarr; semantic artifact &rarr; validation &rarr; lowering &rarr; authorization &rarr; effect &rarr; settlement</code></div>
+
+<p>Local interaction reduces immediately through the deterministic kernel. Agent, model, network, storage, and device work executes through named effect handlers outside that kernel. The host owns credentials, trusted service kinds, endpoint policy, queues, request and response validators, and execution ceilings. Provider output is untrusted data until it settles through the declared contract.</p>
+<p>Materialization is deterministic for a specification and immutable external context: <code>M(A, C) = T</code>. It may specialize inner programs while preserving stable identities and topology. This enables adaptive experiences without allowing context or a provider to redefine the application&rsquo;s semantics at runtime.</p>
+
+<h2 id="postures">5. Multi-Agent Operational Postures</h2>
+<p>Multi-agent composition benefits from distinguishing how a participant approaches a problem from what it can do and what it is authorized to do. Red, Blue, and Green are useful generalized operational postures:</p>
+
+<div class="posture-grid">
+  <article class="posture red">
+    <h3>Red &middot; Challenge and discover</h3>
+    <p>Adopts an adversarial perspective, tests assumptions, explores exposure, and establishes whether a weakness is reachable or exploitable.</p>
+  </article>
+  <article class="posture blue">
+    <h3>Blue &middot; Understand and defend</h3>
+    <p>Observes, classifies, correlates, investigates, explains, detects, and recommends defensive response from available evidence.</p>
+  </article>
+  <article class="posture green">
+    <h3>Green &middot; Improve and restore</h3>
+    <p>Prioritizes corrective change, proposes hardening and remediation, reduces exposure, and measures restored resilience.</p>
+  </article>
+</div>
+
+<p>The postures form a governed learning loop: challenge reveals pressure, observation establishes meaning, and improvement changes the system before it is challenged again. They are not security privileges and need not be permanent identities. A participant may adopt one or more postures for a bounded goal.</p>
+
+<table>
+  <thead><tr><th>Dimension</th><th>Question</th><th>Owned by</th></tr></thead>
+  <tbody>
+    <tr><td>Posture</td><td>How does this participant approach the problem?</td><td>Role and task design</td></tr>
+    <tr><td>Capability</td><td>Which semantic operations can it perform?</td><td>Tier and participant contracts</td></tr>
+    <tr><td>Authority</td><td>What may it view, propose, invoke, approve, or execute?</td><td>Control plane</td></tr>
+  </tbody>
+</table>
+
+<p>A coordinating agent is posture-neutral. It sequences declared work, passes typed artifacts, and maintains goal context, but it does not become an implicit superuser or inherit the union of all participant capabilities. Coordination is a responsibility; authority remains independently granted.</p>
+
+<h2 id="authority">6. Data Plane and Control Plane</h2>
+<p>The shared substrate is the data plane for interaction. It carries domain state, evidence, semantic artifacts, proposals, workflow state, approvals as recorded events, validated action requests, results, and causal history. The control plane establishes who and what may participate.</p>
+
+<figure class="svg-figure">
+<svg viewBox="0 0 780 390" role="img" aria-label="Control plane governs participants and policy while the data plane carries shared interaction state and effects">
+  <defs>
+    <marker id="planeArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1,1 L8,5 L1,9" fill="none" stroke="#7a756d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <rect x="15" y="15" width="750" height="360" rx="8" fill="#ffffff" stroke="#e0ddd8"/>
+  <rect x="55" y="52" width="670" height="105" rx="6" fill="#f5f4f2" stroke="#bdb6ac"/>
+  <text x="82" y="82" fill="#2c2a27" font-size="17" font-weight="600">Control Plane</text>
+  <text x="82" y="108" fill="#7a756d" font-size="11">identities &middot; roles &middot; goals &middot; policy &middot; capability grants &middot; delegation</text>
+  <text x="82" y="130" fill="#7a756d" font-size="11">approval eligibility &middot; trusted services &middot; credentials &middot; agent lifecycle</text>
+  <line x1="390" y1="159" x2="390" y2="205" stroke="#7a756d" marker-end="url(#planeArrow)"/>
+  <rect x="55" y="209" width="670" height="105" rx="6" fill="#2c2a27"/>
+  <text x="82" y="239" fill="#f0ede8" font-size="17" font-weight="600">Shared Interaction Data Plane</text>
+  <text x="82" y="265" fill="#c9c3ba" font-size="11">state &middot; evidence &middot; artifacts &middot; proposals &middot; workflow &middot; approvals</text>
+  <text x="82" y="287" fill="#c9c3ba" font-size="11">validated requests &middot; settlements &middot; causal history &middot; participant projections</text>
+  <text x="390" y="345" text-anchor="middle" fill="#8a7c55" font-size="11" letter-spacing="1.2">AUTHORITY GOVERNS PARTICIPATION; IT IS NOT CARRIED BY CONTENT</text>
+</svg>
+<figcaption>The data plane records approved interaction; the control plane establishes approval authority</figcaption>
+</figure>
+
+<p>Agent-to-agent invocation is explicit, bounded delegation. The caller may delegate only a permitted capability, for a declared purpose and scope; the callee receives no ambient access from the caller or orchestrator. Agent creation is a control-plane and authoring operation. A runtime agent may propose a role or workflow, but it cannot mint identity, credentials, tools, or authority for that proposal.</p>
+<p>Human control follows from this separation rather than defining the architecture. A person may inspect, amend, reject, approve, pause, redirect, resume, or revoke when policy permits. Each intervention is a typed causal event. The proposal seen by the human is the same semantic proposal evaluated by authorization and delivered to execution.</p>
+
+<h2 id="invariants">7. Architectural Invariants</h2>
+<table>
+  <thead><tr><th>Invariant</th><th>Failure prevented</th></tr></thead>
+  <tbody>
+    <tr><td>One authoritative interaction state</td><td>Human, agent, and runtime models silently diverging.</td></tr>
+    <tr><td>Bounded vocabulary at every semantic tier</td><td>Generated prose becoming an implicit execution language.</td></tr>
+    <tr><td>Deterministic, validated lowering</td><td>Meaning changing unpredictably between intent and interaction.</td></tr>
+    <tr><td>Stable semantic identity across representations</td><td>Presentation specialization altering responsibility or provenance.</td></tr>
+    <tr><td>Posture, capability, and authority remain independent</td><td>A useful classification accidentally granting privilege.</td></tr>
+    <tr><td>Projection cannot inflate authority</td><td>A transport or experience exposing undeclared operations.</td></tr>
+    <tr><td>No ambient delegation or orchestration authority</td><td>Multi-agent composition creating an implicit superuser.</td></tr>
+    <tr><td>Policy and authorization precede effects</td><td>A recommendation executing merely because it was generated.</td></tr>
+    <tr><td>Every consequential transition has causal attribution</td><td>Outcomes that cannot be explained, audited, or replayed.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="evidence">8. Compact Validation</h2>
+<p>The architecture is not derived from a single product workflow. Existing scenarios serve as compact tests of its invariants:</p>
+
+<div class="scenario-grid">
+  <article class="scenario">
+    <h3>Tiered Interaction</h3>
+    <p>A semantic artifact such as a portfolio view or incident timeline lowers independently from its presentation and provider implementation.</p>
+  </article>
+  <article class="scenario">
+    <h3>Incident Exploration</h3>
+    <p>Verdicts, attack paths, timelines, entities, indicators, and actions preserve source facts while supporting narrative, sequence, and canvas projections.</p>
+  </article>
+  <article class="scenario">
+    <h3>Governed SOC Work</h3>
+    <p>Evidence, recommendation, human decision, approved request, external action, and settlement remain one attributable causal path.</p>
+  </article>
+  <article class="scenario">
+    <h3>Operational Postures</h3>
+    <p>Red discovery, Blue investigation and defense, and Green remediation compose around a neutral coordinator while access remains independently controlled.</p>
+  </article>
+</div>
+
+<div class="callout">
+  <strong>Validation criterion.</strong> A scenario supports the architecture only if its semantics remain stable when the participant, provider, presentation, transport, or authority grant changes independently.
+</div>
+
+<h2 id="adoption">9. Adoption Boundary</h2>
+<ol>
+  <li><strong>Start with semantic contracts.</strong> Name the domain artifacts, evidence, relationships, provenance, and legal outcomes before selecting screens or tools.</li>
+  <li><strong>Separate tiers from presentation.</strong> Let agents contribute typed meaning and let declared lowering choose runtime interaction.</li>
+  <li><strong>Establish one state and event model.</strong> Project it differently for humans, agents, administrators, and headless hosts.</li>
+  <li><strong>Make authority independently testable.</strong> Model identity, grants, delegation, approval eligibility, services, and lifecycle in the control plane.</li>
+  <li><strong>Move effects to declared edges.</strong> Keep credentials and external execution in trusted hosts behind validators and ceilings.</li>
+  <li><strong>Validate substitutions.</strong> Change presentation, provider, participant, or posture independently and prove that semantic and causal invariants still hold.</li>
+</ol>
+
+<h2>Conclusion</h2>
+<p>A trustworthy human-agent system is not a collection of agents connected to a user interface. It is a governed interaction substrate in which meaning survives transformation, state remains authoritative, projection adapts without semantic divergence, and authority is never inferred from generated content or operational posture.</p>
+<p>Agents contribute semantic artifacts. Declarative contracts define their vocabulary and lowering. A deterministic runtime owns interaction state. The control plane governs participation and delegation. Trusted hosts execute bounded effects. Humans and agents therefore act through different projections of one process, with a complete causal chain from goal to artifact, presentation, decision, effect, and observed outcome.</p>
+</body>
+</html>

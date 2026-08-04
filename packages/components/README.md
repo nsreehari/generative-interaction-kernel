@@ -2,21 +2,21 @@
 
 Public, self-describing declarative components for GIK React hosts.
 
-The package has three public layers:
+The package has five public layers:
 
-- `@gik/components/primitives`: domain-neutral UI mechanics such as chart, form, editable table,
-  growing container, infinite canvas, and timer button.
-- `@gik/components/semantic`: domain-neutral information structures such as timeline, sequence,
-  metric comparison, and relationship graph. Bundles supply meanings such as incident, alert, or
-  consequence through data, labels, mappings, tokens, and behavior.
+- `@gik/components/primitives`: domain-neutral UI mechanics such as chart, collection board, form,
+  editable table, growing container, infinite canvas, source viewer, and timer button.
+- `@gik/components/semantic`: domain-neutral information roles and relationships such as event
+  series, processes, measures, narratives, evidence, decisions, and relationship sets.
+- `@gik/components/security`: security-domain contracts such as adversarial attack paths.
+- `@gik/components/software`: software-domain contracts such as source findings and comparisons.
 - `@gik/components/fluent`: reusable Fluent 2 controls that retain `fluent:*` capability names:
   badges, buttons, inputs, personas, spinners, tabs, tags, lists, tables, and data grids. Presentation choices are closed
   variants backed by native Fluent props; icon buttons are `fluent:button` variants.
 
-`@gik/components` re-exports both layers and aggregate `component*` registries for compatibility.
-New consumers should import the narrow subpath and register `primitiveComponentViews` and
-`semanticComponentViews` under separate provider aliases. Register `fluentComponentViews` under a
-`fluent` provider alias when documents use the Fluent control layer.
+`@gik/components` re-exports every layer and aggregate `component*` registries for convenience.
+New consumers should import narrow subpaths and register each selected `*ComponentViews` registry
+under its matching provider alias. Domain catalogs are opt-in rather than ambient.
 
 The package uses Fluent 2 React v9 through `@fluentui/react-components`. It assumes the host wraps
 rendering in a Fluent `FluentProvider`; it does not create a theme or introduce a semantic provider.
@@ -45,12 +45,15 @@ import {
   fluentComponentViews,
 } from "@gik/components/fluent";
 
-const timeline = semanticComponentDefinitions.timeline;
-const guidance = timeline.describe();
+import { securityComponentViews } from "@gik/components/security";
+import { softwareComponentViews } from "@gik/components/software";
+
+const eventSeries = semanticComponentDefinitions["event-series"];
+const guidance = eventSeries.describe();
 const defaultVariant = guidance.defaultVariant;
 const variants = guidance.variants;
-const schema = timeline.getSchema();
-const report = timeline.validate(timeline.materializeTrial().props);
+const schema = eventSeries.getSchema();
+const report = eventSeries.validate(eventSeries.materializeTrial().props);
 ```
 
 ## React adapters
@@ -76,7 +79,7 @@ import { GikComponent } from "@gik/components";
 
 The public props are:
 
-- `kind`: required closed capability ID, such as `primitive:chart` or `semantic:timeline`.
+- `kind`: required closed capability ID, such as `primitive:chart` or `semantic:event-series`.
 - `spec`: component-specific declarative specification, assigned to the component's `spec` prop.
 - `data`: generic component data, assigned to the selected definition's declared `dataProp`.
 - `variant`: an optional declared presentation variant.
@@ -132,17 +135,19 @@ bundle imports only the capabilities it uses. Nothing is ambient.
 
 ## Agent authoring kit
 
-Generate instructions and tools for only the components an agent may author. Semantic and primitive
-catalogs have parallel, layer-specific APIs:
+Generate instructions and tools for only the components an agent may author. Every catalog has a
+parallel, layer-specific API:
 
 ```ts
 import { getSemanticComponentAgentKit } from "@gik/components/semantic";
 import { getPrimitiveComponentAgentKit } from "@gik/components/primitives";
 import { getFluentComponentAgentKit } from "@gik/components/fluent";
+import { getSecurityComponentAgentKit } from "@gik/components/security";
+import { getSoftwareComponentAgentKit } from "@gik/components/software";
 
 const kit = getSemanticComponentAgentKit([
-  "semantic:timeline",
-  "semantic:action-board",
+  "semantic:event-series",
+  "semantic:work-set",
 ]);
 
 const primitiveKit = getPrimitiveComponentAgentKit([
@@ -155,13 +160,16 @@ const fluentKit = getFluentComponentAgentKit([
   "fluent:dropdown",
 ]);
 
+const securityKit = getSecurityComponentAgentKit(["security:attack-path"]);
+const softwareKit = getSoftwareComponentAgentKit(["software:source-comparison"]);
+
 // Add kit.instructions to the agent's authoring context.
 // Contribute kit.tools to createStatelessAgentFaceDispatcher(extraTools).
 ```
 
 The generated instructions derive from each selected definition's `describe()` metadata. Tool
 schemas and handlers are restricted to the same selected capabilities. Short registry IDs such as
-`timeline` and full IDs such as `semantic:timeline` are accepted and deduplicated. Omitting the list
+`event-series` and full IDs such as `semantic:event-series` are accepted and deduplicated. Omitting the list
 selects the complete registry; an explicit empty list is rejected.
 
 The package also exports the underlying pure APIs:
@@ -174,6 +182,8 @@ The package also exports the underlying pure APIs:
 - `getSemanticComponentAgentInstructions(components?)`
 - `createSemanticComponentAuthoringTools(components?)`
 - `getSemanticComponentAgentKit(components?)`
+- `listSecurityComponents()` / `getSecurityComponentAgentKit(components?)`
+- `listSoftwareComponents()` / `getSoftwareComponentAgentKit(components?)`
 - `listPrimitiveComponents()`
 - `describePrimitiveComponent(capability)`
 - `validatePrimitiveComponentProps(capability, props)`
@@ -191,8 +201,7 @@ The package also exports the underlying pure APIs:
 - `createFluentComponentAuthoringTools(components?)`
 - `getFluentComponentAgentKit(components?)`
 
-`semanticComponentAuthoringTools`, `primitiveComponentAuthoringTools`, and
-`fluentComponentAuthoringTools` are convenience catalogs for their complete registries.
+Each layer exports a `*ComponentAuthoringTools` convenience catalog for its complete registry.
 These are ACX authoring tools, not live AX runtime tools. The package does not create
 `copilot-instructions.md`, `SKILL.md`, or other host-specific agent customization files.
 
@@ -203,21 +212,23 @@ authoring agent should inspect `describe().variants`, select a value whose `useW
 the target surface, and use `defaultVariant` when no alternate presentation is required. Variants do
 not change domain meaning, semantic status mapping, event contracts, or host theme ownership.
 
-- Timeline: `standard`, `compact`, `minimal`
-- Sequence: `standard`, `compact`
-- Entity constellation: `grouped`, `compact`
-- Decision summary: `detailed`, `concise`
-- Action board: `board`, `list`
-- Metric comparison: `standard`, `compact`, `ranked`
-- Narrative section: `standard`, `compact`
-- Evidence trail: `detailed`, `compact`
-- Annotated source excerpt: `annotated`, `compact`
+- Event series: `chronology`, `axis`, `text`
+- Process: `flow`, `stages`, `text`
+- Entity set: `clusters`, `matrix`, `list`, `text`
+- Decision: `summary`, `rationale-chain`, `text`
+- Graph diagram: `diagram`, `canvas`
 - Chart: `standard`, `compact`
+- Collection board: `standard`, `compact`
 - Date time: `date`, `time`, `timestamp`
 - Gantt: `standard`, `compact`
 - Semantic graph: `network`, `relations`
 - Infinite canvas: `standard`, `compact`, `minimal`
+- Source viewer: `standard`, `compact`
 - Attack graph: `canvas`, `diagram`, `relations`, `gantt`, `text`
+
+Timeline's `axis` variant places point events as labeled markers on one horizontal scale. Its
+`spec.scale` uses the same datetime and numeric linear coordinate options as Gantt, including
+fractional values, shared `tickStep` markers, and presentation-only `displayPrefix` labels.
 
 Chart's visualization kind is independent of
 presentation variant. Set `spec.kind` to `bar`, `line`,
@@ -263,6 +274,16 @@ Form renders a schema-driven committed object editor and emits `save` with `{ va
 table renders a committed row editor and emits `save` with `{ rows }`. Both keep draft state local;
 bundle reactions own persistence and external effects.
 
+Collection board arranges records in declared columns. Its optional interaction configuration enables
+single selection, ordering within a column, and movement between columns without assigning workflow
+meaning to those columns. It emits `select`, `activate`, `reorder`, and `move`; bundle reactions validate
+business transitions and persist the resulting placement. `standard` and `compact` are density variants.
+
+Source viewer renders exact mapped source rows and precomputed diffs. Set `spec.kind` to `source`,
+`unified-diff`, or `split-diff`; these are representations of one source-row model, while `standard`
+and `compact` remain density variants. Diff rows must already contain aligned before/after content and
+a recognized change value. The primitive presents changes but does not calculate or interpret them.
+
 ## Events and effects
 
 These projection components are declarative leaves. A definition's `events` list describes the
@@ -270,9 +291,9 @@ semantic events that its view may emit; the generated capability descriptor expo
 `emits`. A bundle may map those events to closed-grammar actions or external effect handlers in its
 behavior graph. Components do not execute bundle effects directly.
 
-Semantic timeline, sequence, entity constellation, and decision summary are currently render-only leaves.
-Action board additionally emits `action`; a consuming bundle decides whether and how that event
-causes state changes or external effects.
+Most semantic and domain components are render-only leaves. Work sets and interactive graph
+presentations emit declared intents; consuming bundles decide whether and how those intents change
+state or invoke effects.
 
 Primitive components:
 
@@ -281,19 +302,30 @@ Primitive components:
 - `editable-table`
 - `form`
 - `gantt`
+- `graph-diagram`
 - `growing-container`
 - `infinite-canvas`
 - `timer-button`
 
-Semantic components pending the catalog naming review described above:
+Canonical semantic components:
 
-- `timeline`
-- `sequence`
-- `entity-constellation`
-- `decision-summary`
-- `action-board`
-- `metric-comparison`
-- `narrative-section`
-- `evidence-trail`
-- `annotated-source-excerpt`
-- `semantic-graph`
+- `argument` (`map`, `outline`, `text`)
+- `event-series` (`chronology`, `axis`, `text`)
+- `process` (`flow`, `stages`, `text`)
+- `work-set` (`board`, `queue`, `list`, `text`)
+- `entity-set` (`clusters`, `matrix`, `list`, `text`)
+- `evidence-case` (`case`, `sources`, `chain`, `text`)
+- `decision` (`summary`, `rationale-chain`, `text`)
+- `narrative` (`article`, `outline`, `briefing`, `text`)
+- `measure-set` (`tiles`, `table`, `ranking`, `text`)
+- `milestones` (`rail`, `timeline`, `list`, `axis`, `text`)
+- `relationship-set` (`network`, `matrix`, `relations`, `text`)
+
+Security components:
+
+- `attack-path` (`canvas`, `diagram`, `relations`, `gantt`, `text`)
+
+Software components:
+
+- `source-findings` (`findings`, `text`)
+- `source-comparison` (`unified-diff`, `split-diff`, `text`)

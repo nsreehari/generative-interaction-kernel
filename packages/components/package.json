@@ -36,6 +36,14 @@
       "types": "./dist/semantic.d.ts",
       "import": "./dist/semantic.js"
     },
+    "./security": {
+      "types": "./dist/security.d.ts",
+      "import": "./dist/security.js"
+    },
+    "./software": {
+      "types": "./dist/software.d.ts",
+      "import": "./dist/software.js"
+    },
     "./primitives": {
       "types": "./dist/primitives.d.ts",
       "import": "./dist/primitives.js"
