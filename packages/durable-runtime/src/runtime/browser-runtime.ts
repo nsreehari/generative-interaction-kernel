@@ -250,9 +250,12 @@ export function createDurableRuntime(options: DurableRuntimeOptions) {
       if (!message) return { status: "idle" as const };
       try {
         const effectType = typeof message.body === "object" && message.body !== null
-          ? String((message.body as { type?: unknown }).type ?? "")
+          ? String((message.body as { type?: unknown; tool?: unknown; kind?: unknown }).type
+            ?? (message.body as { tool?: unknown }).tool
+            ?? (message.body as { kind?: unknown }).kind
+            ?? "")
           : "";
-        const handler = options.effectHandlers?.[effectType];
+        const handler = options.effectHandlers?.[effectType] ?? options.effectHandlers?.["*"];
         if (!handler) throw new Error(`Unknown local effect handler: ${effectType || "<missing type>"}.`);
         const events = await handler(message.body) ?? [];
         const appended = [];

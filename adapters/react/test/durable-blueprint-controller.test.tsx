@@ -4,6 +4,7 @@ import { test } from "vitest";
 import { createBlueprint } from "@gik/blueprint";
 import { createIndexedDbStorage } from "@gik/durable-runtime/storage/indexed-db";
 import { DurableBlueprintController } from "../src/durable-blueprint-controller";
+import type { BundleNative } from "../src/primitives/bundle";
 
 function ref(value: string): string {
   return `b64:${Buffer.from(JSON.stringify({ kind: "indexed-db", value })).toString("base64url")}`;
@@ -40,6 +41,46 @@ test("DurableBlueprintController persists Blueprint state", async () => {
 
   const reopened = new DurableBlueprintController(blueprint, { runtime });
   assert.equal((await reopened.start()).props.value, 2);
+  first.stop();
+  reopened.stop();
+});
+
+test("DurableBlueprintController persists native effect settlements", async () => {
+  const blueprint = createBlueprint({
+    id: "durable-effect-counter",
+    kind: "runtime-blueprint",
+    version: "1",
+    tiers: [{ id: "runtime", kind: "runtime-program" }],
+    recipes: [],
+    runtime: { namespaces: ["counter"], state: { counter: { value: 1 } }, capabilities: {} },
+    cells: {
+      root: {
+        id: "root",
+        view: { capability: "screen", bindings: { value: { from: "counter.value" } } },
+        behavior: { events: { save: [{ do: "invoke", args: { tool: "saveValue" } }] } },
+      },
+    },
+    projections: { presentation: { roots: ["root"] } },
+  });
+  const runtimeRef = ref("durable-effect-counter");
+  const provider = createIndexedDbStorage({ databaseName: `gik-react-effect-${crypto.randomUUID()}` });
+  const runtime = {
+    runtimeId: "durable-effect-counter/v1",
+    providers: { "indexed-db": provider },
+    refs: { stateRef: runtimeRef, journalRef: runtimeRef, effectsQueueRef: runtimeRef },
+  };
+  const native: BundleNative = {
+    effectHandlers: {
+      saveValue: (context) => ({ ops: [context.set("counter.value", 7)] }),
+    },
+  };
+
+  const first = new DurableBlueprintController(blueprint, { runtime, native });
+  await first.start();
+  assert.equal((await first.emit("root", "save")).props.value, 7);
+
+  const reopened = new DurableBlueprintController(blueprint, { runtime, native });
+  assert.equal((await reopened.start()).props.value, 7);
   first.stop();
   reopened.stop();
 });
