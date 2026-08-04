@@ -46,7 +46,6 @@ architecture:
     - "@gik/demo-runner-host -> @gik/kernel"
     - "@gik/demo-runner-host -> @gik/react"
     - "@gik/react does not depend on @gik/demo-runner-host"
-    - "The compatibility-only @gik/blueprint-host package is not an architecture boundary"
 
 host_component_contract:
   name: DemoTargetHostProps

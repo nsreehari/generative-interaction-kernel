@@ -173,4 +173,4 @@ ADR-0046 makes Blueprint preparation an explicit `@gik/blueprint` operation. Pub
 materializes an authored Blueprint plus immutable external context once and reuses the portable
 value for transitions. Stateless hosts may persist the same value. Host adapters do not implement
 recipe lowering, and generated terminal output remains derived data rather than a second authored
-surface. This applies to `@gik/react`; the deprecated `@gik/blueprint-host` package is not revived.
+surface. This applies to `@gik/react`; the former compatibility package has been removed.
