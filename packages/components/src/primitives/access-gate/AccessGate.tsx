@@ -8,6 +8,7 @@ import { FluentDialog } from "../../fluent/FluentDialog";
 import { FluentSpinner } from "../../fluent/FluentDisplayControls";
 import {
   defineComponent,
+  eventContract,
   trialNode,
   type ComponentDescription,
   type ComponentValidationReport,
@@ -128,6 +129,12 @@ const accessGateDescription: ComponentDescription = {
   dataProp: "access",
   slots: ["children"],
   events: ["submit", "retry", "reset", "openChange"],
+  eventContracts: {
+    submit: eventContract("The user submits the authored access fields.", { values: { type: "object", additionalProperties: true } }),
+    retry: eventContract("The user requests another access check."),
+    reset: eventContract("The user requests that access state be reset."),
+    openChange: eventContract("The access dialog requests a change to its controlled open state.", { open: { type: "boolean" } }),
+  },
   semanticTokens: [],
   variants: [],
   authoring: {

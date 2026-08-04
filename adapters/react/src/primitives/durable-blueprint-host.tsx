@@ -1,5 +1,10 @@
 import React from "react";
-import { materializeBlueprint } from "@gik/blueprint";
+import {
+  materializeBlueprint,
+  prepareBlueprintProgram,
+  type MaterializedBlueprint,
+} from "@gik/blueprint";
+import type { BlueprintWorker } from "@gik/blueprint/worker";
 import type { BlueprintHostProps as InMemoryBlueprintHostProps } from "./blueprint-host";
 import { DurableBlueprintController, type DurableBlueprintRuntimeOptions } from "../durable-blueprint-controller";
 import { bundleFromJson } from "./bundle";
@@ -9,13 +14,16 @@ import { BundleCompositionHost, type CompositionOrganism } from "./bundle-compos
 const EMPTY_COMPANIONS: CompositionOrganism[] = [];
 const EMPTY_CONTEXTS = {};
 
-export interface BlueprintHostProps extends Omit<InMemoryBlueprintHostProps, "context" | "onTransition"> {
+export interface BlueprintHostProps extends InMemoryBlueprintHostProps {
   runtime: DurableBlueprintRuntimeOptions;
+  worker?: BlueprintWorker;
+  materializedBlueprint?: MaterializedBlueprint;
 }
 
 export function BlueprintHost({
   blueprint,
   runtime,
+  worker,
   resolveLeavesProvider,
   native,
   companions = EMPTY_COMPANIONS,
@@ -26,25 +34,46 @@ export function BlueprintHost({
   className,
   style,
   externalContext,
+  context,
+  onTransition,
+  materializedBlueprint,
 }: BlueprintHostProps): React.ReactElement {
   const registry = React.useMemo(() => createBundleRegistry(), []);
-  const prepared = React.useMemo(
-    () => materializeBlueprint({ blueprint, externalContext }).payload,
-    [blueprint, externalContext],
-  );
+  const prepared = React.useMemo(() => {
+    const materialized = materializedBlueprint ?? materializeBlueprint({ blueprint, externalContext });
+    if (!context) return materialized;
+    const initialState = prepareBlueprintProgram(materialized.payload.terminalBlueprint, { context }).initialState;
+    return {
+      ...materialized,
+      payload: { ...materialized.payload, initialState: structuredClone(initialState) },
+    };
+  }, [blueprint, context, externalContext, materializedBlueprint]);
+  const payload = prepared.payload;
   const bundle = React.useMemo(
     () => bundleFromJson({
-      vocabulary: prepared.vocabulary,
-      program: prepared.program,
-      state: prepared.initialState,
+      vocabulary: payload.vocabulary,
+      program: payload.program,
+      state: payload.initialState,
     }, native),
-    [prepared, native],
+    [payload, native],
   );
   const source = React.useMemo(
-    () => new DurableBlueprintController(blueprint, { runtime, externalContext, contexts, native }),
-    [blueprint, runtime, externalContext, contexts, native],
+    () => new DurableBlueprintController(blueprint, {
+      runtime,
+      externalContext,
+      contexts,
+      worker,
+      materializedBlueprint: prepared,
+      onTransition,
+    }),
+    [blueprint, runtime, externalContext, contexts, worker, prepared, onTransition],
   );
-  const blueprintId = prepared.terminalBlueprint.payload.id;
+  React.useEffect(() => {
+    if (!worker) return;
+    void worker.start();
+    return () => worker.stop();
+  }, [worker]);
+  const blueprintId = payload.terminalBlueprint.payload.id;
   const instanceId = primaryInstanceId === undefined ? blueprintId : `${blueprintId}:${primaryInstanceId}`;
   const primary = React.useMemo<CompositionOrganism>(
     () => ({ instanceId, bundle, source, bridge: primaryBridge }),

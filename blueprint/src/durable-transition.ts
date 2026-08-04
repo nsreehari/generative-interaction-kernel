@@ -19,12 +19,12 @@ export interface DurableBlueprintSpec {
   authoredBlueprint: BlueprintArtifact;
   externalContext: Record<string, Json>;
   materializedBlueprint: MaterializedBlueprint;
+  settledEffectMessageIds: string[];
 }
 
-export interface DurableBlueprintSpecUpdate {
-  patch: BlueprintPatch;
-  origin: BlueprintPatchOrigin;
-}
+export type DurableBlueprintSpecUpdate =
+  | { patch: BlueprintPatch; origin: BlueprintPatchOrigin }
+  | { settledEffectMessageId: string };
 
 const DURABLE_EFFECT_NODE = "$gik.durable-effect";
 const DURABLE_EFFECT_SETTLED = "settled";
@@ -34,22 +34,29 @@ export function createBlueprintDurableBootstrapEvent(): GIKEvent {
   return { node: DURABLE_EFFECT_NODE, name: DURABLE_BOOTSTRAP };
 }
 
-export function createBlueprintDurableEffectSettlementEvent(result: OrchestratorResult): GIKEvent {
+export function createBlueprintDurableEffectSettlementEvent(
+  messageId: string,
+  result: OrchestratorResult,
+): GIKEvent {
   if (result.program) throw new Error("Durable Blueprint effects cannot settle with runtime program patches.");
   return {
     node: DURABLE_EFFECT_NODE,
     name: DURABLE_EFFECT_SETTLED,
-    payload: { result: structuredClone(result) as unknown as Json },
+    payload: { messageId, result: structuredClone(result) as unknown as Json },
   };
 }
 
-function durableEffectSettlement(event: GIKEvent): OrchestratorResult | undefined {
+function durableEffectSettlement(event: GIKEvent): { messageId: string; result: OrchestratorResult } | undefined {
   if (event.node !== DURABLE_EFFECT_NODE || event.name !== DURABLE_EFFECT_SETTLED) return undefined;
+  const messageId = event.payload?.messageId;
+  if (typeof messageId !== "string" || !messageId) {
+    throw new Error("Durable Blueprint effect settlement is missing its message id.");
+  }
   const result = event.payload?.result;
   if (!result || typeof result !== "object" || Array.isArray(result)) {
     throw new Error("Durable Blueprint effect settlement is missing its result.");
   }
-  return result as unknown as OrchestratorResult;
+  return { messageId, result: result as unknown as OrchestratorResult };
 }
 
 export interface BlueprintDurableTransitionAdapter {
@@ -73,12 +80,18 @@ export interface BlueprintDurableTransitionAdapter {
 export function createBlueprintDurableTransitionAdapter(input: {
   blueprint: BlueprintArtifact;
   externalContext?: ExternalContext;
+  materializedBlueprint?: MaterializedBlueprint;
+  onTransition?: (
+    event: GIKEvent | null,
+    result: Awaited<ReturnType<typeof runMaterializedTransition>>,
+  ) => void;
 }): BlueprintDurableTransitionAdapter {
-  const materializedBlueprint = materializeBlueprint(input);
+  const materializedBlueprint = input.materializedBlueprint ?? materializeBlueprint(input);
   const initialSpec: DurableBlueprintSpec = {
     authoredBlueprint: structuredClone(input.blueprint),
     externalContext: structuredClone(input.externalContext ?? {}),
     materializedBlueprint,
+    settledEffectMessageIds: [],
   };
 
   return {
@@ -89,7 +102,13 @@ export function createBlueprintDurableTransitionAdapter(input: {
       const regularEvents = events.filter((event, index) =>
         settlements[index] === undefined
         && !(event.node === DURABLE_EFFECT_NODE && event.name === DURABLE_BOOTSTRAP));
-      const settlementResults = settlements.filter((result): result is OrchestratorResult => result !== undefined);
+      const consumed = new Set(spec.settledEffectMessageIds ?? []);
+      const acceptedSettlements = settlements.filter((settlement) => {
+        if (settlement === undefined || consumed.has(settlement.messageId)) return false;
+        consumed.add(settlement.messageId);
+        return true;
+      });
+      const settlementResults = acceptedSettlements.map((settlement) => settlement!.result);
       let nextState = state;
       if (settlementResults.some((result) => result.ops?.length)) {
         const store = new InMemoryStateModel(unwrap(spec.materializedBlueprint.payload.vocabulary).namespaces ?? []);
@@ -105,18 +124,34 @@ export function createBlueprintDurableTransitionAdapter(input: {
         materializedBlueprint: spec.materializedBlueprint,
         events: [...followUpEvents, ...regularEvents],
       });
+      const isBootstrap = events.some((event) =>
+        event.node === DURABLE_EFFECT_NODE && event.name === DURABLE_BOOTSTRAP);
+      if (regularEvents.length || isBootstrap) {
+        input.onTransition?.(regularEvents[0] ? structuredClone(regularEvents[0]) : null, result);
+      }
       const proposals = result.blueprintPatchProposals ?? result.blueprintPatches;
+      const settlementUpdates = acceptedSettlements.map((settlement) => ({
+        settledEffectMessageId: settlement!.messageId,
+      }));
       return {
         state: result.state,
         effects: result.effects ?? [],
-        ...(proposals?.length
-          ? { specUpdates: proposals.map((patch) => ({ patch, origin: "runtime" as const })) }
-          : {}),
+        specUpdates: [
+          ...settlementUpdates,
+          ...(proposals?.map((patch) => ({ patch, origin: "runtime" as const })) ?? []),
+        ],
       };
     },
     applySpecUpdates({ spec, updates }) {
       let next = structuredClone(spec);
       for (const update of updates) {
+        if ("settledEffectMessageId" in update) {
+          next.settledEffectMessageIds ??= [];
+          if (!next.settledEffectMessageIds.includes(update.settledEffectMessageId)) {
+            next.settledEffectMessageIds.push(update.settledEffectMessageId);
+          }
+          continue;
+        }
         const applied = applyBlueprintPatches({
           blueprint: next.authoredBlueprint,
           externalContext: next.externalContext,
@@ -128,6 +163,7 @@ export function createBlueprintDurableTransitionAdapter(input: {
           authoredBlueprint: applied.blueprint,
           externalContext: structuredClone(next.externalContext),
           materializedBlueprint: applied.materializedBlueprint,
+          settledEffectMessageIds: next.settledEffectMessageIds,
         };
       }
       return next;

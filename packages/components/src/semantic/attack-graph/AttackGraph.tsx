@@ -6,6 +6,7 @@ import type { ProjectionView } from "@gik/react";
 
 import {
   InfiniteCanvasPrimitive,
+  infiniteCanvasDefinition,
   type DeclarativeInfiniteCanvasModel,
   type DeclarativeInfiniteCanvasNode,
 } from "../../primitives/infinite-canvas";
@@ -319,6 +320,7 @@ const description: ComponentDescription = {
   summary: "Presents incident relationships as an exploratory canvas, static diagram, relation cards, interval Gantt, or plain text.",
   dataProp: "graph",
   events: ["node", "edge", "layout"],
+  eventContracts: infiniteCanvasDefinition.eventContracts,
   semanticTokens: ATTACK_GRAPH_SEMANTIC_TOKENS,
   defaultVariant: "canvas",
   variants: [

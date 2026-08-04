@@ -19,7 +19,7 @@ import {
 import type { Json } from "@gik/kernel";
 import { readProps, type ProjectionView } from "@gik/react";
 
-import type { ComponentDescription } from "../shared/definition";
+import { eventContract, type ComponentDescription } from "../shared/definition";
 import { componentRootProps, withComponentStylePropsSchema } from "../shared/component";
 import { defineFluentComponent } from "./defineFluentComponent";
 import { STANDARD_COMPACT_VARIANTS } from "./fluentVariants";
@@ -245,6 +245,7 @@ const listDescription: ComponentDescription = {
   summary: "Renders a Fluent 2 list with optional controlled item selection.",
   dataProp: "items",
   events: ["select"],
+  eventContracts: { select: eventContract("The selected list values change.", { values: { type: "array", items: { type: "string" } } }) },
   semanticTokens: [],
   defaultVariant: "standard",
   variants: LIST_VARIANTS,
@@ -273,6 +274,10 @@ const dataGridDescription: ComponentDescription = {
   summary: "Renders Fluent 2 tabular data with controlled row selection and sorting.",
   dataProp: "rows",
   events: ["select", "sort"],
+  eventContracts: {
+    select: eventContract("The selected data-grid rows change.", { rowIds: { type: "array", items: { type: "string" } } }),
+    sort: eventContract("The data-grid sort changes.", { columnId: { type: "string" }, direction: { enum: ["ascending", "descending"] } }),
+  },
   semanticTokens: [],
   defaultVariant: "standard",
   variants: STANDARD_COMPACT_VARIANTS,

@@ -7,6 +7,23 @@ import blueprintJson from "../blueprints/incident-report-explorer-3/blueprint.js
 const blueprint = blueprintJson as unknown as BlueprintArtifact;
 const cells = Object.values(blueprint.payload.cells ?? {}) as CellDefinition[];
 
+function waitForIncidentState(
+  controller: BlueprintController,
+  expected: { editing: boolean; fullscreen: boolean },
+): Promise<void> {
+  if (Object.entries(expected).every(([key, value]) =>
+    (controller.getState().incident3 as Record<string, unknown>)[key] === value)) return Promise.resolve();
+  return new Promise((resolve) => {
+    const unsubscribe = controller.subscribe(() => {
+      if (Object.entries(expected).every(([key, value]) =>
+        (controller.getState().incident3 as Record<string, unknown>)[key] === value)) {
+        unsubscribe();
+        resolve();
+      }
+    });
+  });
+}
+
 describe("incident-report-explorer-3 Blueprint", () => {
   it("keeps the agent source-faithful while the authored recipe owns both flights", () => {
     expect(blueprint.payload.tiers.map(({ id }) => id)).toEqual(["incident-semantic", "runtime-document"]);
@@ -54,13 +71,19 @@ describe("incident-report-explorer-3 Blueprint", () => {
     const controller = new BlueprintController(blueprint, { externalContext: { attention: "operational" } });
     await controller.start();
 
+    const editing = waitForIncidentState(controller, { editing: true, fullscreen: false });
     await controller.emit("incident-edit-report", "press", {});
+    await editing;
     expect(controller.getState().incident3).toMatchObject({ editing: true, fullscreen: false });
 
+    const fullscreen = waitForIncidentState(controller, { editing: true, fullscreen: true });
     await controller.emit("incident-view-fullscreen", "press", {});
+    await fullscreen;
     expect(controller.getState().incident3).toMatchObject({ editing: true, fullscreen: true });
 
+    const windowed = waitForIncidentState(controller, { editing: true, fullscreen: false });
     await controller.emit("incident-exit-fullscreen", "press", {});
+    await windowed;
     expect(controller.getState().incident3).toMatchObject({ editing: true, fullscreen: false });
   });
 });

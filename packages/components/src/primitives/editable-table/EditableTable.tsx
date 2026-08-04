@@ -19,6 +19,7 @@ import { readProps, type ProjectionView } from "@gik/react";
 
 import {
   defineComponent,
+  eventContract,
   trialNode,
   type ComponentDescription,
   type ComponentValidationReport,
@@ -149,6 +150,7 @@ const description: ComponentDescription = {
   capability: "primitive:editable-table",
   summary: "Renders a committed row editor with Fluent 2 table, input, and action controls.",
   dataProp: "rows", events: ["save"], semanticTokens: [], variants: [],
+  eventContracts: { save: eventContract("The user commits the edited rows.", { rows: { type: "array", items: { type: "object" } } }) },
   authoring: {
     useWhen: ["Users edit a small tabular collection and explicitly commit or discard the draft"],
     avoidWhen: ["Rows are read-only", "The dataset requires virtualization or spreadsheet formulas"],

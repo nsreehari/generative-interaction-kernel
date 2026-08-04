@@ -49,9 +49,9 @@
     "@fluentui/react-icons": "^2.0.312",
     "@gik/evaluators": "0.1.1",
     "@gik/kernel": "0.1.1",
-    "@gik/blueprint": "0.1.2",
-    "@gik/components": "0.1.2",
-    "@gik/react": "0.2.1"
+    "@gik/blueprint": "0.2.0",
+    "@gik/components": "0.2.0",
+    "@gik/react": "0.3.0"
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",

@@ -1,5 +1,7 @@
 export type QueueProcessResult = {
   status: "idle" | "completed" | "retry" | "dead";
+  appended?: readonly unknown[];
+  retryAfterMs?: number;
 };
 
 export type QueueNotificationSubscription = (
@@ -8,7 +10,7 @@ export type QueueNotificationSubscription = (
 ) => void | (() => void) | Promise<void | (() => void)>;
 
 export type DurableQueueProcessorOptions = {
-  processNext(): Promise<QueueProcessResult>;
+  processNext(signal: AbortSignal): Promise<QueueProcessResult>;
   subscribe: QueueNotificationSubscription;
   onError?: (error: unknown) => void;
 };
@@ -16,33 +18,30 @@ export type DurableQueueProcessorOptions = {
 export function createDurableQueueProcessor(options: DurableQueueProcessorOptions) {
   let started = false;
   let pending = false;
-  let draining: Promise<void> | null = null;
+  let processing: Promise<void> | null = null;
   let abortController: AbortController | null = null;
   let unsubscribe: (() => void) | undefined;
 
-  async function drain(): Promise<void> {
-    if (draining) return draining;
-    draining = (async () => {
+  async function processPending(): Promise<void> {
+    if (processing) return processing;
+    processing = (async () => {
       while (started && pending) {
         pending = false;
-        while (started) {
-          const result = await options.processNext();
-          if (result.status === "idle" || result.status === "retry") break;
-        }
+        await options.processNext(abortController!.signal);
       }
     })().catch((error) => {
       options.onError?.(error);
     }).finally(() => {
-      draining = null;
-      if (started && pending) void drain();
+      processing = null;
+      if (started && pending) void processPending();
     });
-    return draining;
+    return processing;
   }
 
   function notify(): void {
     if (!started) return;
     pending = true;
-    void drain();
+    void processPending();
   }
 
   return {
@@ -61,12 +60,6 @@ export function createDurableQueueProcessor(options: DurableQueueProcessorOption
     },
 
     notify,
-
-    drain(): Promise<void> {
-      if (!started) return Promise.resolve();
-      pending = true;
-      return drain();
-    },
 
     stop(): void {
       if (!started) return;

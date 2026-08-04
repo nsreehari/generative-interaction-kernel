@@ -2,7 +2,7 @@ schema_version: 1
 
 package:
   name: "@gik/blueprint"
-  version: "0.1.2"
+  version: "0.2.0"
   purpose: >-
     Define and validate Blueprint JSON, resolve its references and resources, analyze its
     Cells, enforce structural-change policy, lower tier chains through the package-owned fixed
@@ -12,6 +12,12 @@ package:
     The package deterministically materializes authored Blueprint plus immutable external context,
     and runs pure transitions from portable materialization, explicit state, and ordered events.
   public_entrypoint: packages/blueprint/src/index.ts
+  worker_entrypoint: packages/blueprint/src/worker.ts
+  worker_execution_factories:
+    - "@gik/blueprint/worker/in-memory"
+    - "@gik/blueprint/worker/indexed-db"
+    - "@gik/blueprint/worker/filesystem-mcp"
+    - "@gik/blueprint/worker/azure"
   implementation_entrypoint: blueprint/src/index.ts
 
 terminology:
@@ -57,6 +63,7 @@ architecture:
     - Selecting contract-compatible Cell implementation programs through static recipe vocabulary and immutable external context.
     - Running deterministic Blueprint transitions from explicit state and ordered events.
     - Providing a Blueprint-owned adapter compatible with provider-neutral durable transition hosts.
+    - Coordinating engine wakes and effect queue work through the placement-neutral @gik/blueprint/worker subpath.
   delegates_to_kernel:
     - Executable vocabulary and program contracts.
     - Program validation after lowering.
@@ -66,15 +73,18 @@ architecture:
   does_not_own:
     - Persisting runtime state, effects, cursors, or revisions.
     - Executing host effects returned by a transition when no host orchestrator is supplied.
+    - Selecting worker placement, notification transport, credentials, or trusted effect implementations.
     - Rendering, transports, Faces, or host service bindings.
     - Asynchronous, agent-driven, human-gated, or reconfigurable Lowering Cell scheduling.
     - Relationship-specific execution semantics.
     - Runtime application of executable ProgramPatch operations.
     - Host identity, credentials, or authorization mechanisms.
     - Nested child Blueprint mutation routing.
+    - Treating worker startup or controller settlement as a synchronous queue-completion barrier.
   dependency_direction:
     - "@gik/blueprint -> @gik/kernel"
     - "@gik/blueprint -> @gik/evaluators for declarative schema validation"
+    - "@gik/blueprint/worker -> @gik/durable-runtime and its connector subpaths"
     - "@gik/kernel must not depend on @gik/blueprint"
 
 artifact_contracts:

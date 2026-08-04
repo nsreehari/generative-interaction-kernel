@@ -4,6 +4,9 @@ import { defineConfig } from "vitest/config";
 const blueprintPackage = fileURLToPath(
   new URL("./blueprint/src/index.ts", import.meta.url)
 );
+const blueprintWorkerPackage = fileURLToPath(
+  new URL("./blueprint/src/worker.ts", import.meta.url)
+);
 const providerStepOrchestrator = fileURLToPath(
   new URL("./packages/provider-step-orchestrator/src/index.ts", import.meta.url)
 );
@@ -33,6 +36,13 @@ export default defineConfig({
           name: "blueprint",
           environment: "node",
           include: ["blueprint/test/**/*.test.ts"],
+        },
+      },
+      {
+        test: {
+          name: "durable-runtime",
+          environment: "node",
+          include: ["packages/durable-runtime/test/**/*.test.ts"],
         },
       },
       {
@@ -90,6 +100,7 @@ export default defineConfig({
       {
         resolve: {
           alias: {
+            "@gik/blueprint/worker": blueprintWorkerPackage,
             "@gik/blueprint": blueprintPackage,
             "@gik/provider-step-orchestrator": providerStepOrchestrator,
             "@gik/provider-blueprint-authoring": providerBlueprintAuthoring,

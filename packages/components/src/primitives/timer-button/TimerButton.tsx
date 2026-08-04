@@ -12,6 +12,7 @@ import { readProps, useCountdownTimer, type ProjectionView } from "@gik/react";
 
 import {
   defineComponent,
+  eventContract,
   trialNode,
   type ComponentDescription,
   type ComponentValidationReport,
@@ -145,6 +146,7 @@ const description: ComponentDescription = {
   capability: "primitive:timer-button",
   summary: "Renders a button that can emit manually or when an optional countdown elapses.",
   events: ["press"],
+  eventContracts: { press: eventContract("The button invokes manually or when its countdown elapses.", { reason: { enum: ["manual", "timeout"] } }) },
   semanticTokens: [],
   defaultVariant: "standard",
   variants: [

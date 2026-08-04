@@ -16,7 +16,7 @@ async function eventually(assertion: () => void): Promise<void> {
   assertion();
 }
 
-test("notification drains items until idle", async () => {
+test("each notification processes one item", async () => {
   let notify!: () => void;
   const statuses = ["completed", "completed", "idle"] as const;
   let calls = 0;
@@ -31,11 +31,13 @@ test("notification drains items until idle", async () => {
 
   await processor.start();
   notify();
-  await eventually(() => assert.equal(calls, 3));
+  await eventually(() => assert.equal(calls, 1));
+  notify();
+  await eventually(() => assert.equal(calls, 2));
   processor.stop();
 });
 
-test("duplicate notifications coalesce during an active drain", async () => {
+test("duplicate notifications coalesce during an active cycle", async () => {
   let notify!: () => void;
   let release!: () => void;
   const blocked = new Promise<void>((resolve) => { release = resolve; });
@@ -64,7 +66,7 @@ test("duplicate notifications coalesce during an active drain", async () => {
   processor.stop();
 });
 
-test("retry pauses draining until another notification", async () => {
+test("retry waits for another notification", async () => {
   let notify!: () => void;
   const statuses = ["retry", "completed", "idle"] as const;
   let calls = 0;
@@ -81,11 +83,11 @@ test("retry pauses draining until another notification", async () => {
   notify();
   await eventually(() => assert.equal(calls, 1));
   notify();
-  await eventually(() => assert.equal(calls, 3));
+  await eventually(() => assert.equal(calls, 2));
   processor.stop();
 });
 
-test("browser adapter forwards one queue request until idle", async () => {
+test("browser adapter forwards one queue request per notification", async () => {
   let notify!: () => void;
   const requests: unknown[] = [];
   const processor = createBrowserRuntimeQueueProcessor({
@@ -106,7 +108,7 @@ test("browser adapter forwards one queue request until idle", async () => {
 
   await processor.start();
   notify();
-  await eventually(() => assert.equal(requests.length, 2));
+  await eventually(() => assert.equal(requests.length, 1));
   processor.stop();
 });
 

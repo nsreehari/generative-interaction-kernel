@@ -3,6 +3,7 @@
   "include": [
     "src",
     "../../blueprint/src",
+    "../../packages/durable-runtime/src",
     "../../packages/evaluators/src",
     "../../kernel/src"
   ]
