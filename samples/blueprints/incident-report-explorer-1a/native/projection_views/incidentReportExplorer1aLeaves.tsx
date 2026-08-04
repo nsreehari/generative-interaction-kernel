@@ -22,8 +22,6 @@ const useStyles = makeStyles({
   sampleSelector: { width: "min(280px, 38vw)", minWidth: "150px", "& .gx-fluent-dropdown": { width: "100%", maxWidth: "280px" }, "@media (max-width: 520px)": { width: "150px", minWidth: 0 } },
   iconButton: { width: "34px", height: "34px", display: "inline-grid", placeItems: "center", border: "1px solid #c6ccc8", borderRadius: tokens.borderRadiusMedium, backgroundColor: "#ffffff", color: "#27312c", cursor: "pointer", ":hover": { backgroundColor: "#f0f3f1" } },
   textButton: { minHeight: "34px", padding: `0 ${tokens.spacingHorizontalM}`, border: "1px solid #c6ccc8", borderRadius: tokens.borderRadiusMedium, backgroundColor: "#ffffff", color: "#27312c", font: "inherit", fontWeight: tokens.fontWeightSemibold, cursor: "pointer" },
-  improveButton: { minWidth: "132px", minHeight: "34px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: tokens.spacingHorizontalS, padding: `0 ${tokens.spacingHorizontalM}`, border: 0, borderRadius: tokens.borderRadiusMedium, backgroundColor: "#0b6a6c", color: "#ffffff", font: "inherit", fontWeight: tokens.fontWeightSemibold, cursor: "pointer", ":disabled": { backgroundColor: "#d8ddda", color: "#747c77", cursor: "default" } },
-  spinner: { width: "14px", height: "14px", border: "2px solid rgba(255,255,255,.45)", borderTopColor: "#ffffff", borderRadius: "50%", animationName: { from: { transform: "rotate(0deg)" }, to: { transform: "rotate(360deg)" } }, animationDuration: "800ms", animationIterationCount: "infinite", animationTimingFunction: "linear" },
   status: { color: "#68716c", fontSize: tokens.fontSizeBase200 },
   empty: { height: "100%", minHeight: "280px", display: "grid", placeItems: "center", textAlign: "center" },
   emptyInner: { maxWidth: "430px" },
@@ -74,22 +72,18 @@ export const EditorView: ProjectionView = ({ node, children }) => {
   </section>;
 };
 
-export const RefinementView: ProjectionView = ({ node, children, emit }) => {
+export const RefinementView: ProjectionView = ({ node, children }) => {
   const styles = useStyles();
   const value = asRecord(node.props.value);
   const hasResult = Object.keys(value).length > 0;
   const stale = refinementIsStale(node.props.content, node.props.refinedContent);
-  const [pending, setPending] = React.useState(false);
+  const pending = node.props.pending === true;
+  const cells = childrenById(children);
   const coveredSections = records(value.sectionCoverage);
   const error = String(node.props.error ?? "");
-  const run = async () => {
-    setPending(true);
-    try { await emit("improve", {}); } finally { setPending(false); }
-  };
-  const buttonLabel = pending ? (hasResult ? "Refreshing..." : "Improving...") : hasResult ? (stale ? "Refresh report" : "Report current") : "Improve report";
   return <section className={styles.pane}>
-    <header className={styles.paneHeader}><div><h2 className={styles.paneTitle}>{String(node.props.title ?? "Improved semantic report")}</h2><span className={styles.status}>{hasResult ? (stale ? "Source changed" : `${coveredSections.length} sections preserved`) : "Not refined"}</span></div><button className={styles.improveButton} type="button" disabled={pending || (hasResult && !stale)} aria-busy={pending || undefined} onClick={() => void run()}>{pending ? <span className={styles.spinner} aria-hidden="true" /> : null}{buttonLabel}</button></header>
-    <div className={`${styles.paneBody} ${styles.resultBody}`}>{error ? <p className={styles.error}>{error}</p> : null}{hasResult ? <div className={styles.semanticContent}>{children}</div> : <div className={styles.empty}><div className={styles.emptyInner}><p className={styles.emptyKicker}>Ready</p><h3 className={styles.emptyTitle}>Improve the report without changing what it says</h3><p className={styles.emptyText}>The agent produces incident semantics; the authored runtime recipe chooses the verdict, attack path, timeline, entity, sequence, and action views.</p></div></div>}</div>
+    <header className={styles.paneHeader}><div><h2 className={styles.paneTitle}>{String(node.props.title ?? "Improved semantic report")}</h2><span className={styles.status}>{pending ? (hasResult ? "Refreshing report..." : "Improving report...") : hasResult ? (stale ? "Source changed" : `${coveredSections.length} sections preserved`) : "Not refined"}</span></div><div className={styles.paneActions}>{cells.get("incident-improve-report")}</div></header>
+    <div className={`${styles.paneBody} ${styles.resultBody}`}>{pending ? <span role="status">{hasResult ? "Refreshing incident report..." : "Improving incident report..."}</span> : null}{error ? <p className={styles.error}>{error}</p> : null}{hasResult ? <div className={styles.semanticContent}>{cells.get("incident-sections")}</div> : <div className={styles.empty}><div className={styles.emptyInner}><p className={styles.emptyKicker}>Ready</p><h3 className={styles.emptyTitle}>Improve the report without changing what it says</h3><p className={styles.emptyText}>The agent selects semantic contracts and returns their data; the authored runtime owns components and presentation.</p></div></div>}</div>
   </section>;
 };
 

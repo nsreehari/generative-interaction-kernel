@@ -18,31 +18,70 @@ describe("incident-report-explorer-1a Blueprint", () => {
     const schemaValidator = operation?.response?.validators?.find((validator) => validator.code === "provider-structured-output");
     const schema = schemaValidator && "schema" in schemaValidator ? schemaValidator.schema as Record<string, unknown> : {};
     const properties = schema.properties as Record<string, Record<string, unknown>>;
-    expect(Object.keys(properties)).toEqual(expect.arrayContaining([
-      "identity", "verdict", "summary", "phases", "entities", "relationships", "alerts", "events",
-      "techniques", "indicators", "actions", "sectionCoverage", "preservationSummary", "factualChanges", "omissions",
-    ]));
+    expect(Object.keys(properties)).toEqual([
+      "sections", "sectionCoverage", "preservationSummary", "factualChanges", "omissions",
+    ]);
+    const sectionSchema = properties.sections.items as Record<string, any>;
+    const optionSchema = sectionSchema.properties.options.items as Record<string, any>;
+    expect(sectionSchema.properties.options).toMatchObject({ minItems: 1, maxItems: 3 });
+    expect(optionSchema.properties.capability.enum).toEqual([
+      "semantic:argument", "semantic:decision", "semantic:entity-set", "semantic:event-series",
+      "semantic:evidence-case", "semantic:measure-set", "semantic:milestones", "semantic:narrative",
+      "semantic:process", "semantic:relationship-set", "semantic:work-set", "security:attack-path",
+    ]);
+    expect(optionSchema.properties.relationship.enum).toEqual(["preferred", "alternative", "complementary"]);
+    expect(optionSchema.required).toContain("data");
+    expect(optionSchema.properties.data).toMatchObject({ type: "string", minLength: 2 });
     expect(properties).not.toHaveProperty("improvedMarkdown");
     expect(properties).not.toHaveProperty("components");
     expect(properties).not.toHaveProperty("layout");
   });
 
-  it("materializes semantic concepts into authored runtime components", () => {
+  it("materializes agent-selected semantic data through the authored runtime host", () => {
     const source = blueprint as unknown as BlueprintArtifact;
     const terminal = materializeBlueprint({ blueprint: source }).payload.terminalBlueprint;
     expect(terminal.payload.tiers).toEqual([{ id: "runtime-document", kind: "runtime-document" }]);
     expect(terminal.payload.recipes).toEqual([]);
     const placements = terminal.payload.projections?.presentation?.placements ?? [];
     expect(placements.filter(({ parent }) => parent === "incident-refinement").map(({ cell }) => cell)).toEqual([
-      "incident-verdict",
-      "incident-attack-path",
-      "incident-alerts",
-      "incident-timeline",
-      "incident-entities",
-      "incident-techniques",
-      "incident-indicators",
-      "incident-actions",
+      "incident-sections", "incident-improve-report",
     ]);
+    expect(source.payload.recipes[0].representations[0].views["incident-sections"]).toMatchObject({
+      capability: "semantic:component-data-sections",
+      bindings: { sections: { from: "incident1a.model.sections" } },
+    });
+  });
+
+  it("resolves the catalog-backed host from the shared semantic provider", () => {
+    const projectionViews = blueprint.payload.runtime.externals.projectionViews;
+    expect(projectionViews.semantic).toEqual({ from: "semantic", use: ["component-data-sections"] });
+    expect(projectionViews).not.toHaveProperty("security");
+  });
+
+  it("owns improve and refresh execution in one authored command cell", () => {
+    expect(blueprint.payload.runtime.state.incident1a.refinementPending).toBe(false);
+    expect(blueprint.payload.recipes[0].representations[0].views).toMatchObject({
+      "incident-improve-report": {
+        bindings: {
+          disabled: { from: "incident1a.refinementPending" },
+          loading: { from: "incident1a.refinementPending" },
+        },
+        visibility: "incident1a.model = null or incident1a.content != incident1a.refinedContent",
+      },
+    });
+    expect(blueprint.payload.cells["incident-improve-report"].behavior.events.press).toEqual([
+      { do: "assign", target: "incident1a.refinementPending", args: { value: true } },
+      { do: "invoke", args: { tool: "prepareRefinement" } },
+      { do: "invoke", args: { tool: "improveReport" } },
+    ]);
+    expect(blueprint.payload.cells).not.toHaveProperty("incident-refresh-report");
+    expect(blueprint.payload.cells["incident-refinement"].behavior).toBeUndefined();
+  });
+
+  it("keeps coverage as a response invariant instead of prescribing a coverage component", () => {
+    const views = blueprint.payload.recipes[0].representations[0].views;
+    expect(views).not.toHaveProperty("incident-coverage");
+    expect(blueprint.payload.cells).not.toHaveProperty("incident-coverage");
   });
 
   it("binds a dedicated semantic refinement agent with strict preservation constraints", () => {
@@ -54,9 +93,14 @@ describe("incident-report-explorer-1a Blueprint", () => {
     const properties = schema.properties as Record<string, Record<string, unknown>>;
 
     expect(service?.config).toMatchObject({ agent: "Incident-Report-Refinement-Agent" });
-    expect(operation?.contract).toBe("incident-report-semantic-refinement/v1");
+    expect(operation?.contract).toBe("incident-report-component-data/v2");
     expect(properties.factualChanges).toMatchObject({ type: "array", maxItems: 0 });
     expect(properties.omissions).toMatchObject({ type: "array", maxItems: 0 });
+    const request = operation?.request?.transform;
+    const requestExpression = request && "expr" in request ? String(request.expr) : "";
+    expect(requestExpression).toContain("Suggestions are guidance only");
+    expect(requestExpression).toContain("Choose another available contract when more appropriate");
+    expect(requestExpression).toContain("Return data, not components");
     expect(operation?.response?.validators).toEqual(expect.arrayContaining([
       expect.objectContaining({ code: "content-preservation" }),
     ]));
