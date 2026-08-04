@@ -30,6 +30,7 @@ describe("incident-report-explorer-3 Blueprint", () => {
     expect(properties).not.toHaveProperty("components");
     expect(operation.request.transform.expr).toContain("Do not infer causality, compromise status, severity, urgency, attribution, or recommendations");
     expect(operation.request.transform.expr).toContain("Do not choose components, layouts, disclosure, colors, flights, or presentation candidates");
+    expect(operation.request.transform.expr).toContain("'maxOutputTokens':10000");
   });
 
   it.each(["operational", "brief"])("materializes both authored flights in the %s representation", (attention) => {

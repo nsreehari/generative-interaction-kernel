@@ -5,7 +5,7 @@ Public, self-describing declarative components for GIK React hosts.
 The package has three public layers:
 
 - `@gik/components/primitives`: domain-neutral UI mechanics such as chart, form, editable table,
-  growing container, and timer button.
+  growing container, infinite canvas, and timer button.
 - `@gik/components/semantic`: domain-neutral information structures such as timeline, sequence,
   metric comparison, and relationship graph. Bundles supply meanings such as incident, alert, or
   consequence through data, labels, mappings, tokens, and behavior.
@@ -213,14 +213,47 @@ not change domain meaning, semantic status mapping, event contracts, or host the
 - Evidence trail: `detailed`, `compact`
 - Annotated source excerpt: `annotated`, `compact`
 - Chart: `standard`, `compact`
+- Date time: `date`, `time`, `timestamp`
+- Gantt: `standard`, `compact`
 - Semantic graph: `network`, `relations`
+- Infinite canvas: `standard`, `compact`, `minimal`
+- Attack graph: `canvas`, `diagram`, `relations`, `gantt`, `text`
 
 Chart's visualization kind is independent of
 presentation variant. Set `spec.kind` to `bar`, `line`,
 or `pie`; use `variant` only for `standard` or `compact` density.
 
+Gantt accepts either actual timestamps or logical coordinates. Omit `spec.scale` (or set
+`kind: "datetime"`) for timestamp intervals. Set `spec.scale.kind` to `linear` for numeric ranges.
+Optional `minimum` and `maximum` values define a fixed domain such as `0..100`; without bounds, the
+domain is derived from data. `displayPrefix` is presentation-only, so numeric `1` may display as `T1`.
+Set a positive `tickStep` to render shared column markers above the tracks: milliseconds for datetime
+scales and coordinate units for linear scales. Datetime row labels and axis markers use human-readable
+browser-local values. `primitive:datetime` owns the reusable `date`,
+`time`, and `timestamp` scalar presentations and exports matching formatter utilities. Dates omit
+the year when it is the current local year and include it for previous or future years. Time and
+timestamp omit seconds and timezone labels by default; `showSeconds` and `showTimeZone` opt into them.
+Time uses 24-hour format by default; set `hourFormat: "12"` for locale-appropriate AM/PM output.
+The formatter exports accept the same options programmatically.
+
 Growing container owns bounded overflow for its `children` slot. Set `followEnd` to `always`,
 `when-at-end`, or `off`. It has no data prop or presentation variant.
+
+Infinite canvas accepts JSON-native node descriptors and ports. Put target ports on `left` or `top`,
+source ports on `right` or `bottom`, and give each intended connection one shared token; the component
+derives edges automatically and emits `node`, `edge`, and `layout`. It does not accept an edge array or
+React render callbacks through its declarative contract.
+
+Attack graph accepts semantic `entities` and `relationships` plus declarative field mappings. Its
+variants choose a representation rather than a density: `canvas` maps relationships to matching
+ports and delegates interaction and geometry persistence to `primitive:infinite-canvas`; `diagram`
+renders a static node-link overview; `relations` renders accessible source-predicate-target cards
+without drawn edges; `gantt` maps relationships with start/end fields into `primitive:gantt`; `text`
+renders plain ordered relationship statements with no visual geometry and includes human-readable
+start/end timestamp metadata when mapped timestamp fields are available.
+Attack graph passes its optional `spec.ganttScale` through to the primitive, so relationships may use
+actual timestamps or numeric linear coordinates, optionally formatted as `T1..T5` for presentation.
+Datetime and linear scales are configurations of the same `gantt` representation, not Attack Graph variants.
 
 Timer button emits `press` with reason `manual` or `timeout`. It supports a simple auto countdown,
 optional repeating timeout behavior, or a user-selectable manual/auto pace. Timer state is
@@ -244,10 +277,12 @@ causes state changes or external effects.
 Primitive components:
 
 - `chart`
+- `datetime`
 - `editable-table`
 - `form`
+- `gantt`
 - `growing-container`
-- `timeline`
+- `infinite-canvas`
 - `timer-button`
 
 Semantic components pending the catalog naming review described above:

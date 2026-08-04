@@ -589,11 +589,13 @@ test("Azure SignalR invalidations negotiate through the configured Function endp
   });
 
   await assert.rejects(
-    azure.subscribeSnapshotInvalidations?.(
-      { stateRef: runtimeRef, effectsQueueRef: runtimeRef, runtimeId: "runtime-v1" },
-      () => {},
-      { signal: new AbortController().signal },
-    ),
+    async () => {
+      await azure.subscribeSnapshotInvalidations?.(
+        { stateRef: runtimeRef, effectsQueueRef: runtimeRef, runtimeId: "runtime-v1" },
+        () => {},
+        { signal: new AbortController().signal },
+      );
+    },
     /negotiation failed with status 503/,
   );
   assert.equal(

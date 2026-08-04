@@ -112,12 +112,13 @@ const WorkspaceView: ProjectionView = ({ node, children }) => {
       <div className={styles.brand}><ShieldErrorRegular className={styles.brandIcon} /><h1 className={styles.title}>{String(node.props.title)}</h1></div>
       <span className={styles.mode}>{String(node.props.preset)} preset</span>
     </header>
-    <div className={styles.columns}>{cells.get("incident-source")}{cells.get("foundry-access-gate")}</div>
+    <div className={styles.columns}>{cells.get("incident-source")}{cells.get("foundry-access-gate") ?? cells.get("incident-semantic-analyzer")}</div>
   </main>;
 };
 
 const EditorView: ProjectionView = ({ node, children }) => {
   const styles = useStyles();
+  const readonly = node.props.readonly === true;
   const [editing, setEditing] = React.useState(false);
   const content = String(node.props.value ?? "");
   const previous = React.useRef(content);
@@ -129,7 +130,7 @@ const EditorView: ProjectionView = ({ node, children }) => {
   return <section className={styles.sourcePane}>
     <header className={styles.sourceHeader}>
       <h2 className={styles.sourceTitle}>{String(node.props.title)}</h2>
-      <div className={styles.sourceActions}><div className={styles.selector}>{cells.get("incident-source-selector")}</div>{editing
+      <div className={styles.sourceActions}><div className={styles.selector}>{cells.get("incident-source-selector")}</div>{readonly ? null : editing
         ? <Button appearance="subtle" onClick={() => setEditing(false)}>Cancel</Button>
         : <Button appearance="subtle" icon={<EditRegular />} aria-label="Edit report" title="Edit report" onClick={() => setEditing(true)} />}</div>
     </header>
@@ -139,6 +140,7 @@ const EditorView: ProjectionView = ({ node, children }) => {
 
 const ReportView: ProjectionView = ({ node, emit, children }) => {
   const styles = useStyles();
+  const readonly = node.props.readonly === true;
   const model = record(node.props.value);
   const hasModel = Object.keys(model).length > 0;
   const stale = analysisIsStale(node.props.content, node.props.analyzedContent);
@@ -151,7 +153,7 @@ const ReportView: ProjectionView = ({ node, emit, children }) => {
   return <section className={styles.report}>
     <header className={styles.reportHeader}>
       <div className={styles.reportHeading}><h2 className={styles.reportTitle}>{String(node.props.title)}</h2><span className={styles.status}>{hasModel ? (stale ? "Source changed" : "Up to date") : "Awaiting analysis"}</span></div>
-      <Button appearance="primary" disabled={pending || (hasModel && !stale)} icon={pending ? <Spinner size="tiny" /> : undefined} onClick={() => void run()}>{label}</Button>
+      {readonly ? null : <Button appearance="primary" disabled={pending || (hasModel && !stale)} icon={pending ? <Spinner size="tiny" /> : undefined} onClick={() => void run()}>{label}</Button>}
     </header>
     <div className={styles.reportBody}>{node.props.error ? <MessageBar intent="error"><MessageBarBody>{String(node.props.error)}</MessageBarBody></MessageBar> : null}{hasModel
       ? <div className={styles.content}>{children}</div>

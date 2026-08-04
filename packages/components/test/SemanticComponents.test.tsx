@@ -5,12 +5,16 @@ import { test } from "vitest";
 
 import {
   ActionBoard,
+  AttackGraph,
   AnnotatedSourceExcerpt,
   Chart,
+  DateTime,
   DecisionSummary,
   EntityConstellation,
   EvidenceTrail,
+  Gantt,
   GrowingContainerPrimitive,
+  InfiniteCanvasPrimitive,
   MetricComparison,
   NarrativeSection,
   SemanticGraph,
@@ -22,8 +26,10 @@ import {
   appendEditableRowOnLastRowFocus,
   committedEditableRows,
   actionBoardDefinition,
+  attackGraphDefinition,
   annotatedSourceExcerptDefinition,
   chartDefinition,
+  dateTimeDefinition,
   decisionSummaryDefinition,
   entityConstellationDefinition,
   materializeActionBoardTrial,
@@ -53,7 +59,11 @@ import {
   metricComparisonDefinition,
   evidenceTrailDefinition,
   formatTimerButtonCountdown,
+  formatDateTime,
   growingContainerDefinition,
+  ganttDefinition,
+  infiniteCanvasDefinition,
+  INFINITE_CANVAS_THEME_COLORS,
   isGrowingContainerPinnedToEnd,
   narrativeSectionDefinition,
   semanticGraphDefinition,
@@ -67,6 +77,7 @@ import {
   preflightSemanticComponent,
   shouldGrowingContainerFollowEnd,
   validateSemanticComponentProps,
+  buildAttackGraphCanvasModel,
 } from "../src/shared";
 
 const cases = [
@@ -76,10 +87,14 @@ const cases = [
   { definition: actionBoardDefinition, Component: ActionBoard, materialize: materializeActionBoardTrial, expected: "Disable account" },
   { definition: annotatedSourceExcerptDefinition, Component: AnnotatedSourceExcerpt, materialize: materializeAnnotatedSourceExcerptTrial, expected: "Containment threshold reached" },
   { definition: chartDefinition, Component: Chart, materialize: materializeChartTrial, expected: "Risk events by hour" },
+  { definition: dateTimeDefinition, Component: DateTime, materialize: () => dateTimeDefinition.materializeTrial(), expected: "Jul" },
+  { definition: ganttDefinition, Component: Gantt, materialize: () => ganttDefinition.materializeTrial(), expected: "Mailbox collection" },
   { definition: metricComparisonDefinition, Component: MetricComparison, materialize: materializeMetricComparisonTrial, expected: "Affected identities" },
   { definition: narrativeSectionDefinition, Component: NarrativeSection, materialize: materializeNarrativeSectionTrial, expected: "Initial access" },
   { definition: evidenceTrailDefinition, Component: EvidenceTrail, materialize: materializeEvidenceTrailTrial, expected: "Unfamiliar device registration" },
   { definition: semanticGraphDefinition, Component: SemanticGraph, materialize: materializeSemanticGraphTrial, expected: "Incident relationships" },
+  { definition: attackGraphDefinition, Component: AttackGraph, materialize: () => attackGraphDefinition.materializeTrial(), expected: "Admin identity" },
+  { definition: infiniteCanvasDefinition, Component: InfiniteCanvasPrimitive, materialize: () => infiniteCanvasDefinition.materializeTrial(), expected: "Source system" },
 ] as const;
 
 for (const entry of cases) {
@@ -114,9 +129,9 @@ test("component schemas reject semantic tokens outside each component vocabulary
 });
 
 test("public registries separate component layers and expose an aggregate", () => {
-  const semantic = ["action-board", "annotated-source-excerpt", "decision-summary", "entity-constellation", "evidence-trail", "metric-comparison", "narrative-section", "semantic-graph", "sequence", "timeline"];
-  const primitives = ["chart", "editable-table", "form", "growing-container", "timer-button", "todo-list"];
-  const fluent = ["badge", "button", "chips", "data-grid", "dropdown", "list", "persona", "searchbox", "spinner", "switch", "tab-bar", "table", "text-field", "textarea", "toggle"];
+  const semantic = ["action-board", "annotated-source-excerpt", "attack-graph", "decision-summary", "entity-constellation", "evidence-trail", "metric-comparison", "narrative-section", "semantic-graph", "sequence", "timeline"];
+  const primitives = ["access-gate", "chart", "datetime", "editable-table", "form", "gantt", "growing-container", "infinite-canvas", "timer-button", "todo-list"];
+  const fluent = ["badge", "button", "chips", "data-grid", "dialog", "dropdown", "list", "persona", "searchbox", "spinner", "switch", "tab-bar", "table", "text-field", "textarea", "toggle"];
   assert.deepEqual(Object.keys(semanticComponentViews).sort(), semantic);
   assert.deepEqual(Object.keys(semanticComponentDefinitions).sort(), semantic);
   assert.deepEqual(Object.keys(primitiveComponentViews).sort(), primitives);
@@ -211,7 +226,7 @@ test("component definitions expose closed agent-facing variant contracts", () =>
 
 test("agent authoring APIs discover, describe, validate, and materialize components", () => {
   const catalog = listSemanticComponents();
-  assert.equal(catalog.length, 10);
+  assert.equal(catalog.length, 11);
   assert.ok(!catalog.some((entry) => entry.id === "chart"));
   assert.deepEqual(catalog.find((entry) => entry.id === "timeline")?.variants, ["standard", "compact", "minimal"]);
   assert.equal(catalog.find((entry) => entry.id === "timeline")?.dataProp, "items");
@@ -371,4 +386,138 @@ test("editable table preserves draft row helpers and renders Fluent controls", (
   const rows = withTrailingEditableRow([{ name: "Budget" }], ["name"]);
   assert.deepEqual(committedEditableRows(rows), [{ name: "Budget" }]);
   assert.deepEqual(appendEditableRowOnLastRowFocus(rows, ["name"], 1), [...rows, { name: "" }]);
+});
+
+test("attack graph lowers each relationship to matching source and target port tokens", () => {
+  const canvas = buildAttackGraphCanvasModel({
+    entities: [
+      { id: "attacker", label: "Threat actor", detail: "Observed source", status: "observed" },
+      { id: "mailbox", label: "Mailbox", detail: "Compromised target", status: "compromised" },
+    ],
+    relationships: [
+      { id: "access", sourceId: "attacker", targetId: "mailbox", label: "accessed" },
+    ],
+  }, {
+    entityFields: { id: "id", label: "label", detail: "detail", tone: "status" },
+    relationshipFields: { id: "id", source: "sourceId", target: "targetId", label: "label" },
+    toneMap: { observed: "neutral", compromised: "danger" },
+  });
+
+  assert.equal(canvas.nodes.length, 2);
+  assert.deepEqual(canvas.nodePorts.attacker?.right, [{ id: "access:source", token: "relationship:access", label: "accessed" }]);
+  assert.deepEqual(canvas.nodePorts.mailbox?.left, [{ id: "access:target", token: "relationship:access", label: "accessed" }]);
+});
+
+test("attack graph variants render distinct canvas, diagram, relation, Gantt, and text representations", () => {
+  const renderVariant = (variant: "canvas" | "diagram" | "relations" | "gantt" | "text") => {
+    const trial = attackGraphDefinition.materializeTrial();
+    trial.props.variant = variant;
+    return renderToStaticMarkup(<AttackGraph node={trial} emit={() => {}} children={undefined} />);
+  };
+
+  const canvas = renderVariant("canvas");
+  assert.match(canvas, /role="application"/);
+
+  const diagram = renderVariant("diagram");
+  assert.match(diagram, /<svg/);
+  assert.match(diagram, /role="img"/);
+  assert.doesNotMatch(diagram, /role="application"/);
+
+  const relations = renderVariant("relations");
+  assert.match(relations, /authenticated as/);
+  assert.match(relations, /accessed/);
+  assert.doesNotMatch(relations, /<svg/);
+  assert.doesNotMatch(relations, /role="application"/);
+
+  const gantt = renderVariant("gantt");
+  assert.doesNotMatch(gantt, /2026-07-17T23:09:23Z/);
+  assert.match(gantt, /Jul/);
+  assert.match(gantt, /Threat actor authenticated as Admin identity/);
+  assert.doesNotMatch(gantt, /role="application"|<svg/);
+
+  const text = renderVariant("text");
+  assert.match(text, /<ol/);
+  assert.match(text, /Threat actor/);
+  assert.match(text, /authenticated as/);
+  assert.match(text, /<time dateTime="2026-07-17T23:09:23Z"/);
+  assert.match(text, /<time dateTime="2026-07-17T23:09:27Z"/);
+  assert.doesNotMatch(text, />2026-07-17T23:09:23Z</);
+  assert.doesNotMatch(text, /role="application"|<svg|fui-Card/);
+});
+
+test("attack graph Gantt requires relationship start and end mappings", () => {
+  const trial = attackGraphDefinition.materializeTrial();
+  trial.props.variant = "gantt";
+  const spec = trial.props.spec as Record<string, unknown>;
+  const relationshipFields = spec.relationshipFields as Record<string, unknown>;
+  delete relationshipFields.start;
+  delete relationshipFields.end;
+  assert.equal(attackGraphDefinition.validate(trial.props).ok, false);
+});
+
+test("Gantt rejects reversed temporal intervals", () => {
+  const trial = ganttDefinition.materializeTrial();
+  const items = trial.props.items as Array<Record<string, unknown>>;
+  items[0].start = "2026-07-17T23:09:30Z";
+  items[0].end = "2026-07-17T23:09:20Z";
+  assert.equal(ganttDefinition.validate(trial.props).ok, false);
+});
+
+test("DateTime omits the current year and includes other years", () => {
+  const now = new Date(2026, 7, 4, 12);
+  const current = new Date(2026, 7, 4, 23, 9, 23);
+  const previous = new Date(2025, 7, 4, 23, 9, 23);
+  assert.equal(formatDateTime(current, "date", { locale: "en-US", now }), "Aug 4");
+  assert.equal(formatDateTime(previous, "date", { locale: "en-US", now }), "Aug 4, 2025");
+  assert.equal(formatDateTime(current, "time", { locale: "en-US", now }), "23:09");
+  assert.equal(formatDateTime(current, "time", { hourFormat: "12", locale: "en-US", now }), "11:09 PM");
+  assert.equal(formatDateTime(current, "time", { locale: "en-US", now, showSeconds: true }), "23:09:23");
+  assert.match(formatDateTime(current, "time", { locale: "en-US", now, showTimeZone: true }), /^23:09 .+$/);
+});
+
+test("Gantt renders numeric linear coordinates with a presentation prefix", () => {
+  const trial = ganttDefinition.materializeTrial();
+  trial.props.items = [
+    { id: "numeric", label: "Numeric interval", start: 1, end: 40 },
+    { id: "indexed", label: "Indexed interval", start: 2, end: 8 },
+  ];
+  const spec = trial.props.spec as Record<string, unknown>;
+  spec.scale = { kind: "linear", displayPrefix: "T", minimum: 0, maximum: 10, tickStep: 2 };
+  assert.equal(ganttDefinition.validate(trial.props).ok, false);
+
+  (trial.props.items as Array<Record<string, unknown>>)[0].end = 1.5;
+  assert.equal(ganttDefinition.validate(trial.props).ok, true);
+  const html = renderToStaticMarkup(<Gantt node={trial} emit={() => undefined} children={undefined} />);
+  assert.match(html, /T1 - T1.5/);
+  assert.match(html, /T2 - T8/);
+  assert.match(html, /left:10%;width:5%/);
+  assert.match(html, /aria-label="Gantt scale"/);
+  assert.match(html, />T10</);
+
+  (trial.props.items as Array<Record<string, unknown>>)[1].start = "T2";
+  assert.equal(ganttDefinition.validate(trial.props).ok, false);
+});
+
+test("attack graph Gantt delegates linear coordinates to primitive:gantt", () => {
+  const trial = attackGraphDefinition.materializeTrial();
+  trial.props.variant = "gantt";
+  const graph = trial.props.graph as Record<string, unknown>;
+  const relationships = graph.relationships as Array<Record<string, unknown>>;
+  relationships[0].start = 1;
+  relationships[0].end = 2;
+  relationships[1].start = 2;
+  relationships[1].end = 5;
+  const spec = trial.props.spec as Record<string, unknown>;
+  spec.ganttScale = { kind: "linear", displayPrefix: "T", minimum: 0 };
+  assert.equal(attackGraphDefinition.validate(trial.props).ok, true);
+  const html = renderToStaticMarkup(<AttackGraph node={trial} emit={() => undefined} children={undefined} />);
+  assert.match(html, /T1 - T2/);
+  assert.match(html, /T2 - T5/);
+});
+
+test("infinite canvas exposes resolvable theme colors", () => {
+  assert.match(INFINITE_CANVAS_THEME_COLORS.edge, /--colorNeutralStrokeAccessible/);
+  assert.match(INFINITE_CANVAS_THEME_COLORS.accent, /--colorBrandStroke1/);
+  assert.match(INFINITE_CANVAS_THEME_COLORS.backgroundDot, /--colorNeutralStroke2/);
+  assert.doesNotMatch(Object.values(INFINITE_CANVAS_THEME_COLORS).join(" "), /var\(--line\)|var\(--accent\)/);
 });

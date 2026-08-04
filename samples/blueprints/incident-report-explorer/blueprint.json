@@ -17,7 +17,7 @@
             "request": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "{'message':'Transform this security investigation report into an engaging, high-signal incident intelligence view. Report Markdown:\n\n' & state.incident.pendingContent,'instructions':'Use only facts in the supplied report. Return reusable semantic items, then two projection candidates that reference item ids. Candidate one must be glanceable and candidate two focused. Available primitives: hero-signal, metric-strip, signal-list, timeline, entity-grid, technique-list, action-list, narrative. Priority: primary, secondary, tertiary. Disclosure: always, collapsed, on-demand. Item fields: id, kind, title, detail, salience, confidence, value, unit, date. Keep the output concise and operationally useful.','maxOutputTokens':2500}"
+                "expr": "{'message':'Transform this security investigation report into an engaging, high-signal incident intelligence view. Report Markdown:\n\n' & state.incident.pendingContent,'instructions':'Use only facts in the supplied report. Return reusable semantic items, then two projection candidates that reference item ids. Candidate one must be glanceable and candidate two focused. Available primitives: hero-signal, metric-strip, signal-list, timeline, entity-grid, technique-list, action-list, narrative. Priority: primary, secondary, tertiary. Disclosure: always, collapsed, on-demand. Item fields: id, kind, title, detail, salience, confidence, value, unit, date. Keep the output concise and operationally useful.','maxOutputTokens':10000}"
               }
             },
             "response": {

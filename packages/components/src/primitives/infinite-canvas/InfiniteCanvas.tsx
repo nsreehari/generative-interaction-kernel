@@ -28,6 +28,11 @@ import {
 } from "@xyflow/react";
 
 const CANVAS_FRAME_TYPE = "__canvasFrame";
+export const INFINITE_CANVAS_THEME_COLORS = {
+  edge: "var(--colorNeutralStrokeAccessible, var(--xy-edge-stroke-default, #616161))",
+  accent: "var(--colorBrandStroke1, #0f6cbd)",
+  backgroundDot: "var(--colorNeutralStroke2, #d1d1d1)",
+} as const;
 
 const SIDE_POSITION = {
   top: Position.Top,
@@ -36,7 +41,7 @@ const SIDE_POSITION = {
   right: Position.Right,
 } as const;
 
-const DEFAULT_BACKGROUND = { gap: 24, size: 1.1, color: "var(--line)" };
+const DEFAULT_BACKGROUND = { gap: 24, size: 1.1, color: INFINITE_CANVAS_THEME_COLORS.backgroundDot };
 const DEFAULT_PRO_OPTIONS: ProOptions = { hideAttribution: true };
 const EDGE_CURVATURE_SUBTLE = 0.26;
 const EDGE_CURVATURE_BASE = 0.46;
@@ -326,17 +331,17 @@ function LeaderLineEdge({
     targetPosition,
     curvature,
   });
-  const baseStrokeColor = "var(--line)";
-  const highlightStrokeColor = "var(--accent)";
-  const dimStrokeColor = "color-mix(in srgb, var(--line) 32%, transparent)";
+  const baseStrokeColor = INFINITE_CANVAS_THEME_COLORS.edge;
+  const highlightStrokeColor = INFINITE_CANVAS_THEME_COLORS.accent;
+  const dimStrokeColor = `color-mix(in srgb, ${INFINITE_CANVAS_THEME_COLORS.edge} 32%, transparent)`;
   const strokeColor = isHighlighted
     ? highlightStrokeColor
     : isDimmed
       ? dimStrokeColor
       : baseStrokeColor;
   const flowColor = isHighlighted
-    ? "color-mix(in srgb, var(--accent) 78%, white)"
-    : "color-mix(in srgb, var(--accent) 58%, transparent)";
+    ? `color-mix(in srgb, ${INFINITE_CANVAS_THEME_COLORS.accent} 78%, white)`
+    : `color-mix(in srgb, ${INFINITE_CANVAS_THEME_COLORS.accent} 58%, transparent)`;
   const plugMarkerId = `${id}-plug`;
   const endPlugMarkerId = `${id}-end-plug`;
   const mainStrokeWidth = isHighlighted ? 2.4 : 1.8;

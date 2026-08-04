@@ -19,7 +19,7 @@ import {
   InfiniteCanvas,
   type InfiniteCanvasNodeDescriptor,
   type InfiniteCanvasPortMap,
-} from "@gik/component-infinite-canvas";
+} from "@gik/components/primitives";
 import type { ProjectionView, ProjectionViewProps } from "@gik/react";
 import { Handle } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -156,7 +156,7 @@ const WorkspaceView: ProjectionView = ({ node, children }) => {
       <div className={styles.brand}><ShieldErrorRegular className={styles.brandIcon} /><h1 className={styles.title}>{String(node.props.title)}</h1></div>
       <span className={styles.mode}>{node.props.preset === "flights" ? "Flight comparison" : `${String(node.props.preset)} preset`}</span>
     </header>}
-    <div className={`${styles.columns} ${fullscreen ? styles.columnsFullscreen : ""}`}>{fullscreen ? null : cells.get("incident-source")}{cells.get("foundry-access-gate")}</div>
+    <div className={`${styles.columns} ${fullscreen ? styles.columnsFullscreen : ""}`}>{fullscreen ? null : cells.get("incident-source")}{cells.get("foundry-access-gate") ?? cells.get("incident-semantic-analyzer")}</div>
   </main>;
 };
 
