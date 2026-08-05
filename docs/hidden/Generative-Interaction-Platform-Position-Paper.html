@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>A Governed Interaction Substrate for Human-Agent Systems</title>
+<title>A Governed Interaction Architecture for Human-Agent Systems</title>
 <style>
   :root {
     --bg: #f5f4f2;
@@ -327,28 +327,28 @@
 </style>
 </head>
 <body>
-<h1>A Governed Interaction Substrate for Human-Agent Systems</h1>
-<div class="subtitle">Preserving meaning from semantic intent to deterministic interaction and governed effect &middot; Technical position paper &middot; 2026</div>
+<h1>A Governed Interaction Architecture for Human-Agent Systems</h1>
+<div class="subtitle">From agent-generated domain data to validated UI and controlled execution &middot; Technical position paper &middot; 2026</div>
 
 <div class="description">
-  <strong>Thesis.</strong> Humans and agents should participate through one governed interaction substrate rather than parallel application models. Agents contribute typed meaning at bounded semantic tiers; deterministic lowering turns that meaning into interaction and executable actions; humans receive predictable projections of the same authoritative state; and a separate control plane determines who may view, propose, delegate, approve, or execute.
+  <strong>Thesis.</strong> Humans and agents should use one governed interaction architecture instead of separate application paths. Agents return schema-validated domain data; host code turns that data into UI and allowed actions; every participant receives a role-appropriate view of the same authoritative state; and a separate control plane determines who may view, propose, delegate, approve, or execute.
 </div>
 
 <h2 id="problem">1. The Semantic Split</h2>
 <p>Most agentic systems give humans and agents different application models. Humans receive screens, forms, dashboards, and approval dialogs. Agents receive prompts, APIs, tools, and loosely structured context. Each path develops its own representation of state, available action, progress, and policy. A recommendation described in prose may not correspond to an executable operation; an API call may bypass the interaction contract visible to a human; and generated presentation may imply meaning the runtime cannot enforce.</p>
-<p>Adding orchestration does not close this split. Passing text among agents coordinates conversation, but it does not establish shared semantics, legal transitions, or authority. The architectural requirement is a common substrate in which human and agent participation has the same computational meaning while each participant receives an appropriate projection.</p>
+<p>Adding orchestration does not close this split. Passing text among agents coordinates conversation, but it does not define shared schemas, valid state changes, or permissions. The system needs one state and event model so that the same request maps to the same operation whether it comes from a person, an agent, or an API.</p>
 
 <div class="focus-block">
-  One authoritative interaction state; bounded semantic contribution; deterministic lowering; contextual projection; explicit authority; attributable effects.
+  One authoritative state; closed domain schemas; validated transformations; role-specific views; explicit permissions; auditable external actions.
 </div>
 
 <h2 id="progression">2. From Generated Responses to Semantic Composition</h2>
-<p>Generative interfaces can be organized by what the agent is allowed to produce and where the host regains control. The progression is not simply from text to richer UI. It is a progression from implicit interpretation, through concrete component generation and rigid templates, toward an explicit semantic contract that separates response meaning from runtime presentation.</p>
+<p>These models make different engineering tradeoffs. Agent-User Interaction (AG-UI) protocols can turn an agent response into interactive components, making complex data easier to inspect and act on than prose alone. A semantic layer solves a separate problem: it maps source data into stable domain objects, relationships, and actions that screens, agents, and services can interpret consistently. The key design choice is the contract that crosses the agent-host boundary: prose, UI instructions, a fixed template, or validated domain data.</p>
 
 <div class="progression-panel">
 <figure class="svg-figure progression-figure">
 <div class="progression-scroll">
-<svg viewBox="0 0 1000 410" role="img" aria-label="A response signal evolves left to right from ambiguous prose, through concrete components and a fixed template, into semantic composition with multiple host-controlled projections">
+<svg viewBox="0 0 1000 410" role="img" aria-label="The agent-host contract evolves from ambiguous prose, through generated components and a fixed template, to validated domain data that the host can render in different ways">
   <defs>
     <linearGradient id="signalGradient" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0" stop-color="#d8d3cc"/>
@@ -358,7 +358,7 @@
     <filter id="softBlur"><feGaussianBlur stdDeviation="7"/></filter>
   </defs>
   <rect x="15" y="15" width="970" height="380" rx="8" fill="#ffffff" stroke="#e0ddd8"/>
-  <text x="42" y="48" fill="#7a756d" font-size="11" letter-spacing="1.6">THE RESPONSE SIGNAL BECOMES EXPLICIT</text>
+  <text x="42" y="48" fill="#7a756d" font-size="11" letter-spacing="1.6">AGENT RESPONSES EVOLVE FROM PROSE TO VALIDATED DATA</text>
   <path d="M88 194 C210 119, 278 238, 390 180 S585 145, 690 180 S835 180, 930 180" fill="none" stroke="url(#signalGradient)" stroke-width="4" stroke-linecap="round"/>
 
   <!-- Raw prose: a diffuse cloud whose meaning the host must infer. -->
@@ -409,16 +409,16 @@
     <text x="830" y="304" text-anchor="middle" fill="#2c2a27">04 &middot; SEMANTIC</text>
   </g>
   <g font-size="15" font-weight="600" fill="#2c2a27">
-    <text x="128" y="330" text-anchor="middle">Host infers meaning</text>
-    <text x="364" y="330" text-anchor="middle">Agent arranges UI</text>
-    <text x="596" y="330" text-anchor="middle">Agent fills slots</text>
-    <text x="830" y="330" text-anchor="middle">Agent composes meaning</text>
+    <text x="128" y="330" text-anchor="middle">Host interprets prose</text>
+    <text x="364" y="330" text-anchor="middle">Agent generates UI</text>
+    <text x="596" y="330" text-anchor="middle">Agent populates fields</text>
+    <text x="830" y="330" text-anchor="middle">Agent builds domain data</text>
   </g>
   <g font-size="10" fill="#7a756d">
     <text x="128" y="349" text-anchor="middle">ambiguous, unconstrained</text>
     <text x="364" y="349" text-anchor="middle">flexible, presentation-bound</text>
     <text x="596" y="349" text-anchor="middle">predictable, structurally fixed</text>
-    <text x="830" y="349" text-anchor="middle">host projects every experience</text>
+    <text x="830" y="349" text-anchor="middle">host renders each experience</text>
   </g>
 </svg>
 </div>
@@ -440,88 +440,88 @@
       <td><ul class="responsibilities"><li>Supplies prompt and context</li></ul></td>
       <td><ul class="responsibilities"><li>Supplies component catalog</li></ul></td>
       <td><ul class="responsibilities"><li>Supplies component catalog</li><li>Supplies response template</li></ul></td>
-      <td><ul class="responsibilities"><li>Supplies closed semantic catalog</li><li>Supplies preferred response elements</li><li>Supplies validation tools</li></ul></td>
+      <td><ul class="responsibilities"><li>Supplies closed domain type catalog</li><li>Supplies preferred response types</li><li>Supplies validation tools</li></ul></td>
     </tr>
     <tr>
       <td>Agent</td>
       <td><ul class="responsibilities"><li>Generates textual prose</li></ul></td>
       <td><ul class="responsibilities"><li>Generates structured response for UI rendering</li></ul></td>
       <td><ul class="responsibilities"><li>Generates structured response in supplied template</li></ul></td>
-      <td><ul class="responsibilities"><li>Iterates against semantic catalog</li><li>Provides validated semantic response</li></ul></td>
+      <td><ul class="responsibilities"><li>Builds from allowed domain types</li><li>Returns validated domain data</li></ul></td>
     </tr>
     <tr>
       <td>Host<span class="row-note">processes</span></td>
       <td><ul class="responsibilities"><li>Extracts meaning</li><li>Renders UI</li></ul></td>
       <td><ul class="responsibilities"><li>Renders received components</li></ul></td>
       <td><ul class="responsibilities"><li>Renders populated template</li></ul></td>
-      <td><ul class="responsibilities"><li>Lowers semantic components contextually</li><li>Controls runtime rendering</li></ul></td>
+      <td><ul class="responsibilities"><li>Adapts domain data to the current context</li><li>Renders the final experience</li></ul></td>
     </tr>
   </tbody>
 </table>
-<div class="progression-caption">From inferred meaning to explicit meaning: freedom moves out of presentation and into semantics</div>
+<div class="progression-caption">Shift the agent-host contract from inferred prose and UI instructions to validated domain data</div>
 </div>
 
-<p>The fourth model is not another component protocol. The host supplies a closed semantic catalog, preferred response elements, schemas, and validation operations. The agent iterates over semantic artifacts until they satisfy that contract. Only then does the host lower the result according to audience, task, surface, attention, and device context. The same semantic response may therefore become a narrative, timeline, collection, graph, canvas, or headless agent projection without asking the agent to encode those renderings.</p>
+<p>Combining interactive delivery with a domain contract gives the host reusable, validated data instead of a one-off screen description. The host can render that data for a user&rsquo;s task and device, apply its accessibility and interaction standards, or send a machine-readable view to another service. This improves consistency and clarity, reduces duplicated interpretation code, and can shorten the path from analysis to decision.</p>
 
 <div class="callout">
-  <strong>Controlled presentation without a fixed response template.</strong> The host controls how every semantic element materializes, but the agent remains free to compose any valid semantic structure needed by the response.
+  <strong>Engineering boundary.</strong> The agent builds a response from allowed domain types; the host validates the data and turns it into UI or machine-readable output.
 </div>
 
-<h2 id="substrate">3. The Shared Interaction Substrate</h2>
-<p>The substrate is a medium-blind transition system. It does not privilege a screen, conversation, agent protocol, or device. It evaluates typed events against authoritative state and produces a new state plus effect requests:</p>
+<h2 id="substrate">3. Shared State and Event Runtime</h2>
+<p>The core runtime is a transport-agnostic state machine. Screens, conversations, agent protocols, and devices all send validated events to the same state store. Each event produces updated state and, when needed, requests for external work:</p>
 
-<div class="description"><strong>Transition rule.</strong> <code>(state, event) &rarr; (state', effects)</code></div>
+<div class="description"><strong>Runtime contract.</strong> <code>applyEvent(state, event) &rarr; { state, effectRequests }</code></div>
 
-<p>State carries the facts and artifacts declared by the domain contract, together with interaction progress, proposals, approvals, results, and causal relationships. An adaptive specification may choose to preserve evolving hypotheses, failed attempts, branches, or intermediate evidence as first-class artifacts or state. Those concepts are domain semantics, not universal machinery imposed by the substrate. Humans and agents enter events through the same validation boundary. Effects execute outside pure reduction and settle back as validated events, preserving deterministic replay without pretending that networks, models, or tools are deterministic.</p>
+<p>State stores domain records, interaction progress, proposals, approvals, results, and audit links. An adaptive workflow can also store hypotheses, failed attempts, branches, or intermediate evidence as named records when the application needs them. These are application-level choices, not built-in runtime concepts. Human and agent requests pass through the same schema and permission checks. Network calls, models, and tools run in effect handlers; their results return as validated events. This keeps state replay reproducible even though external systems are not deterministic.</p>
 
 <figure class="svg-figure">
-<svg viewBox="0 0 780 420" role="img" aria-label="One authoritative state projected to human, agent, and control experiences with effects settling at the runtime edge">
+<svg viewBox="0 0 780 420" role="img" aria-label="Human, agent, and administrative views send validated events to one authoritative state while external work runs through controlled effect handlers">
   <defs>
     <marker id="stateArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M1,1 L8,5 L1,9" fill="none" stroke="#7a756d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
     </marker>
   </defs>
   <rect x="15" y="15" width="750" height="390" rx="8" fill="#ffffff" stroke="#e0ddd8"/>
-  <text x="40" y="48" fill="#7a756d" font-size="11" letter-spacing="1.6">ONE COMPUTATIONAL PROCESS</text>
+  <text x="40" y="48" fill="#7a756d" font-size="11" letter-spacing="1.6">ONE STATE AND EVENT PIPELINE</text>
   <rect x="245" y="72" width="290" height="92" rx="6" fill="#2c2a27"/>
   <text x="390" y="106" text-anchor="middle" fill="#f0ede8" font-size="18" font-weight="600">Authoritative Interaction State</text>
-  <text x="390" y="130" text-anchor="middle" fill="#c9c3ba" font-size="11">evidence &middot; artifacts &middot; progress &middot; proposals</text>
-  <text x="390" y="148" text-anchor="middle" fill="#c9c3ba" font-size="11">approvals &middot; settlements &middot; causal history</text>
+  <text x="390" y="130" text-anchor="middle" fill="#c9c3ba" font-size="11">evidence &middot; domain records &middot; progress &middot; proposals</text>
+  <text x="390" y="148" text-anchor="middle" fill="#c9c3ba" font-size="11">approvals &middot; effect results &middot; audit history</text>
 
   <line x1="288" y1="166" x2="170" y2="226" stroke="#7a756d" marker-end="url(#stateArrow)"/>
   <line x1="390" y1="166" x2="390" y2="226" stroke="#7a756d" marker-end="url(#stateArrow)"/>
   <line x1="492" y1="166" x2="610" y2="226" stroke="#7a756d" marker-end="url(#stateArrow)"/>
 
   <rect x="60" y="230" width="220" height="76" rx="6" fill="#f6edd6" stroke="#cbb98a"/>
-  <text x="170" y="260" text-anchor="middle" fill="#2c2a27" font-size="16" font-weight="600">Human Projection</text>
+  <text x="170" y="260" text-anchor="middle" fill="#2c2a27" font-size="16" font-weight="600">Human View</text>
   <text x="170" y="283" text-anchor="middle" fill="#8a7c55" font-size="10">comprehension &middot; action &middot; control</text>
   <rect x="280" y="230" width="220" height="76" rx="6" fill="#f5f4f2" stroke="#bdb6ac"/>
-  <text x="390" y="260" text-anchor="middle" fill="#2c2a27" font-size="16" font-weight="600">Agent Projection</text>
-  <text x="390" y="283" text-anchor="middle" fill="#7a756d" font-size="10">allowlisted context &middot; semantic operations</text>
+  <text x="390" y="260" text-anchor="middle" fill="#2c2a27" font-size="16" font-weight="600">Agent API View</text>
+  <text x="390" y="283" text-anchor="middle" fill="#7a756d" font-size="10">allowed context &middot; domain operations</text>
   <rect x="500" y="230" width="220" height="76" rx="6" fill="#f5f4f2" stroke="#bdb6ac"/>
-  <text x="610" y="260" text-anchor="middle" fill="#2c2a27" font-size="16" font-weight="600">Control Projection</text>
+  <text x="610" y="260" text-anchor="middle" fill="#2c2a27" font-size="16" font-weight="600">Administrative View</text>
   <text x="610" y="283" text-anchor="middle" fill="#7a756d" font-size="10">identity &middot; grants &middot; policy &middot; lifecycle</text>
 
   <line x1="170" y1="308" x2="170" y2="342" stroke="#7a756d" marker-end="url(#stateArrow)"/>
   <line x1="390" y1="308" x2="390" y2="342" stroke="#7a756d" marker-end="url(#stateArrow)"/>
   <line x1="610" y1="308" x2="610" y2="342" stroke="#7a756d" marker-end="url(#stateArrow)"/>
-  <text x="170" y="369" text-anchor="middle" fill="#7a756d" font-size="11">typed human events</text>
-  <text x="390" y="369" text-anchor="middle" fill="#7a756d" font-size="11">typed agent events</text>
-  <text x="610" y="369" text-anchor="middle" fill="#7a756d" font-size="11">governance decisions</text>
+  <text x="170" y="369" text-anchor="middle" fill="#7a756d" font-size="11">validated user events</text>
+  <text x="390" y="369" text-anchor="middle" fill="#7a756d" font-size="11">validated agent events</text>
+  <text x="610" y="369" text-anchor="middle" fill="#7a756d" font-size="11">policy decisions</text>
 </svg>
-<figcaption>Different projections participate in one state transition and causal model</figcaption>
+<figcaption>Every interface uses the same state machine, validation rules, and audit trail</figcaption>
 </figure>
 
-<p>A projection is a capability boundary, not a copy of the application. A human projection optimizes comprehension and predictable interaction. An agent projection exposes only the semantic context and operations granted to that participant. A control projection exposes trusted administrative capabilities. Transport carries a selected projection; it does not own policy or create authority.</p>
+<p>Each view is a permission boundary, not a separate copy of the application. The human view is designed for comprehension and predictable interaction. The agent API exposes only the data and operations granted to that agent. The administrative view exposes trusted identity, policy, and lifecycle controls. A transport can carry one of these views, but it cannot add permissions.</p>
 
-<h2 id="tiers">4. Semantic Tiers and Meaning Preservation</h2>
+<h2 id="tiers">4. Domain Types and Validated Transformation</h2>
 <p>Agents are most useful when they work at the level of domain meaning: <em>investigate this incident</em>, <em>construct the attack path</em>, <em>explain this timeline</em>, or <em>propose remediation</em>. They should not need to choose UI components, mutate application state directly, or generate unrestricted tool calls.</p>
-<p>A declarative interaction specification defines a sequence of semantic tiers. Every tier has a controlled vocabulary and a contract. A declared lowering recipe transforms a valid artifact at one tier into a valid artifact at the next:</p>
+<p>A declarative interaction specification defines a sequence of transformation stages. Each stage accepts a closed set of domain types and validates them against a schema. A named transformer converts valid input from one stage into valid output for the next:</p>
 
-<div class="description"><strong>Tier chain.</strong> <code>A<sub>n</sub> &rarr; A<sub>n-1</sub> &rarr; &hellip; &rarr; A<sub>1</sub> &rarr; T</code>, where <code>T</code> is validated runtime interaction.</div>
+<div class="description"><strong>Transformation pipeline.</strong> <code>domainData &rarr; validated transforms &rarr; runtime state, UI, and actions</code></div>
 
 <figure class="svg-figure">
-<svg viewBox="0 0 780 350" role="img" aria-label="Semantic artifacts lowered through validated tiers into presentation and a closed runtime grammar">
+<svg viewBox="0 0 780 350" role="img" aria-label="Schema-validated domain data is transformed into runtime state, user interface, and allowed actions while IDs, facts, and source references are preserved">
   <defs>
     <marker id="tierArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M1,1 L8,5 L1,9" fill="none" stroke="#7a756d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -529,40 +529,40 @@
   </defs>
   <rect x="15" y="15" width="750" height="320" rx="8" fill="#ffffff" stroke="#e0ddd8"/>
   <rect x="46" y="65" width="190" height="90" rx="6" fill="#f6edd6" stroke="#cbb98a"/>
-  <text x="141" y="94" text-anchor="middle" fill="#2c2a27" font-size="16" font-weight="600">Semantic Artifact</text>
+  <text x="141" y="94" text-anchor="middle" fill="#2c2a27" font-size="16" font-weight="600">Domain Data</text>
   <text x="141" y="118" text-anchor="middle" fill="#8a7c55" font-size="10">attack path &middot; finding &middot; timeline</text>
   <text x="141" y="136" text-anchor="middle" fill="#8a7c55" font-size="10">decision &middot; remediation plan</text>
   <line x1="238" y1="110" x2="292" y2="110" stroke="#7a756d" marker-end="url(#tierArrow)"/>
   <rect x="294" y="65" width="190" height="90" rx="6" fill="#f5f4f2" stroke="#bdb6ac"/>
-  <text x="389" y="94" text-anchor="middle" fill="#2c2a27" font-size="16" font-weight="600">Validated Lowering</text>
+  <text x="389" y="94" text-anchor="middle" fill="#2c2a27" font-size="16" font-weight="600">Validated Transformation</text>
   <text x="389" y="118" text-anchor="middle" fill="#7a756d" font-size="10">schema &middot; integrity &middot; coverage</text>
   <text x="389" y="136" text-anchor="middle" fill="#7a756d" font-size="10">identity &middot; provenance &middot; policy</text>
   <line x1="486" y1="110" x2="540" y2="110" stroke="#7a756d" marker-end="url(#tierArrow)"/>
   <rect x="542" y="65" width="190" height="90" rx="6" fill="#2c2a27"/>
-  <text x="637" y="94" text-anchor="middle" fill="#f0ede8" font-size="16" font-weight="600">Runtime Interaction</text>
+  <text x="637" y="94" text-anchor="middle" fill="#f0ede8" font-size="16" font-weight="600">UI and Runtime Actions</text>
   <text x="637" y="118" text-anchor="middle" fill="#c9c3ba" font-size="10">presentation &middot; state &middot; events</text>
   <text x="637" y="136" text-anchor="middle" fill="#c9c3ba" font-size="10">closed action grammar</text>
 
   <line x1="141" y1="157" x2="141" y2="212" stroke="#7a756d" marker-end="url(#tierArrow)"/>
   <line x1="637" y1="157" x2="637" y2="212" stroke="#7a756d" marker-end="url(#tierArrow)"/>
   <rect x="46" y="216" width="190" height="70" rx="6" fill="#f5f4f2" stroke="#bdb6ac"/>
-  <text x="141" y="245" text-anchor="middle" fill="#2c2a27" font-size="14" font-weight="600">Meaning</text>
-  <text x="141" y="266" text-anchor="middle" fill="#7a756d" font-size="10">stable across representations</text>
+  <text x="141" y="245" text-anchor="middle" fill="#2c2a27" font-size="14" font-weight="600">Domain Identity</text>
+  <text x="141" y="266" text-anchor="middle" fill="#7a756d" font-size="10">stable IDs, facts, and sources</text>
   <rect x="542" y="216" width="190" height="70" rx="6" fill="#f5f4f2" stroke="#bdb6ac"/>
-  <text x="637" y="245" text-anchor="middle" fill="#2c2a27" font-size="14" font-weight="600">Materialization</text>
-  <text x="637" y="266" text-anchor="middle" fill="#7a756d" font-size="10">contextual but reproducible</text>
+  <text x="637" y="245" text-anchor="middle" fill="#2c2a27" font-size="14" font-weight="600">Rendering</text>
+  <text x="637" y="266" text-anchor="middle" fill="#7a756d" font-size="10">context-aware and reproducible</text>
   <line x1="238" y1="251" x2="540" y2="251" stroke="#cbb98a" stroke-width="2"/>
-  <text x="389" y="242" text-anchor="middle" fill="#8a7c55" font-size="10" letter-spacing="1">PRESERVATION INVARIANT</text>
+  <text x="389" y="242" text-anchor="middle" fill="#8a7c55" font-size="10" letter-spacing="1">PRESERVE IDS, FACTS, AND SOURCE LINKS</text>
 </svg>
-<figcaption>Agents contribute meaning; lowering selects interaction and presentation</figcaption>
+<figcaption>Agents provide domain data; validated host code selects the UI and allowed runtime actions</figcaption>
 </figure>
 
-<p>An attack path is a semantic artifact; an infinite canvas is one possible presentation. A timeline may become a visual sequence for a human and a structured event list for another agent. Analyze or refresh behavior belongs to the surrounding interaction program, not to a new semantic concept. Factual preservation, omissions, ordering, and semantic coverage belong to validators, not decorative status widgets.</p>
+<p>An attack path is domain data; an infinite canvas is one way to display it. The same timeline can be a visual sequence for a person and a structured event list for another agent. Analyze and refresh are runtime commands, not new domain types. Validators check facts, required fields, ordering, and coverage before the host renders or executes anything.</p>
 
-<p>Structure alone is not enough to expose a safe agent experience. The authored contract also declares which target and intent kinds are meaningful, the goals of participation, and the constraints that must survive interpretation. Operation schemas and handlers remain implementation-owned. This keeps agent guidance versioned with domain meaning without turning prose into executable authority.</p>
+<p>Schemas alone are not enough to expose a safe agent API. The contract also declares valid targets, intents, goals, and constraints. Application code still owns operation schemas and handlers. Agent guidance can evolve with the domain contract, but prose never becomes executable permission.</p>
 
-<h3>Adaptive semantic expansion</h3>
-<p>A fixed specification preserves its authored structure. An adaptive specification may permit policy-allowlisted semantic or executable structure changes and retain the evolving program in checkpoints. This allows an agent to extend the represented problem while it works: adding a hypothesis, relating it to evidence, opening alternative attack-path branches, recording an unsuccessful attempt, or introducing the next investigation choice. The expansion becomes shared semantic structure or state, rather than remaining private reasoning in a transcript.</p>
+<h3>Policy-controlled adaptation</h3>
+<p>A fixed specification keeps its original structure. An adaptive specification allows only policy-approved structural changes and records each accepted change in state and checkpoints. An agent can add a hypothesis, link it to evidence, open an attack-path branch, record an unsuccessful attempt, or add the next investigation choice. These changes become shared, queryable records instead of private reasoning left in a transcript.</p>
 
 <table>
   <thead><tr><th>Graph</th><th>Question answered</th><th>Architectural role</th></tr></thead>
@@ -573,21 +573,21 @@
   </tbody>
 </table>
 
-<p>The graphs are complementary because they traverse the problem differently. A dependency graph starts with the destination and asks what remains necessary. A consequence graph starts with what is true now and asks what can begin because of it. An exploratory graph starts with the currently available frontier but accepts that more than one path may be plausible. Policy ranks or excludes alternatives; execution produces evidence; and failure causes the traversal to walk back, mark the attempted path, and select another eligible branch.</p>
+<p>The graphs serve different runtime decisions. A dependency graph works backward from the goal to calculate missing prerequisites. A consequence graph works forward from current state to identify newly available work. An exploratory graph chooses among several valid next steps. Policy filters and ranks the options; execution returns evidence; and a failed attempt is recorded before the runtime selects another eligible branch.</p>
 
 <div class="example">
   <span class="tag">attack-path exploration</span><br>
   To reach a crown-jewel asset, the dependency graph may require initial access, credential acquisition, privilege escalation, and lateral movement. When credentials are discovered, the consequence graph activates the identities, services, and movement opportunities those credentials enable. The exploratory graph chooses an allowed hypothesis, such as an exposed service rather than phishing. If that path is disproven, it records the failed branch, returns to the last viable choice point, and pursues another policy-eligible hypothesis.
 </div>
 
-<p>These graph decisions still do not grant execution authority. The authored structure policy bounds which hypotheses, relationships, and executable program operations may be added to an adaptive specification. Tool use and external action continue to cross proposal, admission, and effect boundaries. Reactive state machinery may update readiness and computed facts as graph state changes, but that runtime mechanism is distinct from the dependency graph&rsquo;s semantic role of decomposing a goal into required achievements.</p>
+<p>Graph decisions do not grant execution permission. Structure policy controls which hypotheses, relationships, and runtime operations an adaptive specification may add. Tool calls and external actions still require proposal validation, admission, and controlled execution. The state machine may recalculate readiness as graph state changes, but the dependency graph only describes required work; it does not authorize that work.</p>
 
 <div class="callout">
-  <strong>Meaning-preservation invariant.</strong> Lowering may specialize structure and presentation, but it must preserve stable semantic identity, responsibility, ports, token contracts, provenance, and declared purpose. Probabilistic generation never bypasses terminal validation.
+  <strong>Transformation contract.</strong> Rendering may change structure and presentation, but it must preserve domain IDs, ownership, input and output schemas, source references, and declared purpose. Generated data never bypasses final validation.
 </div>
 
 <h2 id="grammar">5. Agent Proposal and Host Application</h2>
-<p>The terminal interaction program uses a deliberately closed action grammar: <code>assign</code>, <code>derive</code>, <code>emit</code>, <code>invoke</code>, <code>route</code>, and <code>confirm</code>. This is the point at which high-level intent becomes inspectable behavior rather than arbitrary generated code.</p>
+<p>The runtime exposes a deliberately small action API: <code>assign</code>, <code>derive</code>, <code>emit</code>, <code>invoke</code>, <code>route</code>, and <code>confirm</code>. High-level intent must compile to these inspectable operations rather than arbitrary generated code.</p>
 
 <p>Agent participation and authoritative application are separate lifecycles. The agent-facing lifecycle supports understanding and proposal:</p>
 
@@ -607,8 +607,8 @@
   </tbody>
 </table>
 
-<p>Local interaction reduces immediately through the deterministic kernel. Agent, model, network, storage, and device work executes through named effect handlers outside that kernel. The host owns credentials, trusted service kinds, endpoint policy, queues, request and response validators, policy evaluation, and execution ceilings. Provider output is untrusted data until it settles through the declared contract. Even when policy permits immediate autonomous application, application remains attributable to the host rather than to model reasoning or tool exposure.</p>
-<p>Materialization is deterministic for a specification and immutable external context: <code>M(A, C) = T</code>. It may specialize inner programs while preserving stable identities and topology. This enables adaptive experiences without allowing context or a provider to redefine the application&rsquo;s semantics at runtime.</p>
+<p>The core state machine applies local UI events immediately. Named effect handlers perform model calls, network requests, storage access, and device operations outside that state machine. The host owns credentials, service registrations, endpoint policy, queues, request and response validation, policy checks, timeouts, and execution limits. Provider output remains untrusted until it passes the declared response schema. Even when policy allows automatic application, the host remains responsible for the change and records it in the audit trail.</p>
+<p>Runtime construction is reproducible: <code>buildRuntime(spec, domainData, context) &rarr; interactionProgram</code>. The same immutable inputs produce the same program. Context may select an internal workflow or UI, but it cannot change domain IDs, permissions, or the application contract.</p>
 
 <h2 id="postures">6. Multi-Agent Operational Postures</h2>
 <p>Multi-agent composition benefits from distinguishing how a participant approaches a problem from what it can do and what it is authorized to do. Red, Blue, and Green are useful generalized operational postures:</p>
@@ -631,11 +631,11 @@
 <p>The postures form a governed learning loop: challenge reveals pressure, observation establishes meaning, and improvement changes the system before it is challenged again. They are not security privileges and need not be permanent identities. A participant may adopt one or more postures for a bounded goal.</p>
 
 <h3>Red is not merely a Blue workflow with adversarial prompts</h3>
-<p>In security systems, Red frequently becomes a distinct operating class. Blue work commonly begins with known signals such as alerts, incidents, telemetry, vulnerabilities, or posture findings and follows bounded investigative or defensive tasks. Red work searches for what defenders do not yet know. It is exploratory and research-oriented: observe, hypothesize, attempt, learn, refine, and attempt again. It may run for extended periods, branch across possible attack paths, compose individually minor weaknesses, and produce no confirmed finding.</p>
+<p>In security systems, Red frequently becomes a distinct operating class. Blue work commonly begins with known signals such as alerts, incidents, telemetry, vulnerabilities, or posture findings and follows bounded investigative or defensive tasks. Red work searches for what defenders do not yet know. It is iterative and exploratory: observe, form a hypothesis, test it, record the result, and choose the next test. It may run for extended periods, branch across possible attack paths, combine individually minor weaknesses, and produce no confirmed finding.</p>
 
-<p>This distinction belongs primarily to the authored domain and activity model. A Red agent can use an adaptive specification to expand hypotheses and attack-path branches as it explores. The dependency graph keeps the desired end state and unmet prerequisites visible. The consequence graph activates newly possible work as facts are established. The exploratory graph selects, evaluates, and backtracks across alternative hypotheses. Accepted additions and recorded outcomes enter shared semantic structure or state, allowing humans and Blue or Green participants to inspect the same evolving investigation through their own projections.</p>
+<p>This distinction belongs primarily to the domain and activity model. A Red agent can use an adaptive specification to add hypotheses and attack-path branches as it explores. The dependency graph tracks the desired end state and missing prerequisites. The consequence graph identifies newly available work as facts are established. The exploratory graph selects, tests, and backtracks across alternative hypotheses. Accepted additions and results enter shared state, allowing humans and Blue or Green participants to inspect the same investigation through their own role-specific views.</p>
 
-<p>That autonomy is semantic and policy-bounded. It does not mean every internal thought must be persisted, nor does it move offensive execution into the graph. The authored contract decides which hypotheses, attempts, observations, and branches have shared value. A disproven hypothesis may be a successfully recorded research artifact, while a rejected proposal, failed tool effect, and failed host receipt remain separate lifecycle outcomes.</p>
+<p>That autonomy is limited by the domain schema and active policy. It does not require storing every internal thought, and it does not move offensive execution into the graph. The contract decides which hypotheses, attempts, observations, and branches are useful shared records. A disproven hypothesis may be recorded successfully even when a proposal is rejected, a tool call fails, or the host cannot receive a result; those are separate lifecycle outcomes.</p>
 
 <p>Red execution also requires a different trust regime: separate identities, planning and execution separation, explicit approval models, isolated environments, tool- and parameter-level policy, network restrictions, rate limits, audit, and blast-radius controls. The Red agent orchestrates bounded offensive tooling; it is not granted an unrestricted offensive toolbox. Blue and Green may use different policies and execution environments even while all three participate through the same semantic and proposal boundaries.</p>
 
@@ -649,14 +649,14 @@
   </tbody>
 </table>
 
-<p>A coordinating agent is posture-neutral. It sequences declared work, passes typed artifacts, and maintains goal context, but it does not become an implicit superuser or inherit the union of all participant capabilities. Coordination is a responsibility; authority remains independently granted.</p>
+<p>A coordinating agent is posture-neutral. It sequences declared work, passes schema-validated records, and maintains goal context, but it does not become an implicit superuser or inherit every participant&rsquo;s permissions. Coordination is a responsibility; permissions are granted separately.</p>
 
 <div class="callout">
-  <strong>Semantic handoff, not workflow equivalence.</strong> Red-to-Blue transfer commonly takes the form of a narrative, attack-path analysis, evidence package, timeline, or detection-gap assessment. Such artifacts can have typed envelopes, identity, and provenance while retaining the interpretation and human judgment that a rigid procedural API would erase.
+  <strong>Structured handoff, not a shared workflow.</strong> Red-to-Blue transfer commonly takes the form of a narrative, attack-path analysis, evidence package, timeline, or detection-gap assessment. These records can have schemas, stable IDs, and source references while retaining the interpretation and human judgment that a rigid procedural API would erase.
 </div>
 
 <h2 id="authority">7. Data Plane and Control Plane</h2>
-<p>The shared substrate is the data plane for interaction. It carries domain state, evidence, semantic artifacts, proposals, workflow state, approvals as recorded events, validated action requests, results, and causal history. The control plane establishes who and what may participate.</p>
+<p>The shared interaction runtime provides the data plane. It carries domain state, evidence, structured records, proposals, workflow state, approval events, validated action requests, results, and audit history. The control plane determines who and what may participate.</p>
 
 <figure class="svg-figure">
 <svg viewBox="0 0 780 390" role="img" aria-label="Control plane governs participants and policy while the data plane carries shared interaction state and effects">
@@ -673,77 +673,77 @@
   <line x1="390" y1="159" x2="390" y2="205" stroke="#7a756d" marker-end="url(#planeArrow)"/>
   <rect x="55" y="209" width="670" height="105" rx="6" fill="#2c2a27"/>
   <text x="82" y="239" fill="#f0ede8" font-size="17" font-weight="600">Shared Interaction Data Plane</text>
-  <text x="82" y="265" fill="#c9c3ba" font-size="11">state &middot; evidence &middot; artifacts &middot; proposals &middot; workflow &middot; approvals</text>
-  <text x="82" y="287" fill="#c9c3ba" font-size="11">validated requests &middot; settlements &middot; causal history &middot; participant projections</text>
+  <text x="82" y="265" fill="#c9c3ba" font-size="11">state &middot; evidence &middot; domain records &middot; proposals &middot; workflow &middot; approvals</text>
+  <text x="82" y="287" fill="#c9c3ba" font-size="11">validated requests &middot; effect results &middot; audit history &middot; participant views</text>
   <text x="390" y="345" text-anchor="middle" fill="#8a7c55" font-size="11" letter-spacing="1.2">AUTHORITY GOVERNS PARTICIPATION; IT IS NOT CARRIED BY CONTENT</text>
 </svg>
 <figcaption>The data plane records approved interaction; the control plane establishes approval authority</figcaption>
 </figure>
 
-<p>Agent-to-agent invocation is explicit, bounded delegation. The caller may delegate only a permitted capability, for a declared purpose and scope; the callee receives no ambient access from the caller or orchestrator. Iteration count, campaign duration, or exploratory depth never increases authority. Agent creation is a control-plane and authoring operation. A runtime agent may propose a role, workflow, or policy artifact, but it cannot mint identity, credentials, tools, authority, or policy activation for that proposal. A proposed policy is admitted under already-active policy and cannot authorize itself.</p>
-<p>Human control follows from this separation rather than defining the architecture. A person may inspect, amend, reject, approve, pause, redirect, resume, or revoke when policy permits. Each intervention is a typed causal event. The proposal seen by the human is the same semantic proposal evaluated by authorization and delivered to execution.</p>
+<p>Agent-to-agent invocation is explicit, limited delegation. The caller may delegate only a permitted capability for a declared purpose and scope; the callee receives no implicit access from the caller or orchestrator. Iteration count, campaign duration, or exploratory depth never increases permissions. Agent creation is a control-plane and authoring operation. A runtime agent may propose a role, workflow, or policy record, but it cannot create or grant identity, credentials, tools, permissions, or policy activation. A proposed policy is evaluated under already-active policy and cannot authorize itself.</p>
+<p>A person may inspect, amend, reject, approve, pause, redirect, resume, or revoke when policy permits. Each intervention becomes a validated audit event. The person, authorization service, and execution host all evaluate the same structured proposal.</p>
 
-<h2 id="invariants">8. Architectural Invariants</h2>
+<h2 id="invariants">8. Non-Negotiable Design Rules</h2>
 <table>
-  <thead><tr><th>Invariant</th><th>Failure prevented</th></tr></thead>
+  <thead><tr><th>Design rule</th><th>Failure prevented</th></tr></thead>
   <tbody>
     <tr><td>One authoritative interaction state</td><td>Human, agent, and runtime models silently diverging.</td></tr>
-    <tr><td>Bounded vocabulary at every semantic tier</td><td>Generated prose becoming an implicit execution language.</td></tr>
-    <tr><td>Deterministic, validated lowering</td><td>Meaning changing unpredictably between intent and interaction.</td></tr>
-    <tr><td>Stable semantic identity across representations</td><td>Presentation specialization altering responsibility or provenance.</td></tr>
-    <tr><td>Adaptive expansion remains structure-policy bounded</td><td>Exploration silently converting into unrestricted program mutation.</td></tr>
+    <tr><td>Closed schema at every domain stage</td><td>Generated prose becoming an implicit execution language.</td></tr>
+    <tr><td>Reproducible, validated transformations</td><td>Domain data changing unpredictably before rendering or execution.</td></tr>
+    <tr><td>Stable domain IDs across views</td><td>Rendering changes altering ownership or source references.</td></tr>
+    <tr><td>Adaptive changes require active structure policy</td><td>Exploration silently converting into unrestricted program mutation.</td></tr>
     <tr><td>Goal dependencies, current consequences, and exploratory choices remain distinct</td><td>Prerequisite planning, forward activation, and policy-guided search being collapsed into one ambiguous graph.</td></tr>
-    <tr><td>Exploratory failure is recorded before backtracking</td><td>A failed path being retried indefinitely or disappearing from the investigation&rsquo;s causal history.</td></tr>
+    <tr><td>Exploratory failure is recorded before backtracking</td><td>A failed path being retried indefinitely or disappearing from the audit history.</td></tr>
     <tr><td>Posture, capability, and authority remain independent</td><td>A useful classification accidentally granting privilege.</td></tr>
-    <tr><td>Domain artifacts and lifecycle status remain distinct</td><td>A failed hypothesis being confused with failed execution or rejected admission.</td></tr>
+    <tr><td>Domain records and lifecycle status remain distinct</td><td>A failed hypothesis being confused with failed execution or rejected admission.</td></tr>
     <tr><td>Proposal and application are separate events</td><td>Agent reasoning acquiring authority merely by crossing a tool boundary.</td></tr>
-    <tr><td>Projection cannot inflate authority</td><td>A transport or experience exposing undeclared operations.</td></tr>
+    <tr><td>A view cannot add permissions</td><td>A transport or interface exposing undeclared operations.</td></tr>
     <tr><td>No ambient delegation or orchestration authority</td><td>Multi-agent composition creating an implicit superuser.</td></tr>
     <tr><td>Policy authoring and activation are separate authorities</td><td>A generated policy granting or activating its own privileges.</td></tr>
     <tr><td>Policy, authorization, and admission precede effects</td><td>A recommendation executing merely because it was generated.</td></tr>
-    <tr><td>Every consequential transition has causal attribution</td><td>Outcomes that cannot be explained, audited, or replayed.</td></tr>
+    <tr><td>Every state change records its initiator and cause</td><td>Outcomes that cannot be explained, audited, or replayed.</td></tr>
   </tbody>
 </table>
 
-<h2 id="evidence">9. Compact Validation</h2>
-<p>The architecture is not derived from a single product workflow. Existing scenarios serve as compact tests of its invariants:</p>
+<h2 id="evidence">9. Focused Validation Scenarios</h2>
+<p>The architecture is not based on a single product workflow. Existing scenarios test the design rules against different domains and runtime configurations:</p>
 
 <div class="scenario-grid">
   <article class="scenario">
     <h3>Tiered Interaction</h3>
-    <p>A semantic artifact such as a portfolio view or incident timeline lowers independently from its presentation and provider implementation.</p>
+    <p>Portfolio and incident data can be transformed independently from the UI and service provider that use it.</p>
   </article>
   <article class="scenario">
     <h3>Incident Exploration</h3>
-    <p>Verdicts, attack paths, timelines, entities, indicators, and actions preserve source facts while supporting narrative, sequence, and canvas projections.</p>
+    <p>Verdicts, attack paths, timelines, entities, indicators, and actions preserve source facts across narrative, sequence, and canvas views.</p>
   </article>
   <article class="scenario">
     <h3>Governed SOC Work</h3>
-    <p>Evidence, recommendation, human decision, approved request, external action, and settlement remain one attributable causal path.</p>
+    <p>Evidence, recommendation, human decision, approved request, external action, and result remain connected in one audit trail.</p>
   </article>
   <article class="scenario">
     <h3>Operational Postures</h3>
-    <p>Red exploration, Blue investigation and defense, and Green remediation exchange durable semantic artifacts while retaining different activity, execution, persona, and authority models.</p>
+    <p>Red exploration, Blue investigation and defense, and Green remediation exchange durable domain records while retaining different workflows, execution controls, roles, and permissions.</p>
   </article>
 </div>
 
 <div class="callout">
-  <strong>Validation criterion.</strong> A scenario supports the architecture only if its semantics remain stable when the participant, provider, presentation, transport, or authority grant changes independently.
+  <strong>Validation criterion.</strong> Domain IDs, facts, allowed actions, and audit links must remain stable when the participant, provider, UI, transport, or permission grant changes independently.
 </div>
 
-<h2 id="adoption">10. Adoption Boundary</h2>
+<h2 id="adoption">10. Adoption Plan</h2>
 <ol>
-  <li><strong>Start with semantic contracts.</strong> Name the domain artifacts, evidence, relationships, provenance, and legal outcomes before selecting screens or tools.</li>
-  <li><strong>Separate tiers from presentation.</strong> Let agents contribute typed meaning and let declared lowering choose runtime interaction.</li>
-  <li><strong>Establish one state and event model.</strong> Project it differently for humans, agents, administrators, and headless hosts.</li>
+  <li><strong>Start with domain contracts.</strong> Define domain records, evidence, relationships, source references, and valid outcomes before selecting screens or tools.</li>
+  <li><strong>Separate domain data from UI.</strong> Let agents return schema-validated data and let host code choose the runtime interaction.</li>
+  <li><strong>Establish one state and event model.</strong> Expose role-specific views for humans, agents, administrators, and headless hosts.</li>
   <li><strong>Separate proposal from application.</strong> Give agents understanding and proposal operations while trusted hosts own authorization, admission, disposition, application, receipts, and audit.</li>
   <li><strong>Make authority independently testable.</strong> Model identity, grants, delegation, approval eligibility, policy activation, services, and lifecycle in the control plane.</li>
-  <li><strong>Move effects to declared edges.</strong> Keep credentials and external execution in trusted hosts behind validators and ceilings.</li>
-  <li><strong>Validate substitutions.</strong> Change presentation, provider, participant, or posture independently and prove that semantic and causal invariants still hold.</li>
+  <li><strong>Isolate external work.</strong> Keep credentials and external execution in trusted host handlers behind validation, timeouts, and limits.</li>
+  <li><strong>Test substitutions.</strong> Change the UI, provider, participant, or posture independently and verify that domain data, permissions, and audit history remain correct.</li>
 </ol>
 
 <h2>Conclusion</h2>
-<p>A trustworthy human-agent system is not a collection of agents connected to a user interface. It is a governed interaction substrate in which meaning survives transformation, state remains authoritative, projection adapts without semantic divergence, and authority is never inferred from generated content or operational posture.</p>
-<p>Agents contribute semantic artifacts. Declarative contracts define their vocabulary and lowering. A deterministic runtime owns interaction state. The control plane governs participation and delegation. Trusted hosts execute bounded effects. Humans and agents therefore act through different projections of one process, with a complete causal chain from goal to artifact, presentation, decision, effect, and observed outcome.</p>
+<p>A trustworthy human-agent system is not a collection of agents attached to a user interface. It is a governed architecture with one authoritative state model, schema-validated domain data, reproducible rendering, explicit permissions, and controlled external execution.</p>
+<p>Agents provide structured domain data. Declarative contracts define allowed types and transformations. The runtime owns interaction state. The control plane governs participation and delegation. Trusted hosts execute external work behind validation and policy. Humans and agents use different views of the same process, with an audit trail from goal to data, UI, decision, action, and result.</p>
 </body>
 </html>
