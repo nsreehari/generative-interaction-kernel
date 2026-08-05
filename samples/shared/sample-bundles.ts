@@ -25,6 +25,8 @@ import * as portfolioTrackerEffectModule from "../blueprints/portfolio-tracker/n
 import { openSampleBlueprint } from "./blueprints";
 import { resolveBundleProjectionViews } from "./provider-registry";
 import { browserServiceRegistryOptions, declarativeServiceOrchestrator } from "./service-runtime";
+import type { BlueprintProposalStore } from "@gik/blueprint-agent-host";
+import type { UseProposal } from "./blueprint-agent-lifecycle";
 
 type Registry = {
   default: string;
@@ -56,26 +58,40 @@ const effectHandlerModules: Record<string, NativeEffectModule> = {
   "manage-blueprints": manageBlueprintsEffectModule,
   "portfolio-tracker": portfolioTrackerEffectModule,
 };
-export function resolveBlueprintNative(id: string): BundleNative {
+export interface ResolveBlueprintNativeOptions {
+  proposalStore?: BlueprintProposalStore<UseProposal>;
+}
+
+export function resolveBlueprintNative(id: string, options: ResolveBlueprintNativeOptions = {}): BundleNative {
   const runtime = openSampleBlueprint(id);
-  return resolveBlueprintNativeFromRuntime(id, runtime);
+  return resolveBlueprintNativeFromRuntime(id, runtime, options);
 }
 
 export function resolveBlueprintNativeFromMaterialized(
   id: string,
   materializedBlueprint: MaterializedBlueprint,
+  options: ResolveBlueprintNativeOptions = {},
 ): BundleNative {
   return resolveBlueprintNativeFromRuntime(
     id,
     openBlueprint(materializedBlueprint.payload.terminalBlueprint),
+    options,
   );
 }
 
-function resolveBlueprintNativeFromRuntime(id: string, runtime: ReturnType<typeof openSampleBlueprint>): BundleNative {
+function resolveBlueprintNativeFromRuntime(
+  id: string,
+  runtime: ReturnType<typeof openSampleBlueprint>,
+  options: ResolveBlueprintNativeOptions,
+): BundleNative {
   const nativeId = REGISTRY.nativeFrom?.[id] ?? id;
   const projectionId = REGISTRY.projectionFrom?.[id] ?? nativeId;
   const effectModule = effectHandlerModules[nativeId];
-  const serviceOrchestrator = declarativeServiceOrchestrator(runtime, browserServiceRegistryOptions);
+  const serviceOrchestrator = declarativeServiceOrchestrator(
+    runtime,
+    browserServiceRegistryOptions,
+    options.proposalStore,
+  );
   return {
     effectHandlers: effectModule?.default,
     projectionViews: resolveBundleProjectionViews(projectionId),

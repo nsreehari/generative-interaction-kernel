@@ -54,6 +54,20 @@ export default defineConfig({
       },
       {
         test: {
+          name: "agent-lifecycle-exp",
+          environment: "node",
+          include: ["packages/agent-lifecycle-exp/test/**/*.test.ts"],
+        },
+      },
+      {
+        test: {
+          name: "blueprint-agent-host",
+          environment: "node",
+          include: ["packages/blueprint-agent-host/test/**/*.test.ts"],
+        },
+      },
+      {
+        test: {
           name: "react",
           environment: "node",
           include: ["adapters/react/test/**/*.test.tsx"],

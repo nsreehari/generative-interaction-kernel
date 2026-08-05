@@ -10,6 +10,7 @@ import type {
 } from "../../../kernel/src/index";
 import type {
   ServiceAdapter,
+  ServiceAgentTool,
   ServiceCatalogSnapshot,
   ServiceExecutionResult,
   ServiceProbeResult,
@@ -51,6 +52,12 @@ export interface DefaultServiceHostOptions {
   idFactory?: () => string;
   maxAttempts?: number;
   maxGuardrailAttempts?: number;
+  agentTools?: readonly ServiceAgentTool[];
+  validatedProposalSettlement?: (input: {
+    receiptId: string;
+    settlement: OrchestratorResult;
+    result: ServiceExecutionResult;
+  }) => Promise<OrchestratorResult>;
 }
 
 type ResolvedOperation = {
@@ -111,6 +118,7 @@ export class DefaultServiceHost implements ServiceHost {
   private readonly idFactory: () => string;
   private readonly maxAttempts: number;
   private readonly maxGuardrailAttempts: number;
+  private readonly agentTools: readonly ServiceAgentTool[];
   private readonly pending: PendingRequest[] = [];
   private readonly controllers = new Map<string, AbortController>();
 
@@ -120,6 +128,12 @@ export class DefaultServiceHost implements ServiceHost {
     this.idFactory = options.idFactory ?? (() => crypto.randomUUID());
     this.maxAttempts = options.maxAttempts ?? 1;
     this.maxGuardrailAttempts = options.maxGuardrailAttempts ?? 2;
+    for (const tool of options.agentTools ?? []) {
+      if (tool.lifecycle !== "agent") {
+        throw new Error(`Service agent tool '${tool.name}' is '${tool.lifecycle}' and cannot execute with agent authority`);
+      }
+    }
+    this.agentTools = [...(options.agentTools ?? [])];
   }
 
   describeKinds(): ServiceKindDescription[] {
@@ -175,7 +189,12 @@ export class DefaultServiceHost implements ServiceHost {
       }
       throw new Error(completed.error ?? `Service request '${completed.request.id}' ${completed.status}`);
     }
-    return this.settle(resolved.operation, completed.result, effect);
+    const settlement = await this.settle(resolved.operation, completed.result, effect);
+    const receiptId = completed.result.detail?.proposalReceiptId;
+    if (typeof receiptId === "string" && this.options.validatedProposalSettlement) {
+      return this.options.validatedProposalSettlement({ receiptId, settlement, result: completed.result });
+    }
+    return settlement;
   }
 
   async enqueue(effect: OrchestratorEffect): Promise<ServiceRequestRecord> {
@@ -296,6 +315,7 @@ export class DefaultServiceHost implements ServiceHost {
         signal: controller.signal,
         effect,
         responseValidators: resolved.operation.response?.validators,
+        agentTools: this.agentTools,
       });
       return await this.validateResponse(running, result, resolved, effect, adapter, controller);
     } catch (error) {
@@ -344,6 +364,7 @@ export class DefaultServiceHost implements ServiceHost {
         signal: controller.signal,
         effect,
         responseValidators: validators,
+        agentTools: this.agentTools,
       });
       return this.validateResponse(retrying, next, resolved, effect, adapter, controller);
     }

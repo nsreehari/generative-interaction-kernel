@@ -1,0 +1,160 @@
+schema_version: 1
+
+document:
+  name: gik-blueprint-agent-host
+  status: current-implementation-with-policy-registry-evolution
+  scope: Blueprint-specific trusted host lifecycle, declarative policy evaluation, proposal receipts, application, and durable-runtime persistence
+  source_of_truth: >-
+    This file defines the public product contract for @gik/blueprint-agent-host. Declarative JSONata
+    policy artifacts and evaluation are implemented; a general multi-dialect policy registry remains
+    future evolution. This SOT is authoritative for the intended public contract.
+
+package:
+  name: "@gik/blueprint-agent-host"
+  version: "0.1.0"
+  publication_status: public-workspace-package
+  purpose: >-
+    Implement HBX proposal receipt, declarative authorization, admission and application policy,
+    trusted policy evaluation, application, rejection, status, audit history, idempotency, and
+    durable-runtime persistence around an injected Blueprint authority.
+  public_entrypoint: packages/blueprint-agent-host/src/index.ts
+  implementation_files:
+    - packages/blueprint-agent-host/src/types.ts
+    - packages/blueprint-agent-host/src/store.ts
+    - packages/blueprint-agent-host/src/host.ts
+    - packages/blueprint-agent-host/src/durable.ts
+  decision_source: docs/decisions/ADR-0048-agent-lifecycle-experiences-and-host-admission.md
+  dependencies:
+    - "@gik/agent-lifecycle-exp"
+    - "@gik/durable-runtime"
+
+architecture:
+  ownership: host composition layer
+  dependency_direction:
+    - The package imports neutral lifecycle and proposal contracts from @gik/agent-lifecycle-exp.
+    - The package imports provider-neutral durable transition contracts from @gik/durable-runtime.
+    - BlueprintHost and Blueprint core do not import this package.
+    - A browser host, backend service, middleware, or worker composes this package around a BlueprintAuthority.
+  boundaries:
+    - Agents never call apply directly and never receive Blueprint mutation authority.
+    - Policy is portable, versioned declarative material rather than host-specific executable callbacks.
+    - Trusted evaluators interpret policy material; declarative policy never executes itself.
+    - Authorization policy decides whether an actor may request a proposal.
+    - Admission policy decides whether an authorized proposal is valid for the current target and revision.
+    - Application policy selects an allowed disposition such as automatic, deferred, or explicitly approved application.
+    - BlueprintAuthority performs the authoritative operation and must be idempotent by receipt id.
+    - Durable persistence records receipt transitions but cannot alone guarantee exactly-once external effects.
+    - UI frameworks, transports, agent providers, and BlueprintHost are not package dependencies.
+
+declarative_policy_model:
+  requirement: >-
+    BlueprintProposalHost accepts a declarative policySet and does not accept authorization,
+    admission, or auto-application callbacks. The current dialect is safe JSONata. Authorization,
+    admission, and application decisions are portable policy artifacts.
+  artifact_properties:
+    - Stable policy identity, kind, and schema version.
+    - Portable JSON data with no executable functions, credentials, provider handles, or transport bindings.
+    - Explicit applicability to lifecycle phase, target kind, intent kind, actor facts, and host facts.
+    - Deterministic decision outputs carrying allow or deny, reason, policy identity and version, and evaluation detail.
+    - Validation before registration and immutable version identity after activation.
+  policy_phases:
+    authorization: Determine whether the actor may request the proposed operation.
+    admission: Determine whether the proposal is acceptable for the inspected target, revision, validation result, and current facts.
+    application: Determine whether an admitted proposal may apply automatically, must remain deferred, or requires an explicit trusted approval.
+  trusted_runtime:
+    - A host supplies the active immutable policy set from trusted configuration.
+    - The package validates and evaluates the built-in JSONata dialect in the platform safe subset.
+    - Evaluation is side-effect free; only BlueprintAuthority may perform authoritative application.
+    - Receipts record the policy identities, versions, decisions, and application disposition used.
+    - Missing, invalid, unsupported, or indeterminate policy evaluation fails closed.
+  lifecycle_separation:
+    - Policy authoring, review, activation, evaluation, and enforcement are separate responsibilities.
+    - An agent may author or revise policy material only through AgentLifecycleOps and a non-authoritative proposal.
+    - Policy activation is an HBX or broader Control operation performed by a trusted host after validation and admission.
+    - An authored policy cannot grant its author authority, activate itself, or bypass the policy already governing its admission.
+  dialect_boundary: >-
+    Safe JSONata is the implemented policy dialect. A future registry may add independently
+    versioned dialects without permitting arbitrary code execution or provider-specific policy logic.
+
+status_model:
+  statuses: [received, authorized, admitted, applying, applied, rejected, failed]
+  terminal: [applied, rejected, failed]
+  normal_flow: received -> authorized -> admitted -> applying -> applied
+  denial_flow: received|authorized|admitted -> rejected
+  failure_flow: applying -> failed
+
+contracts:
+  - name: BlueprintProposalHost
+    purpose: Implement AgentHostLifecycleOps with receipt-returning Blueprint-specific methods and submit orchestration.
+  - name: BlueprintProposalReceipt
+    purpose: Persist proposal, actor, status, decisions, application result, failure, timestamps, and audit history.
+  - name: BlueprintProposalStore
+    purpose: Abstract receipt creation, lookup, update, and listing.
+  - name: BlueprintJsonataPolicyArtifact
+    purpose: Carry portable, versioned authorization, admission, or application JSONata policy material.
+  - name: BlueprintJsonataPolicySet
+    purpose: Supply all three policy phases directly to BlueprintProposalHost.
+  - name: BlueprintJsonataPolicyInput
+    purpose: Carry proposal, actor, target snapshot, and validation facts into safe evaluation.
+  - name: BlueprintPolicyRegistry
+    status: required-evolution
+    purpose: Validate and resolve immutable policy artifacts and evaluator dialects by stable identity and version.
+  - name: BlueprintHostDecision
+    purpose: Report authorization or admission allow/deny with policy provenance and evaluation detail.
+  - name: BlueprintApplicationPolicyDecision
+    purpose: Report automatic or deferred application with policy provenance and evaluation detail.
+  - name: BlueprintAuthority
+    purpose: Inspect and validate a target and idempotently apply an admitted receipt.
+
+functions:
+  - name: createBlueprintProposalHost
+    purpose: Compose store, authority, authorization policy, and admission policy into HBX operations.
+  - name: createInMemoryBlueprintProposalStore
+    purpose: Provide an isolated receipt store for tests and non-durable local hosts.
+  - name: createBlueprintProposalDurableTransitionAdapter
+    purpose: Reduce receipt journal events into a durable receipt snapshot.
+  - name: createDurableBlueprintProposalStore
+    purpose: Persist receipt writes through a configured durable runtime and read committed snapshots.
+  - name: validateBlueprintJsonataPolicySet
+    purpose: Validate policy identity, phase, and safe JSONata syntax before host operation.
+  - name: evaluateBlueprintJsonataPolicy
+    purpose: Evaluate authorization or admission policy against trusted facts and fail closed.
+  - name: evaluateBlueprintJsonataApplicationPolicy
+    purpose: Evaluate automatic versus deferred application and fail closed to deferred.
+  - name: createBlueprintPolicyRegistry
+    status: required-evolution
+    purpose: Register validated policy artifacts and trusted evaluator dialects and resolve an active immutable policy set.
+
+durable_runtime_binding:
+  persistence_flow:
+    - Initialize one durable proposal runtime.
+    - Append proposal-receipt-put events to its journal.
+    - Run the durable transition engine.
+    - Read committed receipt maps from the runtime snapshot.
+  provider_choice: >-
+    The composing host selects IndexedDB, filesystem, Cosmos/stores-proxy, or another durable provider
+    through normal @gik/durable-runtime refs and provider configuration.
+  recovery: >-
+    An applying receipt may be submitted again to BlueprintAuthority.apply. The authority must use
+    receipt.id as its idempotency key before reporting applied.
+
+host_composition:
+  owner: Application host, backend service, middleware, or worker.
+  requirements:
+    - Supply a BlueprintProposalStore.
+    - Supply a BlueprintAuthority whose apply operation is idempotent by receipt id.
+    - Supply or resolve validated declarative authorization, admission, and application policy artifacts.
+    - Use the package-owned safe JSONata evaluator for the current policy dialect.
+    - Keep provider, credential, transport, and deployment policy outside this package.
+  persistence: >-
+    The host may use the in-memory store or configure @gik/durable-runtime with a durable provider
+    and inject the resulting store. Provider selection is not part of agent input or Blueprint material.
+
+exclusions:
+  - No identity provider, credential store, or built-in product policy.
+  - No direct dependency on BlueprintHost, UI frameworks, agent providers, or transport packages.
+  - No universal Blueprint patch interpretation.
+  - No arbitrary JavaScript or provider-supplied code execution from policy artifacts.
+  - No callback alternative for authorization, admission, or automatic-application policy.
+  - No agent authority to activate policy or apply the proposals governed by policy.
+  - No guarantee of exactly-once external effects from persistence alone.

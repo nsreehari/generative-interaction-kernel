@@ -106,6 +106,59 @@ test("foundry service exposes schema-constrained replies as structured output", 
   assert.deepEqual(result.detail, { responseId: "response-1", conversationId: "conversation-1" });
 });
 
+test("foundry service executes declared host lifecycle calls and continues the response", async () => {
+  const requestBodies: Record<string, unknown>[] = [];
+  const factory = createFoundryAgentKind(async (_input, init) => {
+    requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+    const firstTurn = requestBodies.length === 1;
+    return new Response(JSON.stringify(firstTurn ? {
+      conversationId: "conversation-1",
+      responseId: "response-1",
+      reply: "",
+      toolCalls: [{ callId: "call-1", name: "use_blueprint_inspect", arguments: '{"id":"incident-1"}' }],
+    } : {
+      conversationId: "conversation-1",
+      responseId: "response-2",
+      reply: "Inspection complete",
+      toolCalls: [],
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  });
+  const adapter = factory.create({
+    kind: "foundry-agent",
+    version: "1",
+    operations: { analyze: { operation: "chat", contract: "incident/v1" } },
+    config: {
+      endpoint: "https://foundry.example",
+      agent: "Incident-Agent",
+      credentialRef: "foundry-agent/access-key",
+    },
+  }, {
+    hostCapabilities: new Set(["foundry-executor", "credential-resolver"]),
+    resolveCredential: async () => "access-key",
+  });
+  const result = await adapter.execute({
+    operation: "chat",
+    capabilityId: "incident/v1",
+    input: { message: "Inspect this incident" },
+  } as never, {
+    agentTools: [{
+      name: "use_blueprint_inspect",
+      description: "Inspect the active incident.",
+      inputSchema: { type: "object" },
+      lifecycle: "agent",
+      handler: (input) => ({ active: true, input }),
+    }],
+  });
+
+  assert.deepEqual(requestBodies[1].toolOutputs, [{
+    callId: "call-1",
+    output: JSON.stringify({ active: true, input: { id: "incident-1" } }),
+  }]);
+  assert.equal(requestBodies[1].conversationId, "conversation-1");
+  assert.equal(requestBodies[1].message, undefined);
+  assert.equal((result.output as { reply?: string }).reply, "Inspection complete");
+});
+
 describe.each(FOUNDRY_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
 test("access check and agent discovery run as separate phases", async () => {
   const values = installLocalStorage();

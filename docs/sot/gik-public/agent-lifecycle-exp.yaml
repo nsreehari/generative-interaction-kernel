@@ -1,0 +1,198 @@
+schema_version: 1
+
+document:
+  name: gik-agent-lifecycle-exp
+  status: current-contract-with-policy-authoring-evolution
+  scope: transport-neutral agent lifecycle, host lifecycle, tool translation, and cumulative Blueprint experience projections
+  source_of_truth: >-
+    This file defines the public product contract for @gik/agent-lifecycle-exp, including the use
+    of AgentLifecycleOps for proposal-only authoring of declarative policy artifacts. TypeScript
+    source describes current runtime behavior; this SOT is authoritative for the intended contract.
+
+package:
+  name: "@gik/agent-lifecycle-exp"
+  version: "0.1.0"
+  publication_status: public-workspace-package
+  purpose: >-
+    Define provider-neutral agent and trusted-host lifecycle contracts and translate lifecycle
+    profiles into schema-bearing JSON tools without owning Blueprint, Kernel, host, transport,
+    persistence, authorization, or agent-provider behavior.
+  public_entrypoint: packages/agent-lifecycle-exp/src/index.ts
+  implementation_files:
+    - packages/agent-lifecycle-exp/src/types.ts
+    - packages/agent-lifecycle-exp/src/tools.ts
+    - packages/agent-lifecycle-exp/src/catalog.ts
+    - packages/agent-lifecycle-exp/src/blueprint-use.ts
+    - packages/agent-lifecycle-exp/src/function-tools.ts
+    - packages/agent-lifecycle-exp/src/blueprint-function-tools.ts
+  decision_source: docs/decisions/ADR-0048-agent-lifecycle-experiences-and-host-admission.md
+  distribution:
+    build: "turbo run build --filter=@gik/agent-lifecycle-exp"
+    publish: Standard public npm package through the GIK workspace release workflow.
+
+api_policy:
+  signature_authority: TypeScript source in packages/agent-lifecycle-exp/src
+  compatibility: >-
+    Contract changes must update this SOT, package exports, focused tests, and ADR-0048 together.
+
+terminology:
+  lifecycle_profile: A manifest plus handlers implementing the standard agent lifecycle for one capability.
+  authored_lifecycle_material: Semantic profile identity, purpose, targets, intents, goals, and constraints supplied by a target artifact.
+  agent_tool: A transport-neutral name, description, JSON input schema, lifecycle classification, and JSON handler.
+  proposal: Typed non-authoritative intent submitted for host receipt and admission.
+  policy_artifact: Portable, versioned declarative material evaluated and activated only by a trusted host.
+  ubx: Use Blueprint Experience.
+  cbx: Customize Blueprint Experience.
+  abx: Author Blueprint Experience.
+  hbx: Host Blueprint Experience.
+  control: HBX plus non-Blueprint host and administrative operations.
+
+architecture:
+  boundaries:
+    - The package has no runtime dependency on Blueprint, Kernel, a transport protocol, or an agent provider.
+    - Agent lifecycle operations understand, evaluate, and propose; they do not authoritatively apply.
+    - Host lifecycle operations receive, authorize, admit, apply, reject, and report proposal status.
+    - A host may auto-authorize a proposal without moving application authority into the agent lifecycle.
+    - Tool carriers adapt AgentTool metadata and handlers but do not redefine lifecycle semantics.
+    - Blueprint profile binding structurally reads authored lifecycle material and requires no @gik/blueprint import.
+    - AgentLifecycleOps may be bound to policy artifacts as targets without granting policy evaluation, activation, or enforcement authority.
+    - Declarative manifests, schemas, and provider tool definitions are generated without executable placeholder callbacks.
+    - AgentLifecycleOps, AgentHostLifecycleOps, AgentTool handlers, and BlueprintUseHost are trusted execution ports, not product configuration.
+  cumulative_projection:
+    order: [ubx, cbx, abx, hbx, control]
+    invariant: "UBX subset CBX subset ABX subset HBX subset-or-equal Control"
+    tool_prefixes:
+      ubx: use_blueprint
+      cbx: customize_blueprint
+      abx: author_blueprint
+      hbx: host_blueprint
+      control: capability-specific control prefix
+
+agent_lifecycle:
+  operations:
+    - manifest
+    - discover
+    - describe
+    - inspect
+    - validate
+    - simulate
+    - preflight
+    - propose
+  ownership:
+    manifest: Lifecycle implementation plus authored profile material.
+    discover: Host registries and current host scope.
+    describe: Authored target contract enriched by registries.
+    inspect: Current runtime, candidate, or proposal facts.
+    validate: Pure structural and semantic checks.
+    simulate: Non-authoritative outcome computation.
+    preflight: Target-environment, dependency, policy, and revision readiness checks.
+    propose: Typed intent submission without authoritative mutation.
+
+host_lifecycle:
+  operations:
+    - receive
+    - authorize
+    - admit
+    - apply
+    - reject
+    - status
+  distinctions:
+    authorize: Determines whether the caller may request the operation.
+    admit: Determines whether the specific proposal is valid under current policy and target state.
+    apply: Performs the authoritative transition.
+
+policy_authoring_lifecycle:
+  requirement: >-
+    Declarative policy artifacts are valid lifecycle targets. A policy-authoring agent uses the
+    same manifest, discover, describe, inspect, validate, simulate, preflight, and propose sequence
+    as any other agent capability; no policy-specific authority is added to AgentLifecycleOps.
+  target_examples:
+    - policy-artifact
+    - policy-set
+  authoring_guarantees:
+    - inspect returns the current artifact, immutable version identity, schema, and host-visible facts allowed for authoring.
+    - validate checks artifact schema and semantic constraints without activating the artifact.
+    - simulate reports non-authoritative evaluation outcomes against supplied test facts.
+    - preflight reports registry, dialect, dependency, and governing-policy readiness.
+    - propose submits creation, revision, retirement, or activation intent as a typed non-authoritative proposal.
+    - The trusted host separately authorizes, admits, and applies any policy change.
+    - A proposed policy is evaluated under the already-active governing policy and cannot authorize itself.
+  package_boundary: >-
+    @gik/agent-lifecycle-exp owns the neutral lifecycle and proposal contracts. Policy artifact,
+    evaluator, registry, activation, and enforcement contracts belong to the relevant trusted-host
+    package and are projected into AgentLifecycleOps by composition.
+
+contracts:
+  - name: AgentLifecycleOps
+    purpose: Implement the standard manifest-through-propose lifecycle for one capability.
+  - name: AgentHostLifecycleOps
+    purpose: Implement trusted proposal handling and authoritative application.
+  - name: AgentCapabilityManifest
+    purpose: Describe stable capability identity, target and intent kinds, proposal schema, and operation schemas.
+  - name: AgentProposal
+    purpose: Carry non-authoritative actions for a versioned target and optional expected revision.
+  - name: AgentTool
+    purpose: Expose one lifecycle operation as transport-neutral JSON metadata and a handler.
+  - name: AgentLifecycleProfile
+    purpose: Bind a prefix, manifest, and generated tool family.
+  - name: BlueprintLifecycleMaterialSource
+    purpose: Structurally read use, customize, or author material from a Blueprint-like artifact without importing Blueprint.
+  - name: AgentToolCatalog
+    purpose: List and invoke a validated unique tool catalog.
+  - name: BlueprintExperienceCatalog
+    purpose: Project cumulative UBX, CBX, ABX, HBX, and Control catalogs.
+
+functions:
+  - name: agentLifecycleTools
+    signature: "agentLifecycleTools(prefix, ops): AgentTool[]"
+    behavior: Generates manifest, discover, describe, inspect, validate, simulate, preflight, and propose tools.
+  - name: agentHostLifecycleTools
+    signature: "agentHostLifecycleTools(prefix, ops): AgentTool[]"
+    behavior: Generates receive, authorize, admit, apply, reject, and status tools.
+  - name: defineAgentLifecycleProfile
+    purpose: Package an agent lifecycle implementation with its prefix, manifest, and generated tools.
+  - name: defineBlueprintLifecycleProfile
+    purpose: >-
+      Require authored use, customize, or author material; verify identity and version against the
+      lifecycle implementation; and produce a generated profile.
+  - name: requireBlueprintLifecycleMaterial
+    purpose: Reject lifecycle exposure when the Blueprint-like artifact omits the requested profile material.
+  - name: createAgentToolCatalog
+    purpose: Enforce unique tool names and provide list and call operations.
+  - name: createBlueprintExperienceCatalog
+    purpose: Construct cumulative projections from caller-supplied level tools.
+  - name: blueprintLifecycleCatalog
+    purpose: Apply conventional Blueprint prefixes to supplied use, customize, author, host, and control implementations.
+  - name: useBlueprint
+    purpose: Bind declarative UBX material and schemas to a trusted host execution port and generate the executable tool family.
+  - name: customizeBlueprint
+    purpose: Bind declarative CBX material and schemas to a trusted host execution port and generate the executable tool family.
+  - name: authorBlueprint
+    purpose: Bind declarative ABX material and schemas to a trusted host execution port and generate the executable tool family.
+  - name: createBlueprintLifecycleManifest
+    purpose: Generate a declarative capability manifest directly from authored lifecycle material and JSON schemas.
+  - name: describeBlueprint
+    purpose: Derive agent-readable identity, structure, lifecycle guidance, tiers, Cells, services, and runtime vocabulary from authored Blueprint data.
+  - name: toAgentFunctionTools
+    purpose: Project neutral AgentTool metadata into strict OpenAI-compatible function definitions without importing a provider SDK.
+  - name: executeAgentFunctionCall
+    purpose: Parse one function call, dispatch it through the neutral tool catalog, and return a function_call_output item.
+  - name: blueprintUseFunctionTools
+    purpose: Generate strict provider function metadata directly from authored Blueprint use material and package-owned generic UBX schemas without handlers.
+
+blueprint_integration:
+  authored_contract: BlueprintDefinition.agentLifecycle.profiles
+  profile_placement:
+    use: Application or runtime Blueprint exposed through UBX.
+    customize: Customization meta-Blueprint exposed through CBX.
+    author: Authoring or compiler meta-Blueprint exposed through ABX.
+  validation: >-
+    Blueprint JSON Schema validates declared profile material. A Blueprint remains valid without
+    lifecycle material for migration compatibility, but lifecycle profile binding rejects a missing
+    required entry.
+
+exclusions:
+  - No MCP wire protocol implementation.
+  - No direct Kernel or Blueprint mutation implementation.
+  - No credentials, policy evaluator, policy registry, policy activation, proposal store, or audit store.
+  - No claim that a tool call itself grants execution authority.

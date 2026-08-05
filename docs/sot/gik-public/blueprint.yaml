@@ -23,6 +23,7 @@ package:
 terminology:
   blueprint: A JSON document that describes Cells, resources, services, and how to produce a Kernel program.
   blueprint_structure_mode: Enforceable policy selecting fixed, authorized reconfiguration, or adaptive runtime change.
+  agent_lifecycle_material: Authored semantic manifest material required when a Blueprint is exposed through a use, customize, or author lifecycle profile.
   cell: A named part of a Blueprint.
   tier: A named representation used while converting a Blueprint.
   lowering_recipe: A declaration connecting one tier to another.
@@ -54,6 +55,7 @@ architecture:
     - Tier and lowering-recipe declarations.
     - Lowering Cell declarations and validation.
     - Blueprint structural and semantic validation.
+    - Schema validation of declared use, customize, and author lifecycle profile material.
     - Semantic Blueprint patch application and structure-mode admission.
     - Adaptive admission policy for runtime-originated Kernel ProgramPatch operations.
     - Recursive child Blueprint assembly.
@@ -114,6 +116,7 @@ artifact_contracts:
       interface BlueprintDefinition { id: string; kind: string; version: string;
       structureMode?: BlueprintStructureMode;
       structurePolicy?: BlueprintStructurePolicy;
+      agentLifecycle?: BlueprintAgentLifecycleDefinition;
       tiers: TierDefinition[]; recipes: LoweringRecipeDefinition[];
       context?: Record<string, Json>;
       resources?: Record<string, BlueprintResource>;
@@ -132,8 +135,21 @@ artifact_contracts:
       - The serialized lowering-recipe collection is recipes in version 0.1.
       - structureMode is fixed, reconfigurable, or adaptive; the schema default and host interpretation treat omission as fixed.
       - structurePolicy allowlists semantic Blueprint operations and executable program operations for adaptive mode.
+      - agentLifecycle may declare use, customize, and author profile material.
+      - Lifecycle material is optional for artifact migration compatibility; a lifecycle binding rejects a missing required profile.
+      - Runtime Blueprints carry use material, while customization and authoring meta-Blueprints carry their corresponding material.
       - services carry Blueprint-owned logical configuration and operation contracts, never literal credentials or host execution policy.
       - Service declarations are preserved into the opened runtime; an outer host owns ServiceHost construction and trusted kind admission.
+  - name: BlueprintAgentLifecycleDefinition
+    signature: >-
+      interface BlueprintAgentLifecycleDefinition { profiles:
+      Partial<Record<"use" | "customize" | "author",
+      BlueprintAgentLifecycleProfileManifest>> }
+    guarantees:
+      - Each declared profile has an id, version, description, target kinds, and intent kinds.
+      - Goals and constraints may provide additional authored semantic guidance.
+      - The declaration does not provide handlers, host authority, or transport bindings.
+      - The fixed lowering meta-Blueprint declares author material as the first package-owned ABX source.
   - name: BlueprintRuntimeDefinition
     signature: >-
       interface BlueprintRuntimeDefinition { version?: string; expression?: string;

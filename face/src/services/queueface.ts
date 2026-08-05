@@ -89,12 +89,23 @@ export interface ServiceExecutionResult {
   orchestratorResult?: OrchestratorResult;
 }
 
+export interface ServiceAgentTool {
+  readonly name: string;
+  readonly description: string;
+  readonly inputSchema: Readonly<Record<string, unknown>>;
+  readonly lifecycle: "agent" | "host" | "control";
+  readonly handler: (args: unknown) => unknown | Promise<unknown>;
+}
+
 export interface ServiceAdapterContext {
   signal?: AbortSignal;
   effect?: OrchestratorEffect;
   /** Blueprint-declared response validators. Adapters may use an AJV schema to request
    * provider-native structured output; the host still validates the returned data. */
   responseValidators?: readonly GuardrailRule[];
+  /** Host-owned, request-scoped agent tools. Provider adapters may relay calls to these
+   * handlers but cannot add authority or execute undeclared tool names. */
+  agentTools?: readonly ServiceAgentTool[];
 }
 
 export interface ServiceAdapter {

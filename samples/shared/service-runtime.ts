@@ -20,6 +20,8 @@ import {
 } from "./function-access";
 import { hostConfig } from "./host-config";
 import { createSampleServiceRegistryOptions } from "./service-registry-options";
+import { createBlueprintAgentLifecycle, type UseProposal } from "./blueprint-agent-lifecycle";
+import type { BlueprintProposalStore } from "@gik/blueprint-agent-host";
 
 export { createSampleServiceRegistryOptions } from "./service-registry-options";
 
@@ -65,10 +67,12 @@ function mergeRegistryOptions(
 export function createBlueprintServiceHost(
   runtime: BlueprintRuntime,
   state: StateModel,
-  registryOptions: SampleServiceRegistryOptions = {}
+  registryOptions: SampleServiceRegistryOptions = {},
+  proposalStore?: BlueprintProposalStore<UseProposal>,
 ): DefaultServiceHost {
   const manifest = unwrap(runtime.vocabulary);
   const declarations = (manifest.externals?.services ?? {}) as Record<string, ServiceDeclaration>;
+  const agentLifecycle = createBlueprintAgentLifecycle(runtime, state, { proposalStore });
   return new DefaultServiceHost({
     blueprintId: runtime.blueprintId,
     blueprintRevision: runtime.revision,
@@ -76,6 +80,8 @@ export function createBlueprintServiceHost(
     registry: createSampleServiceKindRegistry(mergeRegistryOptions(registryOptions, state)),
     state,
     expression: new JsonataExpressionProvider({ safe: true }),
+    agentTools: agentLifecycle.tools,
+    validatedProposalSettlement: agentLifecycle.settle,
   });
 }
 
@@ -89,10 +95,11 @@ export function createBlueprintQueueFace(
 
 export function declarativeServiceOrchestrator(
   runtime: BlueprintRuntime,
-  registryOptions: SampleServiceRegistryOptions = {}
+  registryOptions: SampleServiceRegistryOptions = {},
+  proposalStore?: BlueprintProposalStore<UseProposal>,
 ): NonNullable<LoadBundleOptions["wrapOrchestrator"]> {
   return (fallback, state) => {
-    const host = createBlueprintServiceHost(runtime, state, mergeRegistryOptions(registryOptions));
+    const host = createBlueprintServiceHost(runtime, state, mergeRegistryOptions(registryOptions), proposalStore);
     const declarations = (unwrap(runtime.vocabulary).externals?.services ?? {}) as Record<string, ServiceDeclaration>;
     const serviceInvokes = new Set(Object.values(declarations).flatMap((declaration) => Object.keys(declaration.operations)));
     return {

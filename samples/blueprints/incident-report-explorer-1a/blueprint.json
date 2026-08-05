@@ -6,6 +6,26 @@
     "kind": "incident-report-semantic-blueprint",
     "version": "1.0.0",
     "structureMode": "fixed",
+    "agentLifecycle": {
+      "profiles": {
+        "use": {
+          "id": "use-blueprint",
+          "version": "1.0.0",
+          "description": "Use the incident report explorer to refine an authored report into presentation-neutral semantic component data.",
+          "targetKinds": ["blueprint-instance", "incident-report"],
+          "intentKinds": ["select-sample", "save-report", "improve-report"],
+          "goals": [
+            "Preserve every source section and fact while producing component-ready semantic data.",
+            "Complete only operations declared by the incident report explorer runtime."
+          ],
+          "constraints": [
+            "Do not invent, omit, or factually alter incident content.",
+            "Return semantic data rather than components, layout, styling, or presentation variants.",
+            "Do not propose structural changes to this fixed Blueprint."
+          ]
+        }
+      }
+    },
     "tiers": [
       { "id": "incident-report-semantic", "kind": "incident-report-semantic-model", "description": "Presentation-neutral incident meaning with explicit source-section coverage and content-preservation assertions." },
       { "id": "runtime-document", "kind": "runtime-document" }

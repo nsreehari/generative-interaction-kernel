@@ -6,6 +6,14 @@ import { materializeBlueprint, prepareBlueprintProgram } from "@gik/blueprint";
 import { BlueprintHost as InMemoryBlueprintHost } from "@gik/react";
 import { BlueprintHost as DurableBlueprintHost, createNativeBlueprintWorker } from "@gik/react/durable";
 import { createIndexedDbProvider } from "@gik/durable-runtime/storage/indexed-db";
+import { createDurableRuntime } from "@gik/durable-runtime";
+import {
+  createBlueprintProposalDurableTransitionAdapter,
+  createDurableBlueprintProposalStore,
+  createInMemoryBlueprintProposalStore,
+  type BlueprintProposalStore,
+} from "@gik/blueprint-agent-host";
+import type { UseProposal } from "../../../shared/blueprint-agent-lifecycle";
 import { GikDemoBlueprintHost, type DemoTargetHostProps } from "@gik/demo-runner-host";
 import blueprintRegistry from "../../../blueprints/registry.json";
 import { resolveBundleProjectionViews } from "./bundles";
@@ -41,7 +49,12 @@ export function Host(): React.ReactElement {
     []
   );
   return (
-    <HostView targetId={targetId} HostComponent={HostComponent} resolveLeavesProvider={resolveProvider} />
+    <HostView
+      targetId={targetId}
+      durableEnabled={query.durableEnabled}
+      HostComponent={HostComponent}
+      resolveLeavesProvider={resolveProvider}
+    />
   );
 }
 
@@ -49,6 +62,37 @@ function durableRef(value: string): string {
   const bytes = new TextEncoder().encode(JSON.stringify({ kind: "indexed-db", value }));
   const encoded = btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
   return `b64:${encoded}`;
+}
+
+function lazyProposalStore(
+  store: Promise<BlueprintProposalStore<UseProposal>>,
+): BlueprintProposalStore<UseProposal> {
+  return {
+    create: async (receipt) => (await store).create(receipt),
+    get: async (id) => (await store).get(id),
+    update: async (receipt) => (await store).update(receipt),
+    list: async () => (await store).list(),
+  };
+}
+
+export function createSampleBlueprintProposalStore(options: {
+  durableEnabled: boolean;
+  blueprintId: string;
+  instanceId?: string | number;
+  databaseName?: string;
+}): BlueprintProposalStore<UseProposal> {
+  if (!options.durableEnabled) return createInMemoryBlueprintProposalStore<UseProposal>();
+  const identity = `${options.blueprintId}:${options.instanceId ?? "default"}`;
+  const ref = durableRef(`samples:blueprint-agent-host:${identity}`);
+  const refs = { stateRef: ref, journalRef: ref, effectsQueueRef: ref };
+  const runtime = createDurableRuntime({
+    runtimeId: `samples:blueprint-agent-host:${identity}`,
+    providers: {
+      "indexed-db": createIndexedDbProvider({ databaseName: options.databaseName ?? "gik-samples-host" }),
+    },
+    transitionAdapter: createBlueprintProposalDurableTransitionAdapter<UseProposal>(),
+  });
+  return lazyProposalStore(createDurableBlueprintProposalStore<UseProposal>({ runtime, refs }));
 }
 
 function DurableIndexedDbHost(props: DemoTargetHostProps): React.ReactElement {
@@ -106,19 +150,25 @@ function DurableIndexedDbHost(props: DemoTargetHostProps): React.ReactElement {
 
 function HostView({
   targetId,
+  durableEnabled,
   HostComponent,
   resolveLeavesProvider,
 }: {
   targetId: string;
+  durableEnabled: boolean;
   HostComponent: React.ComponentType<DemoTargetHostProps>;
   resolveLeavesProvider: (from: string) => ReturnType<typeof resolveBundleProjectionViews>;
 }): React.ReactElement {
   const id = targetId;
   const externalContext = defaultExternalContextByBlueprint[id as keyof typeof defaultExternalContextByBlueprint];
+  const proposalStore = React.useMemo(
+    () => createSampleBlueprintProposalStore({ durableEnabled, blueprintId: id }),
+    [durableEnabled, id],
+  );
   const { blueprint, native } = React.useMemo(() => ({
     blueprint: resolveSampleBlueprintSource(id),
-    native: resolveBlueprintNative(id),
-  }), [id]);
+    native: resolveBlueprintNative(id, { proposalStore }),
+  }), [id, proposalStore]);
   const context = React.useMemo(
     () => resolveBlueprintInitialContext(id, externalContext),
     [externalContext, id],
@@ -136,7 +186,7 @@ function HostView({
         context={context}
         externalContext={externalContext}
         resolveNative={id === "portfolio-tracker-2tiers"
-          ? (materializedBlueprint) => resolveBlueprintNativeFromMaterialized(id, materializedBlueprint)
+          ? (materializedBlueprint) => resolveBlueprintNativeFromMaterialized(id, materializedBlueprint, { proposalStore })
           : undefined}
         scenariosJson={demoRunnerDocument as never}
         resolveLeavesProvider={resolveLeavesProvider}

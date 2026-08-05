@@ -13,6 +13,8 @@ import { bundleFromJson, loadBundleRuntime } from "@gik/react";
 import effects from "../blueprints/portfolio-tracker/native/effect_handlers/portfolioTrackerEffectHandlers";
 import { mockMarketDataHandler, MOCK_MARKET_DATA_PROVIDER } from "../services/mock-market-data";
 import { declarativeServiceOrchestrator } from "../shared/service-runtime";
+import { createBlueprintAgentLifecycle } from "../shared/blueprint-agent-lifecycle";
+import { InMemoryStateModel } from "../../kernel/src/index";
 
 const sampleUrl = new URL("../blueprints/portfolio-tracker-2tiers/blueprint.json", import.meta.url);
 
@@ -74,6 +76,31 @@ test("portfolio tracker declares complete HTTP service operation transforms", ()
   assert.equal(operations?.checkHttpProxyAccess?.failureSettlement?.transform.kind, "jsonata");
   assert.equal(operations?.refreshPrices?.request?.transform.kind, "jsonata");
   assert.equal(operations?.refreshPrices?.settlement?.transform.kind, "jsonata");
+});
+
+test("portfolio tracker declares narrow UBX intents without transferring representation authority", async () => {
+  const authored = parseBlueprintJson<RepresentationLoweringRecipeDefinition>(readFileSync(sampleUrl, "utf8"));
+  const blueprintRuntime = openBlueprint(authored);
+  const state = new InMemoryStateModel(Object.keys(blueprintRuntime.state));
+  state.apply(Object.entries(blueprintRuntime.state).map(([path, value]) => ({ op: "set" as const, path, value })));
+  const lifecycle = createBlueprintAgentLifecycle(blueprintRuntime, state);
+  const before = structuredClone(state.snapshot());
+  const propose = lifecycle.tools.find(({ name }) => name === "use_blueprint_propose");
+  const receipt = await propose?.handler({
+    kind: "refresh-prices",
+    target: {
+      kind: "blueprint-instance",
+      id: blueprintRuntime.blueprintId,
+      instanceId: blueprintRuntime.instanceId,
+    },
+    payloadJson: JSON.stringify({ operation: "refreshPrices" }),
+    rationale: "Refresh quotes through the declared market-data service.",
+  }) as { status: string };
+
+  assert.deepEqual(authored.payload.agentLifecycle?.profiles?.use?.intentKinds, ["set-holdings", "refresh-prices"]);
+  assert.equal(receipt.status, "admitted");
+  assert.deepEqual(state.snapshot(), before);
+  assert.equal(authored.payload.agentLifecycle?.profiles?.use?.constraints?.some((value) => value.includes("external context")), true);
 });
 
 test("market mode selects contract-compatible live and mock service implementations", () => {

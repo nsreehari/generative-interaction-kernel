@@ -6,6 +6,25 @@
     "kind": "portfolio-intent-blueprint",
     "version": "1.0.0",
     "structureMode": "fixed",
+    "agentLifecycle": {
+      "profiles": {
+        "use": {
+          "id": "use-blueprint",
+          "version": "1.0.0",
+          "description": "Use the portfolio tracker to maintain holdings and refresh market prices while authored lowering owns representation selection.",
+          "targetKinds": ["blueprint-instance"],
+          "intentKinds": ["set-holdings", "refresh-prices"],
+          "goals": [
+            "Keep holdings, quotes, positions, and summary values synchronized through declared operations."
+          ],
+          "constraints": [
+            "Use declared holdings and market-data operations instead of directly mutating runtime state.",
+            "Do not propose presentation variants; immutable external context and authored lowering select the representation.",
+            "Do not invent holdings or market prices."
+          ]
+        }
+      }
+    },
     "tiers": [
       { "id": "portfolio-intent", "kind": "portfolio-domain" },
       { "id": "runtime-document", "kind": "runtime-document" }
