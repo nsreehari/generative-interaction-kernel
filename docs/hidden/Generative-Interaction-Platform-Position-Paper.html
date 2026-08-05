@@ -174,6 +174,105 @@
     letter-spacing: 0.05em;
     text-transform: uppercase;
   }
+  figure.progression-figure {
+    overflow: hidden;
+  }
+  .progression-panel {
+    margin: 1.5rem 0;
+    overflow: hidden;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+  .progression-panel figure.progression-figure {
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    padding-bottom: 0;
+  }
+  .progression-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  .progression-scroll svg {
+    display: block;
+    width: 100%;
+  }
+  .progression-comparison {
+    max-width: 100%;
+    margin: 0;
+    border-top: 1px solid var(--border);
+  }
+  .progression-comparison th:first-child,
+  .progression-comparison td:first-child {
+    background: #ffffff;
+  }
+  .progression-comparison th:nth-child(2) {
+    box-shadow: inset 0 3px #d8d3cc;
+  }
+  .progression-comparison th:nth-child(3) {
+    box-shadow: inset 0 3px #cbb98a;
+  }
+  .progression-comparison th:nth-child(4) {
+    box-shadow: inset 0 3px #a9a39a;
+  }
+  .progression-comparison th:nth-child(5) {
+    box-shadow: inset 0 3px #2c2a27;
+  }
+  .progression-comparison th:nth-child(2),
+  .progression-comparison td:nth-child(2),
+  .progression-comparison th:nth-child(4),
+  .progression-comparison td:nth-child(4) {
+    background: #f8f7f5;
+  }
+  .progression-comparison th:nth-child(3),
+  .progression-comparison td:nth-child(3) {
+    background: #fcf8ed;
+  }
+  .progression-comparison th:nth-child(5),
+  .progression-comparison td:nth-child(5) {
+    background: #f4efe3;
+  }
+  .progression-caption {
+    padding: 0.85rem 1.25rem;
+    border-top: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-align: center;
+    text-transform: uppercase;
+  }
+  .progression-comparison .header-note {
+    display: block;
+    margin-top: 0.12rem;
+    color: var(--text-secondary);
+    font-size: 0.62rem;
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    text-transform: lowercase;
+  }
+  .progression-comparison .row-note {
+    display: block;
+    margin-top: 0.08rem;
+    color: var(--text-secondary);
+    font-size: 0.62rem;
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+  }
+  .progression-comparison .responsibilities {
+    margin: 0;
+    padding-left: 1rem;
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+  .progression-comparison .responsibilities li {
+    margin: 0 0 0.28rem;
+  }
+  .progression-comparison .responsibilities li:last-child {
+    margin-bottom: 0;
+  }
   .scenario-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -209,11 +308,20 @@
   @media (max-width: 680px) {
     body { padding: 2rem 1rem; }
     .scenario-grid, .posture-grid { grid-template-columns: minmax(0, 1fr); }
+    figure.progression-figure .progression-scroll svg {
+      width: 900px;
+      max-width: none;
+    }
+    .progression-comparison {
+      display: block;
+      overflow-x: auto;
+    }
   }
   @media print {
     body { max-width: 100%; padding: 1rem; }
     h2 { break-after: avoid; }
     figure, table, .scenario { break-inside: avoid; }
+    figure.progression-figure svg { width: 100%; max-width: 100%; }
     a { color: inherit; text-decoration: none; }
   }
 </style>
@@ -234,12 +342,137 @@
   One authoritative interaction state; bounded semantic contribution; deterministic lowering; contextual projection; explicit authority; attributable effects.
 </div>
 
-<h2 id="substrate">2. The Shared Interaction Substrate</h2>
+<h2 id="progression">2. From Generated Responses to Semantic Composition</h2>
+<p>Generative interfaces can be organized by what the agent is allowed to produce and where the host regains control. The progression is not simply from text to richer UI. It is a progression from implicit interpretation, through concrete component generation and rigid templates, toward an explicit semantic contract that separates response meaning from runtime presentation.</p>
+
+<div class="progression-panel">
+<figure class="svg-figure progression-figure">
+<div class="progression-scroll">
+<svg viewBox="0 0 1000 410" role="img" aria-label="A response signal evolves left to right from ambiguous prose, through concrete components and a fixed template, into semantic composition with multiple host-controlled projections">
+  <defs>
+    <linearGradient id="signalGradient" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#d8d3cc"/>
+      <stop offset="0.66" stop-color="#cbb98a"/>
+      <stop offset="1" stop-color="#2c2a27"/>
+    </linearGradient>
+    <filter id="softBlur"><feGaussianBlur stdDeviation="7"/></filter>
+  </defs>
+  <rect x="15" y="15" width="970" height="380" rx="8" fill="#ffffff" stroke="#e0ddd8"/>
+  <text x="42" y="48" fill="#7a756d" font-size="11" letter-spacing="1.6">THE RESPONSE SIGNAL BECOMES EXPLICIT</text>
+  <path d="M88 194 C210 119, 278 238, 390 180 S585 145, 690 180 S835 180, 930 180" fill="none" stroke="url(#signalGradient)" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Raw prose: a diffuse cloud whose meaning the host must infer. -->
+  <g transform="translate(128 180)">
+    <circle r="73" fill="#ebe9e4" opacity="0.65" filter="url(#softBlur)"/>
+    <text x="-42" y="-25" fill="#7a756d" font-size="28">&ldquo;</text>
+    <path d="M-25 -24h54 M-35 -4h76 M-27 16h58 M-8 36h32" stroke="#8d8881" stroke-width="5" stroke-linecap="round" opacity="0.72"/>
+    <text x="36" y="44" fill="#7a756d" font-size="28">&rdquo;</text>
+    <circle cx="-49" cy="30" r="3" fill="#bdb6ac"/><circle cx="49" cy="-22" r="4" fill="#bdb6ac"/><circle cx="38" cy="60" r="2.5" fill="#bdb6ac"/>
+  </g>
+
+  <!-- AG-UI: the response itself is assembled from presentation components. -->
+  <g transform="translate(364 180)">
+    <circle r="75" fill="#f6edd6" stroke="#cbb98a" stroke-width="1.5"/>
+    <rect x="-48" y="-42" width="43" height="34" rx="3" fill="#ffffff" stroke="#9d906d"/>
+    <rect x="5" y="-42" width="43" height="34" rx="3" fill="#2c2a27"/>
+    <rect x="-48" y="2" width="96" height="24" rx="3" fill="#ffffff" stroke="#9d906d"/>
+    <circle cx="-29" cy="14" r="6" fill="#cbb98a"/>
+    <path d="M-15 10h48 M-15 18h35" stroke="#9d906d" stroke-width="3" stroke-linecap="round"/>
+    <rect x="-48" y="36" width="65" height="12" rx="6" fill="#cbb98a"/>
+    <rect x="25" y="36" width="23" height="12" rx="6" fill="#8a7c55"/>
+  </g>
+
+  <!-- Template: expressive material is admitted only through fixed slots. -->
+  <g transform="translate(596 180)">
+    <path d="M-69 -70h138v140h-138z" fill="#f5f4f2" stroke="#8d8881" stroke-width="2"/>
+    <path d="M-45 -42h90v20h-90z M-45 -8h40v50h-40z M9 -8h36v18h-36z M9 24h36v18h-36z" fill="#ffffff" stroke="#bdb6ac"/>
+    <path d="M-32 -32h64 M-34 2h18 M18 1h18 M18 33h18" stroke="#cbb98a" stroke-width="5" stroke-linecap="round"/>
+    <path d="M-82 -54l13 8 M-82 -22l13 4 M-82 12l13-2 M-82 46l13-7" stroke="#cbb98a" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <!-- Semantic composition: meaning is explicit; the host chooses its projection. -->
+  <g transform="translate(830 180)">
+    <circle r="88" fill="#2c2a27"/>
+    <path d="M-47 -21L-12 -48L24 -29L3 8L44 35M-47 -21L-34 33L3 8M-34 33L12 52L44 35" fill="none" stroke="#cbb98a" stroke-width="2"/>
+    <circle cx="-47" cy="-21" r="8" fill="#f0ede8"/><circle cx="-12" cy="-48" r="7" fill="#cbb98a"/><circle cx="24" cy="-29" r="9" fill="#f0ede8"/>
+    <circle cx="3" cy="8" r="12" fill="#cbb98a"/><circle cx="-34" cy="33" r="7" fill="#f0ede8"/><circle cx="12" cy="52" r="6" fill="#cbb98a"/><circle cx="44" cy="35" r="8" fill="#f0ede8"/>
+    <path d="M88 -38c20 0 20-18 38-18 M88 0h45 M88 38c20 0 20 18 38 18" fill="none" stroke="#8a7c55" stroke-width="2"/>
+    <rect x="128" y="-67" width="24" height="20" rx="2" fill="#f6edd6" stroke="#8a7c55"/>
+    <circle cx="141" cy="0" r="12" fill="#f6edd6" stroke="#8a7c55"/>
+    <path d="M129 47h25v18h-25z M133 51h17 M133 56h12" fill="none" stroke="#8a7c55"/>
+  </g>
+
+  <g font-size="10" letter-spacing="1.2" fill="#7a756d">
+    <text x="128" y="304" text-anchor="middle">01 &middot; RAW</text>
+    <text x="364" y="304" text-anchor="middle">02 &middot; AG-UI</text>
+    <text x="596" y="304" text-anchor="middle">03 &middot; TEMPLATE</text>
+    <text x="830" y="304" text-anchor="middle" fill="#2c2a27">04 &middot; SEMANTIC</text>
+  </g>
+  <g font-size="15" font-weight="600" fill="#2c2a27">
+    <text x="128" y="330" text-anchor="middle">Host infers meaning</text>
+    <text x="364" y="330" text-anchor="middle">Agent arranges UI</text>
+    <text x="596" y="330" text-anchor="middle">Agent fills slots</text>
+    <text x="830" y="330" text-anchor="middle">Agent composes meaning</text>
+  </g>
+  <g font-size="10" fill="#7a756d">
+    <text x="128" y="349" text-anchor="middle">ambiguous, unconstrained</text>
+    <text x="364" y="349" text-anchor="middle">flexible, presentation-bound</text>
+    <text x="596" y="349" text-anchor="middle">predictable, structurally fixed</text>
+    <text x="830" y="349" text-anchor="middle">host projects every experience</text>
+  </g>
+</svg>
+</div>
+</figure>
+
+<table class="progression-comparison">
+  <thead>
+    <tr>
+      <th></th>
+      <th>Markdown Response<span class="header-note">current</span></th>
+      <th>AG-UI</th>
+      <th>AG-UI + Static template</th>
+      <th>AG-UI + Semantic composition</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Host<span class="row-note">provides</span></td>
+      <td><ul class="responsibilities"><li>Supplies prompt and context</li></ul></td>
+      <td><ul class="responsibilities"><li>Supplies component catalog</li></ul></td>
+      <td><ul class="responsibilities"><li>Supplies component catalog</li><li>Supplies response template</li></ul></td>
+      <td><ul class="responsibilities"><li>Supplies closed semantic catalog</li><li>Supplies preferred response elements</li><li>Supplies validation tools</li></ul></td>
+    </tr>
+    <tr>
+      <td>Agent</td>
+      <td><ul class="responsibilities"><li>Generates textual prose</li></ul></td>
+      <td><ul class="responsibilities"><li>Generates structured response for UI rendering</li></ul></td>
+      <td><ul class="responsibilities"><li>Generates structured response in supplied template</li></ul></td>
+      <td><ul class="responsibilities"><li>Iterates against semantic catalog</li><li>Provides validated semantic response</li></ul></td>
+    </tr>
+    <tr>
+      <td>Host<span class="row-note">processes</span></td>
+      <td><ul class="responsibilities"><li>Extracts meaning</li><li>Renders UI</li></ul></td>
+      <td><ul class="responsibilities"><li>Renders received components</li></ul></td>
+      <td><ul class="responsibilities"><li>Renders populated template</li></ul></td>
+      <td><ul class="responsibilities"><li>Lowers semantic components contextually</li><li>Controls runtime rendering</li></ul></td>
+    </tr>
+  </tbody>
+</table>
+<div class="progression-caption">From inferred meaning to explicit meaning: freedom moves out of presentation and into semantics</div>
+</div>
+
+<p>The fourth model is not another component protocol. The host supplies a closed semantic catalog, preferred response elements, schemas, and validation operations. The agent iterates over semantic artifacts until they satisfy that contract. Only then does the host lower the result according to audience, task, surface, attention, and device context. The same semantic response may therefore become a narrative, timeline, collection, graph, canvas, or headless agent projection without asking the agent to encode those renderings.</p>
+
+<div class="callout">
+  <strong>Controlled presentation without a fixed response template.</strong> The host controls how every semantic element materializes, but the agent remains free to compose any valid semantic structure needed by the response.
+</div>
+
+<h2 id="substrate">3. The Shared Interaction Substrate</h2>
 <p>The substrate is a medium-blind transition system. It does not privilege a screen, conversation, agent protocol, or device. It evaluates typed events against authoritative state and produces a new state plus effect requests:</p>
 
 <div class="description"><strong>Transition rule.</strong> <code>(state, event) &rarr; (state', effects)</code></div>
 
-<p>State carries domain evidence, semantic artifacts, interaction progress, proposals, approvals, results, and causal relationships. Humans and agents enter events through the same validation boundary. Effects execute outside pure reduction and settle back as validated events, preserving deterministic replay without pretending that networks, models, or tools are deterministic.</p>
+<p>State carries the facts and artifacts declared by the domain contract, together with interaction progress, proposals, approvals, results, and causal relationships. An adaptive specification may choose to preserve evolving hypotheses, failed attempts, branches, or intermediate evidence as first-class artifacts or state. Those concepts are domain semantics, not universal machinery imposed by the substrate. Humans and agents enter events through the same validation boundary. Effects execute outside pure reduction and settle back as validated events, preserving deterministic replay without pretending that networks, models, or tools are deterministic.</p>
 
 <figure class="svg-figure">
 <svg viewBox="0 0 780 420" role="img" aria-label="One authoritative state projected to human, agent, and control experiences with effects settling at the runtime edge">
@@ -281,7 +514,7 @@
 
 <p>A projection is a capability boundary, not a copy of the application. A human projection optimizes comprehension and predictable interaction. An agent projection exposes only the semantic context and operations granted to that participant. A control projection exposes trusted administrative capabilities. Transport carries a selected projection; it does not own policy or create authority.</p>
 
-<h2 id="tiers">3. Semantic Tiers and Meaning Preservation</h2>
+<h2 id="tiers">4. Semantic Tiers and Meaning Preservation</h2>
 <p>Agents are most useful when they work at the level of domain meaning: <em>investigate this incident</em>, <em>construct the attack path</em>, <em>explain this timeline</em>, or <em>propose remediation</em>. They should not need to choose UI components, mutate application state directly, or generate unrestricted tool calls.</p>
 <p>A declarative interaction specification defines a sequence of semantic tiers. Every tier has a controlled vocabulary and a contract. A declared lowering recipe transforms a valid artifact at one tier into a valid artifact at the next:</p>
 
@@ -326,19 +559,58 @@
 
 <p>An attack path is a semantic artifact; an infinite canvas is one possible presentation. A timeline may become a visual sequence for a human and a structured event list for another agent. Analyze or refresh behavior belongs to the surrounding interaction program, not to a new semantic concept. Factual preservation, omissions, ordering, and semantic coverage belong to validators, not decorative status widgets.</p>
 
+<p>Structure alone is not enough to expose a safe agent experience. The authored contract also declares which target and intent kinds are meaningful, the goals of participation, and the constraints that must survive interpretation. Operation schemas and handlers remain implementation-owned. This keeps agent guidance versioned with domain meaning without turning prose into executable authority.</p>
+
+<h3>Adaptive semantic expansion</h3>
+<p>A fixed specification preserves its authored structure. An adaptive specification may permit policy-allowlisted semantic or executable structure changes and retain the evolving program in checkpoints. This allows an agent to extend the represented problem while it works: adding a hypothesis, relating it to evidence, opening alternative attack-path branches, recording an unsuccessful attempt, or introducing the next investigation choice. The expansion becomes shared semantic structure or state, rather than remaining private reasoning in a transcript.</p>
+
+<table>
+  <thead><tr><th>Graph</th><th>Question answered</th><th>Architectural role</th></tr></thead>
+  <tbody>
+    <tr><td>Dependency graph</td><td>Given a goal or end state, what prerequisites must be achieved?</td><td>Works backward from the goal, exposes required subgoals and dependencies, then schedules ready work toward completion.</td></tr>
+    <tr><td>Consequence graph</td><td>Given current state, what has become unlocked or activated?</td><td>Works forward from achieved facts or changes and identifies newly enabled work that can now be pursued.</td></tr>
+    <tr><td>Exploratory graph</td><td>Given current state and several available paths, which path should be tried next?</td><td>Uses policy to choose among unlocked paths, records outcomes, and supports backtracking when a pursued path fails.</td></tr>
+  </tbody>
+</table>
+
+<p>The graphs are complementary because they traverse the problem differently. A dependency graph starts with the destination and asks what remains necessary. A consequence graph starts with what is true now and asks what can begin because of it. An exploratory graph starts with the currently available frontier but accepts that more than one path may be plausible. Policy ranks or excludes alternatives; execution produces evidence; and failure causes the traversal to walk back, mark the attempted path, and select another eligible branch.</p>
+
+<div class="example">
+  <span class="tag">attack-path exploration</span><br>
+  To reach a crown-jewel asset, the dependency graph may require initial access, credential acquisition, privilege escalation, and lateral movement. When credentials are discovered, the consequence graph activates the identities, services, and movement opportunities those credentials enable. The exploratory graph chooses an allowed hypothesis, such as an exposed service rather than phishing. If that path is disproven, it records the failed branch, returns to the last viable choice point, and pursues another policy-eligible hypothesis.
+</div>
+
+<p>These graph decisions still do not grant execution authority. The authored structure policy bounds which hypotheses, relationships, and executable program operations may be added to an adaptive specification. Tool use and external action continue to cross proposal, admission, and effect boundaries. Reactive state machinery may update readiness and computed facts as graph state changes, but that runtime mechanism is distinct from the dependency graph&rsquo;s semantic role of decomposing a goal into required achievements.</p>
+
 <div class="callout">
   <strong>Meaning-preservation invariant.</strong> Lowering may specialize structure and presentation, but it must preserve stable semantic identity, responsibility, ports, token contracts, provenance, and declared purpose. Probabilistic generation never bypasses terminal validation.
 </div>
 
-<h2 id="grammar">4. Deterministic Runtime and Governed Effects</h2>
+<h2 id="grammar">5. Agent Proposal and Host Application</h2>
 <p>The terminal interaction program uses a deliberately closed action grammar: <code>assign</code>, <code>derive</code>, <code>emit</code>, <code>invoke</code>, <code>route</code>, and <code>confirm</code>. This is the point at which high-level intent becomes inspectable behavior rather than arbitrary generated code.</p>
 
-<div class="description"><strong>Action path.</strong> <code>intent &rarr; semantic artifact &rarr; validation &rarr; lowering &rarr; authorization &rarr; effect &rarr; settlement</code></div>
+<p>Agent participation and authoritative application are separate lifecycles. The agent-facing lifecycle supports understanding and proposal:</p>
 
-<p>Local interaction reduces immediately through the deterministic kernel. Agent, model, network, storage, and device work executes through named effect handlers outside that kernel. The host owns credentials, trusted service kinds, endpoint policy, queues, request and response validators, and execution ceilings. Provider output is untrusted data until it settles through the declared contract.</p>
+<div class="description"><strong>Agent lifecycle.</strong> <code>manifest &rarr; discover &rarr; describe &rarr; inspect &rarr; validate &rarr; simulate &rarr; preflight &rarr; propose</code></div>
+
+<p>None of these operations applies a change. A proposal crosses a trust boundary into a host-owned lifecycle:</p>
+
+<div class="description"><strong>Host lifecycle.</strong> <code>receive &rarr; authorize &rarr; admit &rarr; apply</code>, with explicit rejection, failure, status, persistence, and audit paths.</div>
+
+<table>
+  <thead><tr><th>Decision</th><th>Question answered</th></tr></thead>
+  <tbody>
+    <tr><td>Authorization</td><td>May this actor request this operation?</td></tr>
+    <tr><td>Admission</td><td>Is this proposal valid for the current target, revision, state, and governing policy?</td></tr>
+    <tr><td>Application disposition</td><td>May it apply automatically, remain deferred, or require trusted approval?</td></tr>
+    <tr><td>Application</td><td>May the trusted authority perform the resulting transition now?</td></tr>
+  </tbody>
+</table>
+
+<p>Local interaction reduces immediately through the deterministic kernel. Agent, model, network, storage, and device work executes through named effect handlers outside that kernel. The host owns credentials, trusted service kinds, endpoint policy, queues, request and response validators, policy evaluation, and execution ceilings. Provider output is untrusted data until it settles through the declared contract. Even when policy permits immediate autonomous application, application remains attributable to the host rather than to model reasoning or tool exposure.</p>
 <p>Materialization is deterministic for a specification and immutable external context: <code>M(A, C) = T</code>. It may specialize inner programs while preserving stable identities and topology. This enables adaptive experiences without allowing context or a provider to redefine the application&rsquo;s semantics at runtime.</p>
 
-<h2 id="postures">5. Multi-Agent Operational Postures</h2>
+<h2 id="postures">6. Multi-Agent Operational Postures</h2>
 <p>Multi-agent composition benefits from distinguishing how a participant approaches a problem from what it can do and what it is authorized to do. Red, Blue, and Green are useful generalized operational postures:</p>
 
 <div class="posture-grid">
@@ -358,18 +630,32 @@
 
 <p>The postures form a governed learning loop: challenge reveals pressure, observation establishes meaning, and improvement changes the system before it is challenged again. They are not security privileges and need not be permanent identities. A participant may adopt one or more postures for a bounded goal.</p>
 
+<h3>Red is not merely a Blue workflow with adversarial prompts</h3>
+<p>In security systems, Red frequently becomes a distinct operating class. Blue work commonly begins with known signals such as alerts, incidents, telemetry, vulnerabilities, or posture findings and follows bounded investigative or defensive tasks. Red work searches for what defenders do not yet know. It is exploratory and research-oriented: observe, hypothesize, attempt, learn, refine, and attempt again. It may run for extended periods, branch across possible attack paths, compose individually minor weaknesses, and produce no confirmed finding.</p>
+
+<p>This distinction belongs primarily to the authored domain and activity model. A Red agent can use an adaptive specification to expand hypotheses and attack-path branches as it explores. The dependency graph keeps the desired end state and unmet prerequisites visible. The consequence graph activates newly possible work as facts are established. The exploratory graph selects, evaluates, and backtracks across alternative hypotheses. Accepted additions and recorded outcomes enter shared semantic structure or state, allowing humans and Blue or Green participants to inspect the same evolving investigation through their own projections.</p>
+
+<p>That autonomy is semantic and policy-bounded. It does not mean every internal thought must be persisted, nor does it move offensive execution into the graph. The authored contract decides which hypotheses, attempts, observations, and branches have shared value. A disproven hypothesis may be a successfully recorded research artifact, while a rejected proposal, failed tool effect, and failed host receipt remain separate lifecycle outcomes.</p>
+
+<p>Red execution also requires a different trust regime: separate identities, planning and execution separation, explicit approval models, isolated environments, tool- and parameter-level policy, network restrictions, rate limits, audit, and blast-radius controls. The Red agent orchestrates bounded offensive tooling; it is not granted an unrestricted offensive toolbox. Blue and Green may use different policies and execution environments even while all three participate through the same semantic and proposal boundaries.</p>
+
 <table>
   <thead><tr><th>Dimension</th><th>Question</th><th>Owned by</th></tr></thead>
   <tbody>
     <tr><td>Posture</td><td>How does this participant approach the problem?</td><td>Role and task design</td></tr>
     <tr><td>Capability</td><td>Which semantic operations can it perform?</td><td>Tier and participant contracts</td></tr>
+    <tr><td>Execution regime</td><td>Where, for how long, and under which isolation and guardrails may work run?</td><td>Trusted host and product policy</td></tr>
     <tr><td>Authority</td><td>What may it view, propose, invoke, approve, or execute?</td><td>Control plane</td></tr>
   </tbody>
 </table>
 
 <p>A coordinating agent is posture-neutral. It sequences declared work, passes typed artifacts, and maintains goal context, but it does not become an implicit superuser or inherit the union of all participant capabilities. Coordination is a responsibility; authority remains independently granted.</p>
 
-<h2 id="authority">6. Data Plane and Control Plane</h2>
+<div class="callout">
+  <strong>Semantic handoff, not workflow equivalence.</strong> Red-to-Blue transfer commonly takes the form of a narrative, attack-path analysis, evidence package, timeline, or detection-gap assessment. Such artifacts can have typed envelopes, identity, and provenance while retaining the interpretation and human judgment that a rigid procedural API would erase.
+</div>
+
+<h2 id="authority">7. Data Plane and Control Plane</h2>
 <p>The shared substrate is the data plane for interaction. It carries domain state, evidence, semantic artifacts, proposals, workflow state, approvals as recorded events, validated action requests, results, and causal history. The control plane establishes who and what may participate.</p>
 
 <figure class="svg-figure">
@@ -394,10 +680,10 @@
 <figcaption>The data plane records approved interaction; the control plane establishes approval authority</figcaption>
 </figure>
 
-<p>Agent-to-agent invocation is explicit, bounded delegation. The caller may delegate only a permitted capability, for a declared purpose and scope; the callee receives no ambient access from the caller or orchestrator. Agent creation is a control-plane and authoring operation. A runtime agent may propose a role or workflow, but it cannot mint identity, credentials, tools, or authority for that proposal.</p>
+<p>Agent-to-agent invocation is explicit, bounded delegation. The caller may delegate only a permitted capability, for a declared purpose and scope; the callee receives no ambient access from the caller or orchestrator. Iteration count, campaign duration, or exploratory depth never increases authority. Agent creation is a control-plane and authoring operation. A runtime agent may propose a role, workflow, or policy artifact, but it cannot mint identity, credentials, tools, authority, or policy activation for that proposal. A proposed policy is admitted under already-active policy and cannot authorize itself.</p>
 <p>Human control follows from this separation rather than defining the architecture. A person may inspect, amend, reject, approve, pause, redirect, resume, or revoke when policy permits. Each intervention is a typed causal event. The proposal seen by the human is the same semantic proposal evaluated by authorization and delivered to execution.</p>
 
-<h2 id="invariants">7. Architectural Invariants</h2>
+<h2 id="invariants">8. Architectural Invariants</h2>
 <table>
   <thead><tr><th>Invariant</th><th>Failure prevented</th></tr></thead>
   <tbody>
@@ -405,15 +691,21 @@
     <tr><td>Bounded vocabulary at every semantic tier</td><td>Generated prose becoming an implicit execution language.</td></tr>
     <tr><td>Deterministic, validated lowering</td><td>Meaning changing unpredictably between intent and interaction.</td></tr>
     <tr><td>Stable semantic identity across representations</td><td>Presentation specialization altering responsibility or provenance.</td></tr>
+    <tr><td>Adaptive expansion remains structure-policy bounded</td><td>Exploration silently converting into unrestricted program mutation.</td></tr>
+    <tr><td>Goal dependencies, current consequences, and exploratory choices remain distinct</td><td>Prerequisite planning, forward activation, and policy-guided search being collapsed into one ambiguous graph.</td></tr>
+    <tr><td>Exploratory failure is recorded before backtracking</td><td>A failed path being retried indefinitely or disappearing from the investigation&rsquo;s causal history.</td></tr>
     <tr><td>Posture, capability, and authority remain independent</td><td>A useful classification accidentally granting privilege.</td></tr>
+    <tr><td>Domain artifacts and lifecycle status remain distinct</td><td>A failed hypothesis being confused with failed execution or rejected admission.</td></tr>
+    <tr><td>Proposal and application are separate events</td><td>Agent reasoning acquiring authority merely by crossing a tool boundary.</td></tr>
     <tr><td>Projection cannot inflate authority</td><td>A transport or experience exposing undeclared operations.</td></tr>
     <tr><td>No ambient delegation or orchestration authority</td><td>Multi-agent composition creating an implicit superuser.</td></tr>
-    <tr><td>Policy and authorization precede effects</td><td>A recommendation executing merely because it was generated.</td></tr>
+    <tr><td>Policy authoring and activation are separate authorities</td><td>A generated policy granting or activating its own privileges.</td></tr>
+    <tr><td>Policy, authorization, and admission precede effects</td><td>A recommendation executing merely because it was generated.</td></tr>
     <tr><td>Every consequential transition has causal attribution</td><td>Outcomes that cannot be explained, audited, or replayed.</td></tr>
   </tbody>
 </table>
 
-<h2 id="evidence">8. Compact Validation</h2>
+<h2 id="evidence">9. Compact Validation</h2>
 <p>The architecture is not derived from a single product workflow. Existing scenarios serve as compact tests of its invariants:</p>
 
 <div class="scenario-grid">
@@ -431,7 +723,7 @@
   </article>
   <article class="scenario">
     <h3>Operational Postures</h3>
-    <p>Red discovery, Blue investigation and defense, and Green remediation compose around a neutral coordinator while access remains independently controlled.</p>
+    <p>Red exploration, Blue investigation and defense, and Green remediation exchange durable semantic artifacts while retaining different activity, execution, persona, and authority models.</p>
   </article>
 </div>
 
@@ -439,12 +731,13 @@
   <strong>Validation criterion.</strong> A scenario supports the architecture only if its semantics remain stable when the participant, provider, presentation, transport, or authority grant changes independently.
 </div>
 
-<h2 id="adoption">9. Adoption Boundary</h2>
+<h2 id="adoption">10. Adoption Boundary</h2>
 <ol>
   <li><strong>Start with semantic contracts.</strong> Name the domain artifacts, evidence, relationships, provenance, and legal outcomes before selecting screens or tools.</li>
   <li><strong>Separate tiers from presentation.</strong> Let agents contribute typed meaning and let declared lowering choose runtime interaction.</li>
   <li><strong>Establish one state and event model.</strong> Project it differently for humans, agents, administrators, and headless hosts.</li>
-  <li><strong>Make authority independently testable.</strong> Model identity, grants, delegation, approval eligibility, services, and lifecycle in the control plane.</li>
+  <li><strong>Separate proposal from application.</strong> Give agents understanding and proposal operations while trusted hosts own authorization, admission, disposition, application, receipts, and audit.</li>
+  <li><strong>Make authority independently testable.</strong> Model identity, grants, delegation, approval eligibility, policy activation, services, and lifecycle in the control plane.</li>
   <li><strong>Move effects to declared edges.</strong> Keep credentials and external execution in trusted hosts behind validators and ceilings.</li>
   <li><strong>Validate substitutions.</strong> Change presentation, provider, participant, or posture independently and prove that semantic and causal invariants still hold.</li>
 </ol>
