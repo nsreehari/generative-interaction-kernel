@@ -1,5 +1,6 @@
 import {
   materializeBlueprint,
+  parseBlueprintReference,
   type ExternalContext,
   type BlueprintArtifact,
 } from "@gik/blueprint";
@@ -19,6 +20,7 @@ import incidentReportExplorerBlueprint from "../blueprints/incident-report-explo
 import incidentReportExplorer1aBlueprint from "../blueprints/incident-report-explorer-1a/blueprint.json";
 import incidentReportExplorer2Blueprint from "../blueprints/incident-report-explorer-2/blueprint.json";
 import incidentReportExplorer3Blueprint from "../blueprints/incident-report-explorer-3/blueprint.json";
+import incidentReportAnalysisShellBlueprint from "../blueprints/incident-report-analysis-shell/blueprint.json";
 import liveCardsBlueprint from "../blueprints/live-cards/blueprint.json";
 import liveWorkspaceSocBlueprint from "../blueprints/live-workspace-soc/blueprint.json";
 import manageBlueprintsBlueprint from "../blueprints/manage-blueprints/blueprint.json";
@@ -37,6 +39,7 @@ export const sampleBlueprints: Readonly<Record<string, BlueprintArtifact>> = {
   "copilot-c2": copilotC2Blueprint as unknown as BlueprintArtifact,
   "foundry-agent": foundryAgentBlueprint as unknown as BlueprintArtifact,
   "foundry-agent-no-cells": foundryAgentNoCellsBlueprint as unknown as BlueprintArtifact,
+  "incident-report-analysis-shell": incidentReportAnalysisShellBlueprint as unknown as BlueprintArtifact,
   "incident-report-explorer": incidentReportExplorerBlueprint as unknown as BlueprintArtifact,
   "incident-report-explorer-1a": incidentReportExplorer1aBlueprint as unknown as BlueprintArtifact,
   "incident-report-explorer-2": incidentReportExplorer2Blueprint as unknown as BlueprintArtifact,
@@ -67,6 +70,14 @@ export function openSampleBlueprint(
   const materialized = materializeBlueprint({
     blueprint: resolveSampleBlueprintSource(id),
     externalContext,
+    resolveBlueprint(reference) {
+      const parsed = parseBlueprintReference(reference);
+      const child = resolveSampleBlueprintSource(parsed.id);
+      if (parsed.version !== undefined && child.payload.version !== parsed.version) {
+        throw new Error(`Blueprint '${parsed.id}' version '${parsed.version}' is unavailable`);
+      }
+      return child;
+    },
   });
   return openBlueprint(materialized.payload.terminalBlueprint);
 }

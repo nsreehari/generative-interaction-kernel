@@ -6,6 +6,7 @@
     "kind": "incident-semantic-blueprint",
     "version": "1.0.0",
     "structureMode": "fixed",
+    "interface": { "inputs": { "content": { "required": true, "schema": { "type": "string" }, "description": "Incident report Markdown supplied by the parent Blueprint." } } },
     "agentLifecycle": {
       "profiles": {
         "use": {
@@ -41,6 +42,26 @@
         "from": "incident-semantic",
         "to": "runtime-document",
         "representations": [
+          {
+            "id": "hosted-analysis",
+            "when": "externalContext.hostedAnalysis = true",
+            "views": {
+              "foundry-access-gate": { "capability": "foundry:access-gate", "bindings": { "access": { "expression": "{'triggered': incident3.foundryAccessStatus != 'ready' and incident3.foundryAccessStatus != 'empty', 'status': incident3.foundryAccessStatus = 'checking' ? 'checking' : (incident3.foundryAccessStatus = 'required' ? 'required' : 'error'), 'error': incident3.foundryAccessError}" } } },
+              "incident-semantic-analyzer": { "capability": "incident3:report", "props": { "title": "Source-faithful views" }, "bindings": { "value": { "from": "incident3.model" }, "content": { "expression": "externalContext.content" }, "analyzedContent": { "from": "incident3.analyzedContent" }, "error": { "from": "incident3.error" }, "fullscreen": { "from": "incident3.fullscreen" }, "pending": { "from": "incident3.analysisPending" } } },
+              "incident-analyze-report": { "capability": "fluent:button", "props": { "label": "Analyze report", "appearance": "primary" }, "bindings": { "disabled": { "from": "incident3.analysisPending" }, "loading": { "from": "incident3.analysisPending" } }, "visibility": "incident3.model = null or externalContext.content != incident3.analyzedContent" },
+              "incident-flight-a": { "capability": "incident3:incident-story", "bindings": { "value": { "from": "incident3.model" } } },
+              "incident-flight-b": { "capability": "incident3:investigation-canvas", "bindings": { "value": { "from": "incident3.model" } } }
+            },
+            "presentation": {
+              "roots": ["foundry-access-gate"],
+              "placements": [
+                { "cell": "incident-semantic-analyzer", "parent": "foundry-access-gate", "slot": "children", "order": 0 },
+                { "cell": "incident-flight-a", "parent": "incident-semantic-analyzer", "slot": "children", "order": 0 },
+                { "cell": "incident-flight-b", "parent": "incident-semantic-analyzer", "slot": "children", "order": 1 },
+                { "cell": "incident-analyze-report", "parent": "incident-semantic-analyzer", "slot": "children", "order": 2 }
+              ]
+            }
+          },
           {
             "id": "operational",
             "when": "externalContext.attention = 'operational'",

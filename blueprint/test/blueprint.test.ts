@@ -9,14 +9,17 @@ import {
   applyBlueprintPatches,
   assembleBlueprint,
   compileCellTopology,
+  composeCellProgram,
   createBlueprintDurableTransitionAdapter,
   createBlueprint,
   defineLoweringCell,
   defineExploration,
+  formatBlueprintReference,
   inspectExploration,
   lowerBlueprint,
   materializeBlueprint,
   parseBlueprintJson,
+  parseBlueprintReference,
   runMaterializedTransition,
   runTransition,
   stringifyBlueprint,
@@ -118,6 +121,72 @@ describe("@gik/blueprint", () => {
 
     expect(assembled.payload.cells?.child.blueprint).toEqual({ inline: child });
     expect(parent.payload.cells?.child.blueprint).toEqual({ $ref: "./child.blueprint.json" });
+  });
+
+  it("requires parent cells to bind required child Blueprint inputs", () => {
+    const child = createBlueprint({
+      ...blueprint("child").payload,
+      interface: { inputs: { report: { required: true, schema: { type: "string" } } } },
+    });
+    const parent = createBlueprint({
+      ...blueprint("parent").payload,
+      cells: {
+        child: {
+          id: "child",
+          view: { capability: "host:hosted-blueprint" },
+          blueprint: { $ref: "blueprint:child" },
+        },
+      },
+    });
+
+    expect(() => assembleBlueprint(parent, () => child)).toThrow("missing required child input(s): report");
+    parent.payload.cells!.child.view!.bindings = { report: { from: "source.report" } };
+    expect(assembleBlueprint(parent, () => child).payload.cells?.child.blueprint).toHaveProperty("inline");
+  });
+
+  it("preserves a child Blueprint declaration in its lowered presentation node", () => {
+    const parent = createBlueprint({
+      ...blueprint("parent").payload,
+      cells: {
+        child: {
+          id: "child",
+          view: { capability: "host:hosted-blueprint", props: { mode: "compact" } },
+          blueprint: { $ref: "blueprint:analysis@1.0.0" },
+        },
+      },
+      projections: { presentation: { roots: ["child"] } },
+    });
+
+    const program = composeCellProgram(parent.payload, compileCellTopology("parent", parent.payload.cells ?? {}));
+    expect(program.root.props).toEqual({
+      mode: "compact",
+      hostedBlueprint: { $ref: "blueprint:analysis@1.0.0" },
+    });
+  });
+
+  it("parses and formats canonical hosted Blueprint references", () => {
+    expect(parseBlueprintReference("blueprint:incident-report-explorer-2@1.0.0")).toEqual({
+      scheme: "blueprint",
+      id: "incident-report-explorer-2",
+      version: "1.0.0",
+    });
+    expect(parseBlueprintReference("blueprint:local/deeper-incident-report-explorer")).toEqual({
+      scheme: "blueprint",
+      id: "local/deeper-incident-report-explorer",
+    });
+    expect(formatBlueprintReference({ scheme: "blueprint", id: "analysis", version: "2-preview.1" }))
+      .toBe("blueprint:analysis@2-preview.1");
+  });
+
+  it.each([
+    "./child.blueprint.json",
+    "blueprint:",
+    "blueprint:/child",
+    "blueprint:child/",
+    "blueprint:child@",
+    "blueprint:child@1/2",
+  ])("rejects invalid hosted Blueprint reference '%s'", (reference) => {
+    expect(() => parseBlueprintReference(reference)).toThrow("Invalid Blueprint reference");
   });
 
   it("rejects invalid tier and lowering recipe references", () => {

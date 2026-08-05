@@ -6,6 +6,7 @@
     "kind": "incident-report-semantic-blueprint",
     "version": "1.0.0",
     "structureMode": "fixed",
+    "interface": { "inputs": { "content": { "required": true, "schema": { "type": "string" }, "description": "Incident report Markdown supplied by the parent Blueprint." } } },
     "agentLifecycle": {
       "profiles": {
         "use": {
@@ -35,6 +36,23 @@
       "from": "incident-report-semantic",
       "to": "runtime-document",
       "representations": [{
+        "id": "hosted-analysis",
+        "when": "externalContext.hostedAnalysis = true",
+        "views": {
+          "foundry-access-gate": { "capability": "foundry:access-gate", "bindings": { "access": { "expression": "($s := incident1a.foundryAccessStatus; {'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': incident1a.foundryAccessError})" } } },
+          "incident-refinement": { "capability": "incident1a:refinement", "props": { "title": "Semantic component data" }, "bindings": { "value": { "from": "incident1a.model" }, "content": { "expression": "externalContext.content" }, "refinedContent": { "from": "incident1a.refinedContent" }, "error": { "from": "incident1a.error" }, "pending": { "from": "incident1a.refinementPending" } } },
+          "incident-improve-report": { "capability": "fluent:button", "props": { "label": "Improve report", "appearance": "primary" }, "bindings": { "disabled": { "from": "incident1a.refinementPending" }, "loading": { "from": "incident1a.refinementPending" } }, "visibility": "incident1a.model = null or externalContext.content != incident1a.refinedContent" },
+          "incident-sections": { "capability": "semantic:component-data-sections", "bindings": { "sections": { "from": "incident1a.model.sections" } } }
+        },
+        "presentation": {
+          "roots": ["foundry-access-gate"],
+          "placements": [
+            { "cell": "incident-refinement", "parent": "foundry-access-gate", "slot": "children", "order": 0 },
+            { "cell": "incident-sections", "parent": "incident-refinement", "slot": "children", "order": 0 },
+            { "cell": "incident-improve-report", "parent": "incident-refinement", "slot": "children", "order": 1 }
+          ]
+        }
+      }, {
         "id": "operational-report",
         "views": {
           "incident-workspace": { "capability": "incident1a:workspace", "props": { "title": "Incident report refinement" } },

@@ -24,6 +24,8 @@ ${root} .gx-muted { color: var(--muted); }
 ${root} .gx-row { display: flex; gap: var(--spacingHorizontalM); }
 ${root} .gx-row-between { justify-content: space-between; align-items: center; }
 ${root} .gx-col { display: flex; flex-direction: column; gap: var(--spacingVerticalM); }
+${root} .gx-col-fill { flex: 1; width: 100%; min-width: 0; min-height: 0; }
+${root} .gx-panel-fill { flex: 1; width: 100%; min-width: 0; min-height: 0; padding: 0; }
 ${root} .gx-growing-container {
   width: 100%; height: 100%; min-width: 0; min-height: 0; max-width: 100%; max-height: 100%;
   overflow: auto; overscroll-behavior: contain;

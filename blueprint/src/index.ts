@@ -1,4 +1,5 @@
 export * from "./blueprint";
+export * from "./blueprint-reference";
 export * from "./resolution";
 export * from "./cells";
 export * from "./lowering-cells";

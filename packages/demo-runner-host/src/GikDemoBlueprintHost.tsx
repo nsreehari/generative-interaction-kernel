@@ -1,6 +1,7 @@
 import React from "react";
 import {
   materializeBlueprint,
+  parseBlueprintReference,
   type BlueprintArtifact,
   type BlueprintTransitionResult,
   type ExternalContext,
@@ -19,6 +20,7 @@ import {
   type GenUISource,
   type OrganismBridge,
   type ProviderResolver,
+  type ReactBlueprintHostRegistry,
 } from "@gik/react";
 import demoRunnerBundleJson from "./demoRunnerBundleV1.json" with { type: "json" };
 import { createDemoRunnerEffectHandlersV1, type DemoRunnerEvent, type DemoRunnerExpressionScope } from "./demoRunnerEffectHandlersV1";
@@ -51,6 +53,7 @@ export interface DemoTargetHostProps {
   externalContext?: ExternalContext;
   context?: Record<string, Json>;
   onTransition?: (event: GIKEvent | null, result: BlueprintTransitionResult) => void;
+  blueprintRegistry?: ReactBlueprintHostRegistry;
 }
 
 export interface GikDemoBlueprintHostProps extends Omit<DemoTargetHostProps, "primaryBridge" | "onTransition"> {
@@ -95,13 +98,14 @@ export function GikDemoBlueprintHost({
   context,
   scenariosJson,
   resolveNative,
+  blueprintRegistry,
 }: GikDemoBlueprintHostProps): React.ReactElement {
   const enabled = React.useMemo(demoEnabled, []);
   if (!enabled || !scenariosJson) {
-    return <ResolvedTargetHost HostComponent={HostComponent} blueprint={blueprint} resolveLeavesProvider={resolveLeavesProvider} native={native} resolveNative={resolveNative} contexts={contexts} fileServices={fileServices} primaryInstanceId={primaryInstanceId} className={className} style={style} externalContext={externalContext} context={context} />;
+    return <ResolvedTargetHost HostComponent={HostComponent} blueprint={blueprint} resolveLeavesProvider={resolveLeavesProvider} native={native} resolveNative={resolveNative} contexts={contexts} fileServices={fileServices} primaryInstanceId={primaryInstanceId} className={className} style={style} externalContext={externalContext} context={context} blueprintRegistry={blueprintRegistry} />;
   }
 
-  return <ActiveDemoHost HostComponent={HostComponent} blueprint={blueprint} resolveLeavesProvider={resolveLeavesProvider} native={native} resolveNative={resolveNative} contexts={contexts} fileServices={fileServices} primaryInstanceId={primaryInstanceId} className={className} style={style} externalContext={externalContext} context={context} scenariosJson={scenariosJson} />;
+  return <ActiveDemoHost HostComponent={HostComponent} blueprint={blueprint} resolveLeavesProvider={resolveLeavesProvider} native={native} resolveNative={resolveNative} contexts={contexts} fileServices={fileServices} primaryInstanceId={primaryInstanceId} className={className} style={style} externalContext={externalContext} context={context} scenariosJson={scenariosJson} blueprintRegistry={blueprintRegistry} />;
 }
 
 function ResolvedTargetHost({
@@ -109,9 +113,22 @@ function ResolvedTargetHost({
   resolveNative,
   ...props
 }: GikDemoBlueprintHostProps): React.ReactElement {
+  const parentInstanceId = props.primaryInstanceId === undefined
+    ? props.blueprint.payload.id
+    : `${props.blueprint.payload.id}:${props.primaryInstanceId}`;
   const materialized = React.useMemo(
-    () => materializeBlueprint({ blueprint: props.blueprint, externalContext: props.externalContext }),
-    [props.blueprint, props.externalContext],
+    () => materializeBlueprint({
+      blueprint: props.blueprint,
+      externalContext: props.externalContext,
+      resolveBlueprint: (ref, childContext) => {
+        if (!props.blueprintRegistry) throw new Error(`No Blueprint host registry can resolve '${ref}'`);
+        return props.blueprintRegistry.resolveArtifact(parseBlueprintReference(ref), {
+          ...childContext,
+          parentInstanceId,
+        });
+      },
+    }),
+    [parentInstanceId, props.blueprint, props.blueprintRegistry, props.externalContext],
   );
   const resolvedNative = React.useMemo(
     () => resolveNative?.(materialized) ?? props.native,
@@ -134,6 +151,7 @@ function ActiveDemoHost({
   context,
   scenariosJson,
   resolveNative,
+  blueprintRegistry,
 }: GikDemoBlueprintHostProps & { scenariosJson: DemoRunnerDocument }): React.ReactElement {
   const [externalContextState, setExternalContextState] = React.useState<ExternalContext>(() => structuredClone(externalContext ?? {}));
   const [targetEpoch, setTargetEpoch] = React.useState(0);
@@ -141,8 +159,18 @@ function ActiveDemoHost({
   const targetConnectionWaitersRef = React.useRef<Array<() => void>>([]);
   const ledgerSequenceRef = React.useRef(0);
   const materializedBlueprint = React.useMemo(
-    () => materializeBlueprint({ blueprint, externalContext: externalContextState }),
-    [blueprint, externalContextState],
+    () => materializeBlueprint({
+      blueprint,
+      externalContext: externalContextState,
+      resolveBlueprint: (ref, childContext) => {
+        if (!blueprintRegistry) throw new Error(`No Blueprint host registry can resolve '${ref}'`);
+        return blueprintRegistry.resolveArtifact(parseBlueprintReference(ref), {
+          ...childContext,
+          parentInstanceId: `${blueprint.payload.id}:${primaryInstanceId ?? "demo"}:${targetEpoch}`,
+        });
+      },
+    }),
+    [blueprint, blueprintRegistry, externalContextState, primaryInstanceId, targetEpoch],
   );
   const resolvedNative = React.useMemo(
     () => resolveNative?.(materializedBlueprint) ?? native,
@@ -270,7 +298,7 @@ function ActiveDemoHost({
 
   return (
     <GikToolingShell runnerVisible inspectorVisible>
-      <HostComponent key={resolvedPrimaryInstanceId} blueprint={blueprint} resolveLeavesProvider={resolveLeavesProvider} native={resolvedNative} contexts={mergedContexts} fileServices={fileServices} primaryBridge={primaryBridge} primaryInstanceId={resolvedPrimaryInstanceId} className={className} style={style} externalContext={externalContextState} context={context} onTransition={onTransition} />
+      <HostComponent key={resolvedPrimaryInstanceId} blueprint={blueprint} resolveLeavesProvider={resolveLeavesProvider} native={resolvedNative} contexts={mergedContexts} fileServices={fileServices} primaryBridge={primaryBridge} primaryInstanceId={resolvedPrimaryInstanceId} className={className} style={style} externalContext={externalContextState} context={context} onTransition={onTransition} blueprintRegistry={blueprintRegistry} />
       <BundleHost bundle={toolingBundle} resolveProvider={resolveLeavesProvider} contexts={mergedContexts} fileServices={fileServices} />
     </GikToolingShell>
   );

@@ -2,7 +2,8 @@
 // owns URL canonicalization and the switcher overlay.
 
 import React from "react";
-import { materializeBlueprint, prepareBlueprintProgram } from "@gik/blueprint";
+import { Spinner } from "@fluentui/react-components";
+import { materializeBlueprint, parseBlueprintReference, prepareBlueprintProgram } from "@gik/blueprint";
 import { BlueprintHost as InMemoryBlueprintHost } from "@gik/react";
 import { BlueprintHost as DurableBlueprintHost, createNativeBlueprintWorker } from "@gik/react/durable";
 import { createIndexedDbProvider } from "@gik/durable-runtime/storage/indexed-db";
@@ -28,6 +29,7 @@ import {
   resolveBlueprintNativeFromMaterialized,
 } from "../../../shared/sample-bundles";
 import { resolveSampleBlueprintSource } from "../../../shared/blueprints";
+import { createSampleBlueprintHostRegistry } from "../../../shared/hosted-blueprint-registry";
 import portfolioTwoTierDemo from "../../../scenarios/portfolio-tracker-2tiers-baseline/scenario.json" with { type: "json" };
 
 const embeddedHostStyle: React.CSSProperties = { height: "100vh" };
@@ -39,7 +41,7 @@ const defaultExternalContextByBlueprint = {
 export function Host(): React.ReactElement {
   const query = readHostQuery(window.location.search, window.location.pathname);
   const targetId = query.targetId ?? DEFAULT_BLUEPRINT;
-  const HostComponent = query.durableEnabled ? DurableIndexedDbHost : InMemoryBlueprintHost;
+  const HostComponent = query.durableEnabled ? DurableIndexedDbHost : InMemoryHost;
   React.useEffect(() => {
     const canonicalUrl = canonicalizeHostUrl(window.location.href);
     if (canonicalUrl !== window.location.href) window.history.replaceState(null, "", canonicalUrl);
@@ -56,6 +58,14 @@ export function Host(): React.ReactElement {
       resolveLeavesProvider={resolveProvider}
     />
   );
+}
+
+function hostedBlueprintLoading(): React.ReactElement {
+  return <Spinner label="Loading analysis\u00a0\u2026" labelPosition="after" size="small" />;
+}
+
+function InMemoryHost(props: DemoTargetHostProps): React.ReactElement {
+  return <InMemoryBlueprintHost {...props} renderHostedBlueprintLoading={hostedBlueprintLoading} />;
 }
 
 function durableRef(value: string): string {
@@ -100,9 +110,19 @@ function DurableIndexedDbHost(props: DemoTargetHostProps): React.ReactElement {
   const [indexedDbProvider] = React.useState(() =>
     createIndexedDbProvider({ databaseName: "gik-samples-host" }));
   const materializedBlueprint = React.useMemo(() => {
+    const parentInstanceId = props.primaryInstanceId === undefined
+      ? blueprintId
+      : `${blueprintId}:${props.primaryInstanceId}`;
     const materialized = materializeBlueprint({
       blueprint: props.blueprint,
       externalContext: props.externalContext,
+      resolveBlueprint: (ref, childContext) => {
+        if (!props.blueprintRegistry) throw new Error(`No Blueprint host registry can resolve '${ref}'`);
+        return props.blueprintRegistry.resolveArtifact(parseBlueprintReference(ref), {
+          ...childContext,
+          parentInstanceId,
+        });
+      },
     });
     if (!props.context) return materialized;
     const initialState = prepareBlueprintProgram(materialized.payload.terminalBlueprint, {
@@ -112,7 +132,7 @@ function DurableIndexedDbHost(props: DemoTargetHostProps): React.ReactElement {
       ...materialized,
       payload: { ...materialized.payload, initialState: structuredClone(initialState) },
     };
-  }, [props.blueprint, props.context, props.externalContext]);
+  }, [blueprintId, props.blueprint, props.blueprintRegistry, props.context, props.externalContext, props.primaryInstanceId]);
   const runtime = React.useMemo(() => {
     const identity = JSON.stringify({
       blueprintId,
@@ -144,6 +164,7 @@ function DurableIndexedDbHost(props: DemoTargetHostProps): React.ReactElement {
       runtime={runtime}
       worker={worker}
       materializedBlueprint={materializedBlueprint}
+      renderHostedBlueprintLoading={hostedBlueprintLoading}
     />
   );
 }
@@ -164,6 +185,16 @@ function HostView({
   const proposalStore = React.useMemo(
     () => createSampleBlueprintProposalStore({ durableEnabled, blueprintId: id }),
     [durableEnabled, id],
+  );
+  const hostedBlueprintRegistry = React.useMemo(
+    () => createSampleBlueprintHostRegistry({
+      createProposalStore: (blueprintId, childContext) => createSampleBlueprintProposalStore({
+        durableEnabled,
+        blueprintId,
+        instanceId: `${childContext.parentInstanceId}/cells/${childContext.cellId}`,
+      }),
+    }),
+    [durableEnabled],
   );
   const { blueprint, native } = React.useMemo(() => ({
     blueprint: resolveSampleBlueprintSource(id),
@@ -190,6 +221,7 @@ function HostView({
           : undefined}
         scenariosJson={demoRunnerDocument as never}
         resolveLeavesProvider={resolveLeavesProvider}
+        blueprintRegistry={hostedBlueprintRegistry}
         style={embeddedHostStyle}
       />
       <ApplicationSwitcher currentId={id} />
