@@ -34,6 +34,8 @@ import {
   fluentTableDefinition,
 } from "./FluentDataControls";
 import { FluentDialog, fluentDialogDefinition } from "./FluentDialog";
+import { FluentText, fluentTextDefinition } from "./FluentText";
+import { FluentToolbar, fluentToolbarDefinition } from "./FluentToolbar";
 import {
   FluentBadge,
   FluentPersona,
@@ -56,9 +58,11 @@ export const fluentComponentViews: Record<string, ProjectionView> = {
   spinner: FluentSpinner,
   switch: FluentSwitch,
   table: FluentTable,
+  text: FluentText,
   "tab-bar": FluentTabBar,
   "text-field": FluentTextField,
   textarea: FluentTextarea,
+  toolbar: FluentToolbar,
   toggle: FluentToggle,
 };
 
@@ -75,9 +79,11 @@ export const fluentComponentDefinitions = {
   spinner: fluentSpinnerDefinition,
   switch: fluentSwitchDefinition,
   table: fluentTableDefinition,
+  text: fluentTextDefinition,
   "tab-bar": fluentTabBarDefinition,
   "text-field": fluentTextFieldDefinition,
   textarea: fluentTextareaDefinition,
+  toolbar: fluentToolbarDefinition,
   toggle: fluentToggleDefinition,
 } as const;
 

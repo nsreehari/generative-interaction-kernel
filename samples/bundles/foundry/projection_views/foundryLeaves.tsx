@@ -52,7 +52,6 @@ export const FunctionAccessGate: ProjectionView = ({ node, emit, children }) => 
       globalThis.removeEventListener?.("storage", storageChanged);
     };
   }, [scope, service.changeEvent, service.storageKey]);
-
   const sourceAccess: Record<string, Json> = {
     title: `Connect to ${service.label}`,
     message: requiresCredential
@@ -87,7 +86,6 @@ export const FunctionAccessGate: ProjectionView = ({ node, emit, children }) => 
       resetLabel: "Reset Key",
     },
   };
-
   return (
     <AccessGate
       node={accessGateNode(`${node.id}-primitive`, access)}

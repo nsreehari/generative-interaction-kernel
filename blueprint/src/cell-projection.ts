@@ -329,7 +329,7 @@ function toProgramNode(cell: CellDefinition, children: readonly DocNode[]): DocN
   const expressionBindings = Object.entries(cell.view?.bindings ?? {})
     .filter(([, binding]) => binding.expression !== undefined)
     .map(([prop, binding]) => [prop, binding.expression!] as const);
-  const props = source
+  const viewProps = source
     ? {
         ...structuredClone(cell.view?.props ?? {}),
         externalSource: { refreshEvent: "refresh" },
@@ -337,6 +337,9 @@ function toProgramNode(cell: CellDefinition, children: readonly DocNode[]): DocN
     : cell.view?.props
       ? structuredClone(cell.view.props)
       : undefined;
+  const props = cell.blueprint
+    ? { ...viewProps, hostedBlueprint: JSON.parse(JSON.stringify(cell.blueprint)) as Json }
+    : viewProps;
   const events = structuredClone(cell.behavior?.events ?? {});
   if (source) events.refresh = [{ do: "invoke", args: { tool: source.operation } }];
   const edges = {

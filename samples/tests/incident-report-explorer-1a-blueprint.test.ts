@@ -140,7 +140,8 @@ describe("incident-report-explorer-1a Blueprint", () => {
 
   it("owns improve and refresh execution in one authored command cell", () => {
     expect(blueprint.payload.runtime.state.incident1a.refinementPending).toBe(false);
-    expect(blueprint.payload.recipes[0].representations[0].views).toMatchObject({
+    const standalone = blueprint.payload.recipes[0].representations.find(({ id }) => id === "operational-report");
+    expect(standalone?.views).toMatchObject({
       "incident-improve-report": {
         bindings: {
           disabled: { from: "incident1a.refinementPending" },

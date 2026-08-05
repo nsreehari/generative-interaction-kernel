@@ -2,8 +2,11 @@ import type { Json } from "@gik/kernel";
 import { parseBlueprintJson, resolveBlueprintExecution, type BlueprintArtifact } from "@gik/blueprint";
 import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
 import { sampleBlueprints } from "../../../../shared/blueprints";
+import {
+  createLocalBlueprintArtifactStore,
+  localBlueprintArtifactStorageKey,
+} from "../../../../shared/local-blueprint-artifact-store";
 
-const LOCAL_BUNDLE_STORAGE_KEY = "gik.manage-blueprints.blueprints.v1";
 const BUNDLE_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 type JsonRecord = Record<string, Json>;
@@ -26,47 +29,16 @@ type ValidationResult = {
   inspection: JsonRecord | null;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function getStorage(): Storage | null {
-  if (typeof globalThis === "undefined" || !("localStorage" in globalThis)) return null;
-  return globalThis.localStorage ?? null;
-}
-
 function normalizeBlueprint(value: unknown): BlueprintArtifact {
   return parseBlueprintJson(JSON.stringify(value));
 }
 
 function readStoredBlueprintMap(): { blueprints: Record<string, BlueprintArtifact>; errors: string[] } {
-  const storage = getStorage();
-  if (!storage) return { blueprints: {}, errors: [] };
-  const raw = storage.getItem(LOCAL_BUNDLE_STORAGE_KEY);
-  if (!raw) return { blueprints: {}, errors: [] };
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (!isRecord(parsed)) throw new Error("stored value must be an object keyed by blueprint id");
-    const blueprints: Record<string, BlueprintArtifact> = {};
-    const errors: string[] = [];
-    for (const [id, value] of Object.entries(parsed)) {
-      try {
-        blueprints[id] = normalizeBlueprint(value);
-      } catch (error) {
-        errors.push(`${id}: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    }
-    return { blueprints, errors };
-  } catch (error) {
-    return { blueprints: {}, errors: [error instanceof Error ? error.message : String(error)] };
-  }
+  return createLocalBlueprintArtifactStore().read();
 }
 
 function writeStoredBlueprintMap(blueprints: Record<string, BlueprintArtifact>): void {
-  const storage = getStorage();
-  if (!storage) throw new Error("Browser localStorage is unavailable in this host.");
-  storage.setItem(LOCAL_BUNDLE_STORAGE_KEY, JSON.stringify(blueprints));
+  createLocalBlueprintArtifactStore().write(blueprints);
 }
 
 function repositoryEntries(): CatalogEntry[] {
@@ -484,6 +456,6 @@ export const manageBlueprintsEffects: EffectHandlerMap = {
   },
 };
 
-export const manageBlueprintsStorageKey = LOCAL_BUNDLE_STORAGE_KEY;
+export const manageBlueprintsStorageKey = localBlueprintArtifactStorageKey;
 
 export default manageBlueprintsEffects;

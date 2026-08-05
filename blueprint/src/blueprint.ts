@@ -146,9 +146,13 @@ export function assembleBlueprint<TRecipe extends LoweringRecipeDefinition = Low
         const ref = child.$ref;
         if (typeof ref !== "string") throw new BlueprintValidationError(`Blueprint Cell '${cellId}' has an invalid child Blueprint reference`);
         if (!resolveReference) throw new BlueprintValidationError(`Blueprint Cell '${cellId}' has unresolved reference '${ref}'`);
-        cell.blueprint = { inline: assemble(resolveReference(ref, { parentBlueprintId: blueprint.payload.id, cellId })) };
+        const assembledChild = assemble(resolveReference(ref, { parentBlueprintId: blueprint.payload.id, cellId }));
+        validateChildInputs(blueprint.payload.id, cellId, cell, assembledChild);
+        cell.blueprint = { inline: assembledChild };
       } else {
-        cell.blueprint = { inline: assemble(child.inline as BlueprintArtifact<TRecipe>) };
+        const assembledChild = assemble(child.inline as BlueprintArtifact<TRecipe>);
+        validateChildInputs(blueprint.payload.id, cellId, cell, assembledChild);
+        cell.blueprint = { inline: assembledChild };
       }
     }
     active.delete(blueprint.payload.id);
@@ -156,6 +160,26 @@ export function assembleBlueprint<TRecipe extends LoweringRecipeDefinition = Low
     return assembled;
   };
   return assemble(source);
+}
+
+function validateChildInputs(
+  parentBlueprintId: string,
+  cellId: string,
+  cell: { view?: { props?: Record<string, unknown>; bindings?: Record<string, unknown> } },
+  child: BlueprintArtifact,
+): void {
+  const supplied = new Set([
+    ...Object.keys(cell.view?.props ?? {}),
+    ...Object.keys(cell.view?.bindings ?? {}),
+  ]);
+  const missing = Object.entries(child.payload.interface?.inputs ?? {})
+    .filter(([name, port]) => port.required && !supplied.has(name))
+    .map(([name]) => name);
+  if (missing.length > 0) {
+    throw new BlueprintValidationError(
+      `Blueprint Cell '${cellId}' in '${parentBlueprintId}' is missing required child input(s): ${missing.join(", ")}`,
+    );
+  }
 }
 
 export function lowerBlueprint<Out extends ExecutableProgramDefinition>(

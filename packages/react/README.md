@@ -32,6 +32,17 @@ export const App = () => (
 Omit `worker` when middleware, a backend, or an Azure Function owns execution. Existing
 `@gik/blueprint-host` consumers should migrate to `BlueprintHost` from `@gik/react`.
 
+## Nested Blueprint hosting
+
+Pass a `BlueprintHostRegistry` when a parent uses `host:hosted-blueprint`. The registry synchronously
+resolves trusted artifacts for assembly and resolves the executable definition at mount, including
+host-owned native projections, effects, and service composition. Browser-authored JSON never supplies
+native code.
+
+Each child mounts at its parent Cell position with a separate controller. The durable host derives a
+stable child runtime ID and separate state, journal, and effects-queue references from the parent
+instance and Cell identity, while reusing the configured durable provider.
+
 ## Peer dependencies
 
 `react`, `react-dom`, and `@fluentui/react-components` are peer dependencies you provide.

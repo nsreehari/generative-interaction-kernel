@@ -97,7 +97,9 @@ describe("incident-report-explorer-2 Blueprint", () => {
 
   it("keeps analysis pending until success or failure settlement", () => {
     expect(blueprint.payload.runtime?.state?.incident2).toMatchObject({ analysisPending: false });
-    expect(blueprint.payload.recipes[0].representations.map(({ views }) => views["incident-semantic-analyzer"]?.bindings)).toEqual([
+    expect(blueprint.payload.recipes[0].representations
+      .filter(({ id }) => id === "operational" || id === "brief")
+      .map(({ views }) => views["incident-semantic-analyzer"]?.bindings)).toEqual([
       expect.objectContaining({ pending: { from: "incident2.analysisPending" } }),
       expect.objectContaining({ pending: { from: "incident2.analysisPending" } }),
     ]);
@@ -130,8 +132,8 @@ describe("incident-report-explorer-2 Blueprint", () => {
   });
 
   it("authors valid specs for the imported semantic component provider", () => {
-    const operational = blueprint.payload.recipes[0].representations[0];
-    const views = operational.views ?? {};
+    const operational = blueprint.payload.recipes[0].representations.find(({ id }) => id === "operational");
+    const views = operational?.views ?? {};
     const cases = [
       ["incident-verdict", "decision"],
       ["incident-blast-radius", "entity-set"],

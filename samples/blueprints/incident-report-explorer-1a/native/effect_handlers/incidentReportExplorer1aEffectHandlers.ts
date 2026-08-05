@@ -60,7 +60,7 @@ const handlers: EffectHandlerMap = {
   },
   prepareRefinement: (ctx) => ({
     ops: [
-      ctx.set("incident1a.pendingContent", ctx.get("incident1a.content") ?? ""),
+      ctx.set("incident1a.pendingContent", ctx.get("externalContext.content") ?? ctx.get("incident1a.content") ?? ""),
       ctx.set("incident1a.error", ""),
     ],
   }),

@@ -51,7 +51,7 @@ const handlers: EffectHandlerMap = {
     ] };
   },
   prepareAnalysis: (ctx) => ({ ops: [
-    ctx.set("incident3.pendingContent", ctx.get("incident3.content") ?? ""),
+    ctx.set("incident3.pendingContent", ctx.get("externalContext.content") ?? ctx.get("incident3.content") ?? ""),
     ctx.set("incident3.error", ""),
   ] }),
 };

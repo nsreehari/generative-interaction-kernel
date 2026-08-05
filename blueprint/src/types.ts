@@ -195,6 +195,18 @@ export interface BlueprintAgentLifecycleDefinition {
   profiles: Partial<Record<BlueprintAgentLifecycleProfile, BlueprintAgentLifecycleProfileManifest>>;
 }
 
+export interface BlueprintInterfacePort {
+  schema?: Record<string, Json>;
+  required?: boolean;
+  description?: string;
+}
+
+export interface BlueprintInterfaceDefinition {
+  inputs?: Record<string, BlueprintInterfacePort>;
+  outputs?: Record<string, BlueprintInterfacePort>;
+  events?: readonly string[];
+}
+
 export type BlueprintPatchOperation =
   | { op: "addCell"; cell: CellDefinition }
   | { op: "replaceCell"; cellId: string; cell: CellDefinition }
@@ -223,6 +235,7 @@ export interface BlueprintDefinition<TRecipe extends LoweringRecipeDefinition = 
   structureMode?: BlueprintStructureMode;
   structurePolicy?: BlueprintStructurePolicy;
   agentLifecycle?: BlueprintAgentLifecycleDefinition;
+  interface?: BlueprintInterfaceDefinition;
   tiers: TierDefinition[];
   recipes: TRecipe[];
   context?: Record<string, Json>;
@@ -247,6 +260,35 @@ export type BlueprintReferenceResolver<TRecipe extends LoweringRecipeDefinition 
   ref: string,
   context: { parentBlueprintId: string; cellId: string },
 ) => BlueprintArtifact<TRecipe>;
+
+export interface BlueprintReference {
+  scheme: "blueprint";
+  id: string;
+  version?: string;
+}
+
+export interface HostedBlueprintDefinition<TNative = unknown> {
+  reference: BlueprintReference;
+  blueprint: BlueprintArtifact;
+  native?: TNative;
+}
+
+export interface HostedBlueprintResolutionContext {
+  parentBlueprintId: string;
+  parentInstanceId: string;
+  cellId: string;
+}
+
+export interface BlueprintHostRegistry<TNative = unknown> {
+  resolveArtifact(
+    reference: BlueprintReference,
+    context: HostedBlueprintResolutionContext,
+  ): BlueprintArtifact;
+  resolve(
+    reference: BlueprintReference,
+    context: HostedBlueprintResolutionContext,
+  ): HostedBlueprintDefinition<TNative> | Promise<HostedBlueprintDefinition<TNative>>;
+}
 
 export type BlueprintLowering<Out extends ExecutableProgramDefinition = ExecutableProgramDefinition> =
   (blueprint: BlueprintArtifact) => Out;

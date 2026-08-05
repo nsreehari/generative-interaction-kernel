@@ -17,6 +17,28 @@ runtime state.
 
 See `docs/decisions/ADR-0040-external-services-and-queueface.md` for the normative ownership model.
 
+## Hosted Blueprint references
+
+A Cell may mount another Blueprint through a canonical host resource URI:
+
+```json
+{
+	"id": "analysis",
+	"blueprint": { "$ref": "blueprint:incident-analysis@1.0.0" },
+	"view": {
+		"capability": "host:hosted-blueprint",
+		"bindings": { "content": { "from": "incident.content" } }
+	}
+}
+```
+
+Child Blueprints declare their public `interface.inputs`, `interface.outputs`, and `interface.events`.
+Assembly rejects a parent Cell that omits a required child input. Values cross the runtime boundary as
+immutable external context; the child owns its state, services, lifecycle, settlement, and outputs.
+
+`parseBlueprintReference()` and `formatBlueprintReference()` provide canonical `blueprint:` URI handling.
+Artifact assembly remains synchronous so cycle detection and interface admission complete before execution.
+
 ## Worker hosting
 
 `@gik/blueprint/worker` coordinates one journal/engine/effect cycle per wake. Connector-specific

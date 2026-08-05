@@ -18,12 +18,16 @@ test("primitive bundle exposes every declared component capability", () => {
   assert.deepEqual(Object.keys(primitiveLeaves).sort(), [
     "access-gate",
     "chart",
+    "collection-board",
+    "container",
     "datetime",
     "editable-table",
     "form",
     "gantt",
+    "graph-diagram",
     "growing-container",
     "infinite-canvas",
+    "source-viewer",
     "timer-button",
     "todo-list",
   ]);

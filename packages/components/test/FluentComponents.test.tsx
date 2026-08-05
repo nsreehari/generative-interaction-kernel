@@ -23,8 +23,10 @@ import {
   fluentSwitchDefinition,
   fluentTableDefinition,
   fluentTabBarDefinition,
+  fluentTextDefinition,
   fluentTextFieldDefinition,
   fluentTextareaDefinition,
+  fluentToolbarDefinition,
   fluentToggleDefinition,
   getFluentComponentAgentKit,
   listFluentComponents,
@@ -34,7 +36,7 @@ import {
 } from "../src/fluent";
 
 test("fluent entrypoint exposes all views and closed definitions", () => {
-  const controls = ["badge", "button", "chips", "data-grid", "dialog", "dropdown", "list", "persona", "searchbox", "spinner", "switch", "tab-bar", "table", "text-field", "textarea", "toggle"];
+  const controls = ["badge", "button", "chips", "data-grid", "dialog", "dropdown", "list", "persona", "searchbox", "spinner", "switch", "tab-bar", "table", "text", "text-field", "textarea", "toggle", "toolbar"];
   const events: Record<string, string[]> = {
     badge: [],
     button: ["press"],
@@ -49,8 +51,10 @@ test("fluent entrypoint exposes all views and closed definitions", () => {
     switch: ["toggle"],
     "tab-bar": ["select"],
     table: [],
+    text: [],
     "text-field": ["input"],
     textarea: ["input"],
+    toolbar: [],
     toggle: ["toggle"],
   };
   assert.deepEqual(Object.keys(fluentComponentViews).sort(), controls);
@@ -143,6 +147,21 @@ test("FluentDialog exposes controlled native dialog composition", () => {
   assert.equal(fluentDialogDefinition.validate({ open: "yes", title: "Review details" }).ok, false);
 });
 
+test("FluentToolbar exposes native command composition", () => {
+  const trial = fluentToolbarDefinition.materializeTrial();
+  const Component = fluentToolbarDefinition.component;
+  const markup = renderToStaticMarkup(
+    <Component node={trial} emit={() => undefined} children={<button type="button">View source</button>} />,
+  );
+
+  assert.match(markup, /role="toolbar"/);
+  assert.match(markup, /aria-label="Incident report controls"/);
+  assert.match(markup, /View source/);
+  assert.deepEqual(fluentToolbarDefinition.slots, ["children"]);
+  assert.equal(fluentToolbarDefinition.validate({ ariaLabel: "Source controls", size: "small" }).ok, true);
+  assert.equal(fluentToolbarDefinition.validate({ ariaLabel: "Source controls", direction: "row" }).ok, false);
+});
+
 test("basic Fluent controls render their public trials", () => {
   const definitions = [
     [fluentTextFieldDefinition, /Name/],
@@ -216,9 +235,11 @@ test("Fluent authoring APIs expose complete contracts and scoped agent tools", (
     "spinner",
     "switch",
     "table",
+    "text",
     "tab-bar",
     "text-field",
     "textarea",
+    "toolbar",
     "toggle",
   ]);
 

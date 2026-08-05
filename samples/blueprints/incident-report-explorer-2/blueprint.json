@@ -6,6 +6,7 @@
     "kind": "incident-semantic-blueprint",
     "version": "1.0.0",
     "structureMode": "fixed",
+    "interface": { "inputs": { "content": { "required": true, "schema": { "type": "string" }, "description": "Incident report Markdown supplied by the parent Blueprint." } } },
     "agentLifecycle": {
       "profiles": {
         "use": {
@@ -41,6 +42,28 @@
         "from": "incident-semantic",
         "to": "runtime-document",
         "representations": [
+          {
+            "id": "hosted-analysis",
+            "when": "externalContext.hostedAnalysis = true",
+            "views": {
+              "foundry-access-gate": { "capability": "foundry:access-gate", "bindings": { "access": { "expression": "($s := incident2.foundryAccessStatus; {'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': incident2.foundryAccessError})" } } },
+              "incident-semantic-analyzer": { "capability": "incident2:report", "props": { "title": "Operational assessment" }, "bindings": { "value": { "from": "incident2.model" }, "content": { "expression": "externalContext.content" }, "analyzedContent": { "from": "incident2.analyzedContent" }, "error": { "from": "incident2.error" }, "pending": { "from": "incident2.analysisPending" } } },
+              "incident-verdict": { "capability": "semantic:decision", "props": { "variant": "summary", "spec": { "eyebrow": "Incident determination", "fields": { "title": "identity.title", "summary": "summary", "outcome": "verdict.classification", "rationale": "verdict.rationale", "confidence": "verdict.confidence", "impact": "verdict.impact", "tone": "verdict.confidence" } } }, "bindings": { "decision": { "from": "incident2.model" } } },
+              "incident-attack-path": { "capability": "incident2:attack-path", "bindings": { "value": { "from": "incident2.model" } } },
+              "incident-response": { "capability": "semantic:work-set", "props": { "variant": "board", "spec": { "title": "Response plan", "fields": { "id": "id", "title": "title", "detail": "detail", "group": "priority" }, "groups": [{ "value": "immediate", "label": "Immediate" }, { "value": "next", "label": "Next" }, { "value": "follow-up", "label": "Follow-up" }] } }, "bindings": { "items": { "from": "incident2.model.actions" } } },
+              "incident-notes": { "capability": "incident2:representation-notes", "bindings": { "value": { "from": "incident2.model" } } }
+            },
+            "presentation": {
+              "roots": ["foundry-access-gate"],
+              "placements": [
+                { "cell": "incident-semantic-analyzer", "parent": "foundry-access-gate", "slot": "children", "order": 0 },
+                { "cell": "incident-verdict", "parent": "incident-semantic-analyzer", "slot": "children", "order": 0 },
+                { "cell": "incident-attack-path", "parent": "incident-semantic-analyzer", "slot": "children", "order": 1 },
+                { "cell": "incident-response", "parent": "incident-semantic-analyzer", "slot": "children", "order": 2 },
+                { "cell": "incident-notes", "parent": "incident-semantic-analyzer", "slot": "children", "order": 3 }
+              ]
+            }
+          },
           {
             "id": "operational",
             "when": "externalContext.attention = 'operational'",
