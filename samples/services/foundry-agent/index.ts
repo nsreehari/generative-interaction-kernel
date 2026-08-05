@@ -5,6 +5,7 @@ import {
 	type ServiceKindManifest,
 } from "../../../face/src/services/service-kinds";
 import type { ServiceAdapter, ServiceAdapterContext, ServiceRequest } from "../../../face/src/services/queueface";
+import { executeAgentFunctionCall } from "@gik/agent-lifecycle-exp";
 import { createFoundryProxy, FoundryProxyError, type FoundryChatResponseSchema } from "../../shared/foundry-proxy";
 import manifestJson from "./manifest.json";
 
@@ -127,7 +128,8 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 					const agentName = configuredAgent || String(input.agentName ?? "");
 					if (!agentName) throw new Error("foundry-agent requires config.agent or input.agentName");
 					const responseSchema = inputResponseSchema(input) ?? declaredResponseSchema(request, adapterContext);
-					const response = await (await client()).chat({
+					const foundry = await client();
+					let response = await foundry.chat({
 							message: String(input.message ?? ""),
 							agentName,
 							conversationId: typeof input.conversationId === "string" ? input.conversationId : undefined,
@@ -135,6 +137,30 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 							maxOutputTokens: typeof input.maxOutputTokens === "number" ? input.maxOutputTokens : undefined,
 							responseSchema,
 						});
+					const tools = adapterContext.agentTools ?? [];
+					let proposalReceiptId: string | undefined;
+					for (let turn = 0; response.toolCalls.length > 0; turn += 1) {
+						if (turn >= 8) throw new Error("Foundry agent exceeded the lifecycle tool turn limit");
+						if (tools.length === 0) throw new Error("Foundry agent requested lifecycle tools that this host did not provide");
+						const outputs = await Promise.all(response.toolCalls.map(async (call) => {
+							const output = await executeAgentFunctionCall(tools, call);
+							if (call.name.endsWith("_propose")) {
+								const receipt = JSON.parse(output.output) as { id?: unknown; status?: unknown };
+								if (typeof receipt.id !== "string" || receipt.status !== "admitted") {
+									throw new Error("Blueprint proposal was not admitted by the host");
+								}
+								proposalReceiptId = receipt.id;
+							}
+							return { callId: output.call_id, output: output.output };
+						}));
+						response = await foundry.chat({
+							agentName,
+							conversationId: response.conversationId,
+							maxOutputTokens: typeof input.maxOutputTokens === "number" ? input.maxOutputTokens : undefined,
+							responseSchema,
+							toolOutputs: outputs,
+						});
+					}
 					let structuredOutput: Json | undefined;
 					if (responseSchema) {
 						try {
@@ -147,7 +173,11 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 						output: structuredOutput ?? response as unknown as Json,
 						detail: structuredOutput === undefined
 							? undefined
-							: { responseId: response.responseId, conversationId: response.conversationId },
+							: {
+								responseId: response.responseId,
+								conversationId: response.conversationId,
+								...(proposalReceiptId ? { proposalReceiptId } : {}),
+							},
 					};
 				} catch (error) {
 					if (error instanceof FoundryProxyError && (error.status === 401 || error.status === 403)) {

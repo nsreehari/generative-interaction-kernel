@@ -16,7 +16,9 @@ import {
 } from "../blueprints/portfolio-tracker/native/projection_views/portfolioTrackerLeaves";
 import { openSampleBlueprint } from "../shared/blueprints";
 import { declarativeServiceOrchestrator } from "../shared/service-runtime";
+import { createBlueprintAgentLifecycle } from "../shared/blueprint-agent-lifecycle";
 import type { SampleServiceRegistryOptions } from "../services";
+import { InMemoryStateModel } from "../../kernel/src/index";
 
 const PORTFOLIO_BLUEPRINTS = ["portfolio-tracker"] as const;
 const originalFetch = globalThis.fetch;
@@ -136,6 +138,29 @@ afterEach(() => {
 });
 
 describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
+  it("declares portfolio UBX intents and admits proposals without mutating state", async () => {
+    const blueprintRuntime = openSampleBlueprint(blueprintId);
+    const state = new InMemoryStateModel(Object.keys(blueprintRuntime.state));
+    state.apply(Object.entries(blueprintRuntime.state).map(([path, value]) => ({ op: "set" as const, path, value })));
+    const lifecycle = createBlueprintAgentLifecycle(blueprintRuntime, state);
+    const before = structuredClone(state.snapshot());
+    const propose = lifecycle.tools.find(({ name }) => name === "use_blueprint_propose");
+    const receipt = await propose?.handler({
+      kind: "request-strategies",
+      target: {
+        kind: "blueprint-instance",
+        id: blueprintRuntime.blueprintId,
+        instanceId: blueprintRuntime.instanceId,
+      },
+      payloadJson: JSON.stringify({ operation: "calculateStrategies" }),
+      rationale: "Request strategies through the declared portfolio service.",
+    }) as { status: string; proposal: { actions: Array<{ kind: string }> } };
+
+    expect(blueprintRuntime.definition.payload.agentLifecycle?.profiles?.use?.intentKinds).toContain("request-strategies");
+    expect(receipt).toMatchObject({ status: "admitted", proposal: { actions: [{ kind: "request-strategies" }] } });
+    expect(state.snapshot()).toEqual(before);
+  });
+
   it("allows only web evidence links and formats intelligence metrics", () => {
     expect(safeEvidenceUrl("https://investor.nvidia.com/events")).toBe("https://investor.nvidia.com/events");
     expect(safeEvidenceUrl("javascript:alert(1)")).toBeUndefined();

@@ -13,7 +13,7 @@ export interface FoundryChatResponseSchema {
 }
 
 export interface FoundryChatRequest {
-  message: string;
+  message?: string;
   agentName: string;
   conversationId?: string;
   instructions?: string;
@@ -22,12 +22,25 @@ export interface FoundryChatRequest {
    * constrained to emit JSON matching this schema, rather than relying solely on
    * post-hoc validation of a free-text reply. */
   responseSchema?: FoundryChatResponseSchema;
+  toolOutputs?: readonly FoundryToolOutput[];
+}
+
+export interface FoundryToolCall {
+  callId: string;
+  name: string;
+  arguments: string;
+}
+
+export interface FoundryToolOutput {
+  callId: string;
+  output: string;
 }
 
 export interface FoundryChatResponse {
   conversationId: string;
   responseId: string;
   reply: string;
+  toolCalls: FoundryToolCall[];
 }
 
 export class FoundryProxyError extends Error {
@@ -137,12 +150,19 @@ export function createFoundryProxy(options: FoundryProxyOptions) {
         instructions: request.instructions || undefined,
         maxOutputTokens: request.maxOutputTokens || undefined,
         responseSchema: request.responseSchema || undefined,
+        toolOutputs: request.toolOutputs || undefined,
       }, chatTimeoutMs, "Foundry agent response timed out. Retry analysis.");
       const body = (await response.json()) as Partial<FoundryChatResponse>;
-      if (typeof body.conversationId !== "string" || typeof body.responseId !== "string" || typeof body.reply !== "string") {
+      const toolCalls = body.toolCalls ?? [];
+      if (typeof body.conversationId !== "string" || typeof body.responseId !== "string" || typeof body.reply !== "string"
+        || !Array.isArray(toolCalls)
+        || !toolCalls.every((call) => call && typeof call === "object"
+          && typeof (call as FoundryToolCall).callId === "string"
+          && typeof (call as FoundryToolCall).name === "string"
+          && typeof (call as FoundryToolCall).arguments === "string")) {
         throw new FoundryProxyError("Foundry proxy returned an invalid chat response.", response.status);
       }
-      return body as FoundryChatResponse;
+      return { ...body, toolCalls } as FoundryChatResponse;
     },
   };
 }

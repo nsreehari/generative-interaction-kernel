@@ -5,6 +5,37 @@
     "id": "portfolio-tracker",
     "kind": "runtime-blueprint",
     "version": "1.0.0",
+    "agentLifecycle": {
+      "profiles": {
+        "use": {
+          "id": "use-blueprint",
+          "version": "1.0.0",
+          "description": "Use the portfolio tracker to manage holdings, refresh market data, request portfolio intelligence and strategies, and review recommendations.",
+          "targetKinds": ["blueprint-instance"],
+          "intentKinds": [
+            "set-holdings",
+            "upsert-holding",
+            "remove-holding",
+            "refresh-prices",
+            "request-intelligence",
+            "request-intelligence-1b",
+            "request-intelligence-2",
+            "request-strategies",
+            "apply-recommendation",
+            "set-presentation-context"
+          ],
+          "goals": [
+            "Keep holdings, prices, intelligence, and strategy inputs consistent with declared portfolio operations.",
+            "Preserve recommendation provenance and approval state."
+          ],
+          "constraints": [
+            "Use declared portfolio operations and services instead of directly mutating runtime state.",
+            "Treat generated strategies as proposals until an authorized recommendation is applied.",
+            "Do not invent holdings, prices, intelligence, or recommendation approval."
+          ]
+        }
+      }
+    },
     "recipes": [],
     "services": {
       "portfolio-market-data": {

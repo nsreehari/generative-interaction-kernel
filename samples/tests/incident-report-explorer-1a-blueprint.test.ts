@@ -1,13 +1,93 @@
 import { describe, expect, it } from "vitest";
 import { analyzeCellComposition, materializeBlueprint, type BlueprintArtifact, type CellDefinition } from "@gik/blueprint";
+import { InMemoryStateModel } from "../../kernel/src/index";
 
 import blueprint from "../blueprints/incident-report-explorer-1a/blueprint.json" with { type: "json" };
 import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprints";
 import { resolveBlueprintInitialContext, resolveBlueprintNative } from "../shared/sample-bundles";
+import { createBlueprintAgentLifecycle, createBlueprintUseTools } from "../shared/blueprint-agent-lifecycle";
 
 const cells = Object.values(blueprint.payload.cells) as unknown as CellDefinition[];
 
 describe("incident-report-explorer-1a Blueprint", () => {
+  it("declares UBX material without claiming customization or authoring authority", () => {
+    expect(blueprint.payload.agentLifecycle.profiles.use).toMatchObject({
+      id: "use-blueprint",
+      version: "1.0.0",
+      targetKinds: ["blueprint-instance", "incident-report"],
+      intentKinds: ["select-sample", "save-report", "improve-report"],
+      constraints: expect.arrayContaining([
+        "Do not propose structural changes to this fixed Blueprint.",
+      ]),
+    });
+    expect(blueprint.payload.agentLifecycle.profiles).not.toHaveProperty("customize");
+    expect(blueprint.payload.agentLifecycle.profiles).not.toHaveProperty("author");
+  });
+
+  it("binds UBX tools to the active host without applying proposals", async () => {
+    const runtime = openSampleBlueprint("incident-report-explorer-1a");
+    const state = new InMemoryStateModel(Object.keys(runtime.state));
+    state.apply(Object.entries(runtime.state).map(([path, value]) => ({ op: "set" as const, path, value })));
+    const tools = createBlueprintUseTools(runtime, state);
+    expect(tools.map(({ name }) => name)).toEqual([
+      "use_blueprint_manifest", "use_blueprint_discover", "use_blueprint_describe", "use_blueprint_inspect",
+      "use_blueprint_validate", "use_blueprint_simulate", "use_blueprint_preflight", "use_blueprint_propose",
+    ]);
+    const target = { kind: "blueprint-instance", id: runtime.blueprintId, instanceId: runtime.instanceId };
+    await expect(Promise.resolve(tools.find(({ name }) => name === "use_blueprint_discover")?.handler({}))).resolves.toMatchObject({
+      targets: [target],
+    });
+    await expect(Promise.resolve(tools.find(({ name }) => name === "use_blueprint_inspect")?.handler(target))).resolves.toMatchObject({
+      target,
+      state: { incident1a: expect.any(Object) },
+    });
+    expect(() => tools.find(({ name }) => name === "use_blueprint_inspect")?.handler({
+      ...target,
+      instanceId: "another-instance",
+    })).toThrow(/does not match the active Blueprint instance/);
+    const before = structuredClone(state.snapshot());
+    await expect(Promise.resolve(tools.find(({ name }) => name === "use_blueprint_propose")?.handler({
+      kind: "improve-report",
+      target,
+      payloadJson: JSON.stringify({ operation: "improveReport" }),
+      rationale: "Produce the declared semantic refinement.",
+    }))).resolves.toMatchObject({
+      status: "admitted",
+      proposal: {
+        capability: "use-blueprint",
+        actions: [{ kind: "improve-report", payload: { operation: "improveReport" } }],
+      },
+    });
+    expect(state.snapshot()).toEqual(before);
+  });
+
+  it("applies an admitted proposal settlement exactly once after validation", async () => {
+    const runtime = openSampleBlueprint("incident-report-explorer-1a");
+    const state = new InMemoryStateModel(["incident1a"]);
+    state.apply([{ op: "set", path: "incident1a.refinementPending", value: true }]);
+    const lifecycle = createBlueprintAgentLifecycle(runtime, state);
+    const propose = lifecycle.tools.find(({ name }) => name === "use_blueprint_propose");
+    const receipt = await propose?.handler({
+      kind: "improve-report",
+      target: { kind: "blueprint-instance", id: runtime.blueprintId, instanceId: runtime.instanceId },
+      payloadJson: JSON.stringify({ operation: "improveReport" }),
+      rationale: "Complete refinement.",
+    }) as { id: string; status: string };
+    expect(receipt.status).toBe("admitted");
+    const settlement = {
+      ops: [
+        { op: "set" as const, path: "incident1a.refinementPending", value: false },
+        { op: "set" as const, path: "incident1a.model", value: { sections: [] } },
+      ],
+    };
+    await lifecycle.settle?.({ receiptId: receipt.id, settlement });
+    await lifecycle.settle?.({ receiptId: receipt.id, settlement: {
+      ops: [{ op: "set", path: "incident1a.model", value: { sections: ["duplicate"] } }],
+    } });
+    expect(state.get("incident1a.refinementPending")).toBe(false);
+    expect(state.get("incident1a.model")).toEqual({ sections: [] });
+  });
+
   it("keeps refinement semantic while the authored recipe owns presentation", () => {
     const source = blueprint as unknown as BlueprintArtifact;
     expect(source.payload.tiers.map(({ id }) => id)).toEqual(["incident-report-semantic", "runtime-document"]);

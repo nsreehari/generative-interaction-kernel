@@ -7,13 +7,14 @@ import {
   QueueFace,
   ServiceKindRegistry,
   type ServiceAdapter,
+  type ServiceAgentTool,
   type ServiceExecutionResult,
 } from "../src/index";
 
 function createHost(
   execute: ServiceAdapter["execute"],
   operation: Partial<ServiceDeclaration["operations"][string]> = {},
-  options: { maxAttempts?: number; maxGuardrailAttempts?: number } = {}
+  options: { maxAttempts?: number; maxGuardrailAttempts?: number; agentTools?: readonly ServiceAgentTool[] } = {}
 ): DefaultServiceHost {
   const registry = new ServiceKindRegistry();
   registry.register({
@@ -62,6 +63,18 @@ function createHost(
 }
 
 const effect = { kind: "invoke" as const, node: "portfolio", tool: "analyzePortfolio", args: { ticker: "MSFT" }, actorId: "author" };
+
+test("host rejects non-agent tools at the provider boundary", () => {
+  assert.throws(() => createHost(async () => ({ output: null }), {}, {
+    agentTools: [{
+      name: "host_blueprint_apply",
+      description: "Apply a proposal.",
+      inputSchema: { type: "object" },
+      lifecycle: "host",
+      handler: () => ({ status: "applied" }),
+    }],
+  }), /cannot execute with agent authority/);
+});
 
 test("QueueFace delegates queued lifecycle to the shared host", async () => {
   const host = createHost(async (request) => ({ output: request.input }), { mode: "queued" });

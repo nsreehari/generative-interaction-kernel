@@ -144,16 +144,12 @@ const ReportView: ProjectionView = ({ node, emit, children }) => {
   const model = record(node.props.value);
   const hasModel = Object.keys(model).length > 0;
   const stale = analysisIsStale(node.props.content, node.props.analyzedContent);
-  const [pending, setPending] = React.useState(false);
-  const run = async () => {
-    setPending(true);
-    try { await emit("analyze", {}); } finally { setPending(false); }
-  };
+  const pending = node.props.pending === true;
   const label = pending ? (hasModel ? "Refreshing" : "Analyzing") : hasModel ? (stale ? "Refresh analysis" : "Analysis current") : "Analyze report";
   return <section className={styles.report}>
     <header className={styles.reportHeader}>
       <div className={styles.reportHeading}><h2 className={styles.reportTitle}>{String(node.props.title)}</h2><span className={styles.status}>{hasModel ? (stale ? "Source changed" : "Up to date") : "Awaiting analysis"}</span></div>
-      {readonly ? null : <Button appearance="primary" disabled={pending || (hasModel && !stale)} icon={pending ? <Spinner size="tiny" /> : undefined} onClick={() => void run()}>{label}</Button>}
+      {readonly ? null : <Button appearance="primary" disabled={pending || (hasModel && !stale)} icon={pending ? <Spinner size="tiny" /> : undefined} onClick={() => void emit("analyze", {})}>{label}</Button>}
     </header>
     <div className={styles.reportBody}>{node.props.error ? <MessageBar intent="error"><MessageBarBody>{String(node.props.error)}</MessageBarBody></MessageBar> : null}{hasModel
       ? <div className={styles.content}>{children}</div>

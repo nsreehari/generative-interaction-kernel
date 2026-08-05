@@ -17,7 +17,53 @@ vi.mock("@gik/demo-runner-host", () => ({
 }));
 
 import portfolioTwoTierDemo from "../../../scenarios/portfolio-tracker-2tiers-baseline/scenario.json" with { type: "json" };
-import { Host } from "./Host";
+import "fake-indexeddb/auto";
+import type { BlueprintProposalReceipt } from "@gik/blueprint-agent-host";
+import type { UseProposal } from "../../../shared/blueprint-agent-lifecycle";
+import { Host, createSampleBlueprintProposalStore } from "./Host";
+
+const receipt = (id: string): BlueprintProposalReceipt<UseProposal> => ({
+  id,
+  proposal: {
+    id: `proposal-${id}`,
+    capability: "use-blueprint",
+    target: { kind: "blueprint-instance", id: "incident-report-explorer-1a", instanceId: "default" },
+    actions: [{ kind: "improve-report", payload: { operation: "improveReport" } }],
+    createdAt: "2026-08-05T00:00:00.000Z",
+  },
+  actor: { id: "foundry-agent" },
+  status: "admitted",
+  createdAt: "2026-08-05T00:00:00.000Z",
+  updatedAt: "2026-08-05T00:00:00.000Z",
+  audit: [],
+});
+
+test("sample host selects isolated memory or persistent IndexedDB proposal stores", async () => {
+  const memory = createSampleBlueprintProposalStore({
+    durableEnabled: false,
+    blueprintId: "incident-report-explorer-1a",
+  });
+  await memory.create(receipt("memory"));
+  const freshMemory = createSampleBlueprintProposalStore({
+    durableEnabled: false,
+    blueprintId: "incident-report-explorer-1a",
+  });
+  assert.equal(await freshMemory.get("memory"), undefined);
+
+  const databaseName = `gik-host-test-${crypto.randomUUID()}`;
+  const durable = createSampleBlueprintProposalStore({
+    durableEnabled: true,
+    blueprintId: "incident-report-explorer-1a",
+    databaseName,
+  });
+  await durable.create(receipt("durable"));
+  const reopened = createSampleBlueprintProposalStore({
+    durableEnabled: true,
+    blueprintId: "incident-report-explorer-1a",
+    databaseName,
+  });
+  assert.deepEqual(await reopened.get("durable"), receipt("durable"));
+});
 
 test("unmigrated samples do not receive legacy demo scenarios", () => {
   const previousWindow = globalThis.window;
