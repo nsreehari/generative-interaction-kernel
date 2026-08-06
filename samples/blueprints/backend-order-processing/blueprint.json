@@ -13,23 +13,6 @@
       "expression": "jsonata",
       "namespaces": ["order", "payment"],
       "actions": ["assign", "confirm", "invoke", "route"],
-      "capabilities": {
-        "ui:screen": {
-          "propsSchema": { "type": "object", "additionalProperties": true },
-          "slots": ["children"]
-        },
-        "ui:metric": {
-          "propsSchema": { "type": "object", "additionalProperties": true },
-          "dataProp": "value"
-        },
-        "ui:markdown": {
-          "propsSchema": { "type": "object", "additionalProperties": true },
-          "dataProp": "value"
-        }
-      },
-      "externals": {
-        "projectionViews": { "ui": { "from": "floor" } }
-      },
       "state": {
         "order": {
           "status": "draft",
@@ -75,58 +58,7 @@
               { "do": "assign", "target": "payment.status", "args": { "value": "declined" } }
             ]
           }
-        },
-        "view": {
-          "capability": "ui:screen",
-          "props": {
-            "title": "Backend order processing",
-            "subtitle": "Inspection projection for a headless event and orchestrator workflow"
-          }
         }
-      },
-      "order-status": {
-        "id": "order-status",
-        "view": {
-          "capability": "ui:metric",
-          "props": { "label": "Order status" },
-          "bindings": { "value": { "from": "order.status" } }
-        }
-      },
-      "payment-status": {
-        "id": "payment-status",
-        "view": {
-          "capability": "ui:metric",
-          "props": { "label": "Payment status" },
-          "bindings": { "value": { "from": "payment.status" } }
-        }
-      },
-      "fulfillment-status": {
-        "id": "fulfillment-status",
-        "view": {
-          "capability": "ui:metric",
-          "props": { "label": "Fulfillment" },
-          "bindings": { "value": { "from": "order.fulfillment" } }
-        }
-      },
-      "execution-note": {
-        "id": "execution-note",
-        "view": {
-          "capability": "ui:markdown",
-          "props": {
-            "value": "This Blueprint is driven by backend events. The projection is an inspection surface required by the current Blueprint compiler; it is not the execution medium."
-          }
-        }
-      }
-    },
-    "projections": {
-      "presentation": {
-        "roots": ["order-controller"],
-        "placements": [
-          { "cell": "order-status", "parent": "order-controller", "slot": "children", "order": 0 },
-          { "cell": "payment-status", "parent": "order-controller", "slot": "children", "order": 1 },
-          { "cell": "fulfillment-status", "parent": "order-controller", "slot": "children", "order": 2 },
-          { "cell": "execution-note", "parent": "order-controller", "slot": "children", "order": 3 }
-        ]
       }
     },
     "metadata": {

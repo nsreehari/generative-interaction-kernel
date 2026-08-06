@@ -85,6 +85,13 @@ test("listBlueprints exposes built-in artifacts as read-only", async () => {
   assert.equal(rows.some((row) => row.id === "samples-overview" && row.scopeLabel === "Frontend"), true);
   assert.equal(rows.some((row) => row.id === "backend-order-processing" && row.scopeLabel === "Backend"), true);
   assert.equal(rows.some((row) => row.id === "middleware-continuity" && row.scopeLabel === "Middleware"), true);
+
+  const backend = await manageBlueprintsEffects.getBlueprint(context(state, { id: "backend-order-processing" }));
+  const selected = opValue(backend?.ops, "manageBlueprints.selected") as JsonRecord;
+  assert.deepEqual(selected.tabs, [
+    { value: "overview", label: "Overview" },
+    { value: "draft", label: "JSON" },
+  ]);
 });
 
 test("JSON editing uses a locally stateful declarative form", () => {

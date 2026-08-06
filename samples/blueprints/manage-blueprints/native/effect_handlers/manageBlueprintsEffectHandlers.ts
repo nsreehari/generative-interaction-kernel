@@ -141,6 +141,17 @@ function inspectionState(result: ValidationResult): Json {
   return result.inspection ?? { tiers: [], recipes: [], terminalTier: "", executionStatus: "invalid", executionReason: "" };
 }
 
+function blueprintDetails(blueprint: BlueprintArtifact): JsonRecord {
+  const hasPresentation = (blueprint.payload.projections?.presentation?.roots.length ?? 0) > 0;
+  return {
+    tabs: [
+      { value: "overview", label: "Overview" },
+      { value: "draft", label: "JSON" },
+      ...(hasPresentation ? [{ value: "preview", label: "Preview" }] : []),
+    ],
+  };
+}
+
 function catalogRows(entries: CatalogEntry[]): Json[] {
   return entries.map((entry) => {
     const payload = entry.blueprint.payload;
@@ -173,6 +184,7 @@ function selectedState(entry: CatalogEntry): JsonRecord {
     structureMode: payload.structureMode ?? "fixed",
     tiers: payload.tiers.map((tier) => tier.id).join(", "),
     recipeCount: payload.recipes.length,
+    ...blueprintDetails(entry.blueprint),
   };
 }
 
@@ -258,6 +270,7 @@ function draftOps(id: string, blueprint: BlueprintArtifact, status: string) {
       structureMode: identified.payload.structureMode ?? "fixed",
       tiers: identified.payload.tiers.map((tier) => tier.id).join(", "),
       recipeCount: identified.payload.recipes.length,
+      ...blueprintDetails(identified),
     }),
     setOp("manageBlueprints.tab", "draft"),
     setOp("manageBlueprints.editor", {
