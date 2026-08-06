@@ -123,8 +123,9 @@ describe("incident-report-explorer-2 Blueprint", () => {
   it.each([
     ["operational", ["incident-verdict", "incident-attack-path", "incident-blast-radius", "incident-timeline", "incident-techniques", "incident-response", "incident-notes"]],
     ["brief", ["incident-verdict", "incident-attack-path", "incident-response", "incident-notes"]],
+    ["hosted-analysis", ["incident-verdict", "incident-attack-path", "incident-blast-radius", "incident-timeline", "incident-techniques", "incident-response", "incident-notes"]],
   ])("materializes the authored %s preset", (attention, expectedLeaves) => {
-    const terminal = materializeBlueprint({ blueprint, externalContext: { attention } }).payload.terminalBlueprint;
+    const terminal = materializeBlueprint({ blueprint, externalContext: attention === "hosted-analysis" ? { hostedAnalysis: true } : { attention } }).payload.terminalBlueprint;
     expect(terminal.payload.tiers).toEqual([{ id: "runtime-document", kind: "runtime-document" }]);
     expect(terminal.payload.recipes).toEqual([]);
     const placements = terminal.payload.projections?.presentation?.placements ?? [];
@@ -148,5 +149,11 @@ describe("incident-report-explorer-2 Blueprint", () => {
       const props = { ...view.props, [dataProp]: dataProp === "decision" ? {} : [] };
       expect(semanticComponentDefinitions[definitionId].validate(props).ok, viewId).toBe(true);
     }
+  });
+
+  it("imports the canonical semantic capabilities authored by its recipes", () => {
+    expect(blueprint.payload.runtime?.externals?.projectionViews.semantic.use).toEqual([
+      "event-series", "process", "entity-set", "decision", "work-set",
+    ]);
   });
 });

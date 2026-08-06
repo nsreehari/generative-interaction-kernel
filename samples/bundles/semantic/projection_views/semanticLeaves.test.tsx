@@ -52,3 +52,14 @@ test("component-data host renders preferred and complementary data, not alternat
   assert.match(markup, /Observable events/);
   assert.doesNotMatch(markup, /Hidden alternative/);
 });
+
+test("component-data host does not repeat matching source and semantic headings", () => {
+  const sections = [
+    { id: "verdict", sourceHeading: "Verdict", order: 1, options: [{ id: "decision", capability: "semantic:decision", relationship: "preferred", data: JSON.stringify({ title: "Verdict", summary: "Confirmed compromise.", outcome: "confirmed" }) }] },
+    { id: "summary", sourceHeading: "Summary", order: 2, options: [{ id: "narrative", capability: "semantic:narrative", relationship: "preferred", data: JSON.stringify([{ id: "summary", heading: "Summary", body: "Mailbox access was confirmed.", order: 1 }]) }] },
+  ];
+  const markup = renderToStaticMarkup(<ComponentDataSections node={{ id: "sections", capability: "semantic:component-data-sections", props: { sections }, visible: true, fallback: false, children: [] } as never} emit={async () => undefined} children={undefined} />);
+
+  assert.equal(markup.match(/Verdict/g)?.length, 1);
+  assert.equal(markup.match(/Summary/g)?.length, 1);
+});
