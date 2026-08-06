@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://gik.dev/schemas/blueprint-test-case.schema.json",
+  "title": "GIK declarative Blueprint test case",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "name", "blueprintId", "assertions"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "format": { "const": "gik-blueprint-test/1" },
+    "name": { "type": "string", "minLength": 1 },
+    "blueprintId": { "type": "string", "minLength": 1 },
+    "assertions": { "$ref": "#/definitions/assertions" },
+    "materializations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "externalContext", "assertions"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "externalContext": { "type": "object" },
+          "assertions": { "$ref": "#/definitions/assertions" }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "assertions": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind"],
+            "properties": { "kind": { "enum": ["valid-artifact", "composition-valid"] } }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "pointer", "value"],
+            "properties": {
+              "kind": { "const": "equals" },
+              "pointer": { "type": "string", "pattern": "^/" },
+              "value": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "parent", "value"],
+            "properties": {
+              "kind": { "const": "placement-children" },
+              "parent": { "type": "string", "minLength": 1 },
+              "value": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -90,7 +90,10 @@ test("host projection imports can resolve another bundle by id", () => {
   assert.equal(typeof primitiveViews?.chart, "function");
   assert.equal(typeof primitiveViews?.["growing-container"], "function");
   const semanticViews = resolveBundleProjectionViews("semantic");
-  assert.deepEqual(Object.keys(semanticViews ?? {}).sort(), Object.keys(semanticComponentViews).sort());
+  assert.deepEqual(Object.keys(semanticViews ?? {}).sort(), [
+    ...Object.keys(semanticComponentViews),
+    "component-data-sections",
+  ].sort());
   assert.equal(typeof semanticViews?.["event-series"], "function");
   assert.equal(typeof semanticViews?.["relationship-set"], "function");
   assert.deepEqual(Object.keys(resolveBundleProjectionViews("security") ?? {}).sort(), Object.keys(securityComponentViews).sort());

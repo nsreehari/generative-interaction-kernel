@@ -3,15 +3,14 @@ import { materializeBlueprint, type BlueprintArtifact } from "@gik/blueprint";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { Json } from "@gik/kernel";
 
-import cachedBlueprintJson from "../blueprints/cached-incident-report-explorer-2/blueprint.json" with { type: "json" };
 import handlers, {
   cachedSampleReports2,
   hydrateState,
 } from "../blueprints/cached-incident-report-explorer-2/native/effect_handlers/cachedIncidentReportExplorer2EffectHandlers";
-import liveBlueprintJson from "../blueprints/incident-report-explorer-2/blueprint.json" with { type: "json" };
+import { resolveSampleBlueprintSource } from "../shared/blueprints";
 
-const cachedBlueprint = cachedBlueprintJson as unknown as BlueprintArtifact;
-const liveBlueprint = liveBlueprintJson as unknown as BlueprintArtifact;
+const cachedBlueprint = resolveSampleBlueprintSource("cached-incident-report-explorer-2") as BlueprintArtifact;
+const liveBlueprint = resolveSampleBlueprintSource("incident-report-explorer-2") as BlueprintArtifact;
 const set = (path: string, value: unknown) => ({ op: "set", path, value });
 
 describe("cached incident-report-explorer-2", () => {

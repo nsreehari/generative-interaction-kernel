@@ -1,11 +1,11 @@
 import type { Json } from "@gik/kernel";
 import { parseBlueprintJson, resolveBlueprintExecution, type BlueprintArtifact } from "@gik/blueprint";
 import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
-import { sampleBlueprints } from "../../../../shared/blueprints";
 import {
-  createLocalBlueprintArtifactStore,
-  localBlueprintArtifactStorageKey,
-} from "../../../../shared/local-blueprint-artifact-store";
+  readUserBlueprintArtifacts,
+  writeUserBlueprintArtifacts,
+} from "../../../../shared/blueprint-catalog";
+import { getSampleBlueprintCatalog, installUserBlueprints } from "../../../../shared/blueprints";
 
 const BUNDLE_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -33,16 +33,17 @@ function normalizeBlueprint(value: unknown): BlueprintArtifact {
   return parseBlueprintJson(JSON.stringify(value));
 }
 
-function readStoredBlueprintMap(): { blueprints: Record<string, BlueprintArtifact>; errors: string[] } {
-  return createLocalBlueprintArtifactStore().read();
+async function readStoredBlueprintMap(): Promise<{ blueprints: Record<string, BlueprintArtifact>; errors: string[] }> {
+  return readUserBlueprintArtifacts();
 }
 
-function writeStoredBlueprintMap(blueprints: Record<string, BlueprintArtifact>): void {
-  createLocalBlueprintArtifactStore().write(blueprints);
+async function writeStoredBlueprintMap(blueprints: Record<string, BlueprintArtifact>): Promise<void> {
+  await writeUserBlueprintArtifacts(blueprints);
+  installUserBlueprints(blueprints);
 }
 
 function repositoryEntries(): CatalogEntry[] {
-  return Object.entries(sampleBlueprints).flatMap(([id, value]) => {
+  return Object.entries(getSampleBlueprintCatalog().seedEntries).flatMap(([id, value]) => {
     try {
       return [{ id, source: "repo" as const, readonly: true, blueprint: normalizeBlueprint(value) }];
     } catch {
@@ -51,8 +52,8 @@ function repositoryEntries(): CatalogEntry[] {
   }).sort((left, right) => left.id.localeCompare(right.id));
 }
 
-function loadCatalog(): { entries: CatalogEntry[]; errors: string[] } {
-  const stored = readStoredBlueprintMap();
+async function loadCatalog(): Promise<{ entries: CatalogEntry[]; errors: string[] }> {
+  const stored = await readStoredBlueprintMap();
   const localEntries = Object.entries(stored.blueprints).map(([id, blueprint]) => ({
     id,
     source: "local" as const,
@@ -147,8 +148,9 @@ function catalogRows(entries: CatalogEntry[]): Json[] {
       id: entry.id,
       label: entry.id,
       source: entry.source,
+      sourceLabel: entry.readonly ? "Built-in" : "User",
       readonly: entry.readonly,
-      detail: `${entry.source} | ${String(payload.version ?? "unknown version")}`,
+      detail: String(payload.version ?? "Unknown version"),
     } as Json;
   });
 }
@@ -158,6 +160,7 @@ function selectedState(entry: CatalogEntry): JsonRecord {
   return {
     id: entry.id,
     source: entry.source,
+    sourceLabel: entry.readonly ? "Built-in" : "User",
     readonly: entry.readonly,
     version: payload.version,
     structureMode: payload.structureMode ?? "fixed",
@@ -170,9 +173,11 @@ function editorState(entry: CatalogEntry): JsonRecord {
   return {
     id: entry.id,
     blueprintText: JSON.stringify(entry.blueprint, null, 2),
+    formValue: { id: entry.id, blueprint: entry.blueprint as unknown as Json },
+    persisted: true,
     status: entry.readonly
-      ? "Repository blueprint is read-only. Clone it to create a browser-local draft."
-      : "Browser-local blueprint loaded and editable.",
+      ? "Built-in Blueprint is read-only. Use Clone to edit to create your own copy."
+      : "Your Blueprint is ready to edit.",
     error: "",
   };
 }
@@ -183,14 +188,14 @@ function catalogOps(entries: CatalogEntry[], errors: string[]) {
     setOp(
       "manageBlueprints.catalogStatus",
       errors.length > 0
-        ? `${entries.length} blueprints loaded; ${errors.length} local artifact error(s).`
-        : `${entries.length} blueprints loaded: repository artifacts are read-only, local artifacts are editable.`
+        ? `${entries.length} Blueprints loaded; ${errors.length} user Blueprint error(s).`
+        : `${entries.length} Blueprints loaded. Built-ins are read-only; your copies are editable.`
     ),
   ];
 }
 
-function findEntry(id: string): CatalogEntry | undefined {
-  return loadCatalog().entries.find((entry) => entry.id === id);
+async function findEntry(id: string): Promise<CatalogEntry | undefined> {
+  return (await loadCatalog()).entries.find((entry) => entry.id === id);
 }
 
 function portableStarterBlueprint(): BlueprintArtifact {
@@ -209,8 +214,8 @@ function portableStarterBlueprint(): BlueprintArtifact {
   });
 }
 
-function nextLocalId(baseId: string): string {
-  const ids = new Set(loadCatalog().entries.map((entry) => entry.id));
+async function nextLocalId(baseId: string): Promise<string> {
+  const ids = new Set((await loadCatalog()).entries.map((entry) => entry.id));
   const base = `${baseId.replace(/-local(?:-\d+)?$/, "")}-local`;
   if (!ids.has(base)) return base;
   let suffix = 2;
@@ -218,7 +223,7 @@ function nextLocalId(baseId: string): string {
   return `${base}-${suffix}`;
 }
 
-function importedId(fileName: string): string {
+async function importedId(fileName: string): Promise<string> {
   const base = fileName
     .replace(/\.blueprint\.json$/i, "")
     .replace(/\.json$/i, "")
@@ -236,28 +241,64 @@ function draftOps(id: string, blueprint: BlueprintArtifact, status: string) {
   const identified = withBlueprintId(blueprint, id);
   const result = validate(identified);
   return [
+    setOp("manageBlueprints.selectedId", ""),
+    setOp("manageBlueprints.selected", {
+      id,
+      source: "local",
+      sourceLabel: "User draft",
+      readonly: false,
+      version: identified.payload.version,
+      structureMode: identified.payload.structureMode ?? "fixed",
+      tiers: identified.payload.tiers.map((tier) => tier.id).join(", "),
+      recipeCount: identified.payload.recipes.length,
+    }),
     setOp("manageBlueprints.tab", "draft"),
-    setOp("manageBlueprints.editor", { id, blueprintText: JSON.stringify(identified, null, 2), status, error: "" }),
+    setOp("manageBlueprints.editor", {
+      id,
+      blueprintText: JSON.stringify(identified, null, 2),
+      formValue: { id, blueprint: identified as unknown as Json },
+      persisted: false,
+      status,
+      error: "",
+    }),
     setOp("manageBlueprints.validation", validationState(result)),
     setOp("manageBlueprints.previewBlueprint", null),
+    setOp("manageBlueprints.previewReference", ""),
     setOp("manageBlueprints.previewError", ""),
   ];
 }
 
+async function previewResult(ctx: EffectContext) {
+  const result = parseEditor(ctx);
+  if (!result.valid || !result.blueprint) {
+    return { outcome: "invalid", ops: [setOp("manageBlueprints.validation", validationState(result)), setOp("manageBlueprints.previewError", result.errors)] };
+  }
+  const persisted = await findEntry(result.blueprint.payload.id);
+  const reference = persisted && JSON.stringify(persisted.blueprint) === JSON.stringify(result.blueprint)
+    ? `blueprint:${persisted.id}@${persisted.blueprint.payload.version}`
+    : "";
+  return {
+    outcome: "summary-ready",
+    ops: [
+      setOp("manageBlueprints.validation", validationState(result)),
+      setOp("manageBlueprints.previewBlueprint", result.blueprint as unknown as Json),
+      setOp("manageBlueprints.previewReference", reference),
+      setOp("manageBlueprints.inspection", inspectionState(result)),
+      setOp("manageBlueprints.previewError", ""),
+      setOp("manageBlueprints.tab", "preview"),
+    ],
+  };
+}
+
 export const manageBlueprintsEffects: EffectHandlerMap = {
-  $init() {
-    const catalog = loadCatalog();
+  async listBlueprints() {
+    const catalog = await loadCatalog();
     return { ops: catalogOps(catalog.entries, catalog.errors) };
   },
 
-  listBlueprints() {
-    const catalog = loadCatalog();
-    return { ops: catalogOps(catalog.entries, catalog.errors) };
-  },
-
-  getBlueprint(ctx) {
+  async getBlueprint(ctx) {
     const id = String(ctx.payload.id ?? "");
-    const entry = findEntry(id);
+    const entry = await findEntry(id);
     if (!entry) {
       return { outcome: "not-found", ops: [setOp("manageBlueprints.editor.error", `Blueprint '${id}' was not found.`)] };
     }
@@ -271,21 +312,47 @@ export const manageBlueprintsEffects: EffectHandlerMap = {
         setOp("manageBlueprints.validation", validationState(result)),
         setOp("manageBlueprints.inspection", inspectionState(result)),
         setOp("manageBlueprints.previewBlueprint", null),
+        setOp("manageBlueprints.previewReference", ""),
         setOp("manageBlueprints.previewError", ""),
         setOp("manageBlueprints.tab", "overview"),
       ],
     };
   },
 
-  createBlueprint() {
+  async createBlueprint() {
     const blueprint = portableStarterBlueprint();
-    const id = nextLocalId("untitled-blueprint");
-    return { outcome: "draft-created", ops: draftOps(id, blueprint, "New browser-local blueprint draft.") };
+    const id = await nextLocalId("untitled-blueprint");
+    return { outcome: "draft-created", ops: draftOps(id, blueprint, "New Blueprint. Save when you are ready.") };
   },
 
-  importBlueprint(ctx) {
-    const fileName = String(ctx.payload.name ?? "imported-blueprint.json");
-    const text = String(ctx.payload.text ?? "");
+  async importBlueprint(ctx) {
+    const candidate = ctx.payload.file;
+    const file = candidate && typeof candidate === "object" && !Array.isArray(candidate)
+      ? candidate as JsonRecord
+      : null;
+    if (
+      !file
+      || typeof file.name !== "string"
+      || typeof file.type !== "string"
+      || typeof file.size !== "number"
+      || !Number.isFinite(file.size)
+      || typeof file.lastModified !== "number"
+      || !Number.isFinite(file.lastModified)
+      || file.encoding !== "text"
+      || typeof file.text !== "string"
+    ) {
+      const message = "The selected file did not match the primitive:file-input normalized text contract.";
+      return {
+        outcome: "invalid",
+        ops: [
+          setOp("manageBlueprints.tab", "draft"),
+          setOp("manageBlueprints.editor.error", message),
+          setOp("manageBlueprints.validation", { valid: false, previewable: false, summary: "Blueprint file input is invalid.", errors: message, warnings: "" }),
+        ],
+      };
+    }
+    const fileName = file.name;
+    const text = file.text;
     let parsed: unknown;
     try {
       parsed = JSON.parse(text);
@@ -311,29 +378,33 @@ export const manageBlueprintsEffects: EffectHandlerMap = {
         ],
       };
     }
-    const id = importedId(fileName);
+    const id = await importedId(fileName);
     return { outcome: "draft-imported", ops: draftOps(id, result.blueprint, `Imported ${fileName}. Save to persist locally.`) };
   },
 
-  cloneBlueprint(ctx) {
+  async cloneBlueprint(ctx) {
     const selectedId = String(ctx.get("manageBlueprints.selectedId") ?? "");
-    const entry = findEntry(selectedId);
+    const entry = await findEntry(selectedId);
     if (!entry) {
       return { outcome: "not-found", ops: [setOp("manageBlueprints.editor.error", "Select a blueprint to clone.")] };
     }
-    const id = nextLocalId(entry.id);
-    return { outcome: "draft-created", ops: draftOps(id, entry.blueprint, `New local draft cloned from ${entry.id}.`) };
+    const id = await nextLocalId(entry.id);
+    return { outcome: "draft-created", ops: draftOps(id, entry.blueprint, `Editable copy of ${entry.id}. Save when you are ready.`) };
   },
 
-  saveBlueprint(ctx) {
-    const id = String(ctx.get("manageBlueprints.editor.id") ?? "").trim();
+  async saveBlueprint(ctx) {
+    const submitted = ctx.payload.values;
+    const values = submitted && typeof submitted === "object" && !Array.isArray(submitted)
+      ? submitted as JsonRecord
+      : null;
+    const id = String(values?.id ?? ctx.get("manageBlueprints.editor.id") ?? "").trim();
     if (!BUNDLE_ID_PATTERN.test(id)) {
       return { outcome: "invalid", ops: [setOp("manageBlueprints.editor.error", "Blueprint id must use lowercase kebab-case.")] };
     }
     if (repositoryEntries().some((entry) => entry.id === id)) {
       return { outcome: "readonly", ops: [setOp("manageBlueprints.editor.error", `Repository blueprint '${id}' is read-only. Choose a new local id.`)] };
     }
-    const result = parseEditor(ctx);
+    const result = values ? validate(values.blueprint) : parseEditor(ctx);
     if (!result.valid || !result.blueprint) {
       return {
         outcome: "invalid",
@@ -343,20 +414,20 @@ export const manageBlueprintsEffects: EffectHandlerMap = {
         ],
       };
     }
-    const stored = readStoredBlueprintMap();
+    const stored = await readStoredBlueprintMap();
     const selectedId = String(ctx.get("manageBlueprints.selectedId") ?? "");
-    const selected = findEntry(selectedId);
+    const selected = await findEntry(selectedId);
     if (selected?.source === "local" && selectedId !== id) {
       delete stored.blueprints[selectedId];
     }
     const identified = withBlueprintId(result.blueprint, id);
     stored.blueprints[id] = identified;
     try {
-      writeStoredBlueprintMap(stored.blueprints);
+      await writeStoredBlueprintMap(stored.blueprints);
     } catch (error) {
       return { outcome: "error", ops: [setOp("manageBlueprints.editor.error", error instanceof Error ? error.message : String(error))] };
     }
-    const catalog = loadCatalog();
+    const catalog = await loadCatalog();
     const entry = catalog.entries.find((candidate) => candidate.id === id)!;
     return {
       outcome: "saved",
@@ -364,63 +435,30 @@ export const manageBlueprintsEffects: EffectHandlerMap = {
         ...catalogOps(catalog.entries, catalog.errors),
         setOp("manageBlueprints.selectedId", id),
         setOp("manageBlueprints.selected", selectedState(entry)),
-        setOp("manageBlueprints.editor", { id, blueprintText: JSON.stringify(identified, null, 2), status: `Saved ${id} locally.`, error: "" }),
+        setOp("manageBlueprints.editor", {
+          id,
+          blueprintText: JSON.stringify(identified, null, 2),
+          formValue: { id, blueprint: identified as unknown as Json },
+          persisted: true,
+          status: `Saved ${id} in this browser.`,
+          error: "",
+        }),
         setOp("manageBlueprints.validation", validationState(result)),
       ],
     };
   },
 
-  validateBlueprint(ctx) {
-    const result = parseEditor(ctx);
-    return {
-      outcome: result.valid ? "valid" : "invalid",
-      ops: [
-        setOp("manageBlueprints.validation", validationState(result)),
-        setOp("manageBlueprints.editor.error", result.errors),
-      ],
-    };
+  async selectBlueprintTab(ctx) {
+    const tab = String(ctx.payload.value ?? "overview");
+    if (tab === "preview") return previewResult(ctx);
+    return { ops: [setOp("manageBlueprints.tab", tab)] };
   },
 
-  previewBlueprint(ctx) {
-    const result = parseEditor(ctx);
-    if (!result.valid || !result.blueprint) {
-      return { outcome: "invalid", ops: [setOp("manageBlueprints.validation", validationState(result)), setOp("manageBlueprints.previewError", result.errors)] };
-    }
-    return {
-      outcome: "summary-ready",
-      ops: [
-        setOp("manageBlueprints.validation", validationState(result)),
-        setOp("manageBlueprints.previewBlueprint", result.blueprint as unknown as Json),
-        setOp("manageBlueprints.inspection", inspectionState(result)),
-        setOp("manageBlueprints.previewError", ""),
-        setOp("manageBlueprints.tab", "preview"),
-      ],
-    };
-  },
-
-  exportBlueprint(ctx) {
-    const result = parseEditor(ctx);
-    if (!result.valid || !result.blueprint) {
-      return { outcome: "invalid", ops: [setOp("manageBlueprints.editor.error", result.errors)] };
-    }
-    const id = String(ctx.get("manageBlueprints.editor.id") ?? "blueprint").trim() || "blueprint";
-    if (typeof document === "undefined" || typeof URL === "undefined") {
-      return { outcome: "unavailable", ops: [setOp("manageBlueprints.editor.error", "Download is unavailable in this host.")] };
-    }
-    const url = URL.createObjectURL(new Blob([JSON.stringify(result.blueprint, null, 2)], { type: "application/json" }));
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${id}.blueprint.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-    return { outcome: "exported", ops: [setOp("manageBlueprints.editor.status", `Exported ${anchor.download}.`), setOp("manageBlueprints.editor.error", "")] };
-  },
-
-  requestDeleteBlueprint(ctx) {
+  async requestDeleteBlueprint(ctx) {
     const id = String(ctx.get("manageBlueprints.selectedId") ?? "");
-    const entry = findEntry(id);
+    const entry = await findEntry(id);
     if (!entry) return { outcome: "not-found", ops: [setOp("manageBlueprints.editor.error", "Select a local blueprint to delete.")] };
-    if (entry.readonly) return { outcome: "readonly", ops: [setOp("manageBlueprints.editor.error", "Repository blueprints cannot be deleted.")] };
+    if (entry.readonly) return { outcome: "readonly", ops: [setOp("manageBlueprints.editor.error", "Built-in Blueprints cannot be deleted. Clone it to create an editable copy.")] };
     return {
       outcome: "confirmation-required",
       ops: [setOp("manageBlueprints.deleteChallenge", { open: true, message: `Delete local blueprint '${id}'? This cannot be undone.` })],
@@ -431,31 +469,30 @@ export const manageBlueprintsEffects: EffectHandlerMap = {
     return { outcome: "cancelled", ops: [setOp("manageBlueprints.deleteChallenge", { open: false, message: "" })] };
   },
 
-  deleteBlueprint(ctx) {
+  async deleteBlueprint(ctx) {
     const id = String(ctx.get("manageBlueprints.selectedId") ?? "");
-    const entry = findEntry(id);
+    const entry = await findEntry(id);
     if (!entry) return { outcome: "not-found", ops: [setOp("manageBlueprints.editor.error", "Select a local blueprint to delete.")] };
-    if (entry.readonly) return { outcome: "readonly", ops: [setOp("manageBlueprints.editor.error", "Repository blueprints cannot be deleted.")] };
-    const stored = readStoredBlueprintMap();
+    if (entry.readonly) return { outcome: "readonly", ops: [setOp("manageBlueprints.editor.error", "Built-in Blueprints cannot be deleted. Clone it to create an editable copy.")] };
+    const stored = await readStoredBlueprintMap();
     delete stored.blueprints[id];
-    writeStoredBlueprintMap(stored.blueprints);
-    const catalog = loadCatalog();
+    await writeStoredBlueprintMap(stored.blueprints);
+    const catalog = await loadCatalog();
     return {
       outcome: "deleted",
       ops: [
         ...catalogOps(catalog.entries, catalog.errors),
         setOp("manageBlueprints.selectedId", ""),
-        setOp("manageBlueprints.selected", { id: "", source: "", readonly: true, version: "", structureMode: "fixed", tiers: "", recipeCount: 0 }),
-        setOp("manageBlueprints.editor", { id: "", blueprintText: "", status: `Deleted local blueprint ${id}.`, error: "" }),
+        setOp("manageBlueprints.selected", { id: "", source: "", sourceLabel: "", readonly: true, version: "", structureMode: "fixed", tiers: "", recipeCount: 0 }),
+        setOp("manageBlueprints.editor", { id: "", blueprintText: "", formValue: {}, persisted: true, status: `Deleted local blueprint ${id}.`, error: "" }),
         setOp("manageBlueprints.validation", { valid: false, previewable: false, summary: "Not validated.", errors: "", warnings: "" }),
         setOp("manageBlueprints.previewBlueprint", null),
+        setOp("manageBlueprints.previewReference", ""),
         setOp("manageBlueprints.previewError", ""),
         setOp("manageBlueprints.deleteChallenge", { open: false, message: "" }),
       ],
     };
   },
 };
-
-export const manageBlueprintsStorageKey = localBlueprintArtifactStorageKey;
 
 export default manageBlueprintsEffects;

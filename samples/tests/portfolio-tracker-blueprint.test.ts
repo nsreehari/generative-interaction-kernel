@@ -5,10 +5,10 @@ import {
 } from "@gik/blueprint";
 import { unwrap } from "@gik/kernel";
 
-import { openSampleBlueprint } from "../shared/blueprints";
+import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprints";
 import { applyHostConfig } from "../shared/host-config";
-import blueprint from "../blueprints/portfolio-tracker/blueprint.json" with { type: "json" };
 
+const blueprint = resolveSampleBlueprintSource("portfolio-tracker");
 const portfolioCells = Object.values(blueprint.payload.cells) as unknown as CellDefinition[];
 
 describe("portfolio-tracker Blueprint", () => {

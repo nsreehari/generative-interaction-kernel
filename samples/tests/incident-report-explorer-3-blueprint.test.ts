@@ -3,11 +3,10 @@ import { analyzeCellComposition, materializeBlueprint, type BlueprintArtifact, t
 import { BlueprintController } from "@gik/react";
 import { InMemoryStateModel } from "../../kernel/src/index";
 
-import blueprintJson from "../blueprints/incident-report-explorer-3/blueprint.json" with { type: "json" };
-import { openSampleBlueprint } from "../shared/blueprints";
+import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprints";
 import { createBlueprintAgentLifecycle } from "../shared/blueprint-agent-lifecycle";
 
-const blueprint = blueprintJson as unknown as BlueprintArtifact;
+const blueprint = resolveSampleBlueprintSource("incident-report-explorer-3") as BlueprintArtifact;
 const cells = Object.values(blueprint.payload.cells ?? {}) as CellDefinition[];
 
 function waitForIncidentState(

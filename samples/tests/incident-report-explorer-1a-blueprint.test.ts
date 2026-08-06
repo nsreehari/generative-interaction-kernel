@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import { analyzeCellComposition, materializeBlueprint, type BlueprintArtifact, type CellDefinition } from "@gik/blueprint";
 import { InMemoryStateModel } from "../../kernel/src/index";
 
-import blueprint from "../blueprints/incident-report-explorer-1a/blueprint.json" with { type: "json" };
 import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprints";
 import { resolveBlueprintInitialContext, resolveBlueprintNative } from "../shared/sample-bundles";
 import { createBlueprintAgentLifecycle, createBlueprintUseTools } from "../shared/blueprint-agent-lifecycle";
 
-const cells = Object.values(blueprint.payload.cells) as unknown as CellDefinition[];
+const blueprint = resolveSampleBlueprintSource("incident-report-explorer-1a");
+const cells = Object.values(blueprint.payload.cells ?? {}) as unknown as CellDefinition[];
 
 describe("incident-report-explorer-1a Blueprint", () => {
   it("declares UBX material without claiming customization or authoring authority", () => {

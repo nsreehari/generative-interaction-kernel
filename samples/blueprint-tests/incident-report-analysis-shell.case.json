@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/blueprint-test-case.schema.json",
+  "format": "gik-blueprint-test/1",
+  "name": "incident analysis shell nested Blueprint topology",
+  "blueprintId": "incident-report-analysis-shell",
+  "assertions": [
+    { "kind": "valid-artifact" },
+    { "kind": "composition-valid" },
+    {
+      "kind": "equals",
+      "pointer": "/payload/runtime/externals/projectionViews/host/use",
+      "value": ["hosted-blueprint"]
+    },
+    {
+      "kind": "equals",
+      "pointer": "/payload/cells/all-three-analysis-1/blueprint/$ref",
+      "value": "blueprint:incident-report-explorer-2@1.0.0"
+    }
+  ]
+}

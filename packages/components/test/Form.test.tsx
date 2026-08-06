@@ -90,9 +90,41 @@ test("form accepts schema and data aliases and honors read-only fields", () => {
   assert.match(markup, /readonly/i);
 });
 
+test("form can expose an unsaved initial draft", () => {
+  const markup = render({
+    fields: { properties: { name: { type: "string", title: "Name" } } },
+    value: { name: "Draft" },
+    initiallyDirty: true,
+  });
+
+  assert.match(markup, />Discard</);
+  assert.match(markup, />Save</);
+});
+
+test("form-wide readOnly makes all fields inspect-only and suppresses commit actions", () => {
+  const markup = render({
+    fields: {
+      properties: {
+        name: { type: "string", title: "Name" },
+        payload: { type: "json", title: "Payload" },
+        active: { type: "boolean", title: "Active" },
+      },
+    },
+    value: { name: "Built-in", payload: { id: "built-in" }, active: true },
+    initiallyDirty: true,
+    readOnly: true,
+  });
+
+  assert.equal((markup.match(/readonly/g) ?? []).length, 2);
+  assert.match(markup, /disabled/);
+  assert.doesNotMatch(markup, />Discard</);
+  assert.doesNotMatch(markup, />Save</);
+});
+
 test("form definition exposes a closed authoring contract", () => {
   const trial = formDefinition.materializeTrial();
   assert.equal(formDefinition.validate(trial.props).ok, true);
+  assert.equal(formDefinition.validate({ ...trial.props, validationContext: { catalog: { ids: ["existing"] } } }).ok, true);
   assert.equal(formDefinition.validate({ ...trial.props, unknown: true }).ok, false);
   assert.deepEqual(formDefinition.events, ["save"]);
   assert.equal(formDefinition.describe().dataProp, "value");

@@ -54,18 +54,18 @@ const useStyles = makeStyles({
   checkbox: { alignSelf: "end" },
 });
 
-function useDraftState<T>(incoming: T) {
+function useDraftState<T>(incoming: T, initiallyDirty: boolean) {
   const signature = JSON.stringify(incoming);
   const [draft, setDraft] = React.useState(incoming);
-  const [dirty, setDirty] = React.useState(false);
+  const [dirty, setDirty] = React.useState(initiallyDirty);
   React.useEffect(() => {
     setDraft(incoming);
-    setDirty(false);
-  }, [signature]);
+    setDirty(initiallyDirty);
+  }, [signature, initiallyDirty]);
   const reset = React.useCallback(() => {
     setDraft(incoming);
-    setDirty(false);
-  }, [signature]);
+    setDirty(initiallyDirty);
+  }, [signature, initiallyDirty]);
   return { draft, setDraft, dirty, setDirty, reset };
 }
 
@@ -133,7 +133,10 @@ export const Form: ProjectionView = ({ node, emit }) => {
   const fields = schema.properties ?? {};
   const required = new Set(schema.required ?? []);
   const incoming = props.obj<Record<string, unknown>>("value", props.obj<Record<string, unknown>>("data", {}));
-  const { draft: values, setDraft: setValues, dirty, setDirty, reset } = useDraftState(incoming);
+  const validationContext = props.obj<Record<string, Json>>("validationContext", {});
+  const readOnly = props.bool("readOnly");
+  const initiallyDirty = props.bool("initiallyDirty");
+  const { draft: values, setDraft: setValues, dirty, setDirty, reset } = useDraftState(incoming, initiallyDirty);
   const jsonKeys = Object.entries(fields).filter(([, field]) => isJsonField(field)).map(([key]) => key);
   const jsonSignature = jsonKeys.join("\u0000");
   const jsonTextFrom = React.useCallback((source: Record<string, unknown>) => Object.fromEntries(jsonKeys.map((key) => {
@@ -178,8 +181,9 @@ export const Form: ProjectionView = ({ node, emit }) => {
   };
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
+    if (readOnly) return;
     if (Object.values(jsonErrors).some(Boolean)) return;
-    const report = runDeclarativeValidators(schema.validators, values as Json);
+    const report = runDeclarativeValidators(schema.validators, values as Json, { bindings: validationContext });
     setValidationErrors(report.errors.map((issue) => issue.detail));
     if (!report.ok) return;
     void emit("save", { values });
@@ -194,7 +198,7 @@ export const Form: ProjectionView = ({ node, emit }) => {
         {Object.entries(fields).map(([key, field]) => {
           const title = String(field.title ?? key);
           const hint = typeof field.description === "string" ? field.description : typeof field.hint === "string" ? field.hint : undefined;
-          const disabled = field.readOnly === true || field.disabled === true;
+          const disabled = readOnly || field.readOnly === true || field.disabled === true;
           const isRequired = required.has(key);
           const current = values[key];
           const span = fieldSpan(field);
@@ -239,7 +243,7 @@ export const Form: ProjectionView = ({ node, emit }) => {
         })}
       </div>
       {validationErrors.length > 0 ? <div className={styles.errors} role="alert">{validationErrors.map((error) => <span key={error}>{error}</span>)}</div> : null}
-      {dirty ? <div className={styles.actions}>
+      {dirty && !readOnly ? <div className={styles.actions}>
         <Button type="button" onClick={discard}>{props.str("discardLabel", "Discard")}</Button>
         <Button type="submit" appearance="primary" disabled={Object.values(jsonErrors).some(Boolean)}>{props.str("saveLabel", "Save")}</Button>
       </div> : null}
@@ -251,8 +255,8 @@ const schema = {
   type: "object",
   additionalProperties: false,
   properties: {
-    fields: { type: "object" }, schema: { type: "object" }, value: { type: "object" }, data: { type: "object" },
-    saveLabel: { type: "string" }, discardLabel: { type: "string" },
+    fields: { type: "object" }, schema: { type: "object" }, value: { type: "object" }, data: { type: "object" }, validationContext: { type: "object" },
+    saveLabel: { type: "string" }, discardLabel: { type: "string" }, initiallyDirty: { type: "boolean" }, readOnly: { type: "boolean" },
   },
 } as const;
 
@@ -267,7 +271,7 @@ const description: ComponentDescription = {
   authoring: {
     useWhen: ["Users edit a schema-defined object and explicitly commit or discard the draft"],
     avoidWhen: ["Each field must emit immediately without an explicit commit", "The data is naturally edited as rows; use editable-table"],
-    rules: ["Define fields through JSON Schema properties", "Handle save payload values", "Keep workflow effects outside the component"],
+    rules: ["Define fields through JSON Schema properties", "Handle save payload values", "Use readOnly for inspect-only forms", "Pass external validator bindings through validationContext", "Use initiallyDirty only for drafts not yet persisted", "Keep workflow effects outside the component"],
   },
 };
 

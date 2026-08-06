@@ -1,13 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { analyzeCellComposition, materializeBlueprint, type BlueprintArtifact, type CellDefinition } from "@gik/blueprint";
+import { analyzeCellComposition, type BlueprintArtifact, type CellDefinition } from "@gik/blueprint";
 import { semanticComponentDefinitions } from "@gik/components";
 import { InMemoryStateModel } from "../../kernel/src/index";
 
-import blueprintJson from "../blueprints/incident-report-explorer-2/blueprint.json" with { type: "json" };
-import { openSampleBlueprint } from "../shared/blueprints";
+import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprints";
 import { createBlueprintAgentLifecycle } from "../shared/blueprint-agent-lifecycle";
 
-const blueprint = blueprintJson as unknown as BlueprintArtifact;
+const blueprint = resolveSampleBlueprintSource("incident-report-explorer-2") as BlueprintArtifact;
 const cells = Object.values(blueprint.payload.cells ?? {}) as CellDefinition[];
 
 describe("incident-report-explorer-2 Blueprint", () => {
@@ -120,18 +119,6 @@ describe("incident-report-explorer-2 Blueprint", () => {
     });
   });
 
-  it.each([
-    ["operational", ["incident-verdict", "incident-attack-path", "incident-blast-radius", "incident-timeline", "incident-techniques", "incident-response", "incident-notes"]],
-    ["brief", ["incident-verdict", "incident-attack-path", "incident-response", "incident-notes"]],
-    ["hosted-analysis", ["incident-verdict", "incident-attack-path", "incident-blast-radius", "incident-timeline", "incident-techniques", "incident-response", "incident-notes"]],
-  ])("materializes the authored %s preset", (attention, expectedLeaves) => {
-    const terminal = materializeBlueprint({ blueprint, externalContext: attention === "hosted-analysis" ? { hostedAnalysis: true } : { attention } }).payload.terminalBlueprint;
-    expect(terminal.payload.tiers).toEqual([{ id: "runtime-document", kind: "runtime-document" }]);
-    expect(terminal.payload.recipes).toEqual([]);
-    const placements = terminal.payload.projections?.presentation?.placements ?? [];
-    expect(placements.filter(({ parent }) => parent === "incident-semantic-analyzer").map(({ cell }) => cell)).toEqual(expectedLeaves);
-  });
-
   it("authors valid specs for the imported semantic component provider", () => {
     const operational = blueprint.payload.recipes[0].representations.find(({ id }) => id === "operational");
     const views = operational?.views ?? {};
@@ -151,9 +138,4 @@ describe("incident-report-explorer-2 Blueprint", () => {
     }
   });
 
-  it("imports the canonical semantic capabilities authored by its recipes", () => {
-    expect(blueprint.payload.runtime?.externals?.projectionViews.semantic.use).toEqual([
-      "event-series", "process", "entity-set", "decision", "work-set",
-    ]);
-  });
 });

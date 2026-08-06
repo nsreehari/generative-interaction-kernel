@@ -7,6 +7,9 @@ import { CollectionBoard, collectionBoardDefinition } from "./collection-board";
 import { ContainerPrimitive, containerDefinition } from "./container";
 import { DateTime, dateTimeDefinition } from "./datetime";
 import { EditableTable, editableTableDefinition } from "./editable-table";
+import { FileDownload, fileDownloadDefinition } from "./file-download";
+import { FileInput, fileInputDefinition } from "./file-input";
+import { FileList, fileListDefinition } from "./file-list";
 import { Form, formDefinition } from "./form";
 import { Gantt, ganttDefinition } from "./gantt";
 import { GraphDiagram, graphDiagramDefinition } from "./graph-diagram";
@@ -24,6 +27,9 @@ export const primitiveComponentViews: Record<string, ProjectionView> = {
   container: ContainerPrimitive,
   datetime: DateTime,
   "editable-table": EditableTable,
+  "file-download": FileDownload,
+  "file-input": FileInput,
+  "file-list": FileList,
   form: Form,
   gantt: Gantt,
   "graph-diagram": GraphDiagram,
@@ -42,6 +48,9 @@ export const primitiveComponentDefinitions = {
   container: containerDefinition,
   datetime: dateTimeDefinition,
   "editable-table": editableTableDefinition,
+  "file-download": fileDownloadDefinition,
+  "file-input": fileInputDefinition,
+  "file-list": fileListDefinition,
   form: formDefinition,
   gantt: ganttDefinition,
   "graph-diagram": graphDiagramDefinition,

@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import socBlueprint from "../blueprints/live-workspace-soc/blueprint.json" with { type: "json" };
 import t3Scenario from "../scenarios/live-workspace-soc-t3/scenario.json" with { type: "json" };
-import { openSampleBlueprint } from "../shared/blueprints";
+import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprints";
 
 const overview = openSampleBlueprint("samples-overview").state.overview as unknown as {
   actors: Array<{ id: string }>;
@@ -11,7 +10,7 @@ const overview = openSampleBlueprint("samples-overview").state.overview as unkno
   proofPlanes: Array<{ blueprint: string; gik: boolean }>;
   expansion: { domains: Array<{ id: string }>; status: string; boundary: string };
 };
-const canonicalActors = socBlueprint.payload.runtime.state.soc.actors;
+const canonicalActors = resolveSampleBlueprintSource("live-workspace-soc").payload.runtime.state.soc.actors;
 const canonicalActs = t3Scenario.payload.steps;
 
 test("overview SOC summary stays aligned with the canonical blueprint", () => {

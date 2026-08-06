@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/blueprint-test-case.schema.json",
+  "format": "gik-blueprint-test/1",
+  "name": "incident explorer 1a semantic refinement",
+  "blueprintId": "incident-report-explorer-1a",
+  "assertions": [
+    { "kind": "valid-artifact" },
+    { "kind": "composition-valid" },
+    {
+      "kind": "equals",
+      "pointer": "/payload/runtime/externals/projectionViews/semantic/use",
+      "value": ["component-data-sections"]
+    }
+  ],
+  "materializations": [
+    {
+      "name": "hosted analysis",
+      "externalContext": { "hostedAnalysis": true, "content": "# Hosted incident" },
+      "assertions": []
+    }
+  ]
+}

@@ -16,7 +16,6 @@ import {
 } from "@gik/blueprint-agent-host";
 import type { UseProposal } from "../../../shared/blueprint-agent-lifecycle";
 import { GikDemoBlueprintHost, type DemoTargetHostProps } from "@gik/demo-runner-host";
-import blueprintRegistry from "../../../blueprints/registry.json";
 import { resolveBundleProjectionViews } from "./bundles";
 import {
   canonicalizeHostUrl,
@@ -28,19 +27,18 @@ import {
   resolveBlueprintNative,
   resolveBlueprintNativeFromMaterialized,
 } from "../../../shared/sample-bundles";
-import { resolveSampleBlueprintSource } from "../../../shared/blueprints";
+import { getSampleBlueprintCatalog, resolveSampleBlueprintSource } from "../../../shared/blueprints";
 import { createSampleBlueprintHostRegistry } from "../../../shared/hosted-blueprint-registry";
 import portfolioTwoTierDemo from "../../../scenarios/portfolio-tracker-2tiers-baseline/scenario.json" with { type: "json" };
 
 const embeddedHostStyle: React.CSSProperties = { height: "100vh" };
-const { blueprints: blueprintIds, default: DEFAULT_BLUEPRINT } = blueprintRegistry;
 const defaultExternalContextByBlueprint = {
   "portfolio-tracker-2tiers": { view: "desktop", attention: "detailed", marketMode: "live" },
 } as const;
 
 export function Host(): React.ReactElement {
   const query = readHostQuery(window.location.search, window.location.pathname);
-  const targetId = query.targetId ?? DEFAULT_BLUEPRINT;
+  const targetId = query.targetId ?? getSampleBlueprintCatalog().defaultBlueprint;
   const HostComponent = query.durableEnabled ? DurableIndexedDbHost : InMemoryHost;
   React.useEffect(() => {
     const canonicalUrl = canonicalizeHostUrl(window.location.href);
@@ -231,6 +229,7 @@ function HostView({
 
 function ApplicationSwitcher({ currentId }: { currentId: string }): React.ReactElement {
   const [open, setOpen] = React.useState(false);
+  const blueprintIds = getSampleBlueprintCatalog().blueprints;
   const selectBlueprint = (id: string) => {
     if (id === currentId) return;
     const url = new URL(window.location.href);

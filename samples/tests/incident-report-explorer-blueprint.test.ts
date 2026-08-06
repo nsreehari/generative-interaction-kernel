@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { analyzeCellComposition, type CellDefinition } from "@gik/blueprint";
 import { unwrap } from "@gik/kernel";
 
-import blueprint from "../blueprints/incident-report-explorer/blueprint.json" with { type: "json" };
-import { openSampleBlueprint } from "../shared/blueprints";
+import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprints";
 
+const blueprint = resolveSampleBlueprintSource("incident-report-explorer");
 const cells = Object.values(blueprint.payload.cells) as unknown as CellDefinition[];
 
 describe("incident-report-explorer Blueprint", () => {

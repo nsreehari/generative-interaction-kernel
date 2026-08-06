@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
-import shellJson from "../blueprints/incident-report-analysis-shell/blueprint.json" with { type: "json" };
 import explorer1aHandlers from "../blueprints/incident-report-explorer-1a/native/effect_handlers/incidentReportExplorer1aEffectHandlers";
 import explorer2Handlers from "../blueprints/incident-report-explorer-2/native/effect_handlers/incidentReportExplorer2EffectHandlers";
 import explorer3Handlers from "../blueprints/incident-report-explorer-3/native/effect_handlers/incidentReportExplorer3EffectHandlers";
 import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprints";
 import { evalAsyncJsonata } from "../../packages/evaluators/src/evaluators";
 
-const shell = shellJson.payload;
+const shell = resolveSampleBlueprintSource("incident-report-analysis-shell").payload;
 
 describe("incident report hosted analysis shell", () => {
   it("hosts each state-described Blueprint independently in comparison and show-all layouts", () => {

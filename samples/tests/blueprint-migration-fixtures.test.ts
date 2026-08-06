@@ -3,10 +3,10 @@ import { validateBlueprintArtifact, type BlueprintArtifact } from "@gik/blueprin
 
 import {
   hasSampleBlueprint,
+  getSampleBlueprintCatalog,
   openSampleBlueprint,
   resolveSampleBlueprintSource,
 } from "../shared/blueprints";
-import registry from "../blueprints/registry.json" with { type: "json" };
 
 type FixtureExpectation = {
   namespace: string;
@@ -52,7 +52,7 @@ describe("reauthored canonical Blueprint fixtures", () => {
       expect(artifact.payload).not.toHaveProperty("blueprint-template");
       expect(artifact.payload).not.toHaveProperty("organism");
       expect(JSON.stringify(artifact)).not.toContain('"executor"');
-      expect(registry.blueprints).not.toContain(id);
+      expect(getSampleBlueprintCatalog().blueprints).not.toContain(id);
     });
 
     it(`${id} opens as a Kernel-executable program`, () => {

@@ -1,13 +1,18 @@
 import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
 import type { Json, OrchestratorResult, PatchOp } from "@gik/kernel";
-import blueprint from "../../blueprint.json";
+import { resolveSampleBlueprintSource } from "../../../../shared/blueprints";
 import { projectSocInspection, projectSocParticipants } from "./inspection";
 import type { Actor, AgentProvider, Incident, JournalEntry, Presentation } from "../projection_views/types";
 
 type RecordValue = Record<string, Json>;
-const blueprintState = blueprint.payload.runtime.state as unknown as RecordValue;
-const resetState = JSON.parse(JSON.stringify(blueprintState.soc)) as RecordValue;
-const resetInspection = JSON.parse(JSON.stringify(blueprintState.inspection)) as RecordValue;
+
+function resetBlueprintState(): { soc: RecordValue; inspection: RecordValue } {
+  const state = resolveSampleBlueprintSource("live-workspace-soc").payload.runtime?.state as unknown as RecordValue;
+  return {
+    soc: JSON.parse(JSON.stringify(state.soc)) as RecordValue,
+    inspection: JSON.parse(JSON.stringify(state.inspection)) as RecordValue,
+  };
+}
 
 function list(ctx: EffectContext, path: string): Json[] {
   const value = ctx.get(path);
@@ -572,10 +577,10 @@ const deterministicEffects: EffectHandlerMap = {
     return {
       outcome: "reset",
       ops: [
-        ...Object.entries(resetState).map(([key, value]) =>
+        ...Object.entries(resetBlueprintState().soc).map(([key, value]) =>
           setOp(`soc.${key}`, JSON.parse(JSON.stringify(value)) as Json)
         ),
-        setOp("control.inspection", JSON.parse(JSON.stringify(resetInspection)) as Json),
+        setOp("control.inspection", resetBlueprintState().inspection as Json),
       ],
     };
   },

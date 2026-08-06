@@ -1,8 +1,6 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { test } from "vitest";
-import type { BlueprintArtifact } from "@gik/blueprint";
-import registry from "../blueprints/registry.json" with { type: "json" };
+import { getSampleBlueprintCatalog } from "./blueprints";
 import {
   isSampleCredentialReference,
   SAMPLE_CREDENTIAL_REFERENCES,
@@ -50,9 +48,9 @@ function credentialLikePaths(value: unknown, parent = "", paths: string[] = []):
 
 test("all registered sample credential references use the host-owned catalog", () => {
   const found = new Set<string>();
-  for (const id of registry.blueprints) {
-    const url = new URL(`../blueprints/${id}/blueprint.json`, import.meta.url);
-    const blueprint = JSON.parse(readFileSync(url, "utf8")) as BlueprintArtifact;
+  const catalog = getSampleBlueprintCatalog();
+  for (const id of catalog.blueprints) {
+    const blueprint = catalog.entries[id];
     for (const reference of collectCredentialReferences(blueprint)) {
       assert.equal(isSampleCredentialReference(reference), true, `${id} uses unknown credential reference '${reference}'`);
       found.add(reference);

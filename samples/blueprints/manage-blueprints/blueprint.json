@@ -116,6 +116,33 @@
             "select"
           ]
         },
+        "primitive:form": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "save"
+          ]
+        },
+        "primitive:file-input": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "select"
+          ]
+        },
+        "primitive:file-download": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "download"
+          ]
+        },
         "ui:math-challenge": {
           "propsSchema": {
             "type": "object",
@@ -126,13 +153,13 @@
             "cancel"
           ]
         },
-        "manage-blueprints:blueprint-import": {
+        "manage-blueprints:catalog-loader": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           },
           "emits": [
-            "import"
+            "load"
           ]
         },
         "manage-blueprints:blueprint-preview": {
@@ -151,9 +178,15 @@
             "from": "fluent",
             "use": [
               "button",
-              "tab-bar",
-              "text-field",
-              "textarea"
+              "tab-bar"
+            ]
+          },
+          "primitive": {
+            "from": "primitive",
+            "use": [
+              "file-download",
+              "file-input",
+              "form"
             ]
           },
           "manage-blueprints": {
@@ -163,13 +196,11 @@
         "effectHandlers": [
           "listBlueprints",
           "getBlueprint",
+          "selectBlueprintTab",
           "createBlueprint",
           "importBlueprint",
           "cloneBlueprint",
           "saveBlueprint",
-          "validateBlueprint",
-          "previewBlueprint",
-          "exportBlueprint",
           "requestDeleteBlueprint",
           "cancelDeleteBlueprint",
           "deleteBlueprint"
@@ -183,6 +214,7 @@
           "selected": {
             "id": "",
             "source": "",
+            "sourceLabel": "",
             "readonly": true,
             "version": "",
             "structureMode": "fixed",
@@ -193,6 +225,8 @@
           "editor": {
             "id": "",
             "blueprintText": "",
+            "formValue": {},
+            "persisted": true,
             "status": "Select a blueprint, or create a browser-local blueprint.",
             "error": ""
           },
@@ -204,6 +238,7 @@
             "warnings": ""
           },
           "previewBlueprint": null,
+          "previewReference": "",
           "previewError": "",
           "deleteChallenge": {
             "open": false,
@@ -220,13 +255,31 @@
       }
     ],
     "cells": {
+      "catalog-loader": {
+        "id": "catalog-loader",
+        "behavior": {
+          "events": {
+            "load": [
+              {
+                "do": "invoke",
+                "args": {
+                  "tool": "listBlueprints"
+                }
+              }
+            ]
+          }
+        },
+        "view": {
+          "capability": "manage-blueprints:catalog-loader"
+        }
+      },
       "manage-blueprints-root": {
         "id": "manage-blueprints-root",
         "view": {
           "capability": "ui:screen",
           "props": {
             "title": "Manage Blueprints",
-            "subtitle": "Inspect repository blueprints and manage portable browser-local blueprint artifacts"
+            "subtitle": "Browse built-in Blueprints and manage your editable copies"
           }
         }
       },
@@ -244,7 +297,7 @@
         "view": {
           "capability": "ui:panel",
           "props": {
-            "title": "Blueprint catalog",
+            "title": "Blueprints",
             "variant": "rail"
           }
         }
@@ -269,27 +322,6 @@
           "capability": "ui:row"
         }
       },
-      "refresh-blueprints": {
-        "id": "refresh-blueprints",
-        "behavior": {
-          "events": {
-            "press": [
-              {
-                "do": "invoke",
-                "args": {
-                  "tool": "listBlueprints"
-                }
-              }
-            ]
-          }
-        },
-        "view": {
-          "capability": "fluent:button",
-          "props": {
-            "label": "Refresh"
-          }
-        }
-      },
       "create-blueprint": {
         "id": "create-blueprint",
         "behavior": {
@@ -307,7 +339,7 @@
         "view": {
           "capability": "fluent:button",
           "props": {
-            "label": "New local blueprint",
+            "label": "New Blueprint",
             "appearance": "primary"
           }
         }
@@ -316,7 +348,7 @@
         "id": "import-blueprint",
         "behavior": {
           "events": {
-            "import": [
+            "select": [
               {
                 "do": "invoke",
                 "args": {
@@ -327,7 +359,12 @@
           }
         },
         "view": {
-          "capability": "manage-blueprints:blueprint-import"
+          "capability": "primitive:file-input",
+          "props": {
+            "label": "Import file",
+            "accept": "application/json,.json",
+            "readAs": "text"
+          }
         }
       },
       "blueprint-list": {
@@ -350,8 +387,8 @@
             "idKey": "id",
             "primaryKey": "label",
             "secondaryKey": "detail",
-            "badgeKey": "source",
-            "emptyText": "No blueprint artifacts found."
+            "badgeKey": "sourceLabel",
+            "emptyText": "No Blueprints found."
           },
           "bindings": {
             "items": {
@@ -368,7 +405,7 @@
         "view": {
           "capability": "ui:panel",
           "props": {
-            "title": "Blueprint artifact",
+            "title": "Blueprint",
             "variant": "detail"
           }
         }
@@ -378,7 +415,7 @@
         "view": {
           "capability": "ui:note",
           "props": {
-            "value": "Select a repository or local blueprint, or create a new local artifact.",
+            "value": "Select a Blueprint or create a new one.",
             "tone": "muted"
           },
           "visibility": "manageBlueprints.selectedId = '' and manageBlueprints.editor.blueprintText = ''"
@@ -390,10 +427,9 @@
           "events": {
             "select": [
               {
-                "do": "assign",
-                "target": "manageBlueprints.tab",
+                "do": "invoke",
                 "args": {
-                  "from": "$event.value"
+                  "tool": "selectBlueprintTab"
                 }
               }
             ]
@@ -409,7 +445,7 @@
               },
               {
                 "value": "draft",
-                "label": "Draft"
+                "label": "JSON"
               },
               {
                 "value": "preview",
@@ -421,7 +457,8 @@
             "active": {
               "from": "manageBlueprints.tab"
             }
-          }
+          },
+          "visibility": "manageBlueprints.selected.id != ''"
         }
       },
       "blueprint-overview": {
@@ -429,10 +466,10 @@
         "view": {
           "capability": "ui:panel",
           "props": {
-            "title": "Artifact boundary",
+            "title": "Details",
             "variant": "tab"
           },
-          "visibility": "manageBlueprints.tab = 'overview'"
+          "visibility": "manageBlueprints.tab = 'overview' and manageBlueprints.selected.id != ''"
         }
       },
       "blueprint-id": {
@@ -458,7 +495,7 @@
           },
           "bindings": {
             "value": {
-              "from": "manageBlueprints.selected.source"
+              "from": "manageBlueprints.selected.sourceLabel"
             }
           }
         }
@@ -540,8 +577,9 @@
         "view": {
           "capability": "fluent:button",
           "props": {
-            "label": "Clone to local draft"
-          }
+            "label": "Clone to edit"
+          },
+          "visibility": "manageBlueprints.selectedId != ''"
         }
       },
       "delete-blueprint": {
@@ -561,8 +599,9 @@
         "view": {
           "capability": "fluent:button",
           "props": {
-            "label": "Delete local blueprint"
-          }
+            "label": "Delete"
+          },
+          "visibility": "manageBlueprints.selectedId != '' and manageBlueprints.selected.readonly = false"
         }
       },
       "blueprint-draft": {
@@ -570,24 +609,10 @@
         "view": {
           "capability": "ui:panel",
           "props": {
-            "title": "Serializable blueprint JSON",
+            "title": "JSON editor",
             "variant": "tab"
           },
           "visibility": "manageBlueprints.tab = 'draft'"
-        }
-      },
-      "editor-status": {
-        "id": "editor-status",
-        "view": {
-          "capability": "ui:note",
-          "props": {
-            "tone": "info"
-          },
-          "bindings": {
-            "value": {
-              "from": "manageBlueprints.editor.status"
-            }
-          }
         }
       },
       "editor-error": {
@@ -605,137 +630,11 @@
           "visibility": "manageBlueprints.editor.error != ''"
         }
       },
-      "editor-id": {
-        "id": "editor-id",
+      "editor-form": {
+        "id": "editor-form",
         "behavior": {
           "events": {
-            "input": [
-              {
-                "do": "assign",
-                "target": "manageBlueprints.editor.id",
-                "args": {
-                  "from": "$event.value"
-                }
-              }
-            ]
-          }
-        },
-        "view": {
-          "capability": "fluent:text-field",
-          "props": {
-            "label": "Local blueprint id"
-          },
-          "bindings": {
-            "value": {
-              "from": "manageBlueprints.editor.id"
-            }
-          }
-        }
-      },
-      "editor-json": {
-        "id": "editor-json",
-        "behavior": {
-          "events": {
-            "input": [
-              {
-                "do": "assign",
-                "target": "manageBlueprints.editor.blueprintText",
-                "args": {
-                  "from": "$event.value"
-                }
-              }
-            ]
-          }
-        },
-        "view": {
-          "capability": "fluent:textarea",
-          "props": {
-            "label": "Blueprint JSON",
-            "rows": 22
-          },
-          "bindings": {
-            "value": {
-              "from": "manageBlueprints.editor.blueprintText"
-            }
-          }
-        }
-      },
-      "validation-summary": {
-        "id": "validation-summary",
-        "view": {
-          "capability": "ui:note",
-          "props": {
-            "tone": "info"
-          },
-          "bindings": {
-            "value": {
-              "from": "manageBlueprints.validation.summary"
-            }
-          }
-        }
-      },
-      "validation-errors": {
-        "id": "validation-errors",
-        "view": {
-          "capability": "ui:note",
-          "props": {
-            "tone": "danger"
-          },
-          "bindings": {
-            "value": {
-              "from": "manageBlueprints.validation.errors"
-            }
-          },
-          "visibility": "manageBlueprints.validation.errors != ''"
-        }
-      },
-      "validation-warnings": {
-        "id": "validation-warnings",
-        "view": {
-          "capability": "ui:note",
-          "props": {
-            "tone": "warning"
-          },
-          "bindings": {
-            "value": {
-              "from": "manageBlueprints.validation.warnings"
-            }
-          },
-          "visibility": "manageBlueprints.validation.warnings != ''"
-        }
-      },
-      "editor-actions": {
-        "id": "editor-actions",
-        "view": {
-          "capability": "ui:row"
-        }
-      },
-      "validate-blueprint": {
-        "id": "validate-blueprint",
-        "behavior": {
-          "events": {
-            "press": [
-              {
-                "do": "invoke",
-                "args": {
-                  "tool": "validateBlueprint"
-                }
-              }
-            ]
-          }
-        },
-        "view": {
-          "capability": "fluent:button",
-          "props": {
-            "label": "Validate"
-          }
-        }
-      },
-      "save-blueprint": {
-        "id": "save-blueprint",
-        "behavior": {
-          "events": {
-            "press": [
+            "save": [
               {
                 "do": "invoke",
                 "args": {
@@ -746,63 +645,115 @@
           }
         },
         "view": {
-          "capability": "fluent:button",
+          "capability": "primitive:form",
           "props": {
-            "label": "Save locally",
-            "appearance": "primary"
+            "fields": {
+              "properties": {
+                "id": {
+                  "title": "Blueprint ID",
+                  "type": "string",
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "minLength": 1,
+                  "span": 12
+                },
+                "blueprint": {
+                  "title": "Blueprint JSON",
+                  "type": "json",
+                  "format": "json",
+                  "rows": 22,
+                  "span": 12
+                }
+              },
+              "required": [
+                "id",
+                "blueprint"
+              ],
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "code": "blueprint-editor-shape",
+                  "message": "Enter a valid Blueprint ID and Blueprint document.",
+                  "schema": {
+                    "type": "object",
+                    "required": ["id", "blueprint"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                      },
+                      "blueprint": {
+                        "type": "object",
+                        "required": ["gik", "type", "payload"],
+                        "properties": {
+                          "gik": { "type": "string" },
+                          "type": { "const": "blueprint" },
+                          "payload": {
+                            "type": "object",
+                            "required": ["id", "kind", "version", "tiers", "recipes"]
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "kind": "jsonata",
+                  "code": "blueprint-id-unique",
+                  "message": "Blueprint ID already exists.",
+                  "expr": "data.id = $currentId or $not(data.id in $blueprintIds)"
+                }
+              ]
+            },
+            "saveLabel": "Save",
+            "discardLabel": "Discard changes"
+          },
+          "bindings": {
+            "value": {
+              "from": "manageBlueprints.editor.formValue"
+            },
+            "initiallyDirty": {
+              "expression": "$not(manageBlueprints.editor.persisted)"
+            },
+            "readOnly": {
+              "from": "manageBlueprints.selected.readonly"
+            },
+            "validationContext": {
+              "expression": "{'currentId': manageBlueprints.selectedId, 'blueprintIds': manageBlueprints.blueprints.id}"
+            }
           }
         }
       },
-      "preview-blueprint": {
-        "id": "preview-blueprint",
-        "behavior": {
-          "events": {
-            "press": [
-              {
-                "do": "invoke",
-                "args": {
-                  "tool": "previewBlueprint"
-                }
-              }
-            ]
-          }
-        },
+      "editor-actions": {
+        "id": "editor-actions",
         "view": {
-          "capability": "fluent:button",
-          "props": {
-            "label": "Preview"
-          }
+          "capability": "ui:row"
         }
       },
       "export-blueprint": {
         "id": "export-blueprint",
-        "behavior": {
-          "events": {
-            "press": [
-              {
-                "do": "invoke",
-                "args": {
-                  "tool": "exportBlueprint"
-                }
-              }
-            ]
-          }
-        },
         "view": {
-          "capability": "fluent:button",
+          "capability": "primitive:file-download",
           "props": {
-            "label": "Export JSON"
+            "label": "Export JSON",
+            "mediaType": "application/json"
+          },
+          "bindings": {
+            "filename": {
+              "expression": "manageBlueprints.editor.id & '.blueprint.json'"
+            },
+            "content": {
+              "from": "manageBlueprints.editor.blueprintText"
+            },
+            "disabled": {
+              "expression": "manageBlueprints.editor.blueprintText = ''"
+            }
           }
         }
       },
       "blueprint-preview": {
         "id": "blueprint-preview",
         "view": {
-          "capability": "ui:panel",
-          "props": {
-            "title": "Blueprint structure",
-            "variant": "tab"
-          },
+          "capability": "ui:col",
           "visibility": "manageBlueprints.tab = 'preview'"
         }
       },
@@ -828,6 +779,9 @@
           "bindings": {
             "blueprint": {
               "from": "manageBlueprints.previewBlueprint"
+            },
+            "reference": {
+              "from": "manageBlueprints.previewReference"
             }
           },
           "visibility": "manageBlueprints.previewBlueprint != null"
@@ -879,10 +833,16 @@
         ],
         "placements": [
           {
-            "cell": "manage-blueprints-layout",
+            "cell": "catalog-loader",
             "parent": "manage-blueprints-root",
             "slot": "children",
             "order": 0
+          },
+          {
+            "cell": "manage-blueprints-layout",
+            "parent": "manage-blueprints-root",
+            "slot": "children",
+            "order": 1
           },
           {
             "cell": "blueprint-catalog",
@@ -903,22 +863,10 @@
             "order": 1
           },
           {
-            "cell": "refresh-blueprints",
-            "parent": "catalog-actions",
-            "slot": "children",
-            "order": 0
-          },
-          {
             "cell": "create-blueprint",
             "parent": "catalog-actions",
             "slot": "children",
-            "order": 1
-          },
-          {
-            "cell": "import-blueprint",
-            "parent": "catalog-actions",
-            "slot": "children",
-            "order": 2
+            "order": 0
           },
           {
             "cell": "blueprint-list",
@@ -1011,46 +959,16 @@
             "order": 3
           },
           {
-            "cell": "editor-status",
+            "cell": "editor-error",
             "parent": "blueprint-draft",
             "slot": "children",
             "order": 0
           },
           {
-            "cell": "editor-error",
-            "parent": "blueprint-draft",
-            "slot": "children",
-            "order": 1
-          },
-          {
-            "cell": "editor-id",
+            "cell": "editor-form",
             "parent": "blueprint-draft",
             "slot": "children",
             "order": 2
-          },
-          {
-            "cell": "editor-json",
-            "parent": "blueprint-draft",
-            "slot": "children",
-            "order": 3
-          },
-          {
-            "cell": "validation-summary",
-            "parent": "blueprint-draft",
-            "slot": "children",
-            "order": 4
-          },
-          {
-            "cell": "validation-errors",
-            "parent": "blueprint-draft",
-            "slot": "children",
-            "order": 5
-          },
-          {
-            "cell": "validation-warnings",
-            "parent": "blueprint-draft",
-            "slot": "children",
-            "order": 6
           },
           {
             "cell": "editor-actions",
@@ -1059,28 +977,16 @@
             "order": 7
           },
           {
-            "cell": "validate-blueprint",
+            "cell": "export-blueprint",
             "parent": "editor-actions",
             "slot": "children",
             "order": 0
           },
           {
-            "cell": "save-blueprint",
+            "cell": "import-blueprint",
             "parent": "editor-actions",
             "slot": "children",
             "order": 1
-          },
-          {
-            "cell": "preview-blueprint",
-            "parent": "editor-actions",
-            "slot": "children",
-            "order": 2
-          },
-          {
-            "cell": "export-blueprint",
-            "parent": "editor-actions",
-            "slot": "children",
-            "order": 3
           },
           {
             "cell": "blueprint-preview",
