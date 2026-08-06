@@ -9,7 +9,6 @@ import {
 import type { ExternalContext, MaterializedBlueprint } from "@gik/blueprint";
 import type { Json } from "@gik/kernel";
 import { openBlueprint } from "@gik/controlface/blueprint";
-import registry from "../blueprints/registry.json";
 import * as copilotC2EffectModule from "../blueprints/copilot-c2/native/effect_handlers/copilotC2EffectHandlers";
 import * as cachedIncidentReportExplorerEffectModule from "../blueprints/cached-incident-report-explorer/native/effect_handlers/cachedIncidentReportExplorerEffectHandlers";
 import * as cachedIncidentReportExplorer2EffectModule from "../blueprints/cached-incident-report-explorer-2/native/effect_handlers/cachedIncidentReportExplorer2EffectHandlers";
@@ -22,19 +21,11 @@ import * as incidentReportExplorer3EffectModule from "../blueprints/incident-rep
 import * as liveWorkspaceSocEffectModule from "../blueprints/live-workspace-soc/native/effect_handlers/liveWorkspaceSocEffectHandlers";
 import * as manageBlueprintsEffectModule from "../blueprints/manage-blueprints/native/effect_handlers/manageBlueprintsEffectHandlers";
 import * as portfolioTrackerEffectModule from "../blueprints/portfolio-tracker/native/effect_handlers/portfolioTrackerEffectHandlers";
-import { openSampleBlueprint } from "./blueprints";
+import { getSampleBlueprintCatalog, openSampleBlueprint } from "./blueprints";
 import { resolveBundleProjectionViews } from "./provider-registry";
 import { browserServiceRegistryOptions, declarativeServiceOrchestrator } from "./service-runtime";
 import type { BlueprintProposalStore } from "@gik/blueprint-agent-host";
 import type { UseProposal } from "./blueprint-agent-lifecycle";
-
-type Registry = {
-  default: string;
-  blueprints: string[];
-  nativeFrom?: Record<string, string>;
-  projectionFrom?: Record<string, string>;
-};
-const REGISTRY = registry as Registry;
 
 type NativeEffectModule = {
   default: EffectHandlerMap;
@@ -84,8 +75,9 @@ function resolveBlueprintNativeFromRuntime(
   runtime: ReturnType<typeof openSampleBlueprint>,
   options: ResolveBlueprintNativeOptions,
 ): BundleNative {
-  const nativeId = REGISTRY.nativeFrom?.[id] ?? id;
-  const projectionId = REGISTRY.projectionFrom?.[id] ?? nativeId;
+  const catalog = getSampleBlueprintCatalog();
+  const nativeId = catalog.nativeFrom[id] ?? id;
+  const projectionId = catalog.projectionFrom[id] ?? nativeId;
   const effectModule = effectHandlerModules[nativeId];
   const serviceOrchestrator = declarativeServiceOrchestrator(
     runtime,
@@ -104,7 +96,7 @@ export function resolveBlueprintInitialContext(
   externalContext?: ExternalContext,
 ): Record<string, Json> {
   const runtime = openSampleBlueprint(id, externalContext);
-  const nativeId = REGISTRY.nativeFrom?.[id] ?? id;
+  const nativeId = getSampleBlueprintCatalog().nativeFrom[id] ?? id;
   effectHandlerModules[nativeId]?.hydrateState?.(runtime.state);
   return { initialSeed: structuredClone(runtime.state) as Json };
 }

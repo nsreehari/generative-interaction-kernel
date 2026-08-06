@@ -14,8 +14,9 @@ import {
   summarizeBlueprint,
 } from "@gik/provider-blueprint-authoring";
 import { StepOrchestrator, type FlowRegistry } from "@gik/provider-step-orchestrator";
+import type { BlueprintArtifact } from "@gik/blueprint";
+import { resolveSampleBlueprintSource } from "../../../shared/blueprints";
 import { educationExploration, portfolioCells } from "./analysis-fixtures";
-import samplesOverviewBlueprint from "../../../blueprints/samples-overview/blueprint.json" with { type: "json" };
 
 function prettyJson(value: unknown): string {
   return JSON.stringify(value, null, 2);
@@ -72,7 +73,7 @@ export interface ProviderAuthoringPlanResult {
   explorationInspection: ReturnType<typeof inspectExploration>;
   explorationFrontier: ReturnType<typeof analyzeExploration>;
   blueprintSeed: {
-    blueprint: typeof samplesOverviewBlueprint;
+    blueprint: BlueprintArtifact;
     summary: ReturnType<typeof summarizeBlueprint>;
   } | null;
   args: Record<string, Json>;
@@ -88,8 +89,8 @@ export function buildProviderAuthoringPlan(input: ProviderAuthoringPlanInput): P
   const blueprintSeed =
     input.mode === "blueprint-artifact" && input.blueprintSeedName === "samples-overview"
       ? {
-          blueprint: samplesOverviewBlueprint,
-          summary: summarizeBlueprint(samplesOverviewBlueprint),
+          blueprint: resolveSampleBlueprintSource("samples-overview"),
+          summary: summarizeBlueprint(resolveSampleBlueprintSource("samples-overview")),
         }
       : null;
 

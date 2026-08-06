@@ -1,34 +1,29 @@
 import React from "react";
 
-import { parseBlueprintJson, resolveBlueprintExecution } from "@gik/blueprint";
+import { parseBlueprintJson, parseBlueprintReference, resolveBlueprintExecution } from "@gik/blueprint";
 import {
   BlueprintHost,
   useBlueprintHostRegistry,
   useProjectionProviderResolver,
   type ProjectionView,
+  type ReactBlueprintHostRegistry,
 } from "@gik/react";
 
-const BlueprintImport: ProjectionView = ({ emit }) => (
-  <label className="gx-btn">
-    Import JSON
-    <input
-      type="file"
-      accept="application/json,.json"
-      hidden
-      onChange={async (event) => {
-        const file = event.currentTarget.files?.[0];
-        if (!file) return;
-        emit("import", { name: file.name, text: await file.text() });
-        event.currentTarget.value = "";
-      }}
-    />
-  </label>
-);
+const BlueprintCatalogLoader: ProjectionView = ({ emit }) => {
+  const emitRef = React.useRef(emit);
+  React.useEffect(() => {
+    emitRef.current("load", {});
+  }, []);
+  return null;
+};
 
 const BlueprintPreview: ProjectionView = ({ node }) => {
   const blueprintRegistry = useBlueprintHostRegistry();
   const resolveLeavesProvider = useProjectionProviderResolver() ?? undefined;
   const source = node.props.blueprint;
+  const reference = typeof node.props.reference === "string" ? node.props.reference : "";
+  const [resolution, setResolution] = React.useState<Awaited<ReturnType<ReactBlueprintHostRegistry["resolve"]>> | null>(null);
+  const [resolutionError, setResolutionError] = React.useState("");
   const result = React.useMemo(() => {
     try {
       return { blueprint: parseBlueprintJson(JSON.stringify(source)), error: "" };
@@ -37,8 +32,28 @@ const BlueprintPreview: ProjectionView = ({ node }) => {
     }
   }, [source]);
 
-  if (result.error || !result.blueprint) {
-    return <p className="gx-note gx-note-danger">{result.error || "No preview blueprint available."}</p>;
+  React.useEffect(() => {
+    let active = true;
+    setResolution(null);
+    setResolutionError("");
+    if (!reference) return () => { active = false; };
+    if (!blueprintRegistry) {
+      setResolutionError(`No Blueprint registry can resolve '${reference}'.`);
+      return () => { active = false; };
+    }
+    void Promise.resolve(blueprintRegistry.resolve(parseBlueprintReference(reference), {
+      parentBlueprintId: "manage-blueprints",
+      parentInstanceId: "manage-blueprints:preview",
+      cellId: "portable-blueprint-preview",
+    })).then(
+      (next) => { if (active) setResolution(next); },
+      (error: unknown) => { if (active) setResolutionError(error instanceof Error ? error.message : String(error)); },
+    );
+    return () => { active = false; };
+  }, [blueprintRegistry, reference]);
+
+  if (result.error || resolutionError || !result.blueprint) {
+    return <p className="gx-note gx-note-danger">{result.error || resolutionError || "No preview Blueprint available."}</p>;
   }
 
   const payload = result.blueprint.payload;
@@ -46,39 +61,20 @@ const BlueprintPreview: ProjectionView = ({ node }) => {
   const livePreviewable = execution.stages.length === 0
     && Object.keys(payload.cells ?? {}).length > 0
     && (payload.projections?.presentation?.roots.length ?? 0) === 1;
+  if (reference && !resolution) return <p className="gx-note">Loading Blueprint preview...</p>;
+  if (!livePreviewable) return <p className="gx-note">This Blueprint has no directly renderable presentation.</p>;
   return (
-    <>
-      <div className="gx-panel">
-        <dl>
-          <dt>ID</dt><dd>{payload.id}</dd>
-          <dt>Kind</dt><dd>{payload.kind}</dd>
-          <dt>Version</dt><dd>{payload.version}</dd>
-          <dt>Structure mode</dt><dd>{payload.structureMode ?? "fixed"}</dd>
-          <dt>Tiers</dt><dd>{payload.tiers.map((tier) => `${tier.id} (${tier.kind})`).join(", ")}</dd>
-          <dt>Recipe chain</dt>
-          <dd>{execution.stages.length > 0
-            ? execution.stages.map((stage) => `${stage.fromTier.id} -[${stage.recipe.id}]-> ${stage.toTier.id}`).join("; ")
-            : `Terminal: ${payload.tiers[0]?.id ?? "none"}`}</dd>
-          <dt>Execution</dt>
-          <dd>{execution.stages.length > 0
-            ? "Lowering required: provide a dialect-owned lowering implementation."
-            : "Runtime ready"}</dd>
-          <dt>Cells</dt><dd>{Object.keys(payload.cells ?? {}).length}</dd>
-        </dl>
-      </div>
-      {livePreviewable ? (
-        <BlueprintPreviewBoundary key={JSON.stringify(result.blueprint)}>
-          <BlueprintHost
-            blueprint={result.blueprint}
-            blueprintRegistry={blueprintRegistry}
-            resolveLeavesProvider={resolveLeavesProvider}
-            primaryInstanceId={`manage-preview:${payload.id}`}
-          />
-        </BlueprintPreviewBoundary>
-      ) : (
-        <p className="gx-note">This artifact has no directly mountable terminal presentation.</p>
-      )}
-    </>
+    <div className="gx-blueprint-preview">
+      <BlueprintPreviewBoundary key={JSON.stringify(result.blueprint)}>
+        <BlueprintHost
+          blueprint={resolution?.blueprint ?? result.blueprint}
+          native={resolution?.native}
+          blueprintRegistry={blueprintRegistry}
+          resolveLeavesProvider={resolveLeavesProvider}
+          primaryInstanceId={`manage-preview:${payload.id}`}
+        />
+      </BlueprintPreviewBoundary>
+    </div>
   );
 };
 
@@ -96,7 +92,7 @@ class BlueprintPreviewBoundary extends React.Component<React.PropsWithChildren, 
 }
 
 const projectionViews: Record<string, ProjectionView> = {
-  "blueprint-import": BlueprintImport,
+  "catalog-loader": BlueprintCatalogLoader,
   "blueprint-preview": BlueprintPreview,
 };
 

@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import blueprint from "../blueprints/live-workspace-soc/blueprint.json" with { type: "json" };
+import { resolveSampleBlueprintSource } from "../shared/blueprints";
 
+const blueprint = resolveSampleBlueprintSource("live-workspace-soc");
 const soc = blueprint.payload.runtime.state.soc;
 const actors = soc.actors;
 const events = blueprint.payload.cells["soc-workspace"].behavior.events;

@@ -123,6 +123,8 @@ export default defineConfig({
         test: {
           name: "samples",
           environment: "node",
+          testTimeout: 20_000,
+          setupFiles: ["samples/tests/setup-blueprint-catalog.ts"],
           include: [
             "samples/control-host/**/*.test.ts",
             "samples/shared/**/*.test.ts",

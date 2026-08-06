@@ -1,6 +1,8 @@
 import { createRoot } from "react-dom/client";
 import { Host } from "./Host";
 import { HostThemeProvider } from "./HostThemeProvider";
+import { bootstrapSampleBlueprintCatalog } from "../../../shared/blueprint-catalog";
+import { installSampleBlueprintCatalog } from "../../../shared/blueprints";
 
 const el = document.getElementById("root");
 if (!el) throw new Error("missing #root");
@@ -12,8 +14,13 @@ if (!el) throw new Error("missing #root");
 // derived from the shared theme/roles.json and bound to Fluent tokens by the host theme provider — so
 // Fluent drives the theme instead of a hand-maintained CSS palette. Swap `webLightTheme` for
 // `webDarkTheme` to re-theme everything.
-createRoot(el).render(
-  <HostThemeProvider>
-    <Host />
-  </HostThemeProvider>
-);
+async function start(rootElement: HTMLElement): Promise<void> {
+  installSampleBlueprintCatalog(await bootstrapSampleBlueprintCatalog());
+  createRoot(rootElement).render(
+    <HostThemeProvider>
+      <Host />
+    </HostThemeProvider>
+  );
+}
+
+void start(el);

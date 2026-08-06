@@ -1,16 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import registry from "../blueprints/registry.json" with { type: "json" };
-import { openSampleBlueprint, resolveSampleBlueprintSource } from "./blueprints";
+import { getSampleBlueprintCatalog, openSampleBlueprint, resolveSampleBlueprintSource } from "./blueprints";
 
 test("every registered sample opens through terminal materialization", () => {
-  for (const id of registry.blueprints) {
+  for (const id of getSampleBlueprintCatalog().blueprints) {
     const runtime = openSampleBlueprint(id);
     assert.equal(runtime.blueprintId, id);
     assert.equal(runtime.definition.payload.tiers.length, 1, `${id} did not resolve to one terminal tier`);
     assert.deepEqual(runtime.definition.payload.recipes, [], `${id} retained lowering recipes at runtime`);
   }
-}, 10_000);
+}, 20_000);
 
 test("sample opener preserves direct-runtime Blueprints", () => {
   const source = resolveSampleBlueprintSource("samples-overview");

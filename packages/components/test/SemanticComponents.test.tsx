@@ -164,7 +164,7 @@ test("public registries separate component layers and expose an aggregate", () =
   const semantic = ["argument", "decision", "entity-set", "event-series", "evidence-case", "measure-set", "milestones", "narrative", "process", "relationship-set", "work-set"];
   const security = ["attack-path"];
   const software = ["source-comparison", "source-findings"];
-  const primitives = ["access-gate", "chart", "collection-board", "container", "datetime", "editable-table", "form", "gantt", "graph-diagram", "growing-container", "infinite-canvas", "markdown", "source-viewer", "timer-button", "todo-list"];
+  const primitives = ["access-gate", "chart", "collection-board", "container", "datetime", "editable-table", "file-download", "file-input", "file-list", "form", "gantt", "graph-diagram", "growing-container", "infinite-canvas", "markdown", "source-viewer", "timer-button", "todo-list"];
   const fluent = ["badge", "button", "chips", "data-grid", "dialog", "dropdown", "list", "persona", "searchbox", "spinner", "switch", "tab-bar", "table", "text", "text-field", "textarea", "toggle", "toolbar"];
   assert.deepEqual(Object.keys(semanticComponentViews).sort(), semantic);
   assert.deepEqual(Object.keys(semanticComponentDefinitions).sort(), semantic);

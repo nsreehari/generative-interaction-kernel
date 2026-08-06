@@ -18,6 +18,18 @@ The backend examples have dedicated scripts: `start:backend`, `start:agent`, `st
 
 All `@gik/*` dependencies must be released at the versions declared in `package.json` before installing this directory outside the GIK monorepo.
 
+## Blueprint Catalog
+
+Sample Blueprint artifacts and registry metadata are assembled into `apps/host/public/bootstrap/sample-blueprints.bundle.json`. Run `npm run blueprints:bundle` after changing a Blueprint or `blueprints/registry.json`; host development and build commands also regenerate it automatically.
+
+The browser verifies and admits this seed bundle to IndexedDB before rendering. Seed artifacts may reference trusted, statically imported native providers. User-authored artifacts share the catalog snapshot but never receive that authority; executable TypeScript and TSX remain host code rather than catalog data.
+
+## Blueprint Tests
+
+Put structural and materialization cases in `blueprint-tests/*.case.json`. The generic runner validates artifacts, composition, JSON Pointer values, and placement children; `npm run conformance` also validates each case against `../schemas/blueprint-test-case.schema.json`.
+
+Keep lifecycle, effect-handler, controller, persistence, and rendered interaction tests in TypeScript. Tests should resolve Blueprint sources through `shared/blueprints.ts` so they exercise the installed catalog instead of importing individual `blueprint.json` files.
+
 ## Credentials
 
 Blueprints declare opaque `credentialRef` values, never access-key values. The sample host recognizes:

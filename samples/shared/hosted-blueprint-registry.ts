@@ -3,9 +3,8 @@ import type { BlueprintProposalStore } from "@gik/blueprint-agent-host";
 import type { ReactBlueprintHostRegistry } from "@gik/react";
 import type { UseProposal } from "./blueprint-agent-lifecycle";
 import { applyHostConfig } from "./host-config";
-import { createLocalBlueprintArtifactStore } from "./local-blueprint-artifact-store";
 import { resolveBlueprintNative } from "./sample-bundles";
-import { sampleBlueprints } from "./blueprints";
+import { getSampleBlueprintCatalog, sampleBlueprints } from "./blueprints";
 
 export interface SampleBlueprintHostRegistryOptions {
   createProposalStore?: (
@@ -17,11 +16,9 @@ export interface SampleBlueprintHostRegistryOptions {
 export function createSampleBlueprintHostRegistry(
   options: SampleBlueprintHostRegistryOptions = {},
 ): ReactBlueprintHostRegistry {
-  const localStore = createLocalBlueprintArtifactStore();
   const resolveArtifact = (reference: Parameters<ReactBlueprintHostRegistry["resolveArtifact"]>[0]) => {
-    const repositoryBlueprint = sampleBlueprints[reference.id];
-    const localBlueprint = repositoryBlueprint ? undefined : localStore.get(reference.id);
-    const blueprint = repositoryBlueprint ?? localBlueprint;
+    const repositoryBlueprint = getSampleBlueprintCatalog().seedEntries[reference.id];
+    const blueprint = repositoryBlueprint ?? sampleBlueprints[reference.id];
     if (!blueprint) throw new Error(`Unknown hosted Blueprint '${reference.id}'`);
     if (reference.version !== undefined && blueprint.payload.version !== reference.version) {
       throw new Error(
@@ -33,7 +30,7 @@ export function createSampleBlueprintHostRegistry(
   return {
     resolveArtifact,
     resolve(reference, context) {
-      const repositoryBlueprint = sampleBlueprints[reference.id];
+      const repositoryBlueprint = getSampleBlueprintCatalog().seedEntries[reference.id];
       const blueprint = resolveArtifact(reference);
 
       const proposalStore = options.createProposalStore?.(reference.id, context);

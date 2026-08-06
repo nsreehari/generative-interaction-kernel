@@ -1,12 +1,16 @@
+import "fake-indexeddb/auto";
+
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { beforeEach, test } from "vitest";
 
 import type { Json, PatchOp } from "@gik/kernel";
 import { openSampleBlueprint } from "../shared/blueprints";
-import { manageBlueprintsEffects, manageBlueprintsStorageKey } from "../blueprints/manage-blueprints/native/effect_handlers/manageBlueprintsEffectHandlers";
+import { readUserBlueprintArtifacts } from "../shared/blueprint-catalog";
+import { manageBlueprintsEffects } from "../blueprints/manage-blueprints/native/effect_handlers/manageBlueprintsEffectHandlers";
 
 type JsonRecord = Record<string, Json>;
-const initialState = openSampleBlueprint("manage-blueprints").state;
+const managerBlueprint = openSampleBlueprint("manage-blueprints");
+const initialState = managerBlueprint.state;
 
 class MemoryStorage implements Storage {
   private readonly values = new Map<string, string>();
@@ -17,6 +21,14 @@ class MemoryStorage implements Storage {
   removeItem(key: string): void { this.values.delete(key); }
   setItem(key: string, value: string): void { this.values.set(key, value); }
 }
+
+beforeEach(async () => {
+  await new Promise<void>((resolve, reject) => {
+    const request = indexedDB.deleteDatabase("gik-samples-host");
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+});
 
 function createState(): JsonRecord {
   return JSON.parse(JSON.stringify(initialState)) as JsonRecord;
@@ -61,7 +73,7 @@ function context(state: JsonRecord, payload: JsonRecord = {}) {
   };
 }
 
-test("listBlueprints exposes repository artifacts as read-only", async () => {
+test("listBlueprints exposes built-in artifacts as read-only", async () => {
   Object.defineProperty(globalThis, "localStorage", { value: new MemoryStorage(), configurable: true });
   const state = createState();
   const result = await manageBlueprintsEffects.listBlueprints(context(state));
@@ -69,11 +81,41 @@ test("listBlueprints exposes repository artifacts as read-only", async () => {
 
   assert.ok(rows.length > 0);
   assert.equal(rows.some((row) => row.id === "samples-overview" && row.source === "repo" && row.readonly === true), true);
+  assert.equal(rows.some((row) => row.id === "samples-overview" && row.sourceLabel === "Built-in"), true);
 });
 
-test("create, save, reload, challenge, and delete stay inside blueprint-local storage", async () => {
-  const storage = new MemoryStorage();
-  Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
+test("JSON editing uses a locally stateful declarative form", () => {
+  const cells = managerBlueprint.definition.payload.cells as unknown as Record<string, JsonRecord>;
+  const runtime = managerBlueprint.definition.payload.runtime as unknown as JsonRecord;
+  const capabilities = runtime.capabilities as JsonRecord;
+  const effectHandlers = (runtime.externals as JsonRecord).effectHandlers as Json[];
+  const formView = cells["editor-form"].view as JsonRecord;
+  const fields = (formView.props as JsonRecord).fields as JsonRecord;
+  const validators = fields.validators as JsonRecord[];
+
+  assert.equal(formView.capability, "primitive:form");
+  assert.equal(validators[0].kind, "ajv-schema");
+  assert.equal(validators[1].code, "blueprint-id-unique");
+  assert.ok((formView.bindings as JsonRecord).validationContext);
+  assert.deepEqual((formView.bindings as JsonRecord).readOnly, { from: "manageBlueprints.selected.readonly" });
+  assert.equal(formView.visibility, undefined);
+  assert.equal(cells["editor-id"], undefined);
+  assert.equal(cells["editor-json"], undefined);
+  assert.equal(cells["editor-status"], undefined);
+  assert.equal(cells["validation-summary"], undefined);
+  assert.equal(cells["validation-errors"], undefined);
+  assert.equal(cells["validation-warnings"], undefined);
+  assert.equal(cells["validate-blueprint"], undefined);
+  assert.equal(cells["save-blueprint"], undefined);
+  assert.equal(cells["preview-blueprint"], undefined);
+  assert.equal((cells["import-blueprint"].view as JsonRecord).capability, "primitive:file-input");
+  assert.equal((cells["export-blueprint"].view as JsonRecord).capability, "primitive:file-download");
+  assert.equal(capabilities["manage-blueprints:blueprint-import"], undefined);
+  assert.equal(effectHandlers.includes("exportBlueprint"), false);
+});
+
+test("create, save, reload, challenge, and delete stay inside the user Blueprint catalog", async () => {
+  Object.defineProperty(globalThis, "localStorage", { value: new MemoryStorage(), configurable: true });
   const state = createState();
 
   const created = await manageBlueprintsEffects.createBlueprint(context(state));
@@ -81,18 +123,19 @@ test("create, save, reload, challenge, and delete stay inside blueprint-local st
   assert.equal(getPath(state, "manageBlueprints.tab"), "draft");
   assert.equal(getPath(state, "manageBlueprints.validation.previewable"), true);
 
-  const saved = await manageBlueprintsEffects.saveBlueprint(context(state));
+  const createdValues = getPath(state, "manageBlueprints.editor.formValue") as JsonRecord;
+  const saved = await manageBlueprintsEffects.saveBlueprint(context(state, { values: createdValues }));
   applyOps(state, saved?.ops);
   const localId = String(getPath(state, "manageBlueprints.selectedId"));
   assert.equal(localId, "untitled-blueprint-local");
-  assert.ok(storage.getItem(manageBlueprintsStorageKey)?.includes(localId));
+  assert.ok((await readUserBlueprintArtifacts()).blueprints[localId]);
 
-  setPath(state, "manageBlueprints.editor.id", "renamed-blueprint-local");
-  const renamed = await manageBlueprintsEffects.saveBlueprint(context(state));
+  const renamedValues = { ...createdValues, id: "renamed-blueprint-local" };
+  const renamed = await manageBlueprintsEffects.saveBlueprint(context(state, { values: renamedValues }));
   applyOps(state, renamed?.ops);
-  const storedAfterRename = storage.getItem(manageBlueprintsStorageKey) ?? "";
-  assert.equal(storedAfterRename.includes(`\"${localId}\"`), false);
-  assert.equal(storedAfterRename.includes("renamed-blueprint-local"), true);
+  const storedAfterRename = (await readUserBlueprintArtifacts()).blueprints;
+  assert.equal(localId in storedAfterRename, false);
+  assert.equal("renamed-blueprint-local" in storedAfterRename, true);
   const renamedId = "renamed-blueprint-local";
 
   const reloaded = await manageBlueprintsEffects.listBlueprints(context(createState()));
@@ -105,9 +148,9 @@ test("create, save, reload, challenge, and delete stay inside blueprint-local st
 
   const deleted = await manageBlueprintsEffects.deleteBlueprint(context(state));
   assert.equal(deleted?.outcome, "deleted");
-  assert.equal(storage.getItem(manageBlueprintsStorageKey), "{}");
+  assert.deepEqual((await readUserBlueprintArtifacts()).blueprints, {});
   assert.equal(opValue(deleted?.ops, "manageBlueprints.selectedId"), "");
-}, 10_000);
+}, 20_000);
 
 test("repository ids cannot be overwritten or deleted", async () => {
   Object.defineProperty(globalThis, "localStorage", { value: new MemoryStorage(), configurable: true });
@@ -123,6 +166,35 @@ test("repository ids cannot be overwritten or deleted", async () => {
   assert.equal(deleted?.outcome, "readonly");
 });
 
+test("repository blueprints can be cloned, edited, saved, and deleted locally", async () => {
+  Object.defineProperty(globalThis, "localStorage", { value: new MemoryStorage(), configurable: true });
+  const state = createState();
+  applyOps(state, (await manageBlueprintsEffects.getBlueprint(context(state, { id: "samples-overview" })))?.ops);
+
+  const cloned = await manageBlueprintsEffects.cloneBlueprint(context(state));
+  applyOps(state, cloned?.ops);
+  assert.equal(cloned?.outcome, "draft-created");
+  assert.equal(getPath(state, "manageBlueprints.editor.id"), "samples-overview-local");
+  assert.equal(getPath(state, "manageBlueprints.tab"), "draft");
+
+  const artifact = JSON.parse(String(getPath(state, "manageBlueprints.editor.blueprintText"))) as JsonRecord;
+  assert.equal((artifact.payload as JsonRecord).id, "samples-overview-local");
+  (artifact.payload as JsonRecord).version = "1.0.1-local";
+  setPath(state, "manageBlueprints.editor.blueprintText", JSON.stringify(artifact));
+
+  const saved = await manageBlueprintsEffects.saveBlueprint(context(state));
+  applyOps(state, saved?.ops);
+  assert.equal(saved?.outcome, "saved");
+  const stored = (await readUserBlueprintArtifacts()).blueprints["samples-overview-local"];
+  assert.equal(stored?.payload.version, "1.0.1-local");
+
+  const requested = await manageBlueprintsEffects.requestDeleteBlueprint(context(state));
+  assert.equal(requested?.outcome, "confirmation-required");
+  const deleted = await manageBlueprintsEffects.deleteBlueprint(context(state));
+  assert.equal(deleted?.outcome, "deleted");
+  assert.equal((await readUserBlueprintArtifacts()).blueprints["samples-overview-local"], undefined);
+}, 20_000);
+
 test("importBlueprint validates file text and opens an unsaved local draft", async () => {
   Object.defineProperty(globalThis, "localStorage", { value: new MemoryStorage(), configurable: true });
   const state = createState();
@@ -130,8 +202,14 @@ test("importBlueprint validates file text and opens an unsaved local draft", asy
   const text = String(getPath(state, "manageBlueprints.editor.blueprintText"));
 
   const imported = await manageBlueprintsEffects.importBlueprint(context(createState(), {
-    name: "Incident Review.blueprint.json",
-    text,
+    file: {
+      name: "Incident Review.blueprint.json",
+      type: "application/json",
+      size: text.length,
+      lastModified: 0,
+      text,
+      encoding: "text",
+    },
   }));
 
   assert.equal(imported?.outcome, "draft-imported");
@@ -139,14 +217,50 @@ test("importBlueprint validates file text and opens an unsaved local draft", asy
   assert.equal(opValue(imported?.ops, "manageBlueprints.tab"), "draft");
 });
 
+test("importBlueprint rejects payloads outside the normalized text-file contract", async () => {
+  const imported = await manageBlueprintsEffects.importBlueprint(context(createState(), {
+    file: {
+      name: "incomplete.blueprint.json",
+      type: "application/json",
+      size: 10,
+      text: "{}",
+      encoding: "text",
+    },
+  }));
+
+  assert.equal(imported?.outcome, "invalid");
+  assert.match(String(opValue(imported?.ops, "manageBlueprints.editor.error")), /normalized text contract/);
+});
+
 test("preview exposes a validated structural Blueprint summary", async () => {
   Object.defineProperty(globalThis, "localStorage", { value: new MemoryStorage(), configurable: true });
   const portableState = createState();
   applyOps(portableState, (await manageBlueprintsEffects.createBlueprint(context(portableState)))?.ops);
 
-  const portable = await manageBlueprintsEffects.previewBlueprint(context(portableState));
+  const portable = await manageBlueprintsEffects.selectBlueprintTab(context(portableState, { value: "preview" }));
   assert.equal(portable?.outcome, "summary-ready");
   assert.notEqual(opValue(portable?.ops, "manageBlueprints.previewBlueprint"), null);
+  assert.equal(opValue(portable?.ops, "manageBlueprints.previewReference"), "");
+});
+
+test("preview references an unchanged persisted Blueprint", async () => {
+  const state = createState();
+  applyOps(state, (await manageBlueprintsEffects.getBlueprint(context(state, { id: "samples-overview" })))?.ops);
+
+  const preview = await manageBlueprintsEffects.selectBlueprintTab(context(state, { value: "preview" }));
+
+  assert.equal(opValue(preview?.ops, "manageBlueprints.previewReference"), "blueprint:samples-overview@2.0");
+});
+
+test("selecting the Preview tab renders the current Blueprint", async () => {
+  const state = createState();
+  applyOps(state, (await manageBlueprintsEffects.getBlueprint(context(state, { id: "samples-overview" })))?.ops);
+
+  const preview = await manageBlueprintsEffects.selectBlueprintTab(context(state, { value: "preview" }));
+
+  assert.equal(opValue(preview?.ops, "manageBlueprints.tab"), "preview");
+  assert.notEqual(opValue(preview?.ops, "manageBlueprints.previewBlueprint"), null);
+  assert.equal(opValue(preview?.ops, "manageBlueprints.previewReference"), "blueprint:samples-overview@2.0");
 });
 
 test("preview resolves the canonical tier and recipe chain", async () => {
@@ -166,7 +280,7 @@ test("preview resolves the canonical tier and recipe chain", async () => {
   ];
   setPath(state, "manageBlueprints.editor.blueprintText", JSON.stringify(artifact));
 
-  const preview = await manageBlueprintsEffects.previewBlueprint(context(state));
+  const preview = await manageBlueprintsEffects.selectBlueprintTab(context(state, { value: "preview" }));
   const inspection = opValue(preview?.ops, "manageBlueprints.inspection") as JsonRecord;
   const recipes = inspection.recipes as JsonRecord[];
   assert.equal(preview?.outcome, "summary-ready");

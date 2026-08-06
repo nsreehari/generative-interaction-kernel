@@ -1,18 +1,8 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { beforeEach, test } from "vitest";
 import { createBlueprint } from "@gik/blueprint";
-import { createLocalBlueprintArtifactStore } from "../shared/local-blueprint-artifact-store";
+import { installUserBlueprints } from "../shared/blueprints";
 import { createSampleBlueprintHostRegistry } from "../shared/hosted-blueprint-registry";
-
-class MemoryStorage implements Storage {
-  private readonly values = new Map<string, string>();
-  get length(): number { return this.values.size; }
-  clear(): void { this.values.clear(); }
-  getItem(key: string): string | null { return this.values.get(key) ?? null; }
-  key(index: number): string | null { return Array.from(this.values.keys())[index] ?? null; }
-  removeItem(key: string): void { this.values.delete(key); }
-  setItem(key: string, value: string): void { this.values.set(key, value); }
-}
 
 const context = {
   parentBlueprintId: "shell",
@@ -31,10 +21,10 @@ function localBlueprint(id: string, version = "1.0.0") {
   });
 }
 
+beforeEach(() => installUserBlueprints({}));
+
 test("resolves browser-local JSON-only Blueprints without native authority", async () => {
-  const storage = new MemoryStorage();
-  Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
-  createLocalBlueprintArtifactStore(storage).write({ "local-analysis": localBlueprint("local-analysis") });
+  installUserBlueprints({ "local-analysis": localBlueprint("local-analysis") });
 
   const resolved = await createSampleBlueprintHostRegistry().resolve(
     { scheme: "blueprint", id: "local-analysis" },
@@ -47,7 +37,6 @@ test("resolves browser-local JSON-only Blueprints without native authority", asy
 });
 
 test("rejects unavailable pinned versions", () => {
-  Object.defineProperty(globalThis, "localStorage", { value: new MemoryStorage(), configurable: true });
   assert.throws(
     () => createSampleBlueprintHostRegistry().resolve(
       { scheme: "blueprint", id: "samples-overview", version: "999.0.0" },
@@ -58,9 +47,7 @@ test("rejects unavailable pinned versions", () => {
 });
 
 test("repository registrations are authoritative and receive child lifecycle identity", async () => {
-  const storage = new MemoryStorage();
-  Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
-  createLocalBlueprintArtifactStore(storage).write({
+  installUserBlueprints({
     "samples-overview": localBlueprint("samples-overview", "999.0.0"),
   });
   let received: unknown;

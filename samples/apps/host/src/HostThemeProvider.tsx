@@ -83,6 +83,14 @@ const HOST_THEME_CSS = `
   padding: var(--spacingHorizontalM);
   background: var(--field-bg);
 }
+.gx-host .gx-blueprint-preview {
+  border: var(--strokeWidthThick) solid var(--accent);
+  border-radius: var(--borderRadiusLarge);
+  min-height: clamp(480px, 68vh, 820px);
+  padding: var(--spacingHorizontalM);
+  overflow: visible;
+}
+.gx-host .gx-blueprint-preview > * { min-height: inherit; }
 .gx-host .gx-bundle .gx-panel-preview-board { padding: 0; overflow: visible; }
 .gx-host .gx-bundle .gx-panel-preview-board > .gx-panel-title {
   color: var(--text);
