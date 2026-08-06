@@ -219,7 +219,8 @@
             "version": "",
             "structureMode": "fixed",
             "tiers": "",
-            "recipeCount": 0
+            "recipeCount": 0,
+            "tabs": []
           },
           "tab": "overview",
           "editor": {
@@ -440,23 +441,10 @@
         },
         "view": {
           "capability": "fluent:tab-bar",
-          "props": {
-            "options": [
-              {
-                "value": "overview",
-                "label": "Overview"
-              },
-              {
-                "value": "draft",
-                "label": "JSON"
-              },
-              {
-                "value": "preview",
-                "label": "Preview"
-              }
-            ]
-          },
           "bindings": {
+            "options": {
+              "from": "manageBlueprints.selected.tabs"
+            },
             "active": {
               "from": "manageBlueprints.tab"
             }

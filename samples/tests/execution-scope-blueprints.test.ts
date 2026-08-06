@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { InMemoryStateModel, Kernel, type GIKEvent, type Orchestrator, type OrchestratorEffect } from "@gik/kernel";
+import { InMemoryStateModel, Kernel, unwrap, type GIKEvent, type Orchestrator, type OrchestratorEffect } from "@gik/kernel";
 import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprints";
 
 function runtimeState(runtime: ReturnType<typeof openSampleBlueprint>): InMemoryStateModel {
@@ -32,6 +32,9 @@ test("backend order Blueprint executes its headless orchestrator workflow", asyn
   const kernel = new Kernel(runtime.vocabulary, runtime.program, { state: runtimeState(runtime), orchestrator });
   kernel.init();
 
+  assert.equal(source.payload.projections, undefined);
+  assert.equal(unwrap(runtime.program).root, undefined);
+  assert.deepEqual(unwrap(runtime.program).handlers?.map(({ id }) => id), ["order-controller"]);
   await kernel.dispatch({ node: "order-controller", name: "submit", payload: { orderId: "ord-42", amount: 129.5 } });
   await kernel.whenIdle();
 
@@ -48,6 +51,9 @@ test("middleware continuity Blueprint executes MCP and worker events", async () 
   const kernel = new Kernel(runtime.vocabulary, runtime.program, { state: runtimeState(runtime) });
   kernel.init();
 
+  assert.equal(source.payload.projections, undefined);
+  assert.equal(unwrap(runtime.program).root, undefined);
+  assert.deepEqual(unwrap(runtime.program).handlers?.map(({ id }) => id), ["continuity-controller"]);
   await kernel.dispatch({ node: "continuity-controller", name: "queue" });
   assert.equal(kernel.state().continuity.job.status, "queued");
   assert.equal(kernel.state().continuity.job.requestedBy, "mcp-control");

@@ -13,23 +13,6 @@
       "expression": "jsonata",
       "namespaces": ["continuity"],
       "actions": ["assign"],
-      "capabilities": {
-        "ui:screen": {
-          "propsSchema": { "type": "object", "additionalProperties": true },
-          "slots": ["children"]
-        },
-        "ui:metric": {
-          "propsSchema": { "type": "object", "additionalProperties": true },
-          "dataProp": "value"
-        },
-        "ui:markdown": {
-          "propsSchema": { "type": "object", "additionalProperties": true },
-          "dataProp": "value"
-        }
-      },
-      "externals": {
-        "projectionViews": { "ui": { "from": "floor" } }
-      },
       "state": {
         "continuity": {
           "job": {
@@ -66,58 +49,7 @@
               { "do": "assign", "target": "continuity.job.completedBy", "args": { "value": "background-worker" } }
             ]
           }
-        },
-        "view": {
-          "capability": "ui:screen",
-          "props": {
-            "title": "Middleware continuity",
-            "subtitle": "Inspection projection for MCP control and background-worker coordination"
-          }
         }
-      },
-      "continuity-status": {
-        "id": "continuity-status",
-        "view": {
-          "capability": "ui:metric",
-          "props": { "label": "Job status" },
-          "bindings": { "value": { "from": "continuity.job.status" } }
-        }
-      },
-      "requested-by": {
-        "id": "requested-by",
-        "view": {
-          "capability": "ui:metric",
-          "props": { "label": "Requested by" },
-          "bindings": { "value": { "from": "continuity.job.requestedBy" } }
-        }
-      },
-      "completed-by": {
-        "id": "completed-by",
-        "view": {
-          "capability": "ui:metric",
-          "props": { "label": "Completed by" },
-          "bindings": { "value": { "from": "continuity.job.completedBy" } }
-        }
-      },
-      "execution-note": {
-        "id": "execution-note",
-        "view": {
-          "capability": "ui:markdown",
-          "props": {
-            "value": "MCP queues the work while a detached background worker completes it. The projection only inspects shared control-plane state."
-          }
-        }
-      }
-    },
-    "projections": {
-      "presentation": {
-        "roots": ["continuity-controller"],
-        "placements": [
-          { "cell": "continuity-status", "parent": "continuity-controller", "slot": "children", "order": 0 },
-          { "cell": "requested-by", "parent": "continuity-controller", "slot": "children", "order": 1 },
-          { "cell": "completed-by", "parent": "continuity-controller", "slot": "children", "order": 2 },
-          { "cell": "execution-note", "parent": "continuity-controller", "slot": "children", "order": 3 }
-        ]
       }
     },
     "metadata": {
