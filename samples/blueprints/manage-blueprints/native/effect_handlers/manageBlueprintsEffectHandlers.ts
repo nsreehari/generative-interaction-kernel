@@ -142,12 +142,19 @@ function inspectionState(result: ValidationResult): Json {
 }
 
 function blueprintDetails(blueprint: BlueprintArtifact): JsonRecord {
-  const hasPresentation = (blueprint.payload.projections?.presentation?.roots.length ?? 0) > 0;
+  let previewable = false;
+  try {
+    previewable = resolveBlueprintExecution(blueprint).stages.length === 0
+      && Object.keys(blueprint.payload.cells ?? {}).length > 0
+      && (blueprint.payload.projections?.presentation?.roots.length ?? 0) === 1;
+  } catch {
+    previewable = false;
+  }
   return {
     tabs: [
       { value: "overview", label: "Overview" },
       { value: "draft", label: "JSON" },
-      ...(hasPresentation ? [{ value: "preview", label: "Preview" }] : []),
+      ...(previewable ? [{ value: "preview", label: "Preview" }] : []),
     ],
   };
 }

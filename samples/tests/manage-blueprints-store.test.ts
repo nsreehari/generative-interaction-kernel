@@ -92,6 +92,19 @@ test("listBlueprints exposes built-in artifacts as read-only", async () => {
     { value: "overview", label: "Overview" },
     { value: "draft", label: "JSON" },
   ]);
+
+  const headless = await manageBlueprintsEffects.getBlueprint(context(state, { id: "portfolio-tracker-2tiers-headless" }));
+  assert.deepEqual((opValue(headless?.ops, "manageBlueprints.selected") as JsonRecord).tabs, [
+    { value: "overview", label: "Overview" },
+    { value: "draft", label: "JSON" },
+  ]);
+
+  const projected = await manageBlueprintsEffects.getBlueprint(context(state, { id: "samples-overview" }));
+  assert.deepEqual((opValue(projected?.ops, "manageBlueprints.selected") as JsonRecord).tabs, [
+    { value: "overview", label: "Overview" },
+    { value: "draft", label: "JSON" },
+    { value: "preview", label: "Preview" },
+  ]);
 });
 
 test("JSON editing uses a locally stateful declarative form", () => {
