@@ -4,11 +4,11 @@ import {
   Kernel,
   unwrap,
   type Enveloped,
+  type ExecutableProgramDefinition,
   type GIKEvent,
   type Json,
   type Orchestrator,
   type OrchestratorEffect,
-  type ProjectedProgramDefinition,
   type ProjectedVocabularyManifest,
   type StateModel,
 } from "@gik/kernel";
@@ -29,7 +29,7 @@ export interface MaterializedBlueprint {
     readonly terminalBlueprint: BlueprintArtifact;
     readonly externalContext: Record<string, Json>;
     readonly vocabulary: Enveloped<ProjectedVocabularyManifest>;
-    readonly program: Enveloped<ProjectedProgramDefinition>;
+    readonly program: Enveloped<ExecutableProgramDefinition>;
     readonly initialState: Record<string, Json>;
   };
 }
@@ -49,7 +49,7 @@ export interface PrepareBlueprintProgramOptions {
 export interface PreparedBlueprintProgram {
   blueprint: BlueprintArtifact;
   vocabulary: Enveloped<ProjectedVocabularyManifest>;
-  program: Enveloped<ProjectedProgramDefinition>;
+  program: Enveloped<ExecutableProgramDefinition>;
   initialState: Record<string, Json>;
 }
 
@@ -125,16 +125,16 @@ export function prepareBlueprintProgram(
   const blueprint = assembled.payload.recipes.length > 0
     ? lowerWithFixedMetaGraph(assembled, options.externalContext)
     : assembled;
-  if (!blueprint.payload.cells || !blueprint.payload.projections?.presentation) {
-    throw new Error(`Blueprint '${blueprint.payload.id}' has no executable presentation projection`);
-  }
+  if (!blueprint.payload.cells) throw new Error(`Blueprint '${blueprint.payload.id}' has no executable Cells`);
   const runtime = blueprint.payload.runtime;
   if (!runtime) throw new Error(`Blueprint '${blueprint.payload.id}' has no runtime declaration`);
 
   const resolved = loadBlueprint(blueprint);
   const definition = {
     cells: blueprint.payload.cells,
-    projections: { presentation: blueprint.payload.projections.presentation },
+    ...(blueprint.payload.projections?.presentation
+      ? { projections: { presentation: blueprint.payload.projections.presentation } }
+      : {}),
   };
   const vocabulary: ProjectedVocabularyManifest = {
     version: `${blueprint.payload.id}/${blueprint.payload.version}`,

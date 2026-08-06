@@ -8,7 +8,7 @@ import {
 import type { BlueprintWorker } from "@gik/blueprint/worker";
 import { parseRef } from "@gik/durable-runtime";
 import type { BlueprintHostProps as InMemoryBlueprintHostProps } from "./blueprint-host";
-import { createHostedBlueprintProjection } from "./blueprint-host";
+import { assertBlueprintHostProjection, createHostedBlueprintProjection } from "./blueprint-host";
 import { DurableBlueprintController, type DurableBlueprintRuntimeOptions } from "../durable-blueprint-controller";
 import { createNativeBlueprintWorker } from "../durable-blueprint-worker";
 import { bundleFromJson } from "./bundle";
@@ -74,12 +74,15 @@ export function BlueprintHost({
   }, [blueprint, blueprintRegistry, context, externalContext, instanceId, materializedBlueprint]);
   const payload = prepared.payload;
   const bundle = React.useMemo(
-    () => bundleFromJson({
-      vocabulary: payload.vocabulary,
-      program: payload.program,
-      state: payload.initialState,
-    }, native),
-    [payload, native],
+    () => {
+      assertBlueprintHostProjection("Durable BlueprintHost", blueprintId, payload.program);
+      return bundleFromJson({
+        vocabulary: payload.vocabulary,
+        program: payload.program,
+        state: payload.initialState,
+      }, native);
+    },
+    [payload, native, blueprintId],
   );
   const source = React.useMemo(
     () => new DurableBlueprintController(blueprint, {

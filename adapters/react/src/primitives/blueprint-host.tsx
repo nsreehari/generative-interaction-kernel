@@ -7,7 +7,7 @@ import {
   type ExternalContext,
   type HostedBlueprintDefinition,
 } from "@gik/blueprint";
-import type { Json } from "@gik/kernel";
+import { unwrap, type Enveloped, type ExecutableProgramDefinition, type Json } from "@gik/kernel";
 import { BlueprintController } from "../blueprint-controller";
 import type { BlueprintControllerOptions } from "../blueprint-controller";
 import type { ProjectionView, ProviderResolver } from "../registry";
@@ -57,6 +57,16 @@ export interface BlueprintHostProps {
   renderHostedBlueprintLoading?: () => React.ReactNode;
 }
 
+export function assertBlueprintHostProjection(
+  hostName: string,
+  blueprintId: string,
+  program: Enveloped<ExecutableProgramDefinition>,
+): void {
+  if (!unwrap(program).root) {
+    throw new Error(`${hostName} cannot render Blueprint '${blueprintId}' without a presentation projection`);
+  }
+}
+
 export function BlueprintHost({
   blueprint,
   resolveLeavesProvider,
@@ -102,12 +112,15 @@ export function BlueprintHost({
     [context, materializedBlueprint],
   );
   const bundle = React.useMemo(
-    () => bundleFromJson({
-      vocabulary: prepared.vocabulary,
-      program: prepared.program,
-      state: prepared.initialState,
-    }, native),
-    [prepared, native],
+    () => {
+      assertBlueprintHostProjection("BlueprintHost", parentBlueprintId, prepared.program);
+      return bundleFromJson({
+        vocabulary: prepared.vocabulary,
+        program: prepared.program,
+        state: prepared.initialState,
+      }, native);
+    },
+    [prepared, native, parentBlueprintId],
   );
   const source = React.useMemo(
     () => new BlueprintController(blueprint, {

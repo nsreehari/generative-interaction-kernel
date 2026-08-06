@@ -70,15 +70,16 @@ public_packages:
       name: ControlFace
       constructor: >-
         new ControlFace(vocabulary: Enveloped<ProjectedVocabularyManifest>,
-        program: Enveloped<ProjectedProgramDefinition>, options?: ControlFaceOptions)
+        program: Enveloped<ExecutableProgramDefinition>, options?: ControlFaceOptions)
       behavior:
         - Wraps a live Kernel and KernelTransportHost.
         - Supplies live methods used by RuntimeFace tool handlers.
         - Implements TransportBroker so render transports can attach through the Face boundary.
+        - Drives and exposes headless programs, while render transport attachment still requires a projection.
         - Installs Blueprint adaptive ProgramPatch admission when ControlFaceOptions.blueprint is supplied.
       blueprint_methods:
         - "getBlueprint(): BlueprintSource | undefined"
-        - "getProgram(): ProjectedProgramDefinition"
+        - "getProgram(): ExecutableProgramDefinition"
         - "inspectBlueprintStructureChange(request: BlueprintPatchRequest): BlueprintPatchDecision"
         - "reconfigureBlueprint(patch: BlueprintPatch): Promise<BlueprintReconfigurationResult>"
       mode_behavior:

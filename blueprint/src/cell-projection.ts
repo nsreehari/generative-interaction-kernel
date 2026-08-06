@@ -1,4 +1,13 @@
-import type { Action, DocNode, ProjectedProgramDefinition, Json, Reaction, ServiceUse } from "../../kernel/src/index";
+import type {
+  Action,
+  DocNode,
+  ExecutableProgramDefinition,
+  Json,
+  Reaction,
+  RuntimeHandler,
+  RuntimeReaction,
+  ServiceUse,
+} from "../../kernel/src/index";
 import type { BlueprintArtifact } from "./types";
 
 export interface CellInput {
@@ -277,11 +286,38 @@ export function compileCellTopology(
 }
 
 /** Compile a Blueprint's optional presentation into the executable Kernel program. */
-export function composeCellProgram(definition: CellProjectionDefinition, topology: ExecutableCellTopology): ProjectedProgramDefinition {
+export function composeCellProgram(
+  definition: CellProjectionDefinition,
+  topology: ExecutableCellTopology,
+): ExecutableProgramDefinition {
   if (topology.diagnostics.length > 0) {
     throw new Error(`Invalid cell topology '${topology.id}': ${topology.diagnostics.map(({ detail }) => detail).join("; ")}`);
   }
   const presentation = definition.projections?.presentation;
+  const derivations = topology.cells.flatMap((cell) => (cell.compute ?? []).map((computation) => ({
+    id: `${cell.id}-${computation.id}`,
+    target: computation.assign,
+    expression: computation.expression,
+    dependencies: [...computation.dependencies],
+  })));
+  if (!presentation) {
+    const hostedCell = topology.cells.find((cell) => cell.blueprint);
+    if (hostedCell) {
+      throw new Error(`Headless Blueprint '${topology.id}' cannot host child Blueprint Cell '${hostedCell.id}'`);
+    }
+    const handlers: RuntimeHandler[] = topology.cells.flatMap((cell) => {
+      const events = cellEvents(cell);
+      return Object.keys(events).length > 0 ? [{ id: cell.id, on: events }] : [];
+    });
+    const reactions: RuntimeReaction[] = topology.cells.flatMap((cell) => (cell.behavior?.reactions ?? []).map(
+      (reaction, index) => ({ id: `${cell.id}-reaction-${index}`, ...structuredClone(reaction) }),
+    ));
+    return {
+      ...(handlers.length > 0 ? { handlers } : {}),
+      ...(reactions.length > 0 ? { reactions } : {}),
+      ...(derivations.length > 0 ? { derivations } : {}),
+    };
+  }
   const rootIds = presentation?.roots ?? [];
   if (rootIds.length !== 1) {
     throw new Error(`Blueprint '${topology.id}' requires exactly one presentation root`);
@@ -305,12 +341,6 @@ export function composeCellProgram(definition: CellProjectionDefinition, topolog
       .map(({ cell: childId }) => compile(childId, [...ancestors, cellId]));
     return toProgramNode(cell, children);
   };
-  const derivations = topology.cells.flatMap((cell) => (cell.compute ?? []).map((computation) => ({
-    id: `${cell.id}-${computation.id}`,
-    target: computation.assign,
-    expression: computation.expression,
-    dependencies: [...computation.dependencies],
-  })));
   return {
     root: compile(rootIds[0], []),
     ...(derivations.length > 0 ? { derivations } : {}),
@@ -340,8 +370,7 @@ function toProgramNode(cell: CellDefinition, children: readonly DocNode[]): DocN
   const props = cell.blueprint
     ? { ...viewProps, hostedBlueprint: JSON.parse(JSON.stringify(cell.blueprint)) as Json }
     : viewProps;
-  const events = structuredClone(cell.behavior?.events ?? {});
-  if (source) events.refresh = [{ do: "invoke", args: { tool: source.operation } }];
+  const events = cellEvents(cell);
   const edges = {
     ...(directBindings.length > 0 ? { read: Object.fromEntries(directBindings) } : {}),
     ...(expressionBindings.length > 0 ? { readExpr: Object.fromEntries(expressionBindings) } : {}),
@@ -356,4 +385,11 @@ function toProgramNode(cell: CellDefinition, children: readonly DocNode[]): DocN
     ...(props ? { props } : {}),
     ...(Object.keys(edges).length > 0 ? { edges } : {}),
   };
+}
+
+function cellEvents(cell: CellDefinition): Record<string, Action[]> {
+  const events = structuredClone(cell.behavior?.events ?? {});
+  const source = cell.sources?.[0];
+  if (source) events.refresh = [{ do: "invoke", args: { tool: source.operation } }];
+  return events;
 }
