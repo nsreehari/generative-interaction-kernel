@@ -2,6 +2,7 @@ import { ProjectionUnavailableError, type Kernel } from "./kernel";
 import {
   envelope,
   unwrap,
+  type ExecutableProgramDefinition,
   type ProjectedProgramDefinition,
   type Enveloped,
   type GIKEvent,
@@ -72,7 +73,7 @@ export class KernelTransportHost implements TransportBroker {
 
   constructor(
     private readonly manifest: Enveloped<ProjectedVocabularyManifest>,
-    private readonly document: Enveloped<ProjectedProgramDefinition>,
+    private readonly document: Enveloped<ExecutableProgramDefinition>,
     private readonly kernel: Kernel,
     private readonly defaultTransport?: TransportProvider
   ) {

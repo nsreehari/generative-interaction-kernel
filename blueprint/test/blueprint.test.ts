@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { InMemoryStateModel } from "@gik/kernel";
+import { InMemoryStateModel, unwrap } from "@gik/kernel";
 import {
   analyzeCellImpact,
   analyzeExploration,
@@ -157,7 +157,12 @@ describe("@gik/blueprint", () => {
       projections: { presentation: { roots: ["child"] } },
     });
 
-    const program = composeCellProgram(parent.payload, compileCellTopology("parent", parent.payload.cells ?? {}));
+    const program = composeCellProgram(
+      { cells: parent.payload.cells ?? {}, projections: parent.payload.projections },
+      compileCellTopology("parent", parent.payload.cells ?? {}),
+    );
+    expect(program.root).toBeDefined();
+    if (!program.root) throw new Error("Expected a projected program");
     expect(program.root.props).toEqual({
       mode: "compact",
       hostedBlueprint: { $ref: "blueprint:analysis@1.0.0" },
@@ -386,6 +391,59 @@ describe("@gik/blueprint", () => {
 
     expect(result).toEqual({ state: { counter: { value: 2 } } });
     expect(shared.snapshot()).toEqual({ shared: { value: "updated" } });
+  });
+
+  it("materializes and executes a Blueprint without a presentation projection", async () => {
+    const artifact = createBlueprint({
+      id: "headless-counter",
+      kind: "runtime-blueprint",
+      version: "1",
+      tiers: [{ id: "runtime", kind: "runtime-program" }],
+      recipes: [],
+      runtime: { namespaces: ["counter"], capabilities: {}, state: { counter: { value: 1 } } },
+      cells: {
+        counter: {
+          id: "counter",
+          behavior: {
+            events: {
+              increment: [{ do: "assign", target: "counter.value", args: { value: 2 } }],
+            },
+          },
+        },
+      },
+    });
+
+    const materialized = materializeBlueprint({ blueprint: artifact });
+    expect(unwrap(materialized.payload.program)).toEqual({
+      handlers: [{ id: "counter", on: artifact.payload.cells?.counter.behavior?.events }],
+    });
+
+    const result = await runMaterializedTransition({
+      materializedBlueprint: materialized,
+      state: materialized.payload.initialState,
+      events: [{ node: "counter", name: "increment" }],
+    });
+    expect(result.state).toEqual({ counter: { value: 2 } });
+  });
+
+  it("retains source refresh handlers and rejects projection-hosted children in headless programs", () => {
+    const artifact = createBlueprint({
+      ...blueprint("headless-source").payload,
+      cells: {
+        source: {
+          id: "source",
+          sources: [{ id: "orders", service: "orders", contract: "orders/v1", operation: "orders.list" }],
+        },
+      },
+    });
+    expect(unwrap(materializeBlueprint({ blueprint: artifact }).payload.program)).toEqual({
+      handlers: [{ id: "source", on: { refresh: [{ do: "invoke", args: { tool: "orders.list" } }] } }],
+    });
+
+    artifact.payload.cells!.source.blueprint = { inline: blueprint("child") };
+    expect(() => materializeBlueprint({ blueprint: artifact })).toThrow(
+      "Headless Blueprint 'headless-source' cannot host child Blueprint Cell 'source'",
+    );
   });
 
   it("materializes deterministically into a portable value and runs the trusted fast path", async () => {

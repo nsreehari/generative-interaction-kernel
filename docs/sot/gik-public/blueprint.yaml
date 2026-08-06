@@ -104,7 +104,7 @@ artifact_contracts:
       payload: { terminalBlueprint: BlueprintArtifact;
       externalContext: Record<string, Json>;
       vocabulary: Enveloped<ProjectedVocabularyManifest>;
-      program: Enveloped<ProjectedProgramDefinition>;
+      program: Enveloped<ExecutableProgramDefinition>;
       initialState: Record<string, Json> } }
     guarantees:
       - Portable JSON derived deterministically from authored Blueprint and external context.
@@ -193,6 +193,10 @@ artifact_contracts:
     purpose: >-
       Select presentation and contract-compatible Cell implementation programs as independent,
       deterministic materialization axes.
+    guarantees:
+      - A representation may declare `headless: true` to emit a terminal Blueprint without `projections.presentation`.
+      - A headless representation cannot declare or inherit presentation facets.
+      - Headless selection remains independent from contract-compatible Cell and service implementation selection.
   - name: BlueprintImplementationProgram
     signature: >-
       interface BlueprintImplementationProgram { id: string; when?: string;
@@ -240,9 +244,11 @@ artifact_contracts:
     guarantees:
       - Roots and placements reference Cells in the same Blueprint.
     consumed_by:
-      - The reserved `projections.presentation` entry is the layout the current lowering compiles.
-      - composeCellProgram reads only `projections.presentation`, requires exactly one root, and
-        walks placements into the Kernel projection tree.
+      - When present, the reserved `projections.presentation` entry is the layout the current compiler projects.
+      - composeCellProgram requires exactly one root for a presented Blueprint and walks placements
+        into the Kernel projection tree.
+      - Without `projections.presentation`, composeCellProgram emits a headless Kernel program from
+        Cell event handlers, reactions, computations, and source refresh behavior.
 
 artifact_api:
   - name: createBlueprint
@@ -337,10 +343,12 @@ cell_api:
   - name: composeCellProgram
     signature: >-
       composeCellProgram(definition: CellProjectionDefinition,
-      topology: ExecutableCellTopology): ProjectedProgramDefinition
+      topology: ExecutableCellTopology): ExecutableProgramDefinition
     behavior: >-
-      Compiles one validated Cell topology and presentation projection into a Kernel
-      projected program. CellProjectionDefinition is structural input to this function
+      Compiles one validated Cell topology into a Kernel executable program. A presentation
+      projection produces a projected program; its absence produces a headless program.
+      Headless compilation rejects hosted child Blueprint Cells because their current execution
+      requires a projection host. CellProjectionDefinition is structural input to this function
       and is not separately exported from the package entrypoint.
   - name: composeCellDocument
     status: deprecated alias of composeCellProgram
@@ -355,7 +363,8 @@ transition_api:
       - Assembles the authored Blueprint.
       - Synchronously folds any non-empty connected recipe chain through the package-owned fixed lowering meta-graph.
       - Resolves context-selected Cell implementation programs while preserving Cell semantic and data-flow contracts.
-      - Prepares terminal vocabulary, program, and initial state from the emitted recipe-free Blueprint.
+      - Prepares terminal vocabulary, executable program, and initial state from the emitted recipe-free Blueprint.
+      - Emits a headless program when the terminal Blueprint has Cells but no presentation projection.
       - Reserves externalContext as a read-only runtime namespace.
   - name: runMaterializedTransition
     signature: >-

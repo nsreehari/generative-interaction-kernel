@@ -17,6 +17,7 @@ import {
   GIKClient,
   InMemoryStateModel,
   JsonataExpressionProvider,
+  createInMemoryTransportPair,
   type Checkpoint,
   type Orchestrator,
   type OrchestratorEffect,
@@ -78,6 +79,12 @@ function structuralFace(blueprint: BlueprintArtifact, orchestrator?: Orchestrato
   });
 }
 
+function projectedProgram(face: ControlFace) {
+  const program = face.getProgram();
+  assert.ok(program.root);
+  return program;
+}
+
 test("ControlFace defines zero-recipe JSON cell Blueprints without product code", () => {
   const artifact: BlueprintArtifact = {
     gik: "0.1",
@@ -120,6 +127,7 @@ test("ControlFace defines zero-recipe JSON cell Blueprints without product code"
   const definition = defineDeclarativeBlueprint(artifact);
   assert.ok(definition);
   const document = definition.lower({});
+  assert.ok(document.root);
   assert.deepEqual(document.root.edges?.children?.map((node) => node.id), ["source", "consumer"]);
   assert.equal("provides" in (document.root.edges?.children?.[0] ?? {}), false);
   assert.equal("requires" in (document.root.edges?.children?.[1] ?? {}), false);
@@ -165,7 +173,9 @@ test("ControlFace opens an authored Blueprint into a runtime", () => {
   const runtime = ControlFace.openBlueprint(artifact);
 
   assert.equal(runtime.blueprintId, "example");
-  assert.equal(unwrap(runtime.program).root.props?.value, "Opened");
+  const program = unwrap(runtime.program);
+  assert.ok(program.root);
+  assert.equal(program.root.props?.value, "Opened");
   assert.deepEqual(runtime.state, { example: { ready: true } });
   assert.throws(
     () => ControlFace.openBlueprint({
@@ -177,6 +187,39 @@ test("ControlFace opens an authored Blueprint into a runtime", () => {
     }),
     /recipe|executor|invalid/i
   );
+});
+
+test("ControlFace drives a projection-free Blueprint but rejects render access", async () => {
+  const artifact = createBlueprint({
+    id: "headless-control",
+    kind: "runtime-blueprint",
+    version: "1",
+    tiers: [{ id: "runtime", kind: "runtime-program" }],
+    recipes: [],
+    runtime: { namespaces: ["counter"], capabilities: {}, state: { counter: { value: 1 } } },
+    cells: {
+      counter: {
+        id: "counter",
+        behavior: {
+          events: {
+            increment: [{ do: "assign", target: "counter.value", args: { value: 2 } }],
+          },
+        },
+      },
+    },
+  });
+  const runtime = ControlFace.openBlueprint(artifact);
+  assert.equal(unwrap(runtime.program).root, undefined);
+
+  const state = new InMemoryStateModel(["counter"]);
+  state.apply([{ op: "set", path: "counter.value", value: 1 }]);
+  const face = new ControlFace(runtime.vocabulary, runtime.program, { blueprint: artifact, state });
+  await face.emit({ node: "counter", name: "increment" });
+
+  assert.deepEqual(face.getState(), { counter: { value: 2 } });
+  assert.deepEqual(face.getProgram(), unwrap(runtime.program));
+  const [transport] = createInMemoryTransportPair();
+  await assert.rejects(face.attach(transport), /projection/i);
 });
 
 test("ControlFace applies initialSeed from blueprint context", () => {
@@ -538,7 +581,7 @@ test("Face enforces fixed and authorized reconfigurable Blueprint changes", asyn
     reason: "fixed-structure",
   });
   await assert.rejects(fixed.reconfigureBlueprint(change), /fixed-structure/);
-  assert.equal(fixed.getProgram().root.capability, "surface:before");
+  assert.equal(projectedProgram(fixed).root.capability, "surface:before");
   fixed.stop();
 
   const reconfigurable = structuralFace(structuralBlueprint("reconfigurable"));
@@ -548,7 +591,7 @@ test("Face enforces fixed and authorized reconfigurable Blueprint changes", asyn
   });
   const result = await reconfigurable.reconfigureBlueprint(change);
   assert.equal(result.transition?.program?.[0].op, "setRoot");
-  assert.equal(reconfigurable.getProgram().root.capability, "surface:after");
+  assert.equal(projectedProgram(reconfigurable).root.capability, "surface:after");
   const relationshipOnly = await reconfigurable.reconfigureBlueprint([{
     op: "setRelationship",
     relationshipId: "self",
@@ -573,9 +616,9 @@ test("adaptive Face events admit policy-allowed program patches and checkpoint t
   assert.equal(checkpoint.program?.root?.capability, "surface:before");
   const patch = await face.emit({ node: "root", name: "adapt" });
   assert.equal(patch.program?.[0].op, "setRoot");
-  assert.equal(face.getProgram().root.capability, "surface:adapted");
+  assert.equal(projectedProgram(face).root.capability, "surface:adapted");
   await face.restore(checkpoint);
-  assert.equal(face.getProgram().root.capability, "surface:before");
+  assert.equal(projectedProgram(face).root.capability, "surface:before");
   face.stop();
 });
 

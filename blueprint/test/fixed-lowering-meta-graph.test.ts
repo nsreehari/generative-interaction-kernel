@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "vitest";
+import { unwrap } from "@gik/kernel";
 import {
+  createBlueprint,
   fixedLoweringMetaGraphBlueprint,
   lowerWithFixedMetaGraph,
   materializeBlueprint,
   parseBlueprintJson,
   type VocabularyLoweringRecipeDefinition,
+  type RepresentationLoweringRecipeDefinition,
 } from "../src/index";
 
 const sampleUrl = new URL("../../samples/blueprints/vocabulary-lowering/blueprint.json", import.meta.url);
@@ -33,7 +36,7 @@ test("the fixed meta-graph lowers the two-tier vocabulary recipe to an executabl
   assert.deepEqual(terminal.payload.projections?.presentation?.roots, ["query-input"]);
   assert.equal(Object.keys(terminal.payload.cells ?? {}).length, 3);
   assert.deepEqual(materialized.payload.terminalBlueprint, terminal);
-  assert.equal(materialized.payload.program.type, "program");
+  assert.ok(unwrap(materialized.payload.program).root);
   assert.deepEqual(authored, authoredSnapshot);
 });
 
@@ -72,5 +75,67 @@ test("materialization rejects a recipe without deterministic vocabulary operatio
   assert.throws(
     () => materializeBlueprint({ blueprint: authored }),
     /requires a non-empty vocabulary patch/,
+  );
+});
+
+test("a headless representation emits an executable program without presentation", () => {
+  const authored = createBlueprint<RepresentationLoweringRecipeDefinition>({
+    id: "headless-representation",
+    kind: "test",
+    version: "1",
+    tiers: [{ id: "intent", kind: "intent" }, { id: "runtime", kind: "runtime-program" }],
+    recipes: [{
+      id: "intent-to-runtime",
+      from: "intent",
+      to: "runtime",
+      representations: [{ id: "worker", headless: true }],
+      fallback: "worker",
+    }],
+    runtime: { namespaces: ["state"], capabilities: {} },
+    cells: {
+      worker: {
+        id: "worker",
+        behavior: { events: { run: [{ do: "assign", target: "state.done", args: { value: true } }] } },
+      },
+    },
+  });
+
+  const materialized = materializeBlueprint({ blueprint: authored });
+  assert.equal(materialized.payload.terminalBlueprint.payload.projections, undefined);
+  assert.equal(unwrap(materialized.payload.program).root, undefined);
+  assert.deepEqual(unwrap(materialized.payload.program).handlers?.map(({ id }) => id), ["worker"]);
+});
+
+test("a headless representation rejects presentation facets", () => {
+  const authored = createBlueprint<RepresentationLoweringRecipeDefinition>({
+    id: "invalid-headless-representation",
+    kind: "test",
+    version: "1",
+    tiers: [{ id: "intent", kind: "intent" }, { id: "runtime", kind: "runtime-program" }],
+    recipes: [{
+      id: "intent-to-runtime",
+      from: "intent",
+      to: "runtime",
+      representations: [{ id: "worker", headless: true, views: { worker: { capability: "ui:text" } } }],
+      fallback: "worker",
+    }],
+    runtime: { capabilities: {} },
+    cells: { worker: { id: "worker" } },
+  });
+
+  assert.throws(
+    () => materializeBlueprint({ blueprint: authored }),
+    /cannot declare presentation facets/,
+  );
+
+  const inherited = structuredClone(authored);
+  inherited.payload.recipes[0].representations = [
+    { id: "worker", headless: true },
+    { id: "screen", extends: "worker", presentation: { roots: ["worker"] } },
+  ];
+  inherited.payload.recipes[0].fallback = "screen";
+  assert.throws(
+    () => materializeBlueprint({ blueprint: inherited }),
+    /cannot extend headless representation/,
   );
 });

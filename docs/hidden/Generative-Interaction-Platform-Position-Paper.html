@@ -883,6 +883,8 @@
 
 <p>Current Blueprint materialization accepts any authored chain that is connected, linear, and non-branching. It resolves the recipes in order, emits one validated terminal Blueprint, and then prepares the Kernel program. &ldquo;Arbitrary tiers&rdquo; therefore means that the platform does not prescribe the count or names; it does not mean that a running materialization creates tiers recursively or changes the chain dynamically.</p>
 
+<p>A terminal Blueprint may omit <code>projections.presentation</code>. Its Cell events, reactions, computations, and source refresh behavior then compile into a headless Kernel program for APIs, middleware, and durable workers. Rendering hosts require a presentation explicitly; hosted child Blueprints also remain projection-hosted. Presentation is therefore a host capability rather than a universal execution dependency.</p>
+
 <h3>Natural language and model-assisted transformation</h3>
 <p>A tier may originate as natural language, partially structured material, or a fully typed artifact. Natural language can preserve intent and nuance, but it is not an executable contract. A model may extract a typed intent candidate, elaborate a workflow, select a compatible strategy, or synthesize a candidate recipe. The result enters the same validation and admission path as any other authored candidate.</p>
 

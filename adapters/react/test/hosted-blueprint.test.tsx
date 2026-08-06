@@ -6,6 +6,7 @@ import {
   resolveHostedBlueprint,
   type ReactBlueprintHostRegistry,
 } from "../src/primitives/hosted-blueprint";
+import { assertBlueprintHostProjection } from "../src/primitives/blueprint-host";
 
 const child = createBlueprint({
   id: "analysis",
@@ -63,4 +64,15 @@ test("rejects malformed child declarations from render-node JSON", () => {
   assert.deepEqual(readHostedBlueprintDeclaration({ $ref: "blueprint:analysis" }), {
     $ref: "blueprint:analysis",
   });
+});
+
+test("rendering hosts reject a projection-free Blueprint with a targeted diagnostic", () => {
+  assert.throws(
+    () => assertBlueprintHostProjection("BlueprintHost", "headless", {
+      gik: "0.1",
+      type: "program",
+      payload: { handlers: [] },
+    }),
+    /BlueprintHost cannot render Blueprint 'headless' without a presentation projection/,
+  );
 });

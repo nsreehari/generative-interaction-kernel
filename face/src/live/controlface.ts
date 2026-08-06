@@ -15,7 +15,7 @@ import {
   Kernel,
   KernelTransportHost,
   type Checkpoint,
-  type ProjectedProgramDefinition,
+  type ExecutableProgramDefinition,
   type Enveloped,
   type GIKEvent,
   type Json,
@@ -60,14 +60,14 @@ export interface BlueprintRuntime {
   revision: string;
   definition: BlueprintSource;
   vocabulary: Enveloped<ProjectedVocabularyManifest>;
-  program: Enveloped<ProjectedProgramDefinition>;
+  program: Enveloped<ExecutableProgramDefinition>;
   state: Record<string, Json>;
   children: Readonly<Record<string, BlueprintRuntime>>;
 }
 
 type LoweredBlueprint = {
   resolved: Pick<ResolvedBlueprint, "artifact" | "services">;
-  lower(context: Record<string, Json>): ProjectedProgramDefinition;
+  lower(context: Record<string, Json>): ExecutableProgramDefinition;
 };
 
 export type BlueprintSource = BlueprintArtifact;
@@ -84,10 +84,12 @@ export interface BlueprintReconfigurationResult {
  * lowering implementation.
  */
 export function defineDeclarativeBlueprint(blueprint: BlueprintSource): LoweredBlueprint | undefined {
-  if (blueprint.payload.recipes.length > 0 || !blueprint.payload.cells || !blueprint.payload.projections?.presentation) return undefined;
+  if (blueprint.payload.recipes.length > 0 || !blueprint.payload.cells) return undefined;
   const definition = {
     cells: blueprint.payload.cells,
-    projections: { presentation: blueprint.payload.projections.presentation },
+    ...(blueprint.payload.projections?.presentation
+      ? { projections: { presentation: blueprint.payload.projections.presentation } }
+      : {}),
   };
   const resolved = loadBlueprint(blueprint);
 
@@ -172,7 +174,7 @@ export class ControlFace implements TransportBroker {
 
   constructor(
     vocabulary: Enveloped<ProjectedVocabularyManifest>,
-    program: Enveloped<ProjectedProgramDefinition>,
+    program: Enveloped<ExecutableProgramDefinition>,
     options: ControlFaceOptions = {}
   ) {
     this.blueprint = options.blueprint ? structuredClone(options.blueprint) : undefined;
@@ -213,10 +215,8 @@ export class ControlFace implements TransportBroker {
     return this.blueprint ? structuredClone(this.blueprint) : undefined;
   }
 
-  getProgram(): ProjectedProgramDefinition {
-    const program = this.kernel.program();
-    if (!program.root) throw new Error("ControlFace runtime has no projected program");
-    return program;
+  getProgram(): ExecutableProgramDefinition {
+    return this.kernel.program();
   }
 
   inspectBlueprintStructureChange(request: BlueprintPatchRequest): BlueprintPatchDecision {
