@@ -144,11 +144,18 @@ function inspectionState(result: ValidationResult): Json {
 function catalogRows(entries: CatalogEntry[]): Json[] {
   return entries.map((entry) => {
     const payload = entry.blueprint.payload;
+    const metadata = payload.metadata as JsonRecord | undefined;
+    const declaredScope = metadata?.scope;
+    const scope = declaredScope === "backend" || declaredScope === "middleware" || declaredScope === "frontend"
+      ? declaredScope
+      : entry.source === "repo" ? "frontend" : "custom";
     return {
       id: entry.id,
       label: entry.id,
       source: entry.source,
       sourceLabel: entry.readonly ? "Built-in" : "User",
+      scope,
+      scopeLabel: scope === "backend" ? "Backend" : scope === "middleware" ? "Middleware" : scope === "frontend" ? "Frontend" : "Custom",
       readonly: entry.readonly,
       detail: String(payload.version ?? "Unknown version"),
     } as Json;

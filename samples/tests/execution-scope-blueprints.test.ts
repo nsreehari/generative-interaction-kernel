@@ -1,0 +1,60 @@
+import assert from "node:assert/strict";
+import { test } from "vitest";
+
+import { InMemoryStateModel, Kernel, type GIKEvent, type Orchestrator, type OrchestratorEffect } from "@gik/kernel";
+import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprints";
+
+function runtimeState(runtime: ReturnType<typeof openSampleBlueprint>): InMemoryStateModel {
+  const state = new InMemoryStateModel(Object.keys(runtime.state));
+  state.apply(Object.entries(runtime.state).map(([path, value]) => ({ op: "set" as const, path, value })));
+  return state;
+}
+
+test("backend order Blueprint executes its headless orchestrator workflow", async () => {
+  const source = resolveSampleBlueprintSource("backend-order-processing");
+  const runtime = openSampleBlueprint("backend-order-processing");
+  const routed: unknown[] = [];
+  const orchestrator: Orchestrator = {
+    async confirm(effect: OrchestratorEffect) {
+      return { events: [{ node: effect.node, name: "approve", payload: effect.payload } as GIKEvent] };
+    },
+    async invoke(effect: OrchestratorEffect) {
+      assert.equal(effect.tool, "chargeCard");
+      return {
+        ops: [{ op: "set", path: "payment.receipt", value: { id: "receipt-1", status: "captured" } }],
+        events: [{ node: effect.node, name: "charged" }],
+      };
+    },
+    async route(effect: OrchestratorEffect) {
+      routed.push(effect.to);
+    },
+  };
+  const kernel = new Kernel(runtime.vocabulary, runtime.program, { state: runtimeState(runtime), orchestrator });
+  kernel.init();
+
+  await kernel.dispatch({ node: "order-controller", name: "submit", payload: { orderId: "ord-42", amount: 129.5 } });
+  await kernel.whenIdle();
+
+  assert.equal(source.payload.metadata?.scope, "backend");
+  assert.equal(kernel.state().order.status, "confirmed");
+  assert.equal(kernel.state().order.fulfillment, "queued");
+  assert.deepEqual(kernel.state().payment.receipt, { id: "receipt-1", status: "captured" });
+  assert.deepEqual(routed, ["queue:fulfillment"]);
+});
+
+test("middleware continuity Blueprint executes MCP and worker events", async () => {
+  const source = resolveSampleBlueprintSource("middleware-continuity");
+  const runtime = openSampleBlueprint("middleware-continuity");
+  const kernel = new Kernel(runtime.vocabulary, runtime.program, { state: runtimeState(runtime) });
+  kernel.init();
+
+  await kernel.dispatch({ node: "continuity-controller", name: "queue" });
+  assert.equal(kernel.state().continuity.job.status, "queued");
+  assert.equal(kernel.state().continuity.job.requestedBy, "mcp-control");
+
+  await kernel.dispatch({ node: "continuity-controller", name: "complete" });
+  assert.equal(source.payload.metadata?.scope, "middleware");
+  assert.equal(kernel.state().continuity.job.status, "completed");
+  assert.equal(kernel.state().continuity.job.result, "background-analysis-ready");
+  assert.equal(kernel.state().continuity.job.completedBy, "background-worker");
+});

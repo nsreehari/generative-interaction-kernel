@@ -387,7 +387,10 @@
             "idKey": "id",
             "primaryKey": "label",
             "secondaryKey": "detail",
-            "badgeKey": "sourceLabel",
+            "badgeKeys": [
+              "scopeLabel",
+              "sourceLabel"
+            ],
             "emptyText": "No Blueprints found."
           },
           "bindings": {

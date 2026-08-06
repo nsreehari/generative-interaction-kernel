@@ -5,6 +5,8 @@
   "blueprints": [
     "samples-overview",
     "manage-blueprints",
+    "backend-order-processing",
+    "middleware-continuity",
     "vocabulary-lowering",
     "portfolio-tracker",
     "incident-report-analysis-shell",
@@ -242,6 +244,276 @@
             "presentation",
             "runtime-document"
           ]
+        }
+      }
+    },
+    "backend-order-processing": {
+      "gik": "0.1",
+      "type": "blueprint",
+      "payload": {
+        "id": "backend-order-processing",
+        "kind": "runtime-blueprint",
+        "version": "1.0.0",
+        "interface": {
+          "events": [
+            "submit",
+            "approve",
+            "charged",
+            "declined"
+          ]
+        },
+        "recipes": [],
+        "runtime": {
+          "expression": "jsonata",
+          "namespaces": [
+            "order",
+            "payment"
+          ],
+          "actions": [
+            "assign",
+            "confirm",
+            "invoke",
+            "route"
+          ],
+          "capabilities": {
+            "ui:screen": {
+              "propsSchema": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "slots": [
+                "children"
+              ]
+            },
+            "ui:metric": {
+              "propsSchema": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "dataProp": "value"
+            },
+            "ui:markdown": {
+              "propsSchema": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "dataProp": "value"
+            }
+          },
+          "externals": {
+            "projectionViews": {
+              "ui": {
+                "from": "floor"
+              }
+            }
+          },
+          "state": {
+            "order": {
+              "status": "draft",
+              "fulfillment": "not_queued",
+              "amount": 129.5
+            },
+            "payment": {
+              "status": "not_started",
+              "receipt": null
+            }
+          }
+        },
+        "tiers": [
+          {
+            "id": "runtime-document",
+            "kind": "runtime-document",
+            "description": "Headless order workflow driven by backend events and orchestrator effects."
+          }
+        ],
+        "cells": {
+          "order-controller": {
+            "id": "order-controller",
+            "kind": "backend-workflow",
+            "behavior": {
+              "events": {
+                "submit": [
+                  {
+                    "do": "assign",
+                    "target": "order.status",
+                    "args": {
+                      "value": "pending_review"
+                    }
+                  },
+                  {
+                    "do": "confirm",
+                    "args": {
+                      "message": "Manager approval required",
+                      "onConfirm": "approve"
+                    }
+                  }
+                ],
+                "approve": [
+                  {
+                    "do": "assign",
+                    "target": "order.status",
+                    "args": {
+                      "value": "charging"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "payment.status",
+                    "args": {
+                      "value": "processing"
+                    }
+                  },
+                  {
+                    "do": "invoke",
+                    "args": {
+                      "tool": "chargeCard"
+                    }
+                  }
+                ],
+                "charged": [
+                  {
+                    "do": "assign",
+                    "target": "order.status",
+                    "args": {
+                      "value": "confirmed"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "payment.status",
+                    "args": {
+                      "value": "captured"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "order.fulfillment",
+                    "args": {
+                      "value": "queued"
+                    }
+                  },
+                  {
+                    "do": "route",
+                    "args": {
+                      "to": "queue:fulfillment"
+                    }
+                  }
+                ],
+                "declined": [
+                  {
+                    "do": "assign",
+                    "target": "order.status",
+                    "args": {
+                      "value": "payment_failed"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "payment.status",
+                    "args": {
+                      "value": "declined"
+                    }
+                  }
+                ]
+              }
+            },
+            "view": {
+              "capability": "ui:screen",
+              "props": {
+                "title": "Backend order processing",
+                "subtitle": "Inspection projection for a headless event and orchestrator workflow"
+              }
+            }
+          },
+          "order-status": {
+            "id": "order-status",
+            "view": {
+              "capability": "ui:metric",
+              "props": {
+                "label": "Order status"
+              },
+              "bindings": {
+                "value": {
+                  "from": "order.status"
+                }
+              }
+            }
+          },
+          "payment-status": {
+            "id": "payment-status",
+            "view": {
+              "capability": "ui:metric",
+              "props": {
+                "label": "Payment status"
+              },
+              "bindings": {
+                "value": {
+                  "from": "payment.status"
+                }
+              }
+            }
+          },
+          "fulfillment-status": {
+            "id": "fulfillment-status",
+            "view": {
+              "capability": "ui:metric",
+              "props": {
+                "label": "Fulfillment"
+              },
+              "bindings": {
+                "value": {
+                  "from": "order.fulfillment"
+                }
+              }
+            }
+          },
+          "execution-note": {
+            "id": "execution-note",
+            "view": {
+              "capability": "ui:markdown",
+              "props": {
+                "value": "This Blueprint is driven by backend events. The projection is an inspection surface required by the current Blueprint compiler; it is not the execution medium."
+              }
+            }
+          }
+        },
+        "projections": {
+          "presentation": {
+            "roots": [
+              "order-controller"
+            ],
+            "placements": [
+              {
+                "cell": "order-status",
+                "parent": "order-controller",
+                "slot": "children",
+                "order": 0
+              },
+              {
+                "cell": "payment-status",
+                "parent": "order-controller",
+                "slot": "children",
+                "order": 1
+              },
+              {
+                "cell": "fulfillment-status",
+                "parent": "order-controller",
+                "slot": "children",
+                "order": 2
+              },
+              {
+                "cell": "execution-note",
+                "parent": "order-controller",
+                "slot": "children",
+                "order": 3
+              }
+            ]
+          }
+        },
+        "metadata": {
+          "scope": "backend",
+          "executionMedium": "headless",
+          "sourceSample": "samples/backend-host/order-service.ts"
         }
       }
     },
@@ -15501,7 +15773,10 @@
                 "idKey": "id",
                 "primaryKey": "label",
                 "secondaryKey": "detail",
-                "badgeKey": "sourceLabel",
+                "badgeKeys": [
+                  "scopeLabel",
+                  "sourceLabel"
+                ],
                 "emptyText": "No Blueprints found."
               },
               "bindings": {
@@ -16147,6 +16422,239 @@
               }
             ]
           }
+        }
+      }
+    },
+    "middleware-continuity": {
+      "gik": "0.1",
+      "type": "blueprint",
+      "payload": {
+        "id": "middleware-continuity",
+        "kind": "runtime-blueprint",
+        "version": "1.0.0",
+        "interface": {
+          "events": [
+            "queue",
+            "complete"
+          ]
+        },
+        "recipes": [],
+        "runtime": {
+          "expression": "jsonata",
+          "namespaces": [
+            "continuity"
+          ],
+          "actions": [
+            "assign"
+          ],
+          "capabilities": {
+            "ui:screen": {
+              "propsSchema": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "slots": [
+                "children"
+              ]
+            },
+            "ui:metric": {
+              "propsSchema": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "dataProp": "value"
+            },
+            "ui:markdown": {
+              "propsSchema": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "dataProp": "value"
+            }
+          },
+          "externals": {
+            "projectionViews": {
+              "ui": {
+                "from": "floor"
+              }
+            }
+          },
+          "state": {
+            "continuity": {
+              "job": {
+                "status": "idle",
+                "result": "",
+                "requestedBy": "",
+                "completedBy": ""
+              }
+            }
+          }
+        },
+        "tiers": [
+          {
+            "id": "runtime-document",
+            "kind": "runtime-document",
+            "description": "Control-plane continuity workflow shared by MCP and a background worker."
+          }
+        ],
+        "cells": {
+          "continuity-controller": {
+            "id": "continuity-controller",
+            "kind": "middleware-workflow",
+            "behavior": {
+              "events": {
+                "queue": [
+                  {
+                    "do": "assign",
+                    "target": "continuity.job.status",
+                    "args": {
+                      "value": "queued"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "continuity.job.result",
+                    "args": {
+                      "value": ""
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "continuity.job.requestedBy",
+                    "args": {
+                      "value": "mcp-control"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "continuity.job.completedBy",
+                    "args": {
+                      "value": ""
+                    }
+                  }
+                ],
+                "complete": [
+                  {
+                    "do": "assign",
+                    "target": "continuity.job.status",
+                    "args": {
+                      "value": "completed"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "continuity.job.result",
+                    "args": {
+                      "value": "background-analysis-ready"
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "continuity.job.completedBy",
+                    "args": {
+                      "value": "background-worker"
+                    }
+                  }
+                ]
+              }
+            },
+            "view": {
+              "capability": "ui:screen",
+              "props": {
+                "title": "Middleware continuity",
+                "subtitle": "Inspection projection for MCP control and background-worker coordination"
+              }
+            }
+          },
+          "continuity-status": {
+            "id": "continuity-status",
+            "view": {
+              "capability": "ui:metric",
+              "props": {
+                "label": "Job status"
+              },
+              "bindings": {
+                "value": {
+                  "from": "continuity.job.status"
+                }
+              }
+            }
+          },
+          "requested-by": {
+            "id": "requested-by",
+            "view": {
+              "capability": "ui:metric",
+              "props": {
+                "label": "Requested by"
+              },
+              "bindings": {
+                "value": {
+                  "from": "continuity.job.requestedBy"
+                }
+              }
+            }
+          },
+          "completed-by": {
+            "id": "completed-by",
+            "view": {
+              "capability": "ui:metric",
+              "props": {
+                "label": "Completed by"
+              },
+              "bindings": {
+                "value": {
+                  "from": "continuity.job.completedBy"
+                }
+              }
+            }
+          },
+          "execution-note": {
+            "id": "execution-note",
+            "view": {
+              "capability": "ui:markdown",
+              "props": {
+                "value": "MCP queues the work while a detached background worker completes it. The projection only inspects shared control-plane state."
+              }
+            }
+          }
+        },
+        "projections": {
+          "presentation": {
+            "roots": [
+              "continuity-controller"
+            ],
+            "placements": [
+              {
+                "cell": "continuity-status",
+                "parent": "continuity-controller",
+                "slot": "children",
+                "order": 0
+              },
+              {
+                "cell": "requested-by",
+                "parent": "continuity-controller",
+                "slot": "children",
+                "order": 1
+              },
+              {
+                "cell": "completed-by",
+                "parent": "continuity-controller",
+                "slot": "children",
+                "order": 2
+              },
+              {
+                "cell": "execution-note",
+                "parent": "continuity-controller",
+                "slot": "children",
+                "order": 3
+              }
+            ]
+          }
+        },
+        "metadata": {
+          "scope": "middleware",
+          "executionMedium": "mcp-control-plane",
+          "sourceSample": "samples/control-host/service.ts"
         }
       }
     },
@@ -19278,6 +19786,6 @@
       }
     }
   },
-  "bundleVersion": "5f6d32525264edb5",
-  "digest": "sha256:5f6d32525264edb52cafb26dac5c296a5010782d2cc0d97d568fc77ec6ab7c42"
+  "bundleVersion": "2506035102daa2a9",
+  "digest": "sha256:2506035102daa2a9cb59086eee9911f237b2bdd1b36554f38d50c571898f4840"
 }
