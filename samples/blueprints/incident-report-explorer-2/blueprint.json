@@ -48,8 +48,11 @@
             "views": {
               "foundry-access-gate": { "capability": "foundry:access-gate", "bindings": { "access": { "expression": "($s := incident2.foundryAccessStatus; {'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': incident2.foundryAccessError})" } } },
               "incident-semantic-analyzer": { "capability": "incident2:report", "props": { "title": "Operational assessment" }, "bindings": { "value": { "from": "incident2.model" }, "content": { "expression": "externalContext.content" }, "analyzedContent": { "from": "incident2.analyzedContent" }, "error": { "from": "incident2.error" }, "pending": { "from": "incident2.analysisPending" } } },
-              "incident-verdict": { "capability": "semantic:decision", "props": { "variant": "summary", "spec": { "eyebrow": "Incident determination", "fields": { "title": "identity.title", "summary": "summary", "outcome": "verdict.classification", "rationale": "verdict.rationale", "confidence": "verdict.confidence", "impact": "verdict.impact", "tone": "verdict.confidence" } } }, "bindings": { "decision": { "from": "incident2.model" } } },
+              "incident-verdict": { "capability": "semantic:decision", "props": { "variant": "summary", "spec": { "eyebrow": "Incident determination", "fields": { "title": "identity.title", "summary": "summary", "outcome": "verdict.classification", "rationale": "verdict.rationale", "confidence": "verdict.confidence", "impact": "verdict.impact", "tone": "verdict.confidence" }, "labels": { "rationale": "Rationale", "confidence": "Confidence", "impact": "Impact" }, "toneMap": { "high": "affirmative", "medium": "cautionary", "low": "uncertain" } } }, "bindings": { "decision": { "from": "incident2.model" } } },
               "incident-attack-path": { "capability": "incident2:attack-path", "bindings": { "value": { "from": "incident2.model" } } },
+              "incident-blast-radius": { "capability": "semantic:entity-set", "props": { "variant": "clusters", "spec": { "title": "Blast radius", "description": "Entities grouped by observed condition", "fields": { "id": "id", "label": "label", "description": "description", "type": "type", "status": "status", "group": "status" }, "groups": [{ "value": "compromised", "label": "Compromised" }, { "value": "affected", "label": "Affected" }, { "value": "targeted", "label": "Targeted" }, { "value": "observed", "label": "Observed" }, { "value": "unknown", "label": "Unknown" }], "toneMap": { "compromised": "affected", "affected": "affected", "targeted": "at-risk", "observed": "observed", "unknown": "unknown" } } }, "bindings": { "items": { "from": "incident2.model.entities" } } },
+              "incident-timeline": { "capability": "semantic:event-series", "props": { "variant": "chronology", "spec": { "title": "Incident timeline", "description": "Normalized events", "fields": { "id": "id", "title": "title", "timestamp": "time", "detail": "detail", "status": "confidence" }, "sort": { "direction": "ascending" }, "toneMap": { "high": "current", "medium": "upcoming", "low": "unknown" } } }, "bindings": { "items": { "from": "incident2.model.events" } } },
+              "incident-techniques": { "capability": "semantic:process", "props": { "variant": "flow", "spec": { "title": "ATT&CK progression", "description": "Techniques in reported order", "fields": { "id": "id", "title": "technique", "detail": "description", "reference": "techniqueId", "status": "confidence" }, "toneMap": { "high": "complete", "medium": "current", "low": "unknown" } } }, "bindings": { "items": { "from": "incident2.model.techniques" } } },
               "incident-response": { "capability": "semantic:work-set", "props": { "variant": "board", "spec": { "title": "Response plan", "fields": { "id": "id", "title": "title", "detail": "detail", "group": "priority" }, "groups": [{ "value": "immediate", "label": "Immediate" }, { "value": "next", "label": "Next" }, { "value": "follow-up", "label": "Follow-up" }] } }, "bindings": { "items": { "from": "incident2.model.actions" } } },
               "incident-notes": { "capability": "incident2:representation-notes", "bindings": { "value": { "from": "incident2.model" } } }
             },
@@ -59,8 +62,11 @@
                 { "cell": "incident-semantic-analyzer", "parent": "foundry-access-gate", "slot": "children", "order": 0 },
                 { "cell": "incident-verdict", "parent": "incident-semantic-analyzer", "slot": "children", "order": 0 },
                 { "cell": "incident-attack-path", "parent": "incident-semantic-analyzer", "slot": "children", "order": 1 },
-                { "cell": "incident-response", "parent": "incident-semantic-analyzer", "slot": "children", "order": 2 },
-                { "cell": "incident-notes", "parent": "incident-semantic-analyzer", "slot": "children", "order": 3 }
+                { "cell": "incident-blast-radius", "parent": "incident-semantic-analyzer", "slot": "children", "order": 2 },
+                { "cell": "incident-timeline", "parent": "incident-semantic-analyzer", "slot": "children", "order": 3 },
+                { "cell": "incident-techniques", "parent": "incident-semantic-analyzer", "slot": "children", "order": 4 },
+                { "cell": "incident-response", "parent": "incident-semantic-analyzer", "slot": "children", "order": 5 },
+                { "cell": "incident-notes", "parent": "incident-semantic-analyzer", "slot": "children", "order": 6 }
               ]
             }
           },
@@ -211,7 +217,7 @@
         "primitive:form": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"] }
       },
       "externals": {
-        "projectionViews": { "incident2": { "from": "self" }, "semantic": { "from": "semantic", "use": ["timeline", "sequence", "entity-constellation", "decision-summary", "action-board"] }, "foundry": { "from": "foundry", "use": ["access-gate"] }, "fluent": { "from": "fluent", "use": ["dropdown"] }, "ui": { "from": "floor", "use": ["markdown"] }, "primitive": { "from": "primitive", "use": ["form"] } },
+        "projectionViews": { "incident2": { "from": "self" }, "semantic": { "from": "semantic", "use": ["event-series", "process", "entity-set", "decision", "work-set"] }, "foundry": { "from": "foundry", "use": ["access-gate"] }, "fluent": { "from": "fluent", "use": ["dropdown"] }, "ui": { "from": "floor", "use": ["markdown"] }, "primitive": { "from": "primitive", "use": ["form"] } },
         "effectHandlers": ["selectSampleReport", "saveReport", "prepareAnalysis"]
       },
       "state": {
