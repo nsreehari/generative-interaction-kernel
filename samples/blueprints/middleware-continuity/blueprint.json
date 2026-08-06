@@ -1,0 +1,129 @@
+{
+  "gik": "0.1",
+  "type": "blueprint",
+  "payload": {
+    "id": "middleware-continuity",
+    "kind": "runtime-blueprint",
+    "version": "1.0.0",
+    "interface": {
+      "events": ["queue", "complete"]
+    },
+    "recipes": [],
+    "runtime": {
+      "expression": "jsonata",
+      "namespaces": ["continuity"],
+      "actions": ["assign"],
+      "capabilities": {
+        "ui:screen": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "slots": ["children"]
+        },
+        "ui:metric": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "dataProp": "value"
+        },
+        "ui:markdown": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "dataProp": "value"
+        }
+      },
+      "externals": {
+        "projectionViews": { "ui": { "from": "floor" } }
+      },
+      "state": {
+        "continuity": {
+          "job": {
+            "status": "idle",
+            "result": "",
+            "requestedBy": "",
+            "completedBy": ""
+          }
+        }
+      }
+    },
+    "tiers": [
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document",
+        "description": "Control-plane continuity workflow shared by MCP and a background worker."
+      }
+    ],
+    "cells": {
+      "continuity-controller": {
+        "id": "continuity-controller",
+        "kind": "middleware-workflow",
+        "behavior": {
+          "events": {
+            "queue": [
+              { "do": "assign", "target": "continuity.job.status", "args": { "value": "queued" } },
+              { "do": "assign", "target": "continuity.job.result", "args": { "value": "" } },
+              { "do": "assign", "target": "continuity.job.requestedBy", "args": { "value": "mcp-control" } },
+              { "do": "assign", "target": "continuity.job.completedBy", "args": { "value": "" } }
+            ],
+            "complete": [
+              { "do": "assign", "target": "continuity.job.status", "args": { "value": "completed" } },
+              { "do": "assign", "target": "continuity.job.result", "args": { "value": "background-analysis-ready" } },
+              { "do": "assign", "target": "continuity.job.completedBy", "args": { "value": "background-worker" } }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:screen",
+          "props": {
+            "title": "Middleware continuity",
+            "subtitle": "Inspection projection for MCP control and background-worker coordination"
+          }
+        }
+      },
+      "continuity-status": {
+        "id": "continuity-status",
+        "view": {
+          "capability": "ui:metric",
+          "props": { "label": "Job status" },
+          "bindings": { "value": { "from": "continuity.job.status" } }
+        }
+      },
+      "requested-by": {
+        "id": "requested-by",
+        "view": {
+          "capability": "ui:metric",
+          "props": { "label": "Requested by" },
+          "bindings": { "value": { "from": "continuity.job.requestedBy" } }
+        }
+      },
+      "completed-by": {
+        "id": "completed-by",
+        "view": {
+          "capability": "ui:metric",
+          "props": { "label": "Completed by" },
+          "bindings": { "value": { "from": "continuity.job.completedBy" } }
+        }
+      },
+      "execution-note": {
+        "id": "execution-note",
+        "view": {
+          "capability": "ui:markdown",
+          "props": {
+            "value": "MCP queues the work while a detached background worker completes it. The projection only inspects shared control-plane state."
+          }
+        }
+      }
+    },
+    "projections": {
+      "presentation": {
+        "roots": ["continuity-controller"],
+        "placements": [
+          { "cell": "continuity-status", "parent": "continuity-controller", "slot": "children", "order": 0 },
+          { "cell": "requested-by", "parent": "continuity-controller", "slot": "children", "order": 1 },
+          { "cell": "completed-by", "parent": "continuity-controller", "slot": "children", "order": 2 },
+          { "cell": "execution-note", "parent": "continuity-controller", "slot": "children", "order": 3 }
+        ]
+      }
+    },
+    "metadata": {
+      "scope": "middleware",
+      "executionMedium": "mcp-control-plane",
+      "sourceSample": "samples/control-host/service.ts"
+    }
+  }
+}

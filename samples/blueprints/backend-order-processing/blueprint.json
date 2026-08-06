@@ -1,0 +1,138 @@
+{
+  "gik": "0.1",
+  "type": "blueprint",
+  "payload": {
+    "id": "backend-order-processing",
+    "kind": "runtime-blueprint",
+    "version": "1.0.0",
+    "interface": {
+      "events": ["submit", "approve", "charged", "declined"]
+    },
+    "recipes": [],
+    "runtime": {
+      "expression": "jsonata",
+      "namespaces": ["order", "payment"],
+      "actions": ["assign", "confirm", "invoke", "route"],
+      "capabilities": {
+        "ui:screen": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "slots": ["children"]
+        },
+        "ui:metric": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "dataProp": "value"
+        },
+        "ui:markdown": {
+          "propsSchema": { "type": "object", "additionalProperties": true },
+          "dataProp": "value"
+        }
+      },
+      "externals": {
+        "projectionViews": { "ui": { "from": "floor" } }
+      },
+      "state": {
+        "order": {
+          "status": "draft",
+          "fulfillment": "not_queued",
+          "amount": 129.5
+        },
+        "payment": {
+          "status": "not_started",
+          "receipt": null
+        }
+      }
+    },
+    "tiers": [
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document",
+        "description": "Headless order workflow driven by backend events and orchestrator effects."
+      }
+    ],
+    "cells": {
+      "order-controller": {
+        "id": "order-controller",
+        "kind": "backend-workflow",
+        "behavior": {
+          "events": {
+            "submit": [
+              { "do": "assign", "target": "order.status", "args": { "value": "pending_review" } },
+              { "do": "confirm", "args": { "message": "Manager approval required", "onConfirm": "approve" } }
+            ],
+            "approve": [
+              { "do": "assign", "target": "order.status", "args": { "value": "charging" } },
+              { "do": "assign", "target": "payment.status", "args": { "value": "processing" } },
+              { "do": "invoke", "args": { "tool": "chargeCard" } }
+            ],
+            "charged": [
+              { "do": "assign", "target": "order.status", "args": { "value": "confirmed" } },
+              { "do": "assign", "target": "payment.status", "args": { "value": "captured" } },
+              { "do": "assign", "target": "order.fulfillment", "args": { "value": "queued" } },
+              { "do": "route", "args": { "to": "queue:fulfillment" } }
+            ],
+            "declined": [
+              { "do": "assign", "target": "order.status", "args": { "value": "payment_failed" } },
+              { "do": "assign", "target": "payment.status", "args": { "value": "declined" } }
+            ]
+          }
+        },
+        "view": {
+          "capability": "ui:screen",
+          "props": {
+            "title": "Backend order processing",
+            "subtitle": "Inspection projection for a headless event and orchestrator workflow"
+          }
+        }
+      },
+      "order-status": {
+        "id": "order-status",
+        "view": {
+          "capability": "ui:metric",
+          "props": { "label": "Order status" },
+          "bindings": { "value": { "from": "order.status" } }
+        }
+      },
+      "payment-status": {
+        "id": "payment-status",
+        "view": {
+          "capability": "ui:metric",
+          "props": { "label": "Payment status" },
+          "bindings": { "value": { "from": "payment.status" } }
+        }
+      },
+      "fulfillment-status": {
+        "id": "fulfillment-status",
+        "view": {
+          "capability": "ui:metric",
+          "props": { "label": "Fulfillment" },
+          "bindings": { "value": { "from": "order.fulfillment" } }
+        }
+      },
+      "execution-note": {
+        "id": "execution-note",
+        "view": {
+          "capability": "ui:markdown",
+          "props": {
+            "value": "This Blueprint is driven by backend events. The projection is an inspection surface required by the current Blueprint compiler; it is not the execution medium."
+          }
+        }
+      }
+    },
+    "projections": {
+      "presentation": {
+        "roots": ["order-controller"],
+        "placements": [
+          { "cell": "order-status", "parent": "order-controller", "slot": "children", "order": 0 },
+          { "cell": "payment-status", "parent": "order-controller", "slot": "children", "order": 1 },
+          { "cell": "fulfillment-status", "parent": "order-controller", "slot": "children", "order": 2 },
+          { "cell": "execution-note", "parent": "order-controller", "slot": "children", "order": 3 }
+        ]
+      }
+    },
+    "metadata": {
+      "scope": "backend",
+      "executionMedium": "headless",
+      "sourceSample": "samples/backend-host/order-service.ts"
+    }
+  }
+}

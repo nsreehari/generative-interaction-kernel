@@ -3,6 +3,8 @@
   "blueprints": [
     "samples-overview",
     "manage-blueprints",
+    "backend-order-processing",
+    "middleware-continuity",
     "vocabulary-lowering",
     "portfolio-tracker",
     "incident-report-analysis-shell",

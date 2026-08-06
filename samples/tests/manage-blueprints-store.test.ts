@@ -82,6 +82,9 @@ test("listBlueprints exposes built-in artifacts as read-only", async () => {
   assert.ok(rows.length > 0);
   assert.equal(rows.some((row) => row.id === "samples-overview" && row.source === "repo" && row.readonly === true), true);
   assert.equal(rows.some((row) => row.id === "samples-overview" && row.sourceLabel === "Built-in"), true);
+  assert.equal(rows.some((row) => row.id === "samples-overview" && row.scopeLabel === "Frontend"), true);
+  assert.equal(rows.some((row) => row.id === "backend-order-processing" && row.scopeLabel === "Backend"), true);
+  assert.equal(rows.some((row) => row.id === "middleware-continuity" && row.scopeLabel === "Middleware"), true);
 });
 
 test("JSON editing uses a locally stateful declarative form", () => {
@@ -110,6 +113,7 @@ test("JSON editing uses a locally stateful declarative form", () => {
   assert.equal(cells["preview-blueprint"], undefined);
   assert.equal((cells["import-blueprint"].view as JsonRecord).capability, "primitive:file-input");
   assert.equal((cells["export-blueprint"].view as JsonRecord).capability, "primitive:file-download");
+  assert.deepEqual(((cells["blueprint-list"].view as JsonRecord).props as JsonRecord).badgeKeys, ["scopeLabel", "sourceLabel"]);
   assert.equal(capabilities["manage-blueprints:blueprint-import"], undefined);
   assert.equal(effectHandlers.includes("exportBlueprint"), false);
 });

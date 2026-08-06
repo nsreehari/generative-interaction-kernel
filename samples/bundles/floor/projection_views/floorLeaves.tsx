@@ -653,6 +653,7 @@ function List({ node, emit }: ProjectionViewProps) {
   const primaryKey = p.str("primaryKey", "label");
   const secondaryKey = p.str("secondaryKey");
   const badgeKey = p.str("badgeKey");
+  const badgeKeys = p.list<string>("badgeKeys");
   const valueKey = p.str("valueKey");
   const selectedId = p.str("selectedId");
   const empty = p.str("emptyText", "Nothing here yet.");
@@ -669,17 +670,17 @@ function List({ node, emit }: ProjectionViewProps) {
         const id = String(isStr ? (raw as string) : (item[idKey] ?? i));
         const primary = isStr ? (raw as string) : String(item[primaryKey] ?? "");
         const selected = id === selectedId;
-        const badge =
-          !isStr && badgeKey && item[badgeKey] != null ? (
-            <span className={`gx-badge gx-badge-${String(item[badgeKey])}`}>
-              {String(item[badgeKey])}
-            </span>
-          ) : null;
+        const resolvedBadgeKeys = badgeKeys.length > 0 ? badgeKeys : badgeKey ? [badgeKey] : [];
+        const badges = !isStr ? resolvedBadgeKeys.flatMap((key) => item[key] != null ? [
+          <span className={`gx-badge gx-badge-${String(item[key])}`} key={key}>
+            {String(item[key])}
+          </span>,
+        ] : []) : [];
         const body = (
           <>
-            {badgeLeading ? badge : null}
+            {badgeLeading ? badges : null}
             <span className="gx-list-primary">{primary}</span>
-            {badgeLeading ? null : badge}
+            {badgeLeading ? null : badges}
             {!isStr && secondaryKey && item[secondaryKey] != null ? (
               <span className="gx-list-secondary gx-muted">{String(item[secondaryKey])}</span>
             ) : null}

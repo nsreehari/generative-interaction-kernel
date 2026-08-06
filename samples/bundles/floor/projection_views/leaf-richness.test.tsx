@@ -111,6 +111,16 @@ test("metric renders an optional detail line below the value", () => {
   assert.match(markup, /class="gx-metric-detail[^"]*">\+12% vs last qtr<\/span>/);
 });
 
+test("list renders multiple declarative badges per item", () => {
+  const markup = render("ui:list", {
+    items: [{ id: "backend-order-processing", label: "Backend order processing", scope: "Backend", source: "Built-in" }],
+    badgeKeys: ["scope", "source"],
+  });
+
+  assert.match(markup, />Backend</);
+  assert.match(markup, />Built-in</);
+});
+
 test("metric omits the detail line when no detail is provided", () => {
   const markup = render("ui:metric", { label: "Revenue", value: "$1.2M" });
   assert.doesNotMatch(markup, /gx-metric-detail/);
