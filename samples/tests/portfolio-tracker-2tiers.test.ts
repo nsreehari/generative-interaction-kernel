@@ -10,8 +10,8 @@ import { openBlueprint } from "@gik/controlface/blueprint";
 import { bundleFromJson, loadBundleRuntime } from "@gik/react";
 import effects from "../blueprints/portfolio-tracker/native/effect_handlers/portfolioTrackerEffectHandlers";
 import { mockMarketDataHandler, MOCK_MARKET_DATA_PROVIDER } from "../services/mock-market-data";
-import { declarativeServiceOrchestrator } from "../shared/service-runtime";
-import { createBlueprintAgentLifecycle } from "../shared/blueprint-agent-lifecycle";
+import { declarativeServiceOrchestrator } from "../services/host/service-runtime";
+import { createBlueprintAgentLifecycle } from "../services/host/blueprint-agent-lifecycle";
 import { resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
 import { InMemoryStateModel } from "../../kernel/src/index";
 

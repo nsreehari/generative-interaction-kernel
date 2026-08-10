@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { getSampleBlueprintCatalog, openSampleBlueprint, resolveSampleBlueprintSource } from "./blueprint-catalog";
+import { getSampleBlueprintCatalog, openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
 
 test("every registered sample opens through terminal materialization", () => {
   for (const id of getSampleBlueprintCatalog().blueprints) {

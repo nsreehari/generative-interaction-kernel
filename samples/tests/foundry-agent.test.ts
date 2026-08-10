@@ -3,7 +3,7 @@ import { afterEach, describe, test } from "vitest";
 import { bundleFromJson, loadBundleRuntime } from "@gik/react";
 import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
 
-import { FUNCTION_ACCESS } from "../shared/function-access";
+import { FUNCTION_ACCESS } from "../services/host/function-access";
 
 const FOUNDRY_ACCESS_STORAGE_KEY = FUNCTION_ACCESS.foundry.storageKey;
 import effects from "../blueprints/foundry-agent/native/effect_handlers/foundryAgentEffectHandlers";
@@ -11,7 +11,7 @@ import { createFoundryAgentKind } from "../services/foundry-agent";
 import {
   browserServiceRegistryOptions,
   declarativeServiceOrchestrator,
-} from "../shared/service-runtime";
+} from "../services/host/service-runtime";
 
 const FOUNDRY_BLUEPRINTS = ["foundry-agent", "foundry-agent-no-cells"] as const;
 

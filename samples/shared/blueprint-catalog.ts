@@ -8,7 +8,7 @@ import {
 import { openBlueprint, type BlueprintRuntime } from "@gik/controlface/blueprint";
 import { createIndexedDbRecordLibrary } from "@gik/durable-runtime/storage/indexed-db";
 import type { DemoRunnerDocument } from "@gik/demo-runner-host";
-import { applyHostConfig } from "./host-config";
+import { applyHostConfig } from "../services/host/host-config";
 
 export const sampleBlueprintCatalogUrl = "bootstrap/sample-blueprints.bundle.json";
 const artifactKind = "blueprint-seed-artifact";

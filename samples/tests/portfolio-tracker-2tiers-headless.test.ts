@@ -8,7 +8,7 @@ import {
 import { openBlueprint } from "@gik/controlface/blueprint";
 import { unwrap } from "@gik/kernel";
 import { resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
-import { declarativeServiceOrchestrator } from "../shared/service-runtime";
+import { declarativeServiceOrchestrator } from "../services/host/service-runtime";
 
 const projectedBlueprint = () => resolveSampleBlueprintSource("portfolio-tracker-2tiers");
 const headlessBlueprint = () => resolveSampleBlueprintSource("portfolio-tracker-2tiers-headless");

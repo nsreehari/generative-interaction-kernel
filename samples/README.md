@@ -48,8 +48,8 @@ Blueprint state, external context, materialized Blueprints, events, effects, Jou
 Headless hosts create registry options with an environment-backed resolver and pass those options to the existing service host or orchestrator:
 
 ```ts
-import { createHeadlessServiceRegistryOptions } from "./shared/headless-service-runtime";
-import { declarativeServiceOrchestrator } from "./shared/service-runtime";
+import { createHeadlessServiceRegistryOptions } from "./services/host/headless-service-runtime";
+import { declarativeServiceOrchestrator } from "./services/host/service-runtime";
 
 const registryOptions = createHeadlessServiceRegistryOptions(process.env);
 const wrapOrchestrator = declarativeServiceOrchestrator(runtime, registryOptions);

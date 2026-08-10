@@ -4,7 +4,7 @@ import { semanticComponentDefinitions } from "@gik/components";
 import { InMemoryStateModel } from "../../kernel/src/index";
 
 import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
-import { createBlueprintAgentLifecycle } from "../shared/blueprint-agent-lifecycle";
+import { createBlueprintAgentLifecycle } from "../services/host/blueprint-agent-lifecycle";
 
 const blueprint = resolveSampleBlueprintSource("incident-report-explorer-2") as BlueprintArtifact;
 const cells = Object.values(blueprint.payload.cells ?? {}) as CellDefinition[];

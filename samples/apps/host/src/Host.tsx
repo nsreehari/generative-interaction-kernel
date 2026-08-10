@@ -14,7 +14,7 @@ import {
   createInMemoryBlueprintProposalStore,
   type BlueprintProposalStore,
 } from "@gik/blueprint-agent-host";
-import type { UseProposal } from "../../../shared/blueprint-agent-lifecycle";
+import type { UseProposal } from "../../../services/host/blueprint-agent-lifecycle";
 import { GikDemoBlueprintHost, type DemoTargetHostProps } from "@gik/demo-runner-host";
 import { resolveProjectionViews } from "./runtime/provider-registry";
 import {
