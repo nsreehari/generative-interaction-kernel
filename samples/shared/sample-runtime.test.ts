@@ -8,11 +8,11 @@ import { semanticComponentViews } from "@gik/components/semantic";
 import { securityComponentViews } from "@gik/components/security";
 import { softwareComponentViews } from "@gik/components/software";
 
-import { resolveBundleProjectionViews } from "./bundles";
-import { copilotC2StateStorageKey } from "../../../blueprints/copilot-c2/native/effect_handlers/copilotC2EffectHandlers";
-import { openSampleBlueprint } from "../../../shared/blueprints";
-import { resolveBlueprintInitialContext, resolveBlueprintNative } from "../../../shared/sample-bundles";
-import { createBlueprintServiceHost } from "../../../shared/service-runtime";
+import { copilotC2StateStorageKey } from "../blueprints/copilot-c2/native/effect_handlers/copilotC2EffectHandlers";
+import { openSampleBlueprint } from "./blueprints";
+import { resolveBundleProjectionViews } from "./provider-registry";
+import { resolveBlueprintInitialContext, resolveBlueprintNative } from "./sample-bundles";
+import { createBlueprintServiceHost } from "./service-runtime";
 
 test("production native resolution hydrates and persists durable copilot-c2 state only", () => {
   const values = new Map<string, string>([[
@@ -70,7 +70,7 @@ test("production native resolution hydrates and persists durable copilot-c2 stat
   }
 });
 
-test("host projection imports can resolve another bundle by id", () => {
+test("shared projection imports resolve package and Blueprint providers", () => {
   const copilotViews = resolveBundleProjectionViews("copilot-c2");
   assert.equal(typeof copilotViews?.workspace, "function");
   assert.equal(typeof copilotViews?.["agent-activity-board"], "function");

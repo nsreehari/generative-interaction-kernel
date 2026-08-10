@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "blueprints:bundle": "node scripts/build-blueprint-catalog.mjs",
+    "blueprints:bundle": "node apps/host/bootstrap/scripts/build-blueprint-catalog.mjs",
     "dev": "npm run blueprints:bundle && npm run build:storybook && vite apps/host",
     "dev:local": "npm run blueprints:bundle && npm run build:storybook && vite apps/host --mode gik-local",
     "build": "npm run blueprints:bundle && npm run build:storybook && vite build apps/host",

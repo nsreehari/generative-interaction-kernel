@@ -37,7 +37,7 @@ function hostedStorybook(): Plugin {
   };
 }
 
-// The ONE generic host: a consumer of the public packages plus the sample bundles it mounts.
+// The ONE generic host: a consumer of the public packages plus the sample Blueprints it mounts.
 export default defineConfig({
   // For GitHub Pages the site is served under /<repo>/, so built asset URLs must be prefixed.
   // The Pages workflow sets a versioned /gik/v*/ base; local dev/build defaults to "/".

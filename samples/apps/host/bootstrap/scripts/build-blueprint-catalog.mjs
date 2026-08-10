@@ -3,7 +3,7 @@ import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const samplesDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const samplesDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
 const registryPath = resolve(samplesDirectory, "blueprints/registry.json");
 const outputPath = resolve(samplesDirectory, "apps/host/public/bootstrap/sample-blueprints.bundle.json");
 

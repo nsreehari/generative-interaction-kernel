@@ -16,7 +16,7 @@ import {
 } from "@gik/blueprint-agent-host";
 import type { UseProposal } from "../../../shared/blueprint-agent-lifecycle";
 import { GikDemoBlueprintHost, type DemoTargetHostProps } from "@gik/demo-runner-host";
-import { resolveBundleProjectionViews } from "./bundles";
+import { resolveBundleProjectionViews } from "../../../shared/provider-registry";
 import {
   canonicalizeHostUrl,
   readHostQuery,
