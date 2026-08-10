@@ -104,7 +104,7 @@ existing validated open/reconfigure path — exactly the risk ADR-0043 was writt
 - Physical package placement of the host-side driver (`@gik/blueprint` vs. a new package) — deferred
   until the driver exists and its dependency shape is known.
 
-## Amendment (2026-07-28): findings from the first spike (`samples/control-host/lowering-meta-graph.ts`)
+## Amendment (2026-07-28): findings from the first spike (`samples/examples/lowering-meta-graph/lowering-meta-graph.ts`)
 
 Building a full, tested, end-to-end spike (host driver → Lowering Cell meta-graph → tier-2 artifact
 → `openBlueprint`) surfaced three platform findings and one deliberate implementation deviation from
@@ -158,7 +158,7 @@ expression or confirm config lives on that type today, and adding one is exactly
 `compilerBlueplateRef`-style schema question already flagged above as "Not decided here") — it only
 catches drift between the two once both are hand-authored.
 
-Proof: `samples/control-host/lowering-meta-graph.ts` + `.test.ts` (8 tests) exercise all of the
+Proof: `samples/examples/lowering-meta-graph/lowering-meta-graph.ts` + `.test.ts` (8 tests) exercise all of the
 above — bootstrap-event settling, approval gating via `confirm`, the tier-2 artifact opening
 through the unmodified `openBlueprint` path, and both a missing-Cell and a mismatched-token drift
 case for `validateLoweringCellGraph`.

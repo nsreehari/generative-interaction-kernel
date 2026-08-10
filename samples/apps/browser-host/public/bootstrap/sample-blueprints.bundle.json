@@ -443,7 +443,7 @@
         "metadata": {
           "scope": "backend",
           "executionMedium": "headless",
-          "sourceSample": "samples/backend-host/order-service.ts"
+          "sourceSample": "samples/apps/backend-order-host/order-service.ts"
         }
       }
     },
@@ -16059,7 +16059,7 @@
         "metadata": {
           "scope": "middleware",
           "executionMedium": "mcp-control-plane",
-          "sourceSample": "samples/control-host/service.ts"
+          "sourceSample": "samples/apps/controlface-host/service.ts"
         }
       }
     },
@@ -19769,6 +19769,6 @@
       ]
     }
   },
-  "bundleVersion": "b200a3e96eb01d37",
-  "digest": "sha256:b200a3e96eb01d37584760a1dd95dcaa42082adcb37aa1989f4d4edb2f3e308b"
+  "bundleVersion": "a94941f3d383aca0",
+  "digest": "sha256:a94941f3d383aca033c8cc127aa10ca5b5767dba0367c0d041b43e1db9fbad0e"
 }

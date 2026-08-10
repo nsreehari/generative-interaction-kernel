@@ -11,7 +11,7 @@
 // distinct Kernel instances, and the compiler never gains direct execution authority over the
 // artifact it produces.
 //
-// Run: npx vitest run samples/control-host/lowering-meta-graph.test.ts --project samples
+// Run: npx vitest run samples/examples/lowering-meta-graph/lowering-meta-graph.test.ts --project samples
 
 import { createBlueprint, defineLoweringCell, runLoweringBlueprint, validateLoweringCellGraph, type BlueprintArtifact, type BlueprintDefinition, type LoweringCellDefinition } from "@gik/blueprint";
 import { openBlueprint, type BlueprintRuntime } from "@gik/controlface";

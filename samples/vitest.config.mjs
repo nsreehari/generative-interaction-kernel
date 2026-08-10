@@ -5,10 +5,10 @@ export default defineConfig({
     environment: "node",
     include: [
       "tests/**/*.test.ts",
-      "control-host/**/*.test.ts",
-      "shared/**/*.test.ts",
+      "apps/controlface-host/**/*.test.ts",
+      "examples/**/*.test.ts",
       "profiles/**/*.test.ts",
-      "apps/host/**/*.test.ts",
+      "apps/browser-host/**/*.test.ts",
       "bundles/**/*.test.ts",
     ],
   },

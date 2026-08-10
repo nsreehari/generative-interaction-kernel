@@ -4,8 +4,6 @@ import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import type { ProjectionView } from "@gik/react";
 import { Handle } from "@xyflow/react";
-import "@xyflow/react/dist/style.css";
-
 import {
   InfiniteCanvas,
   type InfiniteCanvasNodeDescriptor,
@@ -34,6 +32,20 @@ export interface DeclarativeInfiniteCanvasNode extends InfiniteCanvasNodeDescrip
   eyebrow?: string;
   tone?: InfiniteCanvasToken;
 }
+
+const canvasThemeVariables = {
+  "--xy-edge-stroke": tokens.colorNeutralStrokeAccessible,
+  "--xy-edge-stroke-selected": tokens.colorBrandStroke1,
+  "--xy-connectionline-stroke": tokens.colorBrandStroke1,
+  "--xy-background-color": tokens.colorNeutralBackground2,
+  "--xy-background-pattern-color": tokens.colorNeutralStroke2,
+  "--xy-minimap-background-color": tokens.colorNeutralBackground1,
+  "--xy-minimap-mask-background-color": tokens.colorNeutralBackgroundAlpha2,
+  "--xy-minimap-node-background-color": tokens.colorNeutralBackground3,
+  "--xy-minimap-node-stroke-color": tokens.colorNeutralStroke1,
+  "--xy-selection-background-color": tokens.colorBrandBackground2,
+  "--xy-selection-border": `1px dotted ${tokens.colorBrandStroke1}`,
+} as React.CSSProperties;
 
 export interface DeclarativeInfiniteCanvasModel {
   nodes: DeclarativeInfiniteCanvasNode[];
@@ -137,6 +149,9 @@ const useStyles = makeStyles({
     border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
     borderRadius: tokens.borderRadiusMedium,
     backgroundColor: tokens.colorNeutralBackground2,
+    "& .react-flow__controls": { borderRadius: tokens.borderRadiusMedium, boxShadow: tokens.shadow4, overflow: "hidden" },
+    "& .react-flow__controls-button": { color: tokens.colorNeutralForeground1, backgroundColor: tokens.colorNeutralBackground1, border: `1px solid ${tokens.colorNeutralStroke2}`, cursor: "pointer" },
+    "& .react-flow__controls-button:hover": { backgroundColor: tokens.colorNeutralBackground1Hover },
   },
   viewport: { width: "100%", height: "100%" },
   node: {
@@ -182,7 +197,7 @@ export const InfiniteCanvasPrimitive: ProjectionView = ({ node, emit }) => {
     : "standard";
   const height = typeof node.props.height === "number" || typeof node.props.height === "string" ? node.props.height : "32rem";
   const root = componentRootProps(node, styles.root);
-  return <section {...root} style={{ ...root.style, height }} aria-label={typeof node.props.ariaLabel === "string" ? node.props.ariaLabel : "Infinite canvas"}>
+  return <section {...root} style={{ ...canvasThemeVariables, ...root.style, height }} aria-label={typeof node.props.ariaLabel === "string" ? node.props.ariaLabel : "Infinite canvas"}>
     <ul className={styles.accessibleSummary}>{descriptors.map((descriptor) => <li key={descriptor.id}>{descriptor.title}{descriptor.detail ? `: ${descriptor.detail}` : ""}</li>)}</ul>
     <InfiniteCanvas
       stateKey={String(node.props.stateKey ?? node.id)}

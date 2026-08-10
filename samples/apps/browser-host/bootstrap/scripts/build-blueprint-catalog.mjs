@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const samplesDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
 const registryPath = resolve(samplesDirectory, "blueprints/registry.json");
-const outputPath = resolve(samplesDirectory, "apps/host/public/bootstrap/sample-blueprints.bundle.json");
+const outputPath = resolve(samplesDirectory, "apps/browser-host/public/bootstrap/sample-blueprints.bundle.json");
 
 const registry = JSON.parse(await readFile(registryPath, "utf8"));
 const entries = {};

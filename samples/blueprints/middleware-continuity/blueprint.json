@@ -55,7 +55,7 @@
     "metadata": {
       "scope": "middleware",
       "executionMedium": "mcp-control-plane",
-      "sourceSample": "samples/control-host/service.ts"
+      "sourceSample": "samples/apps/controlface-host/service.ts"
     }
   }
 }

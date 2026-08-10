@@ -265,16 +265,16 @@ not duplicates of each other; each one demonstrates a different boundary around 
 
 <table class="sig">
 <tr><th>Sample</th><th>File</th><th>What it demonstrates</th><th>Choose it when</th></tr>
-<tr><td><code>apps/host</code></td><td><code>samples/apps/host/</code></td><td>The browser bundle host: mounts JSON bundles, renders them through <code>@gik/react</code>, and lets the bundle switcher move between samples.</td><td>You need a renderer/container for authored bundles in the browser.</td></tr>
-<tr><td><code>agent-host</code></td><td><code>samples/agent-host/mcp-service.ts</code></td><td>A stateless MCP surface over <code>createStatelessAgentFaceDispatcher()</code>. No live kernel, no document, no runtime state.</td><td>You want authoring/validation tools only, exposed to an agent or Copilot over MCP/HTTP.</td></tr>
-<tr><td><code>control-host</code></td><td><code>samples/control-host/service.ts</code></td><td>One live <code>ControlFace</code> exposing three outward surfaces over the same runtime: SSE render stream, agent-safe MCP, and full control-plane MCP.</td><td>You are building the authoritative runtime service that backs renderers, operators, and agents.</td></tr>
-<tr><td><code>backend-host</code></td><td><code>samples/backend-host/order-service.ts</code></td><td>Direct kernel embedding with a backend orchestrator and a non-UI projector. No React, no browser, no outward transport shell required.</td><td>You want the kernel as workflow/business-logic infrastructure inside a service or worker.</td></tr>
+<tr><td><code>apps/browser-host</code></td><td><code>samples/apps/browser-host/</code></td><td>The browser bundle host: mounts JSON bundles, renders them through <code>@gik/react</code>, and lets the bundle switcher move between samples.</td><td>You need a renderer/container for authored bundles in the browser.</td></tr>
+<tr><td><code>apps/stateless-agent-mcp-host</code></td><td><code>samples/apps/stateless-agent-mcp-host/mcp-service.ts</code></td><td>A stateless MCP surface over <code>createStatelessAgentFaceDispatcher()</code>. No live kernel, no document, no runtime state.</td><td>You want authoring/validation tools only, exposed to an agent or Copilot over MCP/HTTP.</td></tr>
+<tr><td><code>apps/controlface-host</code></td><td><code>samples/apps/controlface-host/service.ts</code></td><td>One live <code>ControlFace</code> exposing three outward surfaces over the same runtime: SSE render stream, agent-safe MCP, and full control-plane MCP.</td><td>You are building the authoritative runtime service that backs renderers, operators, and agents.</td></tr>
+<tr><td><code>apps/backend-order-host</code></td><td><code>samples/apps/backend-order-host/order-service.ts</code></td><td>Direct kernel embedding with a backend orchestrator and a non-UI projector. No React, no browser, no outward transport shell required.</td><td>You want the kernel as workflow/business-logic infrastructure inside a service or worker.</td></tr>
 </table>
 
-<div class="callout"><strong>Rule of thumb:</strong> choose <code>apps/host</code> when the question is
-"how do I render bundles?"; choose <code>agent-host</code> when the question is "how do I expose
-authoring tools only?"; choose <code>control-host</code> when the question is "how do I host one live
-runtime for external clients?"; choose <code>backend-host</code> when the question is "how do I embed
+<div class="callout"><strong>Rule of thumb:</strong> choose <code>apps/browser-host</code> when the question is
+"how do I render bundles?"; choose <code>apps/stateless-agent-mcp-host</code> when the question is "how do I expose
+authoring tools only?"; choose <code>apps/controlface-host</code> when the question is "how do I host one live
+runtime for external clients?"; choose <code>apps/backend-order-host</code> when the question is "how do I embed
 the kernel directly in backend code?"</div>
 
 <h2 id="fit">4 · How the pieces fit</h2>
@@ -291,7 +291,7 @@ request/response catalog) or the <strong>render stream</strong> (SSE). Capabilit
        ├─ agentface  projection   ← allowlisted tool catalog  ──► MCP  (e.g. /mcp)
        └─ render stream (attach)  ← patches + tree            ──► SSE  (e.g. /gik)</code></pre>
 
-<p>This mirrors the sample host in <code>samples/control-host/service.ts</code>: it builds one
+<p>This mirrors the sample host in <code>samples/apps/controlface-host/service.ts</code>: it builds one
 <code>ControlFace</code>, then mounts <code>createAgentFaceDispatcher</code> at <code>/mcp</code>,
 <code>createControlFaceDispatcher</code> at <code>/mcp-control</code>, and an <code>SseTransportServer</code>
 at <code>/gik</code> — three outward surfaces over the <em>same</em> live runtime.</p>

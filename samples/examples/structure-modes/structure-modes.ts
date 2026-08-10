@@ -1,6 +1,6 @@
 // Manual proof of the three Blueprint structure modes through the public Face API.
 //
-// Run: npx tsx samples/control-host/structure-modes.ts
+// Run: npx tsx samples/examples/structure-modes/structure-modes.ts
 
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";

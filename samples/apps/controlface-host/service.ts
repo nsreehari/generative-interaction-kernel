@@ -6,7 +6,7 @@
 // tools (`checkpoint`, `restore`, `effectsSince`, `compensate`). The sample is intentionally thin:
 // transports carry projections; they do not own capability policy.
 //
-// Run:  npx tsx generative-interaction-kernel/samples/control-host/service.ts
+// Run:  npx tsx generative-interaction-kernel/samples/apps/controlface-host/service.ts
 //   or:  npm run dev:controlface
 // Time-travel demo: set `GENUI_CONTROLFACE_DEMO=rollback` to mount an effectful runtime whose
 // control-plane can demonstrate `checkpoint` -> `emit` -> `effectsSince` -> `restore` -> `compensate`.
@@ -32,12 +32,21 @@ import { readFileSync } from "node:fs";
 import { type AddressInfo } from "node:net";
 import { resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ControlFace, createControlFaceDispatcher } from "@gik/controlface";
-import { createAgentFaceDispatcher } from "@gik/agentface";
-import { InMemoryStateModel } from "@gik/kernel";
-import type { Json, Orchestrator, OrchestratorEffect } from "@gik/kernel";
+import {
+  agentface,
+  controlface,
+  kernel as kernelApi,
+  transportMcpHttp,
+} from "@gik/headless";
 import { SseTransportServer } from "@gik/transport-http-sse/server";
-import { McpHttpServer } from "@gik/transport-mcp-http";
+
+const { createAgentFaceDispatcher } = agentface;
+const { ControlFace, createControlFaceDispatcher } = controlface;
+const { InMemoryStateModel } = kernelApi;
+const { McpHttpServer } = transportMcpHttp;
+type Json = kernelApi.Json;
+type Orchestrator = kernelApi.Orchestrator;
+type OrchestratorEffect = kernelApi.OrchestratorEffect;
 
 const fx = (name: string) =>
   JSON.parse(
@@ -199,7 +208,7 @@ function createRuntime(demo: DemoMode) {
 
 export interface ControlHostHandle {
   demo: DemoMode;
-  controlface: ControlFace;
+  controlface: controlface.ControlFace;
   server: Server;
   listen(): Promise<string>;
   stop(): Promise<void>;

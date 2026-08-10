@@ -3,7 +3,7 @@ import { analyzeCellComposition, materializeBlueprint, type BlueprintArtifact, t
 import { InMemoryStateModel } from "../../kernel/src/index";
 
 import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
-import { resolveBlueprintInitialContext, resolveBlueprintNative } from "../apps/host/src/runtime/sample-bundles";
+import { resolveBlueprintInitialContext, resolveBlueprintNative } from "../apps/browser-host/src/runtime/sample-bundles";
 import { createBlueprintAgentLifecycle, createBlueprintUseTools } from "../services/host/blueprint-agent-lifecycle";
 
 const blueprint = resolveSampleBlueprintSource("incident-report-explorer-1a");

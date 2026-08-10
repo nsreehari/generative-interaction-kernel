@@ -127,7 +127,7 @@ responsive stage flow and narrow-viewport space for the fixed harness context st
 Scope rule: preserve exact SOC operational behavior, attribution, authority, demo sequencing,
 and causal focus while changing projection composition.
 
-Let me gather the missing context: the samples-overview bundle, the workbench bundle, the apps/host bundle structure, and the GIK public docs.   
+Let me gather the missing context: the samples-overview bundle, the workbench bundle, the apps/browser-host bundle structure, and the GIK public docs.
 
 Read [](file:///c%3A/Users/sreenaga/ADO/ai-tool-evolver/generative-interaction-kernel/samples/bundles)
 

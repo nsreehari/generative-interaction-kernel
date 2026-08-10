@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 
 import { describe, expect, it } from "vitest";
-import seedJson from "../apps/host/public/bootstrap/sample-blueprints.bundle.json" with { type: "json" };
+import seedJson from "../apps/browser-host/public/bootstrap/sample-blueprints.bundle.json" with { type: "json" };
 import {
   bootstrapSampleBlueprintCatalog,
   createIndexedDbBlueprintCatalogStore,

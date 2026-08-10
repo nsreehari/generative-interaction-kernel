@@ -9,18 +9,18 @@
 //      NOT screens, and
 //   3. declares handlers and machines directly, without inventing a projection tree.
 //
-// Run:  npx tsx generative-interaction-kernel/samples/backend-host/order-service.ts
+// Run:  npx tsx generative-interaction-kernel/samples/apps/backend-order-host/order-service.ts
 
-import { authorProgram, Kernel } from "@gik/kernel";
-import type {
-  GIKEvent,
-  Json,
-  Orchestrator,
-  OrchestratorEffect,
-  Patch,
-  HeadlessVocabularyManifest,
-  TraceEvent,
-} from "@gik/kernel";
+import { kernel as kernelApi } from "@gik/headless";
+
+const { authorProgram, Kernel } = kernelApi;
+type GIKEvent = kernelApi.GIKEvent;
+type Json = kernelApi.Json;
+type Orchestrator = kernelApi.Orchestrator;
+type OrchestratorEffect = kernelApi.OrchestratorEffect;
+type Patch = kernelApi.Patch;
+type HeadlessVocabularyManifest = kernelApi.HeadlessVocabularyManifest;
+type TraceEvent = kernelApi.TraceEvent;
 
 // --- Runtime vocabulary: state and effects, with no projection capabilities ---
 const manifest: HeadlessVocabularyManifest = {
