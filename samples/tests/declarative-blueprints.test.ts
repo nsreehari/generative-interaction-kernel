@@ -8,7 +8,7 @@ import {
   type CellDefinition,
   type ExternalContext,
 } from "@gik/blueprint";
-import { resolveSampleBlueprintSource } from "../shared/blueprints";
+import { resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
 
 type Assertion =
   | { kind: "valid-artifact" | "composition-valid" }

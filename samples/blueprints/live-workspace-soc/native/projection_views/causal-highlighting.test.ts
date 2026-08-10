@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { resolveFocusTargets, selectionFromTimelineItem, type TimelineItem } from "../../../../shared/demo-runner";
+import { resolveFocusTargets, selectionFromTimelineItem, type TimelineItem } from "./control-focus";
 
 import {
   SOC_FOCUS_TARGETS,

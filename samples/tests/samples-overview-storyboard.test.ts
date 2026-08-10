@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprints";
+import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
 
 const overview = openSampleBlueprint("samples-overview").state.overview as unknown as {
   actors: Array<{ id: string }>;

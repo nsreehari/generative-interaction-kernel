@@ -1,5 +1,4 @@
-// Build-time discovery and assembly of Blueprint-owned native code, factored out of the app host so
-// BlueprintHost and GikDemoBlueprintHost use the same projection, effect, service, and persistence hooks.
+// Host-owned build-time discovery and assembly of Blueprint native code.
 
 import {
   type BundleNative,
@@ -9,23 +8,23 @@ import {
 import type { ExternalContext, MaterializedBlueprint } from "@gik/blueprint";
 import type { Json } from "@gik/kernel";
 import { openBlueprint } from "@gik/controlface/blueprint";
-import * as copilotC2EffectModule from "../blueprints/copilot-c2/native/effect_handlers/copilotC2EffectHandlers";
-import * as cachedIncidentReportExplorerEffectModule from "../blueprints/cached-incident-report-explorer/native/effect_handlers/cachedIncidentReportExplorerEffectHandlers";
-import * as cachedIncidentReportExplorer2EffectModule from "../blueprints/cached-incident-report-explorer-2/native/effect_handlers/cachedIncidentReportExplorer2EffectHandlers";
-import * as cachedIncidentReportExplorer3EffectModule from "../blueprints/cached-incident-report-explorer-3/native/effect_handlers/cachedIncidentReportExplorer3EffectHandlers";
-import * as foundryAgentEffectModule from "../blueprints/foundry-agent/native/effect_handlers/foundryAgentEffectHandlers";
-import * as incidentReportExplorerEffectModule from "../blueprints/incident-report-explorer/native/effect_handlers/incidentReportExplorerEffectHandlers";
-import * as incidentReportExplorer1aEffectModule from "../blueprints/incident-report-explorer-1a/native/effect_handlers/incidentReportExplorer1aEffectHandlers";
-import * as incidentReportExplorer2EffectModule from "../blueprints/incident-report-explorer-2/native/effect_handlers/incidentReportExplorer2EffectHandlers";
-import * as incidentReportExplorer3EffectModule from "../blueprints/incident-report-explorer-3/native/effect_handlers/incidentReportExplorer3EffectHandlers";
-import * as liveWorkspaceSocEffectModule from "../blueprints/live-workspace-soc/native/effect_handlers/liveWorkspaceSocEffectHandlers";
-import * as manageBlueprintsEffectModule from "../blueprints/manage-blueprints/native/effect_handlers/manageBlueprintsEffectHandlers";
-import * as portfolioTrackerEffectModule from "../blueprints/portfolio-tracker/native/effect_handlers/portfolioTrackerEffectHandlers";
-import { getSampleBlueprintCatalog, openSampleBlueprint } from "./blueprints";
-import { resolveBundleProjectionViews } from "./provider-registry";
-import { browserServiceRegistryOptions, declarativeServiceOrchestrator } from "./service-runtime";
+import * as copilotC2EffectModule from "../../../../blueprints/copilot-c2/native/effect_handlers/copilotC2EffectHandlers";
+import * as cachedIncidentReportExplorerEffectModule from "../../../../blueprints/cached-incident-report-explorer/native/effect_handlers/cachedIncidentReportExplorerEffectHandlers";
+import * as cachedIncidentReportExplorer2EffectModule from "../../../../blueprints/cached-incident-report-explorer-2/native/effect_handlers/cachedIncidentReportExplorer2EffectHandlers";
+import * as cachedIncidentReportExplorer3EffectModule from "../../../../blueprints/cached-incident-report-explorer-3/native/effect_handlers/cachedIncidentReportExplorer3EffectHandlers";
+import * as foundryAgentEffectModule from "../../../../blueprints/foundry-agent/native/effect_handlers/foundryAgentEffectHandlers";
+import * as incidentReportExplorerEffectModule from "../../../../blueprints/incident-report-explorer/native/effect_handlers/incidentReportExplorerEffectHandlers";
+import * as incidentReportExplorer1aEffectModule from "../../../../blueprints/incident-report-explorer-1a/native/effect_handlers/incidentReportExplorer1aEffectHandlers";
+import * as incidentReportExplorer2EffectModule from "../../../../blueprints/incident-report-explorer-2/native/effect_handlers/incidentReportExplorer2EffectHandlers";
+import * as incidentReportExplorer3EffectModule from "../../../../blueprints/incident-report-explorer-3/native/effect_handlers/incidentReportExplorer3EffectHandlers";
+import * as liveWorkspaceSocEffectModule from "../../../../blueprints/live-workspace-soc/native/effect_handlers/liveWorkspaceSocEffectHandlers";
+import * as manageBlueprintsEffectModule from "../../../../blueprints/manage-blueprints/native/effect_handlers/manageBlueprintsEffectHandlers";
+import * as portfolioTrackerEffectModule from "../../../../blueprints/portfolio-tracker/native/effect_handlers/portfolioTrackerEffectHandlers";
+import { getSampleBlueprintCatalog, openSampleBlueprint } from "../../../../shared/blueprint-catalog";
+import { resolveProjectionViews } from "./provider-registry";
+import { browserServiceRegistryOptions, declarativeServiceOrchestrator } from "../../../../shared/service-runtime";
 import type { BlueprintProposalStore } from "@gik/blueprint-agent-host";
-import type { UseProposal } from "./blueprint-agent-lifecycle";
+import type { UseProposal } from "../../../../shared/blueprint-agent-lifecycle";
 
 type NativeEffectModule = {
   default: EffectHandlerMap;
@@ -86,7 +85,7 @@ function resolveBlueprintNativeFromRuntime(
   );
   return {
     effectHandlers: effectModule?.default,
-    projectionViews: resolveBundleProjectionViews(projectionId),
+    projectionViews: resolveProjectionViews(projectionId),
     wrapOrchestrator: effectModule?.wrapOrchestrator?.(serviceOrchestrator) ?? serviceOrchestrator,
   };
 }

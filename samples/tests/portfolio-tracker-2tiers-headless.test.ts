@@ -1,24 +1,17 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { test } from "vitest";
 import {
   materializeBlueprint,
-  parseBlueprintJson,
   runMaterializedTransition,
-  type BlueprintArtifact,
   type CellDefinition,
-  type RepresentationLoweringRecipeDefinition,
 } from "@gik/blueprint";
 import { openBlueprint } from "@gik/controlface/blueprint";
 import { unwrap } from "@gik/kernel";
+import { resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
 import { declarativeServiceOrchestrator } from "../shared/service-runtime";
 
-const projectedUrl = new URL("../blueprints/portfolio-tracker-2tiers/blueprint.json", import.meta.url);
-const headlessUrl = new URL("../blueprints/portfolio-tracker-2tiers-headless/blueprint.json", import.meta.url);
-
-function readBlueprint(url: URL): BlueprintArtifact<RepresentationLoweringRecipeDefinition> {
-  return parseBlueprintJson<RepresentationLoweringRecipeDefinition>(readFileSync(url, "utf8"));
-}
+const projectedBlueprint = () => resolveSampleBlueprintSource("portfolio-tracker-2tiers");
+const headlessBlueprint = () => resolveSampleBlueprintSource("portfolio-tracker-2tiers-headless");
 
 function stableFacets(cells: Record<string, CellDefinition>): Record<string, CellDefinition> {
   return Object.fromEntries(Object.entries(cells).map(([id, cell]) => {
@@ -28,8 +21,8 @@ function stableFacets(cells: Record<string, CellDefinition>): Record<string, Cel
 }
 
 test("headless portfolio preserves the original two-tier domain and all seven Cell contracts", () => {
-  const projected = readBlueprint(projectedUrl);
-  const headless = readBlueprint(headlessUrl);
+  const projected = projectedBlueprint();
+  const headless = headlessBlueprint();
 
   assert.deepEqual(headless.payload.tiers, projected.payload.tiers);
   assert.deepEqual(stableFacets(headless.payload.cells ?? {}), stableFacets(projected.payload.cells ?? {}));
@@ -42,7 +35,7 @@ test("headless portfolio preserves the original two-tier domain and all seven Ce
 
 test("headless portfolio materializes with no UI or presentation declarations", () => {
   const materialized = materializeBlueprint({
-    blueprint: readBlueprint(headlessUrl),
+    blueprint: headlessBlueprint(),
     externalContext: { marketMode: "mock" },
   });
   const terminal = materialized.payload.terminalBlueprint.payload;
@@ -66,7 +59,7 @@ test("headless portfolio materializes with no UI or presentation declarations", 
 
 test("headless portfolio authorizes market data, refreshes quotes, and derives its read model", async () => {
   const materialized = materializeBlueprint({
-    blueprint: readBlueprint(headlessUrl),
+    blueprint: headlessBlueprint(),
     externalContext: { marketMode: "mock" },
   });
   const runtime = openBlueprint(materialized.payload.terminalBlueprint);

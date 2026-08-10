@@ -4,10 +4,11 @@ import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
 import {
   readUserBlueprintArtifacts,
   writeUserBlueprintArtifacts,
+  getSampleBlueprintCatalog,
+  installUserBlueprints,
 } from "../../../../shared/blueprint-catalog";
-import { getSampleBlueprintCatalog, installUserBlueprints } from "../../../../shared/blueprints";
 
-const BUNDLE_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const BLUEPRINT_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 type JsonRecord = Record<string, Json>;
 type BlueprintSource = "repo" | "local";
@@ -425,7 +426,7 @@ export const manageBlueprintsEffects: EffectHandlerMap = {
       ? submitted as JsonRecord
       : null;
     const id = String(values?.id ?? ctx.get("manageBlueprints.editor.id") ?? "").trim();
-    if (!BUNDLE_ID_PATTERN.test(id)) {
+    if (!BLUEPRINT_ID_PATTERN.test(id)) {
       return { outcome: "invalid", ops: [setOp("manageBlueprints.editor.error", "Blueprint id must use lowercase kebab-case.")] };
     }
     if (repositoryEntries().some((entry) => entry.id === id)) {

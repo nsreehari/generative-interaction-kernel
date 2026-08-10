@@ -8,11 +8,11 @@ import { semanticComponentViews } from "@gik/components/semantic";
 import { securityComponentViews } from "@gik/components/security";
 import { softwareComponentViews } from "@gik/components/software";
 
-import { copilotC2StateStorageKey } from "../blueprints/copilot-c2/native/effect_handlers/copilotC2EffectHandlers";
-import { openSampleBlueprint } from "./blueprints";
-import { resolveBundleProjectionViews } from "./provider-registry";
+import { copilotC2StateStorageKey } from "../../../../blueprints/copilot-c2/native/effect_handlers/copilotC2EffectHandlers";
+import { openSampleBlueprint } from "../../../../shared/blueprint-catalog";
+import { resolveProjectionViews } from "./provider-registry";
 import { resolveBlueprintInitialContext, resolveBlueprintNative } from "./sample-bundles";
-import { createBlueprintServiceHost } from "./service-runtime";
+import { createBlueprintServiceHost } from "../../../../shared/service-runtime";
 
 test("production native resolution hydrates and persists durable copilot-c2 state only", () => {
   const values = new Map<string, string>([[
@@ -71,36 +71,36 @@ test("production native resolution hydrates and persists durable copilot-c2 stat
 });
 
 test("shared projection imports resolve package and Blueprint providers", () => {
-  const copilotViews = resolveBundleProjectionViews("copilot-c2");
+  const copilotViews = resolveProjectionViews("copilot-c2");
   assert.equal(typeof copilotViews?.workspace, "function");
   assert.equal(typeof copilotViews?.["agent-activity-board"], "function");
   assert.equal(typeof copilotViews?.["run-console"], "function");
-  const foundryProviderViews = resolveBundleProjectionViews("foundry");
+  const foundryProviderViews = resolveProjectionViews("foundry");
   assert.equal(typeof foundryProviderViews?.["access-gate"], "function");
-  assert.equal(resolveBundleProjectionViews("http-proxy"), foundryProviderViews);
-  const foundryViews = resolveBundleProjectionViews("foundry-agent");
+  assert.equal(resolveProjectionViews("http-proxy"), foundryProviderViews);
+  const foundryViews = resolveProjectionViews("foundry-agent");
   assert.equal(foundryViews?.["access-modal"], undefined);
   assert.equal(typeof foundryViews?.["agent-selector"], "function");
-  const fluentViews = resolveBundleProjectionViews("fluent");
+  const fluentViews = resolveProjectionViews("fluent");
   assert.deepEqual(Object.keys(fluentViews ?? {}).sort(), Object.keys(fluentComponentViews).sort());
   assert.equal(typeof fluentViews?.dropdown, "function");
   assert.equal(typeof fluentViews?.switch, "function");
   assert.equal(typeof fluentViews?.toggle, "function");
-  const primitiveViews = resolveBundleProjectionViews("primitive");
+  const primitiveViews = resolveProjectionViews("primitive");
   assert.deepEqual(Object.keys(primitiveViews ?? {}).sort(), Object.keys(primitiveComponentViews).sort());
   assert.equal(typeof primitiveViews?.chart, "function");
   assert.equal(typeof primitiveViews?.["growing-container"], "function");
-  const semanticViews = resolveBundleProjectionViews("semantic");
+  const semanticViews = resolveProjectionViews("semantic");
   assert.deepEqual(Object.keys(semanticViews ?? {}).sort(), Object.keys(semanticComponentViews).sort());
   assert.equal(typeof semanticViews?.["event-series"], "function");
   assert.equal(typeof semanticViews?.["relationship-set"], "function");
   assert.equal(semanticViews?.["component-data-sections"], undefined);
-  assert.equal(typeof resolveBundleProjectionViews("incident-report-explorer-1a")?.["component-data-sections"], "function");
-  assert.deepEqual(Object.keys(resolveBundleProjectionViews("security") ?? {}).sort(), Object.keys(securityComponentViews).sort());
-  assert.deepEqual(Object.keys(resolveBundleProjectionViews("software") ?? {}).sort(), Object.keys(softwareComponentViews).sort());
-  assert.equal(resolveBundleProjectionViews("provider-authoring-demo"), undefined);
-  assert.equal(resolveBundleProjectionViews("reactive-demo"), undefined);
-  assert.equal(resolveBundleProjectionViews("missing-bundle"), undefined);
+  assert.equal(typeof resolveProjectionViews("incident-report-explorer-1a")?.["component-data-sections"], "function");
+  assert.deepEqual(Object.keys(resolveProjectionViews("security") ?? {}).sort(), Object.keys(securityComponentViews).sort());
+  assert.deepEqual(Object.keys(resolveProjectionViews("software") ?? {}).sort(), Object.keys(softwareComponentViews).sort());
+  assert.equal(resolveProjectionViews("provider-authoring-demo"), undefined);
+  assert.equal(resolveProjectionViews("reactive-demo"), undefined);
+  assert.equal(resolveProjectionViews("missing-bundle"), undefined);
 });
 
 test("copilot-c2 opens as a declarative MCP-backed Blueprint", () => {

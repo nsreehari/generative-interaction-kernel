@@ -16,7 +16,7 @@ import {
 } from "@gik/blueprint-agent-host";
 import type { UseProposal } from "../../../shared/blueprint-agent-lifecycle";
 import { GikDemoBlueprintHost, type DemoTargetHostProps } from "@gik/demo-runner-host";
-import { resolveBundleProjectionViews } from "../../../shared/provider-registry";
+import { resolveProjectionViews } from "./runtime/provider-registry";
 import {
   canonicalizeHostUrl,
   readHostQuery,
@@ -25,9 +25,9 @@ import {
   resolveBlueprintInitialContext,
   resolveBlueprintNative,
   resolveBlueprintNativeFromMaterialized,
-} from "../../../shared/sample-bundles";
-import { getSampleBlueprintCatalog, resolveSampleBlueprintSource } from "../../../shared/blueprints";
-import { createSampleBlueprintHostRegistry } from "../../../shared/hosted-blueprint-registry";
+} from "./runtime/sample-bundles";
+import { getSampleBlueprintCatalog, resolveSampleBlueprintSource } from "../../../shared/blueprint-catalog";
+import { createSampleBlueprintHostRegistry } from "./runtime/hosted-blueprint-registry";
 
 const embeddedHostStyle: React.CSSProperties = { height: "100vh" };
 const defaultExternalContextByBlueprint = {
@@ -47,7 +47,7 @@ export function Host(): React.ReactElement {
       targetId={targetId}
       durableEnabled={query.durableEnabled}
       HostComponent={HostComponent}
-      resolveLeavesProvider={resolveBundleProjectionViews}
+      resolveLeavesProvider={resolveProjectionViews}
     />
   );
 }
@@ -170,7 +170,7 @@ function HostView({
   targetId: string;
   durableEnabled: boolean;
   HostComponent: React.ComponentType<DemoTargetHostProps>;
-  resolveLeavesProvider: (from: string) => ReturnType<typeof resolveBundleProjectionViews>;
+  resolveLeavesProvider: (from: string) => ReturnType<typeof resolveProjectionViews>;
 }): React.ReactElement {
   const id = targetId;
   const externalContext = defaultExternalContextByBlueprint[id as keyof typeof defaultExternalContextByBlueprint];

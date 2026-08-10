@@ -1,4 +1,15 @@
-import type { OrganismControlContract } from "../../../../shared/control-runtime";
+export interface ControlCommandDescriptor {
+  command: string;
+  nodeId: string;
+  event: string;
+}
+
+export interface OrganismControlContract {
+  blueprintId: string;
+  commands: ControlCommandDescriptor[];
+  humanGates: string[];
+  observableOutcomes: string[];
+}
 
 const commands = [
   "establishIntent",
@@ -15,7 +26,6 @@ const commands = [
   "recommendContainment",
   "authorizeContainment",
   "executeContainment",
-  "$reset",
 ] as const;
 
 export const socControlContract: OrganismControlContract = {
@@ -23,7 +33,7 @@ export const socControlContract: OrganismControlContract = {
   commands: commands.map((command) => ({
     command,
     nodeId: "soc-workspace",
-    event: command === "$reset" ? "reset" : command,
+    event: command,
   })),
   humanGates: ["authorizeContainment"],
   observableOutcomes: ["soc.journal", "soc.actors", "soc.authorization", "soc.incident"],

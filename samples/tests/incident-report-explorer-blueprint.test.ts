@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { analyzeCellComposition, type CellDefinition } from "@gik/blueprint";
 import { unwrap } from "@gik/kernel";
 
-import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprints";
+import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
 
 const blueprint = resolveSampleBlueprintSource("incident-report-explorer");
 const cells = Object.values(blueprint.payload.cells) as unknown as CellDefinition[];

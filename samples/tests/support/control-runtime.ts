@@ -1,30 +1,14 @@
 import type { Json } from "@gik/kernel";
 import type { BundleRuntime } from "@gik/react";
-
-export interface ControlCommandDescriptor {
-  command: string;
-  nodeId: string;
-  event: string;
-}
-
-export interface OrganismControlContract {
-  blueprintId: string;
-  commands: ControlCommandDescriptor[];
-  humanGates: string[];
-  observableOutcomes: string[];
-}
+import type { OrganismControlContract } from "../../blueprints/live-workspace-soc/native/projection_views/control-contract";
 
 export interface ControlRequest {
   id: string;
   targetBlueprintId: string;
   token: number;
   command: string;
-  commands?: string[];
-  commandIndex?: number;
   actorId?: string;
   payload?: Record<string, Json>;
-  correlationId?: string;
-  waitAfterMs?: number;
 }
 
 export interface ControlReceipt {
@@ -36,18 +20,10 @@ export interface ControlReceipt {
   result?: Record<string, Json>;
 }
 
-export interface ControlRuntime {
-  dispatch(request: ControlRequest): Promise<ControlReceipt>;
-  snapshot(): Record<string, Json>;
-}
-
-export function createHeadlessControlRuntime(
-  runtime: BundleRuntime,
-  contract: OrganismControlContract
-): ControlRuntime {
+export function createHeadlessControlRuntime(runtime: BundleRuntime, contract: OrganismControlContract) {
   const commands = new Map(contract.commands.map((descriptor) => [descriptor.command, descriptor]));
   return {
-    async dispatch(request) {
+    async dispatch(request: ControlRequest): Promise<ControlReceipt> {
       if (request.targetBlueprintId !== contract.blueprintId) {
         return { requestId: request.id, token: request.token, command: request.command, status: "rejected", outcome: "incompatible-blueprint" };
       }

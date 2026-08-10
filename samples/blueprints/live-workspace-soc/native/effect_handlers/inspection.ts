@@ -1,4 +1,4 @@
-import type { BlueprintInspection, InspectionParticipant, OrganismInspection, ParticipantStatus } from "../../../../shared/control-inspection";
+import type { BlueprintInspection, InspectionParticipant, OrganismInspection, ParticipantStatus } from "./control-inspection";
 import { socJournalTimelineItem } from "../projection_views/helpers";
 import type { Actor, AgentProvider, Incident, JournalEntry, Presentation } from "../projection_views/types";
 

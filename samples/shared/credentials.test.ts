@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { getSampleBlueprintCatalog } from "./blueprints";
+import { getSampleBlueprintCatalog } from "./blueprint-catalog";
 import {
   isSampleCredentialReference,
   SAMPLE_CREDENTIAL_REFERENCES,

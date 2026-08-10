@@ -352,7 +352,6 @@
       }
     },
     "metadata": {
-      "reauthoredFrom": "legacy-tiered-sample",
       "executionModel": "direct-runtime",
       "authoredStages": [
         "interaction",

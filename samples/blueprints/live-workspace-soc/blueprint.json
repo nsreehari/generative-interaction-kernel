@@ -8,7 +8,6 @@
     "metadata": {
       "productTerm": "semantic-blueprint",
       "pitchBeat": "T3/Beat 3",
-      "bundleTarget": "live-workspace-soc",
       "thesis": "Many actors. One state. Multiple views. Governed actions. Complete provenance."
     },
     "recipes": [],
@@ -125,8 +124,7 @@
             "calculateResponse",
             "recommendContainment",
             "authorizeContainment",
-            "executeContainment",
-            "reset"
+            "executeContainment"
           ]
         },
         "soc:substrate-chrome": {
@@ -244,8 +242,7 @@
           "recommendContainment",
           "authorizeContainment",
           "syncInspection",
-          "executeContainment",
-          "resetScenario"
+          "executeContainment"
         ]
       },
       "state": {
@@ -768,14 +765,6 @@
                   "tool": "executeContainment"
                 }
               }
-            ],
-            "reset": [
-              {
-                "do": "invoke",
-                "args": {
-                  "tool": "resetScenario"
-                }
-              }
             ]
           },
           "reactions": [
@@ -905,15 +894,6 @@
                 {
                   "do": "emit",
                   "event": "executeContainment"
-                }
-              ]
-            },
-            {
-              "when": "control.commands.reset",
-              "run": [
-                {
-                  "do": "emit",
-                  "event": "reset"
                 }
               ]
             },

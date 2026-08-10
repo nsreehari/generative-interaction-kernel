@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { analyzeCellComposition, materializeBlueprint, type BlueprintArtifact, type CellDefinition } from "@gik/blueprint";
 import { InMemoryStateModel } from "../../kernel/src/index";
 
-import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprints";
-import { resolveBlueprintInitialContext, resolveBlueprintNative } from "../shared/sample-bundles";
+import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
+import { resolveBlueprintInitialContext, resolveBlueprintNative } from "../apps/host/src/runtime/sample-bundles";
 import { createBlueprintAgentLifecycle, createBlueprintUseTools } from "../shared/blueprint-agent-lifecycle";
 
 const blueprint = resolveSampleBlueprintSource("incident-report-explorer-1a");

@@ -1,6 +1,14 @@
-import { parseBlueprintJson, type BlueprintArtifact } from "@gik/blueprint";
+import {
+  materializeBlueprint,
+  parseBlueprintJson,
+  parseBlueprintReference,
+  type BlueprintArtifact,
+  type ExternalContext,
+} from "@gik/blueprint";
+import { openBlueprint, type BlueprintRuntime } from "@gik/controlface/blueprint";
 import { createIndexedDbRecordLibrary } from "@gik/durable-runtime/storage/indexed-db";
 import type { DemoRunnerDocument } from "@gik/demo-runner-host";
+import { applyHostConfig } from "./host-config";
 
 export const sampleBlueprintCatalogUrl = "bootstrap/sample-blueprints.bundle.json";
 const artifactKind = "blueprint-seed-artifact";
@@ -42,6 +50,53 @@ export interface BlueprintCatalogStore {
   readUserArtifacts(): Promise<{ blueprints: Record<string, BlueprintArtifact>; errors: string[] }>;
   writeUserArtifacts(blueprints: Record<string, BlueprintArtifact>): Promise<void>;
   close(): Promise<void>;
+}
+
+export const sampleBlueprints: Record<string, BlueprintArtifact> = {};
+let catalog: BlueprintCatalogSnapshot | undefined;
+
+export function installSampleBlueprintCatalog(snapshot: BlueprintCatalogSnapshot): void {
+  catalog = snapshot;
+  for (const id of Object.keys(sampleBlueprints)) delete sampleBlueprints[id];
+  Object.assign(sampleBlueprints, snapshot.entries);
+}
+
+export function getSampleBlueprintCatalog(): BlueprintCatalogSnapshot {
+  if (!catalog) throw new Error("Sample Blueprint catalog has not been bootstrapped.");
+  return catalog;
+}
+
+export function hasSampleBlueprint(id: string): boolean {
+  return id in sampleBlueprints;
+}
+
+export function resolveSampleBlueprintSource(id: string): BlueprintArtifact {
+  const blueprint = sampleBlueprints[id];
+  if (!blueprint) throw new Error(`Unknown Blueprint '${id}'`);
+  return applyHostConfig(blueprint);
+}
+
+export function openSampleBlueprint(
+  id: string,
+  externalContext?: ExternalContext,
+): BlueprintRuntime {
+  const materialized = materializeBlueprint({
+    blueprint: resolveSampleBlueprintSource(id),
+    externalContext,
+    resolveBlueprint(reference) {
+      const parsed = parseBlueprintReference(reference);
+      const child = resolveSampleBlueprintSource(parsed.id);
+      if (parsed.version !== undefined && child.payload.version !== parsed.version) {
+        throw new Error(`Blueprint '${parsed.id}' version '${parsed.version}' is unavailable`);
+      }
+      return child;
+    },
+  });
+  return openBlueprint(materialized.payload.terminalBlueprint);
+}
+
+export function installUserBlueprints(blueprints: Record<string, BlueprintArtifact>): void {
+  installSampleBlueprintCatalog(withUserBlueprints(getSampleBlueprintCatalog(), blueprints));
 }
 
 export function parseBlueprintCatalogBundle(value: unknown): BlueprintCatalogBundle {

@@ -1,8 +1,10 @@
 import { createRoot } from "react-dom/client";
 import { Host } from "./Host";
 import { HostThemeProvider } from "./HostThemeProvider";
-import { bootstrapSampleBlueprintCatalog } from "../../../shared/blueprint-catalog";
-import { installSampleBlueprintCatalog } from "../../../shared/blueprints";
+import {
+  bootstrapSampleBlueprintCatalog,
+  installSampleBlueprintCatalog,
+} from "../../../shared/blueprint-catalog";
 
 const el = document.getElementById("root");
 if (!el) throw new Error("missing #root");

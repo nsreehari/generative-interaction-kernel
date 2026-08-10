@@ -3,7 +3,7 @@ import { analyzeCellComposition, materializeBlueprint, type BlueprintArtifact, t
 import { BlueprintController } from "@gik/react";
 import { InMemoryStateModel } from "../../kernel/src/index";
 
-import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprints";
+import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
 import { createBlueprintAgentLifecycle } from "../shared/blueprint-agent-lifecycle";
 
 const blueprint = resolveSampleBlueprintSource("incident-report-explorer-3") as BlueprintArtifact;

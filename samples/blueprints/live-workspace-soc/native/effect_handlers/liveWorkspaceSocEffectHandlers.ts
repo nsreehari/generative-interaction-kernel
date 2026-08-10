@@ -1,18 +1,9 @@
 import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
 import type { Json, OrchestratorResult, PatchOp } from "@gik/kernel";
-import { resolveSampleBlueprintSource } from "../../../../shared/blueprints";
 import { projectSocInspection, projectSocParticipants } from "./inspection";
 import type { Actor, AgentProvider, Incident, JournalEntry, Presentation } from "../projection_views/types";
 
 type RecordValue = Record<string, Json>;
-
-function resetBlueprintState(): { soc: RecordValue; inspection: RecordValue } {
-  const state = resolveSampleBlueprintSource("live-workspace-soc").payload.runtime?.state as unknown as RecordValue;
-  return {
-    soc: JSON.parse(JSON.stringify(state.soc)) as RecordValue,
-    inspection: JSON.parse(JSON.stringify(state.inspection)) as RecordValue,
-  };
-}
 
 function list(ctx: EffectContext, path: string): Json[] {
   const value = ctx.get(path);
@@ -572,18 +563,6 @@ const deterministicEffects: EffectHandlerMap = {
       ],
     };
   },
-
-  resetScenario() {
-    return {
-      outcome: "reset",
-      ops: [
-        ...Object.entries(resetBlueprintState().soc).map(([key, value]) =>
-          setOp(`soc.${key}`, JSON.parse(JSON.stringify(value)) as Json)
-        ),
-        setOp("control.inspection", resetBlueprintState().inspection as Json),
-      ],
-    };
-  },
 };
 
 export const socOrganismEffects = deterministicEffects;
@@ -624,7 +603,6 @@ export function createSocEffects(
     calculateResponse: "calculateResponse",
     recommendContainment: "recommendContainment",
     executeContainment: "executeContainment",
-    $reset: "resetScenario",
   };
   for (const [command, handlerName] of Object.entries(commandHandlers)) {
     const handler = wrapped[handlerName];
@@ -656,7 +634,7 @@ export function createSocEffects(
             command,
             status: "completed",
             outcome: String(result?.outcome ?? "completed"),
-            ...(command !== "$reset" && journalEntry ? {
+            ...(journalEntry ? {
               result: {
                 ...journalEntry,
                 actorRef: { namespace: "soc", kind: "actor", id: actorId, relation: "origin" },
