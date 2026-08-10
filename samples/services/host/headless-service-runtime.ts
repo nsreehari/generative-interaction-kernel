@@ -1,5 +1,5 @@
-import type { SampleServiceRegistryOptions } from "../services";
-import productionConfig from "../config/host.production.json" with { type: "json" };
+import type { SampleServiceRegistryOptions } from "..";
+import productionConfig from "../../config/host.production.json" with { type: "json" };
 import { createEnvironmentCredentialResolver } from "./environment-credentials";
 import { createSampleServiceRegistryOptions } from "./service-registry-options";
 

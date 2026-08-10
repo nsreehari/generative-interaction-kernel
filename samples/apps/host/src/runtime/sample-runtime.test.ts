@@ -12,7 +12,7 @@ import { copilotC2StateStorageKey } from "../../../../blueprints/copilot-c2/nati
 import { openSampleBlueprint } from "../../../../shared/blueprint-catalog";
 import { resolveProjectionViews } from "./provider-registry";
 import { resolveBlueprintInitialContext, resolveBlueprintNative } from "./sample-bundles";
-import { createBlueprintServiceHost } from "../../../../shared/service-runtime";
+import { createBlueprintServiceHost } from "../../../../services/host/service-runtime";
 
 test("production native resolution hydrates and persists durable copilot-c2 state only", () => {
   const values = new Map<string, string>([[

@@ -8,7 +8,7 @@ import {
   legacyLocalBlueprintStorageKey,
   parseBlueprintCatalogBundle,
   verifyBlueprintCatalogBundle,
-} from "./blueprint-catalog";
+} from "../shared/blueprint-catalog";
 
 describe("sample Blueprint catalog", () => {
   it("verifies and round-trips the generated seed through IndexedDB", async () => {

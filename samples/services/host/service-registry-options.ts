@@ -1,7 +1,7 @@
-import type { Json } from "../../kernel/src/index";
-import type { SampleServiceRegistryOptions } from "../services";
-import { executeHttpServiceInvocation } from "../services/http-service/runtime";
-import { executeMcpServiceInvocation } from "../services/mcp/runtime";
+import type { Json } from "../../../kernel/src/index";
+import type { SampleServiceRegistryOptions } from "..";
+import { executeHttpServiceInvocation } from "../http-service/runtime";
+import { executeMcpServiceInvocation } from "../mcp/runtime";
 
 export interface SampleServiceHostCredentials {
   resolveCredential(reference: string): Promise<unknown>;

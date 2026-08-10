@@ -22,9 +22,9 @@ import * as manageBlueprintsEffectModule from "../../../../blueprints/manage-blu
 import * as portfolioTrackerEffectModule from "../../../../blueprints/portfolio-tracker/native/effect_handlers/portfolioTrackerEffectHandlers";
 import { getSampleBlueprintCatalog, openSampleBlueprint } from "../../../../shared/blueprint-catalog";
 import { resolveProjectionViews } from "./provider-registry";
-import { browserServiceRegistryOptions, declarativeServiceOrchestrator } from "../../../../shared/service-runtime";
+import { browserServiceRegistryOptions, declarativeServiceOrchestrator } from "../../../../services/host/service-runtime";
 import type { BlueprintProposalStore } from "@gik/blueprint-agent-host";
-import type { UseProposal } from "../../../../shared/blueprint-agent-lifecycle";
+import type { UseProposal } from "../../../../services/host/blueprint-agent-lifecycle";
 
 type NativeEffectModule = {
   default: EffectHandlerMap;

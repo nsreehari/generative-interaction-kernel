@@ -5,7 +5,7 @@
 // effects run) and returns store deltas.
 //
 import { setOp, type EffectHandlerMap } from "@gik/react";
-import { clearFunctionAccessKey } from "../../../../shared/function-access";
+import { clearFunctionAccessKey } from "../../../../services/host/function-access";
 
 export const effects: EffectHandlerMap = {
   clearFoundryAccess() {

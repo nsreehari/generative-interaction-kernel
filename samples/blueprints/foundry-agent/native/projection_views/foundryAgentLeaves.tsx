@@ -10,7 +10,7 @@ import {
 import { type ProjectionView } from "@gik/react";
 import * as React from "react";
 
-import { clearFunctionAccessKey } from "../../../../shared/function-access";
+import { clearFunctionAccessKey } from "../../../../services/host/function-access";
 
 const useStyles = makeStyles({
   askPage: {

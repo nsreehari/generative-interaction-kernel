@@ -18,7 +18,7 @@ vi.mock("@gik/demo-runner-host", () => ({
 
 import "fake-indexeddb/auto";
 import type { BlueprintProposalReceipt } from "@gik/blueprint-agent-host";
-import type { UseProposal } from "../../../shared/blueprint-agent-lifecycle";
+import type { UseProposal } from "../../../services/host/blueprint-agent-lifecycle";
 import { Host, createSampleBlueprintProposalStore } from "./Host";
 import { getSampleBlueprintCatalog } from "../../../shared/blueprint-catalog";
 

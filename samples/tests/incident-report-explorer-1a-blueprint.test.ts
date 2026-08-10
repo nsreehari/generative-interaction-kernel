@@ -4,7 +4,7 @@ import { InMemoryStateModel } from "../../kernel/src/index";
 
 import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
 import { resolveBlueprintInitialContext, resolveBlueprintNative } from "../apps/host/src/runtime/sample-bundles";
-import { createBlueprintAgentLifecycle, createBlueprintUseTools } from "../shared/blueprint-agent-lifecycle";
+import { createBlueprintAgentLifecycle, createBlueprintUseTools } from "../services/host/blueprint-agent-lifecycle";
 
 const blueprint = resolveSampleBlueprintSource("incident-report-explorer-1a");
 const cells = Object.values(blueprint.payload.cells ?? {}) as unknown as CellDefinition[];

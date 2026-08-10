@@ -4,16 +4,16 @@ import {
   unwrap,
   type ServiceDeclaration,
   type StateModel,
-} from "../../kernel/src/index";
-import { QueueFace } from "../../face/src/services/queueface";
-import { DefaultServiceHost } from "../../face/src/services/service-host";
-import type { BlueprintRuntime } from "../../face/src/live/controlface";
+} from "../../../kernel/src/index";
+import { QueueFace } from "../../../face/src/services/queueface";
+import { DefaultServiceHost } from "../../../face/src/services/service-host";
+import type { BlueprintRuntime } from "../../../face/src/live/controlface";
 import type { LoadBundleOptions } from "@gik/react";
 import {
   createSampleServiceKindRegistry,
   type SampleServiceRegistryOptions,
-} from "../services";
-import { executeMcpServiceInvocation } from "../services/mcp/runtime";
+} from "..";
+import { executeMcpServiceInvocation } from "../mcp/runtime";
 import {
   clearBrowserCredential,
   resolveBrowserCredential,

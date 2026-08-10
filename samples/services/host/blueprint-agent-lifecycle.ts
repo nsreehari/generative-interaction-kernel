@@ -6,8 +6,8 @@ import {
   type BlueprintProposalReceipt,
   type BlueprintProposalStore,
 } from "@gik/blueprint-agent-host";
-import type { Json, OrchestratorResult, PatchOp, StateModel } from "../../kernel/src/index";
-import type { BlueprintRuntime } from "../../face/src/live/controlface";
+import type { Json, OrchestratorResult, PatchOp, StateModel } from "../../../kernel/src/index";
+import type { BlueprintRuntime } from "../../../face/src/live/controlface";
 
 type UseIntent = {
   kind: string;

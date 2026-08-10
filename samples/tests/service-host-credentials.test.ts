@@ -1,23 +1,23 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { getSampleBlueprintCatalog } from "./blueprint-catalog";
+import { getSampleBlueprintCatalog } from "../shared/blueprint-catalog";
 import {
   isSampleCredentialReference,
   SAMPLE_CREDENTIAL_REFERENCES,
-} from "./credential-references";
+} from "../services/host/credential-references";
 import {
   createEnvironmentCredentialResolver,
   SAMPLE_CREDENTIAL_ENVIRONMENT_VARIABLES,
-} from "./environment-credentials";
+} from "../services/host/environment-credentials";
 import {
   clearBrowserCredential,
   FUNCTION_ACCESS,
   resolveBrowserCredential,
   setFunctionAccessKey,
-} from "./function-access";
-import { createHeadlessServiceRegistryOptions } from "./headless-service-runtime";
-import { createSampleServiceRegistryOptions } from "./service-registry-options";
-import { browserServiceRegistryOptions } from "./service-runtime";
+} from "../services/host/function-access";
+import { createHeadlessServiceRegistryOptions } from "../services/host/headless-service-runtime";
+import { createSampleServiceRegistryOptions } from "../services/host/service-registry-options";
+import { browserServiceRegistryOptions } from "../services/host/service-runtime";
 
 function collectCredentialReferences(value: unknown, references: string[] = []): string[] {
   if (!value || typeof value !== "object") return references;
