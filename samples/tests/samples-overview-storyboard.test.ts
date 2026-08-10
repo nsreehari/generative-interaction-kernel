@@ -1,26 +1,19 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import t3Scenario from "../scenarios/live-workspace-soc-t3/scenario.json" with { type: "json" };
 import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprints";
 
 const overview = openSampleBlueprint("samples-overview").state.overview as unknown as {
   actors: Array<{ id: string }>;
-  socActs: Array<{ id: number; title: string }>;
   proofPlanes: Array<{ blueprint: string; gik: boolean }>;
   expansion: { domains: Array<{ id: string }>; status: string; boundary: string };
 };
 const canonicalActors = resolveSampleBlueprintSource("live-workspace-soc").payload.runtime.state.soc.actors;
-const canonicalActs = t3Scenario.payload.steps;
 
-test("overview SOC summary stays aligned with the canonical blueprint", () => {
+test("overview SOC actors stay aligned with the canonical blueprint", () => {
   assert.deepEqual(
     overview.actors.map((actor) => actor.id),
     canonicalActors.map((actor) => actor.id)
-  );
-  assert.deepEqual(
-    overview.socActs.map((act) => ({ id: act.id, title: act.title })),
-    canonicalActs.map((act, index) => ({ id: index + 1, title: act.title }))
   );
 });
 

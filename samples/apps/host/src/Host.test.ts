@@ -16,11 +16,11 @@ vi.mock("@gik/demo-runner-host", () => ({
   },
 }));
 
-import portfolioTwoTierDemo from "../../../scenarios/portfolio-tracker-2tiers-baseline/scenario.json" with { type: "json" };
 import "fake-indexeddb/auto";
 import type { BlueprintProposalReceipt } from "@gik/blueprint-agent-host";
 import type { UseProposal } from "../../../shared/blueprint-agent-lifecycle";
 import { Host, createSampleBlueprintProposalStore } from "./Host";
+import { getSampleBlueprintCatalog } from "../../../shared/blueprints";
 
 const receipt = (id: string): BlueprintProposalReceipt<UseProposal> => ({
   id,
@@ -99,7 +99,7 @@ test("two-tier portfolio supplies controlled desktop detailed context defaults",
 
   try {
     renderToStaticMarkup(React.createElement(Host));
-    assert.deepEqual(capturedProps.scenariosJson, portfolioTwoTierDemo);
+    assert.deepEqual(capturedProps.scenariosJson, getSampleBlueprintCatalog().demoScenarios["portfolio-tracker-2tiers"]);
     assert.deepEqual(capturedProps.externalContext, { view: "desktop", attention: "detailed", marketMode: "live" });
   } finally {
     Object.defineProperty(globalThis, "window", { configurable: true, value: previousWindow });

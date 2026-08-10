@@ -29,7 +29,6 @@ import {
 } from "../../../shared/sample-bundles";
 import { getSampleBlueprintCatalog, resolveSampleBlueprintSource } from "../../../shared/blueprints";
 import { createSampleBlueprintHostRegistry } from "../../../shared/hosted-blueprint-registry";
-import portfolioTwoTierDemo from "../../../scenarios/portfolio-tracker-2tiers-baseline/scenario.json" with { type: "json" };
 
 const embeddedHostStyle: React.CSSProperties = { height: "100vh" };
 const defaultExternalContextByBlueprint = {
@@ -202,9 +201,7 @@ function HostView({
     () => resolveBlueprintInitialContext(id, externalContext),
     [externalContext, id],
   );
-  const demoRunnerDocument = id === "portfolio-tracker-2tiers"
-    ? portfolioTwoTierDemo
-    : undefined;
+  const demoRunnerDocument = getSampleBlueprintCatalog().demoScenarios[id];
 
   return (
     <>
@@ -217,7 +214,7 @@ function HostView({
         resolveNative={id === "portfolio-tracker-2tiers"
           ? (materializedBlueprint) => resolveBlueprintNativeFromMaterialized(id, materializedBlueprint, { proposalStore })
           : undefined}
-        scenariosJson={demoRunnerDocument as never}
+        scenariosJson={demoRunnerDocument}
         resolveLeavesProvider={resolveLeavesProvider}
         blueprintRegistry={hostedBlueprintRegistry}
         style={embeddedHostStyle}

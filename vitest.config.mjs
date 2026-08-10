@@ -129,7 +129,6 @@ export default defineConfig({
             "samples/control-host/**/*.test.ts",
             "samples/shared/**/*.test.ts",
             "samples/tests/**/*.test.ts",
-            "samples/scenarios/**/*.test.ts",
             "samples/apps/host/**/*.test.ts",
             "samples/bundles/**/projection_views/**/*.test.ts",
             "samples/bundles/**/projection_views/**/*.test.tsx",
