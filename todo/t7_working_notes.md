@@ -147,10 +147,10 @@ SSE renderer resumes from rev 0
   -> receives no duplicate manifest or document onboarding
 ```
 
-The worker in `samples/control-host/continuity-worker.ts` has no kernel, store, or face reference. It
+The worker in `samples/apps/controlface-host/continuity-worker.ts` has no kernel, store, or face reference. It
 communicates only through HTTP MCP endpoints and can therefore run in another process or host.
 
-`samples/control-host/service.test.ts` proves:
+`samples/apps/controlface-host/service.test.ts` proves:
 
 - the SSE renderer can detach before work begins;
 - MCP queues the job through an ordinary event;
@@ -162,7 +162,7 @@ communicates only through HTTP MCP endpoints and can therefore run in another pr
 Focused validation:
 
 ```bash
-npx vitest run --project samples samples/control-host/service.test.ts
+npx vitest run --project samples samples/apps/controlface-host/service.test.ts
 ```
 
 Manual two-process run:

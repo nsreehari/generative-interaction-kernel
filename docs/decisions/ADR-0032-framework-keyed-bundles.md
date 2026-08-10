@@ -146,7 +146,7 @@ workbench to bundles it mounts. Neither is privileged; the host is the only `sam
 
 **Staged migration (each stage independently shippable, kernel/protocol untouched):**
 
-1. **Extract the host.** Generalize the console bootstrap into `samples/apps/host` — a Vite entry that
+1. **Extract the host.** Generalize the console bootstrap into `samples/apps/browser-host` — a Vite entry that
    renders `BundleHost` for a bundle selected by config/route, publishing the shared `AppRegistry`. (Low
    risk: it is the console's existing shape, parameterized.)
 2. **Console → bundle.** Move `console.bundle.json` + `consoleEffects` into `samples/bundles/console/`
@@ -158,7 +158,7 @@ workbench to bundles it mounts. Neither is privileged; the host is the only `sam
    mounts the workbench composition by name. (Higher risk: touches the actively-edited workbench and its
    native seams — do last, coordinated, with a full rebuild + both dev servers verified.)
 4. **Retire `apps/`.** Once both are bundles under `samples/bundles/` and the host lives in
-   `samples/apps/host`, delete the old `apps/console` and `apps/workbench` packages and repoint the
+  `samples/apps/browser-host`, delete the old `apps/console` and `apps/workbench` packages and repoint the
    `dev`/`build`/`typecheck` scripts at the single host.
 
 **Risks / guardrails:** the workbench is under concurrent human editing and carries the only native

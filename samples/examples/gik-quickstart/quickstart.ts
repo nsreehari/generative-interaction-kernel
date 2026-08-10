@@ -1,11 +1,9 @@
-// A minimal headless demo of the `gik` meta-package — the batteries-included entry
-// point that re-exports the core @gik/* packages under stable namespaces. Its whole
-// job is convenience wiring, so this sample simply proves that the common surface is
-// reachable from a single `import ... from "gik"`.
+// A minimal demo of the public backend and middleware package. It exposes the headless
+// GIK packages under stable namespaces without loading React or browser components.
 //
-// Run:  npx tsx generative-interaction-kernel/samples/gik-meta/quickstart.ts
+// Run:  npx tsx generative-interaction-kernel/samples/examples/gik-quickstart/quickstart.ts
 
-import { kernel, agentface } from "gik";
+import { kernel, agentface } from "@gik/headless";
 
 // 1. Kernel authoring builders are reachable through the `kernel` namespace.
 //    These return closed-grammar Action shapes — no running runtime required.
@@ -22,6 +20,5 @@ const dispatch = agentface.createStatelessAgentFaceDispatcher();
 console.log("\nstateless agentface dispatcher ready:", dispatch != null);
 
 console.log(
-  "\ngik re-exports the core surface — for the leanest dependency graph in real\n" +
-    "projects, depend on @gik/kernel, @gik/react, @gik/agentface, etc. directly.",
+  "\n@gik/headless is the public GIK entrypoint for backend services, middleware, and workers.",
 );

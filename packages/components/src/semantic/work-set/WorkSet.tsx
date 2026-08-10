@@ -65,6 +65,8 @@ export const WorkSet: ProjectionView = ({ node, emit }) => {
     return <CollectionBoard node={componentNode(`${node.id}-board`, "primitive:collection-board", {
       items,
       selectedId: node.props.selectedId,
+      className: node.props.className,
+      style: node.props.style,
       variant: spec.density === "compact" ? "compact" : "standard",
       spec: {
         title: spec.title,

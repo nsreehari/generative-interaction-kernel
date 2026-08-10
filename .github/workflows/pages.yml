@@ -106,7 +106,7 @@ jobs:
             version_dir="_pages/$version"
             rm -rf "$version_dir"
             mkdir -p "$version_dir"
-            cp -a samples/apps/host/dist/. "$version_dir/"
+            cp -a samples/apps/browser-host/dist/. "$version_dir/"
           done
 
           # Preserve version directories while replacing the legacy root deployment.

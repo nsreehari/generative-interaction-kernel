@@ -1,7 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
-  testDir: "./samples/apps/host/parity",
+  testDir: "./samples/apps/browser-host/parity",
   snapshotPathTemplate: "{testDir}/fixtures/{arg}{ext}",
   fullyParallel: false,
   workers: 1,

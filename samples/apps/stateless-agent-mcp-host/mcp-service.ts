@@ -6,7 +6,7 @@
 // only the pure authoring/validation tools. A live host can mount the richer agent projection
 // (adds getState/getTree) by injecting a dispatcher built over a real ControlFace.
 //
-// Run:  npx tsx generative-interaction-kernel/samples/agent-host/mcp-service.ts
+// Run:  npx tsx generative-interaction-kernel/samples/apps/stateless-agent-mcp-host/mcp-service.ts
 //   or:  npm run dev:mcp
 //
 // Probe it:
@@ -15,16 +15,15 @@
 //        -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 
 import { createServer } from "node:http";
-import { createStatelessAgentFaceDispatcher } from "@gik/agentface";
-import { getSemanticComponentAgentKit } from "@gik/components/semantic";
-import { McpHttpServer } from "@gik/transport-mcp-http";
+import { agentface, transportMcpHttp } from "@gik/headless";
 
 const port = Number(process.env.GENUI_MCP_PORT || 8787);
 const host = process.env.GENUI_MCP_HOST || "127.0.0.1";
 
-const componentAgentKit = getSemanticComponentAgentKit();
+const { createStatelessAgentFaceDispatcher } = agentface;
+const { McpHttpServer } = transportMcpHttp;
 const mcp = new McpHttpServer({
-  handler: createStatelessAgentFaceDispatcher(componentAgentKit.tools).handleMcpMessage,
+  handler: createStatelessAgentFaceDispatcher().handleMcpMessage,
 });
 
 const server = createServer(async (req, res) => {

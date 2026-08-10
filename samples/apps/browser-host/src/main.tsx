@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import "@xyflow/react/dist/base.css";
 import { Host } from "./Host";
 import { HostThemeProvider } from "./HostThemeProvider";
 import {

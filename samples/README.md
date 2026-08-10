@@ -20,7 +20,7 @@ All `@gik/*` dependencies must be released at the versions declared in `package.
 
 ## Blueprint Catalog
 
-Sample Blueprint artifacts and registry metadata are assembled into `apps/host/public/bootstrap/sample-blueprints.bundle.json`. Run `npm run blueprints:bundle` after changing a Blueprint or `blueprints/registry.json`; host development and build commands also regenerate it automatically.
+Sample Blueprint artifacts and registry metadata are assembled into `apps/browser-host/public/bootstrap/sample-blueprints.bundle.json`. Run `npm run blueprints:bundle` after changing a Blueprint or `blueprints/registry.json`; host development and build commands also regenerate it automatically.
 
 The browser verifies and admits this seed bundle to IndexedDB before rendering. Seed artifacts may reference trusted, statically imported native providers. User-authored artifacts share the catalog snapshot but never receive that authority; executable TypeScript and TSX remain host code rather than catalog data.
 

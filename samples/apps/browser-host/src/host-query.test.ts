@@ -86,4 +86,3 @@ test("host query canonicalizes legacy controls and redundant presentation state"
     "https://example.test/?b=live-workspace-soc&gik=1&presentation=operator-focus",
   );
 });
-import { test } from "vitest";

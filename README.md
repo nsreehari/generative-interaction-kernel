@@ -26,6 +26,7 @@ In this repo, the concrete shape is:
 - [packages/kernel](packages/kernel) = the public `@gik/kernel` package
 - [packages/controlface](packages/controlface) = the public `@gik/controlface` package
 - [packages/agentface](packages/agentface) = the public `@gik/agentface` package
+- [packages/headless](packages/headless) = the public `@gik/headless` backend and middleware package
 - [packages/react](packages/react) = the public `@gik/react` package
 - [packages/components](packages/components) = the public Fluent 2 `@gik/components` package
 - [packages/provider-step-orchestrator](packages/provider-step-orchestrator) = the public `@gik/provider-step-orchestrator` package
@@ -66,7 +67,7 @@ Use `npm run dev` for the complete local stack. It starts those Function apps an
 together, explicitly setting `VITE_GIK_HOST_ENV=local` for the host process. Stopping either process
 stops the other.
 
-Run `npx tsx samples/control-host/structure-modes.ts` for a headless, deterministic demonstration
+Run `npx tsx samples/examples/structure-modes/structure-modes.ts` for a headless, deterministic demonstration
 of Blueprint structure modes through ControlFace. It shows fixed rejecting a structural change,
 reconfigurable ignoring ordinary runtime activity but accepting an authorized reconfiguration, and
 adaptive applying a policy-admitted runtime program patch and restoring it from a checkpoint.
@@ -191,6 +192,7 @@ generative-interaction-kernel/
     controlface/                ← @gik/controlface
     agentface/                  ← @gik/agentface
     evaluators/                 ← @gik/evaluators (JSONata evaluators + declarative validators)
+    headless/                   ← @gik/headless (backend services, middleware, and workers)
     react/                      ← @gik/react
     components/                 ← @gik/components (self-describing Fluent 2 projection components)
     profile/                    ← @gik/profile (generic profile machinery, GenUI interpreters, template loaders, authoring runner)

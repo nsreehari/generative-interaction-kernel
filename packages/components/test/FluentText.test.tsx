@@ -32,7 +32,7 @@ test("GikComponentDeclarative discovers fluent:text", () => {
     capability: "fluent:text",
     props: { value: "Workbench", as: "h1", variant: "title" },
   });
-  const vocabulary = bundle.vocabulary.payload;
+  const vocabulary = "payload" in bundle.vocabulary ? bundle.vocabulary.payload : bundle.vocabulary;
   assert.ok("fluent:text" in vocabulary.capabilities);
   assert.deepEqual(vocabulary.externals?.projectionViews, { fluent: { from: "fluent", use: ["text"] } });
 });
