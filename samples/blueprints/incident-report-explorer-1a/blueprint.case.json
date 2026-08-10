@@ -1,5 +1,5 @@
 {
-  "$schema": "../../schemas/blueprint-test-case.schema.json",
+  "$schema": "../../../schemas/blueprint-test-case.schema.json",
   "format": "gik-blueprint-test/1",
   "name": "incident explorer 1a semantic refinement",
   "blueprintId": "incident-report-explorer-1a",

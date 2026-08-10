@@ -1,5 +1,5 @@
 {
-  "$schema": "../../schemas/blueprint-test-case.schema.json",
+  "$schema": "../../../schemas/blueprint-test-case.schema.json",
   "format": "gik-blueprint-test/1",
   "name": "incident analysis shell nested Blueprint topology",
   "blueprintId": "incident-report-analysis-shell",

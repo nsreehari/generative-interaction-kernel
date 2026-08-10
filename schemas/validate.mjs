@@ -123,9 +123,18 @@ for (const f of readdirSync(casesDir).filter((n) => n.endsWith(".case.json")).so
 console.log("\nDeclarative Blueprint tests (case shape):");
 const blueprintCaseSchema = readJson("blueprint-test-case.schema.json");
 const vBlueprintCase = new Ajv({ allErrors: true, strict: false }).compile(blueprintCaseSchema);
-const blueprintCasesDir = join(here, "../samples/blueprint-tests");
-for (const f of readdirSync(blueprintCasesDir).filter((n) => n.endsWith(".case.json")).sort()) {
-  check(`Blueprint case ${f}`, vBlueprintCase, JSON.parse(readFileSync(join(blueprintCasesDir, f), "utf8")));
+const blueprintsDir = join(here, "../samples/blueprints");
+const blueprintCaseFiles = readdirSync(blueprintsDir, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .flatMap((entry) => readdirSync(join(blueprintsDir, entry.name))
+    .filter((name) => name.endsWith(".case.json"))
+    .map((name) => ({ blueprintId: entry.name, name })));
+for (const { blueprintId, name } of blueprintCaseFiles.sort((left, right) => left.blueprintId.localeCompare(right.blueprintId))) {
+  check(
+    `Blueprint case ${blueprintId}/${name}`,
+    vBlueprintCase,
+    JSON.parse(readFileSync(join(blueprintsDir, blueprintId, name), "utf8")),
+  );
 }
 
 console.log(`\n${failures === 0 ? "OK: all conformance checks passed." : `FAILED: ${failures} check(s).`}`);

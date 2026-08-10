@@ -23,7 +23,7 @@ type BlueprintCase = {
   materializations?: Materialization[];
 };
 
-const modules = import.meta.glob<BlueprintCase>("../blueprint-tests/*.case.json", {
+const modules = import.meta.glob<BlueprintCase>("../blueprints/*/*.case.json", {
   eager: true,
   import: "default",
 });
