@@ -131,15 +131,6 @@ architecture:
   classification_review:
     status: required-before-next-component-tranche
     reason: Existing domain-heavy semantic names must be evaluated against the domain-neutral structure rule.
-  sample_provider_bundles:
-    primitive:
-      id: primitive
-      path: samples/bundles/primitive
-    semantic:
-      id: semantic
-      path: samples/bundles/semantic
-    rule: Provider views and capability descriptors derive from the public package registries.
-
 agent_authoring:
   boundary:
     - Component discovery, validation, and trial materialization are pure ACX authoring operations.

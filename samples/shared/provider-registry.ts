@@ -1,5 +1,7 @@
 import type { ProjectionView } from "@gik/react";
 import { fluentComponentViews } from "@gik/components/fluent";
+import { primitiveComponentViews } from "@gik/components/primitives";
+import { semanticComponentViews } from "@gik/components/semantic";
 import { securityComponentViews } from "@gik/components/security";
 import { softwareComponentViews } from "@gik/components/software";
 
@@ -13,21 +15,14 @@ import liveWorkspaceSocLeaves from "../blueprints/live-workspace-soc/native/proj
 import manageBlueprintsLeaves from "../blueprints/manage-blueprints/native/projection_views/manageBlueprintsLeaves";
 import portfolioTrackerLeaves from "../blueprints/portfolio-tracker/native/projection_views/portfolioTrackerLeaves";
 import samplesOverviewLeaves from "../blueprints/samples-overview/native/projection_views/samplesOverviewLeaves";
-import floorLeaves from "../bundles/floor/projection_views/floorLeaves";
-import foundryLeaves from "../bundles/foundry/projection_views/foundryLeaves";
-import httpProxyLeaves from "../bundles/http-proxy/projection_views/httpProxyLeaves";
-import primitiveLeaves from "../bundles/primitive/projection_views/primitiveLeaves";
-import providerAuthoringDemoLeaves from "../bundles/provider-authoring-demo/projection_views/providerAuthoringDemoLeaves";
-import reactiveDemoLeaves from "../bundles/reactive-demo/projection_views/reactiveDemoLeaves";
-import semanticLeaves from "../bundles/semantic/projection_views/semanticLeaves";
+import foundryLeaves from "./projection-providers/foundry/foundryLeaves";
 
 const projectionProviders: Record<string, Record<string, ProjectionView>> = {
   "copilot-c2": copilotC2Leaves,
-  floor: floorLeaves,
   fluent: fluentComponentViews,
   foundry: foundryLeaves,
   "foundry-agent": foundryAgentLeaves,
-  "http-proxy": httpProxyLeaves,
+  "http-proxy": foundryLeaves,
   "incident-report-explorer": incidentReportExplorerLeaves,
   "incident-report-explorer-1a": incidentReportExplorer1aLeaves,
   "incident-report-explorer-2": incidentReportExplorer2Leaves,
@@ -35,10 +30,8 @@ const projectionProviders: Record<string, Record<string, ProjectionView>> = {
   "live-workspace-soc": liveWorkspaceSocLeaves,
   "manage-blueprints": manageBlueprintsLeaves,
   "portfolio-tracker": portfolioTrackerLeaves,
-  "provider-authoring-demo": providerAuthoringDemoLeaves,
-  primitive: primitiveLeaves,
-  "reactive-demo": reactiveDemoLeaves,
-  semantic: semanticLeaves,
+  primitive: primitiveComponentViews,
+  semantic: semanticComponentViews,
   security: securityComponentViews,
   software: softwareComponentViews,
   "samples-overview": samplesOverviewLeaves,

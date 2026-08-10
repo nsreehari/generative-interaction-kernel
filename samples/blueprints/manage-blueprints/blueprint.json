@@ -17,7 +17,7 @@
         "emit"
       ],
       "capabilities": {
-        "ui:screen": {
+        "primitive:container": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -26,7 +26,7 @@
             "children"
           ]
         },
-        "ui:row": {
+        "fluent:row": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -35,7 +35,7 @@
             "children"
           ]
         },
-        "ui:col": {
+        "fluent:panel": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -44,34 +44,19 @@
             "children"
           ]
         },
-        "ui:panel": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "slots": [
-            "children"
-          ]
-        },
-        "ui:heading": {
+        "primitive:note": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           }
         },
-        "ui:note": {
+        "primitive:property": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           }
         },
-        "ui:property": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        },
-        "ui:list": {
+        "fluent:list": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -143,7 +128,7 @@
             "download"
           ]
         },
-        "ui:math-challenge": {
+        "primitive:math-challenge": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -171,22 +156,27 @@
       },
       "externals": {
         "projectionViews": {
-          "ui": {
-            "from": "floor"
-          },
           "fluent": {
             "from": "fluent",
             "use": [
               "button",
+              "list",
+              "panel",
+              "row",
+              "text",
               "tab-bar"
             ]
           },
           "primitive": {
             "from": "primitive",
             "use": [
+              "container",
               "file-download",
               "file-input",
-              "form"
+              "form",
+              "math-challenge",
+              "note",
+              "property"
             ]
           },
           "manage-blueprints": {
@@ -277,17 +267,33 @@
       "manage-blueprints-root": {
         "id": "manage-blueprints-root",
         "view": {
-          "capability": "ui:screen",
+          "capability": "primitive:container",
           "props": {
-            "title": "Manage Blueprints",
-            "subtitle": "Browse built-in Blueprints and manage your editable copies"
+            "variant": "column",
+            "gap": "m",
+            "fill": true,
+            "ariaLabel": "Manage Blueprints"
           }
+        }
+      },
+      "manage-blueprints-title": {
+        "id": "manage-blueprints-title",
+        "view": {
+          "capability": "fluent:text",
+          "props": { "value": "Manage Blueprints", "as": "h1", "variant": "title", "block": true }
+        }
+      },
+      "manage-blueprints-subtitle": {
+        "id": "manage-blueprints-subtitle",
+        "view": {
+          "capability": "fluent:text",
+          "props": { "value": "Browse built-in Blueprints and manage your editable copies", "as": "p", "variant": "subtitle", "block": true }
         }
       },
       "manage-blueprints-layout": {
         "id": "manage-blueprints-layout",
         "view": {
-          "capability": "ui:row",
+          "capability": "fluent:row",
           "props": {
             "variant": "split"
           }
@@ -296,7 +302,7 @@
       "blueprint-catalog": {
         "id": "blueprint-catalog",
         "view": {
-          "capability": "ui:panel",
+          "capability": "fluent:panel",
           "props": {
             "title": "Blueprints",
             "variant": "rail"
@@ -306,7 +312,7 @@
       "catalog-status": {
         "id": "catalog-status",
         "view": {
-          "capability": "ui:note",
+          "capability": "primitive:note",
           "props": {
             "tone": "info"
           },
@@ -320,7 +326,7 @@
       "catalog-actions": {
         "id": "catalog-actions",
         "view": {
-          "capability": "ui:row"
+          "capability": "fluent:row"
         }
       },
       "create-blueprint": {
@@ -383,23 +389,18 @@
           }
         },
         "view": {
-          "capability": "ui:list",
+          "capability": "fluent:list",
           "props": {
-            "idKey": "id",
-            "primaryKey": "label",
-            "secondaryKey": "detail",
-            "badgeKeys": [
-              "scopeLabel",
-              "sourceLabel"
-            ],
-            "emptyText": "No Blueprints found."
+            "variant": "selectable",
+            "selectionMode": "single",
+            "ariaLabel": "Blueprints"
           },
           "bindings": {
             "items": {
-              "from": "manageBlueprints.blueprints"
+              "expression": "manageBlueprints.blueprints.{'value':$string(id),'label':$string(label) & (detail ? ' · ' & $string(detail) : '') & (scopeLabel ? ' · ' & $string(scopeLabel) : '') & (sourceLabel ? ' · ' & $string(sourceLabel) : '')}"
             },
-            "selectedId": {
-              "from": "manageBlueprints.selectedId"
+            "selectedValues": {
+              "expression": "manageBlueprints.selectedId != '' ? [manageBlueprints.selectedId] : []"
             }
           }
         }
@@ -407,7 +408,7 @@
       "blueprint-detail": {
         "id": "blueprint-detail",
         "view": {
-          "capability": "ui:panel",
+          "capability": "fluent:panel",
           "props": {
             "title": "Blueprint",
             "variant": "detail"
@@ -417,7 +418,7 @@
       "empty-selection": {
         "id": "empty-selection",
         "view": {
-          "capability": "ui:note",
+          "capability": "primitive:note",
           "props": {
             "value": "Select a Blueprint or create a new one.",
             "tone": "muted"
@@ -455,7 +456,7 @@
       "blueprint-overview": {
         "id": "blueprint-overview",
         "view": {
-          "capability": "ui:panel",
+          "capability": "fluent:panel",
           "props": {
             "title": "Details",
             "variant": "tab"
@@ -466,7 +467,7 @@
       "blueprint-id": {
         "id": "blueprint-id",
         "view": {
-          "capability": "ui:property",
+          "capability": "primitive:property",
           "props": {
             "label": "ID"
           },
@@ -480,7 +481,7 @@
       "blueprint-source": {
         "id": "blueprint-source",
         "view": {
-          "capability": "ui:property",
+          "capability": "primitive:property",
           "props": {
             "label": "Source"
           },
@@ -494,7 +495,7 @@
       "blueprint-version": {
         "id": "blueprint-version",
         "view": {
-          "capability": "ui:property",
+          "capability": "primitive:property",
           "props": {
             "label": "Version"
           },
@@ -508,7 +509,7 @@
       "blueprint-structure-mode": {
         "id": "blueprint-structure-mode",
         "view": {
-          "capability": "ui:property",
+          "capability": "primitive:property",
           "props": {
             "label": "Structure mode"
           },
@@ -522,7 +523,7 @@
       "blueprint-tiers": {
         "id": "blueprint-tiers",
         "view": {
-          "capability": "ui:property",
+          "capability": "primitive:property",
           "props": {
             "label": "Tiers"
           },
@@ -536,7 +537,7 @@
       "blueprint-recipes": {
         "id": "blueprint-recipes",
         "view": {
-          "capability": "ui:property",
+          "capability": "primitive:property",
           "props": { "label": "Recipes" },
           "bindings": {
             "value": {
@@ -548,7 +549,7 @@
       "overview-actions": {
         "id": "overview-actions",
         "view": {
-          "capability": "ui:row"
+          "capability": "fluent:row"
         }
       },
       "clone-blueprint": {
@@ -598,7 +599,7 @@
       "blueprint-draft": {
         "id": "blueprint-draft",
         "view": {
-          "capability": "ui:panel",
+          "capability": "fluent:panel",
           "props": {
             "title": "JSON editor",
             "variant": "tab"
@@ -609,7 +610,7 @@
       "editor-error": {
         "id": "editor-error",
         "view": {
-          "capability": "ui:note",
+          "capability": "primitive:note",
           "props": {
             "tone": "danger"
           },
@@ -717,7 +718,7 @@
       "editor-actions": {
         "id": "editor-actions",
         "view": {
-          "capability": "ui:row"
+          "capability": "fluent:row"
         }
       },
       "export-blueprint": {
@@ -744,14 +745,14 @@
       "blueprint-preview": {
         "id": "blueprint-preview",
         "view": {
-          "capability": "ui:col",
+          "capability": "primitive:container",
           "visibility": "manageBlueprints.tab = 'preview'"
         }
       },
       "preview-error": {
         "id": "preview-error",
         "view": {
-          "capability": "ui:note",
+          "capability": "primitive:note",
           "props": {
             "tone": "warning"
           },
@@ -801,7 +802,7 @@
           }
         },
         "view": {
-          "capability": "ui:math-challenge",
+          "capability": "primitive:math-challenge",
           "props": {
             "title": "Confirm blueprint deletion",
             "operandA": 6,
@@ -824,16 +825,28 @@
         ],
         "placements": [
           {
-            "cell": "catalog-loader",
+            "cell": "manage-blueprints-title",
             "parent": "manage-blueprints-root",
             "slot": "children",
             "order": 0
           },
           {
-            "cell": "manage-blueprints-layout",
+            "cell": "manage-blueprints-subtitle",
             "parent": "manage-blueprints-root",
             "slot": "children",
             "order": 1
+          },
+          {
+            "cell": "catalog-loader",
+            "parent": "manage-blueprints-root",
+            "slot": "children",
+            "order": 2
+          },
+          {
+            "cell": "manage-blueprints-layout",
+            "parent": "manage-blueprints-root",
+            "slot": "children",
+            "order": 3
           },
           {
             "cell": "blueprint-catalog",
@@ -1001,7 +1014,7 @@
             "cell": "delete-blueprint-challenge",
             "parent": "manage-blueprints-root",
             "slot": "children",
-            "order": 1
+            "order": 4
           }
         ]
       }

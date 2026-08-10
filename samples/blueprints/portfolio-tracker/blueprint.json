@@ -752,7 +752,7 @@
           ],
           "dataProp": "rows"
         },
-        "ui:table": {
+        "fluent:table": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -795,8 +795,9 @@
       },
       "externals": {
         "projectionViews": {
-          "ui": {
-            "from": "floor"
+          "fluent": {
+            "from": "fluent",
+            "use": ["table"]
           },
           "primitive": {
             "from": "primitive",
@@ -1136,13 +1137,17 @@
           }
         ],
         "view": {
-          "capability": "ui:table",
+          "capability": "fluent:table",
           "props": {
-            "label": "market-prices"
+            "ariaLabel": "Market prices",
+            "columns": [
+              { "id": "ticker", "label": "Ticker" },
+              { "id": "price", "label": "Price" }
+            ]
           },
           "bindings": {
             "rows": {
-              "expression": "[portfolio.quotes.*]"
+              "expression": "[portfolio.quotes.*.{'id':$string(ticker),'cells':{'ticker':ticker,'price':price}}]"
             }
           }
         }
@@ -1174,13 +1179,21 @@
           }
         ],
         "view": {
-          "capability": "ui:table",
+          "capability": "fluent:table",
           "props": {
-            "label": "positions"
+            "ariaLabel": "Positions",
+            "columns": [
+              { "id": "ticker", "label": "Ticker" },
+              { "id": "quantity", "label": "Quantity" },
+              { "id": "price", "label": "Price" },
+              { "id": "value", "label": "Value" },
+              { "id": "costBasis", "label": "Cost basis" },
+              { "id": "gainLoss", "label": "Gain/loss" }
+            ]
           },
           "bindings": {
             "rows": {
-              "expression": "[portfolio.positions.*]"
+              "expression": "[portfolio.positions.*.{'id':$string(ticker),'cells':{'ticker':ticker,'quantity':quantity,'price':price,'value':value,'costBasis':costBasis,'gainLoss':gainLoss}}]"
             }
           }
         }

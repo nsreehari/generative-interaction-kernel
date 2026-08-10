@@ -13,7 +13,7 @@
       ],
       "actions": [],
       "capabilities": {
-        "ui:screen": {
+        "primitive:container": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -31,8 +31,9 @@
       },
       "externals": {
         "projectionViews": {
-          "ui": {
-            "from": "floor"
+          "primitive": {
+            "from": "primitive",
+            "use": ["container"]
           },
           "overview": {
             "from": "self"
@@ -285,10 +286,11 @@
       "samples-overview-root": {
         "id": "samples-overview-root",
         "view": {
-          "capability": "ui:screen",
+          "capability": "primitive:container",
           "props": {
-            "title": "Governed Human-Agent Collaboration",
-            "subtitle": "One evolving workspace. Shared state, shared authority, complete trace."
+            "variant": "column",
+            "fill": true,
+            "ariaLabel": "Governed Human-Agent Collaboration"
           }
         }
       },

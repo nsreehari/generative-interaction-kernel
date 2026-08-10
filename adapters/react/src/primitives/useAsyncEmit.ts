@@ -3,7 +3,7 @@ import React from "react";
 // The dispatch model is atomic: a single `emit` resolves only AFTER the kernel has reduced,
 // run any invoke effect, and re-rendered once — so a store flag can never paint an in-flight
 // state. This hook holds that pending state in LOCAL React state instead: `run` brackets the
-// emit's returned promise with `pending = true/false`, giving views (and the floor button) a
+// emit's returned promise with `pending = true/false`, giving views such as async buttons a
 // spinner during async work without any kernel change.
 
 export type AsyncEmitFn = (

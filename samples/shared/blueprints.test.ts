@@ -41,6 +41,7 @@ test("sample opener selects representation and implementation from external cont
     { id: "runtime-document", kind: "runtime-document" },
   ]);
   assert.deepEqual(runtime.definition.payload.recipes, []);
-  assert.equal(runtime.definition.payload.cells?.["portfolio-workspace"]?.view?.props?.subtitle, "Mobile · Glanceable");
+  assert.equal(runtime.definition.payload.cells?.["portfolio-workspace"]?.view?.capability, "primitive:container");
+  assert.equal(runtime.definition.payload.cells?.["portfolio-workspace"]?.view?.props?.ariaLabel, "Portfolio");
   assert.equal(runtime.definition.payload.services?.["portfolio-market-data"]?.kind, "deterministic-agent");
 });

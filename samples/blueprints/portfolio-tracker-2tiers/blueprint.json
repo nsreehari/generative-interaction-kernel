@@ -39,10 +39,10 @@
             "id": "mobile-glanceable",
             "when": "externalContext.view = 'mobile' and externalContext.attention = 'glanceable'",
             "views": {
-              "portfolio-workspace": { "capability": "ui:screen", "props": { "title": "Portfolio", "subtitle": "Mobile · Glanceable" } },
+              "portfolio-workspace": { "capability": "primitive:container", "props": { "variant": "column", "gap": "m", "fill": true, "ariaLabel": "Portfolio" } },
               "http-proxy-access-gate": { "capability": "http-proxy:access-gate", "bindings": { "access": { "expression": "($s := portfolio.httpProxyAccessStatus; {'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': portfolio.httpProxyAccessError})" } } },
               "summary": { "capability": "portfolio:summary", "bindings": { "value": { "from": "portfolio.summary" } } },
-              "portfolio-status": { "capability": "ui:note", "props": { "tone": "info" }, "bindings": { "value": { "from": "portfolio.status.message" } } }
+              "portfolio-status": { "capability": "primitive:note", "props": { "tone": "info" }, "bindings": { "value": { "from": "portfolio.status.message" } } }
             },
             "presentation": {
               "roots": ["portfolio-workspace"],
@@ -58,13 +58,12 @@
             "when": "externalContext.view = 'mobile' and externalContext.attention = 'detailed'",
             "extends": "mobile-glanceable",
             "views": {
-              "portfolio-workspace": { "capability": "ui:screen", "props": { "title": "Portfolio", "subtitle": "Mobile · Detailed" } },
               "holdings": {
                 "capability": "primitive:editable-table",
                 "props": { "label": "Holdings", "columns": [{ "key": "ticker", "label": "Ticker" }, { "key": "quantity", "label": "Quantity" }, { "key": "costBasis", "label": "Cost basis" }] },
                 "bindings": { "rows": { "expression": "[portfolio.holdings.*]" } }
               },
-              "positions": { "capability": "ui:table", "props": { "label": "Positions" }, "bindings": { "rows": { "expression": "[portfolio.positions.*]" } } }
+              "positions": { "capability": "fluent:table", "props": { "ariaLabel": "Positions", "columns": [{ "id": "ticker", "label": "Ticker" }, { "id": "quantity", "label": "Quantity" }, { "id": "price", "label": "Price" }, { "id": "value", "label": "Value" }, { "id": "gainLoss", "label": "Gain/loss" }] }, "bindings": { "rows": { "expression": "[portfolio.positions.*.{'id':$string(ticker),'cells':{'ticker':ticker,'quantity':quantity,'price':price,'value':value,'gainLoss':gainLoss}}]" } } }
             },
             "presentationAppend": [
               { "cell": "holdings", "parent": "portfolio-workspace", "slot": "children", "order": 3 },
@@ -76,8 +75,7 @@
             "when": "externalContext.view = 'laptop' and externalContext.attention = 'glanceable'",
             "extends": "mobile-glanceable",
             "views": {
-              "portfolio-workspace": { "capability": "ui:screen", "props": { "title": "Portfolio", "subtitle": "Laptop · Glanceable" } },
-              "positions": { "capability": "ui:table", "props": { "label": "Top positions", "maxRows": 5 }, "bindings": { "rows": { "expression": "[portfolio.positions.*]" } } }
+              "positions": { "capability": "fluent:table", "props": { "ariaLabel": "Top positions", "columns": [{ "id": "ticker", "label": "Ticker" }, { "id": "value", "label": "Value" }, { "id": "gainLoss", "label": "Gain/loss" }] }, "bindings": { "rows": { "expression": "[portfolio.positions.*.{'id':$string(ticker),'cells':{'ticker':ticker,'value':value,'gainLoss':gainLoss}}]" } } }
             },
             "presentationAppend": [
               { "cell": "positions", "parent": "portfolio-workspace", "slot": "children", "order": 3 }
@@ -87,17 +85,14 @@
             "id": "desktop-glanceable",
             "when": "externalContext.view = 'desktop' and externalContext.attention = 'glanceable'",
             "extends": "laptop-glanceable",
-            "views": {
-              "portfolio-workspace": { "capability": "ui:screen", "props": { "title": "Portfolio", "subtitle": "Desktop · Glanceable" } }
-            }
+            "views": {}
           },
           {
             "id": "laptop-detailed",
             "when": "externalContext.view = 'laptop' and externalContext.attention = 'detailed'",
             "extends": "mobile-detailed",
             "views": {
-              "portfolio-workspace": { "capability": "ui:screen", "props": { "title": "Portfolio", "subtitle": "Laptop · Detailed" } },
-              "market-prices": { "capability": "ui:table", "props": { "label": "Market prices" }, "bindings": { "rows": { "expression": "[portfolio.quotes.*]" } } }
+              "market-prices": { "capability": "fluent:table", "props": { "ariaLabel": "Market prices", "columns": [{ "id": "ticker", "label": "Ticker" }, { "id": "price", "label": "Price" }] }, "bindings": { "rows": { "expression": "[portfolio.quotes.*.{'id':$string(ticker),'cells':{'ticker':ticker,'price':price}}]" } } }
             },
             "presentationAppend": [
               { "cell": "market-prices", "parent": "portfolio-workspace", "slot": "children", "order": 5 }
@@ -107,9 +102,7 @@
             "id": "desktop-detailed",
             "when": "externalContext.view = 'desktop' and externalContext.attention = 'detailed'",
             "extends": "laptop-detailed",
-            "views": {
-              "portfolio-workspace": { "capability": "ui:screen", "props": { "title": "Portfolio", "subtitle": "Desktop · Detailed" } }
-            }
+            "views": {}
           }
         ],
         "fallback": "desktop-detailed",
@@ -196,17 +189,17 @@
       "contexts": ["control"],
       "actions": ["assign", "invoke"],
       "capabilities": {
-        "ui:screen": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"] },
+        "primitive:container": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"] },
         "primitive:editable-table": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"], "dataProp": "rows" },
-        "ui:table": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "rows" },
-        "ui:note": { "propsSchema": { "type": "object", "additionalProperties": true } },
+        "fluent:table": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "rows" },
+        "primitive:note": { "propsSchema": { "type": "object", "additionalProperties": true } },
         "http-proxy:access-gate": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["accessRequested", "accessCleared"] },
         "portfolio:summary": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" }
       },
       "externals": {
         "projectionViews": {
-          "ui": { "from": "floor", "use": ["screen", "table", "note"] },
-          "primitive": { "from": "primitive", "use": ["editable-table"] },
+          "fluent": { "from": "fluent", "use": ["table"] },
+          "primitive": { "from": "primitive", "use": ["container", "editable-table", "note"] },
           "http-proxy": { "from": "http-proxy", "use": ["access-gate"] },
           "portfolio": { "from": "self", "use": ["summary"] }
         },

@@ -5,27 +5,23 @@ import {
   tokens,
   webLightTheme,
 } from "@fluentui/react-components";
-import { FloorStyleSheet } from "../../../bundles/floor/projection_views/styles";
-import { roleVars } from "../../../bundles/floor/projection_views/theme";
+
+const hostThemeVars = {
+  "--bg": tokens.colorNeutralBackground1,
+  "--panel": tokens.colorNeutralBackground2,
+  "--panel-2": tokens.colorNeutralBackground3,
+  "--field-bg": tokens.colorNeutralBackground1,
+  "--line": tokens.colorNeutralStroke2,
+  "--text": tokens.colorNeutralForeground1,
+  "--muted": tokens.colorNeutralForeground3,
+  "--accent": tokens.colorBrandForeground1,
+} as React.CSSProperties;
 
 const HOST_THEME_CSS = `
 .gx-host * { box-sizing: border-box; }
 .gx-host *::before { box-sizing: border-box; }
 .gx-host *::after { box-sizing: border-box; }
 .gx-host code { font-family: var(--fontFamilyMonospace); }
-.gx-host .gx-muted { color: var(--muted); }
-
-.gx-host .gx-screen { display: flex; flex-direction: column; min-height: 100vh; }
-.gx-host .gx-screen-head {
-  display: flex;
-  align-items: baseline;
-  gap: var(--spacingHorizontalM);
-  padding: var(--spacingVerticalM) var(--spacingHorizontalL);
-  border-bottom: var(--strokeWidthThin) solid var(--line);
-  background: var(--panel);
-}
-.gx-host .gx-screen-head h1 { font-size: var(--fontSizeBase400); margin: 0; }
-.gx-host .gx-screen-body { flex: 1; min-height: 0; display: flex; }
 @media (max-width: 700px) {
   .gx-host:has([aria-label="Harness context"]) main { padding-top: 56px; }
 }
@@ -37,52 +33,6 @@ const HOST_THEME_CSS = `
   z-index: 1000;
 }
 
-.gx-host .gx-row { display: flex; gap: var(--spacingHorizontalM); }
-.gx-host .gx-row-split { flex: 1; min-height: 0; display: grid; grid-template-columns: 320px 1fr; width: 100%; }
-.gx-host .gx-row-split > * { min-width: 0; }
-.gx-host .gx-col { display: flex; flex-direction: column; gap: var(--spacingVerticalM); }
-
-.gx-host .gx-panel { overflow-y: auto; padding: var(--spacingHorizontalL); }
-.gx-host .gx-panel-rail { background: var(--panel); border-right: var(--strokeWidthThin) solid var(--line); }
-.gx-host .gx-panel-detail { display: flex; flex-direction: column; gap: var(--spacingVerticalL); }
-.gx-host .gx-panel-inset,
-.gx-host .gx-panel-tab {
-  background: var(--panel-2);
-  border: var(--strokeWidthThin) solid var(--line);
-  border-radius: var(--borderRadiusLarge);
-  padding: var(--spacingHorizontalM);
-}
-.gx-host .gx-panel-actions {
-  display: flex;
-  gap: var(--spacingHorizontalS);
-  flex-wrap: wrap;
-}
-.gx-host .gx-panel-detail-body { display: flex; flex-direction: column; gap: var(--spacingVerticalM); }
-.gx-host .gx-panel-footer {
-  position: sticky;
-  bottom: 0;
-  background: color-mix(in srgb, var(--bg) 94%, transparent);
-  backdrop-filter: blur(10px);
-  border-top: var(--strokeWidthThin) solid var(--line);
-  margin-top: auto;
-}
-.gx-host .gx-panel-title {
-  font-size: var(--fontSizeBase100);
-  text-transform: uppercase;
-  letter-spacing: .5px;
-  color: var(--muted);
-  margin-bottom: var(--spacingVerticalSNudge);
-}
-
-/* Floor LEAF styles (badge/metric/table/form/chart/diff/list/...) now ship with @gik/react via
-   <FloorStyleSheet/> below. Only app-shell + flow-canvas chrome remains host-owned here. */
-
-.gx-host .gx-bundle {
-  border: var(--strokeWidthThin) dashed var(--line);
-  border-radius: var(--borderRadiusLarge);
-  padding: var(--spacingHorizontalM);
-  background: var(--field-bg);
-}
 .gx-host .gx-blueprint-preview {
   border: var(--strokeWidthThick) solid var(--accent);
   border-radius: var(--borderRadiusLarge);
@@ -91,22 +41,6 @@ const HOST_THEME_CSS = `
   overflow: visible;
 }
 .gx-host .gx-blueprint-preview > * { min-height: inherit; }
-.gx-host .gx-bundle .gx-panel-preview-board { padding: 0; overflow: visible; }
-.gx-host .gx-bundle .gx-panel-preview-board > .gx-panel-title {
-  color: var(--text);
-  font-size: var(--fontSizeBase200);
-}
-.gx-host .gx-bundle .gx-panel-preview-card {
-  border: var(--strokeWidthThin) solid var(--line);
-  border-radius: var(--borderRadiusLarge);
-  padding: var(--spacingHorizontalMNudge);
-  margin-bottom: var(--spacingVerticalMNudge);
-  background: var(--panel-2);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacingVerticalXS);
-}
-
 .gx-host .gx-flow-canvas-shell {
   position: relative;
   height: 260px;
@@ -296,9 +230,8 @@ export function HostThemeProvider({ children }: HostThemeProviderProps): React.R
   }, []);
 
   return (
-    <FluentProvider theme={webLightTheme} className="gx-host" style={roleVars(tokens)}>
+    <FluentProvider theme={webLightTheme} className="gx-host" style={hostThemeVars}>
       <div className={styles.host}>
-        <FloorStyleSheet />
         <style>{HOST_THEME_CSS}</style>
         {children}
       </div>

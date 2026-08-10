@@ -396,11 +396,11 @@ export class InvocationClosedError extends Error {
 
 /**
  * A projection-view import: binds a local alias to a projection-view provider, so a document can reference a
- * capability as `alias:name`. Nothing is ambient — even the shared floor must be imported. `use`
+ * capability as `alias:name`. Nothing is ambient; every package or `self` provider is imported. `use`
  * optionally restricts (and documents) the borrowed subset; omitted means the whole provider.
  */
 export interface ProjectionViewImport {
-  from: string; // provider name: "floor" | "self" | another bundle's name
+  from: string; // provider name: package id, "self", or another bundle's name
   use?: string[]; // optional whitelist of capability names borrowed under this alias
 }
 

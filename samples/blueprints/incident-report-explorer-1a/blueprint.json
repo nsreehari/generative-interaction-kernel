@@ -42,7 +42,7 @@
           "foundry-access-gate": { "capability": "foundry:access-gate", "bindings": { "access": { "expression": "($s := incident1a.foundryAccessStatus; {'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': incident1a.foundryAccessError})" } } },
           "incident-refinement": { "capability": "incident1a:refinement", "props": { "title": "Semantic component data" }, "bindings": { "value": { "from": "incident1a.model" }, "content": { "expression": "externalContext.content" }, "refinedContent": { "from": "incident1a.refinedContent" }, "error": { "from": "incident1a.error" }, "pending": { "from": "incident1a.refinementPending" } } },
           "incident-improve-report": { "capability": "fluent:button", "props": { "label": "Improve report", "appearance": "primary" }, "bindings": { "disabled": { "from": "incident1a.refinementPending" }, "loading": { "from": "incident1a.refinementPending" } }, "visibility": "incident1a.model = null or externalContext.content != incident1a.refinedContent" },
-          "incident-sections": { "capability": "semantic:component-data-sections", "bindings": { "sections": { "from": "incident1a.model.sections" } } }
+          "incident-sections": { "capability": "incident1a:component-data-sections", "bindings": { "sections": { "from": "incident1a.model.sections" } } }
         },
         "presentation": {
           "roots": ["foundry-access-gate"],
@@ -58,12 +58,12 @@
           "incident-workspace": { "capability": "incident1a:workspace", "props": { "title": "Incident report refinement" } },
           "incident-report": { "capability": "incident1a:editor", "props": { "title": "Source report" }, "bindings": { "value": { "from": "incident1a.content" } } },
           "incident-report-selector": { "capability": "fluent:dropdown", "props": { "ariaLabel": "Choose sample incident", "options": [{ "value": "password-spray-mailbox", "label": "Password spray and mailbox compromise" }, { "value": "blob-storage-exfiltration", "label": "Blob storage exfiltration" }, { "value": "identity-compromise", "label": "Identity and cloud resource compromise" }, { "value": "device-code-bec", "label": "Device-code phishing and BEC" }, { "value": "supply-chain-sap-bec", "label": "Supply-chain SAP and procurement BEC" }] }, "bindings": { "value": { "from": "incident1a.selectedSampleId" } }, "visibility": "true" },
-          "incident-report-markdown": { "capability": "ui:markdown", "bindings": { "value": { "from": "incident1a.content" } } },
+          "incident-report-markdown": { "capability": "primitive:markdown", "bindings": { "value": { "from": "incident1a.content" } } },
           "incident-report-form": { "capability": "primitive:form", "props": { "fields": { "properties": { "content": { "title": "Markdown content", "type": "string", "format": "textarea", "rows": 34, "minLength": 1, "span": 12 } }, "required": ["content"] }, "saveLabel": "Save report", "discardLabel": "Discard changes" }, "bindings": { "value": { "from": "incident1a.formValue" } } },
           "foundry-access-gate": { "capability": "foundry:access-gate", "bindings": { "access": { "expression": "($s := incident1a.foundryAccessStatus; {'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': incident1a.foundryAccessError})" } } },
           "incident-refinement": { "capability": "incident1a:refinement", "props": { "title": "Improved semantic report" }, "bindings": { "value": { "from": "incident1a.model" }, "content": { "from": "incident1a.content" }, "refinedContent": { "from": "incident1a.refinedContent" }, "error": { "from": "incident1a.error" }, "pending": { "from": "incident1a.refinementPending" } } },
           "incident-improve-report": { "capability": "fluent:button", "props": { "label": "Improve report", "appearance": "primary" }, "bindings": { "disabled": { "from": "incident1a.refinementPending" }, "loading": { "from": "incident1a.refinementPending" } }, "visibility": "incident1a.model = null or incident1a.content != incident1a.refinedContent" },
-          "incident-sections": { "capability": "semantic:component-data-sections", "bindings": { "sections": { "from": "incident1a.model.sections" } } }
+          "incident-sections": { "capability": "incident1a:component-data-sections", "bindings": { "sections": { "from": "incident1a.model.sections" } } }
         },
         "presentation": {
           "roots": ["incident-workspace"],
@@ -136,15 +136,15 @@
         "incident1a:workspace": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"] },
         "incident1a:editor": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"], "dataProp": "value" },
         "incident1a:refinement": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"], "dataProp": "value" },
-        "semantic:component-data-sections": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "sections" },
+        "incident1a:component-data-sections": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "sections" },
         "foundry:access-gate": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["accessRequested", "accessCleared"], "slots": ["children"] },
         "fluent:dropdown": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["select"], "dataProp": "value" },
         "fluent:button": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["press"] },
-        "ui:markdown": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
+        "primitive:markdown": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
         "primitive:form": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"] }
       },
       "externals": {
-        "projectionViews": { "incident1a": { "from": "self" }, "semantic": { "from": "semantic", "use": ["component-data-sections"] }, "foundry": { "from": "foundry", "use": ["access-gate"] }, "fluent": { "from": "fluent", "use": ["dropdown", "button"] }, "ui": { "from": "floor", "use": ["markdown"] }, "primitive": { "from": "primitive", "use": ["form"] } },
+        "projectionViews": { "incident1a": { "from": "self" }, "foundry": { "from": "foundry", "use": ["access-gate"] }, "fluent": { "from": "fluent", "use": ["dropdown", "button"] }, "primitive": { "from": "primitive", "use": ["form", "markdown"] } },
         "effectHandlers": ["selectSampleReport", "saveReport", "prepareRefinement"]
       },
       "state": { "incident1a": { "selectedSampleId": "password-spray-mailbox", "content": "# Loading incident report...", "formValue": { "content": "# Loading incident report..." }, "model": null, "refinedContent": null, "pendingContent": null, "refinementPending": false, "foundryAccessStatus": "required", "foundryAccessError": "", "error": "" } }

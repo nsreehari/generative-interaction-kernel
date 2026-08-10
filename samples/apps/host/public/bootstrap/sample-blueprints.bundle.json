@@ -49,7 +49,7 @@
           ],
           "actions": [],
           "capabilities": {
-            "ui:screen": {
+            "primitive:container": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -58,7 +58,7 @@
                 "children"
               ]
             },
-            "ui:panel": {
+            "fluent:panel": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -67,27 +67,43 @@
                 "children"
               ]
             },
-            "ui:markdown": {
+            "primitive:markdown": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
               },
               "dataProp": "value"
             },
-            "ui:table": {
+            "fluent:table": {
+              "propsSchema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "fluent:text": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
               },
-              "emits": [
-                "rowSelect"
-              ]
+              "dataProp": "value"
             }
           },
           "externals": {
             "projectionViews": {
-              "ui": {
-                "from": "floor"
+              "primitive": {
+                "from": "primitive",
+                "use": [
+                  "container",
+                  "markdown"
+                ]
+              },
+              "fluent": {
+                "from": "fluent",
+                "use": [
+                  "panel",
+                  "table",
+                  "text"
+                ]
               }
             }
           },
@@ -135,17 +151,43 @@
           "four-layers-root": {
             "id": "four-layers-root",
             "view": {
-              "capability": "ui:screen",
+              "capability": "primitive:container",
               "props": {
-                "title": "Four-layer Blueprint",
-                "subtitle": "From domain intent to a concrete executable projection"
+                "variant": "column",
+                "gap": "m",
+                "fill": true,
+                "ariaLabel": "Four-layer Blueprint"
+              }
+            }
+          },
+          "four-layers-title": {
+            "id": "four-layers-title",
+            "view": {
+              "capability": "fluent:text",
+              "props": {
+                "value": "Four-layer Blueprint",
+                "as": "h1",
+                "variant": "title",
+                "block": true
+              }
+            }
+          },
+          "four-layers-subtitle": {
+            "id": "four-layers-subtitle",
+            "view": {
+              "capability": "fluent:text",
+              "props": {
+                "value": "From domain intent to a concrete executable projection",
+                "as": "p",
+                "variant": "subtitle",
+                "block": true
               }
             }
           },
           "four-layers-summary": {
             "id": "four-layers-summary",
             "view": {
-              "capability": "ui:markdown",
+              "capability": "primitive:markdown",
               "bindings": {
                 "value": {
                   "from": "architecture.summary"
@@ -156,27 +198,27 @@
           "four-layers-stages": {
             "id": "four-layers-stages",
             "view": {
-              "capability": "ui:table",
+              "capability": "fluent:table",
               "props": {
-                "idKey": "id",
+                "ariaLabel": "Architecture stages",
                 "columns": [
                   {
-                    "key": "stage",
+                    "id": "stage",
                     "label": "Stage"
                   },
                   {
-                    "key": "responsibility",
+                    "id": "responsibility",
                     "label": "Responsibility"
                   },
                   {
-                    "key": "example",
+                    "id": "example",
                     "label": "Example"
                   }
                 ]
               },
               "bindings": {
                 "rows": {
-                  "from": "architecture.layers"
+                  "expression": "architecture.layers.{'id':$string(id),'cells':{'stage':stage,'responsibility':responsibility,'example':example}}"
                 }
               }
             }
@@ -184,7 +226,7 @@
           "four-layers-contract": {
             "id": "four-layers-contract",
             "view": {
-              "capability": "ui:panel",
+              "capability": "fluent:panel",
               "props": {
                 "title": "Execution boundary"
               }
@@ -193,7 +235,7 @@
           "four-layers-contract-text": {
             "id": "four-layers-contract-text",
             "view": {
-              "capability": "ui:markdown",
+              "capability": "primitive:markdown",
               "bindings": {
                 "value": {
                   "from": "architecture.contract"
@@ -209,22 +251,34 @@
             ],
             "placements": [
               {
-                "cell": "four-layers-summary",
+                "cell": "four-layers-title",
                 "parent": "four-layers-root",
                 "slot": "children",
                 "order": 0
               },
               {
-                "cell": "four-layers-stages",
+                "cell": "four-layers-subtitle",
                 "parent": "four-layers-root",
                 "slot": "children",
                 "order": 1
               },
               {
-                "cell": "four-layers-contract",
+                "cell": "four-layers-summary",
                 "parent": "four-layers-root",
                 "slot": "children",
                 "order": 2
+              },
+              {
+                "cell": "four-layers-stages",
+                "parent": "four-layers-root",
+                "slot": "children",
+                "order": 3
+              },
+              {
+                "cell": "four-layers-contract",
+                "parent": "four-layers-root",
+                "slot": "children",
+                "order": 4
               },
               {
                 "cell": "four-layers-contract-text",
@@ -409,7 +463,7 @@
           ],
           "actions": [],
           "capabilities": {
-            "ui:screen": {
+            "primitive:container": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -418,7 +472,7 @@
                 "children"
               ]
             },
-            "ui:row": {
+            "fluent:row": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -427,7 +481,7 @@
                 "children"
               ]
             },
-            "ui:panel": {
+            "fluent:panel": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -436,23 +490,27 @@
                 "children"
               ]
             },
-            "ui:metric": {
+            "primitive:metric": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
               },
               "dataProp": "value"
             },
-            "ui:table": {
+            "fluent:table": {
+              "propsSchema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "fluent:text": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
               },
-              "emits": [
-                "rowSelect"
-              ]
+              "dataProp": "value"
             },
-            "ui:markdown": {
+            "primitive:markdown": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -462,8 +520,22 @@
           },
           "externals": {
             "projectionViews": {
-              "ui": {
-                "from": "floor"
+              "primitive": {
+                "from": "primitive",
+                "use": [
+                  "container",
+                  "markdown",
+                  "metric"
+                ]
+              },
+              "fluent": {
+                "from": "fluent",
+                "use": [
+                  "panel",
+                  "row",
+                  "table",
+                  "text"
+                ]
               }
             }
           },
@@ -513,17 +585,43 @@
           "briefing-root": {
             "id": "briefing-root",
             "view": {
-              "capability": "ui:screen",
+              "capability": "primitive:container",
               "props": {
-                "title": "Operational briefing",
-                "subtitle": "Current posture, material updates, and next steps"
+                "variant": "column",
+                "gap": "m",
+                "fill": true,
+                "ariaLabel": "Operational briefing"
+              }
+            }
+          },
+          "briefing-title": {
+            "id": "briefing-title",
+            "view": {
+              "capability": "fluent:text",
+              "props": {
+                "value": "Operational briefing",
+                "as": "h1",
+                "variant": "title",
+                "block": true
+              }
+            }
+          },
+          "briefing-subtitle": {
+            "id": "briefing-subtitle",
+            "view": {
+              "capability": "fluent:text",
+              "props": {
+                "value": "Current posture, material updates, and next steps",
+                "as": "p",
+                "variant": "subtitle",
+                "block": true
               }
             }
           },
           "briefing-headline": {
             "id": "briefing-headline",
             "view": {
-              "capability": "ui:markdown",
+              "capability": "primitive:markdown",
               "bindings": {
                 "value": {
                   "from": "briefing.headline"
@@ -534,13 +632,13 @@
           "briefing-metrics": {
             "id": "briefing-metrics",
             "view": {
-              "capability": "ui:row"
+              "capability": "fluent:row"
             }
           },
           "briefing-active": {
             "id": "briefing-active",
             "view": {
-              "capability": "ui:metric",
+              "capability": "primitive:metric",
               "props": {
                 "label": "Active incidents"
               },
@@ -554,7 +652,7 @@
           "briefing-priority": {
             "id": "briefing-priority",
             "view": {
-              "capability": "ui:metric",
+              "capability": "primitive:metric",
               "props": {
                 "label": "High priority"
               },
@@ -568,7 +666,7 @@
           "briefing-coverage": {
             "id": "briefing-coverage",
             "view": {
-              "capability": "ui:metric",
+              "capability": "primitive:metric",
               "props": {
                 "label": "Coverage"
               },
@@ -582,32 +680,31 @@
           "briefing-updates": {
             "id": "briefing-updates",
             "view": {
-              "capability": "ui:table",
+              "capability": "fluent:table",
               "props": {
-                "title": "Material updates",
-                "idKey": "id",
+                "ariaLabel": "Material updates",
                 "columns": [
                   {
-                    "key": "priority",
+                    "id": "priority",
                     "label": "Priority"
                   },
                   {
-                    "key": "area",
+                    "id": "area",
                     "label": "Area"
                   },
                   {
-                    "key": "update",
+                    "id": "update",
                     "label": "Update"
                   },
                   {
-                    "key": "owner",
+                    "id": "owner",
                     "label": "Owner"
                   }
                 ]
               },
               "bindings": {
                 "rows": {
-                  "from": "briefing.updates"
+                  "expression": "briefing.updates.{'id':$string(id),'cells':{'priority':priority,'area':area,'update':update,'owner':owner}}"
                 }
               }
             }
@@ -615,7 +712,7 @@
           "briefing-next": {
             "id": "briefing-next",
             "view": {
-              "capability": "ui:panel",
+              "capability": "fluent:panel",
               "props": {
                 "title": "Next steps"
               }
@@ -624,7 +721,7 @@
           "briefing-next-text": {
             "id": "briefing-next-text",
             "view": {
-              "capability": "ui:markdown",
+              "capability": "primitive:markdown",
               "bindings": {
                 "value": {
                   "from": "briefing.nextSteps"
@@ -640,16 +737,28 @@
             ],
             "placements": [
               {
-                "cell": "briefing-headline",
+                "cell": "briefing-title",
                 "parent": "briefing-root",
                 "slot": "children",
                 "order": 0
               },
               {
-                "cell": "briefing-metrics",
+                "cell": "briefing-subtitle",
                 "parent": "briefing-root",
                 "slot": "children",
                 "order": 1
+              },
+              {
+                "cell": "briefing-headline",
+                "parent": "briefing-root",
+                "slot": "children",
+                "order": 2
+              },
+              {
+                "cell": "briefing-metrics",
+                "parent": "briefing-root",
+                "slot": "children",
+                "order": 3
               },
               {
                 "cell": "briefing-active",
@@ -667,7 +776,7 @@
                 "cell": "briefing-coverage",
                 "parent": "briefing-metrics",
                 "slot": "children",
-                "order": 2
+                "order": 4
               },
               {
                 "cell": "briefing-updates",
@@ -679,7 +788,7 @@
                 "cell": "briefing-next",
                 "parent": "briefing-root",
                 "slot": "children",
-                "order": 3
+                "order": 5
               },
               {
                 "cell": "briefing-next-text",
@@ -760,7 +869,7 @@
                 "children"
               ]
             },
-            "ui:markdown": {
+            "primitive:markdown": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -798,8 +907,8 @@
                   "dropdown"
                 ]
               },
-              "ui": {
-                "from": "floor",
+              "primitive": {
+                "from": "primitive",
                 "use": [
                   "markdown"
                 ]
@@ -913,7 +1022,7 @@
               }
             ],
             "view": {
-              "capability": "ui:markdown",
+              "capability": "primitive:markdown",
               "bindings": {
                 "value": {
                   "from": "incident.content"
@@ -1092,7 +1201,7 @@
                     "visibility": "true"
                   },
                   "incident-source-markdown": {
-                    "capability": "ui:markdown",
+                    "capability": "primitive:markdown",
                     "bindings": {
                       "value": {
                         "from": "incident2.content"
@@ -1620,7 +1729,7 @@
               ],
               "dataProp": "value"
             },
-            "ui:markdown": {
+            "primitive:markdown": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -1639,8 +1748,8 @@
                   "dropdown"
                 ]
               },
-              "ui": {
-                "from": "floor",
+              "primitive": {
+                "from": "primitive",
                 "use": [
                   "markdown"
                 ]
@@ -1891,7 +2000,7 @@
                     "visibility": "true"
                   },
                   "incident-source-markdown": {
-                    "capability": "ui:markdown",
+                    "capability": "primitive:markdown",
                     "bindings": {
                       "value": {
                         "from": "incident3.content"
@@ -2270,7 +2379,7 @@
               ],
               "dataProp": "value"
             },
-            "ui:markdown": {
+            "primitive:markdown": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -2290,8 +2399,8 @@
                   "dropdown"
                 ]
               },
-              "ui": {
-                "from": "floor",
+              "primitive": {
+                "from": "primitive",
                 "use": [
                   "markdown"
                 ]
@@ -3244,7 +3353,7 @@
             "invoke"
           ],
           "capabilities": {
-            "ui:screen": {
+            "primitive:container": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -3253,7 +3362,7 @@
                 "children"
               ]
             },
-            "ui:row": {
+            "fluent:row": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -3262,7 +3371,7 @@
                 "children"
               ]
             },
-            "ui:panel": {
+            "fluent:panel": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -3271,25 +3380,25 @@
                 "children"
               ]
             },
-            "ui:text": {
+            "fluent:text": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
               }
             },
-            "ui:note": {
+            "primitive:note": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
               }
             },
-            "ui:alert": {
+            "primitive:alert": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
               }
             },
-            "ui:list": {
+            "fluent:list": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -3343,7 +3452,7 @@
                 "select"
               ]
             },
-            "ui:markdown": {
+            "primitive:markdown": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -3376,14 +3485,15 @@
           },
           "externals": {
             "projectionViews": {
-              "ui": {
-                "from": "floor"
-              },
               "fluent": {
                 "from": "fluent",
                 "use": [
                   "button",
+                  "list",
+                  "panel",
+                  "row",
                   "tab-bar",
+                  "text",
                   "text-field",
                   "textarea"
                 ]
@@ -3391,6 +3501,10 @@
               "primitive": {
                 "from": "primitive",
                 "use": [
+                  "alert",
+                  "container",
+                  "markdown",
+                  "note",
                   "timer-button"
                 ]
               },
@@ -3444,10 +3558,36 @@
           "copilot-c2-root": {
             "id": "copilot-c2-root",
             "view": {
-              "capability": "ui:screen",
+              "capability": "primitive:container",
               "props": {
-                "title": "Copilot C2",
-                "subtitle": "Drive local Copilot agents through the demo-boards MCP server"
+                "variant": "column",
+                "gap": "m",
+                "fill": true,
+                "ariaLabel": "Copilot C2"
+              }
+            }
+          },
+          "copilot-c2-title": {
+            "id": "copilot-c2-title",
+            "view": {
+              "capability": "fluent:text",
+              "props": {
+                "value": "Copilot C2",
+                "as": "h1",
+                "variant": "title",
+                "block": true
+              }
+            }
+          },
+          "copilot-c2-subtitle": {
+            "id": "copilot-c2-subtitle",
+            "view": {
+              "capability": "fluent:text",
+              "props": {
+                "value": "Drive local Copilot agents through the demo-boards MCP server",
+                "as": "p",
+                "variant": "subtitle",
+                "block": true
               }
             }
           },
@@ -3464,7 +3604,7 @@
           "copilot-c2-dashboard-actions": {
             "id": "copilot-c2-dashboard-actions",
             "view": {
-              "capability": "ui:row"
+              "capability": "fluent:row"
             }
           },
           "copilot-c2-dashboard-refresh": {
@@ -3524,7 +3664,7 @@
           "copilot-c2-dashboard-status": {
             "id": "copilot-c2-dashboard-status",
             "view": {
-              "capability": "ui:note",
+              "capability": "primitive:note",
               "props": {
                 "tone": "muted"
               },
@@ -3538,7 +3678,7 @@
           "copilot-c2-dashboard-error": {
             "id": "copilot-c2-dashboard-error",
             "view": {
-              "capability": "ui:alert",
+              "capability": "primitive:alert",
               "props": {
                 "label": "Copilot activity error",
                 "level": "error"
@@ -3612,7 +3752,7 @@
           "copilot-c2-agent-navigation": {
             "id": "copilot-c2-agent-navigation",
             "view": {
-              "capability": "ui:row"
+              "capability": "fluent:row"
             }
           },
           "copilot-c2-back-dashboard": {
@@ -3688,7 +3828,7 @@
           "copilot-c2-agent-workspace-name": {
             "id": "copilot-c2-agent-workspace-name",
             "view": {
-              "capability": "ui:text",
+              "capability": "fluent:text",
               "bindings": {
                 "value": {
                   "expression": "($id := copilotC2.selectedAgentId; $agent := copilotC2.agents[id = $id][0]; $string($agent.name ? $agent.name : $id))"
@@ -3699,7 +3839,7 @@
           "copilot-c2-agent-run-status": {
             "id": "copilot-c2-agent-run-status",
             "view": {
-              "capability": "ui:note",
+              "capability": "primitive:note",
               "props": {
                 "tone": "info"
               },
@@ -3755,7 +3895,7 @@
           "copilot-c2-agent-run-actions": {
             "id": "copilot-c2-agent-run-actions",
             "view": {
-              "capability": "ui:row"
+              "capability": "fluent:row"
             }
           },
           "copilot-c2-agent-start-run": {
@@ -3805,7 +3945,7 @@
           "copilot-c2-settings-navigation": {
             "id": "copilot-c2-settings-navigation",
             "view": {
-              "capability": "ui:row",
+              "capability": "fluent:row",
               "visibility": "copilotC2.view = 'settings'"
             }
           },
@@ -3834,7 +3974,7 @@
           "copilot-c2-run-defaults": {
             "id": "copilot-c2-run-defaults",
             "view": {
-              "capability": "ui:panel",
+              "capability": "fluent:panel",
               "props": {
                 "title": "Run defaults",
                 "variant": "inset"
@@ -3926,7 +4066,7 @@
           "copilot-c2-layout": {
             "id": "copilot-c2-layout",
             "view": {
-              "capability": "ui:row",
+              "capability": "fluent:row",
               "props": {
                 "variant": "split"
               },
@@ -3936,7 +4076,7 @@
           "copilot-c2-env": {
             "id": "copilot-c2-env",
             "view": {
-              "capability": "ui:panel",
+              "capability": "fluent:panel",
               "props": {
                 "title": "Environment",
                 "variant": "rail"
@@ -3946,7 +4086,7 @@
           "copilot-c2-env-server": {
             "id": "copilot-c2-env-server",
             "view": {
-              "capability": "ui:note",
+              "capability": "primitive:note",
               "props": {
                 "tone": "muted"
               },
@@ -3960,7 +4100,7 @@
           "copilot-c2-env-status": {
             "id": "copilot-c2-env-status",
             "view": {
-              "capability": "ui:note",
+              "capability": "primitive:note",
               "props": {
                 "tone": "info"
               },
@@ -3974,7 +4114,7 @@
           "copilot-c2-env-error": {
             "id": "copilot-c2-env-error",
             "view": {
-              "capability": "ui:alert",
+              "capability": "primitive:alert",
               "props": {
                 "label": "Environment error",
                 "level": "error"
@@ -4017,26 +4157,25 @@
                     "do": "assign",
                     "target": "copilotC2.selectedAgentId",
                     "args": {
-                      "from": "$event.id"
+                      "from": "$event.values[0]"
                     }
                   }
                 ]
               }
             },
             "view": {
-              "capability": "ui:list",
+              "capability": "fluent:list",
               "props": {
-                "idKey": "id",
-                "primaryKey": "name",
-                "valueKey": "source",
-                "badgeKey": "scope"
+                "variant": "selectable",
+                "selectionMode": "single",
+                "ariaLabel": "Agents"
               },
               "bindings": {
-                "selectedId": {
-                  "from": "copilotC2.selectedAgentId"
+                "selectedValues": {
+                  "expression": "copilotC2.selectedAgentId != '' ? [copilotC2.selectedAgentId] : []"
                 },
                 "items": {
-                  "expression": "copilotC2.agents"
+                  "expression": "copilotC2.agents.{'value':$string(id),'label':$string(name) & (source ? ' · ' & $string(source) : '') & (scope ? ' · ' & $string(scope) : '')}"
                 }
               },
               "visibility": "copilotC2.view = 'legacy'"
@@ -4045,7 +4184,7 @@
           "copilot-c2-agent-detail": {
             "id": "copilot-c2-agent-detail",
             "view": {
-              "capability": "ui:panel",
+              "capability": "fluent:panel",
               "props": {
                 "title": "Selected agent",
                 "variant": "inset"
@@ -4056,7 +4195,7 @@
           "copilot-c2-agent-name": {
             "id": "copilot-c2-agent-name",
             "view": {
-              "capability": "ui:text",
+              "capability": "fluent:text",
               "bindings": {
                 "value": {
                   "expression": "$string(copilotC2.agents[id = copilotC2.selectedAgentId][0].name)"
@@ -4067,7 +4206,7 @@
           "copilot-c2-agent-description": {
             "id": "copilot-c2-agent-description",
             "view": {
-              "capability": "ui:note",
+              "capability": "primitive:note",
               "props": {
                 "tone": "muted"
               },
@@ -4081,7 +4220,7 @@
           "copilot-c2-source-roots": {
             "id": "copilot-c2-source-roots",
             "view": {
-              "capability": "ui:panel",
+              "capability": "fluent:panel",
               "props": {
                 "title": "Source roots",
                 "variant": "inset"
@@ -4091,7 +4230,7 @@
           "copilot-c2-source-roots-status": {
             "id": "copilot-c2-source-roots-status",
             "view": {
-              "capability": "ui:note",
+              "capability": "primitive:note",
               "props": {
                 "tone": "info"
               },
@@ -4105,7 +4244,7 @@
           "copilot-c2-source-roots-error": {
             "id": "copilot-c2-source-roots-error",
             "view": {
-              "capability": "ui:alert",
+              "capability": "primitive:alert",
               "props": {
                 "label": "Source roots error",
                 "level": "error"
@@ -4121,7 +4260,7 @@
           "copilot-c2-source-roots-actions": {
             "id": "copilot-c2-source-roots-actions",
             "view": {
-              "capability": "ui:row"
+              "capability": "fluent:row"
             }
           },
           "copilot-c2-refresh-source-roots": {
@@ -4279,33 +4418,32 @@
                     "do": "assign",
                     "target": "copilotC2.selectedSourceRootId",
                     "args": {
-                      "from": "$event.id"
+                      "from": "$event.values[0]"
                     }
                   },
                   {
                     "do": "assign",
                     "target": "copilotC2.sourceRootId",
                     "args": {
-                      "from": "$event.id"
+                      "from": "$event.values[0]"
                     }
                   }
                 ]
               }
             },
             "view": {
-              "capability": "ui:list",
+              "capability": "fluent:list",
               "props": {
-                "idKey": "id",
-                "primaryKey": "name",
-                "valueKey": "path",
-                "badgeKey": "status"
+                "variant": "selectable",
+                "selectionMode": "single",
+                "ariaLabel": "Source roots"
               },
               "bindings": {
-                "selectedId": {
-                  "from": "copilotC2.selectedSourceRootId"
+                "selectedValues": {
+                  "expression": "copilotC2.selectedSourceRootId != '' ? [copilotC2.selectedSourceRootId] : []"
                 },
                 "items": {
-                  "expression": "copilotC2.sourceRoots"
+                  "expression": "copilotC2.sourceRoots.{'value':$string(id),'label':$string(name) & (path ? ' · ' & $string(path) : '') & (status ? ' · ' & $string(status) : '')}"
                 }
               }
             }
@@ -4313,7 +4451,7 @@
           "copilot-c2-source-root-detail": {
             "id": "copilot-c2-source-root-detail",
             "view": {
-              "capability": "ui:panel",
+              "capability": "fluent:panel",
               "props": {
                 "title": "Selected root",
                 "variant": "inset"
@@ -4324,7 +4462,7 @@
           "copilot-c2-source-root-detail-name": {
             "id": "copilot-c2-source-root-detail-name",
             "view": {
-              "capability": "ui:note",
+              "capability": "primitive:note",
               "props": {
                 "tone": "info"
               },
@@ -4338,7 +4476,7 @@
           "copilot-c2-source-root-detail-path": {
             "id": "copilot-c2-source-root-detail-path",
             "view": {
-              "capability": "ui:note",
+              "capability": "primitive:note",
               "props": {
                 "tone": "muted"
               },
@@ -4352,7 +4490,7 @@
           "copilot-c2-main": {
             "id": "copilot-c2-main",
             "view": {
-              "capability": "ui:panel",
+              "capability": "fluent:panel",
               "props": {
                 "title": "Operations",
                 "variant": "detail"
@@ -4399,7 +4537,7 @@
           "copilot-c2-run-tab": {
             "id": "copilot-c2-run-tab",
             "view": {
-              "capability": "ui:panel",
+              "capability": "fluent:panel",
               "props": {
                 "title": "Start a run",
                 "variant": "tab"
@@ -4410,7 +4548,7 @@
           "copilot-c2-run-status": {
             "id": "copilot-c2-run-status",
             "view": {
-              "capability": "ui:note",
+              "capability": "primitive:note",
               "props": {
                 "tone": "info"
               },
@@ -4424,7 +4562,7 @@
           "copilot-c2-run-error": {
             "id": "copilot-c2-run-error",
             "view": {
-              "capability": "ui:alert",
+              "capability": "primitive:alert",
               "props": {
                 "label": "Run error",
                 "level": "error"
@@ -4522,7 +4660,7 @@
           "copilot-c2-run-actions": {
             "id": "copilot-c2-run-actions",
             "view": {
-              "capability": "ui:row"
+              "capability": "fluent:row"
             }
           },
           "copilot-c2-start-run": {
@@ -4571,7 +4709,7 @@
           "copilot-c2-current-run-run-tab": {
             "id": "copilot-c2-current-run-run-tab",
             "view": {
-              "capability": "ui:panel",
+              "capability": "fluent:panel",
               "props": {
                 "title": "Current run",
                 "variant": "inset"
@@ -4582,7 +4720,7 @@
           "copilot-c2-current-run-summary-run-tab": {
             "id": "copilot-c2-current-run-summary-run-tab",
             "view": {
-              "capability": "ui:note",
+              "capability": "primitive:note",
               "props": {
                 "tone": "info"
               },
@@ -4596,7 +4734,7 @@
           "copilot-c2-current-run-output-run-tab": {
             "id": "copilot-c2-current-run-output-run-tab",
             "view": {
-              "capability": "ui:markdown",
+              "capability": "primitive:markdown",
               "bindings": {
                 "value": {
                   "expression": "($status := $string(copilotC2.currentRun.status ? copilotC2.currentRun.status : 'unknown'); $exit := copilotC2.currentRun.exitCode; $summary := 'Run ' & $string(copilotC2.currentRun.id) & ' is ' & $status & ($type($exit) = 'number' ? ' (exit ' & $string($exit) & ')' : '') & '.'; $stdout := $trim($string(copilotC2.currentRun.stdout)); $stderr := $trim($string(copilotC2.currentRun.stderr)); $error := $trim($string(copilotC2.currentRun.error)); $summary & ($stdout != '' ? '\n\n## stdout\n\n```text\n' & $stdout & '\n```' : '') & ($stderr != '' ? '\n\n## stderr\n\n```text\n' & $stderr & '\n```' : '') & ($error != '' ? '\n\n## error\n\n' & $error : ''))"
@@ -4607,7 +4745,7 @@
           "copilot-c2-history-tab": {
             "id": "copilot-c2-history-tab",
             "view": {
-              "capability": "ui:panel",
+              "capability": "fluent:panel",
               "props": {
                 "title": "Run history",
                 "variant": "tab"
@@ -4618,7 +4756,7 @@
           "copilot-c2-history-status": {
             "id": "copilot-c2-history-status",
             "view": {
-              "capability": "ui:note",
+              "capability": "primitive:note",
               "props": {
                 "tone": "info"
               },
@@ -4632,7 +4770,7 @@
           "copilot-c2-history-actions": {
             "id": "copilot-c2-history-actions",
             "view": {
-              "capability": "ui:row"
+              "capability": "fluent:row"
             }
           },
           "copilot-c2-refresh-runs": {
@@ -4687,7 +4825,7 @@
                     "do": "assign",
                     "target": "copilotC2.selectedRunId",
                     "args": {
-                      "from": "$event.id"
+                      "from": "$event.values[0]"
                     }
                   },
                   {
@@ -4700,19 +4838,18 @@
               }
             },
             "view": {
-              "capability": "ui:list",
+              "capability": "fluent:list",
               "props": {
-                "idKey": "id",
-                "primaryKey": "name",
-                "valueKey": "updatedAt",
-                "badgeKey": "status"
+                "variant": "selectable",
+                "selectionMode": "single",
+                "ariaLabel": "Run history"
               },
               "bindings": {
-                "selectedId": {
-                  "from": "copilotC2.selectedRunId"
+                "selectedValues": {
+                  "expression": "copilotC2.selectedRunId != '' ? [copilotC2.selectedRunId] : []"
                 },
                 "items": {
-                  "expression": "copilotC2.runs.{'id':$string(id),'name':$string(agent ? agent : 'copilot'),'status':$string(status),'updatedAt':$string(finishedAt ? finishedAt : (startedAt ? startedAt : createdAt))}"
+                  "expression": "copilotC2.runs.{'value':$string(id),'label':$string(agent ? agent : 'copilot') & ' · ' & $string(status) & ' · ' & $string(finishedAt ? finishedAt : (startedAt ? startedAt : createdAt))}"
                 }
               }
             }
@@ -4720,7 +4857,7 @@
           "copilot-c2-current-run-history-tab": {
             "id": "copilot-c2-current-run-history-tab",
             "view": {
-              "capability": "ui:panel",
+              "capability": "fluent:panel",
               "props": {
                 "title": "Selected run",
                 "variant": "inset"
@@ -4731,7 +4868,7 @@
           "copilot-c2-current-run-summary-history-tab": {
             "id": "copilot-c2-current-run-summary-history-tab",
             "view": {
-              "capability": "ui:note",
+              "capability": "primitive:note",
               "props": {
                 "tone": "info"
               },
@@ -4745,7 +4882,7 @@
           "copilot-c2-current-run-output-history-tab": {
             "id": "copilot-c2-current-run-output-history-tab",
             "view": {
-              "capability": "ui:markdown",
+              "capability": "primitive:markdown",
               "bindings": {
                 "value": {
                   "expression": "($status := $string(copilotC2.currentRun.status ? copilotC2.currentRun.status : 'unknown'); $exit := copilotC2.currentRun.exitCode; $summary := 'Run ' & $string(copilotC2.currentRun.id) & ' is ' & $status & ($type($exit) = 'number' ? ' (exit ' & $string($exit) & ')' : '') & '.'; $stdout := $trim($string(copilotC2.currentRun.stdout)); $stderr := $trim($string(copilotC2.currentRun.stderr)); $error := $trim($string(copilotC2.currentRun.error)); $summary & ($stdout != '' ? '\n\n## stdout\n\n```text\n' & $stdout & '\n```' : '') & ($stderr != '' ? '\n\n## stderr\n\n```text\n' & $stderr & '\n```' : '') & ($error != '' ? '\n\n## error\n\n' & $error : ''))"
@@ -4761,10 +4898,22 @@
             ],
             "placements": [
               {
-                "cell": "copilot-c2-dashboard",
+                "cell": "copilot-c2-title",
                 "parent": "copilot-c2-root",
                 "slot": "children",
                 "order": 0
+              },
+              {
+                "cell": "copilot-c2-subtitle",
+                "parent": "copilot-c2-root",
+                "slot": "children",
+                "order": 1
+              },
+              {
+                "cell": "copilot-c2-dashboard",
+                "parent": "copilot-c2-root",
+                "slot": "children",
+                "order": 2
               },
               {
                 "cell": "copilot-c2-dashboard-actions",
@@ -4806,7 +4955,7 @@
                 "cell": "copilot-c2-agent-workspace",
                 "parent": "copilot-c2-root",
                 "slot": "children",
-                "order": 1
+                "order": 3
               },
               {
                 "cell": "copilot-c2-agent-navigation",
@@ -4878,7 +5027,7 @@
                 "cell": "copilot-c2-settings-navigation",
                 "parent": "copilot-c2-root",
                 "slot": "children",
-                "order": 2
+                "order": 4
               },
               {
                 "cell": "copilot-c2-settings-back",
@@ -4890,7 +5039,7 @@
                 "cell": "copilot-c2-run-defaults",
                 "parent": "copilot-c2-root",
                 "slot": "children",
-                "order": 3
+                "order": 5
               },
               {
                 "cell": "copilot-c2-settings-mcp-server",
@@ -4914,7 +5063,7 @@
                 "cell": "copilot-c2-layout",
                 "parent": "copilot-c2-root",
                 "slot": "children",
-                "order": 4
+                "order": 6
               },
               {
                 "cell": "copilot-c2-env",
@@ -5340,7 +5489,7 @@
             "invoke"
           ],
           "capabilities": {
-            "ui:screen": {
+            "primitive:container": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -5349,7 +5498,7 @@
                 "children"
               ]
             },
-            "ui:panel": {
+            "fluent:panel": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -5358,43 +5507,19 @@
                 "children"
               ]
             },
-            "ui:col": {
-              "propsSchema": {
-                "type": "object",
-                "additionalProperties": true
-              },
-              "slots": [
-                "children"
-              ]
-            },
-            "ui:row": {
-              "propsSchema": {
-                "type": "object",
-                "additionalProperties": true
-              },
-              "slots": [
-                "children"
-              ]
-            },
-            "ui:heading": {
+            "primitive:note": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
               }
             },
-            "ui:note": {
+            "fluent:text": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
               }
             },
-            "ui:text": {
-              "propsSchema": {
-                "type": "object",
-                "additionalProperties": true
-              }
-            },
-            "ui:alert": {
+            "primitive:alert": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -5459,7 +5584,7 @@
                 "press"
               ]
             },
-            "ui:markdown": {
+            "primitive:markdown": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -5468,14 +5593,22 @@
           },
           "externals": {
             "projectionViews": {
-              "ui": {
-                "from": "floor"
-              },
               "fluent": {
                 "from": "fluent",
                 "use": [
                   "button",
+                  "panel",
+                  "text",
                   "text-field"
+                ]
+              },
+              "primitive": {
+                "from": "primitive",
+                "use": [
+                  "alert",
+                  "container",
+                  "markdown",
+                  "note"
                 ]
               },
               "agent": {
@@ -5520,10 +5653,36 @@
           "foundry-agent-root": {
             "id": "foundry-agent-root",
             "view": {
-              "capability": "ui:screen",
+              "capability": "primitive:container",
               "props": {
-                "title": "Foundry Agent",
-                "subtitle": "Choose an available agent and start a conversation."
+                "variant": "column",
+                "gap": "m",
+                "fill": true,
+                "ariaLabel": "Foundry Agent"
+              }
+            }
+          },
+          "foundry-agent-title": {
+            "id": "foundry-agent-title",
+            "view": {
+              "capability": "fluent:text",
+              "props": {
+                "value": "Foundry Agent",
+                "as": "h1",
+                "variant": "title",
+                "block": true
+              }
+            }
+          },
+          "foundry-agent-subtitle": {
+            "id": "foundry-agent-subtitle",
+            "view": {
+              "capability": "fluent:text",
+              "props": {
+                "value": "Choose an available agent and start a conversation.",
+                "as": "p",
+                "variant": "subtitle",
+                "block": true
               }
             }
           },
@@ -5658,7 +5817,7 @@
           "agent-connected": {
             "id": "agent-connected",
             "view": {
-              "capability": "ui:alert",
+              "capability": "primitive:alert",
               "props": {
                 "label": "Connected to",
                 "level": "good"
@@ -5728,7 +5887,7 @@
           "agent-request-error": {
             "id": "agent-request-error",
             "view": {
-              "capability": "ui:alert",
+              "capability": "primitive:alert",
               "props": {
                 "label": "Something went wrong",
                 "level": "error"
@@ -5744,7 +5903,7 @@
           "agent-asked-panel": {
             "id": "agent-asked-panel",
             "view": {
-              "capability": "ui:panel",
+              "capability": "fluent:panel",
               "props": {
                 "title": "You asked",
                 "variant": "inset"
@@ -5755,7 +5914,7 @@
           "agent-asked-value": {
             "id": "agent-asked-value",
             "view": {
-              "capability": "ui:note",
+              "capability": "primitive:note",
               "props": {
                 "tone": "muted"
               },
@@ -5769,7 +5928,7 @@
           "agent-reply-panel": {
             "id": "agent-reply-panel",
             "view": {
-              "capability": "ui:panel",
+              "capability": "fluent:panel",
               "props": {
                 "title": "Reply",
                 "variant": "inset"
@@ -5779,7 +5938,7 @@
           "agent-reply-empty": {
             "id": "agent-reply-empty",
             "view": {
-              "capability": "ui:note",
+              "capability": "primitive:note",
               "props": {
                 "value": "Send a message to see the agent's reply.",
                 "tone": "muted"
@@ -5790,7 +5949,7 @@
           "agent-reply-value": {
             "id": "agent-reply-value",
             "view": {
-              "capability": "ui:markdown",
+              "capability": "primitive:markdown",
               "bindings": {
                 "value": {
                   "from": "agent.reply"
@@ -5828,10 +5987,22 @@
             ],
             "placements": [
               {
-                "cell": "foundry-access-gate",
+                "cell": "foundry-agent-title",
                 "parent": "foundry-agent-root",
                 "slot": "children",
                 "order": 0
+              },
+              {
+                "cell": "foundry-agent-subtitle",
+                "parent": "foundry-agent-root",
+                "slot": "children",
+                "order": 1
+              },
+              {
+                "cell": "foundry-access-gate",
+                "parent": "foundry-agent-root",
+                "slot": "children",
+                "order": 2
               },
               {
                 "cell": "agent-demo",
@@ -6057,7 +6228,7 @@
             "invoke"
           ],
           "capabilities": {
-            "ui:screen": {
+            "primitive:container": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -6066,7 +6237,7 @@
                 "children"
               ]
             },
-            "ui:panel": {
+            "fluent:panel": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -6075,43 +6246,19 @@
                 "children"
               ]
             },
-            "ui:col": {
-              "propsSchema": {
-                "type": "object",
-                "additionalProperties": true
-              },
-              "slots": [
-                "children"
-              ]
-            },
-            "ui:row": {
-              "propsSchema": {
-                "type": "object",
-                "additionalProperties": true
-              },
-              "slots": [
-                "children"
-              ]
-            },
-            "ui:heading": {
+            "primitive:note": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
               }
             },
-            "ui:note": {
+            "fluent:text": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
               }
             },
-            "ui:text": {
-              "propsSchema": {
-                "type": "object",
-                "additionalProperties": true
-              }
-            },
-            "ui:alert": {
+            "primitive:alert": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -6176,7 +6323,7 @@
                 "press"
               ]
             },
-            "ui:markdown": {
+            "primitive:markdown": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -6185,14 +6332,22 @@
           },
           "externals": {
             "projectionViews": {
-              "ui": {
-                "from": "floor"
-              },
               "fluent": {
                 "from": "fluent",
                 "use": [
                   "button",
+                  "panel",
+                  "text",
                   "text-field"
+                ]
+              },
+              "primitive": {
+                "from": "primitive",
+                "use": [
+                  "alert",
+                  "container",
+                  "markdown",
+                  "note"
                 ]
               },
               "agent": {
@@ -6237,10 +6392,36 @@
           "foundry-agent-root": {
             "id": "foundry-agent-root",
             "view": {
-              "capability": "ui:screen",
+              "capability": "primitive:container",
               "props": {
-                "title": "Foundry Agent",
-                "subtitle": "Choose an available agent and start a conversation."
+                "variant": "column",
+                "gap": "m",
+                "fill": true,
+                "ariaLabel": "Foundry Agent"
+              }
+            }
+          },
+          "foundry-agent-title": {
+            "id": "foundry-agent-title",
+            "view": {
+              "capability": "fluent:text",
+              "props": {
+                "value": "Foundry Agent",
+                "as": "h1",
+                "variant": "title",
+                "block": true
+              }
+            }
+          },
+          "foundry-agent-subtitle": {
+            "id": "foundry-agent-subtitle",
+            "view": {
+              "capability": "fluent:text",
+              "props": {
+                "value": "Choose an available agent and start a conversation.",
+                "as": "p",
+                "variant": "subtitle",
+                "block": true
               }
             }
           },
@@ -6356,7 +6537,7 @@
           "agent-connected": {
             "id": "agent-connected",
             "view": {
-              "capability": "ui:alert",
+              "capability": "primitive:alert",
               "props": {
                 "label": "Connected to",
                 "level": "good"
@@ -6421,7 +6602,7 @@
           "agent-request-error": {
             "id": "agent-request-error",
             "view": {
-              "capability": "ui:alert",
+              "capability": "primitive:alert",
               "props": {
                 "label": "Something went wrong",
                 "level": "error"
@@ -6437,7 +6618,7 @@
           "agent-asked-panel": {
             "id": "agent-asked-panel",
             "view": {
-              "capability": "ui:panel",
+              "capability": "fluent:panel",
               "props": {
                 "title": "You asked",
                 "variant": "inset"
@@ -6448,7 +6629,7 @@
           "agent-asked-value": {
             "id": "agent-asked-value",
             "view": {
-              "capability": "ui:note",
+              "capability": "primitive:note",
               "props": {
                 "tone": "muted"
               },
@@ -6462,7 +6643,7 @@
           "agent-reply-panel": {
             "id": "agent-reply-panel",
             "view": {
-              "capability": "ui:panel",
+              "capability": "fluent:panel",
               "props": {
                 "title": "Reply",
                 "variant": "inset"
@@ -6472,7 +6653,7 @@
           "agent-reply-empty": {
             "id": "agent-reply-empty",
             "view": {
-              "capability": "ui:note",
+              "capability": "primitive:note",
               "props": {
                 "value": "Send a message to see the agent's reply.",
                 "tone": "muted"
@@ -6483,7 +6664,7 @@
           "agent-reply-value": {
             "id": "agent-reply-value",
             "view": {
-              "capability": "ui:markdown",
+              "capability": "primitive:markdown",
               "bindings": {
                 "value": {
                   "from": "agent.reply"
@@ -6521,10 +6702,22 @@
             ],
             "placements": [
               {
-                "cell": "foundry-access-gate",
+                "cell": "foundry-agent-title",
                 "parent": "foundry-agent-root",
                 "slot": "children",
                 "order": 0
+              },
+              {
+                "cell": "foundry-agent-subtitle",
+                "parent": "foundry-agent-root",
+                "slot": "children",
+                "order": 1
+              },
+              {
+                "cell": "foundry-access-gate",
+                "parent": "foundry-agent-root",
+                "slot": "children",
+                "order": 2
               },
               {
                 "cell": "agent-demo",
@@ -8254,7 +8447,7 @@
                 "children"
               ]
             },
-            "ui:markdown": {
+            "primitive:markdown": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -8298,16 +8491,11 @@
                   "dropdown"
                 ]
               },
-              "ui": {
-                "from": "floor",
-                "use": [
-                  "markdown"
-                ]
-              },
               "primitive": {
                 "from": "primitive",
                 "use": [
-                  "form"
+                  "form",
+                  "markdown"
                 ]
               }
             },
@@ -8426,7 +8614,7 @@
               }
             ],
             "view": {
-              "capability": "ui:markdown",
+              "capability": "primitive:markdown",
               "bindings": {
                 "value": {
                   "from": "incident.content"
@@ -8779,7 +8967,7 @@
                     "visibility": "incident1a.model = null or externalContext.content != incident1a.refinedContent"
                   },
                   "incident-sections": {
-                    "capability": "semantic:component-data-sections",
+                    "capability": "incident1a:component-data-sections",
                     "bindings": {
                       "sections": {
                         "from": "incident1a.model.sections"
@@ -8868,7 +9056,7 @@
                     "visibility": "true"
                   },
                   "incident-report-markdown": {
-                    "capability": "ui:markdown",
+                    "capability": "primitive:markdown",
                     "bindings": {
                       "value": {
                         "from": "incident1a.content"
@@ -8950,7 +9138,7 @@
                     "visibility": "incident1a.model = null or incident1a.content != incident1a.refinedContent"
                   },
                   "incident-sections": {
-                    "capability": "semantic:component-data-sections",
+                    "capability": "incident1a:component-data-sections",
                     "bindings": {
                       "sections": {
                         "from": "incident1a.model.sections"
@@ -9292,7 +9480,7 @@
               ],
               "dataProp": "value"
             },
-            "semantic:component-data-sections": {
+            "incident1a:component-data-sections": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -9331,7 +9519,7 @@
                 "press"
               ]
             },
-            "ui:markdown": {
+            "primitive:markdown": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -9353,12 +9541,6 @@
               "incident1a": {
                 "from": "self"
               },
-              "semantic": {
-                "from": "semantic",
-                "use": [
-                  "component-data-sections"
-                ]
-              },
               "foundry": {
                 "from": "foundry",
                 "use": [
@@ -9372,16 +9554,11 @@
                   "button"
                 ]
               },
-              "ui": {
-                "from": "floor",
-                "use": [
-                  "markdown"
-                ]
-              },
               "primitive": {
                 "from": "primitive",
                 "use": [
-                  "form"
+                  "form",
+                  "markdown"
                 ]
               }
             },
@@ -9989,7 +10166,7 @@
                     "visibility": "true"
                   },
                   "incident-source-markdown": {
-                    "capability": "ui:markdown",
+                    "capability": "primitive:markdown",
                     "bindings": {
                       "value": {
                         "from": "incident2.content"
@@ -11296,7 +11473,7 @@
               ],
               "dataProp": "value"
             },
-            "ui:markdown": {
+            "primitive:markdown": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -11340,16 +11517,11 @@
                   "dropdown"
                 ]
               },
-              "ui": {
-                "from": "floor",
-                "use": [
-                  "markdown"
-                ]
-              },
               "primitive": {
                 "from": "primitive",
                 "use": [
-                  "form"
+                  "form",
+                  "markdown"
                 ]
               }
             },
@@ -11869,7 +12041,7 @@
                     "visibility": "incident3.editing"
                   },
                   "incident-source-markdown": {
-                    "capability": "ui:markdown",
+                    "capability": "primitive:markdown",
                     "bindings": {
                       "value": {
                         "from": "incident3.content"
@@ -13078,7 +13250,7 @@
               ],
               "dataProp": "value"
             },
-            "ui:markdown": {
+            "primitive:markdown": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -13113,16 +13285,11 @@
                   "dropdown"
                 ]
               },
-              "ui": {
-                "from": "floor",
-                "use": [
-                  "markdown"
-                ]
-              },
               "primitive": {
                 "from": "primitive",
                 "use": [
-                  "form"
+                  "form",
+                  "markdown"
                 ]
               }
             },
@@ -13517,7 +13684,7 @@
             "assign"
           ],
           "capabilities": {
-            "ui:screen": {
+            "primitive:container": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -13526,7 +13693,7 @@
                 "children"
               ]
             },
-            "ui:row": {
+            "fluent:row": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -13535,7 +13702,7 @@
                 "children"
               ]
             },
-            "ui:panel": {
+            "fluent:panel": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -13544,37 +13711,61 @@
                 "children"
               ]
             },
-            "ui:table": {
+            "fluent:data-grid": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
               },
               "emits": [
-                "rowSelect"
+                "select",
+                "sort"
               ]
             },
-            "ui:markdown": {
+            "primitive:markdown": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
               },
               "dataProp": "value"
             },
-            "ui:actions": {
+            "fluent:toolbar": {
+              "propsSchema": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "slots": [
+                "children"
+              ]
+            },
+            "fluent:button": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
               },
               "emits": [
                 "press"
-              ],
-              "dataProp": "buttons"
+              ]
             }
           },
           "externals": {
             "projectionViews": {
-              "ui": {
-                "from": "floor"
+              "primitive": {
+                "from": "primitive",
+                "use": [
+                  "container",
+                  "markdown"
+                ]
+              },
+              "fluent": {
+                "from": "fluent",
+                "use": [
+                  "button",
+                  "data-grid",
+                  "panel",
+                  "row",
+                  "text",
+                  "toolbar"
+                ]
               }
             }
           },
@@ -13632,60 +13823,86 @@
           "live-cards-root": {
             "id": "live-cards-root",
             "view": {
-              "capability": "ui:screen",
+              "capability": "primitive:container",
               "props": {
-                "title": "Live cards",
-                "subtitle": "One state model projected into selectable operational cards"
+                "variant": "column",
+                "gap": "m",
+                "fill": true,
+                "ariaLabel": "Live cards"
+              }
+            }
+          },
+          "live-cards-title": {
+            "id": "live-cards-title",
+            "view": {
+              "capability": "fluent:text",
+              "props": {
+                "value": "Live cards",
+                "as": "h1",
+                "variant": "title",
+                "block": true
+              }
+            }
+          },
+          "live-cards-subtitle": {
+            "id": "live-cards-subtitle",
+            "view": {
+              "capability": "fluent:text",
+              "props": {
+                "value": "One state model projected into selectable operational cards",
+                "as": "p",
+                "variant": "subtitle",
+                "block": true
               }
             }
           },
           "live-cards-layout": {
             "id": "live-cards-layout",
             "view": {
-              "capability": "ui:row",
-              "props": {
-                "variant": "split"
-              }
+              "capability": "fluent:row"
             }
           },
           "live-cards-catalog": {
             "id": "live-cards-catalog",
             "behavior": {
               "events": {
-                "rowSelect": [
+                "select": [
                   {
                     "do": "assign",
                     "target": "liveCards.selectedId",
                     "args": {
-                      "from": "$event.id"
+                      "from": "$event.rowIds[0]"
                     }
                   }
                 ]
               }
             },
             "view": {
-              "capability": "ui:table",
+              "capability": "fluent:data-grid",
               "props": {
-                "title": "Cards",
-                "idKey": "id",
+                "ariaLabel": "Cards",
+                "selectionMode": "single",
                 "columns": [
                   {
-                    "key": "title",
+                    "id": "title",
                     "label": "Card"
                   },
                   {
-                    "key": "status",
+                    "id": "status",
                     "label": "Status"
                   },
                   {
-                    "key": "owner",
+                    "id": "owner",
                     "label": "Owner"
                   }
                 ]
               },
               "bindings": {
                 "rows": {
-                  "from": "liveCards.cards"
+                  "expression": "liveCards.cards.{'id':$string(id),'cells':{'title':title,'status':status,'owner':owner}}"
+                },
+                "selectedRowIds": {
+                  "expression": "liveCards.selectedId != '' ? [liveCards.selectedId] : []"
                 }
               }
             }
@@ -13693,7 +13910,7 @@
           "live-cards-detail": {
             "id": "live-cards-detail",
             "view": {
-              "capability": "ui:panel",
+              "capability": "fluent:panel",
               "props": {
                 "title": "Selected card"
               }
@@ -13702,7 +13919,7 @@
           "live-cards-detail-text": {
             "id": "live-cards-detail-text",
             "view": {
-              "capability": "ui:markdown",
+              "capability": "primitive:markdown",
               "bindings": {
                 "value": {
                   "expression": "liveCards.cards[id = liveCards.selectedId][0].detail"
@@ -13712,6 +13929,15 @@
           },
           "live-cards-shortcuts": {
             "id": "live-cards-shortcuts",
+            "view": {
+              "capability": "fluent:toolbar",
+              "props": {
+                "ariaLabel": "Choose live card"
+              }
+            }
+          },
+          "live-cards-shortcut-incident": {
+            "id": "live-cards-shortcut-incident",
             "behavior": {
               "events": {
                 "press": [
@@ -13719,18 +13945,60 @@
                     "do": "assign",
                     "target": "liveCards.selectedId",
                     "args": {
-                      "from": "$event.id"
+                      "value": "incident"
                     }
                   }
                 ]
               }
             },
             "view": {
-              "capability": "ui:actions",
-              "bindings": {
-                "buttons": {
-                  "from": "liveCards.shortcuts"
-                }
+              "capability": "fluent:button",
+              "props": {
+                "label": "Incident"
+              }
+            }
+          },
+          "live-cards-shortcut-evidence": {
+            "id": "live-cards-shortcut-evidence",
+            "behavior": {
+              "events": {
+                "press": [
+                  {
+                    "do": "assign",
+                    "target": "liveCards.selectedId",
+                    "args": {
+                      "value": "evidence"
+                    }
+                  }
+                ]
+              }
+            },
+            "view": {
+              "capability": "fluent:button",
+              "props": {
+                "label": "Evidence"
+              }
+            }
+          },
+          "live-cards-shortcut-response": {
+            "id": "live-cards-shortcut-response",
+            "behavior": {
+              "events": {
+                "press": [
+                  {
+                    "do": "assign",
+                    "target": "liveCards.selectedId",
+                    "args": {
+                      "value": "response"
+                    }
+                  }
+                ]
+              }
+            },
+            "view": {
+              "capability": "fluent:button",
+              "props": {
+                "label": "Response"
               }
             }
           }
@@ -13742,16 +14010,46 @@
             ],
             "placements": [
               {
-                "cell": "live-cards-shortcuts",
+                "cell": "live-cards-title",
                 "parent": "live-cards-root",
                 "slot": "children",
                 "order": 0
               },
               {
-                "cell": "live-cards-layout",
+                "cell": "live-cards-subtitle",
                 "parent": "live-cards-root",
                 "slot": "children",
                 "order": 1
+              },
+              {
+                "cell": "live-cards-shortcuts",
+                "parent": "live-cards-root",
+                "slot": "children",
+                "order": 2
+              },
+              {
+                "cell": "live-cards-shortcut-incident",
+                "parent": "live-cards-shortcuts",
+                "slot": "children",
+                "order": 0
+              },
+              {
+                "cell": "live-cards-shortcut-evidence",
+                "parent": "live-cards-shortcuts",
+                "slot": "children",
+                "order": 1
+              },
+              {
+                "cell": "live-cards-shortcut-response",
+                "parent": "live-cards-shortcuts",
+                "slot": "children",
+                "order": 2
+              },
+              {
+                "cell": "live-cards-layout",
+                "parent": "live-cards-root",
+                "slot": "children",
+                "order": 3
               },
               {
                 "cell": "live-cards-catalog",
@@ -15280,7 +15578,7 @@
             "emit"
           ],
           "capabilities": {
-            "ui:screen": {
+            "primitive:container": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -15289,7 +15587,7 @@
                 "children"
               ]
             },
-            "ui:row": {
+            "fluent:row": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -15298,7 +15596,7 @@
                 "children"
               ]
             },
-            "ui:col": {
+            "fluent:panel": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -15307,34 +15605,19 @@
                 "children"
               ]
             },
-            "ui:panel": {
-              "propsSchema": {
-                "type": "object",
-                "additionalProperties": true
-              },
-              "slots": [
-                "children"
-              ]
-            },
-            "ui:heading": {
+            "primitive:note": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
               }
             },
-            "ui:note": {
+            "primitive:property": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
               }
             },
-            "ui:property": {
-              "propsSchema": {
-                "type": "object",
-                "additionalProperties": true
-              }
-            },
-            "ui:list": {
+            "fluent:list": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -15406,7 +15689,7 @@
                 "download"
               ]
             },
-            "ui:math-challenge": {
+            "primitive:math-challenge": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -15434,22 +15717,27 @@
           },
           "externals": {
             "projectionViews": {
-              "ui": {
-                "from": "floor"
-              },
               "fluent": {
                 "from": "fluent",
                 "use": [
                   "button",
+                  "list",
+                  "panel",
+                  "row",
+                  "text",
                   "tab-bar"
                 ]
               },
               "primitive": {
                 "from": "primitive",
                 "use": [
+                  "container",
                   "file-download",
                   "file-input",
-                  "form"
+                  "form",
+                  "math-challenge",
+                  "note",
+                  "property"
                 ]
               },
               "manage-blueprints": {
@@ -15540,17 +15828,43 @@
           "manage-blueprints-root": {
             "id": "manage-blueprints-root",
             "view": {
-              "capability": "ui:screen",
+              "capability": "primitive:container",
               "props": {
-                "title": "Manage Blueprints",
-                "subtitle": "Browse built-in Blueprints and manage your editable copies"
+                "variant": "column",
+                "gap": "m",
+                "fill": true,
+                "ariaLabel": "Manage Blueprints"
+              }
+            }
+          },
+          "manage-blueprints-title": {
+            "id": "manage-blueprints-title",
+            "view": {
+              "capability": "fluent:text",
+              "props": {
+                "value": "Manage Blueprints",
+                "as": "h1",
+                "variant": "title",
+                "block": true
+              }
+            }
+          },
+          "manage-blueprints-subtitle": {
+            "id": "manage-blueprints-subtitle",
+            "view": {
+              "capability": "fluent:text",
+              "props": {
+                "value": "Browse built-in Blueprints and manage your editable copies",
+                "as": "p",
+                "variant": "subtitle",
+                "block": true
               }
             }
           },
           "manage-blueprints-layout": {
             "id": "manage-blueprints-layout",
             "view": {
-              "capability": "ui:row",
+              "capability": "fluent:row",
               "props": {
                 "variant": "split"
               }
@@ -15559,7 +15873,7 @@
           "blueprint-catalog": {
             "id": "blueprint-catalog",
             "view": {
-              "capability": "ui:panel",
+              "capability": "fluent:panel",
               "props": {
                 "title": "Blueprints",
                 "variant": "rail"
@@ -15569,7 +15883,7 @@
           "catalog-status": {
             "id": "catalog-status",
             "view": {
-              "capability": "ui:note",
+              "capability": "primitive:note",
               "props": {
                 "tone": "info"
               },
@@ -15583,7 +15897,7 @@
           "catalog-actions": {
             "id": "catalog-actions",
             "view": {
-              "capability": "ui:row"
+              "capability": "fluent:row"
             }
           },
           "create-blueprint": {
@@ -15646,23 +15960,18 @@
               }
             },
             "view": {
-              "capability": "ui:list",
+              "capability": "fluent:list",
               "props": {
-                "idKey": "id",
-                "primaryKey": "label",
-                "secondaryKey": "detail",
-                "badgeKeys": [
-                  "scopeLabel",
-                  "sourceLabel"
-                ],
-                "emptyText": "No Blueprints found."
+                "variant": "selectable",
+                "selectionMode": "single",
+                "ariaLabel": "Blueprints"
               },
               "bindings": {
                 "items": {
-                  "from": "manageBlueprints.blueprints"
+                  "expression": "manageBlueprints.blueprints.{'value':$string(id),'label':$string(label) & (detail ? ' · ' & $string(detail) : '') & (scopeLabel ? ' · ' & $string(scopeLabel) : '') & (sourceLabel ? ' · ' & $string(sourceLabel) : '')}"
                 },
-                "selectedId": {
-                  "from": "manageBlueprints.selectedId"
+                "selectedValues": {
+                  "expression": "manageBlueprints.selectedId != '' ? [manageBlueprints.selectedId] : []"
                 }
               }
             }
@@ -15670,7 +15979,7 @@
           "blueprint-detail": {
             "id": "blueprint-detail",
             "view": {
-              "capability": "ui:panel",
+              "capability": "fluent:panel",
               "props": {
                 "title": "Blueprint",
                 "variant": "detail"
@@ -15680,7 +15989,7 @@
           "empty-selection": {
             "id": "empty-selection",
             "view": {
-              "capability": "ui:note",
+              "capability": "primitive:note",
               "props": {
                 "value": "Select a Blueprint or create a new one.",
                 "tone": "muted"
@@ -15718,7 +16027,7 @@
           "blueprint-overview": {
             "id": "blueprint-overview",
             "view": {
-              "capability": "ui:panel",
+              "capability": "fluent:panel",
               "props": {
                 "title": "Details",
                 "variant": "tab"
@@ -15729,7 +16038,7 @@
           "blueprint-id": {
             "id": "blueprint-id",
             "view": {
-              "capability": "ui:property",
+              "capability": "primitive:property",
               "props": {
                 "label": "ID"
               },
@@ -15743,7 +16052,7 @@
           "blueprint-source": {
             "id": "blueprint-source",
             "view": {
-              "capability": "ui:property",
+              "capability": "primitive:property",
               "props": {
                 "label": "Source"
               },
@@ -15757,7 +16066,7 @@
           "blueprint-version": {
             "id": "blueprint-version",
             "view": {
-              "capability": "ui:property",
+              "capability": "primitive:property",
               "props": {
                 "label": "Version"
               },
@@ -15771,7 +16080,7 @@
           "blueprint-structure-mode": {
             "id": "blueprint-structure-mode",
             "view": {
-              "capability": "ui:property",
+              "capability": "primitive:property",
               "props": {
                 "label": "Structure mode"
               },
@@ -15785,7 +16094,7 @@
           "blueprint-tiers": {
             "id": "blueprint-tiers",
             "view": {
-              "capability": "ui:property",
+              "capability": "primitive:property",
               "props": {
                 "label": "Tiers"
               },
@@ -15799,7 +16108,7 @@
           "blueprint-recipes": {
             "id": "blueprint-recipes",
             "view": {
-              "capability": "ui:property",
+              "capability": "primitive:property",
               "props": {
                 "label": "Recipes"
               },
@@ -15813,7 +16122,7 @@
           "overview-actions": {
             "id": "overview-actions",
             "view": {
-              "capability": "ui:row"
+              "capability": "fluent:row"
             }
           },
           "clone-blueprint": {
@@ -15863,7 +16172,7 @@
           "blueprint-draft": {
             "id": "blueprint-draft",
             "view": {
-              "capability": "ui:panel",
+              "capability": "fluent:panel",
               "props": {
                 "title": "JSON editor",
                 "variant": "tab"
@@ -15874,7 +16183,7 @@
           "editor-error": {
             "id": "editor-error",
             "view": {
-              "capability": "ui:note",
+              "capability": "primitive:note",
               "props": {
                 "tone": "danger"
               },
@@ -15999,7 +16308,7 @@
           "editor-actions": {
             "id": "editor-actions",
             "view": {
-              "capability": "ui:row"
+              "capability": "fluent:row"
             }
           },
           "export-blueprint": {
@@ -16026,14 +16335,14 @@
           "blueprint-preview": {
             "id": "blueprint-preview",
             "view": {
-              "capability": "ui:col",
+              "capability": "primitive:container",
               "visibility": "manageBlueprints.tab = 'preview'"
             }
           },
           "preview-error": {
             "id": "preview-error",
             "view": {
-              "capability": "ui:note",
+              "capability": "primitive:note",
               "props": {
                 "tone": "warning"
               },
@@ -16083,7 +16392,7 @@
               }
             },
             "view": {
-              "capability": "ui:math-challenge",
+              "capability": "primitive:math-challenge",
               "props": {
                 "title": "Confirm blueprint deletion",
                 "operandA": 6,
@@ -16106,16 +16415,28 @@
             ],
             "placements": [
               {
-                "cell": "catalog-loader",
+                "cell": "manage-blueprints-title",
                 "parent": "manage-blueprints-root",
                 "slot": "children",
                 "order": 0
               },
               {
-                "cell": "manage-blueprints-layout",
+                "cell": "manage-blueprints-subtitle",
                 "parent": "manage-blueprints-root",
                 "slot": "children",
                 "order": 1
+              },
+              {
+                "cell": "catalog-loader",
+                "parent": "manage-blueprints-root",
+                "slot": "children",
+                "order": 2
+              },
+              {
+                "cell": "manage-blueprints-layout",
+                "parent": "manage-blueprints-root",
+                "slot": "children",
+                "order": 3
               },
               {
                 "cell": "blueprint-catalog",
@@ -16283,7 +16604,7 @@
                 "cell": "delete-blueprint-challenge",
                 "parent": "manage-blueprints-root",
                 "slot": "children",
-                "order": 1
+                "order": 4
               }
             ]
           }
@@ -17390,7 +17711,7 @@
               ],
               "dataProp": "rows"
             },
-            "ui:table": {
+            "fluent:table": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -17441,8 +17762,11 @@
           },
           "externals": {
             "projectionViews": {
-              "ui": {
-                "from": "floor"
+              "fluent": {
+                "from": "fluent",
+                "use": [
+                  "table"
+                ]
               },
               "primitive": {
                 "from": "primitive",
@@ -17811,13 +18135,23 @@
               }
             ],
             "view": {
-              "capability": "ui:table",
+              "capability": "fluent:table",
               "props": {
-                "label": "market-prices"
+                "ariaLabel": "Market prices",
+                "columns": [
+                  {
+                    "id": "ticker",
+                    "label": "Ticker"
+                  },
+                  {
+                    "id": "price",
+                    "label": "Price"
+                  }
+                ]
               },
               "bindings": {
                 "rows": {
-                  "expression": "[portfolio.quotes.*]"
+                  "expression": "[portfolio.quotes.*.{'id':$string(ticker),'cells':{'ticker':ticker,'price':price}}]"
                 }
               }
             }
@@ -17849,13 +18183,39 @@
               }
             ],
             "view": {
-              "capability": "ui:table",
+              "capability": "fluent:table",
               "props": {
-                "label": "positions"
+                "ariaLabel": "Positions",
+                "columns": [
+                  {
+                    "id": "ticker",
+                    "label": "Ticker"
+                  },
+                  {
+                    "id": "quantity",
+                    "label": "Quantity"
+                  },
+                  {
+                    "id": "price",
+                    "label": "Price"
+                  },
+                  {
+                    "id": "value",
+                    "label": "Value"
+                  },
+                  {
+                    "id": "costBasis",
+                    "label": "Cost basis"
+                  },
+                  {
+                    "id": "gainLoss",
+                    "label": "Gain/loss"
+                  }
+                ]
               },
               "bindings": {
                 "rows": {
-                  "expression": "[portfolio.positions.*]"
+                  "expression": "[portfolio.positions.*.{'id':$string(ticker),'cells':{'ticker':ticker,'quantity':quantity,'price':price,'value':value,'costBasis':costBasis,'gainLoss':gainLoss}}]"
                 }
               }
             }
@@ -18361,10 +18721,12 @@
                 "when": "externalContext.view = 'mobile' and externalContext.attention = 'glanceable'",
                 "views": {
                   "portfolio-workspace": {
-                    "capability": "ui:screen",
+                    "capability": "primitive:container",
                     "props": {
-                      "title": "Portfolio",
-                      "subtitle": "Mobile · Glanceable"
+                      "variant": "column",
+                      "gap": "m",
+                      "fill": true,
+                      "ariaLabel": "Portfolio"
                     }
                   },
                   "http-proxy-access-gate": {
@@ -18384,7 +18746,7 @@
                     }
                   },
                   "portfolio-status": {
-                    "capability": "ui:note",
+                    "capability": "primitive:note",
                     "props": {
                       "tone": "info"
                     },
@@ -18426,13 +18788,6 @@
                 "when": "externalContext.view = 'mobile' and externalContext.attention = 'detailed'",
                 "extends": "mobile-glanceable",
                 "views": {
-                  "portfolio-workspace": {
-                    "capability": "ui:screen",
-                    "props": {
-                      "title": "Portfolio",
-                      "subtitle": "Mobile · Detailed"
-                    }
-                  },
                   "holdings": {
                     "capability": "primitive:editable-table",
                     "props": {
@@ -18459,13 +18814,35 @@
                     }
                   },
                   "positions": {
-                    "capability": "ui:table",
+                    "capability": "fluent:table",
                     "props": {
-                      "label": "Positions"
+                      "ariaLabel": "Positions",
+                      "columns": [
+                        {
+                          "id": "ticker",
+                          "label": "Ticker"
+                        },
+                        {
+                          "id": "quantity",
+                          "label": "Quantity"
+                        },
+                        {
+                          "id": "price",
+                          "label": "Price"
+                        },
+                        {
+                          "id": "value",
+                          "label": "Value"
+                        },
+                        {
+                          "id": "gainLoss",
+                          "label": "Gain/loss"
+                        }
+                      ]
                     },
                     "bindings": {
                       "rows": {
-                        "expression": "[portfolio.positions.*]"
+                        "expression": "[portfolio.positions.*.{'id':$string(ticker),'cells':{'ticker':ticker,'quantity':quantity,'price':price,'value':value,'gainLoss':gainLoss}}]"
                       }
                     }
                   }
@@ -18490,22 +18867,28 @@
                 "when": "externalContext.view = 'laptop' and externalContext.attention = 'glanceable'",
                 "extends": "mobile-glanceable",
                 "views": {
-                  "portfolio-workspace": {
-                    "capability": "ui:screen",
-                    "props": {
-                      "title": "Portfolio",
-                      "subtitle": "Laptop · Glanceable"
-                    }
-                  },
                   "positions": {
-                    "capability": "ui:table",
+                    "capability": "fluent:table",
                     "props": {
-                      "label": "Top positions",
-                      "maxRows": 5
+                      "ariaLabel": "Top positions",
+                      "columns": [
+                        {
+                          "id": "ticker",
+                          "label": "Ticker"
+                        },
+                        {
+                          "id": "value",
+                          "label": "Value"
+                        },
+                        {
+                          "id": "gainLoss",
+                          "label": "Gain/loss"
+                        }
+                      ]
                     },
                     "bindings": {
                       "rows": {
-                        "expression": "[portfolio.positions.*]"
+                        "expression": "[portfolio.positions.*.{'id':$string(ticker),'cells':{'ticker':ticker,'value':value,'gainLoss':gainLoss}}]"
                       }
                     }
                   }
@@ -18523,36 +18906,31 @@
                 "id": "desktop-glanceable",
                 "when": "externalContext.view = 'desktop' and externalContext.attention = 'glanceable'",
                 "extends": "laptop-glanceable",
-                "views": {
-                  "portfolio-workspace": {
-                    "capability": "ui:screen",
-                    "props": {
-                      "title": "Portfolio",
-                      "subtitle": "Desktop · Glanceable"
-                    }
-                  }
-                }
+                "views": {}
               },
               {
                 "id": "laptop-detailed",
                 "when": "externalContext.view = 'laptop' and externalContext.attention = 'detailed'",
                 "extends": "mobile-detailed",
                 "views": {
-                  "portfolio-workspace": {
-                    "capability": "ui:screen",
-                    "props": {
-                      "title": "Portfolio",
-                      "subtitle": "Laptop · Detailed"
-                    }
-                  },
                   "market-prices": {
-                    "capability": "ui:table",
+                    "capability": "fluent:table",
                     "props": {
-                      "label": "Market prices"
+                      "ariaLabel": "Market prices",
+                      "columns": [
+                        {
+                          "id": "ticker",
+                          "label": "Ticker"
+                        },
+                        {
+                          "id": "price",
+                          "label": "Price"
+                        }
+                      ]
                     },
                     "bindings": {
                       "rows": {
-                        "expression": "[portfolio.quotes.*]"
+                        "expression": "[portfolio.quotes.*.{'id':$string(ticker),'cells':{'ticker':ticker,'price':price}}]"
                       }
                     }
                   }
@@ -18570,15 +18948,7 @@
                 "id": "desktop-detailed",
                 "when": "externalContext.view = 'desktop' and externalContext.attention = 'detailed'",
                 "extends": "laptop-detailed",
-                "views": {
-                  "portfolio-workspace": {
-                    "capability": "ui:screen",
-                    "props": {
-                      "title": "Portfolio",
-                      "subtitle": "Desktop · Detailed"
-                    }
-                  }
-                }
+                "views": {}
               }
             ],
             "fallback": "desktop-detailed",
@@ -18694,7 +19064,7 @@
             "invoke"
           ],
           "capabilities": {
-            "ui:screen": {
+            "primitive:container": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -18713,14 +19083,14 @@
               ],
               "dataProp": "rows"
             },
-            "ui:table": {
+            "fluent:table": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
               },
               "dataProp": "rows"
             },
-            "ui:note": {
+            "primitive:note": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -18746,18 +19116,18 @@
           },
           "externals": {
             "projectionViews": {
-              "ui": {
-                "from": "floor",
+              "fluent": {
+                "from": "fluent",
                 "use": [
-                  "screen",
-                  "table",
-                  "note"
+                  "table"
                 ]
               },
               "primitive": {
                 "from": "primitive",
                 "use": [
-                  "editable-table"
+                  "container",
+                  "editable-table",
+                  "note"
                 ]
               },
               "http-proxy": {
@@ -19511,7 +19881,7 @@
           ],
           "actions": [],
           "capabilities": {
-            "ui:screen": {
+            "primitive:container": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -19529,8 +19899,11 @@
           },
           "externals": {
             "projectionViews": {
-              "ui": {
-                "from": "floor"
+              "primitive": {
+                "from": "primitive",
+                "use": [
+                  "container"
+                ]
               },
               "overview": {
                 "from": "self"
@@ -19783,10 +20156,11 @@
           "samples-overview-root": {
             "id": "samples-overview-root",
             "view": {
-              "capability": "ui:screen",
+              "capability": "primitive:container",
               "props": {
-                "title": "Governed Human-Agent Collaboration",
-                "subtitle": "One evolving workspace. Shared state, shared authority, complete trace."
+                "variant": "column",
+                "fill": true,
+                "ariaLabel": "Governed Human-Agent Collaboration"
               }
             }
           },
@@ -20160,6 +20534,6 @@
       ]
     }
   },
-  "bundleVersion": "c0ae49944a70404d",
-  "digest": "sha256:c0ae49944a70404daeb3f7c781949bfcde9b053a73031b22a79e00ab5d3eda21"
+  "bundleVersion": "6d518a9777e2526a",
+  "digest": "sha256:6d518a9777e2526a7d325661082dd15ea21bdf4a16862e95c1afe4b828bf8179"
 }

@@ -15,7 +15,7 @@
         "assign"
       ],
       "capabilities": {
-        "ui:screen": {
+        "primitive:container": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -24,7 +24,7 @@
             "children"
           ]
         },
-        "ui:row": {
+        "fluent:row": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -33,7 +33,7 @@
             "children"
           ]
         },
-        "ui:panel": {
+        "fluent:panel": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -42,37 +42,47 @@
             "children"
           ]
         },
-        "ui:table": {
+        "fluent:data-grid": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           },
           "emits": [
-            "rowSelect"
+            "select",
+            "sort"
           ]
         },
-        "ui:markdown": {
+        "primitive:markdown": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           },
           "dataProp": "value"
         },
-        "ui:actions": {
+        "fluent:toolbar": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           },
-          "emits": [
-            "press"
-          ],
-          "dataProp": "buttons"
+          "slots": ["children"]
+        },
+        "fluent:button": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": ["press"]
         }
       },
       "externals": {
         "projectionViews": {
-          "ui": {
-            "from": "floor"
+          "primitive": {
+            "from": "primitive",
+            "use": ["container", "markdown"]
+          },
+          "fluent": {
+            "from": "fluent",
+            "use": ["button", "data-grid", "panel", "row", "text", "toolbar"]
           }
         }
       },
@@ -130,60 +140,76 @@
       "live-cards-root": {
         "id": "live-cards-root",
         "view": {
-          "capability": "ui:screen",
+          "capability": "primitive:container",
           "props": {
-            "title": "Live cards",
-            "subtitle": "One state model projected into selectable operational cards"
+            "variant": "column",
+            "gap": "m",
+            "fill": true,
+            "ariaLabel": "Live cards"
           }
+        }
+      },
+      "live-cards-title": {
+        "id": "live-cards-title",
+        "view": {
+          "capability": "fluent:text",
+          "props": { "value": "Live cards", "as": "h1", "variant": "title", "block": true }
+        }
+      },
+      "live-cards-subtitle": {
+        "id": "live-cards-subtitle",
+        "view": {
+          "capability": "fluent:text",
+          "props": { "value": "One state model projected into selectable operational cards", "as": "p", "variant": "subtitle", "block": true }
         }
       },
       "live-cards-layout": {
         "id": "live-cards-layout",
         "view": {
-          "capability": "ui:row",
-          "props": {
-            "variant": "split"
-          }
+          "capability": "fluent:row"
         }
       },
       "live-cards-catalog": {
         "id": "live-cards-catalog",
         "behavior": {
           "events": {
-            "rowSelect": [
+            "select": [
               {
                 "do": "assign",
                 "target": "liveCards.selectedId",
                 "args": {
-                  "from": "$event.id"
+                  "from": "$event.rowIds[0]"
                 }
               }
             ]
           }
         },
         "view": {
-          "capability": "ui:table",
+          "capability": "fluent:data-grid",
           "props": {
-            "title": "Cards",
-            "idKey": "id",
+            "ariaLabel": "Cards",
+            "selectionMode": "single",
             "columns": [
               {
-                "key": "title",
+                "id": "title",
                 "label": "Card"
               },
               {
-                "key": "status",
+                "id": "status",
                 "label": "Status"
               },
               {
-                "key": "owner",
+                "id": "owner",
                 "label": "Owner"
               }
             ]
           },
           "bindings": {
             "rows": {
-              "from": "liveCards.cards"
+              "expression": "liveCards.cards.{'id':$string(id),'cells':{'title':title,'status':status,'owner':owner}}"
+            },
+            "selectedRowIds": {
+              "expression": "liveCards.selectedId != '' ? [liveCards.selectedId] : []"
             }
           }
         }
@@ -191,7 +217,7 @@
       "live-cards-detail": {
         "id": "live-cards-detail",
         "view": {
-          "capability": "ui:panel",
+          "capability": "fluent:panel",
           "props": {
             "title": "Selected card"
           }
@@ -200,7 +226,7 @@
       "live-cards-detail-text": {
         "id": "live-cards-detail-text",
         "view": {
-          "capability": "ui:markdown",
+          "capability": "primitive:markdown",
           "bindings": {
             "value": {
               "expression": "liveCards.cards[id = liveCards.selectedId][0].detail"
@@ -210,6 +236,13 @@
       },
       "live-cards-shortcuts": {
         "id": "live-cards-shortcuts",
+        "view": {
+          "capability": "fluent:toolbar",
+          "props": { "ariaLabel": "Choose live card" }
+        }
+      },
+      "live-cards-shortcut-incident": {
+        "id": "live-cards-shortcut-incident",
         "behavior": {
           "events": {
             "press": [
@@ -217,19 +250,35 @@
                 "do": "assign",
                 "target": "liveCards.selectedId",
                 "args": {
-                  "from": "$event.id"
+                  "value": "incident"
                 }
               }
             ]
           }
         },
         "view": {
-          "capability": "ui:actions",
-          "bindings": {
-            "buttons": {
-              "from": "liveCards.shortcuts"
-            }
-          }
+          "capability": "fluent:button",
+          "props": { "label": "Incident" }
+        }
+      },
+      "live-cards-shortcut-evidence": {
+        "id": "live-cards-shortcut-evidence",
+        "behavior": {
+          "events": { "press": [{ "do": "assign", "target": "liveCards.selectedId", "args": { "value": "evidence" } }] }
+        },
+        "view": {
+          "capability": "fluent:button",
+          "props": { "label": "Evidence" }
+        }
+      },
+      "live-cards-shortcut-response": {
+        "id": "live-cards-shortcut-response",
+        "behavior": {
+          "events": { "press": [{ "do": "assign", "target": "liveCards.selectedId", "args": { "value": "response" } }] }
+        },
+        "view": {
+          "capability": "fluent:button",
+          "props": { "label": "Response" }
         }
       }
     },
@@ -240,16 +289,46 @@
         ],
         "placements": [
           {
-            "cell": "live-cards-shortcuts",
+            "cell": "live-cards-title",
             "parent": "live-cards-root",
             "slot": "children",
             "order": 0
           },
           {
-            "cell": "live-cards-layout",
+            "cell": "live-cards-subtitle",
             "parent": "live-cards-root",
             "slot": "children",
             "order": 1
+          },
+          {
+            "cell": "live-cards-shortcuts",
+            "parent": "live-cards-root",
+            "slot": "children",
+            "order": 2
+          },
+          {
+            "cell": "live-cards-shortcut-incident",
+            "parent": "live-cards-shortcuts",
+            "slot": "children",
+            "order": 0
+          },
+          {
+            "cell": "live-cards-shortcut-evidence",
+            "parent": "live-cards-shortcuts",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "live-cards-shortcut-response",
+            "parent": "live-cards-shortcuts",
+            "slot": "children",
+            "order": 2
+          },
+          {
+            "cell": "live-cards-layout",
+            "parent": "live-cards-root",
+            "slot": "children",
+            "order": 3
           },
           {
             "cell": "live-cards-catalog",

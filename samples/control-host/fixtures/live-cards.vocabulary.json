@@ -6,49 +6,19 @@
     "expression": "jsonata",
     "namespaces": ["card_data", "requires", "fetched_sources", "computed_values"],
     "actions": ["assign", "derive", "invoke", "emit", "route", "confirm"],
-    "externals": {
-      "projectionViews": {
-        "ui": { "from": "floor" },
-        "fluent": { "from": "fluent", "use": ["searchbox"] },
-        "primitive": { "from": "primitive", "use": ["chart"] }
-      }
-    },
     "capabilities": {
-      "ui:board": {
+      "demo:board": {
         "propsSchema": { "type": "object", "properties": { "title": { "type": "string" } } },
         "slots": ["children"]
       },
-      "ui:metric": {
+      "demo:metric": {
         "propsSchema": {
           "type": "object",
           "required": ["label"],
           "properties": { "label": { "type": "string" }, "value": { "type": ["number", "string"] } }
         }
       },
-      "primitive:chart": {
-        "propsSchema": { "type": "object", "additionalProperties": true },
-        "dataProp": "points"
-      },
-      "ui:markdown": {
-        "propsSchema": { "type": "object", "additionalProperties": true },
-        "dataProp": "value"
-      },
-      "ui:todo": {
-        "propsSchema": { "type": "object", "additionalProperties": true },
-        "emits": ["save"],
-        "dataProp": "items"
-      },
-      "ui:selection": {
-        "propsSchema": { "type": "object", "additionalProperties": true },
-        "emits": ["select"],
-        "dataProp": "options"
-      },
-      "fluent:searchbox": {
-        "propsSchema": { "type": "object", "additionalProperties": true },
-        "emits": ["submit"],
-        "dataProp": "value"
-      },
-      "ui:table": {
+      "demo:table": {
         "propsSchema": {
           "type": "object",
           "properties": { "columns": { "type": "array", "items": { "type": "string" } } }
@@ -56,7 +26,7 @@
         "emits": ["rowSelect"],
         "dataProp": "rows"
       },
-      "ui:actions": {
+      "demo:actions": {
         "propsSchema": {
           "type": "object",
           "properties": { "label": { "type": "string" } }

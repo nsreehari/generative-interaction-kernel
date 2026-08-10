@@ -1,4 +1,4 @@
-// The PLATFORM FLOOR, part 3: the bundle model + loader.
+// The bundle model + loader.
 //
 // A Bundle is a lower-level runtime/composition unit: { vocabulary, program, state, effects }.
 // `loadBundle` stands up its Kernel, shared state, and effect dispatcher for advanced composition
@@ -40,7 +40,7 @@ export interface SerializableBundle {
 export interface Bundle extends SerializableBundle {
   /** Named native effect handlers routed by `invoke`. */
   effectHandlers?: EffectHandlerMap;
-  /** EXTRA capability -> component, layered over the shared floor when this bundle renders. */
+  /** Bundle-native capability -> component views exposed through the `self` provider. */
   projectionViews?: Record<string, ProjectionView>;
   /** Optional bundle-native service composition around its effect dispatcher. */
   wrapOrchestrator?: LoadBundleOptions["wrapOrchestrator"];
@@ -102,8 +102,8 @@ export function bundleFromJson(json: unknown, native: BundleNative = {}): Bundle
  * gate — a missing handler otherwise silently no-ops the `invoke` deep in the reducer at runtime.
  *
  * Scoped to `effectHandlers` only, on purpose: `externals.projectionViews` are provider imports
- * resolved against the floor/embed registries elsewhere (not against `bundle.projectionViews`), so
- * checking them here would false-positive on every floor import. Effect handlers do not cross the
+ * resolved by the host elsewhere (not solely against `bundle.projectionViews`), so checking them
+ * here would false-positive on package imports. Effect handlers do not cross the
  * `embed` boundary — each nested bundle gets its own dispatcher — so a bundle must itself supply every
  * effect it declares. Throws (fail-fast at the boundary) rather than warning; a no-op guard means an
  * undeclared `externals.effectHandlers` bundle is left untouched.

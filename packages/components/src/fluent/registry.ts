@@ -36,6 +36,7 @@ import {
 import { FluentDialog, fluentDialogDefinition } from "./FluentDialog";
 import { FluentText, fluentTextDefinition } from "./FluentText";
 import { FluentToolbar, fluentToolbarDefinition } from "./FluentToolbar";
+import { FluentPanel, FluentRow, fluentPanelDefinition, fluentRowDefinition } from "./FluentLayoutControls";
 import {
   FluentBadge,
   FluentPersona,
@@ -53,8 +54,10 @@ export const fluentComponentViews: Record<string, ProjectionView> = {
   dialog: FluentDialog,
   dropdown: FluentDropdown,
   list: FluentList,
+  panel: FluentPanel,
   persona: FluentPersona,
   searchbox: FluentSearchbox,
+  row: FluentRow,
   spinner: FluentSpinner,
   switch: FluentSwitch,
   table: FluentTable,
@@ -74,8 +77,10 @@ export const fluentComponentDefinitions = {
   dialog: fluentDialogDefinition,
   dropdown: fluentDropdownDefinition,
   list: fluentListDefinition,
+  panel: fluentPanelDefinition,
   persona: fluentPersonaDefinition,
   searchbox: fluentSearchboxDefinition,
+  row: fluentRowDefinition,
   spinner: fluentSpinnerDefinition,
   switch: fluentSwitchDefinition,
   table: fluentTableDefinition,

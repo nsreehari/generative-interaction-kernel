@@ -77,6 +77,7 @@ test("host projection imports can resolve another bundle by id", () => {
   assert.equal(typeof copilotViews?.["run-console"], "function");
   const foundryProviderViews = resolveBundleProjectionViews("foundry");
   assert.equal(typeof foundryProviderViews?.["access-gate"], "function");
+  assert.equal(resolveBundleProjectionViews("http-proxy"), foundryProviderViews);
   const foundryViews = resolveBundleProjectionViews("foundry-agent");
   assert.equal(foundryViews?.["access-modal"], undefined);
   assert.equal(typeof foundryViews?.["agent-selector"], "function");
@@ -90,14 +91,15 @@ test("host projection imports can resolve another bundle by id", () => {
   assert.equal(typeof primitiveViews?.chart, "function");
   assert.equal(typeof primitiveViews?.["growing-container"], "function");
   const semanticViews = resolveBundleProjectionViews("semantic");
-  assert.deepEqual(Object.keys(semanticViews ?? {}).sort(), [
-    ...Object.keys(semanticComponentViews),
-    "component-data-sections",
-  ].sort());
+  assert.deepEqual(Object.keys(semanticViews ?? {}).sort(), Object.keys(semanticComponentViews).sort());
   assert.equal(typeof semanticViews?.["event-series"], "function");
   assert.equal(typeof semanticViews?.["relationship-set"], "function");
+  assert.equal(semanticViews?.["component-data-sections"], undefined);
+  assert.equal(typeof resolveBundleProjectionViews("incident-report-explorer-1a")?.["component-data-sections"], "function");
   assert.deepEqual(Object.keys(resolveBundleProjectionViews("security") ?? {}).sort(), Object.keys(securityComponentViews).sort());
   assert.deepEqual(Object.keys(resolveBundleProjectionViews("software") ?? {}).sort(), Object.keys(softwareComponentViews).sort());
+  assert.equal(resolveBundleProjectionViews("provider-authoring-demo"), undefined);
+  assert.equal(resolveBundleProjectionViews("reactive-demo"), undefined);
   assert.equal(resolveBundleProjectionViews("missing-bundle"), undefined);
 });
 

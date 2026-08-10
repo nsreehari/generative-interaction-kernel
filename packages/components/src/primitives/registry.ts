@@ -2,6 +2,7 @@ import type { CapabilityDescriptor } from "@gik/kernel";
 import type { ProjectionView } from "@gik/react";
 
 import { AccessGate, accessGateDefinition } from "./access-gate";
+import { Alert, alertDefinition } from "./alert";
 import { Chart, chartDefinition } from "./chart";
 import { CollectionBoard, collectionBoardDefinition } from "./collection-board";
 import { ContainerPrimitive, containerDefinition } from "./container";
@@ -15,13 +16,18 @@ import { Gantt, ganttDefinition } from "./gantt";
 import { GraphDiagram, graphDiagramDefinition } from "./graph-diagram";
 import { GrowingContainerPrimitive, growingContainerDefinition } from "./growing-container";
 import { InfiniteCanvasPrimitive, infiniteCanvasDefinition } from "./infinite-canvas";
+import { MathChallenge, mathChallengeDefinition } from "./math-challenge";
 import { Markdown, markdownDefinition } from "./markdown";
+import { Metric, metricDefinition } from "./metric";
+import { Note, noteDefinition } from "./note";
+import { Property, propertyDefinition } from "./property";
 import { SourceViewer, sourceViewerDefinition } from "./source-viewer";
 import { TimerButton, timerButtonDefinition } from "./timer-button";
 import { TodoList, todoListDefinition } from "./todo-list";
 
 export const primitiveComponentViews: Record<string, ProjectionView> = {
   "access-gate": AccessGate,
+  alert: Alert,
   chart: Chart,
   "collection-board": CollectionBoard,
   container: ContainerPrimitive,
@@ -35,7 +41,11 @@ export const primitiveComponentViews: Record<string, ProjectionView> = {
   "graph-diagram": GraphDiagram,
   "growing-container": GrowingContainerPrimitive,
   "infinite-canvas": InfiniteCanvasPrimitive,
+  "math-challenge": MathChallenge,
   markdown: Markdown,
+  metric: Metric,
+  note: Note,
+  property: Property,
   "source-viewer": SourceViewer,
   "timer-button": TimerButton,
   "todo-list": TodoList,
@@ -43,6 +53,7 @@ export const primitiveComponentViews: Record<string, ProjectionView> = {
 
 export const primitiveComponentDefinitions = {
   "access-gate": accessGateDefinition,
+  alert: alertDefinition,
   chart: chartDefinition,
   "collection-board": collectionBoardDefinition,
   container: containerDefinition,
@@ -56,7 +67,11 @@ export const primitiveComponentDefinitions = {
   "graph-diagram": graphDiagramDefinition,
   "growing-container": growingContainerDefinition,
   "infinite-canvas": infiniteCanvasDefinition,
+  "math-challenge": mathChallengeDefinition,
   markdown: markdownDefinition,
+  metric: metricDefinition,
+  note: noteDefinition,
+  property: propertyDefinition,
   "source-viewer": sourceViewerDefinition,
   "timer-button": timerButtonDefinition,
   "todo-list": todoListDefinition,

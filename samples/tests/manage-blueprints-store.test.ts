@@ -86,20 +86,20 @@ test("listBlueprints exposes built-in artifacts as read-only", async () => {
   assert.equal(rows.some((row) => row.id === "backend-order-processing" && row.scopeLabel === "Backend"), true);
   assert.equal(rows.some((row) => row.id === "middleware-continuity" && row.scopeLabel === "Middleware"), true);
 
-  const backend = await manageBlueprintsEffects.getBlueprint(context(state, { id: "backend-order-processing" }));
+  const backend = await manageBlueprintsEffects.getBlueprint(context(state, { values: ["backend-order-processing"] }));
   const selected = opValue(backend?.ops, "manageBlueprints.selected") as JsonRecord;
   assert.deepEqual(selected.tabs, [
     { value: "overview", label: "Overview" },
     { value: "draft", label: "JSON" },
   ]);
 
-  const headless = await manageBlueprintsEffects.getBlueprint(context(state, { id: "portfolio-tracker-2tiers-headless" }));
+  const headless = await manageBlueprintsEffects.getBlueprint(context(state, { values: ["portfolio-tracker-2tiers-headless"] }));
   assert.deepEqual((opValue(headless?.ops, "manageBlueprints.selected") as JsonRecord).tabs, [
     { value: "overview", label: "Overview" },
     { value: "draft", label: "JSON" },
   ]);
 
-  const projected = await manageBlueprintsEffects.getBlueprint(context(state, { id: "samples-overview" }));
+  const projected = await manageBlueprintsEffects.getBlueprint(context(state, { values: ["samples-overview"] }));
   assert.deepEqual((opValue(projected?.ops, "manageBlueprints.selected") as JsonRecord).tabs, [
     { value: "overview", label: "Overview" },
     { value: "draft", label: "JSON" },
@@ -133,7 +133,7 @@ test("JSON editing uses a locally stateful declarative form", () => {
   assert.equal(cells["preview-blueprint"], undefined);
   assert.equal((cells["import-blueprint"].view as JsonRecord).capability, "primitive:file-input");
   assert.equal((cells["export-blueprint"].view as JsonRecord).capability, "primitive:file-download");
-  assert.deepEqual(((cells["blueprint-list"].view as JsonRecord).props as JsonRecord).badgeKeys, ["scopeLabel", "sourceLabel"]);
+  assert.equal(((cells["blueprint-list"].view as JsonRecord).props as JsonRecord).selectionMode, "single");
   assert.equal(capabilities["manage-blueprints:blueprint-import"], undefined);
   assert.equal(effectHandlers.includes("exportBlueprint"), false);
 });
@@ -179,7 +179,7 @@ test("create, save, reload, challenge, and delete stay inside the user Blueprint
 test("repository ids cannot be overwritten or deleted", async () => {
   Object.defineProperty(globalThis, "localStorage", { value: new MemoryStorage(), configurable: true });
   const state = createState();
-  const loaded = await manageBlueprintsEffects.getBlueprint(context(state, { id: "samples-overview" }));
+  const loaded = await manageBlueprintsEffects.getBlueprint(context(state, { values: ["samples-overview"] }));
   applyOps(state, loaded?.ops);
 
   const saved = await manageBlueprintsEffects.saveBlueprint(context(state));
@@ -193,7 +193,7 @@ test("repository ids cannot be overwritten or deleted", async () => {
 test("repository blueprints can be cloned, edited, saved, and deleted locally", async () => {
   Object.defineProperty(globalThis, "localStorage", { value: new MemoryStorage(), configurable: true });
   const state = createState();
-  applyOps(state, (await manageBlueprintsEffects.getBlueprint(context(state, { id: "samples-overview" })))?.ops);
+  applyOps(state, (await manageBlueprintsEffects.getBlueprint(context(state, { values: ["samples-overview"] })))?.ops);
 
   const cloned = await manageBlueprintsEffects.cloneBlueprint(context(state));
   applyOps(state, cloned?.ops);
@@ -269,7 +269,7 @@ test("preview exposes a validated structural Blueprint summary", async () => {
 
 test("preview references an unchanged persisted Blueprint", async () => {
   const state = createState();
-  applyOps(state, (await manageBlueprintsEffects.getBlueprint(context(state, { id: "samples-overview" })))?.ops);
+  applyOps(state, (await manageBlueprintsEffects.getBlueprint(context(state, { values: ["samples-overview"] })))?.ops);
 
   const preview = await manageBlueprintsEffects.selectBlueprintTab(context(state, { value: "preview" }));
 
@@ -278,7 +278,7 @@ test("preview references an unchanged persisted Blueprint", async () => {
 
 test("selecting the Preview tab renders the current Blueprint", async () => {
   const state = createState();
-  applyOps(state, (await manageBlueprintsEffects.getBlueprint(context(state, { id: "samples-overview" })))?.ops);
+  applyOps(state, (await manageBlueprintsEffects.getBlueprint(context(state, { values: ["samples-overview"] })))?.ops);
 
   const preview = await manageBlueprintsEffects.selectBlueprintTab(context(state, { value: "preview" }));
 

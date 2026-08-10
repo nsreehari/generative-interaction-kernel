@@ -128,6 +128,7 @@ export default defineConfig({
           include: [
             "samples/control-host/**/*.test.ts",
             "samples/shared/**/*.test.ts",
+            "samples/shared/**/*.test.tsx",
             "samples/tests/**/*.test.ts",
             "samples/apps/host/**/*.test.ts",
             "samples/bundles/**/projection_views/**/*.test.ts",
