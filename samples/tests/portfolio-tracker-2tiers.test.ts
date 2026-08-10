@@ -12,7 +12,7 @@ import effects from "../blueprints/portfolio-tracker/native/effect_handlers/port
 import { mockMarketDataHandler, MOCK_MARKET_DATA_PROVIDER } from "../services/mock-market-data";
 import { declarativeServiceOrchestrator } from "../shared/service-runtime";
 import { createBlueprintAgentLifecycle } from "../shared/blueprint-agent-lifecycle";
-import { resolveSampleBlueprintSource } from "../shared/blueprints";
+import { resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
 import { InMemoryStateModel } from "../../kernel/src/index";
 
 const authoredBlueprint = () => resolveSampleBlueprintSource("portfolio-tracker-2tiers") as BlueprintArtifact<RepresentationLoweringRecipeDefinition>;

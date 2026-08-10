@@ -14,7 +14,7 @@ import {
   strategyInputSnapshot,
   strategyInputsEqual,
 } from "../blueprints/portfolio-tracker/native/projection_views/portfolioTrackerLeaves";
-import { openSampleBlueprint } from "../shared/blueprints";
+import { openSampleBlueprint } from "../shared/blueprint-catalog";
 import { declarativeServiceOrchestrator } from "../shared/service-runtime";
 import { createBlueprintAgentLifecycle } from "../shared/blueprint-agent-lifecycle";
 import type { SampleServiceRegistryOptions } from "../services";

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { resolveSampleBlueprintSource } from "./blueprints";
+import { resolveSampleBlueprintSource } from "./blueprint-catalog";
 import { applyHostConfig, hostConfig, resolveHostEnvironment } from "./host-config";
 
 test("host config defaults to production when no environment is set", () => {

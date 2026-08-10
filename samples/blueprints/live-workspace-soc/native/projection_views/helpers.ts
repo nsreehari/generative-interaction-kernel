@@ -5,7 +5,7 @@ import {
   type FocusRef,
   type FocusTarget,
   type TimelineItem,
-} from "../../../../shared/control-focus";
+} from "./control-focus";
 import type { JournalEntry, ParticipantPresence } from "./types";
 
 export function participantPresence(status: string): ParticipantPresence {

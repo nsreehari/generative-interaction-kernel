@@ -35,7 +35,7 @@ vi.mock("@fluentui/react-components", () => {
 });
 
 import foundryViews from "./foundryLeaves";
-import { FUNCTION_ACCESS } from "../../function-access";
+import { FUNCTION_ACCESS } from "../../../../../../shared/function-access";
 
 function gate(status: string, children: ResolvedNode[] = []): ResolvedNode {
   return {

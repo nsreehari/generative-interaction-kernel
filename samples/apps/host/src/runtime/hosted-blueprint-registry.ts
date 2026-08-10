@@ -1,10 +1,10 @@
 import type { HostedBlueprintResolutionContext } from "@gik/blueprint";
 import type { BlueprintProposalStore } from "@gik/blueprint-agent-host";
 import type { ReactBlueprintHostRegistry } from "@gik/react";
-import type { UseProposal } from "./blueprint-agent-lifecycle";
-import { applyHostConfig } from "./host-config";
+import type { UseProposal } from "../../../../shared/blueprint-agent-lifecycle";
+import { applyHostConfig } from "../../../../shared/host-config";
 import { resolveBlueprintNative } from "./sample-bundles";
-import { getSampleBlueprintCatalog, sampleBlueprints } from "./blueprints";
+import { getSampleBlueprintCatalog, sampleBlueprints } from "../../../../shared/blueprint-catalog";
 
 export interface SampleBlueprintHostRegistryOptions {
   createProposalStore?: (

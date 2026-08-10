@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
 import { bundleFromJson, loadBundleRuntime } from "@gik/react";
-import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprints";
+import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
 
 import { FUNCTION_ACCESS } from "../shared/function-access";
 

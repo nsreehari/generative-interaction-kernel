@@ -6,7 +6,7 @@ import {
 } from "../../../face/src/services/service-kinds";
 import type { ServiceAdapter, ServiceAdapterContext, ServiceRequest } from "../../../face/src/services/queueface";
 import { executeAgentFunctionCall } from "@gik/agent-lifecycle-exp";
-import { createFoundryProxy, FoundryProxyError, type FoundryChatResponseSchema } from "../../shared/foundry-proxy";
+import { createFoundryProxy, FoundryProxyError, type FoundryChatResponseSchema } from "./foundry-proxy";
 import manifestJson from "./manifest.json";
 
 const manifest = manifestJson as ServiceKindManifest;

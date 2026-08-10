@@ -6,7 +6,7 @@ import {
   getSampleBlueprintCatalog,
   openSampleBlueprint,
   resolveSampleBlueprintSource,
-} from "../shared/blueprints";
+} from "../shared/blueprint-catalog";
 
 type FixtureExpectation = {
   namespace: string;

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { openSampleBlueprint } from "../shared/blueprints";
+import { openSampleBlueprint } from "../shared/blueprint-catalog";
 import { mapSocParticipantStatus, projectSocInspection, projectSocParticipants } from "../blueprints/live-workspace-soc/native/effect_handlers/inspection";
 import type { Actor, AgentProvider, Incident, JournalEntry, Presentation } from "../blueprints/live-workspace-soc/native/projection_views/types";
 

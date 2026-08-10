@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { bundleFromJson, loadBundleRuntime } from "@gik/react";
-import { createHeadlessControlRuntime } from "../shared/control-runtime";
-import { openSampleBlueprint } from "../shared/blueprints";
+import { createHeadlessControlRuntime } from "./support/control-runtime";
+import { openSampleBlueprint } from "../shared/blueprint-catalog";
 import effects from "../blueprints/live-workspace-soc/native/effect_handlers/liveWorkspaceSocEffectHandlers";
 import { socControlContract } from "../blueprints/live-workspace-soc/native/projection_views/control-contract";
 

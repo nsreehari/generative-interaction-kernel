@@ -1,7 +1,7 @@
 import React, { Children, createContext, useContext, type ComponentType, type ReactElement, type ReactNode } from "react";
 import { mergeClasses } from "@fluentui/react-components";
 import type { ProjectionView } from "@gik/react";
-import type { ControlSelection, TimelineItem } from "../../../../shared/control-focus";
+import type { ControlSelection, TimelineItem } from "./control-focus";
 import { useStyles } from "./styles";
 import type { Actor, Presentation, PresentationRegionFacet } from "./types";
 

@@ -20,7 +20,7 @@ import "fake-indexeddb/auto";
 import type { BlueprintProposalReceipt } from "@gik/blueprint-agent-host";
 import type { UseProposal } from "../../../shared/blueprint-agent-lifecycle";
 import { Host, createSampleBlueprintProposalStore } from "./Host";
-import { getSampleBlueprintCatalog } from "../../../shared/blueprints";
+import { getSampleBlueprintCatalog } from "../../../shared/blueprint-catalog";
 
 const receipt = (id: string): BlueprintProposalReceipt<UseProposal> => ({
   id,

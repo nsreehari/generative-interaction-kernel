@@ -8,7 +8,7 @@ import {
   getFunctionAccessKey,
   setFunctionAccessKey,
   type FunctionAccessScope,
-} from "../../function-access";
+} from "../../../../../../shared/function-access";
 
 function accessGateNode(id: string, access: Record<string, Json>): ResolvedNode {
   return {

@@ -1,6 +1,4 @@
-import {
-  DEFAULT_PRESENTATION_CONTEXT,
-} from "../../../shared/presentation";
+const DEFAULT_PRESENTATION_CONTEXT = "full-substrate";
 
 export interface HostQuery {
   targetId: string | null;

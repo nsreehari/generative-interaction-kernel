@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { unwrap } from "@gik/kernel";
 import { seedState } from "@gik/react";
 
-import { openSampleBlueprint } from "../shared/blueprints";
+import { openSampleBlueprint } from "../shared/blueprint-catalog";
 import { createBlueprintServiceHost } from "../shared/service-runtime";
 
 const runtime = openSampleBlueprint("portfolio-tracker");
@@ -22,7 +22,7 @@ describe("portfolio intelligence service declarations", () => {
       "foundry-agent:portfolio-intelligence-1b",
       "foundry-agent:portfolio-strategies",
     ]);
-    expect(description[1]?.capabilities.map(({ operation }) => operation)).toEqual(["check-access", "chat", "propose-strategies"]);
+    expect(description[1]?.capabilities.map(({ operation }) => operation)).toEqual(["check-access", "chat"]);
     expect(description[2]?.capabilities.map(({ operation }) => operation)).toEqual(["chat"]);
     expect(description[3]?.capabilities.map(({ operation }) => operation)).toEqual(["chat"]);
     expect(description[4]?.capabilities.map(({ operation }) => operation)).toEqual(["chat"]);

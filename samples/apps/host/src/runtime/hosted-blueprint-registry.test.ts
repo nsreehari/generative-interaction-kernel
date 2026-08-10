@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { beforeEach, test } from "vitest";
 import { createBlueprint } from "@gik/blueprint";
-import { installUserBlueprints } from "../shared/blueprints";
-import { createSampleBlueprintHostRegistry } from "../shared/hosted-blueprint-registry";
+import { installUserBlueprints } from "../../../../shared/blueprint-catalog";
+import { createSampleBlueprintHostRegistry } from "./hosted-blueprint-registry";
 
 const context = {
   parentBlueprintId: "shell",

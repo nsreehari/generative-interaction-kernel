@@ -1,4 +1,4 @@
-import type { ControlSelection, FocusRef, TimelineItem } from "./control-focus";
+import type { ControlSelection, FocusRef, TimelineItem } from "../projection_views/control-focus";
 
 export type ParticipantKind = "human" | "agent";
 

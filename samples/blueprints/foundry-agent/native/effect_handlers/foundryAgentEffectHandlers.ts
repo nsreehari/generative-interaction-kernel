@@ -1,5 +1,4 @@
-// The foundry-agent bundle's named effect handlers. The host discovers a json bundle's handlers by
-// convention: `<id>/effect_handlers/index` whose DEFAULT export is the bundle's EffectHandlerMap.
+// The foundry-agent Blueprint's named effect handlers are registered by the sample native registry.
 //
 // These are the ONLY place effectful work lives. The document declares `invoke("<name>")`; the shared
 // dispatcher routes it here. Each handler reads the live store (the kernel applies reducer ops before

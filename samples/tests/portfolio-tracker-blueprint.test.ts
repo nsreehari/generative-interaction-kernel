@@ -5,7 +5,7 @@ import {
 } from "@gik/blueprint";
 import { unwrap } from "@gik/kernel";
 
-import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprints";
+import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
 import { applyHostConfig } from "../shared/host-config";
 
 const blueprint = resolveSampleBlueprintSource("portfolio-tracker");
