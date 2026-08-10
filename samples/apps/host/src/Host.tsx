@@ -21,7 +21,6 @@ import {
   canonicalizeHostUrl,
   readHostQuery,
 } from "./host-query";
-import { FLOOR_COMPONENTS } from "../../../bundles/floor/projection_views/floorLeaves";
 import {
   resolveBlueprintInitialContext,
   resolveBlueprintNative,
@@ -43,16 +42,12 @@ export function Host(): React.ReactElement {
     const canonicalUrl = canonicalizeHostUrl(window.location.href);
     if (canonicalUrl !== window.location.href) window.history.replaceState(null, "", canonicalUrl);
   }, []);
-  const resolveProvider = React.useCallback(
-    (from: string) => (from === "floor" ? FLOOR_COMPONENTS : resolveBundleProjectionViews(from)),
-    []
-  );
   return (
     <HostView
       targetId={targetId}
       durableEnabled={query.durableEnabled}
       HostComponent={HostComponent}
-      resolveLeavesProvider={resolveProvider}
+      resolveLeavesProvider={resolveBundleProjectionViews}
     />
   );
 }

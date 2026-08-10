@@ -45,8 +45,8 @@ export function BundleHost({
     [] // eslint-disable-line react-hooks/exhaustive-deps
   );
   useBundleContextSync(controller, contexts);
-  // Namespaced model: resolve every `alias:name` through the manifest `externals.projectionViews` (the
-  // floor is the `floor` provider, the bundle's own projection views are `self`). Nothing is ambient.
+  // Namespaced model: resolve every `alias:name` through the manifest `externals.projectionViews`;
+  // package providers and the bundle's `self` views are all explicit. Nothing is ambient.
   const registry = React.useMemo(
     () => buildBundleRegistry(bundle, resolvedProvider ?? undefined),
     [bundle, resolvedProvider]

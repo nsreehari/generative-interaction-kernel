@@ -742,7 +742,7 @@
         "invoke"
       ],
       "capabilities": {
-        "ui:screen": {
+        "primitive:container": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -751,7 +751,7 @@
             "children"
           ]
         },
-        "ui:row": {
+        "fluent:row": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -760,7 +760,7 @@
             "children"
           ]
         },
-        "ui:panel": {
+        "fluent:panel": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -769,25 +769,25 @@
             "children"
           ]
         },
-        "ui:text": {
+        "fluent:text": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           }
         },
-        "ui:note": {
+        "primitive:note": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           }
         },
-        "ui:alert": {
+        "primitive:alert": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           }
         },
-        "ui:list": {
+        "fluent:list": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -841,7 +841,7 @@
             "select"
           ]
         },
-        "ui:markdown": {
+        "primitive:markdown": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -874,14 +874,15 @@
       },
       "externals": {
         "projectionViews": {
-          "ui": {
-            "from": "floor"
-          },
           "fluent": {
             "from": "fluent",
             "use": [
               "button",
+              "list",
+              "panel",
+              "row",
               "tab-bar",
+              "text",
               "text-field",
               "textarea"
             ]
@@ -889,6 +890,10 @@
           "primitive": {
             "from": "primitive",
             "use": [
+              "alert",
+              "container",
+              "markdown",
+              "note",
               "timer-button"
             ]
           },
@@ -942,11 +947,27 @@
       "copilot-c2-root": {
         "id": "copilot-c2-root",
         "view": {
-          "capability": "ui:screen",
+          "capability": "primitive:container",
           "props": {
-            "title": "Copilot C2",
-            "subtitle": "Drive local Copilot agents through the demo-boards MCP server"
+            "variant": "column",
+            "gap": "m",
+            "fill": true,
+            "ariaLabel": "Copilot C2"
           }
+        }
+      },
+      "copilot-c2-title": {
+        "id": "copilot-c2-title",
+        "view": {
+          "capability": "fluent:text",
+          "props": { "value": "Copilot C2", "as": "h1", "variant": "title", "block": true }
+        }
+      },
+      "copilot-c2-subtitle": {
+        "id": "copilot-c2-subtitle",
+        "view": {
+          "capability": "fluent:text",
+          "props": { "value": "Drive local Copilot agents through the demo-boards MCP server", "as": "p", "variant": "subtitle", "block": true }
         }
       },
       "copilot-c2-dashboard": {
@@ -962,7 +983,7 @@
       "copilot-c2-dashboard-actions": {
         "id": "copilot-c2-dashboard-actions",
         "view": {
-          "capability": "ui:row"
+          "capability": "fluent:row"
         }
       },
       "copilot-c2-dashboard-refresh": {
@@ -1022,7 +1043,7 @@
       "copilot-c2-dashboard-status": {
         "id": "copilot-c2-dashboard-status",
         "view": {
-          "capability": "ui:note",
+          "capability": "primitive:note",
           "props": {
             "tone": "muted"
           },
@@ -1036,7 +1057,7 @@
       "copilot-c2-dashboard-error": {
         "id": "copilot-c2-dashboard-error",
         "view": {
-          "capability": "ui:alert",
+          "capability": "primitive:alert",
           "props": {
             "label": "Copilot activity error",
             "level": "error"
@@ -1110,7 +1131,7 @@
       "copilot-c2-agent-navigation": {
         "id": "copilot-c2-agent-navigation",
         "view": {
-          "capability": "ui:row"
+          "capability": "fluent:row"
         }
       },
       "copilot-c2-back-dashboard": {
@@ -1186,7 +1207,7 @@
       "copilot-c2-agent-workspace-name": {
         "id": "copilot-c2-agent-workspace-name",
         "view": {
-          "capability": "ui:text",
+          "capability": "fluent:text",
           "bindings": {
             "value": {
               "expression": "($id := copilotC2.selectedAgentId; $agent := copilotC2.agents[id = $id][0]; $string($agent.name ? $agent.name : $id))"
@@ -1197,7 +1218,7 @@
       "copilot-c2-agent-run-status": {
         "id": "copilot-c2-agent-run-status",
         "view": {
-          "capability": "ui:note",
+          "capability": "primitive:note",
           "props": {
             "tone": "info"
           },
@@ -1253,7 +1274,7 @@
       "copilot-c2-agent-run-actions": {
         "id": "copilot-c2-agent-run-actions",
         "view": {
-          "capability": "ui:row"
+          "capability": "fluent:row"
         }
       },
       "copilot-c2-agent-start-run": {
@@ -1303,7 +1324,7 @@
       "copilot-c2-settings-navigation": {
         "id": "copilot-c2-settings-navigation",
         "view": {
-          "capability": "ui:row",
+          "capability": "fluent:row",
           "visibility": "copilotC2.view = 'settings'"
         }
       },
@@ -1332,7 +1353,7 @@
       "copilot-c2-run-defaults": {
         "id": "copilot-c2-run-defaults",
         "view": {
-          "capability": "ui:panel",
+          "capability": "fluent:panel",
           "props": {
             "title": "Run defaults",
             "variant": "inset"
@@ -1424,7 +1445,7 @@
       "copilot-c2-layout": {
         "id": "copilot-c2-layout",
         "view": {
-          "capability": "ui:row",
+          "capability": "fluent:row",
           "props": {
             "variant": "split"
           },
@@ -1434,7 +1455,7 @@
       "copilot-c2-env": {
         "id": "copilot-c2-env",
         "view": {
-          "capability": "ui:panel",
+          "capability": "fluent:panel",
           "props": {
             "title": "Environment",
             "variant": "rail"
@@ -1444,7 +1465,7 @@
       "copilot-c2-env-server": {
         "id": "copilot-c2-env-server",
         "view": {
-          "capability": "ui:note",
+          "capability": "primitive:note",
           "props": {
             "tone": "muted"
           },
@@ -1458,7 +1479,7 @@
       "copilot-c2-env-status": {
         "id": "copilot-c2-env-status",
         "view": {
-          "capability": "ui:note",
+          "capability": "primitive:note",
           "props": {
             "tone": "info"
           },
@@ -1472,7 +1493,7 @@
       "copilot-c2-env-error": {
         "id": "copilot-c2-env-error",
         "view": {
-          "capability": "ui:alert",
+          "capability": "primitive:alert",
           "props": {
             "label": "Environment error",
             "level": "error"
@@ -1515,26 +1536,25 @@
                 "do": "assign",
                 "target": "copilotC2.selectedAgentId",
                 "args": {
-                  "from": "$event.id"
+                  "from": "$event.values[0]"
                 }
               }
             ]
           }
         },
         "view": {
-          "capability": "ui:list",
+          "capability": "fluent:list",
           "props": {
-            "idKey": "id",
-            "primaryKey": "name",
-            "valueKey": "source",
-            "badgeKey": "scope"
+            "variant": "selectable",
+            "selectionMode": "single",
+            "ariaLabel": "Agents"
           },
           "bindings": {
-            "selectedId": {
-              "from": "copilotC2.selectedAgentId"
+            "selectedValues": {
+              "expression": "copilotC2.selectedAgentId != '' ? [copilotC2.selectedAgentId] : []"
             },
             "items": {
-              "expression": "copilotC2.agents"
+              "expression": "copilotC2.agents.{'value':$string(id),'label':$string(name) & (source ? ' · ' & $string(source) : '') & (scope ? ' · ' & $string(scope) : '')}"
             }
           },
           "visibility": "copilotC2.view = 'legacy'"
@@ -1543,7 +1563,7 @@
       "copilot-c2-agent-detail": {
         "id": "copilot-c2-agent-detail",
         "view": {
-          "capability": "ui:panel",
+          "capability": "fluent:panel",
           "props": {
             "title": "Selected agent",
             "variant": "inset"
@@ -1554,7 +1574,7 @@
       "copilot-c2-agent-name": {
         "id": "copilot-c2-agent-name",
         "view": {
-          "capability": "ui:text",
+          "capability": "fluent:text",
           "bindings": {
             "value": {
               "expression": "$string(copilotC2.agents[id = copilotC2.selectedAgentId][0].name)"
@@ -1565,7 +1585,7 @@
       "copilot-c2-agent-description": {
         "id": "copilot-c2-agent-description",
         "view": {
-          "capability": "ui:note",
+          "capability": "primitive:note",
           "props": {
             "tone": "muted"
           },
@@ -1579,7 +1599,7 @@
       "copilot-c2-source-roots": {
         "id": "copilot-c2-source-roots",
         "view": {
-          "capability": "ui:panel",
+          "capability": "fluent:panel",
           "props": {
             "title": "Source roots",
             "variant": "inset"
@@ -1589,7 +1609,7 @@
       "copilot-c2-source-roots-status": {
         "id": "copilot-c2-source-roots-status",
         "view": {
-          "capability": "ui:note",
+          "capability": "primitive:note",
           "props": {
             "tone": "info"
           },
@@ -1603,7 +1623,7 @@
       "copilot-c2-source-roots-error": {
         "id": "copilot-c2-source-roots-error",
         "view": {
-          "capability": "ui:alert",
+          "capability": "primitive:alert",
           "props": {
             "label": "Source roots error",
             "level": "error"
@@ -1619,7 +1639,7 @@
       "copilot-c2-source-roots-actions": {
         "id": "copilot-c2-source-roots-actions",
         "view": {
-          "capability": "ui:row"
+          "capability": "fluent:row"
         }
       },
       "copilot-c2-refresh-source-roots": {
@@ -1777,33 +1797,32 @@
                 "do": "assign",
                 "target": "copilotC2.selectedSourceRootId",
                 "args": {
-                  "from": "$event.id"
+                  "from": "$event.values[0]"
                 }
               },
               {
                 "do": "assign",
                 "target": "copilotC2.sourceRootId",
                 "args": {
-                  "from": "$event.id"
+                  "from": "$event.values[0]"
                 }
               }
             ]
           }
         },
         "view": {
-          "capability": "ui:list",
+          "capability": "fluent:list",
           "props": {
-            "idKey": "id",
-            "primaryKey": "name",
-            "valueKey": "path",
-            "badgeKey": "status"
+            "variant": "selectable",
+            "selectionMode": "single",
+            "ariaLabel": "Source roots"
           },
           "bindings": {
-            "selectedId": {
-              "from": "copilotC2.selectedSourceRootId"
+            "selectedValues": {
+              "expression": "copilotC2.selectedSourceRootId != '' ? [copilotC2.selectedSourceRootId] : []"
             },
             "items": {
-              "expression": "copilotC2.sourceRoots"
+              "expression": "copilotC2.sourceRoots.{'value':$string(id),'label':$string(name) & (path ? ' · ' & $string(path) : '') & (status ? ' · ' & $string(status) : '')}"
             }
           }
         }
@@ -1811,7 +1830,7 @@
       "copilot-c2-source-root-detail": {
         "id": "copilot-c2-source-root-detail",
         "view": {
-          "capability": "ui:panel",
+          "capability": "fluent:panel",
           "props": {
             "title": "Selected root",
             "variant": "inset"
@@ -1822,7 +1841,7 @@
       "copilot-c2-source-root-detail-name": {
         "id": "copilot-c2-source-root-detail-name",
         "view": {
-          "capability": "ui:note",
+          "capability": "primitive:note",
           "props": {
             "tone": "info"
           },
@@ -1836,7 +1855,7 @@
       "copilot-c2-source-root-detail-path": {
         "id": "copilot-c2-source-root-detail-path",
         "view": {
-          "capability": "ui:note",
+          "capability": "primitive:note",
           "props": {
             "tone": "muted"
           },
@@ -1850,7 +1869,7 @@
       "copilot-c2-main": {
         "id": "copilot-c2-main",
         "view": {
-          "capability": "ui:panel",
+          "capability": "fluent:panel",
           "props": {
             "title": "Operations",
             "variant": "detail"
@@ -1897,7 +1916,7 @@
       "copilot-c2-run-tab": {
         "id": "copilot-c2-run-tab",
         "view": {
-          "capability": "ui:panel",
+          "capability": "fluent:panel",
           "props": {
             "title": "Start a run",
             "variant": "tab"
@@ -1908,7 +1927,7 @@
       "copilot-c2-run-status": {
         "id": "copilot-c2-run-status",
         "view": {
-          "capability": "ui:note",
+          "capability": "primitive:note",
           "props": {
             "tone": "info"
           },
@@ -1922,7 +1941,7 @@
       "copilot-c2-run-error": {
         "id": "copilot-c2-run-error",
         "view": {
-          "capability": "ui:alert",
+          "capability": "primitive:alert",
           "props": {
             "label": "Run error",
             "level": "error"
@@ -2020,7 +2039,7 @@
       "copilot-c2-run-actions": {
         "id": "copilot-c2-run-actions",
         "view": {
-          "capability": "ui:row"
+          "capability": "fluent:row"
         }
       },
       "copilot-c2-start-run": {
@@ -2069,7 +2088,7 @@
       "copilot-c2-current-run-run-tab": {
         "id": "copilot-c2-current-run-run-tab",
         "view": {
-          "capability": "ui:panel",
+          "capability": "fluent:panel",
           "props": {
             "title": "Current run",
             "variant": "inset"
@@ -2080,7 +2099,7 @@
       "copilot-c2-current-run-summary-run-tab": {
         "id": "copilot-c2-current-run-summary-run-tab",
         "view": {
-          "capability": "ui:note",
+          "capability": "primitive:note",
           "props": {
             "tone": "info"
           },
@@ -2094,7 +2113,7 @@
       "copilot-c2-current-run-output-run-tab": {
         "id": "copilot-c2-current-run-output-run-tab",
         "view": {
-          "capability": "ui:markdown",
+          "capability": "primitive:markdown",
           "bindings": {
             "value": {
               "expression": "($status := $string(copilotC2.currentRun.status ? copilotC2.currentRun.status : 'unknown'); $exit := copilotC2.currentRun.exitCode; $summary := 'Run ' & $string(copilotC2.currentRun.id) & ' is ' & $status & ($type($exit) = 'number' ? ' (exit ' & $string($exit) & ')' : '') & '.'; $stdout := $trim($string(copilotC2.currentRun.stdout)); $stderr := $trim($string(copilotC2.currentRun.stderr)); $error := $trim($string(copilotC2.currentRun.error)); $summary & ($stdout != '' ? '\n\n## stdout\n\n```text\n' & $stdout & '\n```' : '') & ($stderr != '' ? '\n\n## stderr\n\n```text\n' & $stderr & '\n```' : '') & ($error != '' ? '\n\n## error\n\n' & $error : ''))"
@@ -2105,7 +2124,7 @@
       "copilot-c2-history-tab": {
         "id": "copilot-c2-history-tab",
         "view": {
-          "capability": "ui:panel",
+          "capability": "fluent:panel",
           "props": {
             "title": "Run history",
             "variant": "tab"
@@ -2116,7 +2135,7 @@
       "copilot-c2-history-status": {
         "id": "copilot-c2-history-status",
         "view": {
-          "capability": "ui:note",
+          "capability": "primitive:note",
           "props": {
             "tone": "info"
           },
@@ -2130,7 +2149,7 @@
       "copilot-c2-history-actions": {
         "id": "copilot-c2-history-actions",
         "view": {
-          "capability": "ui:row"
+          "capability": "fluent:row"
         }
       },
       "copilot-c2-refresh-runs": {
@@ -2185,7 +2204,7 @@
                 "do": "assign",
                 "target": "copilotC2.selectedRunId",
                 "args": {
-                  "from": "$event.id"
+                  "from": "$event.values[0]"
                 }
               },
               {
@@ -2198,19 +2217,18 @@
           }
         },
         "view": {
-          "capability": "ui:list",
+          "capability": "fluent:list",
           "props": {
-            "idKey": "id",
-            "primaryKey": "name",
-            "valueKey": "updatedAt",
-            "badgeKey": "status"
+            "variant": "selectable",
+            "selectionMode": "single",
+            "ariaLabel": "Run history"
           },
           "bindings": {
-            "selectedId": {
-              "from": "copilotC2.selectedRunId"
+            "selectedValues": {
+              "expression": "copilotC2.selectedRunId != '' ? [copilotC2.selectedRunId] : []"
             },
             "items": {
-              "expression": "copilotC2.runs.{'id':$string(id),'name':$string(agent ? agent : 'copilot'),'status':$string(status),'updatedAt':$string(finishedAt ? finishedAt : (startedAt ? startedAt : createdAt))}"
+              "expression": "copilotC2.runs.{'value':$string(id),'label':$string(agent ? agent : 'copilot') & ' · ' & $string(status) & ' · ' & $string(finishedAt ? finishedAt : (startedAt ? startedAt : createdAt))}"
             }
           }
         }
@@ -2218,7 +2236,7 @@
       "copilot-c2-current-run-history-tab": {
         "id": "copilot-c2-current-run-history-tab",
         "view": {
-          "capability": "ui:panel",
+          "capability": "fluent:panel",
           "props": {
             "title": "Selected run",
             "variant": "inset"
@@ -2229,7 +2247,7 @@
       "copilot-c2-current-run-summary-history-tab": {
         "id": "copilot-c2-current-run-summary-history-tab",
         "view": {
-          "capability": "ui:note",
+          "capability": "primitive:note",
           "props": {
             "tone": "info"
           },
@@ -2243,7 +2261,7 @@
       "copilot-c2-current-run-output-history-tab": {
         "id": "copilot-c2-current-run-output-history-tab",
         "view": {
-          "capability": "ui:markdown",
+          "capability": "primitive:markdown",
           "bindings": {
             "value": {
               "expression": "($status := $string(copilotC2.currentRun.status ? copilotC2.currentRun.status : 'unknown'); $exit := copilotC2.currentRun.exitCode; $summary := 'Run ' & $string(copilotC2.currentRun.id) & ' is ' & $status & ($type($exit) = 'number' ? ' (exit ' & $string($exit) & ')' : '') & '.'; $stdout := $trim($string(copilotC2.currentRun.stdout)); $stderr := $trim($string(copilotC2.currentRun.stderr)); $error := $trim($string(copilotC2.currentRun.error)); $summary & ($stdout != '' ? '\n\n## stdout\n\n```text\n' & $stdout & '\n```' : '') & ($stderr != '' ? '\n\n## stderr\n\n```text\n' & $stderr & '\n```' : '') & ($error != '' ? '\n\n## error\n\n' & $error : ''))"
@@ -2259,10 +2277,22 @@
         ],
         "placements": [
           {
-            "cell": "copilot-c2-dashboard",
+            "cell": "copilot-c2-title",
             "parent": "copilot-c2-root",
             "slot": "children",
             "order": 0
+          },
+          {
+            "cell": "copilot-c2-subtitle",
+            "parent": "copilot-c2-root",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "copilot-c2-dashboard",
+            "parent": "copilot-c2-root",
+            "slot": "children",
+            "order": 2
           },
           {
             "cell": "copilot-c2-dashboard-actions",
@@ -2304,7 +2334,7 @@
             "cell": "copilot-c2-agent-workspace",
             "parent": "copilot-c2-root",
             "slot": "children",
-            "order": 1
+            "order": 3
           },
           {
             "cell": "copilot-c2-agent-navigation",
@@ -2376,7 +2406,7 @@
             "cell": "copilot-c2-settings-navigation",
             "parent": "copilot-c2-root",
             "slot": "children",
-            "order": 2
+            "order": 4
           },
           {
             "cell": "copilot-c2-settings-back",
@@ -2388,7 +2418,7 @@
             "cell": "copilot-c2-run-defaults",
             "parent": "copilot-c2-root",
             "slot": "children",
-            "order": 3
+            "order": 5
           },
           {
             "cell": "copilot-c2-settings-mcp-server",
@@ -2412,7 +2442,7 @@
             "cell": "copilot-c2-layout",
             "parent": "copilot-c2-root",
             "slot": "children",
-            "order": 4
+            "order": 6
           },
           {
             "cell": "copilot-c2-env",

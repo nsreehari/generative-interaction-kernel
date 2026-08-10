@@ -145,7 +145,7 @@
         "invoke"
       ],
       "capabilities": {
-        "ui:screen": {
+        "primitive:container": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -154,7 +154,7 @@
             "children"
           ]
         },
-        "ui:panel": {
+        "fluent:panel": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -163,43 +163,19 @@
             "children"
           ]
         },
-        "ui:col": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "slots": [
-            "children"
-          ]
-        },
-        "ui:row": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "slots": [
-            "children"
-          ]
-        },
-        "ui:heading": {
+        "primitive:note": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           }
         },
-        "ui:note": {
+        "fluent:text": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           }
         },
-        "ui:text": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        },
-        "ui:alert": {
+        "primitive:alert": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -264,7 +240,7 @@
             "press"
           ]
         },
-        "ui:markdown": {
+        "primitive:markdown": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -273,14 +249,22 @@
       },
       "externals": {
         "projectionViews": {
-          "ui": {
-            "from": "floor"
-          },
           "fluent": {
             "from": "fluent",
             "use": [
               "button",
+              "panel",
+              "text",
               "text-field"
+            ]
+          },
+          "primitive": {
+            "from": "primitive",
+            "use": [
+              "alert",
+              "container",
+              "markdown",
+              "note"
             ]
           },
           "agent": {
@@ -325,11 +309,27 @@
       "foundry-agent-root": {
         "id": "foundry-agent-root",
         "view": {
-          "capability": "ui:screen",
+          "capability": "primitive:container",
           "props": {
-            "title": "Foundry Agent",
-            "subtitle": "Choose an available agent and start a conversation."
+            "variant": "column",
+            "gap": "m",
+            "fill": true,
+            "ariaLabel": "Foundry Agent"
           }
+        }
+      },
+      "foundry-agent-title": {
+        "id": "foundry-agent-title",
+        "view": {
+          "capability": "fluent:text",
+          "props": { "value": "Foundry Agent", "as": "h1", "variant": "title", "block": true }
+        }
+      },
+      "foundry-agent-subtitle": {
+        "id": "foundry-agent-subtitle",
+        "view": {
+          "capability": "fluent:text",
+          "props": { "value": "Choose an available agent and start a conversation.", "as": "p", "variant": "subtitle", "block": true }
         }
       },
       "foundry-access-gate": {
@@ -444,7 +444,7 @@
       "agent-connected": {
         "id": "agent-connected",
         "view": {
-          "capability": "ui:alert",
+          "capability": "primitive:alert",
           "props": {
             "label": "Connected to",
             "level": "good"
@@ -509,7 +509,7 @@
       "agent-request-error": {
         "id": "agent-request-error",
         "view": {
-          "capability": "ui:alert",
+          "capability": "primitive:alert",
           "props": {
             "label": "Something went wrong",
             "level": "error"
@@ -525,7 +525,7 @@
       "agent-asked-panel": {
         "id": "agent-asked-panel",
         "view": {
-          "capability": "ui:panel",
+          "capability": "fluent:panel",
           "props": {
             "title": "You asked",
             "variant": "inset"
@@ -536,7 +536,7 @@
       "agent-asked-value": {
         "id": "agent-asked-value",
         "view": {
-          "capability": "ui:note",
+          "capability": "primitive:note",
           "props": {
             "tone": "muted"
           },
@@ -550,7 +550,7 @@
       "agent-reply-panel": {
         "id": "agent-reply-panel",
         "view": {
-          "capability": "ui:panel",
+          "capability": "fluent:panel",
           "props": {
             "title": "Reply",
             "variant": "inset"
@@ -560,7 +560,7 @@
       "agent-reply-empty": {
         "id": "agent-reply-empty",
         "view": {
-          "capability": "ui:note",
+          "capability": "primitive:note",
           "props": {
             "value": "Send a message to see the agent's reply.",
             "tone": "muted"
@@ -571,7 +571,7 @@
       "agent-reply-value": {
         "id": "agent-reply-value",
         "view": {
-          "capability": "ui:markdown",
+          "capability": "primitive:markdown",
           "bindings": {
             "value": {
               "from": "agent.reply"
@@ -609,10 +609,22 @@
         ],
         "placements": [
           {
-            "cell": "foundry-access-gate",
+            "cell": "foundry-agent-title",
             "parent": "foundry-agent-root",
             "slot": "children",
             "order": 0
+          },
+          {
+            "cell": "foundry-agent-subtitle",
+            "parent": "foundry-agent-root",
+            "slot": "children",
+            "order": 1
+          },
+          {
+            "cell": "foundry-access-gate",
+            "parent": "foundry-agent-root",
+            "slot": "children",
+            "order": 2
           },
           {
             "cell": "agent-demo",

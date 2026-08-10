@@ -77,7 +77,7 @@
               "incident-workspace": { "capability": "incident2:workspace", "props": { "title": "Incident intelligence", "preset": "operational" } },
               "incident-source": { "capability": "incident2:editor", "props": { "title": "Investigation source" }, "bindings": { "value": { "from": "incident2.content" } } },
               "incident-source-selector": { "capability": "fluent:dropdown", "props": { "ariaLabel": "Choose sample incident", "options": [{ "value": "password-spray-mailbox", "label": "Password spray and mailbox compromise" }, { "value": "blob-storage-exfiltration", "label": "Blob storage exfiltration" }, { "value": "identity-compromise", "label": "Identity and cloud resource compromise" }, { "value": "device-code-bec", "label": "Device-code phishing and BEC" }, { "value": "supply-chain-sap-bec", "label": "Supply-chain SAP and procurement BEC" }] }, "bindings": { "value": { "from": "incident2.selectedSampleId" } }, "visibility": "true" },
-              "incident-source-markdown": { "capability": "ui:markdown", "bindings": { "value": { "from": "incident2.content" } } },
+              "incident-source-markdown": { "capability": "primitive:markdown", "bindings": { "value": { "from": "incident2.content" } } },
               "incident-source-form": { "capability": "primitive:form", "props": { "fields": { "properties": { "content": { "title": "Markdown content", "type": "string", "format": "textarea", "rows": 34, "minLength": 1, "span": 12 } }, "required": ["content"] }, "saveLabel": "Save report", "discardLabel": "Discard changes" }, "bindings": { "value": { "from": "incident2.formValue" } } },
               "foundry-access-gate": { "capability": "foundry:access-gate", "bindings": { "access": { "expression": "($s := incident2.foundryAccessStatus; {'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': incident2.foundryAccessError})" } } },
               "incident-semantic-analyzer": { "capability": "incident2:report", "props": { "title": "Operational assessment" }, "bindings": { "value": { "from": "incident2.model" }, "content": { "from": "incident2.content" }, "analyzedContent": { "from": "incident2.analyzedContent" }, "error": { "from": "incident2.error" }, "pending": { "from": "incident2.analysisPending" } } },
@@ -213,11 +213,11 @@
         "semantic:work-set": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["select", "activate", "reorder", "move"], "dataProp": "items" },
         "foundry:access-gate": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["accessRequested", "accessCleared"], "slots": ["children"] },
         "fluent:dropdown": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["select"], "dataProp": "value" },
-        "ui:markdown": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
+        "primitive:markdown": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
         "primitive:form": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"] }
       },
       "externals": {
-        "projectionViews": { "incident2": { "from": "self" }, "semantic": { "from": "semantic", "use": ["event-series", "process", "entity-set", "decision", "work-set"] }, "foundry": { "from": "foundry", "use": ["access-gate"] }, "fluent": { "from": "fluent", "use": ["dropdown"] }, "ui": { "from": "floor", "use": ["markdown"] }, "primitive": { "from": "primitive", "use": ["form"] } },
+        "projectionViews": { "incident2": { "from": "self" }, "semantic": { "from": "semantic", "use": ["event-series", "process", "entity-set", "decision", "work-set"] }, "foundry": { "from": "foundry", "use": ["access-gate"] }, "fluent": { "from": "fluent", "use": ["dropdown"] }, "primitive": { "from": "primitive", "use": ["form", "markdown"] } },
         "effectHandlers": ["selectSampleReport", "saveReport", "prepareAnalysis"]
       },
       "state": {

@@ -4,13 +4,13 @@
   "payload": {
     "manifest": "live-cards/1.0",
     "root": {
-      "capability": "ui:board",
+      "capability": "demo:board",
       "id": "board-1",
       "props": { "title": "Sales" },
       "edges": {
         "children": [
           {
-            "capability": "ui:metric",
+            "capability": "demo:metric",
             "id": "metric-total",
             "props": { "label": "Total" },
             "edges": {
@@ -18,7 +18,7 @@
             }
           },
           {
-            "capability": "ui:table",
+            "capability": "demo:table",
             "id": "table-orders",
             "props": { "columns": ["id", "amount"] },
             "edges": {
@@ -31,7 +31,7 @@
             }
           },
           {
-            "capability": "ui:actions",
+            "capability": "demo:actions",
             "id": "btn-approve",
             "props": { "label": "Approve" },
             "edges": {

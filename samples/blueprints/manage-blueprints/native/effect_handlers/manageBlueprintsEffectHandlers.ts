@@ -324,7 +324,7 @@ export const manageBlueprintsEffects: EffectHandlerMap = {
   },
 
   async getBlueprint(ctx) {
-    const id = String(ctx.payload.id ?? "");
+    const id = String(Array.isArray(ctx.payload.values) ? ctx.payload.values[0] ?? "" : "");
     const entry = await findEntry(id);
     if (!entry) {
       return { outcome: "not-found", ops: [setOp("manageBlueprints.editor.error", `Blueprint '${id}' was not found.`)] };

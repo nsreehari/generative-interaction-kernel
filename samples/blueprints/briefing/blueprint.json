@@ -13,7 +13,7 @@
       ],
       "actions": [],
       "capabilities": {
-        "ui:screen": {
+        "primitive:container": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -22,7 +22,7 @@
             "children"
           ]
         },
-        "ui:row": {
+        "fluent:row": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -31,7 +31,7 @@
             "children"
           ]
         },
-        "ui:panel": {
+        "fluent:panel": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -40,23 +40,27 @@
             "children"
           ]
         },
-        "ui:metric": {
+        "primitive:metric": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           },
           "dataProp": "value"
         },
-        "ui:table": {
+        "fluent:table": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "fluent:text": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           },
-          "emits": [
-            "rowSelect"
-          ]
+          "dataProp": "value"
         },
-        "ui:markdown": {
+        "primitive:markdown": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -66,8 +70,13 @@
       },
       "externals": {
         "projectionViews": {
-          "ui": {
-            "from": "floor"
+          "primitive": {
+            "from": "primitive",
+            "use": ["container", "markdown", "metric"]
+          },
+          "fluent": {
+            "from": "fluent",
+            "use": ["panel", "row", "table", "text"]
           }
         }
       },
@@ -117,17 +126,43 @@
       "briefing-root": {
         "id": "briefing-root",
         "view": {
-          "capability": "ui:screen",
+          "capability": "primitive:container",
           "props": {
-            "title": "Operational briefing",
-            "subtitle": "Current posture, material updates, and next steps"
+            "variant": "column",
+            "gap": "m",
+            "fill": true,
+            "ariaLabel": "Operational briefing"
+          }
+        }
+      },
+      "briefing-title": {
+        "id": "briefing-title",
+        "view": {
+          "capability": "fluent:text",
+          "props": {
+            "value": "Operational briefing",
+            "as": "h1",
+            "variant": "title",
+            "block": true
+          }
+        }
+      },
+      "briefing-subtitle": {
+        "id": "briefing-subtitle",
+        "view": {
+          "capability": "fluent:text",
+          "props": {
+            "value": "Current posture, material updates, and next steps",
+            "as": "p",
+            "variant": "subtitle",
+            "block": true
           }
         }
       },
       "briefing-headline": {
         "id": "briefing-headline",
         "view": {
-          "capability": "ui:markdown",
+          "capability": "primitive:markdown",
           "bindings": {
             "value": {
               "from": "briefing.headline"
@@ -138,13 +173,13 @@
       "briefing-metrics": {
         "id": "briefing-metrics",
         "view": {
-          "capability": "ui:row"
+          "capability": "fluent:row"
         }
       },
       "briefing-active": {
         "id": "briefing-active",
         "view": {
-          "capability": "ui:metric",
+          "capability": "primitive:metric",
           "props": {
             "label": "Active incidents"
           },
@@ -158,7 +193,7 @@
       "briefing-priority": {
         "id": "briefing-priority",
         "view": {
-          "capability": "ui:metric",
+          "capability": "primitive:metric",
           "props": {
             "label": "High priority"
           },
@@ -172,7 +207,7 @@
       "briefing-coverage": {
         "id": "briefing-coverage",
         "view": {
-          "capability": "ui:metric",
+          "capability": "primitive:metric",
           "props": {
             "label": "Coverage"
           },
@@ -186,32 +221,31 @@
       "briefing-updates": {
         "id": "briefing-updates",
         "view": {
-          "capability": "ui:table",
+          "capability": "fluent:table",
           "props": {
-            "title": "Material updates",
-            "idKey": "id",
+            "ariaLabel": "Material updates",
             "columns": [
               {
-                "key": "priority",
+                "id": "priority",
                 "label": "Priority"
               },
               {
-                "key": "area",
+                "id": "area",
                 "label": "Area"
               },
               {
-                "key": "update",
+                "id": "update",
                 "label": "Update"
               },
               {
-                "key": "owner",
+                "id": "owner",
                 "label": "Owner"
               }
             ]
           },
           "bindings": {
             "rows": {
-              "from": "briefing.updates"
+              "expression": "briefing.updates.{'id':$string(id),'cells':{'priority':priority,'area':area,'update':update,'owner':owner}}"
             }
           }
         }
@@ -219,7 +253,7 @@
       "briefing-next": {
         "id": "briefing-next",
         "view": {
-          "capability": "ui:panel",
+          "capability": "fluent:panel",
           "props": {
             "title": "Next steps"
           }
@@ -228,7 +262,7 @@
       "briefing-next-text": {
         "id": "briefing-next-text",
         "view": {
-          "capability": "ui:markdown",
+          "capability": "primitive:markdown",
           "bindings": {
             "value": {
               "from": "briefing.nextSteps"
@@ -244,16 +278,28 @@
         ],
         "placements": [
           {
-            "cell": "briefing-headline",
+            "cell": "briefing-title",
             "parent": "briefing-root",
             "slot": "children",
             "order": 0
           },
           {
-            "cell": "briefing-metrics",
+            "cell": "briefing-subtitle",
             "parent": "briefing-root",
             "slot": "children",
             "order": 1
+          },
+          {
+            "cell": "briefing-headline",
+            "parent": "briefing-root",
+            "slot": "children",
+            "order": 2
+          },
+          {
+            "cell": "briefing-metrics",
+            "parent": "briefing-root",
+            "slot": "children",
+            "order": 3
           },
           {
             "cell": "briefing-active",
@@ -271,7 +317,7 @@
             "cell": "briefing-coverage",
             "parent": "briefing-metrics",
             "slot": "children",
-            "order": 2
+            "order": 4
           },
           {
             "cell": "briefing-updates",
@@ -283,7 +329,7 @@
             "cell": "briefing-next",
             "parent": "briefing-root",
             "slot": "children",
-            "order": 3
+            "order": 5
           },
           {
             "cell": "briefing-next-text",

@@ -88,7 +88,7 @@
                 "visibility": "true"
               },
               "incident-source-markdown": {
-                "capability": "ui:markdown",
+                "capability": "primitive:markdown",
                 "bindings": {
                   "value": {
                     "from": "incident3.content"
@@ -467,7 +467,7 @@
           ],
           "dataProp": "value"
         },
-        "ui:markdown": {
+        "primitive:markdown": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -487,8 +487,8 @@
               "dropdown"
             ]
           },
-          "ui": {
-            "from": "floor",
+          "primitive": {
+            "from": "primitive",
             "use": [
               "markdown"
             ]

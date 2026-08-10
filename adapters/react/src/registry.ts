@@ -31,15 +31,15 @@ export function createRegistry(
 // --- Namespaced provider resolution -------------------------------------------------
 //
 // The end-state vocabulary model: a capability is referenced as `alias:name`, never bare, and
-// NOTHING is ambient — a bundle's manifest `imports` binds every alias (the floor included) to a
+// NOTHING is ambient — a bundle's manifest `imports` binds every alias to a
 // component PROVIDER. This registry resolves `alias:name` -> providers[imports[alias].from][name],
 // so multiple providers can offer the same name (picked explicitly by alias) and a bundle can borrow
 // another bundle's capability by importing it under an alias.
 
-/** A provider's raw capability -> component map (e.g. the floor's primitives, a bundle's own components). */
+/** A provider's raw capability -> component map (for example, package or bundle-native views). */
 export type ProviderMap = Record<string, ProjectionView>;
 
-/** Resolve a provider name ("floor" | "self" | a bundle name) to its component map. */
+/** Resolve a provider name (for example, a package id, `self`, or another bundle) to its component map. */
 export type ProviderResolver = (from: string) => ProviderMap | undefined;
 
 /** Split `alias:name` into its two parts on the FIRST colon (names never contain a colon). */

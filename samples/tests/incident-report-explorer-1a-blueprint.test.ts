@@ -127,14 +127,15 @@ describe("incident-report-explorer-1a Blueprint", () => {
       "incident-sections", "incident-improve-report",
     ]);
     expect(source.payload.recipes[0].representations[0].views["incident-sections"]).toMatchObject({
-      capability: "semantic:component-data-sections",
+      capability: "incident1a:component-data-sections",
       bindings: { sections: { from: "incident1a.model.sections" } },
     });
   });
 
-  it("resolves the catalog-backed host from the shared semantic provider", () => {
+  it("owns the semantic data host in its native provider", () => {
     const projectionViews = blueprint.payload.runtime.externals.projectionViews;
-    expect(projectionViews.semantic).toEqual({ from: "semantic", use: ["component-data-sections"] });
+    expect(projectionViews.incident1a).toEqual({ from: "self" });
+    expect(projectionViews).not.toHaveProperty("semantic");
     expect(projectionViews).not.toHaveProperty("security");
   });
 

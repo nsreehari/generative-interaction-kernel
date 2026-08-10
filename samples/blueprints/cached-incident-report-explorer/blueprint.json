@@ -58,7 +58,7 @@
             "children"
           ]
         },
-        "ui:markdown": {
+        "primitive:markdown": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -96,8 +96,8 @@
               "dropdown"
             ]
           },
-          "ui": {
-            "from": "floor",
+          "primitive": {
+            "from": "primitive",
             "use": [
               "markdown"
             ]
@@ -211,7 +211,7 @@
           }
         ],
         "view": {
-          "capability": "ui:markdown",
+          "capability": "primitive:markdown",
           "bindings": {
             "value": {
               "from": "incident.content"

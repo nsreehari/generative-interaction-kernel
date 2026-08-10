@@ -8,8 +8,8 @@
     { "kind": "composition-valid" },
     {
       "kind": "equals",
-      "pointer": "/payload/runtime/externals/projectionViews/semantic/use",
-      "value": ["component-data-sections"]
+      "pointer": "/payload/recipes/0/representations/0/views/incident-sections/capability",
+      "value": "incident1a:component-data-sections"
     }
   ],
   "materializations": [

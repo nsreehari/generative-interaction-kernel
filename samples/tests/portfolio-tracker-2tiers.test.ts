@@ -51,20 +51,18 @@ test("portfolio tracker lowers all six representations while preserving all seve
       externalContext: { view, attention, marketMode: "mock" },
     }).payload.terminalBlueprint;
     assert.deepEqual(stableFacets(terminal.payload.cells ?? {}), authoredStableFacets);
-    assert.equal(terminal.payload.cells?.["portfolio-workspace"].view?.props?.subtitle, `${title(view)} · ${title(attention)}`);
+    assert.equal(terminal.payload.cells?.["portfolio-workspace"].view?.capability, "primitive:container");
+    assert.equal(terminal.payload.cells?.["portfolio-workspace"].view?.props?.fill, true);
     assert.equal(terminal.payload.projections?.presentation?.placements?.length, placements);
   }
 });
-
-function title(value: string): string {
-  return value[0].toUpperCase() + value.slice(1);
-}
 
 test("portfolio tracker falls back to desktop detailed without context", () => {
   const authored = authoredBlueprint();
   const terminal = materializeBlueprint({ blueprint: authored }).payload.terminalBlueprint;
 
-  assert.equal(terminal.payload.cells?.["portfolio-workspace"].view?.props?.subtitle, "Desktop · Detailed");
+  assert.equal(terminal.payload.cells?.["portfolio-workspace"].view?.capability, "primitive:container");
+  assert.equal(terminal.payload.cells?.["portfolio-workspace"].view?.props?.ariaLabel, "Portfolio");
 });
 
 test("portfolio tracker declares complete HTTP service operation transforms", () => {

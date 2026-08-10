@@ -36,7 +36,7 @@ import {
 } from "../src/fluent";
 
 test("fluent entrypoint exposes all views and closed definitions", () => {
-  const controls = ["badge", "button", "chips", "data-grid", "dialog", "dropdown", "list", "persona", "searchbox", "spinner", "switch", "tab-bar", "table", "text", "text-field", "textarea", "toggle", "toolbar"];
+  const controls = ["badge", "button", "chips", "data-grid", "dialog", "dropdown", "list", "panel", "persona", "row", "searchbox", "spinner", "switch", "tab-bar", "table", "text", "text-field", "textarea", "toggle", "toolbar"];
   const events: Record<string, string[]> = {
     badge: [],
     button: ["press"],
@@ -45,7 +45,9 @@ test("fluent entrypoint exposes all views and closed definitions", () => {
     dialog: ["openChange"],
     dropdown: ["select"],
     list: ["select"],
+    panel: [],
     persona: [],
+    row: [],
     searchbox: ["submit"],
     spinner: [],
     switch: ["toggle"],
@@ -230,8 +232,10 @@ test("Fluent authoring APIs expose complete contracts and scoped agent tools", (
     "dialog",
     "dropdown",
     "list",
+    "panel",
     "persona",
     "searchbox",
+    "row",
     "spinner",
     "switch",
     "table",

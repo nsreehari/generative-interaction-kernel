@@ -2,6 +2,7 @@ import React from "react";
 import { EditRegular } from "@fluentui/react-icons";
 import { makeStyles, tokens } from "@fluentui/react-components";
 import type { ProjectionView, ProjectionViewProps } from "@gik/react";
+import { ComponentDataSections } from "./ComponentDataSections";
 
 const useStyles = makeStyles({
   workspace: { width: "100%", height: "100vh", minWidth: 0, minHeight: 0, overflow: "hidden", display: "grid", gridTemplateRows: "44px minmax(0, 1fr)", backgroundColor: "#ecefed", color: "#1d2522", fontFamily: "Aptos, 'Segoe UI Variable', sans-serif" },
@@ -93,4 +94,9 @@ const WorkspaceView: ProjectionView = ({ node, children }) => {
   return <main className={styles.workspace}><header className={styles.header}><div className={styles.brand}><span className={styles.brandMark} /><h1 className={styles.title}>{String(node.props.title ?? "Incident report refinement")}</h1></div><span className={styles.headerMeta}>Semantic tier to runtime recipe</span></header><div className={styles.panes}>{cells.get("incident-report")}{cells.get("foundry-access-gate") ?? cells.get("incident-refinement")}</div></main>;
 };
 
-export default { workspace: WorkspaceView, editor: EditorView, refinement: RefinementView };
+export default {
+  workspace: WorkspaceView,
+  editor: EditorView,
+  refinement: RefinementView,
+  "component-data-sections": ComponentDataSections,
+};

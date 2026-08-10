@@ -13,7 +13,7 @@
       ],
       "actions": [],
       "capabilities": {
-        "ui:screen": {
+        "primitive:container": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -22,7 +22,7 @@
             "children"
           ]
         },
-        "ui:panel": {
+        "fluent:panel": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -31,27 +31,36 @@
             "children"
           ]
         },
-        "ui:markdown": {
+        "primitive:markdown": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           },
           "dataProp": "value"
         },
-        "ui:table": {
+        "fluent:table": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "fluent:text": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           },
-          "emits": [
-            "rowSelect"
-          ]
+          "dataProp": "value"
         }
       },
       "externals": {
         "projectionViews": {
-          "ui": {
-            "from": "floor"
+          "primitive": {
+            "from": "primitive",
+            "use": ["container", "markdown"]
+          },
+          "fluent": {
+            "from": "fluent",
+            "use": ["panel", "table", "text"]
           }
         }
       },
@@ -99,17 +108,43 @@
       "four-layers-root": {
         "id": "four-layers-root",
         "view": {
-          "capability": "ui:screen",
+          "capability": "primitive:container",
           "props": {
-            "title": "Four-layer Blueprint",
-            "subtitle": "From domain intent to a concrete executable projection"
+            "variant": "column",
+            "gap": "m",
+            "fill": true,
+            "ariaLabel": "Four-layer Blueprint"
+          }
+        }
+      },
+      "four-layers-title": {
+        "id": "four-layers-title",
+        "view": {
+          "capability": "fluent:text",
+          "props": {
+            "value": "Four-layer Blueprint",
+            "as": "h1",
+            "variant": "title",
+            "block": true
+          }
+        }
+      },
+      "four-layers-subtitle": {
+        "id": "four-layers-subtitle",
+        "view": {
+          "capability": "fluent:text",
+          "props": {
+            "value": "From domain intent to a concrete executable projection",
+            "as": "p",
+            "variant": "subtitle",
+            "block": true
           }
         }
       },
       "four-layers-summary": {
         "id": "four-layers-summary",
         "view": {
-          "capability": "ui:markdown",
+          "capability": "primitive:markdown",
           "bindings": {
             "value": {
               "from": "architecture.summary"
@@ -120,27 +155,27 @@
       "four-layers-stages": {
         "id": "four-layers-stages",
         "view": {
-          "capability": "ui:table",
+          "capability": "fluent:table",
           "props": {
-            "idKey": "id",
+            "ariaLabel": "Architecture stages",
             "columns": [
               {
-                "key": "stage",
+                "id": "stage",
                 "label": "Stage"
               },
               {
-                "key": "responsibility",
+                "id": "responsibility",
                 "label": "Responsibility"
               },
               {
-                "key": "example",
+                "id": "example",
                 "label": "Example"
               }
             ]
           },
           "bindings": {
             "rows": {
-              "from": "architecture.layers"
+              "expression": "architecture.layers.{'id':$string(id),'cells':{'stage':stage,'responsibility':responsibility,'example':example}}"
             }
           }
         }
@@ -148,7 +183,7 @@
       "four-layers-contract": {
         "id": "four-layers-contract",
         "view": {
-          "capability": "ui:panel",
+          "capability": "fluent:panel",
           "props": {
             "title": "Execution boundary"
           }
@@ -157,7 +192,7 @@
       "four-layers-contract-text": {
         "id": "four-layers-contract-text",
         "view": {
-          "capability": "ui:markdown",
+          "capability": "primitive:markdown",
           "bindings": {
             "value": {
               "from": "architecture.contract"
@@ -173,22 +208,34 @@
         ],
         "placements": [
           {
-            "cell": "four-layers-summary",
+            "cell": "four-layers-title",
             "parent": "four-layers-root",
             "slot": "children",
             "order": 0
           },
           {
-            "cell": "four-layers-stages",
+            "cell": "four-layers-subtitle",
             "parent": "four-layers-root",
             "slot": "children",
             "order": 1
           },
           {
-            "cell": "four-layers-contract",
+            "cell": "four-layers-summary",
             "parent": "four-layers-root",
             "slot": "children",
             "order": 2
+          },
+          {
+            "cell": "four-layers-stages",
+            "parent": "four-layers-root",
+            "slot": "children",
+            "order": 3
+          },
+          {
+            "cell": "four-layers-contract",
+            "parent": "four-layers-root",
+            "slot": "children",
+            "order": 4
           },
           {
             "cell": "four-layers-contract-text",

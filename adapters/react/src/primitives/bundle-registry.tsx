@@ -112,7 +112,7 @@ export function useBundleRegistry(): BundleRegistry | null {
   return React.useContext(BundleRegistryContext);
 }
 
-/** An optional host-owned provider resolver for bundle imports beyond `floor` / `self`. */
+/** An optional host-owned resolver for explicitly imported package and `self` providers. */
 export function useProjectionProviderResolver(): ProviderResolver | null {
   return React.useContext(ProjectionProviderResolverContext);
 }
