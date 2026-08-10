@@ -812,8 +812,8 @@
 <p class="workflow-boundary">A handoff changes who participates in the work; it does not create a second copy of context.</p>
 
 <h2 id="architecture">7. Typed Tiers and Governed Transformations</h2>
-<p>The architecture does not require six fixed layers. A Blueprint declares a finite ordered chain of <em>N</em> typed semantic tiers and <em>N&minus;1</em> transformation recipes. Tier names, schemas, and granularity belong to the authored profile: a simple system may move directly from domain intent to a runtime document, while a larger system may preserve separate intent, activity, workflow, interaction, projection, and runtime artifacts.</p>
-<p>The six-tier stack below is one illustrative profile. Every arrow is a governed transformation boundary. A deterministic recipe, a selected strategy, or a model-assisted compiler may produce the next candidate, but that candidate must satisfy the target tier contract before it becomes authoritative.</p>
+<p>The architecture does not require six fixed layers. A Blueprint declares a finite ordered chain of <em>N</em> typed semantic tiers and <em>N&minus;1</em> transformation recipes. Tier names, schemas, granularity, and accepted source forms belong to the authored profile. The profile preserves distinctions that matter for a domain; it does not add layers merely to satisfy a platform pipeline.</p>
+<p>The six-tier stack below is one illustrative profile for work that benefits from preserving intent, durable activity, workflow, shared interaction state, participant access, and runtime outcome as distinct contracts. Every arrow is a governed transformation boundary. A deterministic recipe, a selected strategy, a human compiler, or a model-assisted compiler may produce the next candidate, but that candidate must satisfy the target tier contract before it becomes authoritative.</p>
 
 <figure class="svg-figure progression-figure">
 <div class="progression-scroll">
@@ -878,26 +878,37 @@
   </g>
 </svg>
 </div>
-<figcaption>Each transformation emits a candidate for the next tier; target validation and host policy govern admission</figcaption>
+<figcaption>One authored profile: each transformation emits a candidate for the next tier; target validation and host policy govern admission</figcaption>
 </figure>
+
+<h3>Profiles preserve different amounts of semantic structure</h3>
+<p><strong>Direct operational profile <span class="row-note">implemented</span></strong><br><code>portfolio-domain</code> &rarr; <code>runtime-document</code>. The domain contract is already precise. The projected variant deterministically selects a participant representation; its sibling headless profile selects no presentation. Both select a contract-compatible market-data implementation.</p>
+
+<p><strong>Governed investigation profile <span class="row-note">architectural extension</span></strong><br>Natural-language brief &rarr; typed intent &rarr; activity graph &rarr; workflow graph &rarr; shared investigation records &rarr; participant projections. Separate tiers preserve the source request, evidence work, branching, handoffs, and approval boundaries that would be lost in a direct jump to runtime.</p>
+
+<p><strong>Durable service profile <span class="row-note">implemented</span></strong><br>Terminal Blueprint &rarr; portable materialization &rarr; journaled transitions &rarr; queued effect settlement. No presentation tier is required when the host is an API, middleware process, or durable worker.</p>
 
 <p>Current Blueprint materialization accepts any authored chain that is connected, linear, and non-branching. It resolves the recipes in order, emits one validated terminal Blueprint, and then prepares the Kernel program. &ldquo;Arbitrary tiers&rdquo; therefore means that the platform does not prescribe the count or names; it does not mean that a running materialization creates tiers recursively or changes the chain dynamically.</p>
 
 <p>A terminal Blueprint may omit <code>projections.presentation</code>. Its Cell events, reactions, computations, and source refresh behavior then compile into a headless Kernel program for APIs, middleware, and durable workers. Rendering hosts require a presentation explicitly; hosted child Blueprints also remain projection-hosted. Presentation is therefore a host capability rather than a universal execution dependency.</p>
 
 <h3>Natural language and model-assisted transformation</h3>
-<p>A tier may originate as natural language, partially structured material, or a fully typed artifact. Natural language can preserve intent and nuance, but it is not an executable contract. A model may extract a typed intent candidate, elaborate a workflow, select a compatible strategy, or synthesize a candidate recipe. The result enters the same validation and admission path as any other authored candidate.</p>
+<p>Natural language may accompany any tier as source, rationale, evidence, or provenance, but it should be authoritative input only where interpretation is an explicit part of the tier contract. Intent and exploration may be natural-language-first. Activity, workflow, and shared work products are often hybrid: typed structure carries identity and lifecycle while narrative carries rationale, uncertainty, and evidence. Policy, authorization, service contracts, effects, durable state, and executable programs remain typed.</p>
 
-<div class="focus-block"><code>materialize(authoredBlueprint, immutableContext) &rarr; terminalBlueprint</code></div>
+<p>A model may extract typed intent from a request, elaborate activities, propose workflow branches, select a compatible strategy, or synthesize a candidate recipe. At later boundaries it should normally transform typed input into typed output rather than reinterpreting the system from prose. The source language remains attached for traceability; it does not become executable authority.</p>
 
-<p>Today, normal materialization is synchronous and deterministic: recipes apply declared vocabulary patches or select pre-authored, contract-compatible representations and Cell programs from immutable context. Kernel-executed compiler Blueprints have separately demonstrated transforms, service-backed strategy work, validation, human confirmation, and artifact emission. Connecting those richer agent or human compiler pipelines to normal recipe chains is the extension point; their decisions must be validated and pinned before a reusable deterministic materialization is trusted.</p>
+<div class="focus-block"><code>source &rarr; typed candidate &rarr; validate &amp; admit &rarr; approve when required &rarr; pin artifact &rarr; deterministic execution</code></div>
+
+<p>An admitted model-assisted result should be pinned with its source and target tier identities, schema versions, provider and model identity, input and output hashes, relevant context and policy versions, validation results, and approval receipt. Subsequent execution consumes that accepted artifact; it need not ask a model to reinterpret the same decision on every run.</p>
+
+<p>Today, normal materialization is synchronous and deterministic: <code>materialize(authoredBlueprint, immutableContext) &rarr; terminalBlueprint</code>. Recipes apply declared vocabulary patches or select pre-authored, contract-compatible representations and Cell programs from immutable context. Kernel-executed compiler Blueprints have separately demonstrated transforms, service-backed strategy work, validation, human confirmation, and artifact emission. Connecting those richer agent or human compiler pipelines to normal recipe chains is the extension point; their accepted outputs should become authored inputs to the deterministic path.</p>
 
 <h3>Examples</h3>
-<p><strong>Incident investigation <span class="row-note">architectural extension</span></strong><br>Natural-language goal &rarr; typed intent &rarr; activity and workflow &rarr; shared interaction records. A model can preserve the source request while proposing typed goals, evidence work, branches, and handoffs. Schema and policy, not model confidence, decide admission.</p>
+<p><strong>Incident investigation</strong><br>A model preserves the source request while proposing typed goals, evidence activities, branches, and handoffs. The target schemas reject malformed structures, policy limits tools and delegation, and a human approves consequential changes. The accepted workflow is pinned before agents execute it.</p>
 
-<p><strong>Portfolio tracker <span class="row-note">implemented</span></strong><br><code>portfolio-domain</code> &rarr; <code>runtime-document</code>. Immutable context selects among six participant representations and between live HTTP and deterministic-agent service programs while seven stable Cells retain their contracts.</p>
+<p><strong>Portfolio tracker</strong><br>The projected profile uses immutable context to select among six participant representations; the sibling headless profile emits no presentation. Both select live HTTP or deterministic-agent market-data programs while seven stable Cells retain their contracts. No model interpretation is needed because the authored domain and implementation choices are already typed.</p>
 
-<p><strong>Durable backend work <span class="row-note">implemented</span></strong><br>Terminal Blueprint &rarr; portable materialization &rarr; journaled transition &rarr; queued effect settlement. The same state and event model runs without a mounted renderer, survives worker boundaries, settles effects idempotently, and can later project state to UI, MCP, or another transport.</p>
+<p><strong>Durable backend work</strong><br>The same state and event model runs without a mounted renderer, survives worker boundaries, settles effects idempotently, and can later expose state through UI, MCP, an API, or another transport. Headless execution changes the host medium, not the semantic contract.</p>
 
 <p class="workflow-boundary">A transformation provider may add interpretation; it never adds authority. Every emitted artifact remains a proposal until the target contract and active host policy admit it.</p>
 
