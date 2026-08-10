@@ -22,6 +22,7 @@ describe("sample Blueprint catalog", () => {
     expect(loaded).toEqual(admitted);
     expect(loaded?.blueprints).toEqual(bundle.blueprints);
     expect(loaded?.entries["incident-report-analysis-shell"].payload.id).toBe("incident-report-analysis-shell");
+    expect(loaded?.demoScenarios["portfolio-tracker-2tiers"]).toEqual(bundle.demoScenarios["portfolio-tracker-2tiers"]);
     await store.close();
   });
 

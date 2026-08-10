@@ -1,8 +1,10 @@
 import { parseBlueprintJson, type BlueprintArtifact } from "@gik/blueprint";
 import { createIndexedDbRecordLibrary } from "@gik/durable-runtime/storage/indexed-db";
+import type { DemoRunnerDocument } from "@gik/demo-runner-host";
 
 export const sampleBlueprintCatalogUrl = "bootstrap/sample-blueprints.bundle.json";
 const artifactKind = "blueprint-seed-artifact";
+const demoScenariosKind = "blueprint-seed-demo-scenarios";
 const metadataKind = "blueprint-seed-metadata";
 const userArtifactKind = "blueprint-user-artifact";
 const userNamespace = "gik-user-blueprints";
@@ -18,6 +20,7 @@ export interface BlueprintCatalogBundle {
   nativeFrom: Record<string, string>;
   projectionFrom: Record<string, string>;
   entries: Record<string, BlueprintArtifact>;
+  demoScenarios: Record<string, DemoRunnerDocument>;
 }
 
 export interface BlueprintCatalogSnapshot {
@@ -30,6 +33,7 @@ export interface BlueprintCatalogSnapshot {
   readonly projectionFrom: Readonly<Record<string, string>>;
   readonly seedEntries: Readonly<Record<string, BlueprintArtifact>>;
   readonly entries: Readonly<Record<string, BlueprintArtifact>>;
+  readonly demoScenarios: Readonly<Record<string, DemoRunnerDocument>>;
 }
 
 export interface BlueprintCatalogStore {
@@ -63,6 +67,7 @@ export function parseBlueprintCatalogBundle(value: unknown): BlueprintCatalogBun
   for (const id of ids) {
     if (!entries[id]) throw new Error(`Listed Blueprint catalog entry '${id}' is missing.`);
   }
+  const demoScenarios = demoScenarioRecord(value.demoScenarios, entries);
   return {
     format: "gik-blueprint-catalog/1",
     bundleId: value.bundleId,
@@ -73,6 +78,7 @@ export function parseBlueprintCatalogBundle(value: unknown): BlueprintCatalogBun
     nativeFrom: stringRecord(value.nativeFrom),
     projectionFrom: stringRecord(value.projectionFrom),
     entries,
+    demoScenarios,
   };
 }
 
@@ -87,6 +93,7 @@ export function createBlueprintCatalogSnapshot(bundle: BlueprintCatalogBundle): 
     projectionFrom: Object.freeze({ ...bundle.projectionFrom }),
     seedEntries: Object.freeze({ ...bundle.entries }),
     entries: Object.freeze({ ...bundle.entries }),
+    demoScenarios: Object.freeze({ ...bundle.demoScenarios }),
   };
 }
 
@@ -109,6 +116,7 @@ export async function verifyBlueprintCatalogBundle(bundle: BlueprintCatalogBundl
     nativeFrom: bundle.nativeFrom,
     projectionFrom: bundle.projectionFrom,
     entries: bundle.entries,
+    demoScenarios: bundle.demoScenarios,
   };
   const bytes = new TextEncoder().encode(JSON.stringify(catalog));
   const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)))
@@ -148,6 +156,23 @@ export function createIndexedDbBlueprintCatalogStore(options: {
         for (const record of existing) {
           if (!admittedIds.has(record.id)) await library.request(store.delete(record.id));
         }
+        const existingDemoScenarios = await library.records(store, demoScenariosKind, bundle.bundleId);
+        const admittedDemoScenarioIds = new Set<string>();
+        for (const [id, document] of Object.entries(bundle.demoScenarios)) {
+          const recordId = library.id(demoScenariosKind, bundle.bundleId, id);
+          admittedDemoScenarioIds.add(recordId);
+          await library.request(store.put({
+            id: recordId,
+            namespace: bundle.bundleId,
+            kind: demoScenariosKind,
+            key: id,
+            blueprintId: id,
+            document,
+          }));
+        }
+        for (const record of existingDemoScenarios) {
+          if (!admittedDemoScenarioIds.has(record.id)) await library.request(store.delete(record.id));
+        }
         await library.request(store.put({
           id: library.id(metadataKind, bundle.bundleId, "active"),
           namespace: bundle.bundleId,
@@ -175,6 +200,11 @@ export function createIndexedDbBlueprintCatalogStore(options: {
           const id = String(record.blueprintId);
           entries[id] = parseBlueprintJson(JSON.stringify(record.artifact));
         }
+        const demoScenarioRecords = await library.records(store, demoScenariosKind, bundleId);
+        const demoScenarios = Object.fromEntries(demoScenarioRecords.map((record) => [
+          String(record.blueprintId),
+          record.document,
+        ])) as Record<string, DemoRunnerDocument>;
         return createBlueprintCatalogSnapshot({
           format: "gik-blueprint-catalog/1",
           bundleId,
@@ -185,6 +215,7 @@ export function createIndexedDbBlueprintCatalogStore(options: {
           nativeFrom: stringRecord(metadata.nativeFrom),
           projectionFrom: stringRecord(metadata.projectionFrom),
           entries,
+          demoScenarios,
         });
       });
     },
@@ -300,4 +331,22 @@ async function migrateLegacyLocalBlueprints(store: BlueprintCatalogStore): Promi
   ]));
   await store.writeUserArtifacts(blueprints);
   globalThis.localStorage.removeItem(legacyLocalBlueprintStorageKey);
+}
+
+function demoScenarioRecord(
+  value: unknown,
+  entries: Record<string, BlueprintArtifact>,
+): Record<string, DemoRunnerDocument> {
+  if (value === undefined) return {};
+  if (!isRecord(value)) throw new Error("Blueprint catalog demo scenarios must be an object.");
+  return Object.fromEntries(Object.entries(value).map(([id, document]) => {
+    if (!entries[id]) throw new Error(`Demo scenarios reference unknown Blueprint '${id}'.`);
+    if (!isRecord(document)
+      || !isRecord(document.contextFormSpec)
+      || !isRecord(document.namedPresetContexts)
+      || !Array.isArray(document.scenarios)) {
+      throw new Error(`Demo scenarios for Blueprint '${id}' are invalid.`);
+    }
+    return [id, structuredClone(document) as unknown as DemoRunnerDocument];
+  }));
 }

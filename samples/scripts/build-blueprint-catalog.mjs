@@ -9,6 +9,7 @@ const outputPath = resolve(samplesDirectory, "apps/host/public/bootstrap/sample-
 
 const registry = JSON.parse(await readFile(registryPath, "utf8"));
 const entries = {};
+const demoScenarios = {};
 const blueprintDirectory = resolve(samplesDirectory, "blueprints");
 const artifactIds = (await readdir(blueprintDirectory, { withFileTypes: true }))
   .filter((entry) => entry.isDirectory())
@@ -28,6 +29,11 @@ for (const id of artifactIds) {
     throw new Error(`${artifactPath} does not contain Blueprint '${id}'.`);
   }
   entries[id] = artifact;
+  try {
+    demoScenarios[id] = JSON.parse(await readFile(resolve(samplesDirectory, `blueprints/${id}/demo-scenarios.json`), "utf8"));
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
 }
 
 const catalog = {
@@ -38,6 +44,7 @@ const catalog = {
   nativeFrom: registry.nativeFrom ?? {},
   projectionFrom: registry.projectionFrom ?? {},
   entries,
+  demoScenarios,
 };
 const digest = createHash("sha256").update(JSON.stringify(catalog)).digest("hex");
 const bundle = { ...catalog, bundleVersion: digest.slice(0, 16), digest: `sha256:${digest}` };
