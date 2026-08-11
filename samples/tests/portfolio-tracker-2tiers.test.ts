@@ -9,10 +9,14 @@ import {
 import { openBlueprint } from "@gik/controlface/blueprint";
 import { bundleFromJson, loadBundleRuntime } from "@gik/react";
 import effects from "../blueprints/portfolio-tracker/native/effect_handlers/portfolioTrackerEffectHandlers";
-import { mockMarketDataHandler, MOCK_MARKET_DATA_PROVIDER } from "../services/mock-market-data";
-import { declarativeServiceOrchestrator } from "../services/host/service-runtime";
-import { createBlueprintAgentLifecycle } from "../services/host/blueprint-agent-lifecycle";
-import { resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
+import {
+  mockMarketDataHandler,
+  MOCK_MARKET_DATA_PROVIDER,
+} from "../blueprints/portfolio-tracker/native/services/mock-market-data";
+import { resolveSampleNativeServices } from "../catalog/native-services";
+import { declarativeServiceOrchestrator } from "../apps/service-kinds/host/service-runtime";
+import { createBlueprintAgentLifecycle } from "../apps/service-kinds/host/blueprint-agent-lifecycle";
+import { resolveSampleBlueprintSource } from "../catalog/blueprint-catalog";
 import { InMemoryStateModel } from "../../kernel/src/index";
 
 const authoredBlueprint = () => resolveSampleBlueprintSource("portfolio-tracker-2tiers") as BlueprintArtifact<RepresentationLoweringRecipeDefinition>;
@@ -160,13 +164,14 @@ test("mock mode refreshes quotes and derives positions and summary through the s
     externalContext: { view: "desktop", attention: "detailed", marketMode: "mock" },
   });
   const blueprintRuntime = openBlueprint(materialized.payload.terminalBlueprint);
+  const nativeServices = resolveSampleNativeServices("portfolio-tracker-2tiers");
   const portfolio = loadBundleRuntime(bundleFromJson({
     vocabulary: materialized.payload.vocabulary,
     program: materialized.payload.program,
     state: materialized.payload.initialState,
   }, {
     effectHandlers: effects,
-    wrapOrchestrator: declarativeServiceOrchestrator(blueprintRuntime),
+    wrapOrchestrator: declarativeServiceOrchestrator(blueprintRuntime, nativeServices),
   }));
 
   await portfolio.controller.emit("http-proxy-access-gate", "accessRequested", {}, "raam");

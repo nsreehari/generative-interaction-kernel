@@ -64,7 +64,7 @@
     "metadata": {
       "scope": "backend",
       "executionMedium": "headless",
-      "sourceSample": "samples/apps/backend-order-host/order-service.ts"
+      "nativeEffects": "native/effect_handlers/backendOrderProcessingEffectHandlers.ts"
     }
   }
 }

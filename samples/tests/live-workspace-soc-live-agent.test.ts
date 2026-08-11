@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
+import { resolveSampleBlueprintSource } from "../catalog/blueprint-catalog";
 
 const blueprint = resolveSampleBlueprintSource("live-workspace-soc");
 const soc = blueprint.payload.runtime.state.soc;

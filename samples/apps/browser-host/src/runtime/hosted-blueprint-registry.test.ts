@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { beforeEach, test } from "vitest";
 import { createBlueprint } from "@gik/blueprint";
-import { installUserBlueprints } from "../../../../shared/blueprint-catalog";
+import { installUserBlueprints } from "../../../../catalog/blueprint-catalog";
 import { createSampleBlueprintHostRegistry } from "./hosted-blueprint-registry";
 
 const context = {

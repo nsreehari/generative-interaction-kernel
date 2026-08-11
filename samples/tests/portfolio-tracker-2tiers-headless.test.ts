@@ -7,8 +7,9 @@ import {
 } from "@gik/blueprint";
 import { openBlueprint } from "@gik/controlface/blueprint";
 import { unwrap } from "@gik/kernel";
-import { resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
-import { declarativeServiceOrchestrator } from "../services/host/service-runtime";
+import { resolveSampleBlueprintSource } from "../catalog/blueprint-catalog";
+import { declarativeServiceOrchestrator } from "../apps/service-kinds/host/service-runtime";
+import { resolveSampleNativeServices } from "../catalog/native-services";
 
 const projectedBlueprint = () => resolveSampleBlueprintSource("portfolio-tracker-2tiers");
 const headlessBlueprint = () => resolveSampleBlueprintSource("portfolio-tracker-2tiers-headless");
@@ -63,11 +64,12 @@ test("headless portfolio authorizes market data, refreshes quotes, and derives i
     externalContext: { marketMode: "mock" },
   });
   const runtime = openBlueprint(materialized.payload.terminalBlueprint);
+  const nativeServices = resolveSampleNativeServices("portfolio-tracker-2tiers-headless");
   const result = await runMaterializedTransition({
     materializedBlueprint: materialized,
     state: materialized.payload.initialState,
     events: [{ node: "http-proxy-access-gate", name: "accessRequested", actorId: "portfolio-api" }],
-    createOrchestrator: (state) => declarativeServiceOrchestrator(runtime)(undefined, state),
+    createOrchestrator: (state) => declarativeServiceOrchestrator(runtime, nativeServices)(undefined, state),
   });
   const portfolio = result.state.portfolio as Record<string, unknown>;
   const quotes = portfolio.quotes as Record<string, { price: number }>;

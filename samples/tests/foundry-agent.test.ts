@@ -1,17 +1,18 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
 import { bundleFromJson, loadBundleRuntime } from "@gik/react";
-import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
+import { openSampleBlueprint, resolveSampleBlueprintSource } from "../catalog/blueprint-catalog";
 
-import { FUNCTION_ACCESS } from "../services/host/function-access";
+import { SAMPLE_CREDENTIAL_REFERENCES } from "../apps/service-kinds/host/credential-references";
+import { browserCredentialStorageKey } from "../apps/service-kinds/host/function-access";
 
-const FOUNDRY_ACCESS_STORAGE_KEY = FUNCTION_ACCESS.foundry.storageKey;
+const FOUNDRY_ACCESS_STORAGE_KEY = browserCredentialStorageKey(SAMPLE_CREDENTIAL_REFERENCES.foundry);
 import effects from "../blueprints/foundry-agent/native/effect_handlers/foundryAgentEffectHandlers";
-import { createFoundryAgentKind } from "../services/foundry-agent";
+import { createFoundryAgentKind } from "../apps/service-kinds/foundry-agent";
 import {
   browserServiceRegistryOptions,
   declarativeServiceOrchestrator,
-} from "../services/host/service-runtime";
+} from "../apps/service-kinds/host/service-runtime";
 
 const FOUNDRY_BLUEPRINTS = ["foundry-agent", "foundry-agent-no-cells"] as const;
 

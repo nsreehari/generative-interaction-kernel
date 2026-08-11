@@ -1,14 +1,14 @@
 import "fake-indexeddb/auto";
 
 import { describe, expect, it } from "vitest";
-import seedJson from "../apps/browser-host/public/bootstrap/sample-blueprints.bundle.json" with { type: "json" };
+import seedJson from "../catalog/bootstrap/sample-blueprints.bundle.json" with { type: "json" };
 import {
   bootstrapSampleBlueprintCatalog,
   createIndexedDbBlueprintCatalogStore,
   legacyLocalBlueprintStorageKey,
   parseBlueprintCatalogBundle,
   verifyBlueprintCatalogBundle,
-} from "../shared/blueprint-catalog";
+} from "../catalog/blueprint-catalog";
 
 describe("sample Blueprint catalog", () => {
   it("verifies and round-trips the generated seed through IndexedDB", async () => {
@@ -21,6 +21,9 @@ describe("sample Blueprint catalog", () => {
 
     expect(loaded).toEqual(admitted);
     expect(loaded?.blueprints).toEqual(bundle.blueprints);
+    expect(loaded?.blueprints).toHaveLength(Object.keys(bundle.entries).length);
+    expect(loaded?.launchProfiles).toEqual(bundle.launchProfiles);
+    expect(loaded?.launchProfiles.every((profile) => profile.requiredCapabilities === undefined)).toBe(true);
     expect(loaded?.entries["incident-report-analysis-shell"].payload.id).toBe("incident-report-analysis-shell");
     expect(loaded?.demoScenarios["portfolio-tracker-2tiers"]).toEqual(bundle.demoScenarios["portfolio-tracker-2tiers"]);
     await store.close();

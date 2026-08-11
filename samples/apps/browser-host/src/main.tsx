@@ -5,7 +5,7 @@ import { HostThemeProvider } from "./HostThemeProvider";
 import {
   bootstrapSampleBlueprintCatalog,
   installSampleBlueprintCatalog,
-} from "../../../shared/blueprint-catalog";
+} from "../../../catalog/blueprint-catalog";
 
 const el = document.getElementById("root");
 if (!el) throw new Error("missing #root");

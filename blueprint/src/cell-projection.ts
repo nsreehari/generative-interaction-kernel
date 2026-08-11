@@ -390,6 +390,12 @@ function toProgramNode(cell: CellDefinition, children: readonly DocNode[]): DocN
 function cellEvents(cell: CellDefinition): Record<string, Action[]> {
   const events = structuredClone(cell.behavior?.events ?? {});
   const source = cell.sources?.[0];
-  if (source) events.refresh = [{ do: "invoke", args: { tool: source.operation } }];
+  if (source) {
+    events.refresh = [{
+      do: "invoke",
+      args: { tool: source.operation },
+      ...(source.when ? { guard: source.when } : {}),
+    }];
+  }
   return events;
 }

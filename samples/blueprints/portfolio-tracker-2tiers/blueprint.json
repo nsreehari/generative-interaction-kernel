@@ -40,7 +40,7 @@
             "when": "externalContext.view = 'mobile' and externalContext.attention = 'glanceable'",
             "views": {
               "portfolio-workspace": { "capability": "primitive:container", "props": { "variant": "column", "gap": "m", "fill": true, "ariaLabel": "Portfolio" } },
-              "http-proxy-access-gate": { "capability": "http-proxy:access-gate", "bindings": { "access": { "expression": "($s := portfolio.httpProxyAccessStatus; {'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': portfolio.httpProxyAccessError})" } } },
+              "http-proxy-access-gate": { "capability": "host:credential-access", "props": { "dependency": { "kind": "credential", "ref": "http-proxy/access-key" } }, "bindings": { "access": { "expression": "($s := portfolio.httpProxyAccessStatus; {'title':'Connect to HTTP proxy','requiredMessage':'Enter your access key to continue.','checkingMessage':'Checking HTTP proxy access...','errorMessage':\"Couldn't verify HTTP proxy access.\",'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': portfolio.httpProxyAccessError})" } } },
               "summary": { "capability": "portfolio:summary", "bindings": { "value": { "from": "portfolio.summary" } } },
               "portfolio-status": { "capability": "primitive:note", "props": { "tone": "info" }, "bindings": { "value": { "from": "portfolio.status.message" } } }
             },
@@ -157,7 +157,7 @@
             "failureSettlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "($rejected := error.status = 401 or error.status = 403; $missing := error.message = 'HTTP proxy access is required'; {'ops':[{'op':'set','path':'portfolio.httpProxyAccessStatus','value':($rejected or $missing) ? 'required' : 'error'},{'op':'set','path':'portfolio.httpProxyAccessError','value':$rejected ? 'That access key was rejected.' : ($missing ? 'HTTP proxy access is required.' : error.message)}]})"
+                "expr": "($rejected := error.status = 401 or error.status = 403; $missing := error.code = 'service-dependency-unsatisfied' and error.dependency.kind = 'credential' and error.dependency.ref = 'http-proxy/access-key'; {'ops':[{'op':'set','path':'portfolio.httpProxyAccessStatus','value':($rejected or $missing) ? 'required' : 'error'},{'op':'set','path':'portfolio.httpProxyAccessError','value':$rejected ? 'That access key was rejected.' : ($missing ? 'HTTP proxy access is required.' : error.message)}]})"
               }
             },
             "onViolation": { "action": "fail" }
@@ -193,14 +193,14 @@
         "primitive:editable-table": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"], "dataProp": "rows" },
         "fluent:table": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "rows" },
         "primitive:note": { "propsSchema": { "type": "object", "additionalProperties": true } },
-        "http-proxy:access-gate": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["accessRequested", "accessCleared"] },
+        "host:credential-access": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["accessRequested", "accessCleared"] },
         "portfolio:summary": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" }
       },
       "externals": {
         "projectionViews": {
           "fluent": { "from": "fluent", "use": ["table"] },
           "primitive": { "from": "primitive", "use": ["container", "editable-table", "note"] },
-          "http-proxy": { "from": "http-proxy", "use": ["access-gate"] },
+          "host": { "from": "host", "use": ["credential-access"] },
           "portfolio": { "from": "self", "use": ["summary"] }
         },
         "effectHandlers": ["setHoldings", "saveHoldings"]

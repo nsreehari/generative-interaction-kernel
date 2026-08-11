@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { analyzeCellComposition, type CellDefinition } from "@gik/blueprint";
 import { unwrap } from "@gik/kernel";
 
-import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
+import { openSampleBlueprint, resolveSampleBlueprintSource } from "../catalog/blueprint-catalog";
 
 const blueprint = resolveSampleBlueprintSource("incident-report-explorer");
 const cells = Object.values(blueprint.payload.cells) as unknown as CellDefinition[];
@@ -73,7 +73,10 @@ describe("incident-report-explorer Blueprint", () => {
     });
     expect(cells.find((cell) => cell.id === "foundry-access-gate")).toMatchObject({
       view: {
-        capability: "foundry:access-gate",
+        capability: "host:credential-access",
+        props: {
+          dependency: { kind: "credential", ref: "foundry-agent/access-key" },
+        },
         bindings: {
           access: {
             expression: expect.stringContaining("'triggered': $s != 'ready' and $s != 'empty'"),

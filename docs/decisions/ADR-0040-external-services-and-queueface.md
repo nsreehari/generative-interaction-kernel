@@ -52,6 +52,9 @@ secret as host state; it emits only availability and discovery results into the 
 - `ServiceRequestRecord` — stable request/correlation/idempotency identity, Blueprint/state
   revisions, attempts, timestamps, resolved kind, provider-native session/thread provenance,
   terminal result/error state.
+- `ServiceDependency` / `UnsatisfiedServiceDependencyError` — structured signal from a trusted
+  service kind that an active invocation cannot proceed until the host supplies an opaque
+  dependency reference, such as a credential. It carries no gathering UI or domain copy.
 - `ServiceHost` — host-owned execution capability: kind materialization, transforms, validation,
   execution, queue/request lifecycle, retry/correction ceilings, cancellation, and settlement.
 
@@ -65,6 +68,13 @@ GIK defines the `ServiceHost` interface and provides `DefaultServiceHost` as its
 implementation. Outer hosts instantiate it and supply trusted service-kind factories, adapters,
 credential resolution, endpoint authorization, and environment policy. Providing the reference
 coordinator does not make GIK the host or owner of external services or their storage.
+
+`DefaultServiceHost` records an unsatisfied dependency as a failed request before applying host
+policy. Its default immediate policy preserves the Blueprint operation's `failureSettlement`; a
+strict headless host may instead surface the structured error to its caller. Queued execution
+always retains the failure as a durable retry/dead-letter record rather than throwing through the
+worker loop. Dependencies are inspected lazily for active invocations; this contract does not add
+startup preflight or a second requirement graph.
 
 `QueueFace` is a thin queue-oriented projection over `ServiceHost`; it does not register adapters or
 execute providers. `ControlFace` projects kind/config-schema/probe/request-state operations from the

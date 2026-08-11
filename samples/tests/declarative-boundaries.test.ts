@@ -5,7 +5,7 @@ import { test } from "vitest";
 
 const samplesRoot = fileURLToPath(new URL("../", import.meta.url));
 const authoredRoots = ["blueprints"] as const;
-const implementationLeaves = new Set(["projection_views", "effect_handlers"]);
+const implementationLeaves = new Set(["projection_views", "effect_handlers", "services"]);
 function filesBelow(path: string): string[] {
   return readdirSync(path, { withFileTypes: true }).flatMap((entry) => {
     const child = `${path}/${entry.name}`;
@@ -22,7 +22,7 @@ test("sample Blueprints keep TypeScript inside native leaf directories", () => {
 
   assert.deepEqual(violations, [], [
     "Blueprints are declarative JSON artifacts.",
-    "Move tests outside the authored directories and implementation into projection_views/effect_handlers:",
+    "Move tests outside the authored directories and implementation into projection_views/effect_handlers/services:",
     ...violations,
   ].join("\n"));
 });

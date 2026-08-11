@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import type { WorkerServiceInvocation } from "../services/worker-service-kind";
-import { executeHttpServiceInvocation } from "../services/http-service/runtime";
+import type { WorkerServiceInvocation } from "../apps/service-kinds/worker-service-kind";
+import { executeHttpServiceInvocation } from "../apps/service-kinds/http-service/runtime";
 
 const declaration = {
   kind: "http-service",

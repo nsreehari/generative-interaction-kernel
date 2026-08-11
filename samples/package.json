@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "blueprints:bundle": "node apps/browser-host/bootstrap/scripts/build-blueprint-catalog.mjs",
+    "blueprints:bundle": "node catalog/build-blueprint-catalog.mjs",
     "dev": "npm run blueprints:bundle && npm run build:storybook && vite apps/browser-host",
     "dev:local": "npm run blueprints:bundle && npm run build:storybook && vite apps/browser-host --mode gik-local",
     "build": "npm run blueprints:bundle && npm run build:storybook && vite build apps/browser-host",
@@ -12,11 +12,11 @@
     "storybook": "npm run dev",
     "build:storybook": "storybook build -c storybook/.storybook -o storybook-static",
     "test": "vitest run",
-    "typecheck": "tsc -p apps/browser-host/tsconfig.json --noEmit && tsc -p storybook/tsconfig.json --noEmit && tsc -p apps/backend-order-host/tsconfig.json --noEmit && tsc -p apps/stateless-agent-mcp-host/tsconfig.json --noEmit && tsc -p apps/controlface-host/tsconfig.json --noEmit && tsc -p examples/tsconfig.json --noEmit",
-    "start:backend": "tsx apps/backend-order-host/order-service.ts",
-    "start:agent": "tsx apps/stateless-agent-mcp-host/mcp-service.ts",
-    "start:control": "tsx apps/controlface-host/service.ts",
-    "start:continuity": "tsx apps/controlface-host/continuity-worker.ts",
+    "typecheck": "tsc -p apps/browser-host/tsconfig.json --noEmit && tsc -p apps/node-host/tsconfig.json --noEmit && tsc -p storybook/tsconfig.json --noEmit && tsc -p examples/tsconfig.json --noEmit",
+    "start:node": "tsx apps/node-host/service.ts",
+    "start:agent": "tsx examples/stateless-agent-mcp-host/mcp-service.ts",
+    "start:control": "tsx apps/node-host/service.ts --profile middleware-continuity",
+    "start:continuity": "tsx apps/node-host/continuity-worker.ts",
     "start:gik": "tsx examples/gik-quickstart/quickstart.ts"
   },
   "dependencies": {
@@ -31,7 +31,6 @@
     "@gik/demo-runner-host": "0.1.5",
     "@gik/durable-runtime": "0.8.0",
     "@gik/evaluators": "0.1.1",
-    "@gik/headless": "0.1.0",
     "@gik/kernel": "0.1.1",
     "@gik/provider-blueprint-authoring": "0.1.0",
     "@gik/provider-step-orchestrator": "0.1.0",

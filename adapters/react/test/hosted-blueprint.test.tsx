@@ -6,7 +6,7 @@ import {
   resolveHostedBlueprint,
   type ReactBlueprintHostRegistry,
 } from "../src/primitives/hosted-blueprint";
-import { assertBlueprintHostProjection } from "../src/primitives/blueprint-host";
+import { bundleFromJson } from "../src/primitives/bundle";
 
 const child = createBlueprint({
   id: "analysis",
@@ -66,13 +66,19 @@ test("rejects malformed child declarations from render-node JSON", () => {
   });
 });
 
-test("rendering hosts reject a projection-free Blueprint with a targeted diagnostic", () => {
-  assert.throws(
-    () => assertBlueprintHostProjection("BlueprintHost", "headless", {
+test("a projection-free program remains a runnable React host bundle", () => {
+  const bundle = bundleFromJson({
+    vocabulary: {
+      gik: "0.1",
+      type: "vocabulary",
+      payload: { version: "headless/1", namespaces: [], capabilities: {} },
+    },
+    program: {
       gik: "0.1",
       type: "program",
       payload: { handlers: [] },
-    }),
-    /BlueprintHost cannot render Blueprint 'headless' without a presentation projection/,
-  );
+    },
+  });
+
+  assert.equal(bundle.program.payload.root, undefined);
 });

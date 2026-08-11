@@ -38,6 +38,25 @@ export interface ServiceKindContext {
   execute?: (request: unknown) => Promise<unknown>;
 }
 
+export interface ServiceDependency {
+  kind: string;
+  ref?: string;
+}
+
+/** Signals that an active service invocation cannot proceed until its host supplies a dependency. */
+export class UnsatisfiedServiceDependencyError extends Error {
+  readonly code = "service-dependency-unsatisfied";
+
+  constructor(
+    message: string,
+    readonly dependency: ServiceDependency,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+    this.name = "UnsatisfiedServiceDependencyError";
+  }
+}
+
 export interface ServiceKindFactory {
   readonly manifest: ServiceKindManifest;
   validate?(

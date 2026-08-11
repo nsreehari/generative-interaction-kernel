@@ -18,9 +18,9 @@ vi.mock("@gik/demo-runner-host", () => ({
 
 import "fake-indexeddb/auto";
 import type { BlueprintProposalReceipt } from "@gik/blueprint-agent-host";
-import type { UseProposal } from "../../../services/host/blueprint-agent-lifecycle";
+import type { UseProposal } from "../../service-kinds/host/blueprint-agent-lifecycle";
 import { Host, createSampleBlueprintProposalStore } from "./Host";
-import { getSampleBlueprintCatalog } from "../../../shared/blueprint-catalog";
+import { getSampleBlueprintCatalog } from "../../../catalog/blueprint-catalog";
 
 const receipt = (id: string): BlueprintProposalReceipt<UseProposal> => ({
   id,
@@ -85,7 +85,7 @@ test("unmigrated samples do not receive legacy demo scenarios", () => {
   }
 });
 
-test("two-tier portfolio supplies controlled desktop detailed context defaults", () => {
+test("two-tier portfolio uses Blueprint-authored materialization defaults", () => {
   const previousWindow = globalThis.window;
   Object.defineProperty(globalThis, "window", {
     configurable: true,
@@ -100,7 +100,7 @@ test("two-tier portfolio supplies controlled desktop detailed context defaults",
   try {
     renderToStaticMarkup(React.createElement(Host));
     assert.deepEqual(capturedProps.scenariosJson, getSampleBlueprintCatalog().demoScenarios["portfolio-tracker-2tiers"]);
-    assert.deepEqual(capturedProps.externalContext, { view: "desktop", attention: "detailed", marketMode: "live" });
+    assert.equal(capturedProps.externalContext, undefined);
   } finally {
     Object.defineProperty(globalThis, "window", { configurable: true, value: previousWindow });
   }

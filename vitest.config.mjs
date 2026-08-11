@@ -126,7 +126,7 @@ export default defineConfig({
           testTimeout: 20_000,
           setupFiles: ["samples/tests/setup-blueprint-catalog.ts"],
           include: [
-            "samples/apps/controlface-host/**/*.test.ts",
+            "samples/apps/node-host/**/*.test.ts",
             "samples/examples/**/*.test.ts",
             "samples/tests/**/*.test.ts",
             "samples/apps/browser-host/**/*.test.ts",

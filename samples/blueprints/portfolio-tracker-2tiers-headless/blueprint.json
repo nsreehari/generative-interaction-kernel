@@ -90,7 +90,7 @@
             "failureSettlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "($rejected := error.status = 401 or error.status = 403; $missing := error.message = 'HTTP proxy access is required'; {'ops':[{'op':'set','path':'portfolio.httpProxyAccessStatus','value':($rejected or $missing) ? 'required' : 'error'},{'op':'set','path':'portfolio.httpProxyAccessError','value':$rejected ? 'That access key was rejected.' : ($missing ? 'HTTP proxy access is required.' : error.message)}]})"
+                "expr": "($rejected := error.status = 401 or error.status = 403; $missing := error.code = 'service-dependency-unsatisfied' and error.dependency.kind = 'credential' and error.dependency.ref = 'http-proxy/access-key'; {'ops':[{'op':'set','path':'portfolio.httpProxyAccessStatus','value':($rejected or $missing) ? 'required' : 'error'},{'op':'set','path':'portfolio.httpProxyAccessError','value':$rejected ? 'That access key was rejected.' : ($missing ? 'HTTP proxy access is required.' : error.message)}]})"
               }
             },
             "onViolation": { "action": "fail" }

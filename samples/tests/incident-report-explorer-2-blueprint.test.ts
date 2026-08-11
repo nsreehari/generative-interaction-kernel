@@ -3,8 +3,8 @@ import { analyzeCellComposition, type BlueprintArtifact, type CellDefinition } f
 import { semanticComponentDefinitions } from "@gik/components";
 import { InMemoryStateModel } from "../../kernel/src/index";
 
-import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
-import { createBlueprintAgentLifecycle } from "../services/host/blueprint-agent-lifecycle";
+import { openSampleBlueprint, resolveSampleBlueprintSource } from "../catalog/blueprint-catalog";
+import { createBlueprintAgentLifecycle } from "../apps/service-kinds/host/blueprint-agent-lifecycle";
 
 const blueprint = resolveSampleBlueprintSource("incident-report-explorer-2") as BlueprintArtifact;
 const cells = Object.values(blueprint.payload.cells ?? {}) as CellDefinition[];

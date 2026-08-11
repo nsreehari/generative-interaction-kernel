@@ -6,6 +6,7 @@ import {
   DefaultServiceHost,
   QueueFace,
   ServiceKindRegistry,
+  UnsatisfiedServiceDependencyError,
   type ServiceAdapter,
   type ServiceAgentTool,
   type ServiceExecutionResult,
@@ -14,7 +15,12 @@ import {
 function createHost(
   execute: ServiceAdapter["execute"],
   operation: Partial<ServiceDeclaration["operations"][string]> = {},
-  options: { maxAttempts?: number; maxGuardrailAttempts?: number; agentTools?: readonly ServiceAgentTool[] } = {}
+  options: {
+    maxAttempts?: number;
+    maxGuardrailAttempts?: number;
+    agentTools?: readonly ServiceAgentTool[];
+    dependencyFailurePolicy?: "settle" | "throw";
+  } = {}
 ): DefaultServiceHost {
   const registry = new ServiceKindRegistry();
   registry.register({
@@ -102,6 +108,65 @@ test("host applies declarative failure settlement with structured error detail",
     ops: [{ op: "set", path: "work.error", value: "provider unavailable" }],
     detail: { status: 503 },
   });
+});
+
+test("host settles unsatisfied service dependencies and records structured failure detail", async () => {
+  const host = createHost(async () => {
+    throw new UnsatisfiedServiceDependencyError(
+      "Credential is required",
+      { kind: "credential", ref: "provider/access-key" },
+    );
+  }, {
+    failureSettlement: {
+      transform: {
+        kind: "jsonata",
+        expr: "{'outcome':'blocked','detail':{'kind':error.dependency.kind,'ref':error.dependency.ref}}",
+      },
+    },
+  });
+
+  assert.deepEqual(await host.invoke(effect), {
+    outcome: "blocked",
+    detail: { kind: "credential", ref: "provider/access-key" },
+  });
+  const [record] = await host.listRequests();
+  assert.equal(record?.status, "failed");
+  assert.deepEqual(record?.errorDetail?.dependency, {
+    kind: "credential",
+    ref: "provider/access-key",
+  });
+});
+
+test("host throws immediate unsatisfied dependencies after recording failure", async () => {
+  const unavailable = new UnsatisfiedServiceDependencyError(
+    "Credential is required",
+    { kind: "credential", ref: "provider/access-key" },
+  );
+  const host = createHost(async () => { throw unavailable; }, {
+    failureSettlement: {
+      transform: { kind: "jsonata", expr: "{'outcome':'settled'}" },
+    },
+  }, { dependencyFailurePolicy: "throw" });
+
+  await assert.rejects(() => host.invoke(effect), (error) => error === unavailable);
+  const [record] = await host.listRequests();
+  assert.equal(record?.status, "failed");
+  assert.equal(record?.errorDetail?.code, "service-dependency-unsatisfied");
+});
+
+test("host dead-letters queued unsatisfied dependencies under throw policy", async () => {
+  const host = createHost(async () => {
+    throw new UnsatisfiedServiceDependencyError(
+      "Credential is required",
+      { kind: "credential", ref: "provider/access-key" },
+    );
+  }, { mode: "queued" }, { dependencyFailurePolicy: "throw" });
+
+  const queue = new QueueFace(host);
+  await queue.submit(effect);
+  const record = await host.runNext();
+  assert.equal(record?.status, "dead-lettered");
+  assert.equal(record?.errorDetail?.code, "service-dependency-unsatisfied");
 });
 
 test("host validates provider output and retries within its ceiling", async () => {
