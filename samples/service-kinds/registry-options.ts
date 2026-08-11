@@ -1,8 +1,8 @@
-import type { Json } from "../../../../kernel/src/index";
+import type { Json } from "@gik/kernel";
 import { UnsatisfiedServiceDependencyError } from "@gik/controlface";
-import type { SampleServiceRegistryOptions } from "..";
-import { executeHttpServiceInvocation } from "../http-service/runtime";
-import { executeMcpServiceInvocation } from "../mcp/runtime";
+import type { SampleServiceRegistryOptions } from ".";
+import { executeHttpServiceInvocation } from "./http-service/runtime";
+import { executeMcpServiceInvocation } from "./mcp/runtime";
 
 export interface SampleServiceHostCredentials {
   resolveCredential(reference: string): Promise<unknown>;

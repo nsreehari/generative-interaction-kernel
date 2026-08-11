@@ -3,7 +3,7 @@ import { unwrap } from "@gik/kernel";
 import { seedState } from "@gik/react";
 
 import { openSampleBlueprint } from "../catalog/blueprint-catalog";
-import { createBlueprintServiceHost } from "../apps/service-kinds/host/service-runtime";
+import { createBlueprintServiceHost } from "../apps/browser-host/src/runtime/service-host";
 
 const runtime = openSampleBlueprint("portfolio-tracker");
 const typedManifest = runtime.vocabulary as Parameters<typeof seedState>[0];

@@ -1,5 +1,5 @@
-import localConfig from "../../../config/host.local.json";
-import productionConfig from "../../../config/host.production.json";
+import localConfig from "./host.local.json";
+import productionConfig from "./host.production.json";
 
 const FOUNDRY_PROXY_ORIGIN_TOKEN = "${GIK_FOUNDRY_PROXY_ORIGIN}";
 const HTTP_PROXY_ORIGIN_TOKEN = "${GIK_HTTP_PROXY_ORIGIN}";

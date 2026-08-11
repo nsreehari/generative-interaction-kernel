@@ -5002,7 +5002,7 @@
                 "children"
               ]
             },
-            "agent:sign-out-button": {
+            "host:credential-clear-button": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -5053,7 +5053,8 @@
               "host": {
                 "from": "host",
                 "use": [
-                  "credential-access"
+                  "credential-access",
+                  "credential-clear-button"
                 ]
               }
             },
@@ -5415,9 +5416,13 @@
               }
             },
             "view": {
-              "capability": "agent:sign-out-button",
+              "capability": "host:credential-clear-button",
               "props": {
-                "label": "Sign out"
+                "label": "Sign out",
+                "dependency": {
+                  "kind": "credential",
+                  "ref": "foundry-agent/access-key"
+                }
               }
             }
           }
@@ -5747,7 +5752,7 @@
                 "children"
               ]
             },
-            "agent:sign-out-button": {
+            "host:credential-clear-button": {
               "propsSchema": {
                 "type": "object",
                 "additionalProperties": true
@@ -5798,7 +5803,8 @@
               "host": {
                 "from": "host",
                 "use": [
-                  "credential-access"
+                  "credential-access",
+                  "credential-clear-button"
                 ]
               }
             },
@@ -6136,9 +6142,13 @@
               }
             },
             "view": {
-              "capability": "agent:sign-out-button",
+              "capability": "host:credential-clear-button",
               "props": {
-                "label": "Sign out"
+                "label": "Sign out",
+                "dependency": {
+                  "kind": "credential",
+                  "ref": "foundry-agent/access-key"
+                }
               }
             }
           }
@@ -19901,6 +19911,6 @@
       ]
     }
   },
-  "bundleVersion": "b0d3eea6148cf3ba",
-  "digest": "sha256:b0d3eea6148cf3ba7ffd8956ae00b909e3a815fdf9b9eede76932861c5f92c59"
+  "bundleVersion": "02539f71ddeafcd2",
+  "digest": "sha256:02539f71ddeafcd2dc928ef2a8cfc409ade67aab4bf3763728ddf2816c0a9b8f"
 }

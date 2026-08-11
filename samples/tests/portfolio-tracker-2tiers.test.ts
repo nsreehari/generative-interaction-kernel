@@ -13,11 +13,11 @@ import {
   mockMarketDataHandler,
   MOCK_MARKET_DATA_PROVIDER,
 } from "../blueprints/portfolio-tracker/native/services/mock-market-data";
-import { resolveSampleNativeServices } from "../catalog/native-services";
-import { declarativeServiceOrchestrator } from "../apps/service-kinds/host/service-runtime";
-import { createBlueprintAgentLifecycle } from "../apps/service-kinds/host/blueprint-agent-lifecycle";
+import { resolveSampleNativeServices } from "../apps/browser-host/src/runtime/native-services";
+import { declarativeServiceOrchestrator } from "../apps/browser-host/src/runtime/service-host";
+import { createBlueprintAgentLifecycle } from "../apps/browser-host/src/runtime/blueprint-agent-lifecycle";
 import { resolveSampleBlueprintSource } from "../catalog/blueprint-catalog";
-import { InMemoryStateModel } from "../../kernel/src/index";
+import { InMemoryStateModel } from "@gik/kernel";
 
 const authoredBlueprint = () => resolveSampleBlueprintSource("portfolio-tracker-2tiers") as BlueprintArtifact<RepresentationLoweringRecipeDefinition>;
 

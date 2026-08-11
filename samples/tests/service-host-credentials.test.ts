@@ -5,20 +5,20 @@ import { getSampleBlueprintCatalog } from "../catalog/blueprint-catalog";
 import {
   isSampleCredentialReference,
   SAMPLE_CREDENTIAL_REFERENCES,
-} from "../apps/service-kinds/host/credential-references";
+} from "../service-kinds/credential-references";
 import {
   createEnvironmentCredentialResolver,
   SAMPLE_CREDENTIAL_ENVIRONMENT_VARIABLES,
-} from "../apps/service-kinds/host/environment-credentials";
+} from "../apps/node-host/environment-credentials";
 import {
   browserCredentialStorageKey,
   clearBrowserCredential,
   resolveBrowserCredential,
-  setFunctionAccessKey,
-} from "../apps/service-kinds/host/function-access";
-import { createNodeServiceRegistryOptions } from "../apps/service-kinds/host/node-service-runtime";
-import { createSampleServiceRegistryOptions } from "../apps/service-kinds/host/service-registry-options";
-import { browserServiceRegistryOptions } from "../apps/service-kinds/host/service-runtime";
+  writeBrowserCredential,
+} from "../apps/browser-host/src/runtime/browser-credentials";
+import { createNodeServiceRegistryOptions } from "../apps/node-host/service-host";
+import { createSampleServiceRegistryOptions } from "../service-kinds/registry-options";
+import { browserServiceRegistryOptions } from "../apps/browser-host/src/runtime/service-host";
 
 function collectCredentialReferences(value: unknown, references: string[] = []): string[] {
   if (!value || typeof value !== "object") return references;
@@ -82,7 +82,7 @@ test("browser credential resolution reads the existing GitHub Pages localStorage
     clearBrowserCredential(SAMPLE_CREDENTIAL_REFERENCES.foundry);
     assert.equal(values.has(browserCredentialStorageKey(SAMPLE_CREDENTIAL_REFERENCES.foundry)), false);
     assert.equal(values.has(browserCredentialStorageKey(SAMPLE_CREDENTIAL_REFERENCES.httpProxy)), true);
-    setFunctionAccessKey(SAMPLE_CREDENTIAL_REFERENCES.foundry, "replacement-foundry-key");
+    writeBrowserCredential(SAMPLE_CREDENTIAL_REFERENCES.foundry, "replacement-foundry-key");
     assert.equal(
       values.get(browserCredentialStorageKey(SAMPLE_CREDENTIAL_REFERENCES.foundry)),
       "replacement-foundry-key",

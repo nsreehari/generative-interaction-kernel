@@ -1,13 +1,13 @@
-import type { DeterministicServiceHandler } from "../apps/service-kinds/deterministic-agent";
+import type { DeterministicServiceHandler } from "../../service-kinds/deterministic-agent";
 import {
   MOCK_MARKET_DATA_PROVIDER,
   mockMarketDataHandler,
-} from "../blueprints/portfolio-tracker/native/services/mock-market-data";
+} from "../../blueprints/portfolio-tracker/native/services/mock-market-data";
 import {
   DETERMINISTIC_PORTFOLIO_PROVIDER,
   portfolioIntelligenceHandler,
-} from "../blueprints/portfolio-tracker/native/services/portfolio-intelligence";
-import { getSampleBlueprintCatalog } from "./blueprint-catalog";
+} from "../../blueprints/portfolio-tracker/native/services/portfolio-intelligence";
+import { getSampleBlueprintCatalog } from "../../catalog/blueprint-catalog";
 
 export interface SampleNativeServices {
   deterministicHandlers?: Readonly<Record<string, DeterministicServiceHandler>>;

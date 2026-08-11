@@ -12,7 +12,7 @@ import {
   applyHostConfig,
   hostConfig,
   type HostConfig,
-} from "../apps/service-kinds/host/host-config";
+} from "../config/host-config";
 
 export const sampleBlueprintCatalogUrl = "bootstrap/sample-blueprints.bundle.json";
 const artifactKind = "blueprint-seed-artifact";

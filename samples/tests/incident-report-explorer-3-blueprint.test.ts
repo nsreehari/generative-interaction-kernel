@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { analyzeCellComposition, materializeBlueprint, type BlueprintArtifact, type CellDefinition } from "@gik/blueprint";
 import { BlueprintController } from "@gik/react";
-import { InMemoryStateModel } from "../../kernel/src/index";
+import { InMemoryStateModel } from "@gik/kernel";
 
 import { openSampleBlueprint, resolveSampleBlueprintSource } from "../catalog/blueprint-catalog";
-import { createBlueprintAgentLifecycle } from "../apps/service-kinds/host/blueprint-agent-lifecycle";
+import { createBlueprintAgentLifecycle } from "../apps/browser-host/src/runtime/blueprint-agent-lifecycle";
 
 const blueprint = resolveSampleBlueprintSource("incident-report-explorer-3") as BlueprintArtifact;
 const cells = Object.values(blueprint.payload.cells ?? {}) as CellDefinition[];

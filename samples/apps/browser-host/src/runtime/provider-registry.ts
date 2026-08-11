@@ -4,7 +4,7 @@ import { primitiveComponentViews } from "@gik/components/primitives";
 import { semanticComponentViews } from "@gik/components/semantic";
 import { securityComponentViews } from "@gik/components/security";
 import { softwareComponentViews } from "@gik/components/software";
-import { resolveSampleNativeProjectionViews } from "../../../../catalog/native-projections.browser";
+import { resolveSampleNativeProjectionViews } from "./native-projections";
 import { credentialAccessViews } from "./credential-access";
 
 const projectionProviders: Record<string, Record<string, ProjectionView>> = {

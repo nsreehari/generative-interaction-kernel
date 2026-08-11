@@ -9,12 +9,12 @@ import type { ExternalContext, MaterializedBlueprint } from "@gik/blueprint";
 import type { Json } from "@gik/kernel";
 import { openBlueprint } from "@gik/controlface/blueprint";
 import { getSampleBlueprintCatalog, openSampleBlueprint } from "../../../../catalog/blueprint-catalog";
-import { resolveBrowserSampleNativeEffects } from "../../../../catalog/native-effects.browser";
-import { resolveSampleNativeServices } from "../../../../catalog/native-services";
+import { resolveBrowserSampleNativeEffects } from "./native-effects";
+import { resolveSampleNativeServices } from "./native-services";
 import { resolveProjectionViews } from "./provider-registry";
-import { browserServiceRegistryOptions, declarativeServiceOrchestrator } from "../../../service-kinds/host/service-runtime";
+import { browserServiceRegistryOptions, declarativeServiceOrchestrator } from "./service-host";
 import type { BlueprintProposalStore } from "@gik/blueprint-agent-host";
-import type { UseProposal } from "../../../service-kinds/host/blueprint-agent-lifecycle";
+import type { UseProposal } from "./blueprint-agent-lifecycle";
 
 export interface ResolveBlueprintNativeOptions {
   proposalStore?: BlueprintProposalStore<UseProposal>;

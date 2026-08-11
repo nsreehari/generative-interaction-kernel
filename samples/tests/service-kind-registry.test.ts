@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { createSampleServiceKindRegistry } from "../apps/service-kinds";
+import { createSampleServiceKindRegistry } from "../service-kinds";
 
 test("explicit sample catalog registers every admitted kind", () => {
   const registry = createSampleServiceKindRegistry();

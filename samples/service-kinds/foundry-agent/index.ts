@@ -1,4 +1,4 @@
-import type { Json, ServiceDeclaration } from "../../../../kernel/src/index";
+import type { Json, ServiceDeclaration } from "@gik/kernel";
 import {
 	serviceConfig,
 	UnsatisfiedServiceDependencyError,
