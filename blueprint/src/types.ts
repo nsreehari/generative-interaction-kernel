@@ -110,7 +110,7 @@ export type CellViewBinding =
   | { from?: never; expression: string };
 
 export interface CellView {
-  capability: string;
+  capability?: string;
   props?: Record<string, Json>;
   bindings?: Record<string, CellViewBinding>;
   visibility?: string;
@@ -200,6 +200,8 @@ export interface BlueprintInterfacePort {
   schema?: Record<string, Json>;
   required?: boolean;
   description?: string;
+  /** State path projected by a Blueprint output port. */
+  from?: string;
 }
 
 export interface BlueprintInterfaceDefinition {

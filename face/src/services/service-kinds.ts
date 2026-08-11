@@ -1,7 +1,7 @@
 import Ajv, { type ValidateFunction } from "ajv";
 import type {
   Json,
-  ServiceDeclaration,
+  NativeServiceDeclaration,
   ServiceScope,
 } from "../../../kernel/src/index";
 import type {
@@ -60,11 +60,11 @@ export class UnsatisfiedServiceDependencyError extends Error {
 export interface ServiceKindFactory {
   readonly manifest: ServiceKindManifest;
   validate?(
-    declaration: ServiceDeclaration,
+    declaration: NativeServiceDeclaration,
     context: ServiceKindContext
   ): ServiceValidationReport | Promise<ServiceValidationReport>;
   create(
-    declaration: ServiceDeclaration,
+    declaration: NativeServiceDeclaration,
     context: ServiceKindContext
   ): ServiceAdapter | Promise<ServiceAdapter>;
 }
@@ -81,7 +81,7 @@ export interface BlueprintServiceIdentity {
   serviceId: string;
 }
 
-function normalizedDeclaration(declaration: ServiceDeclaration): string {
+function normalizedDeclaration(declaration: NativeServiceDeclaration): string {
   return JSON.stringify({
     kind: declaration.kind,
     version: declaration.version,
@@ -91,7 +91,7 @@ function normalizedDeclaration(declaration: ServiceDeclaration): string {
   });
 }
 
-function cacheKey(identity: BlueprintServiceIdentity, declaration: ServiceDeclaration): string | undefined {
+function cacheKey(identity: BlueprintServiceIdentity, declaration: NativeServiceDeclaration): string | undefined {
   const scope: ServiceScope = declaration.scope ?? "per-blueprint";
   if (scope === "per-invocation") return undefined;
   const owner = scope === "per-blueprint"
@@ -167,7 +167,7 @@ export class ServiceKindRegistry {
     });
   }
 
-  async validate(declaration: ServiceDeclaration): Promise<ServiceValidationReport> {
+  async validate(declaration: NativeServiceDeclaration): Promise<ServiceValidationReport> {
     const factory = this.factories.get(declaration.kind);
     if (!factory) return { ok: false, errors: [`Unsupported service kind '${declaration.kind}'`] };
     const description = this.describe().find(({ manifest }) => manifest.id === declaration.kind)!;
@@ -195,7 +195,7 @@ export class ServiceKindRegistry {
 
   async materialize(
     identity: BlueprintServiceIdentity,
-    declaration: ServiceDeclaration
+    declaration: NativeServiceDeclaration
   ): Promise<ServiceAdapter> {
     const report = await this.validate(declaration);
     if (!report.ok) throw new Error(`Invalid service '${identity.serviceId}': ${(report.errors ?? []).join("; ")}`);
@@ -213,7 +213,7 @@ export class ServiceKindRegistry {
 
   materializeSync(
     identity: BlueprintServiceIdentity,
-    declaration: ServiceDeclaration
+    declaration: NativeServiceDeclaration
   ): ServiceAdapter {
     const factory = this.factories.get(declaration.kind);
     if (!factory) throw new Error(`Unsupported service kind '${declaration.kind}'`);
@@ -253,7 +253,7 @@ export class ServiceKindRegistry {
   }
 }
 
-export function serviceConfig(declaration: ServiceDeclaration): Record<string, Json> {
+export function serviceConfig(declaration: NativeServiceDeclaration): Record<string, Json> {
   const config = declaration.config;
   if (config == null) return {};
   if (typeof config !== "object" || Array.isArray(config)) {

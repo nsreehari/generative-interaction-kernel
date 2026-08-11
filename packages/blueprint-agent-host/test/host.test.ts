@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import type { AgentProposal } from "@gik/agent-lifecycle-exp";
 import { createDurableRuntime } from "@gik/durable-runtime";
-import { createInMemoryProvider } from "@gik/durable-runtime/connectors/in-memory";
+import { createMemoryStorage } from "@gik/durable-runtime/storage/memory";
 import {
   createBlueprintProposalDurableTransitionAdapter,
   createBlueprintProposalHost,
@@ -126,7 +126,7 @@ test("durable-runtime store replays receipt transitions into committed snapshots
   };
   const runtime = createDurableRuntime({
     runtimeId: "blueprint-proposal-host-test",
-    providers: { "in-memory": createInMemoryProvider() },
+    providers: { "in-memory": createMemoryStorage() },
     transitionAdapter: createBlueprintProposalDurableTransitionAdapter(),
   });
   const store = await createDurableBlueprintProposalStore({ runtime, refs });

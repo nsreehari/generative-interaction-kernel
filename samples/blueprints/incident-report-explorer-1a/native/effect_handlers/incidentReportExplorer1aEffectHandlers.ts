@@ -1,19 +1,13 @@
 import type { EffectHandlerMap } from "@gik/react";
 import type { Json } from "@gik/kernel";
 
-import reportMarkdown from "../../../incident-report-explorer/incident-report.md?raw";
-import blobStorageExfiltration from "../../../incident-report-explorer/sample-incidents/blob-storage-exfiltration.md?raw";
-import deviceCodeBec from "../../../incident-report-explorer/sample-incidents/device-code-bec.md?raw";
-import identityCompromise from "../../../incident-report-explorer/sample-incidents/identity-compromise.md?raw";
-import supplyChainSapBec from "../../../incident-report-explorer/sample-incidents/supply-chain-sap-bec.md?raw";
+import { storageSeedValues, type StorageSeedCatalog } from "../../../../catalog/storage-seed";
+import incidentAssetSeed from "../../../incident-analysis-assets/seed-data/catalog.json" with { type: "json" };
 
-export const sampleReports = [
-  { id: "password-spray-mailbox", label: "Password spray and mailbox compromise", content: reportMarkdown },
-  { id: "blob-storage-exfiltration", label: "Blob storage exfiltration", content: blobStorageExfiltration },
-  { id: "identity-compromise", label: "Identity and cloud resource compromise", content: identityCompromise },
-  { id: "device-code-bec", label: "Device-code phishing and BEC", content: deviceCodeBec },
-  { id: "supply-chain-sap-bec", label: "Supply-chain SAP and procurement BEC", content: supplyChainSapBec },
-] as const;
+export const sampleReports = storageSeedValues<{ id: string; label: string; content: string }>(
+  incidentAssetSeed as StorageSeedCatalog,
+  "source:",
+);
 
 const defaultSample = sampleReports[0];
 

@@ -5,3 +5,4 @@ export * from "./refs";
 export * from "./snapshot-changes";
 export * from "./runtime/browser-runtime";
 export * from "./runtime/configured-runtime";
+export * from "./storage/api";

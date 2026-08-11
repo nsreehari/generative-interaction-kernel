@@ -132,6 +132,8 @@ artifact_contracts:
       - runtime.version is preserved as authored data; this package assigns it no execution semantics.
       - context is preserved as portable authoring data; this package does not merge it into runtime state.
       - Backend and worker Blueprints do not require a presentation projection.
+      - A service Blueprint uses the same blueprint:<id>@<version> reference grammar and host registry as a nested Cell Blueprint.
+      - Interface output ports may declare from to project one runtime state path as a headless result.
       - The serialized lowering-recipe collection is recipes in version 0.1.
       - structureMode is fixed, reconfigurable, or adaptive; the schema default and host interpretation treat omission as fixed.
       - structurePolicy allowlists semantic Blueprint operations and executable program operations for adaptive mode.

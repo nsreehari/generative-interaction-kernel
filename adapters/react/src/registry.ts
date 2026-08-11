@@ -15,6 +15,7 @@ export type ProjectionView = ComponentType<ProjectionViewProps>;
 
 export interface ComponentRegistry {
   get(capability: string): ProjectionView | undefined;
+  getStructural?(capability: string): ProjectionView | undefined;
   readonly fallback: ProjectionView;
 }
 

@@ -1,4 +1,4 @@
-import type { Json, ServiceDeclaration } from "@gik/kernel";
+import type { Json, NativeServiceDeclaration } from "@gik/kernel";
 import {
 	serviceConfig,
 	UnsatisfiedServiceDependencyError,
@@ -81,7 +81,7 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 		}
 		return { ok: true };
 	},
-	create: (declaration: ServiceDeclaration, context): ServiceAdapter => {
+	create: (declaration: NativeServiceDeclaration, context): ServiceAdapter => {
 		const config = serviceConfig(declaration);
 		const endpoint = String(config.endpoint);
 		const credentialRef = String(config.credentialRef);

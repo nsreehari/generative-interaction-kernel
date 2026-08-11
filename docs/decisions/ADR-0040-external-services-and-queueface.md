@@ -44,7 +44,9 @@ secret as host state; it emits only availability and discovery results into the 
 
 - `ServiceKindFactory` — trusted host implementation: kind id, configuration schema, validation,
   discovery/probe, lazy `create`.
-- `ServiceDeclaration` — Blueprint-owned `{ kind, config, operations }`.
+- `ServiceDeclaration` — Blueprint-owned operation contracts backed by either `{ kind, config }`
+  or `{ blueprint: { $ref } }`. The latter reuses the same keyed Blueprint reference and host
+  registry as nested Blueprint Cells; it does not introduce a `blueprint-service` kind.
 - `ServiceOperationDeclaration` — one named invocation's provider operation, contract, subject,
   request/response data stages, settlement, and bounded violation behavior.
 - `ServiceSubject` — identifies `cell`, `substrate-agent`, `chat`, or `task` scope without forking
@@ -59,7 +61,8 @@ secret as host state; it emits only availability and discovery results into the 
   execution, queue/request lifecycle, retry/correction ceilings, cancellation, and settlement.
 
 `ServiceHost` is the live execution seam. It loads Blueprint declarations and lazily materializes
-scoped adapters through the trusted `ServiceKindRegistry`. Cache scope (`per-invocation`,
+native adapters through the trusted `ServiceKindRegistry`, or delegates keyed Blueprint declarations
+to a host-owned Blueprint resolver. Cache scope (`per-invocation`,
 `per-cell`, `per-blueprint`, `per-session`) controls provider-native continuity — it is not host
 service-instance registration. Immediate and queued execution share one request/settlement
 contract.
@@ -150,6 +153,9 @@ as an explicit, visible fallback; live-to-deterministic fallback is never silent
 - `kernel/src/types.ts` gains `ServiceDeclaration`, `ServiceUse`, `ServiceSubject`,
   `ExternalsSpec.services`/`ManifestPayload.externals.services`; the prior operation-only
   `ServiceRequirement` shape is deprecated but still parses, for backward compatibility.
+- `ServiceDeclaration` admits either a native kind or a keyed Blueprint implementation. Hosts use
+  the existing Blueprint registry for the latter and keep native/external capabilities such as
+  durable storage in the service-kind registry.
 - `face/` gains `ServiceHost`, the queue-oriented `QueueFace` projection, and
   `ServiceKindRegistry`; the `ControlFace` projection gains
   `describeServiceKinds`/`listServiceRequests`/`probeService` —

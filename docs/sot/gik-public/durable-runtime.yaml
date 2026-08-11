@@ -44,6 +44,7 @@ package:
       proper-lockfile is a package runtime dependency used by the filesystem storage
       library. @types/proper-lockfile is development-only declaration support.
   storage_exports:
+    - "@gik/durable-runtime/storage/memory"
     - "@gik/durable-runtime/storage/cosmos"
     - "@gik/durable-runtime/storage/cosmos/library"
     - "@gik/durable-runtime/storage/cosmos/api"
@@ -513,8 +514,8 @@ configured_runtime:
 connectors_and_storage:
   - name: In-memory
     kind: memory
-    factory: createInMemoryProvider
-    connector_export: "@gik/durable-runtime/connectors/in-memory"
+    factory: createMemoryStorage
+    storage_export: "@gik/durable-runtime/storage/memory"
     source: packages/durable-runtime/src/storage/memory.ts
     purpose: >-
       Ephemeral host-local provider implementing the same journal, engine-wake, transition lease,
@@ -522,6 +523,9 @@ connectors_and_storage:
       contracts as persistent providers.
     durability: Process lifetime only; intended for tests, backend-local execution, and explicitly
       non-durable hosts.
+    storage_api: >-
+      createMemoryStorageApi and createMemoryStorageRef provide the same kind-ref-routed KV
+      request contract used by direct browser storage consumers and ephemeral host fixtures.
 
   - name: IndexedDB
     kind: indexed-db
@@ -535,8 +539,9 @@ connectors_and_storage:
     object_store: records
     api_model: >-
       Direct browser API. The API subpath exports createIndexedDbStorage,
-      createIndexedDbProvider, and their public options; it does not define a server
-      transport or HTTP dispatcher.
+      createIndexedDbProvider, createIndexedDbStorageApi, createIndexedDbStorageRef,
+      and their public options. createIndexedDbStorageApi dispatches ref-routed KV
+      requests directly in the browser; it does not define a server transport or HTTP dispatcher.
     storage_layers:
       runtime:
         source: packages/durable-runtime/src/storage/indexed-db/runtime.ts
@@ -550,7 +555,9 @@ connectors_and_storage:
           prefix ranges, and generic record scans without durable-runtime semantics.
       api:
         source: packages/durable-runtime/src/storage/indexed-db/api
-        responsibility: Direct provider options and browser factory exports.
+        responsibility: >-
+          Direct provider options, browser factory exports, and kind-ref-routed KV
+          request dispatch for higher-level browser storage consumers.
     transaction_model:
       - Journal append, its sequence counter, and requestedAt wake update share one readwrite transaction.
       - requestedAt advances to processedAt plus one millisecond only when wall-clock time is not later than processedAt.

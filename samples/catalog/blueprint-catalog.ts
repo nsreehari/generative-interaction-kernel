@@ -3,6 +3,7 @@ import {
   parseBlueprintJson,
   parseBlueprintReference,
   type BlueprintArtifact,
+  type BlueprintHostRegistry,
   type ExternalContext,
 } from "@gik/blueprint";
 import { openBlueprint, type BlueprintRuntime } from "@gik/controlface/blueprint";
@@ -89,6 +90,25 @@ export function resolveSampleBlueprintSource(
   const blueprint = sampleBlueprints[id];
   if (!blueprint) throw new Error(`Unknown Blueprint '${id}'`);
   return applyHostConfig(blueprint, config);
+}
+
+export function createSampleCatalogBlueprintRegistry(): BlueprintHostRegistry {
+  return {
+    resolveArtifact(reference) {
+      const blueprint = resolveSampleBlueprintSource(reference.id);
+      if (reference.version !== undefined && blueprint.payload.version !== reference.version) {
+        throw new Error(`Blueprint '${reference.id}' version '${reference.version}' is unavailable`);
+      }
+      return blueprint;
+    },
+    resolve(reference, context) {
+      const blueprint = this.resolveArtifact(reference, context);
+      return {
+        reference: { ...reference, version: reference.version ?? blueprint.payload.version },
+        blueprint,
+      };
+    },
+  };
 }
 
 export function openSampleBlueprint(

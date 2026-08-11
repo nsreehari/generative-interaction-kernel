@@ -5,6 +5,7 @@
     { "id": "manage-blueprints", "blueprint": "manage-blueprints" },
     { "id": "vocabulary-lowering", "blueprint": "vocabulary-lowering" },
     { "id": "portfolio-tracker", "blueprint": "portfolio-tracker" },
+    { "id": "incident-analysis-new-shell", "blueprint": "incident-analysis-new-shell" },
     { "id": "incident-report-analysis-shell", "blueprint": "incident-report-analysis-shell" },
     { "id": "incident-report-explorer", "blueprint": "incident-report-explorer" },
     { "id": "incident-report-explorer-1a", "blueprint": "incident-report-explorer-1a" },
@@ -24,6 +25,7 @@
   ],
   "nativeFrom": {
     "foundry-agent-no-cells": "foundry-agent",
+    "incident-analysis-new-shell": "incident-report-explorer-1a",
     "incident-report-analysis-shell": "incident-report-explorer-1a",
     "portfolio-tracker-2tiers": "portfolio-tracker"
   },

@@ -15,16 +15,21 @@ import {
   defineLoweringCell,
   defineExploration,
   formatBlueprintReference,
+  HOSTED_BLUEPRINT_CAPABILITY,
+  HostedBlueprintReconciler,
   inspectExploration,
   lowerBlueprint,
   materializeBlueprint,
   parseBlueprintJson,
   parseBlueprintReference,
+  readHostedBlueprintDeclaration,
+  resolveHostedBlueprint,
   runMaterializedTransition,
   runTransition,
   stringifyBlueprint,
   tokenPattern,
   validateBlueprintArtifact,
+  validateBlueprintForAuthoring,
   type BlueprintArtifact,
 } from "../src/index";
 
@@ -123,6 +128,57 @@ describe("@gik/blueprint", () => {
     expect(parent.payload.cells?.child.blueprint).toEqual({ $ref: "./child.blueprint.json" });
   });
 
+  it("exposes hosted Blueprint composition as a renderer-neutral contract", async () => {
+    const child = blueprint("child");
+    const context = { parentBlueprintId: "parent", parentInstanceId: "parent:1", cellId: "child" };
+    const registry = {
+      resolveArtifact: () => child,
+      resolve: (reference: ReturnType<typeof parseBlueprintReference>, received: typeof context) => {
+        expect(received).toEqual(context);
+        return { reference, blueprint: child };
+      },
+    };
+
+    expect(HOSTED_BLUEPRINT_CAPABILITY).toBe("gik:hosted-blueprint");
+    const declaration = readHostedBlueprintDeclaration({ $ref: "blueprint:child@1" });
+    expect(declaration).toEqual({ $ref: "blueprint:child@1" });
+    if (!declaration) throw new Error("Expected a hosted Blueprint declaration");
+    await expect(resolveHostedBlueprint(declaration, registry, context)).resolves.toEqual({
+      reference: { scheme: "blueprint", id: "child", version: "1" },
+      blueprint: child,
+    });
+  });
+
+  it("reconciles hosted Blueprint mount, input remount, and removal", async () => {
+    const child = blueprint("child");
+    const mounted: string[] = [];
+    const unmounted: string[] = [];
+    const reconciler = new HostedBlueprintReconciler("parent", "parent:1", undefined, {
+      mount(hosted) {
+        mounted.push(`${hosted.instanceId}:${String(hosted.inputs.content)}`);
+        return hosted.instanceId;
+      },
+      unmount(instance) {
+        unmounted.push(instance);
+      },
+    });
+    const hostedTree = (content: string) => ({
+      capability: HOSTED_BLUEPRINT_CAPABILITY,
+      id: "child",
+      props: { hostedBlueprint: { inline: child }, content },
+      visible: true,
+      children: [],
+    });
+
+    await reconciler.reconcile(hostedTree("first"));
+    await reconciler.reconcile(hostedTree("first"));
+    await reconciler.reconcile(hostedTree("second"));
+    await reconciler.reconcile({ capability: "ui:empty", id: "root", props: {}, visible: true, children: [] });
+
+    expect(mounted).toEqual(["parent:1/cells/child:first", "parent:1/cells/child:second"]);
+    expect(unmounted).toEqual(["parent:1/cells/child", "parent:1/cells/child"]);
+  });
+
   it("requires parent cells to bind required child Blueprint inputs", () => {
     const child = createBlueprint({
       ...blueprint("child").payload,
@@ -150,7 +206,7 @@ describe("@gik/blueprint", () => {
       cells: {
         child: {
           id: "child",
-          view: { capability: "host:hosted-blueprint", props: { mode: "compact" } },
+          view: { props: { mode: "compact" } },
           blueprint: { $ref: "blueprint:analysis@1.0.0" },
         },
       },
@@ -167,6 +223,7 @@ describe("@gik/blueprint", () => {
       mode: "compact",
       hostedBlueprint: { $ref: "blueprint:analysis@1.0.0" },
     });
+    expect(program.root.capability).toBe(HOSTED_BLUEPRINT_CAPABILITY);
   });
 
   it("preserves a Cell source predicate on its generated refresh invocation", () => {
@@ -455,6 +512,26 @@ describe("@gik/blueprint", () => {
       events: [{ node: "counter", name: "increment" }],
     });
     expect(result.state).toEqual({ counter: { value: 2 } });
+  });
+
+  it("returns a reusable non-mutating authoring validation report", () => {
+    const artifact = blueprint("authoring-report");
+    expect(validateBlueprintForAuthoring(artifact)).toMatchObject({
+      valid: true,
+      artifact,
+      errors: [],
+      execution: {
+        sourceTier: "runtime",
+        terminalTier: "runtime",
+        stages: [],
+        status: "runtime-ready",
+      },
+    });
+    expect(validateBlueprintForAuthoring("not json")).toMatchObject({
+      valid: false,
+      artifact: null,
+      execution: { status: "invalid" },
+    });
   });
 
   it("retains source refresh handlers and rejects projection-hosted children in headless programs", () => {

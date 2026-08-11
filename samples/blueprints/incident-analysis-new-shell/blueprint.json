@@ -1,0 +1,134 @@
+{
+  "gik": "0.1",
+  "type": "blueprint",
+  "payload": {
+    "id": "incident-analysis-new-shell",
+    "kind": "incident-analysis-workspace",
+    "version": "1.0.0",
+    "structureMode": "fixed",
+    "tiers": [{ "id": "runtime-document", "kind": "runtime-document" }],
+    "recipes": [],
+    "runtime": {
+      "expression": "jsonata",
+      "namespaces": ["incident1a"],
+      "actions": ["assign", "invoke"],
+      "capabilities": {
+        "primitive:container": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"] },
+        "primitive:markdown": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
+        "fluent:dropdown": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["select"], "dataProp": "value" },
+        "fluent:text": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" }
+      },
+      "externals": {
+        "projectionViews": {
+          "fluent": { "from": "fluent", "use": ["dropdown", "text"] },
+          "primitive": { "from": "primitive", "use": ["container", "markdown"] }
+        },
+        "effectHandlers": ["selectSampleReport"]
+      },
+      "state": {
+        "incident1a": {
+          "selectedSampleId": "password-spray-mailbox",
+          "content": "# Loading incident report...",
+          "formValue": { "content": "# Loading incident report..." },
+          "error": ""
+        }
+      }
+    },
+    "cells": {
+      "incident-workspace": {
+        "id": "incident-workspace",
+        "kind": "incident-analysis-workspace",
+        "view": { "capability": "primitive:container", "props": { "variant": "column", "gap": "m", "fill": true } }
+      },
+      "workspace-title": {
+        "id": "workspace-title",
+        "kind": "workspace-heading",
+        "view": { "capability": "fluent:text", "props": { "as": "h1", "variant": "title", "value": "Incident analysis" } }
+      },
+      "source-organism": {
+        "id": "source-organism",
+        "kind": "incident-source-organism",
+        "outputs": [{ "token": "incident-source-content", "from": "incident1a.content", "schema": { "type": "string" } }],
+        "view": { "capability": "primitive:container", "props": { "variant": "column", "gap": "s", "fullWidth": true } }
+      },
+      "source-selector": {
+        "id": "source-selector",
+        "kind": "incident-source-selector",
+        "view": {
+          "capability": "fluent:dropdown",
+          "props": {
+            "label": "Source report",
+            "ariaLabel": "Choose incident source",
+            "options": [
+              { "value": "password-spray-mailbox", "label": "Password spray and mailbox compromise" },
+              { "value": "blob-storage-exfiltration", "label": "Blob storage exfiltration" },
+              { "value": "identity-compromise", "label": "Identity and cloud resource compromise" },
+              { "value": "device-code-bec", "label": "Device-code phishing and BEC" },
+              { "value": "supply-chain-sap-bec", "label": "Supply-chain SAP and procurement BEC" }
+            ]
+          },
+          "bindings": { "value": { "from": "incident1a.selectedSampleId" } }
+        },
+        "behavior": { "events": { "select": [{ "do": "invoke", "args": { "tool": "selectSampleReport" } }] } }
+      },
+      "source-document": {
+        "id": "source-document",
+        "kind": "incident-source-document",
+        "inputs": [{ "token": "incident-source-content", "required": true }],
+        "view": { "capability": "primitive:markdown", "bindings": { "value": { "from": "incident1a.content" } } }
+      },
+      "analyzer-organisms": {
+        "id": "analyzer-organisms",
+        "kind": "incident-analyzer-organism-set",
+        "inputs": [{ "token": "incident-source-content", "required": true }],
+        "view": { "capability": "primitive:container", "props": { "variant": "column", "gap": "l", "fullWidth": true } }
+      },
+      "refinement-analyzer": {
+        "id": "refinement-analyzer",
+        "kind": "incident-refinement-organism",
+        "inputs": [{ "token": "incident-source-content", "as": "content", "required": true }],
+        "blueprint": { "$ref": "blueprint:incident-report-explorer-1a@1.0.0" },
+        "view": {
+          "props": { "hostedAnalysis": true, "analysis": "component-data-refinement", "sourceId": "password-spray-mailbox", "analyzerId": "incident-refinement", "variant": "component-data-v2" },
+          "bindings": { "content": { "from": "incident1a.content" }, "sourceId": { "from": "incident1a.selectedSampleId" } }
+        }
+      },
+      "operational-analyzer": {
+        "id": "operational-analyzer",
+        "kind": "incident-operational-organism",
+        "inputs": [{ "token": "incident-source-content", "as": "content", "required": true }],
+        "blueprint": { "$ref": "blueprint:incident-report-explorer-2@1.0.0" },
+        "view": {
+          "props": { "hostedAnalysis": true, "analysis": "operational-semantic-model", "attention": "operational", "sourceId": "password-spray-mailbox", "analyzerId": "incident-semantic", "variant": "source-faithful-v1" },
+          "bindings": { "content": { "from": "incident1a.content" }, "sourceId": { "from": "incident1a.selectedSampleId" } }
+        }
+      },
+      "source-faithful-analyzer": {
+        "id": "source-faithful-analyzer",
+        "kind": "incident-source-faithful-organism",
+        "inputs": [{ "token": "incident-source-content", "as": "content", "required": true }],
+        "blueprint": { "$ref": "blueprint:incident-report-explorer-3@1.0.0" },
+        "view": {
+          "props": { "hostedAnalysis": true, "analysis": "source-faithful-flights", "attention": "operational", "sourceId": "password-spray-mailbox", "analyzerId": "incident-intelligence", "variant": "glance-focused-v1" },
+          "bindings": { "content": { "from": "incident1a.content" }, "sourceId": { "from": "incident1a.selectedSampleId" } }
+        }
+      }
+    },
+    "projections": {
+      "presentation": {
+        "roots": ["incident-workspace"],
+        "placements": [
+          { "cell": "workspace-title", "parent": "incident-workspace", "slot": "children", "order": 0 },
+          { "cell": "source-organism", "parent": "incident-workspace", "slot": "children", "order": 1 },
+          { "cell": "analyzer-organisms", "parent": "incident-workspace", "slot": "children", "order": 2 },
+          { "cell": "source-selector", "parent": "source-organism", "slot": "children", "order": 0 },
+          { "cell": "source-document", "parent": "source-organism", "slot": "children", "order": 1 },
+          { "cell": "refinement-analyzer", "parent": "analyzer-organisms", "slot": "children", "order": 0 },
+          { "cell": "operational-analyzer", "parent": "analyzer-organisms", "slot": "children", "order": 1 },
+          { "cell": "source-faithful-analyzer", "parent": "analyzer-organisms", "slot": "children", "order": 2 }
+        ]
+      }
+    },
+    "metadata": { "compositionPattern": "semantic-organisms-with-hosted-blueprints" }
+  }
+}

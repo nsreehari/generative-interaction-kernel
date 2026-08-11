@@ -1,5 +1,7 @@
 export * from "./blueprint";
 export * from "./blueprint-reference";
+export * from "./hosted-blueprint";
+export * from "./hosted-blueprint-reconciler";
 export * from "./resolution";
 export * from "./cells";
 export * from "./lowering-cells";

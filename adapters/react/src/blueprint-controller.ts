@@ -6,7 +6,7 @@ import {
   type MaterializedBlueprint,
 } from "@gik/blueprint";
 import type { BlueprintWorker } from "@gik/blueprint/worker";
-import { createInMemoryProvider } from "@gik/durable-runtime/connectors/in-memory";
+import { createMemoryStorage } from "@gik/durable-runtime/storage/memory";
 import type { Json, ResolvedNode } from "@gik/kernel";
 import { DurableBlueprintController } from "./durable-blueprint-controller";
 import { createNativeBlueprintWorker } from "./durable-blueprint-worker";
@@ -49,7 +49,7 @@ export class BlueprintController implements GenUISource {
     const runtimeRef = memoryRef(crypto.randomUUID());
     const runtime = {
       runtimeId: `in-memory:${materialized.payload.terminalBlueprint.payload.id}:${crypto.randomUUID()}`,
-      providers: { memory: createInMemoryProvider() },
+      providers: { memory: createMemoryStorage() },
       refs: { stateRef: runtimeRef, journalRef: runtimeRef, effectsQueueRef: runtimeRef },
     };
     this.worker = createNativeBlueprintWorker({

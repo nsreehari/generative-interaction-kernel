@@ -1,6 +1,7 @@
 {
   "kinds": {
     "deterministic-agent": { "enabled": true },
+    "durable-storage": { "enabled": true },
     "foundry-agent": { "enabled": true },
     "copilot-agent": { "enabled": true },
     "mcp": { "enabled": true },

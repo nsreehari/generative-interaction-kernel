@@ -8,6 +8,7 @@ import type {
   RuntimeReaction,
   ServiceUse,
 } from "../../kernel/src/index";
+import { HOSTED_BLUEPRINT_CAPABILITY } from "./hosted-blueprint";
 import type { BlueprintArtifact } from "./types";
 
 export interface CellInput {
@@ -48,7 +49,7 @@ export type CellViewBinding =
   | { from?: never; expression: string };
 
 export interface CellView {
-  capability: string;
+  capability?: string;
   props?: Record<string, Json>;
   bindings?: Record<string, CellViewBinding>;
   visibility?: string;
@@ -335,7 +336,7 @@ export function composeCellProgram(
     }
     const cell = definition.cells[cellId];
     if (!cell) throw new Error(`Blueprint '${topology.id}' references unknown cell '${cellId}'`);
-    if (!cell.view) throw new Error(`Presentation cell '${cellId}' has no view`);
+    if (!cell.blueprint && !cell.view?.capability) throw new Error(`Presentation cell '${cellId}' has no view capability`);
     const children = (byParent.get(cellId) ?? [])
       .sort((left, right) => (left.order ?? 0) - (right.order ?? 0))
       .map(({ cell: childId }) => compile(childId, [...ancestors, cellId]));
@@ -380,7 +381,7 @@ function toProgramNode(cell: CellDefinition, children: readonly DocNode[]): DocN
     ...(children.length > 0 ? { children: [...children] } : {}),
   };
   return {
-    capability: cell.view!.capability,
+    capability: cell.blueprint ? HOSTED_BLUEPRINT_CAPABILITY : cell.view!.capability!,
     id: cell.id,
     ...(props ? { props } : {}),
     ...(Object.keys(edges).length > 0 ? { edges } : {}),

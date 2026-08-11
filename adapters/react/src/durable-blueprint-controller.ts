@@ -94,8 +94,8 @@ export class DurableBlueprintController implements GenUISource {
       if (lifecycleVersion === this.lifecycleVersion && !this.unsubscribeSnapshot) {
         this.unsubscribeSnapshot = this.runtime.subscribe<Record<string, Json>, DurableBlueprintSpec>(
           this.options.runtime.refs,
-          async (changes) => {
-            await this.enqueue(() => this.refreshExternal(changes));
+          (changes) => {
+            void this.enqueue(() => this.refreshExternal(changes));
           },
           { afterRevision: this.revision },
         );

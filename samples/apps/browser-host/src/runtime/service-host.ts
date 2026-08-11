@@ -25,6 +25,9 @@ import { hostConfig } from "../../../../config/host-config";
 import { createSampleServiceRegistryOptions } from "../../../../service-kinds/registry-options";
 import { createBlueprintAgentLifecycle, type UseProposal } from "./blueprint-agent-lifecycle";
 import type { BlueprintProposalStore } from "@gik/blueprint-agent-host";
+import { createBlueprintServiceResolver } from "../../../shared/blueprint-service-resolver";
+import { createSampleCatalogBlueprintRegistry } from "../../../../catalog/blueprint-catalog";
+import { resolveSampleNativeServices } from "./native-services";
 
 export { createSampleServiceRegistryOptions } from "../../../../service-kinds/registry-options";
 
@@ -77,11 +80,19 @@ export function createBlueprintServiceHost(
   const manifest = unwrap(runtime.vocabulary);
   const declarations = (manifest.externals?.services ?? {}) as Record<string, ServiceDeclaration>;
   const agentLifecycle = createBlueprintAgentLifecycle(runtime, state, { proposalStore });
+  const mergedOptions = mergeRegistryOptions(registryOptions, state);
   return new DefaultServiceHost({
     blueprintId: runtime.blueprintId,
     blueprintRevision: runtime.revision,
     declarations,
-    registry: createSampleServiceKindRegistry(mergeRegistryOptions(registryOptions, state)),
+    registry: createSampleServiceKindRegistry(mergedOptions),
+    blueprintServices: createBlueprintServiceResolver({
+      registry: createSampleCatalogBlueprintRegistry(),
+      createNativeRegistry: (blueprintId) => createSampleServiceKindRegistry(mergeRegistryOptions({
+        ...mergedOptions,
+        ...resolveSampleNativeServices(blueprintId),
+      }, state)),
+    }),
     state,
     expression: new JsonataExpressionProvider({ safe: true }),
     agentTools: agentLifecycle.tools,

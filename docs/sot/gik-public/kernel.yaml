@@ -263,10 +263,12 @@ contracts:
     purpose: Declare host-provided projection, effect, and logical service dependencies.
   - name: ServiceDeclaration
     signature: >-
-      interface ServiceDeclaration { kind: string; version: string;
-      operations: Record<string, ServiceOperationDeclaration>; config?: Json;
-      scope?: ServiceScope }
-    purpose: Declare a logical service kind and its operation contracts without physical credentials.
+      type ServiceDeclaration = NativeServiceDeclaration | BlueprintServiceDeclaration;
+      interface NativeServiceDeclaration { kind: string; version: string;
+      operations: Record<string, ServiceOperationDeclaration>; config?: Json; scope?: ServiceScope }
+      interface BlueprintServiceDeclaration { blueprint: { $ref: string }; version: string;
+      operations: Record<string, ServiceOperationDeclaration>; scope?: ServiceScope }
+    purpose: Declare operation contracts backed by either a trusted native kind or a host-resolved keyed Blueprint.
   - name: ServiceOperationDeclaration
     signature: >-
       interface ServiceOperationDeclaration { operation: string; contract: string;

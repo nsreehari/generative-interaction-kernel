@@ -1,19 +1,13 @@
 import type { EffectHandlerMap } from "@gik/react";
 import type { Json } from "@gik/kernel";
 
-import passwordSprayMailbox from "../../../incident-report-explorer/incident-report.md?raw";
-import blobStorageExfiltration from "../../../incident-report-explorer/sample-incidents/blob-storage-exfiltration.md?raw";
-import deviceCodeBec from "../../../incident-report-explorer/sample-incidents/device-code-bec.md?raw";
-import identityCompromise from "../../../incident-report-explorer/sample-incidents/identity-compromise.md?raw";
-import supplyChainSapBec from "../../../incident-report-explorer/sample-incidents/supply-chain-sap-bec.md?raw";
+import { storageSeedValues, type StorageSeedCatalog } from "../../../../catalog/storage-seed";
+import incidentAssetSeed from "../../../incident-analysis-assets/seed-data/catalog.json" with { type: "json" };
 
-export const sampleReports = [
-  { id: "password-spray-mailbox", content: passwordSprayMailbox },
-  { id: "blob-storage-exfiltration", content: blobStorageExfiltration },
-  { id: "identity-compromise", content: identityCompromise },
-  { id: "device-code-bec", content: deviceCodeBec },
-  { id: "supply-chain-sap-bec", content: supplyChainSapBec },
-] as const;
+export const sampleReports = storageSeedValues<{ id: string; label: string; content: string }>(
+  incidentAssetSeed as StorageSeedCatalog,
+  "source:",
+);
 
 export function hydrateState(state: Record<string, unknown>): void {
   const incident = state.incident2;

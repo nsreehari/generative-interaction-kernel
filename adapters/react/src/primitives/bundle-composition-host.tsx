@@ -6,6 +6,7 @@
 // bundles together over shared state." Domain wiring lives entirely in each organism's `bridge`.
 
 import React from "react";
+import type { ProjectionView } from "../registry";
 import { GenUIRoot, type GenUISource } from "../useGenUI";
 import { loadBundle, type Bundle, type LoadBundleOptions } from "./bundle";
 import { buildBundleRegistry } from "./registry";
@@ -41,6 +42,8 @@ export interface CompositionOrganism {
   bridge?: OrganismBridge;
   /** Optional host-owned orchestrator wrap (policy / services) for this organism. */
   wrapOrchestrator?: LoadBundleOptions["wrapOrchestrator"];
+  /** Renderer adapter for reserved structural capabilities emitted by the common runtime. */
+  structuralViews?: Record<string, ProjectionView>;
 }
 
 export function BundleCompositionHost({
@@ -93,8 +96,8 @@ function CompositionOrganismRuntime({
   );
   useBundleContextSync(controller, contexts);
   const registry = React.useMemo(
-    () => buildBundleRegistry(organism.bundle, resolveProvider ?? undefined),
-    [organism.bundle, resolveProvider]
+    () => buildBundleRegistry(organism.bundle, resolveProvider ?? undefined, organism.structuralViews),
+    [organism.bundle, resolveProvider, organism.structuralViews]
   );
   // A bridge may wrap the source GenUIRoot renders (stable for the life of the controller).
   const source = React.useMemo(

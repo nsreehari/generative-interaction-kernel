@@ -180,7 +180,8 @@
       "properties": {
         "schema": { "type": "object" },
         "required": { "type": "boolean" },
-        "description": { "type": "string" }
+        "description": { "type": "string" },
+        "from": { "type": "string", "minLength": 1 }
       }
     },
     "agentLifecycleProfile": {

@@ -21,15 +21,21 @@ export const FallbackView: ProjectionView = ({ node, children }: ProjectionViewP
 /** Build a bundle registry without privileging any host-owned projection provider. */
 export function buildBundleRegistry(
   bundle: Bundle,
-  crossProvider?: ProviderResolver
+  crossProvider?: ProviderResolver,
+  structuralViews: Record<string, ProjectionView> = {},
 ): ComponentRegistry {
   const resolve: ProviderResolver = (from) => {
     if (from === "self") return bundle.projectionViews;
     return crossProvider?.(from);
   };
-  return buildRegistryFromImports(
+  const imported = buildRegistryFromImports(
     unwrap(bundle.vocabulary).externals?.projectionViews,
     resolve,
     FallbackView
   );
+  return {
+    get: (capability) => structuralViews[capability] ?? imported.get(capability),
+    getStructural: (capability) => structuralViews[capability],
+    fallback: imported.fallback,
+  };
 }

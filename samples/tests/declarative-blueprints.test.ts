@@ -3,24 +3,37 @@ import {
   analyzeCellComposition,
   materializeBlueprint,
   parseBlueprintReference,
+  runMaterializedTransition,
   validateBlueprintArtifact,
   type BlueprintArtifact,
   type CellDefinition,
   type ExternalContext,
 } from "@gik/blueprint";
+import { openBlueprint } from "@gik/controlface/blueprint";
+import type { GIKEvent } from "@gik/kernel";
 import { resolveSampleBlueprintSource } from "../catalog/blueprint-catalog";
+import { resolveSampleNativeServices } from "../apps/node-host/native-services";
+import { createNodeBlueprintServiceHost, nodeServiceOrchestrator } from "../apps/node-host/service-host";
 
 type Assertion =
   | { kind: "valid-artifact" | "composition-valid" }
   | { kind: "equals"; pointer: string; value: unknown }
   | { kind: "placement-children"; parent: string; value: string[] };
 type Materialization = { name: string; externalContext: ExternalContext; assertions: Assertion[] };
+type RuntimeAssertion = { kind: "state-equals"; pointer: string; value: unknown };
+type Scenario = {
+  name: string;
+  externalContext?: ExternalContext;
+  events: GIKEvent[];
+  assertions: RuntimeAssertion[];
+};
 type BlueprintCase = {
   format: "gik-blueprint-test/1";
   name: string;
   blueprintId: string;
   assertions: Assertion[];
   materializations?: Materialization[];
+  scenarios?: Scenario[];
 };
 
 const modules = import.meta.glob<BlueprintCase>("../blueprints/*/*.case.json", {
@@ -46,6 +59,31 @@ for (const [path, testCase] of Object.entries(modules)) {
         expect(terminal.payload.tiers).toEqual([{ id: "runtime-document", kind: "runtime-document" }]);
         expect(terminal.payload.recipes).toEqual([]);
         for (const assertion of materialization.assertions) runAssertion(terminal, assertion);
+      });
+    }
+    for (const scenario of testCase.scenarios ?? []) {
+      it(`runs ${scenario.name}`, async () => {
+        const materialized = materializeBlueprint({
+          blueprint: source,
+          externalContext: scenario.externalContext,
+          resolveBlueprint(reference) {
+            return resolveSampleBlueprintSource(parseBlueprintReference(reference).id);
+          },
+        });
+        const runtime = openBlueprint(materialized.payload.terminalBlueprint);
+        const nativeServices = resolveSampleNativeServices(testCase.blueprintId);
+        const result = await runMaterializedTransition({
+          materializedBlueprint: materialized,
+          state: materialized.payload.initialState,
+          events: scenario.events,
+          createOrchestrator: (state) => {
+            const host = createNodeBlueprintServiceHost(runtime, state, {}, nativeServices);
+            return nodeServiceOrchestrator(runtime, host)(undefined, state);
+          },
+        });
+        for (const assertion of scenario.assertions) {
+          expect(readPointer(result.state, assertion.pointer)).toEqual(assertion.value);
+        }
       });
     }
   });

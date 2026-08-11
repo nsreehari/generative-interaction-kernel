@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { createInMemoryProvider } from "../src/storage/memory";
+import { createMemoryStorage } from "../src/storage/memory";
 import { createDurableRuntime } from "../src/runtime/browser-runtime";
 import type { DurableTransitionAdapter } from "../src/contracts";
 
@@ -9,8 +9,22 @@ function ref(value: string): string {
   return `b64:${Buffer.from(JSON.stringify({ kind: "memory", value })).toString("base64url")}`;
 }
 
+test("in-memory provider preserves journal wakes appended during processing", async () => {
+  const provider = createMemoryStorage();
+  const runtimeRef = ref("overlapping-wakes");
+  const refs = { stateRef: runtimeRef, journalRef: runtimeRef, effectsQueueRef: runtimeRef };
+
+  await provider.appendJournal({ ...refs, entry: { type: "first" } });
+  const firstWake = await provider.readEngineWake(refs);
+  await provider.appendJournal({ ...refs, entry: { type: "second" } });
+  await provider.markEngineWakeProcessed(refs, firstWake.requestedAt!);
+
+  const pendingWake = await provider.readEngineWake(refs);
+  assert.ok(pendingWake.requestedAt! > pendingWake.processedAt!);
+});
+
 test("in-memory provider supports transition, outbox, and settlement journal work", async () => {
-  const provider = createInMemoryProvider();
+  const provider = createMemoryStorage();
   const runtimeRef = ref("counter");
   const refs = { stateRef: runtimeRef, journalRef: runtimeRef, effectsQueueRef: runtimeRef };
   const transitionAdapter: DurableTransitionAdapter<
