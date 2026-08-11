@@ -14,13 +14,24 @@ npm run build
 Run the generic browser host with `npm run dev`. Select a Blueprint with a URL such as
 `http://localhost:5175/?b=portfolio-tracker`.
 
-The backend examples have dedicated scripts: `start:backend`, `start:agent`, `start:control`, `start:continuity`, and `start:gik`.
+`apps/browser-host` runs catalog Blueprints through `@gik/react`. `apps/node-host` composes
+`@gik/blueprint`, `@gik/kernel`, the Face packages, and transports directly; start it with
+`npm run start:node -- --profile <id>`. Either host can execute a projected or presentation-free
+Blueprint. A host that does not mount a renderer simply leaves the presentation output unconsumed.
+The stateless AgentFace MCP transport sample remains under `examples/` because it does not host a Blueprint.
 
 All `@gik/*` dependencies must be released at the versions declared in `package.json` before installing this directory outside the GIK monorepo.
 
 ## Blueprint Catalog
 
-Sample Blueprint artifacts and registry metadata are assembled into `apps/browser-host/public/bootstrap/sample-blueprints.bundle.json`. Run `npm run blueprints:bundle` after changing a Blueprint or `blueprints/registry.json`; host development and build commands also regenerate it automatically.
+`catalog/` owns the shared runtime catalog module, builder, and generated seed. The builder assembles
+every `blueprints/*/blueprint.json` artifact plus the launch profiles in `blueprints/registry.json`
+into `catalog/bootstrap/sample-blueprints.bundle.json`. Run `npm run blueprints:bundle` after changing
+a Blueprint or the registry; host development and build commands also regenerate it automatically.
+
+Launch profiles are environment-neutral named presets. They may declare concrete required
+capabilities, but they do not classify Blueprints by browser, Node, service, worker, projected, or
+headless execution. Each application chooses a profile and supplies the dependencies it requires.
 
 The browser verifies and admits this seed bundle to IndexedDB before rendering. Seed artifacts may reference trusted, statically imported native providers. User-authored artifacts share the catalog snapshot but never receive that authority; executable TypeScript and TSX remain host code rather than catalog data.
 
@@ -28,7 +39,7 @@ The browser verifies and admits this seed bundle to IndexedDB before rendering. 
 
 Put structural and materialization cases beside their owning Blueprint as `blueprints/<id>/*.case.json`. The generic runner validates artifacts, composition, JSON Pointer values, and placement children; `npm run conformance` also validates each case against `../schemas/blueprint-test-case.schema.json`.
 
-Keep lifecycle, effect-handler, controller, persistence, and rendered interaction tests in TypeScript. Tests should resolve Blueprint sources through `shared/blueprint-catalog.ts` so they exercise the installed catalog instead of importing individual `blueprint.json` files.
+Keep lifecycle, effect-handler, controller, persistence, and rendered interaction tests in TypeScript. Tests should resolve Blueprint sources through `catalog/blueprint-catalog.ts` so they exercise the installed catalog instead of importing individual `blueprint.json` files.
 
 ## Credentials
 
@@ -48,10 +59,10 @@ Blueprint state, external context, materialized Blueprints, events, effects, Jou
 Headless hosts create registry options with an environment-backed resolver and pass those options to the existing service host or orchestrator:
 
 ```ts
-import { createHeadlessServiceRegistryOptions } from "./services/host/headless-service-runtime";
-import { declarativeServiceOrchestrator } from "./services/host/service-runtime";
+import { createNodeServiceRegistryOptions } from "./apps/service-kinds/host/node-service-runtime";
+import { declarativeServiceOrchestrator } from "./apps/service-kinds/host/service-runtime";
 
-const registryOptions = createHeadlessServiceRegistryOptions(process.env);
+const registryOptions = createNodeServiceRegistryOptions(process.env);
 const wrapOrchestrator = declarativeServiceOrchestrator(runtime, registryOptions);
 ```
 

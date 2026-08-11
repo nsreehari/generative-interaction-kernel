@@ -6,7 +6,7 @@ import {
   getSampleBlueprintCatalog,
   openSampleBlueprint,
   resolveSampleBlueprintSource,
-} from "../shared/blueprint-catalog";
+} from "../catalog/blueprint-catalog";
 
 type FixtureExpectation = {
   namespace: string;
@@ -52,7 +52,7 @@ describe("reauthored canonical Blueprint fixtures", () => {
       expect(artifact.payload).not.toHaveProperty("blueprint-template");
       expect(artifact.payload).not.toHaveProperty("organism");
       expect(JSON.stringify(artifact)).not.toContain('"executor"');
-      expect(getSampleBlueprintCatalog().blueprints).not.toContain(id);
+      expect(getSampleBlueprintCatalog().blueprints).toContain(id);
     });
 
     it(`${id} opens as a Kernel-executable program`, () => {

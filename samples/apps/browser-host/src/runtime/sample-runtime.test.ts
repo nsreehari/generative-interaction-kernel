@@ -9,10 +9,10 @@ import { securityComponentViews } from "@gik/components/security";
 import { softwareComponentViews } from "@gik/components/software";
 
 import { copilotC2StateStorageKey } from "../../../../blueprints/copilot-c2/native/effect_handlers/copilotC2EffectHandlers";
-import { openSampleBlueprint } from "../../../../shared/blueprint-catalog";
+import { openSampleBlueprint } from "../../../../catalog/blueprint-catalog";
 import { resolveProjectionViews } from "./provider-registry";
 import { resolveBlueprintInitialContext, resolveBlueprintNative } from "./sample-bundles";
-import { createBlueprintServiceHost } from "../../../../services/host/service-runtime";
+import { createBlueprintServiceHost } from "../../../service-kinds/host/service-runtime";
 
 test("production native resolution hydrates and persists durable copilot-c2 state only", () => {
   const values = new Map<string, string>([[
@@ -75,9 +75,10 @@ test("shared projection imports resolve package and Blueprint providers", () => 
   assert.equal(typeof copilotViews?.workspace, "function");
   assert.equal(typeof copilotViews?.["agent-activity-board"], "function");
   assert.equal(typeof copilotViews?.["run-console"], "function");
-  const foundryProviderViews = resolveProjectionViews("foundry");
-  assert.equal(typeof foundryProviderViews?.["access-gate"], "function");
-  assert.equal(resolveProjectionViews("http-proxy"), foundryProviderViews);
+  const hostViews = resolveProjectionViews("host");
+  assert.equal(typeof hostViews?.["credential-access"], "function");
+  assert.equal(resolveProjectionViews("foundry"), undefined);
+  assert.equal(resolveProjectionViews("http-proxy"), undefined);
   const foundryViews = resolveProjectionViews("foundry-agent");
   assert.equal(foundryViews?.["access-modal"], undefined);
   assert.equal(typeof foundryViews?.["agent-selector"], "function");

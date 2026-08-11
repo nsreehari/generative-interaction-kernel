@@ -22,7 +22,11 @@ import type {
   ServiceValidationReport,
 } from "./queueface";
 import { InMemoryServiceRequestStore } from "./queueface";
-import type { ServiceKindDescription, ServiceKindRegistry } from "./service-kinds";
+import {
+  UnsatisfiedServiceDependencyError,
+  type ServiceKindDescription,
+  type ServiceKindRegistry,
+} from "./service-kinds";
 
 /** Host-owned service capability projected through ControlFace and QueueFace.
  * Faces delegate to this contract; they do not materialize or execute service kinds themselves. */
@@ -58,6 +62,7 @@ export interface DefaultServiceHostOptions {
     settlement: OrchestratorResult;
     result: ServiceExecutionResult;
   }) => Promise<OrchestratorResult>;
+  dependencyFailurePolicy?: "settle" | "throw";
 }
 
 type ResolvedOperation = {
@@ -106,6 +111,9 @@ function errorDetail(error: unknown): Record<string, Json> {
   for (const field of ["status", "code"] as const) {
     const value = (error as Error & Record<typeof field, unknown>)[field];
     if (typeof value === "string" || typeof value === "number") detail[field] = value;
+  }
+  if (error instanceof UnsatisfiedServiceDependencyError) {
+    detail.dependency = asJson(error.dependency);
   }
   return detail;
 }
@@ -178,6 +186,10 @@ export class DefaultServiceHost implements ServiceHost {
       const record = await this.createRecord(resolved, effect, "immediate");
       completed = await this.execute(record, resolved, effect);
     } catch (error) {
+      if (error instanceof UnsatisfiedServiceDependencyError
+        && this.options.dependencyFailurePolicy === "throw") {
+        throw error;
+      }
       if (resolved.operation.failureSettlement) {
         return this.settleFailureError(resolved.operation, error, effect);
       }
@@ -328,6 +340,11 @@ export class DefaultServiceHost implements ServiceHost {
         updatedAt: this.now().toISOString(),
       };
       await this.store.put(failed);
+      if (running.mode === "immediate"
+        && error instanceof UnsatisfiedServiceDependencyError
+        && this.options.dependencyFailurePolicy === "throw") {
+        throw error;
+      }
       if (retry) this.pending.push({ id: running.request.id, effect, resolved });
       return failed;
     } finally {

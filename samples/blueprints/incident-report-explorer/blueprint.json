@@ -107,7 +107,7 @@
             "failureSettlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "($access := error.message = 'Foundry access is required' or error.status = 401 or error.status = 403; {'ops':[{'op':'set','path':'incident.pendingContent','value':null},{'op':'set','path':'incident.error','value':$access ? '' : error.message},{'op':'set','path':'incident.foundryAccessStatus','value':$access ? 'required' : state.incident.foundryAccessStatus},{'op':'set','path':'incident.foundryAccessError','value':$access ? (error.status = 401 or error.status = 403 ? 'That access key was rejected.' : 'Foundry access is required.') : state.incident.foundryAccessError}]})"
+                "expr": "($missing := error.code = 'service-dependency-unsatisfied' and error.dependency.kind = 'credential' and error.dependency.ref = 'foundry-agent/access-key'; $access := $missing or error.status = 401 or error.status = 403; {'ops':[{'op':'set','path':'incident.pendingContent','value':null},{'op':'set','path':'incident.error','value':$access ? '' : error.message},{'op':'set','path':'incident.foundryAccessStatus','value':$access ? 'required' : state.incident.foundryAccessStatus},{'op':'set','path':'incident.foundryAccessError','value':$access ? (error.status = 401 or error.status = 403 ? 'That access key was rejected.' : 'Foundry access is required.') : state.incident.foundryAccessError}]})"
               }
             },
             "onViolation": { "action": "fail" }
@@ -124,7 +124,7 @@
             "failureSettlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "($rejected := error.status = 401 or error.status = 403; $missing := error.message = 'Foundry access is required'; {'ops':[{'op':'set','path':'incident.foundryAccessStatus','value':($rejected or $missing) ? 'required' : 'error'},{'op':'set','path':'incident.foundryAccessError','value':$rejected ? 'That access key was rejected.' : ($missing ? 'Foundry access is required.' : error.message)}]})"
+                "expr": "($rejected := error.status = 401 or error.status = 403; $missing := error.code = 'service-dependency-unsatisfied' and error.dependency.kind = 'credential' and error.dependency.ref = 'foundry-agent/access-key'; {'ops':[{'op':'set','path':'incident.foundryAccessStatus','value':($rejected or $missing) ? 'required' : 'error'},{'op':'set','path':'incident.foundryAccessError','value':$rejected ? 'That access key was rejected.' : ($missing ? 'Foundry access is required.' : error.message)}]})"
               }
             },
             "onViolation": { "action": "fail" }
@@ -146,7 +146,7 @@
         "incident:workspace": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"] },
         "incident:editor": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"], "dataProp": "value" },
         "incident:projections": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["analyze"], "dataProp": "value" },
-        "foundry:access-gate": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["accessRequested", "accessCleared"], "slots": ["children"] },
+        "host:credential-access": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["accessRequested", "accessCleared"], "slots": ["children"] },
         "primitive:markdown": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
         "fluent:dropdown": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["select"], "dataProp": "value" },
         "primitive:form": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"] }
@@ -154,7 +154,7 @@
       "externals": {
         "projectionViews": {
           "incident": { "from": "self" },
-          "foundry": { "from": "foundry", "use": ["access-gate"] },
+          "host": { "from": "host", "use": ["credential-access"] },
           "fluent": { "from": "fluent", "use": ["dropdown"] },
           "primitive": { "from": "primitive", "use": ["form", "markdown"] }
         },
@@ -255,9 +255,12 @@
           }
         },
         "view": {
-          "capability": "foundry:access-gate",
+          "capability": "host:credential-access",
+          "props": {
+            "dependency": { "kind": "credential", "ref": "foundry-agent/access-key" }
+          },
           "bindings": {
-            "access": { "expression": "($s := incident.foundryAccessStatus; {'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': incident.foundryAccessError})" }
+            "access": { "expression": "($s := incident.foundryAccessStatus; {'title':'Connect to Foundry','requiredMessage':'Enter your access key to continue.','checkingMessage':'Checking Foundry access...','errorMessage':\"Couldn't verify Foundry access.\",'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': incident.foundryAccessError})" }
           }
         }
       },

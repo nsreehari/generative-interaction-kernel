@@ -67,7 +67,9 @@ function createFace(blueprint: BlueprintArtifact, orchestrator?: Orchestrator): 
 }
 
 function capability(face: ControlFace): string {
-  return face.getProgram().root.capability;
+  const root = face.getProgram().root;
+  if (!root) throw new Error("Structure mode demo requires a presentation root");
+  return root.capability;
 }
 
 export async function runStructureModesDemo(): Promise<StructureModeDemoResult> {

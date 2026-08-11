@@ -5,7 +5,10 @@
 // effects run) and returns store deltas.
 //
 import { setOp, type EffectHandlerMap } from "@gik/react";
-import { clearFunctionAccessKey } from "../../../../services/host/function-access";
+import { SAMPLE_CREDENTIAL_REFERENCES } from "../../../../apps/service-kinds/host/credential-references";
+import { clearFunctionAccessKey } from "../../../../apps/service-kinds/host/function-access";
+
+const FOUNDRY_CREDENTIAL_REFERENCE = SAMPLE_CREDENTIAL_REFERENCES.foundry;
 
 export const effects: EffectHandlerMap = {
   clearFoundryAccess() {
@@ -23,7 +26,7 @@ export const effects: EffectHandlerMap = {
   },
 
   signOut() {
-    clearFunctionAccessKey("foundry");
+    clearFunctionAccessKey(FOUNDRY_CREDENTIAL_REFERENCE);
     return {
       ops: [
         setOp("agent.accessStatus", "required"),

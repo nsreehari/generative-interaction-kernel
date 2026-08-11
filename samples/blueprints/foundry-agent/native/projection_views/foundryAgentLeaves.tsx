@@ -10,7 +10,10 @@ import {
 import { type ProjectionView } from "@gik/react";
 import * as React from "react";
 
-import { clearFunctionAccessKey } from "../../../../services/host/function-access";
+import { SAMPLE_CREDENTIAL_REFERENCES } from "../../../../apps/service-kinds/host/credential-references";
+import { clearFunctionAccessKey } from "../../../../apps/service-kinds/host/function-access";
+
+const FOUNDRY_CREDENTIAL_REFERENCE = SAMPLE_CREDENTIAL_REFERENCES.foundry;
 
 const useStyles = makeStyles({
   askPage: {
@@ -75,7 +78,7 @@ const FoundryAgentSelector: ProjectionView = ({ node, emit }) => {
 
 const FoundrySignOutButton: ProjectionView = ({ node, emit }) => (
   <Button onClick={() => {
-    clearFunctionAccessKey("foundry");
+    clearFunctionAccessKey(FOUNDRY_CREDENTIAL_REFERENCE);
     void emit("press", {});
   }}>
     {String(node.props.label ?? "Sign out")}

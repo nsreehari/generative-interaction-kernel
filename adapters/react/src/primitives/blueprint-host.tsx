@@ -57,16 +57,6 @@ export interface BlueprintHostProps {
   renderHostedBlueprintLoading?: () => React.ReactNode;
 }
 
-export function assertBlueprintHostProjection(
-  hostName: string,
-  blueprintId: string,
-  program: Enveloped<ExecutableProgramDefinition>,
-): void {
-  if (!unwrap(program).root) {
-    throw new Error(`${hostName} cannot render Blueprint '${blueprintId}' without a presentation projection`);
-  }
-}
-
 export function BlueprintHost({
   blueprint,
   resolveLeavesProvider,
@@ -112,15 +102,12 @@ export function BlueprintHost({
     [context, materializedBlueprint],
   );
   const bundle = React.useMemo(
-    () => {
-      assertBlueprintHostProjection("BlueprintHost", parentBlueprintId, prepared.program);
-      return bundleFromJson({
-        vocabulary: prepared.vocabulary,
-        program: prepared.program,
-        state: prepared.initialState,
-      }, native);
-    },
-    [prepared, native, parentBlueprintId],
+    () => bundleFromJson({
+      vocabulary: prepared.vocabulary,
+      program: prepared.program,
+      state: prepared.initialState,
+    }, native),
+    [prepared, native],
   );
   const source = React.useMemo(
     () => new BlueprintController(blueprint, {

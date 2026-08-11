@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import explorer1aHandlers from "../blueprints/incident-report-explorer-1a/native/effect_handlers/incidentReportExplorer1aEffectHandlers";
 import explorer2Handlers from "../blueprints/incident-report-explorer-2/native/effect_handlers/incidentReportExplorer2EffectHandlers";
 import explorer3Handlers from "../blueprints/incident-report-explorer-3/native/effect_handlers/incidentReportExplorer3EffectHandlers";
-import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
+import { openSampleBlueprint, resolveSampleBlueprintSource } from "../catalog/blueprint-catalog";
 import { evalAsyncJsonata } from "../../packages/evaluators/src/evaluators";
 
 const shell = resolveSampleBlueprintSource("incident-report-analysis-shell").payload;

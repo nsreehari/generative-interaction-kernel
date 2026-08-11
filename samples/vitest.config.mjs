@@ -5,7 +5,7 @@ export default defineConfig({
     environment: "node",
     include: [
       "tests/**/*.test.ts",
-      "apps/controlface-host/**/*.test.ts",
+      "apps/node-host/**/*.test.ts",
       "examples/**/*.test.ts",
       "profiles/**/*.test.ts",
       "apps/browser-host/**/*.test.ts",

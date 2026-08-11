@@ -4,8 +4,8 @@ import assert from "node:assert/strict";
 import { beforeEach, test } from "vitest";
 
 import type { Json, PatchOp } from "@gik/kernel";
-import { openSampleBlueprint } from "../shared/blueprint-catalog";
-import { readUserBlueprintArtifacts } from "../shared/blueprint-catalog";
+import { openSampleBlueprint } from "../catalog/blueprint-catalog";
+import { readUserBlueprintArtifacts } from "../catalog/blueprint-catalog";
 import { manageBlueprintsEffects } from "../blueprints/manage-blueprints/native/effect_handlers/manageBlueprintsEffectHandlers";
 
 type JsonRecord = Record<string, Json>;

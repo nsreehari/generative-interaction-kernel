@@ -45,19 +45,6 @@
           ],
           "dataProp": "value"
         },
-        "foundry:access-gate": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "emits": [
-            "accessRequested",
-            "accessCleared"
-          ],
-          "slots": [
-            "children"
-          ]
-        },
         "primitive:markdown": {
           "propsSchema": {
             "type": "object",

@@ -14,7 +14,7 @@ import {
   createInMemoryBlueprintProposalStore,
   type BlueprintProposalStore,
 } from "@gik/blueprint-agent-host";
-import type { UseProposal } from "../../../services/host/blueprint-agent-lifecycle";
+import type { UseProposal } from "../../service-kinds/host/blueprint-agent-lifecycle";
 import { GikDemoBlueprintHost, type DemoTargetHostProps } from "@gik/demo-runner-host";
 import { resolveProjectionViews } from "./runtime/provider-registry";
 import {
@@ -26,13 +26,10 @@ import {
   resolveBlueprintNative,
   resolveBlueprintNativeFromMaterialized,
 } from "./runtime/sample-bundles";
-import { getSampleBlueprintCatalog, resolveSampleBlueprintSource } from "../../../shared/blueprint-catalog";
+import { getSampleBlueprintCatalog, resolveSampleBlueprintSource } from "../../../catalog/blueprint-catalog";
 import { createSampleBlueprintHostRegistry } from "./runtime/hosted-blueprint-registry";
 
 const embeddedHostStyle: React.CSSProperties = { height: "100vh" };
-const defaultExternalContextByBlueprint = {
-  "portfolio-tracker-2tiers": { view: "desktop", attention: "detailed", marketMode: "live" },
-} as const;
 
 export function Host(): React.ReactElement {
   const query = readHostQuery(window.location.search, window.location.pathname);
@@ -173,7 +170,6 @@ function HostView({
   resolveLeavesProvider: (from: string) => ReturnType<typeof resolveProjectionViews>;
 }): React.ReactElement {
   const id = targetId;
-  const externalContext = defaultExternalContextByBlueprint[id as keyof typeof defaultExternalContextByBlueprint];
   const proposalStore = React.useMemo(
     () => createSampleBlueprintProposalStore({ durableEnabled, blueprintId: id }),
     [durableEnabled, id],
@@ -193,8 +189,8 @@ function HostView({
     native: resolveBlueprintNative(id, { proposalStore }),
   }), [id, proposalStore]);
   const context = React.useMemo(
-    () => resolveBlueprintInitialContext(id, externalContext),
-    [externalContext, id],
+    () => resolveBlueprintInitialContext(id),
+    [id],
   );
   const demoRunnerDocument = getSampleBlueprintCatalog().demoScenarios[id];
 
@@ -205,10 +201,8 @@ function HostView({
         blueprint={blueprint}
         native={native}
         context={context}
-        externalContext={externalContext}
-        resolveNative={id === "portfolio-tracker-2tiers"
-          ? (materializedBlueprint) => resolveBlueprintNativeFromMaterialized(id, materializedBlueprint, { proposalStore })
-          : undefined}
+        resolveNative={(materializedBlueprint) =>
+          resolveBlueprintNativeFromMaterialized(id, materializedBlueprint, { proposalStore })}
         scenariosJson={demoRunnerDocument}
         resolveLeavesProvider={resolveLeavesProvider}
         blueprintRegistry={hostedBlueprintRegistry}

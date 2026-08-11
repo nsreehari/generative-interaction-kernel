@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import { InMemoryStateModel, Kernel, unwrap, type GIKEvent, type Orchestrator, type OrchestratorEffect } from "@gik/kernel";
-import { openSampleBlueprint, resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
+import { openSampleBlueprint, resolveSampleBlueprintSource } from "../catalog/blueprint-catalog";
 
 function runtimeState(runtime: ReturnType<typeof openSampleBlueprint>): InMemoryStateModel {
   const state = new InMemoryStateModel(Object.keys(runtime.state));

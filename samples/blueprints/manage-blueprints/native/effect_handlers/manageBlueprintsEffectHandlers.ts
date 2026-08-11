@@ -6,7 +6,7 @@ import {
   writeUserBlueprintArtifacts,
   getSampleBlueprintCatalog,
   installUserBlueprints,
-} from "../../../../shared/blueprint-catalog";
+} from "../../../../catalog/blueprint-catalog";
 
 const BLUEPRINT_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 

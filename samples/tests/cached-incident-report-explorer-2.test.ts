@@ -7,7 +7,7 @@ import handlers, {
   cachedSampleReports2,
   hydrateState,
 } from "../blueprints/cached-incident-report-explorer-2/native/effect_handlers/cachedIncidentReportExplorer2EffectHandlers";
-import { resolveSampleBlueprintSource } from "../shared/blueprint-catalog";
+import { resolveSampleBlueprintSource } from "../catalog/blueprint-catalog";
 
 const cachedBlueprint = resolveSampleBlueprintSource("cached-incident-report-explorer-2") as BlueprintArtifact;
 const liveBlueprint = resolveSampleBlueprintSource("incident-report-explorer-2") as BlueprintArtifact;

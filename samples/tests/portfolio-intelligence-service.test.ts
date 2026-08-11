@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { unwrap } from "@gik/kernel";
 import { seedState } from "@gik/react";
 
-import { openSampleBlueprint } from "../shared/blueprint-catalog";
-import { createBlueprintServiceHost } from "../services/host/service-runtime";
+import { openSampleBlueprint } from "../catalog/blueprint-catalog";
+import { createBlueprintServiceHost } from "../apps/service-kinds/host/service-runtime";
 
 const runtime = openSampleBlueprint("portfolio-tracker");
 const typedManifest = runtime.vocabulary as Parameters<typeof seedState>[0];

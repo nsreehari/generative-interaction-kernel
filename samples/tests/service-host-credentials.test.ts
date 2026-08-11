@@ -1,23 +1,24 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { getSampleBlueprintCatalog } from "../shared/blueprint-catalog";
+import { UnsatisfiedServiceDependencyError } from "@gik/controlface";
+import { getSampleBlueprintCatalog } from "../catalog/blueprint-catalog";
 import {
   isSampleCredentialReference,
   SAMPLE_CREDENTIAL_REFERENCES,
-} from "../services/host/credential-references";
+} from "../apps/service-kinds/host/credential-references";
 import {
   createEnvironmentCredentialResolver,
   SAMPLE_CREDENTIAL_ENVIRONMENT_VARIABLES,
-} from "../services/host/environment-credentials";
+} from "../apps/service-kinds/host/environment-credentials";
 import {
+  browserCredentialStorageKey,
   clearBrowserCredential,
-  FUNCTION_ACCESS,
   resolveBrowserCredential,
   setFunctionAccessKey,
-} from "../services/host/function-access";
-import { createHeadlessServiceRegistryOptions } from "../services/host/headless-service-runtime";
-import { createSampleServiceRegistryOptions } from "../services/host/service-registry-options";
-import { browserServiceRegistryOptions } from "../services/host/service-runtime";
+} from "../apps/service-kinds/host/function-access";
+import { createNodeServiceRegistryOptions } from "../apps/service-kinds/host/node-service-runtime";
+import { createSampleServiceRegistryOptions } from "../apps/service-kinds/host/service-registry-options";
+import { browserServiceRegistryOptions } from "../apps/service-kinds/host/service-runtime";
 
 function collectCredentialReferences(value: unknown, references: string[] = []): string[] {
   if (!value || typeof value !== "object") return references;
@@ -63,8 +64,8 @@ test("all registered sample credential references use the host-owned catalog", (
 
 test("browser credential resolution reads the existing GitHub Pages localStorage keys", async () => {
   const values = new Map<string, string>([
-    [FUNCTION_ACCESS.foundry.storageKey, " browser-foundry-key "],
-    [FUNCTION_ACCESS["http-proxy"].storageKey, "browser-http-key"],
+    [browserCredentialStorageKey(SAMPLE_CREDENTIAL_REFERENCES.foundry), " browser-foundry-key "],
+    [browserCredentialStorageKey(SAMPLE_CREDENTIAL_REFERENCES.httpProxy), "browser-http-key"],
   ]);
   const previous = globalThis.localStorage;
   Object.defineProperty(globalThis, "localStorage", {
@@ -79,12 +80,15 @@ test("browser credential resolution reads the existing GitHub Pages localStorage
     assert.equal(await resolveBrowserCredential(SAMPLE_CREDENTIAL_REFERENCES.foundry), "browser-foundry-key");
     assert.equal(await resolveBrowserCredential(SAMPLE_CREDENTIAL_REFERENCES.httpProxy), "browser-http-key");
     clearBrowserCredential(SAMPLE_CREDENTIAL_REFERENCES.foundry);
-    assert.equal(values.has(FUNCTION_ACCESS.foundry.storageKey), false);
-    assert.equal(values.has(FUNCTION_ACCESS["http-proxy"].storageKey), true);
-    setFunctionAccessKey("foundry", "replacement-foundry-key");
-    assert.equal(values.get(FUNCTION_ACCESS.foundry.storageKey), "replacement-foundry-key");
-    await assert.rejects(() => resolveBrowserCredential("unknown/access-key"), /Unknown credential reference/);
-    assert.throws(() => clearBrowserCredential("unknown/access-key"), /Unknown credential reference/);
+    assert.equal(values.has(browserCredentialStorageKey(SAMPLE_CREDENTIAL_REFERENCES.foundry)), false);
+    assert.equal(values.has(browserCredentialStorageKey(SAMPLE_CREDENTIAL_REFERENCES.httpProxy)), true);
+    setFunctionAccessKey(SAMPLE_CREDENTIAL_REFERENCES.foundry, "replacement-foundry-key");
+    assert.equal(
+      values.get(browserCredentialStorageKey(SAMPLE_CREDENTIAL_REFERENCES.foundry)),
+      "replacement-foundry-key",
+    );
+    await assert.rejects(() => resolveBrowserCredential("unknown/access-key"), /Credential 'unknown\/access-key' is required/);
+    assert.throws(() => clearBrowserCredential("invalid reference"), /Invalid credential reference/);
   } finally {
     Object.defineProperty(globalThis, "localStorage", { configurable: true, value: previous });
   }
@@ -109,7 +113,7 @@ test("headless credential resolution uses explicit environment variables", async
 });
 
 test("headless registry options use environment credentials and endpoint policy", async () => {
-  const options = createHeadlessServiceRegistryOptions({
+  const options = createNodeServiceRegistryOptions({
     GIK_FOUNDRY_ACCESS_KEY: "foundry-key",
     GIK_HTTP_PROXY_ACCESS_KEY: "http-key",
     GIK_FOUNDRY_PROXY_ORIGIN: "https://foundry.example/path",
@@ -120,6 +124,32 @@ test("headless registry options use environment credentials and endpoint policy"
   assert.equal(await options.authorizeEndpoint?.("foundry-agent", new URL("https://foundry.example/agents")), true);
   assert.equal(await options.authorizeEndpoint?.("http-service", new URL("https://http.example/proxy")), true);
   assert.equal(await options.authorizeEndpoint?.("http-service", new URL("https://foundry.example/proxy")), false);
+});
+
+test("HTTP services classify a missing credential as a structural requirement", async () => {
+  const options = createSampleServiceRegistryOptions({
+    resolveCredential: async () => { throw new Error("Credential is required"); },
+  }, {
+    foundryProxyOrigin: "https://foundry.example",
+    httpProxyOrigin: "https://http.example",
+  });
+
+  await assert.rejects(() => options.execute?.({
+    kind: "http-service",
+    declaration: {
+      kind: "http-service",
+      version: "1",
+      operations: {},
+      config: {
+        endpoint: "https://http.example",
+        credentialRef: SAMPLE_CREDENTIAL_REFERENCES.httpProxy,
+      },
+    },
+    operation: "check-access",
+    input: null,
+  }), (error: unknown) => error instanceof UnsatisfiedServiceDependencyError
+    && error.dependency.kind === "credential"
+    && error.dependency.ref === SAMPLE_CREDENTIAL_REFERENCES.httpProxy);
 });
 
 test("HTTP authentication failures clear the credential through the active host adapter", async () => {

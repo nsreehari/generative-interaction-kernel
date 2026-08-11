@@ -169,6 +169,37 @@ describe("@gik/blueprint", () => {
     });
   });
 
+  it("preserves a Cell source predicate on its generated refresh invocation", () => {
+    const source = createBlueprint({
+      ...blueprint("conditional-source").payload,
+      cells: {
+        quotes: {
+          id: "quotes",
+          sources: [{
+            id: "quotes.source",
+            service: "market-data",
+            operation: "refreshPrices",
+            contract: "quotes/v1",
+            when: "portfolio.marketMode = 'live'",
+          }],
+          view: { capability: "primitive:container" },
+        },
+      },
+      projections: { presentation: { roots: ["quotes"] } },
+    });
+
+    const program = composeCellProgram(
+      { cells: source.payload.cells ?? {}, projections: source.payload.projections },
+      compileCellTopology(source.payload.id, source.payload.cells ?? {}),
+    );
+
+    expect(program.root?.edges?.on?.refresh).toEqual([{
+      do: "invoke",
+      args: { tool: "refreshPrices" },
+      guard: "portfolio.marketMode = 'live'",
+    }]);
+  });
+
   it("parses and formats canonical hosted Blueprint references", () => {
     expect(parseBlueprintReference("blueprint:incident-report-explorer-2@1.0.0")).toEqual({
       scheme: "blueprint",
