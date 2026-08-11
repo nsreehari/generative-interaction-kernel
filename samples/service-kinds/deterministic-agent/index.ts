@@ -1,4 +1,4 @@
-import type { Json, ServiceDeclaration } from "@gik/kernel";
+import type { Json, NativeServiceDeclaration } from "@gik/kernel";
 import {
   serviceConfig,
   type ServiceAdapter,
@@ -29,7 +29,7 @@ export function createDeterministicAgentKind(
         ? { ok: true }
         : { ok: false, errors: [`Unknown deterministic handler '${handler}'`] };
     },
-    create: (declaration: ServiceDeclaration): ServiceAdapter => {
+    create: (declaration: NativeServiceDeclaration): ServiceAdapter => {
       const handlerId = String(serviceConfig(declaration).handler);
       const handler = handlers[handlerId];
       const operations = [...new Set(Object.values(declaration.operations).map(({ operation }) => operation))];

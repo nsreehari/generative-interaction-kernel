@@ -1,4 +1,12 @@
-import { BLUEPRINT_USE_SCHEMAS, useBlueprint, type AgentProposal, type AgentTargetRef } from "@gik/agent-lifecycle-exp";
+import {
+  BLUEPRINT_AUTHOR_SCHEMAS,
+  BLUEPRINT_USE_SCHEMAS,
+  authorBlueprint,
+  useBlueprint,
+  type AgentProposal,
+  type AgentTargetRef,
+} from "@gik/agent-lifecycle-exp";
+import { validateBlueprintForAuthoring, type BlueprintArtifact } from "@gik/blueprint";
 import {
   createBlueprintProposalHost,
   createInMemoryBlueprintProposalStore,
@@ -16,6 +24,13 @@ type UseIntent = {
   rationale: string | null;
 };
 
+type AuthorIntent = {
+  kind: string;
+  target: AgentTargetRef;
+  artifact: BlueprintArtifact;
+  rationale: string | null;
+};
+
 export type UseProposal = AgentProposal<{ kind: string; payload: Json }>;
 
 function targetMatches(runtime: BlueprintRuntime, candidate: AgentTargetRef | undefined): boolean {
@@ -26,13 +41,73 @@ export interface BlueprintAgentLifecycleOptions {
   proposalStore?: BlueprintProposalStore<UseProposal>;
 }
 
+function createBlueprintAuthorTools(runtime: BlueprintRuntime) {
+  const authored = runtime.definition.payload.agentLifecycle?.profiles?.author;
+  if (!authored) return [];
+  const target: AgentTargetRef = {
+    kind: "blueprint-authoring-workspace",
+    id: runtime.blueprintId,
+    instanceId: runtime.instanceId,
+  };
+  const targetMatchesWorkspace = (candidate: AgentTargetRef | undefined) =>
+    candidate?.kind === target.kind
+      && candidate.id === target.id
+      && candidate.instanceId === target.instanceId;
+  const validate = (intent: AuthorIntent) => {
+    const report = validateBlueprintForAuthoring(intent?.artifact);
+    const errors = [...report.errors];
+    if (!authored.intentKinds.includes(intent?.kind)) errors.unshift(`Intent kind '${intent?.kind}' is not declared`);
+    if (!targetMatchesWorkspace(intent?.target)) errors.unshift("Target does not match the active Blueprint authoring workspace");
+    return {
+      ok: errors.length === 0,
+      errors,
+      warnings: report.warnings,
+      execution: report.execution,
+      identity: report.artifact
+        ? { id: report.artifact.payload.id, kind: report.artifact.payload.kind, version: report.artifact.payload.version }
+        : null,
+    };
+  };
+
+  return authorBlueprint({
+    blueprint: runtime.definition,
+    schemas: BLUEPRINT_AUTHOR_SCHEMAS,
+    host: {
+      discover: () => ({ targets: [target] }),
+      inspect: (candidate: AgentTargetRef) => {
+        if (!targetMatchesWorkspace(candidate)) throw new Error("Target does not match the active Blueprint authoring workspace");
+        return { target, revision: runtime.revision };
+      },
+      validate,
+      simulate: (intent: AuthorIntent) => ({ ...validate(intent), applied: false }),
+      preflight: (intent: AuthorIntent) => {
+        const report = validate(intent);
+        return { ...report, ready: report.ok, revision: runtime.revision };
+      },
+      propose: (intent: AuthorIntent) => {
+        const report = validate(intent);
+        if (!report.ok) throw new Error(`Invalid Blueprint authoring intent: ${report.errors.join("; ")}`);
+        return {
+          id: crypto.randomUUID(),
+          capability: authored.id,
+          target,
+          actions: [{ kind: intent.kind, artifact: intent.artifact }],
+          createdAt: new Date().toISOString(),
+          rationale: intent.rationale ?? undefined,
+        };
+      },
+    },
+  });
+}
+
 export function createBlueprintAgentLifecycle(
   runtime: BlueprintRuntime,
   state: StateModel,
   options: BlueprintAgentLifecycleOptions = {},
 ) {
   const authored = runtime.definition.payload.agentLifecycle?.profiles?.use;
-  if (!authored) return { tools: [], settle: undefined };
+  const authorTools = createBlueprintAuthorTools(runtime);
+  if (!authored) return { tools: authorTools, settle: undefined };
   const store = options.proposalStore ?? createInMemoryBlueprintProposalStore<UseProposal>();
   const proposalHost: BlueprintProposalHost<UseProposal> = createBlueprintProposalHost({
     store,
@@ -134,7 +209,7 @@ export function createBlueprintAgentLifecycle(
     },
   });
   return {
-    tools,
+    tools: [...tools, ...authorTools],
     settle: async (input: { receiptId: string; settlement: OrchestratorResult }) => {
       const receipt = await store.get(input.receiptId);
       if (!receipt) throw new Error(`Unknown Blueprint proposal receipt '${input.receiptId}'`);

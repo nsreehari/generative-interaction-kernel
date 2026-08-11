@@ -170,6 +170,7 @@ export class ControlFace implements TransportBroker {
   private readonly kernel: Kernel;
   private readonly broker: KernelTransportHost;
   private readonly serviceHost?: ServiceHost;
+  private readonly treeListeners = new Set<(tree: ResolvedNode) => void | Promise<void>>();
   private blueprint?: BlueprintSource;
 
   constructor(
@@ -199,8 +200,10 @@ export class ControlFace implements TransportBroker {
   }
 
   /** Drive the kernel and broadcast the patch to every connected render client. */
-  emit(event: GIKEvent): Promise<Patch> {
-    return this.broker.dispatch(event);
+  async emit(event: GIKEvent): Promise<Patch> {
+    const patch = await this.broker.dispatch(event);
+    await this.notifyTreeListeners();
+    return patch;
   }
 
   getState(): Record<string, Json> {
@@ -209,6 +212,11 @@ export class ControlFace implements TransportBroker {
 
   getTree(): Promise<ResolvedNode> {
     return getTree(this.kernel);
+  }
+
+  subscribeTree(listener: (tree: ResolvedNode) => void | Promise<void>): () => void {
+    this.treeListeners.add(listener);
+    return () => this.treeListeners.delete(listener);
   }
 
   getBlueprint(): BlueprintSource | undefined {
@@ -237,6 +245,7 @@ export class ControlFace implements TransportBroker {
       ? await this.kernel.applyProgramPatch(program)
       : undefined;
     this.blueprint = candidate;
+    await this.notifyTreeListeners();
     return {
       blueprint: structuredClone(candidate),
       ...(program.length > 0 ? { programPatch: program } : {}),
@@ -248,8 +257,10 @@ export class ControlFace implements TransportBroker {
     return this.kernel.checkpoint({ includeProgram: this.blueprint?.payload.structureMode === "adaptive" });
   }
 
-  restore(cp: Checkpoint): Promise<Patch> {
-    return restore(this.kernel, cp);
+  async restore(cp: Checkpoint): Promise<Patch> {
+    const patch = await restore(this.kernel, cp);
+    await this.notifyTreeListeners();
+    return patch;
   }
 
   whenIdle(): Promise<void> {
@@ -279,6 +290,13 @@ export class ControlFace implements TransportBroker {
 
   /** Detach every connection (the caller owns any server lifecycle). */
   stop(): void {
+    this.treeListeners.clear();
     this.broker.stop();
+  }
+
+  private async notifyTreeListeners(): Promise<void> {
+    if (this.treeListeners.size === 0) return;
+    const tree = await this.getTree();
+    await Promise.all([...this.treeListeners].map((listener) => listener(tree)));
   }
 }

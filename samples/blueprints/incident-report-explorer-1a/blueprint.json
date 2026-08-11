@@ -112,7 +112,7 @@
                 { "kind": "jsonata", "expr": "$count(data.factualChanges) = 0 and $count(data.omissions) = 0 and $count(data.sectionCoverage[status != 'preserved']) = 0 and $count(data.sections[$count(options[relationship = 'preferred']) != 1]) = 0", "message": "Every source section must be preserved with exactly one preferred semantic representation", "code": "content-preservation" }
               ]
             },
-            "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'incident1a.model','value':response},{'op':'set','path':'incident1a.refinedContent','value':state.incident1a.pendingContent},{'op':'set','path':'incident1a.pendingContent','value':null},{'op':'set','path':'incident1a.refinementPending','value':false},{'op':'set','path':'incident1a.error','value':''}]}" } },
+            "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'incident1a.model','value':response},{'op':'set','path':'incident1a.refinedContent','value':state.incident1a.pendingContent},{'op':'set','path':'incident1a.pendingContent','value':null},{'op':'set','path':'incident1a.refinementPending','value':false},{'op':'set','path':'incident1a.error','value':''}],'events':externalContext.sourceId and externalContext.analyzerId and externalContext.variant ? [{'node':'incident-cache','name':'persist'}] : []}" } },
             "failureSettlement": { "transform": { "kind": "jsonata", "expr": "($missing := error.code = 'service-dependency-unsatisfied' and error.dependency.kind = 'credential' and error.dependency.ref = 'foundry-agent/access-key'; $access := $missing or error.status = 401 or error.status = 403; {'ops':[{'op':'set','path':'incident1a.pendingContent','value':null},{'op':'set','path':'incident1a.refinementPending','value':false},{'op':'set','path':'incident1a.error','value':$access ? '' : error.message},{'op':'set','path':'incident1a.foundryAccessStatus','value':$access ? 'required' : state.incident1a.foundryAccessStatus},{'op':'set','path':'incident1a.foundryAccessError','value':$access ? (error.status = 401 or error.status = 403 ? 'That access key was rejected.' : 'Foundry access is required.') : state.incident1a.foundryAccessError}]})" } },
             "onViolation": { "action": "fail" }
           },
@@ -125,6 +125,19 @@
           }
         },
         "config": { "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}", "agent": "Incident-Report-Refinement-Agent", "credentialRef": "foundry-agent/access-key" },
+        "scope": "per-blueprint"
+      },
+      "incident-analysis-cache": {
+        "blueprint": { "$ref": "blueprint:incident-analysis-assets@1.0.0" },
+        "version": "1",
+        "operations": {
+          "persistIncidentAnalysis": {
+            "operation": "put-asset",
+            "contract": "incident-runtime-asset/v1",
+            "request": { "transform": { "kind": "jsonata", "expr": "{'sourceId':externalContext.sourceId,'analyzerId':externalContext.analyzerId,'variant':externalContext.variant,'value':state.incident1a.model}" } },
+            "settlement": { "transform": { "kind": "jsonata", "expr": "{'detail':{'cacheKey':response.asset.sourceId & '/' & response.asset.analyzerId & '/' & response.asset.variant}}" } }
+          }
+        },
         "scope": "per-blueprint"
       }
     },
@@ -157,6 +170,7 @@
       "incident-report-form": { "id": "incident-report-form", "kind": "source-editor", "inputs": [{ "token": "incident-report-content" }], "behavior": { "events": { "save": [{ "do": "invoke", "args": { "tool": "saveReport" } }] } } },
       "foundry-access-gate": { "id": "foundry-access-gate", "kind": "access-gate", "behavior": { "events": { "accessRequested": [{ "do": "assign", "target": "incident1a.foundryAccessStatus", "args": { "value": "checking" } }, { "do": "assign", "target": "incident1a.foundryAccessError", "args": { "value": "" } }, { "do": "invoke", "args": { "tool": "checkFoundryAccess" } }], "accessCleared": [{ "do": "assign", "target": "incident1a.foundryAccessStatus", "args": { "value": "required" } }, { "do": "assign", "target": "incident1a.foundryAccessError", "args": { "value": "" } }] } } },
       "incident-refinement": { "id": "incident-refinement", "kind": "semantic-refinement-agent", "inputs": [{ "token": "incident-report-content" }], "sources": [{ "id": "incident-refinement.source", "service": "incident-report-refinement", "operation": "improveReport", "contract": "incident-report-component-data/v2" }], "outputs": [{ "token": "incident-report-semantic-model", "from": "incident1a.model", "when": "incident1a.model != null" }] },
+      "incident-cache": { "id": "incident-cache", "kind": "runtime-asset-cache", "behavior": { "events": { "persist": [{ "do": "invoke", "args": { "tool": "persistIncidentAnalysis" } }] } } },
       "incident-improve-report": { "id": "incident-improve-report", "kind": "command", "behavior": { "events": { "press": [{ "do": "assign", "target": "incident1a.refinementPending", "args": { "value": true } }, { "do": "invoke", "args": { "tool": "prepareRefinement" } }, { "do": "invoke", "args": { "tool": "improveReport" } }] } } },
       "incident-sections": { "id": "incident-sections", "kind": "semantic-data-host", "inputs": [{ "token": "incident-report-semantic-model" }] }
     },

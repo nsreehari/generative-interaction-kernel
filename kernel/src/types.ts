@@ -491,18 +491,35 @@ export interface ServiceOperationDeclaration {
   onViolation?: GuardrailViolationAction;
 }
 
-export interface ServiceDeclaration {
-  /** Host-registered executable kind, for example `copilot-agent` or `foundry-agent`. */
-  kind: string;
+export interface BlueprintServiceReference {
+  $ref: string;
+}
+
+interface ServiceDeclarationBase {
   /** Contract version or compatible version range understood by the host's service resolver. */
   version: string;
   /** Blueprint invoke name -> complete declarative service operation. */
   operations: Record<string, ServiceOperationDeclaration>;
-  /** Kind-specific, schema-validated configuration. Literal credentials are forbidden. */
-  config?: Json;
   /** Provider-native adapter/session reuse policy. */
   scope?: ServiceScope;
 }
+
+export interface NativeServiceDeclaration extends ServiceDeclarationBase {
+  /** Host-registered executable kind, for example `copilot-agent` or `foundry-agent`. */
+  kind: string;
+  blueprint?: never;
+  /** Kind-specific, schema-validated configuration. Literal credentials are forbidden. */
+  config?: Json;
+}
+
+export interface BlueprintServiceDeclaration extends ServiceDeclarationBase {
+  /** Host-resolved Blueprint implementation, using the same keyed reference as nested Blueprints. */
+  blueprint: BlueprintServiceReference;
+  kind?: never;
+  config?: never;
+}
+
+export type ServiceDeclaration = NativeServiceDeclaration | BlueprintServiceDeclaration;
 
 /** @deprecated Migration shape for operation-only manifests created before service kinds. */
 export interface ServiceRequirement {

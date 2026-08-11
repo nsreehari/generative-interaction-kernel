@@ -20,8 +20,9 @@ export function renderNode(
 ): ReactNode {
   if (!node.visible) return null;
 
-  const View =
-    (node.fallback ? undefined : registry.get(node.capability)) ?? registry.fallback;
+  const View = registry.getStructural?.(node.capability)
+    ?? (node.fallback ? undefined : registry.get(node.capability))
+    ?? registry.fallback;
 
   const children = node.children.map((child) => renderNode(child, registry, emit));
   const boundEmit = (name: string, payload?: Record<string, unknown>, actorId?: string) =>

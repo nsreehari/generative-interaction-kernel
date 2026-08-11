@@ -97,6 +97,49 @@ test("host executes immediate operations and owns declarative settlement", async
   assert.deepEqual(await host.invoke(effect), { ops: [{ op: "set", path: "work.answer", value: { ticker: "MSFT" } }] });
 });
 
+test("host resolves Blueprint-backed services outside the native kind registry", async () => {
+  const registry = new ServiceKindRegistry();
+  const resolved: string[] = [];
+  const host = new DefaultServiceHost({
+    blueprintId: "portfolio",
+    blueprintRevision: "1",
+    declarations: {
+      analysis: {
+        blueprint: { $ref: "blueprint:portfolio-analysis@1.0.0" },
+        version: "1",
+        operations: {
+          analyzePortfolio: {
+            operation: "analyze",
+            contract: "portfolio-analysis/v1",
+            request: { transform: { kind: "jsonata", expr: "effect.args" } },
+            settlement: { transform: { kind: "jsonata", expr: "{'ops':[{'op':'set','path':'work.answer','value':response}] }" } },
+          },
+        },
+      },
+    },
+    registry,
+    blueprintServices: {
+      materialize(identity, declaration) {
+        resolved.push(`${identity.serviceId}:${declaration.blueprint.$ref}`);
+        return {
+          provider: { id: declaration.blueprint.$ref, version: declaration.version },
+          discover: async () => ({ provider: { id: declaration.blueprint.$ref, version: declaration.version }, revision: "1", discoveredAt: "now", capabilities: [] }),
+          execute: async (request) => ({ output: request.input }),
+        };
+      },
+    },
+    state: new InMemoryStateModel(["work"]),
+    expression: new JsonataExpressionProvider({ safe: true }),
+    idFactory: () => "blueprint-request-1",
+  });
+
+  assert.deepEqual(await host.invoke(effect), {
+    ops: [{ op: "set", path: "work.answer", value: { ticker: "MSFT" } }],
+  });
+  assert.ok(resolved.length > 0);
+  assert.deepEqual([...new Set(resolved)], ["analysis:blueprint:portfolio-analysis@1.0.0"]);
+});
+
 test("host applies declarative failure settlement with structured error detail", async () => {
   const unavailable = Object.assign(new Error("provider unavailable"), { status: 503 });
   const host = createHost(async () => { throw unavailable; }, {

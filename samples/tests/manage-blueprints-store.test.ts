@@ -3,9 +3,11 @@ import "fake-indexeddb/auto";
 import assert from "node:assert/strict";
 import { beforeEach, test } from "vitest";
 
-import type { Json, PatchOp } from "@gik/kernel";
-import { openSampleBlueprint } from "../catalog/blueprint-catalog";
+import { validateBlueprintForAuthoring } from "@gik/blueprint";
+import { InMemoryStateModel, type Json, type PatchOp } from "@gik/kernel";
+import { openSampleBlueprint, resolveSampleBlueprintSource } from "../catalog/blueprint-catalog";
 import { readUserBlueprintArtifacts } from "../catalog/blueprint-catalog";
+import { createBlueprintAgentLifecycle } from "../apps/browser-host/src/runtime/blueprint-agent-lifecycle";
 import { manageBlueprintsEffects } from "../blueprints/manage-blueprints/native/effect_handlers/manageBlueprintsEffectHandlers";
 
 type JsonRecord = Record<string, Json>;
@@ -136,6 +138,36 @@ test("JSON editing uses a locally stateful declarative form", () => {
   assert.equal(((cells["blueprint-list"].view as JsonRecord).props as JsonRecord).selectionMode, "single");
   assert.equal(capabilities["manage-blueprints:blueprint-import"], undefined);
   assert.equal(effectHandlers.includes("exportBlueprint"), false);
+});
+
+test("ABX validates Blueprint candidates canonically without mutating manager state", async () => {
+  const state = new InMemoryStateModel(Object.keys(managerBlueprint.state));
+  state.apply(Object.entries(managerBlueprint.state).map(([path, value]) => ({ op: "set" as const, path, value })));
+  const lifecycle = createBlueprintAgentLifecycle(managerBlueprint, state);
+  assert.deepEqual(lifecycle.tools.map(({ name }) => name), [
+    "author_blueprint_manifest", "author_blueprint_discover", "author_blueprint_describe", "author_blueprint_inspect",
+    "author_blueprint_validate", "author_blueprint_simulate", "author_blueprint_preflight", "author_blueprint_propose",
+  ]);
+  const artifact = resolveSampleBlueprintSource("samples-overview");
+  const target = {
+    kind: "blueprint-authoring-workspace",
+    id: managerBlueprint.blueprintId,
+    instanceId: managerBlueprint.instanceId,
+  };
+  const intent = { kind: "validate-blueprint", target, artifact, rationale: null };
+  const expected = validateBlueprintForAuthoring(artifact);
+  const validate = lifecycle.tools.find(({ name }) => name === "author_blueprint_validate")!;
+  const report = await validate.handler(intent) as Record<string, unknown>;
+  assert.equal(report.ok, expected.valid);
+  assert.deepEqual(report.errors, expected.errors);
+  assert.deepEqual(report.warnings, expected.warnings);
+  assert.deepEqual(report.execution, expected.execution);
+
+  const before = structuredClone(state.snapshot());
+  const propose = lifecycle.tools.find(({ name }) => name === "author_blueprint_propose")!;
+  await assert.doesNotReject(() => Promise.resolve(propose.handler(intent)));
+  assert.deepEqual(state.snapshot(), before);
+  assert.equal(lifecycle.settle, undefined);
 });
 
 test("create, save, reload, challenge, and delete stay inside the user Blueprint catalog", async () => {

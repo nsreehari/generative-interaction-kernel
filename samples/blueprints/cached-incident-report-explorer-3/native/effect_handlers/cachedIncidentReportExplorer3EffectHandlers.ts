@@ -1,24 +1,15 @@
 import type { Json } from "@gik/kernel";
 import type { EffectHandlerMap } from "@gik/react";
 
-import passwordSprayMailbox from "../../../incident-report-explorer/incident-report.md?raw";
-import blobStorageExfiltration from "../../../incident-report-explorer/sample-incidents/blob-storage-exfiltration.md?raw";
-import deviceCodeBec from "../../../incident-report-explorer/sample-incidents/device-code-bec.md?raw";
-import identityCompromise from "../../../incident-report-explorer/sample-incidents/identity-compromise.md?raw";
-import supplyChainSapBec from "../../../incident-report-explorer/sample-incidents/supply-chain-sap-bec.md?raw";
-import blobStorageExfiltrationModel from "../../fixtures/blob-storage-exfiltration.json";
-import deviceCodeBecModel from "../../fixtures/device-code-bec.json";
-import identityCompromiseModel from "../../fixtures/identity-compromise.json";
-import passwordSprayMailboxModel from "../../fixtures/password-spray-mailbox.json";
-import supplyChainSapBecModel from "../../fixtures/supply-chain-sap-bec.json";
+import { storageSeedValue, storageSeedValues, type StorageSeedCatalog } from "../../../../catalog/storage-seed";
+import incidentAssetSeed from "../../../incident-analysis-assets/seed-data/catalog.json" with { type: "json" };
 
-export const cachedSampleReports = [
-  { id: "password-spray-mailbox", content: passwordSprayMailbox, model: passwordSprayMailboxModel },
-  { id: "blob-storage-exfiltration", content: blobStorageExfiltration, model: blobStorageExfiltrationModel },
-  { id: "identity-compromise", content: identityCompromise, model: identityCompromiseModel },
-  { id: "device-code-bec", content: deviceCodeBec, model: deviceCodeBecModel },
-  { id: "supply-chain-sap-bec", content: supplyChainSapBec, model: supplyChainSapBecModel },
-] as const;
+const seed = incidentAssetSeed as StorageSeedCatalog;
+export const cachedSampleReports = storageSeedValues<{ id: string; label: string; content: string }>(seed, "source:")
+  .map((source) => ({
+    ...source,
+    model: storageSeedValue<{ value: Json }>(seed, `seed-asset:${source.id}/incident-semantic/source-faithful-v1`)!.value,
+  }));
 
 function cachedSample(id: unknown) {
   const sample = cachedSampleReports.find((candidate) => candidate.id === id);

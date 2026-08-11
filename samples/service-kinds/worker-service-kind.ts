@@ -1,4 +1,4 @@
-import type { Json, ServiceDeclaration } from "@gik/kernel";
+import type { Json, NativeServiceDeclaration } from "@gik/kernel";
 import type {
   ServiceAdapter,
   ServiceKindFactory,
@@ -7,7 +7,7 @@ import type {
 
 export interface WorkerServiceInvocation {
   kind: string;
-  declaration: ServiceDeclaration;
+  declaration: NativeServiceDeclaration;
   operation: string;
   input: Json;
   eventPayload?: Record<string, Json>;

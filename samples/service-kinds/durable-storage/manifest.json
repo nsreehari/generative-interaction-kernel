@@ -1,0 +1,13 @@
+{
+  "id": "durable-storage",
+  "version": "1",
+  "title": "Durable storage",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": { "connection": { "type": "string", "minLength": 1 } },
+    "required": ["connection"]
+  },
+  "executionModes": ["immediate"],
+  "subjects": ["cell", "substrate-agent", "chat", "task"]
+}

@@ -117,7 +117,6 @@
     },
     "view": {
       "type": "object",
-      "required": ["capability"],
       "additionalProperties": false,
       "properties": {
         "capability": { "type": "string", "minLength": 1 },

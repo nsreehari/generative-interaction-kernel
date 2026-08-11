@@ -12,11 +12,65 @@ import type {
   BlueprintReferenceResolver,
   LoweringRecipeDefinition,
 } from "./types";
+import { resolveBlueprintExecution } from "./execution";
 
 export class BlueprintValidationError extends Error {
   constructor(message: string, readonly errors: readonly unknown[] = []) {
     super(message);
     this.name = "BlueprintValidationError";
+  }
+}
+
+export interface BlueprintAuthoringValidationReport {
+  valid: boolean;
+  artifact: BlueprintArtifact | null;
+  errors: string[];
+  warnings: string[];
+  execution: {
+    sourceTier: string;
+    terminalTier: string;
+    stages: Array<{ id: string; from: string; to: string }>;
+    status: "invalid" | "runtime-ready" | "lowering-required";
+  };
+}
+
+export function validateBlueprintForAuthoring(value: unknown): BlueprintAuthoringValidationReport {
+  try {
+    const artifact = typeof value === "string"
+      ? parseBlueprintJson(value)
+      : structuredClone(value) as unknown;
+    validateBlueprintArtifact(artifact);
+    const resolved = resolveBlueprintExecution(artifact);
+    const stages = resolved.stages.map(({ recipe, fromTier, toTier }) => ({
+      id: recipe.id,
+      from: fromTier.id,
+      to: toTier.id,
+    }));
+    return {
+      valid: true,
+      artifact,
+      errors: [],
+      warnings: [],
+      execution: {
+        sourceTier: stages[0]?.from ?? artifact.payload.tiers[0]?.id ?? "",
+        terminalTier: stages.at(-1)?.to ?? artifact.payload.tiers[0]?.id ?? "",
+        stages,
+        status: stages.length > 0 ? "lowering-required" : "runtime-ready",
+      },
+    };
+  } catch (error) {
+    return {
+      valid: false,
+      artifact: null,
+      errors: [error instanceof Error ? error.message : String(error)],
+      warnings: [],
+      execution: {
+        sourceTier: "",
+        terminalTier: "",
+        stages: [],
+        status: "invalid",
+      },
+    };
   }
 }
 

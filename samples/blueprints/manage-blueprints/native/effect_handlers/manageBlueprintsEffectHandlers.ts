@@ -1,5 +1,5 @@
 import type { Json } from "@gik/kernel";
-import { parseBlueprintJson, resolveBlueprintExecution, type BlueprintArtifact } from "@gik/blueprint";
+import { parseBlueprintJson, validateBlueprintForAuthoring, type BlueprintArtifact } from "@gik/blueprint";
 import { setOp, type EffectContext, type EffectHandlerMap } from "@gik/react";
 import {
   readUserBlueprintArtifacts,
@@ -68,9 +68,9 @@ async function loadCatalog(): Promise<{ entries: CatalogEntry[]; errors: string[
 }
 
 function validate(value: unknown): ValidationResult {
-  try {
-    const blueprint = normalizeBlueprint(value);
-    const resolved = resolveBlueprintExecution(blueprint);
+  const report = validateBlueprintForAuthoring(value);
+  if (report.valid && report.artifact) {
+    const blueprint = report.artifact;
     return {
       valid: true,
       previewable: true,
@@ -84,31 +84,29 @@ function validate(value: unknown): ValidationResult {
           kind: tier.kind,
           description: tier.description ?? "",
         })),
-        recipes: resolved.stages.map((stage, index) => ({
+        recipes: report.execution.stages.map((stage, index) => ({
           order: index + 1,
-          id: stage.recipe.id,
-          from: stage.fromTier.id,
-          to: stage.toTier.id,
+          id: stage.id,
+          from: stage.from,
+          to: stage.to,
         })),
-        terminalTier: resolved.stages.at(-1)?.toTier.id ?? blueprint.payload.tiers[0]?.id ?? "",
-        executionStatus: resolved.stages.length > 0 ? "lowering-required" : "runtime-ready",
-        executionReason: resolved.stages.length > 0
+        terminalTier: report.execution.terminalTier,
+        executionStatus: report.execution.status,
+        executionReason: report.execution.stages.length > 0
           ? "This authored Blueprint requires a dialect-owned lowering implementation before runtime execution."
           : "This Blueprint contains a terminal runtime definition.",
       },
     };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return {
-      valid: false,
-      previewable: false,
-      summary: "Blueprint JSON is invalid.",
-      errors: message,
-      warnings: "",
-      blueprint: null,
-      inspection: null,
-    };
   }
+  return {
+    valid: false,
+    previewable: false,
+    summary: "Blueprint JSON is invalid.",
+    errors: report.errors.join("; "),
+    warnings: report.warnings.join("; "),
+    blueprint: null,
+    inspection: null,
+  };
 }
 
 function parseEditor(ctx: EffectContext): ValidationResult {
@@ -143,14 +141,11 @@ function inspectionState(result: ValidationResult): Json {
 }
 
 function blueprintDetails(blueprint: BlueprintArtifact): JsonRecord {
-  let previewable = false;
-  try {
-    previewable = resolveBlueprintExecution(blueprint).stages.length === 0
-      && Object.keys(blueprint.payload.cells ?? {}).length > 0
-      && (blueprint.payload.projections?.presentation?.roots.length ?? 0) === 1;
-  } catch {
-    previewable = false;
-  }
+  const report = validateBlueprintForAuthoring(blueprint);
+  const previewable = report.valid
+    && report.execution.stages.length === 0
+    && Object.keys(blueprint.payload.cells ?? {}).length > 0
+    && (blueprint.payload.projections?.presentation?.roots.length ?? 0) === 1;
   return {
     tabs: [
       { value: "overview", label: "Overview" },

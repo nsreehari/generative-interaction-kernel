@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
 import { createBlueprint } from "@gik/blueprint";
+import type { ResolvedNode } from "@gik/kernel";
 import {
   readHostedBlueprintDeclaration,
   resolveHostedBlueprint,
   type ReactBlueprintHostRegistry,
 } from "../src/primitives/hosted-blueprint";
 import { bundleFromJson } from "../src/primitives/bundle";
+import { buildBundleRegistry } from "../src/primitives/registry";
+import { renderNode } from "../src/render";
 
 const child = createBlueprint({
   id: "analysis",
@@ -81,4 +85,35 @@ test("a projection-free program remains a runnable React host bundle", () => {
   });
 
   assert.equal(bundle.program.payload.root, undefined);
+});
+
+test("renders a structural projection for a fallback-marked hosted node", () => {
+  const bundle = bundleFromJson({
+    vocabulary: {
+      gik: "0.1",
+      type: "vocabulary",
+      payload: { version: "headless/1", namespaces: [], capabilities: {} },
+    },
+    program: {
+      gik: "0.1",
+      type: "program",
+      payload: { handlers: [] },
+    },
+  });
+  const registry = buildBundleRegistry(bundle, undefined, {
+    "gik:hosted-blueprint": () => <div data-hosted-blueprint />,
+  });
+  const node = {
+    id: "hosted-child",
+    capability: "gik:hosted-blueprint",
+    visible: true,
+    fallback: true,
+    props: {},
+    children: [],
+  } as ResolvedNode;
+
+  const markup = renderToStaticMarkup(renderNode(node, registry, () => undefined));
+
+  assert.match(markup, /data-hosted-blueprint/);
+  assert.doesNotMatch(markup, /data-fallback/);
 });

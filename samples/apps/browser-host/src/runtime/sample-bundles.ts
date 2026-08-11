@@ -51,7 +51,7 @@ function resolveBlueprintNativeFromRuntime(
     runtime,
     {
       ...browserServiceRegistryOptions,
-      deterministicHandlers: nativeServices?.deterministicHandlers,
+      ...nativeServices,
     },
     options.proposalStore,
   );

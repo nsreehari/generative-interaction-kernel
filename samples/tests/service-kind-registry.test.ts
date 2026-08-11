@@ -7,7 +7,7 @@ test("explicit sample catalog registers every admitted kind", () => {
   const registry = createSampleServiceKindRegistry();
   assert.deepEqual(
     registry.describe().map(({ manifest }) => manifest.id).sort(),
-    ["copilot-agent", "deterministic-agent", "foundry-agent", "http-service", "mcp"]
+    ["copilot-agent", "deterministic-agent", "durable-storage", "foundry-agent", "http-service", "mcp"]
   );
 });
 

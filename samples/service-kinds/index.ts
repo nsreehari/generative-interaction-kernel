@@ -2,6 +2,7 @@ import { ServiceKindRegistry, type ServiceKindFactory } from "@gik/controlface";
 
 import { copilotAgentKind } from "./copilot-agent";
 import { createDeterministicAgentKind, type DeterministicServiceHandler } from "./deterministic-agent";
+import { createDurableStorageKind, type DurableStorageConnection } from "./durable-storage";
 import { foundryAgentKind } from "./foundry-agent";
 import { httpServiceKind } from "./http-service";
 import { mcpServiceKind } from "./mcp";
@@ -17,6 +18,7 @@ const factories: Record<string, ServiceKindFactory> = {
 export interface SampleServiceRegistryOptions {
   hostCapabilities?: Iterable<string>;
   deterministicHandlers?: Record<string, DeterministicServiceHandler>;
+  durableStorageConnections?: Readonly<Record<string, DurableStorageConnection>>;
   resolveCredential?: (reference: string) => Promise<unknown>;
   clearCredential?: (reference: string) => void | Promise<void>;
   authorizeEndpoint?: (kind: string, endpoint: URL) => boolean | Promise<boolean>;
@@ -34,6 +36,8 @@ export function createSampleServiceKindRegistry(
   for (const kind of enabled) {
     const factory = kind === "deterministic-agent"
       ? createDeterministicAgentKind(options.deterministicHandlers ?? {})
+      : kind === "durable-storage"
+        ? createDurableStorageKind(options.durableStorageConnections ?? {})
       : factories[kind];
     if (!factory) throw new Error(`Enabled sample service kind '${kind}' has no implementation`);
     registry.register(factory);
@@ -42,4 +46,5 @@ export function createSampleServiceKindRegistry(
 }
 
 export * from "./deterministic-agent";
+export * from "./durable-storage";
 export * from "./worker-service-kind";

@@ -12,6 +12,8 @@ import {
   type ProjectionView,
   type ProviderMap,
 } from "../src/registry";
+import { bundleFromJson } from "../src/primitives/bundle";
+import { buildBundleRegistry } from "../src/primitives/registry";
 
 const A: ProjectionView = () => createElement("a");
 const B: ProjectionView = () => createElement("b");
@@ -66,5 +68,24 @@ test("a `use` whitelist restricts which names an alias exposes", () => {
 
 test("no imports => nothing resolves (nothing is ambient)", () => {
   const reg = buildRegistryFromImports(undefined, resolve, Fallback);
+  assert.equal(reg.get("ui:list"), undefined);
+});
+
+test("reserved structural views resolve without weakening vocabulary imports", () => {
+  const bundle = bundleFromJson({
+    vocabulary: {
+      gik: "0.1",
+      type: "vocabulary",
+      payload: { version: "structural/1", namespaces: [], capabilities: {} },
+    },
+    program: {
+      gik: "0.1",
+      type: "program",
+      payload: { root: { capability: "gik:hosted-blueprint", id: "child" } },
+    },
+  });
+  const reg = buildBundleRegistry(bundle, resolve, { "gik:hosted-blueprint": A });
+
+  assert.equal(reg.get("gik:hosted-blueprint"), A);
   assert.equal(reg.get("ui:list"), undefined);
 });

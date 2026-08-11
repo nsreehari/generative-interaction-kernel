@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import type { ServiceDeclaration } from "../../kernel/src/index";
+import type { NativeServiceDeclaration } from "../../kernel/src/index";
 import { ServiceKindRegistry, serviceConfig, type ServiceAdapter, type ServiceKindFactory } from "../src/index";
 
 const settlement = { transform: { kind: "jsonata" as const, expr: "{'outcome':'completed'}" } };
 
-function declaration(model: string, scope: ServiceDeclaration["scope"] = "per-cell"): ServiceDeclaration {
+function declaration(model: string, scope: NativeServiceDeclaration["scope"] = "per-cell"): NativeServiceDeclaration {
   return {
     kind: "copilot-agent",
     version: "1",
@@ -82,7 +82,7 @@ test("rejects literal credentials while allowing credential references", async (
     kind: "foundry-agent",
     version: "1",
     operations: { chat: { operation: "chat", contract: "chat/v1", settlement } },
-  } satisfies ServiceDeclaration;
+  } satisfies NativeServiceDeclaration;
   assert.equal((await registry.validate({ ...foundry, config: { credentialRef: "host/foundry" } })).ok, true);
   const rejected = await registry.validate({ ...foundry, config: { secret: "literal" } });
   assert.equal(rejected.ok, false);

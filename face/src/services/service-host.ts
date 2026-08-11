@@ -1,7 +1,9 @@
 import { runDeclarativeValidators } from "../../../packages/evaluators/src/index";
 import type {
   ExpressionProvider,
+  BlueprintServiceDeclaration,
   Json,
+  NativeServiceDeclaration,
   OrchestratorEffect,
   OrchestratorResult,
   ServiceDeclaration,
@@ -24,6 +26,7 @@ import type {
 import { InMemoryServiceRequestStore } from "./queueface";
 import {
   UnsatisfiedServiceDependencyError,
+  type BlueprintServiceIdentity,
   type ServiceKindDescription,
   type ServiceKindRegistry,
 } from "./service-kinds";
@@ -49,6 +52,7 @@ export interface DefaultServiceHostOptions {
   blueprintRevision: string;
   declarations: Record<string, ServiceDeclaration>;
   registry: ServiceKindRegistry;
+  blueprintServices?: BlueprintServiceResolver;
   state: StateModel;
   expression: ExpressionProvider;
   store?: ServiceRequestStore;
@@ -63,6 +67,17 @@ export interface DefaultServiceHostOptions {
     result: ServiceExecutionResult;
   }) => Promise<OrchestratorResult>;
   dependencyFailurePolicy?: "settle" | "throw";
+}
+
+export interface BlueprintServiceResolver {
+  validate?(
+    identity: BlueprintServiceIdentity,
+    declaration: BlueprintServiceDeclaration,
+  ): ServiceValidationReport | Promise<ServiceValidationReport>;
+  materialize(
+    identity: BlueprintServiceIdentity,
+    declaration: BlueprintServiceDeclaration,
+  ): ServiceAdapter | Promise<ServiceAdapter>;
 }
 
 type ResolvedOperation = {
@@ -154,6 +169,12 @@ export class DefaultServiceHost implements ServiceHost {
 
   async validateService(serviceId: string): Promise<ServiceValidationReport> {
     const declaration = this.declaration(serviceId);
+    if (isBlueprintService(declaration)) {
+      if (!this.options.blueprintServices) {
+        return { ok: false, errors: [`No Blueprint service resolver can resolve '${declaration.blueprint.$ref}'`] };
+      }
+      return this.options.blueprintServices.validate?.(this.identity(serviceId), declaration) ?? { ok: true };
+    }
     return this.options.registry.validate(declaration);
   }
 
@@ -259,15 +280,31 @@ export class DefaultServiceHost implements ServiceHost {
   }
 
   private adapter(serviceId: string): Promise<ServiceAdapter> {
-    return this.options.registry.materialize({
+    const identity = this.identity(serviceId);
+    const declaration = this.declaration(serviceId);
+    if (isBlueprintService(declaration)) {
+      if (!this.options.blueprintServices) {
+        throw new Error(`No Blueprint service resolver can resolve '${declaration.blueprint.$ref}'`);
+      }
+      return Promise.resolve(this.options.blueprintServices.materialize(identity, declaration));
+    }
+    return this.options.registry.materialize(identity, declaration);
+  }
+
+  private identity(serviceId: string): BlueprintServiceIdentity {
+    return {
       blueprintId: this.options.blueprintId,
       blueprintRevision: this.options.blueprintRevision,
       serviceId,
-    }, this.declaration(serviceId));
+    };
   }
 
   private async evaluate(expr: string, data: Record<string, unknown>): Promise<Json> {
-    return asJson(await this.options.expression.eval(expr, data));
+    const state = data.state;
+    const evaluationData = state && typeof state === "object" && !Array.isArray(state)
+      ? { ...state, ...data, state }
+      : data;
+    return asJson(await this.options.expression.eval(expr, evaluationData));
   }
 
   private async requestInput(resolved: ResolvedOperation, effect: OrchestratorEffect): Promise<ServiceRequestInput> {
@@ -448,4 +485,10 @@ export class DefaultServiceHost implements ServiceHost {
       error: errorDetail(error),
     }));
   }
+}
+
+function isBlueprintService(
+  declaration: ServiceDeclaration,
+): declaration is BlueprintServiceDeclaration {
+  return "blueprint" in declaration;
 }

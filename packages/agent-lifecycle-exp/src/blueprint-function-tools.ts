@@ -42,6 +42,46 @@ export const BLUEPRINT_USE_SCHEMAS = {
   },
 } as const;
 
+export const BLUEPRINT_AUTHOR_TARGET_SCHEMA = {
+  type: "object",
+  properties: {
+    kind: { const: "blueprint-authoring-workspace" },
+    id: { type: "string" },
+    instanceId: { type: "string" },
+  },
+  required: ["kind", "id", "instanceId"],
+  additionalProperties: false,
+} as const;
+
+export const BLUEPRINT_AUTHOR_SCHEMAS = {
+  discover: { type: "object", properties: {}, additionalProperties: false },
+  target: BLUEPRINT_AUTHOR_TARGET_SCHEMA,
+  intent: {
+    type: "object",
+    properties: {
+      kind: { type: "string" },
+      target: BLUEPRINT_AUTHOR_TARGET_SCHEMA,
+      artifact: { type: "object" },
+      rationale: { type: ["string", "null"] },
+    },
+    required: ["kind", "target", "artifact", "rationale"],
+    additionalProperties: false,
+  },
+  proposal: {
+    type: "object",
+    properties: {
+      id: { type: "string" },
+      capability: { type: "string" },
+      target: BLUEPRINT_AUTHOR_TARGET_SCHEMA,
+      actions: { type: "array" },
+      createdAt: { type: "string" },
+      rationale: { type: ["string", "null"] },
+    },
+    required: ["id", "capability", "target", "actions", "createdAt"],
+    additionalProperties: false,
+  },
+} as const;
+
 export function blueprintUseFunctionTools(blueprint: BlueprintUseSource): AgentFunctionToolDefinition[] {
   const manifest = createBlueprintLifecycleManifest({
     blueprint,

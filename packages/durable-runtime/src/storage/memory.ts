@@ -38,7 +38,7 @@ function nextTimestamp(after?: string | null): string {
     : now;
 }
 
-export function createInMemoryProvider(): DurableProvider {
+export function createMemoryStorage(): DurableProvider {
   const runtimes = new Map<string, RuntimeRecord>();
   const journals = new Map<string, Array<{ id: string; payload: unknown }>>();
   const wakes = new Map<string, { requestedAt: string | null; processedAt: string | null }>();
@@ -84,7 +84,10 @@ export function createInMemoryProvider(): DurableProvider {
       entries.push(entry);
       journals.set(request.journalRef, entries);
       const wake = wakes.get(request.stateRef) ?? { requestedAt: null, processedAt: null };
-      wakes.set(request.stateRef, { ...wake, requestedAt: nextTimestamp(wake.processedAt) });
+      const after = wake.requestedAt && (!wake.processedAt || wake.requestedAt > wake.processedAt)
+        ? wake.requestedAt
+        : wake.processedAt;
+      wakes.set(request.stateRef, { ...wake, requestedAt: nextTimestamp(after) });
       return structuredClone(entry);
     },
     async readEngineWake(request) {
@@ -261,3 +264,5 @@ export function createInMemoryProvider(): DurableProvider {
     },
   };
 }
+
+export { createMemoryStorageApi, createMemoryStorageRef } from "./memory/api";

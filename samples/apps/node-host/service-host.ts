@@ -1,5 +1,6 @@
 import { DefaultServiceHost, type ServiceHost } from "@gik/controlface";
 import type { BlueprintRuntime } from "@gik/controlface/blueprint";
+import type { BlueprintHostRegistry } from "@gik/blueprint";
 import { unwrap, type ServiceDeclaration, type StateModel } from "@gik/kernel";
 import { JsonataExpressionProvider } from "@gik/kernel";
 import type { LoadBundleOptions } from "@gik/react";
@@ -11,6 +12,9 @@ import productionConfig from "../../config/host.production.json" with { type: "j
 import { createEnvironmentCredentialResolver } from "./environment-credentials";
 import type { HostConfig } from "../../config/host-config";
 import { createSampleServiceRegistryOptions } from "../../service-kinds/registry-options";
+import { createBlueprintServiceResolver } from "../shared/blueprint-service-resolver";
+import { createSampleCatalogBlueprintRegistry } from "../../catalog/blueprint-catalog";
+import { resolveSampleNativeServices } from "./native-services";
 
 export function createNodeHostConfig(
   environment: Readonly<Record<string, string | undefined>>,
@@ -25,7 +29,7 @@ export function createNodeHostConfig(
 
 export function createNodeServiceRegistryOptions(
   environment: Readonly<Record<string, string | undefined>>,
-  overrides: Pick<SampleServiceRegistryOptions, "deterministicHandlers"> = {},
+  overrides: Pick<SampleServiceRegistryOptions, "deterministicHandlers" | "durableStorageConnections"> = {},
 ): SampleServiceRegistryOptions {
   return {
     ...createSampleServiceRegistryOptions({
@@ -39,15 +43,24 @@ export function createNodeBlueprintServiceHost(
   runtime: BlueprintRuntime,
   state: StateModel,
   environment: Readonly<Record<string, string | undefined>>,
-  overrides: Pick<SampleServiceRegistryOptions, "deterministicHandlers"> = {},
+  overrides: Pick<SampleServiceRegistryOptions, "deterministicHandlers" | "durableStorageConnections"> = {},
+  blueprintRegistry: BlueprintHostRegistry = createSampleCatalogBlueprintRegistry(),
 ): ServiceHost {
   const manifest = unwrap(runtime.vocabulary);
   const declarations = (manifest.externals?.services ?? {}) as Record<string, ServiceDeclaration>;
+  const registryOptions = createNodeServiceRegistryOptions(environment, overrides);
   return new DefaultServiceHost({
     blueprintId: runtime.blueprintId,
     blueprintRevision: runtime.revision,
     declarations,
-    registry: createSampleServiceKindRegistry(createNodeServiceRegistryOptions(environment, overrides)),
+    registry: createSampleServiceKindRegistry(registryOptions),
+    blueprintServices: createBlueprintServiceResolver({
+      registry: blueprintRegistry,
+      createNativeRegistry: (blueprintId) => createSampleServiceKindRegistry(createNodeServiceRegistryOptions(
+        environment,
+        { ...registryOptions, ...resolveSampleNativeServices(blueprintId) },
+      )),
+    }),
     state,
     expression: new JsonataExpressionProvider({ safe: true }),
     dependencyFailurePolicy: "throw",

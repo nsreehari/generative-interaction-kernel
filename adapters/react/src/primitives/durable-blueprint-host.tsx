@@ -124,8 +124,14 @@ export function BlueprintHost({
     [HostedBlueprint, resolveLeavesProvider],
   );
   const primary = React.useMemo<CompositionOrganism>(
-    () => ({ instanceId, bundle, source, bridge: primaryBridge }),
-    [instanceId, bundle, source, primaryBridge],
+    () => ({
+      instanceId,
+      bundle,
+      source,
+      bridge: primaryBridge,
+      structuralViews: { [HOSTED_BLUEPRINT_CAPABILITY]: HostedBlueprint },
+    }),
+    [instanceId, bundle, source, primaryBridge, HostedBlueprint],
   );
 
   return (
