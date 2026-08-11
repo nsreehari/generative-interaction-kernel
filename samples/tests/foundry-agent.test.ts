@@ -3,16 +3,16 @@ import { afterEach, describe, test } from "vitest";
 import { bundleFromJson, loadBundleRuntime } from "@gik/react";
 import { openSampleBlueprint, resolveSampleBlueprintSource } from "../catalog/blueprint-catalog";
 
-import { SAMPLE_CREDENTIAL_REFERENCES } from "../apps/service-kinds/host/credential-references";
-import { browserCredentialStorageKey } from "../apps/service-kinds/host/function-access";
+import { SAMPLE_CREDENTIAL_REFERENCES } from "../service-kinds/credential-references";
+import { browserCredentialStorageKey } from "../apps/browser-host/src/runtime/browser-credentials";
 
 const FOUNDRY_ACCESS_STORAGE_KEY = browserCredentialStorageKey(SAMPLE_CREDENTIAL_REFERENCES.foundry);
 import effects from "../blueprints/foundry-agent/native/effect_handlers/foundryAgentEffectHandlers";
-import { createFoundryAgentKind } from "../apps/service-kinds/foundry-agent";
+import { createFoundryAgentKind } from "../service-kinds/foundry-agent";
 import {
   browserServiceRegistryOptions,
   declarativeServiceOrchestrator,
-} from "../apps/service-kinds/host/service-runtime";
+} from "../apps/browser-host/src/runtime/service-host";
 
 const FOUNDRY_BLUEPRINTS = ["foundry-agent", "foundry-agent-no-cells"] as const;
 
@@ -204,7 +204,7 @@ test("access check and agent discovery run as separate phases", async () => {
   }
 });
 
-test("sign out clears shared access and resets the ask session", async () => {
+test("sign out resets the ask session without owning the host credential", async () => {
   const values = installLocalStorage();
   values.set(FOUNDRY_ACCESS_STORAGE_KEY, "access-key");
   const { controller, state: store } = runtime(blueprintId);
@@ -212,7 +212,7 @@ test("sign out clears shared access and resets the ask session", async () => {
   await controller.emit("agent-signout-btn", "press", {});
   await controller.settle();
 
-  assert.equal(values.has(FOUNDRY_ACCESS_STORAGE_KEY), false);
+  assert.equal(values.has(FOUNDRY_ACCESS_STORAGE_KEY), true);
   assert.equal(store.get("agent.key"), null);
   assert.equal(store.get("agent.accessStatus"), "required");
   assert.equal(store.get("agent.agentName"), "");

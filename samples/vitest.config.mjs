@@ -9,6 +9,8 @@ export default defineConfig({
       "examples/**/*.test.ts",
       "profiles/**/*.test.ts",
       "apps/browser-host/**/*.test.ts",
+      "apps/browser-host/**/*.test.tsx",
+      "service-kinds/**/*.test.ts",
       "bundles/**/*.test.ts",
     ],
   },

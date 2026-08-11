@@ -10,23 +10,23 @@ import {
   unwrap,
   type ServiceDeclaration,
   type StateModel,
-} from "../../../../kernel/src/index";
+} from "@gik/kernel";
 import type { LoadBundleOptions } from "@gik/react";
 import {
   createSampleServiceKindRegistry,
   type SampleServiceRegistryOptions,
-} from "..";
-import { executeMcpServiceInvocation } from "../mcp/runtime";
+} from "../../../../service-kinds";
+import { executeMcpServiceInvocation } from "../../../../service-kinds/mcp/runtime";
 import {
   clearBrowserCredential,
   resolveBrowserCredential,
-} from "./function-access";
-import { hostConfig } from "./host-config";
-import { createSampleServiceRegistryOptions } from "./service-registry-options";
+} from "./browser-credentials";
+import { hostConfig } from "../../../../config/host-config";
+import { createSampleServiceRegistryOptions } from "../../../../service-kinds/registry-options";
 import { createBlueprintAgentLifecycle, type UseProposal } from "./blueprint-agent-lifecycle";
 import type { BlueprintProposalStore } from "@gik/blueprint-agent-host";
 
-export { createSampleServiceRegistryOptions } from "./service-registry-options";
+export { createSampleServiceRegistryOptions } from "../../../../service-kinds/registry-options";
 
 export const browserServiceRegistryOptions = createSampleServiceRegistryOptions({
   resolveCredential: resolveBrowserCredential,
@@ -95,7 +95,7 @@ export function createBlueprintQueueFace(
   state: StateModel,
   registryOptions: SampleServiceRegistryOptions = {}
 ): QueueFace {
-  return new QueueFace(createBlueprintServiceHost(runtime, state, mergeRegistryOptions(registryOptions)));
+  return new QueueFace(createBlueprintServiceHost(runtime, state, registryOptions));
 }
 
 export function declarativeServiceOrchestrator(
@@ -108,7 +108,7 @@ export function declarativeServiceOrchestrator(
     const host = createBlueprintServiceHost(
       runtime,
       state,
-      mergeRegistryOptions(registryOptions),
+      registryOptions,
       proposalStore,
       hostPolicy,
     );

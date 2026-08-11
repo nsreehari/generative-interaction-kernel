@@ -1,4 +1,4 @@
-import type { Json } from "../../../../kernel/src/index";
+import type { Json } from "@gik/kernel";
 import { serviceConfig } from "@gik/controlface";
 import type { WorkerServiceInvocation } from "../worker-service-kind";
 

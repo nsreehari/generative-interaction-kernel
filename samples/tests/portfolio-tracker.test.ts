@@ -15,10 +15,10 @@ import {
   strategyInputsEqual,
 } from "../blueprints/portfolio-tracker/native/projection_views/portfolioTrackerLeaves";
 import { openSampleBlueprint } from "../catalog/blueprint-catalog";
-import { declarativeServiceOrchestrator } from "../apps/service-kinds/host/service-runtime";
-import { createBlueprintAgentLifecycle } from "../apps/service-kinds/host/blueprint-agent-lifecycle";
-import type { SampleServiceRegistryOptions } from "../apps/service-kinds";
-import { InMemoryStateModel } from "../../kernel/src/index";
+import { declarativeServiceOrchestrator } from "../apps/browser-host/src/runtime/service-host";
+import { createBlueprintAgentLifecycle } from "../apps/browser-host/src/runtime/blueprint-agent-lifecycle";
+import type { SampleServiceRegistryOptions } from "../service-kinds";
+import { InMemoryStateModel } from "@gik/kernel";
 
 const PORTFOLIO_BLUEPRINTS = ["portfolio-tracker"] as const;
 const originalFetch = globalThis.fetch;

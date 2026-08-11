@@ -18,18 +18,8 @@ const PERSISTED_COPILOT_C2_KEYS = [
   "currentRun",
 ] as const;
 
-function copilotC2Storage(): Storage | null {
-  try {
-    return typeof globalThis === "undefined" || !("localStorage" in globalThis)
-      ? null
-      : globalThis.localStorage ?? null;
-  } catch {
-    return null;
-  }
-}
-
 export function readStoredCopilotC2State(
-  storage: Pick<Storage, "getItem"> | null = copilotC2Storage()
+  storage: Pick<Storage, "getItem"> | null
 ): Record<string, Json> | null {
   if (!storage) return null;
   try {
@@ -52,7 +42,7 @@ export function readStoredCopilotC2State(
 
 export function writeStoredCopilotC2State(
   copilotC2: Record<string, Json>,
-  storage: Pick<Storage, "setItem"> | null = copilotC2Storage()
+  storage: Pick<Storage, "setItem"> | null
 ): void {
   if (!storage) return;
   try {
@@ -72,7 +62,7 @@ export function writeStoredCopilotC2State(
 
 export function hydrateState(
   state: Record<string, unknown>,
-  storage: Pick<Storage, "getItem"> | null = copilotC2Storage()
+  storage: Pick<Storage, "getItem"> | null
 ): void {
   const stored = readStoredCopilotC2State(storage);
   if (stored === null) return;
@@ -82,7 +72,8 @@ export function hydrateState(
 }
 
 export function wrapOrchestrator(
-  next: NonNullable<LoadBundleOptions["wrapOrchestrator"]>
+  next: NonNullable<LoadBundleOptions["wrapOrchestrator"]>,
+  storage: Pick<Storage, "setItem"> | null,
 ): NonNullable<LoadBundleOptions["wrapOrchestrator"]> {
   return (fallback, state) => {
     const apply = state.apply.bind(state);
@@ -95,7 +86,7 @@ export function wrapOrchestrator(
       if (!durableChange) return;
       const copilotC2 = state.get("copilotC2");
       if (copilotC2 && typeof copilotC2 === "object" && !Array.isArray(copilotC2)) {
-        writeStoredCopilotC2State(copilotC2 as Record<string, Json>);
+        writeStoredCopilotC2State(copilotC2 as Record<string, Json>, storage);
       }
     };
     return next(fallback, state);

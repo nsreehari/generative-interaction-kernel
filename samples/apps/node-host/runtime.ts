@@ -4,7 +4,7 @@ import {
   openSampleBlueprint,
   type BlueprintLaunchProfile,
 } from "../../catalog/blueprint-catalog";
-import { createNodeHostConfig } from "../service-kinds/host/node-service-runtime";
+import { createNodeHostConfig } from "./service-host";
 import { getNodeBlueprintCatalog } from "./catalog";
 
 export interface OpenNodeLaunchResult {

@@ -8,13 +8,12 @@ import { type Json } from "@gik/kernel";
 import { createEffectDispatcher } from "@gik/react";
 import { SseTransportServer } from "@gik/transport-http-sse/server";
 import { McpHttpServer } from "@gik/transport-mcp-http";
-import { resolveSampleNativeEffects } from "../../catalog/native-effects";
-import { resolveSampleNativeServices } from "../../catalog/native-services";
+import { resolveSampleNativeEffects } from "./native-effects";
+import { resolveSampleNativeServices } from "./native-services";
 import {
   createNodeBlueprintServiceHost,
-  createNodeServiceRegistryOptions,
-} from "../service-kinds/host/node-service-runtime";
-import { declarativeServiceOrchestrator } from "../service-kinds/host/service-runtime";
+  nodeServiceOrchestrator,
+} from "./service-host";
 import { createRuntimeState, openNodeLaunch } from "./runtime";
 
 export interface NodeHostOptions {
@@ -49,12 +48,7 @@ export async function createNodeHost(options: NodeHostOptions = {}): Promise<Nod
   const serviceHost = createNodeBlueprintServiceHost(runtime, state, environment, nativeServices);
   const native = resolveSampleNativeEffects(profile.blueprint);
   const fallback = createEffectDispatcher(state, native?.default ?? {});
-  const serviceOrchestrator = declarativeServiceOrchestrator(
-    runtime,
-    createNodeServiceRegistryOptions(environment, nativeServices),
-    undefined,
-    { dependencyFailurePolicy: "throw" },
-  );
+  const serviceOrchestrator = nodeServiceOrchestrator(runtime, serviceHost);
   const wrapOrchestrator = native?.wrapOrchestrator?.(serviceOrchestrator) ?? serviceOrchestrator;
   const orchestrator = wrapOrchestrator(fallback, state);
   const face = new ControlFace(runtime.vocabulary, runtime.program, {

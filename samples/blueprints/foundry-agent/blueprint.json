@@ -218,7 +218,7 @@
             "children"
           ]
         },
-        "agent:sign-out-button": {
+        "host:credential-clear-button": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -269,7 +269,8 @@
           "host": {
             "from": "host",
             "use": [
-              "credential-access"
+              "credential-access",
+              "credential-clear-button"
             ]
           }
         },
@@ -618,9 +619,10 @@
           }
         },
         "view": {
-          "capability": "agent:sign-out-button",
+          "capability": "host:credential-clear-button",
           "props": {
-            "label": "Sign out"
+            "label": "Sign out",
+            "dependency": { "kind": "credential", "ref": "foundry-agent/access-key" }
           }
         }
       }

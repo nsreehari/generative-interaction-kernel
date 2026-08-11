@@ -34,8 +34,11 @@ vi.mock("@fluentui/react-components", () => {
   };
 });
 
-import { credentialAccessViews } from "../../../../apps/browser-host/src/runtime/credential-access";
-import { browserCredentialStorageKey } from "../../../../apps/service-kinds/host/function-access";
+import {
+  CredentialClearButtonProjection,
+  credentialAccessViews,
+} from "./credential-access";
+import { browserCredentialStorageKey } from "./browser-credentials";
 
 const FOUNDRY_CREDENTIAL_REFERENCE = "foundry-agent/access-key";
 
@@ -118,6 +121,44 @@ test("host:credential-access offers reset key in the modal when a cached key exi
 
     assert.match(markup, /Reset Key/);
     assert.match(markup, /Retry/);
+  } finally {
+    Reflect.deleteProperty(globalThis, "localStorage");
+  }
+});
+
+test("host:credential-clear-button clears the host credential before emitting press", async () => {
+  const values = new Map([[browserCredentialStorageKey(FOUNDRY_CREDENTIAL_REFERENCE), "access-key"]]);
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (key: string) => values.get(key) ?? null,
+      removeItem: (key: string) => values.delete(key),
+    },
+  });
+  const events: string[] = [];
+
+  try {
+    const button = CredentialClearButtonProjection({
+      node: {
+        capability: "host:credential-clear-button",
+        id: "sign-out",
+        props: {
+          label: "Sign out",
+          dependency: { kind: "credential", ref: FOUNDRY_CREDENTIAL_REFERENCE },
+        },
+        visible: true,
+        fallback: false,
+        children: [],
+      },
+      emit: (event) => {
+        assert.equal(values.has(browserCredentialStorageKey(FOUNDRY_CREDENTIAL_REFERENCE)), false);
+        events.push(event);
+      },
+      children: null,
+    });
+
+    await button.props.onClick();
+    assert.deepEqual(events, ["press"]);
   } finally {
     Reflect.deleteProperty(globalThis, "localStorage");
   }

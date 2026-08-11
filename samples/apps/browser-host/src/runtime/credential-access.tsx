@@ -1,13 +1,15 @@
 import React from "react";
+import { Button } from "@fluentui/react-components";
 import { AccessGate } from "@gik/components/primitives";
 import type { Json, ResolvedNode } from "@gik/kernel";
-import type { ProjectionView } from "@gik/react";
+import type { ProjectionView, ProjectionViewProps } from "@gik/react";
 
 import {
-  getFunctionAccessKey,
-  setFunctionAccessKey,
+  clearBrowserCredential,
+  readBrowserCredential,
   subscribeToBrowserCredential,
-} from "../../../service-kinds/host/function-access";
+  writeBrowserCredential,
+} from "./browser-credentials";
 
 function record(value: Json | undefined): Record<string, Json> {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -35,14 +37,14 @@ export const CredentialAccessProjection: ProjectionView = ({ node, emit, childre
 
   const authoredAccess = record(node.props.access);
   const status = String(authoredAccess.status ?? "checking");
-  const storedCredential = getFunctionAccessKey(credentialRef).trim();
+  const storedCredential = readBrowserCredential(credentialRef).trim();
   const requiresCredential = status === "required";
   const emitRef = React.useRef(emit);
   emitRef.current = emit;
 
   React.useEffect(() => {
     const requestAccess = () => {
-      const event = getFunctionAccessKey(credentialRef).trim() ? "accessRequested" : "accessCleared";
+      const event = readBrowserCredential(credentialRef).trim() ? "accessRequested" : "accessCleared";
       void emitRef.current(event, {});
     };
     queueMicrotask(requestAccess);
@@ -101,12 +103,12 @@ export const CredentialAccessProjection: ProjectionView = ({ node, emit, childre
             ? String((values as Record<string, Json>).credential ?? "").trim()
             : "";
           if (!credential) return;
-          setFunctionAccessKey(credentialRef, credential);
+          writeBrowserCredential(credentialRef, credential);
           await emit("accessRequested", {});
         } else if (event === "retry") {
           await emit("accessRequested", {});
         } else if (event === "reset") {
-          setFunctionAccessKey(credentialRef, "");
+          clearBrowserCredential(credentialRef);
           await emit("accessCleared", {});
         }
       }}
@@ -115,6 +117,24 @@ export const CredentialAccessProjection: ProjectionView = ({ node, emit, childre
   );
 };
 
+export function CredentialClearButtonProjection({ node, emit }: ProjectionViewProps): React.ReactElement {
+  const dependency = record(node.props.dependency);
+  const credentialRef = String(dependency.ref ?? "").trim();
+  if (dependency.kind !== "credential" || !credentialRef) {
+    throw new Error("host:credential-clear-button requires a credential dependency reference");
+  }
+
+  return (
+    <Button onClick={() => {
+      clearBrowserCredential(credentialRef);
+      void emit("press", {});
+    }}>
+      {String(node.props.label ?? "Clear credential")}
+    </Button>
+  );
+}
+
 export const credentialAccessViews: Record<string, ProjectionView> = {
   "credential-access": CredentialAccessProjection,
+  "credential-clear-button": CredentialClearButtonProjection,
 };

@@ -130,6 +130,8 @@ export default defineConfig({
             "samples/examples/**/*.test.ts",
             "samples/tests/**/*.test.ts",
             "samples/apps/browser-host/**/*.test.ts",
+            "samples/apps/browser-host/**/*.test.tsx",
+            "samples/service-kinds/**/*.test.ts",
             "samples/blueprints/**/native/projection_views/**/*.test.ts",
             "samples/blueprints/**/native/projection_views/**/*.test.tsx",
             "samples/blueprints/**/native/effect_handlers/**/*.test.ts",

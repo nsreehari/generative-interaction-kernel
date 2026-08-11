@@ -1,7 +1,7 @@
 import {
   SAMPLE_CREDENTIAL_REFERENCES,
   type SampleCredentialReference,
-} from "./credential-references";
+} from "../../service-kinds/credential-references";
 
 export const SAMPLE_CREDENTIAL_ENVIRONMENT_VARIABLES: Record<SampleCredentialReference, string> = {
   [SAMPLE_CREDENTIAL_REFERENCES.foundry]: "GIK_FOUNDRY_ACCESS_KEY",

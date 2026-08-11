@@ -12,7 +12,7 @@ export function browserCredentialStorageKey(reference: string): string {
   return `gik.${normalizedCredentialReference(reference).replaceAll("/", ".")}`;
 }
 
-export function getFunctionAccessKey(reference: string): string {
+export function readBrowserCredential(reference: string): string {
   try {
     return globalThis.localStorage?.getItem(browserCredentialStorageKey(reference)) ?? "";
   } catch {
@@ -20,33 +20,29 @@ export function getFunctionAccessKey(reference: string): string {
   }
 }
 
-export function setFunctionAccessKey(reference: string, value: string): void {
+export function writeBrowserCredential(reference: string, value: string): void {
   const credentialRef = normalizedCredentialReference(reference);
-  const key = value.trim();
+  const credential = value.trim();
   try {
-    if (key) globalThis.localStorage?.setItem(browserCredentialStorageKey(credentialRef), key);
+    if (credential) globalThis.localStorage?.setItem(browserCredentialStorageKey(credentialRef), credential);
     else globalThis.localStorage?.removeItem(browserCredentialStorageKey(credentialRef));
   } catch {
     // Storage is an optional host facility.
   }
   globalThis.dispatchEvent?.(new CustomEvent(CREDENTIAL_CHANGE_EVENT, {
-    detail: { credentialRef, available: key.length > 0 },
+    detail: { credentialRef, available: credential.length > 0 },
   }));
 }
 
-export function clearFunctionAccessKey(reference: string): void {
-  setFunctionAccessKey(reference, "");
+export function clearBrowserCredential(reference: string): void {
+  writeBrowserCredential(reference, "");
 }
 
 export async function resolveBrowserCredential(reference: string): Promise<string> {
   const credentialRef = normalizedCredentialReference(reference);
-  const key = getFunctionAccessKey(credentialRef).trim();
-  if (!key) throw new Error(`Credential '${credentialRef}' is required`);
-  return key;
-}
-
-export function clearBrowserCredential(reference: string): void {
-  clearFunctionAccessKey(reference);
+  const credential = readBrowserCredential(credentialRef).trim();
+  if (!credential) throw new Error(`Credential '${credentialRef}' is required`);
+  return credential;
 }
 
 export function subscribeToBrowserCredential(reference: string, listener: () => void): () => void {

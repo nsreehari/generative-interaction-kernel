@@ -28,16 +28,6 @@ const PERSISTED_PORTFOLIO_KEYS = [
   "investorProfile",
 ] as const;
 
-function portfolioStorage(): Storage | null {
-  try {
-    return typeof globalThis === "undefined" || !("localStorage" in globalThis)
-      ? null
-      : globalThis.localStorage ?? null;
-  } catch {
-    return null;
-  }
-}
-
 function recordAt<T>(ctx: EffectContext, path: string): Record<string, T> {
   return (ctx.get(path) ?? {}) as unknown as Record<string, T>;
 }
@@ -65,7 +55,7 @@ function normalizedHoldings(value: unknown): Record<string, Holding> {
 }
 
 export function readStoredPortfolioState(
-  storage: Pick<Storage, "getItem"> | null = portfolioStorage()
+  storage: Pick<Storage, "getItem"> | null
 ): Record<string, Json> | null {
   if (!storage) return null;
   try {
@@ -88,7 +78,7 @@ export function readStoredPortfolioState(
 
 export function writeStoredPortfolioState(
   portfolio: Record<string, Json>,
-  storage: Pick<Storage, "setItem"> | null = portfolioStorage()
+  storage: Pick<Storage, "setItem"> | null
 ): void {
   if (!storage) return;
   try {
@@ -109,7 +99,7 @@ export function writeStoredPortfolioState(
 
 export function hydrateState(
   state: Record<string, unknown>,
-  storage: Pick<Storage, "getItem"> | null = portfolioStorage()
+  storage: Pick<Storage, "getItem"> | null
 ): void {
   const stored = readStoredPortfolioState(storage);
   if (stored === null) return;
@@ -119,7 +109,8 @@ export function hydrateState(
 }
 
 export function wrapOrchestrator(
-  next: NonNullable<LoadBundleOptions["wrapOrchestrator"]>
+  next: NonNullable<LoadBundleOptions["wrapOrchestrator"]>,
+  storage: Pick<Storage, "setItem"> | null,
 ): NonNullable<LoadBundleOptions["wrapOrchestrator"]> {
   return (fallback, state) => {
     const apply = state.apply.bind(state);
@@ -132,7 +123,7 @@ export function wrapOrchestrator(
       if (!durableChange) return;
       const portfolio = state.get("portfolio");
       if (portfolio && typeof portfolio === "object" && !Array.isArray(portfolio)) {
-        writeStoredPortfolioState(portfolio as Record<string, Json>);
+        writeStoredPortfolioState(portfolio as Record<string, Json>, storage);
       }
     };
     return next(fallback, state);

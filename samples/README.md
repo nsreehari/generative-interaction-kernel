@@ -22,6 +22,16 @@ The stateless AgentFace MCP transport sample remains under `examples/` because i
 
 All `@gik/*` dependencies must be released at the versions declared in `package.json` before installing this directory outside the GIK monorepo.
 
+## Directory Boundaries
+
+- `apps/` contains independently runnable hosts and their platform-specific policy, storage, transports, and native composition.
+- `service-kinds/` contains reusable service-kind implementations, manifests, and registry construction. It must not import an app or access browser/Node globals.
+- `blueprints/` contains declarative artifacts and Blueprint-owned native handlers, views, services, and assets. Native code must not import host storage or policy.
+- `catalog/` contains only Blueprint catalog construction, parsing, verification, installation, lookup, and the generated seed.
+- `config/` contains checked-in non-secret host defaults and their selection/substitution helper.
+- `examples/` contains standalone public-API demonstrations that are not part of the catalog hosts.
+- `storybook/` contains visual component development surfaces; `tests/` contains cross-boundary and catalog-wide tests.
+
 ## Blueprint Catalog
 
 `catalog/` owns the shared runtime catalog module, builder, and generated seed. The builder assembles
@@ -56,14 +66,16 @@ In the GitHub Pages SPA, a credentialed sample opens its access dialog when no k
 
 Blueprint state, external context, materialized Blueprints, events, effects, Journal entries, Ledger entries, and checkpoints must not contain credential values. Service declarations carry only a reference, which the host resolves immediately before invocation.
 
-Headless hosts create registry options with an environment-backed resolver and pass those options to the existing service host or orchestrator:
+The Node host owns environment-backed credential resolution and service-host construction:
 
 ```ts
-import { createNodeServiceRegistryOptions } from "./apps/service-kinds/host/node-service-runtime";
-import { declarativeServiceOrchestrator } from "./apps/service-kinds/host/service-runtime";
+import {
+	createNodeBlueprintServiceHost,
+	nodeServiceOrchestrator,
+} from "./apps/node-host/service-host";
 
-const registryOptions = createNodeServiceRegistryOptions(process.env);
-const wrapOrchestrator = declarativeServiceOrchestrator(runtime, registryOptions);
+const serviceHost = createNodeBlueprintServiceHost(runtime, state, process.env);
+const wrapOrchestrator = nodeServiceOrchestrator(runtime, serviceHost);
 ```
 
 Ordinary tests are hermetic and use mock executors or placeholder credentials. Live automation is opt-in: provide the applicable protected environment variable to the automation host; do not add it to the Blueprint, scenario, test fixture, command line, or checked-in environment file. Mock implementation programs, including `portfolio-tracker-2tiers` with `marketMode: "mock"`, execute without resolving a credential.

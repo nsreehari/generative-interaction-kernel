@@ -1,15 +1,16 @@
 import { DefaultServiceHost, type ServiceHost } from "@gik/controlface";
 import type { BlueprintRuntime } from "@gik/controlface/blueprint";
 import { unwrap, type ServiceDeclaration, type StateModel } from "@gik/kernel";
-import { JsonataExpressionProvider } from "../../../../kernel/src/index";
+import { JsonataExpressionProvider } from "@gik/kernel";
+import type { LoadBundleOptions } from "@gik/react";
 import {
   createSampleServiceKindRegistry,
   type SampleServiceRegistryOptions,
-} from "..";
-import productionConfig from "../../../config/host.production.json" with { type: "json" };
+} from "../../service-kinds";
+import productionConfig from "../../config/host.production.json" with { type: "json" };
 import { createEnvironmentCredentialResolver } from "./environment-credentials";
-import type { HostConfig } from "./host-config";
-import { createSampleServiceRegistryOptions } from "./service-registry-options";
+import type { HostConfig } from "../../config/host-config";
+import { createSampleServiceRegistryOptions } from "../../service-kinds/registry-options";
 
 export function createNodeHostConfig(
   environment: Readonly<Record<string, string | undefined>>,
@@ -50,5 +51,21 @@ export function createNodeBlueprintServiceHost(
     state,
     expression: new JsonataExpressionProvider({ safe: true }),
     dependencyFailurePolicy: "throw",
+  });
+}
+
+export function nodeServiceOrchestrator(
+  runtime: BlueprintRuntime,
+  host: ServiceHost,
+): NonNullable<LoadBundleOptions["wrapOrchestrator"]> {
+  const declarations = (unwrap(runtime.vocabulary).externals?.services ?? {}) as Record<string, ServiceDeclaration>;
+  const serviceInvokes = new Set(Object.values(declarations).flatMap((declaration) => Object.keys(declaration.operations)));
+  return (fallback) => ({
+    invoke: (effect, control) => effect.kind === "invoke" && typeof effect.tool === "string" && serviceInvokes.has(effect.tool)
+      ? host.invoke(effect)
+      : fallback?.invoke?.(effect, control) ?? Promise.resolve(),
+    confirm: fallback?.confirm?.bind(fallback),
+    route: fallback?.route?.bind(fallback),
+    compensate: fallback?.compensate?.bind(fallback),
   });
 }

@@ -1,5 +1,5 @@
 import type { Json } from "@gik/kernel";
-import type { DeterministicServiceHandler } from "../../../../apps/service-kinds/deterministic-agent";
+import type { DeterministicServiceHandler } from "../../../../service-kinds/deterministic-agent";
 
 export const DETERMINISTIC_PORTFOLIO_PROVIDER = "portfolio-intelligence-deterministic";
 

@@ -6,7 +6,7 @@ import {
 import { unwrap } from "@gik/kernel";
 
 import { openSampleBlueprint, resolveSampleBlueprintSource } from "../catalog/blueprint-catalog";
-import { applyHostConfig } from "../apps/service-kinds/host/host-config";
+import { applyHostConfig } from "../config/host-config";
 
 const blueprint = resolveSampleBlueprintSource("portfolio-tracker");
 const portfolioCells = Object.values(blueprint.payload.cells) as unknown as CellDefinition[];

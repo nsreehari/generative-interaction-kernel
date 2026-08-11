@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import { resolveSampleBlueprintSource } from "../catalog/blueprint-catalog";
-import { applyHostConfig, hostConfig, resolveHostEnvironment } from "../apps/service-kinds/host/host-config";
+import { applyHostConfig, hostConfig, resolveHostEnvironment } from "../config/host-config";
 
 test("host config defaults to production when no environment is set", () => {
   assert.equal(hostConfig.foundryProxyOrigin, "https://sz-foundry-proxy.azurewebsites.net");
