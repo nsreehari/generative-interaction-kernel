@@ -45,7 +45,6 @@ const incidentShellServices: SampleNativeServices = {
 
 const modules: Readonly<Record<string, SampleNativeServices>> = {
   "incident-analysis-new-shell": incidentShellServices,
-  "incident-report-analysis-shell": incidentAnalyzerServices,
   "incident-report-explorer-1a": incidentAnalyzerServices,
   "incident-report-explorer-2": incidentAnalyzerServices,
   "incident-report-explorer-3": incidentAnalyzerServices,

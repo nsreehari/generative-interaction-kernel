@@ -1,4 +1,5 @@
 export * from "./registry";
+export * from "./layout";
 export * from "./props";
 export * from "./render";
 export * from "./controller";

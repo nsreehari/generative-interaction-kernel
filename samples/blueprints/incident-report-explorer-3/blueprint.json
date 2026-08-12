@@ -6,7 +6,7 @@
     "kind": "incident-semantic-blueprint",
     "version": "1.0.0",
     "structureMode": "fixed",
-    "interface": { "inputs": { "content": { "required": true, "schema": { "type": "string" }, "description": "Incident report Markdown supplied by the parent Blueprint." } } },
+    "interface": { "inputs": { "incident_report": { "required": true, "schema": { "type": "string" }, "description": "Incident report Markdown supplied by the parent Blueprint." } } },
     "agentLifecycle": {
       "profiles": {
         "use": {
@@ -47,8 +47,8 @@
             "when": "externalContext.hostedAnalysis = true",
             "views": {
               "foundry-access-gate": { "capability": "host:credential-access", "props": { "dependency": { "kind": "credential", "ref": "foundry-agent/access-key" } }, "bindings": { "access": { "expression": "{'title':'Connect to Foundry','requiredMessage':'Enter your access key to continue.','checkingMessage':'Checking Foundry access...','errorMessage':\"Couldn't verify Foundry access.\",'triggered': incident3.foundryAccessStatus != 'ready' and incident3.foundryAccessStatus != 'empty', 'status': incident3.foundryAccessStatus = 'checking' ? 'checking' : (incident3.foundryAccessStatus = 'required' ? 'required' : 'error'), 'error': incident3.foundryAccessError}" } } },
-              "incident-semantic-analyzer": { "capability": "incident3:report", "props": { "title": "Source-faithful views" }, "bindings": { "value": { "from": "incident3.model" }, "content": { "expression": "externalContext.content" }, "analyzedContent": { "from": "incident3.analyzedContent" }, "error": { "from": "incident3.error" }, "fullscreen": { "from": "incident3.fullscreen" }, "pending": { "from": "incident3.analysisPending" } } },
-              "incident-analyze-report": { "capability": "fluent:button", "props": { "label": "Analyze report", "appearance": "primary" }, "bindings": { "disabled": { "from": "incident3.analysisPending" }, "loading": { "from": "incident3.analysisPending" } }, "visibility": "incident3.model = null or externalContext.content != incident3.analyzedContent" },
+              "incident-semantic-analyzer": { "capability": "incident3:report", "props": { "title": "Source-faithful views" }, "bindings": { "value": { "from": "incident3.model" }, "content": { "expression": "externalContext.incident_report" }, "analyzedContent": { "from": "incident3.analyzedContent" }, "error": { "from": "incident3.error" }, "fullscreen": { "from": "incident3.fullscreen" }, "pending": { "from": "incident3.analysisPending" } } },
+              "incident-analyze-report": { "capability": "fluent:button", "props": { "label": "Analyze report", "appearance": "primary" }, "bindings": { "disabled": { "from": "incident3.analysisPending" }, "loading": { "from": "incident3.analysisPending" } }, "visibility": "incident3.model = null or externalContext.incident_report != incident3.analyzedContent" },
               "incident-flight-a": { "capability": "incident3:incident-story", "bindings": { "value": { "from": "incident3.model" } } },
               "incident-flight-b": { "capability": "incident3:investigation-canvas", "bindings": { "value": { "from": "incident3.model" } } }
             },
@@ -67,15 +67,9 @@
             "when": "externalContext.attention = 'operational'",
             "views": {
               "incident-workspace": { "capability": "incident3:workspace", "props": { "title": "Incident intelligence", "preset": "flights" }, "bindings": { "fullscreen": { "from": "incident3.fullscreen" } } },
-              "incident-source": { "capability": "incident3:editor", "props": { "title": "Investigation source" }, "bindings": { "value": { "from": "incident3.content" }, "editing": { "from": "incident3.editing" } } },
-              "incident-source-selector": { "capability": "fluent:dropdown", "props": { "ariaLabel": "Choose sample incident", "options": [{ "value": "password-spray-mailbox", "label": "Password spray and mailbox compromise" }, { "value": "blob-storage-exfiltration", "label": "Blob storage exfiltration" }, { "value": "identity-compromise", "label": "Identity and cloud resource compromise" }, { "value": "device-code-bec", "label": "Device-code phishing and BEC" }, { "value": "supply-chain-sap-bec", "label": "Supply-chain SAP and procurement BEC" }] }, "bindings": { "value": { "from": "incident3.selectedSampleId" } }, "visibility": "true" },
-              "incident-edit-report": { "capability": "fluent:button", "props": { "variant": "icon", "icon": "edit", "ariaLabel": "Edit report" }, "visibility": "$not(incident3.editing)" },
-              "incident-cancel-edit": { "capability": "fluent:button", "props": { "label": "Cancel", "appearance": "subtle" }, "visibility": "incident3.editing" },
-              "incident-source-markdown": { "capability": "primitive:markdown", "bindings": { "value": { "from": "incident3.content" } } },
-              "incident-source-form": { "capability": "primitive:form", "props": { "fields": { "properties": { "content": { "title": "Markdown content", "type": "string", "format": "textarea", "rows": 34, "minLength": 1, "span": 12 } }, "required": ["content"] }, "saveLabel": "Save report", "discardLabel": "Discard changes" }, "bindings": { "value": { "from": "incident3.formValue" } } },
               "foundry-access-gate": { "capability": "host:credential-access", "props": { "dependency": { "kind": "credential", "ref": "foundry-agent/access-key" } }, "bindings": { "access": { "expression": "{'title': incident3.foundryAccessStatus = 'unconfigured' ? 'Foundry is unavailable' : 'Connect to Foundry', 'requiredMessage':'Enter your access key to continue.', 'checkingMessage':'Checking Foundry access...', 'errorMessage': incident3.foundryAccessStatus = 'unconfigured' ? 'Configure the Foundry proxy for this host before running semantic analysis.' : 'Unable to verify Foundry access.', 'triggered': incident3.foundryAccessStatus != 'ready' and incident3.foundryAccessStatus != 'empty', 'status': incident3.foundryAccessStatus = 'checking' ? 'checking' : (incident3.foundryAccessStatus = 'required' ? 'required' : 'error'), 'error': incident3.foundryAccessError}" } } },
-              "incident-semantic-analyzer": { "capability": "incident3:report", "props": { "title": "Two flights · one source" }, "bindings": { "value": { "from": "incident3.model" }, "content": { "from": "incident3.content" }, "analyzedContent": { "from": "incident3.analyzedContent" }, "error": { "from": "incident3.error" }, "fullscreen": { "from": "incident3.fullscreen" }, "pending": { "from": "incident3.analysisPending" } } },
-              "incident-analyze-report": { "capability": "fluent:button", "props": { "label": "Analyze report", "appearance": "primary" }, "bindings": { "disabled": { "from": "incident3.analysisPending" }, "loading": { "from": "incident3.analysisPending" } }, "visibility": "incident3.model = null or incident3.content != incident3.analyzedContent" },
+              "incident-semantic-analyzer": { "capability": "incident3:report", "props": { "title": "Two flights · one source" }, "bindings": { "value": { "from": "incident3.model" }, "content": { "expression": "externalContext.incident_report" }, "analyzedContent": { "from": "incident3.analyzedContent" }, "error": { "from": "incident3.error" }, "fullscreen": { "from": "incident3.fullscreen" }, "pending": { "from": "incident3.analysisPending" } } },
+              "incident-analyze-report": { "capability": "fluent:button", "props": { "label": "Analyze report", "appearance": "primary" }, "bindings": { "disabled": { "from": "incident3.analysisPending" }, "loading": { "from": "incident3.analysisPending" } }, "visibility": "incident3.model = null or externalContext.incident_report != incident3.analyzedContent" },
               "incident-view-fullscreen": { "capability": "fluent:button", "props": { "variant": "icon", "icon": "full-screen-maximize", "ariaLabel": "View full screen" }, "visibility": "incident3.model != null and $not(incident3.fullscreen)" },
               "incident-exit-fullscreen": { "capability": "fluent:button", "props": { "variant": "icon", "icon": "full-screen-minimize", "ariaLabel": "Exit full screen" }, "visibility": "incident3.fullscreen" },
               "incident-flight-a": { "capability": "incident3:incident-story", "bindings": { "value": { "from": "incident3.model" } } },
@@ -84,12 +78,6 @@
             "presentation": {
               "roots": ["incident-workspace"],
               "placements": [
-                { "cell": "incident-source", "parent": "incident-workspace", "slot": "children", "order": 0 },
-                { "cell": "incident-source-selector", "parent": "incident-source", "slot": "children", "order": 0 },
-                { "cell": "incident-source-markdown", "parent": "incident-source", "slot": "children", "order": 1 },
-                { "cell": "incident-source-form", "parent": "incident-source", "slot": "children", "order": 2 },
-                { "cell": "incident-edit-report", "parent": "incident-source", "slot": "children", "order": 3 },
-                { "cell": "incident-cancel-edit", "parent": "incident-source", "slot": "children", "order": 4 },
                 { "cell": "foundry-access-gate", "parent": "incident-workspace", "slot": "children", "order": 1 },
                 { "cell": "incident-semantic-analyzer", "parent": "foundry-access-gate", "slot": "children", "order": 0 },
                 { "cell": "incident-flight-a", "parent": "incident-semantic-analyzer", "slot": "children", "order": 0 },
@@ -106,17 +94,11 @@
             "extends": "operational",
             "views": {
               "incident-workspace": { "capability": "incident3:workspace", "props": { "title": "Incident intelligence", "preset": "flights" }, "bindings": { "fullscreen": { "from": "incident3.fullscreen" } } },
-              "incident-semantic-analyzer": { "capability": "incident3:report", "props": { "title": "Two flights · one source" }, "bindings": { "value": { "from": "incident3.model" }, "content": { "from": "incident3.content" }, "analyzedContent": { "from": "incident3.analyzedContent" }, "error": { "from": "incident3.error" }, "fullscreen": { "from": "incident3.fullscreen" }, "pending": { "from": "incident3.analysisPending" } } }
+              "incident-semantic-analyzer": { "capability": "incident3:report", "props": { "title": "Two flights · one source" }, "bindings": { "value": { "from": "incident3.model" }, "content": { "expression": "externalContext.incident_report" }, "analyzedContent": { "from": "incident3.analyzedContent" }, "error": { "from": "incident3.error" }, "fullscreen": { "from": "incident3.fullscreen" }, "pending": { "from": "incident3.analysisPending" } } }
             },
             "presentation": {
               "roots": ["incident-workspace"],
               "placements": [
-                { "cell": "incident-source", "parent": "incident-workspace", "slot": "children", "order": 0 },
-                { "cell": "incident-source-selector", "parent": "incident-source", "slot": "children", "order": 0 },
-                { "cell": "incident-source-markdown", "parent": "incident-source", "slot": "children", "order": 1 },
-                { "cell": "incident-source-form", "parent": "incident-source", "slot": "children", "order": 2 },
-                { "cell": "incident-edit-report", "parent": "incident-source", "slot": "children", "order": 3 },
-                { "cell": "incident-cancel-edit", "parent": "incident-source", "slot": "children", "order": 4 },
                 { "cell": "foundry-access-gate", "parent": "incident-workspace", "slot": "children", "order": 1 },
                 { "cell": "incident-semantic-analyzer", "parent": "foundry-access-gate", "slot": "children", "order": 0 },
                 { "cell": "incident-flight-a", "parent": "incident-semantic-analyzer", "slot": "children", "order": 0 },
@@ -210,7 +192,6 @@
       "actions": ["assign", "invoke"],
       "capabilities": {
         "incident3:workspace": { "propsSchema": { "type": "object", "required": ["title", "preset"], "properties": { "title": { "type": "string" }, "preset": { "type": "string", "enum": ["flights"] } }, "additionalProperties": false }, "slots": ["children"] },
-        "incident3:editor": { "propsSchema": { "type": "object", "required": ["title"], "properties": { "title": { "type": "string" }, "value": { "type": "string" } }, "additionalProperties": false }, "slots": ["children"], "dataProp": "value" },
         "incident3:report": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["analyze"], "slots": ["children"], "dataProp": "value" },
         "incident3:incident-story": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
         "incident3:investigation-canvas": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
@@ -222,29 +203,20 @@
         "incident3:response-plan": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
         "incident3:representation-notes": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
         "host:credential-access": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["accessRequested", "accessCleared"], "slots": ["children"] },
-        "fluent:button": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["press"] },
-        "fluent:dropdown": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["select"], "dataProp": "value" },
-        "primitive:markdown": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
-        "primitive:form": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"] }
+        "fluent:button": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["press"] }
       },
       "externals": {
-        "projectionViews": { "incident3": { "from": "self" }, "host": { "from": "host", "use": ["credential-access"] }, "fluent": { "from": "fluent", "use": ["button", "dropdown"] }, "primitive": { "from": "primitive", "use": ["form", "markdown"] } },
-        "effectHandlers": ["selectSampleReport", "saveReport", "prepareAnalysis"]
+        "projectionViews": { "incident3": { "from": "self" }, "host": { "from": "host", "use": ["credential-access"] }, "fluent": { "from": "fluent", "use": ["button"] } },
+        "effectHandlers": ["prepareAnalysis"]
       },
       "state": {
-        "incident3": { "selectedSampleId": "password-spray-mailbox", "content": "# Loading incident report…", "formValue": { "content": "# Loading incident report…" }, "model": null, "analyzedContent": null, "pendingContent": null, "editing": false, "fullscreen": false, "analysisPending": false, "foundryAccessStatus": "checking", "foundryAccessError": "", "error": "" }
+        "incident3": { "model": null, "analyzedContent": null, "pendingContent": null, "fullscreen": false, "analysisPending": false, "foundryAccessStatus": "checking", "foundryAccessError": "", "error": "" }
       }
     },
     "cells": {
       "incident-workspace": { "id": "incident-workspace", "kind": "workspace" },
-      "incident-source": { "id": "incident-source", "kind": "incident-source", "outputs": [{ "token": "incident-report-content", "from": "incident3.content", "when": "$length(incident3.content) > 0" }] },
-      "incident-source-selector": { "id": "incident-source-selector", "kind": "source-selector", "behavior": { "events": { "select": [{ "do": "invoke", "args": { "tool": "selectSampleReport" } }] } } },
-      "incident-source-markdown": { "id": "incident-source-markdown", "kind": "source-reader", "inputs": [{ "token": "incident-report-content" }] },
-      "incident-source-form": { "id": "incident-source-form", "kind": "source-editor", "inputs": [{ "token": "incident-report-content" }], "behavior": { "events": { "save": [{ "do": "invoke", "args": { "tool": "saveReport" } }] } } },
-      "incident-edit-report": { "id": "incident-edit-report", "kind": "command", "behavior": { "events": { "press": [{ "do": "assign", "target": "incident3.editing", "args": { "value": true } }] } } },
-      "incident-cancel-edit": { "id": "incident-cancel-edit", "kind": "command", "behavior": { "events": { "press": [{ "do": "assign", "target": "incident3.editing", "args": { "value": false } }] } } },
       "foundry-access-gate": { "id": "foundry-access-gate", "kind": "access-gate", "behavior": { "events": { "accessRequested": [{ "do": "assign", "target": "incident3.foundryAccessStatus", "args": { "value": "checking" } }, { "do": "assign", "target": "incident3.foundryAccessError", "args": { "value": "" } }, { "do": "invoke", "args": { "tool": "checkFoundryAccess" } }], "accessCleared": [{ "do": "assign", "target": "incident3.foundryAccessStatus", "args": { "value": "checking" } }, { "do": "assign", "target": "incident3.foundryAccessError", "args": { "value": "" } }, { "do": "invoke", "args": { "tool": "checkFoundryAccess" } }] } } },
-      "incident-semantic-analyzer": { "id": "incident-semantic-analyzer", "kind": "semantic-analysis-agent", "inputs": [{ "token": "incident-report-content" }], "sources": [{ "id": "incident-semantic-analyzer.source", "service": "incident-semantic-analysis", "operation": "analyzeReport", "contract": "incident-semantic-model/v1" }], "behavior": { "events": { "analyze": [{ "do": "invoke", "args": { "tool": "prepareAnalysis" } }, { "do": "invoke", "args": { "tool": "analyzeReport" } }] } }, "outputs": [{ "token": "incident-semantic-model", "from": "incident3.model", "when": "incident3.model != null" }] },
+      "incident-semantic-analyzer": { "id": "incident-semantic-analyzer", "kind": "semantic-analysis-agent", "sources": [{ "id": "incident-semantic-analyzer.source", "service": "incident-semantic-analysis", "operation": "analyzeReport", "contract": "incident-semantic-model/v1" }], "behavior": { "events": { "analyze": [{ "do": "invoke", "args": { "tool": "prepareAnalysis" } }, { "do": "invoke", "args": { "tool": "analyzeReport" } }] } }, "outputs": [{ "token": "incident-semantic-model", "from": "incident3.model", "when": "incident3.model != null" }] },
       "incident-cache": { "id": "incident-cache", "kind": "runtime-asset-cache", "behavior": { "events": { "persist": [{ "do": "invoke", "args": { "tool": "persistIncidentAnalysis" } }] } } },
       "incident-analyze-report": { "id": "incident-analyze-report", "kind": "command", "behavior": { "events": { "press": [{ "do": "assign", "target": "incident3.analysisPending", "args": { "value": true } }, { "do": "invoke", "args": { "tool": "prepareAnalysis" } }, { "do": "invoke", "args": { "tool": "analyzeReport" } }] } } },
       "incident-view-fullscreen": { "id": "incident-view-fullscreen", "kind": "command", "behavior": { "events": { "press": [{ "do": "assign", "target": "incident3.fullscreen", "args": { "value": true } }] } } },

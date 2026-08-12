@@ -139,6 +139,29 @@ test("GikComponentDeclarative wraps one canonical nodeJson with package vocabula
   assert.deepEqual(runtime.controller.getTree()?.props.points, [{ name: "API", count: 7 }]);
 });
 
+test("GikComponentDeclarative accepts generic layout slots in every component spec", async () => {
+  const bundle = createGikComponentDeclarativeBundle({
+    id: "layout",
+    capability: "primitive:container",
+    props: {
+      variant: "column",
+      layout: { slots: [{ key: "details", slot: "secondary" }] },
+    },
+    edges: {
+      children: [
+        { id: "summary", capability: "primitive:note", props: { value: "Summary" } },
+        { id: "details", capability: "primitive:note", props: { value: "Details" } },
+      ],
+    },
+  });
+
+  const runtime = loadBundleRuntime(bundle);
+  await runtime.controller.start();
+  assert.deepEqual(runtime.controller.getTree()?.props.layout, {
+    slots: [{ key: "details", slot: "secondary" }],
+  });
+});
+
 test("GikComponentDeclarative exposes Fluent components through the fluent provider", () => {
   const bundle = createGikComponentDeclarativeBundle({
     id: "analyze-report",

@@ -198,7 +198,7 @@ export function assembleBlueprint<TRecipe extends LoweringRecipeDefinition = Low
       if (!child) continue;
       if ("$ref" in child) {
         const ref = child.$ref;
-        if (typeof ref !== "string") throw new BlueprintValidationError(`Blueprint Cell '${cellId}' has an invalid child Blueprint reference`);
+        if (typeof ref !== "string") continue;
         if (!resolveReference) throw new BlueprintValidationError(`Blueprint Cell '${cellId}' has unresolved reference '${ref}'`);
         const assembledChild = assemble(resolveReference(ref, { parentBlueprintId: blueprint.payload.id, cellId }));
         validateChildInputs(blueprint.payload.id, cellId, cell, assembledChild);

@@ -34,7 +34,7 @@ function projectionNode(id: string, props: Record<string, unknown>) {
 describe("incident-report-explorer-3 leaves", () => {
   it("exports the closed authored leaf vocabulary", () => {
     expect(Object.keys(leaves)).toEqual([
-      "workspace", "editor", "report", "incident-story", "investigation-canvas", "verdict-brief", "attack-path", "blast-radius",
+      "workspace", "report", "incident-story", "investigation-canvas", "verdict-brief", "attack-path", "blast-radius",
       "phase-timeline", "ttp-chain", "response-plan", "representation-notes",
     ]);
   });

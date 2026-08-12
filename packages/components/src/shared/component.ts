@@ -13,10 +13,38 @@ export const componentStylePropsSchema = {
   },
 } as const;
 
+export const componentLayoutPropsSchema = {
+  layout: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      slots: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["key", "slot"],
+          properties: {
+            key: { type: "string", minLength: 1 },
+            slot: { type: "string", minLength: 1 },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
 export function withComponentStylePropsSchema<T extends { properties?: Record<string, unknown> }>(schema: T): T {
   return {
     ...schema,
-    properties: { ...schema.properties, ...componentStylePropsSchema },
+    properties: { ...schema.properties, ...componentStylePropsSchema, ...componentLayoutPropsSchema },
+  };
+}
+
+export function withComponentLayoutPropsSchema<T extends { properties?: Record<string, unknown> }>(schema: T): T {
+  return {
+    ...schema,
+    properties: { ...schema.properties, ...componentLayoutPropsSchema },
   };
 }
 

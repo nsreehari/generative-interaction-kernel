@@ -28,7 +28,7 @@ function renderLeaf(name: keyof typeof leaves) {
 describe("incident-report-explorer-2 leaves", () => {
   it("exports the closed authored leaf vocabulary", () => {
     expect(Object.keys(leaves)).toEqual([
-      "workspace", "editor", "report", "attack-path", "representation-notes",
+      "workspace", "report", "attack-path", "representation-notes",
     ]);
   });
 

@@ -146,7 +146,25 @@
           "type": "object",
           "required": ["$ref"],
           "additionalProperties": false,
-          "properties": { "$ref": { "type": "string", "minLength": 1 } }
+          "properties": {
+            "$ref": {
+              "oneOf": [
+                { "type": "string", "minLength": 1 },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "from": { "type": "string", "minLength": 1 },
+                    "expression": { "type": "string", "minLength": 1 }
+                  },
+                  "oneOf": [
+                    { "required": ["from"] },
+                    { "required": ["expression"] }
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "type": "object",

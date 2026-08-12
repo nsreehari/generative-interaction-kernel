@@ -117,7 +117,7 @@ export interface CellView {
 }
 
 export type CellBlueprint =
-  | { $ref: string; inline?: never }
+  | { $ref: string | CellViewBinding; inline?: never }
   | { inline: BlueprintArtifact; $ref?: never };
 
 export interface CellDefinition {

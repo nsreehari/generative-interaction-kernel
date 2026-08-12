@@ -9,6 +9,8 @@ export interface ProjectionViewProps {
   /** Emit a behavior event for this node (node id is already bound). */
   emit: (name: string, payload?: Record<string, unknown>, actorId?: string) => void | Promise<unknown>;
   children: ReactNode;
+  /** Authored children routed by the component spec's generic layout.slots assignments. */
+  slots?: Readonly<Record<string, ReactNode[]>>;
 }
 
 export type ProjectionView = ComponentType<ProjectionViewProps>;

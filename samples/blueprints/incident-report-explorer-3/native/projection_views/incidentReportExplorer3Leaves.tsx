@@ -156,21 +156,8 @@ const WorkspaceView: ProjectionView = ({ node, children }) => {
       <div className={styles.brand}><ShieldErrorRegular className={styles.brandIcon} /><h1 className={styles.title}>{String(node.props.title)}</h1></div>
       <span className={styles.mode}>{node.props.preset === "flights" ? "Flight comparison" : `${String(node.props.preset)} preset`}</span>
     </header>}
-    <div className={`${styles.columns} ${fullscreen ? styles.columnsFullscreen : ""}`}>{fullscreen ? null : cells.get("incident-source")}{cells.get("foundry-access-gate") ?? cells.get("incident-semantic-analyzer")}</div>
+    <div className={`${styles.columns} ${fullscreen ? styles.columnsFullscreen : ""}`}>{cells.get("foundry-access-gate") ?? cells.get("incident-semantic-analyzer")}</div>
   </main>;
-};
-
-const EditorView: ProjectionView = ({ node, children }) => {
-  const styles = useStyles();
-  const editing = node.props.editing === true;
-  const cells = childrenById(children);
-  return <section className={styles.sourcePane}>
-    <header className={styles.sourceHeader}>
-      <h2 className={styles.sourceTitle}>{String(node.props.title)}</h2>
-      <div className={styles.sourceActions}><div className={styles.selector}>{cells.get("incident-source-selector")}</div>{editing ? cells.get("incident-cancel-edit") : cells.get("incident-edit-report")}</div>
-    </header>
-    <div className={styles.sourceBody}>{editing ? cells.get("incident-source-form") : cells.get("incident-source-markdown")}</div>
-  </section>;
 };
 
 const ReportView: ProjectionView = ({ node, children }) => {
@@ -362,7 +349,6 @@ const RepresentationNotesView: ProjectionView = ({ node }) => {
 
 export default {
   workspace: WorkspaceView,
-  editor: EditorView,
   report: ReportView,
   "incident-story": IncidentStoryView,
   "investigation-canvas": InvestigationCanvasView,
