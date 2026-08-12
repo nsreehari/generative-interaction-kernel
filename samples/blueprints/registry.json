@@ -6,14 +6,10 @@
     { "id": "vocabulary-lowering", "blueprint": "vocabulary-lowering" },
     { "id": "portfolio-tracker", "blueprint": "portfolio-tracker" },
     { "id": "incident-analysis-new-shell", "blueprint": "incident-analysis-new-shell" },
-    { "id": "incident-report-analysis-shell", "blueprint": "incident-report-analysis-shell" },
     { "id": "incident-report-explorer", "blueprint": "incident-report-explorer" },
     { "id": "incident-report-explorer-1a", "blueprint": "incident-report-explorer-1a" },
     { "id": "incident-report-explorer-2", "blueprint": "incident-report-explorer-2" },
     { "id": "incident-report-explorer-3", "blueprint": "incident-report-explorer-3" },
-    { "id": "cached-incident-report-explorer", "blueprint": "cached-incident-report-explorer" },
-    { "id": "cached-incident-report-explorer-2", "blueprint": "cached-incident-report-explorer-2" },
-    { "id": "cached-incident-report-explorer-3", "blueprint": "cached-incident-report-explorer-3" },
     { "id": "portfolio-tracker-2tiers", "blueprint": "portfolio-tracker-2tiers" },
     { "id": "live-workspace-soc", "blueprint": "live-workspace-soc" },
     { "id": "copilot-c2", "blueprint": "copilot-c2" },
@@ -25,13 +21,7 @@
   ],
   "nativeFrom": {
     "foundry-agent-no-cells": "foundry-agent",
-    "incident-analysis-new-shell": "incident-report-explorer-1a",
-    "incident-report-analysis-shell": "incident-report-explorer-1a",
     "portfolio-tracker-2tiers": "portfolio-tracker"
   },
-  "projectionFrom": {
-    "cached-incident-report-explorer": "incident-report-explorer",
-    "cached-incident-report-explorer-2": "incident-report-explorer-2",
-    "cached-incident-report-explorer-3": "incident-report-explorer-3"
-  }
+  "projectionFrom": {}
 }

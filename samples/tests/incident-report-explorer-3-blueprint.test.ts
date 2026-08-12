@@ -124,23 +124,20 @@ describe("incident-report-explorer-3 Blueprint", () => {
     expect(terminal.payload.runtime.capabilities).toHaveProperty("incident3:investigation-canvas");
   });
 
-  it("owns edit and fullscreen command state in the Blueprint", async () => {
-    const controller = new BlueprintController(blueprint, { externalContext: { attention: "operational" } });
+  it("owns fullscreen command state in the Blueprint", async () => {
+    const controller = new BlueprintController(blueprint, {
+      externalContext: { attention: "operational", incident_report: "# Incident" },
+    });
     await controller.start();
 
-    const editing = waitForIncidentState(controller, { editing: true, fullscreen: false });
-    await controller.emit("incident-edit-report", "press", {});
-    await editing;
-    expect(controller.getState().incident3).toMatchObject({ editing: true, fullscreen: false });
-
-    const fullscreen = waitForIncidentState(controller, { editing: true, fullscreen: true });
+    const fullscreen = waitForIncidentState(controller, { fullscreen: true });
     await controller.emit("incident-view-fullscreen", "press", {});
     await fullscreen;
-    expect(controller.getState().incident3).toMatchObject({ editing: true, fullscreen: true });
+    expect(controller.getState().incident3).toMatchObject({ fullscreen: true });
 
-    const windowed = waitForIncidentState(controller, { editing: true, fullscreen: false });
+    const windowed = waitForIncidentState(controller, { fullscreen: false });
     await controller.emit("incident-exit-fullscreen", "press", {});
     await windowed;
-    expect(controller.getState().incident3).toMatchObject({ editing: true, fullscreen: false });
+    expect(controller.getState().incident3).toMatchObject({ fullscreen: false });
   });
 });

@@ -47,7 +47,7 @@ export interface NodeHostHandle {
 export async function createNodeHost(options: NodeHostOptions = {}): Promise<NodeHostHandle> {
   const environment = options.environment ?? process.env;
   const requestedProfile = options.profile ?? environment.GIK_NODE_PROFILE ?? "middleware-continuity";
-  const { profile, runtime } = await openNodeLaunch(
+  const { profile, runtime, externalContext } = await openNodeLaunch(
     requestedProfile,
     options.externalContext,
     environment,
@@ -61,6 +61,7 @@ export async function createNodeHost(options: NodeHostOptions = {}): Promise<Nod
     profile.blueprint,
     environment,
     registry,
+    externalContext,
   );
   const face = root.controlface;
   const sse = new SseTransportServer(face, { path: "/gik" });
@@ -124,8 +125,9 @@ async function createComposedNodeRuntime(
   instanceId: string,
   environment: Readonly<Record<string, string | undefined>>,
   registry: BlueprintHostRegistry,
+  externalContext: Record<string, Json>,
 ): Promise<ComposedNodeRuntime> {
-  const state = createRuntimeState(runtime);
+  const state = createRuntimeState(runtime, externalContext);
   const nativeServices = resolveSampleNativeServices(blueprintId);
   const serviceHost = createNodeBlueprintServiceHost(runtime, state, environment, nativeServices, registry);
   const native = resolveSampleNativeEffects(blueprintId);
@@ -152,6 +154,7 @@ async function createComposedNodeRuntime(
           hosted.instanceId,
           environment,
           registry,
+          hosted.inputs,
         );
       },
       async unmount(child) {

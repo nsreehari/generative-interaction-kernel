@@ -9,6 +9,7 @@ import type {
 import type { Json } from "@gik/kernel";
 
 export const HOSTED_BLUEPRINT_CAPABILITY = "gik:hosted-blueprint";
+export const PRESENTATION_FRAGMENT_CAPABILITY = "gik:presentation-fragment";
 
 export function readHostedBlueprintDeclaration(value: Json | undefined): CellBlueprint | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
@@ -36,6 +37,9 @@ export async function resolveHostedBlueprint<TNative = unknown>(
     throw new Error(`No Blueprint host registry can resolve '${declaration.$ref}'`);
   }
 
+  if (typeof declaration.$ref !== "string") {
+    throw new Error("Hosted Blueprint reference binding was not resolved before runtime mounting");
+  }
   const reference = parseBlueprintReference(declaration.$ref);
   const resolved = await registry.resolve(reference, context);
   if (resolved.reference.id !== reference.id

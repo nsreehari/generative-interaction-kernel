@@ -223,6 +223,15 @@ artifact_contracts:
       - A Cell may be viewless, state-free, service-only, computational, or recursively composed.
       - Cell map keys equal Cell ids.
       - A Cell's semantic contract is stable across tiers even when lowering selects a different contract-compatible implementation program.
+  - name: CellBlueprint
+    signature: >-
+      type CellBlueprint = { $ref: string | CellViewBinding; inline?: never }
+      | { inline: BlueprintArtifact; $ref?: never }
+    guarantees:
+      - A literal $ref is recursively assembled and its required child inputs are validated before lowering.
+      - A bound $ref uses the same from-or-expression grammar as Cell view bindings.
+      - Lowering shapes a bound reference into the reserved hostedBlueprint declaration consumed by the runtime host.
+      - Runtime mounting fails closed if a binding reaches the host without resolving to a string reference.
   - name: RelationshipDefinition
     signature: >-
       interface RelationshipDefinition { kind: string; participants: readonly string[];
@@ -273,7 +282,8 @@ artifact_api:
       resolveReference?: BlueprintReferenceResolver): BlueprintArtifact
     behavior:
       - Recursively replaces child Blueprint references with inline artifacts.
-      - Rejects unresolved references.
+      - Rejects unresolved literal references.
+      - Preserves bound references for runtime lowering and host resolution.
       - Rejects recursive Blueprint identity cycles.
       - Does not mutate source artifacts.
       - Returns a validated self-contained artifact.

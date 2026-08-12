@@ -13,7 +13,7 @@ import {
 } from "@fluentui/react-components";
 import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
-import { readProps, type ProjectionView } from "@gik/react";
+import { readProps, resolveLayoutSlots, type ProjectionView } from "@gik/react";
 
 import {
   defineComponent,
@@ -191,11 +191,19 @@ export const Form: ProjectionView = ({ node, emit }) => {
   };
   const spanClasses = [styles.span1, styles.span2, styles.span3, styles.span4, styles.span5, styles.span6,
     styles.span7, styles.span8, styles.span9, styles.span10, styles.span11, styles.span12];
+  const fieldLayout = resolveLayoutSlots(
+    Object.entries(fields).map(([key, field]) => ({ key, content: { key, field } })),
+    node.props.layout,
+  );
+  const fieldGroups = [
+    { slot: "children", fields: fieldLayout.children },
+    ...Object.entries(fieldLayout.slots).map(([slot, slottedFields]) => ({ slot, fields: slottedFields })),
+  ].filter((group) => group.fields.length > 0);
 
   return (
     <form {...componentRootProps(node, styles.root)} onSubmit={submit}>
-      <div className={mergeClasses(styles.grid, "gx-form-grid")}>
-        {Object.entries(fields).map(([key, field]) => {
+      {fieldGroups.map((group) => <div key={group.slot} className={mergeClasses(styles.grid, "gx-form-grid")} data-layout-slot={group.slot}>
+        {group.fields.map(({ key, field }) => {
           const title = String(field.title ?? key);
           const hint = typeof field.description === "string" ? field.description : typeof field.hint === "string" ? field.hint : undefined;
           const disabled = readOnly || field.readOnly === true || field.disabled === true;
@@ -241,7 +249,7 @@ export const Form: ProjectionView = ({ node, emit }) => {
             <Input className={styles.fullWidth} type={type} value={temporalValue(field, current)} placeholder={String(field.placeholder ?? "")} readOnly={disabled} min={typeof field.minimum === "number" ? field.minimum : undefined} max={typeof field.maximum === "number" ? field.maximum : undefined} step={field.type === "integer" ? 1 : field.type === "number" ? "any" : undefined} minLength={type === "text" && typeof field.minLength === "number" ? field.minLength : undefined} maxLength={type === "text" && typeof field.maxLength === "number" ? field.maxLength : undefined} pattern={type === "text" && typeof field.pattern === "string" ? field.pattern : undefined} onChange={(_, data) => setField(key, type === "number" && data.value !== "" ? Number.parseFloat(data.value) : data.value)} />
           </Field>;
         })}
-      </div>
+      </div>)}
       {validationErrors.length > 0 ? <div className={styles.errors} role="alert">{validationErrors.map((error) => <span key={error}>{error}</span>)}</div> : null}
       {dirty && !readOnly ? <div className={styles.actions}>
         <Button type="button" onClick={discard}>{props.str("discardLabel", "Discard")}</Button>

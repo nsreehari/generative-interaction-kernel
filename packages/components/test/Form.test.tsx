@@ -121,6 +121,30 @@ test("form-wide readOnly makes all fields inspect-only and suppresses commit act
   assert.doesNotMatch(markup, />Save</);
 });
 
+test("form routes keyed fields through generic layout slots", () => {
+  const markup = render({
+    fields: {
+      properties: {
+        title: { type: "string", title: "Title" },
+        severity: { type: "string", title: "Severity" },
+        description: { type: "string", title: "Description" },
+      },
+    },
+    layout: {
+      slots: [
+        { key: "title", slot: "primary" },
+        { key: "description", slot: "primary" },
+        { key: "severity", slot: "secondary" },
+      ],
+    },
+  });
+
+  assert.match(markup, /data-layout-slot="primary"/);
+  assert.match(markup, /data-layout-slot="secondary"/);
+  assert.ok(markup.indexOf("Title") < markup.indexOf("Description"));
+  assert.ok(markup.indexOf("Description") < markup.indexOf("Severity"));
+});
+
 test("form definition exposes a closed authoring contract", () => {
   const trial = formDefinition.materializeTrial();
   assert.equal(formDefinition.validate(trial.props).ok, true);

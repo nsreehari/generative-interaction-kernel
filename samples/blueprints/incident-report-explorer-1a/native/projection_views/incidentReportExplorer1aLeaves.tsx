@@ -1,5 +1,4 @@
 import React from "react";
-import { EditRegular } from "@fluentui/react-icons";
 import { makeStyles, tokens } from "@fluentui/react-components";
 import type { ProjectionView, ProjectionViewProps } from "@gik/react";
 import { ComponentDataSections } from "./ComponentDataSections";
@@ -57,22 +56,6 @@ function childrenById(children: React.ReactNode): Map<string, React.ReactElement
   return result;
 }
 
-export const EditorView: ProjectionView = ({ node, children }) => {
-  const styles = useStyles();
-  const [editing, setEditing] = React.useState(false);
-  const content = String(node.props.value ?? "");
-  const previousContent = React.useRef(content);
-  const cells = childrenById(children);
-  React.useEffect(() => {
-    if (previousContent.current !== content) setEditing(false);
-    previousContent.current = content;
-  }, [content]);
-  return <section className={styles.pane}>
-    <header className={styles.paneHeader}><h2 className={styles.paneTitle}>{String(node.props.title ?? "Source report")}</h2><div className={styles.paneActions}><div className={styles.sampleSelector}>{cells.get("incident-report-selector")}</div>{editing ? <button className={styles.textButton} type="button" onClick={() => setEditing(false)}>Cancel</button> : <button className={styles.iconButton} type="button" title="Edit report" aria-label="Edit report" onClick={() => setEditing(true)}><EditRegular /></button>}</div></header>
-    <div className={`${styles.paneBody} ${styles.editorBody}`}>{editing ? cells.get("incident-report-form") : cells.get("incident-report-markdown")}</div>
-  </section>;
-};
-
 export const RefinementView: ProjectionView = ({ node, children }) => {
   const styles = useStyles();
   const value = asRecord(node.props.value);
@@ -88,15 +71,7 @@ export const RefinementView: ProjectionView = ({ node, children }) => {
   </section>;
 };
 
-const WorkspaceView: ProjectionView = ({ node, children }) => {
-  const styles = useStyles();
-  const cells = childrenById(children);
-  return <main className={styles.workspace}><header className={styles.header}><div className={styles.brand}><span className={styles.brandMark} /><h1 className={styles.title}>{String(node.props.title ?? "Incident report refinement")}</h1></div><span className={styles.headerMeta}>Semantic tier to runtime recipe</span></header><div className={styles.panes}>{cells.get("incident-report")}{cells.get("foundry-access-gate") ?? cells.get("incident-refinement")}</div></main>;
-};
-
 export default {
-  workspace: WorkspaceView,
-  editor: EditorView,
   refinement: RefinementView,
   "component-data-sections": ComponentDataSections,
 };

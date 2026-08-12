@@ -26,7 +26,11 @@ import {
   resolveBlueprintNative,
   resolveBlueprintNativeFromMaterialized,
 } from "./runtime/sample-bundles";
-import { getSampleBlueprintCatalog, resolveSampleBlueprintSource } from "../../../catalog/blueprint-catalog";
+import {
+  getSampleBlueprintCatalog,
+  resolveSampleBlueprintSource,
+  resolveSampleLaunchExternalContext,
+} from "../../../catalog/blueprint-catalog";
 import { createSampleBlueprintHostRegistry } from "./runtime/hosted-blueprint-registry";
 
 const embeddedHostStyle: React.CSSProperties = { height: "100vh" };
@@ -199,6 +203,7 @@ function HostView({
       <GikDemoBlueprintHost
         HostComponent={HostComponent}
         blueprint={blueprint}
+        externalContext={resolveSampleLaunchExternalContext(id)}
         native={native}
         context={context}
         resolveNative={(materializedBlueprint) =>

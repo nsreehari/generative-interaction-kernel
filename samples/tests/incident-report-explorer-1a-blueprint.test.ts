@@ -141,14 +141,14 @@ describe("incident-report-explorer-1a Blueprint", () => {
 
   it("owns improve and refresh execution in one authored command cell", () => {
     expect(blueprint.payload.runtime.state.incident1a.refinementPending).toBe(false);
-    const standalone = blueprint.payload.recipes[0].representations.find(({ id }) => id === "operational-report");
-    expect(standalone?.views).toMatchObject({
+    const hosted = blueprint.payload.recipes[0].representations.find(({ id }) => id === "hosted-analysis");
+    expect(hosted?.views).toMatchObject({
       "incident-improve-report": {
         bindings: {
           disabled: { from: "incident1a.refinementPending" },
           loading: { from: "incident1a.refinementPending" },
         },
-        visibility: "incident1a.model = null or incident1a.content != incident1a.refinedContent",
+        visibility: "incident1a.model = null or externalContext.incident_report != incident1a.refinedContent",
       },
     });
     expect(blueprint.payload.cells["incident-improve-report"].behavior.events.press).toEqual([
@@ -188,18 +188,16 @@ describe("incident-report-explorer-1a Blueprint", () => {
     ]));
   });
 
-  it("hydrates the report and resolves its native providers", () => {
+  it("starts without shell-owned source state and resolves its native providers", () => {
     const context = resolveBlueprintInitialContext("incident-report-explorer-1a");
     expect(context.initialSeed.incident1a).toMatchObject({
-      selectedSampleId: "password-spray-mailbox",
-      content: expect.stringContaining("## Verdict"),
       model: null,
     });
+    expect(context.initialSeed.incident1a).not.toHaveProperty("content");
+    expect(context.initialSeed.incident1a).not.toHaveProperty("selectedSampleId");
     expect(resolveBlueprintNative("incident-report-explorer-1a")).toMatchObject({
       effectHandlers: expect.any(Object),
       projectionViews: expect.objectContaining({
-        workspace: expect.any(Function),
-        editor: expect.any(Function),
         refinement: expect.any(Function),
       }),
     });

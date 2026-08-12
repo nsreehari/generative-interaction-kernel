@@ -81,6 +81,14 @@ api_policy:
     required: [nodeJson]
     declaration_type: Json
     canonical_edges: [read, readExpr, gate, write, on, react, children]
+    generic_layout:
+      path: nodeJson.props.layout.slots
+      assignment: "{ key: string, slot: string }"
+      behavior:
+        - Child keys are canonical child node ids; component-owned item keys use the same resolver.
+        - Named slots preserve the authored order of matching children or items.
+        - Missing layout metadata leaves every child in its original order in the default children slot.
+        - The explicit children slot is equivalent to default child placement.
   gik_component_runtime_provider_props:
     json_state: [state]
     native_runtime: [effectHandlers, contexts, resolveProvider]
@@ -95,7 +103,7 @@ architecture:
       current: [button, dropdown, icon-button, switch, toggle]
     primitives:
       definition: Domain-neutral rendering and interaction mechanics without business meaning.
-      current: [chart, editable-table, form, growing-container, timer-button]
+      current: [chart, drawer, editable-table, form, growing-container, timer-button]
       candidates: [badge, list, card]
     semantic:
       definition: Domain-neutral information structures whose meaning is supplied by bundle data and configuration.

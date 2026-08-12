@@ -9,7 +9,6 @@ import {
 } from "@fluentui/react-components";
 import {
   ArrowRightRegular,
-  EditRegular,
   ShieldErrorRegular,
 } from "@fluentui/react-icons";
 import type { ProjectionView, ProjectionViewProps } from "@gik/react";
@@ -112,30 +111,8 @@ const WorkspaceView: ProjectionView = ({ node, children }) => {
       <div className={styles.brand}><ShieldErrorRegular className={styles.brandIcon} /><h1 className={styles.title}>{String(node.props.title)}</h1></div>
       <span className={styles.mode}>{String(node.props.preset)} preset</span>
     </header>
-    <div className={styles.columns}>{cells.get("incident-source")}{cells.get("foundry-access-gate") ?? cells.get("incident-semantic-analyzer")}</div>
+    <div className={styles.columns}>{cells.get("foundry-access-gate") ?? cells.get("incident-semantic-analyzer")}</div>
   </main>;
-};
-
-const EditorView: ProjectionView = ({ node, children }) => {
-  const styles = useStyles();
-  const readonly = node.props.readonly === true;
-  const [editing, setEditing] = React.useState(false);
-  const content = String(node.props.value ?? "");
-  const previous = React.useRef(content);
-  const cells = childrenById(children);
-  React.useEffect(() => {
-    if (previous.current !== content) setEditing(false);
-    previous.current = content;
-  }, [content]);
-  return <section className={styles.sourcePane}>
-    <header className={styles.sourceHeader}>
-      <h2 className={styles.sourceTitle}>{String(node.props.title)}</h2>
-      <div className={styles.sourceActions}><div className={styles.selector}>{cells.get("incident-source-selector")}</div>{readonly ? null : editing
-        ? <Button appearance="subtle" onClick={() => setEditing(false)}>Cancel</Button>
-        : <Button appearance="subtle" icon={<EditRegular />} aria-label="Edit report" title="Edit report" onClick={() => setEditing(true)} />}</div>
-    </header>
-    <div className={styles.sourceBody}>{editing ? cells.get("incident-source-form") : cells.get("incident-source-markdown")}</div>
-  </section>;
 };
 
 const ReportView: ProjectionView = ({ node, emit, children }) => {
@@ -179,7 +156,6 @@ const RepresentationNotesView: ProjectionView = ({ node }) => {
 
 export default {
   workspace: WorkspaceView,
-  editor: EditorView,
   report: ReportView,
   "attack-path": AttackPathView,
   "representation-notes": RepresentationNotesView,

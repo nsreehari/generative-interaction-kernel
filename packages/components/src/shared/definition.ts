@@ -1,5 +1,6 @@
 import type { Json, ResolvedNode } from "@gik/kernel";
 import type { ProjectionView } from "@gik/react";
+import { withComponentLayoutPropsSchema } from "./component";
 
 export interface ComponentAuthoringGuide {
   useWhen: readonly string[];
@@ -86,6 +87,37 @@ export interface ComponentDefinitionOptions {
   materializeTrial(): ResolvedNode;
 }
 
+function validateLayout(props: unknown): ComponentValidationIssue[] {
+  if (!props || typeof props !== "object" || Array.isArray(props)) return [];
+  const layout = (props as Record<string, unknown>).layout;
+  if (layout === undefined) return [];
+  if (!layout || typeof layout !== "object" || Array.isArray(layout)) {
+    return [{ code: "component-layout-schema", detail: "layout must be an object" }];
+  }
+  const layoutRecord = layout as Record<string, unknown>;
+  if (Object.keys(layoutRecord).some((key) => key !== "slots")) {
+    return [{ code: "component-layout-schema", detail: "layout only supports the slots property" }];
+  }
+  const slots = layoutRecord.slots;
+  if (slots === undefined) return [];
+  if (!Array.isArray(slots) || slots.some((assignment) => {
+    if (!assignment || typeof assignment !== "object" || Array.isArray(assignment)) return true;
+    const record = assignment as Record<string, unknown>;
+    return Object.keys(record).some((key) => key !== "key" && key !== "slot")
+      || typeof record.key !== "string" || record.key.length === 0
+      || typeof record.slot !== "string" || record.slot.length === 0;
+  })) {
+    return [{ code: "component-layout-schema", detail: "layout.slots must contain { key, slot } string pairs" }];
+  }
+  return [];
+}
+
+function withoutLayout(props: unknown): unknown {
+  if (!props || typeof props !== "object" || Array.isArray(props) || !("layout" in props)) return props;
+  const { layout: _layout, ...componentProps } = props as Record<string, unknown>;
+  return componentProps;
+}
+
 export function defineComponent({
   description,
   version,
@@ -108,8 +140,12 @@ export function defineComponent({
     authoring: description.authoring,
     component,
     describe: () => description,
-    getSchema,
-    validate,
+    getSchema: () => withComponentLayoutPropsSchema(getSchema()),
+    validate: (props) => {
+      const layoutErrors = validateLayout(props);
+      if (layoutErrors.length > 0) return { ok: false, errors: layoutErrors, warnings: [] };
+      return validate(withoutLayout(props));
+    },
     materializeTrial,
   };
 }

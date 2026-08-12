@@ -8,7 +8,10 @@ import type {
   RuntimeReaction,
   ServiceUse,
 } from "../../kernel/src/index";
-import { HOSTED_BLUEPRINT_CAPABILITY } from "./hosted-blueprint";
+import {
+  HOSTED_BLUEPRINT_CAPABILITY,
+  PRESENTATION_FRAGMENT_CAPABILITY,
+} from "./hosted-blueprint";
 import type { BlueprintArtifact } from "./types";
 
 export interface CellInput {
@@ -56,7 +59,7 @@ export interface CellView {
 }
 
 export type CellBlueprint =
-  | { $ref: string; inline?: never }
+  | { $ref: string | CellViewBinding; inline?: never }
   | { inline: BlueprintArtifact; $ref?: never };
 
 /** An independently addressable reactive participant in a Blueprint. */
@@ -320,8 +323,8 @@ export function composeCellProgram(
     };
   }
   const rootIds = presentation?.roots ?? [];
-  if (rootIds.length !== 1) {
-    throw new Error(`Blueprint '${topology.id}' requires exactly one presentation root`);
+  if (rootIds.length === 0) {
+    throw new Error(`Blueprint '${topology.id}' requires at least one presentation root`);
   }
   const byParent = new Map<string, CellPlacement[]>();
   for (const placement of presentation?.placements ?? []) {
@@ -342,8 +345,15 @@ export function composeCellProgram(
       .map(({ cell: childId }) => compile(childId, [...ancestors, cellId]));
     return toProgramNode(cell, children);
   };
+  const roots = rootIds.map((rootId) => compile(rootId, []));
   return {
-    root: compile(rootIds[0], []),
+    root: roots.length === 1
+      ? roots[0]
+      : {
+          capability: PRESENTATION_FRAGMENT_CAPABILITY,
+          id: "presentation-roots",
+          edges: { children: roots },
+        },
     ...(derivations.length > 0 ? { derivations } : {}),
   };
 }
@@ -354,6 +364,8 @@ function providedTokens(cell: CellDefinition): string[] {
 
 function toProgramNode(cell: CellDefinition, children: readonly DocNode[]): DocNode {
   const source = cell.sources?.[0];
+  const blueprintReference = cell.blueprint && "$ref" in cell.blueprint ? cell.blueprint.$ref : undefined;
+  const blueprintBinding = blueprintReference && typeof blueprintReference !== "string" ? blueprintReference : undefined;
   const directBindings = Object.entries(cell.view?.bindings ?? {})
     .filter(([, binding]) => binding.from !== undefined)
     .map(([prop, binding]) => [prop, binding.from!] as const);
@@ -368,13 +380,20 @@ function toProgramNode(cell: CellDefinition, children: readonly DocNode[]): DocN
     : cell.view?.props
       ? structuredClone(cell.view.props)
       : undefined;
-  const props = cell.blueprint
+  const props = cell.blueprint && !blueprintBinding
     ? { ...viewProps, hostedBlueprint: JSON.parse(JSON.stringify(cell.blueprint)) as Json }
     : viewProps;
   const events = cellEvents(cell);
   const edges = {
     ...(directBindings.length > 0 ? { read: Object.fromEntries(directBindings) } : {}),
-    ...(expressionBindings.length > 0 ? { readExpr: Object.fromEntries(expressionBindings) } : {}),
+    ...(expressionBindings.length > 0 || blueprintBinding ? {
+      readExpr: {
+        ...Object.fromEntries(expressionBindings),
+        ...(blueprintBinding ? {
+          hostedBlueprint: `{'$ref':${blueprintBinding.from ?? `(${blueprintBinding.expression})`}}`,
+        } : {}),
+      },
+    } : {}),
     ...(cell.view?.visibility ? { gate: cell.view.visibility } : {}),
     ...(Object.keys(events).length > 0 ? { on: events } : {}),
     ...(cell.behavior?.reactions?.length ? { react: structuredClone(cell.behavior.reactions) } : {}),

@@ -1,8 +1,5 @@
 import type { EffectHandlerMap, LoadBundleOptions } from "@gik/react";
 import * as backendOrderProcessing from "../../../../blueprints/backend-order-processing/native/effect_handlers/backendOrderProcessingEffectHandlers";
-import * as cachedIncidentReportExplorer from "../../../../blueprints/cached-incident-report-explorer/native/effect_handlers/cachedIncidentReportExplorerEffectHandlers";
-import * as cachedIncidentReportExplorer2 from "../../../../blueprints/cached-incident-report-explorer-2/native/effect_handlers/cachedIncidentReportExplorer2EffectHandlers";
-import * as cachedIncidentReportExplorer3 from "../../../../blueprints/cached-incident-report-explorer-3/native/effect_handlers/cachedIncidentReportExplorer3EffectHandlers";
 import * as copilotC2 from "../../../../blueprints/copilot-c2/native/effect_handlers/copilotC2EffectHandlers";
 import * as foundryAgent from "../../../../blueprints/foundry-agent/native/effect_handlers/foundryAgentEffectHandlers";
 import * as incidentReportExplorer from "../../../../blueprints/incident-report-explorer/native/effect_handlers/incidentReportExplorerEffectHandlers";
@@ -44,9 +41,6 @@ const portfolioTrackerBrowserEffects: SampleNativeEffects = {
 
 const browserSampleNativeEffects: Readonly<Record<string, SampleNativeEffects>> = {
   "backend-order-processing": backendOrderProcessing,
-  "cached-incident-report-explorer": cachedIncidentReportExplorer,
-  "cached-incident-report-explorer-2": cachedIncidentReportExplorer2,
-  "cached-incident-report-explorer-3": cachedIncidentReportExplorer3,
   "incident-report-explorer": incidentReportExplorer,
   "incident-report-explorer-1a": incidentReportExplorer1a,
   "incident-report-explorer-2": incidentReportExplorer2,

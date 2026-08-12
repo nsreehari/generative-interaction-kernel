@@ -7,6 +7,7 @@ export * from "./chart";
 export * from "./collection-board";
 export * from "./container";
 export * from "./datetime";
+export * from "./drawer";
 export * from "./editable-table";
 export * from "./file-download";
 export * from "./file-input";

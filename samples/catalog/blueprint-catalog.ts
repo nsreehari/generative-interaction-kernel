@@ -79,6 +79,13 @@ export function getSampleBlueprintCatalog(): BlueprintCatalogSnapshot {
   return catalog;
 }
 
+export function resolveSampleLaunchExternalContext(id: string): ExternalContext | undefined {
+  if (id === "incident-analysis-new-shell") {
+    return { analyzer_blueprint_ref: "blueprint:incident-report-explorer-1a@1.0.0" };
+  }
+  return undefined;
+}
+
 export function hasSampleBlueprint(id: string): boolean {
   return id in sampleBlueprints;
 }

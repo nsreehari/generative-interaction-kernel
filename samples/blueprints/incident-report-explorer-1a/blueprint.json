@@ -6,7 +6,7 @@
     "kind": "incident-report-semantic-blueprint",
     "version": "1.0.0",
     "structureMode": "fixed",
-    "interface": { "inputs": { "content": { "required": true, "schema": { "type": "string" }, "description": "Incident report Markdown supplied by the parent Blueprint." } } },
+    "interface": { "inputs": { "incident_report": { "required": true, "schema": { "type": "string" }, "description": "Incident report Markdown supplied by the parent Blueprint." } } },
     "agentLifecycle": {
       "profiles": {
         "use": {
@@ -40,8 +40,8 @@
         "when": "externalContext.hostedAnalysis = true",
         "views": {
           "foundry-access-gate": { "capability": "host:credential-access", "props": { "dependency": { "kind": "credential", "ref": "foundry-agent/access-key" } }, "bindings": { "access": { "expression": "($s := incident1a.foundryAccessStatus; {'title':'Connect to Foundry','requiredMessage':'Enter your access key to continue.','checkingMessage':'Checking Foundry access...','errorMessage':\"Couldn't verify Foundry access.\",'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': incident1a.foundryAccessError})" } } },
-          "incident-refinement": { "capability": "incident1a:refinement", "props": { "title": "Semantic component data" }, "bindings": { "value": { "from": "incident1a.model" }, "content": { "expression": "externalContext.content" }, "refinedContent": { "from": "incident1a.refinedContent" }, "error": { "from": "incident1a.error" }, "pending": { "from": "incident1a.refinementPending" } } },
-          "incident-improve-report": { "capability": "fluent:button", "props": { "label": "Improve report", "appearance": "primary" }, "bindings": { "disabled": { "from": "incident1a.refinementPending" }, "loading": { "from": "incident1a.refinementPending" } }, "visibility": "incident1a.model = null or externalContext.content != incident1a.refinedContent" },
+          "incident-refinement": { "capability": "incident1a:refinement", "props": { "title": "Semantic component data" }, "bindings": { "value": { "from": "incident1a.model" }, "content": { "expression": "externalContext.incident_report" }, "refinedContent": { "from": "incident1a.refinedContent" }, "error": { "from": "incident1a.error" }, "pending": { "from": "incident1a.refinementPending" } } },
+          "incident-improve-report": { "capability": "fluent:button", "props": { "label": "Improve report", "appearance": "primary" }, "bindings": { "disabled": { "from": "incident1a.refinementPending" }, "loading": { "from": "incident1a.refinementPending" } }, "visibility": "incident1a.model = null or externalContext.incident_report != incident1a.refinedContent" },
           "incident-sections": { "capability": "incident1a:component-data-sections", "bindings": { "sections": { "from": "incident1a.model.sections" } } }
         },
         "presentation": {
@@ -52,34 +52,8 @@
             { "cell": "incident-improve-report", "parent": "incident-refinement", "slot": "children", "order": 1 }
           ]
         }
-      }, {
-        "id": "operational-report",
-        "views": {
-          "incident-workspace": { "capability": "incident1a:workspace", "props": { "title": "Incident report refinement" } },
-          "incident-report": { "capability": "incident1a:editor", "props": { "title": "Source report" }, "bindings": { "value": { "from": "incident1a.content" } } },
-          "incident-report-selector": { "capability": "fluent:dropdown", "props": { "ariaLabel": "Choose sample incident", "options": [{ "value": "password-spray-mailbox", "label": "Password spray and mailbox compromise" }, { "value": "blob-storage-exfiltration", "label": "Blob storage exfiltration" }, { "value": "identity-compromise", "label": "Identity and cloud resource compromise" }, { "value": "device-code-bec", "label": "Device-code phishing and BEC" }, { "value": "supply-chain-sap-bec", "label": "Supply-chain SAP and procurement BEC" }] }, "bindings": { "value": { "from": "incident1a.selectedSampleId" } }, "visibility": "true" },
-          "incident-report-markdown": { "capability": "primitive:markdown", "bindings": { "value": { "from": "incident1a.content" } } },
-          "incident-report-form": { "capability": "primitive:form", "props": { "fields": { "properties": { "content": { "title": "Markdown content", "type": "string", "format": "textarea", "rows": 34, "minLength": 1, "span": 12 } }, "required": ["content"] }, "saveLabel": "Save report", "discardLabel": "Discard changes" }, "bindings": { "value": { "from": "incident1a.formValue" } } },
-          "foundry-access-gate": { "capability": "host:credential-access", "props": { "dependency": { "kind": "credential", "ref": "foundry-agent/access-key" } }, "bindings": { "access": { "expression": "($s := incident1a.foundryAccessStatus; {'title':'Connect to Foundry','requiredMessage':'Enter your access key to continue.','checkingMessage':'Checking Foundry access...','errorMessage':\"Couldn't verify Foundry access.\",'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': incident1a.foundryAccessError})" } } },
-          "incident-refinement": { "capability": "incident1a:refinement", "props": { "title": "Improved semantic report" }, "bindings": { "value": { "from": "incident1a.model" }, "content": { "from": "incident1a.content" }, "refinedContent": { "from": "incident1a.refinedContent" }, "error": { "from": "incident1a.error" }, "pending": { "from": "incident1a.refinementPending" } } },
-          "incident-improve-report": { "capability": "fluent:button", "props": { "label": "Improve report", "appearance": "primary" }, "bindings": { "disabled": { "from": "incident1a.refinementPending" }, "loading": { "from": "incident1a.refinementPending" } }, "visibility": "incident1a.model = null or incident1a.content != incident1a.refinedContent" },
-          "incident-sections": { "capability": "incident1a:component-data-sections", "bindings": { "sections": { "from": "incident1a.model.sections" } } }
-        },
-        "presentation": {
-          "roots": ["incident-workspace"],
-          "placements": [
-            { "cell": "incident-report", "parent": "incident-workspace", "slot": "children", "order": 0 },
-            { "cell": "incident-report-selector", "parent": "incident-report", "slot": "children", "order": 0 },
-            { "cell": "incident-report-markdown", "parent": "incident-report", "slot": "children", "order": 1 },
-            { "cell": "incident-report-form", "parent": "incident-report", "slot": "children", "order": 2 },
-            { "cell": "foundry-access-gate", "parent": "incident-workspace", "slot": "children", "order": 1 },
-            { "cell": "incident-refinement", "parent": "foundry-access-gate", "slot": "children", "order": 0 },
-            { "cell": "incident-sections", "parent": "incident-refinement", "slot": "children", "order": 0 },
-            { "cell": "incident-improve-report", "parent": "incident-refinement", "slot": "children", "order": 1 }
-          ]
-        }
       }],
-      "fallback": "operational-report"
+      "fallback": "hosted-analysis"
     }],
     "services": {
       "incident-report-refinement": {
@@ -146,30 +120,20 @@
       "namespaces": ["incident1a"],
       "actions": ["assign", "invoke"],
       "capabilities": {
-        "incident1a:workspace": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"] },
-        "incident1a:editor": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"], "dataProp": "value" },
         "incident1a:refinement": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"], "dataProp": "value" },
         "incident1a:component-data-sections": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "sections" },
         "host:credential-access": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["accessRequested", "accessCleared"], "slots": ["children"] },
-        "fluent:dropdown": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["select"], "dataProp": "value" },
-        "fluent:button": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["press"] },
-        "primitive:markdown": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
-        "primitive:form": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"] }
+        "fluent:button": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["press"] }
       },
       "externals": {
-        "projectionViews": { "incident1a": { "from": "self" }, "host": { "from": "host", "use": ["credential-access"] }, "fluent": { "from": "fluent", "use": ["dropdown", "button"] }, "primitive": { "from": "primitive", "use": ["form", "markdown"] } },
-        "effectHandlers": ["selectSampleReport", "saveReport", "prepareRefinement"]
+        "projectionViews": { "incident1a": { "from": "self" }, "host": { "from": "host", "use": ["credential-access"] }, "fluent": { "from": "fluent", "use": ["button"] } },
+        "effectHandlers": ["prepareRefinement"]
       },
-      "state": { "incident1a": { "selectedSampleId": "password-spray-mailbox", "content": "# Loading incident report...", "formValue": { "content": "# Loading incident report..." }, "model": null, "refinedContent": null, "pendingContent": null, "refinementPending": false, "foundryAccessStatus": "required", "foundryAccessError": "", "error": "" } }
+      "state": { "incident1a": { "model": null, "refinedContent": null, "pendingContent": null, "refinementPending": false, "foundryAccessStatus": "required", "foundryAccessError": "", "error": "" } }
     },
     "cells": {
-      "incident-workspace": { "id": "incident-workspace", "kind": "workspace" },
-      "incident-report": { "id": "incident-report", "kind": "incident-source", "outputs": [{ "token": "incident-report-content", "from": "incident1a.content", "when": "$length(incident1a.content) > 0" }] },
-      "incident-report-selector": { "id": "incident-report-selector", "kind": "source-selector", "behavior": { "events": { "select": [{ "do": "invoke", "args": { "tool": "selectSampleReport" } }] } } },
-      "incident-report-markdown": { "id": "incident-report-markdown", "kind": "source-reader", "inputs": [{ "token": "incident-report-content" }] },
-      "incident-report-form": { "id": "incident-report-form", "kind": "source-editor", "inputs": [{ "token": "incident-report-content" }], "behavior": { "events": { "save": [{ "do": "invoke", "args": { "tool": "saveReport" } }] } } },
       "foundry-access-gate": { "id": "foundry-access-gate", "kind": "access-gate", "behavior": { "events": { "accessRequested": [{ "do": "assign", "target": "incident1a.foundryAccessStatus", "args": { "value": "checking" } }, { "do": "assign", "target": "incident1a.foundryAccessError", "args": { "value": "" } }, { "do": "invoke", "args": { "tool": "checkFoundryAccess" } }], "accessCleared": [{ "do": "assign", "target": "incident1a.foundryAccessStatus", "args": { "value": "required" } }, { "do": "assign", "target": "incident1a.foundryAccessError", "args": { "value": "" } }] } } },
-      "incident-refinement": { "id": "incident-refinement", "kind": "semantic-refinement-agent", "inputs": [{ "token": "incident-report-content" }], "sources": [{ "id": "incident-refinement.source", "service": "incident-report-refinement", "operation": "improveReport", "contract": "incident-report-component-data/v2" }], "outputs": [{ "token": "incident-report-semantic-model", "from": "incident1a.model", "when": "incident1a.model != null" }] },
+      "incident-refinement": { "id": "incident-refinement", "kind": "semantic-refinement-agent", "sources": [{ "id": "incident-refinement.source", "service": "incident-report-refinement", "operation": "improveReport", "contract": "incident-report-component-data/v2" }], "outputs": [{ "token": "incident-report-semantic-model", "from": "incident1a.model", "when": "incident1a.model != null" }] },
       "incident-cache": { "id": "incident-cache", "kind": "runtime-asset-cache", "behavior": { "events": { "persist": [{ "do": "invoke", "args": { "tool": "persistIncidentAnalysis" } }] } } },
       "incident-improve-report": { "id": "incident-improve-report", "kind": "command", "behavior": { "events": { "press": [{ "do": "assign", "target": "incident1a.refinementPending", "args": { "value": true } }, { "do": "invoke", "args": { "tool": "prepareRefinement" } }, { "do": "invoke", "args": { "tool": "improveReport" } }] } } },
       "incident-sections": { "id": "incident-sections", "kind": "semantic-data-host", "inputs": [{ "token": "incident-report-semantic-model" }] }

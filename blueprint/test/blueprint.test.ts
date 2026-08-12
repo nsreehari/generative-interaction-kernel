@@ -16,6 +16,7 @@ import {
   defineExploration,
   formatBlueprintReference,
   HOSTED_BLUEPRINT_CAPABILITY,
+  PRESENTATION_FRAGMENT_CAPABILITY,
   HostedBlueprintReconciler,
   inspectExploration,
   lowerBlueprint,
@@ -224,6 +225,62 @@ describe("@gik/blueprint", () => {
       hostedBlueprint: { $ref: "blueprint:analysis@1.0.0" },
     });
     expect(program.root.capability).toBe(HOSTED_BLUEPRINT_CAPABILITY);
+  });
+
+  it("preserves authored order when lowering multiple presentation roots", () => {
+    const artifact = createBlueprint({
+      ...blueprint("multi-root").payload,
+      cells: {
+        analysis: { id: "analysis", view: { capability: "sample:analysis" } },
+        drawer: { id: "drawer", view: { capability: "primitive:drawer" } },
+      },
+      projections: { presentation: { roots: ["analysis", "drawer"] } },
+    });
+
+    const program = composeCellProgram(
+      { cells: artifact.payload.cells ?? {}, projections: artifact.payload.projections },
+      compileCellTopology("multi-root", artifact.payload.cells ?? {}),
+    );
+
+    expect(program.root).toMatchObject({
+      capability: PRESENTATION_FRAGMENT_CAPABILITY,
+      edges: {
+        children: [
+          { id: "analysis", capability: "sample:analysis" },
+          { id: "drawer", capability: "primitive:drawer" },
+        ],
+      },
+    });
+  });
+
+  it.each([
+    [{ from: "runtime.analysisBlueprint" }, "{'$ref':runtime.analysisBlueprint}"],
+    [{ expression: "externalContext.analysisBlueprint" }, "{'$ref':(externalContext.analysisBlueprint)}"],
+  ] as const)("lowers a bound child Blueprint reference", (binding, expectedExpression) => {
+    const parent = createBlueprint({
+      ...blueprint("parent").payload,
+      cells: {
+        child: {
+          id: "child",
+          inputs: [{ token: "analysis-blueprint", as: "analysisBlueprint", required: true }],
+          view: { bindings: { report: { from: "runtime.report" } } },
+          blueprint: { $ref: binding },
+        },
+      },
+      projections: { presentation: { roots: ["child"] } },
+    });
+
+    const assembled = assembleBlueprint(parent);
+    expect(assembled.payload.cells?.child.blueprint).toEqual({ $ref: binding });
+    const program = composeCellProgram(
+      { cells: assembled.payload.cells ?? {}, projections: assembled.payload.projections },
+      compileCellTopology("parent", assembled.payload.cells ?? {}),
+    );
+
+    expect(program.root?.props).toBeUndefined();
+    expect(program.root?.edges?.readExpr?.hostedBlueprint).toBe(expectedExpression);
+    expect(program.root?.edges?.read?.report).toBe("runtime.report");
+    expect(program.root?.capability).toBe(HOSTED_BLUEPRINT_CAPABILITY);
   });
 
   it("preserves a Cell source predicate on its generated refresh invocation", () => {

@@ -19,6 +19,7 @@ import {
   BLUEPRINT_HOST_PROVIDER,
   BlueprintHostRegistryProvider,
   HOSTED_BLUEPRINT_CAPABILITY,
+  PRESENTATION_FRAGMENT_CAPABILITY,
 } from "./hosted-blueprint";
 
 const EMPTY_COMPANIONS: CompositionOrganism[] = [];
@@ -117,11 +118,18 @@ export function BlueprintHost({
     }),
     [blueprintRegistry, blueprintId, instanceId, resolveLeavesProvider, contexts, fileServices, onTransition, renderHostedBlueprintLoading, runtime],
   );
+  const PresentationFragment = React.useMemo(
+    () => ({ children }: { children?: React.ReactNode }) => React.createElement(React.Fragment, null, children),
+    [],
+  );
   const hostResolveProvider = React.useMemo<ProviderResolver>(
     () => (from) => from === BLUEPRINT_HOST_PROVIDER
-      ? { [HOSTED_BLUEPRINT_CAPABILITY]: HostedBlueprint }
+      ? {
+          [HOSTED_BLUEPRINT_CAPABILITY]: HostedBlueprint,
+          [PRESENTATION_FRAGMENT_CAPABILITY]: PresentationFragment,
+        }
       : resolveLeavesProvider?.(from),
-    [HostedBlueprint, resolveLeavesProvider],
+    [HostedBlueprint, PresentationFragment, resolveLeavesProvider],
   );
   const primary = React.useMemo<CompositionOrganism>(
     () => ({
@@ -129,9 +137,12 @@ export function BlueprintHost({
       bundle,
       source,
       bridge: primaryBridge,
-      structuralViews: { [HOSTED_BLUEPRINT_CAPABILITY]: HostedBlueprint },
+      structuralViews: {
+        [HOSTED_BLUEPRINT_CAPABILITY]: HostedBlueprint,
+        [PRESENTATION_FRAGMENT_CAPABILITY]: PresentationFragment,
+      },
     }),
-    [instanceId, bundle, source, primaryBridge, HostedBlueprint],
+    [instanceId, bundle, source, primaryBridge, HostedBlueprint, PresentationFragment],
   );
 
   return (
