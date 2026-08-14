@@ -25,10 +25,9 @@ When the task is clear:
 
 - Implement the smallest complete change.
 - Add or update tests for changed behavior.
-- Run focused tests, `npm run build:public-packages`, `npm run conformance`,
-  `npm run typecheck`, and `npm run test:jsonata`.
-- Run the full Vitest baseline and distinguish known baseline failures from
-  failures related to the change. Never ignore a changed-area failure.
+- Run focused tests, `npm run build:public-packages`, and `npm test`.
+- Treat every full-suite failure as blocking. Do not open a success-shaped pull
+  request with skipped, ignored, or non-blocking failures.
 - Inspect the final diff for unrelated or generated changes.
 - Open a pull request containing `Closes #<issue-number>`.
 - Include the route (`cloud`), summary, validation, limitations, and any

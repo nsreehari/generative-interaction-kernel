@@ -38,11 +38,10 @@ These instructions apply to every coding agent working in this repository.
 - Run the smallest relevant test while developing.
 - On a clean checkout, run `npm run build:public-packages` before the full test
   suite so workspace declaration files are available.
-- Run `npm run conformance`, `npm run typecheck`, and `npm run test:jsonata`
-  before completing work unless the task is documentation-only.
-- Run the relevant Vitest project for changed behavior. The default branch has
-  known failures in the full Vitest baseline; report them, but do not hide or
-  expand them. Tests covering the changed area must pass.
+- Run `npm test` before completing work unless the task is documentation-only.
+- Run the relevant Vitest project for changed behavior.
+- Do not weaken, skip, or make a failing baseline non-blocking. Repair baseline
+  failures before merging other work.
 - Report every validation command and any validation that could not be run.
 
 ## GitHub workflow

@@ -35,17 +35,5 @@ jobs:
       - name: Build workspace packages
         run: npm run build:public-packages
 
-      - name: Validate schemas
-        run: npm run conformance
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Validate JSONata corpus
-        run: npm run test:jsonata
-
-      # The default branch currently has known Vitest failures. Keep the full
-      # result visible without making all pull requests unmergeable.
-      - name: Run Vitest baseline
-        continue-on-error: true
-        run: npm run test:vitest
+      - name: Validate
+        run: npm test
