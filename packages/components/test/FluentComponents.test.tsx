@@ -14,6 +14,7 @@ import {
   fluentComponentDefinitions,
   fluentComponentViews,
   fluentDataGridDefinition,
+  FluentDialog,
   fluentDialogDefinition,
   fluentDropdownDefinition,
   fluentListDefinition,
@@ -120,12 +121,22 @@ test("FluentButton renders its icon variant with an accessible name", () => {
 
 test("FluentDialog exposes controlled native dialog composition", () => {
   const trial = fluentDialogDefinition.materializeTrial();
+  trial.props.className = "callsite-override";
+  trial.props.style = { maxWidth: "40rem" };
   const Component = fluentDialogDefinition.component;
   const markup = renderToStaticMarkup(
     <Component node={trial} emit={() => undefined} children={<p>Dialog content</p>} />,
   );
+  const dialog = FluentDialog({
+    node: trial,
+    emit: () => undefined,
+    children: <p>Dialog content</p>,
+  }) as React.ReactElement<{ children: React.ReactElement<{ className?: string; style?: React.CSSProperties }> }>;
+  const surface = dialog.props.children;
 
   assert.match(markup, /hidden/);
+  assert.match(surface.props.className ?? "", /callsite-override/);
+  assert.deepEqual(surface.props.style, { maxWidth: "40rem" });
   assert.deepEqual(fluentDialogDefinition.slots, ["children"]);
   assert.deepEqual(fluentDialogDefinition.events, ["openChange"]);
   assert.equal(fluentDialogDefinition.validate({ open: true, title: "Review details" }).ok, true);
