@@ -73,12 +73,9 @@ Windows Task Scheduler. Do not schedule overlapping executions.
 The local controller owns issue claiming, worktree creation, final validation,
 commit, push, and pull-request creation. Copilot CLI only edits and tests the
 isolated worktree. Its default clean-checkout validation command is
-`npm run build:public-packages && npm run conformance && npm run typecheck &&
-npm run test:jsonata`. Agents must also run focused tests for changed behavior.
-
-The full Vitest baseline is currently non-blocking in CI because the default
-branch has known failures. Its result remains visible on every pull request.
-Make it required once the default branch baseline is green.
+`npm run build:public-packages && npm test`. Agents must also run focused tests
+for changed behavior. Every failure is blocking; repair the default branch
+baseline rather than weakening required checks.
 
 ## Required repository rules
 
