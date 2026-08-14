@@ -7,7 +7,7 @@ import {
   DialogTitle,
   type DialogProps,
 } from "@fluentui/react-components";
-import { readProps, type ProjectionView } from "@gik/react";
+import { readProps, type ProjectionViewProps } from "@gik/react";
 
 import type { ComponentDescription } from "../shared/definition";
 import { componentRootProps, withComponentStylePropsSchema } from "../shared/component";
@@ -16,7 +16,7 @@ import { defineFluentComponent } from "./defineFluentComponent";
 const modalTypes = ["modal", "non-modal", "alert"] as const;
 type FluentDialogModalType = Extract<DialogProps["modalType"], typeof modalTypes[number]>;
 
-export const FluentDialog: ProjectionView = ({ node, emit, children }) => {
+export const FluentDialog = ({ node, emit, children }: ProjectionViewProps) => {
   const props = readProps(node);
   return (
     <Dialog
