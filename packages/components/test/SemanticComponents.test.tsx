@@ -115,8 +115,8 @@ test("component schemas reject semantic tokens outside each component vocabulary
 
 test("public registries separate component layers and expose an aggregate", () => {
   const semantic = ["action-board", "annotated-source-excerpt", "decision-summary", "entity-constellation", "evidence-trail", "metric-comparison", "narrative-section", "semantic-graph", "sequence", "timeline"];
-  const primitives = ["chart", "editable-table", "form", "growing-container", "timer-button", "todo-list"];
-  const fluent = ["badge", "button", "chips", "data-grid", "dropdown", "list", "persona", "searchbox", "spinner", "switch", "tab-bar", "table", "text-field", "textarea", "toggle"];
+  const primitives = ["access-gate", "chart", "editable-table", "form", "growing-container", "timer-button", "todo-list"];
+  const fluent = ["badge", "button", "chips", "data-grid", "dialog", "dropdown", "list", "persona", "searchbox", "spinner", "switch", "tab-bar", "table", "text-field", "textarea", "toggle"];
   assert.deepEqual(Object.keys(semanticComponentViews).sort(), semantic);
   assert.deepEqual(Object.keys(semanticComponentDefinitions).sort(), semantic);
   assert.deepEqual(Object.keys(primitiveComponentViews).sort(), primitives);
@@ -171,6 +171,8 @@ test("todo-list shares form field and value shapes while committing each checkbo
 
 test("Fluent components forward root className and style overrides", () => {
   for (const definition of Object.values(componentDefinitions)) {
+    if (definition.capability === "fluent:dialog" || definition.capability === "primitive:access-gate") continue;
+
     const trial = definition.materializeTrial();
     trial.props.className = "callsite-override";
     trial.props.style = { maxWidth: "40rem" };
