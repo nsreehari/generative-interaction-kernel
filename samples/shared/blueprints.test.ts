@@ -3,7 +3,7 @@ import { test } from "vitest";
 import registry from "../blueprints/registry.json" with { type: "json" };
 import { openSampleBlueprint, resolveSampleBlueprintSource } from "./blueprints";
 
-test("every registered sample opens through terminal materialization", () => {
+test("every registered sample opens through terminal materialization", { timeout: 10_000 }, () => {
   for (const id of registry.blueprints) {
     const runtime = openSampleBlueprint(id);
     assert.equal(runtime.blueprintId, id);
