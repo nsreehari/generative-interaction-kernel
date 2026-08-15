@@ -55,10 +55,3 @@ test.each(["foundry-agent", "foundry-agent-no-cells", "live-workspace-soc"])(
     assert.equal(source.includes(hostConfig.foundryProxyOrigin), true);
   }
 );
-
-test("portfolio tracker resolves its HTTP proxy endpoint from host config", () => {
-  const source = JSON.stringify(resolveSampleBlueprintSource("portfolio-tracker"));
-
-  assert.equal(source.includes("${GIK_HTTP_PROXY_ORIGIN}"), false);
-  assert.equal(source.includes(hostConfig.httpProxyOrigin), true);
-});

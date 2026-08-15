@@ -4,28 +4,29 @@ import { seedState } from "@gik/react";
 
 import { openSampleBlueprint } from "../catalog/blueprint-catalog";
 import { createBlueprintServiceHost } from "../apps/browser-host/src/runtime/service-host";
+import { resolveSampleNativeServices } from "../apps/browser-host/src/runtime/native-services";
 
-const runtime = openSampleBlueprint("portfolio-tracker");
+const runtime = openSampleBlueprint("portfolio-tracker-new", {
+  "intelligence-model": "simple",
+  view: "desktop",
+});
 const typedManifest = runtime.vocabulary as Parameters<typeof seedState>[0];
+const nativeServices = resolveSampleNativeServices("portfolio-tracker-new");
 
 describe("portfolio intelligence service declarations", () => {
   it("materializes the Blueprint-owned market data and intelligence services", async () => {
-    const serviceHost = createBlueprintServiceHost(runtime, seedState(typedManifest, runtime.state));
+    const serviceHost = createBlueprintServiceHost(runtime, seedState(typedManifest, runtime.state), nativeServices);
     const description = await serviceHost.describeServices();
 
-    expect(description).toHaveLength(5);
-    expect(description[0]?.provider.id).toBe("http-service:portfolio-market-data");
-    expect(description[0]?.capabilities.map(({ operation }) => operation)).toEqual(["check-access", "fetch-quotes"]);
+    expect(description).toHaveLength(3);
+    expect(description[0]?.provider.id).toBe("deterministic-agent:portfolio-market-data-mock");
+    expect(description[0]?.capabilities.map(({ operation }) => operation)).toEqual(["fetch-quotes"]);
     expect(description.slice(1).map(({ provider }) => provider.id)).toEqual([
       "foundry-agent:portfolio-intelligence",
       "foundry-agent:portfolio-intelligence-2",
-      "foundry-agent:portfolio-intelligence-1b",
-      "foundry-agent:portfolio-strategies",
     ]);
-    expect(description[1]?.capabilities.map(({ operation }) => operation)).toEqual(["check-access", "chat"]);
+    expect(description[1]?.capabilities.map(({ operation }) => operation)).toEqual(["chat"]);
     expect(description[2]?.capabilities.map(({ operation }) => operation)).toEqual(["chat"]);
-    expect(description[3]?.capabilities.map(({ operation }) => operation)).toEqual(["chat"]);
-    expect(description[4]?.capabilities.map(({ operation }) => operation)).toEqual(["chat"]);
   });
 
   it("rejects a Foundry declaration whose endpoint is invalid", async () => {
@@ -40,7 +41,7 @@ describe("portfolio intelligence service declarations", () => {
       },
     };
 
-    const serviceHost = createBlueprintServiceHost(unavailable, seedState(typedManifest, runtime.state));
+    const serviceHost = createBlueprintServiceHost(unavailable, seedState(typedManifest, runtime.state), nativeServices);
     await expect(serviceHost.describeServices()).rejects.toThrow("foundry-agent requires a valid endpoint");
   });
 });

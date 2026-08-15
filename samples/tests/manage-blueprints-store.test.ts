@@ -94,8 +94,8 @@ test("listBlueprints exposes built-in artifacts as read-only", async () => {
     { value: "draft", label: "JSON" },
   ]);
 
-  const headless = await manageBlueprintsEffects.getBlueprint(context(state, { values: ["portfolio-tracker-2tiers-headless"] }));
-  assert.deepEqual((opValue(headless?.ops, "manageBlueprints.selected") as JsonRecord).tabs, [
+  const authored = await manageBlueprintsEffects.getBlueprint(context(state, { values: ["portfolio-tracker-new"] }));
+  assert.deepEqual((opValue(authored?.ops, "manageBlueprints.selected") as JsonRecord).tabs, [
     { value: "overview", label: "Overview" },
     { value: "draft", label: "JSON" },
   ]);
@@ -329,20 +329,21 @@ test("preview resolves the canonical tier and recipe chain", async () => {
     { id: "presentation", kind: "presentation" },
     { id: "runtime-document", kind: "runtime-document" },
   ];
+  payload.cells = { result: { id: "result" } };
   payload.recipes = [
     {
       id: "intent-to-presentation",
       from: "intent",
       to: "presentation",
-      representations: [{ id: "headless", headless: true }],
-      fallback: "headless",
+      representations: [{ id: "screen", presentation: { roots: ["result"] } }],
+      fallback: "screen",
     },
     {
       id: "presentation-to-runtime",
       from: "presentation",
       to: "runtime-document",
-      representations: [{ id: "headless", headless: true }],
-      fallback: "headless",
+      representations: [{ id: "screen" }],
+      fallback: "screen",
     },
   ];
   setPath(state, "manageBlueprints.editor.blueprintText", JSON.stringify(artifact));

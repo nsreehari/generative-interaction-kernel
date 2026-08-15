@@ -4,24 +4,20 @@
     { "id": "samples-overview", "blueprint": "samples-overview" },
     { "id": "manage-blueprints", "blueprint": "manage-blueprints" },
     { "id": "vocabulary-lowering", "blueprint": "vocabulary-lowering" },
-    { "id": "portfolio-tracker", "blueprint": "portfolio-tracker" },
     { "id": "portfolio-tracker-new", "blueprint": "portfolio-tracker-new" },
     { "id": "incident-analysis-new-shell", "blueprint": "incident-analysis-new-shell" },
     { "id": "incident-report-explorer-1a", "blueprint": "incident-report-explorer-1a" },
     { "id": "incident-report-explorer-2", "blueprint": "incident-report-explorer-2" },
     { "id": "incident-report-explorer-3", "blueprint": "incident-report-explorer-3" },
-    { "id": "portfolio-tracker-2tiers", "blueprint": "portfolio-tracker-2tiers" },
     { "id": "live-workspace-soc", "blueprint": "live-workspace-soc" },
     { "id": "copilot-c2", "blueprint": "copilot-c2" },
     { "id": "foundry-agent", "blueprint": "foundry-agent" },
     { "id": "foundry-agent-no-cells", "blueprint": "foundry-agent-no-cells" },
     { "id": "backend-order", "blueprint": "backend-order-processing" },
-    { "id": "middleware-continuity", "blueprint": "middleware-continuity" },
-    { "id": "portfolio-tracker-2tiers-headless", "blueprint": "portfolio-tracker-2tiers-headless" }
+    { "id": "middleware-continuity", "blueprint": "middleware-continuity" }
   ],
   "nativeFrom": {
-    "foundry-agent-no-cells": "foundry-agent",
-    "portfolio-tracker-2tiers": "portfolio-tracker"
+    "foundry-agent-no-cells": "foundry-agent"
   },
   "projectionFrom": {}
 }

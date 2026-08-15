@@ -35,7 +35,6 @@ export interface VocabularyLoweringRecipeDefinition extends LoweringRecipeDefini
 export interface BlueprintRepresentation {
   id: string;
   when?: string;
-  headless?: boolean;
   extends?: string;
   views?: Record<string, CellView>;
   decorators?: BlueprintRepresentationDecorator[];

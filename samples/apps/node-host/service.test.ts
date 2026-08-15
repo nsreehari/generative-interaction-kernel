@@ -40,11 +40,13 @@ test("the Node host opens its registered launch profiles", async () => {
   const profileIds = [
     "backend-order",
     "middleware-continuity",
-    "portfolio-tracker-2tiers-headless",
+    "portfolio-tracker-new",
   ];
   const profiles = profileIds.map((id) => catalog.launchProfiles.find((profile) => profile.id === id));
   assert.deepEqual(profiles.map((profile) => profile?.id), profileIds);
-  for (const profileId of profileIds) await openNodeLaunch(profileId, { marketMode: "mock" });
+  for (const profileId of profileIds) {
+    await openNodeLaunch(profileId, { "intelligence-model": "mock", view: "desktop" });
+  }
 });
 
 test("the Node host can execute a Blueprint with a presentation program", async () => {

@@ -4,7 +4,6 @@ import * as copilotC2 from "../../blueprints/copilot-c2/native/effect_handlers/c
 import * as foundryAgent from "../../blueprints/foundry-agent/native/effect_handlers/foundryAgentEffectHandlers";
 import * as liveWorkspaceSoc from "../../blueprints/live-workspace-soc/native/effect_handlers/liveWorkspaceSocEffectHandlers";
 import * as manageBlueprints from "../../blueprints/manage-blueprints/native/effect_handlers/manageBlueprintsEffectHandlers";
-import * as portfolioTracker from "../../blueprints/portfolio-tracker/native/effect_handlers/portfolioTrackerEffectHandlers";
 import { getSampleBlueprintCatalog } from "../../catalog/blueprint-catalog";
 
 export interface SampleNativeEffects {
@@ -16,7 +15,6 @@ export interface SampleNativeEffects {
 }
 
 const copilotC2NodeEffects: SampleNativeEffects = { default: copilotC2.default };
-const portfolioTrackerNodeEffects: SampleNativeEffects = { default: portfolioTracker.default };
 
 export const portableSampleNativeEffects: Readonly<Record<string, SampleNativeEffects>> = {
   "backend-order-processing": backendOrderProcessing,
@@ -24,7 +22,6 @@ export const portableSampleNativeEffects: Readonly<Record<string, SampleNativeEf
   "foundry-agent": foundryAgent,
   "live-workspace-soc": liveWorkspaceSoc,
   "manage-blueprints": manageBlueprints,
-  "portfolio-tracker": portfolioTrackerNodeEffects,
 };
 
 export function resolveSampleNativeEffects(id: string): SampleNativeEffects | undefined {
