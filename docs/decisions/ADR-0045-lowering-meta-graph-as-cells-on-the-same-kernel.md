@@ -30,7 +30,7 @@ operation kind and no new action verb is introduced:
 
 | Lowering Cell kind    | Existing primitive it becomes                                          |
 | ---------------------- | ------------------------------------------------------------------------ |
-| `transform`            | A JSONata `compute` Cell (same shape as `positions`/`summary` in `portfolio-tracker`). |
+| `transform`            | A JSONata `compute` Cell (same shape as `portfolio-value-cell` in `portfolio-tracker-new`). |
 | `select-strategy`      | A `compute` Cell for deterministic rules, or a service-backed Cell for judgment calls. |
 | `synthesize-strategy`  | A service-backed Cell (the Foundry-agent pattern) with AJV response validators. |
 | `validate`             | Declarative guardrails — the same validator engine service responses already use. |
@@ -38,7 +38,7 @@ operation kind and no new action verb is introduced:
 | `emit-blueprint`       | A compute Cell that publishes the validated terminal artifact.       |
 
 A **compiler Blueprint** is hand-authored directly as Cells at the terminal tier — zero recipes,
-exactly like `portfolio-tracker` and `foundry-agent` are today. This avoids infinite regress: the
+exactly like `portfolio-tracker-new` and `foundry-agent` are today. This avoids infinite regress: the
 compiler does not itself need compiling.
 
 **Compiling and running stay two distinct Kernel instances.** The compiler Blueprint opens as its

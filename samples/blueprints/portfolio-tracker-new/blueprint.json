@@ -516,7 +516,7 @@
       "externals": {
         "projectionViews": {
           "fluent": { "from": "fluent", "use": ["table"] },
-          "portfolio": { "from": "portfolio-tracker", "use": ["intelligence-projections"] },
+          "portfolio": { "from": "portfolio-tracker-new", "use": ["intelligence-projections"] },
           "primitive": { "from": "primitive", "use": ["chart", "container", "editable-table", "markdown", "note"] }
         }
       },

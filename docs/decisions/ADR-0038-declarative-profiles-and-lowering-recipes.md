@@ -179,9 +179,9 @@ its id, children, bindings, events, and semantic contract. Decoration bindings a
 runtime JSONata scoped to that matched Cell, so a recipe can select Cells having `sources` at compile
 time and show `fluent:spinner` while each Cell's `numSourcesRunning` is nonzero at runtime.
 
-Decorators are presentation facets and are invalid for headless representations. Selection must
-resolve only known presented Cells, nested decorations are rejected, and all selection, binding,
-and visibility expressions are validated before execution.
+Decorators are presentation facets on representation recipes. Selection must resolve only known
+presented Cells, nested decorations are rejected, and all selection, binding, and visibility
+expressions are validated before execution.
 
 ## Amendment (2026-08-15): evaluator-owned system inputs for runtime presentation state
 

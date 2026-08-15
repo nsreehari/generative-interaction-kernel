@@ -252,19 +252,6 @@ function applyRepresentationRecipe(
     ? evalSyncJsonata(representation.when, { externalContext } as Json) === true
     : false) ?? representations.get(recipe.fallback);
   if (!selected) throw new Error(`Blueprint lowering recipe '${recipe.id}' has unknown fallback '${recipe.fallback}'`);
-  const extendedHeadless = selected.extends ? representations.get(selected.extends)?.headless === true : false;
-  if (extendedHeadless) {
-    throw new Error(`Blueprint representation '${selected.id}' cannot extend headless representation '${selected.extends}'`);
-  }
-  if (selected.headless && (
-    selected.extends
-    || selected.views
-    || selected.decorators
-    || selected.presentation
-    || selected.presentationAppend
-  )) {
-    throw new Error(`Headless Blueprint representation '${selected.id}' cannot declare presentation facets`);
-  }
 
   const chain: BlueprintRepresentation[] = [];
   const seen = new Set<string>();
@@ -300,15 +287,8 @@ function applyRepresentationRecipe(
       applyRepresentationDecorator(artifact, representation.id, decorator, externalContext);
     }
   }
-  if (selected.headless) {
-    const projections = Object.fromEntries(
-      Object.entries(artifact.payload.projections ?? {}).filter(([id]) => id !== "presentation"),
-    );
-    artifact.payload.projections = Object.keys(projections).length > 0 ? projections : undefined;
-  } else {
-    if (!presentation) throw new Error(`Blueprint representation '${selected.id}' produced no presentation`);
-    artifact.payload.projections = { ...artifact.payload.projections, presentation };
-  }
+  if (!presentation) throw new Error(`Blueprint representation '${selected.id}' produced no presentation`);
+  artifact.payload.projections = { ...artifact.payload.projections, presentation };
   applyImplementationProgram(artifact, recipe, externalContext);
   return artifact;
 }

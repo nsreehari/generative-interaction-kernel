@@ -3,7 +3,7 @@ import copilotC2Leaves from "../../../../blueprints/copilot-c2/native/projection
 import foundryAgentLeaves from "../../../../blueprints/foundry-agent/native/projection_views/foundryAgentLeaves";
 import liveWorkspaceSocLeaves from "../../../../blueprints/live-workspace-soc/native/projection_views/liveWorkspaceSocLeaves";
 import manageBlueprintsLeaves from "../../../../blueprints/manage-blueprints/native/projection_views/manageBlueprintsLeaves";
-import portfolioTrackerLeaves from "../../../../blueprints/portfolio-tracker/native/projection_views/portfolioTrackerLeaves";
+import portfolioTrackerLeaves from "../../../../blueprints/portfolio-tracker-new/native/projection_views/portfolioTrackerLeaves";
 import samplesOverviewLeaves from "../../../../blueprints/samples-overview/native/projection_views/samplesOverviewLeaves";
 
 const modules: Readonly<Record<string, Record<string, ProjectionView>>> = {
@@ -11,7 +11,7 @@ const modules: Readonly<Record<string, Record<string, ProjectionView>>> = {
   "foundry-agent": foundryAgentLeaves,
   "live-workspace-soc": liveWorkspaceSocLeaves,
   "manage-blueprints": manageBlueprintsLeaves,
-  "portfolio-tracker": portfolioTrackerLeaves,
+  "portfolio-tracker-new": portfolioTrackerLeaves,
   "samples-overview": samplesOverviewLeaves,
 };
 

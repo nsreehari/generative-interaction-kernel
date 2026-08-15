@@ -41,11 +41,11 @@ test("host query selects Blueprints with canonical b and legacy bundle parameter
     "live-workspace-soc",
   );
   assert.equal(
-    readHostQuery("?bundle=portfolio-tracker").targetId,
-    "portfolio-tracker",
+    readHostQuery("?bundle=portfolio-tracker-new").targetId,
+    "portfolio-tracker-new",
   );
   assert.equal(
-    readHostQuery("?b=foundry-agent&bundle=portfolio-tracker").targetId,
+    readHostQuery("?b=foundry-agent&bundle=portfolio-tracker-new").targetId,
     "foundry-agent",
   );
   assert.deepEqual(

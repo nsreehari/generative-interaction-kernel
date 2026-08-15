@@ -45,7 +45,7 @@ async function waitForState(
   throw new Error(`Timed out waiting for portfolio state: ${JSON.stringify(state.portfolio)}`);
 }
 
-test("portfolio-tracker-new Cells execute through the Node host HTTP control plane", async () => {
+test("portfolio-tracker-new executes through the headless Node host HTTP control plane", async () => {
   const host = await createNodeHost({
     profile: "portfolio-tracker-new",
     externalContext: { "intelligence-model": "mock", view: "desktop" },
@@ -55,6 +55,7 @@ test("portfolio-tracker-new Cells execute through the Node host HTTP control pla
   });
   const baseUrl = await host.listen();
   try {
+    assert.ok(host.controlface.getProgram().root);
     const initial = await waitForState(
       baseUrl,
       (state) => state.portfolio?.intelligence?.provider === "portfolio-intelligence-mock",
