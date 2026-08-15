@@ -48,6 +48,10 @@ test("host query selects Blueprints with canonical b and legacy bundle parameter
     readHostQuery("?b=foundry-agent&bundle=portfolio-tracker").targetId,
     "foundry-agent",
   );
+  assert.deepEqual(
+    readHostQuery("?b=portfolio-tracker-new&intelligence-model=semantic&view=mobile").externalContext,
+    { "intelligence-model": "semantic", view: "mobile" },
+  );
   assert.equal(
     canonicalizeHostUrl("https://example.test/?bundle=live-workspace-soc"),
     "https://example.test/?b=live-workspace-soc",

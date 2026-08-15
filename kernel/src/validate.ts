@@ -2,11 +2,12 @@
 // against the normative GIK program schema.
 
 import Ajv, { type ValidateFunction } from "ajv";
-import programSchema from "../../schemas/program.schema.json" with { type: "json" };
+import programSchema from "../../packages/evaluators/schemas/program.schema.json" with { type: "json" };
 import type { CapabilityDescriptor, DocNode, ExecutableProgramDefinition } from "./types";
 
 const ajv = new Ajv({ allErrors: true, strict: false });
 const validateFn: ValidateFunction = ajv.compile(programSchema);
+const valueValidators = new Map<string, ValidateFunction>();
 
 export class ValidationError extends Error {
   constructor(message: string, readonly errors: unknown) {
@@ -21,6 +22,21 @@ export function validateProgramMessage(message: unknown): void {
       .map((e) => `${e.instancePath || "/"} ${e.message}`)
       .join("; ");
     throw new ValidationError(`Invalid GIK program: ${detail}`, validateFn.errors);
+  }
+}
+
+export function validateJsonValue(schema: Record<string, unknown>, value: unknown, label: string): void {
+  const source = JSON.stringify(schema);
+  let validate = valueValidators.get(source);
+  if (!validate) {
+    validate = ajv.compile(schema);
+    valueValidators.set(source, validate);
+  }
+  if (!validate(value)) {
+    const detail = (validate.errors ?? [])
+      .map((error) => `${error.instancePath || "/"} ${error.message}`)
+      .join("; ");
+    throw new ValidationError(`${label}: ${detail}`, validate.errors);
   }
 }
 

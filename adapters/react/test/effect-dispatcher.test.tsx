@@ -10,7 +10,7 @@ import {
 } from "@gik/kernel";
 import { createEffectDispatcher } from "../src/primitives/effects";
 
-test("named route and confirm handlers receive actor provenance", async () => {
+test("named route and request handlers receive actor provenance", async () => {
   const state = new InMemoryStateModel(["demo"]);
   const calls: Array<{ kind: string; actorId?: string }> = [];
   const orchestrator = createEffectDispatcher(state, {
@@ -18,7 +18,7 @@ test("named route and confirm handlers receive actor provenance", async () => {
       calls.push({ kind: "route", actorId: ctx.actorId });
     },
     approval(ctx) {
-      calls.push({ kind: "confirm", actorId: ctx.actorId });
+      calls.push({ kind: "request", actorId: ctx.actorId });
     },
   });
 
@@ -26,21 +26,20 @@ test("named route and confirm handlers receive actor provenance", async () => {
     kind: "route",
     node: "proposal",
     actorId: "agent-response",
-    tool: "policy",
-    to: "contain",
-    args: {},
+    control: { to: "policy" },
+    data: {},
   } satisfies OrchestratorEffect);
-  await orchestrator.confirm?.({
-    kind: "confirm",
+  await orchestrator.request?.({
+    kind: "request",
     node: "proposal",
     actorId: "agent-response",
-    tool: "approval",
-    args: {},
+    control: { kind: "decision", policy: "approval", responseSchema: { type: "object" } },
+    data: {},
   } satisfies OrchestratorEffect);
 
   assert.deepEqual(calls, [
     { kind: "route", actorId: "agent-response" },
-    { kind: "confirm", actorId: "agent-response" },
+    { kind: "request", actorId: "agent-response" },
   ]);
 });
 
@@ -74,14 +73,14 @@ test("named invoke handlers receive invocation control", async () => {
   const controlledResult = await orchestrator.invoke?.({
     kind: "invoke",
     node: "download",
-    tool: "download",
-    args: {},
+    control: { tool: "download" },
+    data: {},
   }, control);
   const legacyResult = await orchestrator.invoke?.({
     kind: "invoke",
     node: "legacy",
-    tool: "legacy",
-    args: {},
+    control: { tool: "legacy" },
+    data: {},
   }, control);
 
   assert.deepEqual(progress, [{ name: "download-progress", detail: { percent: 25 } }]);

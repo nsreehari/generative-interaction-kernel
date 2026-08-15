@@ -68,12 +68,10 @@
       }
     },
     {
-      "key": "seed-asset:password-spray-mailbox/incident-semantic/source-faithful-v1",
+      "key": "seed-asset:password-spray-mailbox/blueprint:incident-report-explorer-2@1.0.0",
       "value": {
-        "sourceId": "password-spray-mailbox",
-        "analyzerId": "incident-semantic",
-        "variant": "source-faithful-v1",
-        "value": {
+        "asOn": "2026-07-17T23:10:00Z",
+        "analysisReport": {
           "identity": {
             "incidentId": "68b54272-f60b-53fa-b3d4-2494c7bd598d",
             "title": "Investigation Report — Incident 68b54272-f60b-53fa-b3d4-2494c7bd598d",

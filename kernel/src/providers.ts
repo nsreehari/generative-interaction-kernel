@@ -143,6 +143,25 @@ export interface JsonataExpressionValidationResult {
   error?: string;
 }
 
+function expressionErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
+    return error.message;
+  }
+  if (error && typeof error === "object") {
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return "Invalid JSONata expression";
+    }
+  }
+  return String(error);
+}
+
+export function jsonataExpressionAst(expr: string): unknown {
+  return jsonataSync(expr).ast();
+}
+
 export function validateJsonataExpression(
   expr: string,
   opts: JsonataProviderOptions = {}
@@ -154,7 +173,7 @@ export function validateJsonataExpression(
   } catch (error) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : String(error),
+      error: expressionErrorMessage(error),
     };
   }
 }
@@ -297,15 +316,15 @@ export class VocabularyRegistry implements CapabilityRegistry {
 }
 
 // ---- Orchestrator --------------------------------------------------------
-// The seam where a document's invoke/confirm/route actions reach out to do
-// real work. It owns time and side effects (tool calls, HITL approval, routing);
+// The seam where a document's invoke/route/request actions reach out to do
+// real work. It owns time and side effects (tool calls, resolution, routing);
 // the kernel and reducer stay pure. Any method may be omitted; unhandled effects
 // are traced and produce no store change.
 
 export interface Orchestrator {
   invoke?(effect: OrchestratorEffect, control: InvocationControl): Promise<OrchestratorResult | void>;
-  confirm?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>;
   route?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>;
+  request?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>;
   /**
    * Reverse a previously-fired effect (rollback compensation). The kernel replays the original
    * forward effect here; the host maps it to a real inverse (a refund), a no-op, or a refusal.

@@ -29,6 +29,9 @@ terminology:
   lowering_recipe: A declaration connecting one tier to another.
   lowering_cell: A declaration for an operation that processes artifacts during conversion.
   external_context: Immutable JSON input readable by materialization and runtime expressions through externalContext.*.
+  system_input: >-
+    A named evaluator-owned pure projection declared by a Cell and referenced through
+    systemInputs.<token>; it is not a persisted token or a public run-state path.
   cell_semantic_contract: The stable Cell identity, responsibility, input and output contracts, and logical data-flow role preserved across tiers.
   cell_implementation_program: The contract-compatible inner source, service or provider binding, computation, and execution details selected during materialization.
   materialized_blueprint: Portable derived execution value containing terminal Blueprint, immutable context, prepared vocabulary, program, and initial state.
@@ -198,7 +201,28 @@ artifact_contracts:
     guarantees:
       - A representation may declare `headless: true` to emit a terminal Blueprint without `projections.presentation`.
       - A headless representation cannot declare or inherit presentation facets.
+      - A representation may declare decorators whose JSONata select expression returns one Cell id or an array of Cell ids.
+      - Decorator select evaluates during lowering against blueprint, payload, cells, and immutable externalContext.
+      - A decorator may add one before and/or after CellViewDecoration to every selected presented Cell.
+      - Decorators are applied after inherited view overrides and before terminal Blueprint validation.
       - Headless selection remains independent from contract-compatible Cell and service implementation selection.
+  - name: BlueprintRepresentationDecorator
+    signature: >-
+      interface BlueprintRepresentationDecorator { select: string;
+      before?: CellViewDecoration; after?: CellViewDecoration }
+    guarantees:
+      - Selection is deterministic lowering-time JSONata over the current Blueprint artifact.
+      - Selection must return only known Cell ids whose terminal Cells have view capabilities.
+      - Generated decorations are retained as ordinary static terminal Blueprint data.
+      - Nested before or after decorations are rejected.
+  - name: CellViewDecoration
+    signature: >-
+      interface CellViewDecoration { capability: string; props?: Record<string, Json>;
+      bindings?: Record<string, CellViewBinding>; visibility?: string }
+    guarantees:
+      - Executable preparation emits decorations and the original Cell inside a presentation fragment.
+      - Generated node ids are stable and derived from the original Cell id, position, and order.
+      - Runtime bindings and visibility are scoped to the original matched Cell's cellRunState.
   - name: BlueprintImplementationProgram
     signature: >-
       interface BlueprintImplementationProgram { id: string; when?: string;
@@ -213,6 +237,7 @@ artifact_contracts:
     facets:
       - state
       - inputs
+      - systemInputs
       - sources
       - compute
       - outputs
@@ -223,6 +248,15 @@ artifact_contracts:
       - A Cell may be viewless, state-free, service-only, computational, or recursively composed.
       - Cell map keys equal Cell ids.
       - A Cell's semantic contract is stable across tiers even when lowering selects a different contract-compatible implementation program.
+      - compute.assign paths become explicit Kernel graph operations; Cell computation is not duplicated as program.derivations.
+      - outputs.from identifies the value to publish, and outputs.when withholds publication when its safe predicate is false.
+      - An output produced during the same Cell evaluation references computed.<assign-path>; bare assignment paths are not evaluator roots.
+      - A pure Cell may forward a declared inputs.<alias> path without a synthetic compute assignment.
+      - systemInputs declares evaluator-owned named projections available as systemInputs.<token>.
+      - Cell evaluator expressions use explicit inputs, sources, systemInputs, and computed namespaces.
+      - blueprintRunState and cellRunState are internal implementation namespaces unavailable to Cell authors.
+      - Source effects settle into blueprintRunState.cells.<id>.sourceValues before the Cell is reactivated.
+      - blueprintRunState persists raw source request/completion tokens; derived system-input values are not persisted.
   - name: CellBlueprint
     signature: >-
       type CellBlueprint = { $ref: string | CellViewBinding; inline?: never }
@@ -259,7 +293,7 @@ artifact_contracts:
       - composeCellProgram requires exactly one root for a presented Blueprint and walks placements
         into the Kernel projection tree.
       - Without `projections.presentation`, composeCellProgram emits a headless Kernel program from
-        Cell event handlers, reactions, computations, and source refresh behavior.
+        Cell event handlers, computations, and source refresh behavior.
 
 artifact_api:
   - name: createBlueprint
@@ -359,6 +393,8 @@ cell_api:
     behavior: >-
       Compiles one validated Cell topology into a Kernel executable program. A presentation
       projection produces a projected program; its absence produces a headless program.
+      Compute and source Cells become evaluate-cell extension nodes. Hosted Blueprint outputs
+      re-enter through event-triggered graph nodes and use transient signal ports.
       Headless compilation rejects hosted child Blueprint Cells because their current execution
       requires a projection host. CellProjectionDefinition is structural input to this function
       and is not separately exported from the package entrypoint.
@@ -373,7 +409,9 @@ transition_api:
     behavior:
       - Clones the immutable external context snapshot.
       - Assembles the authored Blueprint.
-      - Synchronously folds any non-empty connected recipe chain through the package-owned fixed lowering meta-graph.
+      - Compiles the package-owned fixed lowering meta-graph to a Kernel Program and executes it on a separate compiler Kernel.
+      - Publishes authored Blueprint plus immutable context at lowering:source and accepts terminal output only from compiled:artifact.
+      - Drives the Kernel's shared graph traversal synchronously for the deterministic recipe chain.
       - Resolves context-selected Cell implementation programs while preserving Cell semantic and data-flow contracts.
       - Prepares terminal vocabulary, executable program, and initial state from the emitted recipe-free Blueprint.
       - Emits a headless program when the terminal Blueprint has Cells but no presentation projection.
@@ -381,10 +419,12 @@ transition_api:
   - name: runMaterializedTransition
     signature: >-
       runMaterializedTransition({ state, materializedBlueprint, events,
-      contexts?, createOrchestrator? }): Promise<BlueprintTransitionResult>
+      contexts?, createOrchestrator?, sourceSettlements?, requestSettlements? }): Promise<BlueprintTransitionResult>
     behavior:
       - Trusts the portable materialization and performs no authored-source hash check.
       - Makes externalContext.* readable while rejecting writes to it.
+      - Applies admitted source values before source completion and graph reactivation.
+      - Delegates request receipt admission to Kernel settlement, including effect correlation and response-schema validation.
       - Returns only mutable local state; immutable external context is not copied into state.
   - name: prepareBlueprintProgram
     purpose: Prepare one assembled declarative Blueprint as vocabulary, program, and initial state.
@@ -400,6 +440,27 @@ transition_api:
       - Returns resulting local state and journaled effects.
       - Executes no host effects unless the caller explicitly supplies createOrchestrator.
       - Semantic Blueprint patch proposals, when present, target the authored Blueprint.
+  - name: evaluateBlueprintCell
+    signature: >-
+      evaluateBlueprintCell({ blueprint, state, cell, externalContext?, resolveBlueprint? }):
+      EvaluateBlueprintCellResult
+    behavior:
+      - Replaces the matching authored Cell with the supplied candidate Cell JSON in a cloned Blueprint.
+      - Materializes the candidate Blueprint and evaluates the resulting terminal program Cell.
+      - Resolves Cell inputs and settled source values from the supplied state.
+      - Supplies raw Blueprint run state to the evaluator as internal context for declared system-input projection.
+      - Returns computed values, explicit compute operations, outputs, and admitted source effects without executing effects, mutating state, or propagating downstream consequences.
+      - Does not expose internal Blueprint or Cell run-state namespaces to authored Cell expressions.
+      - Returns blocked status and missing required input tokens when the Cell cannot activate.
+    purpose: Pure inspection, simulation, and preflight; runTransition remains the authoritative execution API.
+  - name: evaluateBlueprintCellId
+    signature: >-
+      evaluateBlueprintCellId({ blueprint, state, cellId, externalContext? }):
+      EvaluateBlueprintCellResult
+    behavior:
+      - Resolves the authored Cell by id and delegates to evaluateBlueprintCell.
+      - Returns the same materialized preflight result without mutation, effect execution, or consequence propagation.
+      - Rejects an id that is not present in the authored Blueprint.
   - name: applyBlueprintPatches
     signature: >-
       applyBlueprintPatches({ blueprint, externalContext?, state, patch, origin,
@@ -498,7 +559,10 @@ lowering_cell_api:
       - Requires validation policy for emit-blueprint Cells.
       - Uses fromTier and toTier for tier boundaries.
   fixed_meta_graph:
-    function: fixedLoweringMetaGraphBlueprint
+    functions:
+      - fixedLoweringMetaGraphBlueprint
+      - lowerWithFixedMetaGraph
+      - runFixedLoweringMetaGraph
     structure_mode: fixed
     cells:
       - resolve-stage
@@ -507,8 +571,17 @@ lowering_cell_api:
     behavior:
       - Is package-owned and is never supplied by an individual materialization call.
       - Uses one graph for arbitrary connected, non-branching tier chains.
-      - Applies each recipe's semantic Blueprint patch in resolved stage order.
+      - Runs the compiler Cells on one separate Kernel instance.
+      - Applies vocabulary-patch or representation recipe operations in resolved stage order.
+      - Evaluates representation decorator selectors and emits static terminal Cell-view decorations.
       - Validates the emitted terminal Blueprint before executable preparation.
+      - runFixedLoweringMetaGraph returns the terminal Blueprint plus compiler ExecutionSnapshot evidence.
+    implementation_status:
+      - Production lowerWithFixedMetaGraph compiles the package-owned compiler Cells to one Kernel Program and executes them on a separate Kernel instance.
+      - The authored Blueprint and immutable external context enter through lowering:source; the terminal Blueprint is accepted only from the compiled:artifact token produced by emit-blueprint.
+      - ContinuousGraphRuntime owns one shared traversal and token scheduler. Async runtime publication awaits yielded node outcomes; deterministic compiler publication drives that same traversal synchronously.
+      - Synchronous Kernel publication requires SyncJsonataExpressionProvider and rejects operations, effects, events, program mutations, and asynchronous node outcomes.
+      - Registered lowering operations implement recipe vocabulary semantics inside compiler Cells; they do not schedule a parallel graph or bypass Kernel token flow.
   deferred:
     - Reconfiguring the shared meta-graph.
     - Suggested patches targeting the meta-graph.
@@ -533,16 +606,16 @@ lowering_api:
     - Delegates terminal executable-program validation to Kernel lowerToProgram.
     - Preserves projected versus headless program message typing.
   boundary:
-    - The fixed materialization meta-graph executes only synchronous vocabulary-patch recipes.
+    - Fixed materialization executes synchronous vocabulary-patch and representation recipes through compiler Cells.
     - This phase does not select or synthesize strategies and performs no asynchronous effects.
     - Kernel validation rejects invalid lowering output before lowerBlueprint returns a program message.
 
 validation:
   structural:
-    - Blueprint artifacts use schemas/blueprint.schema.json.
-    - Cells use schemas/cell.schema.json.
-    - Tiers use schemas/tier.schema.json.
-    - Lowering recipes use schemas/lowering-recipe.schema.json.
+    - Blueprint artifacts use packages/evaluators/schemas/blueprint.schema.json.
+    - Cells use packages/evaluators/schemas/cell.schema.json.
+    - Tiers use packages/evaluators/schemas/tier.schema.json.
+    - Lowering recipes use packages/evaluators/schemas/lowering-recipe.schema.json.
     - Unknown properties are rejected where schemas declare additionalProperties false.
   semantic:
     - Blueprint identity, a runtime declaration object, at least one tier, and a recipes array are required.

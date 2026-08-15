@@ -29,7 +29,15 @@ describe("portfolio-tracker Blueprint", () => {
       "rebalance-comparison",
     ]);
     const composition = analyzeCellComposition(portfolioCells);
-    expect(composition.externalInputs).toEqual(["investor-profile"]);
+    expect(composition.externalInputs).toEqual([
+      "portfolio.foundryAccessStatus",
+      "portfolio.httpProxyAccessStatus",
+      "portfolio.intelligence",
+      "portfolio.intelligence1b",
+      "portfolio.intelligence2",
+      "portfolio.quotes",
+      "portfolio.recommendation",
+    ]);
     expect(composition.diagnostics).toEqual([]);
   });
 
@@ -54,27 +62,28 @@ describe("portfolio-tracker Blueprint", () => {
     const foundryAccessGate = portfolioCells.find((cell) => cell.id === "foundry-access-gate");
     expect(accessGate?.outputs).toEqual([{
       token: "http-proxy-access",
-      from: "portfolio.httpProxyAccessStatus",
-      when: "portfolio.httpProxyAccessStatus = 'ready'",
+      from: "inputs.accessStatus",
+      when: "inputs.accessStatus = 'ready'",
     }]);
     expect(portfolioCells.find((cell) => cell.id === "market-prices")?.inputs).toEqual([
-      { token: "http-proxy-access" },
+      { token: "http-proxy-access", required: false },
       { token: "holding:$TICKER" },
+      { token: "portfolio.quotes", as: "persistedQuotes" },
     ]);
     expect(foundryAccessGate?.outputs).toEqual([{
       token: "foundry-access",
-      from: "portfolio.foundryAccessStatus",
-      when: "portfolio.foundryAccessStatus = 'ready'",
+      from: "inputs.accessStatus",
+      when: "inputs.accessStatus = 'ready'",
     }]);
     const intelligence1 = portfolioCells.find((cell) => cell.id === "portfolio-intelligence");
-    expect(intelligence1?.inputs).toContainEqual({ token: "foundry-access" });
+    expect(intelligence1?.inputs).toContainEqual({ token: "foundry-access", required: false });
     expect(intelligence1?.view?.bindings).toMatchObject({
       value: { from: "portfolio.intelligence" },
       error: { from: "portfolio.intelligenceError" },
     });
     const intelligence2 = portfolioCells.find((cell) => cell.id === "portfolio-intelligence-2");
     expect(intelligence2).toMatchObject({
-      inputs: expect.arrayContaining([{ token: "foundry-access" }]),
+      inputs: expect.arrayContaining([{ token: "foundry-access", required: false }]),
       sources: [{ service: "portfolio-intelligence-2", operation: "chat", contract: "portfolio-intelligence-2/v1" }],
       view: {
         capability: "portfolio:intelligence-projections",
@@ -94,13 +103,13 @@ describe("portfolio-tracker Blueprint", () => {
     const intelligence1b = portfolioCells.find((cell) => cell.id === "portfolio-intelligence-1b");
     expect(intelligence1b).toMatchObject({
       inputs: expect.arrayContaining([
-        { token: "foundry-access" },
+        { token: "foundry-access", required: false },
         { token: "portfolio-summary" },
         { token: "position:$TICKER" },
         { token: "investor-profile" },
         { token: "portfolio-intelligence" },
       ]),
-      sources: [{ service: "portfolio-intelligence-1b", operation: "chat", contract: "portfolio-intelligence-1b/v1" }],
+      sources: [{ service: "portfolio-intelligence-1b", operation: "requestIntelligence1b", contract: "portfolio-intelligence-1b/v1" }],
       outputs: [{ token: "portfolio-intelligence-1b" }],
       view: {
         capability: "portfolio:intelligence-projections",
@@ -123,27 +132,38 @@ describe("portfolio-tracker Blueprint", () => {
       intelligence2: { from: "portfolio.intelligence2" },
       strategyInputs: { from: "portfolio.strategyInputs" },
     });
-    expect(blueprint.payload.cells["portfolio-tracker"].behavior.events.calculateStrategies).toEqual([
-      { do: "invoke", args: { tool: "prepareStrategies" } },
-      { do: "invoke", args: { tool: "calculateStrategies" } },
+    expect(blueprint.payload.cells["portfolio-tracker"].behavior.on.calculateStrategies).toEqual([
+      { do: "invoke", control: { tool: "prepareStrategies" } },
+      { do: "invoke", control: { tool: "calculateStrategies" } },
     ]);
     expect(marketPrices?.props?.externalSource).toEqual({ refreshEvent: "refresh" });
-    expect(marketPrices?.edges?.on?.refresh).toEqual([{
+    expect(marketPrices?.edges?.on?.refresh).toEqual([expect.objectContaining({
       do: "invoke",
-      args: { tool: "refreshPrices" },
-    }]);
-    expect(program.derivations).toEqual([
+      control: expect.objectContaining({ tool: "refreshPrices" }),
+    })]);
+    expect("derivations" in program).toBe(false);
+    expect(program.graph?.nodes).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        id: "positions-positions-by-ticker",
-        target: "portfolio.positions",
-        dependencies: ["portfolio.holdings", "portfolio.quotes"],
+        id: "positions-evaluate",
+        operation: expect.objectContaining({
+          kind: "extension",
+          name: "evaluate-cell",
+          config: expect.objectContaining({
+            compute: [expect.objectContaining({ assign: "portfolio.positions" })],
+          }),
+        }),
       }),
       expect.objectContaining({
-        id: "summary-portfolio-totals",
-        target: "portfolio.summary",
-        dependencies: ["portfolio.positions"],
+        id: "summary-evaluate",
+        operation: expect.objectContaining({
+          kind: "extension",
+          name: "evaluate-cell",
+          config: expect.objectContaining({
+            compute: [expect.objectContaining({ assign: "portfolio.summary" })],
+          }),
+        }),
       }),
-    ]);
+    ]));
   });
 
   it("lowers the empty holdings editor with an explicit row schema", () => {

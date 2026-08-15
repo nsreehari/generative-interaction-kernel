@@ -5,7 +5,7 @@
 // Scenario: lower a "tier 1" artifact (research findings sourced from an agent) into a
 // "tier 2" artifact — a real, standalone presentation `BlueprintArtifact` — through a compiler
 // Blueprint whose Cells are: two `transform` Cells (JSONata `compute`), one `approve` gate (the
-// Kernel's existing `confirm` action verb), and one `emit-blueprint` Cell that only resolves
+// Kernel's `request` action verb), and one `emit-blueprint` Cell that only resolves
 // once approval has landed. Phase 3 proves ADR-0045's core claim: the emitted artifact is
 // handed to the existing, unchanged `openBlueprint` path — compiling and running stay two
 // distinct Kernel instances, and the compiler never gains direct execution authority over the
@@ -15,7 +15,9 @@
 
 import { createBlueprint, defineLoweringCell, runLoweringBlueprint, validateLoweringCellGraph, type BlueprintArtifact, type BlueprintDefinition, type LoweringCellDefinition } from "@gik/blueprint";
 import { openBlueprint, type BlueprintRuntime } from "@gik/controlface";
-import type { ConfirmOutcome, Json } from "@gik/kernel";
+import type { Json } from "@gik/kernel";
+
+type ApprovalOutcome = "approved" | "denied";
 
 export interface LoweringMetaGraphResult {
   artifactAfterApproval: unknown;
@@ -35,7 +37,7 @@ export function loweringCellGraph(): readonly LoweringCellDefinition[] {
       kind: "transform",
       fromTier: "agent-data",
       toTier: "presentation",
-      inputs: [{ token: "agent-data:findings", artifactType: "finding[]" }],
+      inputs: [{ token: "agentData.findings", artifactType: "finding[]" }],
       outputs: [{ token: "presentation:rows", artifactType: "row[]" }],
       policy: { deterministic: true },
     }),
@@ -44,7 +46,10 @@ export function loweringCellGraph(): readonly LoweringCellDefinition[] {
       kind: "transform",
       fromTier: "agent-data",
       toTier: "presentation",
-      inputs: [{ token: "agent-data:findings", artifactType: "finding[]" }],
+      inputs: [
+        { token: "agentData.findings", artifactType: "finding[]" },
+        { token: "agentData.riskFlags", artifactType: "string[]" },
+      ],
       outputs: [{ token: "presentation:summary", artifactType: "summary" }],
       policy: { deterministic: true },
     }),
@@ -59,6 +64,8 @@ export function loweringCellGraph(): readonly LoweringCellDefinition[] {
       inputs: [
         { token: "presentation:rows", artifactType: "row[]" },
         { token: "presentation:summary", artifactType: "summary" },
+        { token: "agentData.subject", artifactType: "string" },
+        { token: "compiled.approved", artifactType: "boolean" },
       ],
       outputs: [{ token: "compiled:artifact", artifactType: "BlueprintDefinition" }],
       policy: { requiresValidation: true },
@@ -102,33 +109,23 @@ export function compilerBlueprint(): BlueprintArtifact {
     cells: {
       // `transform`: tier-1 source artifact. Also stands in as the presentation root:
       // today's `composeCellProgram` always requires exactly one view-bearing root, even for
-      // a headless compiler graph. That view is otherwise inert here. `start` is an explicit
-      // bootstrap trigger passed as `runLoweringBlueprint`'s `bootstrapEvent`: standing
-      // derivations only settle in response to a dispatched event, never from seeded state
-      // alone — confirmed empirically against `runTransition`'s zero-events path, which only
-      // seeds the reaction baseline and leaves `compute` derivations unresolved.
+      // a headless compiler graph. That view is otherwise inert here.
       "agent-tier": {
         id: "agent-tier",
         view: { capability: "workflow:compiler-root" },
-        outputs: [{ token: "agent-data:findings" }],
-        behavior: {
-          events: {
-            start: [{ do: "assign", target: "agentData.findings", args: { from: "agentData.findings" } }],
-          },
-        },
       },
       // `transform`: findings -> presentation rows (pure JSONata compute Cell — the same
       // shape as `positions` in the portfolio-tracker sample).
       "transform-rows": {
         id: "transform-rows",
         view: { capability: "workflow:transform-rows" },
-        inputs: [{ token: "agent-data:findings" }],
-        outputs: [{ token: "presentation:rows" }],
+        inputs: [{ token: "agentData.findings", as: "findings" }],
+        outputs: [{ token: "presentation:rows", from: "computed.presentation.rows" }],
         compute: [
           {
             id: "findings-to-rows",
             expression:
-              "agentData.findings.{ 'id': id, 'claim': claim, 'source': sourceUrl, 'confidenceLabel': confidence >= 0.8 ? 'high' : confidence >= 0.5 ? 'medium' : 'low' }",
+              "inputs.findings.{ 'id': id, 'claim': claim, 'source': sourceUrl, 'confidenceLabel': confidence >= 0.8 ? 'high' : confidence >= 0.5 ? 'medium' : 'low' }",
             assign: "presentation.rows",
             dependencies: ["agentData.findings"],
           },
@@ -138,27 +135,39 @@ export function compilerBlueprint(): BlueprintArtifact {
       "transform-summary": {
         id: "transform-summary",
         view: { capability: "workflow:transform-summary" },
-        inputs: [{ token: "agent-data:findings" }],
-        outputs: [{ token: "presentation:summary" }],
+        inputs: [
+          { token: "agentData.findings", as: "findings" },
+          { token: "agentData.riskFlags", as: "riskFlags" },
+        ],
+        outputs: [{ token: "presentation:summary", from: "computed.presentation.summary" }],
         compute: [
           {
             id: "findings-to-summary",
             expression:
-              "{ 'findingCount': $count(agentData.findings), 'riskFlagCount': $count(agentData.riskFlags), 'hasRisk': $count(agentData.riskFlags) > 0 }",
+              "{ 'findingCount': $count(inputs.findings), 'riskFlagCount': $count(inputs.riskFlags), 'hasRisk': $count(inputs.riskFlags) > 0 }",
             assign: "presentation.summary",
             dependencies: ["agentData.findings", "agentData.riskFlags"],
           },
         ],
       },
-      // `approve`: the Kernel's existing `confirm` action verb, human-in-the-loop gate.
+      // `approve`: a resolver-neutral request that the host may route to a human or policy.
       approve: {
         id: "approve",
         view: { capability: "workflow:approve" },
+        events: {
+          approve: { payloadSchema: { type: "object" } },
+          resolved: { payloadSchema: { type: "object" } },
+          rejected: { payloadSchema: { type: "object" } },
+        },
         behavior: {
-          events: {
-            approve: [{ do: "confirm" }],
-            confirmed: [{ do: "assign", target: "compiled.approved", args: { value: true } }],
-            dismissed: [{ do: "assign", target: "compiled.approved", args: { value: false } }],
+          on: {
+            approve: [{
+              do: "request",
+              control: { kind: "decision", responseSchema: { type: "object" } },
+              data: { subject: "compiled-artifact" },
+            }],
+            resolved: [{ do: "assign", target: "compiled.approved", args: { value: true } }],
+            rejected: [{ do: "assign", target: "compiled.approved", args: { value: false } }],
           },
         },
       },
@@ -170,12 +179,17 @@ export function compilerBlueprint(): BlueprintArtifact {
       "emit-blueprint": {
         id: "emit-blueprint",
         view: { capability: "workflow:emit-blueprint" },
-        inputs: [{ token: "presentation:rows" }, { token: "presentation:summary" }],
-        outputs: [{ token: "compiled:artifact" }],
+        inputs: [
+          { token: "presentation:rows", as: "rows" },
+          { token: "presentation:summary", as: "summary" },
+          { token: "agentData.subject", as: "subject" },
+          { token: "compiled.approved", as: "approved" },
+        ],
+        outputs: [{ token: "compiled:artifact", from: "computed.compiled.artifact" }],
         compute: [
           {
             id: "emit-terminal-artifact",
-            expression: `compiled.approved = true ? {
+            expression: `inputs.approved = true ? {
               'id': 'due-diligence-report',
               'kind': 'presentation-blueprint',
               'version': '1',
@@ -185,9 +199,9 @@ export function compilerBlueprint(): BlueprintArtifact {
                 'capabilities': {},
                 'state': {
                   'report': {
-                    'subject': agentData.subject,
-                    'rows': presentation.rows,
-                    'summary': presentation.summary
+                    'subject': inputs.subject,
+                    'rows': inputs.rows,
+                    'summary': inputs.summary
                   }
                 }
               },
@@ -200,7 +214,7 @@ export function compilerBlueprint(): BlueprintArtifact {
               'projections': {
                 'presentation': { 'roots': ['report-view'] }
               }
-            } : compiled.artifact`,
+            } : null`,
             assign: "compiled.artifact",
             dependencies: ["presentation.rows", "presentation.summary", "compiled.approved"],
           },
@@ -210,7 +224,7 @@ export function compilerBlueprint(): BlueprintArtifact {
     projections: {
       presentation: {
         roots: ["agent-tier"],
-        // `behavior.events` handlers only get wired into the dispatchable document tree for
+        // `behavior.on` handlers only get wired into the dispatchable document tree for
         // cells reachable from the presentation root — compute Cells resolve purely through
         // token wiring regardless of tree placement (confirmed by transform-rows/
         // transform-summary above), but a Cell with an event handler (approve) needs an
@@ -235,7 +249,7 @@ export function compilerBlueprint(): BlueprintArtifact {
  * `approve` stands in for the real host-side approval callback (e.g. a human reviewer
  * surfaced through the product UI).
  */
-export async function runLoweringMetaGraph(outcome: ConfirmOutcome = "approved"): Promise<LoweringMetaGraphResult> {
+export async function runLoweringMetaGraph(outcome: ApprovalOutcome = "approved"): Promise<LoweringMetaGraphResult> {
   const blueprint = compilerBlueprint();
 
   // ADR-0045 Phase 4: catch drift between the declared Lowering Cell meta-graph and the
@@ -247,9 +261,12 @@ export async function runLoweringMetaGraph(outcome: ConfirmOutcome = "approved")
 
   const result = await runLoweringBlueprint({
     blueprint,
-    bootstrapEvent: { node: "agent-tier", name: "start" },
     approveEvent: { node: "approve", name: "approve" },
-    approve: async () => outcome,
+    resolveRequest: async (effect) => ({
+      effectId: effect.effectId!,
+      outcome: outcome === "approved" ? "resolved" : "rejected",
+      data: { approved: outcome === "approved" },
+    }),
   });
 
   const compiled = result.state.compiled as Record<string, Json> | undefined;
@@ -267,7 +284,7 @@ export async function runLoweringMetaGraph(outcome: ConfirmOutcome = "approved")
  * Throws if approval was withheld (no artifact to open) or if the emitted artifact
  * fails Blueprint schema validation.
  */
-export async function runDueDiligenceLoweringPipeline(outcome: ConfirmOutcome = "approved"): Promise<BlueprintRuntime> {
+export async function runDueDiligenceLoweringPipeline(outcome: ApprovalOutcome = "approved"): Promise<BlueprintRuntime> {
   const { artifactAfterApproval } = await runLoweringMetaGraph(outcome);
   if (!artifactAfterApproval) {
     throw new Error("Lowering meta-graph did not emit a terminal artifact (approval withheld or denied)");

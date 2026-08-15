@@ -96,7 +96,7 @@ test("shared projection imports resolve package and Blueprint providers", () => 
   assert.equal(typeof semanticViews?.["event-series"], "function");
   assert.equal(typeof semanticViews?.["relationship-set"], "function");
   assert.equal(semanticViews?.["component-data-sections"], undefined);
-  assert.equal(typeof resolveProjectionViews("incident-report-explorer-1a")?.["component-data-sections"], "function");
+  assert.equal(resolveProjectionViews("incident-report-explorer-1a"), undefined);
   assert.deepEqual(Object.keys(resolveProjectionViews("security") ?? {}).sort(), Object.keys(securityComponentViews).sort());
   assert.deepEqual(Object.keys(resolveProjectionViews("software") ?? {}).sort(), Object.keys(softwareComponentViews).sort());
   assert.equal(resolveProjectionViews("provider-authoring-demo"), undefined);
@@ -139,8 +139,8 @@ test("copilot-c2 resolves its editable MCP server before execution", async () =>
   await serviceHost.invoke({
     kind: "invoke",
     node: "copilot-c2-discover-agents",
-    tool: "refreshEnvironment",
-    args: {},
+    control: { tool: "refreshEnvironment" },
+    data: {},
   });
 
   const declaration = (invocation as { declaration: { config: Record<string, unknown> } }).declaration;

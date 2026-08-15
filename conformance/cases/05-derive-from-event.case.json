@@ -1,6 +1,6 @@
 {
-  "name": "derive: an expression over $event is stored",
-  "description": "A derive action evaluates an expression against the event and writes the result (rev 1).",
+  "name": "assign: an expression over $event is stored",
+  "description": "An assign action evaluates its from expression against the event and writes the result (rev 1).",
   "vocabulary": {
     "gik": "0.1",
     "type": "vocabulary",
@@ -8,7 +8,7 @@
       "version": "derive-demo/1.0",
       "expression": "jsonata",
       "namespaces": ["card_data"],
-      "actions": ["assign", "derive", "invoke", "emit", "route", "confirm"],
+      "actions": ["assign", "emit", "invoke", "route", "request"],
       "capabilities": { "widget": { "emits": ["compute"] } }
     }
   },
@@ -21,7 +21,7 @@
         "capability": "widget",
         "id": "w",
         "edges": {
-          "on": { "compute": [{ "do": "derive", "target": "card_data.doubled", "args": { "expr": "$event.n * 2" } }] }
+          "on": { "compute": [{ "do": "assign", "target": "card_data.doubled", "args": { "from": "$event.n * 2" } }] }
         }
       }
     }
@@ -29,7 +29,7 @@
   "steps": [
     {
       "event": { "node": "w", "name": "compute", "payload": { "n": 21 } },
-      "expectPatch": { "rev": 1, "ops": [{ "op": "set", "path": "card_data.doubled", "value": 42 }] }
+      "expectPatch": { "rev": 1, "ops": [{ "op": "set", "path": "card_data.doubled", "value": 42 }], "completedWithinRun": [{ "kind": "assign", "node": "w", "target": "card_data.doubled", "value": 42 }] }
     }
   ]
 }

@@ -8,7 +8,7 @@
       "version": "emit-demo/1.0",
       "expression": "jsonata",
       "namespaces": ["card_data"],
-      "actions": ["assign", "derive", "invoke", "emit", "route", "confirm"],
+      "actions": ["assign", "emit", "invoke", "route", "request"],
       "capabilities": { "control": { "emits": ["press"] } }
     }
   },
@@ -35,7 +35,7 @@
   "steps": [
     {
       "event": { "node": "c", "name": "press" },
-      "expectPatch": { "rev": 1, "ops": [{ "op": "set", "path": "card_data.flow.state", "value": "active" }] }
+      "expectPatch": { "rev": 1, "ops": [{ "op": "set", "path": "card_data.flow.state", "value": "active" }], "completedWithinRun": [{ "kind": "emit", "node": "c", "event": { "node": "c", "name": "go" } }] }
     }
   ]
 }

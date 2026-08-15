@@ -1,5 +1,5 @@
 {
-  "$schema": "../../../schemas/blueprint-test-case.schema.json",
+  "$schema": "../../../packages/evaluators/schemas/blueprint-test-case.schema.json",
   "format": "gik-blueprint-test/1",
   "name": "incident explorer 2 authored semantic composition",
   "blueprintId": "incident-report-explorer-2",
@@ -9,7 +9,7 @@
     {
       "kind": "equals",
       "pointer": "/payload/runtime/externals/projectionViews/semantic/use",
-      "value": ["event-series", "process", "entity-set", "decision", "work-set"]
+      "value": ["narrative"]
     }
   ],
   "materializations": [
@@ -19,8 +19,8 @@
       "assertions": [
         {
           "kind": "placement-children",
-          "parent": "incident-semantic-analyzer",
-          "value": ["incident-verdict", "incident-attack-path", "incident-blast-radius", "incident-timeline", "incident-techniques", "incident-response", "incident-notes"]
+          "parent": "analysis-layout",
+          "value": ["analysis-runner", "analysis-as-on", "report-presentation"]
         }
       ]
     },
@@ -30,8 +30,8 @@
       "assertions": [
         {
           "kind": "placement-children",
-          "parent": "incident-semantic-analyzer",
-          "value": ["incident-verdict", "incident-attack-path", "incident-response", "incident-notes"]
+          "parent": "analysis-layout",
+          "value": ["analysis-runner", "analysis-as-on", "report-presentation"]
         }
       ]
     },
@@ -41,8 +41,8 @@
       "assertions": [
         {
           "kind": "placement-children",
-          "parent": "incident-semantic-analyzer",
-          "value": ["incident-verdict", "incident-attack-path", "incident-blast-radius", "incident-timeline", "incident-techniques", "incident-response", "incident-notes"]
+          "parent": "analysis-layout",
+          "value": ["analysis-runner", "analysis-as-on", "report-presentation"]
         }
       ]
     }

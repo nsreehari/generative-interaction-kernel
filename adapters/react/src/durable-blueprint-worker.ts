@@ -47,8 +47,8 @@ export async function executeNativeBlueprintEffect(options: {
   };
   const returned = options.effect.kind === "invoke"
     ? await orchestrator.invoke?.(options.effect, control)
-    : options.effect.kind === "confirm"
-      ? await orchestrator.confirm?.(options.effect)
+    : options.effect.kind === "request"
+      ? await orchestrator.request?.(options.effect)
       : await orchestrator.route?.(options.effect);
   return returned ?? emitted;
 }

@@ -6,7 +6,7 @@ import { resolveSampleBlueprintSource } from "../catalog/blueprint-catalog";
 const blueprint = resolveSampleBlueprintSource("live-workspace-soc");
 const soc = blueprint.payload.runtime.state.soc;
 const actors = soc.actors;
-const events = blueprint.payload.cells["soc-workspace"].behavior.events;
+const events = blueprint.payload.cells["soc-workspace"].behavior.on;
 
 test("SOC Blueprint keeps the agent authority boundary declarative", () => {
   assert.ok(soc.entities.some((entity) => entity.id === "DC-01" && entity.criticality === "protected"));
@@ -21,5 +21,5 @@ test("SOC workflow keeps exploration as a suggestion-only interaction", () => {
     "replanExploration",
   ]);
   assert.equal(events.suggestExploration[0].do, "invoke");
-  assert.equal(events.authorizeContainment[0].do, "confirm");
+  assert.equal(events.authorizeContainment[0].do, "request");
 });

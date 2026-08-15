@@ -39,7 +39,7 @@ const dirtyDoc = {
     id: "d1",
     edges: {
       read: { value: "nope.title" },
-      on: { hover: [{ do: "invoke", args: { tool: "ghostEffect" } }] },
+      on: { hover: [{ do: "invoke", control: { tool: "ghostEffect" } }] },
       children: [{ capability: "mystery", id: "d2" }],
     },
   },

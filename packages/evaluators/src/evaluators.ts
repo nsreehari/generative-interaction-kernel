@@ -6,6 +6,7 @@ import {
 } from "../../kernel/src/index";
 
 const syncJsonataEvaluator = new SyncJsonataExpressionProvider({ safe: true });
+const fullSyncJsonataEvaluator = new SyncJsonataExpressionProvider();
 const asyncJsonataEvaluator = new JsonataExpressionProvider();
 
 const toPlainJson = (value: Json): Json => JSON.parse(JSON.stringify(value ?? null)) as Json;
@@ -62,6 +63,10 @@ export const executeSyncJsonataStepsOutputSchema = {
 
 export function evalSyncJsonata(expr: string, data: Json, bindings: Record<string, Json> = {}): Json {
   return toPlainJson(syncJsonataEvaluator.eval(expr, data, bindings));
+}
+
+export function evalFullSyncJsonata(expr: string, data: Json, bindings: Record<string, Json> = {}): Json {
+  return toPlainJson(fullSyncJsonataEvaluator.eval(expr, data, bindings));
 }
 
 export function executeSyncJsonataSteps(input: ExecuteSyncJsonataStepsInput): ExecuteSyncJsonataStepsOutput {

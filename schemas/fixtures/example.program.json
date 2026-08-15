@@ -39,7 +39,7 @@
               "on": {
                 "tap": [
                   { "do": "assign", "target": "card_data.status", "args": { "value": "approved" } },
-                  { "do": "invoke", "args": { "tool": "approveOrder" }, "guard": "requires.role = 'lead'" }
+                  { "do": "invoke", "control": { "tool": "approveOrder" }, "guard": "requires.role = 'lead'" }
                 ]
               }
             }

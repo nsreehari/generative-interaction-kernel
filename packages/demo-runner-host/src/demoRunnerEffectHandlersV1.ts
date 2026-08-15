@@ -226,7 +226,7 @@ export function createDemoRunnerEffectHandlersV1(
 
     async selectScenario(ctx) {
       cancelActiveRun();
-      const id = String(ctx.payload.value ?? "");
+      const id = String(ctx.data.value ?? "");
       const scenarios = Array.isArray(ctx.get("runner.scenarios"))
         ? ctx.get("runner.scenarios") as Json[]
         : [];
@@ -249,7 +249,7 @@ export function createDemoRunnerEffectHandlersV1(
 
     async applyNamedContext(ctx) {
       cancelActiveRun();
-      const id = String(ctx.payload.value ?? "");
+      const id = String(ctx.data.value ?? "");
       const namedContexts = ctx.get("runner.namedPresetContexts");
       const namedContext = Array.isArray(namedContexts)
         ? record(namedContexts.find((candidate) => record(candidate).id === id) ?? null)
@@ -270,7 +270,7 @@ export function createDemoRunnerEffectHandlersV1(
 
     async saveExternalContext(ctx) {
       cancelActiveRun();
-      const values = record(ctx.payload.values as Json);
+      const values = record(ctx.data.values as Json);
       await callbacks.setExternalContext(structuredClone(values));
       return {
         outcome: "updated",

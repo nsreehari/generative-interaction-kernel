@@ -23,7 +23,11 @@ export type GraphNodeExecutor = (
   node: ProgramNode,
   inputs: Record<string, Json>,
   event?: GIKEvent,
-) => Promise<GraphNodeExecutionOutcome>;
+) => GraphNodeExecutionOutcome | Promise<GraphNodeExecutionOutcome>;
+
+function isPromiseLike<T>(value: T | Promise<T>): value is Promise<T> {
+  return !!value && typeof value === "object" && typeof (value as { then?: unknown }).then === "function";
+}
 
 const DEFAULT_MAX_NODE_EXECUTIONS = 10_000;
 const DEFAULT_MAX_PUBLICATIONS = 10_000;
@@ -108,6 +112,22 @@ export class ContinuousGraphRuntime {
     values: Record<PortToken, Json>,
     budget: ExecutionBudget = {},
   ): Promise<GraphExecutionResult> {
+    const seeded = this.publishValues(values);
+    return this.run(seeded.publications, seeded.publicationCount, budget);
+  }
+
+  publishSync(
+    values: Record<PortToken, Json>,
+    budget: ExecutionBudget = {},
+  ): GraphExecutionResult {
+    const seeded = this.publishValues(values);
+    return this.runSync(seeded.publications, seeded.publicationCount, budget);
+  }
+
+  private publishValues(values: Record<PortToken, Json>): {
+    publications: Record<PortToken, Json>;
+    publicationCount: number;
+  } {
     const publications: Record<PortToken, Json> = {};
     let publicationCount = 0;
     for (const [token, value] of Object.entries(values)) {
@@ -117,7 +137,16 @@ export class ContinuousGraphRuntime {
       }
     }
 
-    return this.run(publications, publicationCount, budget);
+    return { publications, publicationCount };
+  }
+
+  hydrate(values: Record<PortToken, Json>): void {
+    for (const [token, value] of Object.entries(values)) {
+      this.publishToken(token, value, undefined, this.portMode(token));
+    }
+    for (const node of this.graph.nodes) {
+      this.captureConsumedVersions(node, this.nodes.get(node.id)!);
+    }
   }
 
   async start(budget: ExecutionBudget = {}): Promise<GraphExecutionResult> {
@@ -139,6 +168,18 @@ export class ContinuousGraphRuntime {
   }
 
   async resume(budget: ExecutionBudget = {}): Promise<GraphExecutionResult> {
+    return this.run({}, 0, budget);
+  }
+
+  hasNode(nodeId: string): boolean {
+    return this.graph.nodes.some(({ id }) => id === nodeId);
+  }
+
+  async activate(nodeId: string, budget: ExecutionBudget = {}): Promise<GraphExecutionResult> {
+    if (!this.hasNode(nodeId)) {
+      throw new Error(`Unknown graph node '${nodeId}'`);
+    }
+    this.triggered.add(nodeId);
     return this.run({}, 0, budget);
   }
 
@@ -171,6 +212,35 @@ export class ContinuousGraphRuntime {
     initialPublicationCount: number,
     budget: ExecutionBudget,
   ): Promise<GraphExecutionResult> {
+    const traversal = this.traverse(publications, initialPublicationCount, budget);
+    let step = traversal.next();
+    while (!step.done) {
+      step = traversal.next(await step.value);
+    }
+    return step.value;
+  }
+
+  private runSync(
+    publications: Record<PortToken, Json>,
+    initialPublicationCount: number,
+    budget: ExecutionBudget,
+  ): GraphExecutionResult {
+    const traversal = this.traverse(publications, initialPublicationCount, budget);
+    let step = traversal.next();
+    while (!step.done) {
+      if (isPromiseLike(step.value)) {
+        throw new Error("Synchronous graph execution encountered an asynchronous node");
+      }
+      step = traversal.next(step.value);
+    }
+    return step.value;
+  }
+
+  private *traverse(
+    publications: Record<PortToken, Json>,
+    initialPublicationCount: number,
+    budget: ExecutionBudget,
+  ): Generator<GraphNodeExecutionOutcome | Promise<GraphNodeExecutionOutcome>, GraphExecutionResult, GraphNodeExecutionOutcome> {
     let publicationCount = initialPublicationCount;
     const operations = [] as GraphExecutionResult["operations"];
     const effects = [] as GraphExecutionResult["effects"];
@@ -187,6 +257,7 @@ export class ContinuousGraphRuntime {
         this.lastStatus = [...this.nodes.values()].some(({ status }) => status === "suspended")
           ? "suspended"
           : "quiescent";
+        this.clearSignals();
         return {
           status: this.lastStatus,
           publications,
@@ -219,7 +290,7 @@ export class ContinuousGraphRuntime {
       state.status = "running";
       const inputs = this.readInputs(node);
       this.captureConsumedVersions(node, state);
-      const outcome = await this.evaluateNode(node, inputs, this.eventByNode.get(node.id));
+      const outcome = yield this.evaluateNode(node, inputs, this.eventByNode.get(node.id));
       this.triggered.delete(node.id);
       this.eventByNode.delete(node.id);
       nodeExecutions += 1;
@@ -283,6 +354,12 @@ export class ContinuousGraphRuntime {
     return this.graph.ports?.[token]?.mode ?? "value";
   }
 
+  private clearSignals(): void {
+    for (const [token, state] of this.tokens) {
+      if (this.portMode(token) === "signal") state.status = "absent";
+    }
+  }
+
   private publishToken(token: PortToken, value: Json, producedBy: string | undefined, mode: PortMode): boolean {
     const state = this.ensureToken(token);
     if (mode === "value" && state.status === "available" && jsonEqual(state.value, value)) return false;
@@ -328,38 +405,60 @@ export class ContinuousGraphRuntime {
     }
   }
 
-  private async evaluateNode(
+  private evaluateNode(
     node: ProgramNode,
     inputs: Record<string, Json>,
     event?: GIKEvent,
-  ): Promise<GraphNodeExecutionOutcome> {
+  ): GraphNodeExecutionOutcome | Promise<GraphNodeExecutionOutcome> {
     const bindings = { inputs, event: event?.payload ?? {} };
-    if (node.when && !(await this.expression.eval(node.when, {}, bindings))) return {};
+    const evaluateOperation = (): GraphNodeExecutionOutcome | Promise<GraphNodeExecutionOutcome> => {
     switch (node.operation.kind) {
       case "compute": {
-        const value = await this.expression.eval(node.operation.expression, {}, bindings);
-        const names = Object.keys(node.outputs ?? {});
-        if (names.length === 0) return {};
-        if (names.length === 1) return { outputs: { [names[0]]: value } };
-        return { outputs: requireObject(value, node.id) };
+        const evaluated = this.expression.eval(node.operation.expression, {}, bindings);
+        const toOutcome = (value: Json): GraphNodeExecutionOutcome => {
+          const names = Object.keys(node.outputs ?? {});
+          if (names.length === 0) return {};
+          if (names.length === 1) return { outputs: { [names[0]]: value } };
+          return { outputs: requireObject(value, node.id) };
+        };
+        return isPromiseLike(evaluated) ? evaluated.then(toOutcome) : toOutcome(evaluated);
       }
       case "decision": {
-        for (const branch of node.operation.cases) {
-          if (!(await this.expression.eval(branch.when, {}, bindings))) continue;
-          const outputs: Record<string, Json> = {};
-          for (const [name, expression] of Object.entries(branch.outputs ?? {})) {
-            outputs[name] = await this.expression.eval(expression, {}, bindings);
-          }
-          return { outputs };
-        }
-        return {};
+        const evaluateCase = (index: number): GraphNodeExecutionOutcome | Promise<GraphNodeExecutionOutcome> => {
+          const branch = node.operation.kind === "decision" ? node.operation.cases[index] : undefined;
+          if (!branch) return {};
+          const matched = this.expression.eval(branch.when, {}, bindings);
+          const continueCase = (isMatch: Json): GraphNodeExecutionOutcome | Promise<GraphNodeExecutionOutcome> => {
+            if (!isMatch) return evaluateCase(index + 1);
+            const entries = Object.entries(branch.outputs ?? {});
+            const values = entries.map(([, expression]) => this.expression.eval(expression, {}, bindings));
+            if (values.some(isPromiseLike)) {
+              return Promise.all(values).then((resolved) => ({
+                outputs: Object.fromEntries(entries.map(([name], valueIndex) => [name, resolved[valueIndex]])),
+              }));
+            }
+            const outputs: Record<string, Json> = {};
+            entries.forEach(([name], valueIndex) => {
+              outputs[name] = values[valueIndex] as Json;
+            });
+            return { outputs };
+          };
+          return isPromiseLike(matched) ? matched.then(continueCase) : continueCase(matched);
+        };
+        return evaluateCase(0);
       }
       case "actions":
-      case "invoke": {
+      case "invoke":
+      case "extension": {
         if (!this.executeNode) throw new Error(`Graph node operation '${node.operation.kind}' requires Kernel execution context`);
         return this.executeNode(node, inputs, event);
       }
     }
+    };
+    if (!node.when) return evaluateOperation();
+    const matched = this.expression.eval(node.when, {}, bindings);
+    const continueWhen = (isMatch: Json) => isMatch ? evaluateOperation() : {};
+    return isPromiseLike(matched) ? matched.then(continueWhen) : continueWhen(matched);
   }
 
   private triggerEvent(event: GIKEvent): void {

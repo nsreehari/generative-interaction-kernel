@@ -196,6 +196,11 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 				} catch (error) {
 					if (error instanceof FoundryProxyError && (error.status === 401 || error.status === 403)) {
 						await context.clearCredential?.(credentialRef);
+						throw new UnsatisfiedServiceDependencyError(
+							"Foundry access key was rejected",
+							{ kind: "credential", ref: credentialRef },
+							{ cause: error },
+						);
 					}
 					throw error;
 				}

@@ -21,8 +21,8 @@ test("blueprint authoring registry composes blueprint and recipes from graph out
   const res = await orch.invoke({
     kind: "invoke",
     node: "authoring-node",
-    tool: "authorBlueprintPlan",
-    args: {
+    control: { tool: "authorBlueprintPlan" },
+    data: {
       objective: "portfolio-review",
       surface: "copilot",
       changedSource: "portfolio",
@@ -42,8 +42,8 @@ test("artifact-backed authoring mode proposes the blueprint's concrete recipe ch
   const res = await orch.invoke({
     kind: "invoke",
     node: "authoring-node",
-    tool: "authorBlueprintPlan",
-    args: {
+    control: { tool: "authorBlueprintPlan" },
+    data: {
       objective: "review board",
       surface: "desktop",
       changedSource: "portfolio",

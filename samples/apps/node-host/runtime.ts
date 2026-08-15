@@ -39,10 +39,15 @@ export async function openNodeLaunch(
 export function createRuntimeState(
   runtime: BlueprintRuntime,
   externalContext: Record<string, Json> = {},
+  initialSeed: Record<string, Json> = {},
 ): InMemoryStateModel {
-  const state = new InMemoryStateModel([...Object.keys(runtime.state), "externalContext"]);
+  const runtimeState = runtime.initialState ?? runtime.state;
+  const state = new InMemoryStateModel([
+    ...new Set([...Object.keys(runtimeState), ...Object.keys(initialSeed), "externalContext"]),
+  ]);
   state.apply([
-    ...Object.entries(runtime.state).map(([path, value]) => ({ op: "set" as const, path, value })),
+    ...Object.entries(runtimeState).map(([path, value]) => ({ op: "set" as const, path, value })),
+    ...Object.entries(initialSeed).map(([path, value]) => ({ op: "set" as const, path, value })),
     { op: "set", path: "externalContext", value: structuredClone(externalContext) },
   ]);
   return state;

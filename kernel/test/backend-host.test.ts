@@ -1,5 +1,5 @@
 // The kernel driven as a pure backend service (no UI adapter). This locks in the
-// medium-agnostic claim: a custom Orchestrator whose invoke/confirm/route are
+// medium-agnostic claim: a custom Orchestrator whose invoke/request/route are
 // backend services (payment gateway, approval policy, queue router) drives a full
 // lifecycle cascade without inventing a projection tree. Companion to
 // samples/blueprints/backend-order-processing/blueprint.json.
@@ -32,16 +32,21 @@ const document: ProgramMessage = {
         on: {
           submit: [
             {
-              do: "confirm",
-              args: {
-                message: "Manager approval required",
-                onConfirm: "approve",
+              do: "request",
+              control: {
+                kind: "decision",
+                responseSchema: {
+                  type: "object",
+                  required: ["approved"],
+                  properties: { approved: { type: "boolean" } },
+                },
               },
+              data: { message: "Manager approval required", amount: 129.5 },
             },
           ],
-          approve: [{ do: "invoke", args: { tool: "chargeCard" } }],
+          resolved: [{ do: "invoke", control: { tool: "chargeCard" } }],
           charged: [
-            { do: "route", args: { to: "queue:fulfillment" } },
+            { do: "route", control: { to: "queue:fulfillment" } },
             {
               do: "assign",
               target: "order.fulfillment",
@@ -65,7 +70,7 @@ const document: ProgramMessage = {
         initial: "draft",
         states: {
           draft: { on: { submit: "pending_review" } },
-          pending_review: { on: { approve: "charging", reject: "rejected" } },
+          pending_review: { on: { resolved: "charging", rejected: "rejected" } },
           charging: { on: { charged: "confirmed", declined: "failed" } },
           confirmed: { type: "final" },
           rejected: { type: "final" },
@@ -79,23 +84,18 @@ const document: ProgramMessage = {
 test("backend host: invoke settlement publishes a later lifecycle patch", async () => {
   const routed: Json[] = [];
   const orchestrator: Orchestrator = {
-    async confirm(effect: OrchestratorEffect) {
-      const onConfirm = effect.args.onConfirm;
-      return typeof onConfirm === "string"
-        ? {
-            events: [
-              {
-                node: effect.node,
-                name: onConfirm,
-                payload: effect.payload,
-              } as GIKEvent,
-            ],
-          }
-        : undefined;
+    async request(effect: OrchestratorEffect) {
+      return {
+        settlement: {
+          effectId: effect.effectId!,
+          outcome: "resolved",
+          data: { approved: true, amount: effect.data.amount },
+        },
+      };
     },
     async invoke(effect: OrchestratorEffect) {
-      if (effect.tool !== "chargeCard") return;
-      const amount = (effect.payload?.amount as number | undefined) ?? 0;
+      if (effect.kind !== "invoke" || effect.control.tool !== "chargeCard") return;
+      const amount = (effect.data.amount as number | undefined) ?? 0;
       return {
         ops: [
           {
@@ -112,7 +112,7 @@ test("backend host: invoke settlement publishes a later lifecycle patch", async 
       };
     },
     async route(effect: OrchestratorEffect) {
-      routed.push(effect.to ?? null);
+      if (effect.kind === "route") routed.push(effect.control.to);
     },
   };
 
@@ -156,23 +156,4 @@ test("backend host: invoke settlement publishes a later lifecycle patch", async 
   assert.equal((kernel.state() as any).order.lifecycle.state, "confirmed");
   assert.equal(kernel.hasProjection(), false);
   await assert.rejects(kernel.resolve(), ProjectionUnavailableError);
-});
-test("backend host: document-level reactions run without a projection root", async () => {
-  const reactiveDocument = structuredClone(document);
-  reactiveDocument.payload.reactions = [
-    {
-      id: "order-audit",
-      when: "order.lifecycle.state",
-      run: [
-        { do: "assign", target: "order.observed", args: { from: "$when" } },
-      ],
-    },
-  ];
-  const kernel = new Kernel(manifest as any, reactiveDocument as any);
-  kernel.init();
-  await kernel.syncExternal();
-  assert.equal((kernel.state() as any).order.observed, undefined);
-
-  await kernel.dispatch({ node: "controller", name: "submit" });
-  assert.equal((kernel.state() as any).order.observed, "pending_review");
 });

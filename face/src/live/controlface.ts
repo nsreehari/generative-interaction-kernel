@@ -12,8 +12,10 @@
 //     a detach handle), NOT a JSON tool. It implements `TransportBroker` so SSE plugs into the face.
 
 import {
+  InMemoryStateModel,
   Kernel,
   KernelTransportHost,
+  unwrap,
   type Checkpoint,
   type ExecutableProgramDefinition,
   type Enveloped,
@@ -40,11 +42,13 @@ import {
   compileCellTopology,
   composeCellProgram,
   assembleBlueprint,
+  createCellGraphNodeExecutor,
   admitAdaptiveProgramPatch,
   admitBlueprintPatch,
   applyBlueprintPatch,
   loadBlueprint,
   prepareBlueprintProgram,
+  resolveBlueprintInterfaceOutputs,
   type BlueprintArtifact,
   type BlueprintPatch,
   type BlueprintPatchDecision,
@@ -61,6 +65,7 @@ export interface BlueprintRuntime {
   definition: BlueprintSource;
   vocabulary: Enveloped<ProjectedVocabularyManifest>;
   program: Enveloped<ExecutableProgramDefinition>;
+  initialState: Record<string, Json>;
   state: Record<string, Json>;
   children: Readonly<Record<string, BlueprintRuntime>>;
 }
@@ -116,6 +121,7 @@ export interface ControlFaceOptions {
   serviceHost?: ServiceHost;
   /** The source Blueprint whose structure mode governs this live runtime. */
   blueprint?: BlueprintSource;
+  externalContext?: Record<string, Json>;
 }
 
 function openAssembledBlueprint(
@@ -124,6 +130,7 @@ function openAssembledBlueprint(
 ): BlueprintRuntime {
   const instanceId = options.instanceId ?? source.payload.id;
   const prepared = prepareBlueprintProgram(source, { context: options.context });
+  const { blueprintRunState: _runtimeState, ...state } = prepared.initialState;
   const runtime: BlueprintRuntime = {
     blueprintId: prepared.blueprint.payload.id,
     instanceId,
@@ -131,7 +138,8 @@ function openAssembledBlueprint(
     definition: prepared.blueprint,
     vocabulary: prepared.vocabulary,
     program: prepared.program,
-    state: prepared.initialState,
+    initialState: structuredClone(prepared.initialState),
+    state,
     children: {},
   };
 
@@ -171,6 +179,9 @@ export class ControlFace implements TransportBroker {
   private readonly broker: KernelTransportHost;
   private readonly serviceHost?: ServiceHost;
   private readonly treeListeners = new Set<(tree: ResolvedNode) => void | Promise<void>>();
+  private readonly outputListeners = new Set<(outputs: Record<string, Json>) => void | Promise<void>>();
+  private readonly unsubscribeOutputPatches: () => void;
+  private outputSignature = "{}";
   private blueprint?: BlueprintSource;
 
   constructor(
@@ -179,16 +190,21 @@ export class ControlFace implements TransportBroker {
     options: ControlFaceOptions = {}
   ) {
     this.blueprint = options.blueprint ? structuredClone(options.blueprint) : undefined;
+    const state = options.state ?? new InMemoryStateModel(unwrap(vocabulary).namespaces ?? []);
     this.kernel = new Kernel(vocabulary, program, {
-      ...(options.state ? { state: options.state } : {}),
+      state,
       ...(options.orchestrator ? { orchestrator: options.orchestrator } : {}),
       ...(options.sink ? { sink: options.sink } : {}),
+      ...(this.blueprint
+        ? { executeGraphExtension: createCellGraphNodeExecutor(state) }
+        : {}),
       ...(this.blueprint
         ? { admitProgramPatch: (patch: ProgramPatch) => admitAdaptiveProgramPatch(this.blueprint!, patch) }
         : {}),
     });
     this.broker = new KernelTransportHost(vocabulary, program, this.kernel);
     this.serviceHost = options.serviceHost;
+    this.unsubscribeOutputPatches = this.kernel.subscribePatches(() => this.notifyOutputListeners());
   }
 
   /**
@@ -208,6 +224,17 @@ export class ControlFace implements TransportBroker {
 
   getState(): Record<string, Json> {
     return getState(this.kernel);
+  }
+
+  getOutputs(): Record<string, Json> {
+    return this.blueprint
+      ? resolveBlueprintInterfaceOutputs(this.blueprint, this.kernel.execution().tokens)
+      : {};
+  }
+
+  subscribeOutputs(listener: (outputs: Record<string, Json>) => void | Promise<void>): () => void {
+    this.outputListeners.add(listener);
+    return () => this.outputListeners.delete(listener);
   }
 
   getTree(): Promise<ResolvedNode> {
@@ -263,8 +290,15 @@ export class ControlFace implements TransportBroker {
     return patch;
   }
 
-  whenIdle(): Promise<void> {
-    return this.broker.whenIdle();
+  async whenIdle(): Promise<void> {
+    await this.broker.whenIdle();
+    await this.notifyTreeListeners();
+  }
+
+  async syncExternal(): Promise<Patch> {
+    const patch = await this.kernel.syncExternal();
+    await this.notifyTreeListeners();
+    return patch;
   }
 
   effectsSince(rev: number): RecordedEffect[] {
@@ -291,7 +325,18 @@ export class ControlFace implements TransportBroker {
   /** Detach every connection (the caller owns any server lifecycle). */
   stop(): void {
     this.treeListeners.clear();
+    this.outputListeners.clear();
+    this.unsubscribeOutputPatches();
     this.broker.stop();
+  }
+
+  private async notifyOutputListeners(): Promise<void> {
+    if (this.outputListeners.size === 0) return;
+    const outputs = this.getOutputs();
+    const signature = JSON.stringify(outputs);
+    if (signature === this.outputSignature) return;
+    this.outputSignature = signature;
+    await Promise.all([...this.outputListeners].map((listener) => listener(structuredClone(outputs))));
   }
 
   private async notifyTreeListeners(): Promise<void> {

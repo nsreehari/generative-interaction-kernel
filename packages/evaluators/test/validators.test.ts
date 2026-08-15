@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { runDeclarativeValidators } from "../src";
+import { runDeclarativeValidators, validateLoweringRecipe, validateRecipe, validateTier } from "../src";
 
 test("runDeclarativeValidators accepts legacy jsonata forms and explicit special validators", () => {
   const report = runDeclarativeValidators([
@@ -135,4 +135,213 @@ test("runDeclarativeValidators rejects jsonata-expression candidates that are no
 
   assert.equal(report.ok, false);
   assert.deepEqual(report.errors, [{ detail: "expression invalid: expected string" }]);
+});
+
+test("runDeclarativeValidators validates Blueprint Cell schema and evaluation invariants", () => {
+  const report = runDeclarativeValidators([{ kind: "blueprint-cell" }], {
+    id: "summary",
+    inputs: [{ token: "positions" }],
+    compute: [{
+      id: "total",
+      expression: "$sum(inputs.positions.value)",
+      assign: "total",
+      dependencies: ["inputs.positions"],
+    }],
+    outputs: [{ token: "summary", from: "missing" }],
+  });
+
+  assert.equal(report.ok, false);
+  assert.ok(report.errors.some(({ detail }) => detail.includes("references a value not produced by compute")));
+});
+
+test("Cell compute accepts full value expressions and outputs may use implicit bindings", () => {
+  const report = runDeclarativeValidators([{ kind: "blueprint-cell" }], {
+    id: "positions",
+    compute: [{
+      id: "positions",
+      expression: "$each(inputs, function($value, $key){{$key:$value}})",
+      assign: "positions",
+    }],
+    outputs: [{ token: "position:$TICKER" }],
+  });
+
+  assert.equal(report.ok, true);
+});
+
+test("runDeclarativeValidators rejects reactions in Blueprint Cells", () => {
+  const report = runDeclarativeValidators([{ kind: "blueprint-cell" }], {
+    id: "legacy-reaction",
+    behavior: {
+      reactions: [{ when: "state.changed", run: [{ do: "invoke" }] }],
+    },
+  });
+
+  assert.equal(report.ok, false);
+  assert.ok(report.errors.some(({ detail }) => detail.includes("additional properties")));
+});
+
+test("runDeclarativeValidators validates every Cell in a Blueprint", () => {
+  const report = runDeclarativeValidators([{ kind: "blueprint" }], {
+    gik: "0.1",
+    type: "blueprint",
+    payload: {
+      id: "invalid-cell",
+      kind: "test",
+      version: "1",
+      tiers: [{ id: "runtime", kind: "runtime-program" }],
+      recipes: [],
+      runtime: {},
+      cells: {
+        summary: {
+          id: "summary",
+          compute: [{ id: "total", expression: "inputs.value", assign: "total", dependencies: ["future"] }],
+          outputs: [{ token: "summary", from: "missing" }],
+        },
+      },
+    },
+  });
+
+  assert.equal(report.ok, false);
+  assert.ok(report.errors.some(({ detail }) => detail.includes("references a value not produced by compute")));
+});
+
+test("validateTier validates a standalone strict tier definition", () => {
+  assert.equal(validateTier({ id: "semantic", kind: "incident-semantic-model" }).ok, true);
+
+  const report = validateTier({ id: "semantic", kind: "incident-semantic-model", unknown: true });
+  assert.equal(report.ok, false);
+  assert.ok(report.errors.some(({ detail }) => detail.includes("additional properties")));
+});
+
+test("validateLoweringRecipe validates standalone recipe-local semantics", () => {
+  const report = validateLoweringRecipe({
+    id: "semantic-to-runtime",
+    from: "semantic",
+    to: "runtime",
+    representations: [
+      { id: "desktop", when: "externalContext.view = 'desktop'" },
+      { id: "mobile", extends: "missing" },
+    ],
+    fallback: "unknown",
+  });
+
+  assert.equal(report.ok, false);
+  assert.ok(report.errors.some(({ detail }) => detail.includes("fallback 'unknown'")));
+  assert.ok(report.errors.some(({ detail }) => detail.includes("extends unknown representation 'missing'")));
+});
+
+test("validateLoweringRecipe validates representation decorator select expressions", () => {
+  const valid = validateLoweringRecipe({
+    id: "semantic-to-runtime",
+    from: "semantic",
+    to: "runtime",
+    representations: [{
+      id: "desktop",
+      decorators: [{
+        select: "cells[sources].id",
+        before: { capability: "fluent:spinner" },
+      }],
+    }],
+    fallback: "desktop",
+  });
+  assert.equal(valid.ok, true);
+
+  const invalid = validateLoweringRecipe({
+    id: "semantic-to-runtime",
+    from: "semantic",
+    to: "runtime",
+    representations: [{
+      id: "desktop",
+      decorators: [{
+        select: "cells[",
+        before: { capability: "fluent:spinner" },
+      }],
+    }],
+    fallback: "desktop",
+  });
+  assert.equal(invalid.ok, false);
+  assert.ok(invalid.errors.some(({ detail }) => detail.includes("invalid decorator select expression")));
+});
+
+test("Blueprint Cell validation rejects invalid decoration expressions and nested decorations", () => {
+  const invalidExpression = runDeclarativeValidators([{ kind: "blueprint-cell" }], {
+    id: "remote",
+    view: {
+      capability: "ui:text",
+      before: [{ capability: "fluent:spinner", visibility: "systemInputs[" }],
+    },
+  });
+  assert.equal(invalidExpression.ok, false);
+  assert.ok(invalidExpression.errors.some(({ detail }) =>
+    detail.includes("Cell 'remote'") && !detail.includes("[object Object]")));
+
+  const nested = runDeclarativeValidators([{ kind: "blueprint-cell" }], {
+    id: "remote",
+    view: {
+      capability: "ui:text",
+      before: [{
+        capability: "fluent:spinner",
+        before: [{ capability: "ui:text" }],
+      }],
+    },
+  });
+  assert.equal(nested.ok, false);
+  assert.ok(nested.errors.some(({ detail }) => detail.includes("additional properties")));
+});
+
+test("standalone recipe validation does not own Blueprint tier references", () => {
+  const report = validateRecipe({
+    id: "semantic-to-runtime",
+    from: "not-in-a-blueprint",
+    to: "also-not-in-a-blueprint",
+    patch: [{ op: "removeCell", cellId: "legacy" }],
+  });
+
+  assert.equal(report.ok, true);
+});
+
+test("validateLoweringRecipe rejects unknown recipe fields and mixed variants", () => {
+  const unknown = validateLoweringRecipe({
+    id: "semantic-to-runtime",
+    from: "semantic",
+    to: "runtime",
+    patch: [{ op: "removeCell", cellId: "legacy" }],
+    executor: "parallel-engine",
+  });
+  assert.equal(unknown.ok, false);
+  assert.ok(unknown.errors.some(({ detail }) => detail.includes("additional properties")));
+
+  const mixed = validateLoweringRecipe({
+    id: "semantic-to-runtime",
+    from: "semantic",
+    to: "runtime",
+    patch: [{ op: "removeCell", cellId: "legacy" }],
+    representations: [{ id: "desktop" }],
+    fallback: "desktop",
+  });
+  assert.equal(mixed.ok, false);
+});
+
+test("Blueprint validation composes recipe-local semantic validation", () => {
+  const report = runDeclarativeValidators([{ kind: "blueprint" }], {
+    gik: "0.1",
+    type: "blueprint",
+    payload: {
+      id: "invalid-recipe",
+      kind: "test",
+      version: "1",
+      tiers: [{ id: "semantic", kind: "semantic" }, { id: "runtime", kind: "runtime-program" }],
+      recipes: [{
+        id: "semantic-to-runtime",
+        from: "semantic",
+        to: "runtime",
+        representations: [{ id: "desktop", extends: "desktop" }],
+        fallback: "desktop",
+      }],
+      runtime: {},
+    },
+  });
+
+  assert.equal(report.ok, false);
+  assert.ok(report.errors.some(({ detail }) => detail.includes("inheritance contains a cycle")));
 });

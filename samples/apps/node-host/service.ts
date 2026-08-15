@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { createAgentFaceDispatcher } from "@gik/agentface";
 import {
   HostedBlueprintReconciler,
+  HOSTED_BLUEPRINT_OUTPUT_EVENT,
   materializeBlueprint,
   parseBlueprintReference,
   type BlueprintArtifact,
@@ -61,6 +62,7 @@ export async function createNodeHost(options: NodeHostOptions = {}): Promise<Nod
     profile.blueprint,
     environment,
     registry,
+    externalContext,
     externalContext,
   );
   const face = root.controlface;
@@ -126,13 +128,14 @@ async function createComposedNodeRuntime(
   environment: Readonly<Record<string, string | undefined>>,
   registry: BlueprintHostRegistry,
   externalContext: Record<string, Json>,
+  initialSeed: Record<string, Json> = {},
 ): Promise<ComposedNodeRuntime> {
-  const state = createRuntimeState(runtime, externalContext);
+  const state = createRuntimeState(runtime, externalContext, initialSeed);
   const nativeServices = resolveSampleNativeServices(blueprintId);
   const serviceHost = createNodeBlueprintServiceHost(runtime, state, environment, nativeServices, registry);
   const native = resolveSampleNativeEffects(blueprintId);
   const fallback = createEffectDispatcher(state, native?.default ?? {});
-  const serviceOrchestrator = nodeServiceOrchestrator(runtime, serviceHost);
+  const serviceOrchestrator = nodeServiceOrchestrator(runtime, serviceHost, state);
   const wrapOrchestrator = native?.wrapOrchestrator?.(serviceOrchestrator) ?? serviceOrchestrator;
   const orchestrator = wrapOrchestrator(fallback, state);
   const controlface = new ControlFace(runtime.vocabulary, runtime.program, {
@@ -140,7 +143,9 @@ async function createComposedNodeRuntime(
     orchestrator,
     serviceHost,
     blueprint: runtime.definition,
+    externalContext,
   });
+  await controlface.syncExternal();
   const reconciler = new HostedBlueprintReconciler(
     blueprintId,
     instanceId,
@@ -148,14 +153,24 @@ async function createComposedNodeRuntime(
     {
       async mount(hosted) {
         const childRuntime = openNodeBlueprint(hosted.definition.blueprint, hosted.inputs, environment);
-        return createComposedNodeRuntime(
+        const child = await createComposedNodeRuntime(
           hosted.definition.blueprint.payload.id,
           childRuntime,
           hosted.instanceId,
           environment,
           registry,
           hosted.inputs,
+          hosted.inputs,
         );
+        child.controlface.subscribeOutputs((outputs) => {
+          if (Object.keys(outputs).length === 0) return;
+          void controlface.emit({
+            node: hosted.node.id,
+            name: HOSTED_BLUEPRINT_OUTPUT_EVENT,
+            payload: outputs,
+          });
+        });
+        return child;
       },
       async unmount(child) {
         await child.stop();

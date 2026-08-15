@@ -91,9 +91,7 @@ function visitNodes(node: DocNode, visit: (current: DocNode) => void): void {
 }
 
 function actionsIn(node: DocNode): Action[] {
-  const eventActions = Object.values(node.edges?.on ?? {}).flat();
-  const reactionActions = (node.edges?.react ?? []).flatMap((reaction) => reaction.run);
-  return [...eventActions, ...reactionActions];
+  return Object.values(node.edges?.on ?? {}).flat();
 }
 
 function componentContract(capability: string) {
@@ -144,7 +142,7 @@ export function createGikComponentDeclarativeBundle(
     names.add(name);
     imports.set(layer, names);
     for (const action of actionsIn(node)) {
-      const tool = action.do === "invoke" ? action.args?.tool : undefined;
+      const tool = action.do === "invoke" ? action.control.tool : undefined;
       if (typeof tool === "string") requiredEffects.add(tool);
     }
   });

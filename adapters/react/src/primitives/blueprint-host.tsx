@@ -1,6 +1,7 @@
 import React from "react";
 import {
   materializeBlueprint,
+  HOSTED_BLUEPRINT_OUTPUT_EVENT,
   prepareBlueprintProgram,
   validateBlueprintArtifact,
   type BlueprintArtifact,
@@ -200,7 +201,7 @@ export function createHostedBlueprintProjection({
   renderHostedBlueprint?: (props: BlueprintHostProps) => React.ReactElement;
   renderHostedBlueprintLoading?: () => React.ReactNode;
 }): ProjectionView {
-  return function HostedBlueprintProjection({ node }) {
+  return function HostedBlueprintProjection({ node, emit }) {
     const declaration = readHostedBlueprintDeclaration(node.props.hostedBlueprint);
     const [resolution, setResolution] = React.useState<HostedBlueprintDefinition<BundleNative> | null>(null);
     const [error, setError] = React.useState<Error | null>(null);
@@ -256,9 +257,14 @@ export function createHostedBlueprintProjection({
       resolveLeavesProvider,
       contexts,
       fileServices,
-      externalContext: inputs,
+      context: { initialSeed: inputs },
       primaryInstanceId: `${parentInstanceId}/cells/${node.id}`,
-      onTransition,
+      onTransition: (event, result) => {
+        onTransition?.(event, result);
+        if (result.outputs && Object.keys(result.outputs).length > 0) {
+          void emit(HOSTED_BLUEPRINT_OUTPUT_EVENT, result.outputs);
+        }
+      },
       renderHostedBlueprintLoading,
     };
     return renderHostedBlueprint

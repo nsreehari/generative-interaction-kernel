@@ -302,7 +302,6 @@ export function createDurableRuntime(options: DurableRuntimeOptions) {
               attempt: message.attempt,
               error: reason,
             }) ?? [];
-            if (events.length === 0) throw new Error("Terminal effect failure reporter produced no journal event.");
             for (const event of events) appended.push(await provider.appendJournal({ ...request, entry: event }));
           } catch (reportError) {
             const reportReason = reportError instanceof Error ? reportError.message : String(reportError);

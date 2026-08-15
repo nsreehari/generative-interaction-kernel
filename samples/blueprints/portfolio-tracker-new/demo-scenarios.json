@@ -1,0 +1,50 @@
+{
+  "contextFormSpec": {
+    "fields": {
+      "properties": {
+        "intelligence-model": {
+          "type": "string",
+          "title": "Intelligence model",
+          "enum": ["simple", "mock", "semantic"],
+          "enumNames": ["Simple", "Mock", "Semantic"]
+        },
+        "view": {
+          "type": "string",
+          "title": "View",
+          "enum": ["desktop", "mobile"],
+          "enumNames": ["Desktop", "Mobile"]
+        }
+      },
+      "required": ["intelligence-model", "view"]
+    },
+    "saveLabel": "Apply context",
+    "discardLabel": "Discard"
+  },
+  "namedPresetContexts": {
+    "simple-desktop": {
+      "label": "Simple intelligence, desktop",
+      "context": { "intelligence-model": "simple", "view": "desktop" }
+    },
+    "simple-mobile": {
+      "label": "Simple intelligence, mobile",
+      "context": { "intelligence-model": "simple", "view": "mobile" }
+    },
+    "mock-desktop": {
+      "label": "Mock intelligence, desktop",
+      "context": { "intelligence-model": "mock", "view": "desktop" }
+    },
+    "mock-mobile": {
+      "label": "Mock intelligence, mobile",
+      "context": { "intelligence-model": "mock", "view": "mobile" }
+    },
+    "semantic-desktop": {
+      "label": "Semantic intelligence, desktop",
+      "context": { "intelligence-model": "semantic", "view": "desktop" }
+    },
+    "semantic-mobile": {
+      "label": "Semantic intelligence, mobile",
+      "context": { "intelligence-model": "semantic", "view": "mobile" }
+    }
+  },
+  "scenarios": []
+}

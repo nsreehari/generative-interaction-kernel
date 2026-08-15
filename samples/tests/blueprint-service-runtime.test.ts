@@ -36,10 +36,14 @@ const backend = {
       controller: {
         id: "controller",
         kind: "backend-controller",
+        events: {
+          put: { payloadSchema: { type: "object" } },
+          get: { payloadSchema: { type: "object" } },
+        },
         behavior: {
-          events: {
-            put: [{ do: "invoke", args: { tool: "storageWrite" } }],
-            get: [{ do: "invoke", args: { tool: "storageRead" } }],
+          on: {
+            put: [{ do: "invoke", control: { tool: "storageWrite" } }],
+            get: [{ do: "invoke", control: { tool: "storageRead" } }],
           },
         },
       },
@@ -53,13 +57,13 @@ const backend = {
           storageWrite: {
             operation: "write",
             contract: "storage-kv/v1",
-            request: { transform: { kind: "jsonata", expr: "{'key':effect.payload.key,'value':effect.payload.value}" } },
+            request: { transform: { kind: "jsonata", expr: "{'key':effect.data.key,'value':effect.data.value}" } },
             settlement: { transform: { kind: "jsonata", expr: "{'outcome':'completed'}" } },
           },
           storageRead: {
             operation: "read",
             contract: "storage-kv/v1",
-            request: { transform: { kind: "jsonata", expr: "{'key':effect.payload.key}" } },
+            request: { transform: { kind: "jsonata", expr: "{'key':effect.data.key}" } },
             settlement: { transform: { kind: "jsonata", expr: "{'ops':[{'op':'set','path':'backend.result','value':response}] }" } },
           },
         },
@@ -123,39 +127,19 @@ describe("Blueprint-backed services", () => {
       expression: new JsonataExpressionProvider({ safe: true }),
     });
 
-    await host.invoke({ kind: "invoke", node: "consumer", tool: "putAsset", args: { key: "asset:a", value: { title: "A" } } });
-    expect(await host.invoke({ kind: "invoke", node: "consumer", tool: "getAsset", args: { key: "asset:a" } })).toEqual({
+    await host.invoke({ kind: "invoke", node: "consumer", control: { tool: "putAsset" }, data: { key: "asset:a", value: { title: "A" } } });
+    expect(await host.invoke({ kind: "invoke", node: "consumer", control: { tool: "getAsset" }, data: { key: "asset:a" } })).toEqual({
       ops: [{ op: "set", path: "consumer.result", value: { title: "A" } }],
     });
     expect(await host.validateService("assets")).toEqual({ ok: true });
   });
 
-  it("persists a real analyzer result through the incident backend Blueprint", async () => {
+  it("persists a real analyzer result through the incident asset Blueprint", async () => {
     const api = createMemoryStorageApi();
     const ref = createMemoryStorageRef("incident-analyzer-blueprint-service-test");
-    const runtime = openSampleBlueprint("incident-report-explorer-2", {
-      sourceId: "source-a",
-      analyzerId: "incident-semantic",
-      variant: "source-faithful-v1",
-    });
-    const state = new InMemoryStateModel(["incident2", "externalContext"]);
-    state.apply([
-      { op: "set", path: "incident2", value: runtime.state.incident2 },
-      {
-        op: "set",
-        path: "externalContext",
-        value: {
-          sourceId: "source-a",
-          analyzerId: "incident-semantic",
-          variant: "source-faithful-v1",
-        },
-      },
-      {
-        op: "set",
-        path: "incident2.model",
-        value: { summary: "Persisted by the backend Blueprint" },
-      },
-    ]);
+    const runtime = openSampleBlueprint("incident-analysis-assets");
+    const state = new InMemoryStateModel(Object.keys(runtime.state));
+    state.apply(Object.entries(runtime.state).map(([path, value]) => ({ op: "set" as const, path, value })));
     const host = createBlueprintServiceHost(runtime, state, {
       durableStorageConnections: {
         "incident-runtime-cache": { api, ref },
@@ -165,7 +149,12 @@ describe("Blueprint-backed services", () => {
     await host.invoke({
       kind: "invoke",
       node: "incident-cache",
-      tool: "persistIncidentAnalysis",
+      control: { tool: "writeIncidentAsset" },
+      data: {
+        source_report_key: "source-a",
+        analysis_key: "incident-semantic/source-faithful-v1",
+        cached_analysis_envelope: { summary: "Persisted by the backend Blueprint" },
+      },
     });
 
     expect(await api.dispatch({
@@ -178,11 +167,6 @@ describe("Blueprint-backed services", () => {
       capability: "kv",
       operation: "read",
       args: ["asset:source-a/incident-semantic/source-faithful-v1"],
-    })).toMatchObject({
-      sourceId: "source-a",
-      analyzerId: "incident-semantic",
-      variant: "source-faithful-v1",
-      value: { summary: "Persisted by the backend Blueprint" },
-    });
+    })).toEqual({ summary: "Persisted by the backend Blueprint" });
   });
 });

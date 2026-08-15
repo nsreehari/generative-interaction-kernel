@@ -1,0 +1,223 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://genui.dev/gik/0.1/patch.schema.json",
+  "title": "GIK patch message",
+  "description": "Revisioned state deltas and optional executable-program patches emitted by the kernel.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["gik", "type", "payload"],
+  "properties": {
+    "gik": { "const": "0.1" },
+    "type": { "const": "patch" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rev", "ops"],
+      "properties": {
+        "rev": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Monotonic revision for ordering and optimistic concurrency."
+        },
+        "ops": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/op" }
+        },
+        "completedWithinRun": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/completedWithinRun" }
+        },
+        "program": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/programPatchOperation" }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "completedWithinRun": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "node", "target", "value"],
+          "properties": {
+            "kind": { "const": "assign" },
+            "node": { "type": "string" },
+            "target": { "type": "string" },
+            "value": {}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "node", "event"],
+          "properties": {
+            "kind": { "const": "emit" },
+            "node": { "type": "string" },
+            "event": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["node", "name"],
+              "properties": {
+                "node": { "type": "string" },
+                "name": { "type": "string" },
+                "payload": { "type": "object" },
+                "actorId": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "nsPath": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)*$"
+    },
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_-]*$"
+    },
+    "graphMutation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "node"],
+          "properties": {
+            "op": { "const": "addNode" },
+            "node": { "$ref": "https://genui.dev/gik/0.1/program.schema.json#/definitions/programNode" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "nodeId"],
+          "properties": {
+            "op": { "const": "removeNode" },
+            "nodeId": { "$ref": "#/definitions/identifier" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "nodeId", "node"],
+          "properties": {
+            "op": { "const": "replaceNode" },
+            "nodeId": { "$ref": "#/definitions/identifier" },
+            "node": { "$ref": "https://genui.dev/gik/0.1/program.schema.json#/definitions/programNode" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "token"],
+          "properties": {
+            "op": { "const": "addPort" },
+            "token": { "$ref": "https://genui.dev/gik/0.1/program.schema.json#/definitions/portToken" },
+            "definition": { "$ref": "https://genui.dev/gik/0.1/program.schema.json#/definitions/portDefinition" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "token"],
+          "properties": {
+            "op": { "const": "removePort" },
+            "token": { "$ref": "https://genui.dev/gik/0.1/program.schema.json#/definitions/portToken" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "token", "definition"],
+          "properties": {
+            "op": { "const": "updatePort" },
+            "token": { "$ref": "https://genui.dev/gik/0.1/program.schema.json#/definitions/portToken" },
+            "definition": { "$ref": "https://genui.dev/gik/0.1/program.schema.json#/definitions/portDefinition" }
+          }
+        }
+      ]
+    },
+    "programPatchOperation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "mutations"],
+          "properties": {
+            "op": { "const": "mutateGraph" },
+            "mutations": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/graphMutation" } }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "graph"],
+          "properties": {
+            "op": { "const": "setGraph" },
+            "graph": { "$ref": "https://genui.dev/gik/0.1/program.schema.json#/definitions/programGraph" }
+          }
+        },
+        { "type": "object", "additionalProperties": false, "required": ["op"], "properties": { "op": { "const": "removeGraph" } } },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "root"],
+          "properties": {
+            "op": { "const": "setRoot" },
+            "root": { "$ref": "https://genui.dev/gik/0.1/program.schema.json#/definitions/node" }
+          }
+        },
+        { "type": "object", "additionalProperties": false, "required": ["op"], "properties": { "op": { "const": "removeRoot" } } },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "handler"],
+          "properties": {
+            "op": { "const": "upsertHandler" },
+            "handler": { "$ref": "https://genui.dev/gik/0.1/program.schema.json#/definitions/runtimeHandler" }
+          }
+        },
+        { "type": "object", "additionalProperties": false, "required": ["op", "id"], "properties": { "op": { "const": "removeHandler" }, "id": { "$ref": "#/definitions/identifier" } } },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "machine"],
+          "properties": {
+            "op": { "const": "upsertMachine" },
+            "machine": { "$ref": "https://genui.dev/gik/0.1/program.schema.json#/definitions/machine" }
+          }
+        },
+        { "type": "object", "additionalProperties": false, "required": ["op", "id"], "properties": { "op": { "const": "removeMachine" }, "id": { "$ref": "#/definitions/identifier" } } },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "derivation"],
+          "properties": {
+            "op": { "const": "upsertDerivation" },
+            "derivation": { "$ref": "https://genui.dev/gik/0.1/program.schema.json#/definitions/derivation" }
+          }
+        },
+        { "type": "object", "additionalProperties": false, "required": ["op", "id"], "properties": { "op": { "const": "removeDerivation" }, "id": { "$ref": "#/definitions/identifier" } } }
+      ]
+    },
+    "op": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "path"],
+      "properties": {
+        "op": { "enum": ["set", "merge", "remove"] },
+        "path": { "$ref": "#/definitions/nsPath" },
+        "value": {}
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "op": { "enum": ["set", "merge"] } } },
+          "then": { "required": ["value"] }
+        }
+      ]
+    }
+  }
+}

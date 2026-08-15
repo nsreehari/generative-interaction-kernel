@@ -20,7 +20,13 @@
     "runtime": {
       "expression": "jsonata",
       "namespaces": ["incidentAssets"],
-      "actions": ["invoke"],
+      "actions": [
+        "assign",
+        "emit",
+        "invoke",
+        "route",
+        "request"
+      ],
       "state": { "incidentAssets": { "result": null, "runtimeAssetKeys": [] } }
     },
     "cells": {
@@ -28,17 +34,139 @@
         "id": "asset-controller",
         "kind": "incident-asset-backend",
         "behavior": {
-          "events": {
-            "list-sources": [{ "do": "invoke", "args": { "tool": "readSourceIndex" } }],
-            "get-source": [{ "do": "invoke", "args": { "tool": "readIncidentSource" } }],
-            "list-assets": [{ "do": "invoke", "args": { "tool": "listRuntimeAssets" } }],
-            "list-seed-assets": [{ "do": "invoke", "args": { "tool": "listSeedAssets" } }],
-            "get-asset": [{ "do": "invoke", "args": { "tool": "readRuntimeAsset" } }],
-            "get-seed-asset": [{ "do": "invoke", "args": { "tool": "readSeedAsset" } }],
-            "put-asset": [{ "do": "invoke", "args": { "tool": "writeIncidentAsset" } }],
-            "delete-asset": [{ "do": "invoke", "args": { "tool": "deleteIncidentAsset" } }],
-            "clear-assets": [{ "do": "invoke", "args": { "tool": "listAssetsToClear" } }],
-            "delete-storage-key": [{ "do": "invoke", "args": { "tool": "deleteStorageKey" } }]
+          "on": {
+            "list-sources": [
+              {
+                "do": "invoke",
+                "control": {
+                  "tool": "readSourceIndex"
+                }
+              }
+            ],
+            "get-source": [
+              {
+                "do": "invoke",
+                "control": {
+                  "tool": "readIncidentSource"
+                }
+              }
+            ],
+            "list-assets": [
+              {
+                "do": "invoke",
+                "control": {
+                  "tool": "listRuntimeAssets"
+                }
+              }
+            ],
+            "list-seed-assets": [
+              {
+                "do": "invoke",
+                "control": {
+                  "tool": "listSeedAssets"
+                }
+              }
+            ],
+            "get-asset": [
+              {
+                "do": "invoke",
+                "control": {
+                  "tool": "readRuntimeAsset"
+                }
+              }
+            ],
+            "get-seed-asset": [
+              {
+                "do": "invoke",
+                "control": {
+                  "tool": "readSeedAsset"
+                }
+              }
+            ],
+            "put-asset": [
+              {
+                "do": "invoke",
+                "control": {
+                  "tool": "writeIncidentAsset"
+                }
+              }
+            ],
+            "delete-asset": [
+              {
+                "do": "invoke",
+                "control": {
+                  "tool": "deleteIncidentAsset"
+                }
+              }
+            ],
+            "clear-assets": [
+              {
+                "do": "invoke",
+                "control": {
+                  "tool": "listAssetsToClear"
+                }
+              }
+            ],
+            "delete-storage-key": [
+              {
+                "do": "invoke",
+                "control": {
+                  "tool": "deleteStorageKey"
+                }
+              }
+            ]
+          }
+        },
+        "events": {
+          "list-sources": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "get-source": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "list-assets": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "list-seed-assets": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "get-asset": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "get-seed-asset": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "put-asset": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "delete-asset": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "clear-assets": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "delete-storage-key": {
+            "payloadSchema": {
+              "type": "object"
+            }
           }
         }
       }
@@ -57,31 +185,31 @@
           "readIncidentSource": {
             "operation": "read",
             "contract": "storage-kv/v1",
-            "request": { "transform": { "kind": "jsonata", "expr": "{'key':'source:' & effect.payload.sourceId}" } },
+            "request": { "transform": { "kind": "jsonata", "expr": "{'key':'source:' & effect.data.sourceId}" } },
             "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'incidentAssets.result','value':response}]}" } }
           },
           "listRuntimeAssets": {
             "operation": "listKeys",
             "contract": "storage-kv/v1",
-            "request": { "transform": { "kind": "jsonata", "expr": "{'prefix':'asset:' & effect.payload.sourceId & '/' & effect.payload.analyzerId & '/'}" } },
-            "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'incidentAssets.runtimeAssetKeys','value':response}],'events':[{'node':'asset-controller','name':'list-seed-assets','payload':effect.payload}]}" } }
+            "request": { "transform": { "kind": "jsonata", "expr": "{'prefix':'asset:' & effect.data.source_report_key & '/'}" } },
+            "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'incidentAssets.runtimeAssetKeys','value':response}],'events':[{'node':'asset-controller','name':'list-seed-assets','payload':effect.data}]}" } }
           },
           "listSeedAssets": {
             "operation": "listKeys",
             "contract": "storage-kv/v1",
-            "request": { "transform": { "kind": "jsonata", "expr": "{'prefix':'seed-asset:' & effect.payload.sourceId & '/' & effect.payload.analyzerId & '/'}" } },
-            "settlement": { "transform": { "kind": "jsonata", "expr": "($keys := $append(state.incidentAssets.runtimeAssetKeys, response); {'ops':[{'op':'set','path':'incidentAssets.result','value':{'assets':[$keys.($parts := $split($replace($,/^(seed-)?asset:/,''),'/'); {'sourceId':$parts[0],'analyzerId':$parts[1],'variant':$parts[2]})]}}]})" } }
+            "request": { "transform": { "kind": "jsonata", "expr": "{'prefix':'seed-asset:' & effect.data.source_report_key & '/'}" } },
+            "settlement": { "transform": { "kind": "jsonata", "expr": "($keys := $append(state.incidentAssets.runtimeAssetKeys, response); {'ops':[{'op':'set','path':'incidentAssets.result','value':{'assets':[$keys.($parts := $split($replace($,/^(seed-)?asset:/,''),'/'); {'source_report_key':$parts[0],'analysis_key':$join($parts[[1..$count($parts)-1]],'/')})]}}]})" } }
           },
           "readRuntimeAsset": {
             "operation": "read",
             "contract": "storage-kv/v1",
-            "request": { "transform": { "kind": "jsonata", "expr": "{'key':'asset:' & effect.payload.sourceId & '/' & effect.payload.analyzerId & '/' & effect.payload.variant}" } },
-            "settlement": { "transform": { "kind": "jsonata", "expr": "response != null ? {'ops':[{'op':'set','path':'incidentAssets.result','value':response}]} : {'events':[{'node':'asset-controller','name':'get-seed-asset','payload':effect.payload}]}" } }
+            "request": { "transform": { "kind": "jsonata", "expr": "{'key':'asset:' & effect.data.source_report_key & '/' & effect.data.analysis_key}" } },
+            "settlement": { "transform": { "kind": "jsonata", "expr": "response != null ? {'ops':[{'op':'set','path':'incidentAssets.result','value':response}]} : {'events':[{'node':'asset-controller','name':'get-seed-asset','payload':effect.data}]}" } }
           },
           "readSeedAsset": {
             "operation": "read",
             "contract": "storage-kv/v1",
-            "request": { "transform": { "kind": "jsonata", "expr": "{'key':'seed-asset:' & effect.payload.sourceId & '/' & effect.payload.analyzerId & '/' & effect.payload.variant}" } },
+            "request": { "transform": { "kind": "jsonata", "expr": "{'key':'seed-asset:' & effect.data.source_report_key & '/' & effect.data.analysis_key}" } },
             "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'incidentAssets.result','value':response}]}" } }
           },
           "writeIncidentAsset": {
@@ -90,20 +218,20 @@
             "request": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "{'key':'asset:' & effect.payload.sourceId & '/' & effect.payload.analyzerId & '/' & effect.payload.variant,'value':{'sourceId':effect.payload.sourceId,'analyzerId':effect.payload.analyzerId,'variant':effect.payload.variant,'value':effect.payload.value,'persistedAt':effect.payload.persistedAt}}"
+                "expr": "{'key':'asset:' & effect.data.source_report_key & '/' & effect.data.analysis_key,'value':effect.data.cached_analysis_envelope}"
               }
             },
             "settlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "{'ops':[{'op':'set','path':'incidentAssets.result','value':{'asset':{'sourceId':effect.payload.sourceId,'analyzerId':effect.payload.analyzerId,'variant':effect.payload.variant,'value':effect.payload.value,'persistedAt':effect.payload.persistedAt}}}]}"
+                "expr": "{'ops':[{'op':'set','path':'incidentAssets.result','value':effect.data.cached_analysis_envelope}]}"
               }
             }
           },
           "deleteIncidentAsset": {
             "operation": "delete",
             "contract": "storage-kv/v1",
-            "request": { "transform": { "kind": "jsonata", "expr": "{'key':'asset:' & effect.payload.sourceId & '/' & effect.payload.analyzerId & '/' & effect.payload.variant}" } },
+            "request": { "transform": { "kind": "jsonata", "expr": "{'key':'asset:' & effect.data.source_report_key & '/' & effect.data.analysis_key}" } },
             "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'incidentAssets.result','value':{'deleted':true}}]}" } }
           },
           "listAssetsToClear": {
@@ -115,7 +243,7 @@
           "deleteStorageKey": {
             "operation": "delete",
             "contract": "storage-kv/v1",
-            "request": { "transform": { "kind": "jsonata", "expr": "{'key':effect.payload.key}" } },
+            "request": { "transform": { "kind": "jsonata", "expr": "{'key':effect.data.key}" } },
             "settlement": { "transform": { "kind": "jsonata", "expr": "{'outcome':'completed'}" } }
           }
         },

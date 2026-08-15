@@ -61,6 +61,30 @@ test("GikComponent maps typed data and spec to a primitive contract", () => {
   assert.match(markup, /09:00/);
 });
 
+test("chart optionally presents a summary and exact-value table", () => {
+  const markup = renderToStaticMarkup(
+    <GikComponent
+      kind="primitive:chart"
+      spec={{
+        kind: "pie",
+        title: "Holdings value",
+        fields: { label: "ticker", value: "value" },
+        summary: { label: "Total portfolio value", prefix: "$" },
+        table: {
+          label: "Portfolio positions",
+          columns: [{ field: "ticker", label: "Ticker" }, { field: "value", label: "Value", prefix: "$" }],
+        },
+      }}
+      data={[{ ticker: "AAPL", value: 425.86 }]}
+      componentProps={{ summaryValue: 425.86 }}
+    />,
+  );
+
+  assert.match(markup, /Total portfolio value/);
+  assert.match(markup, /\$425\.86/);
+  assert.match(markup, /aria-label="Portfolio positions"/);
+});
+
 test("GikComponent renders a Fluent component through its canonical contract", () => {
   const markup = renderToStaticMarkup(
     <GikComponent
@@ -185,14 +209,14 @@ test("GikComponentDeclarative routes canonical edges.on invoke actions to runtim
     props,
     edges: {
       on: {
-        move: [{ do: "invoke", args: { tool: "captureAction" } }],
+        move: [{ do: "invoke", control: { tool: "captureAction" } }],
       },
     },
   }, {
     state: {},
     contexts: {},
     effectHandlers: {
-      captureAction: ({ payload }) => { receivedPayload = payload; },
+      captureAction: ({ data }) => { receivedPayload = data; },
     },
   });
 

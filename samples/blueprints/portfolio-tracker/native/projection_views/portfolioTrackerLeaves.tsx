@@ -432,9 +432,10 @@ const IntelligenceProjectionsView: ProjectionView = ({ node }) => {
   const context = String(node.props.presentationContext ?? "portfolio-overview");
   const error = String(node.props.error ?? "");
   const diagnostics = node.props.projectionDiagnostics === true;
+  const showWorkflowAction = node.props.showWorkflowAction !== false;
   const { policy, candidate: selected, sections } = selectIntelligenceProjection(value, context, node.props.projectionRecipe);
   if (Object.keys(value).length === 0) {
-    return <section className={styles.intelligence2}><div className={styles.intelligence2Header}><div><p className={styles.advisoryEyebrow}>{intelligenceLabel}</p><h2 className={styles.intelligence2Title}>{error ? "Analysis unavailable" : isIntelligence1b ? "Ready to enhance" : "Ready for analysis"}</h2><p className={styles.intelligence2Summary}>{error || (isIntelligence1b ? "Analyze the Portfolio intelligence 1 result to produce a richer, more engaging pulse." : "Analyze the portfolio to identify the signals that deserve attention.")}</p></div><div className={styles.recipeMeta}><WorkflowButton command={isIntelligence1b ? "requestIntelligence1b" : "requestIntelligence2"} hasResult={false} initialLabel={isIntelligence1b ? "Analyze enhancement" : "Analyze intelligence"} refreshLabel="Refresh analysis" /></div></div></section>;
+    return <section className={styles.intelligence2}><div className={styles.intelligence2Header}><div><p className={styles.advisoryEyebrow}>{intelligenceLabel}</p><h2 className={styles.intelligence2Title}>{error ? "Analysis unavailable" : isIntelligence1b ? "Ready to enhance" : "Ready for analysis"}</h2><p className={styles.intelligence2Summary}>{error || (isIntelligence1b ? "Analyze the Portfolio intelligence 1 result to produce a richer, more engaging pulse." : "Analyze the portfolio to identify the signals that deserve attention.")}</p></div>{showWorkflowAction ? <div className={styles.recipeMeta}><WorkflowButton command={isIntelligence1b ? "requestIntelligence1b" : "requestIntelligence2"} hasResult={false} initialLabel={isIntelligence1b ? "Analyze enhancement" : "Analyze intelligence"} refreshLabel="Refresh analysis" /></div> : null}</div></section>;
   }
   const items = intelligenceItems(value.items);
   const evidence = evidenceItems(value.evidence);
@@ -450,7 +451,7 @@ const IntelligenceProjectionsView: ProjectionView = ({ node }) => {
   return <section className={styles.intelligence2}>
     <header className={styles.intelligence2Header}>
       <div><p className={styles.advisoryEyebrow}>{intelligenceLabel}</p><h2 className={styles.intelligence2Title}>{headline}</h2><p className={styles.intelligence2Summary}>{summary}</p></div>
-      <div className={styles.recipeMeta}>{diagnostics ? <><span className={styles.recipeToken}>{policy.attention}</span><span className={styles.recipeToken}>{selected?.label ?? "fallback"}</span></> : null}<span className={styles.recipeToken}>As of {String(value.asOf ?? "unknown")}</span><WorkflowButton command={isIntelligence1b ? "requestIntelligence1b" : "requestIntelligence2"} hasResult initialLabel={isIntelligence1b ? "Analyze enhancement" : "Analyze intelligence"} refreshLabel="Refresh analysis" /></div>
+      <div className={styles.recipeMeta}>{diagnostics ? <><span className={styles.recipeToken}>{policy.attention}</span><span className={styles.recipeToken}>{selected?.label ?? "fallback"}</span></> : null}<span className={styles.recipeToken}>As of {String(value.asOf ?? "unknown")}</span>{showWorkflowAction ? <WorkflowButton command={isIntelligence1b ? "requestIntelligence1b" : "requestIntelligence2"} hasResult initialLabel={isIntelligence1b ? "Analyze enhancement" : "Analyze intelligence"} refreshLabel="Refresh analysis" /> : null}</div>
     </header>
     <div className={styles.projectionBody}>
       {diagnostics ? <p className={styles.projectionRationale}>Selected by the Blueprint recipe for {context}: {selected?.rationale ?? "First valid candidate."}</p> : null}

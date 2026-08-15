@@ -1,0 +1,222 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://genui.dev/schemas/lowering-recipe.schema.json",
+  "title": "GIK Lowering Recipe",
+  "type": "object",
+  "required": ["gik", "type", "payload"],
+  "additionalProperties": false,
+  "properties": {
+    "gik": { "const": "0.1" },
+    "type": { "const": "lowering-recipe" },
+    "payload": {
+      "$ref": "#/definitions/loweringRecipe"
+    }
+  },
+  "definitions": {
+    "loweringRecipe": {
+      "oneOf": [
+        { "$ref": "#/definitions/vocabularyRecipe" },
+        { "$ref": "#/definitions/representationRecipe" }
+      ]
+    },
+    "vocabularyRecipe": {
+      "type": "object",
+      "required": ["id", "from", "to", "patch"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "from": { "type": "string", "minLength": 1 },
+        "to": { "type": "string", "minLength": 1 },
+        "patch": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/blueprintPatchOperation" }
+        },
+        "metadata": { "type": "object" }
+      }
+    },
+    "representationRecipe": {
+      "type": "object",
+      "required": ["id", "from", "to", "representations", "fallback"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "from": { "type": "string", "minLength": 1 },
+        "to": { "type": "string", "minLength": 1 },
+        "representations": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/representation" }
+        },
+        "fallback": { "type": "string", "minLength": 1 },
+        "implementationPrograms": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/implementationProgram" }
+        },
+        "implementationFallback": { "type": "string", "minLength": 1 },
+        "metadata": { "type": "object" }
+      }
+    },
+    "representation": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "when": { "type": "string", "minLength": 1 },
+        "headless": { "type": "boolean" },
+        "extends": { "type": "string", "minLength": 1 },
+        "views": {
+          "type": "object",
+          "additionalProperties": { "$ref": "https://genui.dev/schemas/cell.schema.json#/properties/view" }
+        },
+        "decorators": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/representationDecorator" }
+        },
+        "presentation": { "$ref": "#/definitions/presentationProjection" },
+        "presentationAppend": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/presentationPlacement" }
+        }
+      }
+    },
+    "representationDecorator": {
+      "type": "object",
+      "required": ["select"],
+      "additionalProperties": false,
+      "properties": {
+        "select": { "type": "string", "minLength": 1 },
+        "before": { "$ref": "https://genui.dev/schemas/cell.schema.json#/definitions/viewDecoration" },
+        "after": { "$ref": "https://genui.dev/schemas/cell.schema.json#/definitions/viewDecoration" }
+      },
+      "anyOf": [
+        { "required": ["before"] },
+        { "required": ["after"] }
+      ]
+    },
+    "implementationProgram": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "when": { "type": "string", "minLength": 1 },
+        "cells": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/cellImplementationOverride" }
+        },
+        "services": { "type": "object" }
+      }
+    },
+    "cellImplementationOverride": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sources": { "$ref": "https://genui.dev/schemas/cell.schema.json#/properties/sources" },
+        "compute": { "$ref": "https://genui.dev/schemas/cell.schema.json#/properties/compute" },
+        "behavior": { "$ref": "https://genui.dev/schemas/cell.schema.json#/properties/behavior" }
+      }
+    },
+    "presentationProjection": {
+      "type": "object",
+      "required": ["roots"],
+      "additionalProperties": false,
+      "properties": {
+        "roots": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "placements": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/presentationPlacement" }
+        }
+      }
+    },
+    "presentationPlacement": {
+      "type": "object",
+      "required": ["cell"],
+      "additionalProperties": false,
+      "properties": {
+        "cell": { "type": "string", "minLength": 1 },
+        "parent": { "type": "string", "minLength": 1 },
+        "slot": { "type": "string", "minLength": 1 },
+        "order": { "type": "number" }
+      }
+    },
+    "blueprintPatchOperation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["op", "cell"],
+          "additionalProperties": false,
+          "properties": {
+            "op": { "const": "addCell" },
+            "cell": { "$ref": "https://genui.dev/schemas/cell.schema.json" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["op", "cellId", "cell"],
+          "additionalProperties": false,
+          "properties": {
+            "op": { "const": "replaceCell" },
+            "cellId": { "type": "string", "minLength": 1 },
+            "cell": { "$ref": "https://genui.dev/schemas/cell.schema.json" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["op", "cellId"],
+          "additionalProperties": false,
+          "properties": {
+            "op": { "const": "removeCell" },
+            "cellId": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["op", "relationshipId", "relationship"],
+          "additionalProperties": false,
+          "properties": {
+            "op": { "const": "setRelationship" },
+            "relationshipId": { "type": "string", "minLength": 1 },
+            "relationship": { "type": "object" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["op", "relationshipId"],
+          "additionalProperties": false,
+          "properties": {
+            "op": { "const": "removeRelationship" },
+            "relationshipId": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["op", "projectionId", "projection"],
+          "additionalProperties": false,
+          "properties": {
+            "op": { "const": "setProjection" },
+            "projectionId": { "type": "string", "minLength": 1 },
+            "projection": { "type": "object" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["op", "projectionId"],
+          "additionalProperties": false,
+          "properties": {
+            "op": { "const": "removeProjection" },
+            "projectionId": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    }
+  }
+}

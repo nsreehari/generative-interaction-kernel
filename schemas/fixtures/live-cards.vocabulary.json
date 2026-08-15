@@ -5,7 +5,7 @@
     "version": "live-cards/1.0",
     "expression": "jsonata",
     "namespaces": ["card_data", "requires", "fetched_sources", "computed_values"],
-    "actions": ["assign", "derive", "invoke", "emit", "route", "confirm"],
+    "actions": ["assign", "emit", "invoke", "route", "request"],
     "externals": {
       "projectionViews": {
         "ui": { "from": "floor" },

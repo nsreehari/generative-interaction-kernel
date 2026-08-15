@@ -39,6 +39,7 @@
     "test:samples": "vitest run --project samples",
     "test:parity:soc": "playwright test --config playwright.soc.config.ts",
     "test:parity:soc:update": "playwright test --config playwright.soc.config.ts --update-snapshots",
+    "test:portfolio:browser": "playwright test --config playwright.portfolio.config.ts",
     "test:mcp": "vitest run --project mcp",
     "test:vitest": "vitest run",
     "dev": "concurrently --kill-others --names functions,host \"npm run func:local\" \"cross-env VITE_GIK_HOST_ENV=local npm run dev:host\"",

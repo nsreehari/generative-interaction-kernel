@@ -22,6 +22,7 @@ import {
   type Orchestrator,
   type StateModel,
 } from "@gik/kernel";
+import { createCellGraphNodeExecutor } from "@gik/blueprint";
 import { GenUIController } from "../controller";
 import { createEffectDispatcher, type EffectHandlerMap } from "./effects";
 import type { ProjectionView } from "../registry";
@@ -152,8 +153,8 @@ function applyBundleInit(bundle: Bundle, state: InMemoryStateModel): void {
   const result = init({
     get: (path) => state.get(path),
     set: (path, value) => ({ op: "set", path, value }),
-    args: {},
-    payload: {},
+    control: { tool: BUNDLE_INIT_EFFECT },
+    data: {},
     store: state,
   });
   if (result && typeof (result as Promise<unknown>).then === "function") {
@@ -188,10 +189,13 @@ export function loadBundleRuntime(
   const fallback = createEffectDispatcher(runtimeState, bundle.effectHandlers ?? {});
   const bundleOrchestrator = bundle.wrapOrchestrator?.(fallback, runtimeState) ?? fallback;
   const orchestrator = options.wrapOrchestrator?.(bundleOrchestrator, runtimeState) ?? bundleOrchestrator;
+  const usesCellEvaluator = unwrap(bundle.program).graph?.nodes.some((node) =>
+    node.operation.kind === "extension" && node.operation.name === "evaluate-cell") ?? false;
   const kernel = new Kernel(bundle.vocabulary, bundle.program, {
     state: runtimeState,
     orchestrator,
     sink: bufferSink().sink,
+    ...(usesCellEvaluator ? { executeGraphExtension: createCellGraphNodeExecutor(runtimeState) } : {}),
   });
   return { controller: new GenUIController(kernel), state };
 }

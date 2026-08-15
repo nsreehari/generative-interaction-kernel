@@ -2,7 +2,7 @@ import type { EffectHandlerMap, LoadBundleOptions } from "@gik/react";
 
 const handlers: EffectHandlerMap = {
   chargeCard: (context) => {
-    const amount = Number(context.payload.amount ?? 0);
+    const amount = Number(context.data.amount ?? 0);
     return {
       ops: [context.set("payment.receipt", {
         id: `rcpt_${Math.floor(amount)}`,
@@ -21,11 +21,14 @@ export function wrapOrchestrator(
     const orchestrator = next(fallback, state);
     return {
       ...orchestrator,
-      async confirm(effect) {
-        const onConfirm = effect.args.onConfirm;
-        return typeof onConfirm === "string"
-          ? { events: [{ node: effect.node, name: onConfirm, payload: effect.payload }] }
-          : undefined;
+      async request(effect) {
+        return {
+          settlement: {
+            effectId: effect.effectId!,
+            outcome: "resolved",
+            data: { approved: true, amount: effect.data.amount },
+          },
+        };
       },
     };
   };

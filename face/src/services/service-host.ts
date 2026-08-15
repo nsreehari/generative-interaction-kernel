@@ -112,10 +112,13 @@ function isPatchOp(value: Json): boolean {
 
 function asSettlement(value: Json): OrchestratorResult {
   const mapped = asRecord(value, "settlement");
-  const unknown = Object.keys(mapped).filter((key) => !["ops", "events", "outcome", "detail"].includes(key));
+  const unknown = Object.keys(mapped).filter((key) => !["ops", "events", "outputs", "outcome", "detail"].includes(key));
   if (unknown.length > 0) throw new Error(`Declarative service settlement has unknown field '${unknown[0]}'`);
   if (mapped.ops !== undefined && (!Array.isArray(mapped.ops) || !mapped.ops.every(isPatchOp))) {
     throw new Error("Declarative service settlement ops must be valid patch operations");
+  }
+  if (mapped.outputs !== undefined && (!mapped.outputs || typeof mapped.outputs !== "object" || Array.isArray(mapped.outputs))) {
+    throw new Error("Declarative service settlement outputs must be an object");
   }
   return mapped as unknown as OrchestratorResult;
 }
@@ -129,6 +132,10 @@ function errorDetail(error: unknown): Record<string, Json> {
   }
   if (error instanceof UnsatisfiedServiceDependencyError) {
     detail.dependency = asJson(error.dependency);
+    const causeStatus = error.cause && typeof error.cause === "object"
+      ? (error.cause as { status?: unknown }).status
+      : undefined;
+    if (typeof causeStatus === "string" || typeof causeStatus === "number") detail.status = causeStatus;
   }
   return detail;
 }
@@ -222,6 +229,9 @@ export class DefaultServiceHost implements ServiceHost {
       }
       throw new Error(completed.error ?? `Service request '${completed.request.id}' ${completed.status}`);
     }
+    if (effect.kind === "invoke" && effect.control.sourceId) {
+      return { sourceOutput: asJson(completed.result.output ?? null) };
+    }
     const settlement = await this.settle(resolved.operation, completed.result, effect);
     const receiptId = completed.result.detail?.proposalReceiptId;
     if (typeof receiptId === "string" && this.options.validatedProposalSettlement) {
@@ -270,7 +280,7 @@ export class DefaultServiceHost implements ServiceHost {
   }
 
   private resolve(effect: OrchestratorEffect): ResolvedOperation {
-    const invoke = effect.kind === "invoke" ? effect.tool : undefined;
+    const invoke = effect.kind === "invoke" ? effect.control.tool : undefined;
     if (!invoke) throw new Error(`Service host cannot handle '${effect.kind}' effects`);
     for (const [serviceId, declaration] of Object.entries(this.options.declarations)) {
       const operation = declaration.operations[invoke];
@@ -312,8 +322,9 @@ export class DefaultServiceHost implements ServiceHost {
       ? await this.evaluate(resolved.operation.request.transform.expr, {
           state: this.options.state.snapshot(),
           effect,
+          input: effect.data,
         })
-      : asJson(effect.args ?? {});
+      : asJson(effect.data);
     if (resolved.operation.request?.validators) {
       const report = runDeclarativeValidators(resolved.operation.request.validators, input, {});
       if (!report.ok) throw new Error(`Service request validation failed: ${report.errors.map((issue) => issue.detail).join("; ")}`);

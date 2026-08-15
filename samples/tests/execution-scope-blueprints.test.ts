@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { InMemoryStateModel, Kernel, unwrap, type GIKEvent, type Orchestrator, type OrchestratorEffect } from "@gik/kernel";
+import { InMemoryStateModel, Kernel, unwrap, type Orchestrator, type OrchestratorEffect } from "@gik/kernel";
 import { openSampleBlueprint, resolveSampleBlueprintSource } from "../catalog/blueprint-catalog";
 
 function runtimeState(runtime: ReturnType<typeof openSampleBlueprint>): InMemoryStateModel {
@@ -15,18 +15,18 @@ test("backend order Blueprint executes its headless orchestrator workflow", asyn
   const runtime = openSampleBlueprint("backend-order-processing");
   const routed: unknown[] = [];
   const orchestrator: Orchestrator = {
-    async confirm(effect: OrchestratorEffect) {
-      return { events: [{ node: effect.node, name: "approve", payload: effect.payload } as GIKEvent] };
+    async request(effect: OrchestratorEffect) {
+      return { settlement: { effectId: effect.effectId!, outcome: "resolved", data: { approved: true } } };
     },
     async invoke(effect: OrchestratorEffect) {
-      assert.equal(effect.tool, "chargeCard");
+      assert.equal(effect.kind === "invoke" && effect.control.tool, "chargeCard");
       return {
         ops: [{ op: "set", path: "payment.receipt", value: { id: "receipt-1", status: "captured" } }],
         events: [{ node: effect.node, name: "charged" }],
       };
     },
     async route(effect: OrchestratorEffect) {
-      routed.push(effect.to);
+      if (effect.kind === "route") routed.push(effect.control.to);
     },
   };
   const kernel = new Kernel(runtime.vocabulary, runtime.program, { state: runtimeState(runtime), orchestrator });

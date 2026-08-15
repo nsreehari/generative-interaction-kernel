@@ -1,9 +1,5 @@
 import { lowerToProgram, type ExecutableProgramDefinition, type ProgramMessageFor } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
-import blueprintSchema from "../../schemas/blueprint.schema.json" with { type: "json" };
-import cellSchema from "../../schemas/cell.schema.json" with { type: "json" };
-import loweringRecipeSchema from "../../schemas/lowering-recipe.schema.json" with { type: "json" };
-import tierSchema from "../../schemas/tier.schema.json" with { type: "json" };
 import { analyzeCellComposition } from "./cells";
 import type {
   BlueprintArtifact,
@@ -78,13 +74,7 @@ export function validateBlueprintArtifact<TRecipe extends LoweringRecipeDefiniti
   value: unknown,
 ): asserts value is BlueprintArtifact<TRecipe> {
   const report = runDeclarativeValidators([{
-    kind: "ajv-schema",
-    schema: blueprintSchema,
-    refs: [
-      { schema: tierSchema, key: tierSchema.$id },
-      { schema: loweringRecipeSchema, key: loweringRecipeSchema.$id },
-      { schema: cellSchema, key: cellSchema.$id },
-    ],
+    kind: "blueprint",
     message: "Invalid Blueprint artifact",
   }], value as never);
   if (!report.ok) {

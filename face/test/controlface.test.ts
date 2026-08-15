@@ -63,7 +63,12 @@ function structuralBlueprint(
     cells: {
       root: {
         id: "root",
-        behavior: adaptive ? { events: { adapt: [{ do: "confirm" }] } } : undefined,
+        events: adaptive ? { adapt: { payloadSchema: { type: "object" } } } : undefined,
+        behavior: adaptive ? { on: { adapt: [{
+          do: "request",
+          control: { kind: "data", responseSchema: { type: "object" } },
+          data: {},
+        }] } } : undefined,
         view: { capability: "surface:before" },
       },
     },
@@ -103,7 +108,8 @@ test("ControlFace defines zero-recipe JSON cell Blueprints without product code"
           },
           source: {
             id: "source",
-            outputs: [{ token: "ready" }],
+            compute: [{ id: "ready", expression: "true", assign: "ready" }],
+            outputs: [{ token: "ready", from: "ready" }],
             view: { capability: "ui:text" },
           },
           consumer: {
@@ -177,6 +183,14 @@ test("ControlFace opens an authored Blueprint into a runtime", () => {
   assert.ok(program.root);
   assert.equal(program.root.props?.value, "Opened");
   assert.deepEqual(runtime.state, { example: { ready: true } });
+  assert.deepEqual(runtime.initialState, {
+    example: { ready: true },
+    blueprintRunState: {
+      cells: {
+        example: { sources: [] },
+      },
+    },
+  });
   assert.throws(
     () => ControlFace.openBlueprint({
       ...artifact,
@@ -200,8 +214,9 @@ test("ControlFace drives a projection-free Blueprint but rejects render access",
     cells: {
       counter: {
         id: "counter",
+        events: { increment: { payloadSchema: { type: "object" } } },
         behavior: {
-          events: {
+          on: {
             increment: [{ do: "assign", target: "counter.value", args: { value: 2 } }],
           },
         },
@@ -362,7 +377,7 @@ const rollbackDocument = {
         on: {
           tap: [
             { do: "assign", target: "card_data.status", args: { value: "charged" } },
-            { do: "invoke", args: { tool: "charge", amount: 500 } },
+            { do: "invoke", control: { tool: "charge" }, data: { amount: 500 } },
           ],
         },
       },
@@ -605,7 +620,7 @@ test("Face enforces fixed and authorized reconfigurable Blueprint changes", asyn
 test("adaptive Face events admit policy-allowed program patches and checkpoint the program", async () => {
   const blueprint = structuralBlueprint("adaptive", true);
   const face = structuralFace(blueprint, {
-    async confirm() {
+    async request() {
       return {
         program: [{ op: "setRoot", root: { capability: "surface:adapted", id: "root" } }],
       };
@@ -729,12 +744,12 @@ test("controlface exposes full time-travel ops: checkpoint, restore, effectsSinc
   const compensated: OrchestratorEffect[] = [];
   const orchestrator: Orchestrator = {
     async invoke(effect) {
-      if (effect.tool !== "charge") return;
+      if (effect.kind !== "invoke" || effect.control.tool !== "charge") return;
       return { ops: [{ op: "set", path: "payments.receipt", value: "ch_1" }] };
     },
     async compensate(effect) {
       compensated.push(effect);
-      if (effect.tool === "charge") {
+      if (effect.kind === "invoke" && effect.control.tool === "charge") {
         return { ops: [{ op: "set", path: "payments.refunded", value: true }] };
       }
     },
@@ -753,7 +768,7 @@ test("controlface exposes full time-travel ops: checkpoint, restore, effectsSinc
 
   const fired = face.effectsSince(cp.rev);
   assert.equal(fired.length, 1);
-  assert.equal(fired[0].effect.tool, "charge");
+  assert.equal(fired[0].effect.kind === "invoke" && fired[0].effect.control.tool, "charge");
 
   const rollback = await face.restore(cp);
   assert.equal(rollback.rev, 3);
@@ -762,7 +777,7 @@ test("controlface exposes full time-travel ops: checkpoint, restore, effectsSinc
 
   const compensation = await face.compensate(fired.map((e) => e.effect).reverse());
   assert.equal(compensation.rev, 4);
-  assert.deepEqual(compensated.map((e) => e.tool), ["charge"]);
+  assert.deepEqual(compensated.map((e) => e.kind === "invoke" ? e.control.tool : undefined), ["charge"]);
   assert.equal((face.getState().payments as { refunded?: boolean }).refunded, true);
 
   face.stop();
@@ -771,11 +786,11 @@ test("controlface exposes full time-travel ops: checkpoint, restore, effectsSinc
 test("/mcp-control serves restore and compensate as JSON time-travel tools", async () => {
   const orchestrator: Orchestrator = {
     async invoke(effect) {
-      if (effect.tool !== "charge") return;
+      if (effect.kind !== "invoke" || effect.control.tool !== "charge") return;
       return { ops: [{ op: "set", path: "payments.receipt", value: "ch_1" }] };
     },
     async compensate(effect) {
-      if (effect.tool === "charge") {
+      if (effect.kind === "invoke" && effect.control.tool === "charge") {
         return { ops: [{ op: "set", path: "payments.refunded", value: true }] };
       }
     },

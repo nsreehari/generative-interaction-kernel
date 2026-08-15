@@ -4,6 +4,7 @@ dist/
 build/
 storybook-static/
 .turbo/
+test-results/
 *.log
 
 # Editor / OS

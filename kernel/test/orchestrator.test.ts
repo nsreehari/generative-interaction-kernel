@@ -1,5 +1,5 @@
-// Phase 3 kernel tests: the Orchestrator seam. invoke/confirm/route become
-// real effects the kernel runs after reduction. Confirm and route settle inline;
+// Phase 3 kernel tests: the Orchestrator seam. invoke/request/route become
+// real effects the kernel runs after reduction. Request and route settle inline;
 // invoke commits an initiating patch and later publishes its terminal result.
 
 import { test } from "vitest";
@@ -34,7 +34,7 @@ const asyncDoc = {
               on: {
                 tap: [
                   { do: "emit", event: "load" },
-                  { do: "invoke", args: { tool: "fetchOrders" } },
+                  { do: "invoke", control: { tool: "fetchOrders" } },
                 ],
               },
             },
@@ -62,7 +62,7 @@ test("invoke: async fetch settles as store delta + machine transition (idle->loa
   const orchestrator: Orchestrator = {
     async invoke(effect: OrchestratorEffect) {
       invocations.push(effect);
-      if (effect.tool !== "fetchOrders") return;
+      if (effect.kind !== "invoke" || effect.control.tool !== "fetchOrders") return;
       return {
         ops: [{ op: "set", path: "fetched_sources.orders", value: [{ id: "order-42" }] }],
         events: [{ node: effect.node, name: "resolved" }],
@@ -101,16 +101,18 @@ test("invoke: async fetch settles as store delta + machine transition (idle->loa
   assert.equal(invocations[0]?.actorId, "agent-endpoint");
 });
 
-test("confirm: HITL approval returns a follow-up event that assigns status", async () => {
-  const confirmations: OrchestratorEffect[] = [];
+test("request: a governed resolver returns a validated settlement that assigns status", async () => {
+  const requests: OrchestratorEffect[] = [];
   const orchestrator: Orchestrator = {
-    async confirm(effect) {
-      confirmations.push(effect);
-      // Simulate the human approving: emit the configured follow-up event.
-      const onConfirm = effect.args.onConfirm;
-      return typeof onConfirm === "string"
-        ? { events: [{ node: effect.node, name: onConfirm }] }
-        : undefined;
+    async request(effect) {
+      requests.push(effect);
+      return {
+        settlement: {
+          effectId: effect.effectId!,
+          outcome: "resolved",
+          data: { approved: true },
+        },
+      };
     },
   };
 
@@ -124,8 +126,21 @@ test("confirm: HITL approval returns a follow-up event that assigns status", asy
         props: { label: "Approve" },
         edges: {
           on: {
-            tap: [{ do: "confirm", args: { message: "Approve order?", onConfirm: "approved" } }],
-            approved: [{ do: "assign", target: "card_data.status", args: { value: "approved" } }],
+            tap: [{
+              do: "request",
+              control: {
+                kind: "decision",
+                policy: "order-approval",
+                responseSchema: {
+                  type: "object",
+                  required: ["approved"],
+                  properties: { approved: { type: "boolean" } },
+                  additionalProperties: false,
+                },
+              },
+              data: { prompt: "Approve order?" },
+            }],
+            resolved: [{ do: "assign", target: "card_data.status", args: { value: "approved" } }],
           },
         },
       },
@@ -141,9 +156,11 @@ test("confirm: HITL approval returns a follow-up event that assigns status", asy
     actorId: "agent-response",
   });
 
-  assert.equal(confirmations.length, 1);
-  assert.equal(confirmations[0].args.message, "Approve order?");
-  assert.equal(confirmations[0].actorId, "agent-response");
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].kind, "request");
+  assert.equal(requests[0].data.prompt, "Approve order?");
+  assert.equal(requests[0].actorId, "agent-response");
+  assert.match(requests[0].effectId!, /^effect-/);
   assert.deepEqual(patch.ops, [
     { op: "set", path: "card_data.status", value: "approved" },
   ]);
@@ -153,7 +170,7 @@ test("route: routing effect reaches the orchestrator without touching the store"
   const routes: unknown[] = [];
   const orchestrator: Orchestrator = {
     async route(effect) {
-      routes.push(effect.to);
+      if (effect.kind === "route") routes.push(effect.control.to);
     },
   };
 
@@ -165,7 +182,7 @@ test("route: routing effect reaches the orchestrator without touching the store"
         capability: "actions",
         id: "btn-open",
         props: { label: "Open" },
-        edges: { on: { tap: [{ do: "route", args: { to: "/orders/42" } }] } },
+        edges: { on: { tap: [{ do: "route", control: { to: "/orders/42" } }] } },
       },
     },
   };
@@ -193,7 +210,7 @@ test("orchestrator settlement emits an attributable semantic outcome trace", asy
       root: {
         capability: "actions",
         id: "proposal",
-        edges: { on: { submit: [{ do: "route", args: { to: "isolate:dc-01" } }] } },
+        edges: { on: { submit: [{ do: "route", control: { to: "isolate:dc-01" } }] } },
       },
     },
   };
@@ -220,7 +237,7 @@ test("unhandled effect is safe: default NullOrchestrator performs nothing", asyn
         capability: "actions",
         id: "btn",
         props: { label: "Go" },
-        edges: { on: { tap: [{ do: "invoke", args: { tool: "noop" } }] } },
+        edges: { on: { tap: [{ do: "invoke", control: { tool: "noop" } }] } },
       },
     },
   };

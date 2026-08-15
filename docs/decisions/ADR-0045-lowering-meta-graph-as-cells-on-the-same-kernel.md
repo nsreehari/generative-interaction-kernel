@@ -2,6 +2,8 @@
 
 **Status:** Accepted — 2026-07-28
 
+**Amended by:** [ADR-0049](ADR-0049-stable-event-contracts-and-effect-settlements.md) expresses approval as a resolver-neutral decision request rather than a `confirm` action.
+
 ## Context
 
 ADR-0043 gave the compiler plane a contract — a Lowering Cell meta-graph with kinds `transform`,
@@ -32,8 +34,8 @@ operation kind and no new action verb is introduced:
 | `select-strategy`      | A `compute` Cell for deterministic rules, or a service-backed Cell for judgment calls. |
 | `synthesize-strategy`  | A service-backed Cell (the Foundry-agent pattern) with AJV response validators. |
 | `validate`             | Declarative guardrails — the same validator engine service responses already use. |
-| `approve`              | The Kernel's existing `confirm` action verb (human-in-the-loop gate). |
-| `emit-blueprint`       | An `effect_handlers` leaf that hands off the finished artifact.       |
+| `approve`              | A resolver-neutral `request` with decision control and a response schema. |
+| `emit-blueprint`       | A compute Cell that publishes the validated terminal artifact.       |
 
 A **compiler Blueprint** is hand-authored directly as Cells at the terminal tier — zero recipes,
 exactly like `portfolio-tracker` and `foundry-agent` are today. This avoids infinite regress: the
@@ -41,7 +43,7 @@ compiler does not itself need compiling.
 
 **Compiling and running stay two distinct Kernel instances.** The compiler Blueprint opens as its
 own Kernel/ControlFace runtime, seeded with the source artifact as initial state. It runs to
-quiescence (or pauses at a `confirm` gate), and its `emit-blueprint` Cell's output token is the
+quiescence (or pauses at a `request` settlement), and its `emit-blueprint` Cell's output token is the
 materialized artifact. That artifact is then handed to the existing, unchanged `openBlueprint` /
 `reconfigureBlueprint` path — it never gains direct execution authority over the target
 application's live Kernel. This preserves ADR-0043's plane separation: compiler state, candidate
@@ -49,7 +51,7 @@ artifacts, and approvals stay inside the compiler's own runtime unless the produ
 explicitly models them.
 
 A thin host-side driver is the only genuinely new code: open the compiler Blueprint, seed it, run
-it to completion (resolving `confirm` gates via a caller-supplied approval path), read the
+it to completion (resolving `request` effects via a caller-supplied resolver), read the
 `emit-blueprint` output, validate it as a `BlueprintArtifact`, and pass it into the existing open
 path.
 
@@ -58,7 +60,7 @@ path.
 ### A. A bespoke `materializeProgram` function
 **Rejected because:** a plain deterministic function handles pure-transform recipes fine but would
 have to hand-roll its own async/agent-call/approval handling for `select-strategy`,
-`synthesize-strategy`, and `approve` — duplicating what `invoke`, service guardrails, and `confirm`
+`synthesize-strategy`, and `approve` — duplicating what `invoke`, service guardrails, and `request`
 already do inside the Kernel. The Cell-based design subsumes this case: a compiler Blueprint with
 only chained `transform` Cells *is* the plain-function case, expressed in the same vocabulary as
 the richer one.
@@ -77,8 +79,8 @@ existing validated open/reconfigure path — exactly the risk ADR-0043 was writt
 
 ## Consequences
 
-- No new Kernel node operation kind, no new action verb. `approve` reuses `confirm` (ADR-0019)
-  directly.
+- No new Kernel node operation kind and no new action verb. `approve` uses the five-action grammar's
+  resolver-neutral `request` family.
 - The only new surface is a thin host-side driver (open → seed → run-to-completion/gate → extract →
   validate → hand to the existing open path), not a new runtime.
 - Provenance (strategy identity, inputs, outputs, evidence — flagged as unresolved in ADR-0043)
@@ -111,33 +113,22 @@ Building a full, tested, end-to-end spike (host driver → Lowering Cell meta-gr
 this ADR's mapping table. None of them change the core decision above; they are constraints on *how*
 to build compiler Blueprints and the host driver correctly.
 
-**1. Standing `compute` derivations require a real dispatched event to settle — `runTransition`'s
-zero-events path does not do this, no matter how it's called.** Each `runTransition` call constructs
-a fresh `Kernel` instance, so `reactionsSeeded` is always `false`. `syncExternal()`'s
-`if (!this.reactionsSeeded)` branch runs `seedReactionBaseline()` + `runInitialReactions()` (for
-`edges.react`-style reactions) but never reaches the `else` branch's `derivations.settleAll()` call —
-and JSONata `compute` derivations are settled only by that call, not by reaction seeding. Concretely:
-seeding `agentData.findings` into initial state and calling `runTransition({..., events: []})` leaves
-`presentation.rows` empty; dispatching any event that touches the graph (e.g. a Cell's own `start`
-handler assigning to itself) settles it correctly. The host driver (`runLoweringBlueprint`) therefore
-always requires and dispatches a caller-supplied `bootstrapEvent` before doing anything else — this
-is not a workaround to remove later, it's a hard consequence of derivations vs. reactions being
-different settling mechanisms in the current Kernel.
+**1. Compute Cells settle through the consequence graph during initial synchronization.**
+`runLoweringBlueprint` performs a zero-event transition to publish initial state into the graph.
+There is no bootstrap event, reaction baseline, or duplicated `program.derivations` path. Each Cell
+evaluation returns explicit operations for its authored `compute.assign` paths and publishes only
+declared outputs whose predicates pass.
 
 **2. Event-bearing Cells need explicit `placements` (with a `view`) to be reachable, even in a
 compiler Blueprint with no visual surface.** A Cell's inputs/outputs wire up via the token graph
-regardless of where (or whether) it's placed, but a Cell that owns `behavior.events` handlers (the
-`agent-tier` bootstrap handler, the `approve` Cell's `approve`/`confirmed`/`dismissed` handlers) is
+regardless of where (or whether) it's placed, but a Cell that owns `behavior.on` handlers (the
+`approve` Cell's `approve`/`resolved`/`rejected` handlers) is
 only dispatchable if it appears under `projections.presentation.placements` with some `view` value —
 the same constraint application Blueprints have, even though a compiler Blueprint has no real UI.
-The spike's `compilerBlueprint()` places all four Cells as children of `agent-tier` for exactly this
-reason.
+The spike places the approval Cell in the presentation tree; pure compute Cells remain graph-owned.
 
-**3. `emit-blueprint` was implemented as a `compute` Cell, not the `effect_handlers` leaf this ADR's
-mapping table suggests — a deliberate, documented simplification.** The mapping table describes
-`emit-blueprint` as "an `effect_handlers` leaf that hands off the finished artifact," implying an
-`invoke`-style async effect. The spike instead makes it an ordinary JSONata `compute` Cell that
-constructs the terminal `BlueprintDefinition` directly (guarded on `compiled.approved`), because the
+**3. `emit-blueprint` is an ordinary JSONata `compute` Cell.** It constructs the terminal
+`BlueprintDefinition` directly (guarded on `compiled.approved`), because the
 host driver (`runLoweringBlueprint`) already reads final state at the transition boundary — there is
 no independent async hand-off to model for a single-Kernel-instance compiler run. This is
 functionally equivalent for the scenario tested but is a real deviation from the literal mapping
@@ -154,12 +145,12 @@ declared input/output tokens match the runtime Cell's real `inputs`/`outputs`. T
 function that reports `{cellId, message}` issues for missing runtime Cells and mismatched port
 tokens; `runLoweringMetaGraph()` calls it before running the driver and throws on drift. This does
 **not** attempt to generate runtime Cells from `LoweringCellDefinition` metadata (no JSONata
-expression or confirm config lives on that type today, and adding one is exactly the
+expression or request config lives on that type today, and adding one is exactly the
 `compilerBlueplateRef`-style schema question already flagged above as "Not decided here") — it only
 catches drift between the two once both are hand-authored.
 
 Proof: `samples/examples/lowering-meta-graph/lowering-meta-graph.ts` + `.test.ts` (8 tests) exercise all of the
-above — bootstrap-event settling, approval gating via `confirm`, the tier-2 artifact opening
+above — initial graph settling, approval gating via `request`, the tier-2 artifact opening
 through the unmodified `openBlueprint` path, and both a missing-Cell and a mismatched-token drift
 case for `validateLoweringCellGraph`.
 
@@ -207,3 +198,24 @@ outside its selected program.
 This is compile-time specialization of a stable Cell, not runtime reconfiguration. The emitted
 terminal Blueprint contains one selected program, and a different context requires a new
 materialization.
+
+## Amendment (2026-08-14): production integration through one shared Kernel traversal
+
+The phase described above as "connecting non-empty authored recipe chains" is complete for the
+fixed deterministic materialization path. `lowerWithFixedMetaGraph` now compiles the package-owned
+compiler Cells into a Kernel Program, creates a separate compiler Kernel, publishes the authored
+artifact and immutable context at `lowering:source`, and reads the terminal Blueprint only from
+`compiled:artifact` after quiescence. Tests retain the execution snapshot and verify that each
+intermediate token records its compiler Cell as `producedBy`.
+
+Synchronous materialization did not introduce a second scheduler. `ContinuousGraphRuntime` now has
+one generator-based traversal containing readiness, ordering, token-version, feedback, budget, and
+quiescence semantics. Existing asynchronous APIs drive that traversal by awaiting yielded node
+outcomes; deterministic compiler publication drives the same traversal synchronously and fails if
+any yielded outcome is a Promise.
+
+Compiler recipe semantics are registered extension operations implemented by `@gik/blueprint`.
+Those implementations may apply typed Blueprint patch and representation vocabulary, but they do
+not walk graph nodes or control scheduling. Synchronous Kernel publication additionally rejects
+operations, effects, events, and program mutations, keeping the mode narrower than ordinary runtime
+execution and preserving the deferred status of agent/human compiler pipelines.

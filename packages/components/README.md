@@ -272,11 +272,11 @@ projection-local; durable scheduling remains a runtime or service responsibility
 
 Form renders a schema-driven committed object editor and emits `save` with `{ values }`. Editable
 table renders a committed row editor and emits `save` with `{ rows }`. Both keep draft state local;
-bundle reactions own persistence and external effects.
+explicit event handlers own persistence and external effects.
 
 Collection board arranges records in declared columns. Its optional interaction configuration enables
 single selection, ordering within a column, and movement between columns without assigning workflow
-meaning to those columns. It emits `select`, `activate`, `reorder`, and `move`; bundle reactions validate
+meaning to those columns. It emits `select`, `activate`, `reorder`, and `move`; event handlers validate
 business transitions and persist the resulting placement. `standard` and `compact` are density variants.
 
 Source viewer renders exact mapped source rows and precomputed diffs. Set `spec.kind` to `source`,

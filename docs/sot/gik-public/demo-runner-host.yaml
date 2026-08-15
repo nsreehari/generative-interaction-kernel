@@ -176,7 +176,7 @@ scenario_api:
     behavior: Validates command node/event references against a projected Kernel vocabulary and program.
   - name: loadDemoScenarios
     behavior:
-      - Validates the full input against schemas/demo-scenarios.schema.json.
+      - Validates the full input against packages/evaluators/schemas/demo-scenarios.schema.json.
       - Compiles scenarios and validates the catalog.
       - Returns the catalog and a composition resolver.
   - name: resolveDemoEntry

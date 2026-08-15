@@ -4,6 +4,7 @@ import {
   ContinuousGraphRuntime,
   JsonataExpressionProvider,
   Kernel,
+  SyncJsonataExpressionProvider,
   type Orchestrator,
   type ProgramGraph,
 } from "../src/index";
@@ -94,6 +95,28 @@ test("a perpetual signal cycle yields instead of being rejected", async () => {
   assert.deepEqual(result.readyNodes, ["loop"]);
 });
 
+test("a consumed signal expires before unrelated value inputs change", async () => {
+  const runtime = new ContinuousGraphRuntime({
+    inputs: ["report", "selection"],
+    ports: { report: { mode: "signal" } },
+    outputs: ["observed"],
+    nodes: [{
+      id: "writer",
+      inputs: { report: "report", selection: "selection" },
+      outputs: { observed: "observed" },
+      operation: { kind: "compute", expression: "$inputs" },
+    }],
+  }, new JsonataExpressionProvider());
+
+  await runtime.publish({ selection: "a" });
+  const report = await runtime.publish({ report: { id: 1 } });
+  const selection = await runtime.publish({ selection: "b" });
+
+  assert.equal(report.nodeExecutions, 1);
+  assert.equal(selection.nodeExecutions, 0);
+  assert.equal(runtime.snapshotTokens().report.status, "absent");
+});
+
 test("startup and event triggers enter the same dependency scheduler", async () => {
   const runtime = new ContinuousGraphRuntime({
     outputs: ["result"],
@@ -140,7 +163,7 @@ test("Kernel-context graph nodes bind $event to the event payload", async () => 
         },
       ],
     } } },
-    { orchestrator: { async invoke(effect) { invoked.push(effect.args.value); return { outputs: {} }; } } },
+    { orchestrator: { async invoke(effect) { invoked.push(effect.data.value); return { outputs: {} }; } } },
   );
 
   await kernel.dispatch({ node: "button", name: "run", payload: { value: "payload" } });
@@ -218,7 +241,7 @@ test("invoke actions settle as ordinary effects rather than graph output continu
       nodes: [{
         id: "act",
         inputs: { value: "request" },
-        operation: { kind: "actions", actions: [{ do: "invoke", args: { tool: "work" } }] },
+        operation: { kind: "actions", actions: [{ do: "invoke", control: { tool: "work" } }] },
       }],
     } } },
     { orchestrator },
@@ -233,7 +256,7 @@ test("invoke actions settle as ordinary effects rather than graph output continu
 test("Kernel invoke nodes suspend and resume downstream propagation from explicit outputs", async () => {
   const orchestrator: Orchestrator = {
     async invoke(effect) {
-      assert.deepEqual(effect.args, { query: "question" });
+      assert.deepEqual(effect.data, { query: "question" });
       return { outputs: { answer: "resolved" } };
     },
   };
@@ -266,4 +289,45 @@ test("Kernel invoke nodes suspend and resume downstream propagation from explici
   assert.equal(kernel.state().result, "resolved");
   assert.equal(kernel.execution().status, "quiescent");
   assert.deepEqual(kernel.execution().runningInvocations, []);
+});
+
+test("synchronous and asynchronous graph execution share the same traversal", async () => {
+  const asynchronous = new ContinuousGraphRuntime(graph, new JsonataExpressionProvider());
+  const synchronous = new ContinuousGraphRuntime(graph, new SyncJsonataExpressionProvider());
+
+  const asyncResult = await asynchronous.publish({ seed: 0 });
+  const syncResult = synchronous.publishSync({ seed: 0 });
+
+  assert.deepEqual(syncResult, asyncResult);
+  assert.deepEqual(synchronous.snapshotTokens(), asynchronous.snapshotTokens());
+  assert.deepEqual(synchronous.snapshotNodes(), asynchronous.snapshotNodes());
+});
+
+test("synchronous Kernel publication executes deterministic extension nodes", () => {
+  const executed: string[] = [];
+  const kernel = new Kernel(
+    { gik: "0.1", type: "vocabulary", payload: { version: "compiler/1" } },
+    { gik: "0.1", type: "program", payload: { graph: {
+      inputs: ["source"],
+      outputs: ["compiled"],
+      nodes: [{
+        id: "compile",
+        inputs: { source: "source" },
+        outputs: { compiled: "compiled" },
+        operation: { kind: "extension", name: "compile" },
+      }],
+    } } },
+    {
+      expression: new SyncJsonataExpressionProvider(),
+      executeGraphExtension(node, inputs) {
+        executed.push(node.id);
+        return { outputs: { compiled: inputs.source } };
+      },
+    },
+  );
+
+  const result = kernel.publishSync({ source: { id: "artifact" } });
+
+  assert.deepEqual(executed, ["compile"]);
+  assert.deepEqual(result.execution.tokens.compiled.value, { id: "artifact" });
 });

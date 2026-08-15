@@ -320,7 +320,7 @@ export const manageBlueprintsEffects: EffectHandlerMap = {
   },
 
   async getBlueprint(ctx) {
-    const id = String(Array.isArray(ctx.payload.values) ? ctx.payload.values[0] ?? "" : "");
+    const id = String(Array.isArray(ctx.data.values) ? ctx.data.values[0] ?? "" : "");
     const entry = await findEntry(id);
     if (!entry) {
       return { outcome: "not-found", ops: [setOp("manageBlueprints.editor.error", `Blueprint '${id}' was not found.`)] };
@@ -349,7 +349,7 @@ export const manageBlueprintsEffects: EffectHandlerMap = {
   },
 
   async importBlueprint(ctx) {
-    const candidate = ctx.payload.file;
+    const candidate = ctx.data.file;
     const file = candidate && typeof candidate === "object" && !Array.isArray(candidate)
       ? candidate as JsonRecord
       : null;
@@ -416,7 +416,7 @@ export const manageBlueprintsEffects: EffectHandlerMap = {
   },
 
   async saveBlueprint(ctx) {
-    const submitted = ctx.payload.values;
+    const submitted = ctx.data.values;
     const values = submitted && typeof submitted === "object" && !Array.isArray(submitted)
       ? submitted as JsonRecord
       : null;
@@ -472,7 +472,7 @@ export const manageBlueprintsEffects: EffectHandlerMap = {
   },
 
   async selectBlueprintTab(ctx) {
-    const tab = String(ctx.payload.value ?? "overview");
+    const tab = String(ctx.data.value ?? "overview");
     if (tab === "preview") return previewResult(ctx);
     return { ops: [setOp("manageBlueprints.tab", tab)] };
   },

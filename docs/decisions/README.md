@@ -38,7 +38,7 @@ rejected options were set aside, and the consequences.
 | [0031](ADR-0031-per-bundle-registries.md) | Per-bundle capability registries — shared floor + additive overlay | Accepted |
 | [0032](ADR-0032-framework-keyed-bundles.md) | Framework-keyed bundles — `samples/bundles/` sibling to `samples/apps/`, apps compose them | Proposed |
 | [0033](ADR-0033-provider-engines-reactive-statemodel-step-orchestrator.md) | Provider engines — reactive `StateModel` and StepMachine `Orchestrator`, vendored from proven sources | Proposed |
-| [0034](ADR-0034-declarative-reactions-and-context.md) | Declarative reactions (`react`) and shared context (`context`), with the intent⇄product boundary kept native | Proposed |
+| [0034](ADR-0034-declarative-reactions-and-context.md) | Shared context and the retired declarative reaction experiment | Accepted (amended) |
 | [0035](ADR-0035-stop-dotnet-port.md) | Stop the C#/.NET port — master becomes TypeScript-only; the port is frozen on the `dotnet-port` branch | Accepted |
 | [0036](ADR-0036-rename-navigate-to-route.md) | Rename the `navigate` action verb to `route` — a medium-neutral name for the closed grammar's flow/destination handoff | Accepted |
 | [0037](ADR-0037-face-projections-and-transport-boundary.md) | Face package with pure/live strata; projections own policy, transports stay agnostic | Accepted |
@@ -46,12 +46,14 @@ rejected options were set aside, and the consequences.
 | [0039](ADR-0039-sync-expression-evaluation.md) | Platform JSONata is pure — a single canonical engine version, no divergent sync build | Accepted |
 | [0040](ADR-0040-external-services-and-queueface.md) | External services as one adapter contract — host execution, Blueprint-owned operations, Face projections | Accepted (amended) |
 | [0041](ADR-0041-blueprint-first-hosting-and-controlface-lowering.md) | Blueprint-first application hosting — ControlFace owns runtime opening and lowering lifecycle | Accepted (amended) |
-| [0042](ADR-0042-controlled-invocation-progress.md) | Controlled invocation progress with terminal settlement | Proposed |
+| [0042](ADR-0042-controlled-invocation-progress.md) | Controlled invocation progress with terminal settlement | Proposed (adopted by ADR-0049) |
 | [0043](ADR-0043-lowering-compiler-plane-and-artifact-cells.md) | Lowering compiler plane and artifact Cells | Accepted |
 | [0044](ADR-0044-provider-neutral-durable-transition-runtime.md) | Provider-neutral durable transition runtime | Accepted |
-| [0045](ADR-0045-lowering-meta-graph-as-cells-on-the-same-kernel.md) | The lowering meta-graph runs as Cells on the same Kernel — no second execution engine | Accepted |
+| [0045](ADR-0045-lowering-meta-graph-as-cells-on-the-same-kernel.md) | The lowering meta-graph runs as Cells on the same Kernel — no second execution engine | Accepted (amended) |
 | [0046](ADR-0046-deterministic-blueprint-materialization.md) | Deterministic Blueprint materialization and portable execution values | Accepted |
 | [0047](ADR-0047-durable-snapshot-synchronization.md) | Durable snapshot synchronization with bounded patch fallback | Accepted |
+| [0048](ADR-0048-agent-lifecycle-experiences-and-host-admission.md) | Agent lifecycle experiences and host-owned admission | Accepted |
+| [0049](ADR-0049-stable-event-contracts-and-effect-settlements.md) | Stable event contracts and effect settlements | Accepted |
 
 ## Format
 

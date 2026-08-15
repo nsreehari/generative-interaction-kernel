@@ -10,7 +10,10 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const readJson = (p) => JSON.parse(readFileSync(join(here, p), "utf8"));const schemaFiles = [
+const schemas = join(here, "../packages/evaluators/schemas");
+const readJson = (p) => JSON.parse(readFileSync(join(here, p), "utf8"));
+const readSchema = (p) => JSON.parse(readFileSync(join(schemas, p), "utf8"));
+const schemaFiles = [
   "vocabulary.schema.json",
   "program.schema.json",
   "patch.schema.json",
@@ -21,7 +24,7 @@ const readJson = (p) => JSON.parse(readFileSync(join(here, p), "utf8"));const sc
 ];
 
 const ajv = new Ajv({ allErrors: true, strict: false });
-for (const f of schemaFiles) ajv.addSchema(readJson(f));
+for (const f of schemaFiles) ajv.addSchema(readSchema(f));
 
 const byId = (name) => `https://genui.dev/gik/0.1/${name}`;
 
@@ -121,7 +124,7 @@ for (const f of readdirSync(casesDir).filter((n) => n.endsWith(".case.json")).so
 }
 
 console.log("\nDeclarative Blueprint tests (case shape):");
-const blueprintCaseSchema = readJson("blueprint-test-case.schema.json");
+const blueprintCaseSchema = readSchema("blueprint-test-case.schema.json");
 const vBlueprintCase = new Ajv({ allErrors: true, strict: false }).compile(blueprintCaseSchema);
 const blueprintsDir = join(here, "../samples/blueprints");
 const blueprintCaseFiles = readdirSync(blueprintsDir, { withFileTypes: true })

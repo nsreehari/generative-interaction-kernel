@@ -2,6 +2,8 @@
 
 **Status:** Accepted
 
+**Amended by:** [ADR-0049](ADR-0049-stable-event-contracts-and-effect-settlements.md) replaces `confirm` with resolver-neutral `request`, uses `control`/`data`, and standardizes effect settlements.
+
 ## Context
 
 [ADR-0003](ADR-0003-stateless-events-with-reducer.md) fixed sequencing as data reduced by a **pure

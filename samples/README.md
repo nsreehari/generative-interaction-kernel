@@ -47,7 +47,7 @@ The browser verifies and admits this seed bundle to IndexedDB before rendering. 
 
 ## Blueprint Tests
 
-Put structural and materialization cases beside their owning Blueprint as `blueprints/<id>/*.case.json`. The generic runner validates artifacts, composition, JSON Pointer values, and placement children; `npm run conformance` also validates each case against `../schemas/blueprint-test-case.schema.json`.
+Put structural and materialization cases beside their owning Blueprint as `blueprints/<id>/*.case.json`. The generic runner validates artifacts, composition, JSON Pointer values, and placement children; `npm run conformance` also validates each case against `../packages/evaluators/schemas/blueprint-test-case.schema.json`.
 
 Keep lifecycle, effect-handler, controller, persistence, and rendered interaction tests in TypeScript. Tests should resolve Blueprint sources through `catalog/blueprint-catalog.ts` so they exercise the installed catalog instead of importing individual `blueprint.json` files.
 

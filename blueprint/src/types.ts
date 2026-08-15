@@ -6,11 +6,12 @@ import type {
   ProjectedVocabularyManifest,
   ProgramPatch,
   ProgramPatchOperation,
-  Reaction,
   ServiceDeclaration,
   ServiceRequirement,
+  ServiceTransform,
   ServiceUse,
 } from "@gik/kernel";
+import type { SystemInputToken } from "@gik/evaluators";
 
 export interface TierDefinition {
   id: string;
@@ -37,8 +38,15 @@ export interface BlueprintRepresentation {
   headless?: boolean;
   extends?: string;
   views?: Record<string, CellView>;
+  decorators?: BlueprintRepresentationDecorator[];
   presentation?: PresentationProjection;
   presentationAppend?: PresentationProjection["placements"];
+}
+
+export interface BlueprintRepresentationDecorator {
+  select: string;
+  before?: CellViewDecoration;
+  after?: CellViewDecoration;
 }
 
 export interface CellImplementationOverride {
@@ -90,30 +98,44 @@ export interface CellOutput {
   schema?: Record<string, Json>;
 }
 
-export type CellSource = ServiceUse & { id: string; when?: string };
+export type CellSource = ServiceUse & {
+  id: string;
+  when?: string;
+  input?: ServiceTransform;
+  output?: ServiceTransform;
+};
 
 export interface CellComputation {
   id: string;
   expression: string;
   assign: string;
-  dependencies: readonly string[];
-  when?: string;
+  dependencies?: readonly string[];
+}
+
+export interface CellEventContract {
+  payloadSchema: Record<string, Json>;
+  description?: string;
 }
 
 export interface CellBehavior {
-  events?: Record<string, Action[]>;
-  reactions?: Reaction[];
+  on?: Record<string, Action[]>;
 }
 
 export type CellViewBinding =
   | { from: string; expression?: never }
   | { from?: never; expression: string };
 
-export interface CellView {
-  capability?: string;
+export interface CellViewDecoration {
+  capability: string;
   props?: Record<string, Json>;
   bindings?: Record<string, CellViewBinding>;
   visibility?: string;
+}
+
+export interface CellView extends Omit<CellViewDecoration, "capability"> {
+  capability?: string;
+  before?: readonly CellViewDecoration[];
+  after?: readonly CellViewDecoration[];
 }
 
 export type CellBlueprint =
@@ -130,9 +152,11 @@ export interface CellDefinition {
     persistence?: "ephemeral" | "checkpointed" | "durable";
   };
   inputs?: readonly CellInput[];
+  systemInputs?: readonly SystemInputToken[];
   sources?: readonly CellSource[];
   compute?: readonly CellComputation[];
   outputs?: readonly CellOutput[];
+  events?: Record<string, CellEventContract>;
   behavior?: CellBehavior;
   view?: CellView;
   blueprint?: CellBlueprint;

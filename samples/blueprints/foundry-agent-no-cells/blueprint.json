@@ -142,7 +142,10 @@
       ],
       "actions": [
         "assign",
-        "invoke"
+        "emit",
+        "invoke",
+        "route",
+        "request"
       ],
       "capabilities": {
         "primitive:container": {
@@ -336,7 +339,7 @@
       "foundry-access-gate": {
         "id": "foundry-access-gate",
         "behavior": {
-          "events": {
+          "on": {
             "accessRequested": [
               {
                 "do": "assign",
@@ -354,7 +357,7 @@
               },
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "checkFoundryAccess"
                 }
               }
@@ -362,7 +365,7 @@
             "accessCleared": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "clearFoundryAccess"
                 }
               }
@@ -379,6 +382,18 @@
               "expression": "($s := agent.accessStatus; {'title':'Connect to Foundry','requiredMessage':'Enter your access key to continue.','checkingMessage':'Checking Foundry access...','errorMessage':\"Couldn't verify Foundry access.\",'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': agent.accessError})"
             }
           }
+        },
+        "events": {
+          "accessRequested": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "accessCleared": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "agent-demo": {
@@ -393,7 +408,7 @@
       "agent-selector": {
         "id": "agent-selector",
         "behavior": {
-          "events": {
+          "on": {
             "agentsRequested": [
               {
                 "do": "assign",
@@ -411,7 +426,7 @@
               },
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "discoverAgents"
                 }
               }
@@ -443,6 +458,18 @@
               "from": "agent.agentsError"
             }
           }
+        },
+        "events": {
+          "agentsRequested": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "select": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "agent-connected": {
@@ -463,7 +490,7 @@
       "agent-message-field": {
         "id": "agent-message-field",
         "behavior": {
-          "events": {
+          "on": {
             "input": [
               {
                 "do": "assign",
@@ -486,16 +513,23 @@
               "from": "agent.draft"
             }
           }
+        },
+        "events": {
+          "input": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "agent-ask-btn": {
         "id": "agent-ask-btn",
         "behavior": {
-          "events": {
+          "on": {
             "press": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "askAgent"
                 }
               }
@@ -507,6 +541,13 @@
           "props": {
             "label": "Ask",
             "appearance": "primary"
+          }
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
           }
         }
       },
@@ -587,11 +628,11 @@
       "agent-signout-btn": {
         "id": "agent-signout-btn",
         "behavior": {
-          "events": {
+          "on": {
             "press": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "signOut"
                 }
               }
@@ -603,6 +644,13 @@
           "props": {
             "label": "Sign out",
             "dependency": { "kind": "credential", "ref": "foundry-agent/access-key" }
+          }
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
           }
         }
       }

@@ -6,11 +6,11 @@
   "steps": [
     {
       "event": { "node": "table-orders", "name": "rowSelect", "payload": { "id": "order-7" } },
-      "expectPatch": { "rev": 1, "ops": [{ "op": "set", "path": "card_data.selected", "value": "order-7" }] }
+      "expectPatch": { "rev": 1, "ops": [{ "op": "set", "path": "card_data.selected", "value": "order-7" }], "completedWithinRun": [{ "kind": "assign", "node": "table-orders", "target": "card_data.selected", "value": "order-7" }] }
     },
     {
       "event": { "node": "btn-approve", "name": "tap" },
-      "expectPatch": { "rev": 2, "ops": [{ "op": "set", "path": "card_data.status", "value": "approved" }] }
+      "expectPatch": { "rev": 2, "ops": [{ "op": "set", "path": "card_data.status", "value": "approved" }], "completedWithinRun": [{ "kind": "assign", "node": "btn-approve", "target": "card_data.status", "value": "approved" }] }
     }
   ]
 }

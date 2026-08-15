@@ -28,7 +28,7 @@ Published once per domain; every other party validates against it.
   "version": "1.0",
   "expression": "<dialect-id>",
   "namespaces": ["<ns>"],
-  "actions": ["assign", "derive", "invoke", "emit", "route", "confirm"],
+  "actions": ["assign", "emit", "invoke", "route", "request"],
   "capabilities": {
     "<type>": {
       "propsSchema": { "$comment": "JSON Schema" },
@@ -155,9 +155,10 @@ the repo `schemas/` directory.
 The golden fixture is not only schema-valid — it is **executed** by a reference kernel
 (`kernel/`, TypeScript; see [ADR-0007](decisions/ADR-0007-reference-kernel-implementation.md)). The
 kernel interprets a `document` (`gate → capability → props → children`), applies the pure reducer to
-an `event` (`assign`/`derive`/`emit` plus declared machine transitions), enforces
+an `event` (`assign`/`emit` plus declared machine transitions), records internal completions in
+`completedWithinRun`, enforces
 validate-before-commit, and emits a `patch` byte-for-byte equal to the fixture's expected patch.
-`invoke`/`route`/`confirm` are surfaced as **effects** the kernel runs against the Orchestrator
+`invoke`/`route`/`request` are surfaced as **effects** the kernel runs against the Orchestrator
 provider after reduction (see below).
 
 ## Reference render adapter (React)
@@ -171,16 +172,17 @@ upholding the protocol invariant.
 
 ## Reference Orchestrator (effects)
 
-`invoke`/`confirm`/`route` are effectful, so the pure reducer only *records* them; the kernel
+`invoke`/`request`/`route` are effectful, so the pure reducer only *records* them; the kernel
 runs them against an **Orchestrator** provider after reduction (see
 [ADR-0009](decisions/ADR-0009-orchestrator-effects.md)). The Orchestrator owns time and I/O and
-returns store `ops` and/or follow-up `event`s. `confirm` and `route` retain one-shot settlement in the
-initiating dispatch. A controlled `invoke` begins only after the initiating patch commits, may emit
+returns an effect settlement. Effect `control` contains host routing and validation metadata while
+opaque resolver input is carried in `data`. Request settlement data is validated against
+`control.responseSchema` before re-entering as `resolved` or `rejected`. A controlled `invoke` begins only after the initiating patch commits, may emit
 live progress without changing state, and applies its terminal result in one later revision. **Async
 data is modeled as machine states** (`idle → loading → ready`): the triggering event moves the machine
 to `loading`; the terminal follow-up event moves it to `ready`. The default `NullOrchestrator`
-performs nothing, so a document referencing tools runs harmlessly before wiring exists. `emit` stays
-internal to the reducer's queue; only `invoke`/`confirm`/`route` cross the Orchestrator boundary.
+performs nothing, so a document referencing tools runs harmlessly before wiring exists. `assign` and
+`emit` complete internally; only `invoke`/`request`/`route` cross the Orchestrator boundary.
 
 ## Reference transport (the wire, exercised)
 

@@ -1,6 +1,7 @@
 import { DefaultServiceHost, type ServiceHost } from "@gik/controlface";
 import type { BlueprintRuntime } from "@gik/controlface/blueprint";
 import type { BlueprintHostRegistry } from "@gik/blueprint";
+import { executeQueuedCellSourceEffect } from "@gik/blueprint/worker";
 import { unwrap, type ServiceDeclaration, type StateModel } from "@gik/kernel";
 import { JsonataExpressionProvider } from "@gik/kernel";
 import type { LoadBundleOptions } from "@gik/react";
@@ -70,14 +71,15 @@ export function createNodeBlueprintServiceHost(
 export function nodeServiceOrchestrator(
   runtime: BlueprintRuntime,
   host: ServiceHost,
+  state: StateModel,
 ): NonNullable<LoadBundleOptions["wrapOrchestrator"]> {
   const declarations = (unwrap(runtime.vocabulary).externals?.services ?? {}) as Record<string, ServiceDeclaration>;
   const serviceInvokes = new Set(Object.values(declarations).flatMap((declaration) => Object.keys(declaration.operations)));
   return (fallback) => ({
-    invoke: (effect, control) => effect.kind === "invoke" && typeof effect.tool === "string" && serviceInvokes.has(effect.tool)
-      ? host.invoke(effect)
+    invoke: (effect, control) => effect.kind === "invoke" && serviceInvokes.has(effect.control.tool)
+      ? executeQueuedCellSourceEffect(effect, state.snapshot(), (executingEffect) => host.invoke(executingEffect))
       : fallback?.invoke?.(effect, control) ?? Promise.resolve(),
-    confirm: fallback?.confirm?.bind(fallback),
+    request: fallback?.request?.bind(fallback),
     route: fallback?.route?.bind(fallback),
     compensate: fallback?.compensate?.bind(fallback),
   });

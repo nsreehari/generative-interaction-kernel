@@ -6,6 +6,7 @@ import {
   type QueueProcessResult,
   type TransitionRefs,
 } from "@gik/durable-runtime";
+import { evalAsyncJsonata } from "@gik/evaluators";
 import type { GIKEvent, Json, OrchestratorEffect, OrchestratorResult } from "@gik/kernel";
 import {
   createBlueprintDurableEffectSettlementEvent,
@@ -110,6 +111,111 @@ export type BlueprintEffectExecutor = (
   context: BlueprintEffectExecutionContext,
 ) => Promise<OrchestratorResult | void> | OrchestratorResult | void;
 
+export async function prepareQueuedCellSourceEffect(effect: OrchestratorEffect): Promise<OrchestratorEffect> {
+  if (effect.kind !== "invoke" || !effect.control.sourceInputs || !effect.control.sourceInputTransform) return effect;
+  const input = await evalAsyncJsonata(effect.control.sourceInputTransform.expr, effect.control.sourceInputs);
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    throw new Error(`Cell source '${effect.control.sourceId}' input transform must return an object`);
+  }
+  return { ...effect, data: input };
+}
+
+export async function settleQueuedCellSourceEffect(
+  effect: OrchestratorEffect,
+  result: OrchestratorResult | void,
+  state: Record<string, Json>,
+): Promise<OrchestratorResult | void> {
+  if (effect.kind !== "invoke" || !result || result.sourceOutput === undefined || !effect.control.sourceId) return result;
+  const sourceValue = effect.control.sourceOutputTransform
+    ? await evalAsyncJsonata(effect.control.sourceOutputTransform.expr, { response: result.sourceOutput })
+    : structuredClone(result.sourceOutput);
+  const { sourceOutput: _rawSourceOutput, ...settlement } = result;
+  const runState = state.blueprintRunState;
+  const cells = runState && typeof runState === "object" && !Array.isArray(runState)
+    && runState.cells && typeof runState.cells === "object" && !Array.isArray(runState.cells)
+    ? structuredClone(runState.cells)
+    : {};
+  const cellId = effect.control.sourceCellId ?? effect.node;
+  const currentCell = cells[cellId];
+  const cell = currentCell && typeof currentCell === "object" && !Array.isArray(currentCell)
+    ? currentCell
+    : { sources: [] };
+  const currentSourceValues = cell.sourceValues;
+  const sourceValues = currentSourceValues && typeof currentSourceValues === "object" && !Array.isArray(currentSourceValues)
+    ? currentSourceValues
+    : {};
+  cells[cellId] = { ...cell, sourceValues: { ...sourceValues, [effect.control.sourceId]: sourceValue } };
+  return {
+    ...settlement,
+    ops: [
+      ...(settlement.ops ?? []),
+      {
+        op: "set",
+        path: "blueprintRunState.cells",
+        value: cells,
+      },
+    ],
+  };
+}
+
+export async function executeQueuedCellSourceEffect(
+  effect: OrchestratorEffect,
+  state: Record<string, Json>,
+  executeEffect: (effect: OrchestratorEffect) => Promise<OrchestratorResult | void> | OrchestratorResult | void,
+): Promise<OrchestratorResult | void> {
+  const executingEffect = await prepareQueuedCellSourceEffect(effect);
+  return settleQueuedCellSourceEffect(effect, await executeEffect(executingEffect), state);
+}
+
+export async function executeQueuedBlueprintEffect(
+  effect: OrchestratorEffect,
+  state: Record<string, Json>,
+  messageId: string,
+  executeEffect: (effect: OrchestratorEffect) => Promise<OrchestratorResult | void> | OrchestratorResult | void,
+): Promise<GIKEvent[]> {
+  const result = await executeQueuedCellSourceEffect(effect, state, executeEffect);
+  const isCellSource = effect.kind === "invoke" && Boolean(effect.control.sourceRequestToken);
+  if (!isCellSource && effect.kind !== "request") return [];
+  if (effect.kind === "request" && !result?.settlement) {
+    throw new Error(`Request effect '${effect.effectId ?? messageId}' completed without a settlement`);
+  }
+  return [createBlueprintDurableEffectSettlementEvent(
+    messageId,
+    result ?? { outcome: "completed" },
+    effect,
+  )];
+}
+
+export function queuedBlueprintEffectFailureEvents(
+  effect: OrchestratorEffect,
+  failure: { messageId: string; attempt: number; error: string },
+): GIKEvent[] {
+  const detail = {
+    messageId: failure.messageId,
+    attempt: failure.attempt,
+    error: failure.error,
+  };
+  if (effect.kind === "request") {
+    if (!effect.effectId) throw new Error("Queued request effect is missing its effect id");
+    return [createBlueprintDurableEffectSettlementEvent(failure.messageId, {
+      outcome: "failed",
+      detail,
+      settlement: {
+        effectId: effect.effectId,
+        outcome: "failed",
+        detail,
+      },
+    }, effect)];
+  }
+  if (effect.kind === "invoke" && effect.control.sourceRequestToken) {
+    return [createBlueprintDurableEffectSettlementEvent(failure.messageId, {
+      outcome: "failed",
+      detail,
+    }, effect)];
+  }
+  return [];
+}
+
 export interface BlueprintExecution {
   runtime: DurableBlueprintWorkerRuntimeOptions;
   createWorker(options: {
@@ -149,39 +255,19 @@ export function createDurableBlueprintWorker(options: {
           options.runtime.refs,
         );
         if (snapshot.spec.settledEffectMessageIds?.includes(execution.messageId)) return [];
-        const result = await options.executeEffect(value as OrchestratorEffect, {
-          state: structuredClone(snapshot.state),
-          spec: structuredClone(snapshot.spec),
-          messageId: execution.messageId,
-          attempt: execution.attempt,
-          signal: execution.signal,
-        });
-        return [createBlueprintDurableEffectSettlementEvent(
-          execution.messageId,
-          result ?? { outcome: "completed" },
-        )] satisfies GIKEvent[];
+        const effect = value as OrchestratorEffect;
+        return executeQueuedBlueprintEffect(effect, snapshot.state, execution.messageId, (executingEffect) =>
+          options.executeEffect(executingEffect, {
+            state: structuredClone(snapshot.state),
+            spec: structuredClone(snapshot.spec),
+            messageId: execution.messageId,
+            attempt: execution.attempt,
+            signal: execution.signal,
+          }));
       },
     },
     effectFailureHandler: (value, failure) => {
-      const effect = value as OrchestratorEffect;
-      return [createBlueprintDurableEffectSettlementEvent(failure.messageId, {
-      outcome: "failed",
-      detail: {
-        messageId: failure.messageId,
-        attempt: failure.attempt,
-        error: failure.error,
-      },
-      events: [{
-        node: effect.node,
-        name: `${effect.kind}-failed`,
-        payload: {
-          messageId: failure.messageId,
-          attempt: failure.attempt,
-          error: failure.error,
-          ...(effect.tool ? { tool: effect.tool } : {}),
-        },
-      }],
-    })];
+      return queuedBlueprintEffectFailureEvents(value as OrchestratorEffect, failure);
     },
   });
 

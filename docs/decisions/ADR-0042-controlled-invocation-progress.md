@@ -2,6 +2,8 @@
 
 **Status:** Proposed
 
+**Adopted and generalized by:** [ADR-0049](ADR-0049-stable-event-contracts-and-effect-settlements.md) applies stable terminal settlements to `invoke`, `route`, and `request`.
+
 ## Context
 
 An `invoke` currently has one observable output. The Orchestrator returns one
@@ -15,7 +17,7 @@ active and settles exactly once. Whether its implementation uses a callback, que
 or subscription is not part of the document grammar.
 
 There is also a cost boundary. AI text can arrive token by token, but sending every token through the
-kernel would turn local rendering activity into global revisions, reaction work, replay volume, and
+kernel would turn local rendering activity into global revisions, behavior work, replay volume, and
 journal noise. Most partial text is owned only by the active chat widget. Other in-flight events,
 such as a tool call beginning, approval being requested, or shared agent state changing, can be
 significant to the wider runtime before the invocation finishes.
@@ -76,7 +78,7 @@ interface OrchestratorProgress {
 
 - it does not mutate the `StateModel`;
 - it does not increment `rev`;
-- it does not run reactions;
+- it does not run document behavior;
 - it does not enter `effectsSince`; and
 - it is not replayed from checkpoints or the patch log.
 
@@ -244,7 +246,7 @@ the current implementation waits for one result and has no in-flight progress ch
   makes every consumer branch on a flag. Separate control operations make illegal states harder to
   express: progress never settles and emit always settles.
 - **Send every token as a kernel operation.** Rejected: local paint data would cause unnecessary
-  global mutation, revision churn, reaction work, and replay growth.
+  global mutation, revision churn, behavior work, and replay growth.
 - **Add durability or replay flags to progress.** Rejected: a flag would make one message sometimes
   transient and sometimes authoritative, forcing every kernel, transport, and consumer to branch on
   hidden persistence semantics. Applications already have the explicit event-to-patch path for

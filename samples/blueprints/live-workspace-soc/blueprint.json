@@ -22,7 +22,7 @@
             "request": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "effect.args"
+                "expr": "effect.data"
               }
             },
             "settlement": {
@@ -50,7 +50,7 @@
             "request": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "effect.args"
+                "expr": "effect.data"
               }
             },
             "settlement": {
@@ -80,11 +80,10 @@
       ],
       "actions": [
         "assign",
-        "derive",
         "emit",
         "invoke",
         "route",
-        "confirm"
+        "request"
       ],
       "capabilities": {
         "soc:workspace-shell": {
@@ -648,11 +647,11 @@
           "capability": "soc:workspace-body"
         },
         "behavior": {
-          "events": {
+          "on": {
             "establishIntent": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "establishIntent"
                 }
               }
@@ -660,7 +659,7 @@
             "addConstraint": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "addConstraint"
                 }
               }
@@ -668,7 +667,7 @@
             "suggestExploration": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "suggestExploration"
                 }
               }
@@ -676,7 +675,7 @@
             "amendExploration": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "amendExploration"
                 }
               }
@@ -684,7 +683,7 @@
             "replanExploration": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "replanExploration"
                 }
               }
@@ -692,7 +691,7 @@
             "commitPartialFindings": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "commitPartialFindings"
                 }
               }
@@ -700,16 +699,18 @@
             "proposeDc01": [
               {
                 "do": "route",
-                "args": {
-                  "tool": "evaluateDc01Policy",
+                "control": {
                   "to": "isolate:DC-01"
+                },
+                "data": {
+                  "tool": "evaluateDc01Policy"
                 }
               }
             ],
             "completeCorrelation": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "completeCorrelation"
                 }
               }
@@ -717,7 +718,7 @@
             "proposeHostA": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "proposeHostA"
                 }
               }
@@ -725,7 +726,7 @@
             "reviseResponse": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "reviseResponse"
                 }
               }
@@ -733,7 +734,7 @@
             "calculateResponse": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "calculateResponse"
                 }
               }
@@ -741,16 +742,25 @@
             "recommendContainment": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "recommendContainment"
                 }
               }
             ],
             "authorizeContainment": [
               {
-                "do": "confirm",
-                "args": {
-                  "tool": "authorizeContainment",
+                "do": "request",
+                "control": {
+                  "kind": "decision",
+                  "responseSchema": {
+                    "type": "object",
+                    "required": ["approved"],
+                    "properties": {
+                      "approved": { "type": "boolean" }
+                    }
+                  }
+                },
+                "data": {
                   "title": "Authorize Host-A isolation",
                   "message": "Authorize the evidence-backed, reversible isolation plan?",
                   "confirmLabel": "Authorize",
@@ -761,153 +771,84 @@
             "executeContainment": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "executeContainment"
                 }
               }
             ]
-          },
-          "reactions": [
-            {
-              "when": "$string(soc)",
-              "runInitially": true,
-              "run": [
-                {
-                  "do": "invoke",
-                  "args": {
-                    "tool": "syncInspection"
-                  }
-                }
-              ]
-            },
-            {
-              "when": "control.commands.establishIntent",
-              "run": [
-                {
-                  "do": "emit",
-                  "event": "establishIntent"
-                }
-              ]
-            },
-            {
-              "when": "control.commands.addConstraint",
-              "run": [
-                {
-                  "do": "emit",
-                  "event": "addConstraint"
-                }
-              ]
-            },
-            {
-              "when": "control.commands.suggestExploration",
-              "run": [
-                {
-                  "do": "emit",
-                  "event": "suggestExploration"
-                }
-              ]
-            },
-            {
-              "when": "control.commands.amendExploration",
-              "run": [
-                {
-                  "do": "emit",
-                  "event": "amendExploration"
-                }
-              ]
-            },
-            {
-              "when": "control.commands.replanExploration",
-              "run": [
-                {
-                  "do": "emit",
-                  "event": "replanExploration"
-                }
-              ]
-            },
-            {
-              "when": "control.commands.commitPartialFindings",
-              "run": [
-                {
-                  "do": "emit",
-                  "event": "commitPartialFindings"
-                }
-              ]
-            },
-            {
-              "when": "control.commands.proposeDc01",
-              "run": [
-                {
-                  "do": "emit",
-                  "event": "proposeDc01"
-                }
-              ]
-            },
-            {
-              "when": "control.commands.completeCorrelation",
-              "run": [
-                {
-                  "do": "emit",
-                  "event": "completeCorrelation"
-                }
-              ]
-            },
-            {
-              "when": "control.commands.proposeHostA",
-              "run": [
-                {
-                  "do": "emit",
-                  "event": "proposeHostA"
-                }
-              ]
-            },
-            {
-              "when": "control.commands.reviseResponse",
-              "run": [
-                {
-                  "do": "emit",
-                  "event": "reviseResponse"
-                }
-              ]
-            },
-            {
-              "when": "control.commands.calculateResponse",
-              "run": [
-                {
-                  "do": "emit",
-                  "event": "calculateResponse"
-                }
-              ]
-            },
-            {
-              "when": "control.commands.recommendContainment",
-              "run": [
-                {
-                  "do": "emit",
-                  "event": "recommendContainment"
-                }
-              ]
-            },
-            {
-              "when": "control.commands.executeContainment",
-              "run": [
-                {
-                  "do": "emit",
-                  "event": "executeContainment"
-                }
-              ]
-            },
-            {
-              "when": "control.authorizationRequest",
-              "runInitially": true,
-              "run": [
-                {
-                  "do": "emit",
-                  "event": "authorizeContainment"
-                }
-              ]
+          }
+        },
+        "events": {
+          "establishIntent": {
+            "payloadSchema": {
+              "type": "object"
             }
-          ]
+          },
+          "addConstraint": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "suggestExploration": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "amendExploration": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "replanExploration": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "commitPartialFindings": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "proposeDc01": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "completeCorrelation": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "proposeHostA": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "reviseResponse": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "calculateResponse": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "recommendContainment": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "authorizeContainment": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "executeContainment": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "soc-substrate-chrome": {
@@ -1218,12 +1159,21 @@
           }
         },
         "behavior": {
-          "events": {
+          "on": {
             "authorizeContainment": [
               {
-                "do": "confirm",
-                "args": {
-                  "tool": "authorizeContainment",
+                "do": "request",
+                "control": {
+                  "kind": "decision",
+                  "responseSchema": {
+                    "type": "object",
+                    "required": ["approved"],
+                    "properties": {
+                      "approved": { "type": "boolean" }
+                    }
+                  }
+                },
+                "data": {
                   "title": "Authorize Host-A isolation",
                   "message": "Authorize the evidence-backed, reversible isolation plan?",
                   "confirmLabel": "Authorize",
@@ -1231,6 +1181,13 @@
                 }
               }
             ]
+          }
+        },
+        "events": {
+          "authorizeContainment": {
+            "payloadSchema": {
+              "type": "object"
+            }
           }
         }
       },

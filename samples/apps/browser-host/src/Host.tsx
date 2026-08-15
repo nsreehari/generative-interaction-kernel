@@ -32,6 +32,7 @@ import {
   resolveSampleLaunchExternalContext,
 } from "../../../catalog/blueprint-catalog";
 import { createSampleBlueprintHostRegistry } from "./runtime/hosted-blueprint-registry";
+import { HostServiceDependencyAccess } from "./runtime/service-dependency-access";
 
 const embeddedHostStyle: React.CSSProperties = { height: "100vh" };
 
@@ -47,6 +48,7 @@ export function Host(): React.ReactElement {
     <HostView
       targetId={targetId}
       durableEnabled={query.durableEnabled}
+      externalContext={query.externalContext}
       HostComponent={HostComponent}
       resolveLeavesProvider={resolveProjectionViews}
     />
@@ -165,11 +167,13 @@ function DurableIndexedDbHost(props: DemoTargetHostProps): React.ReactElement {
 function HostView({
   targetId,
   durableEnabled,
+  externalContext,
   HostComponent,
   resolveLeavesProvider,
 }: {
   targetId: string;
   durableEnabled: boolean;
+  externalContext?: Record<string, string>;
   HostComponent: React.ComponentType<DemoTargetHostProps>;
   resolveLeavesProvider: (from: string) => ReturnType<typeof resolveProjectionViews>;
 }): React.ReactElement {
@@ -193,8 +197,8 @@ function HostView({
     native: resolveBlueprintNative(id, { proposalStore }),
   }), [id, proposalStore]);
   const context = React.useMemo(
-    () => resolveBlueprintInitialContext(id),
-    [id],
+    () => resolveBlueprintInitialContext(id, externalContext),
+    [externalContext, id],
   );
   const demoRunnerDocument = getSampleBlueprintCatalog().demoScenarios[id];
 
@@ -203,7 +207,7 @@ function HostView({
       <GikDemoBlueprintHost
         HostComponent={HostComponent}
         blueprint={blueprint}
-        externalContext={resolveSampleLaunchExternalContext(id)}
+        externalContext={externalContext ?? resolveSampleLaunchExternalContext(id)}
         native={native}
         context={context}
         resolveNative={(materializedBlueprint) =>
@@ -213,6 +217,7 @@ function HostView({
         blueprintRegistry={hostedBlueprintRegistry}
         style={embeddedHostStyle}
       />
+      <HostServiceDependencyAccess />
       <ApplicationSwitcher currentId={id} />
     </>
   );

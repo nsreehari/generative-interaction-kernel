@@ -49,7 +49,7 @@ function createHost(
         analyzePortfolio: {
           operation: "analyze",
           contract: "portfolio-analysis/v1",
-          request: { transform: { kind: "jsonata", expr: "effect.args" } },
+          request: { transform: { kind: "jsonata", expr: "effect.data" } },
           settlement: { transform: { kind: "jsonata", expr: "{'ops':[{'op':'set','path':'work.answer','value':response}]}" } },
           ...operation,
         },
@@ -68,7 +68,13 @@ function createHost(
   });
 }
 
-const effect = { kind: "invoke" as const, node: "portfolio", tool: "analyzePortfolio", args: { ticker: "MSFT" }, actorId: "author" };
+const effect = {
+  kind: "invoke" as const,
+  node: "portfolio",
+  control: { tool: "analyzePortfolio" },
+  data: { ticker: "MSFT" },
+  actorId: "author",
+};
 
 test("host rejects non-agent tools at the provider boundary", () => {
   assert.throws(() => createHost(async () => ({ output: null }), {}, {
@@ -97,6 +103,25 @@ test("host executes immediate operations and owns declarative settlement", async
   assert.deepEqual(await host.invoke(effect), { ops: [{ op: "set", path: "work.answer", value: { ticker: "MSFT" } }] });
 });
 
+test("host returns operation output without service settlement for Cell sources", async () => {
+  const host = createHost(async (request) => ({ output: { analysis: request.input ?? null, providerMetadata: "raw" } }));
+  assert.deepEqual(await host.invoke({
+    ...effect,
+    control: { ...effect.control, sourceId: "analysis.source", sourceCellId: "analysis" },
+  }), {
+    sourceOutput: { analysis: { ticker: "MSFT" }, providerMetadata: "raw" },
+  });
+});
+
+test("host settles service responses directly to graph output ports", async () => {
+  const host = createHost(async (request) => ({ output: request.input }), {
+    settlement: { transform: { kind: "jsonata", expr: "{'outputs':{'analysis_envelope':response}}" } },
+  });
+  assert.deepEqual(await host.invoke(effect), {
+    outputs: { analysis_envelope: { ticker: "MSFT" } },
+  });
+});
+
 test("host resolves Blueprint-backed services outside the native kind registry", async () => {
   const registry = new ServiceKindRegistry();
   const resolved: string[] = [];
@@ -111,7 +136,7 @@ test("host resolves Blueprint-backed services outside the native kind registry",
           analyzePortfolio: {
             operation: "analyze",
             contract: "portfolio-analysis/v1",
-            request: { transform: { kind: "jsonata", expr: "effect.args" } },
+            request: { transform: { kind: "jsonata", expr: "effect.data" } },
             settlement: { transform: { kind: "jsonata", expr: "{'ops':[{'op':'set','path':'work.answer','value':response}] }" } },
           },
         },

@@ -75,12 +75,12 @@ api_policy:
     identity: [id]
     event_bridge: [onEvent]
     effect_rule: >-
-      GikComponent does not execute effects. Bundle reactions remain in document edges.on;
+      GikComponent does not execute effects. Runtime behavior remains in document edges.on;
       non-bundle React hosts may bridge onEvent to their dispatcher.
   gik_component_declarative_props:
     required: [nodeJson]
     declaration_type: Json
-    canonical_edges: [read, readExpr, gate, write, on, react, children]
+    canonical_edges: [read, readExpr, gate, write, on, children]
     generic_layout:
       path: nodeJson.props.layout.slots
       assignment: "{ key: string, slot: string }"
@@ -93,7 +93,7 @@ api_policy:
     json_state: [state]
     native_runtime: [effectHandlers, contexts, resolveProvider]
     effect_rule: >-
-      Invoke actions use the canonical { do: invoke, args: { tool } } grammar. Referenced tools
+      Invoke actions use the canonical { do: invoke, control: { tool }, data?: {...} } grammar. Referenced tools
       are declared as vocabulary externals and resolved from provider effectHandlers.
 
 architecture:

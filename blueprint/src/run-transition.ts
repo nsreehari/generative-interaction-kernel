@@ -3,24 +3,91 @@ import {
   InMemoryStateModel,
   Kernel,
   unwrap,
+  validateJsonValue,
   type Enveloped,
   type ExecutableProgramDefinition,
   type GIKEvent,
   type Json,
   type Orchestrator,
   type OrchestratorEffect,
+  type OrchestratorResult,
+  type CompletedWithinRun,
+  type PatchOp,
   type ProjectedVocabularyManifest,
   type StateModel,
+  initialSourceRunState,
+  type GraphNodeExecutor,
+  type BlueprintRunState,
 } from "@gik/kernel";
+import {
+  evaluateCell,
+  type CellSourceEffect,
+  type EvaluatorCellDefinition,
+} from "@gik/evaluators";
 import { assembleBlueprint } from "./blueprint";
 import { compileCellTopology } from "./cells";
 import { composeCellProgram } from "./cell-projection";
 import { lowerWithFixedMetaGraph } from "./fixed-lowering-meta-graph";
 import { loadBlueprint } from "./resolution";
 import { admitBlueprintPatch, applyBlueprintPatch } from "./structure-patch";
-import type { BlueprintArtifact, BlueprintPatch, BlueprintPatchOrigin, BlueprintReferenceResolver } from "./types";
+import type {
+  BlueprintArtifact,
+  BlueprintPatch,
+  BlueprintPatchOrigin,
+  BlueprintReferenceResolver,
+  CellDefinition,
+} from "./types";
 
 export type ExternalContext = Readonly<Record<string, Json>>;
+
+export interface EvaluateBlueprintCellInput {
+  blueprint: BlueprintArtifact;
+  state: Record<string, Json>;
+  cell: CellDefinition;
+  externalContext?: ExternalContext;
+  resolveBlueprint?: BlueprintReferenceResolver;
+}
+
+export interface EvaluateBlueprintCellIdInput {
+  blueprint: BlueprintArtifact;
+  state: Record<string, Json>;
+  cellId: string;
+  externalContext?: ExternalContext;
+}
+
+export interface EvaluateBlueprintCellResult {
+  status: "evaluated" | "blocked";
+  materializedProgramCell: CellDefinition;
+  missingInputs: string[];
+  computed: Record<string, Json>;
+  outputs: Record<string, Json>;
+  effects: CellSourceEffect[];
+}
+export function resolveBlueprintInterfaceOutputs(
+  blueprint: BlueprintArtifact,
+  tokens: Readonly<Record<string, { status: string; value?: Json }>>,
+): Record<string, Json> {
+  return Object.fromEntries(Object.entries(blueprint.payload.interface?.outputs ?? {}).flatMap(
+    ([token, port]) => {
+      const graphToken = tokens[port.from ?? token];
+      return graphToken?.status === "available"
+        ? [[token, structuredClone(graphToken.value ?? null)]]
+        : [];
+    },
+  ));
+}
+
+function flattenState(value: Json, prefix = "", result: Record<string, Json> = {}): Record<string, Json> {
+  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    if (prefix) result[prefix] = value;
+    for (const [key, child] of Object.entries(value)) {
+      flattenState(child, prefix ? `${prefix}.${key}` : key, result);
+    }
+  } else if (prefix) {
+    result[prefix] = value;
+  }
+  return result;
+}
 
 export interface MaterializedBlueprint {
   readonly gik: "0.1";
@@ -32,6 +99,113 @@ export interface MaterializedBlueprint {
     readonly program: Enveloped<ExecutableProgramDefinition>;
     readonly initialState: Record<string, Json>;
   };
+}
+
+function resolveStateToken(
+  state: Record<string, Json>,
+  token: string,
+): { found: boolean; value?: Json } {
+  if (Object.prototype.hasOwnProperty.call(state, token)) {
+    return { found: true, value: structuredClone(state[token]) };
+  }
+  let value: Json = state;
+  for (const segment of token.split(".")) {
+    if (value === null || typeof value !== "object" || Array.isArray(value)
+      || !Object.prototype.hasOwnProperty.call(value, segment)) return { found: false };
+    value = value[segment];
+  }
+  return { found: true, value: structuredClone(value) };
+}
+
+function resolveBlueprintRunState(value: Json | undefined): BlueprintRunState {
+  if (!value || typeof value !== "object" || Array.isArray(value)
+    || !value.cells || typeof value.cells !== "object" || Array.isArray(value.cells)) {
+    return { cells: {} };
+  }
+  return value as unknown as BlueprintRunState;
+}
+
+/** Purely materialize and inspect one candidate Cell without executing effects or consequences. */
+export function evaluateBlueprintCell({
+  blueprint,
+  state,
+  cell,
+  externalContext,
+  resolveBlueprint,
+}: EvaluateBlueprintCellInput): EvaluateBlueprintCellResult {
+  if (!blueprint.payload.cells?.[cell.id]) {
+    throw new Error(`Blueprint '${blueprint.payload.id}' has no Cell '${cell.id}'`);
+  }
+  const candidateBlueprint = structuredClone(blueprint);
+  candidateBlueprint.payload.cells![cell.id] = structuredClone(cell);
+  const materialized = materializeBlueprint({
+    blueprint: candidateBlueprint,
+    externalContext,
+    resolveBlueprint,
+  });
+  const materializedProgramCell = materialized.payload.terminalBlueprint.payload.cells?.[cell.id];
+  if (!materializedProgramCell) {
+    throw new Error(`Materialized Blueprint '${blueprint.payload.id}' has no Cell '${cell.id}'`);
+  }
+
+  const inputs: Record<string, Json> = {};
+  const missingInputs: string[] = [];
+  for (const input of materializedProgramCell.inputs ?? []) {
+    const resolved = resolveStateToken(state, input.token);
+    if (resolved.found) inputs[input.as ?? input.token] = resolved.value ?? null;
+    else if (input.required !== false) missingInputs.push(input.token);
+  }
+
+  const runState = state.blueprintRunState;
+  const cells = runState && typeof runState === "object" && !Array.isArray(runState)
+    ? runState.cells
+    : undefined;
+  const cellRunState = cells && typeof cells === "object" && !Array.isArray(cells)
+    ? cells[cell.id]
+    : undefined;
+  const sourceValues = cellRunState && typeof cellRunState === "object" && !Array.isArray(cellRunState)
+    && cellRunState.sourceValues && typeof cellRunState.sourceValues === "object"
+    && !Array.isArray(cellRunState.sourceValues)
+    ? structuredClone(cellRunState.sourceValues as Record<string, Json>)
+    : {};
+
+  if (missingInputs.length > 0) {
+    return {
+      status: "blocked",
+      materializedProgramCell: structuredClone(materializedProgramCell),
+      missingInputs,
+      computed: {},
+      outputs: {},
+      effects: [],
+    };
+  }
+  const result = evaluateCell({
+    materializedProgramCell: materializedProgramCell as EvaluatorCellDefinition,
+    inputs,
+    settledSources: sourceValues,
+    systemContext: {
+      blueprintRunState: resolveBlueprintRunState(state.blueprintRunState),
+      cellId: cell.id,
+    },
+  });
+  return {
+    status: "evaluated",
+    materializedProgramCell: structuredClone(materializedProgramCell),
+    missingInputs: [],
+    ...result,
+  };
+}
+
+/** Purely inspect an authored Cell by id through the same materialized preflight path. */
+export function evaluateBlueprintCellId({
+  blueprint,
+  state,
+  cellId,
+  externalContext,
+}: EvaluateBlueprintCellIdInput): EvaluateBlueprintCellResult {
+  const cell = blueprint.payload.cells?.[cellId];
+  if (!cell) throw new Error(`Blueprint '${blueprint.payload.id}' has no Cell '${cellId}'`);
+  return evaluateBlueprintCell({ blueprint, state, cell, externalContext });
 }
 
 export interface MaterializeBlueprintInput {
@@ -66,13 +240,19 @@ export interface MaterializedBlueprintTransitionInput {
   state: Record<string, Json>;
   materializedBlueprint: MaterializedBlueprint;
   events: readonly GIKEvent[];
+  syncExternal?: boolean;
   contexts?: Record<string, StateModel>;
   createOrchestrator?: (state: StateModel) => Orchestrator;
+  sourceSettlements?: readonly { effect: OrchestratorEffect; result: OrchestratorResult }[];
+  requestSettlements?: readonly { effect: OrchestratorEffect; result: OrchestratorResult }[];
+  blueprintPatches?: readonly BlueprintPatch[];
 }
 
 export interface BlueprintTransitionResult {
   state: Record<string, Json>;
+  outputs?: Record<string, Json>;
   effects?: readonly OrchestratorEffect[];
+  completedWithinRun?: readonly CompletedWithinRun[];
   /** Semantic patch proposals always target the authored Blueprint supplied to runTransition. */
   blueprintPatchProposals?: readonly BlueprintPatch[];
   /** @deprecated Use blueprintPatchProposals. */
@@ -109,7 +289,6 @@ function mergeJsonRecords(base: Record<string, Json>, overlay: Record<string, Js
   }
   return merged;
 }
-
 function initialSeed(context?: Record<string, Json>): Record<string, Json> {
   const value = context?.initialSeed ?? context?.freeContext;
   return value !== null && typeof value === "object" && !Array.isArray(value)
@@ -139,7 +318,7 @@ export function prepareBlueprintProgram(
   const vocabulary: ProjectedVocabularyManifest = {
     version: `${blueprint.payload.id}/${blueprint.payload.version}`,
     expression: runtime.expression,
-    namespaces: runtime.namespaces,
+    namespaces: [...new Set([...(runtime.namespaces ?? []), "blueprintRunState"])],
     contexts: runtime.contexts,
     actions: runtime.actions,
     capabilities: structuredClone(runtime.capabilities ?? {}),
@@ -158,7 +337,17 @@ export function prepareBlueprintProgram(
     blueprint,
     vocabulary: { gik: "0.1", type: "vocabulary", payload: vocabulary },
     program: { gik: "0.1", type: "program", payload: program },
-    initialState: mergeJsonRecords(structuredClone(runtime.state ?? {}), initialSeed(options.context)),
+    initialState: mergeJsonRecords(
+      mergeJsonRecords(structuredClone(runtime.state ?? {}), initialSeed(options.context)),
+      {
+        blueprintRunState: {
+          cells: Object.fromEntries(Object.entries(blueprint.payload.cells).map(([cellId, cell]) => [cellId, {
+            sources: (cell.sources ?? []).map(({ id }) => ({ ...initialSourceRunState(id) })),
+            ...(cell.sources?.length ? { sourceValues: {} } : {}),
+          }])),
+        },
+      },
+    ),
   };
 }
 
@@ -169,6 +358,11 @@ export function materializeBlueprint({
 }: MaterializeBlueprintInput): MaterializedBlueprint {
   if (Object.prototype.hasOwnProperty.call(blueprint.payload.runtime.state ?? {}, "externalContext")) {
     throw new Error(`Blueprint '${blueprint.payload.id}' reserves state namespace 'externalContext' for immutable external context`);
+  }
+  for (const namespace of ["blueprintRunState", "cellRunState"]) {
+    if (Object.prototype.hasOwnProperty.call(blueprint.payload.runtime.state ?? {}, namespace)) {
+      throw new Error(`Blueprint '${blueprint.payload.id}' reserves state namespace '${namespace}' for Cell execution state`);
+    }
   }
   const prepared = prepareBlueprintProgram(blueprint, { externalContext, resolveBlueprint });
   return {
@@ -205,17 +399,61 @@ class ExternalContextStateModel implements StateModel {
     return structuredClone(value);
   }
 
-  apply(): void {
-    throw new Error("externalContext is read-only");
+  apply(ops: PatchOp[]): void {
+    const idempotent = ops.every((op) =>
+      op.op === "set" && JSON.stringify(this.get(op.path)) === JSON.stringify(op.value));
+    if (!idempotent) throw new Error("externalContext is read-only");
   }
+}
+
+export function createCellGraphNodeExecutor(state: StateModel): GraphNodeExecutor {
+  return async (node, nodeInputs) => {
+    if (node.operation.kind !== "extension" || node.operation.name !== "evaluate-cell") {
+      throw new Error(`Unknown Blueprint graph extension '${node.operation.kind === "extension" ? node.operation.name : node.operation.kind}'`);
+    }
+    const { __sources, ...inputs } = nodeInputs;
+    const settledSources = __sources && typeof __sources === "object" && !Array.isArray(__sources)
+      ? __sources as Record<string, Json>
+      : {};
+    const cellId = String((node.operation.config as { id?: unknown }).id ?? node.id);
+    const result = evaluateCell({
+      materializedProgramCell: node.operation.config as unknown as EvaluatorCellDefinition,
+      inputs,
+      settledSources,
+      systemContext: {
+        blueprintRunState: resolveBlueprintRunState(state.get("blueprintRunState")),
+        cellId,
+      },
+    });
+    return {
+      outputs: result.outputs,
+      operations: result.operations,
+      effects: result.effects.map(({ cellId, source, sourceInputs }) => ({
+        kind: "invoke" as const,
+        node: node.id,
+        control: {
+          tool: source.operation,
+          sourceId: source.id,
+          sourceCellId: cellId,
+          sourceInputs,
+          ...(source.input ? { sourceInputTransform: source.input } : {}),
+          ...(source.output ? { sourceOutputTransform: source.output } : {}),
+        },
+        data: {},
+      })),
+    };
+  };
 }
 
 export async function runMaterializedTransition({
   state,
   materializedBlueprint,
   events,
+  syncExternal,
   contexts,
   createOrchestrator,
+  sourceSettlements = [],
+  requestSettlements = [],
 }: MaterializedBlueprintTransitionInput): Promise<BlueprintTransitionResult> {
   const { vocabulary, program, externalContext } = materializedBlueprint.payload;
   if (contexts?.externalContext) throw new Error("contexts must not override reserved externalContext namespace");
@@ -227,19 +465,78 @@ export async function runMaterializedTransition({
   const runtimeStore = new CompositeStateModel(store, allContexts);
   const kernel = new Kernel(vocabulary, program, {
     state: runtimeStore,
+    executeGraphExtension: createCellGraphNodeExecutor(runtimeStore),
     ...(createOrchestrator ? { orchestrator: createOrchestrator(runtimeStore) } : {}),
   });
   kernel.init();
-  store.apply(Object.entries(state).map(([path, value]) => ({ op: "set", path, value })));
+  const initialRunState = materializedBlueprint.payload.initialState.blueprintRunState;
+  const transitionState = Object.prototype.hasOwnProperty.call(state, "blueprintRunState")
+    ? state
+    : {
+        ...state,
+        ...(initialRunState === undefined ? {} : { blueprintRunState: structuredClone(initialRunState) }),
+      };
+  store.apply(Object.entries(transitionState).map(([path, value]) => ({ op: "set", path, value })));
+  const completedWithinRun: CompletedWithinRun[] = [];
 
-  if (events.length === 0) await kernel.syncExternal();
-  for (const event of events) await kernel.dispatch(structuredClone(event));
+  const shouldSyncExternal = syncExternal
+    ?? (events.length === 0 && sourceSettlements.length === 0 && requestSettlements.length === 0);
+  if (shouldSyncExternal) {
+    const patch = await kernel.syncExternal();
+    completedWithinRun.push(...(patch.completedWithinRun ?? []));
+  }
+  else kernel.hydrateGraph(flattenState(store.snapshot()));
+  for (const settlement of sourceSettlements) {
+    const patch = await kernel.settleSourceEffect(
+      structuredClone(settlement.effect),
+      structuredClone(settlement.result),
+    );
+    completedWithinRun.push(...(patch.completedWithinRun ?? []));
+  }
+  if (sourceSettlements.length > 0) {
+    const patch = await kernel.syncExternal();
+    completedWithinRun.push(...(patch.completedWithinRun ?? []));
+  }
+  for (const settlement of requestSettlements) {
+    const patch = await kernel.settleRequestEffect(
+      structuredClone(settlement.effect),
+      structuredClone(settlement.result),
+    );
+    completedWithinRun.push(...(patch.completedWithinRun ?? []));
+  }
+  for (const event of events) {
+    const cell = materializedBlueprint.payload.terminalBlueprint.payload.cells?.[event.node];
+    const contract = cell?.events?.[event.name];
+    if (cell && !contract) {
+      throw new Error(`Cell '${event.node}' received undeclared event '${event.name}'`);
+    }
+    if (contract) {
+      validateJsonValue(
+        contract.payloadSchema,
+        event.payload ?? {},
+        `Invalid payload for Cell event '${event.node}.${event.name}'`,
+      );
+    }
+    const patch = await kernel.dispatch(structuredClone(event));
+    completedWithinRun.push(...(patch.completedWithinRun ?? []));
+  }
   await kernel.whenIdle();
 
   const effects = kernel.effectsSince(-1).map(({ effect }) => effect);
+  const hasInterfaceOutputs = Object.keys(
+    materializedBlueprint.payload.terminalBlueprint.payload.interface?.outputs ?? {},
+  ).length > 0;
+  const outputs = hasInterfaceOutputs && unwrap(program).graph
+    ? resolveBlueprintInterfaceOutputs(
+        materializedBlueprint.payload.terminalBlueprint,
+        kernel.execution().tokens,
+      )
+    : {};
   return {
     state: structuredClone(store.snapshot()),
+    ...(completedWithinRun.length > 0 ? { completedWithinRun } : {}),
     ...(effects.length > 0 ? { effects } : {}),
+    ...(Object.keys(outputs).length > 0 ? { outputs } : {}),
   };
 }
 

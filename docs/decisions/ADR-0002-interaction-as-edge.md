@@ -2,6 +2,8 @@
 
 **Status:** Accepted — 2026-07-03
 
+**Amended by:** [ADR-0049](ADR-0049-stable-event-contracts-and-effect-settlements.md) separates stable event declarations from selectable `behavior.on` handlers and closes the grammar at five actions.
+
 ## Context
 
 The closed grammar encoded data reads (`read`), data writes (`write`), structure (`child`), and

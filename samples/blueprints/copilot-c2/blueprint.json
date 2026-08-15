@@ -739,7 +739,10 @@
       ],
       "actions": [
         "assign",
-        "invoke"
+        "emit",
+        "invoke",
+        "route",
+        "request"
       ],
       "capabilities": {
         "primitive:container": {
@@ -988,17 +991,17 @@
       "copilot-c2-dashboard-refresh": {
         "id": "copilot-c2-dashboard-refresh",
         "behavior": {
-          "events": {
+          "on": {
             "press": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "refreshEnvironment"
                 }
               },
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "refreshRuns"
                 }
               }
@@ -1015,12 +1018,19 @@
             "showCountdown": true,
             "appearance": "primary"
           }
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "copilot-c2-open-settings": {
         "id": "copilot-c2-open-settings",
         "behavior": {
-          "events": {
+          "on": {
             "press": [
               {
                 "do": "assign",
@@ -1036,6 +1046,13 @@
           "capability": "fluent:button",
           "props": {
             "label": "Settings"
+          }
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
           }
         }
       },
@@ -1072,7 +1089,7 @@
       "copilot-c2-agent-activity-board": {
         "id": "copilot-c2-agent-activity-board",
         "behavior": {
-          "events": {
+          "on": {
             "select": [
               {
                 "do": "assign",
@@ -1115,6 +1132,13 @@
               "expression": "copilotC2.agentActivities"
             }
           }
+        },
+        "events": {
+          "select": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "copilot-c2-agent-workspace": {
@@ -1136,7 +1160,7 @@
       "copilot-c2-back-dashboard": {
         "id": "copilot-c2-back-dashboard",
         "behavior": {
-          "events": {
+          "on": {
             "press": [
               {
                 "do": "assign",
@@ -1153,16 +1177,23 @@
           "props": {
             "label": "All agents"
           }
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "copilot-c2-agent-refresh": {
         "id": "copilot-c2-agent-refresh",
         "behavior": {
-          "events": {
+          "on": {
             "press": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "loadSelectedRun"
                 }
               }
@@ -1179,12 +1210,19 @@
             "showCountdown": true
           },
           "visibility": "copilotC2.selectedRunId != ''"
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "copilot-c2-agent-settings": {
         "id": "copilot-c2-agent-settings",
         "behavior": {
-          "events": {
+          "on": {
             "press": [
               {
                 "do": "assign",
@@ -1200,6 +1238,13 @@
           "capability": "fluent:button",
           "props": {
             "label": "Settings"
+          }
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
           }
         }
       },
@@ -1245,7 +1290,7 @@
       "copilot-c2-agent-prompt": {
         "id": "copilot-c2-agent-prompt",
         "behavior": {
-          "events": {
+          "on": {
             "input": [
               {
                 "do": "assign",
@@ -1268,6 +1313,13 @@
               "from": "copilotC2.draft"
             }
           }
+        },
+        "events": {
+          "input": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "copilot-c2-agent-run-actions": {
@@ -1279,11 +1331,11 @@
       "copilot-c2-agent-start-run": {
         "id": "copilot-c2-agent-start-run",
         "behavior": {
-          "events": {
+          "on": {
             "press": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "startRun"
                 }
               }
@@ -1296,16 +1348,23 @@
             "label": "Start task",
             "appearance": "primary"
           }
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "copilot-c2-agent-cancel-run": {
         "id": "copilot-c2-agent-cancel-run",
         "behavior": {
-          "events": {
+          "on": {
             "press": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "cancelSelectedRun"
                 }
               }
@@ -1318,6 +1377,13 @@
             "label": "Cancel run"
           },
           "visibility": "copilotC2.currentRun.status = 'running'"
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "copilot-c2-settings-navigation": {
@@ -1330,7 +1396,7 @@
       "copilot-c2-settings-back": {
         "id": "copilot-c2-settings-back",
         "behavior": {
-          "events": {
+          "on": {
             "press": [
               {
                 "do": "assign",
@@ -1346,6 +1412,13 @@
           "capability": "fluent:button",
           "props": {
             "label": "Back to agents"
+          }
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
           }
         }
       },
@@ -1363,7 +1436,7 @@
       "copilot-c2-settings-mcp-server": {
         "id": "copilot-c2-settings-mcp-server",
         "behavior": {
-          "events": {
+          "on": {
             "input": [
               {
                 "do": "assign",
@@ -1385,12 +1458,19 @@
               "from": "copilotC2.mcpServer"
             }
           }
+        },
+        "events": {
+          "input": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "copilot-c2-settings-model": {
         "id": "copilot-c2-settings-model",
         "behavior": {
-          "events": {
+          "on": {
             "input": [
               {
                 "do": "assign",
@@ -1412,12 +1492,19 @@
               "from": "copilotC2.model"
             }
           }
+        },
+        "events": {
+          "input": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "copilot-c2-settings-working-dir": {
         "id": "copilot-c2-settings-working-dir",
         "behavior": {
-          "events": {
+          "on": {
             "input": [
               {
                 "do": "assign",
@@ -1437,6 +1524,13 @@
           "bindings": {
             "value": {
               "from": "copilotC2.workingDir"
+            }
+          }
+        },
+        "events": {
+          "input": {
+            "payloadSchema": {
+              "type": "object"
             }
           }
         }
@@ -1508,11 +1602,11 @@
       "copilot-c2-refresh-env": {
         "id": "copilot-c2-refresh-env",
         "behavior": {
-          "events": {
+          "on": {
             "press": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "refreshEnvironment"
                 }
               }
@@ -1523,6 +1617,13 @@
           "capability": "fluent:button",
           "props": {
             "label": "Discover agents"
+          }
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
           }
         }
       },
@@ -1575,11 +1676,11 @@
       "copilot-c2-refresh-source-roots": {
         "id": "copilot-c2-refresh-source-roots",
         "behavior": {
-          "events": {
+          "on": {
             "press": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "refreshSourceRoots"
                 }
               }
@@ -1591,16 +1692,23 @@
           "props": {
             "label": "Refresh roots"
           }
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "copilot-c2-upsert-source-root": {
         "id": "copilot-c2-upsert-source-root",
         "behavior": {
-          "events": {
+          "on": {
             "press": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "upsertSourceRoot"
                 }
               }
@@ -1613,16 +1721,23 @@
             "label": "Add or update root",
             "appearance": "primary"
           }
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "copilot-c2-remove-source-root": {
         "id": "copilot-c2-remove-source-root",
         "behavior": {
-          "events": {
+          "on": {
             "press": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "removeSelectedSourceRoot"
                 }
               }
@@ -1635,12 +1750,19 @@
             "label": "Remove selected root"
           },
           "visibility": "copilotC2.selectedSourceRootId != ''"
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "copilot-c2-source-root-id": {
         "id": "copilot-c2-source-root-id",
         "behavior": {
-          "events": {
+          "on": {
             "input": [
               {
                 "do": "assign",
@@ -1662,12 +1784,19 @@
               "from": "copilotC2.sourceRootId"
             }
           }
+        },
+        "events": {
+          "input": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "copilot-c2-source-root-label": {
         "id": "copilot-c2-source-root-label",
         "behavior": {
-          "events": {
+          "on": {
             "input": [
               {
                 "do": "assign",
@@ -1689,12 +1818,19 @@
               "from": "copilotC2.sourceRootLabel"
             }
           }
+        },
+        "events": {
+          "input": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "copilot-c2-source-root-path": {
         "id": "copilot-c2-source-root-path",
         "behavior": {
-          "events": {
+          "on": {
             "input": [
               {
                 "do": "assign",
@@ -1716,12 +1852,19 @@
               "from": "copilotC2.sourceRootPath"
             }
           }
+        },
+        "events": {
+          "input": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "copilot-c2-source-root-list": {
         "id": "copilot-c2-source-root-list",
         "behavior": {
-          "events": {
+          "on": {
             "select": [
               {
                 "do": "assign",
@@ -1753,6 +1896,13 @@
             },
             "items": {
               "expression": "copilotC2.sourceRoots.{'value':$string(id),'label':$string(name) & (path ? ' · ' & $string(path) : '') & (status ? ' · ' & $string(status) : '')}"
+            }
+          }
+        },
+        "events": {
+          "select": {
+            "payloadSchema": {
+              "type": "object"
             }
           }
         }

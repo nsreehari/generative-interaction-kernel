@@ -28,6 +28,7 @@ import type { BlueprintProposalStore } from "@gik/blueprint-agent-host";
 import { createBlueprintServiceResolver } from "../../../shared/blueprint-service-resolver";
 import { createSampleCatalogBlueprintRegistry } from "../../../../catalog/blueprint-catalog";
 import { resolveSampleNativeServices } from "./native-services";
+import { runWithBrowserServiceDependencies } from "./service-dependency-access";
 
 export { createSampleServiceRegistryOptions } from "../../../../service-kinds/registry-options";
 
@@ -126,10 +127,10 @@ export function declarativeServiceOrchestrator(
     const declarations = (unwrap(runtime.vocabulary).externals?.services ?? {}) as Record<string, ServiceDeclaration>;
     const serviceInvokes = new Set(Object.values(declarations).flatMap((declaration) => Object.keys(declaration.operations)));
     return {
-      invoke: (effect, control) => effect.kind === "invoke" && typeof effect.tool === "string" && serviceInvokes.has(effect.tool)
-        ? host.invoke(effect)
+      invoke: (effect, control) => effect.kind === "invoke" && serviceInvokes.has(effect.control.tool)
+        ? runWithBrowserServiceDependencies(() => host.invoke(effect))
         : fallback?.invoke?.(effect, control) ?? Promise.resolve(),
-      confirm: fallback?.confirm?.bind(fallback),
+      request: fallback?.request?.bind(fallback),
       route: fallback?.route?.bind(fallback),
       compensate: fallback?.compensate?.bind(fallback),
     };

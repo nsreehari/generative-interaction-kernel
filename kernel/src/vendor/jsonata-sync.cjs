@@ -3996,11 +3996,11 @@ var jsonata = (function() {
             case '[':
                 // array constructor - evaluate each item
                 result = [];
-                let generators = Promise.all(expr.expressions
+                let generators = expr.expressions
                     .map((item, idx) => {
                         environment.isParallelCall = idx > 0
                         return [item, evaluate(item, input, environment)]
-                    }));
+                    });
                 for (let generator of generators) {
                     var [item, value] = generator;
                     if (typeof value !== 'undefined') {
@@ -4438,7 +4438,7 @@ var jsonata = (function() {
         }
 
         // iterate over the groups to evaluate the 'value' expression
-        let generators = Promise.all(Object.keys(groups).map((key, idx) => {
+        let generators = Object.keys(groups).map((key, idx) => {
             let entry = groups[key];
             var context = entry.data;
             var env = environment;
@@ -4450,7 +4450,7 @@ var jsonata = (function() {
             }
             environment.isParallelCall = idx > 0
             return [key, evaluate(expr.lhs[entry.exprIndex][1], context, env)];
-        }));
+        });
 
         for (let generator of generators) {
             var [key, value] = generator;
