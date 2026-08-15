@@ -1,7 +1,7 @@
 import React from "react";
 import type { Json, ResolvedNode } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
-import { readProps, type ProjectionView } from "@gik/react";
+import { readProps, type ProjectionViewProps } from "@gik/react";
 
 import { FluentButton } from "../../fluent/FluentButtons";
 import { FluentDialog } from "../../fluent/FluentDialog";
@@ -30,7 +30,7 @@ function projectionNode(id: string, capability: string, props: Record<string, Js
   return { id, capability, props, visible: true, fallback: false, children: [] };
 }
 
-export const AccessGate: ProjectionView = ({ node, emit, children }) => {
+export const AccessGate = ({ node, emit, children }: ProjectionViewProps) => {
   const props = readProps(node);
   const access = props.obj<AccessGateData>("access", {});
   if (!access.triggered) return <>{children}</>;
@@ -44,6 +44,8 @@ export const AccessGate: ProjectionView = ({ node, emit, children }) => {
     title,
     ariaLabel: title,
     modalType: "modal",
+    ...(node.props.className ? { className: node.props.className } : {}),
+    ...(node.props.style ? { style: node.props.style } : {}),
   });
   const formNode = projectionNode(`${node.id}-form`, "primitive:form", formSpec as Record<string, Json>);
   const button = (name: string, defaultLabel: string, event: string, appearance?: string) => (
