@@ -65,7 +65,12 @@ function createHost() {
 }
 
 async function invoke(host: DefaultServiceHost, operation: string, args: Record<string, Json> = {}) {
-  const result = await host.invoke({ kind: "invoke", node: "consumer", tool: operation, args });
+  const result = await host.invoke({
+    kind: "invoke",
+    node: "consumer",
+    control: { tool: operation },
+    data: args,
+  });
   return result?.detail?.response;
 }
 
@@ -82,33 +87,38 @@ describe("incident asset Blueprint service", () => {
   it("lists and retrieves packaged analysis assets", async () => {
     const host = createHost();
     expect(await invoke(host, "list-assets", {
-      sourceId: "password-spray-mailbox",
-      analyzerId: "incident-semantic",
+      source_report_key: "password-spray-mailbox",
     })).toEqual({
-      assets: [{ sourceId: "password-spray-mailbox", analyzerId: "incident-semantic", variant: "source-faithful-v1" }],
+      assets: [{
+        source_report_key: "password-spray-mailbox",
+        analysis_key: "blueprint:incident-report-explorer-2@1.0.0",
+      }, {
+        source_report_key: "password-spray-mailbox",
+        analysis_key: "incident-intelligence/glance-focused-v1",
+      }],
     });
     expect(await invoke(host, "get-asset", {
-      sourceId: "password-spray-mailbox",
-      analyzerId: "incident-semantic",
-      variant: "source-faithful-v1",
+      source_report_key: "password-spray-mailbox",
+      analysis_key: "blueprint:incident-report-explorer-2@1.0.0",
     })).toEqual(incidentCachedAssets[0]);
   });
 
   it("writes, prefers, deletes, and clears runtime-authored assets", async () => {
     const host = createHost();
     const coordinates = {
-      sourceId: "password-spray-mailbox",
-      analyzerId: "incident-semantic",
-      variant: "runtime-v2",
+      source_report_key: "password-spray-mailbox",
+      analysis_key: "blueprint:test-analyzer@1.0.0",
     };
-    await invoke(host, "put-asset", { ...coordinates, value: { summary: "runtime" } });
-    expect(await invoke(host, "get-asset", coordinates)).toMatchObject({
-      ...coordinates,
-      value: { summary: "runtime" },
-    });
+    const cached_analysis_envelope = {
+      arbitrary: { nested: ["analyzer", "owned", "content"] },
+      version: 17,
+    };
+    expect(await invoke(host, "put-asset", { ...coordinates, cached_analysis_envelope }))
+      .toEqual(cached_analysis_envelope);
+    expect(await invoke(host, "get-asset", coordinates)).toEqual(cached_analysis_envelope);
     expect(await invoke(host, "delete-asset", coordinates)).toEqual({ deleted: true });
     expect(await invoke(host, "get-asset", coordinates)).toBeNull();
-    await invoke(host, "put-asset", { ...coordinates, value: { summary: "runtime" } });
+    await invoke(host, "put-asset", { ...coordinates, cached_analysis_envelope });
     expect(await invoke(host, "clear-assets")).toEqual({ cleared: 1 });
     expect(await invoke(host, "get-asset", coordinates)).toBeNull();
   });

@@ -75,7 +75,8 @@ export class BlueprintController implements GenUISource {
   }
 
   getState(): Record<string, Json> {
-    return this.controller.getState();
+    const { blueprintRunState: _runtimeState, ...state } = this.controller.getState();
+    return state;
   }
 
   subscribe(listener: () => void): () => void {

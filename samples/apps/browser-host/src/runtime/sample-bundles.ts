@@ -8,7 +8,11 @@ import {
 import type { ExternalContext, MaterializedBlueprint } from "@gik/blueprint";
 import type { Json } from "@gik/kernel";
 import { openBlueprint } from "@gik/controlface/blueprint";
-import { getSampleBlueprintCatalog, openSampleBlueprint } from "../../../../catalog/blueprint-catalog";
+import {
+  getSampleBlueprintCatalog,
+  openSampleBlueprint,
+  resolveSampleLaunchExternalContext,
+} from "../../../../catalog/blueprint-catalog";
 import { resolveBrowserSampleNativeEffects } from "./native-effects";
 import { resolveSampleNativeServices } from "./native-services";
 import { resolveProjectionViews } from "./provider-registry";
@@ -54,6 +58,7 @@ function resolveBlueprintNativeFromRuntime(
       ...nativeServices,
     },
     options.proposalStore,
+    { dependencyFailurePolicy: "throw" },
   );
   return {
     effectHandlers: effectModule?.default,
@@ -66,7 +71,10 @@ export function resolveBlueprintInitialContext(
   id: string,
   externalContext?: ExternalContext,
 ): Record<string, Json> {
-  const runtime = openSampleBlueprint(id, externalContext);
+  const launchContext = externalContext ?? resolveSampleLaunchExternalContext(id);
+  const runtime = openSampleBlueprint(id, launchContext);
   resolveBrowserSampleNativeEffects(id)?.hydrateState?.(runtime.state);
-  return { initialSeed: structuredClone(runtime.state) as Json };
+  return {
+    initialSeed: structuredClone({ ...runtime.state, ...launchContext }) as Json,
+  };
 }

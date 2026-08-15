@@ -5,6 +5,7 @@ import {
   InMemoryStateModel,
   CompositeStateModel,
   JsonataExpressionProvider,
+  SyncJsonataExpressionProvider,
   VocabularyRegistry,
   NullOrchestrator,
   type CapabilityRegistry,
@@ -14,8 +15,8 @@ import {
 } from "./providers";
 import { resolveNode } from "./interpret";
 import { reduce, reduceActions } from "./reduce";
-import { validateProgramMessage, validateProgramDefinition } from "./validate";
-import { ContinuousGraphRuntime } from "./graph-runtime";
+import { validateJsonValue, validateProgramMessage, validateProgramDefinition } from "./validate";
+import { ContinuousGraphRuntime, type GraphNodeExecutor } from "./graph-runtime";
 import {
   unwrap,
   type DocNode,
@@ -34,7 +35,6 @@ import {
   type Checkpoint,
   type RecordedEffect,
   type PatchOp,
-  type Reaction,
   type ResolvedNode,
   type TraceSink,
   type ExecutionBudget,
@@ -46,7 +46,15 @@ import {
   type ProgramPatch,
   type PortToken,
   type TransitionResult,
+  type SourceRunState,
 } from "./types";
+import {
+  completeSourceRequest,
+  hasPendingSourceRequest,
+  initialSourceRunState,
+  isSourceInFlight,
+  nextSourceRequestToken,
+} from "./source-run-state";
 import { DerivationScheduler } from "./derivations";
 import { applyProgramPatch as applyProgramPatchToDefinition, diffProgram } from "./program-patch";
 
@@ -87,6 +95,8 @@ export interface KernelOptions {
   validate?: boolean;
   /** Admission for runtime-originated program patches. Omission rejects such patches. */
   admitProgramPatch?: ProgramPatchAdmission;
+  /** Executes host-defined graph extension operations. */
+  executeGraphExtension?: GraphNodeExecutor;
 }
 
 export class ProjectionUnavailableError extends Error {
@@ -99,11 +109,6 @@ export class ProjectionUnavailableError extends Error {
 // Bounds runaway effect/event chains (e.g. an invoke whose result re-triggers itself).
 const MAX_SETTLE_DEPTH = 32;
 
-// Structural equality for reaction `when` values (Json), used to detect a genuine change.
-function jsonEqual(a: Json, b: Json): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
-}
-
 // Deep-clone pure JSON state so a captured checkpoint is immutable against later store mutations.
 // State is JSON by contract, so a round-trip is sufficient (and env-independent).
 function cloneJson<T>(value: T): T {
@@ -112,6 +117,7 @@ function cloneJson<T>(value: T): T {
 
 function flattenState(value: Json, prefix = "", result: Record<PortToken, Json> = {}): Record<PortToken, Json> {
   if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    if (prefix) result[prefix] = value;
     for (const [key, child] of Object.entries(value)) {
       flattenState(child, prefix ? `${prefix}.${key}` : key, result);
     }
@@ -133,10 +139,6 @@ export class Kernel {
   private readonly registry: CapabilityRegistry;
   private readonly orchestrator: Orchestrator;
   private readonly sink?: TraceSink;
-  // Last observed `when` value per reaction (keyed `${nodeId}#${index}`), so a reaction fires on a
-  // genuine CHANGE, never on the initial seed. Seeded lazily from the pre-event snapshot (ADR-0034).
-  private readonly reactionBaseline = new Map<string, Json>();
-  private reactionsSeeded = false;
   // Effects fired, in issue order (ADR-0009 seam), each tagged with its rev and a monotonic seq. The
   // kernel owns no wall-clock time, so ordering is rev + seq — never a timestamp. effectsSince()
   // reports them; the host decides whether to ignore, replay forward, or reverse them.
@@ -156,8 +158,12 @@ export class Kernel {
   private readonly invocationTasks = new Set<Promise<void>>();
   private readonly invocationErrors: unknown[] = [];
   private readonly graphInvocationNodes = new Map<InvocationId, string>();
+  private readonly sourcePromotionTokens = new Map<string, string>();
+  private readonly settledSourcePromotions = new Set<string>();
   private readonly admitProgramPatch?: ProgramPatchAdmission;
+  private readonly executeGraphExtension?: GraphNodeExecutor;
   private collectingProgramPatch?: ProgramPatch[number][];
+  private collectingCompletedWithinRun?: import("./types").CompletedWithinRun[];
 
   constructor(
     manifest: Enveloped<ExecutableVocabularyManifest>,
@@ -185,6 +191,7 @@ export class Kernel {
     this.orchestrator = opts.orchestrator ?? new NullOrchestrator();
     this.sink = opts.sink;
     this.admitProgramPatch = opts.admitProgramPatch;
+    this.executeGraphExtension = opts.executeGraphExtension;
   }
 
   /** Seed initial machine states. Returns the baseline patch (rev 0). */
@@ -224,15 +231,16 @@ export class Kernel {
   }
 
   /**
-  * Reduce an event to its initiating patch. Confirm and route effects settle inline;
+  * Reduce an event to its initiating patch. Request and route effects settle inline;
   * invoke effects start after commit and publish their terminal result in a later patch.
    */
   dispatch(event: GIKEvent): Promise<Patch> {
     return this.enqueueMutation(async () => {
       const program: ProgramPatch[number][] = [];
+      const completedWithinRun: import("./types").CompletedWithinRun[] = [];
       this.collectingProgramPatch = program;
+      this.collectingCompletedWithinRun = completedWithinRun;
       try {
-        if (!this.reactionsSeeded) await this.seedReactionBaseline();
         const ops: PatchOp[] = [];
         const fired: OrchestratorEffect[] = [];
         const invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }> = [];
@@ -251,12 +259,18 @@ export class Kernel {
           const invocationId = invokes.find((entry) => entry.effect === effect)?.id;
           this.effectLog.push({ rev: this.rev, seq: this.effectSeq++, effect, invocationId });
         }
-        const patch = { rev: this.rev, ops, ...(program.length > 0 ? { program } : {}) };
+        const patch = {
+          rev: this.rev,
+          ops,
+          ...(completedWithinRun.length > 0 ? { completedWithinRun } : {}),
+          ...(program.length > 0 ? { program } : {}),
+        };
         this.publishPatch(patch);
         for (const invoke of invokes) this.startInvocation(invoke.effect, invoke.id);
         return patch;
       } finally {
         this.collectingProgramPatch = undefined;
+        this.collectingCompletedWithinRun = undefined;
       }
     });
   }
@@ -272,6 +286,126 @@ export class Kernel {
 
   publish(values: Record<PortToken, Json>, budget?: ExecutionBudget): Promise<TransitionResult> {
     return this.enqueueGraphTransition(() => this.requireGraph().publish(values, budget));
+  }
+
+  publishSync(values: Record<PortToken, Json>, budget?: ExecutionBudget): TransitionResult {
+    if (!(this.expr instanceof SyncJsonataExpressionProvider)) {
+      throw new Error("Synchronous Kernel publication requires SyncJsonataExpressionProvider");
+    }
+    const previousRevision = this.rev;
+    const graphResult = this.requireGraph().publishSync(values, budget);
+    if (
+      graphResult.operations.length > 0 ||
+      graphResult.effects.length > 0 ||
+      graphResult.events.length > 0 ||
+      (graphResult.program?.length ?? 0) > 0
+    ) {
+      throw new Error("Synchronous Kernel publication supports output-only deterministic compiler graphs");
+    }
+    const ops: PatchOp[] = [];
+    this.applyGraphPublications(graphResult, ops);
+    if (ops.length > 0) this.rev += 1;
+    const patch = { rev: this.rev, ops };
+    if (ops.length > 0) this.publishPatch(patch);
+    return {
+      previousRevision,
+      revision: this.rev,
+      status: graphResult.status,
+      state: cloneJson(this.store.snapshot()),
+      patch,
+      effects: [],
+      execution: this.executionSnapshot(),
+    };
+  }
+
+  hydrateGraph(values: Record<PortToken, Json>): void {
+    this.graph?.hydrate(values);
+  }
+
+  settleSourceEffect(effect: OrchestratorEffect, result: OrchestratorResult): Promise<Patch> {
+    return this.enqueueMutation(async () => {
+      if (!this.isCurrentSourceEffect(effect)) return { rev: this.rev, ops: [] };
+      const previousCompletedWithinRun = this.collectingCompletedWithinRun;
+      const completedWithinRun: import("./types").CompletedWithinRun[] = [];
+      this.collectingCompletedWithinRun = completedWithinRun;
+      try {
+      const ops: PatchOp[] = [];
+      const fired: OrchestratorEffect[] = [];
+      const invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }> = [];
+      const resultOps = await this.sourceResultOperations(effect, result);
+      if (resultOps.length > 0) await this.applyAndDerive(resultOps, ops);
+      await this.completeAndPromoteSourceEffect(
+        effect,
+        result.outcome === "failed" ? "failure" : "success",
+        ops,
+        fired,
+        invokes,
+      );
+      for (const followUp of result.events ?? []) await this.settle(followUp, ops, 0, fired, invokes);
+      this.rev += 1;
+      for (const firedEffect of fired) {
+        const invocationId = invokes.find((entry) => entry.effect === firedEffect)?.id;
+        this.effectLog.push({ rev: this.rev, seq: this.effectSeq++, effect: firedEffect, invocationId });
+      }
+      const patch = {
+        rev: this.rev,
+        ops,
+        ...(completedWithinRun.length > 0 ? { completedWithinRun } : {}),
+      };
+      this.publishPatch(patch);
+      for (const invoke of invokes) this.startInvocation(invoke.effect, invoke.id);
+      return patch;
+      } finally {
+        this.collectingCompletedWithinRun = previousCompletedWithinRun;
+      }
+    });
+  }
+
+  settleRequestEffect(effect: OrchestratorEffect, result: OrchestratorResult): Promise<Patch> {
+    return this.enqueueMutation(async () => {
+      if (effect.kind !== "request") throw new Error("Only request effects admit queued request settlements");
+      if (!result.settlement) throw new Error(`Request effect '${effect.effectId ?? "unknown"}' has no settlement`);
+      if (result.ops?.length || result.events?.length || result.program || result.sourceOutput !== undefined || result.outputs) {
+        throw new Error("Queued request settlements may only contain settlement data");
+      }
+      this.validateEffectSettlement(effect, result);
+      const settlementEvents = this.effectSettlementEvents(effect, result);
+      const previousCompletedWithinRun = this.collectingCompletedWithinRun;
+      const completedWithinRun: import("./types").CompletedWithinRun[] = [];
+      this.collectingCompletedWithinRun = completedWithinRun;
+      try {
+        const ops: PatchOp[] = [];
+        const fired: OrchestratorEffect[] = [];
+        const invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }> = [];
+        for (const event of settlementEvents) {
+          await this.settle(event, ops, 0, fired, invokes);
+          if (this.graph) {
+            await this.applyGraphResult(
+              await this.graph.publish(flattenState(this.store.snapshot())),
+              ops,
+              fired,
+              invokes,
+            );
+            await this.applyGraphResult(await this.graph.dispatch(event), ops, fired, invokes);
+          }
+        }
+        this.rev += 1;
+        for (const firedEffect of fired) {
+          const invocationId = invokes.find((entry) => entry.effect === firedEffect)?.id;
+          this.effectLog.push({ rev: this.rev, seq: this.effectSeq++, effect: firedEffect, invocationId });
+        }
+        const patch = {
+          rev: this.rev,
+          ops,
+          ...(completedWithinRun.length > 0 ? { completedWithinRun } : {}),
+        };
+        this.publishPatch(patch);
+        for (const invoke of invokes) this.startInvocation(invoke.effect, invoke.id);
+        return patch;
+      } finally {
+        this.collectingCompletedWithinRun = previousCompletedWithinRun;
+      }
+    });
   }
 
   mutate(mutations: readonly GraphMutation[], budget?: ExecutionBudget): Promise<TransitionResult> {
@@ -304,22 +438,20 @@ export class Kernel {
     };
   }
 
-  /**
-   * Settle standing reactions after state changed outside this kernel, such as through a shared
-   * context written by a sibling runtime. The first synchronization establishes a baseline without
-   * firing; subsequent changes run the same reaction/effect cascade as an ordinary dispatch.
-   */
+  /** Settle derivations and publish the current state into the consequence graph. */
   syncExternal(): Promise<Patch> {
     return this.enqueueMutation(async () => {
       const ops: PatchOp[] = [];
       const fired: OrchestratorEffect[] = [];
       const invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }> = [];
-      if (!this.reactionsSeeded) {
-        await this.seedReactionBaseline();
-        await this.runInitialReactions(ops, 0, fired, invokes);
-      } else {
-        ops.push(...await this.derivations.settleAll(this.store, this.expr));
-        await this.runReactions(ops, 0, fired, invokes);
+      ops.push(...await this.derivations.settleAll(this.store, this.expr));
+      if (this.graph) {
+        await this.applyGraphResult(
+          await this.graph.publish(flattenState(this.store.snapshot())),
+          ops,
+          fired,
+          invokes,
+        );
       }
       if (ops.length > 0 || fired.length > 0) {
         this.rev += 1;
@@ -346,12 +478,18 @@ export class Kernel {
       throw new Error("GenUI kernel: effect/event depth exceeded");
     }
 
-    const { ops, traces, effects } = await reduce(this.doc, this.store, event, this.expr, this.predicateExpr);
+    const { ops, traces, effects, completedWithinRun } = await reduce(
+      this.doc,
+      this.store,
+      event,
+      this.expr,
+      this.predicateExpr,
+    );
+    this.collectingCompletedWithinRun?.push(...completedWithinRun);
     await this.applyAndDerive(ops, acc);
     for (const t of traces) this.sink?.(t);
 
     await this.runEffects(effects, acc, depth, journal, invokes);
-    await this.runReactions(acc, depth, journal, invokes);
   }
 
   private async runEffects(
@@ -361,7 +499,16 @@ export class Kernel {
     journal: OrchestratorEffect[],
     invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }>
   ): Promise<void> {
-    for (const effect of effects) {
+    for (const candidate of effects) {
+      const identified = candidate.effectId
+        ? candidate
+        : { ...candidate, effectId: `effect-${this.rev + 1}-${this.effectSeq + journal.length}` };
+      const effect = identified.kind === "invoke"
+        && identified.control.sourceId
+        && !identified.control.sourceRequestToken
+        ? await this.admitSourceEffect(identified, acc)
+        : identified;
+      if (!effect) continue;
       journal.push(effect);
       if (effect.kind === "invoke") {
         if (!this.orchestrator.invoke) {
@@ -372,8 +519,7 @@ export class Kernel {
         invokes.push({ effect, id });
         continue;
       }
-      const handler =
-        effect.kind === "confirm" ? this.orchestrator.confirm : this.orchestrator.route;
+      const handler = effect.kind === "request" ? this.orchestrator.request : this.orchestrator.route;
 
       if (!handler) {
         this.sink?.({ event: "effect", node: effect.node, detail: { kind: effect.kind, unhandled: true } });
@@ -382,13 +528,13 @@ export class Kernel {
 
       const result = await handler.call(this.orchestrator, effect);
       if (!result) continue;
+      this.validateEffectSettlement(effect, result);
 
       this.sink?.({
         event: "effect",
         node: effect.node,
         detail: {
           kind: effect.kind,
-          tool: effect.tool,
           phase: "outcome",
           outcome: result.outcome ?? "settled",
           actorId: effect.actorId,
@@ -406,92 +552,8 @@ export class Kernel {
         actorId: effect.actorId,
         node: effect.node,
       });
-      for (const followUp of result.events ?? []) {
+      for (const followUp of [...(result.events ?? []), ...this.effectSettlementEvents(effect, result)]) {
         await this.settle(followUp, acc, depth + 1, journal, invokes);
-      }
-    }
-  }
-
-  // Every reaction in the document, flattened with a stable key (`${nodeId}#${index}`).
-  private reactions(): Array<{ key: string; nodeId: string; reaction: Reaction }> {
-    const out: Array<{ key: string; nodeId: string; reaction: Reaction }> =
-      (this.doc.reactions ?? []).map((reaction, index) => ({
-        key: `runtime:${reaction.id}#${index}`,
-        nodeId: reaction.id,
-        reaction,
-      }));
-    const walk = (n: DocNode): void => {
-      n.edges?.react?.forEach((r, i) => out.push({ key: `${n.id}#${i}`, nodeId: n.id, reaction: r }));
-      for (const child of n.edges?.children ?? []) walk(child);
-    };
-    if (this.doc.root) walk(this.doc.root);
-    return out;
-  }
-
-  // Record each reaction's current `when` value WITHOUT firing, so the first real change fires.
-  private async seedReactionBaseline(): Promise<void> {
-    const snapshot = this.store.snapshot();
-    for (const { key, reaction } of this.reactions()) {
-      this.reactionBaseline.set(key, await this.expr.eval(reaction.when, snapshot));
-    }
-    this.reactionsSeeded = true;
-  }
-
-  private async runInitialReactions(
-    acc: PatchOp[],
-    depth: number,
-    journal: OrchestratorEffect[],
-    invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }>
-  ): Promise<void> {
-    for (const { nodeId, reaction } of this.reactions()) {
-      if (!reaction.runInitially) continue;
-      const value = await this.expr.eval(reaction.when, this.store.snapshot());
-      if (value === null || value === undefined) continue;
-      const result = await reduceActions(this.store, nodeId, reaction.run, this.expr, this.predicateExpr, {
-        when: value,
-      });
-      await this.applyAndDerive(result.ops, acc);
-      for (const trace of result.traces) this.sink?.(trace);
-      await this.runEffects(result.effects, acc, depth + 1, journal, invokes);
-      for (const event of result.emitted) await this.settle(event, acc, depth + 1, journal, invokes);
-    }
-    await this.runReactions(acc, depth, journal, invokes);
-  }
-
-  // Fire every reaction whose `when` value changed, cascading until the document quiesces. Folds into
-  // the same depth guard as effects, so a reaction that flips its own `when` cannot loop unbounded.
-  private async runReactions(
-    acc: PatchOp[],
-    depth: number,
-    journal: OrchestratorEffect[],
-    invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }>
-  ): Promise<void> {
-    if (depth > MAX_SETTLE_DEPTH) {
-      throw new Error("GenUI kernel: reaction depth exceeded");
-    }
-    let fired = true;
-    let sweeps = 0;
-    while (fired) {
-      if (sweeps++ > MAX_SETTLE_DEPTH) {
-        throw new Error("GenUI kernel: reaction depth exceeded");
-      }
-      fired = false;
-      for (const { key, nodeId, reaction } of this.reactions()) {
-        const value = await this.expr.eval(reaction.when, this.store.snapshot());
-        if (!this.reactionBaseline.has(key)) {
-          this.reactionBaseline.set(key, value);
-          continue;
-        }
-        if (jsonEqual(this.reactionBaseline.get(key) ?? null, value)) continue;
-        this.reactionBaseline.set(key, value);
-        fired = true;
-        const r = await reduceActions(this.store, nodeId, reaction.run, this.expr, this.predicateExpr, {
-          when: value,
-        });
-        await this.applyAndDerive(r.ops, acc);
-        for (const t of r.traces) this.sink?.(t);
-        await this.runEffects(r.effects, acc, depth + 1, journal, invokes);
-        for (const ev of r.emitted) await this.settle(ev, acc, depth + 1, journal, invokes);
       }
     }
   }
@@ -570,8 +632,6 @@ export class Kernel {
     }
     this.doc = candidate;
     this.derivations = nextDerivations;
-    this.reactionBaseline.clear();
-    this.reactionsSeeded = false;
   }
 
   private async admitRuntimeProgramPatch(
@@ -676,26 +736,45 @@ export class Kernel {
     invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }>,
   ): Promise<void> {
     await this.collectRuntimeProgramPatch(result.program, { source: "graph" });
-    await this.applyAndDerive(result.operations, acc);
     this.applyGraphPublications(result, acc);
+    await this.applyAndDerive(result.operations, acc);
     const invokeStart = invokes.length;
     await this.runEffects(result.effects, acc, 0, fired, invokes);
     const graphNodes = this.graph?.snapshotNodes();
     for (const invocation of invokes.slice(invokeStart)) {
-      if (result.effects.includes(invocation.effect) && graphNodes?.[invocation.effect.node]?.status === "suspended") {
+      if (graphNodes?.[invocation.effect.node]?.status === "suspended") {
         this.graphInvocationNodes.set(invocation.id, invocation.effect.node);
       }
     }
     for (const event of result.events) await this.settle(event, acc, 0, fired, invokes);
-    await this.runReactions(acc, 0, fired, invokes);
   }
 
-  private async executeGraphNode(
+  private executeGraphNode(
+    node: ProgramNode,
+    inputs: Record<string, Json>,
+    event?: GIKEvent,
+  ): GraphNodeExecutionOutcome | Promise<GraphNodeExecutionOutcome> {
+    if (node.operation.kind === "extension") {
+      if (!this.executeGraphExtension) {
+        throw new Error(`No host executor is registered for graph extension '${node.operation.name}'`);
+      }
+      return this.executeGraphExtension(node, inputs, event);
+    }
+    if (node.operation.kind === "actions") {
+      return this.executeGraphActions(node, inputs, event);
+    }
+    if (node.operation.kind === "invoke") {
+      return this.executeGraphInvoke(node, inputs, event);
+    }
+    throw new Error(`Graph node operation '${node.operation.kind}' does not require Kernel execution context`);
+  }
+
+  private async executeGraphActions(
     node: ProgramNode,
     inputs: Record<string, Json>,
     event?: GIKEvent,
   ): Promise<GraphNodeExecutionOutcome> {
-    if (node.operation.kind === "actions") {
+      if (node.operation.kind !== "actions") throw new Error(`Graph node '${node.id}' is not an actions node`);
       const result = await reduceActions(
         this.store,
         node.id,
@@ -704,14 +783,21 @@ export class Kernel {
         this.predicateExpr,
         { inputs, event: event?.payload ?? {} },
       );
+      this.collectingCompletedWithinRun?.push(...result.completedWithinRun);
       for (const trace of result.traces) this.sink?.(trace);
       return {
         operations: result.ops,
         effects: result.effects,
         events: result.emitted,
       };
-    }
-    if (node.operation.kind === "invoke") {
+  }
+
+  private async executeGraphInvoke(
+    node: ProgramNode,
+    inputs: Record<string, Json>,
+    event?: GIKEvent,
+  ): Promise<GraphNodeExecutionOutcome> {
+      if (node.operation.kind !== "invoke") throw new Error(`Graph node '${node.id}' is not an invoke node`);
       const args: Record<string, Json> = {};
       for (const [name, expression] of Object.entries(node.operation.arguments ?? {})) {
         args[name] = await this.expr.eval(expression, this.store.snapshot(), {
@@ -720,11 +806,14 @@ export class Kernel {
         });
       }
       return {
-        effects: [{ kind: "invoke", node: node.id, tool: node.operation.tool, args }],
+        effects: [{
+          kind: "invoke",
+          node: node.id,
+          control: { tool: node.operation.tool },
+          data: args,
+        }],
         suspended: true,
       };
-    }
-    throw new Error(`Graph node operation '${node.operation.kind}' does not require Kernel execution context`);
   }
 
   private async applyAndDerive(operations: readonly PatchOp[], acc: PatchOp[]): Promise<void> {
@@ -739,6 +828,8 @@ export class Kernel {
   }
 
   private startInvocation(effect: OrchestratorEffect, id: InvocationId): void {
+    if (effect.kind !== "invoke") return;
+    const invokeEffect = effect;
     const handler = this.orchestrator.invoke;
     if (!handler) return;
     const active = {
@@ -757,10 +848,10 @@ export class Kernel {
         const envelope: InvocationProgress = {
           invocationId: id,
           seq: current.seq++,
-          node: effect.node,
+          node: invokeEffect.node,
           effect: "invoke",
-          ...(effect.tool ? { tool: effect.tool } : {}),
-          ...(effect.actorId ? { actorId: effect.actorId } : {}),
+          ...(invokeEffect.control.tool ? { tool: invokeEffect.control.tool } : {}),
+          ...(invokeEffect.actorId ? { actorId: invokeEffect.actorId } : {}),
           name: progress.name,
           ...(progress.detail ? { detail: progress.detail } : {}),
         };
@@ -769,24 +860,31 @@ export class Kernel {
       emit: (result = {}) => this.enqueueInvocation(id, () => this.settleInvocation(id, result)),
     };
     const task = Promise.resolve()
-      .then(() => handler.call(this.orchestrator, effect, control))
+      .then(() => handler.call(this.orchestrator, invokeEffect, control))
       .then(async (result) => {
         if (!this.activeInvocations.has(id)) {
           if (result) throw new InvocationClosedError(id);
           return;
         }
-        if (result) await control.emit(result);
-        else this.closeInvocation(id);
+        await control.emit(result ?? {});
       })
-      .catch((error) => {
-        this.closeInvocation(id);
+      .catch(async (error) => {
+        if (this.activeInvocations.has(id)) {
+          try {
+            await this.settleInvocation(id, {}, "failure");
+          } catch (settlementError) {
+            if (!(settlementError instanceof InvocationClosedError && active.controller.signal.aborted)) {
+              this.invocationErrors.push(settlementError);
+            }
+          }
+        }
         if (!(error instanceof InvocationClosedError && active.controller.signal.aborted)) {
           this.invocationErrors.push(error);
         }
         this.sink?.({
           event: "effect",
-          node: effect.node,
-          detail: { kind: "invoke", tool: effect.tool, phase: "error", message: String(error) },
+          node: invokeEffect.node,
+          detail: { kind: "invoke", tool: invokeEffect.control.tool, phase: "error", message: String(error) },
         });
       })
       .finally(() => this.invocationTasks.delete(task));
@@ -814,7 +912,11 @@ export class Kernel {
     return active;
   }
 
-  private async settleInvocation(id: InvocationId, result: OrchestratorResult): Promise<void> {
+  private async settleInvocation(
+    id: InvocationId,
+    result: OrchestratorResult,
+    completionStatus: "success" | "failure" = result.outcome === "failed" ? "failure" : "success",
+  ): Promise<void> {
     const active = this.requireActiveInvocation(id);
     active.closed = true;
     try {
@@ -828,9 +930,21 @@ export class Kernel {
         const ops: PatchOp[] = [];
         const fired: OrchestratorEffect[] = [];
         const invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }> = [];
-        if (result.ops?.length) {
-          await this.applyAndDerive(result.ops, ops);
+        this.validateEffectSettlement(active.effect, result);
+        const resultOps = await this.sourceResultOperations(active.effect, result);
+        if (resultOps.length > 0) {
+          await this.applyAndDerive(resultOps, ops);
         }
+        if (this.graph && resultOps.length > 0
+          && (active.effect.kind !== "invoke" || !active.effect.control.sourceId)) {
+          await this.applyGraphResult(
+            await this.graph.publish(flattenState(this.store.snapshot())),
+            ops,
+            fired,
+            invokes,
+          );
+        }
+        await this.completeAndPromoteSourceEffect(active.effect, completionStatus, ops, fired, invokes);
         await this.collectRuntimeProgramPatch(result.program, {
           source: "effect",
           actorId: active.effect.actorId,
@@ -841,10 +955,12 @@ export class Kernel {
           const graphResult = await this.graph.complete(graphNodeId, result.outputs ?? {});
           await this.applyGraphResult(graphResult, ops, fired, invokes);
         }
-        for (const followUp of result.events ?? []) {
+        for (const followUp of [
+          ...(result.events ?? []),
+          ...this.effectSettlementEvents(active.effect, result),
+        ]) {
           await this.settle(followUp, ops, 0, fired, invokes);
         }
-        await this.runReactions(ops, 0, fired, invokes);
         this.rev += 1;
         for (const effect of fired) {
           const invocationId = invokes.find((entry) => entry.effect === effect)?.id;
@@ -855,7 +971,7 @@ export class Kernel {
           node: active.effect.node,
           detail: {
             kind: "invoke",
-            tool: active.effect.tool,
+            tool: active.effect.kind === "invoke" ? active.effect.control.tool : undefined,
             phase: "outcome",
             outcome: result.outcome ?? "settled",
             actorId: active.effect.actorId,
@@ -907,6 +1023,178 @@ export class Kernel {
     }
   }
 
+  private async admitSourceEffect(effect: OrchestratorEffect, acc: PatchOp[]): Promise<OrchestratorEffect | undefined> {
+    if (effect.kind !== "invoke" || !effect.control.sourceId) return effect;
+    if (this.settledSourcePromotions.has(this.sourceKey(effect))) return undefined;
+    const sourceId = effect.control.sourceId;
+    const cellId = effect.control.sourceCellId ?? effect.node;
+    const currentCells = this.store.get("blueprintRunState.cells");
+    const cells = currentCells && typeof currentCells === "object" && !Array.isArray(currentCells)
+      ? structuredClone(currentCells)
+      : {};
+    const currentCell = cells[cellId];
+    const currentSources = currentCell && typeof currentCell === "object" && !Array.isArray(currentCell)
+      ? currentCell.sources
+      : undefined;
+    const sources = Array.isArray(currentSources) ? structuredClone(currentSources) : [];
+    const sourceIndex = sources.findIndex((source) =>
+      source && typeof source === "object" && !Array.isArray(source) && source.id === sourceId);
+    const storedSource = sourceIndex >= 0 ? sources[sourceIndex] : undefined;
+    const source: SourceRunState = storedSource && typeof storedSource === "object" && !Array.isArray(storedSource)
+      ? { ...initialSourceRunState(sourceId), ...storedSource }
+      : initialSourceRunState(sourceId);
+    const promotionToken = this.sourcePromotionTokens.get(this.sourceKey(effect));
+    const queueRequestedToken = promotionToken ?? nextSourceRequestToken(source.queueRequestedToken);
+    const nextSource = {
+      ...source,
+      queueRequestedToken,
+      ...(!isSourceInFlight(source) || promotionToken ? { lastRequestedToken: queueRequestedToken } : {}),
+    };
+    if (sourceIndex >= 0) sources[sourceIndex] = nextSource;
+    else sources.push(nextSource);
+    cells[cellId] = {
+      ...(currentCell && typeof currentCell === "object" && !Array.isArray(currentCell) ? currentCell : {}),
+      sources,
+    };
+    await this.applyAndDerive([{ op: "set", path: "blueprintRunState.cells", value: cells }], acc);
+    if (isSourceInFlight(source) && !promotionToken) return undefined;
+    return { ...effect, control: { ...effect.control, sourceRequestToken: queueRequestedToken } };
+  }
+
+  private sourceKey(effect: OrchestratorEffect): string {
+    if (effect.kind !== "invoke") return `${effect.node}\u0000`;
+    return `${effect.control.sourceCellId ?? effect.node}\u0000${effect.control.sourceId ?? ""}`;
+  }
+
+  private isCurrentSourceEffect(effect: OrchestratorEffect): boolean {
+    if (effect.kind !== "invoke" || !effect.control.sourceId || !effect.control.sourceRequestToken) return false;
+    const cells = this.store.get("blueprintRunState.cells");
+    if (!cells || typeof cells !== "object" || Array.isArray(cells)) return false;
+    const cell = cells[effect.control.sourceCellId ?? effect.node];
+    if (!cell || typeof cell !== "object" || Array.isArray(cell) || !Array.isArray(cell.sources)) return false;
+    const source = cell.sources.find((candidate) =>
+      candidate && typeof candidate === "object" && !Array.isArray(candidate) && candidate.id === effect.control.sourceId);
+    return source !== undefined
+      && source !== null
+      && typeof source === "object"
+      && !Array.isArray(source)
+      && source.lastRequestedToken === effect.control.sourceRequestToken;
+  }
+
+  private async completeSourceEffect(
+    effect: OrchestratorEffect,
+    status: "success" | "failure",
+    acc: PatchOp[],
+  ): Promise<string | undefined> {
+    if (effect.kind !== "invoke" || !effect.control.sourceId || !effect.control.sourceRequestToken) return undefined;
+    const cellId = effect.control.sourceCellId ?? effect.node;
+    const currentCells = this.store.get("blueprintRunState.cells");
+    if (!currentCells || typeof currentCells !== "object" || Array.isArray(currentCells)) return undefined;
+    const cells = structuredClone(currentCells);
+    const currentCell = cells[cellId];
+    if (!currentCell || typeof currentCell !== "object" || Array.isArray(currentCell)) return undefined;
+    const sources = Array.isArray(currentCell.sources) ? structuredClone(currentCell.sources) : [];
+    const sourceIndex = sources.findIndex((source) =>
+      source && typeof source === "object" && !Array.isArray(source) && source.id === effect.control.sourceId);
+    if (sourceIndex < 0) return undefined;
+    const storedSource = sources[sourceIndex];
+    if (!storedSource || typeof storedSource !== "object" || Array.isArray(storedSource)) return undefined;
+    const source: SourceRunState = { ...initialSourceRunState(effect.control.sourceId), ...storedSource };
+    if (source.lastRequestedToken !== effect.control.sourceRequestToken) return undefined;
+    const completed = completeSourceRequest(source, effect.control.sourceRequestToken, status);
+    sources[sourceIndex] = { ...completed };
+    cells[cellId] = { ...currentCell, sources };
+    await this.applyAndDerive([{ op: "set", path: "blueprintRunState.cells", value: cells }], acc);
+    return hasPendingSourceRequest(completed) ? completed.queueRequestedToken ?? undefined : undefined;
+  }
+
+  private async completeAndPromoteSourceEffect(
+    effect: OrchestratorEffect,
+    status: "success" | "failure",
+    ops: PatchOp[],
+    fired: OrchestratorEffect[],
+    invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }>,
+  ): Promise<void> {
+    const pendingSourceToken = await this.completeSourceEffect(effect, status, ops);
+    if (effect.kind !== "invoke" || !effect.control.sourceId || !effect.control.sourceRequestToken || !this.graph) return;
+    const promotionKey = this.sourceKey(effect);
+    if (pendingSourceToken) this.sourcePromotionTokens.set(promotionKey, pendingSourceToken);
+    else this.settledSourcePromotions.add(promotionKey);
+    try {
+      this.graph.hydrate(flattenState(this.store.snapshot()));
+      const promotionNode = this.graph.hasNode(effect.node)
+        ? effect.node
+        : `${effect.control.sourceCellId ?? effect.node}-evaluate`;
+      await this.applyGraphResult(await this.graph.activate(promotionNode), ops, fired, invokes);
+    } finally {
+      this.sourcePromotionTokens.delete(promotionKey);
+      this.settledSourcePromotions.delete(promotionKey);
+    }
+  }
+
+  private async sourceResultOperations(
+    effect: OrchestratorEffect,
+    result: OrchestratorResult,
+  ): Promise<PatchOp[]> {
+    if (effect.kind !== "invoke" || !effect.control.sourceId || result.sourceOutput === undefined) {
+      return result.ops ?? [];
+    }
+    const sourceValue = effect.control.sourceOutputTransform
+      ? await this.expr.eval(effect.control.sourceOutputTransform.expr, { response: result.sourceOutput })
+      : structuredClone(result.sourceOutput);
+    const snapshot = this.store.snapshot();
+    const runState = snapshot.blueprintRunState;
+    const cells = runState && typeof runState === "object" && !Array.isArray(runState)
+      && runState.cells && typeof runState.cells === "object" && !Array.isArray(runState.cells)
+      ? structuredClone(runState.cells)
+      : {};
+    const cellId = effect.control.sourceCellId ?? effect.node;
+    const currentCell = cells[cellId];
+    const cell = currentCell && typeof currentCell === "object" && !Array.isArray(currentCell)
+      ? currentCell
+      : { sources: [] };
+    const currentSourceValues = cell.sourceValues;
+    const sourceValues = currentSourceValues && typeof currentSourceValues === "object" && !Array.isArray(currentSourceValues)
+      ? currentSourceValues
+      : {};
+    cells[cellId] = {
+      ...cell,
+      sourceValues: { ...sourceValues, [effect.control.sourceId]: sourceValue },
+    };
+    return [
+      { op: "set", path: "blueprintRunState.cells", value: cells },
+      ...(result.ops ?? []),
+    ];
+  }
+
+  private validateEffectSettlement(effect: OrchestratorEffect, result: OrchestratorResult): void {
+    const responseSchema = effect.kind === "route" ? undefined : effect.control.responseSchema;
+    const responseData = result.settlement?.data ?? (effect.kind === "invoke" ? result.sourceOutput : undefined);
+    if (responseSchema && responseData !== undefined) {
+      validateJsonValue(responseSchema, responseData, `Invalid settlement for effect '${effect.effectId ?? "unknown"}'`);
+    }
+    if (result.settlement && result.settlement.effectId !== effect.effectId) {
+      throw new Error(`Settlement '${result.settlement.effectId}' does not match effect '${effect.effectId ?? "unknown"}'`);
+    }
+  }
+
+  private effectSettlementEvents(effect: OrchestratorEffect, result: OrchestratorResult): GIKEvent[] {
+    const settlement = result.settlement;
+    if (!settlement) return [];
+    const value = settlement.data;
+    const data = value && typeof value === "object" && !Array.isArray(value)
+      ? value
+      : value === undefined
+        ? {}
+        : { value };
+    return [{
+      node: effect.node,
+      name: settlement.outcome,
+      ...(effect.actorId !== undefined ? { actorId: effect.actorId } : {}),
+      payload: { ...data, ...(settlement.detail ?? {}), outcome: settlement.outcome },
+    }];
+  }
+
   private closeInvocation(id: InvocationId): void {
     const active = this.activeInvocations.get(id);
     if (!active) return;
@@ -935,6 +1223,21 @@ export class Kernel {
     if (!active) return;
     active.controller.abort();
     this.closeInvocation(id);
+    void this.enqueueMutation(async () => {
+      const ops: PatchOp[] = [];
+      const fired: OrchestratorEffect[] = [];
+      const invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }> = [];
+      await this.completeAndPromoteSourceEffect(active.effect, "failure", ops, fired, invokes);
+      if (ops.length === 0 && fired.length === 0) return;
+      this.rev += 1;
+      for (const effect of fired) {
+        const invocationId = invokes.find((entry) => entry.effect === effect)?.id;
+        this.effectLog.push({ rev: this.rev, seq: this.effectSeq++, effect, invocationId });
+      }
+      const patch = { rev: this.rev, ops };
+      this.publishPatch(patch);
+      for (const invoke of invokes) this.startInvocation(invoke.effect, invoke.id);
+    }).catch((error) => this.invocationErrors.push(error));
   }
 
   dispose(): void {

@@ -1,14 +1,14 @@
 {
-  "name": "orchestrator: a confirm effect approved by HITL drives the follow-up write in one dispatch",
-  "description": "Pressing Delete emits a `confirm` effect (the reducer itself writes nothing). The scripted Orchestrator approves it by returning a `confirmed` follow-up event, which the same node handles to assign card_data.status. One dispatch, one rev: the reducer's own ops are empty, yet the effect's follow-up produces the single write.",
+  "name": "orchestrator: a decision request resolved by a host drives the follow-up write in one dispatch",
+  "description": "Pressing Delete emits a decision request (the reducer itself writes nothing). The scripted resolver returns a `confirmed` follow-up event, which the same node handles to assign card_data.status.",
   "vocabulary": {
     "gik": "0.1",
     "type": "vocabulary",
     "payload": {
-      "version": "confirm-demo/1.0",
+      "version": "request-demo/1.0",
       "expression": "jsonata",
       "namespaces": ["card_data"],
-      "actions": ["assign", "derive", "invoke", "emit", "route", "confirm"],
+      "actions": ["assign", "emit", "invoke", "route", "request"],
       "capabilities": { "actions": { "emits": ["delete", "confirmed"] } }
     }
   },
@@ -16,7 +16,7 @@
     "gik": "0.1",
     "type": "program",
     "payload": {
-      "vocabulary": "confirm-demo/1.0",
+      "vocabulary": "request-demo/1.0",
       "root": {
         "capability": "actions",
         "id": "delBtn",
@@ -24,7 +24,14 @@
         "edges": {
           "read": { "state": "card_data.status" },
           "on": {
-            "delete": [{ "do": "confirm", "args": { "title": "Delete order?" } }],
+            "delete": [{
+              "do": "request",
+              "control": {
+                "kind": "decision",
+                "responseSchema": { "type": "object", "required": ["approved"], "properties": { "approved": { "type": "boolean" } } }
+              },
+              "data": { "title": "Delete order?" }
+            }],
             "confirmed": [{ "do": "assign", "target": "card_data.status", "args": { "value": "deleted" } }]
           }
         }
@@ -33,7 +40,7 @@
   },
   "orchestrator": [
     {
-      "on": { "kind": "confirm", "node": "delBtn" },
+      "on": { "kind": "request", "node": "delBtn" },
       "result": { "events": [{ "node": "delBtn", "name": "confirmed" }] }
     }
   ],
@@ -42,7 +49,8 @@
       "event": { "node": "delBtn", "name": "delete" },
       "expectPatch": {
         "rev": 1,
-        "ops": [{ "op": "set", "path": "card_data.status", "value": "deleted" }]
+        "ops": [{ "op": "set", "path": "card_data.status", "value": "deleted" }],
+        "completedWithinRun": [{ "kind": "assign", "node": "delBtn", "target": "card_data.status", "value": "deleted" }]
       },
       "expectResolve": [{ "id": "delBtn", "props": { "state": "deleted" } }]
     }

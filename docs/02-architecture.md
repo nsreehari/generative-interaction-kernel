@@ -25,8 +25,8 @@ interpreter, validator, and tool-generator reusable.
 | **Capability** | a registered type: `{ propsSchema, emits[events], renderAdapter }` |
 | **Edge** (closed set) | `render` · `read` (store→prop) · `write` (→store) · `child` (→node) · `gate` (predicate→node) · `behavior` (event→[action]) |
 | **Store** | addressable namespaces, path-addressed, reactive |
-| **Action** (closed families) | `assign` · `derive` · `invoke` · `emit` · `route` · `confirm` |
-| **Event** | a named trigger produced by a capability or a machine |
+| **Action** (closed families) | `assign` · `emit` · `invoke` · `route` · `request` |
+| **Event** | a declared named ingress contract with a validated payload; `behavior.on` selects its handler |
 | **Machine** | `{ contextPath, initial, states }` — reduced by the kernel's pure reducer |
 
 ### Edges as a unified graph
@@ -86,9 +86,9 @@ kernel** — it is the **Manifest**. Interaction *shape* stays in the kernel; in
 | **SchemaProvider** | supply document + per-capability schemas | validate before commit |
 | **CapabilityRegistry** | `resolve(type) → {renderer, propsSchema, emits}` + fallback | resolve nodes, generate tool shapes |
 | **StateModel** | namespaces, `resolve(path)`, reactivity, persistence | back `read`/`write`/machine context |
-| **ExpressionProvider** | `eval(expr, scope) → value` | run `gate`, `derive`, read-paths |
+| **ExpressionProvider** | `eval(expr, scope) → value` | run `gate`, expression-valued `assign`, read-paths |
 | **RenderAdapter** | materialize a resolved node in a target framework | stay framework-agnostic |
-| **Orchestrator** | invoke external actions; return event + delta | back `invoke`/`confirm`, durable async |
+| **Orchestrator** | resolve external effects; return validated settlements | back `invoke`/`route`/`request`, durable async |
 | **TransportProvider** | stream/batch documents + state deltas | ingest and propagate |
 | **ObservabilitySink** | receive trace events | emit resolve/fallback/action/transition traces |
 
@@ -219,7 +219,7 @@ GIK messages in [03-protocol](03-protocol.md).)
 | `init()` | `Patch` | Seed machine initial states. Returns the rev-0 baseline patch (machine ops only). |
 | `baseline()` | `Patch` | `init()` **plus** the full current state as one rev-0 patch — a fresh remote client reconstructs the complete replica from it ([ADR-0011](decisions/ADR-0011-client-runtime.md)). |
 | `snapshotPatch()` | `Patch` | The full current state as a patch at the *current* rev, **without** re-seeding machines — re-onboards a reconnecting client mid-session ([ADR-0012](decisions/ADR-0012-reconnection.md)). |
-| `dispatch(event)` | `Patch` | Reduce one event, run any orchestrator effects and the follow-up events they produce, apply everything, fire reactions. **One dispatch = one rev**, regardless of fan-out ([ADR-0009](decisions/ADR-0009-orchestrator-effects.md)). |
+| `dispatch(event)` | `Patch` | Reduce one event, run any orchestrator effects and the follow-up events they produce, and apply everything. **One dispatch = one rev**, regardless of fan-out ([ADR-0009](decisions/ADR-0009-orchestrator-effects.md)). |
 | `resolve()` | `ResolvedNode` | Resolve the current document into a renderable tree (gate → capability → props → read → children). |
 | `state()` | `Record<string, Json>` | The live state snapshot (by reference — read-only; do not mutate). |
 | `checkpoint()` | `Checkpoint` | Capture an **immutable, rev-keyed** snapshot of pure state for time-travel (see below). |

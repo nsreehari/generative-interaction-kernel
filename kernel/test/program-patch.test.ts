@@ -72,7 +72,7 @@ test("a graph-local program patch preserves surviving token and node execution s
 test("runtime-originated patches require admission and travel with the event patch", async () => {
   const adaptiveRoot = root("adapted");
   const orchestrator: Orchestrator = {
-    async confirm() {
+    async request() {
       return { program: [{ op: "setRoot", root: adaptiveRoot }] };
     },
   };
@@ -83,7 +83,11 @@ test("runtime-originated patches require admission and travel with the event pat
       root: {
         capability: "surface",
         id: "before",
-        edges: { on: { adapt: [{ do: "confirm" }] } },
+        edges: { on: { adapt: [{
+          do: "request" as const,
+          control: { kind: "data" as const, responseSchema: { type: "object" } },
+          data: {},
+        }] } },
       },
     },
   };
@@ -108,7 +112,7 @@ test("an asynchronous invocation settlement publishes its admitted program patch
       root: {
         capability: "surface",
         id: "before",
-        edges: { on: { adapt: [{ do: "invoke", args: { tool: "adapter" } }] } },
+        edges: { on: { adapt: [{ do: "invoke", control: { tool: "adapter" } }] } },
       },
     },
   }, {

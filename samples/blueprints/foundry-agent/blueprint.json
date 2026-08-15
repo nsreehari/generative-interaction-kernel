@@ -138,7 +138,10 @@
       ],
       "actions": [
         "assign",
-        "invoke"
+        "emit",
+        "invoke",
+        "route",
+        "request"
       ],
       "capabilities": {
         "primitive:container": {
@@ -331,15 +334,27 @@
       },
       "foundry-access-gate": {
         "id": "foundry-access-gate",
+        "inputs": [
+          {
+            "token": "agent.accessStatus",
+            "as": "accessStatus"
+          }
+        ],
+        "compute": [
+          {
+            "id": "foundry-access",
+            "expression": "inputs.accessStatus = 'ready' ? inputs.accessStatus : null",
+            "assign": "foundryAccess"
+          }
+        ],
         "outputs": [
           {
             "token": "foundry-access",
-            "from": "agent.accessStatus",
-            "when": "agent.accessStatus = 'ready'"
+            "from": "foundryAccess"
           }
         ],
         "behavior": {
-          "events": {
+          "on": {
             "accessRequested": [
               {
                 "do": "assign",
@@ -357,7 +372,7 @@
               },
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "checkFoundryAccess"
                 }
               }
@@ -365,7 +380,7 @@
             "accessCleared": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "clearFoundryAccess"
                 }
               }
@@ -380,6 +395,18 @@
           "bindings": {
             "access": {
               "expression": "($s := agent.accessStatus; {'title':'Connect to Foundry','requiredMessage':'Enter your access key to continue.','checkingMessage':'Checking Foundry access...','errorMessage':\"Couldn't verify Foundry access.\",'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': agent.accessError})"
+            }
+          }
+        },
+        "events": {
+          "accessRequested": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "accessCleared": {
+            "payloadSchema": {
+              "type": "object"
             }
           }
         }
@@ -398,17 +425,27 @@
         "inputs": [
           {
             "token": "foundry-access"
+          },
+          {
+            "token": "agent.agentName",
+            "as": "agentName"
+          }
+        ],
+        "compute": [
+          {
+            "id": "agent-selection",
+            "expression": "inputs.agentName != '' ? inputs.agentName : null",
+            "assign": "agentSelection"
           }
         ],
         "outputs": [
           {
             "token": "foundry-agent-selection",
-            "from": "agent.agentName",
-            "when": "agent.agentName != ''"
+            "from": "agentSelection"
           }
         ],
         "behavior": {
-          "events": {
+          "on": {
             "agentsRequested": [
               {
                 "do": "assign",
@@ -426,7 +463,7 @@
               },
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "discoverAgents"
                 }
               }
@@ -458,6 +495,18 @@
               "from": "agent.agentsError"
             }
           }
+        },
+        "events": {
+          "agentsRequested": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "select": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "agent-connected": {
@@ -478,7 +527,7 @@
       "agent-message-field": {
         "id": "agent-message-field",
         "behavior": {
-          "events": {
+          "on": {
             "input": [
               {
                 "do": "assign",
@@ -501,6 +550,13 @@
               "from": "agent.draft"
             }
           }
+        },
+        "events": {
+          "input": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "agent-ask-btn": {
@@ -511,11 +567,11 @@
           }
         ],
         "behavior": {
-          "events": {
+          "on": {
             "press": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "askAgent"
                 }
               }
@@ -527,6 +583,13 @@
           "props": {
             "label": "Ask",
             "appearance": "primary"
+          }
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
           }
         }
       },
@@ -607,11 +670,11 @@
       "agent-signout-btn": {
         "id": "agent-signout-btn",
         "behavior": {
-          "events": {
+          "on": {
             "press": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "signOut"
                 }
               }
@@ -623,6 +686,13 @@
           "props": {
             "label": "Sign out",
             "dependency": { "kind": "credential", "ref": "foundry-agent/access-key" }
+          }
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
           }
         }
       }

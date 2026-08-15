@@ -24,19 +24,19 @@ export function setOp(path: string, value: Json): PatchOp {
   return { op: "set", path, value };
 }
 
-/** What a named effect handler receives: current-state reads plus the effect's args/payload. */
+/** What a named effect handler receives: current-state reads plus host control and resolver data. */
 export interface EffectContext {
   /** Read the up-to-date store (the kernel applies reducer ops BEFORE effects run). */
   get(path: string): Json;
   /** Build a `set` op for the returned result. */
   set(path: string, value: Json): PatchOp;
-  /** Args declared on the invoke action. */
-  args: Record<string, Json>;
-  /** The triggering event payload (e.g. { id } from a list select). */
-  payload: Record<string, Json>;
+  /** Host-interpreted control contract for this effect. */
+  control: OrchestratorEffect["control"];
+  /** Opaque resolver payload declared by the action. */
+  data: Record<string, Json>;
   /** Identity of the human or agent that emitted the triggering event, when supplied. */
   actorId?: string;
-  /** Identity of the active invocation. Present for `invoke`; absent for one-shot route/confirm. */
+  /** Identity of the active invocation. Present for `invoke`; absent for one-shot route/request. */
   invocationId?: InvocationId;
   /** Aborted when the active invocation is cancelled. Present for `invoke` only. */
   signal?: AbortSignal;
@@ -57,8 +57,8 @@ function contextFor(store: StateModel, effect: OrchestratorEffect): EffectContex
   return {
     get: (path) => store.get(path),
     set: setOp,
-    args: effect.args ?? {},
-    payload: effect.payload ?? {},
+    control: effect.control,
+    data: effect.data,
     actorId: effect.actorId,
     store,
   };
@@ -70,8 +70,14 @@ function contextFor(store: StateModel, effect: OrchestratorEffect): EffectContex
  * reduces into, so handlers read current values and return computed ops.
  */
 export function createEffectDispatcher(store: StateModel, handlers: EffectHandlerMap): Orchestrator {
-  const handlerFor = (effect: OrchestratorEffect): EffectHandler | undefined =>
-    effect.tool ? handlers[effect.tool] : undefined;
+  const handlerFor = (effect: OrchestratorEffect): EffectHandler | undefined => {
+    const key = effect.kind === "invoke"
+      ? effect.control.tool
+      : effect.kind === "request"
+        ? effect.control.policy
+        : typeof effect.control.to === "string" ? effect.control.to : undefined;
+    return key ? handlers[key] : undefined;
+  };
 
   const invoke = async (
     effect: OrchestratorEffect,
@@ -93,5 +99,5 @@ export function createEffectDispatcher(store: StateModel, handlers: EffectHandle
     if (!handler) return;
     return handler(contextFor(store, effect));
   };
-  return { invoke, confirm: runOneShot, route: runOneShot };
+  return { invoke, request: runOneShot, route: runOneShot };
 }

@@ -56,8 +56,14 @@ test("headless portfolio materializes with no UI or presentation declarations", 
     "holdings",
     "market-prices",
   ]);
-  assert.equal(program.reactions?.length, 1);
-  assert.equal(program.derivations?.length, 3);
+  assert.equal("reactions" in program, false);
+  assert.equal("derivations" in program, false);
+  assert.deepEqual(program.graph?.nodes.map(({ id }) => id), [
+    "market-prices-evaluate",
+    "positions-evaluate",
+    "summary-evaluate",
+    "portfolio-status-evaluate",
+  ]);
   assert.equal(terminal.services?.["portfolio-market-data"]?.kind, "deterministic-agent");
 });
 
@@ -74,7 +80,7 @@ test("headless portfolio authorizes market data, refreshes quotes, and derives i
     events: [{ node: "http-proxy-access-gate", name: "accessRequested", actorId: "portfolio-api" }],
     createOrchestrator: (state) => {
       const host = createNodeBlueprintServiceHost(runtime, state, {}, nativeServices);
-      return nodeServiceOrchestrator(runtime, host)(undefined, state);
+      return nodeServiceOrchestrator(runtime, host, state)(undefined, state);
     },
   });
   const portfolio = result.state.portfolio as Record<string, unknown>;

@@ -2,10 +2,6 @@ import type { EffectHandlerMap, LoadBundleOptions } from "@gik/react";
 import * as backendOrderProcessing from "../../../../blueprints/backend-order-processing/native/effect_handlers/backendOrderProcessingEffectHandlers";
 import * as copilotC2 from "../../../../blueprints/copilot-c2/native/effect_handlers/copilotC2EffectHandlers";
 import * as foundryAgent from "../../../../blueprints/foundry-agent/native/effect_handlers/foundryAgentEffectHandlers";
-import * as incidentReportExplorer from "../../../../blueprints/incident-report-explorer/native/effect_handlers/incidentReportExplorerEffectHandlers";
-import * as incidentReportExplorer1a from "../../../../blueprints/incident-report-explorer-1a/native/effect_handlers/incidentReportExplorer1aEffectHandlers";
-import * as incidentReportExplorer2 from "../../../../blueprints/incident-report-explorer-2/native/effect_handlers/incidentReportExplorer2EffectHandlers";
-import * as incidentReportExplorer3 from "../../../../blueprints/incident-report-explorer-3/native/effect_handlers/incidentReportExplorer3EffectHandlers";
 import * as liveWorkspaceSoc from "../../../../blueprints/live-workspace-soc/native/effect_handlers/liveWorkspaceSocEffectHandlers";
 import * as manageBlueprints from "../../../../blueprints/manage-blueprints/native/effect_handlers/manageBlueprintsEffectHandlers";
 import * as portfolioTracker from "../../../../blueprints/portfolio-tracker/native/effect_handlers/portfolioTrackerEffectHandlers";
@@ -41,10 +37,6 @@ const portfolioTrackerBrowserEffects: SampleNativeEffects = {
 
 const browserSampleNativeEffects: Readonly<Record<string, SampleNativeEffects>> = {
   "backend-order-processing": backendOrderProcessing,
-  "incident-report-explorer": incidentReportExplorer,
-  "incident-report-explorer-1a": incidentReportExplorer1a,
-  "incident-report-explorer-2": incidentReportExplorer2,
-  "incident-report-explorer-3": incidentReportExplorer3,
   "copilot-c2": copilotC2BrowserEffects,
   "foundry-agent": foundryAgent,
   "live-workspace-soc": liveWorkspaceSoc,

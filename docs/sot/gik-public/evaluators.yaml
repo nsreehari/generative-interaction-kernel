@@ -2,17 +2,20 @@ schema_version: 1
 
 package:
   name: "@gik/evaluators"
-  version: "0.1.0"
+  version: "0.1.1"
   purpose: >-
-    Evaluate JSONata expressions and run declarative JSONata, JSON Schema,
-    JSONata-expression, and JSON-type validators.
+    Own canonical GIK schemas, evaluate JSONata expressions and Blueprint Cells, and run
+    declarative JSONata, JSON Schema, JSONata-expression, JSON-type, and Blueprint validators.
   core_promise: >-
     Evaluators provides shared JSON-only evaluation and validation helpers. It delegates
     JSONata execution and expression policy to Kernel providers and JSON Schema validation to AJV.
   public_entrypoint: packages/evaluators/src/index.ts
   implementation_entrypoints:
     - packages/evaluators/src/evaluators.ts
+    - packages/evaluators/src/cell.ts
+    - packages/evaluators/src/system-inputs.ts
     - packages/evaluators/src/validators.ts
+    - packages/evaluators/schemas
 
 api_policy:
   signature_authority: generated TypeScript declarations
@@ -20,14 +23,18 @@ api_policy:
     - JSONata evaluation functions and step contracts.
     - JSONata expression validation.
     - Declarative validation dispatch.
-    - JSON schemas for synchronous step input and output.
+    - Cell, Tier, lowering-recipe, and Blueprint validation.
+    - Canonical JSON schemas published under @gik/evaluators/schemas/*.
 
 architecture:
   owns:
     - JSON-safe wrappers around Kernel JSONata providers.
     - Sequential synchronous JSONata step execution.
+    - Synchronous Cell computation and source/output expression evaluation.
+    - The named system-input registry, schemas, pure resolvers, and runtime-expression lowering helpers.
     - Normalization and dispatch of declarative validator descriptions.
     - Aggregating validation errors and warnings.
+    - Canonical GIK JSON Schema assets and their package subpath exports.
   delegates_to_kernel:
     - Full and safe JSONata execution.
     - JSONata expression syntax and safe-subset validation.
@@ -37,8 +44,8 @@ architecture:
     - Resolution of caller-supplied schema references.
   does_not_own:
     - Kernel runtime expression scheduling.
-    - Blueprint or program validation policy.
-    - Schema discovery or loading.
+    - Blueprint cross-object reference, tier-chain, and composition policy.
+    - Kernel execution authority.
     - Throwing on ordinary declarative validation failures.
   dependency_direction:
     - "@gik/evaluators -> @gik/kernel"
@@ -99,6 +106,53 @@ step_execution:
     - syncJsonataStepSchema
     - executeSyncJsonataStepsInputSchema
     - executeSyncJsonataStepsOutputSchema
+
+system_inputs:
+  purpose: >-
+    Public registry and projection contract for evaluator-owned values that Cells declare through
+    systemInputs without depending on runtime storage namespaces or persisted derived values.
+  contracts:
+    - name: SystemInputToken
+      signature: 'type SystemInputToken = "numSourcesRunning"'
+    - name: SystemInputContext
+      signature: "interface SystemInputContext { blueprintRunState: BlueprintRunState; cellId: string }"
+    - name: SystemInputDefinition
+      signature: >-
+        interface SystemInputDefinition { schema: Readonly<Record<string, Json>>;
+        resolve(context: SystemInputContext): Json; runtimeExpression(cellId: string): string }
+  registry:
+    name: systemInputDefinitions
+    guarantees:
+      - Every available token has one evaluator-owned schema, pure resolver, and runtime expression.
+      - numSourcesRunning is a non-negative integer projected from raw source request/completion tokens.
+      - Derived system-input values are never written to Blueprint or Cell run state.
+  functions:
+    - "isSystemInputToken(value: string): value is SystemInputToken"
+    - "resolveSystemInputs(tokens: readonly SystemInputToken[], context: SystemInputContext): Record<string, Json>"
+    - "systemInputRuntimeExpression(token: SystemInputToken, cellId: string): string"
+
+cell_evaluation:
+  function:
+    name: evaluateCell
+    signature: "evaluateCell(input: EvaluateCellInput): EvaluateCellResult"
+    guarantees:
+      - Is pure with respect to supplied state and Cell material; it returns operations and effects but performs neither.
+      - EvaluateCellInput supplies raw Blueprint run state through systemContext; that context is not part of the Cell authoring grammar.
+      - Resolves only tokens explicitly declared by the Cell's systemInputs array.
+      - Within one invocation, evaluates compute declarations in order and exposes their assignments under computed.<assign-path>.
+      - Returns computed values, explicit patch operations, output token values, and admitted source effects.
+  authoring_grammar:
+    evaluator_expression_roots:
+      - inputs
+      - sources
+      - systemInputs
+      - computed
+    rules:
+      - Compute expressions and source/output predicates reject unknown bare roots.
+      - systemInputs.<token> is valid only when the token exists in the registry and is declared by the Cell.
+      - blueprintRunState and cellRunState are internal and rejected in Cell expressions.
+      - Outputs produced by compute reference computed.<assign-path>, including nested assignment paths.
+      - A pure forwarding Cell may publish a declared inputs.<alias> path without synthetic compute.
 
 validation_contracts:
   - name: DeclarativeValidatorInput
@@ -164,6 +218,27 @@ validator_kinds:
       - Treats object as a non-null, non-array object.
       - Treats json as matching every JsonValue.
       - Formats a failure as the configured message followed by ': expected <type>'.
+  blueprint_cell:
+    accepted_form: "{ kind: blueprint-cell, message?, level?, code?, node? }"
+    behavior:
+      - Validates the canonical Cell schema.
+      - Validates compute, source, and output expressions and output ownership invariants.
+      - Validates system-input declarations and rejects undeclared, unknown, or duplicate tokens.
+      - Enforces explicit evaluator namespaces and hides internal run-state namespaces from Cell authors.
+  blueprint_tier:
+    accepted_form: "{ kind: blueprint-tier, message?, level?, code?, node? }"
+    behavior: Validates one standalone strict Tier definition.
+  blueprint_lowering_recipe:
+    accepted_form: "{ kind: blueprint-lowering-recipe, message?, level?, code?, node? }"
+    behavior:
+      - Validates one strict vocabulary-patch or representation recipe variant.
+      - Validates local fallback, inheritance, uniqueness, and JSONata-expression invariants.
+      - Does not validate whether from and to reference tiers in a containing Blueprint.
+  blueprint:
+    accepted_form: "{ kind: blueprint, message?, level?, code?, node? }"
+    behavior:
+      - Validates the canonical Blueprint schema and every embedded Cell and recipe.
+      - Leaves cross-object references, chain connectivity, and composition policy to @gik/blueprint.
 
 validation_api:
   name: runDeclarativeValidators
@@ -185,6 +260,31 @@ validation_api:
     - AJV schema compilation errors may propagate.
     - Invalid reference registration may propagate.
 
+specialized_validation_api:
+  functions:
+    - "validateCell(value: unknown): CellValidationResult"
+    - "validateTier(value: JsonValue): DeclarativeValidationResult"
+    - "validateRecipe(value: JsonValue): DeclarativeValidationResult"
+    - "validateLoweringRecipe(value: JsonValue): DeclarativeValidationResult"
+  ownership:
+    - validateRecipe is the concise public alias of validateLoweringRecipe.
+    - Tier and recipe validation is standalone and contains no Blueprint graph context.
+
+schema_assets:
+  authority: packages/evaluators/schemas
+  package_exports: "@gik/evaluators/schemas/*"
+  includes:
+    - blueprint.schema.json
+    - cell.schema.json
+    - tier.schema.json
+    - lowering-recipe.schema.json
+    - program.schema.json
+    - vocabulary.schema.json
+    - patch.schema.json
+    - event.schema.json
+    - envelope.schema.json
+    - supporting conformance and host schemas
+
 public_exports:
   types:
     - SyncJsonataStep
@@ -193,12 +293,30 @@ public_exports:
     - JsonataExpressionValidationMode
     - ValidateJsonataExpressionOptions
     - ValidateJsonataExpressionResult
+    - SystemInputToken
+    - SystemInputContext
+    - SystemInputDefinition
+    - EvaluatorCellDefinition
+    - EvaluateCellInput
+    - EvaluateCellResult
+    - CellSourceEffect
   functions:
     - evalSyncJsonata
     - evalAsyncJsonata
     - executeSyncJsonataSteps
     - validateJsonataExpression
     - runDeclarativeValidators
+    - validateCell
+    - validateTier
+    - validateRecipe
+    - validateLoweringRecipe
+    - evaluateCell
+    - isSystemInputToken
+    - resolveSystemInputs
+    - systemInputRuntimeExpression
+  values:
+    - systemInputTokens
+    - systemInputDefinitions
   schemas:
     - syncJsonataStepSchema
     - executeSyncJsonataStepsInputSchema

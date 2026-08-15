@@ -102,3 +102,16 @@ Whether authorization, readiness, busy, dead, or wiped Cell conditions are repre
 control context, declarative gates, or another control-plane vocabulary is not decided here. In
 particular, this amendment does not settle the `http-proxy-access-gate` model or authorize control
 values to be carried through application data-flow state.
+
+## Amendment (2026-08-14): synchronous materialization uses compiler Kernel execution
+
+The synchronous invariant is implemented without a side interpreter. For a recipe-bearing authored
+Blueprint, `materializeBlueprint` runs the fixed compiler Blueprint on its own Kernel instance. The
+compiler receives only the authored artifact and immutable external context, executes the resolved
+recipe chain through compiler Cells, and emits the terminal Blueprint on a declared graph output.
+Executable vocabulary, program, and initial state are prepared only from that validated emission.
+
+The Kernel's asynchronous and synchronous graph APIs share one traversal. Synchronous publication
+requires `SyncJsonataExpressionProvider` and rejects asynchronous outcomes or non-output
+consequences. These restrictions preserve $M(A,C)=T$ and prevent synchronous materialization from
+silently acquiring service, approval, event, state-mutation, or adaptive-program behavior.

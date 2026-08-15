@@ -86,7 +86,7 @@ export function createBlueprintAuthoringRegistry(): FlowRegistry {
         events: [
           {
             node: effect.node,
-            name: `${effect.tool}:${result.intent ?? result.status}`,
+            name: `${effect.kind === "invoke" ? effect.control.tool : effect.kind}:${result.intent ?? result.status}`,
             payload: {
               ...result.data,
               status: result.status,

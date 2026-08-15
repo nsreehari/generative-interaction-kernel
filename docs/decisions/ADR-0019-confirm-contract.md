@@ -1,6 +1,6 @@
 # ADR-0019 — Human-in-the-loop `confirm` contract: standard prompt, outcomes, and event names
 
-**Status:** Accepted — 2026-07-04
+**Status:** Superseded by [ADR-0049](ADR-0049-stable-event-contracts-and-effect-settlements.md) — 2026-08-13
 
 ## Context
 

@@ -24,3 +24,20 @@ test("sync and async providers agree on a simple expression result", async () =>
   const data = { count: 4, user: { id: "u1" } };
   assert.equal(sync.eval("count > 3 and $exists(user.id)", data), await asyncProvider.eval("count > 3 and $exists(user.id)", data));
 });
+
+test("sync and async providers agree on object projection results", async () => {
+  const sync = new SyncJsonataExpressionProvider();
+  const asyncProvider = new JsonataExpressionProvider();
+  const expression = "findings.{'id': id, 'claim': claim}";
+  const data = { findings: [{ id: "f1", claim: "First" }, { id: "f2", claim: "Second" }] };
+
+  assert.deepEqual(sync.eval(expression, data), await asyncProvider.eval(expression, data));
+});
+
+test("sync and async providers agree on nested array construction", async () => {
+  const sync = new SyncJsonataExpressionProvider();
+  const asyncProvider = new JsonataExpressionProvider();
+  const expression = "{'tiers': [{'id': 'runtime', 'kind': 'runtime-document'}], 'recipes': []}";
+
+  assert.deepEqual(sync.eval(expression, {}), await asyncProvider.eval(expression, {}));
+});

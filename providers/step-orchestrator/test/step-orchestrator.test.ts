@@ -34,10 +34,10 @@ test("a flow's branch selects the follow-up event (default result mapping)", asy
   };
   const orch = new StepOrchestrator({ classify: { flow, handlers } });
 
-  const big = (await orch.invoke({ kind: "invoke", node: "n1", tool: "classify", args: { value: 9 } })) as OrchestratorResult;
+  const big = (await orch.invoke({ kind: "invoke", node: "n1", control: { tool: "classify" }, data: { value: 9 } })) as OrchestratorResult;
   assert.deepEqual(big.events, [{ node: "n1", name: "classify:big", payload: { value: 9 } }]);
 
-  const small = (await orch.invoke({ kind: "invoke", node: "n1", tool: "classify", args: { value: 2 } })) as OrchestratorResult;
+  const small = (await orch.invoke({ kind: "invoke", node: "n1", control: { tool: "classify" }, data: { value: 2 } })) as OrchestratorResult;
   assert.equal(small.events?.[0].name, "classify:small");
 });
 
@@ -57,7 +57,7 @@ test("a failing step retries under the flow's retry policy (the vendored crux)",
   };
   const orch = new StepOrchestrator({ fetch: { flow, handlers } });
 
-  const res = (await orch.invoke({ kind: "invoke", node: "n1", tool: "fetch", args: {} })) as OrchestratorResult;
+  const res = (await orch.invoke({ kind: "invoke", node: "n1", control: { tool: "fetch" }, data: {} })) as OrchestratorResult;
   assert.equal(res.events?.[0].name, "fetch:ok", "reached the success terminal after retries");
   assert.equal(res.events?.[0].payload?.attempts, 3, "succeeded on the third attempt");
 });
@@ -117,8 +117,8 @@ test("sample portfolio refresh registry produces a current value through the flo
   const res = await orch.invoke({
     kind: "invoke",
     node: "portfolio-node",
-    tool: "refreshPortfolio",
-    args: { holdings: [{ symbol: "AAPL", quantity: 2 }, { symbol: "MSFT", quantity: 1 }] },
+    control: { tool: "refreshPortfolio" },
+    data: { holdings: [{ symbol: "AAPL", quantity: 2 }, { symbol: "MSFT", quantity: 1 }] },
   });
   assert.equal(res?.events?.[0].name, "refreshPortfolio:ok");
   assert.equal(res?.events?.[0].payload?.currentValue, 900);

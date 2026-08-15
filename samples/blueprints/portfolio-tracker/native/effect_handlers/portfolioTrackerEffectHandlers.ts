@@ -178,14 +178,14 @@ function replaceHoldings(ctx: EffectContext, holdings: Holding[], investorProfil
 
 const handlers: EffectHandlerMap = {
   setHoldings: (ctx) => {
-    const payload = ctx.payload;
+    const payload = ctx.data;
     const holdings = Array.isArray(payload.holdings)
       ? payload.holdings.map((value) => holdingFrom(value)).filter((value): value is Holding => value !== undefined)
       : [];
     return replaceHoldings(ctx, holdings, payload.investorProfile ?? null);
   },
   upsertHolding: (ctx) => {
-    const holding = holdingFrom(ctx.payload.holding);
+    const holding = holdingFrom(ctx.data.holding);
     if (!holding) return { outcome: "ignored" };
     return {
       ops: clearDerivedPortfolioOps(ctx, {
@@ -195,17 +195,20 @@ const handlers: EffectHandlerMap = {
     };
   },
   removeHolding: (ctx) => {
-    const ticker = String(ctx.payload.ticker ?? "").trim().toUpperCase();
+    const ticker = String(ctx.data.ticker ?? "").trim().toUpperCase();
     if (!ticker) return { outcome: "ignored" };
     const holdings = { ...recordAt<Holding>(ctx, "portfolio.holdings") };
     delete holdings[ticker];
     return { ops: clearDerivedPortfolioOps(ctx, holdings) };
   },
   saveHoldings: (ctx) => {
-    const rows = Array.isArray(ctx.payload.rows)
-      ? ctx.payload.rows.map((value) => holdingFrom(value)).filter((value): value is Holding => value !== undefined)
+    const rows = Array.isArray(ctx.data.rows)
+      ? ctx.data.rows.map((value) => holdingFrom(value)).filter((value): value is Holding => value !== undefined)
       : [];
-    return replaceHoldings(ctx, rows, ctx.get("portfolio.investorProfile"));
+    return {
+      ...replaceHoldings(ctx, rows, ctx.get("portfolio.investorProfile")),
+      events: [{ node: "market-prices", name: "refresh" }],
+    };
   },
   prepareStrategies: (ctx) => ({
     ops: [ctx.set("portfolio.pendingStrategyInputs", currentStrategyInputs(ctx))],

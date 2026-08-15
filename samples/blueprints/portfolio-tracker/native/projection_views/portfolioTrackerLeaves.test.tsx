@@ -82,6 +82,28 @@ test("portfolio intelligence 2 renders semantic projection primitives instead of
   assert.doesNotMatch(markup, /<li>Exposure<\/li>/);
 });
 
+test("portfolio intelligence projections can render an auto-running Cell without workflow commands", () => {
+  const Intelligence = portfolioViews["intelligence-projections"] as React.ComponentType<ProjectionViewProps>;
+  const intelligenceNode = node("portfolio-intelligence", {
+    headline: "Portfolio review",
+    summary: "Review concentration.",
+    asOf: "2026-08-14",
+    items: [{ id: "risk", kind: "risk", title: "Concentration is elevated", detail: "One position drives outcomes.", salience: "critical", confidence: "high", entities: ["MSFT"], value: "", unit: "", date: "", evidenceIds: [] }],
+    evidence: [],
+    projectionCandidates: [{ id: "scan", label: "Executive scan", attention: "glanceable", rationale: "Lead with risk.", sections: [{ id: "lead", title: "What matters", primitive: "hero-signal", priority: "primary", disclosure: "always", contentIds: ["risk"] }] }],
+  });
+  intelligenceNode.props.presentationContext = "portfolio-overview";
+  intelligenceNode.props.showWorkflowAction = false;
+  intelligenceNode.props.projectionRecipe = {
+    contexts: { "portfolio-overview": { attention: "glanceable", showDisclosure: ["always"], maxSections: 3 } },
+  };
+
+  const markup = renderToStaticMarkup(<Intelligence node={intelligenceNode} emit={async () => undefined}>{null}</Intelligence>);
+
+  assert.match(markup, /Concentration is elevated/);
+  assert.doesNotMatch(markup, /Analyze intelligence|Refresh analysis/);
+});
+
 test("portfolio intelligence 1b uses the analysis pending label", () => {
   assert.equal(workflowPendingLabel("requestIntelligence1b"), "Analyzing...");
 });

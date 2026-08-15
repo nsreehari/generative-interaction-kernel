@@ -82,7 +82,7 @@ test("loadBundleRuntime: composes bundle service orchestration inside host polic
         payload: {
           root: {
             ...emptyProgram.payload.root,
-            edges: { on: { run: [{ do: "invoke", args: { tool: "work" } }] } },
+            edges: { on: { run: [{ do: "invoke", control: { tool: "work" } }] } },
           },
         },
       },

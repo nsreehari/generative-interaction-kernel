@@ -1,7 +1,8 @@
+import { runDeclarativeValidators } from "@gik/evaluators";
 import type { CellDefinition } from "./types";
 
 export interface CellDiagnostic {
-  code: "duplicate-cell-id" | "invalid-token-pattern" | "ambiguous-provider" | "invalid-output-binding";
+  code: "duplicate-cell-id" | "invalid-token-pattern" | "invalid-output-binding";
   detail: string;
   cellId?: string;
   tokenPattern?: string;
@@ -9,7 +10,7 @@ export interface CellDiagnostic {
 
 export interface CellComposition {
   externalInputs: readonly string[];
-  providers: Readonly<Record<string, string>>;
+  providers: Readonly<Record<string, readonly string[]>>;
   diagnostics: readonly CellDiagnostic[];
 }
 
@@ -22,7 +23,13 @@ export interface TokenPattern {
 const PARAMETER_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 export function defineCell(definition: CellDefinition): CellDefinition {
-  if (!definition.id) throw new Error("Cell id must not be empty");
+  const report = runDeclarativeValidators([{
+    kind: "blueprint-cell",
+    message: "Invalid Blueprint Cell",
+  }], definition as never);
+  if (!report.ok) {
+    throw new Error(report.errors.map(({ detail }) => detail).join("; "));
+  }
   return structuredClone(definition);
 }
 
@@ -96,7 +103,7 @@ export function analyzeCellComposition(cells: readonly CellDefinition[]): CellCo
       }
     }
     for (const output of cell.outputs ?? []) {
-      if (!output.token || (output.from !== undefined && !output.from) || (output.when !== undefined && !output.when)) {
+      if (!output.token || (output.from !== undefined && !output.from)) {
         diagnostics.push({
           code: "invalid-output-binding",
           cellId: cell.id,
@@ -110,14 +117,9 @@ export function analyzeCellComposition(cells: readonly CellDefinition[]): CellCo
     }
   }
 
-  const providers: Record<string, string> = {};
+  const providers: Record<string, readonly string[]> = {};
   for (const [pattern, cellIds] of [...providerIds].sort(([left], [right]) => left.localeCompare(right))) {
-    if (cellIds.length === 1) providers[pattern] = cellIds[0];
-    else diagnostics.push({
-      code: "ambiguous-provider",
-      tokenPattern: pattern,
-      detail: `Token pattern '${pattern}' is provided by multiple cells: ${cellIds.join(", ")}`,
-    });
+    providers[pattern] = cellIds;
   }
   const required = new Set(cells.flatMap((cell) => (cell.inputs ?? []).map(({ token }) => token)));
   const externalInputs = [...required].filter((pattern) => !providerIds.has(pattern)).sort((left, right) => left.localeCompare(right));
@@ -135,7 +137,7 @@ export interface ExecutableCellTopology {
   cells: readonly CellDefinition[];
   edges: readonly ExecutableCellEdge[];
   externalInputs: readonly string[];
-  providers: Readonly<Record<string, string>>;
+  providers: Readonly<Record<string, readonly string[]>>;
   diagnostics: readonly CellDiagnostic[];
 }
 
@@ -147,8 +149,11 @@ export function compileCellTopology(
   const composition = analyzeCellComposition(cells);
   const edges = cells
     .flatMap((cell) => (cell.inputs ?? []).flatMap(({ token }): ExecutableCellEdge[] => {
-      const providerCellId = composition.providers[token];
-      return providerCellId ? [{ token, providerCellId, consumerCellId: cell.id }] : [];
+      return (composition.providers[token] ?? []).map((providerCellId) => ({
+        token,
+        providerCellId,
+        consumerCellId: cell.id,
+      }));
     }))
     .sort((left, right) =>
       left.providerCellId.localeCompare(right.providerCellId)

@@ -8,7 +8,7 @@
       "version": "fetch-demo/1.0",
       "expression": "jsonata",
       "namespaces": ["orders", "fetched"],
-      "actions": ["assign", "derive", "invoke", "emit", "route", "confirm"],
+      "actions": ["assign", "emit", "invoke", "route", "request"],
       "capabilities": {
         "board": {},
         "metric": {},
@@ -45,7 +45,7 @@
               "id": "loadBtn",
               "props": { "label": "Load" },
               "edges": {
-                "on": { "load": [{ "do": "invoke", "args": { "tool": "fetchOrders" } }] }
+                "on": { "load": [{ "do": "invoke", "control": { "tool": "fetchOrders" } }] }
               }
             }
           ]

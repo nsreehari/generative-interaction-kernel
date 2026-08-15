@@ -1,5 +1,13 @@
 import { evalSyncJsonata } from "@gik/evaluators";
-import type { Json } from "@gik/kernel";
+import {
+  Kernel,
+  SyncJsonataExpressionProvider,
+  type ExecutableProgramDefinition,
+  type ExecutionSnapshot,
+  type GraphNodeExecutionOutcome,
+  type Json,
+  type ProgramNode,
+} from "@gik/kernel";
 import { createBlueprint, validateBlueprintArtifact } from "./blueprint";
 import { resolveBlueprintExecution } from "./execution";
 import { applyBlueprintPatch } from "./structure-patch";
@@ -8,6 +16,7 @@ import type {
   BlueprintImplementationProgram,
   BlueprintPatch,
   BlueprintRepresentation,
+  BlueprintRepresentationDecorator,
   CellDefinition,
   RepresentationLoweringRecipeDefinition,
   VocabularyLoweringRecipeDefinition,
@@ -42,21 +51,26 @@ const FIXED_LOWERING_META_GRAPH = createBlueprint({
       id: "resolve-stage",
       kind: "transform",
       view: { capability: "compiler:resolve-stage" },
-      outputs: [{ token: "lowering:stage" }],
+      inputs: [{ token: "lowering:source", as: "source" }],
+      compute: [{ id: "stage", expression: "inputs.source", assign: "stage", dependencies: ["inputs.source"] }],
+      outputs: [{ token: "lowering:stage", from: "computed.stage" }],
+      metadata: { operation: "resolve-lowering-chain" },
     },
     "apply-vocabulary-patch": {
       id: "apply-vocabulary-patch",
       kind: "transform",
-      inputs: [{ token: "lowering:stage" }],
-      outputs: [{ token: "lowering:artifact" }],
-      metadata: { operation: "apply-blueprint-patch" },
+      inputs: [{ token: "lowering:stage", as: "stage" }],
+      compute: [{ id: "artifact", expression: "inputs.stage", assign: "artifact", dependencies: ["inputs.stage"] }],
+      outputs: [{ token: "lowering:artifact", from: "computed.artifact" }],
+      metadata: { operation: "apply-lowering-chain" },
     },
     "emit-blueprint": {
       id: "emit-blueprint",
       kind: "emit-blueprint",
-      inputs: [{ token: "lowering:artifact" }],
-      outputs: [{ token: "compiled:artifact" }],
-      metadata: { validation: "blueprint" },
+      inputs: [{ token: "lowering:artifact", as: "artifact" }],
+      compute: [{ id: "compiled", expression: "inputs.artifact", assign: "compiled", dependencies: ["inputs.artifact"] }],
+      outputs: [{ token: "compiled:artifact", from: "computed.compiled" }],
+      metadata: { operation: "emit-blueprint", validation: "blueprint" },
     },
   },
   projections: {
@@ -78,39 +92,154 @@ export function lowerWithFixedMetaGraph(
   source: BlueprintArtifact,
   externalContext: Readonly<Record<string, Json>> = {},
 ): BlueprintArtifact {
+  return runFixedLoweringMetaGraph(source, externalContext).blueprint;
+}
+
+export interface FixedLoweringMetaGraphResult {
+  blueprint: BlueprintArtifact;
+  execution: ExecutionSnapshot;
+}
+
+export function runFixedLoweringMetaGraph(
+  source: BlueprintArtifact,
+  externalContext: Readonly<Record<string, Json>> = {},
+): FixedLoweringMetaGraphResult {
   const metaGraph = fixedLoweringMetaGraphBlueprint();
-  const applyCell = metaGraph.payload.cells?.["apply-vocabulary-patch"];
-  const emitCell = metaGraph.payload.cells?.["emit-blueprint"];
-  if (applyCell?.metadata?.operation !== "apply-blueprint-patch") {
-    throw new Error("Fixed lowering meta-graph has no supported vocabulary-patch Cell");
-  }
-  if (emitCell?.metadata?.validation !== "blueprint") {
-    throw new Error("Fixed lowering meta-graph has no validated Blueprint emitter");
-  }
-
   const resolved = resolveBlueprintExecution(source);
-  if (resolved.stages.length === 0) return structuredClone(source);
-
-  let artifact = structuredClone(source);
-  for (const { recipe } of resolved.stages) {
-    const representationRecipe = recipe as Partial<RepresentationLoweringRecipeDefinition>;
-    if (Array.isArray(representationRecipe.representations)) {
-      artifact = applyRepresentationRecipe(artifact, representationRecipe as RepresentationLoweringRecipeDefinition, externalContext);
-      continue;
-    }
-    const patch = (recipe as Partial<VocabularyLoweringRecipeDefinition>).patch as BlueprintPatch | undefined;
-    if (!Array.isArray(patch) || patch.length === 0) {
-      throw new Error(`Blueprint lowering recipe '${recipe.id}' requires a non-empty vocabulary patch`);
-    }
-    artifact = applyBlueprintPatch(artifact, patch);
+  if (resolved.stages.length === 0) {
+    return {
+      blueprint: structuredClone(source),
+      execution: {
+        topologyVersion: 0,
+        status: "quiescent",
+        tokens: {},
+        nodes: {},
+        readyNodes: [],
+        runningInvocations: [],
+      },
+    };
   }
 
-  const terminalTier = resolved.stages.at(-1)!.toTier;
-  const terminal = structuredClone(artifact) as BlueprintArtifact;
-  terminal.payload.tiers = [structuredClone(terminalTier)];
-  terminal.payload.recipes = [];
-  validateBlueprintArtifact(terminal);
-  return terminal;
+  const expression = new SyncJsonataExpressionProvider();
+  const kernel = new Kernel(
+    { gik: "0.1", type: "vocabulary", payload: { version: `${metaGraph.payload.id}/${metaGraph.payload.version}` } },
+    { gik: "0.1", type: "program", payload: compileFixedLoweringProgram(metaGraph) },
+    {
+      expression,
+      predicateExpression: new SyncJsonataExpressionProvider({ safe: true }),
+      executeGraphExtension: executeFixedLoweringOperation,
+    },
+  );
+  kernel.init();
+  const transition = kernel.publishSync({
+    "lowering:source": structuredClone({ artifact: source, externalContext }) as unknown as Json,
+  });
+  const compiled = transition.execution.tokens["compiled:artifact"]?.value;
+  if (!compiled) throw new Error("Fixed lowering meta-graph emitted no terminal Blueprint");
+  validateBlueprintArtifact(compiled);
+  return { blueprint: compiled, execution: transition.execution };
+}
+
+function compileFixedLoweringProgram(metaGraph: BlueprintArtifact): ExecutableProgramDefinition {
+  const cells = metaGraph.payload.cells ?? {};
+  const node = (
+    cellId: string,
+    inputName: string,
+    inputToken: string,
+    outputName: string,
+    outputToken: string,
+  ): ProgramNode => {
+    const cell = cells[cellId];
+    const operation = cell?.metadata?.operation;
+    if (typeof operation !== "string") {
+      throw new Error(`Fixed lowering meta-graph Cell '${cellId}' has no registered operation`);
+    }
+    return {
+      id: cellId,
+      inputs: { [inputName]: inputToken },
+      outputs: { [outputName]: outputToken },
+      operation: { kind: "extension", name: operation },
+    };
+  };
+  return {
+    graph: {
+      inputs: ["lowering:source"],
+      outputs: ["compiled:artifact"],
+      nodes: [
+        node("resolve-stage", "source", "lowering:source", "stage", "lowering:stage"),
+        node("apply-vocabulary-patch", "stage", "lowering:stage", "artifact", "lowering:artifact"),
+        node("emit-blueprint", "artifact", "lowering:artifact", "compiled", "compiled:artifact"),
+      ],
+    },
+  };
+}
+
+interface LoweringChainInput {
+  artifact: BlueprintArtifact;
+  externalContext: Readonly<Record<string, Json>>;
+}
+
+interface ResolvedLoweringChain extends LoweringChainInput {
+  stages: ReturnType<typeof resolveBlueprintExecution>["stages"];
+}
+
+interface AppliedLoweringChain {
+  artifact: BlueprintArtifact;
+  terminalTier: ReturnType<typeof resolveBlueprintExecution>["stages"][number]["toTier"];
+}
+
+function executeFixedLoweringOperation(
+  node: ProgramNode,
+  inputs: Record<string, Json>,
+): GraphNodeExecutionOutcome {
+  switch (node.operation.kind === "extension" ? node.operation.name : undefined) {
+    case "resolve-lowering-chain": {
+      const source = inputs.source as unknown as LoweringChainInput;
+      const resolved = resolveBlueprintExecution(source.artifact);
+      return { outputs: { stage: structuredClone({ ...source, stages: resolved.stages }) as unknown as Json } };
+    }
+    case "apply-lowering-chain": {
+      const chain = inputs.stage as unknown as ResolvedLoweringChain;
+      let artifact = structuredClone(chain.artifact);
+      for (const { recipe } of chain.stages) {
+        artifact = applyLoweringRecipe(artifact, recipe, chain.externalContext);
+      }
+      return {
+        outputs: {
+          artifact: structuredClone({
+            artifact,
+            terminalTier: chain.stages.at(-1)!.toTier,
+          }) as unknown as Json,
+        },
+      };
+    }
+    case "emit-blueprint": {
+      const applied = inputs.artifact as unknown as AppliedLoweringChain;
+      const terminal = structuredClone(applied.artifact);
+      terminal.payload.tiers = [structuredClone(applied.terminalTier)];
+      terminal.payload.recipes = [];
+      validateBlueprintArtifact(terminal);
+      return { outputs: { compiled: terminal as unknown as Json } };
+    }
+    default:
+      throw new Error(`Unknown fixed lowering operation for Cell '${node.id}'`);
+  }
+}
+
+function applyLoweringRecipe(
+  artifact: BlueprintArtifact,
+  recipe: ReturnType<typeof resolveBlueprintExecution>["stages"][number]["recipe"],
+  externalContext: Readonly<Record<string, Json>>,
+): BlueprintArtifact {
+  const representationRecipe = recipe as Partial<RepresentationLoweringRecipeDefinition>;
+  if (Array.isArray(representationRecipe.representations)) {
+    return applyRepresentationRecipe(artifact, representationRecipe as RepresentationLoweringRecipeDefinition, externalContext);
+  }
+  const patch = (recipe as Partial<VocabularyLoweringRecipeDefinition>).patch as BlueprintPatch | undefined;
+  if (!Array.isArray(patch) || patch.length === 0) {
+    throw new Error(`Blueprint lowering recipe '${recipe.id}' requires a non-empty vocabulary patch`);
+  }
+  return applyBlueprintPatch(artifact, patch);
 }
 
 function applyRepresentationRecipe(
@@ -130,6 +259,7 @@ function applyRepresentationRecipe(
   if (selected.headless && (
     selected.extends
     || selected.views
+    || selected.decorators
     || selected.presentation
     || selected.presentationAppend
   )) {
@@ -165,6 +295,11 @@ function applyRepresentationRecipe(
       presentation.placements = [...(presentation.placements ?? []), ...structuredClone(representation.presentationAppend)];
     }
   }
+  for (const representation of chain) {
+    for (const decorator of representation.decorators ?? []) {
+      applyRepresentationDecorator(artifact, representation.id, decorator, externalContext);
+    }
+  }
   if (selected.headless) {
     const projections = Object.fromEntries(
       Object.entries(artifact.payload.projections ?? {}).filter(([id]) => id !== "presentation"),
@@ -176,6 +311,82 @@ function applyRepresentationRecipe(
   }
   applyImplementationProgram(artifact, recipe, externalContext);
   return artifact;
+}
+
+function applyRepresentationDecorator(
+  artifact: BlueprintArtifact,
+  representationId: string,
+  decorator: BlueprintRepresentationDecorator,
+  externalContext: Readonly<Record<string, Json>>,
+): void {
+  for (const decoration of [decorator.before, decorator.after]) {
+    if (decoration) declareDecorationCapability(artifact, representationId, decoration.capability);
+  }
+  const cells = Object.values(artifact.payload.cells ?? {});
+  const selected = evalSyncJsonata(decorator.select, {
+    blueprint: artifact,
+    payload: artifact.payload,
+    cells,
+    externalContext,
+  } as unknown as Json);
+  const cellIds = typeof selected === "string"
+    ? [selected]
+    : Array.isArray(selected) && selected.every((cellId) => typeof cellId === "string")
+      ? selected
+      : selected === null
+        ? []
+        : undefined;
+  if (!cellIds) {
+    throw new Error(`Blueprint representation '${representationId}' decorator select must return Cell id(s)`);
+  }
+  for (const cellId of new Set(cellIds)) {
+    const cell = artifact.payload.cells?.[cellId];
+    if (!cell) {
+      throw new Error(`Blueprint representation '${representationId}' decorator selected unknown Cell '${cellId}'`);
+    }
+    if (!cell.view?.capability) {
+      throw new Error(`Blueprint representation '${representationId}' decorator selected Cell '${cellId}' without a view`);
+    }
+    cell.view = {
+      ...cell.view,
+      ...(decorator.before
+        ? { before: [...(cell.view.before ?? []), structuredClone(decorator.before)] }
+        : {}),
+      ...(decorator.after
+        ? { after: [...(cell.view.after ?? []), structuredClone(decorator.after)] }
+        : {}),
+    };
+  }
+}
+
+function declareDecorationCapability(
+  artifact: BlueprintArtifact,
+  representationId: string,
+  capability: string,
+): void {
+  const separator = capability.indexOf(":");
+  if (separator <= 0 || separator === capability.length - 1) {
+    throw new Error(
+      `Blueprint representation '${representationId}' decorator capability '${capability}' must use alias:name`,
+    );
+  }
+  const alias = capability.slice(0, separator);
+  const name = capability.slice(separator + 1);
+  const runtime = artifact.payload.runtime;
+  if (!runtime) throw new Error(`Blueprint '${artifact.payload.id}' has no runtime declaration`);
+  runtime.capabilities = {
+    ...runtime.capabilities,
+    [capability]: runtime.capabilities?.[capability] ?? {
+      propsSchema: { type: "object", additionalProperties: true },
+    },
+  };
+  const projectionViews = runtime.externals?.projectionViews ?? {};
+  const existing = projectionViews[alias];
+  projectionViews[alias] = {
+    from: existing?.from ?? alias,
+    use: [...new Set([...(existing?.use ?? []), name])],
+  };
+  runtime.externals = { ...runtime.externals, projectionViews };
 }
 
 function applyImplementationProgram(
@@ -204,9 +415,23 @@ function applyCellImplementationOverrides(
     const cell = artifact.payload.cells?.[cellId];
     if (!cell) throw new Error(`Blueprint implementation program '${program.id}' references unknown Cell '${cellId}'`);
     if (override.sources) assertStableSourceContracts(program.id, cell, override.sources);
+    if (override.behavior) assertDeclaredEventHandlers(program.id, cell, override.behavior);
     if (override.sources) cell.sources = structuredClone(override.sources);
     if (override.compute) cell.compute = structuredClone(override.compute);
     if (override.behavior) cell.behavior = structuredClone(override.behavior);
+  }
+}
+
+function assertDeclaredEventHandlers(
+  programId: string,
+  cell: CellDefinition,
+  behavior: NonNullable<CellDefinition["behavior"]>,
+): void {
+  const undeclared = Object.keys(behavior.on ?? {}).filter((event) => !cell.events?.[event]);
+  if (undeclared.length > 0) {
+    throw new Error(
+      `Blueprint implementation program '${programId}' handles undeclared event(s) ${undeclared.join(", ")} for Cell '${cell.id}'`,
+    );
   }
 }
 

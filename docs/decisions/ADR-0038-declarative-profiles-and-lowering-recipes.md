@@ -15,9 +15,12 @@ That left three gaps:
 - the workbench still treated a binding as the primary unit instead of a profile.
 
 At the same time, the kernel's terminal document language already contains the exact runtime edge
-surface we want lowerings to target: `props`, `read`, `readExpr`, `on`, `react`, and `children`.
+surface we want lowerings to target: `props`, `read`, `readExpr`, `on`, and `children`.
 Introducing a second recipe-only binding language (`propsFrom`, `dataProp`, per-field remap
 tables) would duplicate that surface and create drift.
+
+As amended by ADR-0034 on 2026-08-13, reaction edges are no longer part of the Kernel document or
+Blueprint Cell behavior grammar.
 
 ## Decision
 
@@ -147,3 +150,56 @@ The selected program is fixed in the emitted terminal Blueprint. Changing the re
 context requires a new materialization; it is not a runtime state transition or an adaptive change.
 This amendment distinguishes a Cell's stable semantic behavior from the contract-compatible inner
 program selected to perform it.
+
+## Amendment (2026-08-14): recipe interpretation executes inside compiler Cells
+
+The fixed package-owned meta-graph is now the production execution path used by
+`materializeBlueprint`. The authored Blueprint and immutable external context enter a separate
+compiler Kernel through `lowering:source`; the compiler Cells resolve the ordered chain, apply the
+registered vocabulary or representation operation, and validate and emit `compiled:artifact`.
+
+Registered TypeScript implementations remain valid implementations of compiler-Cell vocabulary
+operations. They do not schedule recipes or form a second graph engine: Cell ordering, readiness,
+token propagation, budgets, and quiescence remain owned by the Kernel's one
+`ContinuousGraphRuntime` traversal. A terminal Blueprint is accepted only from the
+`emit-blueprint` Cell's declared output token.
+
+## Amendment (2026-08-14): representation recipes may generate presentation decorations
+
+A representation may declare ordered decorators whose `select` expression is evaluated during
+lowering against the current Blueprint artifact, its payload, its authored Cell array, and immutable
+external context. The expression returns one Cell id or an array of Cell ids. This gives recipes a
+declarative map/filter facility over authored structure without introducing application-specific
+compiler code.
+
+Each decorator may contribute one `before` and/or `after` Cell-view decoration. Lowering stores the
+expanded decorations on matched terminal Cell views; executable preparation composes them with the
+original Cell into a presentation fragment with stable generated node ids. The original Cell keeps
+its id, children, bindings, events, and semantic contract. Decoration bindings and visibility remain
+runtime JSONata scoped to that matched Cell, so a recipe can select Cells having `sources` at compile
+time and show `fluent:spinner` while each Cell's `numSourcesRunning` is nonzero at runtime.
+
+Decorators are presentation facets and are invalid for headless representations. Selection must
+resolve only known presented Cells, nested decorations are rejected, and all selection, binding,
+and visibility expressions are validated before execution.
+
+## Amendment (2026-08-15): evaluator-owned system inputs for runtime presentation state
+
+Cell authors may declare named evaluator-owned values through `systemInputs`, for example
+`systemInputs: ["numSourcesRunning"]`, and reference them as
+`systemInputs.numSourcesRunning`. A declaration grants access to a known token; it does not add a
+persisted Cell input or expose the underlying runtime state. The evaluator owns each token's schema,
+pure resolver, and lowering-time runtime expression.
+
+`numSourcesRunning` is projected from the Cell's raw source request/completion tokens in
+`blueprintRunState`. Neither this count nor another derived system input is persisted. Cell
+evaluation remains pure: Blueprint supplies raw run state as internal evaluator context, the
+evaluator resolves only the Cell's declared tokens, and lowering replaces declared system-input
+references in presentation expressions with evaluator-owned Kernel expressions.
+
+Cell-authored compute, source-guard, and output expressions use explicit `inputs`, `sources`,
+`systemInputs`, and `computed` namespaces. Outputs from the current evaluation cycle are published
+from `computed.<assign-path>`; bare assignment paths are not an alternate namespace. The internal
+`blueprintRunState` and `cellRunState` namespaces are unavailable to Cell expressions. This keeps
+spinner decoration declarative without making runtime storage layout part of the Cell-authoring
+contract.

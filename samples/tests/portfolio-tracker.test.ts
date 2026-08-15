@@ -245,7 +245,7 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
       holdings: [{ ticker: "AAPL", quantity: 8, costBasis: 178 }],
     }, "human-investor");
     await portfolio.controller.settle();
-    expect(portfolio.state.get("portfolio.positions.AAPL")).toBeNull();
+    expect(portfolio.state.get("portfolio.positions.AAPL")).toMatchObject({ ticker: "AAPL", quantity: 8, price: 100 });
 
     await portfolio.controller.emit(blueprintId, "refreshPrices", {}, "agent-market-data");
     await portfolio.controller.settle();
@@ -255,7 +255,7 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
       holding: { ticker: "GOOG", quantity: 4, costBasis: 165 },
     }, "human-investor");
     await portfolio.controller.settle();
-    expect(portfolio.state.get("portfolio.quotes.GOOG")).toBeNull();
+    expect(portfolio.state.get("portfolio.quotes.GOOG")).toMatchObject({ ticker: "GOOG", price: 101 });
 
     await portfolio.controller.emit(blueprintId, "refreshPrices", {}, "agent-market-data");
     await portfolio.controller.settle();
@@ -266,7 +266,7 @@ describe.each(PORTFOLIO_BLUEPRINTS)("%s Blueprint runtime", (blueprintId) => {
     await portfolio.controller.settle();
     expect(portfolio.state.get("portfolio.holdings.AAPL")).toBeNull();
     expect(portfolio.state.get("portfolio.positions.AAPL")).toBeNull();
-    expect(portfolio.state.get("portfolio.positions.GOOG")).toBeNull();
+    expect(portfolio.state.get("portfolio.positions.GOOG")).toMatchObject({ ticker: "GOOG", quantity: 4 });
 
     await portfolio.controller.emit(blueprintId, "refreshPrices", {}, "agent-market-data");
     await portfolio.controller.settle();

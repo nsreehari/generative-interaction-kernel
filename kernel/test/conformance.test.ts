@@ -42,13 +42,13 @@ interface ResolveExpect {
 
 interface Step {
   event: { node: string; name: string; payload?: Record<string, Json> };
-  expectPatch?: { rev: number; ops: PatchOp[] };
-  expectSettledPatch?: { rev: number; ops: PatchOp[] };
+  expectPatch?: { rev: number; ops: PatchOp[]; completedWithinRun?: unknown[] };
+  expectSettledPatch?: { rev: number; ops: PatchOp[]; completedWithinRun?: unknown[] };
   expectResolve?: ResolveExpect[];
 }
 
 interface ScriptEntry {
-  on: { kind: "invoke" | "confirm" | "route"; node?: string; tool?: string };
+  on: { kind: "invoke" | "route" | "request"; node?: string; tool?: string };
   result: OrchestratorResult;
 }
 
@@ -78,12 +78,12 @@ function scriptedOrchestrator(script: ScriptEntry[]): Orchestrator {
       (s) =>
         s.on.kind === kind &&
         (s.on.node === undefined || s.on.node === e.node) &&
-        (s.on.tool === undefined || s.on.tool === e.tool)
+        (s.on.tool === undefined || (e.kind === "invoke" && s.on.tool === e.control.tool))
     )?.result;
   return {
     invoke: async (e) => match("invoke", e),
-    confirm: async (e) => match("confirm", e),
     route: async (e) => match("route", e),
+    request: async (e) => match("request", e),
   };
 }
 

@@ -11,7 +11,6 @@ import {
   authorProjectedProgram,
   node,
   assignFrom,
-  reaction,
   envelope,
 } from "../src/index";
 
@@ -88,26 +87,4 @@ test("writes route by scope: a context path hits the shared store, a local path 
   const bState = b.state() as Record<string, Record<string, unknown>>;
   assert.equal(bState.shared.x, 42, "context write is visible to the other kernel");
   assert.deepEqual(bState.local, {}, "the writer's local namespace is NOT shared");
-});
-
-test("react composes with context: a reaction's `when` reads the shared namespace", async () => {
-  const shared = new InMemoryStateModel(["shared"]);
-
-  const k = new Kernel(
-    manifestMsg(["local"]),
-    authorProjectedProgram(
-      node("board", "root", {
-        react: [reaction("shared.n", [assignFrom("local.doubled", "shared.n * 2")])],
-        children: [node("actions", "apply", { on: { set: [assignFrom("shared.n", "$event.value")] } })],
-      }),
-      { vocabulary: "context-test/1" }
-    ),
-    { contexts: { shared } }
-  );
-
-  await k.dispatch(setEvent(5));
-
-  const state = k.state() as Record<string, Record<string, unknown>>;
-  assert.equal(state.shared.n, 5);
-  assert.equal(state.local.doubled, 10, "the reaction fired off a context change and wrote local state");
 });

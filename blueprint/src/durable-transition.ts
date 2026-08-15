@@ -37,16 +37,25 @@ export function createBlueprintDurableBootstrapEvent(): GIKEvent {
 export function createBlueprintDurableEffectSettlementEvent(
   messageId: string,
   result: OrchestratorResult,
+  effect?: OrchestratorEffect,
 ): GIKEvent {
   if (result.program) throw new Error("Durable Blueprint effects cannot settle with runtime program patches.");
   return {
     node: DURABLE_EFFECT_NODE,
     name: DURABLE_EFFECT_SETTLED,
-    payload: { messageId, result: structuredClone(result) as unknown as Json },
+    payload: {
+      messageId,
+      result: structuredClone(result) as unknown as Json,
+      ...(effect ? { effect: structuredClone(effect) as unknown as Json } : {}),
+    },
   };
 }
 
-function durableEffectSettlement(event: GIKEvent): { messageId: string; result: OrchestratorResult } | undefined {
+function durableEffectSettlement(event: GIKEvent): {
+  messageId: string;
+  result: OrchestratorResult;
+  effect?: OrchestratorEffect;
+} | undefined {
   if (event.node !== DURABLE_EFFECT_NODE || event.name !== DURABLE_EFFECT_SETTLED) return undefined;
   const messageId = event.payload?.messageId;
   if (typeof messageId !== "string" || !messageId) {
@@ -56,7 +65,14 @@ function durableEffectSettlement(event: GIKEvent): { messageId: string; result: 
   if (!result || typeof result !== "object" || Array.isArray(result)) {
     throw new Error("Durable Blueprint effect settlement is missing its result.");
   }
-  return { messageId, result: result as unknown as OrchestratorResult };
+  const effect = event.payload?.effect;
+  return {
+    messageId,
+    result: result as unknown as OrchestratorResult,
+    ...(effect && typeof effect === "object" && !Array.isArray(effect)
+      ? { effect: effect as unknown as OrchestratorEffect }
+      : {}),
+  };
 }
 
 export interface BlueprintDurableTransitionAdapter {
@@ -108,24 +124,22 @@ export function createBlueprintDurableTransitionAdapter(input: {
         consumed.add(settlement.messageId);
         return true;
       });
-      const settlementResults = acceptedSettlements.map((settlement) => settlement!.result);
-      let nextState = state;
-      if (settlementResults.some((result) => result.ops?.length)) {
-        const store = new InMemoryStateModel(unwrap(spec.materializedBlueprint.payload.vocabulary).namespaces ?? []);
-        store.apply(Object.entries(state).map(([path, value]) => ({ op: "set", path, value })));
-        for (const result of settlementResults) {
-          if (result.ops?.length) store.apply(result.ops);
-        }
-        nextState = store.snapshot();
-      }
-      const followUpEvents = settlementResults.flatMap((result) => result.events ?? []);
-      const result = await runMaterializedTransition({
-        state: nextState,
-        materializedBlueprint: spec.materializedBlueprint,
-        events: [...followUpEvents, ...regularEvents],
-      });
+      const sourceSettlements = acceptedSettlements
+        .filter((settlement) => settlement?.effect?.kind === "invoke" && settlement.effect.control.sourceRequestToken)
+        .map((settlement) => ({ effect: settlement!.effect!, result: settlement!.result }));
+      const requestSettlements = acceptedSettlements
+        .filter((settlement) => settlement?.effect?.kind === "request")
+        .map((settlement) => ({ effect: settlement!.effect!, result: settlement!.result }));
       const isBootstrap = events.some((event) =>
         event.node === DURABLE_EFFECT_NODE && event.name === DURABLE_BOOTSTRAP);
+      const result = await runMaterializedTransition({
+        state,
+        materializedBlueprint: spec.materializedBlueprint,
+        events: regularEvents,
+        syncExternal: isBootstrap,
+        sourceSettlements,
+        requestSettlements,
+      });
       if (regularEvents.length || isBootstrap) {
         input.onTransition?.(regularEvents[0] ? structuredClone(regularEvents[0]) : null, result);
       }

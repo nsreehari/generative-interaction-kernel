@@ -64,7 +64,6 @@ export function generateVocabulary(doc: ExecutableProgramDefinition, opts: Gener
   for (const handler of doc.handlers ?? []) {
     for (const list of Object.values(handler.on)) addActions(list);
   }
-  for (const reaction of doc.reactions ?? []) addActions(reaction.run);
 
   for (const m of doc.machines ?? []) {
     addNs(m.context);

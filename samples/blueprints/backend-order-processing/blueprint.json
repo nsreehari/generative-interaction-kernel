@@ -12,7 +12,13 @@
     "runtime": {
       "expression": "jsonata",
       "namespaces": ["order", "payment"],
-      "actions": ["assign", "confirm", "invoke", "route"],
+      "actions": [
+        "assign",
+        "emit",
+        "invoke",
+        "route",
+        "request"
+      ],
       "state": {
         "order": {
           "status": "draft",
@@ -37,26 +43,122 @@
         "id": "order-controller",
         "kind": "backend-workflow",
         "behavior": {
-          "events": {
+          "on": {
             "submit": [
-              { "do": "assign", "target": "order.status", "args": { "value": "pending_review" } },
-              { "do": "confirm", "args": { "message": "Manager approval required", "onConfirm": "approve" } }
+              {
+                "do": "assign",
+                "target": "order.status",
+                "args": {
+                  "value": "pending_review"
+                }
+              },
+              {
+                "do": "request",
+                "control": {
+                  "kind": "decision",
+                  "responseSchema": {
+                    "type": "object",
+                    "required": ["approved"],
+                    "properties": {
+                      "approved": { "type": "boolean" }
+                    }
+                  }
+                },
+                "data": {
+                  "message": "Manager approval required",
+                  "amount": 129.5
+                }
+              }
             ],
-            "approve": [
-              { "do": "assign", "target": "order.status", "args": { "value": "charging" } },
-              { "do": "assign", "target": "payment.status", "args": { "value": "processing" } },
-              { "do": "invoke", "args": { "tool": "chargeCard" } }
+            "resolved": [
+              {
+                "do": "assign",
+                "target": "order.status",
+                "args": {
+                  "value": "charging"
+                }
+              },
+              {
+                "do": "assign",
+                "target": "payment.status",
+                "args": {
+                  "value": "processing"
+                }
+              },
+              {
+                "do": "invoke",
+                "control": {
+                  "tool": "chargeCard"
+                }
+              }
             ],
             "charged": [
-              { "do": "assign", "target": "order.status", "args": { "value": "confirmed" } },
-              { "do": "assign", "target": "payment.status", "args": { "value": "captured" } },
-              { "do": "assign", "target": "order.fulfillment", "args": { "value": "queued" } },
-              { "do": "route", "args": { "to": "queue:fulfillment" } }
+              {
+                "do": "assign",
+                "target": "order.status",
+                "args": {
+                  "value": "confirmed"
+                }
+              },
+              {
+                "do": "assign",
+                "target": "payment.status",
+                "args": {
+                  "value": "captured"
+                }
+              },
+              {
+                "do": "assign",
+                "target": "order.fulfillment",
+                "args": {
+                  "value": "queued"
+                }
+              },
+              {
+                "do": "route",
+                "control": {
+                  "to": "queue:fulfillment"
+                }
+              }
             ],
             "declined": [
-              { "do": "assign", "target": "order.status", "args": { "value": "payment_failed" } },
-              { "do": "assign", "target": "payment.status", "args": { "value": "declined" } }
+              {
+                "do": "assign",
+                "target": "order.status",
+                "args": {
+                  "value": "payment_failed"
+                }
+              },
+              {
+                "do": "assign",
+                "target": "payment.status",
+                "args": {
+                  "value": "declined"
+                }
+              }
             ]
+          }
+        },
+        "events": {
+          "submit": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "resolved": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "charged": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "declined": {
+            "payloadSchema": {
+              "type": "object"
+            }
           }
         }
       }

@@ -12,7 +12,11 @@
         "liveCards"
       ],
       "actions": [
-        "assign"
+        "assign",
+        "emit",
+        "invoke",
+        "route",
+        "request"
       ],
       "capabilities": {
         "primitive:container": {
@@ -172,7 +176,7 @@
       "live-cards-catalog": {
         "id": "live-cards-catalog",
         "behavior": {
-          "events": {
+          "on": {
             "select": [
               {
                 "do": "assign",
@@ -212,6 +216,13 @@
               "expression": "liveCards.selectedId != '' ? [liveCards.selectedId] : []"
             }
           }
+        },
+        "events": {
+          "select": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "live-cards-detail": {
@@ -244,7 +255,7 @@
       "live-cards-shortcut-incident": {
         "id": "live-cards-shortcut-incident",
         "behavior": {
-          "events": {
+          "on": {
             "press": [
               {
                 "do": "assign",
@@ -259,26 +270,67 @@
         "view": {
           "capability": "fluent:button",
           "props": { "label": "Incident" }
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "live-cards-shortcut-evidence": {
         "id": "live-cards-shortcut-evidence",
         "behavior": {
-          "events": { "press": [{ "do": "assign", "target": "liveCards.selectedId", "args": { "value": "evidence" } }] }
+          "on": {
+            "press": [
+              {
+                "do": "assign",
+                "target": "liveCards.selectedId",
+                "args": {
+                  "value": "evidence"
+                }
+              }
+            ]
+          }
         },
         "view": {
           "capability": "fluent:button",
           "props": { "label": "Evidence" }
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "live-cards-shortcut-response": {
         "id": "live-cards-shortcut-response",
         "behavior": {
-          "events": { "press": [{ "do": "assign", "target": "liveCards.selectedId", "args": { "value": "response" } }] }
+          "on": {
+            "press": [
+              {
+                "do": "assign",
+                "target": "liveCards.selectedId",
+                "args": {
+                  "value": "response"
+                }
+              }
+            ]
+          }
         },
         "view": {
           "capability": "fluent:button",
           "props": { "label": "Response" }
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       }
     },

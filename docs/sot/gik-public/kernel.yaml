@@ -25,8 +25,7 @@ contracts:
   - name: ProgramDefinition
     signature: >-
       interface ProgramDefinition { vocabulary?: string; graph?: ProgramGraph;
-      handlers?: RuntimeHandler[];
-      reactions?: RuntimeReaction[]; machines?: Machine[];
+      handlers?: RuntimeHandler[]; machines?: Machine[];
       derivations?: StandingDerivation[] }
     purpose: Shared executable behavior independent of projection.
   - name: ProgramGraph
@@ -72,19 +71,21 @@ contracts:
   - name: NodeOperation
     signature: >-
       type NodeOperation = ComputeNodeOperation | ActionsNodeOperation |
-      InvokeNodeOperation | DecisionNodeOperation
+      InvokeNodeOperation | DecisionNodeOperation | ExtensionNodeOperation
     purpose: Select intrinsic computation, closed actions, external invocation, or branching.
     variants:
       - "ComputeNodeOperation { kind: compute; expression: string }"
       - "ActionsNodeOperation { kind: actions; actions: Action[] }"
       - "InvokeNodeOperation { kind: invoke; tool: string; arguments?: Record<string, string> }"
       - "DecisionNodeOperation { kind: decision; cases: DecisionCase[] }"
+      - "ExtensionNodeOperation { kind: extension; name: string; config?: Json }"
     behavior:
       - Compute with one declared output maps the expression value to that output.
       - Compute with multiple outputs requires the expression to return an object keyed by local output name.
       - Decision evaluates cases in declaration order and publishes the first matching case.
       - Actions emit state operations, effects, and events; they do not synthesize graph outputs.
       - Invoke suspends its node and resumes it from OrchestratorResult.outputs.
+      - Extension delegates one registered vocabulary operation to GraphNodeExecutor.
       - An invoke action inside ActionsNodeOperation settles as an ordinary effect; its outputs do not complete the graph node.
     expression_bindings:
       - $inputs is the object of local input names mapped to available token values.
@@ -116,7 +117,6 @@ contracts:
       - mutateGraph, setGraph, removeGraph
       - setRoot, removeRoot
       - upsertHandler, removeHandler
-      - upsertReaction, removeReaction
       - upsertMachine, removeMachine
       - upsertDerivation, removeDerivation
     behavior:
@@ -169,6 +169,31 @@ contracts:
       failure?: Json }
     purpose: Record the token versions consumed by a node and its lifecycle state.
     limitation: invocationId and failure are declared but are not currently populated by ContinuousGraphRuntime.
+  - name: SourceRunState
+    signature: >-
+      interface SourceRunState { id: string; lastRequestedToken: string | null;
+      lastCompletedToken: string | null; lastCompletionStatus: "success" | "failure" | null;
+      queueRequestedToken: string | null }
+    purpose: Persist the raw request, completion, and queue tokens for one Blueprint Cell source.
+    guarantees:
+      - A source is in flight when lastRequestedToken is non-null and differs from lastCompletedToken.
+      - Derived status flags and counts are not stored in SourceRunState.
+  - name: CellRunState
+    signature: >-
+      interface CellRunState { sources: SourceRunState[];
+      sourceValues?: Record<string, Json> }
+    purpose: Persist raw source state and settled source values for one Blueprint Cell.
+  - name: BlueprintRunState
+    signature: "interface BlueprintRunState { cells: Record<string, CellRunState> }"
+    purpose: Group raw Cell run state by Cell id without adding derived presentation values.
+  - name: ProjectedCellRunState
+    signature: >-
+      interface ProjectedCellRunState { sources: ProjectedSourceRunState[];
+      numSourcesRunning: number }
+    purpose: Provide a pure observation derived from CellRunState.
+    guarantees:
+      - projectCellRunState computes numSourcesRunning from projected source status.
+      - Projected values are returned to callers and are not persisted by the projection helper.
   - name: TransitionResult
     signature: >-
       interface TransitionResult { previousRevision: number; revision: number;
@@ -238,9 +263,6 @@ contracts:
   - name: RuntimeHandler
     signature: "interface RuntimeHandler { id: string; on: Record<string, Action[]> }"
     purpose: Own event handlers independently of a projection node.
-  - name: RuntimeReaction
-    signature: "interface RuntimeReaction extends Reaction { id: string }"
-    purpose: Own a standing reaction independently of a projection node.
   - name: ProjectedVocabularyManifest
     signature: >-
       interface ProjectedVocabularyManifest { version: string; expression?: string;
@@ -350,6 +372,17 @@ classes:
           Promise<TransitionResult>
         category: primary
         purpose: Publish external token values and propagate reachable nodes.
+      - name: publishSync
+        signature: >-
+          publishSync(values: Record<PortToken, Json>, budget?: ExecutionBudget):
+          TransitionResult
+        category: advanced
+        purpose: Drive the shared graph traversal synchronously for deterministic compiler graphs.
+        constraints:
+          - Requires SyncJsonataExpressionProvider.
+          - Rejects asynchronous node outcomes.
+          - Rejects operations, effects, events, and program mutations.
+          - Uses the same readiness, token, feedback, budget, and quiescence traversal as publish.
         behavior:
           - Accepts any token name; ProgramGraph.inputs is not an access-control list.
           - Commits changed input and output publications as state paths.
@@ -380,7 +413,7 @@ classes:
         purpose: Apply one event to the running program.
         behavior:
           - Serializes mutations.
-          - Settles actions, immediate effects, standing derivations, and reactions.
+          - Settles actions, immediate effects, and standing derivations.
           - Publishes current state leaves into the graph before running graph event triggers.
           - Commits and publishes one initiating patch.
           - Starts asynchronous invokes after the initiating patch commits.
@@ -391,7 +424,7 @@ classes:
       - name: syncExternal
         signature: "syncExternal(): Promise<Patch>"
         category: primary
-        purpose: Settle derivations and reactions after shared state changed outside this Kernel.
+        purpose: Settle pure derivations and publish already-admitted state into the consequence graph.
         mutates_state: conditional
         increments_revision: only-when-work-settles
       - name: resolve
@@ -563,6 +596,7 @@ classes:
         executeNode?: GraphNodeExecutor)
     methods:
       - "publish(values: Record<PortToken, Json>, budget?: ExecutionBudget): Promise<GraphExecutionResult>"
+      - "publishSync(values: Record<PortToken, Json>, budget?: ExecutionBudget): GraphExecutionResult"
       - "start(budget?: ExecutionBudget): Promise<GraphExecutionResult>"
       - "dispatch(event: GIKEvent, budget?: ExecutionBudget): Promise<GraphExecutionResult>"
       - "resume(budget?: ExecutionBudget): Promise<GraphExecutionResult>"
@@ -575,7 +609,8 @@ classes:
       - "snapshotNodes(): Record<string, GraphNodeRuntimeState>"
     boundary: >-
       Kernel is the primary API. Direct users must commit operations/effects/events themselves
-      and provide an executor for actions or invoke nodes.
+      and provide an executor for actions, invoke, or extension nodes. publishSync is restricted
+      to deterministic output-only execution and is used by the Blueprint compiler Kernel.
 
 host_extension_interfaces:
   - name: ProgramPatchAdmission
@@ -601,7 +636,7 @@ host_extension_interfaces:
     purpose: Execute host-owned time, effects, human input, and routing.
     methods:
       - "invoke?(effect: OrchestratorEffect, control: InvocationControl): Promise<OrchestratorResult | void>"
-      - "confirm?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>"
+      - "request?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>"
       - "route?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>"
       - "compensate?(effect: OrchestratorEffect): Promise<OrchestratorResult | void>"
     invocation_settlement:
@@ -610,11 +645,11 @@ host_extension_interfaces:
       - OrchestratorResult.outputs maps local names to a suspended graph invoke node's declared outputs.
       - Unknown local output names fail settlement rather than creating undeclared tokens.
   - name: GraphNodeExecutor
-    purpose: Execute low-level actions or invoke nodes for ContinuousGraphRuntime.
+    purpose: Execute low-level actions, invoke nodes, or registered extension operations for ContinuousGraphRuntime.
     methods:
       - >-
         (node: ProgramNode, inputs: Record<string, Json>, event?: GIKEvent):
-        Promise<GraphNodeExecutionOutcome>
+        GraphNodeExecutionOutcome | Promise<GraphNodeExecutionOutcome>
   - name: TransportProvider
     purpose: Carry GIK messages without owning runtime semantics.
     methods:
@@ -639,13 +674,11 @@ free_functions:
     functions:
       - "assign(target: string, value: Json): Action"
       - "assignFrom(target: string, expression: string): Action"
-      - "derive(target: string, expression: string): Action"
       - "emit(event: string, payload?: Record<string, Json>): Action"
-      - "invoke(tool: string, args?: Record<string, Json>): Action"
-      - "route(to: Json, args?: Record<string, Json>): Action"
-      - "confirm(arguments?: Record<string, Json>): Action"
+      - "invoke(tool: string, data?: Record<string, Json>): Action"
+      - "route(to: Json, data?: Record<string, Json>): Action"
+      - "request(control: RequestAction['control'], data: Record<string, Json>): Action"
       - "guarded(action: Action, guard: string): Action"
-      - "reaction(when: string, actions: Action[], options?: { runInitially?: boolean }): Reaction"
   - group: program-authoring
     category: primary
     functions:
@@ -682,11 +715,6 @@ free_functions:
     category: advanced
     functions:
       - "createInMemoryTransportPair(): [TransportProvider, TransportProvider]"
-  - group: confirmation
-    category: advanced
-    functions:
-      - "confirmPrompt(effect: OrchestratorEffect): ConfirmPrompt"
-      - "confirmOutcomeEvent(outcome, ...): GIKEvent"
   - group: observability
     category: advanced
     functions:

@@ -23,13 +23,15 @@
   "sideEffects": false,
   "files": [
     "dist",
-    "docs"
+    "docs",
+    "schemas"
   ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./schemas/*": "./schemas/*"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

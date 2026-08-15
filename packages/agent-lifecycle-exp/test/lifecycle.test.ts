@@ -204,7 +204,7 @@ test("useBlueprint derives authored description and delegates live lifecycle ope
         constraints: ["Preserve source facts."],
       } } },
       tiers: [{ id: "runtime", kind: "runtime-document" }],
-      cells: { improve: { id: "improve", kind: "command", behavior: { events: {} } } },
+      cells: { improve: { id: "improve", kind: "command" } },
       services: { refinement: {} },
       runtime: { actions: ["invoke"], capabilities: { "fluent:button": {} }, namespaces: ["incident1a"] },
     },

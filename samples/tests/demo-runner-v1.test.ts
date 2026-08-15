@@ -32,10 +32,10 @@ function runnerState(sequence: Json[]): Map<string, Json> {
   ]);
 }
 
-function context(state: Map<string, Json>, payload: Record<string, Json> = {}) {
+function context(state: Map<string, Json>, data: Record<string, Json> = {}) {
   return {
     get: (path: string) => state.get(path) ?? null,
-    payload,
+    data,
   } as never;
 }
 

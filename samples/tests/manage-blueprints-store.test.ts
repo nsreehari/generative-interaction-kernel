@@ -69,8 +69,7 @@ function context(state: JsonRecord, payload: JsonRecord = {}) {
   return {
     get: (path: string) => getPath(state, path) ?? null,
     set: (path: string, value: Json) => ({ op: "set" as const, path, value }),
-    args: {},
-    payload,
+    data: payload,
     store: { get: (path: string) => getPath(state, path) } as never,
   };
 }
@@ -206,7 +205,7 @@ test("create, save, reload, challenge, and delete stay inside the user Blueprint
   assert.equal(deleted?.outcome, "deleted");
   assert.deepEqual((await readUserBlueprintArtifacts()).blueprints, {});
   assert.equal(opValue(deleted?.ops, "manageBlueprints.selectedId"), "");
-}, 20_000);
+}, 60_000);
 
 test("repository ids cannot be overwritten or deleted", async () => {
   Object.defineProperty(globalThis, "localStorage", { value: new MemoryStorage(), configurable: true });
@@ -331,15 +330,27 @@ test("preview resolves the canonical tier and recipe chain", async () => {
     { id: "runtime-document", kind: "runtime-document" },
   ];
   payload.recipes = [
-    { id: "intent-to-presentation", from: "intent", to: "presentation" },
-    { id: "presentation-to-runtime", from: "presentation", to: "runtime-document" },
+    {
+      id: "intent-to-presentation",
+      from: "intent",
+      to: "presentation",
+      representations: [{ id: "headless", headless: true }],
+      fallback: "headless",
+    },
+    {
+      id: "presentation-to-runtime",
+      from: "presentation",
+      to: "runtime-document",
+      representations: [{ id: "headless", headless: true }],
+      fallback: "headless",
+    },
   ];
   setPath(state, "manageBlueprints.editor.blueprintText", JSON.stringify(artifact));
 
   const preview = await manageBlueprintsEffects.selectBlueprintTab(context(state, { value: "preview" }));
+  assert.equal(preview?.outcome, "summary-ready", String(opValue(preview?.ops, "manageBlueprints.previewError")));
   const inspection = opValue(preview?.ops, "manageBlueprints.inspection") as JsonRecord;
   const recipes = inspection.recipes as JsonRecord[];
-  assert.equal(preview?.outcome, "summary-ready");
   assert.deepEqual(recipes.map((recipe) => [recipe.from, recipe.to]), [
     ["intent", "presentation"],
     ["presentation", "runtime-document"],

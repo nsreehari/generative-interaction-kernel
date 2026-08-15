@@ -12,7 +12,13 @@
     "runtime": {
       "expression": "jsonata",
       "namespaces": ["continuity"],
-      "actions": ["assign"],
+      "actions": [
+        "assign",
+        "emit",
+        "invoke",
+        "route",
+        "request"
+      ],
       "state": {
         "continuity": {
           "job": {
@@ -36,18 +42,72 @@
         "id": "continuity-controller",
         "kind": "middleware-workflow",
         "behavior": {
-          "events": {
+          "on": {
             "queue": [
-              { "do": "assign", "target": "continuity.job.status", "args": { "value": "queued" } },
-              { "do": "assign", "target": "continuity.job.result", "args": { "value": "" } },
-              { "do": "assign", "target": "continuity.job.requestedBy", "args": { "value": "mcp-control" } },
-              { "do": "assign", "target": "continuity.job.completedBy", "args": { "value": "" } }
+              {
+                "do": "assign",
+                "target": "continuity.job.status",
+                "args": {
+                  "value": "queued"
+                }
+              },
+              {
+                "do": "assign",
+                "target": "continuity.job.result",
+                "args": {
+                  "value": ""
+                }
+              },
+              {
+                "do": "assign",
+                "target": "continuity.job.requestedBy",
+                "args": {
+                  "value": "mcp-control"
+                }
+              },
+              {
+                "do": "assign",
+                "target": "continuity.job.completedBy",
+                "args": {
+                  "value": ""
+                }
+              }
             ],
             "complete": [
-              { "do": "assign", "target": "continuity.job.status", "args": { "value": "completed" } },
-              { "do": "assign", "target": "continuity.job.result", "args": { "value": "background-analysis-ready" } },
-              { "do": "assign", "target": "continuity.job.completedBy", "args": { "value": "background-worker" } }
+              {
+                "do": "assign",
+                "target": "continuity.job.status",
+                "args": {
+                  "value": "completed"
+                }
+              },
+              {
+                "do": "assign",
+                "target": "continuity.job.result",
+                "args": {
+                  "value": "background-analysis-ready"
+                }
+              },
+              {
+                "do": "assign",
+                "target": "continuity.job.completedBy",
+                "args": {
+                  "value": "background-worker"
+                }
+              }
             ]
+          }
+        },
+        "events": {
+          "queue": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "complete": {
+            "payloadSchema": {
+              "type": "object"
+            }
           }
         }
       }

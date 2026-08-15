@@ -31,8 +31,15 @@
               "view": {
                 "capability": "sample:query-input"
               },
+              "events": {
+                "submit": {
+                  "payloadSchema": {
+                    "type": "object"
+                  }
+                }
+              },
               "behavior": {
-                "events": {
+                "on": {
                   "submit": [
                     {
                       "do": "assign",

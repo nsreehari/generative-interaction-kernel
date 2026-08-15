@@ -1,5 +1,11 @@
 import Ajv, { type ValidateFunction } from "ajv";
 
+import blueprintSchema from "../schemas/blueprint.schema.json" with { type: "json" };
+import cellSchema from "../schemas/cell.schema.json" with { type: "json" };
+import loweringRecipeSchema from "../schemas/lowering-recipe.schema.json" with { type: "json" };
+import programSchema from "../schemas/program.schema.json" with { type: "json" };
+import tierSchema from "../schemas/tier.schema.json" with { type: "json" };
+import { validateCell } from "./cell";
 import { evalSyncJsonata, validateJsonataExpression, type JsonataExpressionValidationMode } from "./evaluators";
 
 type DeclarativeTypeName =
@@ -63,18 +69,58 @@ interface TypeDefDeclarativeValidator {
   node?: string;
 }
 
+interface BlueprintCellDeclarativeValidator {
+  kind: "blueprint-cell";
+  message: string;
+  level: DeclarativeValidatorLevel;
+  code?: string;
+  node?: string;
+}
+
+interface BlueprintTierDeclarativeValidator {
+  kind: "blueprint-tier";
+  message: string;
+  level: DeclarativeValidatorLevel;
+  code?: string;
+  node?: string;
+}
+
+interface BlueprintLoweringRecipeDeclarativeValidator {
+  kind: "blueprint-lowering-recipe";
+  message: string;
+  level: DeclarativeValidatorLevel;
+  code?: string;
+  node?: string;
+}
+
+interface BlueprintDeclarativeValidator {
+  kind: "blueprint";
+  message: string;
+  level: DeclarativeValidatorLevel;
+  code?: string;
+  node?: string;
+}
+
 type DeclarativeValidator =
   | JsonataDeclarativeValidator
   | AjvSchemaDeclarativeValidator
   | JsonataExpressionDeclarativeValidator
-  | TypeDefDeclarativeValidator;
+  | TypeDefDeclarativeValidator
+  | BlueprintCellDeclarativeValidator
+  | BlueprintTierDeclarativeValidator
+  | BlueprintLoweringRecipeDeclarativeValidator
+  | BlueprintDeclarativeValidator;
 
 type DeclarativeValidatorInput =
   | [string, string?]
   | { kind?: "jsonata"; expr: string; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
   | { kind: "ajv-schema"; schema: Record<string, unknown>; refs?: readonly { schema: Record<string, unknown>; key?: string }[]; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
   | { kind: "jsonata-expression"; mode?: JsonataExpressionValidationMode; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
-  | { kind: "typedef"; type: DeclarativeTypeName | readonly DeclarativeTypeName[]; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string };
+  | { kind: "typedef"; type: DeclarativeTypeName | readonly DeclarativeTypeName[]; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
+  | { kind: "blueprint-cell"; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
+  | { kind: "blueprint-tier"; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
+  | { kind: "blueprint-lowering-recipe"; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
+  | { kind: "blueprint"; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string };
 
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 
@@ -88,12 +134,15 @@ const ajvErrorDetails = (errors: unknown): string[] => {
   return errors
     .map((error) => {
       if (!error || typeof error !== "object") return "schema validation failed";
-      const candidate = error as { instancePath?: unknown; message?: unknown };
+      const candidate = error as { instancePath?: unknown; message?: unknown; params?: { additionalProperty?: unknown } };
       const instancePath = typeof candidate.instancePath === "string" && candidate.instancePath.length > 0
         ? candidate.instancePath
         : "/";
       const message = typeof candidate.message === "string" ? candidate.message : "is invalid";
-      return `${instancePath} ${message}`;
+      const property = typeof candidate.params?.additionalProperty === "string"
+        ? ` '${candidate.params.additionalProperty}'`
+        : "";
+      return `${instancePath} ${message}${property}`;
     })
     .filter((part) => part.length > 0);
 };
@@ -205,6 +254,28 @@ function normalizeDeclarativeValidators(raw: unknown): DeclarativeValidator[] {
         });
         continue;
       }
+      if (
+        candidate.kind === "blueprint-cell" ||
+        candidate.kind === "blueprint-tier" ||
+        candidate.kind === "blueprint-lowering-recipe" ||
+        candidate.kind === "blueprint"
+      ) {
+        out.push({
+          kind: candidate.kind,
+          message: typeof candidate.message === "string"
+            ? candidate.message
+            : candidate.kind === "blueprint"
+              ? "Invalid Blueprint"
+              : candidate.kind === "blueprint-cell"
+                ? "Invalid Blueprint Cell"
+                : candidate.kind === "blueprint-tier"
+                  ? "Invalid Blueprint Tier"
+                  : "Invalid Blueprint lowering recipe",
+          level: candidate.level === "warning" ? "warning" : "error",
+          ...issueMetadata(candidate),
+        });
+        continue;
+      }
       const expr = typeof candidate.expr === "string" ? candidate.expr.trim() : "";
       if (expr) {
         out.push({
@@ -239,6 +310,75 @@ export function runDeclarativeValidators(
     (validator.level === "warning" ? warnings : errors).push(issue);
   };
   for (const validator of validators) {
+    if (
+      validator.kind === "blueprint-cell" ||
+      validator.kind === "blueprint-tier" ||
+      validator.kind === "blueprint-lowering-recipe" ||
+      validator.kind === "blueprint"
+    ) {
+      const schema = validator.kind === "blueprint"
+        ? blueprintSchema
+        : validator.kind === "blueprint-cell"
+          ? cellSchema
+          : validator.kind === "blueprint-tier"
+            ? tierSchema
+            : { $ref: `${loweringRecipeSchema.$id}#/definitions/loweringRecipe` };
+      const schemaValidator: AjvSchemaDeclarativeValidator = {
+        kind: "ajv-schema",
+        schema,
+        refs: [
+          { schema: blueprintSchema, key: blueprintSchema.$id },
+          { schema: cellSchema, key: cellSchema.$id },
+          { schema: programSchema, key: programSchema.$id },
+          { schema: tierSchema, key: tierSchema.$id },
+          { schema: loweringRecipeSchema, key: loweringRecipeSchema.$id },
+        ].filter(({ key }) => key !== ("$id" in schema ? schema.$id : undefined)),
+        message: validator.message,
+        level: validator.level,
+        ...(validator.code ? { code: validator.code } : {}),
+        ...(validator.node ? { node: validator.node } : {}),
+      };
+      const validate = compiledSchemaValidatorFor(schemaValidator);
+      if (!validate(value)) {
+        const details = ajvErrorDetails(validate.errors);
+        for (const detail of details.length > 0 ? details : [validator.message]) {
+          pushIssue(validator, detail === validator.message ? detail : `${validator.message}: ${detail}`);
+        }
+        continue;
+      }
+
+      if (validator.kind === "blueprint-tier") continue;
+      if (validator.kind === "blueprint-lowering-recipe") {
+        for (const issue of validateLoweringRecipeSemantics(value)) {
+          pushIssue(validator, `${validator.message}: ${issue.detail}`);
+        }
+        continue;
+      }
+
+      if (validator.kind === "blueprint") {
+        const recipes = (value as { payload?: { recipes?: JsonValue[] } }).payload?.recipes ?? [];
+        for (const recipe of recipes) {
+          for (const issue of validateLoweringRecipeSemantics(recipe)) {
+            pushIssue(validator, `${validator.message}: Recipe '${String((recipe as { id?: unknown }).id)}': ${issue.detail}`);
+          }
+        }
+      }
+
+      const cells = validator.kind === "blueprint"
+        ? Object.entries(((value as { payload?: { cells?: Record<string, unknown> } }).payload?.cells ?? {}))
+        : [[(value as { id?: unknown }).id, value] as const];
+      for (const [cellId, cell] of cells) {
+        const report = validateCell(cell);
+        for (const issue of report.errors) {
+          pushIssue(
+            validator,
+            `${validator.message}: Cell '${String(cellId)}': ${issue.detail}`,
+          );
+        }
+      }
+      continue;
+    }
+
     if (validator.kind === "jsonata") {
       let ok = false;
       try {
@@ -289,3 +429,86 @@ export function runDeclarativeValidators(
   }
   return { ok: errors.length === 0, errors, warnings };
 }
+
+function validateLoweringRecipeSemantics(value: JsonValue): DeclarativeValidationResult["errors"] {
+  const recipe = value as {
+    representations?: {
+      id?: unknown;
+      when?: unknown;
+      extends?: unknown;
+      decorators?: { select?: unknown }[];
+    }[];
+    fallback?: unknown;
+    implementationPrograms?: { id?: unknown; when?: unknown }[];
+    implementationFallback?: unknown;
+  };
+  const errors: DeclarativeValidationIssue[] = [];
+  const validateVariants = (
+    variants: readonly { id?: unknown; when?: unknown }[],
+    fallback: unknown,
+    label: string,
+  ) => {
+    const ids = new Set<string>();
+    for (const variant of variants) {
+      if (typeof variant.id === "string") {
+        if (ids.has(variant.id)) errors.push({ detail: `duplicate ${label} '${variant.id}'` });
+        ids.add(variant.id);
+      }
+      if (typeof variant.when === "string") {
+        const result = validateJsonataExpression(variant.when, { mode: "full" });
+        if (!result.ok) errors.push({ detail: `${label} '${String(variant.id)}' has invalid when expression: ${result.error}` });
+      }
+    }
+    if (typeof fallback === "string" && !ids.has(fallback)) {
+      errors.push({ detail: `${label} fallback '${fallback}' does not reference a declared ${label}` });
+    }
+    return ids;
+  };
+
+  if (Array.isArray(recipe.representations)) {
+    const ids = validateVariants(recipe.representations, recipe.fallback, "representation");
+    const parents = new Map<string, string>();
+    for (const representation of recipe.representations) {
+      if (typeof representation.extends === "string" && !ids.has(representation.extends)) {
+        errors.push({ detail: `representation '${String(representation.id)}' extends unknown representation '${representation.extends}'` });
+      } else if (typeof representation.id === "string" && typeof representation.extends === "string") {
+        parents.set(representation.id, representation.extends);
+      }
+      for (const decorator of representation.decorators ?? []) {
+        if (typeof decorator.select !== "string") continue;
+        const result = validateJsonataExpression(decorator.select, { mode: "full" });
+        if (!result.ok) {
+          errors.push({
+            detail: `representation '${String(representation.id)}' has invalid decorator select expression: ${result.error}`,
+          });
+        }
+      }
+    }
+    for (const id of ids) {
+      const visited = new Set<string>();
+      let cursor: string | undefined = id;
+      while (cursor !== undefined) {
+        if (visited.has(cursor)) {
+          errors.push({ detail: `representation inheritance contains a cycle at '${cursor}'` });
+          break;
+        }
+        visited.add(cursor);
+        cursor = parents.get(cursor);
+      }
+    }
+  }
+  if (Array.isArray(recipe.implementationPrograms)) {
+    validateVariants(recipe.implementationPrograms, recipe.implementationFallback, "implementation program");
+  }
+  return errors;
+}
+
+export function validateTier(value: JsonValue): DeclarativeValidationResult {
+  return runDeclarativeValidators([{ kind: "blueprint-tier" }], value);
+}
+
+export function validateLoweringRecipe(value: JsonValue): DeclarativeValidationResult {
+  return runDeclarativeValidators([{ kind: "blueprint-lowering-recipe" }], value);
+}
+
+export const validateRecipe = validateLoweringRecipe;

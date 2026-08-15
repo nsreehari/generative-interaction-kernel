@@ -8,6 +8,7 @@ import {
   lowerWithFixedMetaGraph,
   materializeBlueprint,
   parseBlueprintJson,
+  runFixedLoweringMetaGraph,
   type VocabularyLoweringRecipeDefinition,
   type RepresentationLoweringRecipeDefinition,
 } from "../src/index";
@@ -38,6 +39,22 @@ test("the fixed meta-graph lowers the two-tier vocabulary recipe to an executabl
   assert.deepEqual(materialized.payload.terminalBlueprint, terminal);
   assert.ok(unwrap(materialized.payload.program).root);
   assert.deepEqual(authored, authoredSnapshot);
+});
+
+test("lowering executes all fixed compiler Cells through Kernel token flow", () => {
+  const authored = parseBlueprintJson<VocabularyLoweringRecipeDefinition>(readFileSync(sampleUrl, "utf8"));
+
+  const result = runFixedLoweringMetaGraph(authored);
+
+  assert.deepEqual(Object.keys(result.execution.nodes), [
+    "resolve-stage",
+    "apply-vocabulary-patch",
+    "emit-blueprint",
+  ]);
+  assert.equal(result.execution.tokens["lowering:stage"].producedBy, "resolve-stage");
+  assert.equal(result.execution.tokens["lowering:artifact"].producedBy, "apply-vocabulary-patch");
+  assert.equal(result.execution.tokens["compiled:artifact"].producedBy, "emit-blueprint");
+  assert.deepEqual(result.execution.tokens["compiled:artifact"].value, result.blueprint);
 });
 
 test("the same fixed meta-graph folds an arbitrary ordered tier chain", () => {
@@ -74,7 +91,7 @@ test("materialization rejects a recipe without deterministic vocabulary operatio
 
   assert.throws(
     () => materializeBlueprint({ blueprint: authored }),
-    /requires a non-empty vocabulary patch/,
+    /must have required property 'patch'/,
   );
 });
 
@@ -95,7 +112,8 @@ test("a headless representation emits an executable program without presentation
     cells: {
       worker: {
         id: "worker",
-        behavior: { events: { run: [{ do: "assign", target: "state.done", args: { value: true } }] } },
+        events: { run: { payloadSchema: { type: "object" } } },
+        behavior: { on: { run: [{ do: "assign", target: "state.done", args: { value: true } }] } },
       },
     },
   });
@@ -138,4 +156,76 @@ test("a headless representation rejects presentation facets", () => {
     () => materializeBlueprint({ blueprint: inherited }),
     /cannot extend headless representation/,
   );
+});
+
+test("a representation decorator uses JSONata to add loading UI around source-backed Cells", () => {
+  const authored = createBlueprint<RepresentationLoweringRecipeDefinition>({
+    id: "source-backed-decoration",
+    kind: "test",
+    version: "1",
+    tiers: [{ id: "intent", kind: "intent" }, { id: "runtime", kind: "runtime-document" }],
+    recipes: [{
+      id: "intent-to-runtime",
+      from: "intent",
+      to: "runtime",
+      representations: [{
+        id: "screen",
+        views: {
+          board: { capability: "primitive:container" },
+          remote: { capability: "ui:text" },
+          local: { capability: "ui:text" },
+        },
+        presentation: {
+          roots: ["board"],
+          placements: [
+            { cell: "remote", parent: "board", slot: "children", order: 0 },
+            { cell: "local", parent: "board", slot: "children", order: 1 },
+          ],
+        },
+        decorators: [{
+          select: "cells[sources].id",
+          before: {
+            capability: "fluent:spinner",
+            props: { label: "Loading" },
+            visibility: "systemInputs.numSourcesRunning > 0",
+          },
+        }],
+      }],
+      fallback: "screen",
+    }],
+    runtime: { capabilities: {} },
+    cells: {
+      board: { id: "board" },
+      remote: {
+        id: "remote",
+        systemInputs: ["numSourcesRunning"],
+        sources: [{
+          id: "remote.source",
+          inline: { gik: "0.1", type: "service", payload: {} },
+          operation: "read",
+          contract: "remote/v1",
+        }],
+      },
+      local: { id: "local" },
+    },
+  });
+
+  const materialized = materializeBlueprint({ blueprint: authored });
+  const root = unwrap(materialized.payload.program).root!;
+  const remote = root.edges?.children?.[0];
+  const local = root.edges?.children?.[1];
+
+  assert.ok(unwrap(materialized.payload.vocabulary).capabilities?.["fluent:spinner"]);
+  assert.deepEqual(unwrap(materialized.payload.vocabulary).externals?.projectionViews?.fluent, {
+    from: "fluent",
+    use: ["spinner"],
+  });
+  assert.equal(remote?.capability, "gik:presentation-fragment");
+  assert.equal(remote?.edges?.children?.[0]?.capability, "fluent:spinner");
+  assert.equal(
+    remote?.edges?.children?.[0]?.edges?.gate,
+    '($count(($lookup(blueprintRunState.cells, "remote").sources)[lastRequestedToken != null and lastRequestedToken != lastCompletedToken])) > 0',
+  );
+  assert.equal(remote?.edges?.children?.[1]?.id, "remote");
+  assert.equal(local?.id, "local");
 });

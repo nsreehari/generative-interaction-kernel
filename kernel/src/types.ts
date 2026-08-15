@@ -17,6 +17,8 @@ export interface PatchOp {
 export interface Patch {
   rev: number;
   ops: PatchOp[];
+  /** Internal action consequences already settled during this run; hosts must not replay them. */
+  completedWithinRun?: CompletedWithinRun[];
   /** A validated structural update to the live executable program at this revision. */
   program?: ProgramPatch;
 }
@@ -97,11 +99,18 @@ export interface DecisionNodeOperation {
   cases: DecisionCase[];
 }
 
+export interface ExtensionNodeOperation {
+  kind: "extension";
+  name: string;
+  config?: Json;
+}
+
 export type NodeOperation =
   | ComputeNodeOperation
   | ActionsNodeOperation
   | InvokeNodeOperation
-  | DecisionNodeOperation;
+  | DecisionNodeOperation
+  | ExtensionNodeOperation;
 
 export interface ProgramNode {
   id: string;
@@ -180,6 +189,7 @@ export interface TransitionResult {
   patch: Patch;
   program?: ProgramPatch;
   effects: RecordedEffect[];
+  completedWithinRun?: CompletedWithinRun[];
   execution: ExecutionSnapshot;
 }
 
@@ -211,8 +221,6 @@ export type ProgramPatchOperation =
   | { op: "removeRoot" }
   | { op: "upsertHandler"; handler: RuntimeHandler }
   | { op: "removeHandler"; id: string }
-  | { op: "upsertReaction"; reaction: RuntimeReaction }
-  | { op: "removeReaction"; id: string }
   | { op: "upsertMachine"; machine: Machine }
   | { op: "removeMachine"; id: string }
   | { op: "upsertDerivation"; derivation: StandingDerivation }
@@ -221,28 +229,68 @@ export type ProgramPatchOperation =
 /** Ordered patch operations applied to one existing executable program. */
 export type ProgramPatch = readonly ProgramPatchOperation[];
 
-export interface Action {
-  do: string;
-  target?: string;
-  args?: Record<string, Json>;
+export interface AssignAction {
+  do: "assign";
+  target: string;
+  args: { value: Json; from?: never } | { from: string; value?: never };
   guard?: string;
-  event?: string;
 }
 
-/**
- * A declarative reaction: a standing, state-triggered effect. When {@link when}'s value changes, the
- * kernel runs {@link run} (the closed-grammar actions) as a synthetic dispatch owned by the node — the
- * standing analogue of an event handler (`on`). Pure standing derivations stay `computed`; a reaction is
- * for genuinely effectful bodies (`invoke`) or cross-cell writes.
- */
-export interface Reaction {
-  /** Expression over state; the reaction fires when its evaluated value changes. */
-  when: string;
-  /** Run once when the initial value is non-null, for pre-seeded mailbox/request state. */
-  runInitially?: boolean;
-  /** Closed-grammar actions to run on change. */
-  run: Action[];
+export interface EmitAction {
+  do: "emit";
+  event: string;
+  data?: Record<string, Json>;
+  guard?: string;
 }
+
+export interface InvokeControl {
+  tool: string;
+  responseSchema?: Record<string, Json>;
+  sourceId?: string;
+  sourceCellId?: string;
+  sourceRequestToken?: string;
+  sourceInputs?: Record<string, Json>;
+  sourceInputTransform?: ServiceTransform;
+  sourceOutputTransform?: ServiceTransform;
+}
+
+export interface RouteControl {
+  to: Json;
+}
+
+export interface RequestControl {
+  kind: "decision" | "clarification" | "data";
+  responseSchema: Record<string, Json>;
+  policy?: string;
+  timeoutMs?: number;
+}
+
+export interface InvokeAction {
+  do: "invoke";
+  control: InvokeControl;
+  data?: Record<string, Json>;
+  guard?: string;
+}
+
+export interface RouteAction {
+  do: "route";
+  control: RouteControl;
+  data?: Record<string, Json>;
+  guard?: string;
+}
+
+export interface RequestAction {
+  do: "request";
+  control: RequestControl;
+  data: Record<string, Json>;
+  guard?: string;
+}
+
+export type Action = AssignAction | EmitAction | InvokeAction | RouteAction | RequestAction;
+
+export type CompletedWithinRun =
+  | { kind: "assign"; node: string; target: string; value: Json }
+  | { kind: "emit"; node: string; event: GIKEvent };
 
 export interface Edges {
   read?: Record<string, string>;
@@ -258,8 +306,6 @@ export interface Edges {
   gate?: string;
   write?: Record<string, { to: string }>;
   on?: Record<string, Action[]>;
-  /** Standing reactions: state-triggered effects that run when their `when` value changes. */
-  react?: Reaction[];
   children?: DocNode[];
 }
 
@@ -302,15 +348,10 @@ export interface RuntimeHandler {
   on: Record<string, Action[]>;
 }
 
-export interface RuntimeReaction extends Reaction {
-  id: string;
-}
-
 export interface ProgramDefinition {
   vocabulary?: string;
   graph?: ProgramGraph;
   handlers?: RuntimeHandler[];
-  reactions?: RuntimeReaction[];
   machines?: Machine[];
   derivations?: StandingDerivation[];
 }
@@ -334,17 +375,26 @@ export interface CapabilityDescriptor {
   dataProp?: string;
 }
 
-// An external effect requested by the reducer (invoke/route/confirm). The kernel
+// An external effect requested by the reducer (invoke/route/request). The kernel
 // hands these to the Orchestrator provider AFTER the pure reduction settles; the
 // reducer itself never performs them, preserving the pure-reducer law.
-export interface OrchestratorEffect {
-  kind: "invoke" | "confirm" | "route";
+interface ExternalEffectBase {
+  effectId?: string;
   node: string;
   actorId?: string;
-  tool?: string;
-  to?: Json;
-  args: Record<string, Json>;
-  payload?: Record<string, Json>;
+  data: Record<string, Json>;
+}
+
+export type OrchestratorEffect =
+  | (ExternalEffectBase & { kind: "invoke"; control: InvokeControl })
+  | (ExternalEffectBase & { kind: "route"; control: RouteControl })
+  | (ExternalEffectBase & { kind: "request"; control: RequestControl });
+
+export interface EffectSettlement {
+  effectId: string;
+  outcome: "resolved" | "rejected" | "cancelled" | "failed";
+  data?: Json;
+  detail?: Record<string, Json>;
 }
 
 // What the Orchestrator returns: direct store deltas and/or follow-up events
@@ -352,6 +402,8 @@ export interface OrchestratorEffect {
 export interface OrchestratorResult {
   ops?: PatchOp[];
   events?: GIKEvent[];
+  /** Raw operation-contract response consumed by a queued Cell source output transform. */
+  sourceOutput?: Json;
   /** Runtime-originated structural proposal; Kernel applies it only through its admission hook. */
   program?: ProgramPatch;
   /** Local output-port values returned when settling a graph invoke node. */
@@ -360,6 +412,8 @@ export interface OrchestratorResult {
   outcome?: string;
   /** Structured, serializable context for the settlement receipt. */
   detail?: Record<string, Json>;
+  /** Correlated external response, validated against the effect response schema before admission. */
+  settlement?: EffectSettlement;
 }
 
 export type InvocationId = string;
@@ -385,6 +439,36 @@ export interface InvocationControl {
   readonly signal: AbortSignal;
   emitProgress(progress: OrchestratorProgress): Promise<void>;
   emit(result?: OrchestratorResult): Promise<void>;
+}
+
+export type SourceCompletionStatus = "success" | "failure";
+
+export interface SourceRunState {
+  id: string;
+  lastRequestedToken: string | null;
+  lastCompletedToken: string | null;
+  lastCompletionStatus: SourceCompletionStatus | null;
+  queueRequestedToken: string | null;
+}
+
+export interface CellRunState {
+  sources: SourceRunState[];
+  sourceValues?: Record<string, Json>;
+}
+
+export interface ProjectedSourceRunState extends SourceRunState {
+  status: "idle" | "running";
+  hasPendingRequest: boolean;
+  lastRequestFailed: boolean;
+}
+
+export interface ProjectedCellRunState {
+  sources: ProjectedSourceRunState[];
+  numSourcesRunning: number;
+}
+
+export interface BlueprintRunState {
+  cells: Record<string, CellRunState>;
 }
 
 export class InvocationClosedError extends Error {

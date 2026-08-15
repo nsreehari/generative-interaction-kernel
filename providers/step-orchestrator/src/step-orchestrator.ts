@@ -50,13 +50,13 @@ export class StepOrchestrator implements Orchestrator {
   }
 
   async invoke(effect: OrchestratorEffect): Promise<OrchestratorResult | void> {
-    const tool = effect.tool;
-    if (!tool) return; // no tool named — leave unhandled
+    if (effect.kind !== "invoke") return;
+    const tool = effect.control.tool;
     const reg = this.flows[tool];
     if (!reg) return; // unregistered tool — the kernel traces this and applies no change
 
     const machine = new StepMachine(reg.flow, reg.handlers, reg.store ? { store: reg.store() } : {});
-    const result = await machine.run(effect.args);
+    const result = await machine.run(effect.data);
     return (reg.onResult ?? defaultResult)(result, effect);
   }
 }
@@ -70,7 +70,7 @@ export class StepOrchestrator implements Orchestrator {
 function defaultResult(result: StepMachineResult, effect: OrchestratorEffect): OrchestratorResult {
   const event: GIKEvent = {
     node: effect.node,
-    name: `${effect.tool}:${result.intent ?? result.status}`,
+    name: `${effect.kind === "invoke" ? effect.control.tool : effect.kind}:${result.intent ?? result.status}`,
     payload: asJsonObject(result.data),
   };
   return { events: [event] };

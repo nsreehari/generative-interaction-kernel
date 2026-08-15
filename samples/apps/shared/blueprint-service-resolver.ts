@@ -92,9 +92,9 @@ async function createAdapter(
     serviceHost,
     blueprint: runtime.definition,
     orchestrator: {
-      invoke: (effect) => typeof effect.tool === "string" && serviceOperations.has(effect.tool)
+      invoke: (effect) => effect.kind === "invoke" && serviceOperations.has(effect.control.tool)
         ? serviceHost.invoke(effect)
-        : Promise.reject(new Error(`Blueprint service '${runtime.blueprintId}' cannot invoke '${effect.tool ?? "unknown"}'`)),
+        : Promise.reject(new Error(`Blueprint service '${runtime.blueprintId}' cannot handle '${effect.kind}'`)),
     },
   });
   const handlers = publicEventHandlers(source);
@@ -179,7 +179,7 @@ function publicEventHandlers(blueprint: BlueprintArtifact): Map<string, string> 
   const exposed = new Set(blueprint.payload.interface?.events ?? []);
   const candidates = new Map<string, string[]>();
   for (const [cellId, cell] of Object.entries(blueprint.payload.cells ?? {})) {
-    for (const event of Object.keys(cell.behavior?.events ?? {})) {
+    for (const event of Object.keys(cell.behavior?.on ?? {})) {
       if (!exposed.has(event)) continue;
       candidates.set(event, [...(candidates.get(event) ?? []), cellId]);
     }

@@ -151,6 +151,20 @@ test("a structurally malformed document is rejected by validate-before-commit", 
   );
 });
 
+test("reaction edges are rejected by validate-before-commit", () => {
+  const root = node("ui:actions", "btn-x") as unknown as {
+    edges: Record<string, unknown>;
+  };
+  root.edges = {
+    react: [{ when: "card_data.x", run: [{ do: "invoke", args: { tool: "legacy" } }] }],
+  };
+
+  assert.throws(
+    () => authorProjectedProgram(root as never, { vocabulary: "live-cards/1.0" }),
+    (err: unknown) => err instanceof ValidationError,
+  );
+});
+
 test("lint flags undeclared events and namespaces on an otherwise valid structure", () => {
   const root = node("ui:board", "board-1", {
     children: [

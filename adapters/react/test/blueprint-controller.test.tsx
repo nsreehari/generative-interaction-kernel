@@ -15,21 +15,6 @@ async function eventually(assertion: () => void): Promise<void> {
   assertion();
 }
 
-function waitForState(
-  controller: BlueprintController,
-  predicate: (state: Record<string, unknown>) => boolean,
-): Promise<void> {
-  if (predicate(controller.getState())) return Promise.resolve();
-  return new Promise((resolve) => {
-    const unsubscribe = controller.subscribe(() => {
-      if (predicate(controller.getState())) {
-        unsubscribe();
-        resolve();
-      }
-    });
-  });
-}
-
 test("BlueprintController renders and transitions Blueprint-owned in-memory state", async () => {
   const blueprint = createBlueprint({
     id: "counter",
@@ -49,8 +34,9 @@ test("BlueprintController renders and transitions Blueprint-owned in-memory stat
           capability: "screen",
           bindings: { value: { from: "counter.value" } },
         },
+        events: { increment: { payloadSchema: { type: "object" } } },
         behavior: {
-          events: {
+          on: {
             increment: [{ do: "assign", target: "counter.value", args: { value: 2 } }],
           },
         },
@@ -81,8 +67,9 @@ test("BlueprintController reuses materialized execution with immutable externalC
           capability: "screen",
           bindings: { policyValue: { from: "externalContext.policy.nextValue" } },
         },
+        events: { increment: { payloadSchema: { type: "object" } } },
         behavior: {
-          events: {
+          on: {
             increment: [{ do: "assign", target: "counter.value", args: { from: "externalContext.policy.nextValue" } }],
           },
         },
@@ -136,7 +123,7 @@ test("BlueprintController seeds state on the materialized terminal Blueprint", a
   controller.stop();
 });
 
-test("BlueprintController settles native effects through its worker after the initiating transition", async () => {
+test("BlueprintController executes ordinary native effects without applying returned operations", async () => {
   const blueprint = createBlueprint({
     id: "worker-counter",
     kind: "runtime-blueprint",
@@ -148,18 +135,22 @@ test("BlueprintController settles native effects through its worker after the in
       root: {
         id: "root",
         view: { capability: "screen", bindings: { value: { from: "counter.value" } } },
-        behavior: { events: { save: [{ do: "invoke", args: { tool: "saveValue" } }] } },
+        events: { save: { payloadSchema: { type: "object" } } },
+        behavior: { on: { save: [{ do: "invoke", control: { tool: "saveValue" } }] } },
       },
     },
     projections: { presentation: { roots: ["root"] } },
   });
   let releaseEffect!: () => void;
   const blockedEffect = new Promise<void>((resolve) => { releaseEffect = resolve; });
+  let effectCompleted!: () => void;
+  const completed = new Promise<void>((resolve) => { effectCompleted = resolve; });
   const controller = new BlueprintController(blueprint, {
     native: {
       effectHandlers: {
         saveValue: async (context) => {
           await blockedEffect;
+          effectCompleted();
           return { ops: [context.set("counter.value", 7)] };
         },
       },
@@ -173,11 +164,9 @@ test("BlueprintController settles native effects through its worker after the in
   await controller.settle();
   assert.deepEqual(controller.getState(), { counter: { value: 1 } });
 
-  const settled = waitForState(controller, (state) =>
-    (state.counter as { value: number }).value === 7);
   releaseEffect();
-  await settled;
-  assert.deepEqual(controller.getState(), { counter: { value: 7 } });
+  await completed;
+  assert.deepEqual(controller.getState(), { counter: { value: 1 } });
   controller.stop();
 });
 
@@ -193,7 +182,8 @@ test("BlueprintController does not retain effects when no native executor is con
       root: {
         id: "root",
         view: { capability: "screen", bindings: { value: { from: "counter.value" } } },
-        behavior: { events: { save: [{ do: "invoke", args: { tool: "saveValue" } }] } },
+        events: { save: { payloadSchema: { type: "object" } } },
+        behavior: { on: { save: [{ do: "invoke", control: { tool: "saveValue" } }] } },
       },
     },
     projections: { presentation: { roots: ["root"] } },
@@ -206,7 +196,7 @@ test("BlueprintController does not retain effects when no native executor is con
   controller.stop();
 });
 
-test("BlueprintController retries a failed effect asynchronously", async () => {
+test("BlueprintController retries a failed ordinary effect without applying returned operations", async () => {
   const blueprint = createBlueprint({
     id: "retry-worker-counter",
     kind: "runtime-blueprint",
@@ -218,18 +208,22 @@ test("BlueprintController retries a failed effect asynchronously", async () => {
       root: {
         id: "root",
         view: { capability: "screen", bindings: { value: { from: "counter.value" } } },
-        behavior: { events: { save: [{ do: "invoke", args: { tool: "saveValue" } }] } },
+        events: { save: { payloadSchema: { type: "object" } } },
+        behavior: { on: { save: [{ do: "invoke", control: { tool: "saveValue" } }] } },
       },
     },
     projections: { presentation: { roots: ["root"] } },
   });
   let attempts = 0;
+  let effectCompleted!: () => void;
+  const completed = new Promise<void>((resolve) => { effectCompleted = resolve; });
   const controller = new BlueprintController(blueprint, {
     native: {
       effectHandlers: {
         saveValue: (context) => {
           attempts += 1;
           if (attempts === 1) throw new Error("temporary failure");
+          effectCompleted();
           return { ops: [context.set("counter.value", 7)] };
         },
       },
@@ -240,9 +234,8 @@ test("BlueprintController retries a failed effect asynchronously", async () => {
   await controller.emit("root", "save");
   assert.deepEqual(controller.getState(), { counter: { value: 1 } });
 
-  await waitForState(controller, (state) =>
-    (state.counter as { value: number }).value === 7);
+  await completed;
   assert.equal(attempts, 2);
-  assert.deepEqual(controller.getState(), { counter: { value: 7 } });
+  assert.deepEqual(controller.getState(), { counter: { value: 1 } });
   controller.stop();
 });

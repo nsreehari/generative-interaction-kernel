@@ -53,7 +53,12 @@ function structureModeBlueprint(
     cells: {
       root: {
         id: "root",
-        behavior: adaptive ? { events: { adapt: [{ do: "confirm" }] } } : undefined,
+        events: adaptive ? { adapt: { payloadSchema: { type: "object" } } } : undefined,
+        behavior: adaptive ? { on: { adapt: [{
+          do: "request",
+          control: { kind: "data", responseSchema: { type: "object" } },
+          data: {},
+        }] } } : undefined,
         view: { capability: `${structureMode}:before` },
       },
     },
@@ -102,7 +107,7 @@ export async function runStructureModesDemo(): Promise<StructureModeDemoResult> 
 
   const adaptiveBlueprint = structureModeBlueprint("adaptive", true);
   const adaptive = createFace(adaptiveBlueprint, {
-    async confirm() {
+    async request() {
       return {
         program: [{
           op: "setRoot",

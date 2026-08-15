@@ -34,7 +34,7 @@ and immediate/queued describe implementation and execution choices within that e
 
 ### 3. The Closed Action Grammar Binds the Runtime Plane
 Every runtime actor needs authority to act, and open protocols grant it by letting the actor emit arbitrary code or invent capabilities on the fly, which erases the security boundary.
-**The GIK Principle:** By runtime, the vocabulary is already locked. Every runtime actor — human or agent — expresses itself through the same closed action grammar (`assign`, `derive`, `emit`, `invoke`, `route`, `confirm`) fixed during authoring. An action outside the Kernel's hard-coded set is dropped. Because both paths enter the one pipeline, there is no parity drift between what a human can do and what an agent can do — the runtime actor is constrained by the physics the Authoring plane defined, regardless of whether those actions ultimately drive a database write, an API call, or a pixel.
+**The GIK Principle:** By runtime, the vocabulary is already locked. Every runtime actor — human or agent — expresses itself through the same closed action grammar (`assign`, `emit`, `invoke`, `route`, `request`) fixed during authoring. An action outside the Kernel's hard-coded set is dropped. Because both paths enter the one pipeline, there is no parity drift between what a human can do and what an agent can do — the runtime actor is constrained by the physics the Authoring plane defined, regardless of whether those actions ultimately drive a database write, an API call, or a pixel.
 
 ### 4. State is the Single Source of Truth for Every Actor
 Any actor that needs to understand the system reads the same authoritative state graph. There is no privileged human channel and no separate machine channel that can drift apart.

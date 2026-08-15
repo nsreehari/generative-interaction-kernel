@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { analyzeCellComposition, materializeBlueprint, type BlueprintArtifact, type CellDefinition } from "@gik/blueprint";
+import {
+  analyzeCellComposition,
+  materializeBlueprint,
+  runMaterializedTransition,
+  type BlueprintArtifact,
+  type CellDefinition,
+} from "@gik/blueprint";
 import { InMemoryStateModel } from "@gik/kernel";
 
 import { openSampleBlueprint, resolveSampleBlueprintSource } from "../catalog/blueprint-catalog";
@@ -92,7 +98,12 @@ describe("incident-report-explorer-1a Blueprint", () => {
     const source = blueprint as unknown as BlueprintArtifact;
     expect(source.payload.tiers.map(({ id }) => id)).toEqual(["incident-report-semantic", "runtime-document"]);
     expect(source.payload.recipes).toHaveLength(1);
-    expect(analyzeCellComposition(cells)).toMatchObject({ externalInputs: [], diagnostics: [] });
+    expect(analyzeCellComposition(cells)).toMatchObject({
+      externalInputs: ["analysis_as_on", "cached_analysis_report", "incident_report"],
+      diagnostics: [],
+    });
+    expect(Object.keys(source.payload.cells ?? {})).toEqual(["analysis-layout", "report-presentation", "analysis-as-on", "analysis-runner"]);
+    expect(source.payload.services).not.toHaveProperty("incident-analysis-cache");
 
     const operation = source.payload.services?.["incident-report-refinement"]?.operations.improveReport;
     const schemaValidator = operation?.response?.validators?.find((validator) => validator.code === "provider-structured-output");
@@ -117,47 +128,81 @@ describe("incident-report-explorer-1a Blueprint", () => {
     expect(properties).not.toHaveProperty("layout");
   });
 
-  it("materializes agent-selected semantic data through the authored runtime host", () => {
+  it("materializes the analyzer into an ordered slotted presentation", () => {
     const source = blueprint as unknown as BlueprintArtifact;
     const terminal = materializeBlueprint({ blueprint: source }).payload.terminalBlueprint;
     expect(terminal.payload.tiers).toEqual([{ id: "runtime-document", kind: "runtime-document" }]);
     expect(terminal.payload.recipes).toEqual([]);
     const placements = terminal.payload.projections?.presentation?.placements ?? [];
-    expect(placements.filter(({ parent }) => parent === "incident-refinement").map(({ cell }) => cell)).toEqual([
-      "incident-sections", "incident-improve-report",
+    expect(terminal.payload.projections?.presentation?.roots).toEqual(["analysis-layout"]);
+    expect(placements).toEqual([
+      { cell: "analysis-runner", parent: "analysis-layout", slot: "children", order: 0 },
+      { cell: "analysis-as-on", parent: "analysis-layout", slot: "children", order: 1 },
+      { cell: "report-presentation", parent: "analysis-layout", slot: "children", order: 2 },
     ]);
-    expect(source.payload.recipes[0].representations[0].views["incident-sections"]).toMatchObject({
-      capability: "incident1a:component-data-sections",
-      bindings: { sections: { from: "incident1a.model.sections" } },
+  });
+
+  it("uses standard container, datetime, narrative, and spinner providers", () => {
+    const projectionViews = blueprint.payload.runtime.externals.projectionViews;
+    expect(projectionViews).toEqual({
+      primitive: { from: "primitive", use: ["container", "datetime"] },
+      semantic: { from: "semantic", use: ["narrative"] },
+      fluent: { from: "fluent", use: ["spinner"] },
     });
   });
 
-  it("owns the semantic data host in its native provider", () => {
-    const projectionViews = blueprint.payload.runtime.externals.projectionViews;
-    expect(projectionViews.incident1a).toEqual({ from: "self" });
-    expect(projectionViews).not.toHaveProperty("semantic");
-    expect(projectionViews).not.toHaveProperty("security");
-  });
-
-  it("owns improve and refresh execution in one authored command cell", () => {
-    expect(blueprint.payload.runtime.state.incident1a.refinementPending).toBe(false);
+  it("automatically refines once and publishes a fresh analysis report", () => {
+    expect(blueprint.payload.runtime.state.incident1a).not.toHaveProperty("analysisRequested");
+    expect(blueprint.payload.runtime.state.incident1a).not.toHaveProperty("analysisReport");
     const hosted = blueprint.payload.recipes[0].representations.find(({ id }) => id === "hosted-analysis");
     expect(hosted?.views).toMatchObject({
-      "incident-improve-report": {
-        bindings: {
-          disabled: { from: "incident1a.refinementPending" },
-          loading: { from: "incident1a.refinementPending" },
-        },
-        visibility: "incident1a.model = null or externalContext.incident_report != incident1a.refinedContent",
+      "analysis-runner": {
+        capability: "fluent:spinner",
+        visibility: "systemInputs.numSourcesRunning != 0",
       },
     });
-    expect(blueprint.payload.cells["incident-improve-report"].behavior.events.press).toEqual([
-      { do: "assign", target: "incident1a.refinementPending", args: { value: true } },
-      { do: "invoke", args: { tool: "prepareRefinement" } },
-      { do: "invoke", args: { tool: "improveReport" } },
+    expect(blueprint.payload.cells["analysis-runner"].behavior).toBeUndefined();
+    expect(blueprint.payload.cells["analysis-runner"].sources?.[0]).toMatchObject({
+      when: expect.stringContaining("sources.`analysis-runner.source`"),
+      input: { expr: "{'incident_report':inputs.incident_report}" },
+      output: { expr: "response" },
+    });
+    expect(blueprint.payload.cells["analysis-runner"].compute).toEqual([
+      { id: "analysis-report", expression: "sources.`analysis-runner.source`", assign: "analysisReport" },
     ]);
-    expect(blueprint.payload.cells).not.toHaveProperty("incident-refresh-report");
-    expect(blueprint.payload.cells["incident-refinement"].behavior).toBeUndefined();
+    expect(blueprint.payload.cells["analysis-runner"].outputs).toEqual([
+      { token: "analysis_report", from: "computed.analysisReport", when: "computed.analysisReport != null" },
+    ]);
+    expect(blueprint.payload.services["incident-report-refinement"].operations.improveReport.settlement.transform.expr)
+      .toBe("{'ops':[]}");
+    expect(JSON.stringify(blueprint)).not.toContain("cached_analysis_envelope");
+  });
+
+  it("invokes the analyzer during initial synchronization when no cache exists", async () => {
+    const materialized = materializeBlueprint({
+      blueprint: blueprint as unknown as BlueprintArtifact,
+    });
+    const result = await runMaterializedTransition({
+      materializedBlueprint: materialized,
+      state: {
+        ...materialized.payload.initialState,
+        incident_report: "# Incident",
+        cached_analysis_report: null,
+        analysis_as_on: null,
+      },
+      events: [],
+    });
+    expect(result.state.incident1a).not.toHaveProperty("analysisRequested");
+    expect(result.effects).toEqual([
+      expect.objectContaining({
+        kind: "invoke",
+        control: expect.objectContaining({
+          tool: "improveReport",
+          sourceId: "analysis-runner.source",
+          sourceCellId: "analysis-runner",
+        }),
+      }),
+    ]);
   });
 
   it("keeps coverage as a response invariant instead of prescribing a coverage component", () => {
@@ -188,18 +233,14 @@ describe("incident-report-explorer-1a Blueprint", () => {
     ]));
   });
 
-  it("starts without shell-owned source state and resolves its native providers", () => {
+  it("starts without shell-owned source state or Blueprint-local native providers", () => {
     const context = resolveBlueprintInitialContext("incident-report-explorer-1a");
-    expect(context.initialSeed.incident1a).toMatchObject({
-      model: null,
-    });
+    expect(context.initialSeed.incident1a).not.toHaveProperty("analysisReport");
     expect(context.initialSeed.incident1a).not.toHaveProperty("content");
     expect(context.initialSeed.incident1a).not.toHaveProperty("selectedSampleId");
     expect(resolveBlueprintNative("incident-report-explorer-1a")).toMatchObject({
-      effectHandlers: expect.any(Object),
-      projectionViews: expect.objectContaining({
-        refinement: expect.any(Function),
-      }),
+      effectHandlers: undefined,
+      projectionViews: undefined,
     });
   });
 });

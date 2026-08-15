@@ -50,17 +50,65 @@
           }
         },
         "scope": "per-blueprint"
+      },
+      "incident-cache": {
+        "blueprint": { "$ref": "blueprint:incident-analysis-assets@1.0.0" },
+        "version": "1",
+        "operations": {
+          "getCachedAnalysis": {
+            "operation": "get-asset",
+            "contract": "cached-analysis-envelope/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'source_report_key':state.incidentShell.selected_report_key,'analysis_key':state.analyzer_blueprint_ref}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'incidentShell.cached_analysis_report','value':response ? response.analysisReport : null},{'op':'set','path':'incidentShell.analysis_as_on','value':response ? response.asOn : null},{'op':'set','path':'incidentShell.cache_lookup_complete','value':true}]}"
+              }
+            }
+          },
+          "putCachedAnalysis": {
+            "operation": "put-asset",
+            "contract": "cached-analysis-envelope/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'source_report_key':state.incidentShell.selected_report_key,'analysis_key':state.analyzer_blueprint_ref,'cached_analysis_envelope':{'asOn':$now(),'analysisReport':state.incidentShell.analysis_report}}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'incidentShell.cached_analysis_report','value':response ? response.analysisReport : null},{'op':'set','path':'incidentShell.analysis_as_on','value':response ? response.asOn : null},{'op':'set','path':'incidentShell.cache_lookup_complete','value':true}]}"
+              }
+            }
+          }
+        },
+        "scope": "per-blueprint"
       }
     },
     "runtime": {
       "expression": "jsonata",
-      "namespaces": ["incidentShell"],
-      "actions": ["assign", "invoke"],
+      "namespaces": ["incidentShell", "analyzer_blueprint_ref"],
+      "actions": [
+        "assign",
+        "emit",
+        "invoke",
+        "route",
+        "request"
+      ],
       "capabilities": {
         "fluent:dropdown": {
           "propsSchema": { "type": "object", "additionalProperties": true },
           "emits": ["select"],
           "dataProp": "value"
+        },
+        "fluent:spinner": {
+          "propsSchema": { "type": "object", "additionalProperties": true }
         },
         "primitive:markdown": {
           "propsSchema": { "type": "object", "additionalProperties": true },
@@ -74,7 +122,7 @@
       },
       "externals": {
         "projectionViews": {
-          "fluent": { "from": "fluent", "use": ["dropdown"] },
+          "fluent": { "from": "fluent", "use": ["dropdown", "spinner"] },
           "primitive": { "from": "primitive", "use": ["markdown", "drawer"] }
         }
       },
@@ -82,20 +130,156 @@
         "incidentShell": {
           "selected_report_key": "password-spray-mailbox",
           "source_options": [],
-          "incident_report": "# Loading incident report...",
-          "drawer_open": true
+          "incident_report": "",
+          "drawer_open": true,
+          "cached_analysis_report": null,
+          "analysis_as_on": null,
+          "analysis_report": null,
+          "cache_lookup_complete": false
         }
       }
     },
     "cells": {
+      "analysis-loader": {
+        "id": "analysis-loader",
+        "kind": "analysis-readiness-loader",
+        "view": {
+          "capability": "fluent:spinner",
+          "props": {
+            "label": "Loading analysis",
+            "size": "medium",
+            "style": {
+              "position": "fixed",
+              "top": "16px",
+              "right": "20px",
+              "zIndex": 1000,
+              "padding": "8px 12px",
+              "background": "var(--colorNeutralBackground1)",
+              "boxShadow": "var(--shadow8)",
+              "borderRadius": "6px"
+            }
+          },
+          "visibility": "$not(incidentShell.cache_lookup_complete) or $length(incidentShell.incident_report) = 0"
+        }
+      },
       "incident-analyzer": {
         "id": "incident-analyzer",
         "kind": "hosted-incident-analyzer",
-        "inputs": [{ "token": "incident_report", "as": "incident_report", "required": true }],
-        "blueprint": { "$ref": { "expression": "externalContext.analyzer_blueprint_ref" } },
+        "inputs": [
+          {
+            "token": "incident_report",
+            "as": "incident_report",
+            "required": true
+          },
+          {
+            "token": "cached_analysis_report",
+            "as": "cached_analysis_report",
+            "required": false
+          },
+          {
+            "token": "analysis_as_on",
+            "as": "analysis_as_on",
+            "required": false
+          },
+          {
+            "token": "incidentShell.analysis_report",
+            "as": "analysisReport",
+            "required": false
+          }
+        ],
+        "outputs": [
+          { "token": "analysis_report", "from": "inputs.analysisReport", "when": "inputs.analysisReport != null" }
+        ],
+        "blueprint": { "$ref": { "expression": "analyzer_blueprint_ref" } },
         "view": {
           "props": { "hostedAnalysis": true },
-          "bindings": { "incident_report": { "from": "incidentShell.incident_report" } }
+          "visibility": "incidentShell.cache_lookup_complete and $length(incidentShell.incident_report) > 0",
+          "bindings": {
+            "incident_report": {
+              "from": "incidentShell.incident_report"
+            },
+            "cached_analysis_report": {
+              "from": "incidentShell.cached_analysis_report"
+            },
+            "analysis_as_on": {
+              "from": "incidentShell.analysis_as_on"
+            }
+          }
+        }
+      },
+      "analyzer-options": {
+        "id": "analyzer-options",
+        "kind": "incident-analyzer-options",
+        "inputs": [{
+          "token": "analyzer_blueprint_ref",
+          "as": "analyzerBlueprintRef",
+          "required": true
+        }],
+        "outputs": [{
+          "token": "analysis_key",
+          "from": "inputs.analyzerBlueprintRef",
+          "when": "$length(inputs.analyzerBlueprintRef) > 0"
+        }],
+        "view": {
+          "capability": "fluent:dropdown",
+          "props": {
+            "label": "Incident analyzer",
+            "ariaLabel": "Choose incident analyzer",
+            "options": [
+              { "value": "blueprint:incident-report-explorer-1a@1.0.0", "label": "Semantic component refinement" },
+              { "value": "blueprint:incident-report-explorer-2@1.0.0", "label": "Normalized incident analysis" },
+              { "value": "blueprint:incident-report-explorer-3@1.0.0", "label": "Source-faithful incident analysis" }
+            ]
+          },
+          "bindings": { "value": { "from": "analyzer_blueprint_ref" } }
+        },
+        "behavior": {
+          "on": {
+            "select": [
+              {
+                "do": "assign",
+                "target": "analyzer_blueprint_ref",
+                "args": {
+                  "from": "$event.value"
+                }
+              },
+              {
+                "do": "assign",
+                "target": "incidentShell.cached_analysis_report",
+                "args": {
+                  "value": null
+                }
+              },
+              {
+                "do": "assign",
+                "target": "incidentShell.analysis_report",
+                "args": {
+                  "value": null
+                }
+              },
+              {
+                "do": "assign",
+                "target": "incidentShell.analysis_as_on",
+                "args": {
+                  "value": null
+                }
+              },
+              {
+                "do": "assign",
+                "target": "incidentShell.cache_lookup_complete",
+                "args": {
+                  "value": false
+                }
+              }
+            ]
+          }
+        },
+        "events": {
+          "select": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "source-options": {
@@ -105,12 +289,14 @@
           "id": "source-options.source",
           "service": "incident-sources",
           "operation": "listSourceReports",
-          "contract": "incident-sources/v1"
+          "contract": "incident-sources/v1",
+          "output": { "kind": "jsonata", "expr": "response.sources" }
         }],
-        "outputs": [{
-          "token": "selected_report_key",
-          "from": "incidentShell.selected_report_key",
-          "when": "$length(incidentShell.selected_report_key) > 0"
+        "compute": [{
+          "id": "source-options",
+          "expression": "$exists(sources.`source-options.source`) ? sources.`source-options.source` : []",
+          "assign": "incidentShell.source_options",
+          "dependencies": ["sources.source-options.source"]
         }],
         "view": {
           "capability": "fluent:dropdown",
@@ -121,19 +307,74 @@
           }
         },
         "behavior": {
-          "events": {
-            "select": [{
-              "do": "assign",
-              "target": "incidentShell.selected_report_key",
-              "args": { "from": "$event.value" }
-            }]
-          },
-          "reactions": [{
-            "when": "true",
-            "runInitially": true,
-            "run": [{ "do": "invoke", "args": { "tool": "listSourceReports" } }]
-          }]
+          "on": {
+            "select": [
+              {
+                "do": "assign",
+                "target": "incidentShell.selected_report_key",
+                "args": {
+                  "from": "$event.value"
+                }
+              },
+              {
+                "do": "assign",
+                "target": "incidentShell.incident_report",
+                "args": {
+                  "value": ""
+                }
+              },
+              {
+                "do": "assign",
+                "target": "incidentShell.cached_analysis_report",
+                "args": {
+                  "value": null
+                }
+              },
+              {
+                "do": "assign",
+                "target": "incidentShell.analysis_report",
+                "args": {
+                  "value": null
+                }
+              },
+              {
+                "do": "assign",
+                "target": "incidentShell.analysis_as_on",
+                "args": {
+                  "value": null
+                }
+              },
+              {
+                "do": "assign",
+                "target": "incidentShell.cache_lookup_complete",
+                "args": {
+                  "value": false
+                }
+              }
+            ]
+          }
+        },
+        "events": {
+          "select": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
+      },
+      "selected-report-key": {
+        "id": "selected-report-key",
+        "kind": "selected-report-key",
+        "inputs": [{
+          "token": "incidentShell.selected_report_key",
+          "as": "selectedReportKey",
+          "required": true
+        }],
+        "outputs": [{
+          "token": "selected_report_key",
+          "from": "inputs.selectedReportKey",
+          "when": "$length(inputs.selectedReportKey) > 0"
+        }]
       },
       "selected-source": {
         "id": "selected-source",
@@ -143,24 +384,119 @@
           "id": "selected-source.source",
           "service": "incident-sources",
           "operation": "getSourceReport",
-          "contract": "incident-source/v1"
+          "contract": "incident-source/v1",
+          "output": { "kind": "jsonata", "expr": "response.content" }
+        }],
+        "compute": [{
+          "id": "selected-source",
+          "expression": "$exists(sources.`selected-source.source`) ? sources.`selected-source.source` : ''",
+          "assign": "incidentShell.incident_report",
+          "dependencies": ["sources.selected-source.source"]
         }],
         "outputs": [{
           "token": "incident_report",
-          "from": "incidentShell.incident_report",
-          "when": "$length(incidentShell.incident_report) > 0"
+          "from": "computed.incidentShell.incident_report",
+          "when": "$length(computed.incidentShell.incident_report) > 0"
         }],
         "view": {
           "capability": "primitive:markdown",
           "bindings": { "value": { "from": "incidentShell.incident_report" } }
-        },
-        "behavior": {
-          "reactions": [{
-            "when": "incidentShell.selected_report_key",
-            "runInitially": true,
-            "run": [{ "do": "invoke", "args": { "tool": "getSourceReport" } }]
-          }]
         }
+      },
+      "cache-retriever": {
+        "id": "cache-retriever",
+        "kind": "analysis-cache-retriever",
+        "inputs": [
+          { "token": "selected_report_key", "required": true },
+          { "token": "analysis_key", "required": true }
+        ],
+        "sources": [{
+          "id": "cache-retriever.source",
+          "service": "incident-cache",
+          "operation": "getCachedAnalysis",
+          "contract": "cached-analysis-envelope/v1"
+        }],
+        "compute": [
+          {
+            "id": "cached-analysis-report",
+            "expression": "$exists(sources.`cache-retriever.source`) and sources.`cache-retriever.source` != null ? sources.`cache-retriever.source`.analysisReport : null",
+            "assign": "incidentShell.cached_analysis_report",
+            "dependencies": ["sources.cache-retriever.source"]
+          },
+          {
+            "id": "cached-analysis-as-on",
+            "expression": "$exists(sources.`cache-retriever.source`) and sources.`cache-retriever.source` != null ? sources.`cache-retriever.source`.asOn : null",
+            "assign": "incidentShell.analysis_as_on",
+            "dependencies": ["sources.cache-retriever.source"]
+          },
+          {
+            "id": "cache-lookup-complete",
+            "expression": "$exists(sources.`cache-retriever.source`)",
+            "assign": "incidentShell.cache_lookup_complete",
+            "dependencies": ["sources.cache-retriever.source"]
+          }
+        ],
+        "outputs": [
+          {
+            "token": "cached_analysis_report",
+            "from": "computed.incidentShell.cached_analysis_report",
+            "when": "computed.incidentShell.cached_analysis_report != null"
+          },
+          {
+            "token": "analysis_as_on",
+            "from": "computed.incidentShell.analysis_as_on",
+            "when": "computed.incidentShell.analysis_as_on != null"
+          }
+        ]
+      },
+      "cache-writer": {
+        "id": "cache-writer",
+        "kind": "analysis-cache-writer",
+        "inputs": [{ "token": "analysis_report", "as": "analysisReport", "required": true }],
+        "sources": [{
+          "id": "cache-writer.source",
+          "service": "incident-cache",
+          "operation": "putCachedAnalysis",
+          "contract": "cached-analysis-envelope/v1"
+        }],
+        "compute": [
+          {
+            "id": "analysis-report",
+            "expression": "inputs.analysisReport",
+            "assign": "incidentShell.analysis_report",
+            "dependencies": ["inputs.analysisReport"]
+          },
+          {
+            "id": "written-analysis-report",
+            "expression": "$exists(sources.`cache-writer.source`) and sources.`cache-writer.source` != null ? sources.`cache-writer.source`.analysisReport : null",
+            "assign": "incidentShell.cached_analysis_report",
+            "dependencies": ["sources.cache-writer.source"]
+          },
+          {
+            "id": "written-analysis-as-on",
+            "expression": "$exists(sources.`cache-writer.source`) and sources.`cache-writer.source` != null ? sources.`cache-writer.source`.asOn : null",
+            "assign": "incidentShell.analysis_as_on",
+            "dependencies": ["sources.cache-writer.source"]
+          },
+          {
+            "id": "cache-write-complete",
+            "expression": "$exists(sources.`cache-writer.source`)",
+            "assign": "incidentShell.cache_lookup_complete",
+            "dependencies": ["sources.cache-writer.source"]
+          }
+        ],
+        "outputs": [
+          {
+            "token": "cached_analysis_report",
+            "from": "computed.incidentShell.cached_analysis_report",
+            "when": "computed.incidentShell.cached_analysis_report != null"
+          },
+          {
+            "token": "analysis_as_on",
+            "from": "computed.incidentShell.analysis_as_on",
+            "when": "computed.incidentShell.analysis_as_on != null"
+          }
+        ]
       },
       "source-drawer": {
         "id": "source-drawer",
@@ -177,22 +513,34 @@
           "bindings": { "open": { "from": "incidentShell.drawer_open" } }
         },
         "behavior": {
-          "events": {
-            "openChange": [{
-              "do": "assign",
-              "target": "incidentShell.drawer_open",
-              "args": { "from": "$event.open" }
-            }]
+          "on": {
+            "openChange": [
+              {
+                "do": "assign",
+                "target": "incidentShell.drawer_open",
+                "args": {
+                  "from": "$event.open"
+                }
+              }
+            ]
+          }
+        },
+        "events": {
+          "openChange": {
+            "payloadSchema": {
+              "type": "object"
+            }
           }
         }
       }
     },
     "projections": {
       "presentation": {
-        "roots": ["incident-analyzer", "source-drawer"],
+        "roots": ["analysis-loader", "incident-analyzer", "source-drawer"],
         "placements": [
-          { "cell": "source-options", "parent": "source-drawer", "slot": "children", "order": 0 },
-          { "cell": "selected-source", "parent": "source-drawer", "slot": "children", "order": 1 }
+          { "cell": "analyzer-options", "parent": "source-drawer", "slot": "children", "order": 0 },
+          { "cell": "source-options", "parent": "source-drawer", "slot": "children", "order": 1 },
+          { "cell": "selected-source", "parent": "source-drawer", "slot": "children", "order": 2 }
         ]
       }
     },

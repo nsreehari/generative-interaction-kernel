@@ -1,0 +1,655 @@
+{
+  "gik": "0.1",
+  "type": "blueprint",
+  "payload": {
+    "id": "portfolio-tracker-new",
+    "kind": "portfolio-blueprint",
+    "version": "1.0.0",
+    "structureMode": "fixed",
+    "tiers": [
+      { "id": "portfolio-logic", "kind": "portfolio-domain" },
+      { "id": "portfolio-presentation", "kind": "runtime-document" }
+    ],
+    "recipes": [
+      {
+        "id": "portfolio-logic-to-presentation",
+        "from": "portfolio-logic",
+        "to": "portfolio-presentation",
+        "representations": [
+          {
+            "id": "desktop-base",
+            "views": {
+              "board": {
+                "capability": "primitive:container",
+                "props": {
+                  "variant": "stack",
+                  "gap": "m",
+                  "fullWidth": true,
+                  "ariaLabel": "Portfolio tracker",
+                  "style": { "gridTemplateColumns": "minmax(0, 1fr) minmax(0, 1fr)", "alignItems": "start" }
+                }
+              },
+              "portfolio-holdings": {
+                "capability": "primitive:editable-table",
+                "props": {
+                  "label": "Holdings",
+                  "columns": [
+                    { "key": "ticker", "label": "Ticker" },
+                    { "key": "quantity", "label": "Quantity" },
+                    { "key": "costBasis", "label": "Cost basis" }
+                  ]
+                },
+                "bindings": { "rows": { "expression": "[portfolio.holdings.*]" } }
+              },
+              "market-prices": {
+                "capability": "fluent:table",
+                "props": {
+                  "ariaLabel": "Market prices",
+                  "columns": [
+                    { "id": "ticker", "label": "Ticker" },
+                    { "id": "price", "label": "Price" }
+                  ]
+                },
+                "bindings": { "rows": { "expression": "[portfolio.stockQuotes.*.{'id':$string(ticker),'cells':{'ticker':ticker,'price':price}}]" } }
+              },
+              "portfolio-value-cell": {
+                "capability": "primitive:chart",
+                "props": {
+                  "variant": "standard",
+                  "spec": {
+                    "kind": "pie",
+                    "title": "Holdings value",
+                    "valueSuffix": " USD",
+                    "fields": { "label": "ticker", "value": "value" },
+                    "summary": { "label": "Total portfolio value", "prefix": "$" },
+                    "table": {
+                      "label": "Portfolio positions",
+                      "columns": [
+                        { "field": "ticker", "label": "Ticker" },
+                        { "field": "quantity", "label": "Quantity" },
+                        { "field": "price", "label": "Price", "prefix": "$" },
+                        { "field": "value", "label": "Value", "prefix": "$" },
+                        { "field": "costBasis", "label": "Cost basis", "prefix": "$" },
+                        { "field": "gainLoss", "label": "Gain/loss", "prefix": "$" }
+                      ]
+                    }
+                  }
+                },
+                "bindings": {
+                  "points": { "expression": "[portfolio.value.positions.*]" },
+                  "summaryValue": { "from": "portfolio.value.summary.marketValue" }
+                }
+              },
+              "portfolio-intelligence": {
+                "capability": "primitive:note",
+                "props": { "tone": "info" },
+                "bindings": {
+                  "value": {
+                    "expression": "'Portfolio intelligence | Source: ' & portfolio.intelligence.provider & ' | ' & portfolio.intelligence.summary & ' | ' & $join(portfolio.intelligence.observations, ' | ')"
+                  }
+                }
+              }
+            },
+            "decorators": [
+              {
+                "select": "cells[sources].id",
+                "before": {
+                  "capability": "fluent:spinner",
+                  "props": { "label": "Loading" },
+                  "visibility": "systemInputs.numSourcesRunning > 0"
+                }
+              }
+            ],
+            "presentation": {
+              "roots": ["board"],
+              "placements": [
+                { "cell": "portfolio-holdings", "parent": "board", "slot": "children", "order": 0 },
+                { "cell": "market-prices", "parent": "board", "slot": "children", "order": 1 },
+                { "cell": "portfolio-value-cell", "parent": "board", "slot": "children", "order": 2 },
+                { "cell": "portfolio-intelligence", "parent": "board", "slot": "children", "order": 3 }
+              ]
+            }
+          },
+          {
+            "id": "mobile-base",
+            "extends": "desktop-base",
+            "views": {
+              "board": {
+                "capability": "primitive:container",
+                "props": {
+                  "variant": "column",
+                  "gap": "s",
+                  "fullWidth": true,
+                  "ariaLabel": "Portfolio tracker",
+                  "style": { "gridTemplateColumns": "none", "alignItems": "stretch" }
+                }
+              },
+              "portfolio-value-cell": {
+                "capability": "primitive:chart",
+                "props": {
+                  "variant": "compact",
+                  "spec": {
+                    "kind": "pie",
+                    "title": "Holdings value",
+                    "valueSuffix": " USD",
+                    "fields": { "label": "ticker", "value": "value" },
+                    "summary": { "label": "Total portfolio value", "prefix": "$" }
+                  }
+                },
+                "bindings": {
+                  "points": { "expression": "[portfolio.value.positions.*]" },
+                  "summaryValue": { "from": "portfolio.value.summary.marketValue" }
+                }
+              }
+            }
+          },
+          {
+            "id": "simple-desktop",
+            "when": "externalContext.view = 'desktop' and externalContext.`intelligence-model` = 'simple'",
+            "extends": "desktop-base",
+            "views": {
+              "portfolio-intelligence": {
+                "capability": "primitive:markdown",
+                "bindings": {
+                  "value": {
+                    "expression": "'# Portfolio intelligence\\n\\n' & portfolio.intelligence.summary & '\\n\\n## Observations\\n\\n- ' & $join(portfolio.intelligence.observations, '\\n- ') & '\\n\\n## Risks\\n\\n- ' & $join(portfolio.intelligence.risks, '\\n- ')"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "mock-desktop",
+            "when": "externalContext.view = 'desktop' and externalContext.`intelligence-model` = 'mock'",
+            "extends": "desktop-base",
+            "views": {
+              "portfolio-intelligence": {
+                "capability": "primitive:markdown",
+                "bindings": {
+                  "value": {
+                    "expression": "'# Mock portfolio intelligence\\n\\n' & portfolio.intelligence.summary & '\\n\\n## Observations\\n\\n- ' & $join(portfolio.intelligence.observations, '\\n- ') & '\\n\\n## Risks\\n\\n- ' & $join(portfolio.intelligence.risks, '\\n- ')"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "semantic-desktop",
+            "when": "externalContext.view = 'desktop' and externalContext.`intelligence-model` = 'semantic'",
+            "extends": "desktop-base",
+            "views": {
+              "portfolio-intelligence": {
+                "capability": "portfolio:intelligence-projections",
+                "props": {
+                  "presentationContext": "portfolio-advisor",
+                  "showWorkflowAction": false,
+                  "projectionRecipe": {
+                    "contexts": {
+                      "portfolio-overview": { "attention": "glanceable", "showDisclosure": ["always"], "maxSections": 3 },
+                      "portfolio-advisor": { "attention": "focused", "showDisclosure": ["always", "collapsed"], "maxSections": 8 }
+                    },
+                    "fallback": { "attention": "glanceable", "showDisclosure": ["always"], "maxSections": 3 }
+                  }
+                },
+                "bindings": { "value": { "from": "portfolio.intelligence" } }
+              }
+            }
+          },
+          {
+            "id": "simple-mobile",
+            "when": "externalContext.view = 'mobile' and externalContext.`intelligence-model` = 'simple'",
+            "extends": "mobile-base",
+            "views": {
+              "portfolio-intelligence": {
+                "capability": "primitive:markdown",
+                "bindings": {
+                  "value": {
+                    "expression": "'# Portfolio intelligence\\n\\n' & portfolio.intelligence.summary & '\\n\\n## Observations\\n\\n- ' & $join(portfolio.intelligence.observations, '\\n- ') & '\\n\\n## Risks\\n\\n- ' & $join(portfolio.intelligence.risks, '\\n- ')"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "mock-mobile",
+            "when": "externalContext.view = 'mobile' and externalContext.`intelligence-model` = 'mock'",
+            "extends": "mobile-base",
+            "views": {
+              "portfolio-intelligence": {
+                "capability": "primitive:markdown",
+                "bindings": {
+                  "value": {
+                    "expression": "'# Mock portfolio intelligence\\n\\n' & portfolio.intelligence.summary & '\\n\\n## Observations\\n\\n- ' & $join(portfolio.intelligence.observations, '\\n- ') & '\\n\\n## Risks\\n\\n- ' & $join(portfolio.intelligence.risks, '\\n- ')"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "semantic-mobile",
+            "when": "externalContext.view = 'mobile' and externalContext.`intelligence-model` = 'semantic'",
+            "extends": "mobile-base",
+            "views": {
+              "portfolio-intelligence": {
+                "capability": "portfolio:intelligence-projections",
+                "props": {
+                  "presentationContext": "portfolio-overview",
+                  "showWorkflowAction": false,
+                  "projectionRecipe": {
+                    "contexts": {
+                      "portfolio-overview": { "attention": "glanceable", "showDisclosure": ["always"], "maxSections": 3 },
+                      "portfolio-advisor": { "attention": "focused", "showDisclosure": ["always", "collapsed"], "maxSections": 8 }
+                    },
+                    "fallback": { "attention": "glanceable", "showDisclosure": ["always"], "maxSections": 3 }
+                  }
+                },
+                "bindings": { "value": { "from": "portfolio.intelligence" } }
+              }
+            }
+          }
+        ],
+        "fallback": "simple-desktop",
+        "implementationPrograms": [
+          {
+            "id": "simple-intelligence",
+            "when": "externalContext.`intelligence-model` = 'simple'",
+            "cells": {
+              "portfolio-intelligence": {
+                "sources": [
+                  {
+                    "id": "portfolio-intelligence.source",
+                    "service": "portfolio-intelligence",
+                    "operation": "requestIntelligence",
+                    "contract": "portfolio-intelligence/v1",
+                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                    "input": { "kind": "jsonata", "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}" },
+                    "output": { "kind": "jsonata", "expr": "response" }
+                  },
+                  {
+                    "id": "portfolio-intelligence-2.source",
+                    "service": "portfolio-intelligence-2",
+                    "operation": "requestIntelligence2",
+                    "contract": "portfolio-intelligence-2/v1",
+                    "when": "false",
+                    "input": { "kind": "jsonata", "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}" },
+                    "output": { "kind": "jsonata", "expr": "response" }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "mock-intelligence",
+            "when": "externalContext.`intelligence-model` = 'mock'",
+            "cells": {
+              "portfolio-intelligence": {
+                "sources": [
+                  {
+                    "id": "portfolio-intelligence.source",
+                    "service": "portfolio-intelligence",
+                    "operation": "requestIntelligence",
+                    "contract": "portfolio-intelligence/v1",
+                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                    "input": { "kind": "jsonata", "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}" },
+                    "output": { "kind": "jsonata", "expr": "response" }
+                  },
+                  {
+                    "id": "portfolio-intelligence-2.source",
+                    "service": "portfolio-intelligence-2",
+                    "operation": "requestIntelligence2",
+                    "contract": "portfolio-intelligence-2/v1",
+                    "when": "false",
+                    "input": { "kind": "jsonata", "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}" },
+                    "output": { "kind": "jsonata", "expr": "response" }
+                  }
+                ]
+              }
+            },
+            "services": {
+              "portfolio-intelligence": {
+                "kind": "deterministic-agent",
+                "version": "1",
+                "operations": {
+                  "requestIntelligence": {
+                    "operation": "analyze",
+                    "contract": "portfolio-intelligence/v1",
+                    "request": {
+                      "transform": {
+                        "kind": "jsonata",
+                        "expr": "input"
+                      }
+                    },
+                    "settlement": {
+                      "transform": {
+                        "kind": "jsonata",
+                        "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':response}],'detail':{'provider':response.provider}}"
+                      }
+                    }
+                  }
+                },
+                "config": { "handler": "portfolio-intelligence-mock" },
+                "scope": "per-blueprint"
+              }
+            }
+          },
+          {
+            "id": "semantic-intelligence",
+            "when": "externalContext.`intelligence-model` = 'semantic'",
+            "cells": {
+              "portfolio-intelligence": {
+                "sources": [
+                  {
+                    "id": "portfolio-intelligence.source",
+                    "service": "portfolio-intelligence",
+                    "operation": "requestIntelligence",
+                    "contract": "portfolio-intelligence/v1",
+                    "when": "false",
+                    "input": { "kind": "jsonata", "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}" },
+                    "output": { "kind": "jsonata", "expr": "response" }
+                  },
+                  {
+                    "id": "portfolio-intelligence-2.source",
+                    "service": "portfolio-intelligence-2",
+                    "operation": "requestIntelligence2",
+                    "contract": "portfolio-intelligence-2/v1",
+                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                    "input": { "kind": "jsonata", "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}" },
+                    "output": { "kind": "jsonata", "expr": "response" }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "implementationFallback": "simple-intelligence"
+      }
+    ],
+    "services": {
+      "portfolio-market-data": {
+        "kind": "deterministic-agent",
+        "version": "1",
+        "operations": {
+          "refreshPrices": {
+            "operation": "fetch-quotes",
+            "contract": "portfolio-market-quotes/v1",
+            "request": {
+              "transform": { "kind": "jsonata", "expr": "input" }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'portfolio.stockQuotes','value':response.quotes}],'detail':{'provider':response.provider,'quoteCount':$count(response.quotes.*)}}"
+              }
+            }
+          }
+        },
+        "config": { "handler": "portfolio-market-data-mock" },
+        "scope": "per-blueprint"
+      },
+      "portfolio-intelligence": {
+        "kind": "foundry-agent",
+        "version": "1",
+        "operations": {
+          "requestIntelligence": {
+            "operation": "chat",
+            "contract": "portfolio-intelligence/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'message':'Analyze this portfolio using the supplied values as authoritative. Portfolio value JSON: ' & $string(input.portfolioValue),'instructions':'Use only the supplied portfolio value. Distinguish facts from judgments. Do not invent prices, events, sources, or constraints. Return concise structured portfolio intelligence.','maxOutputTokens':1800}"
+              }
+            },
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "code": "provider-structured-output",
+                  "message": "Portfolio intelligence response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": ["summary", "observations", "risks", "evidence", "asOf"],
+                    "properties": {
+                      "summary": { "type": "string", "minLength": 1 },
+                      "observations": { "type": "array", "items": { "type": "string" } },
+                      "risks": { "type": "array", "items": { "type": "string" } },
+                      "evidence": { "type": "array", "items": { "type": "string" } },
+                      "asOf": { "type": "string", "minLength": 1 }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              ]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':$merge([response,{'provider':'foundry-agent:Portfolio-Intelligence-Agent'}])}],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Intelligence-Agent'}}"
+              }
+            }
+          }
+        },
+        "config": {
+          "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}",
+          "agent": "Portfolio-Intelligence-Agent",
+          "credentialRef": "foundry-agent/access-key"
+        },
+        "scope": "per-blueprint"
+      },
+      "portfolio-intelligence-2": {
+        "kind": "foundry-agent",
+        "version": "1",
+        "operations": {
+          "requestIntelligence2": {
+            "operation": "chat",
+            "contract": "portfolio-intelligence-2/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'message':'Analyze this portfolio and propose useful semantic projections. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Interaction context JSON: ' & $string({'interaction':'investigate','subject':'portfolio intelligence','goal':'understand what deserves human attention','facets':['summary','signals','catalysts','risks','evidence']}),'instructions':'Build reusable semantic items first. Then return two or three alternative projection candidates that reference those items by id. Available primitives are hero-signal, metric-strip, signal-list, timeline, evidence-list, and narrative. Available priority tokens are primary, secondary, and tertiary. Available disclosure tokens are always, collapsed, and on-demand. Use only this catalog. A glanceable candidate should expose no more than three always-visible sections and lead with the most material signal. A focused candidate may retain evidence and supporting detail through progressive disclosure. The runtime recipe, not you, chooses the active candidate. Analyze only the supplied portfolio data; do not imply that external news or events were researched. Distinguish supplied facts, judgments, and uncertainty through semantic item kinds. Return no evidence unless it was supplied in the request. Keep the complete structured response within the supplied output token budget.','maxOutputTokens':2500}"
+              }
+            },
+            "response": {
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "code": "provider-structured-output",
+                  "message": "Portfolio intelligence 2 response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": ["headline", "summary", "asOf", "items", "evidence", "projectionCandidates"],
+                    "properties": {
+                      "headline": { "type": "string", "minLength": 1 },
+                      "summary": { "type": "string", "minLength": 1 },
+                      "asOf": { "type": "string", "minLength": 1 },
+                      "items": { "type": "array", "minItems": 1 },
+                      "evidence": { "type": "array" },
+                      "projectionCandidates": { "type": "array", "minItems": 2, "maxItems": 3 }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                {
+                  "kind": "jsonata",
+                  "expr": "$count(data.projectionCandidates[attention = 'glanceable']) > 0 and $count(data.projectionCandidates[attention = 'focused']) > 0",
+                  "message": "Portfolio intelligence 2 must provide glanceable and focused projections",
+                  "code": "projection-attention-coverage"
+                },
+                {
+                  "kind": "jsonata",
+                  "expr": "$count(data.projectionCandidates[attention = 'glanceable'][$count(sections[disclosure = 'always']) > 3]) = 0",
+                  "message": "Each glanceable projection may expose at most three always-visible sections",
+                  "code": "glanceable-attention-budget"
+                }
+              ]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':response}],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Intelligence-2-Agent'}}"
+              }
+            },
+            "onViolation": { "action": "fail" }
+          }
+        },
+        "config": {
+          "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}",
+          "agent": "Portfolio-Intelligence-2-Agent",
+          "credentialRef": "foundry-agent/access-key"
+        },
+        "scope": "per-blueprint"
+      }
+    },
+    "runtime": {
+      "expression": "jsonata",
+      "namespaces": ["portfolio"],
+      "contexts": ["control"],
+      "actions": ["assign", "emit", "invoke", "route", "request"],
+      "capabilities": {
+        "primitive:container": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"] },
+        "primitive:chart": { "propsSchema": { "type": "object", "additionalProperties": true } },
+        "primitive:editable-table": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"], "dataProp": "rows" },
+        "primitive:markdown": { "propsSchema": { "type": "object", "additionalProperties": true } },
+        "portfolio:intelligence-projections": { "propsSchema": { "type": "object", "additionalProperties": true } },
+        "fluent:table": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "rows" },
+        "primitive:note": { "propsSchema": { "type": "object", "additionalProperties": true } }
+      },
+      "externals": {
+        "projectionViews": {
+          "fluent": { "from": "fluent", "use": ["table"] },
+          "portfolio": { "from": "portfolio-tracker", "use": ["intelligence-projections"] },
+          "primitive": { "from": "primitive", "use": ["chart", "container", "editable-table", "markdown", "note"] }
+        }
+      },
+      "state": {
+        "portfolio": {
+          "holdings": {
+            "AAPL": { "ticker": "AAPL", "quantity": 2, "costBasis": 90 },
+            "MSFT": { "ticker": "MSFT", "quantity": 3, "costBasis": 180 }
+          },
+          "stockQuotes": {},
+          "value": { "positions": {}, "summary": { "marketValue": 0, "costBasis": 0, "gainLoss": 0 } },
+          "intelligence": null,
+          "investorProfile": null
+        }
+      }
+    },
+    "cells": {
+      "portfolio-holdings": {
+        "id": "portfolio-holdings",
+        "kind": "portfolio-cell",
+        "outputs": [{ "token": "holdings", "from": "portfolio.holdings" }],
+        "events": { "save": { "payloadSchema": { "type": "object" } } },
+        "behavior": {
+          "on": {
+            "save": [
+              {
+                "do": "assign",
+                "target": "portfolio.holdings",
+                "args": {
+                  "from": "$count($event.rows) > 0 ? $merge($event.rows.({$uppercase($string(ticker)):{'ticker':$uppercase($string(ticker)),'quantity':$number(quantity),'costBasis':$number(costBasis)}})) : {}"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "market-prices": {
+        "id": "market-prices",
+        "kind": "portfolio-cell",
+        "inputs": [{ "token": "holdings" }],
+        "systemInputs": ["numSourcesRunning"],
+        "sources": [
+          {
+            "id": "market-prices.source",
+            "service": "portfolio-market-data",
+            "operation": "refreshPrices",
+            "contract": "portfolio-market-quotes/v1",
+            "when": "$count(inputs.holdings.*) > 0",
+            "input": { "kind": "jsonata", "expr": "{'holdings':inputs.holdings}" },
+            "output": { "kind": "jsonata", "expr": "response.quotes" }
+          }
+        ],
+        "outputs": [{ "token": "stock-quotes", "from": "computed.portfolio.stockQuotes" }],
+        "compute": [
+          {
+            "id": "settled-market-prices",
+            "expression": "sources.`market-prices.source`",
+            "assign": "portfolio.stockQuotes",
+            "dependencies": ["sources.market-prices.source"]
+          }
+        ]
+      },
+      "portfolio-value-cell": {
+        "id": "portfolio-value-cell",
+        "kind": "portfolio-cell",
+        "inputs": [{ "token": "holdings" }, { "token": "stock-quotes" }],
+        "outputs": [
+          {
+            "token": "portfolio-value",
+            "from": "computed.portfolio.value",
+            "when": "$count(inputs.holdings.*) = $count(inputs.`stock-quotes`.*) and $count(inputs.holdings.*[$exists($lookup($$.inputs.`stock-quotes`, ticker).price)]) = $count(inputs.holdings.*)"
+          }
+        ],
+        "compute": [
+          {
+            "id": "calculate-portfolio-value",
+            "expression": "($positions := $merge(inputs.holdings.*.($quote := $lookup($$.inputs.`stock-quotes`, ticker); {ticker:{'ticker':ticker,'quantity':quantity,'price':$quote.price,'value':$round(quantity * $quote.price, 2),'costBasis':$round(quantity * costBasis, 2),'gainLoss':$round((quantity * $quote.price) - (quantity * costBasis), 2)}})); {'positions':$positions,'summary':{'marketValue':$count($positions.*) > 0 ? $round($sum($positions.*.value), 2) : 0,'costBasis':$count($positions.*) > 0 ? $round($sum($positions.*.costBasis), 2) : 0,'gainLoss':$count($positions.*) > 0 ? $round($sum($positions.*.gainLoss), 2) : 0}})",
+            "assign": "portfolio.value",
+            "dependencies": ["portfolio.holdings", "portfolio.stockQuotes"]
+          }
+        ]
+      },
+      "portfolio-intelligence": {
+        "id": "portfolio-intelligence",
+        "kind": "portfolio-cell",
+        "inputs": [{ "token": "portfolio-value" }],
+        "systemInputs": ["numSourcesRunning"],
+        "sources": [
+          {
+            "id": "portfolio-intelligence.source",
+            "service": "portfolio-intelligence",
+            "operation": "requestIntelligence",
+            "contract": "portfolio-intelligence/v1",
+            "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+            "input": {
+              "kind": "jsonata",
+              "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}"
+            },
+            "output": { "kind": "jsonata", "expr": "response" }
+          },
+          {
+            "id": "portfolio-intelligence-2.source",
+            "service": "portfolio-intelligence-2",
+            "operation": "requestIntelligence2",
+            "contract": "portfolio-intelligence-2/v1",
+            "when": "false",
+            "input": {
+              "kind": "jsonata",
+              "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}"
+            },
+            "output": { "kind": "jsonata", "expr": "response" }
+          }
+        ],
+        "outputs": [{ "token": "portfolio-intelligence", "from": "computed.portfolio.intelligence" }],
+        "compute": [
+          {
+            "id": "settled-portfolio-intelligence",
+            "expression": "$exists(sources.`portfolio-intelligence-2.source`) ? sources.`portfolio-intelligence-2.source` : sources.`portfolio-intelligence.source`",
+            "assign": "portfolio.intelligence",
+            "dependencies": ["sources.portfolio-intelligence.source", "sources.portfolio-intelligence-2.source"]
+          }
+        ]
+      },
+      "board": {
+        "id": "board",
+        "kind": "portfolio-board-cell",
+        "inputs": [
+          { "token": "holdings" },
+          { "token": "stock-quotes" },
+          { "token": "portfolio-value" },
+          { "token": "portfolio-intelligence" }
+        ]
+      }
+    }
+  }
+}

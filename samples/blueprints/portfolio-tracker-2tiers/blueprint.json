@@ -187,7 +187,13 @@
       "expression": "jsonata",
       "namespaces": ["portfolio"],
       "contexts": ["control"],
-      "actions": ["assign", "invoke"],
+      "actions": [
+        "assign",
+        "emit",
+        "invoke",
+        "route",
+        "request"
+      ],
       "capabilities": {
         "primitive:container": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"] },
         "primitive:editable-table": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"], "dataProp": "rows" },
@@ -232,8 +238,22 @@
         "kind": "portfolio-cell",
         "metadata": { "role": "workspace" },
         "behavior": {
-          "events": {
-            "setHoldings": [{ "do": "invoke", "args": { "tool": "setHoldings" } }]
+          "on": {
+            "setHoldings": [
+              {
+                "do": "invoke",
+                "control": {
+                  "tool": "setHoldings"
+                }
+              }
+            ]
+          }
+        },
+        "events": {
+          "setHoldings": {
+            "payloadSchema": {
+              "type": "object"
+            }
           }
         }
       },
@@ -241,14 +261,44 @@
         "id": "http-proxy-access-gate",
         "kind": "portfolio-cell",
         "metadata": { "role": "authorize-market-data" },
-        "outputs": [{ "token": "http-proxy-access", "from": "portfolio.httpProxyAccessStatus", "when": "portfolio.httpProxyAccessStatus = 'ready'" }],
         "behavior": {
-          "events": {
-            "accessRequested": [{ "do": "invoke", "args": { "tool": "checkHttpProxyAccess" } }],
+          "on": {
+            "accessRequested": [
+              {
+                "do": "invoke",
+                "control": {
+                  "tool": "checkHttpProxyAccess"
+                }
+              }
+            ],
             "accessCleared": [
-              { "do": "assign", "target": "portfolio.httpProxyAccessStatus", "args": { "value": "required" } },
-              { "do": "assign", "target": "portfolio.httpProxyAccessError", "args": { "value": "" } }
+              {
+                "do": "assign",
+                "target": "portfolio.httpProxyAccessStatus",
+                "args": {
+                  "value": "required"
+                }
+              },
+              {
+                "do": "assign",
+                "target": "portfolio.httpProxyAccessError",
+                "args": {
+                  "value": ""
+                }
+              }
             ]
+          }
+        },
+        "events": {
+          "accessRequested": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "accessCleared": {
+            "payloadSchema": {
+              "type": "object"
+            }
           }
         }
       },
@@ -256,32 +306,66 @@
         "id": "holdings",
         "kind": "portfolio-cell",
         "metadata": { "role": "manage-holdings" },
-        "outputs": [{ "token": "holding:$TICKER" }],
-        "behavior": { "events": { "save": [{ "do": "invoke", "args": { "tool": "saveHoldings" } }] } }
+        "behavior": {
+          "on": {
+            "save": [
+              {
+                "do": "invoke",
+                "control": {
+                  "tool": "saveHoldings"
+                }
+              }
+            ]
+          }
+        },
+        "events": {
+          "save": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
+        }
       },
       "market-prices": {
         "id": "market-prices",
         "kind": "portfolio-cell",
         "metadata": { "role": "acquire-market-prices" },
-        "inputs": [{ "token": "http-proxy-access" }, { "token": "holding:$TICKER" }],
-        "sources": [{ "id": "market-prices.source", "service": "portfolio-market-data", "operation": "refreshPrices", "contract": "portfolio-market-quotes/v1" }],
-        "outputs": [{ "token": "quote:$TICKER" }],
+        "inputs": [
+          { "token": "portfolio.httpProxyAccessStatus", "as": "access" },
+          { "token": "portfolio.holdings", "as": "holdings" }
+        ],
+        "sources": [{
+          "id": "market-prices.source",
+          "service": "portfolio-market-data",
+          "operation": "refreshPrices",
+          "contract": "portfolio-market-quotes/v1",
+          "when": "inputs.access = 'ready' and $count(inputs.holdings.*) > 0",
+          "output": { "kind": "jsonata", "expr": "response.quotes" }
+        }],
+        "outputs": [{ "token": "portfolio-quotes", "from": "computed.portfolio.quotes" }],
+        "compute": [{
+          "id": "settled-market-prices",
+          "expression": "sources.`market-prices.source`",
+          "assign": "portfolio.quotes",
+          "dependencies": ["sources.market-prices.source"]
+        }],
+        "events": { "refresh": { "payloadSchema": { "type": "object" } } },
         "behavior": {
-          "reactions": [{
-            "when": "portfolio.httpProxyAccessStatus = 'ready' ? $string(portfolio.holdings) : null",
-            "run": [{ "do": "invoke", "args": { "tool": "refreshPrices" } }]
-          }]
+          "on": { "refresh": [{ "do": "invoke", "control": { "tool": "refreshPrices" } }] }
         }
       },
       "positions": {
         "id": "positions",
         "kind": "portfolio-cell",
         "metadata": { "role": "derive-positions" },
-        "inputs": [{ "token": "holding:$TICKER" }, { "token": "quote:$TICKER" }],
-        "outputs": [{ "token": "position:$TICKER" }],
+        "inputs": [
+          { "token": "portfolio.holdings", "as": "holdings" },
+          { "token": "portfolio-quotes", "as": "quotes" }
+        ],
+        "outputs": [{ "token": "portfolio-positions", "from": "computed.portfolio.positions" }],
         "compute": [{
           "id": "positions-by-ticker",
-          "expression": "($holdings := portfolio.holdings; $quotes := portfolio.quotes; $rows := $each($holdings, function($holding, $ticker) { $lookup($quotes, $ticker) ? {$ticker:{'ticker':$ticker,'quantity':$holding.quantity,'price':$lookup($quotes, $ticker).price,'value':$round($holding.quantity * $lookup($quotes, $ticker).price, 2),'costBasis':$round($holding.quantity * $holding.costBasis, 2),'gainLoss':$round(($holding.quantity * $lookup($quotes, $ticker).price) - ($holding.quantity * $holding.costBasis), 2)}} : {} }); $count($rows) > 0 ? $merge($rows) : {})",
+          "expression": "$merge(inputs.holdings.*.($quote := $lookup($$.inputs.quotes, ticker); {ticker:{'ticker':ticker,'quantity':quantity,'price':$quote.price,'value':$round(quantity * $quote.price, 2),'costBasis':$round(quantity * costBasis, 2),'gainLoss':$round((quantity * $quote.price) - (quantity * costBasis), 2)}}))",
           "assign": "portfolio.positions",
           "dependencies": ["portfolio.holdings", "portfolio.quotes"]
         }]
@@ -290,11 +374,11 @@
         "id": "summary",
         "kind": "portfolio-cell",
         "metadata": { "role": "summarize-portfolio" },
-        "inputs": [{ "token": "position:$TICKER" }],
-        "outputs": [{ "token": "portfolio-summary" }],
+        "inputs": [{ "token": "portfolio-positions", "as": "positions" }],
+        "outputs": [{ "token": "portfolio-summary", "from": "computed.portfolio.summary" }],
         "compute": [{
           "id": "portfolio-totals",
-          "expression": "{'marketValue':$count(portfolio.positions.*) > 0 ? $round($sum(portfolio.positions.*.value), 2) : 0,'costBasis':$count(portfolio.positions.*) > 0 ? $round($sum(portfolio.positions.*.costBasis), 2) : 0,'gainLoss':$count(portfolio.positions.*) > 0 ? $round($sum(portfolio.positions.*.gainLoss), 2) : 0}",
+          "expression": "{'marketValue':$count(inputs.positions.*) > 0 ? $round($sum(inputs.positions.*.value), 2) : 0,'costBasis':$count(inputs.positions.*) > 0 ? $round($sum(inputs.positions.*.costBasis), 2) : 0,'gainLoss':$count(inputs.positions.*) > 0 ? $round($sum(inputs.positions.*.gainLoss), 2) : 0}",
           "assign": "portfolio.summary",
           "dependencies": ["portfolio.positions"]
         }]
@@ -303,11 +387,11 @@
         "id": "portfolio-status",
         "kind": "portfolio-cell",
         "metadata": { "role": "classify-performance" },
-        "inputs": [{ "token": "portfolio-summary" }],
-        "outputs": [{ "token": "portfolio-status" }],
+        "inputs": [{ "token": "portfolio-summary", "as": "summary" }],
+        "outputs": [{ "token": "portfolio-status", "from": "computed.portfolio.status" }],
         "compute": [{
           "id": "classify-gain-loss",
-          "expression": "{'tone':portfolio.summary.gainLoss > 0 ? 'positive' : portfolio.summary.gainLoss < 0 ? 'negative' : 'neutral','message':portfolio.summary.gainLoss > 0 ? 'Portfolio is above cost basis.' : portfolio.summary.gainLoss < 0 ? 'Portfolio is below cost basis.' : 'Portfolio is at cost basis.'}",
+          "expression": "{'tone':inputs.summary.gainLoss > 0 ? 'positive' : inputs.summary.gainLoss < 0 ? 'negative' : 'neutral','message':inputs.summary.gainLoss > 0 ? 'Portfolio is above cost basis.' : inputs.summary.gainLoss < 0 ? 'Portfolio is below cost basis.' : 'Portfolio is at cost basis.'}",
           "assign": "portfolio.status",
           "dependencies": ["portfolio.summary"]
         }]

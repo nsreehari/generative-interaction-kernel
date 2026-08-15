@@ -1,6 +1,6 @@
 # ADR-0034 — Declarative reactions (`react`) and shared context (`context`), with the intent⇄product boundary kept native
 
-**Status:** Accepted — 2026-07-07
+**Status:** Accepted (amended) — 2026-07-07
 
 ## Context
 
@@ -141,3 +141,31 @@ same shared-store idea. One mechanism (context) is clearer than two.
   explicit line between what the grammar owns and what the host owns.
 - **The workbench becomes (mostly) declarative.** Its remaining native footprint is the two leaves and
   the external agent — a concrete measure of how much the grammar reclaimed.
+
+## Amendment (2026-08-13): reactions are removed
+
+ADR-0034 predates first-class Blueprint Cells, their declared input/output ports, consequence-graph
+activation, and source execution. Those mechanisms now own effectful responses to changed Cell data:
+a changed input activates the Cell, the Cell admits its source effect, settlement reactivates the
+graph, and outputs propagate through declared ports.
+
+The low-level Kernel `Reaction` and `RuntimeReaction` primitives are also removed. A shared store is
+storage, not a notification or behavior protocol: changes between independently running Kernels must
+travel through an in-process bus, SSE, WebSocket, durable queue, or another transport and re-enter the
+receiving runtime as an explicit event or token publication. `syncExternal()` may settle pure
+derivations and publish already-admitted state into a graph, but it does not discover changes and run
+behavior. The original allowance for reactions to perform cross-Cell writes is superseded: cross-Cell
+data flow uses declared output and input ports, while discrete external intent enters through events.
+
+For Blueprint Cells:
+
+- pure input-dependent work belongs in `compute`;
+- input-dependent I/O belongs in `sources`;
+- discrete user or external intent belongs in `behavior.events`;
+- projection-local observation remains inside the projection implementation; and
+- cross-Cell communication uses output/input ports and `runTransition` propagation.
+
+Executable Kernel programs follow the same boundary: pure standing relationships use derivations;
+effectful work starts from explicit events or graph activation. Program schemas, projection
+`edges.react`, reaction authoring helpers, reaction program patches, and reaction execution are
+removed.

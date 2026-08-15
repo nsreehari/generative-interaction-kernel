@@ -2,6 +2,7 @@ import type { Json } from "@gik/kernel";
 import type { DeterministicServiceHandler } from "../../../../service-kinds/deterministic-agent";
 
 export const DETERMINISTIC_PORTFOLIO_PROVIDER = "portfolio-intelligence-deterministic";
+export const MOCK_PORTFOLIO_INTELLIGENCE_PROVIDER = "portfolio-intelligence-mock";
 
 function record(value: Json | undefined, field: string): Record<string, Json> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -55,5 +56,32 @@ export const portfolioIntelligenceHandler: DeterministicServiceHandler = (operat
       status: "proposed",
     },
     provider: DETERMINISTIC_PORTFOLIO_PROVIDER,
+  } as Json;
+};
+
+export const mockPortfolioIntelligenceHandler: DeterministicServiceHandler = (operation, input) => {
+  if (operation !== "analyze") {
+    throw new Error(`Unsupported mock portfolio intelligence operation '${operation}'`);
+  }
+  const request = record(input, "request");
+  const positions = record(request.positions, "positions");
+  const summary = record(request.summary, "summary");
+  const largest = Object.values(positions).sort((left, right) => {
+    const leftValue = typeof left === "object" && left && !Array.isArray(left) ? Number(left.value ?? 0) : 0;
+    const rightValue = typeof right === "object" && right && !Array.isArray(right) ? Number(right.value ?? 0) : 0;
+    return rightValue - leftValue;
+  })[0] as Record<string, Json> | undefined;
+
+  return {
+    summary: "Mock intelligence response for the current portfolio snapshot.",
+    observations: [
+      `Largest position: ${String(largest?.ticker ?? "none")}`,
+      `Market value: ${Number(summary.marketValue ?? 0).toFixed(2)}`,
+      `Gain/loss: ${Number(summary.gainLoss ?? 0).toFixed(2)}`,
+    ],
+    risks: ["mock response; not model-generated", "current snapshot only"],
+    evidence: ["portfolio.positions", "portfolio.summary"],
+    asOf: "mock-current-snapshot",
+    provider: MOCK_PORTFOLIO_INTELLIGENCE_PROVIDER,
   } as Json;
 };

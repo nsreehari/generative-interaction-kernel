@@ -19,16 +19,14 @@ import type {
   Json,
   Machine,
   ProjectedVocabularyManifest,
-  Reaction,
   ProgramMessage,
   HeadlessProgramDefinition,
   RuntimeHandler,
-  RuntimeReaction,
   StandingDerivation,
 } from "./types";
 import { validateProgramMessage } from "./validate";
 
-// --- Action constructors (the six closed families) --------------------------------
+// --- Action constructors (the five closed families) -------------------------------
 
 /** Write a literal value to a namespace path. */
 export function assign(target: string, value: Json): Action {
@@ -40,43 +38,32 @@ export function assignFrom(target: string, expr: string): Action {
   return { do: "assign", target, args: { from: expr } };
 }
 
-/** Derive a value from an expression and store it at a path. */
-export function derive(target: string, expr: string): Action {
-  return { do: "derive", target, args: { expr } };
-}
-
 /** Re-emit an event (optionally with a payload) to drive further reduction. */
 export function emit(event: string, payload?: Record<string, Json>): Action {
-  return payload ? { do: "emit", event, args: { payload } } : { do: "emit", event };
+  return payload ? { do: "emit", event, data: payload } : { do: "emit", event };
 }
 
 /** Request an out-of-band tool call (an Orchestrator effect, not a store write). */
-export function invoke(tool: string, args?: Record<string, Json>): Action {
-  return { do: "invoke", args: { tool, ...(args ?? {}) } };
+export function invoke(tool: string, data?: Record<string, Json>): Action {
+  return { do: "invoke", control: { tool }, ...(data ? { data } : {}) };
 }
 
 /** Request a flow/destination handoff — routing (an Orchestrator effect). */
-export function route(to: Json, args?: Record<string, Json>): Action {
-  return { do: "route", args: { to, ...(args ?? {}) } };
+export function route(to: Json, data?: Record<string, Json>): Action {
+  return { do: "route", control: { to }, ...(data ? { data } : {}) };
 }
 
-/** Request a human-in-the-loop confirmation (an Orchestrator effect). */
-export function confirm(args?: Record<string, Json>): Action {
-  return { do: "confirm", args: args ?? {} };
+/** Request a governed decision, clarification, or data response from a host resolver. */
+export function request(
+  control: Extract<Action, { do: "request" }>["control"],
+  data: Record<string, Json>,
+): Action {
+  return { do: "request", control, data };
 }
 
 /** Attach a guard expression to any action (skips it unless the guard is truthy). */
 export function guarded(action: Action, guard: string): Action {
   return { ...action, guard };
-}
-
-/**
- * A declarative reaction: when `when`'s value changes, run `run` (a state-triggered effect — the
- * standing analogue of an `on` handler). Pure standing derivations stay `computed`; use a reaction for
- * effectful bodies (`invoke`) or cross-cell writes.
- */
-export function reaction(when: string, run: Action[], options: { runInitially?: boolean } = {}): Reaction {
-  return { when, run, ...options };
 }
 
 // --- Node + program constructors --------------------------------------------------
@@ -93,8 +80,6 @@ export interface NodeOptions {
   write?: Record<string, string>;
   /** event name -> ordered actions (behavior edge). */
   on?: Record<string, Action[]>;
-  /** standing reactions: state-triggered effects that run when their `when` value changes. */
-  react?: Reaction[];
   children?: DocNode[];
 }
 
@@ -110,7 +95,6 @@ export function node(capability: string, id: string, opts: NodeOptions = {}): Do
     );
   }
   if (opts.on) edges.on = opts.on;
-  if (opts.react) edges.react = opts.react;
   if (opts.children) edges.children = opts.children;
 
   const result: DocNode = { capability, id };
@@ -122,7 +106,6 @@ export function node(capability: string, id: string, opts: NodeOptions = {}): Do
 export interface ProgramOptions {
   vocabulary?: string;
   handlers?: RuntimeHandler[];
-  reactions?: RuntimeReaction[];
   machines?: Machine[];
   derivations?: StandingDerivation[];
 }
@@ -132,7 +115,6 @@ export function projectedProgram(root: DocNode, opts: ProgramOptions = {}): Proj
   const payload: ProjectedProgramDefinition = { root };
   if (opts.vocabulary !== undefined) payload.vocabulary = opts.vocabulary;
   if (opts.handlers) payload.handlers = opts.handlers;
-  if (opts.reactions) payload.reactions = opts.reactions;
   if (opts.machines) payload.machines = opts.machines;
   if (opts.derivations) payload.derivations = opts.derivations;
   return payload;
@@ -145,7 +127,6 @@ export function program(opts: HeadlessProgramOptions): HeadlessProgramDefinition
   const payload: HeadlessProgramDefinition = {};
   if (opts.vocabulary !== undefined) payload.vocabulary = opts.vocabulary;
   if (opts.handlers) payload.handlers = opts.handlers;
-  if (opts.reactions) payload.reactions = opts.reactions;
   if (opts.machines) payload.machines = opts.machines;
   if (opts.derivations) payload.derivations = opts.derivations;
   return payload;
@@ -232,9 +213,9 @@ export function lintVocabularyReferences(
         });
       }
       for (const a of actions) {
-        if (a.target) checkNs(a.target, n.id, `action '${a.do}' target`);
+        if (a.do === "assign") checkNs(a.target, n.id, "action 'assign' target");
         if (declaredEffects && a.do === "invoke") {
-          const tool = typeof a.args?.tool === "string" ? a.args.tool : undefined;
+          const tool = a.control.tool;
           if (tool && !effectSet.has(tool)) {
             warnings.push({
               code: "undeclared-effect",
@@ -253,9 +234,9 @@ export function lintVocabularyReferences(
 
   const checkActions = (owner: string, actions: Action[]): void => {
     for (const action of actions) {
-      if (action.target) checkNs(action.target, owner, `action '${action.do}' target`);
+      if (action.do === "assign") checkNs(action.target, owner, "action 'assign' target");
       if (declaredEffects && action.do === "invoke") {
-        const tool = typeof action.args?.tool === "string" ? action.args.tool : undefined;
+        const tool = action.control.tool;
         if (tool && !effectSet.has(tool)) {
           warnings.push({
             code: "undeclared-effect",
@@ -269,7 +250,6 @@ export function lintVocabularyReferences(
   for (const handler of doc.handlers ?? []) {
     for (const actions of Object.values(handler.on)) checkActions(handler.id, actions);
   }
-  for (const reaction of doc.reactions ?? []) checkActions(reaction.id, reaction.run);
 
   for (const m of doc.machines ?? []) checkNs(m.context, m.id, `machine '${m.id}' context`);
 

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { analyzeCellComposition, type BlueprintArtifact, type CellDefinition } from "@gik/blueprint";
-import { semanticComponentDefinitions } from "@gik/components";
 import { InMemoryStateModel } from "@gik/kernel";
 
 import { openSampleBlueprint, resolveSampleBlueprintSource } from "../catalog/blueprint-catalog";
@@ -10,6 +9,56 @@ const blueprint = resolveSampleBlueprintSource("incident-report-explorer-2") as 
 const cells = Object.values(blueprint.payload.cells ?? {}) as CellDefinition[];
 
 describe("incident-report-explorer-2 Blueprint", () => {
+  it("uses a slotted layout with input and output ports and no analyzer-owned cache", () => {
+    expect(Object.keys(blueprint.payload.cells ?? {})).toEqual(["analysis-layout", "report-presentation", "analysis-as-on", "analysis-runner"]);
+    expect(blueprint.payload.cells?.["analysis-as-on"]?.inputs).toEqual([
+      { token: "analysis_as_on", as: "analysis_as_on", required: false },
+    ]);
+    expect(blueprint.payload.cells?.["report-presentation"]?.inputs).toEqual([
+      { token: "cached_analysis_report", as: "cached_analysis_report", required: false },
+    ]);
+    expect(blueprint.payload.cells?.["analysis-runner"]).toMatchObject({
+      inputs: [
+        { token: "incident_report", as: "incident_report", required: true },
+        { token: "cached_analysis_report", as: "cached_analysis_report", required: false },
+      ],
+      compute: [{ expression: "sources.`analysis-runner.source`", assign: "analysisReport" }],
+      outputs: [{ token: "analysis_report", from: "computed.analysisReport" }],
+      sources: [{
+        service: "incident-semantic-analysis",
+        operation: "analyzeReport",
+        input: { expr: "{'incident_report':inputs.incident_report}" },
+        output: { expr: "response" },
+      }],
+    });
+    expect(blueprint.payload.services).not.toHaveProperty("incident-analysis-cache");
+    const representations = blueprint.payload.recipes[0].representations;
+    expect(representations.map(({ views }) => views["report-presentation"]?.capability))
+      .toEqual(Array(3).fill("semantic:narrative"));
+    expect(representations.map(({ views }) => views["report-presentation"]?.bindings?.sections?.expression))
+      .toEqual(Array(3).fill(expect.stringContaining("cached_analysis_report.identity.title")));
+    expect(representations.map(({ presentation }) => presentation)).toEqual(Array(3).fill({
+      roots: ["analysis-layout"],
+      placements: [
+        { cell: "analysis-runner", parent: "analysis-layout", slot: "children", order: 0 },
+        { cell: "analysis-as-on", parent: "analysis-layout", slot: "children", order: 1 },
+        { cell: "report-presentation", parent: "analysis-layout", slot: "children", order: 2 },
+      ],
+    }));
+    const settlement = blueprint.payload.services?.["incident-semantic-analysis"]?.operations.analyzeReport
+      .settlement?.transform;
+    expect(settlement).toMatchObject({
+      kind: "jsonata",
+      expr: "{'ops':[]}",
+    });
+    expect(JSON.stringify(blueprint)).not.toContain("cached_analysis_envelope");
+    expect(JSON.stringify(settlement)).not.toContain("incident-cache");
+    expect(analyzeCellComposition(cells)).toMatchObject({
+      externalInputs: ["analysis_as_on", "cached_analysis_report", "incident_report"],
+      diagnostics: [],
+    });
+  });
+
   it("declares narrow UBX authority and admits analysis proposals without mutating state", async () => {
     expect(blueprint.payload.agentLifecycle?.profiles?.use).toMatchObject({
       id: "use-blueprint",
@@ -80,7 +129,10 @@ describe("incident-report-explorer-2 Blueprint", () => {
   it("keeps agent output semantic while the authored recipe owns presentation", () => {
     expect(blueprint.payload.tiers.map(({ id }) => id)).toEqual(["incident-semantic", "runtime-document"]);
     expect(blueprint.payload.recipes).toHaveLength(1);
-    expect(analyzeCellComposition(cells)).toMatchObject({ externalInputs: [], diagnostics: [] });
+    expect(analyzeCellComposition(cells)).toMatchObject({
+      externalInputs: ["analysis_as_on", "cached_analysis_report", "incident_report"],
+      diagnostics: [],
+    });
 
     const operation = (blueprint.payload.services?.["incident-semantic-analysis"] as {
       operations: { analyzeReport: { response: { validators: Array<{ schema?: { properties?: Record<string, unknown> } }> } } };
@@ -94,48 +146,22 @@ describe("incident-report-explorer-2 Blueprint", () => {
     expect(properties).not.toHaveProperty("components");
   });
 
-  it("keeps analysis pending until success or failure settlement", () => {
-    expect(blueprint.payload.runtime?.state?.incident2).toMatchObject({ analysisPending: false });
+  it("automatically analyzes through source admission and renders platform run state", () => {
+    expect(blueprint.payload.runtime?.state?.incident2).not.toHaveProperty("analysisRequested");
+    expect(blueprint.payload.runtime?.state?.incident2).not.toHaveProperty("analysisReport");
     expect(blueprint.payload.recipes[0].representations
       .filter(({ id }) => id === "operational" || id === "brief")
-      .map(({ views }) => views["incident-semantic-analyzer"]?.bindings)).toEqual([
-      expect.objectContaining({ pending: { from: "incident2.analysisPending" } }),
-      expect.objectContaining({ pending: { from: "incident2.analysisPending" } }),
+      .map(({ views }) => views["analysis-runner"])).toEqual([
+      expect.objectContaining({ capability: "fluent:spinner", visibility: "systemInputs.numSourcesRunning != 0" }),
+      expect.objectContaining({ capability: "fluent:spinner", visibility: "systemInputs.numSourcesRunning != 0" }),
     ]);
-    expect(blueprint.payload.cells?.["incident-semantic-analyzer"]?.behavior?.events?.analyze).toEqual([
-      { do: "assign", target: "incident2.analysisPending", args: { value: true } },
-      { do: "invoke", args: { tool: "prepareAnalysis" } },
-      { do: "invoke", args: { tool: "analyzeReport" } },
-    ]);
+    expect(blueprint.payload.cells?.["analysis-runner"]?.behavior).toBeUndefined();
+    expect(blueprint.payload.cells?.["analysis-runner"]?.sources?.[0].when)
+      .toContain("sources.`analysis-runner.source`");
 
     const operation = blueprint.payload.services?.["incident-semantic-analysis"]?.operations.analyzeReport;
-    expect(operation?.settlement?.transform).toMatchObject({
-      kind: "jsonata",
-      expr: expect.stringContaining("'path':'incident2.analysisPending','value':false"),
-    });
-    expect(operation?.failureSettlement?.transform).toMatchObject({
-      kind: "jsonata",
-      expr: expect.stringContaining("'path':'incident2.analysisPending','value':false"),
-    });
-  });
-
-  it("authors valid specs for the imported semantic component provider", () => {
-    const operational = blueprint.payload.recipes[0].representations.find(({ id }) => id === "operational");
-    const views = operational?.views ?? {};
-    const cases = [
-      ["incident-verdict", "decision"],
-      ["incident-blast-radius", "entity-set"],
-      ["incident-timeline", "event-series"],
-      ["incident-techniques", "process"],
-      ["incident-response", "work-set"],
-    ] as const;
-
-    for (const [viewId, definitionId] of cases) {
-      const view = views[viewId];
-      const dataProp = semanticComponentDefinitions[definitionId].dataProp;
-      const props = { ...view.props, [dataProp]: dataProp === "decision" ? {} : [] };
-      expect(semanticComponentDefinitions[definitionId].validate(props).ok, viewId).toBe(true);
-    }
+    expect(JSON.stringify(operation?.settlement?.transform)).not.toContain("analysisPending");
+    expect(JSON.stringify(operation?.failureSettlement?.transform)).not.toContain("analysisPending");
   });
 
 });

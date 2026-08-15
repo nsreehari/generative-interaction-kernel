@@ -14,9 +14,18 @@ import {
   SafeExpressionError,
   reduce,
   resolveNode,
+  validateJsonataExpression,
   type CapabilityRegistry,
   type ProjectedProgramDefinition,
 } from "../src/index";
+
+test("expression validation reports useful syntax errors", () => {
+  const result = validateJsonataExpression("cellRunState[");
+
+  assert.equal(result.ok, false);
+  assert.notEqual(result.error, "[object Object]");
+  assert.match(result.error ?? "", /Expected|syntax|position/i);
+});
 
 const UNSAFE: Array<[string, string]> = [
   ["$eval", '$eval("1+1")'],
@@ -89,16 +98,16 @@ test("reduce rejects an unsafe action guard but still allows a lambda in a deriv
     (err: unknown) => err instanceof SafeExpressionError
   );
 
-  const deriveDoc = {
+  const assignDoc = {
     root: {
       id: "root",
       capability: "x",
-      edges: { on: { tap: [{ do: "derive", target: "ns.b", args: { expr: "function($x){ $x * 2 }(21)" } }] } },
+      edges: { on: { tap: [{ do: "assign", target: "ns.b", args: { from: "function($x){ $x * 2 }(21)" } }] } },
     },
   } as unknown as ProjectedProgramDefinition;
 
   const { ops } = await reduce(
-    deriveDoc,
+    assignDoc,
     store,
     event,
     new JsonataExpressionProvider(),

@@ -3,6 +3,7 @@ const DEFAULT_PRESENTATION_CONTEXT = "full-substrate";
 export interface HostQuery {
   targetId: string | null;
   durableEnabled: boolean;
+  externalContext?: Record<string, string>;
 }
 
 function isNonZeroEnabled(params: URLSearchParams, name: string): boolean {
@@ -20,9 +21,16 @@ function cachedBlueprintFromPath(pathname: string): string | null {
 
 export function readHostQuery(search: string, pathname = ""): HostQuery {
   const params = new URLSearchParams(search);
+  const intelligenceModel = params.get("intelligence-model");
+  const view = params.get("view");
+  const externalContext = {
+    ...(intelligenceModel === null ? {} : { "intelligence-model": intelligenceModel }),
+    ...(view === null ? {} : { view }),
+  };
   return {
     targetId: params.get("b") ?? params.get("bundle") ?? cachedBlueprintFromPath(pathname),
     durableEnabled: isNonZeroEnabled(params, "durable"),
+    ...(Object.keys(externalContext).length === 0 ? {} : { externalContext }),
   };
 }
 

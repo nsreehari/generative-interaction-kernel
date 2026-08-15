@@ -1,18 +1,119 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { createDurableRuntime } from "@gik/durable-runtime";
+import { projectCellRunState, type BlueprintRunState } from "@gik/kernel";
 
 import { createBlueprint } from "../src/blueprint";
 import {
   createBlueprintDurableEffectSettlementEvent,
   createBlueprintDurableTransitionAdapter,
 } from "../src/durable-transition";
-import { createBlueprintWorker } from "../src/worker";
+import {
+  createBlueprintWorker,
+  executeQueuedBlueprintEffect,
+  executeQueuedCellSourceEffect,
+  prepareQueuedCellSourceEffect,
+  settleQueuedCellSourceEffect,
+} from "../src/worker";
 import { createInMemoryBlueprintExecution } from "../src/worker/in-memory";
 
 function ref(value: string): string {
   return `b64:${Buffer.from(JSON.stringify({ kind: "memory", value })).toString("base64url")}`;
 }
+
+test("queued Cell sources transform requests and retain only narrowed responses", async () => {
+  const queued = {
+    kind: "invoke" as const,
+    node: "market-prices-source-0",
+    control: {
+      tool: "refreshPrices",
+      sourceId: "market-prices.source",
+      sourceCellId: "market-prices",
+      sourceInputs: {
+        inputs: { ticker: "MSFT" },
+        sources: {},
+        externalContext: { market: "US" },
+        symbol: "MSFT",
+      },
+      sourceInputTransform: { kind: "jsonata" as const, expr: "{'symbol':symbol,'market':externalContext.market}" },
+      sourceOutputTransform: { kind: "jsonata" as const, expr: "response.chart.result[0].meta.regularMarketPrice" },
+    },
+    data: {},
+  };
+
+  const executing = await prepareQueuedCellSourceEffect(queued);
+  assert.deepEqual(executing.data, { symbol: "MSFT", market: "US" });
+
+  const settled = await settleQueuedCellSourceEffect(queued, {
+    sourceOutput: {
+      chart: {
+        result: [{
+          meta: { regularMarketPrice: 421.5, currency: "USD" },
+          indicators: { quote: [{ close: [420, 421.5] }] },
+        }],
+      },
+    },
+  }, {
+    blueprintRunState: {
+      cells: {
+        "market-prices": { sources: [] },
+      },
+    },
+  });
+
+  assert.ok(settled);
+  assert.equal(settled.sourceOutput, undefined);
+  assert.deepEqual(settled.ops, [{
+    op: "set",
+    path: "blueprintRunState.cells",
+    value: {
+      "market-prices": {
+        sources: [],
+        sourceValues: { "market-prices.source": 421.5 },
+      },
+    },
+  }]);
+  assert.doesNotMatch(JSON.stringify(settled), /indicators|currency/);
+});
+
+test("queued Cell source execution owns prepare, invoke, and settle as one pipeline", async () => {
+  const queued = {
+    kind: "invoke" as const,
+    node: "analysis-evaluate",
+    control: {
+      tool: "analyze",
+      sourceId: "analysis.source",
+      sourceCellId: "analysis",
+      sourceInputs: { inputs: { report: "# Incident" } },
+      sourceInputTransform: { kind: "jsonata" as const, expr: "{'report':inputs.report}" },
+      sourceOutputTransform: { kind: "jsonata" as const, expr: "response.analysis" },
+    },
+    data: {},
+  };
+  let executedArgs: unknown;
+
+  const result = await executeQueuedCellSourceEffect(queued, {
+    blueprintRunState: { cells: { analysis: { sources: [] } } },
+  }, (executingEffect) => {
+    executedArgs = executingEffect.data;
+    return { sourceOutput: { analysis: { verdict: "confirmed" }, raw: "discard" } };
+  });
+
+  assert.deepEqual(executedArgs, { report: "# Incident" });
+  assert.ok(result);
+  assert.equal(result.sourceOutput, undefined);
+  assert.deepEqual(result.ops?.[0], {
+    op: "set",
+    path: "blueprintRunState.cells",
+    value: {
+      analysis: {
+        sources: [],
+        sourceValues: { "analysis.source": { verdict: "confirmed" } },
+      },
+    },
+  });
+  assert.doesNotMatch(JSON.stringify(result), /discard/);
+});
 
 test("Blueprint worker processes one engine and queue cycle per notification", async () => {
   const calls: string[] = [];
@@ -136,7 +237,7 @@ test("Blueprint worker schedules one follow-up cycle for a retryable effect", as
   worker.stop();
 });
 
-test("in-memory Blueprint execution runs headlessly through the same worker contract", async () => {
+test("ordinary invoke execution is acknowledged without applying returned state", async () => {
   const blueprint = createBlueprint({
     id: "headless-counter",
     kind: "runtime-blueprint",
@@ -148,7 +249,8 @@ test("in-memory Blueprint execution runs headlessly through the same worker cont
       root: {
         id: "root",
         view: { capability: "screen" },
-        behavior: { events: { save: [{ do: "invoke", args: { tool: "saveValue" } }] } },
+        events: { save: { payloadSchema: { type: "object" } } },
+        behavior: { on: { save: [{ do: "invoke", control: { tool: "saveValue" } }] } },
       },
     },
     projections: { presentation: { roots: ["root"] } },
@@ -164,23 +266,35 @@ test("in-memory Blueprint execution runs headlessly through the same worker cont
     ...execution.runtime,
     transitionAdapter: createBlueprintDurableTransitionAdapter({ blueprint }),
   });
-  const worker = execution.createWorker({
-    executeEffect: () => ({ ops: [{ op: "set", path: "counter.value", value: 7 }] }),
+  const processingRuntime = createDurableRuntime({
+    ...execution.runtime,
+    transitionAdapter: createBlueprintDurableTransitionAdapter({ blueprint }),
+    effectHandlers: {
+      "*": (effect, context) => executeQueuedBlueprintEffect(
+        effect as Parameters<typeof executeQueuedBlueprintEffect>[0],
+        { counter: { value: 1 } },
+        context.messageId,
+        () => ({ ops: [{ op: "set", path: "counter.value", value: 7 }] }),
+      ),
+    },
+    effectFailureHandler: () => [],
   });
 
   await runtime.initializeRuntime(refs);
   await runtime.appendJournal({ ...refs, entry: { node: "root", name: "save" } });
-  await worker.start();
-  let snapshot = await runtime.readSnapshot<Record<string, unknown>, object>(refs);
-  for (let attempt = 0; attempt < 100 && (snapshot.state as { counter: { value: number } }).counter.value !== 7; attempt += 1) {
-    await Promise.resolve();
-    snapshot = await runtime.readSnapshot<Record<string, unknown>, object>(refs);
-  }
-  assert.deepEqual(snapshot.state, { counter: { value: 7 } });
-  worker.stop();
+  await processingRuntime.processEngineWake(refs);
+  await processingRuntime.processQueueLaneItem(refs);
+  await processingRuntime.processEngineWake(refs);
+  const snapshot = await runtime.readSnapshot<Record<string, unknown>, object>(refs);
+  assert.deepEqual(snapshot.state, {
+    counter: { value: 1 },
+    blueprintRunState: {
+      cells: { root: { sources: [] } },
+    },
+  });
 });
 
-test("void effects append a successful settlement receipt", async () => {
+test("void invokes are acknowledged without appending settlement receipts", async () => {
   const blueprint = createBlueprint({
     id: "void-effect",
     kind: "runtime-blueprint",
@@ -192,7 +306,8 @@ test("void effects append a successful settlement receipt", async () => {
       root: {
         id: "root",
         view: { capability: "screen" },
-        behavior: { events: { save: [{ do: "invoke", args: { tool: "saveValue" } }] } },
+        events: { save: { payloadSchema: { type: "object" } } },
+        behavior: { on: { save: [{ do: "invoke", control: { tool: "saveValue" } }] } },
       },
     },
     projections: { presentation: { roots: ["root"] } },
@@ -208,18 +323,27 @@ test("void effects append a successful settlement receipt", async () => {
     ...execution.runtime,
     transitionAdapter: createBlueprintDurableTransitionAdapter({ blueprint }),
   });
-  const worker = execution.createWorker({ executeEffect: () => undefined });
+  const processingRuntime = createDurableRuntime({
+    ...execution.runtime,
+    transitionAdapter: createBlueprintDurableTransitionAdapter({ blueprint }),
+    effectHandlers: {
+      "*": (effect, context) => executeQueuedBlueprintEffect(
+        effect as Parameters<typeof executeQueuedBlueprintEffect>[0],
+        {},
+        context.messageId,
+        () => undefined,
+      ),
+    },
+    effectFailureHandler: () => [],
+  });
 
   await runtime.initializeRuntime(refs);
   await runtime.appendJournal({ ...refs, entry: { node: "root", name: "save" } });
-  await worker.start();
-  let snapshot = await runtime.readSnapshot<Record<string, unknown>, { settledEffectMessageIds: string[] }>(refs);
-  for (let attempt = 0; attempt < 100 && snapshot.spec.settledEffectMessageIds.length === 0; attempt += 1) {
-    await Promise.resolve();
-    snapshot = await runtime.readSnapshot<Record<string, unknown>, { settledEffectMessageIds: string[] }>(refs);
-  }
-  assert.equal(snapshot.spec.settledEffectMessageIds.length, 1);
-  worker.stop();
+  await processingRuntime.processEngineWake(refs);
+  await processingRuntime.processQueueLaneItem(refs);
+  await processingRuntime.processEngineWake(refs);
+  const snapshot = await runtime.readSnapshot<Record<string, unknown>, { settledEffectMessageIds: string[] }>(refs);
+  assert.equal(snapshot.spec.settledEffectMessageIds.length, 0);
 });
 
 test("duplicate settlement receipts do not replay their follow-up events", async () => {
@@ -234,17 +358,48 @@ test("duplicate settlement receipts do not replay their follow-up events", async
       root: {
         id: "root",
         view: { capability: "screen" },
-        behavior: { events: { save: [{ do: "invoke", args: { tool: "saveValue" } }] } },
+        events: {
+          save: { payloadSchema: { type: "object" } },
+          resolved: { payloadSchema: { type: "object" } },
+        },
+        behavior: {
+          on: {
+            save: [{
+              do: "request",
+              control: {
+                kind: "decision",
+                responseSchema: {
+                  type: "object",
+                  required: ["approved"],
+                  properties: { approved: { type: "boolean" } },
+                },
+              },
+              data: { prompt: "Save?" },
+            }],
+            resolved: [{ do: "invoke", control: { tool: "saveValue" } }],
+          },
+        },
       },
     },
     projections: { presentation: { roots: ["root"] } },
   });
   const adapter = createBlueprintDurableTransitionAdapter({ blueprint });
-  const receipt = createBlueprintDurableEffectSettlementEvent("message-1", {
+  const started = await adapter.transition({
+    state: adapter.initialState(),
+    spec: adapter.initialSpec(),
     events: [{ node: "root", name: "save" }],
   });
+  const requestEffect = started.effects[0];
+  assert.ok(requestEffect?.kind === "request" && requestEffect.effectId);
+  const receipt = createBlueprintDurableEffectSettlementEvent("message-1", {
+    settlement: {
+      effectId: requestEffect.effectId,
+      outcome: "resolved",
+      data: { approved: true },
+    },
+  }, requestEffect);
   const first = await adapter.transition({
-    state: adapter.initialState(),
+    state: started.state,
     spec: adapter.initialSpec(),
     events: [receipt, receipt],
   });
@@ -260,4 +415,98 @@ test("duplicate settlement receipts do not replay their follow-up events", async
 
   assert.equal(first.effects.length, 1);
   assert.equal(replay.effects.length, 0);
+});
+
+test("durable source state promotes only the latest pending request and rejects stale callbacks", async () => {
+  const blueprint = createBlueprint({
+    id: "durable-source-queue",
+    kind: "runtime-blueprint",
+    version: "1",
+    tiers: [{ id: "runtime", kind: "runtime-program" }],
+    recipes: [],
+    runtime: {
+      namespaces: ["work"],
+      state: { work: { request: null, result: null } },
+      capabilities: { screen: { propsSchema: { type: "object" } } },
+    },
+    cells: {
+      controls: {
+        id: "controls",
+        view: { capability: "screen" },
+        inputs: [{ token: "work.request", as: "request" }],
+        compute: [{ id: "request", expression: "inputs.request", assign: "request" }],
+        outputs: [{ token: "request", from: "request" }],
+        events: { request: { payloadSchema: { type: "object" } } },
+        behavior: {
+          on: {
+            request: [{ do: "assign", target: "work.request", args: { from: "$event.request" } }],
+          },
+        },
+      },
+      worker: {
+        id: "worker",
+        inputs: [{ token: "request", required: true }],
+        sources: [{ id: "worker.source", service: "work", operation: "run", contract: "work/v1" }],
+      },
+    },
+    projections: { presentation: { roots: ["controls"] } },
+  });
+  const adapter = createBlueprintDurableTransitionAdapter({ blueprint });
+  const spec = adapter.initialSpec();
+
+  const started = await adapter.transition({
+    state: adapter.initialState(),
+    spec,
+    events: [{ node: "controls", name: "request", payload: { request: { id: "A" } } }],
+  });
+  assert.equal(started.effects.length, 1);
+  const activeEffect = started.effects[0];
+  assert.ok(activeEffect.kind === "invoke" && activeEffect.control.sourceRequestToken);
+  const startedRunState = started.state.blueprintRunState as unknown as BlueprintRunState;
+  assert.equal(projectCellRunState(startedRunState.cells.worker).numSourcesRunning, 1);
+  assert.equal(Object.hasOwn(startedRunState.cells.worker, "numSourcesRunning"), false);
+
+  const queuedB = await adapter.transition({
+    state: started.state,
+    spec,
+    events: [{ node: "controls", name: "request", payload: { request: { id: "B" } } }],
+  });
+  const queuedC = await adapter.transition({
+    state: queuedB.state,
+    spec,
+    events: [{ node: "controls", name: "request", payload: { request: { id: "C" } } }],
+  });
+  assert.equal(queuedB.effects.length, 0);
+  assert.equal(queuedC.effects.length, 0);
+
+  const promoted = await adapter.transition({
+    state: queuedC.state,
+    spec,
+    events: [createBlueprintDurableEffectSettlementEvent(
+      "message-A",
+      { ops: [{ op: "set", path: "work.result", value: "A" }] },
+      activeEffect,
+    )],
+  });
+  assert.equal(promoted.effects.length, 1);
+  assert.notEqual(
+    promoted.effects[0].kind === "invoke" && promoted.effects[0].control.sourceRequestToken,
+    activeEffect.kind === "invoke" && activeEffect.control.sourceRequestToken,
+  );
+  assert.equal((promoted.state.work as { result: string }).result, "A");
+  const promotedRunState = promoted.state.blueprintRunState as unknown as BlueprintRunState;
+  assert.equal(projectCellRunState(promotedRunState.cells.worker).numSourcesRunning, 1);
+  assert.equal(Object.hasOwn(promotedRunState.cells.worker, "numSourcesRunning"), false);
+
+  const stale = await adapter.transition({
+    state: promoted.state,
+    spec,
+    events: [createBlueprintDurableEffectSettlementEvent(
+      "message-A-stale",
+      { ops: [{ op: "set", path: "work.result", value: "stale" }] },
+      activeEffect,
+    )],
+  });
+  assert.equal(stale.effects.length, 0);
+  assert.equal((stale.state.work as { result: string }).result, "A");
 });

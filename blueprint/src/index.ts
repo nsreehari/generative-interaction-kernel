@@ -14,4 +14,4 @@ export * from "./structure-patch";
 export * from "./run-transition";
 export * from "./run-lowering-blueprint";
 export * from "./durable-transition";
-export { composeCellProgram } from "./cell-projection";
+export { composeCellProgram, HOSTED_BLUEPRINT_OUTPUT_EVENT } from "./cell-projection";

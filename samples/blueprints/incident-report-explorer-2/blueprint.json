@@ -6,7 +6,34 @@
     "kind": "incident-semantic-blueprint",
     "version": "1.0.0",
     "structureMode": "fixed",
-    "interface": { "inputs": { "incident_report": { "required": true, "schema": { "type": "string" }, "description": "Incident report Markdown supplied by the parent Blueprint." } } },
+    "interface": {
+      "inputs": {
+        "incident_report": {
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Incident report Markdown supplied by the parent Blueprint."
+        },
+        "cached_analysis_report": {
+          "required": false,
+          "description": "Cached analyzer report supplied by the parent Blueprint."
+        },
+        "analysis_as_on": {
+          "required": false,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Timestamp supplied by the parent cache boundary."
+        }
+      },
+      "outputs": {
+        "analysis_report": {
+          "from": "analysis_report",
+          "description": "Fresh analyzer report returned to the parent Blueprint."
+        }
+      }
+    },
     "agentLifecycle": {
       "profiles": {
         "use": {
@@ -46,27 +73,91 @@
             "id": "hosted-analysis",
             "when": "externalContext.hostedAnalysis = true",
             "views": {
-              "foundry-access-gate": { "capability": "host:credential-access", "props": { "dependency": { "kind": "credential", "ref": "foundry-agent/access-key" } }, "bindings": { "access": { "expression": "($s := incident2.foundryAccessStatus; {'title':'Connect to Foundry','requiredMessage':'Enter your access key to continue.','checkingMessage':'Checking Foundry access...','errorMessage':\"Couldn't verify Foundry access.\",'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': incident2.foundryAccessError})" } } },
-              "incident-semantic-analyzer": { "capability": "incident2:report", "props": { "title": "Operational assessment" }, "bindings": { "value": { "from": "incident2.model" }, "content": { "expression": "externalContext.incident_report" }, "analyzedContent": { "from": "incident2.analyzedContent" }, "error": { "from": "incident2.error" }, "pending": { "from": "incident2.analysisPending" } } },
-              "incident-verdict": { "capability": "semantic:decision", "props": { "variant": "summary", "spec": { "eyebrow": "Incident determination", "fields": { "title": "identity.title", "summary": "summary", "outcome": "verdict.classification", "rationale": "verdict.rationale", "confidence": "verdict.confidence", "impact": "verdict.impact", "tone": "verdict.confidence" }, "labels": { "rationale": "Rationale", "confidence": "Confidence", "impact": "Impact" }, "toneMap": { "high": "affirmative", "medium": "cautionary", "low": "uncertain" } } }, "bindings": { "decision": { "from": "incident2.model" } } },
-              "incident-attack-path": { "capability": "incident2:attack-path", "bindings": { "value": { "from": "incident2.model" } } },
-              "incident-blast-radius": { "capability": "semantic:entity-set", "props": { "variant": "clusters", "spec": { "title": "Blast radius", "description": "Entities grouped by observed condition", "fields": { "id": "id", "label": "label", "description": "description", "type": "type", "status": "status", "group": "status" }, "groups": [{ "value": "compromised", "label": "Compromised" }, { "value": "affected", "label": "Affected" }, { "value": "targeted", "label": "Targeted" }, { "value": "observed", "label": "Observed" }, { "value": "unknown", "label": "Unknown" }], "toneMap": { "compromised": "affected", "affected": "affected", "targeted": "at-risk", "observed": "observed", "unknown": "unknown" } } }, "bindings": { "items": { "from": "incident2.model.entities" } } },
-              "incident-timeline": { "capability": "semantic:event-series", "props": { "variant": "chronology", "spec": { "title": "Incident timeline", "description": "Normalized events", "fields": { "id": "id", "title": "title", "timestamp": "time", "detail": "detail", "status": "confidence" }, "sort": { "direction": "ascending" }, "toneMap": { "high": "current", "medium": "upcoming", "low": "unknown" } } }, "bindings": { "items": { "from": "incident2.model.events" } } },
-              "incident-techniques": { "capability": "semantic:process", "props": { "variant": "flow", "spec": { "title": "ATT&CK progression", "description": "Techniques in reported order", "fields": { "id": "id", "title": "technique", "detail": "description", "reference": "techniqueId", "status": "confidence" }, "toneMap": { "high": "complete", "medium": "current", "low": "unknown" } } }, "bindings": { "items": { "from": "incident2.model.techniques" } } },
-              "incident-response": { "capability": "semantic:work-set", "props": { "variant": "board", "spec": { "title": "Response plan", "fields": { "id": "id", "title": "title", "detail": "detail", "group": "priority" }, "groups": [{ "value": "immediate", "label": "Immediate" }, { "value": "next", "label": "Next" }, { "value": "follow-up", "label": "Follow-up" }] } }, "bindings": { "items": { "from": "incident2.model.actions" } } },
-              "incident-notes": { "capability": "incident2:representation-notes", "bindings": { "value": { "from": "incident2.model" } } }
+              "analysis-layout": { "capability": "primitive:container", "props": { "variant": "column", "gap": "l", "fullWidth": true, "ariaLabel": "Incident analysis" } },
+              "report-presentation": {
+                "capability": "semantic:narrative",
+                "props": {
+                  "variant": "article",
+                  "spec": {
+                    "title": "Incident analysis",
+                    "emptyText": "No analysis available.",
+                    "density": "comfortable",
+                    "fields": {
+                      "id": "id",
+                      "heading": "heading",
+                      "body": "body",
+                      "order": "order",
+                      "role": "role",
+                      "tone": "tone"
+                    },
+                    "toneMap": {
+                      "high": "critical",
+                      "medium": "caution",
+                      "low": "supporting",
+                      "primary": "primary",
+                      "supporting": "supporting"
+                    }
+                  }
+                },
+                "bindings": {
+                  "sections": {
+                    "expression": "cached_analysis_report ? ([{'id':'summary','heading':cached_analysis_report.identity.title,'body':cached_analysis_report.summary,'order':0,'role':cached_analysis_report.verdict.classification,'tone':cached_analysis_report.verdict.confidence},{'id':'verdict','heading':'Verdict','body':cached_analysis_report.verdict.rationale & '\n\nImpact: ' & cached_analysis_report.verdict.impact,'order':1,'role':cached_analysis_report.verdict.determination,'tone':cached_analysis_report.verdict.confidence},{'id':'phases','heading':'Incident phases','body':$join(cached_analysis_report.phases.($string(order) & '. ' & name & ' — ' & summary),'\n'),'order':2,'role':'Sequence','tone':'primary'},{'id':'events','heading':'Timeline','body':$join(cached_analysis_report.events.(time & ' — ' & title & '\n' & detail),'\n\n'),'order':3,'role':'Observed events','tone':'primary'},{'id':'entities','heading':'Entities','body':$join(cached_analysis_report.entities.(label & ' — ' & status & (role ? ' (' & role & ')' : '') & '\n' & description),'\n\n'),'order':4,'role':'Scope','tone':'supporting'},{'id':'alerts','heading':'Alerts and evidence','body':$join(cached_analysis_report.alerts.(title & ' — ' & verdict & '\n' & summary),'\n\n') & ($count(cached_analysis_report.evidence) > 0 ? '\n\nEvidence\n' & $join(cached_analysis_report.evidence.(timestamp & ' — ' & sourceType & ': ' & summary),'\n') : ''),'order':5,'role':'Evidence','tone':'supporting'},{'id':'techniques','heading':'Techniques and indicators','body':$join(cached_analysis_report.techniques.(techniqueId & ' — ' & technique & '\n' & description),'\n\n') & ($count(cached_analysis_report.indicators) > 0 ? '\n\nIndicators\n' & $join(cached_analysis_report.indicators.(type & ': ' & value & ' — ' & context),'\n') : ''),'order':6,'role':'Findings','tone':'supporting'},{'id':'impacts','heading':'Impacts','body':$join(cached_analysis_report.impacts.(title & ' — ' & severity & '\n' & detail),'\n\n'),'order':7,'role':'Impact','tone':'high'},{'id':'actions','heading':'Recommended actions','body':$join(cached_analysis_report.actions.(priority & ' — ' & title & '\n' & detail),'\n\n'),'order':8,'role':'Response','tone':'primary'},{'id':'notes','heading':'Representation notes','body':$join(cached_analysis_report.representationNotes.(category & ' — ' & commentary),'\n\n'),'order':9,'role':'Notes','tone':'supporting'}]) : []"
+                  }
+                }
+              },
+              "analysis-as-on": {
+                "capability": "primitive:datetime",
+                "props": {
+                  "variant": "timestamp",
+                  "ariaLabel": "As on"
+                },
+                "bindings": {
+                  "value": {
+                    "from": "analysis_as_on"
+                  }
+                },
+                "visibility": "cached_analysis_report != null"
+              },
+              "analysis-runner": {
+                "capability": "fluent:spinner",
+                "props": {
+                  "label": "Analyzing report",
+                  "size": "medium",
+                  "style": {
+                    "position": "fixed",
+                    "top": "16px",
+                    "right": "20px",
+                    "zIndex": 1000,
+                    "padding": "8px 12px",
+                    "background": "var(--colorNeutralBackground1)",
+                    "boxShadow": "var(--shadow8)",
+                    "borderRadius": "6px"
+                  }
+                },
+                "visibility": "systemInputs.numSourcesRunning != 0"
+              }
             },
             "presentation": {
-              "roots": ["foundry-access-gate"],
+              "roots": ["analysis-layout"],
               "placements": [
-                { "cell": "incident-semantic-analyzer", "parent": "foundry-access-gate", "slot": "children", "order": 0 },
-                { "cell": "incident-verdict", "parent": "incident-semantic-analyzer", "slot": "children", "order": 0 },
-                { "cell": "incident-attack-path", "parent": "incident-semantic-analyzer", "slot": "children", "order": 1 },
-                { "cell": "incident-blast-radius", "parent": "incident-semantic-analyzer", "slot": "children", "order": 2 },
-                { "cell": "incident-timeline", "parent": "incident-semantic-analyzer", "slot": "children", "order": 3 },
-                { "cell": "incident-techniques", "parent": "incident-semantic-analyzer", "slot": "children", "order": 4 },
-                { "cell": "incident-response", "parent": "incident-semantic-analyzer", "slot": "children", "order": 5 },
-                { "cell": "incident-notes", "parent": "incident-semantic-analyzer", "slot": "children", "order": 6 }
+                {
+                  "cell": "analysis-runner",
+                  "parent": "analysis-layout",
+                  "slot": "children",
+                  "order": 0
+                },
+                {
+                  "cell": "analysis-as-on",
+                  "parent": "analysis-layout",
+                  "slot": "children",
+                  "order": 1
+                },
+                {
+                  "cell": "report-presentation",
+                  "parent": "analysis-layout",
+                  "slot": "children",
+                  "order": 2
+                }
               ]
             }
           },
@@ -74,29 +165,91 @@
             "id": "operational",
             "when": "externalContext.attention = 'operational'",
             "views": {
-              "incident-workspace": { "capability": "incident2:workspace", "props": { "title": "Incident intelligence", "preset": "operational" } },
-              "foundry-access-gate": { "capability": "host:credential-access", "props": { "dependency": { "kind": "credential", "ref": "foundry-agent/access-key" } }, "bindings": { "access": { "expression": "($s := incident2.foundryAccessStatus; {'title':'Connect to Foundry','requiredMessage':'Enter your access key to continue.','checkingMessage':'Checking Foundry access...','errorMessage':\"Couldn't verify Foundry access.\",'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': incident2.foundryAccessError})" } } },
-              "incident-semantic-analyzer": { "capability": "incident2:report", "props": { "title": "Operational assessment" }, "bindings": { "value": { "from": "incident2.model" }, "content": { "expression": "externalContext.incident_report" }, "analyzedContent": { "from": "incident2.analyzedContent" }, "error": { "from": "incident2.error" }, "pending": { "from": "incident2.analysisPending" } } },
-              "incident-verdict": { "capability": "semantic:decision", "props": { "variant": "summary", "spec": { "eyebrow": "Incident determination", "fields": { "title": "identity.title", "summary": "summary", "outcome": "verdict.classification", "rationale": "verdict.rationale", "confidence": "verdict.confidence", "impact": "verdict.impact", "tone": "verdict.confidence" }, "labels": { "rationale": "Rationale", "confidence": "Confidence", "impact": "Impact" }, "toneMap": { "high": "affirmative", "medium": "cautionary", "low": "uncertain" } } }, "bindings": { "decision": { "from": "incident2.model" } } },
-              "incident-attack-path": { "capability": "incident2:attack-path", "bindings": { "value": { "from": "incident2.model" } } },
-              "incident-blast-radius": { "capability": "semantic:entity-set", "props": { "variant": "clusters", "spec": { "title": "Blast radius", "description": "Entities grouped by observed condition", "fields": { "id": "id", "label": "label", "description": "description", "type": "type", "status": "status", "group": "status" }, "groups": [{ "value": "compromised", "label": "Compromised" }, { "value": "affected", "label": "Affected" }, { "value": "targeted", "label": "Targeted" }, { "value": "observed", "label": "Observed" }, { "value": "unknown", "label": "Unknown" }], "toneMap": { "compromised": "affected", "affected": "affected", "targeted": "at-risk", "observed": "observed", "unknown": "unknown" } } }, "bindings": { "items": { "from": "incident2.model.entities" } } },
-              "incident-timeline": { "capability": "semantic:event-series", "props": { "variant": "chronology", "spec": { "title": "Incident timeline", "description": "Normalized events", "fields": { "id": "id", "title": "title", "timestamp": "time", "detail": "detail", "status": "confidence" }, "sort": { "direction": "ascending" }, "toneMap": { "high": "current", "medium": "upcoming", "low": "unknown" } } }, "bindings": { "items": { "from": "incident2.model.events" } } },
-              "incident-techniques": { "capability": "semantic:process", "props": { "variant": "flow", "spec": { "title": "ATT&CK progression", "description": "Techniques in reported order", "fields": { "id": "id", "title": "technique", "detail": "description", "reference": "techniqueId", "status": "confidence" }, "toneMap": { "high": "complete", "medium": "current", "low": "unknown" } } }, "bindings": { "items": { "from": "incident2.model.techniques" } } },
-              "incident-response": { "capability": "semantic:work-set", "props": { "variant": "board", "spec": { "title": "Response plan", "description": "Actions ordered by urgency", "fields": { "id": "id", "title": "title", "detail": "detail", "group": "priority" }, "groups": [{ "value": "immediate", "label": "Immediate" }, { "value": "next", "label": "Next" }, { "value": "follow-up", "label": "Follow-up" }] } }, "bindings": { "items": { "from": "incident2.model.actions" } } },
-              "incident-notes": { "capability": "incident2:representation-notes", "bindings": { "value": { "from": "incident2.model" } } }
+              "analysis-layout": { "capability": "primitive:container", "props": { "variant": "column", "gap": "l", "fullWidth": true, "ariaLabel": "Incident analysis" } },
+              "report-presentation": {
+                "capability": "semantic:narrative",
+                "props": {
+                  "variant": "article",
+                  "spec": {
+                    "title": "Incident analysis",
+                    "emptyText": "No analysis available.",
+                    "density": "comfortable",
+                    "fields": {
+                      "id": "id",
+                      "heading": "heading",
+                      "body": "body",
+                      "order": "order",
+                      "role": "role",
+                      "tone": "tone"
+                    },
+                    "toneMap": {
+                      "high": "critical",
+                      "medium": "caution",
+                      "low": "supporting",
+                      "primary": "primary",
+                      "supporting": "supporting"
+                    }
+                  }
+                },
+                "bindings": {
+                  "sections": {
+                    "expression": "cached_analysis_report ? ([{'id':'summary','heading':cached_analysis_report.identity.title,'body':cached_analysis_report.summary,'order':0,'role':cached_analysis_report.verdict.classification,'tone':cached_analysis_report.verdict.confidence},{'id':'verdict','heading':'Verdict','body':cached_analysis_report.verdict.rationale & '\n\nImpact: ' & cached_analysis_report.verdict.impact,'order':1,'role':cached_analysis_report.verdict.determination,'tone':cached_analysis_report.verdict.confidence},{'id':'phases','heading':'Incident phases','body':$join(cached_analysis_report.phases.($string(order) & '. ' & name & ' — ' & summary),'\n'),'order':2,'role':'Sequence','tone':'primary'},{'id':'events','heading':'Timeline','body':$join(cached_analysis_report.events.(time & ' — ' & title & '\n' & detail),'\n\n'),'order':3,'role':'Observed events','tone':'primary'},{'id':'entities','heading':'Entities','body':$join(cached_analysis_report.entities.(label & ' — ' & status & (role ? ' (' & role & ')' : '') & '\n' & description),'\n\n'),'order':4,'role':'Scope','tone':'supporting'},{'id':'alerts','heading':'Alerts and evidence','body':$join(cached_analysis_report.alerts.(title & ' — ' & verdict & '\n' & summary),'\n\n') & ($count(cached_analysis_report.evidence) > 0 ? '\n\nEvidence\n' & $join(cached_analysis_report.evidence.(timestamp & ' — ' & sourceType & ': ' & summary),'\n') : ''),'order':5,'role':'Evidence','tone':'supporting'},{'id':'techniques','heading':'Techniques and indicators','body':$join(cached_analysis_report.techniques.(techniqueId & ' — ' & technique & '\n' & description),'\n\n') & ($count(cached_analysis_report.indicators) > 0 ? '\n\nIndicators\n' & $join(cached_analysis_report.indicators.(type & ': ' & value & ' — ' & context),'\n') : ''),'order':6,'role':'Findings','tone':'supporting'},{'id':'impacts','heading':'Impacts','body':$join(cached_analysis_report.impacts.(title & ' — ' & severity & '\n' & detail),'\n\n'),'order':7,'role':'Impact','tone':'high'},{'id':'actions','heading':'Recommended actions','body':$join(cached_analysis_report.actions.(priority & ' — ' & title & '\n' & detail),'\n\n'),'order':8,'role':'Response','tone':'primary'},{'id':'notes','heading':'Representation notes','body':$join(cached_analysis_report.representationNotes.(category & ' — ' & commentary),'\n\n'),'order':9,'role':'Notes','tone':'supporting'}]) : []"
+                  }
+                }
+              },
+              "analysis-as-on": {
+                "capability": "primitive:datetime",
+                "props": {
+                  "variant": "timestamp",
+                  "ariaLabel": "As on"
+                },
+                "bindings": {
+                  "value": {
+                    "from": "analysis_as_on"
+                  }
+                },
+                "visibility": "cached_analysis_report != null"
+              },
+              "analysis-runner": {
+                "capability": "fluent:spinner",
+                "props": {
+                  "label": "Analyzing report",
+                  "size": "medium",
+                  "style": {
+                    "position": "fixed",
+                    "top": "16px",
+                    "right": "20px",
+                    "zIndex": 1000,
+                    "padding": "8px 12px",
+                    "background": "var(--colorNeutralBackground1)",
+                    "boxShadow": "var(--shadow8)",
+                    "borderRadius": "6px"
+                  }
+                },
+                "visibility": "systemInputs.numSourcesRunning != 0"
+              }
             },
             "presentation": {
-              "roots": ["incident-workspace"],
+              "roots": ["analysis-layout"],
               "placements": [
-                { "cell": "foundry-access-gate", "parent": "incident-workspace", "slot": "children", "order": 1 },
-                { "cell": "incident-semantic-analyzer", "parent": "foundry-access-gate", "slot": "children", "order": 0 },
-                { "cell": "incident-verdict", "parent": "incident-semantic-analyzer", "slot": "children", "order": 0 },
-                { "cell": "incident-attack-path", "parent": "incident-semantic-analyzer", "slot": "children", "order": 1 },
-                { "cell": "incident-blast-radius", "parent": "incident-semantic-analyzer", "slot": "children", "order": 2 },
-                { "cell": "incident-timeline", "parent": "incident-semantic-analyzer", "slot": "children", "order": 3 },
-                { "cell": "incident-techniques", "parent": "incident-semantic-analyzer", "slot": "children", "order": 4 },
-                { "cell": "incident-response", "parent": "incident-semantic-analyzer", "slot": "children", "order": 5 },
-                { "cell": "incident-notes", "parent": "incident-semantic-analyzer", "slot": "children", "order": 6 }
+                {
+                  "cell": "analysis-runner",
+                  "parent": "analysis-layout",
+                  "slot": "children",
+                  "order": 0
+                },
+                {
+                  "cell": "analysis-as-on",
+                  "parent": "analysis-layout",
+                  "slot": "children",
+                  "order": 1
+                },
+                {
+                  "cell": "report-presentation",
+                  "parent": "analysis-layout",
+                  "slot": "children",
+                  "order": 2
+                }
               ]
             }
           },
@@ -105,18 +258,91 @@
             "when": "externalContext.attention = 'brief'",
             "extends": "operational",
             "views": {
-              "incident-workspace": { "capability": "incident2:workspace", "props": { "title": "Incident intelligence", "preset": "brief" } },
-              "incident-semantic-analyzer": { "capability": "incident2:report", "props": { "title": "Incident brief" }, "bindings": { "value": { "from": "incident2.model" }, "content": { "expression": "externalContext.incident_report" }, "analyzedContent": { "from": "incident2.analyzedContent" }, "error": { "from": "incident2.error" }, "pending": { "from": "incident2.analysisPending" } } }
+              "analysis-layout": { "capability": "primitive:container", "props": { "variant": "column", "gap": "l", "fullWidth": true, "ariaLabel": "Incident analysis" } },
+              "report-presentation": {
+                "capability": "semantic:narrative",
+                "props": {
+                  "variant": "briefing",
+                  "spec": {
+                    "title": "Incident analysis",
+                    "emptyText": "No analysis available.",
+                    "density": "compact",
+                    "fields": {
+                      "id": "id",
+                      "heading": "heading",
+                      "body": "body",
+                      "order": "order",
+                      "role": "role",
+                      "tone": "tone"
+                    },
+                    "toneMap": {
+                      "high": "critical",
+                      "medium": "caution",
+                      "low": "supporting",
+                      "primary": "primary",
+                      "supporting": "supporting"
+                    }
+                  }
+                },
+                "bindings": {
+                  "sections": {
+                    "expression": "cached_analysis_report ? ([{'id':'summary','heading':cached_analysis_report.identity.title,'body':cached_analysis_report.summary,'order':0,'role':cached_analysis_report.verdict.classification,'tone':cached_analysis_report.verdict.confidence},{'id':'verdict','heading':'Verdict','body':cached_analysis_report.verdict.rationale & '\n\nImpact: ' & cached_analysis_report.verdict.impact,'order':1,'role':cached_analysis_report.verdict.determination,'tone':cached_analysis_report.verdict.confidence},{'id':'phases','heading':'Incident phases','body':$join(cached_analysis_report.phases.($string(order) & '. ' & name & ' — ' & summary),'\n'),'order':2,'role':'Sequence','tone':'primary'},{'id':'events','heading':'Timeline','body':$join(cached_analysis_report.events.(time & ' — ' & title & '\n' & detail),'\n\n'),'order':3,'role':'Observed events','tone':'primary'},{'id':'entities','heading':'Entities','body':$join(cached_analysis_report.entities.(label & ' — ' & status & (role ? ' (' & role & ')' : '') & '\n' & description),'\n\n'),'order':4,'role':'Scope','tone':'supporting'},{'id':'alerts','heading':'Alerts and evidence','body':$join(cached_analysis_report.alerts.(title & ' — ' & verdict & '\n' & summary),'\n\n') & ($count(cached_analysis_report.evidence) > 0 ? '\n\nEvidence\n' & $join(cached_analysis_report.evidence.(timestamp & ' — ' & sourceType & ': ' & summary),'\n') : ''),'order':5,'role':'Evidence','tone':'supporting'},{'id':'techniques','heading':'Techniques and indicators','body':$join(cached_analysis_report.techniques.(techniqueId & ' — ' & technique & '\n' & description),'\n\n') & ($count(cached_analysis_report.indicators) > 0 ? '\n\nIndicators\n' & $join(cached_analysis_report.indicators.(type & ': ' & value & ' — ' & context),'\n') : ''),'order':6,'role':'Findings','tone':'supporting'},{'id':'impacts','heading':'Impacts','body':$join(cached_analysis_report.impacts.(title & ' — ' & severity & '\n' & detail),'\n\n'),'order':7,'role':'Impact','tone':'high'},{'id':'actions','heading':'Recommended actions','body':$join(cached_analysis_report.actions.(priority & ' — ' & title & '\n' & detail),'\n\n'),'order':8,'role':'Response','tone':'primary'},{'id':'notes','heading':'Representation notes','body':$join(cached_analysis_report.representationNotes.(category & ' — ' & commentary),'\n\n'),'order':9,'role':'Notes','tone':'supporting'}]) : []"
+                  }
+                }
+              },
+              "analysis-as-on": {
+                "capability": "primitive:datetime",
+                "props": {
+                  "variant": "timestamp",
+                  "ariaLabel": "As on"
+                },
+                "bindings": {
+                  "value": {
+                    "from": "analysis_as_on"
+                  }
+                },
+                "visibility": "cached_analysis_report != null"
+              },
+              "analysis-runner": {
+                "capability": "fluent:spinner",
+                "props": {
+                  "label": "Analyzing report",
+                  "size": "medium",
+                  "style": {
+                    "position": "fixed",
+                    "top": "16px",
+                    "right": "20px",
+                    "zIndex": 1000,
+                    "padding": "8px 12px",
+                    "background": "var(--colorNeutralBackground1)",
+                    "boxShadow": "var(--shadow8)",
+                    "borderRadius": "6px"
+                  }
+                },
+                "visibility": "systemInputs.numSourcesRunning != 0"
+              }
             },
             "presentation": {
-              "roots": ["incident-workspace"],
+              "roots": ["analysis-layout"],
               "placements": [
-                { "cell": "foundry-access-gate", "parent": "incident-workspace", "slot": "children", "order": 1 },
-                { "cell": "incident-semantic-analyzer", "parent": "foundry-access-gate", "slot": "children", "order": 0 },
-                { "cell": "incident-verdict", "parent": "incident-semantic-analyzer", "slot": "children", "order": 0 },
-                { "cell": "incident-attack-path", "parent": "incident-semantic-analyzer", "slot": "children", "order": 1 },
-                { "cell": "incident-response", "parent": "incident-semantic-analyzer", "slot": "children", "order": 2 },
-                { "cell": "incident-notes", "parent": "incident-semantic-analyzer", "slot": "children", "order": 3 }
+                {
+                  "cell": "analysis-runner",
+                  "parent": "analysis-layout",
+                  "slot": "children",
+                  "order": 0
+                },
+                {
+                  "cell": "analysis-as-on",
+                  "parent": "analysis-layout",
+                  "slot": "children",
+                  "order": 1
+                },
+                {
+                  "cell": "report-presentation",
+                  "parent": "analysis-layout",
+                  "slot": "children",
+                  "order": 2
+                }
               ]
             }
           }
@@ -135,7 +361,7 @@
             "request": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "{'message':'Extract a normalized incident semantic model from this investigation report. Report Markdown:\n\n' & state.incident2.pendingContent,'instructions':'Return semantic facts only. Do not choose components, layouts, disclosure, colors, or presentation candidates. Preserve causal ordering and typed references. Put any source ambiguity, normalization loss, unsupported concept, conflicting evidence, or schema gap in representationNotes rather than silently dropping it. Use stable concise ids and reference only ids declared in this response.','maxOutputTokens':10000}"
+                "expr": "{'message':'Extract a normalized incident semantic model from this investigation report. Report Markdown:\n\n' & input.incident_report,'instructions':'Return semantic facts only. Do not choose components, layouts, disclosure, colors, or presentation candidates. Preserve causal ordering and typed references. Put any source ambiguity, normalization loss, unsupported concept, conflicting evidence, or schema gap in representationNotes rather than silently dropping it. Use stable concise ids and reference only ids declared in this response.','maxOutputTokens':10000}"
               }
             },
             "response": {
@@ -168,8 +394,8 @@
                 }
               ]
             },
-            "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'incident2.model','value':response},{'op':'set','path':'incident2.analyzedContent','value':state.incident2.pendingContent},{'op':'set','path':'incident2.pendingContent','value':null},{'op':'set','path':'incident2.analysisPending','value':false},{'op':'set','path':'incident2.error','value':''}],'events':externalContext.sourceId and externalContext.analyzerId and externalContext.variant ? [{'node':'incident-cache','name':'persist'}] : []}" } },
-            "failureSettlement": { "transform": { "kind": "jsonata", "expr": "($missing := error.code = 'service-dependency-unsatisfied' and error.dependency.kind = 'credential' and error.dependency.ref = 'foundry-agent/access-key'; $access := $missing or error.status = 401 or error.status = 403; {'ops':[{'op':'set','path':'incident2.pendingContent','value':null},{'op':'set','path':'incident2.analysisPending','value':false},{'op':'set','path':'incident2.error','value':$access ? '' : error.message},{'op':'set','path':'incident2.foundryAccessStatus','value':$access ? 'required' : state.incident2.foundryAccessStatus},{'op':'set','path':'incident2.foundryAccessError','value':$access ? (error.status = 401 or error.status = 403 ? 'That access key was rejected.' : 'Foundry access is required.') : state.incident2.foundryAccessError}]})" } },
+            "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[]}" } },
+            "failureSettlement": { "transform": { "kind": "jsonata", "expr": "($missing := error.code = 'service-dependency-unsatisfied' and error.dependency.kind = 'credential' and error.dependency.ref = 'foundry-agent/access-key'; $access := $missing or error.status = 401 or error.status = 403; {'ops':[{'op':'set','path':'incident2.error','value':$access ? '' : error.message},{'op':'set','path':'incident2.foundryAccessStatus','value':$access ? 'required' : state.incident2.foundryAccessStatus},{'op':'set','path':'incident2.foundryAccessError','value':$access ? (error.status = 401 or error.status = 403 ? 'That access key was rejected.' : 'Foundry access is required.') : state.incident2.foundryAccessError}]})" } },
             "onViolation": { "action": "fail" }
           },
           "checkFoundryAccess": {
@@ -182,57 +408,124 @@
         },
         "config": { "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}", "agent": "Incident-Report-Semantic-Agent", "credentialRef": "foundry-agent/access-key" },
         "scope": "per-blueprint"
-      },
-      "incident-analysis-cache": {
-        "blueprint": { "$ref": "blueprint:incident-analysis-assets@1.0.0" },
-        "version": "1",
-        "operations": {
-          "persistIncidentAnalysis": {
-            "operation": "put-asset",
-            "contract": "incident-runtime-asset/v1",
-            "request": { "transform": { "kind": "jsonata", "expr": "{'sourceId':externalContext.sourceId,'analyzerId':externalContext.analyzerId,'variant':externalContext.variant,'value':state.incident2.model}" } },
-            "settlement": { "transform": { "kind": "jsonata", "expr": "{'detail':{'cacheKey':response.asset.sourceId & '/' & response.asset.analyzerId & '/' & response.asset.variant}}" } }
-          }
-        },
-        "scope": "per-blueprint"
       }
     },
     "runtime": {
       "expression": "jsonata",
       "namespaces": ["incident2"],
-      "actions": ["assign", "invoke"],
+      "actions": [
+        "assign",
+        "emit",
+        "invoke",
+        "route",
+        "request"
+      ],
       "capabilities": {
-        "incident2:workspace": { "propsSchema": { "type": "object", "required": ["title", "preset"], "properties": { "title": { "type": "string" }, "preset": { "type": "string", "enum": ["operational", "brief"] } }, "additionalProperties": false }, "slots": ["children"] },
-        "incident2:report": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["analyze"], "slots": ["children"], "dataProp": "value" },
-        "incident2:attack-path": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
-        "incident2:representation-notes": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
-        "semantic:event-series": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "items" },
-        "semantic:process": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "items" },
-        "semantic:entity-set": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "items" },
-        "semantic:decision": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "decision" },
-        "semantic:work-set": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["select", "activate", "reorder", "move"], "dataProp": "items" },
-        "host:credential-access": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["accessRequested", "accessCleared"], "slots": ["children"] }
+        "primitive:container": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"] },
+        "semantic:narrative": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "sections"
+        },
+        "primitive:datetime": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "value"
+        },
+        "fluent:spinner": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
       },
       "externals": {
-        "projectionViews": { "incident2": { "from": "self" }, "semantic": { "from": "semantic", "use": ["event-series", "process", "entity-set", "decision", "work-set"] }, "host": { "from": "host", "use": ["credential-access"] } },
-        "effectHandlers": ["prepareAnalysis"]
+        "projectionViews": { "primitive": { "from": "primitive", "use": [
+              "container",
+              "datetime"
+            ] }, "semantic": { "from": "semantic", "use": ["narrative"] }, "fluent": { "from": "fluent", "use": ["spinner"] } }
       },
       "state": {
-        "incident2": { "model": null, "analyzedContent": null, "pendingContent": null, "analysisPending": false, "foundryAccessStatus": "checking", "foundryAccessError": "", "error": "" }
+        "incident2": {
+          "foundryAccessStatus": "checking",
+          "foundryAccessError": "",
+          "error": ""
+        }
       }
     },
     "cells": {
-      "incident-workspace": { "id": "incident-workspace", "kind": "workspace" },
-      "foundry-access-gate": { "id": "foundry-access-gate", "kind": "access-gate", "behavior": { "events": { "accessRequested": [{ "do": "assign", "target": "incident2.foundryAccessStatus", "args": { "value": "checking" } }, { "do": "assign", "target": "incident2.foundryAccessError", "args": { "value": "" } }, { "do": "invoke", "args": { "tool": "checkFoundryAccess" } }], "accessCleared": [{ "do": "assign", "target": "incident2.foundryAccessStatus", "args": { "value": "required" } }, { "do": "assign", "target": "incident2.foundryAccessError", "args": { "value": "" } }] }, "reactions": [{ "when": "incident2.foundryAccessStatus = 'checking' ? 'check' : null", "run": [{ "do": "invoke", "args": { "tool": "checkFoundryAccess" } }] }] } },
-      "incident-semantic-analyzer": { "id": "incident-semantic-analyzer", "kind": "semantic-analysis-agent", "sources": [{ "id": "incident-semantic-analyzer.source", "service": "incident-semantic-analysis", "operation": "analyzeReport", "contract": "incident-semantic-model/v1" }], "behavior": { "events": { "analyze": [{ "do": "assign", "target": "incident2.analysisPending", "args": { "value": true } }, { "do": "invoke", "args": { "tool": "prepareAnalysis" } }, { "do": "invoke", "args": { "tool": "analyzeReport" } }] } }, "outputs": [{ "token": "incident-semantic-model", "from": "incident2.model", "when": "incident2.model != null" }] },
-      "incident-cache": { "id": "incident-cache", "kind": "runtime-asset-cache", "behavior": { "events": { "persist": [{ "do": "invoke", "args": { "tool": "persistIncidentAnalysis" } }] } } },
-      "incident-verdict": { "id": "incident-verdict", "kind": "semantic-leaf", "inputs": [{ "token": "incident-semantic-model" }] },
-      "incident-attack-path": { "id": "incident-attack-path", "kind": "semantic-leaf", "inputs": [{ "token": "incident-semantic-model" }] },
-      "incident-blast-radius": { "id": "incident-blast-radius", "kind": "semantic-leaf", "inputs": [{ "token": "incident-semantic-model" }] },
-      "incident-timeline": { "id": "incident-timeline", "kind": "semantic-leaf", "inputs": [{ "token": "incident-semantic-model" }] },
-      "incident-techniques": { "id": "incident-techniques", "kind": "semantic-leaf", "inputs": [{ "token": "incident-semantic-model" }] },
-      "incident-response": { "id": "incident-response", "kind": "semantic-leaf", "inputs": [{ "token": "incident-semantic-model" }] },
-      "incident-notes": { "id": "incident-notes", "kind": "semantic-leaf", "inputs": [{ "token": "incident-semantic-model" }] }
+      "analysis-layout": {
+        "id": "analysis-layout",
+        "kind": "incident-analysis-layout"
+      },
+      "report-presentation": {
+        "id": "report-presentation",
+        "kind": "incident-analysis-presentation",
+        "inputs": [{ "token": "cached_analysis_report", "as": "cached_analysis_report", "required": false }]
+      },
+      "analysis-as-on": {
+        "id": "analysis-as-on",
+        "kind": "analysis-timestamp",
+        "inputs": [
+          {
+            "token": "analysis_as_on",
+            "as": "analysis_as_on",
+            "required": false
+          }
+        ]
+      },
+      "analysis-runner": {
+        "id": "analysis-runner",
+        "kind": "incident-analysis-runner",
+        "systemInputs": ["numSourcesRunning"],
+        "inputs": [
+          {
+            "token": "incident_report",
+            "as": "incident_report",
+            "required": true
+          },
+          {
+            "token": "cached_analysis_report",
+            "as": "cached_analysis_report",
+            "required": false
+          }
+        ],
+        "sources": [
+          {
+            "id": "analysis-runner.source",
+            "service": "incident-semantic-analysis",
+            "operation": "analyzeReport",
+            "contract": "incident-semantic-model/v1",
+            "when": "($not($exists(inputs.cached_analysis_report)) or inputs.cached_analysis_report = null) and $not($exists(sources.`analysis-runner.source`))",
+            "input": {
+              "kind": "jsonata",
+              "expr": "{'incident_report':inputs.incident_report}"
+            },
+            "output": {
+              "kind": "jsonata",
+              "expr": "response"
+            }
+          }
+        ],
+        "compute": [
+          {
+            "id": "analysis-report",
+            "expression": "sources.`analysis-runner.source`",
+            "assign": "analysisReport"
+          }
+        ],
+        "outputs": [
+          {
+            "token": "analysis_report",
+            "from": "computed.analysisReport",
+            "when": "computed.analysisReport != null"
+          }
+        ]
+      }
     },
     "metadata": {
       "closedGrammarOwnership": "Blueprint authors tiers, recipes, cells, leaves, presets, layout, interactions, and responsive behavior; the agent emits incident-semantic-model/v1 only.",

@@ -90,12 +90,6 @@ export function applyProgramPatch(
       case "removeHandler":
         next.handlers = removeById(next.handlers, operation.id);
         break;
-      case "upsertReaction":
-        next.reactions = upsertById(next.reactions, operation.reaction);
-        break;
-      case "removeReaction":
-        next.reactions = removeById(next.reactions, operation.id);
-        break;
       case "upsertMachine":
         next.machines = upsertById(next.machines, operation.machine);
         break;
@@ -148,7 +142,6 @@ export function diffProgram(
   }
   patch.push(
     ...diffById(current.handlers, target.handlers, (handler) => ({ op: "upsertHandler", handler }), (id) => ({ op: "removeHandler", id })),
-    ...diffById(current.reactions, target.reactions, (reaction) => ({ op: "upsertReaction", reaction }), (id) => ({ op: "removeReaction", id })),
     ...diffById(current.machines, target.machines, (machine) => ({ op: "upsertMachine", machine }), (id) => ({ op: "removeMachine", id })),
     ...diffById(current.derivations, target.derivations, (derivation) => ({ op: "upsertDerivation", derivation }), (id) => ({ op: "removeDerivation", id })),
   );

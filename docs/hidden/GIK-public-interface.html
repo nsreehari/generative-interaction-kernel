@@ -353,7 +353,7 @@ so <code>new Kernel(manifest, document)</code> runs standalone (with a no-op orc
 <h4>Drive &amp; read</h4>
 <table class="sig">
 <tr><th>Method</th><th>Returns</th><th>Purpose</th></tr>
-<tr><td>dispatch(event)</td><td>Promise&lt;Patch&gt;</td><td>Reduce one <code>GIKEvent</code>, run resulting orchestrator effects and their follow-up events, apply everything, fire reactions. <strong>One dispatch = one rev.</strong></td></tr>
+<tr><td>dispatch(event)</td><td>Promise&lt;Patch&gt;</td><td>Reduce one <code>GIKEvent</code>, run resulting orchestrator effects and their follow-up events, and apply everything. <strong>One dispatch = one rev.</strong></td></tr>
 <tr><td>resolve()</td><td>Promise&lt;ResolvedNode&gt;</td><td>Resolve the document into a renderable tree (gate → capability → props → read → children).</td></tr>
 <tr><td>state()</td><td>Record&lt;string, Json&gt;</td><td>The live state snapshot (by reference — read-only; do not mutate).</td></tr>
 </table>
@@ -518,7 +518,7 @@ compile time (<code>SafeExpressionError</code>). Policy lives in the provider, n
 <tr><th>Type</th><th>Shape</th></tr>
 <tr><td>DocumentPayload</td><td><code>{ manifest?: string; root: DocNode; machines?: Machine[] }</code></td></tr>
 <tr><td>DocNode</td><td><code>{ capability: string; id: string; props?: …; edges?: Edges }</code></td></tr>
-<tr><td>Edges</td><td><code>read</code> · <code>readExpr</code> · <code>gate</code> · <code>write</code> · <code>on</code> (event→Action[]) · <code>react</code> (Reaction[]) · <code>children</code></td></tr>
+<tr><td>Edges</td><td><code>read</code> · <code>readExpr</code> · <code>gate</code> · <code>write</code> · <code>on</code> (event→Action[]) · <code>children</code></td></tr>
 <tr><td>Action</td><td><code>{ do: "assign"|"derive"|"invoke"|"emit"|"route"|"confirm"; target?; args?; guard?; event? }</code></td></tr>
 <tr><td>Machine</td><td><code>{ id; context; initial; states }</code> — reduced by the kernel's pure reducer.</td></tr>
 <tr><td>Enveloped&lt;T&gt;</td><td><code>T | { gik; type; payload: T }</code>; use <code>unwrap()</code> to read either form.</td></tr>

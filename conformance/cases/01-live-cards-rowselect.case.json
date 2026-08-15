@@ -14,7 +14,7 @@
   "steps": [
     {
       "event": { "node": "table-orders", "name": "rowSelect", "payload": { "id": "order-42" } },
-      "expectPatch": { "rev": 1, "ops": [{ "op": "set", "path": "card_data.selected", "value": "order-42" }] },
+      "expectPatch": { "rev": 1, "ops": [{ "op": "set", "path": "card_data.selected", "value": "order-42" }], "completedWithinRun": [{ "kind": "assign", "node": "table-orders", "target": "card_data.selected", "value": "order-42" }] },
       "expectResolve": [{ "id": "btn-approve", "visible": true }]
     }
   ]

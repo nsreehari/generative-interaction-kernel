@@ -123,3 +123,18 @@ compiler or meta-graph per call. For the first implementation its structure is f
 deterministic lowering path is synchronous. Agent calls, human approval, strategy synthesis, and
 host-authorized reconfiguration remain compiler-plane capabilities for a later phase and cannot
 block the runtime materialization path.
+
+## Amendment (2026-08-14): fixed compiler Cells are the production materialization path
+
+The fixed common meta-graph is compiled to one Kernel Program and executed on a separate Kernel
+instance during `materializeBlueprint`. Its three production Cells are `resolve-stage`,
+`apply-vocabulary-patch`, and `emit-blueprint`; their tokens carry the source, resolved chain,
+intermediate artifact, and validated terminal artifact. The application Kernel is still created
+only after this compiler Kernel emits the terminal Blueprint, preserving compiler/application plane
+separation.
+
+The deterministic path uses the Kernel's synchronous publication mode. That mode is intentionally
+restricted to a synchronous expression provider and output-only graphs: asynchronous node outcomes,
+state operations, effects, events, and program mutations are rejected. Rich agent, service, or
+approval compiler pipelines continue to use the asynchronous compiler-host path and are not part of
+portable synchronous materialization.

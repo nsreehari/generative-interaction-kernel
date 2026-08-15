@@ -3,6 +3,7 @@
 
 import type {
   Action,
+  CompletedWithinRun,
   DocNode,
   ExecutableProgramDefinition,
   GIKEvent,
@@ -18,6 +19,7 @@ export interface ReduceResult {
   ops: PatchOp[];
   traces: TraceEvent[];
   effects: OrchestratorEffect[];
+  completedWithinRun: CompletedWithinRun[];
 }
 
 function truthy(v: Json): boolean {
@@ -37,6 +39,7 @@ interface DispatchCtx {
   ops: PatchOp[];
   traces: TraceEvent[];
   effects: OrchestratorEffect[];
+  completedWithinRun: CompletedWithinRun[];
   expr: ExpressionProvider;
   predicateExpr: ExpressionProvider;
   data: Record<string, Json>;
@@ -45,45 +48,38 @@ interface DispatchCtx {
   emitted: GIKEvent[];
 }
 
-async function resolveValue(args: Record<string, Json> | undefined, c: DispatchCtx): Promise<Json> {
-  if (!args) return null;
+async function resolveValue(args: Extract<Action, { do: "assign" }>["args"], c: DispatchCtx): Promise<Json> {
   if ("value" in args) return args.value ?? null;
-  if (typeof args.from === "string") return c.expr.eval(args.from, c.data, c.bindings);
-  return null;
+  return c.expr.eval(args.from, c.data, c.bindings);
 }
 
 function traceDetail(c: DispatchCtx, detail: Record<string, unknown>): Record<string, unknown> {
   return c.currentEvent.actorId ? { ...detail, actorId: c.currentEvent.actorId } : detail;
 }
 
-// The six closed action families. assign/derive/emit mutate store/queue directly; invoke/route/
-// confirm cross the Orchestrator/HITL seam (ADR-0009) — they push an OrchestratorEffect for the
+// assign/emit settle inside reduction; invoke/route/request cross the host boundary.
 // kernel to route after the reduction, rather than writing a store op here.
 async function dispatchAction(a: Action, c: DispatchCtx): Promise<void> {
   switch (a.do) {
     case "assign": {
       if (!a.target) break;
-      c.ops.push({ op: "set", path: a.target, value: await resolveValue(a.args, c) });
+      const value = await resolveValue(a.args, c);
+      c.ops.push({ op: "set", path: a.target, value });
+      c.completedWithinRun.push({ kind: "assign", node: c.currentEvent.node, target: a.target, value });
       c.traces.push({ event: "action", detail: traceDetail(c, { do: "assign", target: a.target }) });
       break;
     }
-    case "derive": {
-      if (!a.target) break;
-      const e = a.args?.expr;
-      const value = typeof e === "string" ? await c.expr.eval(e, c.data, c.bindings) : null;
-      c.ops.push({ op: "set", path: a.target, value });
-      c.traces.push({ event: "action", detail: traceDetail(c, { do: "derive", target: a.target }) });
-      break;
-    }
     case "emit": {
-      if (a.event) {
-        c.emitted.push({
-          node: c.currentEvent.node,
-          name: a.event,
-          payload: (a.args?.payload as Record<string, Json> | undefined) ?? c.currentEvent.payload,
-          actorId: c.currentEvent.actorId,
-        });
-      }
+      const event: GIKEvent = {
+        node: c.currentEvent.node,
+        name: a.event,
+        ...(a.data !== undefined || c.currentEvent.payload !== undefined
+          ? { payload: a.data ?? c.currentEvent.payload }
+          : {}),
+        ...(c.currentEvent.actorId !== undefined ? { actorId: c.currentEvent.actorId } : {}),
+      };
+      c.emitted.push(event);
+      c.completedWithinRun.push({ kind: "emit", node: c.currentEvent.node, event });
       c.traces.push({ event: "action", detail: traceDetail(c, { do: "emit", event: a.event }) });
       break;
     }
@@ -92,11 +88,10 @@ async function dispatchAction(a: Action, c: DispatchCtx): Promise<void> {
         kind: "invoke",
         node: c.currentEvent.node,
         actorId: c.currentEvent.actorId,
-        tool: typeof a.args?.tool === "string" ? a.args.tool : undefined,
-        args: a.args ?? {},
-        payload: c.currentEvent.payload,
+        control: structuredClone(a.control),
+        data: structuredClone(a.data ?? c.currentEvent.payload ?? {}),
       });
-      c.traces.push({ event: "effect", detail: traceDetail(c, { do: "invoke", tool: a.args?.tool }) });
+      c.traces.push({ event: "effect", detail: traceDetail(c, { do: "invoke", tool: a.control.tool }) });
       break;
     }
     case "route": {
@@ -104,28 +99,22 @@ async function dispatchAction(a: Action, c: DispatchCtx): Promise<void> {
         kind: "route",
         node: c.currentEvent.node,
         actorId: c.currentEvent.actorId,
-        tool: typeof a.args?.tool === "string" ? a.args.tool : undefined,
-        to: a.args?.to ?? null,
-        args: a.args ?? {},
-        payload: c.currentEvent.payload,
+        control: structuredClone(a.control),
+        data: structuredClone(a.data ?? c.currentEvent.payload ?? {}),
       });
-      c.traces.push({ event: "effect", detail: traceDetail(c, { do: "route", to: a.args?.to }) });
+      c.traces.push({ event: "effect", detail: traceDetail(c, { do: "route", to: a.control.to }) });
       break;
     }
-    case "confirm": {
+    case "request": {
       c.effects.push({
-        kind: "confirm",
+        kind: "request",
         node: c.currentEvent.node,
         actorId: c.currentEvent.actorId,
-        tool: typeof a.args?.tool === "string" ? a.args.tool : undefined,
-        args: a.args ?? {},
-        payload: c.currentEvent.payload,
+        control: structuredClone(a.control),
+        data: structuredClone(a.data),
       });
-      c.traces.push({ event: "effect", detail: traceDetail(c, { do: "confirm" }) });
+      c.traces.push({ event: "effect", detail: traceDetail(c, { do: "request", kind: a.control.kind }) });
       break;
-    }
-    default: {
-      c.traces.push({ event: "action", detail: traceDetail(c, { do: a.do, unknown: true }) });
     }
   }
 }
@@ -173,6 +162,7 @@ export async function reduce(
     ops: [],
     traces: [],
     effects: [],
+    completedWithinRun: [],
     expr,
     predicateExpr,
     data: store.snapshot(),
@@ -208,19 +198,18 @@ export async function reduce(
     }
   }
 
-  return { ops: c.ops, traces: c.traces, effects: c.effects };
+  return { ops: c.ops, traces: c.traces, effects: c.effects, completedWithinRun: c.completedWithinRun };
 }
 
-/** {@link ReduceResult} plus the events a run queued via `emit`, for the caller to settle. */
-export interface ReactionRunResult extends ReduceResult {
+/** {@link ReduceResult} plus the events an action list queued via `emit`, for the caller to settle. */
+export interface ActionRunResult extends ReduceResult {
   emitted: GIKEvent[];
 }
 
 /**
  * Run an ordered list of closed-grammar actions owned by a node, against the current store snapshot.
- * This is the shared engine behind a reaction's `run` (ADR-0034): actions dispatch exactly as an event
- * handler's would (guards honored, effects collected), but the trigger is a state change the kernel
- * detected rather than an inbound event. `bindings` is merged into the expression scope (e.g. `$when`).
+ * Graph action nodes use the same guard, effect, and event semantics as event handlers.
+ * `bindings` is merged into the expression scope.
  */
 export async function reduceActions(
   store: StateModel,
@@ -229,11 +218,12 @@ export async function reduceActions(
   expr: ExpressionProvider,
   predicateExpr: ExpressionProvider,
   bindings: Record<string, unknown> = {}
-): Promise<ReactionRunResult> {
+): Promise<ActionRunResult> {
   const c: DispatchCtx = {
     ops: [],
     traces: [],
     effects: [],
+    completedWithinRun: [],
     expr,
     predicateExpr,
     data: store.snapshot(),
@@ -243,9 +233,32 @@ export async function reduceActions(
   };
 
   for (const a of actions) {
-    if (a.guard && !truthy(await predicateExpr.eval(a.guard, c.data, c.bindings))) continue;
+    if (a.guard && !truthy(await predicateExpr.eval(a.guard, c.data, c.bindings))) {
+      if (a.do === "invoke" && a.control.sourceId) {
+        c.traces.push({
+          event: "effect",
+          node: ownerNodeId,
+          detail: {
+            kind: "invoke",
+            tool: a.control.tool,
+            phase: "outcome",
+            outcome: "skipped",
+            sourceId: a.control.sourceId,
+            ...(a.control.sourceCellId ? { sourceCellId: a.control.sourceCellId } : {}),
+            reason: "when-false",
+          },
+        });
+      }
+      continue;
+    }
     await dispatchAction(a, c);
   }
 
-  return { ops: c.ops, traces: c.traces, effects: c.effects, emitted: c.emitted };
+  return {
+    ops: c.ops,
+    traces: c.traces,
+    effects: c.effects,
+    completedWithinRun: c.completedWithinRun,
+    emitted: c.emitted,
+  };
 }

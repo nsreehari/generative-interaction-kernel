@@ -32,7 +32,7 @@ const doc = {
         on: {
           tap: [
             { do: "assign", target: "card_data.status", args: { value: "charged" } },
-            { do: "invoke", args: { tool: "charge", amount: 500 } },
+            { do: "invoke", control: { tool: "charge" }, data: { amount: 500 } },
           ],
         },
       },
@@ -43,7 +43,7 @@ const doc = {
 // The forward orchestrator: charging writes a receipt into state.
 const charging: Orchestrator = {
   async invoke(effect: OrchestratorEffect) {
-    if (effect.tool !== "charge") return;
+    if (effect.kind !== "invoke" || effect.control.tool !== "charge") return;
     return { ops: [{ op: "set", path: "payments.receipt", value: "ch_1" }] };
   },
 };
@@ -94,8 +94,8 @@ test("effectsSince reports fired effects in causal order, tagged with rev + seq 
   assert.equal(since.length, 1);
   assert.equal(since[0].rev, 1);
   assert.equal(since[0].seq, 0);
-  assert.equal(since[0].effect.tool, "charge");
-  assert.equal(since[0].effect.args.amount, 500);
+  assert.equal(since[0].effect.kind === "invoke" && since[0].effect.control.tool, "charge");
+  assert.equal(since[0].effect.data.amount, 500);
   // No wall-clock time is stamped: ordering is rev + seq only.
   assert.equal((since[0] as any).ts, undefined);
 });
@@ -107,7 +107,7 @@ test("compensate routes effects in the order the host supplies; the host owns th
     async compensate(effect) {
       compensated.push(effect);
       // The HOST knows the inverse of `charge` is a refund; the kernel never did.
-      if (effect.tool === "charge") {
+      if (effect.kind === "invoke" && effect.control.tool === "charge") {
         return { ops: [{ op: "set", path: "payments.refunded", value: true }] };
       }
     },
@@ -124,7 +124,7 @@ test("compensate routes effects in the order the host supplies; the host owns th
   const toUndo = k.effectsSince(cp.rev).map((e) => e.effect).reverse();
   const patch = await k.compensate(toUndo);
 
-  assert.deepEqual(compensated.map((e) => e.tool), ["charge"]);
+  assert.deepEqual(compensated.map((e) => e.kind === "invoke" ? e.control.tool : undefined), ["charge"]);
   assert.equal((k.state() as any).payments.refunded, true);
   assert.equal(patch.rev, 4, "settlement, rollback, and compensation are distinct revs");
 });

@@ -13,6 +13,8 @@ import {
 } from "../../../../blueprints/portfolio-tracker/native/services/mock-market-data";
 import {
   DETERMINISTIC_PORTFOLIO_PROVIDER,
+  MOCK_PORTFOLIO_INTELLIGENCE_PROVIDER,
+  mockPortfolioIntelligenceHandler,
   portfolioIntelligenceHandler,
 } from "../../../../blueprints/portfolio-tracker/native/services/portfolio-intelligence";
 import { getSampleBlueprintCatalog } from "../../../../catalog/blueprint-catalog";
@@ -27,10 +29,20 @@ export interface SampleNativeServices {
   durableStorageConnections?: Readonly<Record<string, DurableStorageConnection>>;
 }
 
+const MOCK_SOURCE_LATENCY_MS = 600;
+
+function withMockLatency(handler: DeterministicServiceHandler): DeterministicServiceHandler {
+  return async (...args) => {
+    await new Promise((resolve) => setTimeout(resolve, MOCK_SOURCE_LATENCY_MS));
+    return handler(...args);
+  };
+}
+
 const portfolioServices: SampleNativeServices = {
   deterministicHandlers: {
     [DETERMINISTIC_PORTFOLIO_PROVIDER]: portfolioIntelligenceHandler,
-    [MOCK_MARKET_DATA_PROVIDER]: mockMarketDataHandler,
+    [MOCK_PORTFOLIO_INTELLIGENCE_PROVIDER]: withMockLatency(mockPortfolioIntelligenceHandler),
+    [MOCK_MARKET_DATA_PROVIDER]: withMockLatency(mockMarketDataHandler),
   },
 };
 
@@ -57,6 +69,7 @@ const modules: Readonly<Record<string, SampleNativeServices>> = {
   "incident-report-explorer-2": incidentAnalyzerServices,
   "incident-report-explorer-3": incidentAnalyzerServices,
   "portfolio-tracker": portfolioServices,
+  "portfolio-tracker-new": portfolioServices,
   "portfolio-tracker-2tiers-headless": portfolioServices,
 };
 

@@ -29,8 +29,10 @@
       ],
       "actions": [
         "assign",
+        "emit",
         "invoke",
-        "emit"
+        "route",
+        "request"
       ],
       "capabilities": {
         "primitive:container": {
@@ -265,11 +267,11 @@
       "catalog-loader": {
         "id": "catalog-loader",
         "behavior": {
-          "events": {
+          "on": {
             "load": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "listBlueprints"
                 }
               }
@@ -278,6 +280,13 @@
         },
         "view": {
           "capability": "manage-blueprints:catalog-loader"
+        },
+        "events": {
+          "load": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "manage-blueprints-root": {
@@ -348,11 +357,11 @@
       "create-blueprint": {
         "id": "create-blueprint",
         "behavior": {
-          "events": {
+          "on": {
             "press": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "createBlueprint"
                 }
               }
@@ -365,16 +374,23 @@
             "label": "New Blueprint",
             "appearance": "primary"
           }
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "import-blueprint": {
         "id": "import-blueprint",
         "behavior": {
-          "events": {
+          "on": {
             "select": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "importBlueprint"
                 }
               }
@@ -388,16 +404,23 @@
             "accept": "application/json,.json",
             "readAs": "text"
           }
+        },
+        "events": {
+          "select": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "blueprint-list": {
         "id": "blueprint-list",
         "behavior": {
-          "events": {
+          "on": {
             "select": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "getBlueprint"
                 }
               }
@@ -417,6 +440,13 @@
             },
             "selectedValues": {
               "expression": "manageBlueprints.selectedId != '' ? [manageBlueprints.selectedId] : []"
+            }
+          }
+        },
+        "events": {
+          "select": {
+            "payloadSchema": {
+              "type": "object"
             }
           }
         }
@@ -445,11 +475,11 @@
       "blueprint-tabs": {
         "id": "blueprint-tabs",
         "behavior": {
-          "events": {
+          "on": {
             "select": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "selectBlueprintTab"
                 }
               }
@@ -467,6 +497,13 @@
             }
           },
           "visibility": "manageBlueprints.selected.id != ''"
+        },
+        "events": {
+          "select": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "blueprint-overview": {
@@ -571,11 +608,11 @@
       "clone-blueprint": {
         "id": "clone-blueprint",
         "behavior": {
-          "events": {
+          "on": {
             "press": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "cloneBlueprint"
                 }
               }
@@ -588,16 +625,23 @@
             "label": "Clone to edit"
           },
           "visibility": "manageBlueprints.selectedId != ''"
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "delete-blueprint": {
         "id": "delete-blueprint",
         "behavior": {
-          "events": {
+          "on": {
             "press": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "requestDeleteBlueprint"
                 }
               }
@@ -610,6 +654,13 @@
             "label": "Delete"
           },
           "visibility": "manageBlueprints.selectedId != '' and manageBlueprints.selected.readonly = false"
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "blueprint-draft": {
@@ -641,11 +692,11 @@
       "editor-form": {
         "id": "editor-form",
         "behavior": {
-          "events": {
+          "on": {
             "save": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "saveBlueprint"
                 }
               }
@@ -729,6 +780,13 @@
               "expression": "{'currentId': manageBlueprints.selectedId, 'blueprintIds': manageBlueprints.blueprints.id}"
             }
           }
+        },
+        "events": {
+          "save": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "editor-actions": {
@@ -798,11 +856,11 @@
       "delete-blueprint-challenge": {
         "id": "delete-blueprint-challenge",
         "behavior": {
-          "events": {
+          "on": {
             "confirm": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "deleteBlueprint"
                 }
               }
@@ -810,7 +868,7 @@
             "cancel": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "cancelDeleteBlueprint"
                 }
               }
@@ -831,6 +889,18 @@
             }
           },
           "visibility": "manageBlueprints.deleteChallenge.open = true"
+        },
+        "events": {
+          "confirm": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "cancel": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       }
     },

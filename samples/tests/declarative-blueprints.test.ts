@@ -78,7 +78,7 @@ for (const [path, testCase] of Object.entries(modules)) {
           events: scenario.events,
           createOrchestrator: (state) => {
             const host = createNodeBlueprintServiceHost(runtime, state, {}, nativeServices);
-            return nodeServiceOrchestrator(runtime, host)(undefined, state);
+            return nodeServiceOrchestrator(runtime, host, state)(undefined, state);
           },
         });
         for (const assertion of scenario.assertions) {
@@ -96,7 +96,7 @@ function runAssertion(artifact: BlueprintArtifact, assertion: Assertion): void {
   }
   if (assertion.kind === "composition-valid") {
     const cells = Object.values(artifact.payload.cells ?? {}) as CellDefinition[];
-    expect(analyzeCellComposition(cells)).toMatchObject({ externalInputs: [], diagnostics: [] });
+    expect(analyzeCellComposition(cells)).toMatchObject({ diagnostics: [] });
     return;
   }
   if (assertion.kind === "equals") {

@@ -597,8 +597,11 @@
         "control"
       ],
       "actions": [
+        "assign",
+        "emit",
         "invoke",
-        "emit"
+        "route",
+        "request"
       ],
       "capabilities": {
         "portfolio:workspace": {
@@ -751,11 +754,11 @@
       "portfolio-tracker": {
         "id": "portfolio-tracker",
         "behavior": {
-          "events": {
+          "on": {
             "setHoldings": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "setHoldings"
                 }
               }
@@ -763,7 +766,7 @@
             "upsertHolding": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "upsertHolding"
                 }
               }
@@ -771,7 +774,7 @@
             "removeHolding": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "removeHolding"
                 }
               }
@@ -779,7 +782,7 @@
             "refreshPrices": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "refreshPrices"
                 }
               }
@@ -787,7 +790,7 @@
             "requestIntelligence": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "requestIntelligence"
                 }
               }
@@ -796,11 +799,13 @@
               {
                 "do": "assign",
                 "target": "portfolio.intelligence1bError",
-                "args": { "value": "" }
+                "args": {
+                  "value": ""
+                }
               },
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "requestIntelligence1b"
                 }
               }
@@ -808,17 +813,21 @@
             "requestIntelligence2": [
               {
                 "do": "invoke",
-                "args": { "tool": "requestIntelligence2" }
+                "control": {
+                  "tool": "requestIntelligence2"
+                }
               }
             ],
             "calculateStrategies": [
               {
                 "do": "invoke",
-                "args": { "tool": "prepareStrategies" }
+                "control": {
+                  "tool": "prepareStrategies"
+                }
               },
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "calculateStrategies"
                 }
               }
@@ -826,41 +835,12 @@
             "setPresentationContext": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "setPresentationContext"
                 }
               }
             ]
-          },
-          "reactions": [
-            {
-              "when": "control.presentationContext",
-              "runInitially": true,
-              "run": [
-                {
-                  "do": "emit",
-                  "event": "setPresentationContext"
-                }
-              ]
-            },
-            {
-              "when": "$string(portfolio.intelligence)",
-              "run": [
-                {
-                  "do": "assign",
-                  "target": "portfolio.intelligence1bError",
-                  "args": { "value": "" }
-                },
-                {
-                  "do": "invoke",
-                  "guard": "portfolio.intelligence",
-                  "args": {
-                    "tool": "requestIntelligence1b"
-                  }
-                }
-              ]
-            }
-          ]
+          }
         },
         "view": {
           "capability": "portfolio:workspace",
@@ -872,23 +852,73 @@
               "from": "portfolio.presentationContext"
             }
           }
+        },
+        "events": {
+          "setHoldings": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "upsertHolding": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "removeHolding": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "refreshPrices": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "requestIntelligence": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "requestIntelligence1b": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "requestIntelligence2": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "calculateStrategies": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "setPresentationContext": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "http-proxy-access-gate": {
         "id": "http-proxy-access-gate",
+        "inputs": [
+          { "token": "portfolio.httpProxyAccessStatus", "as": "accessStatus" }
+        ],
         "outputs": [
           {
             "token": "http-proxy-access",
-            "from": "portfolio.httpProxyAccessStatus",
-            "when": "portfolio.httpProxyAccessStatus = 'ready'"
+            "from": "inputs.accessStatus",
+            "when": "inputs.accessStatus = 'ready'"
           }
         ],
         "behavior": {
-          "events": {
+          "on": {
             "accessRequested": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "checkHttpProxyAccess"
                 }
               }
@@ -921,25 +951,57 @@
               "expression": "($s := portfolio.httpProxyAccessStatus; {'title':'Connect to HTTP proxy','requiredMessage':'Enter your access key to continue.','checkingMessage':'Checking HTTP proxy access...','errorMessage':\"Couldn't verify HTTP proxy access.\",'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': portfolio.httpProxyAccessError})"
             }
           }
+        },
+        "events": {
+          "accessRequested": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "accessCleared": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "foundry-access-gate": {
         "id": "foundry-access-gate",
+        "inputs": [
+          { "token": "portfolio.foundryAccessStatus", "as": "accessStatus" }
+        ],
         "outputs": [
           {
             "token": "foundry-access",
-            "from": "portfolio.foundryAccessStatus",
-            "when": "portfolio.foundryAccessStatus = 'ready'"
+            "from": "inputs.accessStatus",
+            "when": "inputs.accessStatus = 'ready'"
           }
         ],
         "behavior": {
-          "events": {
+          "on": {
             "accessRequested": [
-              { "do": "invoke", "args": { "tool": "checkFoundryAccess" } }
+              {
+                "do": "invoke",
+                "control": {
+                  "tool": "checkFoundryAccess"
+                }
+              }
             ],
             "accessCleared": [
-              { "do": "assign", "target": "portfolio.foundryAccessStatus", "args": { "value": "required" } },
-              { "do": "assign", "target": "portfolio.foundryAccessError", "args": { "value": "" } }
+              {
+                "do": "assign",
+                "target": "portfolio.foundryAccessStatus",
+                "args": {
+                  "value": "required"
+                }
+              },
+              {
+                "do": "assign",
+                "target": "portfolio.foundryAccessError",
+                "args": {
+                  "value": ""
+                }
+              }
             ]
           }
         },
@@ -951,28 +1013,39 @@
           "bindings": {
             "access": { "expression": "($s := portfolio.foundryAccessStatus; {'title':'Connect to Foundry','requiredMessage':'Enter your access key to continue.','checkingMessage':'Checking Foundry access...','errorMessage':\"Couldn't verify Foundry access.\",'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': portfolio.foundryAccessError})" }
           }
+        },
+        "events": {
+          "accessRequested": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "accessCleared": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "holdings": {
         "id": "holdings",
         "outputs": [
           {
-            "token": "holding:$TICKER"
+            "token": "holding:$TICKER",
+            "from": "portfolio.holdings"
+          },
+          {
+            "token": "investor-profile",
+            "from": "portfolio.investorProfile"
           }
         ],
         "behavior": {
-          "events": {
+          "on": {
             "save": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "saveHoldings"
-                }
-              },
-              {
-                "do": "invoke",
-                "args": {
-                  "tool": "refreshPrices"
                 }
               }
             ]
@@ -1003,16 +1076,28 @@
               "expression": "[portfolio.holdings.*]"
             }
           }
+        },
+        "events": {
+          "save": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "market-prices": {
         "id": "market-prices",
         "inputs": [
           {
-            "token": "http-proxy-access"
+            "token": "http-proxy-access",
+            "required": false
           },
           {
             "token": "holding:$TICKER"
+          },
+          {
+            "token": "portfolio.quotes",
+            "as": "persistedQuotes"
           }
         ],
         "sources": [
@@ -1020,14 +1105,35 @@
             "id": "market-prices.source",
             "service": "portfolio-market-data",
             "operation": "refreshPrices",
-            "contract": "portfolio-market-quotes/v1"
+            "contract": "portfolio-market-quotes/v1",
+            "output": {
+              "kind": "jsonata",
+              "expr": "$count(response.results) > 0 ? $merge(response.results.{key:{'ticker':key,'price':$round(body.chart.result[0].meta.regularMarketPrice, 2)}}) : {}"
+            }
           }
         ],
         "outputs": [
           {
-            "token": "quote:$TICKER"
+            "token": "quote:$TICKER",
+            "from": "computed.portfolio.quotes"
           }
         ],
+        "compute": [
+          {
+            "id": "settled-market-prices",
+            "expression": "$count(sources.`market-prices.source`.*) > 0 ? sources.`market-prices.source` : inputs.persistedQuotes",
+            "assign": "portfolio.quotes",
+            "dependencies": ["sources.market-prices.source"]
+          }
+        ],
+        "events": {
+          "refresh": { "payloadSchema": { "type": "object" } }
+        },
+        "behavior": {
+          "on": {
+            "refresh": [{ "do": "invoke", "control": { "tool": "refreshPrices" } }]
+          }
+        },
         "view": {
           "capability": "fluent:table",
           "props": {
@@ -1048,21 +1154,24 @@
         "id": "positions",
         "inputs": [
           {
-            "token": "holding:$TICKER"
+            "token": "holding:$TICKER",
+            "as": "holdings"
           },
           {
-            "token": "quote:$TICKER"
+            "token": "quote:$TICKER",
+            "as": "quotes"
           }
         ],
         "outputs": [
           {
-            "token": "position:$TICKER"
+            "token": "position:$TICKER",
+            "from": "computed.portfolio.positions"
           }
         ],
         "compute": [
           {
             "id": "positions-by-ticker",
-            "expression": "($holdings := portfolio.holdings; $quotes := portfolio.quotes; $rows := $each($holdings, function($holding, $ticker) { $lookup($quotes, $ticker) ? {$ticker:{'ticker':$ticker,'quantity':$holding.quantity,'price':$lookup($quotes, $ticker).price,'value':$round($holding.quantity * $lookup($quotes, $ticker).price, 2),'costBasis':$round($holding.quantity * $holding.costBasis, 2),'gainLoss':$round(($holding.quantity * $lookup($quotes, $ticker).price) - ($holding.quantity * $holding.costBasis), 2)}} : {} }); $count($rows) > 0 ? $merge($rows) : {})",
+            "expression": "($holdings := inputs.holdings; $quotes := inputs.quotes; $rows := $each($holdings, function($holding, $ticker) { $lookup($quotes, $ticker) ? {$ticker:{'ticker':$ticker,'quantity':$holding.quantity,'price':$lookup($quotes, $ticker).price,'value':$round($holding.quantity * $lookup($quotes, $ticker).price, 2),'costBasis':$round($holding.quantity * $holding.costBasis, 2),'gainLoss':$round(($holding.quantity * $lookup($quotes, $ticker).price) - ($holding.quantity * $holding.costBasis), 2)}} : {} }); $count($rows) > 0 ? $merge($rows) : {})",
             "assign": "portfolio.positions",
             "dependencies": [
               "portfolio.holdings",
@@ -1094,18 +1203,20 @@
         "id": "summary",
         "inputs": [
           {
-            "token": "position:$TICKER"
+            "token": "position:$TICKER",
+            "as": "positions"
           }
         ],
         "outputs": [
           {
-            "token": "portfolio-summary"
+            "token": "portfolio-summary",
+            "from": "computed.portfolio.summary"
           }
         ],
         "compute": [
           {
             "id": "portfolio-totals",
-            "expression": "{'marketValue':$count(portfolio.positions.*) > 0 ? $round($sum(portfolio.positions.*.value), 2) : 0,'costBasis':$count(portfolio.positions.*) > 0 ? $round($sum(portfolio.positions.*.costBasis), 2) : 0,'gainLoss':$count(portfolio.positions.*) > 0 ? $round($sum(portfolio.positions.*.gainLoss), 2) : 0}",
+            "expression": "{'marketValue':$count(inputs.positions.*) > 0 ? $round($sum(inputs.positions.*.value), 2) : 0,'costBasis':$count(inputs.positions.*) > 0 ? $round($sum(inputs.positions.*.costBasis), 2) : 0,'gainLoss':$count(inputs.positions.*) > 0 ? $round($sum(inputs.positions.*.gainLoss), 2) : 0}",
             "assign": "portfolio.summary",
             "dependencies": [
               "portfolio.positions"
@@ -1127,7 +1238,7 @@
       "portfolio-intelligence": {
         "id": "portfolio-intelligence",
         "inputs": [
-          { "token": "foundry-access" },
+          { "token": "foundry-access", "required": false },
           {
             "token": "portfolio-summary"
           },
@@ -1136,6 +1247,11 @@
           },
           {
             "token": "investor-profile"
+          },
+          {
+            "token": "portfolio.intelligence",
+            "as": "intelligence",
+            "required": false
           }
         ],
         "sources": [
@@ -1143,12 +1259,14 @@
             "id": "portfolio-intelligence.source",
             "service": "portfolio-intelligence",
             "operation": "chat",
-            "contract": "portfolio-intelligence/v1"
+            "contract": "portfolio-intelligence/v1",
+            "when": "inputs.`foundry-access` = 'ready'"
           }
         ],
         "outputs": [
           {
-            "token": "portfolio-intelligence"
+            "token": "portfolio-intelligence",
+            "from": "inputs.intelligence"
           }
         ],
         "view": {
@@ -1169,20 +1287,22 @@
       "portfolio-intelligence-2": {
         "id": "portfolio-intelligence-2",
         "inputs": [
-          { "token": "foundry-access" },
+          { "token": "foundry-access", "required": false },
           { "token": "portfolio-summary" },
           { "token": "position:$TICKER" },
-          { "token": "investor-profile" }
+          { "token": "investor-profile" },
+          { "token": "portfolio.intelligence2", "as": "intelligence", "required": false }
         ],
         "sources": [
           {
             "id": "portfolio-intelligence-2.source",
             "service": "portfolio-intelligence-2",
             "operation": "chat",
-            "contract": "portfolio-intelligence-2/v1"
+            "contract": "portfolio-intelligence-2/v1",
+            "when": "inputs.`foundry-access` = 'ready'"
           }
         ],
-        "outputs": [{ "token": "portfolio-intelligence-2" }],
+        "outputs": [{ "token": "portfolio-intelligence-2", "from": "inputs.intelligence" }],
         "view": {
           "capability": "portfolio:intelligence-projections",
           "props": {
@@ -1205,21 +1325,35 @@
       "portfolio-intelligence-1b": {
         "id": "portfolio-intelligence-1b",
         "inputs": [
-          { "token": "foundry-access" },
+          { "token": "foundry-access", "required": false },
           { "token": "portfolio-summary" },
           { "token": "position:$TICKER" },
           { "token": "investor-profile" },
-          { "token": "portfolio-intelligence" }
+          { "token": "portfolio-intelligence" },
+          { "token": "portfolio.intelligence1b", "as": "intelligence", "required": false }
         ],
         "sources": [
           {
             "id": "portfolio-intelligence-1b.source",
             "service": "portfolio-intelligence-1b",
-            "operation": "chat",
-            "contract": "portfolio-intelligence-1b/v1"
+            "operation": "requestIntelligence1b",
+            "contract": "portfolio-intelligence-1b/v1",
+            "when": "inputs.`portfolio-intelligence` != null and inputs.intelligence = null",
+            "output": {
+              "kind": "jsonata",
+              "expr": "$merge([response,{'provider':'foundry-agent:Portfolio-Intelligence-2-Agent'}])"
+            }
           }
         ],
-        "outputs": [{ "token": "portfolio-intelligence-1b" }],
+        "outputs": [{ "token": "portfolio-intelligence-1b", "from": "computed.portfolio.intelligence1b" }],
+        "compute": [
+          {
+            "id": "settled-portfolio-intelligence-1b",
+            "expression": "sources.`portfolio-intelligence-1b.source` != null ? sources.`portfolio-intelligence-1b.source` : inputs.intelligence",
+            "assign": "portfolio.intelligence1b",
+            "dependencies": ["sources.portfolio-intelligence-1b.source"]
+          }
+        ],
         "view": {
           "capability": "portfolio:intelligence-projections",
           "props": {
@@ -1257,7 +1391,8 @@
         ],
         "outputs": [
           {
-            "token": "rebalance-conservative"
+            "token": "rebalance-conservative",
+            "from": "portfolio.strategies.conservative"
           }
         ],
         "view": {
@@ -1290,7 +1425,8 @@
         ],
         "outputs": [
           {
-            "token": "rebalance-growth"
+            "token": "rebalance-growth",
+            "from": "portfolio.strategies.growth"
           }
         ],
         "view": {
@@ -1315,7 +1451,8 @@
             "token": "rebalance-growth"
           },
           { "token": "portfolio-intelligence" },
-          { "token": "portfolio-intelligence-2" }
+          { "token": "portfolio-intelligence-2" },
+          { "token": "portfolio.recommendation", "as": "recommendation", "required": false }
         ],
         "sources": [
           {
@@ -1327,15 +1464,16 @@
         ],
         "outputs": [
           {
-            "token": "rebalance-recommendation"
+            "token": "rebalance-recommendation",
+            "from": "inputs.recommendation"
           }
         ],
         "behavior": {
-          "events": {
+          "on": {
             "apply": [
               {
                 "do": "invoke",
-                "args": {
+                "control": {
                   "tool": "applyRecommendation"
                 }
               }
@@ -1357,6 +1495,13 @@
             "intelligence1": { "from": "portfolio.intelligence" },
             "intelligence2": { "from": "portfolio.intelligence2" },
             "strategyInputs": { "from": "portfolio.strategyInputs" }
+          }
+        },
+        "events": {
+          "apply": {
+            "payloadSchema": {
+              "type": "object"
+            }
           }
         }
       }

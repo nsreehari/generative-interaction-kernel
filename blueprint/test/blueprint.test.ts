@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { InMemoryStateModel, unwrap } from "@gik/kernel";
+import { InMemoryStateModel, unwrap, type Json, type ResolvedNode } from "@gik/kernel";
 import {
   analyzeCellImpact,
   analyzeExploration,
@@ -13,7 +13,10 @@ import {
   createBlueprintDurableTransitionAdapter,
   createBlueprint,
   defineLoweringCell,
+  defineCell,
   defineExploration,
+  evaluateBlueprintCell,
+  evaluateBlueprintCellId,
   formatBlueprintReference,
   HOSTED_BLUEPRINT_CAPABILITY,
   PRESENTATION_FRAGMENT_CAPABILITY,
@@ -33,6 +36,7 @@ import {
   validateBlueprintForAuthoring,
   type BlueprintArtifact,
 } from "../src/index";
+import { settleQueuedCellSourceEffect } from "../src/worker";
 
 const runtime = {
   version: "test/1",
@@ -50,7 +54,188 @@ function blueprint(id = "test"): BlueprintArtifact {
   });
 }
 
+function runState(cells: Record<string, string[]>) {
+  return {
+    blueprintRunState: {
+      cells: Object.fromEntries(Object.entries(cells).map(([id, sources]) => [id, {
+        sources: sources.map((sourceId) => ({
+          id: sourceId,
+          lastRequestedToken: null,
+          lastCompletedToken: null,
+          lastCompletionStatus: null,
+          queueRequestedToken: null,
+        })),
+      }])),
+    },
+  };
+}
+
 describe("@gik/blueprint", () => {
+  it("materializes and purely evaluates candidate Cell JSON for preflight", () => {
+    const artifact = createBlueprint({
+      id: "cell-preflight",
+      kind: "test",
+      version: "1",
+      tiers: [{ id: "runtime", kind: "runtime-program" }],
+      recipes: [],
+      runtime: {
+        ...runtime,
+        externals: { services: { market: { version: "1", operations: ["quote"] } } },
+      },
+      cells: {
+        quote: {
+          id: "quote",
+          inputs: [{ token: "position", as: "position" }],
+          compute: [{ id: "symbol", expression: "inputs.position.symbol", assign: "symbol" }],
+          outputs: [{ token: "result", from: "computed.symbol" }],
+        },
+      },
+    });
+    const candidate = {
+      id: "quote",
+      inputs: [{ token: "position", as: "position" }],
+      sources: [{
+        id: "market.quote",
+        service: "market",
+        operation: "quote",
+        contract: "quote/v1",
+        when: "true",
+        input: { kind: "jsonata" as const, expr: "{'symbol':inputs.position.symbol}" },
+        output: { kind: "jsonata" as const, expr: "response.price" },
+      }],
+      compute: [
+        { id: "symbol", expression: "inputs.position.symbol", assign: "symbol" },
+        { id: "total", expression: "sources.`market.quote` * inputs.position.quantity", assign: "total" },
+      ],
+      outputs: [{ token: "result", from: "computed.total" }],
+    };
+    const state = {
+      position: { symbol: "MSFT", quantity: 2 },
+      blueprintRunState: {
+        cells: {
+          quote: { sourceValues: { "market.quote": 421.5 } },
+        },
+      },
+    } satisfies Record<string, Json>;
+    const originalState = structuredClone(state);
+
+    const result = evaluateBlueprintCell({ blueprint: artifact, state, cell: candidate });
+
+    expect(result).toMatchObject({
+      status: "evaluated",
+      missingInputs: [],
+      computed: { symbol: "MSFT", total: 843 },
+      outputs: { result: 843 },
+      effects: [{ kind: "source", cellId: "quote", source: { id: "market.quote" } }],
+      materializedProgramCell: { id: "quote", compute: candidate.compute },
+    });
+    expect(state).toEqual(originalState);
+    expect(artifact.payload.cells?.quote.compute).toHaveLength(1);
+  });
+
+  it("reports a blocked Cell preflight without computing or admitting effects", () => {
+    const artifact = createBlueprint({
+      id: "blocked-cell-preflight",
+      kind: "test",
+      version: "1",
+      tiers: [{ id: "runtime", kind: "runtime-program" }],
+      recipes: [],
+      runtime,
+      cells: {
+        summary: {
+          id: "summary",
+          inputs: [{ token: "document" }],
+          compute: [{ id: "title", expression: "inputs.document.title", assign: "title" }],
+          outputs: [{ token: "summary", from: "computed.title" }],
+        },
+      },
+    });
+    const cell = artifact.payload.cells!.summary;
+
+    expect(evaluateBlueprintCell({ blueprint: artifact, state: {}, cell })).toMatchObject({
+      status: "blocked",
+      missingInputs: ["document"],
+      computed: {},
+      outputs: {},
+      effects: [],
+    });
+    expect(evaluateBlueprintCellId({ blueprint: artifact, state: {}, cellId: "summary" }))
+      .toEqual(evaluateBlueprintCell({ blueprint: artifact, state: {}, cell }));
+    expect(() => evaluateBlueprintCellId({ blueprint: artifact, state: {}, cellId: "missing" }))
+      .toThrow("Blueprint 'blocked-cell-preflight' has no Cell 'missing'");
+  });
+
+  it("evaluates Cells through runTransition and recomputes from narrowed source values", async () => {
+    const artifact = createBlueprint({
+      id: "cell-evaluator",
+      kind: "test",
+      version: "1",
+      tiers: [{ id: "runtime", kind: "runtime-program" }],
+      recipes: [],
+      runtime: {
+        ...runtime,
+        externals: { services: { market: { version: "1", operations: ["quote"] } } },
+      },
+      cells: {
+        quote: {
+          id: "quote",
+          inputs: [{ token: "position", as: "position" }],
+          sources: [{
+            id: "market.quote",
+            service: "market",
+            operation: "quote",
+            contract: "quote/v1",
+            when: "$not($exists(sources.`market.quote`))",
+            input: { kind: "jsonata", expr: "{'symbol': inputs.position.symbol}" },
+            output: { kind: "jsonata", expr: "response.meta.price" },
+          }],
+          compute: [
+            { id: "symbol", expression: "inputs.position.symbol", assign: "symbol" },
+            { id: "price", expression: "sources.`market.quote`", assign: "price" },
+          ],
+          outputs: [
+            { token: "selected-symbol", from: "computed.symbol" },
+            { token: "market-price", from: "computed.price" },
+          ],
+        },
+      },
+    });
+    const materialized = materializeBlueprint({ blueprint: artifact });
+    const first = await runMaterializedTransition({
+      state: { position: { symbol: "MSFT" } },
+      materializedBlueprint: materialized,
+      events: [],
+    });
+
+    expect(first.state["selected-symbol"]).toBe("MSFT");
+    expect(first.effects).toHaveLength(1);
+    expect(first.effects?.[0]).toMatchObject({
+      kind: "invoke",
+      control: {
+        sourceId: "market.quote",
+        sourceCellId: "quote",
+        sourceInputTransform: { expr: "{'symbol': inputs.position.symbol}" },
+        sourceOutputTransform: { expr: "response.meta.price" },
+      },
+      data: {},
+    });
+
+    const effect = first.effects![0];
+    const settlement = await settleQueuedCellSourceEffect(effect, {
+      sourceOutput: { meta: { price: 421.5, currency: "USD" }, history: [419, 420, 421.5] },
+    }, first.state);
+    const second = await runMaterializedTransition({
+      state: first.state,
+      materializedBlueprint: materialized,
+      events: [],
+      sourceSettlements: [{ effect, result: settlement! }],
+    });
+
+    expect(second.state["market-price"]).toBe(421.5);
+    expect(second.effects).toBeUndefined();
+    expect(JSON.stringify(second.state)).not.toContain("history");
+  });
+
   it("creates, serializes, and parses a Blueprint artifact", () => {
     const artifact = blueprint();
     expect(parseBlueprintJson(stringifyBlueprint(artifact))).toEqual(artifact);
@@ -163,18 +348,26 @@ describe("@gik/blueprint", () => {
         unmounted.push(instance);
       },
     });
-    const hostedTree = (content: string) => ({
+    const hostedTree = (content: string): ResolvedNode => ({
       capability: HOSTED_BLUEPRINT_CAPABILITY,
       id: "child",
-      props: { hostedBlueprint: { inline: child }, content },
+      props: { hostedBlueprint: { inline: child as unknown as Json }, content },
       visible: true,
+      fallback: false,
       children: [],
     });
 
     await reconciler.reconcile(hostedTree("first"));
     await reconciler.reconcile(hostedTree("first"));
     await reconciler.reconcile(hostedTree("second"));
-    await reconciler.reconcile({ capability: "ui:empty", id: "root", props: {}, visible: true, children: [] });
+    await reconciler.reconcile({
+      capability: "ui:empty",
+      id: "root",
+      props: {},
+      visible: true,
+      fallback: false,
+      children: [],
+    });
 
     expect(mounted).toEqual(["parent:1/cells/child:first", "parent:1/cells/child:second"]);
     expect(unmounted).toEqual(["parent:1/cells/child", "parent:1/cells/child"]);
@@ -283,20 +476,35 @@ describe("@gik/blueprint", () => {
     expect(program.root?.capability).toBe(HOSTED_BLUEPRINT_CAPABILITY);
   });
 
-  it("preserves a Cell source predicate on its generated refresh invocation", () => {
+  it("lowers Cell sources into evaluator nodes and scopes run-state expressions", () => {
     const source = createBlueprint({
       ...blueprint("conditional-source").payload,
       cells: {
         quotes: {
           id: "quotes",
+          inputs: [{ token: "market-mode", as: "marketMode" }],
+          systemInputs: ["numSourcesRunning"],
           sources: [{
             id: "quotes.source",
             service: "market-data",
             operation: "refreshPrices",
             contract: "quotes/v1",
-            when: "portfolio.marketMode = 'live'",
+            when: "inputs.marketMode = 'live'",
           }],
-          view: { capability: "primitive:container" },
+          events: { analyze: { payloadSchema: { type: "object" } } },
+          behavior: {
+            on: {
+              analyze: [{
+                do: "invoke",
+                control: { tool: "refreshPrices" },
+                guard: "systemInputs.numSourcesRunning = 0",
+              }],
+            },
+          },
+          view: {
+            capability: "primitive:container",
+            visibility: "systemInputs.numSourcesRunning != 0",
+          },
         },
       },
       projections: { presentation: { roots: ["quotes"] } },
@@ -307,11 +515,93 @@ describe("@gik/blueprint", () => {
       compileCellTopology(source.payload.id, source.payload.cells ?? {}),
     );
 
-    expect(program.root?.edges?.on?.refresh).toEqual([{
+    expect(program.graph?.nodes[0]).toMatchObject({
+      id: "quotes-evaluate",
+      operation: {
+        kind: "extension",
+        name: "evaluate-cell",
+        config: { sources: [{ id: "quotes.source", when: "inputs.marketMode = 'live'" }] },
+      },
+    });
+    expect(program.root?.edges?.on?.analyze).toEqual([{
       do: "invoke",
-      args: { tool: "refreshPrices" },
-      guard: "portfolio.marketMode = 'live'",
+      control: {
+        tool: "refreshPrices",
+        sourceId: "quotes.source",
+        sourceCellId: "quotes",
+      },
+      guard: "($count(($lookup(blueprintRunState.cells, \"quotes\").sources)[lastRequestedToken != null and lastRequestedToken != lastCompletedToken])) = 0",
     }]);
+    expect(program.root?.edges?.gate).toBe(
+      "($count(($lookup(blueprintRunState.cells, \"quotes\").sources)[lastRequestedToken != null and lastRequestedToken != lastCompletedToken])) != 0",
+    );
+  });
+
+  it("lowers input-driven Cell sources with JSONata acceptance gates", () => {
+    const cells = {
+      selection: {
+        id: "selection",
+        inputs: [{ token: "shell.selectedReport", as: "report" }],
+        compute: [{ id: "report", expression: "inputs.report", assign: "report" }],
+        outputs: [{ token: "selected_report", from: "report" }],
+      },
+      analyzer: {
+        id: "analyzer",
+        inputs: [{ token: "selected_report", as: "report", required: true }],
+        sources: [{
+          id: "analysis.source",
+          service: "analysis",
+          operation: "analyze",
+          contract: "analysis/v1",
+          when: "inputs.report.enabled",
+        }],
+      },
+    };
+
+    const program = composeCellProgram({ cells }, compileCellTopology("shell", cells));
+
+    expect(program.graph?.inputs).toEqual([
+      "shell.selectedReport",
+      "blueprintRunState.cells.analyzer.sourceValues",
+    ]);
+    expect(program.graph?.nodes[1]).toMatchObject({
+      id: "analyzer-evaluate",
+      inputs: { report: "selected_report" },
+      operation: {
+        kind: "extension",
+        name: "evaluate-cell",
+        config: { sources: [{ id: "analysis.source", when: "inputs.report.enabled" }] },
+      },
+    });
+  });
+
+  it("lowers hosted Blueprint outputs to event-fed graph ports", () => {
+    const cells = {
+      analyzer: {
+        id: "analyzer",
+        blueprint: { $ref: "blueprint:incident-analyzer@1.0.0" },
+        outputs: [{ token: "analysis_report", from: "analysis_report" }],
+      },
+      cache: {
+        id: "cache",
+        inputs: [{ token: "analysis_report", required: true }],
+      },
+    };
+
+    const program = composeCellProgram({
+      cells,
+      projections: { presentation: { roots: ["analyzer"] } },
+    }, compileCellTopology("shell", cells));
+
+    expect(program.graph?.nodes).toEqual([
+      {
+        id: "analyzer-hosted-output",
+        trigger: { event: "gik-hosted-blueprint-output", node: "analyzer" },
+        outputs: { analysis_report: "analysis_report" },
+        operation: { kind: "compute", expression: '$lookup(event, "analysis_report")' },
+      },
+    ]);
+    expect(program.graph?.ports).toEqual({ analysis_report: { mode: "signal" } });
   });
 
   it("parses and formats canonical hosted Blueprint references", () => {
@@ -348,6 +638,7 @@ describe("@gik/blueprint", () => {
           id: "missing",
           from: "domain",
           to: "runtime",
+          patch: [{ op: "removeCell", cellId: "missing" }],
           metadata: { executor: "test" },
         }],
       },
@@ -364,6 +655,18 @@ describe("@gik/blueprint", () => {
     })).toMatchObject({ fromTier: "domain", toTier: "runtime" });
   });
 
+  it("validates standalone Cells through the evaluator contract", () => {
+    expect(defineCell({
+      id: "summary",
+      compute: [{ id: "value", expression: "1", assign: "value" }],
+      outputs: [{ token: "summary", from: "computed.value" }],
+    })).toMatchObject({ id: "summary" });
+    expect(() => defineCell({
+      id: "summary",
+      outputs: [{ token: "summary", from: "missing" }],
+    })).toThrow("references a value not produced by compute");
+  });
+
   it("retains Cell token composition behavior", () => {
     expect(tokenPattern("holding:$TICKER").match("holding:AAPL")).toEqual({ TICKER: "AAPL" });
     expect(compileCellTopology("prices", {
@@ -374,6 +677,38 @@ describe("@gik/blueprint", () => {
       providerCellId: "holdings",
       consumerCellId: "prices",
     }]);
+  });
+
+  it("connects every Cell that currently provides a token", () => {
+    const topology = compileCellTopology("incident-analysis", {
+      "cache-retriever": {
+        id: "cache-retriever",
+        outputs: [{ token: "cached_analysis_envelope" }],
+      },
+      "cache-writer": {
+        id: "cache-writer",
+        outputs: [{ token: "cached_analysis_envelope" }],
+      },
+      presentation: {
+        id: "presentation",
+        inputs: [{ token: "cached_analysis_envelope" }],
+      },
+    });
+
+    expect(topology.diagnostics).toEqual([]);
+    expect(topology.providers.cached_analysis_envelope).toEqual(["cache-retriever", "cache-writer"]);
+    expect(topology.edges).toEqual([
+      {
+        token: "cached_analysis_envelope",
+        providerCellId: "cache-retriever",
+        consumerCellId: "presentation",
+      },
+      {
+        token: "cached_analysis_envelope",
+        providerCellId: "cache-writer",
+        consumerCellId: "presentation",
+      },
+    ]);
   });
 
   it("analyzes downstream Cell impact without mutating topology", () => {
@@ -512,8 +847,9 @@ describe("@gik/blueprint", () => {
         root: {
           id: "root",
           view: { capability: "screen" },
+          events: { increment: { payloadSchema: { type: "object" } } },
           behavior: {
-            events: {
+            on: {
               increment: [
                 { do: "assign", target: "counter.value", args: { value: 2 } },
                 { do: "assign", target: "shared.value", args: { value: "updated" } },
@@ -534,8 +870,57 @@ describe("@gik/blueprint", () => {
       contexts: { shared },
     });
 
-    expect(result).toEqual({ state: { counter: { value: 2 } } });
+    expect(result.state).toEqual({ counter: { value: 2 }, ...runState({ root: [] }) });
+    expect(result.completedWithinRun).toEqual([
+      { kind: "assign", node: "root", target: "counter.value", value: 2 },
+      { kind: "assign", node: "root", target: "shared.value", value: "updated" },
+    ]);
     expect(shared.snapshot()).toEqual({ shared: { value: "updated" } });
+  });
+
+  it("publishes state-backed outputs from a Cell with no declared inputs", async () => {
+    const initialHoldings = { AAPL: { ticker: "AAPL", quantity: 2 } };
+    const updatedHoldings = { GOOG: { ticker: "GOOG", quantity: 3 } };
+    const artifact = createBlueprint({
+      id: "state-backed-output",
+      kind: "runtime-blueprint",
+      version: "1",
+      tiers: [{ id: "runtime", kind: "runtime-program" }],
+      recipes: [],
+      runtime: {
+        namespaces: ["portfolio"],
+        capabilities: {},
+        state: { portfolio: { holdings: initialHoldings } },
+      },
+      cells: {
+        holdings: {
+          id: "holdings",
+          outputs: [{ token: "holdings", from: "portfolio.holdings" }],
+          events: { save: { payloadSchema: { type: "object" } } },
+          behavior: {
+            on: {
+              save: [{ do: "assign", target: "portfolio.holdings", args: { from: "$event.rows" } }],
+            },
+          },
+        },
+      },
+    });
+    const materialized = materializeBlueprint({ blueprint: artifact });
+
+    const initial = await runMaterializedTransition({
+      materializedBlueprint: materialized,
+      state: materialized.payload.initialState,
+      events: [],
+    });
+    expect(initial.state.holdings).toEqual(initialHoldings);
+
+    const updated = await runMaterializedTransition({
+      materializedBlueprint: materialized,
+      state: initial.state,
+      events: [{ node: "holdings", name: "save", payload: { rows: updatedHoldings } }],
+    });
+    expect(updated.state.holdings).toEqual(updatedHoldings);
+    expect(artifact.payload.cells?.holdings.inputs).toBeUndefined();
   });
 
   it("materializes and executes a Blueprint without a presentation projection", async () => {
@@ -549,8 +934,9 @@ describe("@gik/blueprint", () => {
       cells: {
         counter: {
           id: "counter",
+          events: { increment: { payloadSchema: { type: "object" } } },
           behavior: {
-            events: {
+            on: {
               increment: [{ do: "assign", target: "counter.value", args: { value: 2 } }],
             },
           },
@@ -560,7 +946,7 @@ describe("@gik/blueprint", () => {
 
     const materialized = materializeBlueprint({ blueprint: artifact });
     expect(unwrap(materialized.payload.program)).toEqual({
-      handlers: [{ id: "counter", on: artifact.payload.cells?.counter.behavior?.events }],
+      handlers: [{ id: "counter", on: artifact.payload.cells?.counter.behavior?.on }],
     });
 
     const result = await runMaterializedTransition({
@@ -568,7 +954,10 @@ describe("@gik/blueprint", () => {
       state: materialized.payload.initialState,
       events: [{ node: "counter", name: "increment" }],
     });
-    expect(result.state).toEqual({ counter: { value: 2 } });
+    expect(result.state).toEqual({ counter: { value: 2 }, ...runState({ counter: [] }) });
+    expect(result.completedWithinRun).toEqual([
+      { kind: "assign", node: "counter", target: "counter.value", value: 2 },
+    ]);
   });
 
   it("returns a reusable non-mutating authoring validation report", () => {
@@ -591,7 +980,7 @@ describe("@gik/blueprint", () => {
     });
   });
 
-  it("retains source refresh handlers and rejects projection-hosted children in headless programs", () => {
+  it("lowers headless sources through Cell evaluation and rejects projection-hosted children", () => {
     const artifact = createBlueprint({
       ...blueprint("headless-source").payload,
       cells: {
@@ -601,8 +990,9 @@ describe("@gik/blueprint", () => {
         },
       },
     });
-    expect(unwrap(materializeBlueprint({ blueprint: artifact }).payload.program)).toEqual({
-      handlers: [{ id: "source", on: { refresh: [{ do: "invoke", args: { tool: "orders.list" } }] } }],
+    expect(unwrap(materializeBlueprint({ blueprint: artifact }).payload.program).graph?.nodes[0]).toMatchObject({
+      id: "source-evaluate",
+      operation: { kind: "extension", name: "evaluate-cell" },
     });
 
     artifact.payload.cells!.source.blueprint = { inline: blueprint("child") };
@@ -623,8 +1013,9 @@ describe("@gik/blueprint", () => {
         root: {
           id: "root",
           view: { capability: "screen" },
+          events: { increment: { payloadSchema: { type: "object" } } },
           behavior: {
-            events: {
+            on: {
               increment: [{ do: "assign", target: "counter.value", args: { from: "externalContext.policy.nextValue" } }],
             },
           },
@@ -643,8 +1034,9 @@ describe("@gik/blueprint", () => {
       state: first.payload.initialState,
       events: [{ node: "root", name: "increment" }],
     });
-    expect(result.state).toEqual({ counter: { value: 2 } });
+    expect(result.state).toEqual({ counter: { value: 2 }, ...runState({ root: [] }) });
   });
+
 
   it("keeps externalContext read-only and outside returned mutable state", async () => {
     const artifact = createBlueprint({
@@ -658,8 +1050,9 @@ describe("@gik/blueprint", () => {
         root: {
           id: "root",
           view: { capability: "screen" },
+          events: { mutate: { payloadSchema: { type: "object" } } },
           behavior: {
-            events: {
+            on: {
               mutate: [{ do: "assign", target: "externalContext.policy.allowed", args: { value: false } }],
             },
           },
@@ -677,7 +1070,7 @@ describe("@gik/blueprint", () => {
       state: materializedBlueprint.payload.initialState,
       events: [{ node: "root", name: "mutate" }],
     })).rejects.toThrow("externalContext is read-only");
-    expect(materializedBlueprint.payload.initialState).toEqual({ local: {} });
+    expect(materializedBlueprint.payload.initialState).toEqual({ local: {}, ...runState({ root: [] }) });
   });
 
   it("applies semantic patches to the authored Blueprint and rematerializes", () => {
@@ -718,8 +1111,9 @@ describe("@gik/blueprint", () => {
         root: {
           id: "root",
           view: { capability: "screen" },
+          events: { increment: { payloadSchema: { type: "object" } } },
           behavior: {
-            events: {
+            on: {
               increment: [{ do: "assign", target: "counter.value", args: { from: "externalContext.nextValue" } }],
             },
           },
@@ -738,7 +1132,7 @@ describe("@gik/blueprint", () => {
       events: [{ node: "root", name: "increment" }],
     });
 
-    expect(result.state).toEqual({ counter: { value: 2 } });
+    expect(result.state).toEqual({ counter: { value: 2 }, ...runState({ root: [] }) });
     expect(result.effects).toEqual([]);
     expect(adapter.applySpecUpdates({ spec, updates: [] })).toEqual(spec);
   });

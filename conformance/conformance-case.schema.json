@@ -20,7 +20,7 @@
     },
     "orchestrator": {
       "type": "array",
-      "description": "Deterministic, scripted Orchestrator responses. Each entry matches a deferred effect (invoke/confirm/route) and returns canned ops and/or follow-up events, settled inside the same dispatch. No clock, RNG, or IO — the runner uses these to exercise the effect seam reproducibly.",
+      "description": "Deterministic, scripted Orchestrator responses. Each entry matches a deferred effect (invoke/route/request) and returns canned ops and/or follow-up events, settled inside the same dispatch. No clock, RNG, or IO — the runner uses these to exercise the effect seam reproducibly.",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -31,7 +31,7 @@
             "additionalProperties": false,
             "required": ["kind"],
             "properties": {
-              "kind": { "enum": ["invoke", "confirm", "route"] },
+              "kind": { "enum": ["invoke", "route", "request"] },
               "node": { "type": "string", "description": "Match only effects from this node." },
               "tool": { "type": "string", "description": "Match only invoke effects for this tool." }
             }
@@ -91,7 +91,8 @@
             "required": ["rev", "ops"],
             "properties": {
               "rev": { "type": "integer", "minimum": 0 },
-              "ops": { "type": "array", "items": { "$ref": "#/definitions/op" } }
+              "ops": { "type": "array", "items": { "$ref": "#/definitions/op" } },
+              "completedWithinRun": { "type": "array", "items": { "$ref": "#/definitions/completedWithinRun" } }
             }
           },
           "expectSettledPatch": {
@@ -100,7 +101,8 @@
             "required": ["rev", "ops"],
             "properties": {
               "rev": { "type": "integer", "minimum": 0 },
-              "ops": { "type": "array", "items": { "$ref": "#/definitions/op" } }
+              "ops": { "type": "array", "items": { "$ref": "#/definitions/op" } },
+              "completedWithinRun": { "type": "array", "items": { "$ref": "#/definitions/completedWithinRun" } }
             }
           },
           "expectResolve": {
@@ -112,6 +114,41 @@
     }
   },
   "definitions": {
+    "completedWithinRun": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "node", "target", "value"],
+          "properties": {
+            "kind": { "const": "assign" },
+            "node": { "type": "string" },
+            "target": { "type": "string" },
+            "value": {}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "node", "event"],
+          "properties": {
+            "kind": { "const": "emit" },
+            "node": { "type": "string" },
+            "event": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["node", "name"],
+              "properties": {
+                "node": { "type": "string" },
+                "name": { "type": "string" },
+                "payload": {},
+                "actorId": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
     "op": {
       "type": "object",
       "additionalProperties": false,

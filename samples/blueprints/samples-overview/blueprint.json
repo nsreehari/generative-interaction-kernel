@@ -11,7 +11,13 @@
       "namespaces": [
         "overview"
       ],
-      "actions": [],
+      "actions": [
+        "assign",
+        "emit",
+        "invoke",
+        "route",
+        "request"
+      ],
       "capabilities": {
         "primitive:container": {
           "propsSchema": {

@@ -176,7 +176,7 @@ export function createComponentAuthoringApi(config: ComponentAuthoringApiConfig)
       "Use only the component contracts below. Their schemas are closed.",
       `Validate candidate props with ${toolNames.validate} or ${toolNames.preflight} before committing them.`,
       "Materialize a trial when mappings, tokens, variants, rendering, or event payload expectations change.",
-      "Components are declarative projection leaves. They may emit declared semantic events, but bundle reactions own state changes and external effects.",
+      "Components are declarative projection leaves. They may emit declared semantic events, but they do not execute runtime behavior directly.",
       "Variants express stable presentation modes, not domain state, theme, or behavior. Omit variant when the default is appropriate.",
       "These are pure ACX authoring operations, not live AX runtime verification.",
       ...componentSections,

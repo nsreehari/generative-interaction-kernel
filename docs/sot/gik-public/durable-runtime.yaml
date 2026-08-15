@@ -454,6 +454,12 @@ browser_runtime:
         - Journal appends happen before queue acknowledgement.
         - Returned events use semantic appendJournal behavior and therefore request engine wake.
         - An acknowledgement failure enters the same nack path as handler failure.
+      blueprint_effect_policy:
+        - Every durable Blueprint effect uses this existing queue lane; no request-specific queue exists.
+        - Ordinary invoke and route completion is fire-and-forget from Blueprint state and appends no inbox receipt.
+        - Cell source completion appends a source receipt; request completion appends an EffectSettlement receipt.
+        - Receipt handling re-enters through the Blueprint inbox and Kernel-owned source or request admission paths.
+        - Queue acknowledgement records transport completion and is not itself application settlement.
 
 queue_processor:
   generic:

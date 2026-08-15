@@ -35,7 +35,8 @@ test("DurableBlueprintController persists Blueprint state", async () => {
       root: {
         id: "root",
         view: { capability: "screen", bindings: { value: { from: "counter.value" } } },
-        behavior: { events: { increment: [{ do: "assign", target: "counter.value", args: { value: 2 } }] } },
+        events: { increment: { payloadSchema: { type: "object" } } },
+        behavior: { on: { increment: [{ do: "assign", target: "counter.value", args: { value: 2 } }] } },
       },
     },
     projections: { presentation: { roots: ["root"] } },
@@ -64,7 +65,7 @@ test("DurableBlueprintController persists Blueprint state", async () => {
   worker.stop();
 });
 
-test("DurableBlueprintController persists native effect settlements", async () => {
+test("DurableBlueprintController does not persist ordinary native effect results", async () => {
   const blueprint = createBlueprint({
     id: "durable-effect-counter",
     kind: "runtime-blueprint",
@@ -76,7 +77,8 @@ test("DurableBlueprintController persists native effect settlements", async () =
       root: {
         id: "root",
         view: { capability: "screen", bindings: { value: { from: "counter.value" } } },
-        behavior: { events: { save: [{ do: "invoke", args: { tool: "saveValue" } }] } },
+        events: { save: { payloadSchema: { type: "object" } } },
+        behavior: { on: { save: [{ do: "invoke", control: { tool: "saveValue" } }] } },
       },
     },
     projections: { presentation: { roots: ["root"] } },
@@ -88,9 +90,14 @@ test("DurableBlueprintController persists native effect settlements", async () =
     providers: { "indexed-db": provider },
     refs: { stateRef: runtimeRef, journalRef: runtimeRef, effectsQueueRef: runtimeRef },
   };
+  let effectCompleted!: () => void;
+  const completed = new Promise<void>((resolve) => { effectCompleted = resolve; });
   const native: BundleNative = {
     effectHandlers: {
-      saveValue: (context) => ({ ops: [context.set("counter.value", 7)] }),
+      saveValue: (context) => {
+        effectCompleted();
+        return { ops: [context.set("counter.value", 7)] };
+      },
     },
   };
 
@@ -98,18 +105,17 @@ test("DurableBlueprintController persists native effect settlements", async () =
   await worker.start();
   const first = new DurableBlueprintController(blueprint, { runtime, worker });
   await first.start();
-  const settled = waitForValue(first, 7);
   assert.equal((await first.emit("root", "save")).props.value, 1);
-  await settled;
+  await completed;
 
   const reopened = new DurableBlueprintController(blueprint, { runtime, worker });
-  assert.equal((await reopened.start()).props.value, 7);
+  assert.equal((await reopened.start()).props.value, 1);
   first.stop();
   reopened.stop();
   worker.stop();
 });
 
-test("DurableBlueprintController leaves work for an externally owned worker", async () => {
+test("DurableBlueprintController leaves ordinary effects for an externally owned worker", async () => {
   const blueprint = createBlueprint({
     id: "remote-worker-counter",
     kind: "runtime-blueprint",
@@ -121,7 +127,8 @@ test("DurableBlueprintController leaves work for an externally owned worker", as
       root: {
         id: "root",
         view: { capability: "screen", bindings: { value: { from: "counter.value" } } },
-        behavior: { events: { save: [{ do: "invoke", args: { tool: "saveValue" } }] } },
+        events: { save: { payloadSchema: { type: "object" } } },
+        behavior: { on: { save: [{ do: "invoke", control: { tool: "saveValue" } }] } },
       },
     },
     projections: { presentation: { roots: ["root"] } },
@@ -138,16 +145,24 @@ test("DurableBlueprintController leaves work for an externally owned worker", as
   await controller.start();
   assert.equal((await controller.emit("root", "save")).props.value, 1);
 
+  let effectCompleted!: () => void;
+  const completed = new Promise<void>((resolve) => { effectCompleted = resolve; });
   const worker = createNativeBlueprintWorker({
     blueprint,
     runtime,
-    native: { effectHandlers: { saveValue: (context) => ({ ops: [context.set("counter.value", 7)] }) } },
+    native: {
+      effectHandlers: {
+        saveValue: (context) => {
+          effectCompleted();
+          return { ops: [context.set("counter.value", 7)] };
+        },
+      },
+    },
   });
-  const settled = waitForValue(controller, 7);
   await worker.start();
-  await settled;
+  await completed;
   const reopened = new DurableBlueprintController(blueprint, { runtime });
-  assert.equal((await reopened.start()).props.value, 7);
+  assert.equal((await reopened.start()).props.value, 1);
   controller.stop();
   reopened.stop();
   worker.stop();
@@ -165,7 +180,8 @@ test("DurableBlueprintController refreshes after another controller commits", as
       root: {
         id: "root",
         view: { capability: "screen", bindings: { value: { from: "counter.value" } } },
-        behavior: { events: { increment: [{ do: "assign", target: "counter.value", args: { value: 2 } }] } },
+        events: { increment: { payloadSchema: { type: "object" } } },
+        behavior: { on: { increment: [{ do: "assign", target: "counter.value", args: { value: 2 } }] } },
       },
     },
     projections: { presentation: { roots: ["root"] } },

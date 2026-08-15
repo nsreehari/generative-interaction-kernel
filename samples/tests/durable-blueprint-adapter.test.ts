@@ -26,9 +26,12 @@ test("app host runs a JSON-portable materialized Blueprint through stateless dur
         id: "root",
         view: { capability: "screen" },
         behavior: {
-          events: {
+          on: {
             increment: [{ do: "assign", target: "counter.value", args: { from: "externalContext.nextValue" } }],
           },
+        },
+        events: {
+          increment: { payloadSchema: { type: "object" } },
         },
       },
     },
@@ -56,7 +59,7 @@ test("app host runs a JSON-portable materialized Blueprint through stateless dur
     ...refs,
     runtimeId: "durable-blueprint-counter/v1",
   });
-  assert.deepEqual(snapshot?.state, { counter: { value: 2 } });
+  assert.deepEqual((snapshot?.state as Record<string, Json>)?.counter, { value: 2 });
   assert.equal(snapshot?.spec.materializedBlueprint.type, "materialized-blueprint");
   if (snapshot) await storage.abortTransition({ ...refs, runtimeId: "durable-blueprint-counter/v1", leaseToken: snapshot.leaseToken });
 });

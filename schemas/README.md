@@ -1,8 +1,8 @@
-# GIK Schemas & Conformance Fixture
+# GIK Conformance Fixture
 
-Normative wire schemas for the **GIK Protocol (GIK) v0.1** — the first build artifact. Every
-kernel, renderer, and orchestrator is written *against* these schemas and verified by the golden
-fixture.
+The normative schemas are owned and published by `@gik/evaluators` from
+[`../packages/evaluators/schemas`](../packages/evaluators/schemas). This directory retains the
+cross-package conformance runner and fixtures that exercise those schemas.
 
 Spec prose: [../docs/03-protocol.md](../docs/03-protocol.md).
 
@@ -10,12 +10,12 @@ Spec prose: [../docs/03-protocol.md](../docs/03-protocol.md).
 
 | File | Message | Purpose |
 |---|---|---|
-| `vocabulary.schema.json` | `vocabulary` | the runtime vocabulary, including optional projection capabilities |
-| `program.schema.json` | `program` | the executable program definition with optional projection |
-| `patch.schema.json` | `patch` | state deltas (kernel → renderer) |
-| `event.schema.json` | `event` | interactions (renderer → kernel) |
-| `trace.schema.json` | `trace` | observability (kernel → sink) |
-| `envelope.schema.json` | any | `oneOf` the five; requires all five loaded (resolved by `$id`) |
+| `packages/evaluators/schemas/vocabulary.schema.json` | `vocabulary` | the runtime vocabulary, including optional projection capabilities |
+| `packages/evaluators/schemas/program.schema.json` | `program` | the executable program definition with optional projection |
+| `packages/evaluators/schemas/patch.schema.json` | `patch` | state deltas (kernel → renderer) |
+| `packages/evaluators/schemas/event.schema.json` | `event` | interactions (renderer → kernel) |
+| `packages/evaluators/schemas/trace.schema.json` | `trace` | observability (kernel → sink) |
+| `packages/evaluators/schemas/envelope.schema.json` | any | `oneOf` the five; requires all five loaded (resolved by `$id`) |
 
 Each message schema is **self-contained** (inlined `definitions`) so any validator in any language
 can load a single file. Only `envelope.schema.json` uses cross-file `$ref` (by `$id`).

@@ -1,22 +1,14 @@
-import { confirmOutcomeEvent, type ConfirmOutcome, type GIKEvent, type Json, type OrchestratorEffect, type StateModel } from "@gik/kernel";
+import { type EffectSettlement, type GIKEvent, type Json, type OrchestratorEffect, type StateModel } from "@gik/kernel";
 import { prepareBlueprintProgram, runTransition, type BlueprintTransitionResult } from "./run-transition";
 import type { BlueprintArtifact } from "./types";
 
 export interface RunLoweringBlueprintOptions {
   /** The compiler Blueprint whose Cells perform the transform / approve / emit-blueprint lowering. */
   blueprint: BlueprintArtifact;
-  /**
-   * An event that touches the compiler's seeded source state, triggering the standing `compute`
-   * derivations to settle. Standing derivations never run from seeded state alone: `runTransition`'s
-   * zero-events path only seeds the reaction baseline (confirmed empirically — an empty event list
-   * left derived state unpopulated, while dispatching this event settled it), so a real event is
-   * required before the derived rows/summary are readable.
-   */
-  bootstrapEvent: GIKEvent;
-  /** The event that fires the compiler's `approve` Cell's `confirm` action. */
+  /** The event that fires the compiler's approval request action. */
   approveEvent: GIKEvent;
-  /** Host-side approval decision, e.g. surfaced to a human reviewer. */
-  approve: (effect: OrchestratorEffect) => Promise<ConfirmOutcome>;
+  /** Resolve the request through host policy, a human reviewer, or another actor. */
+  resolveRequest: (effect: OrchestratorEffect) => Promise<EffectSettlement>;
   contexts?: Record<string, StateModel>;
 }
 
@@ -31,10 +23,10 @@ export interface RunLoweringBlueprintResult {
  * `runTransition` — no bespoke execution engine, no manual ControlFace/StateModel wiring.
  */
 export async function runLoweringBlueprint(options: RunLoweringBlueprintOptions): Promise<RunLoweringBlueprintResult> {
-  const { blueprint, bootstrapEvent, approveEvent, approve, contexts } = options;
+  const { blueprint, approveEvent, resolveRequest, contexts } = options;
   const { initialState } = prepareBlueprintProgram(blueprint);
 
-  const bootstrapped = await runTransition({ state: initialState, blueprint, events: [bootstrapEvent], contexts });
+  const bootstrapped = await runTransition({ state: initialState, blueprint, events: [], contexts });
 
   const approved = await runTransition({
     state: bootstrapped.state,
@@ -42,9 +34,8 @@ export async function runLoweringBlueprint(options: RunLoweringBlueprintOptions)
     events: [approveEvent],
     contexts,
     createOrchestrator: () => ({
-      async confirm(effect) {
-        const outcome = await approve(effect);
-        return { events: [confirmOutcomeEvent(effect, outcome)] };
+      async request(effect) {
+        return { settlement: await resolveRequest(effect) };
       },
     }),
   });

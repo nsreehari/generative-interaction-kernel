@@ -7,7 +7,7 @@
       "expression": "jsonata",
       "namespaces": ["runner"],
       "contexts": ["demoLedger", "demoTarget"],
-      "actions": ["assign", "derive", "invoke"],
+      "actions": ["assign", "emit", "invoke", "route", "request"],
       "capabilities": {
         "demo:tooling": {
           "propsSchema": { "type": "object", "additionalProperties": true },
@@ -103,7 +103,7 @@
                   "actDescription": "runner.scenario.sequence[$$.runner.currentEntryIndex].longDescription"
                 },
                 "on": {
-                  "reset": [{ "do": "invoke", "args": { "tool": "resetRunner" } }]
+                  "reset": [{ "do": "invoke", "control": { "tool": "resetRunner" } }]
                 },
                 "children": [
                   {
@@ -118,7 +118,7 @@
                       "readExpr": { "options": "runner.scenarios.{\"value\": id, \"label\": shortDescription}" },
                       "on": {
                         "select": [
-                          { "do": "invoke", "args": { "tool": "selectScenario" } }
+                          { "do": "invoke", "control": { "tool": "selectScenario" } }
                         ]
                       }
                     }
@@ -140,7 +140,7 @@
                         "resetKey": "runner.currentEntryIndex"
                       },
                       "on": {
-                        "press": [{ "do": "invoke", "args": { "tool": "runSequenceEntry" } }]
+                        "press": [{ "do": "invoke", "control": { "tool": "runSequenceEntry" } }]
                       }
                     }
                   }
@@ -269,7 +269,7 @@
                             "read": { "value": "runner.selectedContextId" },
                             "readExpr": { "options": "runner.namedPresetContexts.{\"value\": id, \"label\": label}" },
                             "on": {
-                              "select": [{ "do": "invoke", "args": { "tool": "applyNamedContext" } }]
+                              "select": [{ "do": "invoke", "control": { "tool": "applyNamedContext" } }]
                             }
                           }
                         },
@@ -285,7 +285,7 @@
                               "discardLabel": "runner.contextFormSpec.discardLabel"
                             },
                             "on": {
-                              "save": [{ "do": "invoke", "args": { "tool": "saveExternalContext" } }]
+                              "save": [{ "do": "invoke", "control": { "tool": "saveExternalContext" } }]
                             }
                           }
                         }

@@ -4,20 +4,20 @@ import { prepareBlueprintProgram, runTransition, validateLoweringCellGraph, type
 import type { Json } from "@gik/kernel";
 import { compilerBlueprint, loweringCellGraph, runDueDiligenceLoweringPipeline, runLoweringMetaGraph } from "./lowering-meta-graph";
 
-test("ADR-0045: transform Cells settle via runTransition once the bootstrap event lands, artifact withheld pre-approval", async () => {
+test("ADR-0045: transform Cells settle during initial synchronization, artifact withheld pre-approval", async () => {
   const blueprint = compilerBlueprint();
   const { initialState } = prepareBlueprintProgram(blueprint);
 
-  const bootstrapped = await runTransition({
+  const synchronized = await runTransition({
     state: initialState,
     blueprint,
-    events: [{ node: "agent-tier", name: "start" }],
+    events: [],
   });
 
   // transform Cells resolve without any approval — pure JSONata compute, same as any
   // application Blueprint's compute Cells.
-  const presentation = bootstrapped.state.presentation as Record<string, Json>;
-  const compiled = bootstrapped.state.compiled as Record<string, Json>;
+  const presentation = synchronized.state.presentation as Record<string, Json>;
+  const compiled = synchronized.state.compiled as Record<string, Json>;
   const rows = presentation.rows as unknown[];
   assert.equal(Array.isArray(rows), true);
   assert.equal(rows.length, 3);
@@ -28,14 +28,14 @@ test("ADR-0045: transform Cells settle via runTransition once the bootstrap even
   });
 
   // emit-blueprint withholds the terminal artifact until the approve gate (the Kernel's
-  // existing `confirm` verb) resolves.
-  assert.equal(compiled.artifact, undefined);
+  // existing `request` verb) resolves.
+  assert.equal(compiled.artifact, null);
 });
 
 test("ADR-0045: runLoweringBlueprint drives a Lowering Cell meta-graph through approval as an ordinary Blueprint transition", async () => {
   const result = await runLoweringMetaGraph("approved");
 
-  // After `confirm` resolves "approved" (via the standard confirmOutcomeEvent follow-up), the
+  // After the decision request settles as resolved, the
   // terminal artifact is emitted — proving transform + approve + emit-blueprint all run on the
   // same Kernel machinery an application Blueprint already uses. The artifact is itself a real
   // tier-2 `BlueprintDefinition` (Phase 3), not application data the host must further wrap.
@@ -52,7 +52,7 @@ test("ADR-0045: runLoweringBlueprint drives a Lowering Cell meta-graph through a
 
 test("ADR-0045: runLoweringBlueprint withholds the artifact when the approval callback denies", async () => {
   const result = await runLoweringMetaGraph("denied");
-  assert.equal(result.artifactAfterApproval, undefined);
+  assert.equal(result.artifactAfterApproval, null);
 });
 
 test("ADR-0045 Phase 3: the emitted tier-2 artifact validates and opens through the existing, unchanged openBlueprint path", async () => {
