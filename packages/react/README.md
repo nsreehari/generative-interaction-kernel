@@ -47,10 +47,15 @@ instance and Cell identity, while reusing the configured durable provider.
 
 `react`, `react-dom`, and `@fluentui/react-components` are peer dependencies you provide.
 
-## Documentation
+## Public entry points
 
-See [`docs/GIK-public-interface.html`](./docs/GIK-public-interface.html) and the
-[project repository](https://github.com/nsreehari/generative-interaction-kernel).
+| Import | Purpose |
+|---|---|
+| `@gik/react` | React rendering and ephemeral in-memory Blueprint hosting |
+| `@gik/react/durable` | Durable or remotely executed Blueprint hosting |
+
+See the [project documentation](https://github.com/nsreehari/generative-interaction-kernel/tree/master/docs)
+for architecture and protocol contracts.
 
 ## License
 
