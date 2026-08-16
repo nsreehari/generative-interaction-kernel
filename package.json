@@ -68,7 +68,7 @@
     "release:validate": "node scripts/validate-npm-release.mjs",
     "release:inspect": "node scripts/inspect-npm-packages.mjs",
     "release:version": "changeset version && node scripts/sync-workspace-dependencies.mjs",
-    "release:publish": "changeset publish --tag latest",
+    "release:publish": "changeset publish",
     "changeset": "changeset"
   },
   "dependencies": {
