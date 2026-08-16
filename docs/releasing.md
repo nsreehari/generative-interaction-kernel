@@ -19,6 +19,9 @@ private and excluded from production publishing.
 After changesets reach `master`, the `Version npm packages` workflow maintains
 a version pull request. That pull request updates package versions, pinned
 internal dependencies, changelogs, and consumes the pending changeset files.
+Because GitHub suppresses ordinary workflow events created by its built-in
+token, the version workflow explicitly dispatches full CI for the generated
+branch.
 
 ## Publish
 
