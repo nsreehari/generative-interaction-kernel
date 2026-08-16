@@ -16,17 +16,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Create maintainer App token
+        id: maintainer-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.GIK_MAINTAINER_APP_ID }}
+          private-key: ${{ secrets.GIK_MAINTAINER_APP_PRIVATE_KEY }}
+          owner: nsreehari
+          repositories: gik-maintainer
+
       - name: Dispatch issue to private maintainer
         env:
-          GH_TOKEN: ${{ secrets.GIK_MAINTAINER_DISPATCH_TOKEN }}
+          GH_TOKEN: ${{ steps.maintainer-token.outputs.token }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           SOURCE_REPOSITORY: ${{ github.repository }}
         run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "::error::GIK_MAINTAINER_DISPATCH_TOKEN is not configured"
-            exit 1
-          fi
-
           jq -n \
             --argjson issue_number "$ISSUE_NUMBER" \
             --arg source_repository "$SOURCE_REPOSITORY" \
