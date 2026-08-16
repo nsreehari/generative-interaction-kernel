@@ -22,7 +22,7 @@
             "request": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "{'message':$trim(state.agent.draft),'agentName':$trim(state.agent.agentName),'conversationId':state.agent.conversationId = '' ? null : state.agent.conversationId}"
+                "expr": "input"
               }
             },
             "response": {
@@ -54,37 +54,6 @@
                 }
               ]
             },
-            "settlement": {
-              "transform": {
-                "kind": "jsonata",
-                "expr": "{'ops':[{'op':'set','path':'agent.error','value':''},{'op':'set','path':'agent.lastAsked','value':$trim(state.agent.draft)},{'op':'set','path':'agent.draft','value':''},{'op':'set','path':'agent.conversationId','value':response.conversationId},{'op':'set','path':'agent.reply','value':response.reply}],'detail':{'provider':'foundry-agent','responseId':response.responseId,'conversationId':response.conversationId}}"
-              }
-            },
-            "failureSettlement": {
-              "transform": {
-                "kind": "jsonata",
-                "expr": "($missing := error.code = 'service-dependency-unsatisfied' and error.dependency.kind = 'credential' and error.dependency.ref = 'foundry-agent/access-key'; $access := $missing or error.status = 401 or error.status = 403; {'ops':[{'op':'set','path':'agent.error','value':$access ? '' : error.message},{'op':'set','path':'agent.accessStatus','value':$access ? 'required' : state.agent.accessStatus},{'op':'set','path':'agent.accessError','value':$access ? (error.status = 401 or error.status = 403 ? 'That access key was rejected.' : 'Foundry access is required.') : state.agent.accessError}]})"
-              }
-            },
-            "onViolation": {
-              "action": "fail"
-            }
-          },
-          "checkFoundryAccess": {
-            "operation": "check-access",
-            "contract": "foundry-access-check/v1",
-            "settlement": {
-              "transform": {
-                "kind": "jsonata",
-                "expr": "{'ops':[{'op':'set','path':'agent.accessStatus','value':'ready'},{'op':'set','path':'agent.accessError','value':''}]}"
-              }
-            },
-            "failureSettlement": {
-              "transform": {
-                "kind": "jsonata",
-                "expr": "($rejected := error.status = 401 or error.status = 403; $missing := error.code = 'service-dependency-unsatisfied' and error.dependency.kind = 'credential' and error.dependency.ref = 'foundry-agent/access-key'; {'ops':[{'op':'set','path':'agent.accessStatus','value':($rejected or $missing) ? 'required' : 'error'},{'op':'set','path':'agent.accessError','value':$rejected ? 'That access key was rejected.' : ($missing ? 'Foundry access is required.' : error.message)}]})"
-              }
-            },
             "onViolation": {
               "action": "fail"
             }
@@ -106,18 +75,6 @@
                   }
                 }
               ]
-            },
-            "settlement": {
-              "transform": {
-                "kind": "jsonata",
-                "expr": "{'ops':[{'op':'set','path':'agent.agentOptions','value':response},{'op':'set','path':'agent.agentName','value':$count(response) > 0 ? response[0] : ''},{'op':'set','path':'agent.agentsStatus','value':$count(response) > 0 ? 'ready' : 'empty'},{'op':'set','path':'agent.agentsError','value':''}]}"
-              }
-            },
-            "failureSettlement": {
-              "transform": {
-                "kind": "jsonata",
-                "expr": "($rejected := error.status = 401 or error.status = 403; $missing := error.code = 'service-dependency-unsatisfied' and error.dependency.kind = 'credential' and error.dependency.ref = 'foundry-agent/access-key'; {'ops':[{'op':'set','path':'agent.agentOptions','value':[]},{'op':'set','path':'agent.agentName','value':''},{'op':'set','path':'agent.accessStatus','value':($rejected or $missing) ? 'required' : state.agent.accessStatus},{'op':'set','path':'agent.accessError','value':$rejected ? 'That access key was rejected.' : ($missing ? 'Foundry access is required.' : state.agent.accessError)},{'op':'set','path':'agent.agentsStatus','value':($rejected or $missing) ? 'idle' : 'error'},{'op':'set','path':'agent.agentsError','value':($rejected or $missing) ? '' : error.message}]})"
-              }
             },
             "onViolation": {
               "action": "fail"
@@ -174,69 +131,25 @@
             "additionalProperties": true
           }
         },
+        "fluent:spinner": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
         "primitive:alert": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           }
         },
-        "fluent:text-field": {
+        "primitive:form": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           },
           "emits": [
-            "input"
-          ]
-        },
-        "host:credential-access": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "emits": [
-            "accessRequested",
-            "accessCleared"
-          ],
-          "slots": [
-            "children"
-          ]
-        },
-        "agent:agent-selector": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "emits": [
-            "agentsRequested",
-            "select"
-          ]
-        },
-        "agent:ask-page": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "slots": [
-            "children"
-          ]
-        },
-        "host:credential-clear-button": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "emits": [
-            "press"
-          ]
-        },
-        "fluent:button": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "emits": [
-            "press"
+            "save"
           ]
         },
         "primitive:markdown": {
@@ -251,50 +164,34 @@
           "fluent": {
             "from": "fluent",
             "use": [
-              "button",
-              "panel",
-              "text",
-              "text-field"
+              "spinner",
+              "text"
             ]
           },
           "primitive": {
             "from": "primitive",
             "use": [
-              "alert",
               "container",
-              "markdown",
-              "note"
+              "form",
+              "markdown"
             ]
           },
           "agent": {
             "from": "self"
-          },
-          "host": {
-            "from": "host",
-            "use": [
-              "credential-access",
-              "credential-clear-button"
-            ]
           }
         },
-        "effectHandlers": [
-          "clearFoundryAccess",
-          "signOut"
-        ]
+        "effectHandlers": []
       },
       "state": {
         "agent": {
-          "accessStatus": "required",
-          "accessError": "",
-          "agentName": "",
-          "draft": "",
-          "reply": "",
-          "lastAsked": "",
-          "conversationId": "",
           "agentOptions": [],
-          "agentsStatus": "idle",
-          "agentsError": "",
-          "error": ""
+          "formValue": {
+            "agentName": "",
+            "message": ""
+          },
+          "request": null,
+          "reply": "",
+          "conversationId": ""
         }
       }
     },
@@ -318,381 +215,145 @@
           }
         }
       },
-      "foundry-agent-title": {
-        "id": "foundry-agent-title",
-        "view": {
-          "capability": "fluent:text",
-          "props": { "value": "Foundry Agent", "as": "h1", "variant": "title", "block": true }
-        }
-      },
-      "foundry-agent-subtitle": {
-        "id": "foundry-agent-subtitle",
-        "view": {
-          "capability": "fluent:text",
-          "props": { "value": "Choose an available agent and start a conversation.", "as": "p", "variant": "subtitle", "block": true }
-        }
-      },
-      "foundry-access-gate": {
-        "id": "foundry-access-gate",
-        "inputs": [
+      "fetch-agents": {
+        "id": "fetch-agents",
+        "systemInputs": ["numSourcesRunning"],
+        "sources": [
           {
-            "token": "agent.accessStatus",
-            "as": "accessStatus"
+            "id": "fetch-agents.source",
+            "service": "assistant",
+            "operation": "discoverAgents",
+            "contract": "foundry-agent-list/v1",
+            "output": { "kind": "jsonata", "expr": "response" }
           }
         ],
         "compute": [
           {
-            "id": "foundry-access",
-            "expression": "inputs.accessStatus = 'ready' ? inputs.accessStatus : null",
-            "assign": "foundryAccess"
+            "id": "agent-options",
+            "expression": "$exists(sources.`fetch-agents.source`) ? sources.`fetch-agents.source`.{'value':$, 'label':$} : []",
+            "assign": "agent.agentOptions",
+            "dependencies": ["sources.fetch-agents.source"]
           }
         ],
         "outputs": [
           {
-            "token": "foundry-access",
-            "from": "foundryAccess"
+            "token": "foundry-agent-options",
+            "from": "computed.agent.agentOptions"
+          }
+        ],
+        "view": {
+          "capability": "fluent:spinner",
+          "props": {
+            "label": "Loading agents",
+            "size": "medium"
+          },
+          "visibility": "systemInputs.numSourcesRunning > 0"
+        }
+      },
+      "agent-query-form": {
+        "id": "agent-query-form",
+        "inputs": [
+          { "token": "foundry-agent-options", "as": "agentOptions", "required": true },
+          { "token": "agent.request", "as": "request" }
+        ],
+        "outputs": [
+          {
+            "token": "foundry-agent-query",
+            "from": "inputs.request",
+            "when": "$exists(inputs.request) and $trim(inputs.request.agentName) != '' and $trim(inputs.request.message) != ''"
           }
         ],
         "behavior": {
           "on": {
-            "accessRequested": [
+            "save": [
               {
                 "do": "assign",
-                "target": "agent.accessStatus",
+                "target": "agent.formValue",
                 "args": {
-                  "value": "checking"
+                  "from": "$event.values"
                 }
               },
               {
                 "do": "assign",
-                "target": "agent.accessError",
+                "target": "agent.request",
                 "args": {
-                  "value": ""
-                }
-              },
-              {
-                "do": "invoke",
-                "control": {
-                  "tool": "checkFoundryAccess"
-                }
-              }
-            ],
-            "accessCleared": [
-              {
-                "do": "invoke",
-                "control": {
-                  "tool": "clearFoundryAccess"
+                  "from": "$event.values"
                 }
               }
             ]
           }
         },
         "view": {
-          "capability": "host:credential-access",
+          "capability": "primitive:form",
           "props": {
-            "dependency": { "kind": "credential", "ref": "foundry-agent/access-key" }
+            "saveLabel": "Ask",
+            "discardLabel": "Discard",
+            "initiallyDirty": true
           },
           "bindings": {
-            "access": {
-              "expression": "($s := agent.accessStatus; {'title':'Connect to Foundry','requiredMessage':'Enter your access key to continue.','checkingMessage':'Checking Foundry access...','errorMessage':\"Couldn't verify Foundry access.\",'triggered': $s != 'ready' and $s != 'empty', 'status': $s = 'checking' ? 'checking' : ($s = 'required' ? 'required' : 'error'), 'error': agent.accessError})"
-            }
-          }
+            "fields": {
+              "expression": "{'properties':{'agentName':{'title':'Agent','type':'string','options':agent.agentOptions,'placeholder':'Choose an agent','span':12},'message':{'title':'Message','type':'string','format':'textarea','rows':5,'minLength':1,'placeholder':'Ask the agent something...','span':12}},'required':['agentName','message']}"
+            },
+            "value": { "from": "agent.formValue" }
+          },
+          "visibility": "$count(agent.agentOptions) > 0"
         },
         "events": {
-          "accessRequested": {
-            "payloadSchema": {
-              "type": "object"
-            }
-          },
-          "accessCleared": {
+          "save": {
             "payloadSchema": {
               "type": "object"
             }
           }
         }
       },
-      "agent-demo": {
-        "id": "agent-demo",
-        "view": {
-          "capability": "agent:ask-page",
-          "props": {
-            "title": "Ask the agent"
-          }
-        }
-      },
-      "agent-selector": {
-        "id": "agent-selector",
+      "agent-response": {
+        "id": "agent-response",
+        "systemInputs": ["numSourcesRunning"],
         "inputs": [
+          { "token": "foundry-agent-query", "as": "query", "required": true },
+          { "token": "agent.conversationId", "as": "conversationId" }
+        ],
+        "sources": [
           {
-            "token": "foundry-access"
-          },
-          {
-            "token": "agent.agentName",
-            "as": "agentName"
+            "id": "agent-response.source",
+            "service": "assistant",
+            "operation": "askAgent",
+            "contract": "foundry-chat/v1",
+            "input": {
+              "kind": "jsonata",
+              "expr": "{'message':$trim(inputs.query.message),'agentName':$trim(inputs.query.agentName),'conversationId':inputs.conversationId = '' ? null : inputs.conversationId}"
+            },
+            "output": { "kind": "jsonata", "expr": "response" }
           }
         ],
         "compute": [
           {
-            "id": "agent-selection",
-            "expression": "inputs.agentName != '' ? inputs.agentName : null",
-            "assign": "agentSelection"
-          }
-        ],
-        "outputs": [
+            "id": "agent-response-assign",
+            "expression": "$exists(sources.`agent-response.source`) ? sources.`agent-response.source`.reply : ''",
+            "assign": "agent.reply",
+            "dependencies": ["sources.agent-response.source"]
+          },
           {
-            "token": "foundry-agent-selection",
-            "from": "agentSelection"
+            "id": "agent-conversation-assign",
+            "expression": "$exists(sources.`agent-response.source`) ? sources.`agent-response.source`.conversationId : ''",
+            "assign": "agent.conversationId",
+            "dependencies": ["sources.agent-response.source"]
           }
         ],
-        "behavior": {
-          "on": {
-            "agentsRequested": [
-              {
-                "do": "assign",
-                "target": "agent.agentsStatus",
-                "args": {
-                  "value": "loading"
-                }
-              },
-              {
-                "do": "assign",
-                "target": "agent.agentsError",
-                "args": {
-                  "value": ""
-                }
-              },
-              {
-                "do": "invoke",
-                "control": {
-                  "tool": "discoverAgents"
-                }
-              }
-            ],
-            "select": [
-              {
-                "do": "assign",
-                "target": "agent.agentName",
-                "args": {
-                  "from": "$event.value"
-                }
-              }
-            ]
-          }
-        },
-        "view": {
-          "capability": "agent:agent-selector",
-          "bindings": {
-            "agentName": {
-              "from": "agent.agentName"
-            },
-            "agentOptions": {
-              "from": "agent.agentOptions"
-            },
-            "agentsStatus": {
-              "from": "agent.agentsStatus"
-            },
-            "agentsError": {
-              "from": "agent.agentsError"
-            }
-          }
-        },
-        "events": {
-          "agentsRequested": {
-            "payloadSchema": {
-              "type": "object"
-            }
-          },
-          "select": {
-            "payloadSchema": {
-              "type": "object"
-            }
-          }
-        }
-      },
-      "agent-connected": {
-        "id": "agent-connected",
-        "view": {
-          "capability": "primitive:alert",
-          "props": {
-            "label": "Connected to",
-            "level": "good"
-          },
-          "bindings": {
-            "value": {
-              "from": "agent.agentName"
-            }
-          }
-        }
-      },
-      "agent-message-field": {
-        "id": "agent-message-field",
-        "behavior": {
-          "on": {
-            "input": [
-              {
-                "do": "assign",
-                "target": "agent.draft",
-                "args": {
-                  "from": "$event.value"
-                }
-              }
-            ]
-          }
-        },
-        "view": {
-          "capability": "fluent:text-field",
-          "props": {
-            "label": "Message",
-            "placeholder": "Ask the agent something..."
-          },
-          "bindings": {
-            "value": {
-              "from": "agent.draft"
-            }
-          }
-        },
-        "events": {
-          "input": {
-            "payloadSchema": {
-              "type": "object"
-            }
-          }
-        }
-      },
-      "agent-ask-btn": {
-        "id": "agent-ask-btn",
-        "inputs": [
-          {
-            "token": "foundry-agent-selection"
-          }
-        ],
-        "behavior": {
-          "on": {
-            "press": [
-              {
-                "do": "invoke",
-                "control": {
-                  "tool": "askAgent"
-                }
-              }
-            ]
-          }
-        },
-        "view": {
-          "capability": "fluent:button",
-          "props": {
-            "label": "Ask",
-            "appearance": "primary"
-          }
-        },
-        "events": {
-          "press": {
-            "payloadSchema": {
-              "type": "object"
-            }
-          }
-        }
-      },
-      "agent-request-error": {
-        "id": "agent-request-error",
-        "view": {
-          "capability": "primitive:alert",
-          "props": {
-            "label": "Something went wrong",
-            "level": "error"
-          },
-          "bindings": {
-            "value": {
-              "from": "agent.error"
-            }
-          },
-          "visibility": "agent.error != ''"
-        }
-      },
-      "agent-asked-panel": {
-        "id": "agent-asked-panel",
-        "view": {
-          "capability": "fluent:panel",
-          "props": {
-            "title": "You asked",
-            "variant": "inset"
-          },
-          "visibility": "agent.lastAsked != ''"
-        }
-      },
-      "agent-asked-value": {
-        "id": "agent-asked-value",
-        "view": {
-          "capability": "primitive:note",
-          "props": {
-            "tone": "muted"
-          },
-          "bindings": {
-            "value": {
-              "from": "agent.lastAsked"
-            }
-          }
-        }
-      },
-      "agent-reply-panel": {
-        "id": "agent-reply-panel",
-        "view": {
-          "capability": "fluent:panel",
-          "props": {
-            "title": "Reply",
-            "variant": "inset"
-          }
-        }
-      },
-      "agent-reply-empty": {
-        "id": "agent-reply-empty",
-        "view": {
-          "capability": "primitive:note",
-          "props": {
-            "value": "Send a message to see the agent's reply.",
-            "tone": "muted"
-          },
-          "visibility": "agent.reply = ''"
-        }
-      },
-      "agent-reply-value": {
-        "id": "agent-reply-value",
         "view": {
           "capability": "primitive:markdown",
+          "before": [
+            {
+              "capability": "fluent:spinner",
+              "props": {
+                "label": "Waiting for agent response",
+                "size": "medium"
+              },
+              "visibility": "systemInputs.numSourcesRunning > 0"
+            }
+          ],
           "bindings": {
-            "value": {
-              "from": "agent.reply"
-            }
-          },
-          "visibility": "agent.reply != ''"
-        }
-      },
-      "agent-signout-btn": {
-        "id": "agent-signout-btn",
-        "behavior": {
-          "on": {
-            "press": [
-              {
-                "do": "invoke",
-                "control": {
-                  "tool": "signOut"
-                }
-              }
-            ]
-          }
-        },
-        "view": {
-          "capability": "host:credential-clear-button",
-          "props": {
-            "label": "Sign out",
-            "dependency": { "kind": "credential", "ref": "foundry-agent/access-key" }
-          }
-        },
-        "events": {
-          "press": {
-            "payloadSchema": {
-              "type": "object"
-            }
+            "value": { "from": "agent.reply" }
           }
         }
       }
@@ -704,94 +365,22 @@
         ],
         "placements": [
           {
-            "cell": "foundry-agent-title",
+            "cell": "fetch-agents",
             "parent": "foundry-agent-root",
             "slot": "children",
             "order": 0
           },
           {
-            "cell": "foundry-agent-subtitle",
+            "cell": "agent-query-form",
             "parent": "foundry-agent-root",
             "slot": "children",
             "order": 1
           },
           {
-            "cell": "foundry-access-gate",
+            "cell": "agent-response",
             "parent": "foundry-agent-root",
             "slot": "children",
             "order": 2
-          },
-          {
-            "cell": "agent-demo",
-            "parent": "foundry-access-gate",
-            "slot": "children",
-            "order": 0
-          },
-          {
-            "cell": "agent-selector",
-            "parent": "agent-demo",
-            "slot": "children",
-            "order": 0
-          },
-          {
-            "cell": "agent-connected",
-            "parent": "agent-demo",
-            "slot": "children",
-            "order": 1
-          },
-          {
-            "cell": "agent-message-field",
-            "parent": "agent-demo",
-            "slot": "children",
-            "order": 2
-          },
-          {
-            "cell": "agent-ask-btn",
-            "parent": "agent-demo",
-            "slot": "children",
-            "order": 3
-          },
-          {
-            "cell": "agent-request-error",
-            "parent": "agent-demo",
-            "slot": "children",
-            "order": 4
-          },
-          {
-            "cell": "agent-asked-panel",
-            "parent": "agent-demo",
-            "slot": "children",
-            "order": 5
-          },
-          {
-            "cell": "agent-asked-value",
-            "parent": "agent-asked-panel",
-            "slot": "children",
-            "order": 0
-          },
-          {
-            "cell": "agent-reply-panel",
-            "parent": "agent-demo",
-            "slot": "children",
-            "order": 6
-          },
-          {
-            "cell": "agent-reply-empty",
-            "parent": "agent-reply-panel",
-            "slot": "children",
-            "order": 0
-          },
-          {
-            "cell": "agent-reply-value",
-            "parent": "agent-reply-panel",
-            "slot": "children",
-            "order": 1
-          },
-          {
-            "cell": "agent-signout-btn",
-            "parent": "agent-demo",
-            "slot": "children",
-            "order": 7
           }
         ]
       }
