@@ -11,13 +11,10 @@
     { "id": "incident-report-explorer-3", "blueprint": "incident-report-explorer-3" },
     { "id": "live-workspace-soc", "blueprint": "live-workspace-soc" },
     { "id": "copilot-c2", "blueprint": "copilot-c2" },
-    { "id": "foundry-agent", "blueprint": "foundry-agent" },
-    { "id": "foundry-agent-no-cells", "blueprint": "foundry-agent-no-cells" },
+    { "id": "ai-agent", "blueprint": "ai-agent" },
     { "id": "backend-order", "blueprint": "backend-order-processing" },
     { "id": "middleware-continuity", "blueprint": "middleware-continuity" }
   ],
-  "nativeFrom": {
-    "foundry-agent-no-cells": "foundry-agent"
-  },
+  "nativeFrom": {},
   "projectionFrom": {}
 }

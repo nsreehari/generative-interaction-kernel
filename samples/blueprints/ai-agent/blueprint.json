@@ -2,10 +2,89 @@
   "gik": "0.1",
   "type": "blueprint",
   "payload": {
-    "id": "foundry-agent",
+    "id": "ai-agent",
     "kind": "runtime-blueprint",
     "version": "1.0",
-    "recipes": [],
+    "structureMode": "fixed",
+    "recipes": [
+      {
+        "id": "ai-agent-to-runtime",
+        "from": "ai-agent",
+        "to": "runtime-document",
+        "representations": [
+          {
+            "id": "shared-presentation",
+            "views": {}
+          }
+        ],
+        "fallback": "shared-presentation",
+        "implementationPrograms": [
+          {
+            "id": "foundry",
+            "when": "externalContext.ai = 'foundry'"
+          },
+          {
+            "id": "copilot",
+            "when": "externalContext.ai = 'copilot'",
+            "services": {
+              "assistant": {
+                "kind": "copilot-agent",
+                "version": "1",
+                "operations": {
+                  "askAgent": {
+                    "operation": "chat",
+                    "contract": "ai-agent-chat/v1",
+                    "response": {
+                      "validators": [
+                        {
+                          "kind": "ajv-schema",
+                          "message": "AI agent returned an invalid chat response",
+                          "schema": {
+                            "type": "object",
+                            "required": ["conversationId", "responseId", "reply"],
+                            "properties": {
+                              "conversationId": { "type": "string" },
+                              "responseId": { "type": "string", "minLength": 1 },
+                              "reply": { "type": "string" }
+                            },
+                            "additionalProperties": true
+                          }
+                        }
+                      ]
+                    },
+                    "onViolation": { "action": "fail" }
+                  },
+                  "discoverAgents": {
+                    "operation": "discover",
+                    "contract": "ai-agent-list/v1",
+                    "response": {
+                      "validators": [
+                        {
+                          "kind": "ajv-schema",
+                          "message": "AI provider returned an invalid agent list",
+                          "schema": {
+                            "type": "array",
+                            "items": { "type": "string", "minLength": 1 }
+                          }
+                        }
+                      ]
+                    },
+                    "onViolation": { "action": "fail" }
+                  }
+                },
+                "config": {
+                  "server": "http://127.0.0.1:7801/mcp",
+                  "model": "gpt-5.4",
+                  "workspaceRef": ".copilot-workspace"
+                },
+                "scope": "per-session"
+              }
+            }
+          }
+        ],
+        "implementationFallback": "foundry"
+      }
+    ],
     "services": {
       "assistant": {
         "kind": "foundry-agent",
@@ -13,10 +92,10 @@
         "operations": {
           "askAgent": {
             "operation": "chat",
-            "contract": "foundry-chat/v1",
+            "contract": "ai-agent-chat/v1",
             "subject": {
               "kind": "chat",
-              "blueprintId": "foundry-agent",
+              "blueprintId": "ai-agent",
               "turnId": "current"
             },
             "request": {
@@ -60,7 +139,7 @@
           },
           "discoverAgents": {
             "operation": "discover",
-            "contract": "foundry-agent-list/v1",
+            "contract": "ai-agent-list/v1",
             "response": {
               "validators": [
                 {
@@ -197,21 +276,25 @@
     },
     "tiers": [
       {
+        "id": "ai-agent",
+        "kind": "ai-agent"
+      },
+      {
         "id": "runtime-document",
         "kind": "runtime-document",
         "description": "Authored terminal document for this hosted Blueprint."
       }
     ],
     "cells": {
-      "foundry-agent-root": {
-        "id": "foundry-agent-root",
+      "ai-agent-root": {
+        "id": "ai-agent-root",
         "view": {
           "capability": "primitive:container",
           "props": {
             "variant": "column",
             "gap": "m",
             "fill": true,
-            "ariaLabel": "Foundry Agent"
+            "ariaLabel": "AI Agent"
           }
         }
       },
@@ -223,21 +306,21 @@
             "id": "fetch-agents.source",
             "service": "assistant",
             "operation": "discoverAgents",
-            "contract": "foundry-agent-list/v1",
+            "contract": "ai-agent-list/v1",
             "output": { "kind": "jsonata", "expr": "response" }
           }
         ],
         "compute": [
           {
             "id": "agent-options",
-            "expression": "$exists(sources.`fetch-agents.source`) ? sources.`fetch-agents.source`.{'value':$, 'label':$} : []",
+            "expression": "$exists(sources.`fetch-agents.source`) ? [sources.`fetch-agents.source`.{'value':$, 'label':$}] : []",
             "assign": "agent.agentOptions",
             "dependencies": ["sources.fetch-agents.source"]
           }
         ],
         "outputs": [
           {
-            "token": "foundry-agent-options",
+            "token": "ai-agent-options",
             "from": "computed.agent.agentOptions"
           }
         ],
@@ -253,12 +336,12 @@
       "agent-query-form": {
         "id": "agent-query-form",
         "inputs": [
-          { "token": "foundry-agent-options", "as": "agentOptions", "required": true },
+          { "token": "ai-agent-options", "as": "agentOptions", "required": true },
           { "token": "agent.request", "as": "request" }
         ],
         "outputs": [
           {
-            "token": "foundry-agent-query",
+            "token": "ai-agent-query",
             "from": "inputs.request",
             "when": "$exists(inputs.request) and $trim(inputs.request.agentName) != '' and $trim(inputs.request.message) != ''"
           }
@@ -310,7 +393,7 @@
         "id": "agent-response",
         "systemInputs": ["numSourcesRunning"],
         "inputs": [
-          { "token": "foundry-agent-query", "as": "query", "required": true },
+          { "token": "ai-agent-query", "as": "query", "required": true },
           { "token": "agent.conversationId", "as": "conversationId" }
         ],
         "sources": [
@@ -318,7 +401,7 @@
             "id": "agent-response.source",
             "service": "assistant",
             "operation": "askAgent",
-            "contract": "foundry-chat/v1",
+            "contract": "ai-agent-chat/v1",
             "input": {
               "kind": "jsonata",
               "expr": "{'message':$trim(inputs.query.message),'agentName':$trim(inputs.query.agentName),'conversationId':inputs.conversationId = '' ? null : inputs.conversationId}"
@@ -361,24 +444,24 @@
     "projections": {
       "presentation": {
         "roots": [
-          "foundry-agent-root"
+          "ai-agent-root"
         ],
         "placements": [
           {
             "cell": "fetch-agents",
-            "parent": "foundry-agent-root",
+            "parent": "ai-agent-root",
             "slot": "children",
             "order": 0
           },
           {
             "cell": "agent-query-form",
-            "parent": "foundry-agent-root",
+            "parent": "ai-agent-root",
             "slot": "children",
             "order": 1
           },
           {
             "cell": "agent-response",
-            "parent": "foundry-agent-root",
+            "parent": "ai-agent-root",
             "slot": "children",
             "order": 2
           }

@@ -1,6 +1,7 @@
 import type { Json } from "@gik/kernel";
 import { UnsatisfiedServiceDependencyError } from "@gik/controlface";
 import type { SampleServiceRegistryOptions } from ".";
+import { executeCopilotAgentInvocation } from "./copilot-agent/runtime";
 import { executeHttpServiceInvocation } from "./http-service/runtime";
 import { executeMcpServiceInvocation } from "./mcp/runtime";
 
@@ -21,7 +22,7 @@ export function createSampleServiceRegistryOptions(
   const foundryOrigin = new URL(endpoints.foundryProxyOrigin).origin;
   const httpProxyOrigin = new URL(endpoints.httpProxyOrigin).origin;
   return {
-    hostCapabilities: ["foundry-executor", "credential-resolver", "http-executor", "mcp-executor"],
+    hostCapabilities: ["copilot-executor", "workspace-resolver", "foundry-executor", "credential-resolver", "http-executor", "mcp-executor"],
     resolveCredential: credentials.resolveCredential,
     clearCredential: credentials.clearCredential,
     authorizeEndpoint: (kind, endpoint) =>
@@ -55,6 +56,9 @@ export function createSampleServiceRegistryOptions(
       }
       if (invocation.kind === "mcp") {
         return executeMcpServiceInvocation(request as Parameters<typeof executeMcpServiceInvocation>[0]);
+      }
+      if (invocation.kind === "copilot-agent") {
+        return executeCopilotAgentInvocation(request as Parameters<typeof executeCopilotAgentInvocation>[0]);
       }
       throw new Error(`Unsupported sample service execution kind '${String(invocation.kind ?? "unknown")}'`);
     },

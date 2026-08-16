@@ -31,7 +31,7 @@ const receipt = (id: string): BlueprintProposalReceipt<UseProposal> => ({
     actions: [{ kind: "improve-report", payload: { operation: "improveReport" } }],
     createdAt: "2026-08-05T00:00:00.000Z",
   },
-  actor: { id: "foundry-agent" },
+  actor: { id: "ai-agent" },
   status: "admitted",
   createdAt: "2026-08-05T00:00:00.000Z",
   updatedAt: "2026-08-05T00:00:00.000Z",

@@ -137,7 +137,7 @@ export function createBlueprintAgentLifecycle(
         version: "1.0.0",
         kind: "jsonata",
         phase: "authorization",
-        expression: "actor.id = 'foundry-agent'",
+        expression: "actor.id = 'ai-agent'",
         denyReason: "Actor is not authorized for this Blueprint",
       },
       admission: {
@@ -204,7 +204,7 @@ export function createBlueprintAgentLifecycle(
           createdAt: new Date().toISOString(),
           rationale: intent.rationale ?? undefined,
         };
-        return proposalHost.submit(proposal, { id: "foundry-agent" });
+        return proposalHost.submit(proposal, { id: "ai-agent" });
       },
     },
   });

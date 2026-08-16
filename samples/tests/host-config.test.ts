@@ -46,7 +46,7 @@ test("host config replaces endpoint tokens without mutating the source", () => {
   assert.equal(source.services[0].config.proxyEndpoint, "${GIK_HTTP_PROXY_ORIGIN}");
 });
 
-test.each(["foundry-agent", "foundry-agent-no-cells", "live-workspace-soc"])(
+test.each(["ai-agent", "live-workspace-soc"])(
   "%s resolves every Foundry endpoint from host config",
   (blueprintId) => {
     const source = JSON.stringify(resolveSampleBlueprintSource(blueprintId));
