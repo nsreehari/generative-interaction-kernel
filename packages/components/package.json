@@ -74,6 +74,6 @@
   },
   "scripts": {
     "build": "tsup",
-    "prepack": "node ../../scripts/sync-public-docs.mjs packages/components"
+    "prepack": "node ../../scripts/sync-package-license.mjs packages/components"
   }
 }

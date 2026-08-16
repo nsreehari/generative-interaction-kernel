@@ -63,10 +63,13 @@
     "pack:durable-runtime": "node scripts/pack-durable-runtime.mjs",
     "typecheck": "tsc -p kernel/tsconfig.json --noEmit && tsc -p packages/durable-runtime/tsconfig.json --noEmit && tsc -p packages/evaluators/tsconfig.json --noEmit && tsc -p adapters/react/tsconfig.json --noEmit && tsc -p packages/components/tsconfig.json --noEmit && tsc -p packages/blueprint/tsconfig.json --noEmit && tsc -p packages/demo-runner-host/tsconfig.json --noEmit && tsc -p face/tsconfig.json --noEmit && tsc -p packages/agent-lifecycle-exp/tsconfig.json --noEmit && tsc -p packages/blueprint-agent-host/tsconfig.json --noEmit && tsc -p transports/http-sse/tsconfig.json --noEmit && tsc -p transports/mcp-http/tsconfig.json --noEmit && tsc -p samples/apps/browser-host/tsconfig.json --noEmit && tsc -p samples/apps/node-host/tsconfig.json --noEmit && tsc -p samples/storybook/tsconfig.json --noEmit && tsc -p samples/examples/tsconfig.json --noEmit && tsc -p providers/tsconfig.json --noEmit",
     "test": "npm run conformance && npm run typecheck && npm run test:jsonata && npm run test:vitest",
-    "sync:public-docs": "node scripts/sync-public-docs.mjs packages/agent-lifecycle-exp packages/blueprint-agent-host packages/kernel packages/controlface packages/agentface packages/blueprint packages/components packages/demo-runner-host packages/evaluators packages/react packages/transport-http-sse packages/transport-mcp-http packages/provider-blueprint-authoring packages/provider-step-orchestrator packages/gik",
-    "release:gate": "npm run sync:public-docs && npm run build:public-packages && npm run test",
-    "release:dry": "npm run build:public-packages && npm publish --workspaces --dry-run",
-    "release": "npm run build:public-packages && npm publish --workspaces"
+    "sync:package-licenses": "node scripts/sync-package-license.mjs packages/agent-lifecycle-exp packages/blueprint-agent-host packages/kernel packages/controlface packages/agentface packages/blueprint packages/components packages/demo-runner-host packages/durable-runtime packages/evaluators packages/react packages/transport-http-sse packages/transport-mcp-http packages/provider-blueprint-authoring packages/provider-step-orchestrator packages/gik",
+    "release:gate": "npm run sync:package-licenses && npm run build:public-packages && npm run test",
+    "release:validate": "node scripts/validate-npm-release.mjs",
+    "release:inspect": "node scripts/inspect-npm-packages.mjs",
+    "release:version": "changeset version && node scripts/sync-workspace-dependencies.mjs",
+    "release:publish": "changeset publish",
+    "changeset": "changeset"
   },
   "dependencies": {
     "@fluentui/react-components": "^9.74.3",
@@ -75,6 +78,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.1",
     "@playwright/test": "^1.61.1",
     "@types/node": "^20.14.0",
     "@types/react": "^18.3.12",

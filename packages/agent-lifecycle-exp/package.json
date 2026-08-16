@@ -1,5 +1,6 @@
 {
   "name": "@gik/agent-lifecycle-exp",
+  "private": true,
   "version": "0.1.0",
   "description": "Transport-neutral agent and host lifecycle contracts, tools, and cumulative experience projections for GIK.",
   "license": "MIT",
@@ -40,6 +41,6 @@
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
-    "prepack": "node ../../scripts/sync-public-docs.mjs packages/agent-lifecycle-exp"
+    "prepack": "node ../../scripts/sync-package-license.mjs packages/agent-lifecycle-exp"
   }
 }

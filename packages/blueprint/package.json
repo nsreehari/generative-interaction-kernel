@@ -65,6 +65,6 @@
   },
   "scripts": {
     "build": "tsup src/index.ts src/worker.ts src/worker/in-memory.ts src/worker/indexed-db.ts src/worker/filesystem-mcp.ts src/worker/azure.ts --format esm --dts --sourcemap --minify --clean --external @gik/kernel --external @gik/evaluators --external @gik/durable-runtime --tsconfig tsconfig.json",
-    "prepack": "node ../../scripts/sync-public-docs.mjs packages/blueprint"
+    "prepack": "node ../../scripts/sync-package-license.mjs packages/blueprint"
   }
 }

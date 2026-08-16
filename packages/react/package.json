@@ -55,6 +55,6 @@
   },
   "scripts": {
     "build": "tsup src/index.ts src/durable.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
-    "prepack": "node ../../scripts/sync-public-docs.mjs packages/react"
+    "prepack": "node ../../scripts/sync-package-license.mjs packages/react"
   }
 }
