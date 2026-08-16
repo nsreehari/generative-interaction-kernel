@@ -42,7 +42,7 @@ definition. The kernel still receives exactly one manifest, one document, and on
 decision changes how those inputs are obtained, not the kernel grammar or protocol.
 
 Application selection therefore uses Blueprint identity through the single canonical short selector
-(for example, `b=portfolio-tracker`). During migration the application host may parse the legacy
+(for example, `b=portfolio-tracker-new`). During migration the application host may parse the legacy
 `bundle` query key, but it immediately canonicalizes that input to `b`; generated links, persisted
 navigation, and documentation use only `b`. The host does not interpret the value as a Bundle
 identity. The former `manage-bundles` inspection surface was retired rather than becoming a second

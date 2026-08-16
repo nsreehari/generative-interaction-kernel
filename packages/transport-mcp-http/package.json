@@ -1,5 +1,6 @@
 {
   "name": "@gik/transport-mcp-http",
+  "private": true,
   "version": "0.1.0",
   "description": "Model Context Protocol (MCP) over HTTP transport for GIK projections.",
   "license": "MIT",
@@ -41,6 +42,6 @@
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
-    "prepack": "node ../../scripts/sync-public-docs.mjs packages/transport-mcp-http"
+    "prepack": "node ../../scripts/sync-package-license.mjs packages/transport-mcp-http"
   }
 }

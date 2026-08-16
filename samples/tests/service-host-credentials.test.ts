@@ -4,6 +4,7 @@ import { UnsatisfiedServiceDependencyError } from "@gik/controlface";
 import { getSampleBlueprintCatalog } from "../catalog/blueprint-catalog";
 import {
   isSampleCredentialReference,
+  SAMPLE_BLUEPRINT_CREDENTIAL_REFERENCES,
   SAMPLE_CREDENTIAL_REFERENCES,
 } from "../service-kinds/credential-references";
 import {
@@ -47,7 +48,7 @@ function credentialLikePaths(value: unknown, parent = "", paths: string[] = []):
   return paths;
 }
 
-test("all registered sample credential references use the host-owned catalog", () => {
+test("all Blueprint credential references use the host-owned catalog", () => {
   const found = new Set<string>();
   const catalog = getSampleBlueprintCatalog();
   for (const id of catalog.blueprints) {
@@ -59,7 +60,7 @@ test("all registered sample credential references use the host-owned catalog", (
     assert.deepEqual(credentialLikePaths(blueprint.payload.context), [], `${id} stores credential-like data in Blueprint context`);
     assert.deepEqual(credentialLikePaths(blueprint.payload.runtime.state), [], `${id} stores credential-like data in application state`);
   }
-  assert.deepEqual([...found].sort(), Object.values(SAMPLE_CREDENTIAL_REFERENCES).sort());
+  assert.deepEqual([...found].sort(), [...SAMPLE_BLUEPRINT_CREDENTIAL_REFERENCES].sort());
 });
 
 test("browser credential resolution reads the existing GitHub Pages localStorage keys", async () => {

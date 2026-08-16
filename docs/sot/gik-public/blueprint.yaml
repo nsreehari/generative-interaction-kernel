@@ -99,7 +99,7 @@ artifact_contracts:
       payload: BlueprintDefinition }
     guarantees:
       - Portable JSON envelope.
-      - Can be lowered to either a projected or headless Kernel program.
+      - Can be lowered to a Kernel program with or without a presentation projection.
       - Supports inline or referenced child Blueprints through Cells.
   - name: MaterializedBlueprint
     signature: >-
@@ -136,7 +136,7 @@ artifact_contracts:
       - context is preserved as portable authoring data; this package does not merge it into runtime state.
       - Backend and worker Blueprints do not require a presentation projection.
       - A service Blueprint uses the same blueprint:<id>@<version> reference grammar and host registry as a nested Cell Blueprint.
-      - Interface output ports may declare from to project one runtime state path as a headless result.
+      - Interface output ports may declare from to project one runtime state path as a non-rendered result.
       - The serialized lowering-recipe collection is recipes in version 0.1.
       - structureMode is fixed, reconfigurable, or adaptive; the schema default and host interpretation treat omission as fixed.
       - structurePolicy allowlists semantic Blueprint operations and executable program operations for adaptive mode.
@@ -199,13 +199,12 @@ artifact_contracts:
       Select presentation and contract-compatible Cell implementation programs as independent,
       deterministic materialization axes.
     guarantees:
-      - A representation may declare `headless: true` to emit a terminal Blueprint without `projections.presentation`.
-      - A headless representation cannot declare or inherit presentation facets.
+      - Every representation recipe produces an authored presentation projection.
       - A representation may declare decorators whose JSONata select expression returns one Cell id or an array of Cell ids.
       - Decorator select evaluates during lowering against blueprint, payload, cells, and immutable externalContext.
       - A decorator may add one before and/or after CellViewDecoration to every selected presented Cell.
       - Decorators are applied after inherited view overrides and before terminal Blueprint validation.
-      - Headless selection remains independent from contract-compatible Cell and service implementation selection.
+      - Representation selection remains independent from contract-compatible Cell and service implementation selection.
   - name: BlueprintRepresentationDecorator
     signature: >-
       interface BlueprintRepresentationDecorator { select: string;
@@ -292,7 +291,7 @@ artifact_contracts:
       - When present, the reserved `projections.presentation` entry is the layout the current compiler projects.
       - composeCellProgram requires exactly one root for a presented Blueprint and walks placements
         into the Kernel projection tree.
-      - Without `projections.presentation`, composeCellProgram emits a headless Kernel program from
+      - Without `projections.presentation`, composeCellProgram emits a non-projected Kernel program from
         Cell event handlers, computations, and source refresh behavior.
 
 artifact_api:
@@ -392,10 +391,10 @@ cell_api:
       topology: ExecutableCellTopology): ExecutableProgramDefinition
     behavior: >-
       Compiles one validated Cell topology into a Kernel executable program. A presentation
-      projection produces a projected program; its absence produces a headless program.
+      projection produces a projected program; its absence produces a non-projected program.
       Compute and source Cells become evaluate-cell extension nodes. Hosted Blueprint outputs
       re-enter through event-triggered graph nodes and use transient signal ports.
-      Headless compilation rejects hosted child Blueprint Cells because their current execution
+      Presentation-free compilation rejects hosted child Blueprint Cells because their current execution
       requires a projection host. CellProjectionDefinition is structural input to this function
       and is not separately exported from the package entrypoint.
   - name: composeCellDocument
@@ -414,7 +413,7 @@ transition_api:
       - Drives the Kernel's shared graph traversal synchronously for the deterministic recipe chain.
       - Resolves context-selected Cell implementation programs while preserving Cell semantic and data-flow contracts.
       - Prepares terminal vocabulary, executable program, and initial state from the emitted recipe-free Blueprint.
-      - Emits a headless program when the terminal Blueprint has Cells but no presentation projection.
+      - Emits a non-projected program when the terminal Blueprint has Cells but no presentation projection.
       - Reserves externalContext as a read-only runtime namespace.
   - name: runMaterializedTransition
     signature: >-
@@ -604,7 +603,7 @@ lowering_api:
     - Validates the input Blueprint.
     - Runs the supplied deterministic lowering.
     - Delegates terminal executable-program validation to Kernel lowerToProgram.
-    - Preserves projected versus headless program message typing.
+    - Preserves program message typing for Blueprints with and without presentation projections.
   boundary:
     - Fixed materialization executes synchronous vocabulary-patch and representation recipes through compiler Cells.
     - This phase does not select or synthesize strategies and performs no asynchronous effects.

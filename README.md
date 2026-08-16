@@ -77,9 +77,9 @@ The portfolio tracker routes `analyze` and `propose-strategies` through QueueFac
 
 The endpoint accepts `POST` JSON containing `service`, `version`, `operation`, `input`, and `correlationId`, and returns `{ "output": ... }`. The proxy owns credentials and model/provider configuration; do not expose provider secrets through Vite environment variables. A configured live endpoint is never silently replaced by the deterministic provider when a request fails.
 
-- `/?b=portfolio-tracker` — live portfolio intelligence
+- `/?b=portfolio-tracker-new` — live portfolio intelligence
 - `/?b=live-workspace-soc` — governed SOC collaboration
-- `/?b=foundry-agent` — Foundry-backed agent conversation
+- `/?b=ai-agent` — provider-selected agent conversation (`ai=foundry` or `ai=copilot`)
 - `/?b=manage-blueprints` — Blueprint catalog and authoring
 - `/?b=manage-bundles` — Bundle artifact catalog and preview
 

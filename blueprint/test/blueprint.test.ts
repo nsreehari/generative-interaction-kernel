@@ -997,7 +997,7 @@ describe("@gik/blueprint", () => {
 
     artifact.payload.cells!.source.blueprint = { inline: blueprint("child") };
     expect(() => materializeBlueprint({ blueprint: artifact })).toThrow(
-      "Headless Blueprint 'headless-source' cannot host child Blueprint Cell 'source'",
+      "Blueprint 'headless-source' without a presentation projection cannot host child Blueprint Cell 'source'",
     );
   });
 

@@ -47,7 +47,7 @@ export function composeCellProgram(
   if (!presentation) {
     const hostedCell = topology.cells.find((cell) => cell.blueprint);
     if (hostedCell) {
-      throw new Error(`Headless Blueprint '${topology.id}' cannot host child Blueprint Cell '${hostedCell.id}'`);
+      throw new Error(`Blueprint '${topology.id}' without a presentation projection cannot host child Blueprint Cell '${hostedCell.id}'`);
     }
     const handlers: RuntimeHandler[] = topology.cells.flatMap((cell) => {
       const events = cellEvents(cell);
