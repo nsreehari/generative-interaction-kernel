@@ -1,0 +1,43 @@
+name: Dispatch approved cloud agent task
+
+on:
+  issues:
+    types:
+      - labeled
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    if: >-
+      github.event.label.name == 'agent-ready' &&
+      contains(github.event.issue.labels.*.name, 'agent-route:cloud')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Dispatch issue to private maintainer
+        env:
+          GH_TOKEN: ${{ secrets.GIK_MAINTAINER_DISPATCH_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          SOURCE_REPOSITORY: ${{ github.repository }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::GIK_MAINTAINER_DISPATCH_TOKEN is not configured"
+            exit 1
+          fi
+
+          jq -n \
+            --argjson issue_number "$ISSUE_NUMBER" \
+            --arg source_repository "$SOURCE_REPOSITORY" \
+            '{
+              event_type: "gik-cloud-issue-ready",
+              client_payload: {
+                issue_number: $issue_number,
+                source_repository: $source_repository
+              }
+            }' |
+            gh api \
+              --method POST \
+              repos/nsreehari/gik-maintainer/dispatches \
+              --input -

@@ -46,15 +46,29 @@ failure label and reapply `agent-ready`.
 
 GitHub's native Copilot Automations require a private or internal target
 repository and are not the public-repository control plane. The private
-`gik-maintainer` repository polls approved `agent-route:cloud` issues and uses
-the Copilot Agent Tasks API with a dedicated user-to-server token. It monitors
-the task, records durable state, and passes resulting PRs to the guardian.
+`gik-maintainer` repository receives a cross-repository dispatch when
+`agent-ready` is applied to an issue already carrying `agent-route:cloud`, then
+uses the Copilot Agent Tasks API with a dedicated user-to-server token. It
+monitors the active task, records durable state, and passes resulting PRs to
+the guardian. There are no idle scheduled cloud-dispatch runs.
+
+The dispatch workflow requires the `GIK_MAINTAINER_DISPATCH_TOKEN` Actions
+secret. Use a fine-grained token restricted to the private maintainer
+repository with `Contents: Read and write`, as required by the repository
+dispatch API. Apply the route label before applying `agent-ready`; the ready
+label is the final authorization event.
 
 ## Local automation
 
 The scheduled local controller selects only issues carrying `agent-ready` and
 `agent-route:local`. Run it manually for several trial issues before using
 Windows Task Scheduler. Do not schedule overlapping executions.
+
+On a new Windows worker, cloning the private maintainer repository does not
+install anything automatically. From that checkout, run
+`npm run bootstrap:unattended -- --minutes 5` after authenticating GitHub CLI
+and Copilot CLI. This explicitly links the CLI, initializes labels, and creates
+the machine-local scheduled task.
 
 An explicit `gik-maintainer run --issue <number>` invocation is itself a
 maintainer authorization and does not require queue labels.
