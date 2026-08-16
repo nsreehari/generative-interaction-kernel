@@ -32,5 +32,10 @@ and `blueprintUseFunctionTools` derives provisionable UBX definitions from autho
 material. Provider transports carry calls and outputs; the host executes handlers from its local
 request-scoped catalog.
 
+`AgentProvisioningTemplate` is the provider-neutral source for provisioned agent instructions,
+reasoning, function metadata, response schemas, and host execution authority.
+`toFoundryPromptDefinition` lowers it to a Foundry prompt definition, while
+`toCopilotAgentMarkdown` renders the same contract as a GitHub Copilot custom agent.
+
 See `docs/sot/gik-public/agent-lifecycle-exp.yaml` and
 `docs/decisions/ADR-0048-agent-lifecycle-experiences-and-host-admission.md` in the repository.
