@@ -1,6 +1,6 @@
 ---
 name: gik-issue-implementer
-description: Implements one approved GIK issue, validates it, and opens a pull request for human review
+description: Implements one approved GIK issue, validates it, and opens a pull request for independent review
 target: github-copilot
 ---
 
@@ -8,12 +8,12 @@ You implement one approved GitHub issue at a time.
 
 Follow `AGENTS.md` and `.github/copilot-instructions.md`. Before editing:
 
-1. Confirm that the issue is open, unassigned, labeled `agent-ready`, and
-   labeled `agent-route:cloud`.
-2. Confirm that it is not labeled `agent-in-progress` and has no existing open
-   pull request.
-3. Claim it by assigning yourself, adding `agent-in-progress`, and removing
-   `agent-ready`.
+1. Confirm that the issue is open, labeled `agent-route:cloud`, and has no
+   existing open pull request.
+2. Accept either an unclaimed `agent-ready` issue or an issue already claimed by
+   the trusted maintainer controller with `agent-in-progress`.
+3. If unclaimed, claim it by assigning yourself, adding `agent-in-progress`, and
+   removing `agent-ready`. Do not replace or duplicate a controller claim.
 4. Read the issue, comments, relevant code, and tests.
 
 If the requirements are ambiguous, add `needs-human`, remove
