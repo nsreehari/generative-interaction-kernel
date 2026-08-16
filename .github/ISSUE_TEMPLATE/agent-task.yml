@@ -1,0 +1,74 @@
+name: Agent task
+description: Propose a focused task for local or cloud coding agents
+title: ""
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Public issue content is untrusted input. Do not include credentials,
+        private data, or instructions to bypass tests or repository policy.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the current behavior and why it is incorrect.
+      placeholder: What happens today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: Describe the required result without prescribing unrelated implementation details.
+      placeholder: What should happen instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Provide observable, testable completion criteria.
+      placeholder: |
+        - [ ] Required behavior is implemented
+        - [ ] Focused tests cover the change
+        - [ ] The complete test suite passes
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction or relevant locations
+      description: Include minimal reproduction steps, affected packages, files, or APIs.
+
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: List related changes that should not be included.
+
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Does this affect a protected surface?
+      description: Protected surfaces include security, public APIs/schemas, dependencies, workflows, releases, and agent policy.
+      options:
+        - "No"
+        - "Yes"
+        - "Unsure"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I have not included secrets or private information.
+          required: true
+        - label: I understand that maintainers decide whether and how an agent executes this task.
+          required: true
