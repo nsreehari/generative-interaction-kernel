@@ -23,9 +23,11 @@ export function readHostQuery(search: string, pathname = ""): HostQuery {
   const params = new URLSearchParams(search);
   const intelligenceModel = params.get("intelligence-model");
   const view = params.get("view");
+  const ai = params.get("ai");
   const externalContext = {
     ...(intelligenceModel === null ? {} : { "intelligence-model": intelligenceModel }),
     ...(view === null ? {} : { view }),
+    ...(ai === null ? {} : { ai }),
   };
   return {
     targetId: params.get("b") ?? params.get("bundle") ?? cachedBlueprintFromPath(pathname),

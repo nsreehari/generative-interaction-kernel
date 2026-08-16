@@ -45,8 +45,12 @@ test("host query selects Blueprints with canonical b and legacy bundle parameter
     "portfolio-tracker-new",
   );
   assert.equal(
-    readHostQuery("?b=foundry-agent&bundle=portfolio-tracker-new").targetId,
-    "foundry-agent",
+    readHostQuery("?b=ai-agent&bundle=portfolio-tracker-new").targetId,
+    "ai-agent",
+  );
+  assert.deepEqual(
+    readHostQuery("?b=ai-agent&ai=copilot").externalContext,
+    { ai: "copilot" },
   );
   assert.deepEqual(
     readHostQuery("?b=portfolio-tracker-new&intelligence-model=semantic&view=mobile").externalContext,

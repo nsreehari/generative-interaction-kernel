@@ -79,7 +79,7 @@ The endpoint accepts `POST` JSON containing `service`, `version`, `operation`, `
 
 - `/?b=portfolio-tracker-new` — live portfolio intelligence
 - `/?b=live-workspace-soc` — governed SOC collaboration
-- `/?b=foundry-agent` — Foundry-backed agent conversation
+- `/?b=ai-agent` — provider-selected agent conversation (`ai=foundry` or `ai=copilot`)
 - `/?b=manage-blueprints` — Blueprint catalog and authoring
 - `/?b=manage-bundles` — Bundle artifact catalog and preview
 

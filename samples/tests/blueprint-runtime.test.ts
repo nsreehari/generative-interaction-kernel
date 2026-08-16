@@ -19,6 +19,19 @@ test("sample opener preserves direct-runtime Blueprints", () => {
   assert.deepEqual(runtime.definition, source);
 });
 
+test("ai-agent selects the local Copilot implementation through external context", () => {
+  const runtime = openSampleBlueprint("ai-agent", { ai: "copilot" });
+
+  assert.equal(runtime.blueprintId, "ai-agent");
+  assert.equal(runtime.definition.payload.tiers.length, 1);
+  assert.deepEqual(runtime.definition.payload.tiers, [{
+    id: "runtime-document",
+    kind: "runtime-document",
+    description: "Authored terminal document for this hosted Blueprint.",
+  }]);
+  assert.equal(runtime.definition.payload.services?.assistant?.kind, "copilot-agent");
+});
+
 test("sample opener materializes vocabulary-lowering to its terminal runtime", () => {
   const runtime = openSampleBlueprint("vocabulary-lowering");
 
