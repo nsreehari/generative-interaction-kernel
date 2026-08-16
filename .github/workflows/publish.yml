@@ -2,36 +2,107 @@ name: Publish to npm
 
 on:
   release:
-    types: [created]
-  # Or manually trigger
+    types:
+      - published
   workflow_dispatch:
 
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
 jobs:
-  publish:
+  validate:
+    name: Validate release
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write  # Required for npm provenance
+    timeout-minutes: 30
     steps:
-      - name: Checkout
+      - name: Checkout release commit
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify production release
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          IS_DRAFT: ${{ github.event.release.draft }}
+          IS_PRERELEASE: ${{ github.event.release.prerelease }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          test "$IS_DRAFT" = "false"
+          test "$IS_PRERELEASE" = "false"
+          [[ "$TAG" =~ ^npm-[0-9]{4}-[0-9]{2}-[0-9]{2}\.[1-9][0-9]*$ ]]
+          git fetch origin master
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/master)"
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
+          node-version: "24"
+          cache: npm
+          registry-url: https://registry.npmjs.org
 
-      # npm install (not ci): the rolldown/vite wasm optional-binding tree resolves to
-      # slightly different nested native-dep versions across platforms, which makes strict
-      # `npm ci` fail on Linux against a lock generated elsewhere. install reconciles in-runner.
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Run release gate
+      - name: Validate package release policy
+        run: npm run release:validate
+
+      - name: Run complete release gate
         run: npm run release:gate
 
-      - name: Publish all packages to npm
-        run: npm publish --workspaces --provenance --access public
+      - name: Inspect package contents
+        run: npm run release:inspect
+
+  publish:
+    name: Publish packages
+    if: github.event_name == 'release'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout release commit
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Publish unpublished stable package versions
+        run: npm run release:publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_ACCESS: public
+          NPM_CONFIG_PROVENANCE: true
+
+      - name: Record release summary
+        if: always()
+        env:
+          RELEASE: ${{ github.event.release.html_url }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          {
+            echo "## npm publication"
+            echo
+            echo "- Release: [$TAG]($RELEASE)"
+            echo "- Channel: \`latest\`"
+            echo "- Policy: \`config/npm-release.json\`"
+            echo "- Authentication: npm trusted publisher, with environment-scoped token fallback for initial package publication"
+          } >> "$GITHUB_STEP_SUMMARY"
