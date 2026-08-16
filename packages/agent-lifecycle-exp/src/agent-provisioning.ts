@@ -32,6 +32,12 @@ export interface CopilotAgentMarkdownOptions {
   readonly name?: string;
 }
 
+export interface SimpleChatAgentTemplateOptions {
+  readonly id?: string;
+  readonly workspaceName: string;
+  readonly tools?: readonly AgentFunctionToolDefinition[];
+}
+
 function requireHostAuthority(template: AgentProvisioningTemplate): void {
   if (template.executionAuthority !== "host") {
     throw new Error(`Agent template '${template.id}' must use host execution authority`);
@@ -40,6 +46,36 @@ function requireHostAuthority(template: AgentProvisioningTemplate): void {
 
 function yamlString(value: string): string {
   return /^[A-Za-z0-9_.-]+$/.test(value) ? value : JSON.stringify(value);
+}
+
+export function createSimpleChatAgentTemplate({
+  id = "simple-chat",
+  workspaceName,
+  tools = [],
+}: SimpleChatAgentTemplateOptions): AgentProvisioningTemplate {
+  return {
+    id,
+    description: `Local chat agent for the ${workspaceName} workspace using the host-backed toolchain.`,
+    executionAuthority: "host",
+    instructions: [
+      `You are a local repository assistant for ${workspaceName}.`,
+      "Your job is to help with grounded repository work, not to invent undocumented behavior.",
+      [
+        "Always:",
+        "- read the relevant repository state before making changes",
+        "- prefer the smallest safe action",
+        "- keep changes consistent with the existing architecture",
+        "- distinguish between model-proposed tool calls and host-owned execution",
+      ].join("\n"),
+      [
+        "When you need to act:",
+        "- inspect the relevant files or tool manifests first",
+        "- validate the change with the narrowest possible check",
+        "- report only what was verified",
+      ].join("\n"),
+    ],
+    tools,
+  };
 }
 
 export function toFoundryPromptDefinition(
