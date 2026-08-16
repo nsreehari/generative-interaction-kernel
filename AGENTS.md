@@ -50,7 +50,12 @@ These instructions apply to every coding agent working in this repository.
 - Open, but never merge, a pull request.
 - Link the source issue with `Closes #<issue-number>`.
 - Summarize the implementation, validation, limitations, and follow-up work.
-- Human review and required GitHub Actions checks are mandatory before merge.
+- Required GitHub Actions checks and resolved review conversations are mandatory
+  before merge.
+- A separate maintainer controller may merge a low-risk pull request without
+  human review only when deterministic policy confirms that no protected paths
+  changed, all required checks pass, the branch is current, and branch
+  protection is enabled. Critical changes always require human review.
 
 ## Dual-agent routing
 
