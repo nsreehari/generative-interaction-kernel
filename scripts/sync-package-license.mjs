@@ -1,4 +1,4 @@
-import { cpSync, existsSync, rmSync } from "node:fs";
+import { cpSync, existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -18,9 +18,6 @@ for (const target of targets) {
   if (!existsSync(packageJsonPath)) {
     throw new Error(`Package manifest not found: ${packageJsonPath}`);
   }
-
-  const docsDir = path.join(packageRoot, "docs");
-  rmSync(docsDir, { recursive: true, force: true });
 
   if (existsSync(licenseFile)) {
     cpSync(licenseFile, path.join(packageRoot, "LICENSE"));

@@ -1,5 +1,6 @@
 {
   "name": "@gik/blueprint-agent-host",
+  "private": true,
   "version": "0.1.0",
   "description": "Blueprint-specific trusted host lifecycle for agent proposals in GIK.",
   "license": "MIT",
@@ -21,7 +22,7 @@
   "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org/" },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
-    "prepack": "node ../../scripts/sync-public-docs.mjs packages/blueprint-agent-host"
+    "prepack": "node ../../scripts/sync-package-license.mjs packages/blueprint-agent-host"
   },
   "dependencies": {
     "@gik/agent-lifecycle-exp": "0.1.0",

@@ -1,5 +1,6 @@
 {
   "name": "@gik/provider-blueprint-authoring",
+  "private": true,
   "version": "0.1.0",
   "description": "Blueprint-authoring provider engine for the Generative Interaction Kernel.",
   "license": "MIT",
@@ -41,6 +42,6 @@
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
-    "prepack": "node ../../scripts/sync-public-docs.mjs packages/provider-blueprint-authoring"
+    "prepack": "node ../../scripts/sync-package-license.mjs packages/provider-blueprint-authoring"
   }
 }

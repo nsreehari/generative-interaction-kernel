@@ -21,10 +21,11 @@ import { GIKClient } from "@gik/kernel";
 | `@gik/transport-http-sse/client` | Client-side connector. |
 | `@gik/transport-http-sse/codec` | Wire codec for GIK envelopes. |
 
-## Documentation
+## Boundary
 
-See [`docs/GIK-public-interface.html`](./docs/GIK-public-interface.html) and the
-[project repository](https://github.com/nsreehari/generative-interaction-kernel).
+This package transports authorized messages and committed updates. It does not
+select tools, grant capabilities, own credentials, or execute application
+effects.
 
 ## License
 

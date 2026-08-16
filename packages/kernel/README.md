@@ -11,7 +11,7 @@ npm install @gik/kernel
 ```ts
 import { Kernel, GIKClient, KernelTransportHost, InMemoryStateModel } from "@gik/kernel";
 
-// Own the runtime in-process: one dispatch is one rev.
+// Own the runtime in process: one dispatch produces one revision.
 const kernel = new Kernel(/* manifest, document */);
 ```
 
@@ -21,10 +21,16 @@ const kernel = new Kernel(/* manifest, document */);
 - You are connecting a remote renderer to an authoritative host over the GIK wire protocol
   (`GIKClient` + `KernelTransportHost`).
 
-## Documentation
+## Package boundary
 
-See [`docs/GIK-public-interface.html`](./docs/GIK-public-interface.html) for the full consumer manual,
-and the [project repository](https://github.com/nsreehari/generative-interaction-kernel).
+The kernel owns document validation, state revisions, deterministic reduction,
+effect declarations, snapshots, and compensation. Renderers, storage,
+transports, domain components, and effect execution are supplied by other
+packages or by the host application.
+
+The TypeScript exports are the API authority. See the
+[project documentation](https://github.com/nsreehari/generative-interaction-kernel/tree/master/docs)
+for architecture, protocol, and compatibility contracts.
 
 ## License
 
