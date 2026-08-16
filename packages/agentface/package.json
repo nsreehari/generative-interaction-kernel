@@ -45,6 +45,6 @@
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
-    "prepack": "node ../../scripts/sync-public-docs.mjs packages/agentface"
+    "prepack": "node ../../scripts/sync-package-license.mjs packages/agentface"
   }
 }

@@ -23,13 +23,14 @@ import { openBlueprint } from "@gik/controlface/blueprint";
 const runtime = openBlueprint(blueprint);
 ```
 
-Mount the returned dispatcher over a transport such as [`@gik/transport-mcp-http`](https://www.npmjs.com/package/@gik/transport-mcp-http),
-or expose the agent-safe projection with [`@gik/agentface`](https://www.npmjs.com/package/@gik/agentface).
+Mount the returned dispatcher over a transport chosen by the host, or expose
+the narrower agent-safe projection with `@gik/agentface`.
 
-## Documentation
+## Security boundary
 
-See [`docs/GIK-public-interface.html`](./docs/GIK-public-interface.html) and the
-[project repository](https://github.com/nsreehari/generative-interaction-kernel).
+`controlface` exposes the complete privileged control surface. Do not give an
+untrusted agent direct access to it. Capability policy belongs to the
+projection; transports only carry already-authorized calls.
 
 ## License
 
