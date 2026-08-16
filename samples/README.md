@@ -12,12 +12,14 @@ npm run build
 ```
 
 Run the generic browser host with `npm run dev`. Select a Blueprint with a URL such as
-`http://localhost:5175/?b=portfolio-tracker`.
+`http://localhost:5175/?b=portfolio-tracker-new`.
 
 `apps/browser-host` runs catalog Blueprints through `@gik/react`. `apps/node-host` composes
 `@gik/blueprint`, `@gik/kernel`, the Face packages, and transports directly; start it with
 `npm run start:node -- --profile <id>`. Either host can execute a projected or presentation-free
 Blueprint. A host that does not mount a renderer simply leaves the presentation output unconsumed.
+Do not add a `headless` representation solely to support such a host; representation choices describe
+authored output, while renderer ownership belongs to the host.
 The stateless AgentFace MCP transport sample remains under `examples/` because it does not host a Blueprint.
 
 All `@gik/*` dependencies must be released at the versions declared in `package.json` before installing this directory outside the GIK monorepo.
@@ -78,4 +80,4 @@ const serviceHost = createNodeBlueprintServiceHost(runtime, state, process.env);
 const wrapOrchestrator = nodeServiceOrchestrator(runtime, serviceHost);
 ```
 
-Ordinary tests are hermetic and use mock executors or placeholder credentials. Live automation is opt-in: provide the applicable protected environment variable to the automation host; do not add it to the Blueprint, scenario, test fixture, command line, or checked-in environment file. Mock implementation programs, including `portfolio-tracker-2tiers` with `marketMode: "mock"`, execute without resolving a credential.
+Ordinary tests are hermetic and use mock executors or placeholder credentials. Live automation is opt-in: provide the applicable protected environment variable to the automation host; do not add it to the Blueprint, scenario, test fixture, command line, or checked-in environment file. The `portfolio-tracker-new` mock intelligence implementation executes without resolving a credential.

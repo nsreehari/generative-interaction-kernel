@@ -79,9 +79,7 @@ test("shared projection imports resolve package and Blueprint providers", () => 
   assert.equal(typeof hostViews?.["credential-access"], "function");
   assert.equal(resolveProjectionViews("foundry"), undefined);
   assert.equal(resolveProjectionViews("http-proxy"), undefined);
-  const foundryViews = resolveProjectionViews("foundry-agent");
-  assert.equal(foundryViews?.["access-modal"], undefined);
-  assert.equal(typeof foundryViews?.["agent-selector"], "function");
+  assert.equal(resolveProjectionViews("ai-agent"), undefined);
   const fluentViews = resolveProjectionViews("fluent");
   assert.deepEqual(Object.keys(fluentViews ?? {}).sort(), Object.keys(fluentComponentViews).sort());
   assert.equal(typeof fluentViews?.dropdown, "function");

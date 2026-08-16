@@ -6,13 +6,13 @@ import {
 import {
   MOCK_MARKET_DATA_PROVIDER,
   mockMarketDataHandler,
-} from "../../blueprints/portfolio-tracker/native/services/mock-market-data";
+} from "../../blueprints/portfolio-tracker-new/native/services/mock-market-data";
 import {
   DETERMINISTIC_PORTFOLIO_PROVIDER,
   MOCK_PORTFOLIO_INTELLIGENCE_PROVIDER,
   mockPortfolioIntelligenceHandler,
   portfolioIntelligenceHandler,
-} from "../../blueprints/portfolio-tracker/native/services/portfolio-intelligence";
+} from "../../blueprints/portfolio-tracker-new/native/services/portfolio-intelligence";
 import { getSampleBlueprintCatalog } from "../../catalog/blueprint-catalog";
 import {
   createSeededStorageConnection,
@@ -51,9 +51,7 @@ const modules: Readonly<Record<string, SampleNativeServices>> = {
   "incident-report-explorer-1a": incidentAnalyzerServices,
   "incident-report-explorer-2": incidentAnalyzerServices,
   "incident-report-explorer-3": incidentAnalyzerServices,
-  "portfolio-tracker": portfolioServices,
   "portfolio-tracker-new": portfolioServices,
-  "portfolio-tracker-2tiers-headless": portfolioServices,
 };
 
 export function resolveSampleNativeServices(id: string): SampleNativeServices | undefined {

@@ -18,12 +18,13 @@ const dispatch = createAgentFaceDispatcher(controlFace);
 const authoringOnly = createStatelessAgentFaceDispatcher();
 ```
 
-Mount the returned dispatcher over a transport such as [`@gik/transport-mcp-http`](https://www.npmjs.com/package/@gik/transport-mcp-http).
+Mount the returned dispatcher over a transport selected by the host.
 
-## Documentation
+## Security boundary
 
-See [`docs/GIK-public-interface.html`](./docs/GIK-public-interface.html) and the
-[project repository](https://github.com/nsreehari/generative-interaction-kernel).
+`agentface` exposes an allowlisted projection; it is not a transport-level
+security mechanism. The host remains responsible for authentication,
+authorization, endpoint policy, and credential handling.
 
 ## License
 

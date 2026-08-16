@@ -1,5 +1,6 @@
 {
   "name": "@gik/demo-runner-host",
+  "private": true,
   "version": "0.1.5",
   "description": "Demo scenario runner and control harness host for the Generative Interaction Kernel.",
   "license": "MIT",
@@ -55,6 +56,6 @@
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
-    "prepack": "node ../../scripts/sync-public-docs.mjs packages/demo-runner-host"
+    "prepack": "node ../../scripts/sync-package-license.mjs packages/demo-runner-host"
   }
 }

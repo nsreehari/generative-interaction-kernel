@@ -7,6 +7,9 @@ import {
   agentLifecycleTools,
   authorBlueprint,
   blueprintUseFunctionTools,
+  createSimpleChatAgentTemplate,
+  toCopilotAgentMarkdown,
+  toFoundryPromptDefinition,
   blueprintLifecycleCatalog,
   controlTool,
   createBlueprintUseLifecycle,
@@ -318,4 +321,49 @@ test("Blueprint use material projects to provisionable strict function metadata"
   assert.equal(definitions.every(({ type, strict }) => type === "function" && strict), true);
   assert.deepEqual(definitions.find(({ name }) => name === "use_blueprint_propose")?.parameters,
     BLUEPRINT_USE_SCHEMAS.intent);
+});
+
+test("one agent provisioning template lowers to Foundry and Copilot surfaces", () => {
+  const template = {
+    id: "sample-agent",
+    description: "Grounded sample agent.",
+    instructions: ["Use supplied facts only.", "Return a concise answer."],
+    reasoning: { effort: "none" },
+    tools: [{
+      type: "function" as const,
+      name: "inspect_sample",
+      description: "Inspect the sample.",
+      parameters: objectSchema,
+      strict: true as const,
+    }],
+    responseFormat: {
+      type: "json_schema" as const,
+      name: "sample_response",
+      strict: true,
+      schema: objectSchema,
+    },
+    executionAuthority: "host" as const,
+  };
+
+  assert.deepEqual(toFoundryPromptDefinition(template, "gpt-test"), {
+    kind: "prompt",
+    model: "gpt-test",
+    reasoning: { effort: "none" },
+    instructions: "Use supplied facts only. Return a concise answer.",
+    tools: template.tools,
+    text: { format: template.responseFormat },
+  });
+  const markdown = toCopilotAgentMarkdown(template, { model: "gpt-test" });
+  assert.match(markdown, /name: sample-agent/);
+  assert.match(markdown, /  - inspect_sample/);
+  assert.match(markdown, /host runtime validates and executes every tool call/);
+  assert.match(markdown, /"type": "object"/);
+});
+
+test("simple chat template keeps one identity and host authority across providers", () => {
+  const template = createSimpleChatAgentTemplate({ workspaceName: "sample-workspace" });
+  assert.equal(template.id, "simple-chat");
+  assert.equal(template.executionAuthority, "host");
+  assert.match(toFoundryPromptDefinition(template, "gpt-test").instructions, /sample-workspace/);
+  assert.match(toCopilotAgentMarkdown(template, { model: "gpt-test" }), /name: simple-chat/);
 });

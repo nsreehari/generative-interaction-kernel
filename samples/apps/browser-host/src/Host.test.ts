@@ -31,7 +31,7 @@ const receipt = (id: string): BlueprintProposalReceipt<UseProposal> => ({
     actions: [{ kind: "improve-report", payload: { operation: "improveReport" } }],
     createdAt: "2026-08-05T00:00:00.000Z",
   },
-  actor: { id: "foundry-agent" },
+  actor: { id: "ai-agent" },
   status: "admitted",
   createdAt: "2026-08-05T00:00:00.000Z",
   updatedAt: "2026-08-05T00:00:00.000Z",
@@ -85,22 +85,22 @@ test("unmigrated samples do not receive legacy demo scenarios", () => {
   }
 });
 
-test("two-tier portfolio uses Blueprint-authored materialization defaults", () => {
+test("portfolio tracker uses Blueprint-authored launch defaults", () => {
   const previousWindow = globalThis.window;
   Object.defineProperty(globalThis, "window", {
     configurable: true,
     value: {
       location: {
-        href: "https://example.test/?b=portfolio-tracker-2tiers&demo=portfolio-2tiers-baseline&gik=1",
-        search: "?b=portfolio-tracker-2tiers&demo=portfolio-2tiers-baseline&gik=1",
+        href: "https://example.test/?b=portfolio-tracker-new&gik=1",
+        search: "?b=portfolio-tracker-new&gik=1",
       },
     },
   });
 
   try {
     renderToStaticMarkup(React.createElement(Host));
-    assert.deepEqual(capturedProps.scenariosJson, getSampleBlueprintCatalog().demoScenarios["portfolio-tracker-2tiers"]);
-    assert.equal(capturedProps.externalContext, undefined);
+    assert.deepEqual(capturedProps.scenariosJson, getSampleBlueprintCatalog().demoScenarios["portfolio-tracker-new"]);
+    assert.deepEqual(capturedProps.externalContext, { "intelligence-model": "simple", view: "desktop" });
   } finally {
     Object.defineProperty(globalThis, "window", { configurable: true, value: previousWindow });
   }

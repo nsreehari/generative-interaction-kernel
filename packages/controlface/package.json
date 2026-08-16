@@ -51,6 +51,6 @@
   },
   "scripts": {
     "build": "tsup src/index.ts src/blueprint.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
-    "prepack": "node ../../scripts/sync-public-docs.mjs packages/controlface"
+    "prepack": "node ../../scripts/sync-package-license.mjs packages/controlface"
   }
 }
