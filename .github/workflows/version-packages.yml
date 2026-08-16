@@ -10,6 +10,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
 
@@ -31,6 +32,7 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: Create or update version pull request
+        id: changesets
         uses: changesets/action@v1
         with:
           version: npm run release:version
@@ -38,3 +40,9 @@ jobs:
           commit: "chore: version npm packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate version branch
+        if: steps.changesets.outputs.pullRequestNumber != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run ci.yml --ref changeset-release/master
