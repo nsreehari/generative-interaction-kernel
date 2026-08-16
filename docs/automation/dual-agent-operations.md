@@ -52,11 +52,13 @@ uses the Copilot Agent Tasks API with a dedicated user-to-server token. It
 monitors the active task, records durable state, and passes resulting PRs to
 the guardian. There are no idle scheduled cloud-dispatch runs.
 
-The dispatch workflow requires the `GIK_MAINTAINER_DISPATCH_TOKEN` Actions
-secret. Use a fine-grained token restricted to the private maintainer
-repository with `Contents: Read and write`, as required by the repository
-dispatch API. Apply the route label before applying `agent-ready`; the ready
-label is the final authorization event.
+The dispatch workflow uses the private `GIK Maintainer` GitHub App, installed
+only on approved GIK repositories. Configure its App ID as the
+`GIK_MAINTAINER_APP_ID` Actions variable and its private key as the
+`GIK_MAINTAINER_APP_PRIVATE_KEY` Actions secret. The workflow exchanges these
+credentials for a short-lived installation token scoped to `gik-maintainer`;
+no personal access token is required. Apply the route label before applying
+`agent-ready`; the ready label is the final authorization event.
 
 ## Local automation
 
