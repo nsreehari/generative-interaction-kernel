@@ -7,6 +7,7 @@ import {
   agentLifecycleTools,
   authorBlueprint,
   blueprintUseFunctionTools,
+  createSimpleChatAgentTemplate,
   toCopilotAgentMarkdown,
   toFoundryPromptDefinition,
   blueprintLifecycleCatalog,
@@ -357,4 +358,12 @@ test("one agent provisioning template lowers to Foundry and Copilot surfaces", (
   assert.match(markdown, /  - inspect_sample/);
   assert.match(markdown, /host runtime validates and executes every tool call/);
   assert.match(markdown, /"type": "object"/);
+});
+
+test("simple chat template keeps one identity and host authority across providers", () => {
+  const template = createSimpleChatAgentTemplate({ workspaceName: "sample-workspace" });
+  assert.equal(template.id, "simple-chat");
+  assert.equal(template.executionAuthority, "host");
+  assert.match(toFoundryPromptDefinition(template, "gpt-test").instructions, /sample-workspace/);
+  assert.match(toCopilotAgentMarkdown(template, { model: "gpt-test" }), /name: simple-chat/);
 });
