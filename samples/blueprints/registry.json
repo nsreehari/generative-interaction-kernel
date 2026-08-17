@@ -1,19 +1,13 @@
 {
-  "default": "samples-overview",
+  "default": "portfolio-tracker-new",
   "launchProfiles": [
-    { "id": "samples-overview", "blueprint": "samples-overview" },
     { "id": "manage-blueprints", "blueprint": "manage-blueprints" },
-    { "id": "vocabulary-lowering", "blueprint": "vocabulary-lowering" },
     { "id": "portfolio-tracker-new", "blueprint": "portfolio-tracker-new" },
     { "id": "incident-analysis-new-shell", "blueprint": "incident-analysis-new-shell" },
     { "id": "incident-report-explorer-1a", "blueprint": "incident-report-explorer-1a" },
     { "id": "incident-report-explorer-2", "blueprint": "incident-report-explorer-2" },
     { "id": "incident-report-explorer-3", "blueprint": "incident-report-explorer-3" },
-    { "id": "live-workspace-soc", "blueprint": "live-workspace-soc" },
-    { "id": "copilot-c2", "blueprint": "copilot-c2" },
-    { "id": "ai-agent", "blueprint": "ai-agent" },
-    { "id": "backend-order", "blueprint": "backend-order-processing" },
-    { "id": "middleware-continuity", "blueprint": "middleware-continuity" }
+    { "id": "ai-agent", "blueprint": "ai-agent" }
   ],
   "nativeFrom": {},
   "projectionFrom": {}

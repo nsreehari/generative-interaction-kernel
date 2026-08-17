@@ -65,14 +65,14 @@ test("sample host selects isolated memory or persistent IndexedDB proposal store
   assert.deepEqual(await reopened.get("durable"), receipt("durable"));
 });
 
-test("unmigrated samples do not receive legacy demo scenarios", () => {
+test("samples without demo scenarios do not receive them", () => {
   const previousWindow = globalThis.window;
   Object.defineProperty(globalThis, "window", {
     configurable: true,
     value: {
       location: {
-        href: "https://example.test/?b=live-workspace-soc&demo=1",
-        search: "?b=live-workspace-soc&demo=1",
+        href: "https://example.test/?b=ai-agent&demo=1",
+        search: "?b=ai-agent&demo=1",
       },
     },
   });

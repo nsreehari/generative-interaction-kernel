@@ -47,7 +47,7 @@ export interface NodeHostHandle {
 
 export async function createNodeHost(options: NodeHostOptions = {}): Promise<NodeHostHandle> {
   const environment = options.environment ?? process.env;
-  const requestedProfile = options.profile ?? environment.GIK_NODE_PROFILE ?? "middleware-continuity";
+  const requestedProfile = options.profile ?? environment.GIK_NODE_PROFILE ?? "portfolio-tracker-new";
   const { profile, runtime, externalContext } = await openNodeLaunch(
     requestedProfile,
     options.externalContext,

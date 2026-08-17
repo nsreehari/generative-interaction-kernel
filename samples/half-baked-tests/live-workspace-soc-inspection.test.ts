@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import { openSampleBlueprint } from "../catalog/blueprint-catalog";
-import { mapSocParticipantStatus, projectSocInspection, projectSocParticipants } from "../blueprints/live-workspace-soc/native/effect_handlers/inspection";
-import type { Actor, AgentProvider, Incident, JournalEntry, Presentation } from "../blueprints/live-workspace-soc/native/projection_views/types";
+import { mapSocParticipantStatus, projectSocInspection, projectSocParticipants } from "../blueprints/half-baked/live-workspace-soc/native/effect_handlers/inspection";
+import type { Actor, AgentProvider, Incident, JournalEntry, Presentation } from "../blueprints/half-baked/live-workspace-soc/native/projection_views/types";
 
 const initialState = openSampleBlueprint("live-workspace-soc").state as unknown as {
   soc: Record<string, unknown>;
