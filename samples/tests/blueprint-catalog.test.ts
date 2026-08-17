@@ -31,16 +31,16 @@ describe("sample Blueprint catalog", () => {
 
   it("rejects modified seed data before admission", async () => {
     const bundle = parseBlueprintCatalogBundle(structuredClone(seedJson));
-    bundle.entries["samples-overview"].payload.version = "tampered";
+    bundle.entries["portfolio-tracker-new"].payload.version = "tampered";
 
     await expect(verifyBlueprintCatalogBundle(bundle)).rejects.toThrow(/digest is invalid/);
   });
 
   it("migrates legacy localStorage artifacts into user catalog records", async () => {
     const databaseName = `gik-catalog-${crypto.randomUUID()}`;
-    const localArtifact = structuredClone(seedJson.entries["samples-overview"]);
-    localArtifact.payload.id = "local-overview";
-    const values = new Map([[legacyLocalBlueprintStorageKey, JSON.stringify({ "local-overview": localArtifact })]]);
+    const localArtifact = structuredClone(seedJson.entries["portfolio-tracker-new"]);
+    localArtifact.payload.id = "local-portfolio";
+    const values = new Map([[legacyLocalBlueprintStorageKey, JSON.stringify({ "local-portfolio": localArtifact })]]);
     Object.defineProperty(globalThis, "localStorage", {
       configurable: true,
       value: {
@@ -56,9 +56,9 @@ describe("sample Blueprint catalog", () => {
     });
     const store = createIndexedDbBlueprintCatalogStore({ databaseName });
 
-    expect(snapshot.entries["local-overview"].payload.id).toBe("local-overview");
-    expect(snapshot.seedEntries).not.toHaveProperty("local-overview");
-    expect((await store.readUserArtifacts()).blueprints).toHaveProperty("local-overview");
+    expect(snapshot.entries["local-portfolio"].payload.id).toBe("local-portfolio");
+    expect(snapshot.seedEntries).not.toHaveProperty("local-portfolio");
+    expect((await store.readUserArtifacts()).blueprints).toHaveProperty("local-portfolio");
     expect(values.has(legacyLocalBlueprintStorageKey)).toBe(false);
     await store.close();
   });

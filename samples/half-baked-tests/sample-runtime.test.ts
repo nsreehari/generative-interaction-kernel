@@ -8,11 +8,11 @@ import { semanticComponentViews } from "@gik/components/semantic";
 import { securityComponentViews } from "@gik/components/security";
 import { softwareComponentViews } from "@gik/components/software";
 
-import { copilotC2StateStorageKey } from "../../../../blueprints/copilot-c2/native/effect_handlers/copilotC2EffectHandlers";
-import { openSampleBlueprint } from "../../../../catalog/blueprint-catalog";
-import { resolveProjectionViews } from "./provider-registry";
-import { resolveBlueprintInitialContext, resolveBlueprintNative } from "./sample-bundles";
-import { createBlueprintServiceHost } from "./service-host";
+import { copilotC2StateStorageKey } from "../blueprints/half-baked/copilot-c2/native/effect_handlers/copilotC2EffectHandlers";
+import { openSampleBlueprint } from "../catalog/blueprint-catalog";
+import { resolveProjectionViews } from "../apps/browser-host/src/runtime/provider-registry";
+import { resolveBlueprintInitialContext, resolveBlueprintNative } from "../apps/browser-host/src/runtime/sample-bundles";
+import { createBlueprintServiceHost } from "../apps/browser-host/src/runtime/service-host";
 
 test("production native resolution hydrates and persists durable copilot-c2 state only", () => {
   const values = new Map<string, string>([[

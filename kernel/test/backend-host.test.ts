@@ -2,7 +2,7 @@
 // medium-agnostic claim: a custom Orchestrator whose invoke/request/route are
 // backend services (payment gateway, approval policy, queue router) drives a full
 // lifecycle cascade without inventing a projection tree. Companion to
-// samples/blueprints/backend-order-processing/blueprint.json.
+// samples/blueprints/half-baked/backend-order-processing/blueprint.json.
 
 import { test } from "vitest";
 import assert from "node:assert/strict";

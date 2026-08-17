@@ -1,6 +1,6 @@
 import type { Json } from "@gik/kernel";
 import type { BundleRuntime } from "@gik/react";
-import type { OrganismControlContract } from "../../blueprints/live-workspace-soc/native/projection_views/control-contract";
+import type { OrganismControlContract } from "../../blueprints/half-baked/live-workspace-soc/native/projection_views/control-contract";
 
 export interface ControlRequest {
   id: string;

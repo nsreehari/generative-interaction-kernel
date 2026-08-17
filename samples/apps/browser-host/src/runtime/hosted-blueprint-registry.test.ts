@@ -39,7 +39,7 @@ test("resolves browser-local JSON-only Blueprints without native authority", asy
 test("rejects unavailable pinned versions", () => {
   assert.throws(
     () => createSampleBlueprintHostRegistry().resolve(
-      { scheme: "blueprint", id: "samples-overview", version: "999.0.0" },
+      { scheme: "blueprint", id: "portfolio-tracker-new", version: "999.0.0" },
       context,
     ),
     /version '999.0.0' is unavailable/,
@@ -48,7 +48,7 @@ test("rejects unavailable pinned versions", () => {
 
 test("repository registrations are authoritative and receive child lifecycle identity", async () => {
   installUserBlueprints({
-    "samples-overview": localBlueprint("samples-overview", "999.0.0"),
+    "portfolio-tracker-new": localBlueprint("portfolio-tracker-new", "999.0.0"),
   });
   let received: unknown;
   const registry = createSampleBlueprintHostRegistry({
@@ -58,8 +58,8 @@ test("repository registrations are authoritative and receive child lifecycle ide
     },
   });
 
-  const resolved = await registry.resolve({ scheme: "blueprint", id: "samples-overview" }, context);
+  const resolved = await registry.resolve({ scheme: "blueprint", id: "portfolio-tracker-new" }, context);
   assert.notEqual(resolved.blueprint.payload.version, "999.0.0");
   assert.ok(resolved.native);
-  assert.deepEqual(received, { blueprintId: "samples-overview", childContext: context });
+  assert.deepEqual(received, { blueprintId: "portfolio-tracker-new", childContext: context });
 });

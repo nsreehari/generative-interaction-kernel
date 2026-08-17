@@ -15,7 +15,7 @@
     "typecheck": "tsc -p apps/browser-host/tsconfig.json --noEmit && tsc -p apps/node-host/tsconfig.json --noEmit && tsc -p storybook/tsconfig.json --noEmit && tsc -p examples/tsconfig.json --noEmit",
     "start:node": "tsx apps/node-host/service.ts",
     "start:agent": "tsx examples/stateless-agent-mcp-host/mcp-service.ts",
-    "start:control": "tsx apps/node-host/service.ts --profile middleware-continuity",
+    "start:control": "tsx apps/node-host/service.ts --profile portfolio-tracker-new",
     "start:continuity": "tsx apps/node-host/continuity-worker.ts",
     "start:gik": "tsx examples/gik-quickstart/quickstart.ts"
   },

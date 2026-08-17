@@ -1,7 +1,7 @@
 import type { EffectHandlerMap, LoadBundleOptions } from "@gik/react";
-import * as backendOrderProcessing from "../../../../blueprints/backend-order-processing/native/effect_handlers/backendOrderProcessingEffectHandlers";
-import * as copilotC2 from "../../../../blueprints/copilot-c2/native/effect_handlers/copilotC2EffectHandlers";
-import * as liveWorkspaceSoc from "../../../../blueprints/live-workspace-soc/native/effect_handlers/liveWorkspaceSocEffectHandlers";
+import * as backendOrderProcessing from "../../../../blueprints/half-baked/backend-order-processing/native/effect_handlers/backendOrderProcessingEffectHandlers";
+import * as copilotC2 from "../../../../blueprints/half-baked/copilot-c2/native/effect_handlers/copilotC2EffectHandlers";
+import * as liveWorkspaceSoc from "../../../../blueprints/half-baked/live-workspace-soc/native/effect_handlers/liveWorkspaceSocEffectHandlers";
 import * as manageBlueprints from "../../../../blueprints/manage-blueprints/native/effect_handlers/manageBlueprintsEffectHandlers";
 import { getSampleBlueprintCatalog } from "../../../../catalog/blueprint-catalog";
 

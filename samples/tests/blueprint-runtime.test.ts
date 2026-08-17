@@ -11,11 +11,11 @@ test("every registered sample opens through terminal materialization", () => {
   }
 }, 60_000);
 
-test("sample opener preserves direct-runtime Blueprints", () => {
-  const source = resolveSampleBlueprintSource("samples-overview");
-  const runtime = openSampleBlueprint("samples-overview");
+test("sample opener preserves a direct-runtime Blueprint", () => {
+  const source = resolveSampleBlueprintSource("manage-blueprints");
+  const runtime = openSampleBlueprint("manage-blueprints");
 
-  assert.equal(runtime.blueprintId, "samples-overview");
+  assert.equal(runtime.blueprintId, "manage-blueprints");
   assert.deepEqual(runtime.definition, source);
 });
 
@@ -30,17 +30,6 @@ test("ai-agent selects the local Copilot implementation through external context
     description: "Authored terminal document for this hosted Blueprint.",
   }]);
   assert.equal(runtime.definition.payload.services?.assistant?.kind, "copilot-agent");
-});
-
-test("sample opener materializes vocabulary-lowering to its terminal runtime", () => {
-  const runtime = openSampleBlueprint("vocabulary-lowering");
-
-  assert.deepEqual(runtime.definition.payload.tiers, [
-    { id: "runtime", kind: "runtime-document" },
-  ]);
-  assert.deepEqual(runtime.definition.payload.recipes, []);
-  assert.equal(runtime.definition.payload.cells?.["query-input"]?.kind, "runtime-cell");
-  assert.deepEqual(runtime.definition.payload.projections?.presentation?.roots, ["query-input"]);
 });
 
 test("sample opener selects representation and implementation from external context", () => {

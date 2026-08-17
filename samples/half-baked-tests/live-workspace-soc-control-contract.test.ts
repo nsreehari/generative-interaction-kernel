@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { bundleFromJson, loadBundleRuntime } from "@gik/react";
-import { createHeadlessControlRuntime } from "./support/control-runtime";
+import { createHeadlessControlRuntime } from "../tests/support/control-runtime";
 import { openSampleBlueprint } from "../catalog/blueprint-catalog";
-import effects from "../blueprints/live-workspace-soc/native/effect_handlers/liveWorkspaceSocEffectHandlers";
-import { socControlContract } from "../blueprints/live-workspace-soc/native/projection_views/control-contract";
+import effects from "../blueprints/half-baked/live-workspace-soc/native/effect_handlers/liveWorkspaceSocEffectHandlers";
+import { socControlContract } from "../blueprints/half-baked/live-workspace-soc/native/projection_views/control-contract";
 
 function headlessSoc() {
   const { vocabulary, program, state } = openSampleBlueprint("live-workspace-soc");
