@@ -82,22 +82,42 @@ import { fluentOptionSchema, readFluentOptions } from "./readFluentOptions";
     );
   };
 
-  export const FluentTabBar: ProjectionView = ({ node, emit }) => {
+  export const FluentTabBar: ProjectionView = ({ node, emit, children, slots }) => {
     const props = readProps(node);
-    const options = readFluentOptions(node.props.options);
+    const legacyOptions = readFluentOptions(node.props.options);
+    const tabs = Array.isArray(node.props.tabs)
+      ? node.props.tabs.flatMap((candidate) => {
+          if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return [];
+          const tab = candidate as Record<string, unknown>;
+          if (typeof tab.value !== "string" || typeof tab.headerLabel !== "string") return [];
+          return [{
+            value: tab.value,
+            label: tab.headerLabel,
+            disabled: tab.disabled === true,
+          }];
+        })
+      : legacyOptions;
+    const panes = slots?.panes ?? React.Children.toArray(children);
+    const active = props.str("active") || tabs[0]?.value;
+    const activeIndex = tabs.findIndex((tab) => tab.value === active);
+    const activePane = activeIndex >= 0 ? panes[activeIndex] : undefined;
     return (
-      <TabList
-        {...componentRootProps(node)}
-        selectedValue={props.str("active") || undefined}
-        size={resolveControlSize(props.str("size"), node.props.variant)}
-        aria-label={props.str("ariaLabel") || undefined}
-        disabled={props.bool("disabled")}
-        onTabSelect={(_, data) => void emit("select", { value: String(data.value) })}
-      >
-        {options.map((option) => (
-          <Tab key={option.value} value={option.value} disabled={option.disabled}>{option.label}</Tab>
-        ))}
-      </TabList>
+      <div {...componentRootProps(node)}>
+        <TabList
+          selectedValue={active}
+          size={resolveControlSize(props.str("size"), node.props.variant)}
+          aria-label={props.str("ariaLabel") || undefined}
+          disabled={props.bool("disabled")}
+          onTabSelect={(_, data) => void emit("select", { value: String(data.value) })}
+        >
+          {tabs.map((tab) => (
+            <Tab key={tab.value} value={tab.value} disabled={tab.disabled}>{tab.label}</Tab>
+          ))}
+        </TabList>
+        {node.props.tabs === undefined
+          ? panes
+          : activePane === undefined ? null : <div role="tabpanel">{activePane}</div>}
+      </div>
     );
   };
 
@@ -148,12 +168,29 @@ import { fluentOptionSchema, readFluentOptions } from "./readFluentOptions";
   const tabBarSchema = withComponentStylePropsSchema({
     type: "object",
     additionalProperties: false,
-    required: ["options"],
+    anyOf: [
+      { required: ["tabs"] },
+      { required: ["options"] },
+    ],
     properties: {
       active: stringProperty,
       ariaLabel: stringProperty,
       disabled: { type: "boolean" },
       size: { type: "string", enum: FLUENT_CONTROL_SIZES },
+      tabs: {
+        type: "array",
+        minItems: 1,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["value", "headerLabel"],
+          properties: {
+            value: { type: "string", minLength: 1 },
+            headerLabel: { type: "string", minLength: 1 },
+            disabled: { type: "boolean" },
+          },
+        },
+      },
       options: { type: "array", items: fluentOptionSchema },
     },
   } as const);
@@ -216,8 +253,9 @@ import { fluentOptionSchema, readFluentOptions } from "./readFluentOptions";
   };
   const tabBarDescription: ComponentDescription = {
     capability: "fluent:tab-bar",
-    summary: "Renders a Fluent 2 tab list for selecting one authored view.",
-    dataProp: "options",
+    summary: "Renders Fluent 2 tabs and their ordered authored panes as one composed region.",
+    dataProp: "tabs",
+    slots: ["panes"],
     events: ["select"],
     eventContracts: { select: eventContract("The active tab changes.", { value: { type: "string" } }) },
     semanticTokens: [],
@@ -226,7 +264,12 @@ import { fluentOptionSchema, readFluentOptions } from "./readFluentOptions";
     authoring: {
       useWhen: ["Peer views share one region and exactly one is active"],
       avoidWhen: ["The choices set a form value rather than switching views"],
-      rules: ["Provide stable option values and labels", "Bind active to the selected value", "Handle select outside the component"],
+      rules: [
+        "Provide stable tab values and headerLabel values",
+        "Place one authored child in the panes slot for each tab, in the same order",
+        "Bind active to the selected value",
+        "Handle select outside the component",
+      ],
     },
   };
   const chipsDescription: ComponentDescription = {
@@ -261,7 +304,7 @@ import { fluentOptionSchema, readFluentOptions } from "./readFluentOptions";
   export const fluentTabBarDefinition = defineFluentComponent(tabBarDescription, tabBarSchema, FluentTabBar, {
     active: "all",
     ariaLabel: "Incident views",
-    options: [{ value: "all", label: "All" }, { value: "open", label: "Open" }],
+    tabs: [{ value: "all", headerLabel: "All" }, { value: "open", headerLabel: "Open" }],
   });
   export const fluentChipsDefinition = defineFluentComponent(chipsDescription, chipsSchema, FluentChips, {
     ariaLabel: "Selected techniques",

@@ -27,7 +27,8 @@ describe("Blueprint Studio read shell", () => {
     const runtime = openSampleBlueprint("blueprint-studio");
     const list = source.payload.cells?.["blueprint-list"];
     const individual = source.payload.cells?.["individual-blueprint"];
-    const view = runtime.definition.payload.cells?.["individual-blueprint"]?.view;
+    const tabView = runtime.definition.payload.cells?.["individual-blueprint-tabs"]?.view;
+    const representation = source.payload.recipes?.[0]?.representations?.[0];
 
     expect(list?.inputs).toEqual([
       expect.objectContaining({
@@ -54,20 +55,25 @@ describe("Blueprint Studio read shell", () => {
         operation: "fetchBlueprint",
       }),
     ]);
-    expect(view?.before).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        capability: "fluent:tab-bar",
-        props: expect.objectContaining({
-          options: [
-            { value: "overview", label: "Overview" },
-            { value: "form", label: "Form" },
-            { value: "preview", label: "Preview" },
-          ],
-        }),
+    expect(tabView).toEqual(expect.objectContaining({
+      capability: "fluent:tab-bar",
+      props: expect.objectContaining({
+        tabs: [
+          { value: "overview", headerLabel: "Overview" },
+          { value: "form", headerLabel: "Form" },
+          { value: "preview", headerLabel: "Preview" },
+        ],
       }),
-      expect.objectContaining({ capability: "primitive:markdown" }),
-      expect.objectContaining({ capability: "primitive:form" }),
-      expect.objectContaining({ capability: "gik:blueprint" }),
+    }));
+    expect(representation?.views?.["individual-blueprint"]).toEqual(
+      expect.objectContaining({ capability: "primitive:container" }),
+    );
+    expect(representation?.presentation?.placements).toEqual(expect.arrayContaining([
+      { cell: "individual-blueprint-tabs", parent: "individual-blueprint", slot: "children", order: 0 },
+      { cell: "blueprint-overview-pane", parent: "individual-blueprint-tabs", slot: "panes", order: 0 },
+      { cell: "blueprint-form-pane", parent: "individual-blueprint-tabs", slot: "panes", order: 1 },
+      { cell: "blueprint-preview-pane", parent: "individual-blueprint-tabs", slot: "panes", order: 2 },
+      { cell: "blueprint-preview-content", parent: "blueprint-preview-pane", slot: "children", order: 0 },
     ]));
     expect(runtime.definition.payload.runtime?.externals?.effectHandlers ?? []).toEqual([]);
   });
@@ -105,9 +111,10 @@ describe("Blueprint Studio read shell", () => {
           },
         });
       });
+      expect([...host.hostedControlFaces().values()]).toHaveLength(0);
 
       await host.controlface.emit({
-        node: "individual-blueprint",
+        node: "individual-blueprint-tabs",
         name: "select",
         payload: { value: "preview" },
       });

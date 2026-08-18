@@ -585,6 +585,31 @@
                       "gap": "m",
                       "fill": true,
                       "ariaLabel": "Selected Blueprint"
+                    }
+                  },
+                  "individual-blueprint-tabs": {
+                    "capability": "fluent:tab-bar",
+                    "props": {
+                      "ariaLabel": "Blueprint views",
+                      "tabs": [
+                        {
+                          "value": "overview",
+                          "headerLabel": "Overview"
+                        },
+                        {
+                          "value": "form",
+                          "headerLabel": "Form"
+                        },
+                        {
+                          "value": "preview",
+                          "headerLabel": "Preview"
+                        }
+                      ]
+                    },
+                    "bindings": {
+                      "active": {
+                        "from": "studio.activeTab"
+                      }
                     },
                     "before": [
                       {
@@ -599,85 +624,68 @@
                             "expression": "studio.selected ? studio.selected.id : 'Select a Blueprint'"
                           }
                         }
-                      },
-                      {
-                        "capability": "fluent:tab-bar",
-                        "props": {
-                          "options": [
-                            {
-                              "value": "overview",
-                              "label": "Overview"
-                            },
-                            {
-                              "value": "form",
-                              "label": "Form"
-                            },
-                            {
-                              "value": "preview",
-                              "label": "Preview"
-                            }
-                          ]
-                        },
-                        "bindings": {
-                          "active": {
-                            "from": "studio.activeTab"
-                          }
-                        },
-                        "visibility": "studio.selected != null"
-                      },
-                      {
-                        "capability": "primitive:markdown",
-                        "bindings": {
-                          "value": {
-                            "from": "studio.overviewMarkdown"
-                          }
-                        },
-                        "visibility": "studio.selected != null and studio.activeTab = 'overview'"
-                      },
-                      {
-                        "capability": "primitive:form",
-                        "props": {
-                          "fields": {
-                            "properties": {
-                              "id": {
-                                "title": "Blueprint ID",
-                                "type": "string",
-                                "span": 12
-                              },
-                              "blueprint": {
-                                "title": "Blueprint JSON",
-                                "type": "json",
-                                "format": "json",
-                                "rows": 24,
-                                "span": 12
-                              }
-                            },
-                            "required": [
-                              "id",
-                              "blueprint"
-                            ]
-                          }
-                        },
-                        "bindings": {
-                          "value": {
-                            "expression": "{'id':studio.selected.id,'blueprint':studio.selected.artifact}"
-                          },
-                          "readOnly": {
-                            "expression": "true"
-                          }
-                        },
-                        "visibility": "studio.selected != null and studio.activeTab = 'form'"
-                      },
-                      {
-                        "capability": "gik:blueprint",
-                        "bindings": {
-                          "blueprint": {
-                            "expression": "studio.selected.artifact"
-                          }
-                        },
-                        "visibility": "studio.selected != null and studio.activeTab = 'preview'"
                       }
-                    ]
+                    ],
+                    "visibility": "studio.selected != null"
+                  },
+                  "blueprint-overview-pane": {
+                    "capability": "primitive:markdown",
+                    "bindings": {
+                      "value": {
+                        "from": "studio.overviewMarkdown"
+                      }
+                    }
+                  },
+                  "blueprint-form-pane": {
+                    "capability": "primitive:form",
+                    "props": {
+                      "fields": {
+                        "properties": {
+                          "id": {
+                            "title": "Blueprint ID",
+                            "type": "string",
+                            "span": 12
+                          },
+                          "blueprint": {
+                            "title": "Blueprint JSON",
+                            "type": "json",
+                            "format": "json",
+                            "rows": 24,
+                            "span": 12
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "blueprint"
+                        ]
+                      }
+                    },
+                    "bindings": {
+                      "value": {
+                        "expression": "{'id':studio.selected.id,'blueprint':studio.selected.artifact}"
+                      },
+                      "readOnly": {
+                        "expression": "true"
+                      }
+                    }
+                  },
+                  "blueprint-preview-pane": {
+                    "capability": "primitive:container",
+                    "props": {
+                      "variant": "column",
+                      "gap": "m",
+                      "fullWidth": true,
+                      "ariaLabel": "Blueprint preview"
+                    }
+                  },
+                  "blueprint-preview-content": {
+                    "capability": "gik:blueprint",
+                    "bindings": {
+                      "blueprint": {
+                        "expression": "studio.selected.artifact"
+                      }
+                    },
+                    "visibility": "studio.activeTab = 'preview'"
                   }
                 },
                 "presentation": {
@@ -696,6 +704,36 @@
                       "parent": "studio-root",
                       "slot": "children",
                       "order": 1
+                    },
+                    {
+                      "cell": "individual-blueprint-tabs",
+                      "parent": "individual-blueprint",
+                      "slot": "children",
+                      "order": 0
+                    },
+                    {
+                      "cell": "blueprint-overview-pane",
+                      "parent": "individual-blueprint-tabs",
+                      "slot": "panes",
+                      "order": 0
+                    },
+                    {
+                      "cell": "blueprint-form-pane",
+                      "parent": "individual-blueprint-tabs",
+                      "slot": "panes",
+                      "order": 1
+                    },
+                    {
+                      "cell": "blueprint-preview-pane",
+                      "parent": "individual-blueprint-tabs",
+                      "slot": "panes",
+                      "order": 2
+                    },
+                    {
+                      "cell": "blueprint-preview-content",
+                      "parent": "blueprint-preview-pane",
+                      "slot": "children",
+                      "order": 0
                     }
                   ]
                 }
@@ -797,6 +835,9 @@
                 "type": "object",
                 "additionalProperties": true
               },
+              "slots": [
+                "panes"
+              ],
               "emits": [
                 "select"
               ]
@@ -957,7 +998,11 @@
                   "sources.individual-blueprint.source"
                 ]
               }
-            ],
+            ]
+          },
+          "individual-blueprint-tabs": {
+            "id": "individual-blueprint-tabs",
+            "kind": "blueprint-tabs",
             "behavior": {
               "on": {
                 "select": [
@@ -978,6 +1023,22 @@
                 }
               }
             }
+          },
+          "blueprint-overview-pane": {
+            "id": "blueprint-overview-pane",
+            "kind": "blueprint-overview"
+          },
+          "blueprint-form-pane": {
+            "id": "blueprint-form-pane",
+            "kind": "blueprint-form"
+          },
+          "blueprint-preview-pane": {
+            "id": "blueprint-preview-pane",
+            "kind": "blueprint-preview"
+          },
+          "blueprint-preview-content": {
+            "id": "blueprint-preview-content",
+            "kind": "blueprint-preview-content"
           }
         }
       }
@@ -12229,6 +12290,31 @@
                               "gap": "m",
                               "fill": true,
                               "ariaLabel": "Selected Blueprint"
+                            }
+                          },
+                          "individual-blueprint-tabs": {
+                            "capability": "fluent:tab-bar",
+                            "props": {
+                              "ariaLabel": "Blueprint views",
+                              "tabs": [
+                                {
+                                  "value": "overview",
+                                  "headerLabel": "Overview"
+                                },
+                                {
+                                  "value": "form",
+                                  "headerLabel": "Form"
+                                },
+                                {
+                                  "value": "preview",
+                                  "headerLabel": "Preview"
+                                }
+                              ]
+                            },
+                            "bindings": {
+                              "active": {
+                                "from": "studio.activeTab"
+                              }
                             },
                             "before": [
                               {
@@ -12243,85 +12329,68 @@
                                     "expression": "studio.selected ? studio.selected.id : 'Select a Blueprint'"
                                   }
                                 }
-                              },
-                              {
-                                "capability": "fluent:tab-bar",
-                                "props": {
-                                  "options": [
-                                    {
-                                      "value": "overview",
-                                      "label": "Overview"
-                                    },
-                                    {
-                                      "value": "form",
-                                      "label": "Form"
-                                    },
-                                    {
-                                      "value": "preview",
-                                      "label": "Preview"
-                                    }
-                                  ]
-                                },
-                                "bindings": {
-                                  "active": {
-                                    "from": "studio.activeTab"
-                                  }
-                                },
-                                "visibility": "studio.selected != null"
-                              },
-                              {
-                                "capability": "primitive:markdown",
-                                "bindings": {
-                                  "value": {
-                                    "from": "studio.overviewMarkdown"
-                                  }
-                                },
-                                "visibility": "studio.selected != null and studio.activeTab = 'overview'"
-                              },
-                              {
-                                "capability": "primitive:form",
-                                "props": {
-                                  "fields": {
-                                    "properties": {
-                                      "id": {
-                                        "title": "Blueprint ID",
-                                        "type": "string",
-                                        "span": 12
-                                      },
-                                      "blueprint": {
-                                        "title": "Blueprint JSON",
-                                        "type": "json",
-                                        "format": "json",
-                                        "rows": 24,
-                                        "span": 12
-                                      }
-                                    },
-                                    "required": [
-                                      "id",
-                                      "blueprint"
-                                    ]
-                                  }
-                                },
-                                "bindings": {
-                                  "value": {
-                                    "expression": "{'id':studio.selected.id,'blueprint':studio.selected.artifact}"
-                                  },
-                                  "readOnly": {
-                                    "expression": "true"
-                                  }
-                                },
-                                "visibility": "studio.selected != null and studio.activeTab = 'form'"
-                              },
-                              {
-                                "capability": "gik:blueprint",
-                                "bindings": {
-                                  "blueprint": {
-                                    "expression": "studio.selected.artifact"
-                                  }
-                                },
-                                "visibility": "studio.selected != null and studio.activeTab = 'preview'"
                               }
-                            ]
+                            ],
+                            "visibility": "studio.selected != null"
+                          },
+                          "blueprint-overview-pane": {
+                            "capability": "primitive:markdown",
+                            "bindings": {
+                              "value": {
+                                "from": "studio.overviewMarkdown"
+                              }
+                            }
+                          },
+                          "blueprint-form-pane": {
+                            "capability": "primitive:form",
+                            "props": {
+                              "fields": {
+                                "properties": {
+                                  "id": {
+                                    "title": "Blueprint ID",
+                                    "type": "string",
+                                    "span": 12
+                                  },
+                                  "blueprint": {
+                                    "title": "Blueprint JSON",
+                                    "type": "json",
+                                    "format": "json",
+                                    "rows": 24,
+                                    "span": 12
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "blueprint"
+                                ]
+                              }
+                            },
+                            "bindings": {
+                              "value": {
+                                "expression": "{'id':studio.selected.id,'blueprint':studio.selected.artifact}"
+                              },
+                              "readOnly": {
+                                "expression": "true"
+                              }
+                            }
+                          },
+                          "blueprint-preview-pane": {
+                            "capability": "primitive:container",
+                            "props": {
+                              "variant": "column",
+                              "gap": "m",
+                              "fullWidth": true,
+                              "ariaLabel": "Blueprint preview"
+                            }
+                          },
+                          "blueprint-preview-content": {
+                            "capability": "gik:blueprint",
+                            "bindings": {
+                              "blueprint": {
+                                "expression": "studio.selected.artifact"
+                              }
+                            },
+                            "visibility": "studio.activeTab = 'preview'"
                           }
                         },
                         "presentation": {
@@ -12340,6 +12409,36 @@
                               "parent": "studio-root",
                               "slot": "children",
                               "order": 1
+                            },
+                            {
+                              "cell": "individual-blueprint-tabs",
+                              "parent": "individual-blueprint",
+                              "slot": "children",
+                              "order": 0
+                            },
+                            {
+                              "cell": "blueprint-overview-pane",
+                              "parent": "individual-blueprint-tabs",
+                              "slot": "panes",
+                              "order": 0
+                            },
+                            {
+                              "cell": "blueprint-form-pane",
+                              "parent": "individual-blueprint-tabs",
+                              "slot": "panes",
+                              "order": 1
+                            },
+                            {
+                              "cell": "blueprint-preview-pane",
+                              "parent": "individual-blueprint-tabs",
+                              "slot": "panes",
+                              "order": 2
+                            },
+                            {
+                              "cell": "blueprint-preview-content",
+                              "parent": "blueprint-preview-pane",
+                              "slot": "children",
+                              "order": 0
                             }
                           ]
                         }
@@ -12441,6 +12540,9 @@
                         "type": "object",
                         "additionalProperties": true
                       },
+                      "slots": [
+                        "panes"
+                      ],
                       "emits": [
                         "select"
                       ]
@@ -12601,7 +12703,11 @@
                           "sources.individual-blueprint.source"
                         ]
                       }
-                    ],
+                    ]
+                  },
+                  "individual-blueprint-tabs": {
+                    "id": "individual-blueprint-tabs",
+                    "kind": "blueprint-tabs",
                     "behavior": {
                       "on": {
                         "select": [
@@ -12622,6 +12728,22 @@
                         }
                       }
                     }
+                  },
+                  "blueprint-overview-pane": {
+                    "id": "blueprint-overview-pane",
+                    "kind": "blueprint-overview"
+                  },
+                  "blueprint-form-pane": {
+                    "id": "blueprint-form-pane",
+                    "kind": "blueprint-form"
+                  },
+                  "blueprint-preview-pane": {
+                    "id": "blueprint-preview-pane",
+                    "kind": "blueprint-preview"
+                  },
+                  "blueprint-preview-content": {
+                    "id": "blueprint-preview-content",
+                    "kind": "blueprint-preview-content"
                   }
                 }
               }
@@ -17265,6 +17387,6 @@
       ]
     }
   },
-  "bundleVersion": "19e1b6271d538da5",
-  "digest": "sha256:19e1b6271d538da5a2a3e5a3d631c67eaf9ccd6e1e59b8a6f5d7c12ea48321db"
+  "bundleVersion": "1922506c6fba915b",
+  "digest": "sha256:1922506c6fba915bca62886259672299b59aa4e6f1cc604ec24a908a356008cd"
 }
