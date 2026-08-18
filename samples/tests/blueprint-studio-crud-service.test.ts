@@ -103,6 +103,14 @@ describe("Blueprint Studio CRUD service", () => {
       id: "portfolio-tracker-new",
       source: "repo",
       readonly: true,
+      contextFormSpec: {
+        saveLabel: "Apply context",
+      },
+      initialExternalContext: {
+        "intelligence-model": "simple",
+        "market-prices": "mock",
+        view: "desktop",
+      },
       artifact: {
         payload: {
           id: "portfolio-tracker-new",

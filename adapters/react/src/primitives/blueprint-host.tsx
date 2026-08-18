@@ -254,7 +254,21 @@ export function createHostedBlueprintProjection({
       );
     }
 
-    const { blueprint: _blueprint, hostedBlueprint: _hostedBlueprint, ...inputs } = node.props;
+    const {
+      blueprint: _blueprint,
+      hostedBlueprint: _hostedBlueprint,
+      externalContext: externalContextInput,
+      instanceKey,
+      ...inputs
+    } = node.props;
+    const externalContext = externalContextInput
+      && typeof externalContextInput === "object"
+      && !Array.isArray(externalContextInput)
+      ? externalContextInput as ExternalContext
+      : undefined;
+    const instanceSuffix = instanceKey === undefined || instanceKey === null
+      ? ""
+      : `/instances/${encodeURIComponent(String(instanceKey))}`;
     const childProps: BlueprintHostProps = {
       blueprint: resolution.blueprint,
       native: resolution.native,
@@ -263,7 +277,8 @@ export function createHostedBlueprintProjection({
       contexts,
       fileServices,
       context: { initialSeed: inputs },
-      primaryInstanceId: `${parentInstanceId}/cells/${node.id}`,
+      externalContext,
+      primaryInstanceId: `${parentInstanceId}/cells/${node.id}${instanceSuffix}`,
       onTransition: (event, result) => {
         onTransition?.(event, result);
         if (result.outputs && Object.keys(result.outputs).length > 0) {

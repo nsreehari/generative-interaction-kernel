@@ -9,6 +9,7 @@ import type {
   CellBlueprint,
   HostedBlueprintDefinition,
 } from "./types";
+import type { ExternalContext } from "./run-transition";
 
 export interface HostedBlueprintMount<TNative = unknown> {
   node: ResolvedNode;
@@ -16,6 +17,7 @@ export interface HostedBlueprintMount<TNative = unknown> {
   instanceId: string;
   declaration: CellBlueprint;
   inputs: Record<string, Json>;
+  externalContext?: ExternalContext;
   definition: HostedBlueprintDefinition<TNative>;
 }
 
@@ -85,14 +87,29 @@ export class HostedBlueprintReconciler<TInstance, TNative = unknown> {
     node: ResolvedNode,
     declaration: CellBlueprint,
   ): Promise<HostedBlueprintMount<TNative>> {
-    const instanceId = `${this.parentInstanceId}/cells/${path}`;
+    const instanceKey = node.props.instanceKey;
+    const instanceSuffix = instanceKey === undefined || instanceKey === null
+      ? ""
+      : `/instances/${encodeURIComponent(String(instanceKey))}`;
+    const instanceId = `${this.parentInstanceId}/cells/${path}${instanceSuffix}`;
     const definition = await resolveHostedBlueprint(declaration, this.registry, {
       parentBlueprintId: this.parentBlueprintId,
       parentInstanceId: this.parentInstanceId,
       cellId: node.id,
     });
-    const { blueprint: _blueprint, hostedBlueprint: _hostedBlueprint, ...inputs } = node.props;
-    return { node, path, instanceId, declaration, inputs, definition };
+    const {
+      blueprint: _blueprint,
+      hostedBlueprint: _hostedBlueprint,
+      externalContext: externalContextInput,
+      instanceKey: _instanceKey,
+      ...inputs
+    } = node.props;
+    const externalContext = externalContextInput
+      && typeof externalContextInput === "object"
+      && !Array.isArray(externalContextInput)
+      ? externalContextInput as ExternalContext
+      : undefined;
+    return { node, path, instanceId, declaration, inputs, externalContext, definition };
   }
 
   private enqueue(operation: () => Promise<void>): Promise<void> {
