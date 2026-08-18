@@ -504,13 +504,13 @@
           },
           {
             "id": "selected-blueprint-context-form",
-            "expression": "sources.`individual-blueprint.source`.contextFormSpec",
+            "expression": "($bp := sources.`individual-blueprint.source`.artifact.payload; $explicit := $bp.contextFormSpec; $matches := $match($string($bp), /externalContext\\.(?:`([^`]+)`|([A-Za-z][A-Za-z0-9-]*))\\s*=\\s*'([^']+)'/).{'name':groups[0] ? groups[0] : groups[1],'value':groups[2]}; $names := $distinct($matches.name); $derived := $count($names) > 0 ? {'fields':{'properties':$merge($names.($name := $; {$name:{'type':'string','title':$name,'enum':$distinct($matches[name=$name].value)}})),'required':$names},'saveLabel':'Apply context','discardLabel':'Discard'} : null; $explicit ? $explicit : $derived)",
             "assign": "studio.previewContextFormSpec",
             "dependencies": ["sources.individual-blueprint.source"]
           },
           {
             "id": "selected-blueprint-initial-context",
-            "expression": "sources.`individual-blueprint.source`.initialExternalContext",
+            "expression": "($bp := sources.`individual-blueprint.source`.artifact.payload; $spec := $bp.contextFormSpec; $properties := $spec.fields.properties; $explicit := $properties ? $merge($keys($properties).($name := $; $field := $lookup($properties, $name); {$name:$exists($field.default) ? $field.default : $field.enum[0]})) : null; $matches := $match($string($bp), /externalContext\\.(?:`([^`]+)`|([A-Za-z][A-Za-z0-9-]*))\\s*=\\s*'([^']+)'/).{'name':groups[0] ? groups[0] : groups[1],'value':groups[2]}; $names := $distinct($matches.name); $derived := $count($names) > 0 ? $merge($names.($name := $; {$name:($matches[name=$name].value)[0]})) : {}; $explicit ? $explicit : $derived)",
             "assign": "studio.previewExternalContext",
             "dependencies": ["sources.individual-blueprint.source"]
           }

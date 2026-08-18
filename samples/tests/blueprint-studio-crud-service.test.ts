@@ -99,24 +99,19 @@ describe("Blueprint Studio CRUD service", () => {
 
     expect(listed.blueprints.map(({ id }) => id)).toEqual(getSampleBlueprintCatalog().blueprints);
     expect(listed.blueprints.map(({ id }) => id)).not.toContain("manage-blueprints");
-    expect(await invoke(host, "fetch", { id: "portfolio-tracker-new" })).toMatchObject({
+    const fetched = await invoke(host, "fetch", { id: "portfolio-tracker-new" }) as Record<string, unknown>;
+    expect(fetched).toMatchObject({
       id: "portfolio-tracker-new",
       source: "repo",
       readonly: true,
-      contextFormSpec: {
-        saveLabel: "Apply context",
-      },
-      initialExternalContext: {
-        "intelligence-model": "simple",
-        "market-prices": "mock",
-        view: "desktop",
-      },
       artifact: {
         payload: {
           id: "portfolio-tracker-new",
         },
       },
     });
+    expect(fetched).not.toHaveProperty("contextFormSpec");
+    expect(fetched).not.toHaveProperty("initialExternalContext");
   });
 
   it("creates, updates, and deletes user Blueprints without mutating repository entries", async () => {

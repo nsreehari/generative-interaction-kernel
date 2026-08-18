@@ -138,6 +138,26 @@ describe("Blueprint Studio read shell", () => {
           capability: "fluent:tab-bar",
           visible: true,
         });
+        expect(host.controlface.getState().studio.previewExternalContext).toEqual({
+          "market-prices": "mock",
+          view: "desktop",
+          "intelligence-model": "simple",
+          ai: "foundry",
+          semantic: "simple-markdown",
+        });
+        expect(host.controlface.getState().studio.previewContextFormSpec).toMatchObject({
+          fields: {
+            properties: {
+              "market-prices": { enum: ["mock", "live"] },
+              view: { enum: ["desktop", "mobile"] },
+              "intelligence-model": { enum: ["simple", "mock", "semantic"] },
+              ai: { enum: ["foundry", "copilot"] },
+              semantic: { enum: ["simple-markdown", "rich-components"] },
+            },
+          },
+          saveLabel: "Apply context",
+          discardLabel: "Discard",
+        });
       });
       expect([...host.hostedControlFaces().values()]).toHaveLength(0);
 

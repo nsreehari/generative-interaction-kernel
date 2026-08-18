@@ -17,17 +17,6 @@ const artifactIds = (await readdir(blueprintDirectory, { withFileTypes: true }))
   .map((entry) => entry.name)
   .sort();
 
-function initialExternalContext(contextFormSpec) {
-  const properties = contextFormSpec?.fields?.properties;
-  if (!properties || typeof properties !== "object" || Array.isArray(properties)) return {};
-  return Object.fromEntries(Object.entries(properties).flatMap(([name, field]) => {
-    if (!field || typeof field !== "object" || Array.isArray(field)) return [];
-    if (field.default !== undefined) return [[name, field.default]];
-    if (Array.isArray(field.enum) && field.enum.length > 0) return [[name, field.enum[0]]];
-    return [];
-  }));
-}
-
 for (const id of artifactIds) {
   const artifactPath = resolve(samplesDirectory, `blueprints/${id}/blueprint.json`);
   let artifact;
@@ -82,10 +71,6 @@ if (entries["blueprint-studio-crud"]) {
         value: {
           ...descriptor,
           artifact: entries[descriptor.id],
-          contextFormSpec: demoScenarios[descriptor.id]?.contextFormSpec ?? null,
-          initialExternalContext: initialExternalContext(
-            demoScenarios[descriptor.id]?.contextFormSpec,
-          ),
         },
       })),
     ],
