@@ -29,11 +29,24 @@ describe("Blueprint Studio read shell", () => {
     const individual = source.payload.cells?.["individual-blueprint"];
     const view = runtime.definition.payload.cells?.["individual-blueprint"]?.view;
 
+    expect(list?.inputs).toEqual([
+      expect.objectContaining({
+        token: "studio.selectedBlueprintId",
+        as: "selectedBlueprintId",
+      }),
+    ]);
     expect(list?.outputs).toEqual([
-      expect.objectContaining({ token: "selected_bp" }),
+      expect.objectContaining({
+        token: "selectedBlueprintId",
+        from: "inputs.selectedBlueprintId",
+      }),
     ]);
     expect(individual?.inputs).toEqual([
-      expect.objectContaining({ token: "selected_bp", required: true }),
+      expect.objectContaining({
+        token: "selectedBlueprintId",
+        as: "selectedBlueprintId",
+        required: true,
+      }),
     ]);
     expect(individual?.sources).toEqual([
       expect.objectContaining({
@@ -69,7 +82,7 @@ describe("Blueprint Studio read shell", () => {
       await host.controlface.whenIdle();
       await eventually(() => {
         expect(host.controlface.getState().studio).toMatchObject({
-          selectedId: "",
+          selectedBlueprintId: "",
           selected: null,
         });
         expect((host.controlface.getState().studio as { blueprints: Array<{ id: string }> })
@@ -84,7 +97,7 @@ describe("Blueprint Studio read shell", () => {
       await host.controlface.whenIdle();
       await eventually(() => {
         expect(host.controlface.getState().studio).toMatchObject({
-          selectedId: "portfolio-tracker-new",
+          selectedBlueprintId: "portfolio-tracker-new",
           selected: {
             id: "portfolio-tracker-new",
             source: "repo",
