@@ -1,7 +1,4 @@
 import type { EffectHandlerMap, LoadBundleOptions } from "@gik/react";
-import * as backendOrderProcessing from "../../../../blueprints/half-baked/backend-order-processing/native/effect_handlers/backendOrderProcessingEffectHandlers";
-import * as copilotC2 from "../../../../blueprints/half-baked/copilot-c2/native/effect_handlers/copilotC2EffectHandlers";
-import * as liveWorkspaceSoc from "../../../../blueprints/half-baked/live-workspace-soc/native/effect_handlers/liveWorkspaceSocEffectHandlers";
 import * as manageBlueprints from "../../../../blueprints/manage-blueprints/native/effect_handlers/manageBlueprintsEffectHandlers";
 import { getSampleBlueprintCatalog } from "../../../../catalog/blueprint-catalog";
 
@@ -13,24 +10,7 @@ export interface SampleNativeEffects {
   ) => NonNullable<LoadBundleOptions["wrapOrchestrator"]>;
 }
 
-function browserStorage(): Storage | null {
-  try {
-    return globalThis.localStorage ?? null;
-  } catch {
-    return null;
-  }
-}
-
-const copilotC2BrowserEffects: SampleNativeEffects = {
-  default: copilotC2.default,
-  hydrateState: (state) => copilotC2.hydrateState(state, browserStorage()),
-  wrapOrchestrator: (next) => copilotC2.wrapOrchestrator(next, browserStorage()),
-};
-
 const browserSampleNativeEffects: Readonly<Record<string, SampleNativeEffects>> = {
-  "backend-order-processing": backendOrderProcessing,
-  "copilot-c2": copilotC2BrowserEffects,
-  "live-workspace-soc": liveWorkspaceSoc,
   "manage-blueprints": manageBlueprints,
 };
 

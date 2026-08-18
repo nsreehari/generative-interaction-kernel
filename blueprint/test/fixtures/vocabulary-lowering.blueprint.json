@@ -1,0 +1,160 @@
+{
+  "gik": "0.1",
+  "type": "blueprint",
+  "payload": {
+    "id": "vocabulary-lowering",
+    "kind": "intent-blueprint",
+    "version": "1",
+    "structureMode": "fixed",
+    "tiers": [
+      {
+        "id": "intent",
+        "kind": "interaction-intent"
+      },
+      {
+        "id": "runtime",
+        "kind": "runtime-document"
+      }
+    ],
+    "recipes": [
+      {
+        "id": "intent-to-runtime",
+        "from": "intent",
+        "to": "runtime",
+        "patch": [
+          {
+            "op": "replaceCell",
+            "cellId": "query-input",
+            "cell": {
+              "id": "query-input",
+              "kind": "runtime-cell",
+              "view": {
+                "capability": "sample:query-input"
+              },
+              "events": {
+                "submit": {
+                  "payloadSchema": {
+                    "type": "object"
+                  }
+                }
+              },
+              "behavior": {
+                "on": {
+                  "submit": [
+                    {
+                      "do": "assign",
+                      "target": "search.submitted",
+                      "args": {
+                        "value": true
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "op": "replaceCell",
+            "cellId": "results",
+            "cell": {
+              "id": "results",
+              "kind": "runtime-cell",
+              "view": {
+                "capability": "sample:results",
+                "bindings": {
+                  "items": {
+                    "from": "search.results"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "op": "replaceCell",
+            "cellId": "summary",
+            "cell": {
+              "id": "summary",
+              "kind": "runtime-cell",
+              "view": {
+                "capability": "sample:summary",
+                "bindings": {
+                  "count": {
+                    "expression": "$count(search.results)"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "op": "setProjection",
+            "projectionId": "presentation",
+            "projection": {
+              "roots": [
+                "query-input"
+              ],
+              "placements": [
+                {
+                  "cell": "results",
+                  "parent": "query-input",
+                  "slot": "children",
+                  "order": 0
+                },
+                {
+                  "cell": "summary",
+                  "parent": "query-input",
+                  "slot": "children",
+                  "order": 1
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "cells": {
+      "query-input": {
+        "id": "query-input",
+        "kind": "intent-cell",
+        "metadata": {
+          "role": "collect-query"
+        }
+      },
+      "results": {
+        "id": "results",
+        "kind": "intent-cell",
+        "metadata": {
+          "role": "show-results"
+        }
+      },
+      "summary": {
+        "id": "summary",
+        "kind": "intent-cell",
+        "metadata": {
+          "role": "summarize-results"
+        }
+      }
+    },
+    "runtime": {
+      "expression": "jsonata",
+      "namespaces": [
+        "search"
+      ],
+      "capabilities": {},
+      "state": {
+        "search": {
+          "submitted": false,
+          "results": [
+            {
+              "id": "r1",
+              "title": "First result"
+            },
+            {
+              "id": "r2",
+              "title": "Second result"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
