@@ -1053,7 +1053,7 @@
               },
               {
                 "id": "selected-blueprint-context-form",
-                "expression": "sources.`individual-blueprint.source`.contextFormSpec",
+                "expression": "($bp := sources.`individual-blueprint.source`.artifact.payload; $explicit := $bp.contextFormSpec; $matches := $match($string($bp), /externalContext\\.(?:`([^`]+)`|([A-Za-z][A-Za-z0-9-]*))\\s*=\\s*'([^']+)'/).{'name':groups[0] ? groups[0] : groups[1],'value':groups[2]}; $names := $distinct($matches.name); $derived := $count($names) > 0 ? {'fields':{'properties':$merge($names.($name := $; {$name:{'type':'string','title':$name,'enum':$distinct($matches[name=$name].value)}})),'required':$names},'saveLabel':'Apply context','discardLabel':'Discard'} : null; $explicit ? $explicit : $derived)",
                 "assign": "studio.previewContextFormSpec",
                 "dependencies": [
                   "sources.individual-blueprint.source"
@@ -1061,7 +1061,7 @@
               },
               {
                 "id": "selected-blueprint-initial-context",
-                "expression": "sources.`individual-blueprint.source`.initialExternalContext",
+                "expression": "($bp := sources.`individual-blueprint.source`.artifact.payload; $spec := $bp.contextFormSpec; $properties := $spec.fields.properties; $explicit := $properties ? $merge($keys($properties).($name := $; $field := $lookup($properties, $name); {$name:$exists($field.default) ? $field.default : $field.enum[0]})) : null; $matches := $match($string($bp), /externalContext\\.(?:`([^`]+)`|([A-Za-z][A-Za-z0-9-]*))\\s*=\\s*'([^']+)'/).{'name':groups[0] ? groups[0] : groups[1],'value':groups[2]}; $names := $distinct($matches.name); $derived := $count($names) > 0 ? $merge($names.($name := $; {$name:($matches[name=$name].value)[0]})) : {}; $explicit ? $explicit : $derived)",
                 "assign": "studio.previewExternalContext",
                 "dependencies": [
                   "sources.individual-blueprint.source"
@@ -12302,9 +12302,7 @@
                   }
                 }
               }
-            },
-            "contextFormSpec": null,
-            "initialExternalContext": {}
+            }
           }
         },
         {
@@ -12867,7 +12865,7 @@
                       },
                       {
                         "id": "selected-blueprint-context-form",
-                        "expression": "sources.`individual-blueprint.source`.contextFormSpec",
+                        "expression": "($bp := sources.`individual-blueprint.source`.artifact.payload; $explicit := $bp.contextFormSpec; $matches := $match($string($bp), /externalContext\\.(?:`([^`]+)`|([A-Za-z][A-Za-z0-9-]*))\\s*=\\s*'([^']+)'/).{'name':groups[0] ? groups[0] : groups[1],'value':groups[2]}; $names := $distinct($matches.name); $derived := $count($names) > 0 ? {'fields':{'properties':$merge($names.($name := $; {$name:{'type':'string','title':$name,'enum':$distinct($matches[name=$name].value)}})),'required':$names},'saveLabel':'Apply context','discardLabel':'Discard'} : null; $explicit ? $explicit : $derived)",
                         "assign": "studio.previewContextFormSpec",
                         "dependencies": [
                           "sources.individual-blueprint.source"
@@ -12875,7 +12873,7 @@
                       },
                       {
                         "id": "selected-blueprint-initial-context",
-                        "expression": "sources.`individual-blueprint.source`.initialExternalContext",
+                        "expression": "($bp := sources.`individual-blueprint.source`.artifact.payload; $spec := $bp.contextFormSpec; $properties := $spec.fields.properties; $explicit := $properties ? $merge($keys($properties).($name := $; $field := $lookup($properties, $name); {$name:$exists($field.default) ? $field.default : $field.enum[0]})) : null; $matches := $match($string($bp), /externalContext\\.(?:`([^`]+)`|([A-Za-z][A-Za-z0-9-]*))\\s*=\\s*'([^']+)'/).{'name':groups[0] ? groups[0] : groups[1],'value':groups[2]}; $names := $distinct($matches.name); $derived := $count($names) > 0 ? $merge($names.($name := $; {$name:($matches[name=$name].value)[0]})) : {}; $explicit ? $explicit : $derived)",
                         "assign": "studio.previewExternalContext",
                         "dependencies": [
                           "sources.individual-blueprint.source"
@@ -12963,9 +12961,7 @@
                   }
                 }
               }
-            },
-            "contextFormSpec": null,
-            "initialExternalContext": {}
+            }
           }
         },
         {
@@ -13282,9 +13278,7 @@
                   "executionMedium": "headless"
                 }
               }
-            },
-            "contextFormSpec": null,
-            "initialExternalContext": {}
+            }
           }
         },
         {
@@ -13666,9 +13660,7 @@
                   "executionMedium": "headless"
                 }
               }
-            },
-            "contextFormSpec": null,
-            "initialExternalContext": {}
+            }
           }
         },
         {
@@ -14728,9 +14720,7 @@
                   "compositionPattern": "external-model-selected-analysis-with-nested-report"
                 }
               }
-            },
-            "contextFormSpec": null,
-            "initialExternalContext": {}
+            }
           }
         },
         {
@@ -14844,9 +14834,7 @@
                   }
                 }
               }
-            },
-            "contextFormSpec": null,
-            "initialExternalContext": {}
+            }
           }
         },
         {
@@ -17607,68 +17595,12 @@
                   }
                 }
               }
-            },
-            "contextFormSpec": {
-              "fields": {
-                "properties": {
-                  "intelligence-model": {
-                    "type": "string",
-                    "title": "Intelligence model",
-                    "enum": [
-                      "simple",
-                      "mock",
-                      "semantic"
-                    ],
-                    "enumNames": [
-                      "Simple",
-                      "Mock",
-                      "Semantic"
-                    ]
-                  },
-                  "market-prices": {
-                    "type": "string",
-                    "title": "Market prices",
-                    "enum": [
-                      "mock",
-                      "live"
-                    ],
-                    "enumNames": [
-                      "Mock",
-                      "Live"
-                    ]
-                  },
-                  "view": {
-                    "type": "string",
-                    "title": "View",
-                    "enum": [
-                      "desktop",
-                      "mobile"
-                    ],
-                    "enumNames": [
-                      "Desktop",
-                      "Mobile"
-                    ]
-                  }
-                },
-                "required": [
-                  "intelligence-model",
-                  "market-prices",
-                  "view"
-                ]
-              },
-              "saveLabel": "Apply context",
-              "discardLabel": "Discard"
-            },
-            "initialExternalContext": {
-              "intelligence-model": "simple",
-              "market-prices": "mock",
-              "view": "desktop"
             }
           }
         }
       ]
     }
   },
-  "bundleVersion": "95b045e3ca24afab",
-  "digest": "sha256:95b045e3ca24afabdb617b35608a442f5485b018dcda517a8819c56b5a84f281"
+  "bundleVersion": "ed1a5a7868fea3ac",
+  "digest": "sha256:ed1a5a7868fea3acfebfa48605666acd6c1a60934343c9f139ad13a92e8f49fa"
 }
