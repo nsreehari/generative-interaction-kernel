@@ -136,6 +136,7 @@ test("portfolio tracker uses Blueprint-authored launch defaults", () => {
       ai: "foundry",
       "intelligence-model": "simple",
       "market-prices": "mock",
+      semantic: "simple-markdown",
       view: "desktop",
     });
   } finally {

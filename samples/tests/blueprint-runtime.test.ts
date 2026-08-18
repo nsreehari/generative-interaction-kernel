@@ -12,10 +12,10 @@ test("every registered sample opens through terminal materialization", () => {
 }, 60_000);
 
 test("sample opener preserves a direct-runtime Blueprint", () => {
-  const source = resolveSampleBlueprintSource("manage-blueprints");
-  const runtime = openSampleBlueprint("manage-blueprints");
+  const source = resolveSampleBlueprintSource("blueprint-studio-crud");
+  const runtime = openSampleBlueprint("blueprint-studio-crud");
 
-  assert.equal(runtime.blueprintId, "manage-blueprints");
+  assert.equal(runtime.blueprintId, "blueprint-studio-crud");
   assert.deepEqual(runtime.definition, source);
 });
 

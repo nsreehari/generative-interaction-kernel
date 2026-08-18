@@ -24,6 +24,7 @@ import {
 import { hostConfig } from "../../../../config/host-config";
 import { createSampleServiceRegistryOptions } from "../../../../service-kinds/registry-options";
 import { createBlueprintAgentLifecycle, type UseProposal } from "./blueprint-agent-lifecycle";
+import { createSampleAgentTools } from "../../../shared/agent-tools";
 import type { BlueprintProposalStore } from "@gik/blueprint-agent-host";
 import { createBlueprintServiceResolver } from "../../../shared/blueprint-service-resolver";
 import { createSampleCatalogBlueprintRegistry } from "../../../../catalog/blueprint-catalog";
@@ -110,7 +111,7 @@ export function createBlueprintServiceHost(
     }),
     state,
     expression: new JsonataExpressionProvider({ safe: true }),
-    agentTools: agentLifecycle.tools,
+    agentTools: [...createSampleAgentTools(), ...agentLifecycle.tools],
     inProgressProposalSettlement: agentLifecycle.settle,
     ...hostPolicy,
   });

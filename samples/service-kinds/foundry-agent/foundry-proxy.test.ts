@@ -1,7 +1,19 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
+import { parseFoundryJsonReply } from "./index";
 import { createFoundryProxy, FoundryProxyError } from "./foundry-proxy";
+
+test("Foundry JSON response mode parses a complete artifact", () => {
+  assert.deepEqual(
+    parseFoundryJsonReply('{"gik":"0.1","type":"blueprint","payload":{"id":"generated-report"}}'),
+    { gik: "0.1", type: "blueprint", payload: { id: "generated-report" } },
+  );
+  assert.throws(
+    () => parseFoundryJsonReply("```json\n{}\n```"),
+    /Foundry agent returned invalid JSON/,
+  );
+});
 
 test("Foundry proxy checks access without loading agents", async () => {
   let requestUrl = "";

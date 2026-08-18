@@ -251,6 +251,26 @@ test("host validates provider output and retries within its ceiling", async () =
   assert.equal((await host.listRequests())[0]?.guardrailAttempts, 1);
 });
 
+test("host response validators can enforce trusted request constraints", async () => {
+  const host = createHost(async () => ({ output: { ticker: "AAPL" } }), {
+    response: {
+      validators: [{
+        kind: "jsonata",
+        expr: "data.ticker = $request.ticker",
+        message: "response ticker must match the request",
+      }],
+    },
+  });
+
+  await assert.rejects(
+    () => host.invoke(effect),
+    /response ticker must match the request/,
+  );
+  const [record] = await host.listRequests();
+  assert.equal(record?.status, "failed");
+  assert.match(record?.error ?? "", /response ticker must match the request/);
+});
+
 test("host dead-letters queued transport failures at the configured limit", async () => {
   const host = createHost(async () => { throw new Error("provider unavailable"); }, { mode: "queued" }, { maxAttempts: 2 });
   const queue = new QueueFace(host);

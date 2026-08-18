@@ -417,7 +417,9 @@ export class DefaultServiceHost implements ServiceHost {
     const transformed = { ...result, output: response };
     const validators = resolved.operation.response?.validators;
     if (!validators?.length) return this.complete(running, transformed);
-    const report = runDeclarativeValidators(validators, response ?? null, {});
+    const report = runDeclarativeValidators(validators, response ?? null, {
+      bindings: { request: running.request.input ?? null },
+    });
     if (report.ok) return this.complete(running, transformed, report.warnings);
 
     const action = resolved.operation.onViolation ?? { action: "fail" as const };

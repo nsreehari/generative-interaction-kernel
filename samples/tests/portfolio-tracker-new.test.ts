@@ -8,6 +8,7 @@ import {
 } from "@gik/blueprint";
 import Ajv from "ajv";
 import { openBlueprint } from "@gik/controlface/blueprint";
+import { runDeclarativeValidators } from "@gik/evaluators";
 import {
   InMemoryStateModel,
   Kernel,
@@ -251,18 +252,21 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
     ai: "foundry",
     "intelligence-model": "simple",
     "market-prices": "mock",
+    semantic: "simple-markdown",
     view: "desktop",
   });
 
   for (const ai of ["foundry", "copilot"] as const) {
     for (const intelligenceModel of ["simple", "mock", "semantic"] as const) {
-      for (const view of ["desktop", "mobile"] as const) {
+      for (const semantic of ["simple-markdown", "rich-components"] as const) {
+        for (const view of ["desktop", "mobile"] as const) {
       const materialized = materializeBlueprint({
         blueprint: resolveSampleBlueprintSource("portfolio-tracker-new"),
         externalContext: {
           ai,
           "intelligence-model": intelligenceModel,
           "market-prices": "mock",
+          semantic,
           view,
         },
       });
@@ -289,7 +293,9 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
         assert.equal(
           (activeService?.config as Record<string, unknown>)?.agent,
           intelligenceModel === "semantic"
-            ? "Portfolio-Intelligence-2-Agent"
+            ? semantic === "rich-components"
+              ? "Portfolio-Intelligence-3-Agent"
+              : "Portfolio-Intelligence-2-Agent"
             : "Portfolio-Intelligence-Agent",
         );
       }
@@ -299,20 +305,45 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
       );
       if (intelligenceModel === "semantic") {
         assert.match(activeSource?.input?.expr ?? "", /componentCatalog/);
+        assert.match(activeSource?.input?.expr ?? "", new RegExp(`'mode':'${semantic}'`));
+        assert.equal(
+          (activeSource?.input?.expr ?? "").includes("'fluent:table'"),
+          semantic === "rich-components",
+        );
         const semanticOperation = Array.isArray(activeService?.operations)
           ? undefined
-          : activeService?.operations?.requestIntelligence2;
+          : activeService?.operations?.[
+            "requestIntelligence2"
+          ];
         assert.deepEqual(
           terminal.cells?.["portfolio-intelligence"].view?.bindings?.blueprint,
           { from: "portfolio.intelligence" },
         );
-        if (ai === "foundry") {
+        if (ai === "foundry" && semantic === "simple-markdown") {
           const responseSchema = semanticOperation?.response?.validators?.find(
             (validator) => validator.code === "provider-structured-output" && "schema" in validator,
           );
           assert.equal(responseSchema && "schema" in responseSchema
             ? (responseSchema.schema as Record<string, unknown>).required?.toString()
             : undefined, "gik,type,payload");
+        }
+        if (semantic === "rich-components") {
+          assert.equal(
+            semanticOperation?.response?.validators?.some(
+             (validator) => validator.code === "provider-structured-output",
+            ),
+            false,
+          );
+          assert.equal(
+            semanticOperation?.response?.validators?.some(
+             (validator) => validator.code === "rich-report-capability-catalog",
+            ),
+            true,
+          );
+          assert.equal(
+            (activeService?.config as Record<string, unknown>)?.responseMode,
+            "json",
+          );
         }
       } else {
         assert.deepEqual(
@@ -361,9 +392,45 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
         "portfolio-intelligence",
         "board",
       ]);
+        }
       }
     }
   }
+}, 15_000);
+
+test("portfolio semantic presentation context is inert outside semantic intelligence mode", () => {
+  for (const intelligenceModel of ["mock", "simple"] as const) {
+    const materialize = (semantic: "simple-markdown" | "rich-components") =>
+      materializeBlueprint({
+        blueprint: resolveSampleBlueprintSource("portfolio-tracker-new"),
+        externalContext: {
+          ai: "foundry",
+          "intelligence-model": intelligenceModel,
+          "market-prices": "mock",
+          semantic,
+          view: "desktop",
+        },
+      }).payload.terminalBlueprint;
+
+    assert.deepEqual(materialize("simple-markdown"), materialize("rich-components"));
+  }
+});
+
+test("portfolio semantic presentation defaults to simple Markdown when omitted", () => {
+  const terminal = materializeBlueprint({
+    blueprint: resolveSampleBlueprintSource("portfolio-tracker-new"),
+    externalContext: {
+      ai: "foundry",
+      "intelligence-model": "semantic",
+      "market-prices": "mock",
+      view: "desktop",
+    },
+  }).payload.terminalBlueprint.payload;
+  const source = terminal.cells?.["portfolio-intelligence"].sources?.[1];
+
+  assert.equal(source?.service, "portfolio-intelligence-2");
+  assert.match(source?.input?.expr ?? "", /'mode':'simple-markdown'/);
+  assert.equal(terminal.cells?.["portfolio-intelligence"].view?.capability, "gik:blueprint");
 });
 
 test("portfolio semantic response contract admits a self-contained report Blueprint", () => {
@@ -424,6 +491,107 @@ test("portfolio semantic response contract admits a self-contained report Bluepr
   assert.equal(materialized.payload.terminalBlueprint.payload.cells?.report.view?.capability, "primitive:markdown");
   assert.equal(materialized.payload.terminalBlueprint.payload.runtime.state?.report.markdown,
     "# Concentration deserves attention\n\nMSFT is the largest supplied position.");
+});
+
+test("portfolio rich semantic admission enforces its capability catalog", () => {
+  const richBlueprint: BlueprintArtifact = {
+    gik: "0.1",
+    type: "blueprint",
+    payload: {
+      id: "generated-semantic-report",
+      kind: "semantic-report",
+      version: "1.0.0",
+      structureMode: "fixed",
+      tiers: [
+        { id: "report-semantic", kind: "semantic-report-model" },
+        { id: "runtime-document", kind: "runtime-document" },
+      ],
+      recipes: [{
+        id: "semantic-report-to-runtime",
+        from: "report-semantic",
+        to: "runtime-document",
+        representations: [{
+          id: "rich-report",
+          views: {
+            root: { capability: "primitive:container", props: { variant: "column", gap: "m" } },
+            title: { capability: "fluent:text", bindings: { value: { from: "report.headline" } }, props: { as: "h1", variant: "title" } },
+            asOf: { capability: "primitive:datetime", bindings: { value: { from: "report.asOf" } }, props: { variant: "timestamp" } },
+            positions: {
+              capability: "fluent:table",
+              bindings: { rows: { from: "report.positions" } },
+              props: {
+                columns: [
+                  { id: "ticker", label: "Ticker" },
+                  { id: "value", label: "Value" },
+                ],
+              },
+            },
+          },
+          presentation: {
+            roots: ["root"],
+            placements: [
+              { cell: "title", parent: "root", slot: "children", order: 0 },
+              { cell: "asOf", parent: "root", slot: "children", order: 1 },
+              { cell: "positions", parent: "root", slot: "children", order: 2 },
+            ],
+          },
+        }],
+        fallback: "rich-report",
+      }],
+      runtime: {
+        expression: "jsonata",
+        namespaces: ["report"],
+        actions: [],
+        capabilities: {
+          "primitive:container": { propsSchema: { type: "object", additionalProperties: true }, slots: ["children"] },
+          "primitive:datetime": { propsSchema: { type: "object", additionalProperties: true }, dataProp: "value" },
+          "fluent:text": { propsSchema: { type: "object", additionalProperties: true }, dataProp: "value" },
+          "fluent:table": { propsSchema: { type: "object", additionalProperties: true }, dataProp: "rows" },
+        },
+        externals: {
+          projectionViews: {
+            primitive: { from: "primitive", use: ["container", "datetime"] },
+            fluent: { from: "fluent", use: ["text", "table"] },
+          },
+        },
+        state: {
+          report: {
+            headline: "Portfolio snapshot",
+            asOf: "2026-08-18T00:00:00Z",
+            positions: [{ id: "AAPL", cells: { ticker: "AAPL", value: 425.86 } }],
+          },
+        },
+      },
+      cells: {
+        root: { id: "root", kind: "semantic-report" },
+        title: { id: "title", kind: "semantic-report" },
+        asOf: { id: "asOf", kind: "semantic-report" },
+        positions: { id: "positions", kind: "semantic-report" },
+      },
+    },
+  };
+  const portfolio = resolveSampleBlueprintSource("portfolio-tracker-new");
+  const validators = portfolio.payload.services?.["portfolio-intelligence-3"]
+    ?.operations.requestIntelligence2.response?.validators ?? [];
+
+  assert.equal(runDeclarativeValidators(validators, richBlueprint).ok, true);
+  assert.equal(
+    materializeBlueprint({ blueprint: richBlueprint }).payload.terminalBlueprint
+      .payload.cells?.root.view?.capability,
+    "primitive:container",
+  );
+
+  const forbidden = structuredClone(richBlueprint);
+  forbidden.payload.runtime.capabilities["primitive:alert"] = {
+    propsSchema: { type: "object", additionalProperties: true },
+  };
+  forbidden.payload.recipes[0].representations[0].views.title.capability = "primitive:alert";
+  const report = runDeclarativeValidators(validators, forbidden);
+  assert.equal(report.ok, false);
+  assert.equal(
+    report.errors.some((error) => error.code === "rich-report-capability-catalog"),
+    true,
+  );
 });
 
 test("portfolio-holdings save settles declaratively before host source execution", async () => {

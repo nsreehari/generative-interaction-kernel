@@ -281,6 +281,12 @@ const description: ComponentDescription = {
     avoidWhen: ["Each field must emit immediately without an explicit commit", "The data is naturally edited as rows; use editable-table"],
     rules: ["Define fields through JSON Schema properties", "Handle save payload values", "Use readOnly for inspect-only forms", "Pass external validator bindings through validationContext", "Use initiallyDirty only for drafts not yet persisted", "Keep workflow effects outside the component"],
   },
+  agentFacing: {
+    catalog: { interaction: "committed-input" },
+    detail: {
+      notes: ["Editing is draft-based; values are published only through save."],
+    },
+  },
 };
 
 const publicSchema = withComponentStylePropsSchema(schema);

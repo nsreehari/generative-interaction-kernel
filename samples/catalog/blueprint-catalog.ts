@@ -93,6 +93,7 @@ export function resolveSampleLaunchExternalContext(id: string): ExternalContext 
       ai: "foundry",
       "intelligence-model": "simple",
       "market-prices": "mock",
+      semantic: "simple-markdown",
       view: "desktop",
     };
   }

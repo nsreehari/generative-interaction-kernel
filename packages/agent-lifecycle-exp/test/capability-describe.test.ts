@@ -1,0 +1,55 @@
+import assert from "node:assert/strict";
+import { test } from "vitest";
+
+import { createCapabilityDescribeTool } from "../src";
+
+const catalog = {
+  catalog: {
+    "primitive:form": {
+      for: ["Edit an object and explicitly commit it."],
+      notFor: ["Immediate field updates."],
+      interaction: "committed-input",
+    },
+    "semantic:argument": {
+      for: ["Present authored inferential links."],
+    },
+  },
+  details: {
+    "primitive:form": {
+      dataProps: { value: { type: "object" } },
+      emits: { save: { summary: "Commit values." } },
+    },
+    "semantic:argument": {
+      dataProps: { argument: { type: "object" } },
+      constraints: ["Relations reference declared claims."],
+    },
+  },
+} as const;
+
+test("describe lists compact capability selection guidance", async () => {
+  const tool = createCapabilityDescribeTool(catalog);
+  assert.deepEqual(await tool.handler({
+    kind: "catalog-capabilities",
+    capabilities: ["primitive:form"],
+  }), {
+    capabilities: {
+      "primitive:form": catalog.catalog["primitive:form"],
+    },
+  });
+});
+
+test("describe returns only requested Blueprint authoring contracts", async () => {
+  const tool = createCapabilityDescribeTool(catalog);
+  assert.deepEqual(await tool.handler({
+    kind: "capability",
+    capabilities: ["semantic:argument"],
+  }), {
+    capabilities: {
+      "semantic:argument": catalog.details["semantic:argument"],
+    },
+  });
+  await assert.rejects(
+    async () => tool.handler({ kind: "capability", capabilities: ["unknown:thing"] }),
+    /Unknown capabilities: unknown:thing/,
+  );
+});

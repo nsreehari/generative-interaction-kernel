@@ -50,6 +50,13 @@ function declaredResponseSchema(
 	return { name, schema: schema as Record<string, unknown>, strict: true };
 }
 
+export function parseFoundryJsonReply(reply: string): Json {
+	try {
+		return JSON.parse(reply) as Json;
+	} catch {
+		throw new Error("Foundry agent returned invalid JSON");
+	}
+}
 
 export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): ServiceKindFactory {
 	return {
@@ -86,6 +93,7 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 		const endpoint = String(config.endpoint);
 		const credentialRef = String(config.credentialRef);
 		const configuredAgent = typeof config.agent === "string" ? config.agent : "";
+		const responseMode = config.responseMode === "json" ? "json" : "text";
 		const operations = [...new Set(Object.values(declaration.operations).map(({ operation }) => operation))];
 		const resolveAccessKey = async () => {
 			try {
@@ -176,6 +184,8 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 						} catch {
 							throw new Error("Foundry agent returned invalid structured JSON");
 						}
+					} else if (responseMode === "json") {
+						structuredOutput = parseFoundryJsonReply(response.reply);
 					}
 					return {
 						output: structuredOutput ?? response as unknown as Json,

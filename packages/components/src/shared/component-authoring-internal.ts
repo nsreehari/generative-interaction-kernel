@@ -7,6 +7,32 @@ import type {
   DeclarativeComponentDefinition,
 } from "./definition";
 
+export interface AgentFacingCapabilitySelection {
+  for: readonly string[];
+  notFor?: readonly string[];
+  interaction?: string;
+}
+
+export interface AgentFacingCapabilityDetail {
+  dataProps?: Readonly<Record<string, unknown>>;
+  props?: Readonly<Record<string, unknown>>;
+  variants?: Readonly<Record<string, {
+    summary: string;
+    useWhen: readonly string[];
+    default?: true;
+  }>>;
+  slots?: readonly string[];
+  emits?: Readonly<Record<string, ComponentEventContract>>;
+  constraints?: readonly string[];
+  notes?: readonly string[];
+  example?: Readonly<Record<string, unknown>>;
+}
+
+export interface AgentFacingCapabilityCatalog {
+  catalog: Readonly<Record<string, AgentFacingCapabilitySelection>>;
+  details: Readonly<Record<string, AgentFacingCapabilityDetail>>;
+}
+
 export interface ComponentCatalogEntry {
   id: string;
   capability: string;
@@ -51,6 +77,100 @@ interface ComponentAuthoringApiConfig {
   definitions: Record<string, DeclarativeComponentDefinition>;
   kind: "semantic" | "primitive" | "fluent" | "security" | "software";
   toolKind: "Semantic" | "Primitive" | "Fluent" | "Security" | "Software";
+}
+
+const genericProps = new Set(["className", "style", "layout"]);
+
+function schemaProperties(schema: Record<string, unknown>): Record<string, unknown> {
+  const properties = schema.properties;
+  return properties && typeof properties === "object" && !Array.isArray(properties)
+    ? properties as Record<string, unknown>
+    : {};
+}
+
+function authoredExample(definition: DeclarativeComponentDefinition): Record<string, unknown> {
+  const trial = definition.materializeTrial();
+  const props = Object.fromEntries(
+    Object.entries(trial.props).filter(([key]) => key !== definition.dataProp && !genericProps.has(key)),
+  );
+  return {
+    capability: definition.capability,
+    ...(Object.keys(props).length > 0 ? { props } : {}),
+    ...(definition.dataProp
+      ? { bindings: { [definition.dataProp]: { from: "<state-path>" } } }
+      : {}),
+  };
+}
+
+export function createAgentFacingCapabilityCatalog(
+  definitions: Readonly<Record<string, DeclarativeComponentDefinition>>,
+): AgentFacingCapabilityCatalog {
+  const catalog: Record<string, AgentFacingCapabilitySelection> = {};
+  const details: Record<string, AgentFacingCapabilityDetail> = {};
+  for (const definition of Object.values(definitions)) {
+    const description = definition.describe();
+    const override = description.agentFacing;
+    const properties = schemaProperties(definition.getSchema());
+    const dataProps = {
+      ...(definition.dataProp && properties[definition.dataProp] !== undefined
+        ? { [definition.dataProp]: properties[definition.dataProp] }
+        : {}),
+      ...(override?.detail?.dataProps ?? {}),
+    };
+    const props = {
+      ...Object.fromEntries(Object.entries(properties).filter(([key]) =>
+        key !== definition.dataProp && key !== "variant" && !genericProps.has(key))),
+      ...(override?.detail?.props ?? {}),
+    };
+    const variants = Object.fromEntries(description.variants.map((variant) => [
+      variant.value,
+      {
+        summary: variant.summary,
+        useWhen: variant.useWhen,
+        ...(variant.value === description.defaultVariant ? { default: true as const } : {}),
+      },
+    ]));
+    catalog[definition.capability] = {
+      for: override?.catalog?.for ?? description.authoring.useWhen,
+      ...((override?.catalog?.notFor ?? description.authoring.avoidWhen).length > 0
+        ? { notFor: override?.catalog?.notFor ?? description.authoring.avoidWhen }
+        : {}),
+      ...(override?.catalog?.interaction ? { interaction: override.catalog.interaction } : {}),
+    };
+    details[definition.capability] = {
+      ...(Object.keys(dataProps).length > 0 ? { dataProps } : {}),
+      ...(Object.keys(props).length > 0 ? { props } : {}),
+      ...(Object.keys(variants).length > 0 ? { variants } : {}),
+      ...(description.slots?.length ? { slots: description.slots } : {}),
+      ...(description.events.length > 0 ? { emits: definition.eventContracts } : {}),
+      ...((override?.detail?.constraints ?? description.authoring.rules).length > 0
+        ? { constraints: override?.detail?.constraints ?? description.authoring.rules }
+        : {}),
+      ...(override?.detail?.notes?.length ? { notes: override.detail.notes } : {}),
+      example: override?.detail?.example ?? authoredExample(definition),
+    };
+  }
+  return { catalog, details };
+}
+
+export function mergeAgentFacingCapabilityCatalogs(
+  ...catalogs: readonly AgentFacingCapabilityCatalog[]
+): AgentFacingCapabilityCatalog {
+  const catalog: Record<string, AgentFacingCapabilitySelection> = {};
+  const details: Record<string, AgentFacingCapabilityDetail> = {};
+  for (const source of catalogs) {
+    for (const [id, entry] of Object.entries(source.catalog)) {
+      if (catalog[id] || details[id]) throw new Error(`Duplicate agent-facing capability '${id}'`);
+      catalog[id] = entry;
+      const detail = source.details[id];
+      if (!detail) throw new Error(`Agent-facing capability '${id}' has no detail contract`);
+      details[id] = detail;
+    }
+    for (const id of Object.keys(source.details)) {
+      if (!source.catalog[id]) throw new Error(`Agent-facing capability detail '${id}' has no catalog entry`);
+    }
+  }
+  return { catalog, details };
 }
 
 const objectSchema = (
@@ -258,6 +378,7 @@ export function createComponentAuthoringApi(config: ComponentAuthoringApiConfig)
   };
 
   return {
+    agentFacingCatalog: () => createAgentFacingCapabilityCatalog(config.definitions),
     list: () => catalogEntries(definitions),
     describe,
     validate: (capability: string, props: unknown) => resolveDefinition(capability).validate(props),
