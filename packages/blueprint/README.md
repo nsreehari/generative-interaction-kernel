@@ -43,6 +43,29 @@ Assembly rejects a parent Cell that omits a required child input. Values cross t
 immutable external context; the child owns its state, services, lifecycle, settlement, and outputs.
 
 `parseBlueprintReference()` and `formatBlueprintReference()` provide canonical `blueprint:` URI handling.
+
+## Nested Blueprints
+
+`gik:blueprint` is the host-provided structural capability for rendering a Blueprint inside another
+Blueprint. Bind its `blueprint` prop to a complete inline `BlueprintArtifact`; all remaining props
+become the child Blueprint's initial inputs. The host mounts the child with isolated runtime state
+and the parent Cell's stable instance identity.
+
+```json
+{
+	"id": "generated-report",
+	"view": {
+		"capability": "gik:blueprint",
+		"bindings": {
+			"blueprint": { "from": "portfolio.reportBlueprint" }
+		}
+	}
+}
+```
+
+For registry-resolved children, use a Cell `blueprint` declaration with a canonical `$ref`. Both
+forms use the same host-scoped nested Blueprint renderer; `gik:blueprint` is not a standalone
+component-library projection.
 Artifact assembly remains synchronous so cycle detection and interface admission complete before execution.
 
 ## Worker hosting

@@ -9,10 +9,25 @@ export const AGENT_LIFECYCLE_OPERATIONS = [
   "validate",
   "simulate",
   "preflight",
-  "propose",
+  "read_in_progress_proposal",
+  "set_in_progress_proposal",
 ] as const;
 
 export type AgentLifecycleOperation = typeof AGENT_LIFECYCLE_OPERATIONS[number];
+export type AgentLifecycleProfileOperation = Exclude<AgentLifecycleOperation, "manifest">;
+export type AgentLifecycleOperationPreset = "standard" | "static-authoring";
+
+export const STANDARD_OPERATIONS = AGENT_LIFECYCLE_OPERATIONS.filter(
+  (operation): operation is AgentLifecycleProfileOperation => operation !== "manifest",
+);
+
+export const STATIC_AUTHORING_OPERATIONS = [
+  "describe",
+  "validate",
+  "simulate",
+  "read_in_progress_proposal",
+  "set_in_progress_proposal",
+] as const satisfies readonly AgentLifecycleProfileOperation[];
 
 export const AGENT_HOST_LIFECYCLE_OPERATIONS = [
   "receive",
@@ -37,7 +52,7 @@ export interface AgentCapabilityManifest {
   readonly targetKinds: readonly string[];
   readonly intentKinds: readonly string[];
   readonly proposalSchema: JsonSchema;
-  readonly operations: Readonly<Record<Exclude<AgentLifecycleOperation, "manifest">, AgentOperationManifest>>;
+  readonly operations: Readonly<Partial<Record<AgentLifecycleProfileOperation, AgentOperationManifest>>>;
 }
 
 export interface AgentTargetRef {
@@ -57,6 +72,11 @@ export interface AgentProposal<TAction = unknown> {
   readonly rationale?: string;
 }
 
+export interface AgentProposalDraft<TAction = unknown> {
+  readonly actions: readonly TAction[];
+  readonly rationale?: string | null;
+}
+
 export interface AgentLifecycleOps<
   TDiscover = unknown,
   TTarget = unknown,
@@ -64,13 +84,18 @@ export interface AgentLifecycleOps<
   TProposal = unknown,
 > {
   manifest(): AgentCapabilityManifest;
-  discover(input: TDiscover): MaybePromise<unknown>;
-  describe(target: TTarget): MaybePromise<unknown>;
-  inspect(target: TTarget): MaybePromise<unknown>;
-  validate(intent: TIntent): MaybePromise<unknown>;
-  simulate(intent: TIntent): MaybePromise<unknown>;
-  preflight(intent: TIntent): MaybePromise<unknown>;
-  propose(intent: TIntent): MaybePromise<TProposal>;
+  discover?(input: TDiscover): MaybePromise<unknown>;
+  describe?(target: TTarget): MaybePromise<unknown>;
+  inspect?(target: TTarget): MaybePromise<unknown>;
+  validate?(intent: TIntent): MaybePromise<unknown>;
+  simulate?(intent: TIntent): MaybePromise<unknown>;
+  preflight?(intent: TIntent): MaybePromise<unknown>;
+  read_in_progress_proposal?(input: unknown, context?: AgentToolExecutionContext): MaybePromise<TProposal | undefined>;
+  set_in_progress_proposal?(intent: TIntent, context?: AgentToolExecutionContext): MaybePromise<TProposal>;
+}
+
+export interface AgentToolExecutionContext {
+  readonly requestId: string;
 }
 
 export interface AgentHostLifecycleManifest {
@@ -95,7 +120,7 @@ export interface AgentTool<TResult = unknown> {
   readonly description: string;
   readonly inputSchema: JsonSchema;
   readonly lifecycle: "agent" | "host" | "control";
-  readonly handler: (args: unknown) => MaybePromise<TResult>;
+  readonly handler: (args: unknown, context?: AgentToolExecutionContext) => MaybePromise<TResult>;
 }
 
 export interface AgentLifecycleProfile {
@@ -114,7 +139,7 @@ export interface AgentHostLifecycleProfile {
 
 export type BlueprintLifecycleProfileKind = "use" | "customize" | "author";
 
-export interface AuthoredLifecycleProfileMaterial {
+export interface AuthoredLifecycleProfileMaterialBase {
   readonly id: string;
   readonly version: string;
   readonly description: string;
@@ -123,6 +148,11 @@ export interface AuthoredLifecycleProfileMaterial {
   readonly goals?: readonly string[];
   readonly constraints?: readonly string[];
 }
+
+export type AuthoredLifecycleProfileMaterial = AuthoredLifecycleProfileMaterialBase & (
+  | { readonly operationPreset: AgentLifecycleOperationPreset; readonly operations?: never }
+  | { readonly operationPreset?: never; readonly operations: readonly AgentLifecycleProfileOperation[] }
+);
 
 export interface BlueprintLifecycleMaterialSource {
   readonly payload: {

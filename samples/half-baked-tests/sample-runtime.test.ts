@@ -94,7 +94,7 @@ test("shared projection imports resolve package and Blueprint providers", () => 
   assert.equal(typeof semanticViews?.["event-series"], "function");
   assert.equal(typeof semanticViews?.["relationship-set"], "function");
   assert.equal(semanticViews?.["component-data-sections"], undefined);
-  assert.equal(resolveProjectionViews("incident-report-explorer-1a"), undefined);
+  assert.equal(resolveProjectionViews("unknown-blueprint"), undefined);
   assert.deepEqual(Object.keys(resolveProjectionViews("security") ?? {}).sort(), Object.keys(securityComponentViews).sort());
   assert.deepEqual(Object.keys(resolveProjectionViews("software") ?? {}).sort(), Object.keys(softwareComponentViews).sort());
   assert.equal(resolveProjectionViews("provider-authoring-demo"), undefined);

@@ -75,11 +75,14 @@ test("Foundry service executes declared host lifecycle calls and continues the r
       conversationId: "conversation-1",
       responseId: "response-1",
       reply: "",
-      toolCalls: [{ callId: "call-1", name: "use_blueprint_inspect", arguments: "{\"id\":\"incident-1\"}" }],
+      toolCalls: [
+        { callId: "call-1", name: "use_blueprint_inspect", arguments: "{\"id\":\"incident-1\"}" },
+        { callId: "call-2", name: "author_blueprint_set_in_progress_proposal", arguments: "{\"actions\":[]}" },
+      ],
     } : {
       conversationId: "conversation-1",
       responseId: "response-2",
-      reply: "Inspection complete",
+      reply: JSON.stringify({ summary: "Inspection complete" }),
       toolCalls: [],
     }), { status: 200, headers: { "content-type": "application/json" } });
   });
@@ -97,6 +100,7 @@ test("Foundry service executes declared host lifecycle calls and continues the r
     resolveCredential: async () => "access-key",
   });
   const result = await adapter.execute({
+    id: "request-1",
     operation: "chat",
     capabilityId: "incident/v1",
     input: { message: "Inspect this incident" },
@@ -107,16 +111,33 @@ test("Foundry service executes declared host lifecycle calls and continues the r
       inputSchema: { type: "object" },
       lifecycle: "agent",
       handler: (input) => ({ active: true, input }),
+    }, {
+      name: "author_blueprint_set_in_progress_proposal",
+      description: "Replace the in-progress authored Blueprint proposal.",
+      inputSchema: { type: "object" },
+      lifecycle: "agent",
+      handler: (draft, context) => ({ draft, requestId: context?.requestId }),
+    }],
+    responseValidators: [{
+      kind: "ajv-schema",
+      code: "provider-structured-output",
+      schema: {
+        type: "object",
+        required: ["summary"],
+        properties: { summary: { type: "string" } },
+        additionalProperties: false,
+      },
     }],
   });
 
-  assert.deepEqual(requestBodies[1].toolOutputs, [{
-    callId: "call-1",
-    output: JSON.stringify({ active: true, input: { id: "incident-1" } }),
-  }]);
+  assert.deepEqual(requestBodies[1].toolOutputs, [
+    { callId: "call-1", output: JSON.stringify({ active: true, input: { id: "incident-1" } }) },
+    { callId: "call-2", output: JSON.stringify({ draft: { actions: [] }, requestId: "request-1" }) },
+  ]);
   assert.equal(requestBodies[1].conversationId, "conversation-1");
   assert.equal(requestBodies[1].message, undefined);
-  assert.equal((result.output as { reply?: string }).reply, "Inspection complete");
+  assert.deepEqual(result.output, { summary: "Inspection complete" });
+  assert.equal(result.detail?.inProgressProposal, true);
 });
 
 test.each([

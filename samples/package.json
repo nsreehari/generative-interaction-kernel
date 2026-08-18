@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "blueprints:bundle": "node catalog/build-blueprint-catalog.mjs",
+    "agents:provision:foundry": "npm run build --workspace @gik/agent-lifecycle-exp && node blueprints/provision-agents.mjs --provider foundry",
+    "agents:provision:copilot": "npm run build --workspace @gik/agent-lifecycle-exp && node blueprints/provision-agents.mjs --provider copilot",
     "dev": "npm run blueprints:bundle && npm run build:storybook && vite apps/browser-host",
     "dev:local": "npm run blueprints:bundle && npm run build:storybook && vite apps/browser-host --mode gik-local",
     "build": "npm run blueprints:bundle && npm run build:storybook && vite build apps/browser-host",

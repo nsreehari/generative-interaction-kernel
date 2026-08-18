@@ -44,5 +44,7 @@ test("sample opener selects representation and implementation from external cont
   assert.deepEqual(runtime.definition.payload.recipes, []);
   assert.equal(runtime.definition.payload.cells?.board?.view?.capability, "primitive:container");
   assert.equal(runtime.definition.payload.cells?.board?.view?.props?.ariaLabel, "Portfolio tracker");
-  assert.equal(runtime.definition.payload.services?.["portfolio-market-data"]?.kind, "deterministic-agent");
+  assert.deepEqual(runtime.definition.payload.services?.["portfolio-market-data"]?.blueprint, {
+    $ref: "blueprint:portfolio-tracker-mock@1.0.0",
+  });
 });

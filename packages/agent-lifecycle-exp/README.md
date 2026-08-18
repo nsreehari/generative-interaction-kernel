@@ -2,11 +2,30 @@
 
 Transport-neutral lifecycle contracts and JSON tools for agents and trusted hosts.
 
-An agent lifecycle profile exposes a standard capability flow:
+The package defines a standard operation vocabulary:
 
 ```text
-manifest -> discover -> describe -> inspect -> validate -> simulate -> preflight -> propose
+manifest -> discover -> describe -> inspect -> validate -> simulate -> preflight
+		 -> read_in_progress_proposal -> set_in_progress_proposal
 ```
+
+`manifest` is mandatory. Every profile explicitly selects a preset or operation list. `standard`
+exposes the complete vocabulary; `static-authoring` exposes:
+
+```text
+manifest -> describe -> validate -> simulate
+		 -> read_in_progress_proposal -> set_in_progress_proposal
+```
+
+Profiles may also declare an explicit custom subset. Operation meaning does not change with the
+selection: `simulate` uses supplied or candidate-owned state, while `preflight` checks current host
+state and policy. `set_in_progress_proposal` atomically replaces one complete, request-scoped draft;
+`read_in_progress_proposal` returns the latest draft without mutation. There is no append operation.
+
+A draft contains an ordered batch of typed domain actions and optional rationale. It contains no
+proposal ID, receipt, target, actor, revision, or timestamp. On completion, the host creates that
+authoritative metadata from its own request and target context, then authorizes, admits, and applies
+the proposal. Provider or model output never supplies receipt authority.
 
 The trusted host owns receipt, authorization, admission, application, rejection, and status. A
 proposal never grants authoritative mutation merely because a host chooses to auto-admit it.
@@ -18,9 +37,9 @@ UBX (use) subset CBX (customize) subset ABX (author) subset HBX (host) subset-or
 ```
 
 Lifecycle profiles translate mechanically into schema-bearing JSON tools. For example,
-`defineAgentLifecycleProfile("use_blueprint", ops)` generates `use_blueprint_manifest` through
-`use_blueprint_propose`. The package does not depend on Blueprint, Kernel, MCP, HTTP, Foundry, or
-another agent provider.
+`defineAgentLifecycleProfile("use_blueprint", ops)` generates the operations declared by that
+profile's manifest. The package does not depend on Blueprint, Kernel, MCP, HTTP, Foundry, or another
+agent provider.
 
 Authored lifecycle material, operation schemas, manifests, and provider function definitions are
 declarative. `blueprintUseFunctionTools` generates metadata directly without placeholder handlers.

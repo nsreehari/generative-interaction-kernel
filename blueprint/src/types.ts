@@ -205,7 +205,7 @@ export interface BlueprintStructurePolicy {
 
 export type BlueprintAgentLifecycleProfile = "use" | "customize" | "author";
 
-export interface BlueprintAgentLifecycleProfileManifest {
+export interface BlueprintAgentLifecycleProfileManifestBase {
   id: string;
   version: string;
   description: string;
@@ -214,6 +214,14 @@ export interface BlueprintAgentLifecycleProfileManifest {
   goals?: readonly string[];
   constraints?: readonly string[];
 }
+
+export type BlueprintAgentLifecycleProfileManifest = BlueprintAgentLifecycleProfileManifestBase & (
+  | { operationPreset: "standard" | "static-authoring"; operations?: never }
+  | {
+      operationPreset?: never;
+      operations: readonly ("discover" | "describe" | "inspect" | "validate" | "simulate" | "preflight" | "read_in_progress_proposal" | "set_in_progress_proposal")[];
+    }
+);
 
 export interface BlueprintAgentLifecycleDefinition {
   profiles: Partial<Record<BlueprintAgentLifecycleProfile, BlueprintAgentLifecycleProfileManifest>>;

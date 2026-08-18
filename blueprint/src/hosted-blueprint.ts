@@ -8,11 +8,15 @@ import type {
 } from "./types";
 import type { Json } from "@gik/kernel";
 
-export const HOSTED_BLUEPRINT_CAPABILITY = "gik:hosted-blueprint";
+export const BLUEPRINT_CAPABILITY = "gik:blueprint";
 export const PRESENTATION_FRAGMENT_CAPABILITY = "gik:presentation-fragment";
 
 export function readHostedBlueprintDeclaration(value: Json | undefined): CellBlueprint | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.gik === "0.1" && value.type === "blueprint" && value.payload
+    && typeof value.payload === "object" && !Array.isArray(value.payload)) {
+    return { inline: value as unknown as BlueprintArtifact };
+  }
   if (typeof value.$ref === "string" && value.inline === undefined) {
     return { $ref: value.$ref };
   }
@@ -22,16 +26,19 @@ export function readHostedBlueprintDeclaration(value: Json | undefined): CellBlu
   return undefined;
 }
 
+export function readBlueprintNodeDeclaration(
+  props: Readonly<Record<string, Json>>,
+): CellBlueprint | undefined {
+  return readHostedBlueprintDeclaration(props.blueprint ?? props.hostedBlueprint);
+}
+
 export async function resolveHostedBlueprint<TNative = unknown>(
   declaration: CellBlueprint,
   registry: BlueprintHostRegistry<TNative> | undefined,
   context: HostedBlueprintResolutionContext,
 ): Promise<HostedBlueprintDefinition<TNative>> {
   if (declaration.inline) {
-    const inline = inlineHostedBlueprint<TNative>(declaration.inline);
-    if (!registry) return inline;
-    const registered = await registry.resolve(inline.reference, context);
-    return { ...registered, blueprint: declaration.inline };
+    return inlineHostedBlueprint<TNative>(declaration.inline);
   }
   if (!registry) {
     throw new Error(`No Blueprint host registry can resolve '${declaration.$ref}'`);

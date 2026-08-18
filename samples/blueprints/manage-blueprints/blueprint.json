@@ -10,9 +10,10 @@
         "author": {
           "id": "author-blueprint",
           "version": "1.0.0",
-          "description": "Validate and propose portable Blueprint artifacts without activating them.",
+          "description": "Validate and maintain a request-scoped draft for publishing portable Blueprint artifacts without activating them.",
           "targetKinds": ["blueprint-authoring-workspace"],
-          "intentKinds": ["validate-blueprint"],
+          "intentKinds": ["author-blueprint"],
+          "operationPreset": "static-authoring",
           "goals": ["Produce structurally and semantically valid Blueprint artifacts."],
           "constraints": [
             "Validation and proposal must not activate or persist the candidate artifact.",

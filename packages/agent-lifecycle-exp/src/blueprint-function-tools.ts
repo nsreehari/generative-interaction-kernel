@@ -19,25 +19,37 @@ export const BLUEPRINT_USE_SCHEMAS = {
   intent: {
     type: "object",
     properties: {
-      kind: { type: "string" },
-      target: BLUEPRINT_USE_TARGET_SCHEMA,
-      payloadJson: { type: "string", description: "A JSON-serialized intent payload." },
+      actions: {
+        type: "array",
+        minItems: 1,
+        items: {
+          type: "object",
+          properties: { kind: { type: "string" }, payload: {} },
+          required: ["kind", "payload"],
+          additionalProperties: false,
+        },
+      },
       rationale: { type: ["string", "null"] },
     },
-    required: ["kind", "target", "payloadJson", "rationale"],
+    required: ["actions", "rationale"],
     additionalProperties: false,
   },
   proposal: {
     type: "object",
     properties: {
-      id: { type: "string" },
-      capability: { type: "string" },
-      target: BLUEPRINT_USE_TARGET_SCHEMA,
-      actions: { type: "array" },
-      createdAt: { type: "string" },
+      actions: {
+        type: "array",
+        minItems: 1,
+        items: {
+          type: "object",
+          properties: { kind: { type: "string" }, payload: {} },
+          required: ["kind", "payload"],
+          additionalProperties: false,
+        },
+      },
       rationale: { type: ["string", "null"] },
     },
-    required: ["id", "capability", "target", "actions", "createdAt", "rationale"],
+    required: ["actions", "rationale"],
     additionalProperties: false,
   },
 } as const;
@@ -70,14 +82,86 @@ export const BLUEPRINT_AUTHOR_SCHEMAS = {
   proposal: {
     type: "object",
     properties: {
-      id: { type: "string" },
-      capability: { type: "string" },
-      target: BLUEPRINT_AUTHOR_TARGET_SCHEMA,
-      actions: { type: "array" },
-      createdAt: { type: "string" },
+      actions: {
+        type: "array",
+        minItems: 1,
+        items: {
+          type: "object",
+          properties: { kind: { type: "string" }, payload: {} },
+          required: ["kind", "payload"],
+          additionalProperties: false,
+        },
+      },
       rationale: { type: ["string", "null"] },
     },
-    required: ["id", "capability", "target", "actions", "createdAt"],
+    required: ["actions", "rationale"],
+    additionalProperties: false,
+  },
+} as const;
+
+export const BLUEPRINT_STATIC_AUTHOR_SCHEMAS = {
+  discover: { type: "object", properties: {}, additionalProperties: false },
+  target: { type: "object", properties: {}, additionalProperties: false },
+  intent: {
+    type: "object",
+    properties: {
+      actions: {
+        type: "array",
+        minItems: 1,
+        maxItems: 1,
+        items: {
+          type: "object",
+          properties: {
+            kind: { const: "publish-blueprint" },
+            artifact: {
+              type: "object",
+              properties: {
+                gik: { const: "0.1" },
+                type: { const: "blueprint" },
+                payload: { type: "object" },
+              },
+              required: ["gik", "type", "payload"],
+              additionalProperties: false,
+            },
+          },
+          required: ["kind", "artifact"],
+          additionalProperties: false,
+        },
+      },
+      rationale: { type: ["string", "null"] },
+    },
+    required: ["actions", "rationale"],
+    additionalProperties: false,
+  },
+  proposal: {
+    type: "object",
+    properties: {
+      actions: {
+        type: "array",
+        minItems: 1,
+        maxItems: 1,
+        items: {
+          type: "object",
+          properties: {
+            kind: { const: "publish-blueprint" },
+            artifact: {
+              type: "object",
+              properties: {
+                gik: { const: "0.1" },
+                type: { const: "blueprint" },
+                payload: { type: "object" },
+              },
+              required: ["gik", "type", "payload"],
+              additionalProperties: false,
+            },
+          },
+          required: ["kind", "artifact"],
+          additionalProperties: false,
+        },
+      },
+      rationale: { type: ["string", "null"] },
+    },
+    required: ["actions", "rationale"],
     additionalProperties: false,
   },
 } as const;
@@ -88,15 +172,21 @@ export function blueprintUseFunctionTools(blueprint: BlueprintUseSource): AgentF
     schemas: BLUEPRINT_USE_SCHEMAS,
     profile: "use",
   });
-  return AGENT_LIFECYCLE_OPERATIONS.map((operation) => ({
+  const operations = AGENT_LIFECYCLE_OPERATIONS.filter(
+    (operation) => operation === "manifest" || manifest.operations[operation] !== undefined,
+  );
+  return operations.map((operation) => {
+    const definition = operation === "manifest" ? undefined : manifest.operations[operation];
+    return {
     type: "function",
     name: `use_blueprint_${operation}`,
     description: operation === "manifest"
       ? `Return the machine-readable ${manifest.id} capability manifest.`
-      : manifest.operations[operation].description,
+      : definition!.description,
     parameters: operation === "manifest"
       ? { type: "object", properties: {}, additionalProperties: false }
-      : manifest.operations[operation].inputSchema,
+      : definition!.inputSchema,
     strict: true,
-  }));
+    };
+  });
 }

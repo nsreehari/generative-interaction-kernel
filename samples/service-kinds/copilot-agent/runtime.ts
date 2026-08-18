@@ -56,10 +56,12 @@ export async function executeCopilotAgentInvocation(
   }
 
   if (request.operation === "chat") {
+    const instructions = String(input.instructions ?? "").trim();
+    const message = String(input.message ?? "").trim();
     const result = await executeMcpServiceInvocation(
       mcpInvocation(request, "copilot.run_agent", {
-        message: String(input.message ?? ""),
-        agent: String(input.agentName ?? ""),
+        message: instructions ? `${message}\n\n${instructions}` : message,
+        agent: String(input.agentName ?? config.agent ?? ""),
         cwd,
         model: String(input.model ?? config.model ?? ""),
         runMode: "sync",
@@ -69,8 +71,16 @@ export async function executeCopilotAgentInvocation(
     const structured = result.structured && typeof result.structured === "object" && !Array.isArray(result.structured)
       ? result.structured as Record<string, Json>
       : {};
+    const reply = String(structured.stdout ?? result.text ?? "");
+    if (config.responseMode === "json") {
+      try {
+        return JSON.parse(reply) as Json;
+      } catch (error) {
+        throw new Error("copilot-agent returned invalid JSON for responseMode=json", { cause: error });
+      }
+    }
     return {
-      reply: String(structured.stdout ?? result.text ?? ""),
+      reply,
       conversationId: String(structured.sessionId ?? input.conversationId ?? ""),
       responseId: String(structured.sessionId ?? request.correlationId ?? "copilot-run"),
     };

@@ -1,13 +1,16 @@
 import type {
   AgentCapabilityManifest,
   AgentLifecycleOps,
+  AgentLifecycleProfileOperation,
   AgentOperationManifest,
   AgentTool,
+  AuthoredLifecycleProfileMaterial,
   BlueprintLifecycleMaterialSource,
   BlueprintLifecycleProfileKind,
   JsonSchema,
   MaybePromise,
 } from "./types";
+import { STANDARD_OPERATIONS, STATIC_AUTHORING_OPERATIONS } from "./types";
 import { defineBlueprintLifecycleProfile } from "./tools";
 
 export interface BlueprintUseSource extends BlueprintLifecycleMaterialSource {
@@ -43,12 +46,13 @@ export interface BlueprintUseSchemas {
 }
 
 export interface BlueprintUseHost<TDiscover = unknown, TTarget = unknown, TIntent = unknown, TProposal = unknown> {
-  discover(input: TDiscover): MaybePromise<unknown>;
-  inspect(target: TTarget): MaybePromise<unknown>;
-  validate(intent: TIntent): MaybePromise<unknown>;
-  simulate(intent: TIntent): MaybePromise<unknown>;
-  preflight(intent: TIntent): MaybePromise<unknown>;
-  propose(intent: TIntent): MaybePromise<TProposal>;
+  discover?(input: TDiscover): MaybePromise<unknown>;
+  inspect?(target: TTarget): MaybePromise<unknown>;
+  validate?(intent: TIntent): MaybePromise<unknown>;
+  simulate?(intent: TIntent): MaybePromise<unknown>;
+  preflight?(intent: TIntent): MaybePromise<unknown>;
+  read_in_progress_proposal?(input: unknown, context?: import("./types").AgentToolExecutionContext): MaybePromise<TProposal | undefined>;
+  set_in_progress_proposal?(intent: TIntent, context?: import("./types").AgentToolExecutionContext): MaybePromise<TProposal>;
 }
 
 export interface BlueprintUseOptions<TDiscover = unknown, TTarget = unknown, TIntent = unknown, TProposal = unknown> {
@@ -72,6 +76,15 @@ function operation(description: string, inputSchema: JsonSchema): AgentOperation
   return { description, inputSchema };
 }
 
+export function resolveLifecycleProfileOperations(
+  authored: AuthoredLifecycleProfileMaterial,
+): readonly AgentLifecycleProfileOperation[] {
+  if (authored.operations) return authored.operations;
+  if (authored.operationPreset === "static-authoring") return STATIC_AUTHORING_OPERATIONS;
+  if (authored.operationPreset === "standard") return STANDARD_OPERATIONS;
+  throw new Error(`Lifecycle profile '${authored.id}' must declare operationPreset or operations`);
+}
+
 export function createBlueprintUseLifecycle<
   TDiscover = unknown,
   TTarget = unknown,
@@ -88,17 +101,27 @@ export function createBlueprintLifecycle<
   TProposal = unknown,
 >(options: BlueprintProfileOptions<TDiscover, TTarget, TIntent, TProposal>): AgentLifecycleOps<TDiscover, TTarget, TIntent, TProposal> {
   const manifest = createBlueprintLifecycleManifest(options);
-
-  return {
+  const lifecycle: AgentLifecycleOps<TDiscover, TTarget, TIntent, TProposal> = {
     manifest: () => manifest,
-    discover: (input) => options.host.discover(input),
-    describe: () => describeBlueprint(options.blueprint, options.profile),
-    inspect: (target) => options.host.inspect(target),
-    validate: (intent) => options.host.validate(intent),
-    simulate: (intent) => options.host.simulate(intent),
-    preflight: (intent) => options.host.preflight(intent),
-    propose: (intent) => options.host.propose(intent),
   };
+  for (const operationName of Object.keys(manifest.operations) as AgentLifecycleProfileOperation[]) {
+    if (operationName === "describe") {
+      lifecycle.describe = () => describeBlueprint(options.blueprint, options.profile);
+      continue;
+    }
+    const handler = options.host[operationName];
+    if (!handler) throw new Error(`Lifecycle profile '${manifest.id}' selects '${operationName}' without a host handler`);
+    switch (operationName) {
+      case "discover": lifecycle.discover = handler as BlueprintUseHost<TDiscover>["discover"]; break;
+      case "inspect": lifecycle.inspect = handler as BlueprintUseHost<unknown, TTarget>["inspect"]; break;
+      case "validate": lifecycle.validate = handler as BlueprintUseHost<unknown, unknown, TIntent>["validate"]; break;
+      case "simulate": lifecycle.simulate = handler as BlueprintUseHost<unknown, unknown, TIntent>["simulate"]; break;
+      case "preflight": lifecycle.preflight = handler as BlueprintUseHost<unknown, unknown, TIntent>["preflight"]; break;
+      case "read_in_progress_proposal": lifecycle.read_in_progress_proposal = handler as BlueprintUseHost<unknown, unknown, TIntent, TProposal>["read_in_progress_proposal"]; break;
+      case "set_in_progress_proposal": lifecycle.set_in_progress_proposal = handler as BlueprintUseHost<unknown, unknown, TIntent, TProposal>["set_in_progress_proposal"]; break;
+    }
+  }
+  return lifecycle;
 }
 
 export function createBlueprintLifecycleManifest(
@@ -107,6 +130,19 @@ export function createBlueprintLifecycleManifest(
   const authored = options.blueprint.payload.agentLifecycle?.profiles?.[options.profile];
   if (!authored) throw new Error(`Blueprint does not declare '${options.profile}' agent lifecycle material`);
   const subject = options.profile === "use" ? "runtime" : options.profile === "customize" ? "customization" : "authoring";
+  const definitions: Record<AgentLifecycleProfileOperation, AgentOperationManifest> = {
+    discover: operation(`Discover Blueprint ${subject} targets available in the current host scope.`, options.schemas.discover),
+    describe: operation(`Describe this Blueprint's authored ${subject} contract.`, options.schemas.target),
+    inspect: operation(`Inspect current facts for a Blueprint ${subject} target.`, options.schemas.target),
+    validate: operation(`Validate a proposed Blueprint ${subject} intent without applying it.`, options.schemas.intent),
+    simulate: operation(`Simulate a Blueprint ${subject} intent without authoritative mutation.`, options.schemas.intent),
+    preflight: operation(`Check a Blueprint ${subject} intent against current host policy and dependencies.`, options.schemas.intent),
+    read_in_progress_proposal: operation(`Read the request-scoped in-progress Blueprint ${subject} proposal.`, options.schemas.discover),
+    set_in_progress_proposal: operation(`Replace the complete request-scoped Blueprint ${subject} proposal.`, options.schemas.intent),
+  };
+  const operations = Object.fromEntries(
+    resolveLifecycleProfileOperations(authored).map((operationName) => [operationName, definitions[operationName]]),
+  );
   return {
     id: authored.id,
     version: authored.version,
@@ -114,15 +150,7 @@ export function createBlueprintLifecycleManifest(
     targetKinds: authored.targetKinds,
     intentKinds: authored.intentKinds,
     proposalSchema: options.schemas.proposal,
-    operations: {
-      discover: operation(`Discover Blueprint ${subject} targets available in the current host scope.`, options.schemas.discover),
-      describe: operation(`Describe this Blueprint's authored ${subject} contract.`, options.schemas.target),
-      inspect: operation(`Inspect current facts for a Blueprint ${subject} target.`, options.schemas.target),
-      validate: operation(`Validate a proposed Blueprint ${subject} intent without applying it.`, options.schemas.intent),
-      simulate: operation(`Simulate a Blueprint ${subject} intent without authoritative mutation.`, options.schemas.intent),
-      preflight: operation(`Check a Blueprint ${subject} intent against current host policy and dependencies.`, options.schemas.intent),
-      propose: operation(`Submit a Blueprint ${subject} intent for host admission and application.`, options.schemas.intent),
-    },
+    operations,
   };
 }
 
@@ -183,7 +211,10 @@ export function describeBlueprint(
     services: Object.keys(payload.services ?? {}),
     runtime: {
       actions: payload.runtime?.actions ?? [],
-      capabilities: Object.keys(payload.runtime?.capabilities ?? {}),
+      capabilities: Object.entries(payload.runtime?.capabilities ?? {}).map(([id, declaration]) => ({
+        id,
+        ...(declaration && typeof declaration === "object" ? declaration : {}),
+      })),
       namespaces: payload.runtime?.namespaces ?? [],
     },
   };

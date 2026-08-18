@@ -53,8 +53,12 @@ test("host query selects Blueprints with canonical b and legacy bundle parameter
     { ai: "copilot" },
   );
   assert.deepEqual(
-    readHostQuery("?b=portfolio-tracker-new&intelligence-model=semantic&view=mobile").externalContext,
-    { "intelligence-model": "semantic", view: "mobile" },
+    readHostQuery("?b=portfolio-tracker-new&intelligence-model=semantic&market-prices=live&view=mobile").externalContext,
+    { "intelligence-model": "semantic", "market-prices": "live", view: "mobile" },
+  );
+  assert.deepEqual(
+    readHostQuery("?b=incident-analysis-new-shell&model=refinement&source-report=identity-compromise").externalContext,
+    { model: "refinement", "source-report": "identity-compromise" },
   );
   assert.equal(
     canonicalizeHostUrl("https://example.test/?bundle=live-workspace-soc"),
@@ -64,19 +68,19 @@ test("host query selects Blueprints with canonical b and legacy bundle parameter
 
 test("host query resolves cached Blueprint paths", () => {
   assert.equal(
-    readHostQuery("", "/cached/incident-report-explorer-3/").targetId,
-    "cached-incident-report-explorer-3",
+    readHostQuery("", "/cached/example-report/").targetId,
+    "cached-example-report",
   );
   assert.equal(
-    readHostQuery("", "/v1.0.10/cached/incident-report-explorer-3/").targetId,
-    "cached-incident-report-explorer-3",
+    readHostQuery("", "/v1.0.10/cached/example-report/").targetId,
+    "cached-example-report",
   );
   assert.equal(
     readHostQuery(
-      "?b=incident-report-explorer-3",
-      "/cached/incident-report-explorer-3/",
+      "?b=incident-analysis-new-shell",
+      "/cached/example-report/",
     ).targetId,
-    "incident-report-explorer-3",
+    "incident-analysis-new-shell",
   );
 });
 

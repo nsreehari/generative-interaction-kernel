@@ -1,4 +1,4 @@
-import type { AgentTool, JsonSchema } from "./types";
+import type { AgentTool, AgentToolExecutionContext, JsonSchema } from "./types";
 
 export interface AgentFunctionToolDefinition {
   readonly type: "function";
@@ -40,6 +40,7 @@ export function toAgentFunctionTools(tools: readonly AgentTool[]): AgentFunction
 export async function executeAgentFunctionCall(
   tools: readonly AgentTool[],
   call: AgentFunctionCall,
+  context?: AgentToolExecutionContext,
 ): Promise<AgentFunctionCallOutput> {
   const tool = tools.find(({ name }) => name === call.name);
   if (!tool) throw new Error(`Unknown agent lifecycle function '${call.name}'`);
@@ -50,7 +51,7 @@ export async function executeAgentFunctionCall(
   } catch {
     throw new Error(`Agent lifecycle function '${call.name}' received invalid JSON arguments`);
   }
-  const result = await tool.handler(args);
+  const result = await tool.handler(args, context);
   return {
     type: "function_call_output",
     call_id: call.callId,

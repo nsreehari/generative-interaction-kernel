@@ -81,11 +81,11 @@ test("reserved structural views resolve without weakening vocabulary imports", (
     program: {
       gik: "0.1",
       type: "program",
-      payload: { root: { capability: "gik:hosted-blueprint", id: "child" } },
+      payload: { root: { capability: "gik:blueprint", id: "child" } },
     },
   });
-  const reg = buildBundleRegistry(bundle, resolve, { "gik:hosted-blueprint": A });
+  const reg = buildBundleRegistry(bundle, resolve, { "gik:blueprint": A });
 
-  assert.equal(reg.get("gik:hosted-blueprint"), A);
+  assert.equal(reg.get("gik:blueprint"), A);
   assert.equal(reg.get("ui:list"), undefined);
 });

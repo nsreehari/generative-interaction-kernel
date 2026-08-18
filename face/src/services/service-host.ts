@@ -61,8 +61,8 @@ export interface DefaultServiceHostOptions {
   maxAttempts?: number;
   maxGuardrailAttempts?: number;
   agentTools?: readonly ServiceAgentTool[];
-  validatedProposalSettlement?: (input: {
-    receiptId: string;
+  inProgressProposalSettlement?: (input: {
+    proposalScopeId: string;
     settlement: OrchestratorResult;
     result: ServiceExecutionResult;
   }) => Promise<OrchestratorResult>;
@@ -233,9 +233,12 @@ export class DefaultServiceHost implements ServiceHost {
       return { sourceOutput: asJson(completed.result.output ?? null) };
     }
     const settlement = await this.settle(resolved.operation, completed.result, effect);
-    const receiptId = completed.result.detail?.proposalReceiptId;
-    if (typeof receiptId === "string" && this.options.validatedProposalSettlement) {
-      return this.options.validatedProposalSettlement({ receiptId, settlement, result: completed.result });
+    if (completed.result.detail?.inProgressProposal === true && this.options.inProgressProposalSettlement) {
+      return this.options.inProgressProposalSettlement({
+        proposalScopeId: completed.request.id,
+        settlement,
+        result: completed.result,
+      });
     }
     return settlement;
   }

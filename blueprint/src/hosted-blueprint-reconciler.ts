@@ -1,7 +1,7 @@
 import type { Json, ResolvedNode } from "@gik/kernel";
 import {
-  HOSTED_BLUEPRINT_CAPABILITY,
-  readHostedBlueprintDeclaration,
+  BLUEPRINT_CAPABILITY,
+  readBlueprintNodeDeclaration,
   resolveHostedBlueprint,
 } from "./hosted-blueprint";
 import type {
@@ -91,7 +91,7 @@ export class HostedBlueprintReconciler<TInstance, TNative = unknown> {
       parentInstanceId: this.parentInstanceId,
       cellId: node.id,
     });
-    const { hostedBlueprint: _declaration, ...inputs } = node.props;
+    const { blueprint: _blueprint, hostedBlueprint: _hostedBlueprint, ...inputs } = node.props;
     return { node, path, instanceId, declaration, inputs, definition };
   }
 
@@ -109,10 +109,16 @@ function collectHostedBlueprints(tree: ResolvedNode): Map<string, {
   const hosted = new Map<string, { node: ResolvedNode; declaration: CellBlueprint }>();
   const visit = (node: ResolvedNode, parentPath: string): void => {
     const path = parentPath ? `${parentPath}/${node.id}` : node.id;
-    if (node.visible !== false && node.capability === HOSTED_BLUEPRINT_CAPABILITY) {
-      const declaration = readHostedBlueprintDeclaration(node.props.hostedBlueprint);
-      if (!declaration) throw new Error(`Hosted Blueprint node '${path}' has no valid declaration`);
-      hosted.set(path, { node, declaration });
+    if (node.visible !== false && node.capability === BLUEPRINT_CAPABILITY) {
+      const declarationInput = node.props.blueprint ?? node.props.hostedBlueprint;
+      const declaration = readBlueprintNodeDeclaration(node.props);
+      if (!declaration) {
+        if (declarationInput !== undefined && declarationInput !== null) {
+          throw new Error(`Hosted Blueprint node '${path}' has an invalid declaration`);
+        }
+      } else {
+        hosted.set(path, { node, declaration });
+      }
     }
     for (const child of node.children ?? []) visit(child, path);
   };

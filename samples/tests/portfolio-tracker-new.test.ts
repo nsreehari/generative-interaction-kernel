@@ -3,8 +3,10 @@ import {
   analyzeCellComposition,
   materializeBlueprint,
   runMaterializedTransition,
+  type BlueprintArtifact,
   type CellDefinition,
 } from "@gik/blueprint";
+import Ajv from "ajv";
 import { openBlueprint } from "@gik/controlface/blueprint";
 import {
   InMemoryStateModel,
@@ -21,7 +23,6 @@ import {
   resolveSampleBlueprintSource,
   resolveSampleLaunchExternalContext,
 } from "../catalog/blueprint-catalog";
-import { resolveSampleNativeServices } from "../apps/node-host/native-services";
 import {
   createNodeBlueprintServiceHost,
   nodeServiceOrchestrator,
@@ -29,12 +30,6 @@ import {
 import { resolveBlueprintNativeFromMaterialized } from "../apps/browser-host/src/runtime/sample-bundles";
 
 const emptyOrchestrator = {} as Parameters<ReturnType<typeof nodeServiceOrchestrator>>[0];
-
-function serviceHandler(config: unknown): unknown {
-  return config && typeof config === "object" && !Array.isArray(config)
-    ? (config as Record<string, unknown>).handler
-    : undefined;
-}
 
 function findNode(node: ResolvedNode, id: string): ResolvedNode | undefined {
   if (node.id === id) return node;
@@ -78,19 +73,13 @@ test("portfolio-tracker-new declares the canonical five-Cell contract", () => {
   assert.deepEqual(cells["portfolio-intelligence"].inputs, [
     { token: "portfolio-value" },
   ]);
-  assert.deepEqual(cells["portfolio-intelligence"].outputs, [
-    { token: "portfolio-intelligence", from: "computed.portfolio.intelligence" },
-  ]);
-  assert.deepEqual(cells.board.inputs, [
-    { token: "holdings" },
-    { token: "stock-quotes" },
-    { token: "portfolio-value" },
-    { token: "portfolio-intelligence" },
-  ]);
+  assert.deepEqual(cells["portfolio-intelligence"].outputs ?? [], []);
+  assert.deepEqual(cells.board.inputs ?? [], []);
   assert.deepEqual(cells.board.outputs ?? [], []);
 
   assert.deepEqual(blueprint.payload.tiers, [
     { id: "portfolio-logic", kind: "portfolio-domain" },
+    { id: "portfolio-market", kind: "portfolio-domain" },
     { id: "portfolio-presentation", kind: "runtime-document" },
   ]);
   const composition = analyzeCellComposition(Object.values(cells));
@@ -104,7 +93,6 @@ test("portfolio-tracker-new fetches quotes, calculates value, and produces mock 
     externalContext: { "intelligence-model": "mock", view: "desktop" },
   });
   const runtime = openBlueprint(materialized.payload.terminalBlueprint);
-  const nativeServices = resolveSampleNativeServices("portfolio-tracker-new");
   const result = await runMaterializedTransition({
     materializedBlueprint: materialized,
     state: materialized.payload.initialState,
@@ -121,7 +109,7 @@ test("portfolio-tracker-new fetches quotes, calculates value, and produces mock 
       },
     }],
     createOrchestrator: (state) => {
-      const host = createNodeBlueprintServiceHost(runtime, state, {}, nativeServices);
+      const host = createNodeBlueprintServiceHost(runtime, state, {});
       return nodeServiceOrchestrator(runtime, host, state)(emptyOrchestrator, state);
     },
   });
@@ -153,11 +141,9 @@ test("portfolio-tracker-new fetches quotes, calculates value, and produces mock 
     summary: { marketValue: 1499.29, costBasis: 720, gainLoss: 779.29 },
   });
   assert.equal(portfolio.intelligence.provider, "portfolio-intelligence-mock");
-  assert.deepEqual(portfolio.intelligence.observations, [
-    "Largest position: MSFT",
-    "Market value: 1499.29",
-    "Gain/loss: 779.29",
-  ]);
+  assert.match(portfolio.intelligence.markdown, /Largest position: MSFT/);
+  assert.match(portfolio.intelligence.markdown, /Market value: 1499.29/);
+  assert.match(portfolio.intelligence.markdown, /Gain\/loss: 779.29/);
 });
 
 test("portfolio-tracker-new produces predictable mock intelligence from current values", async () => {
@@ -166,29 +152,23 @@ test("portfolio-tracker-new produces predictable mock intelligence from current 
     externalContext: { "intelligence-model": "mock", view: "desktop" },
   });
   const runtime = openBlueprint(materialized.payload.terminalBlueprint);
-  const nativeServices = resolveSampleNativeServices("portfolio-tracker-new");
   const result = await runMaterializedTransition({
     materializedBlueprint: materialized,
     state: materialized.payload.initialState,
     syncExternal: true,
     events: [],
     createOrchestrator: (state) => {
-      const host = createNodeBlueprintServiceHost(runtime, state, {}, nativeServices);
+      const host = createNodeBlueprintServiceHost(runtime, state, {});
       return nodeServiceOrchestrator(runtime, host, state)(emptyOrchestrator, state);
     },
   });
   const intelligence = (result.state.portfolio as Record<string, any>).intelligence;
 
   assert.equal(intelligence.provider, "portfolio-intelligence-mock");
-  assert.equal(intelligence.summary, "Mock intelligence response for the current portfolio snapshot.");
-  assert.deepEqual(intelligence.observations, [
-    "Largest position: MSFT",
-    "Market value: 1499.29",
-    "Gain/loss: 779.29",
-  ]);
-  assert.deepEqual(intelligence.risks, ["mock response; not model-generated", "current snapshot only"]);
-  assert.deepEqual(intelligence.evidence, ["portfolio.positions", "portfolio.summary"]);
-  assert.equal(intelligence.asOf, "mock-current-snapshot");
+  assert.equal(
+    intelligence.markdown,
+    "# Mock portfolio intelligence\n\nLargest position: MSFT\n\n- Market value: 1499.29\n- Gain/loss: 779.29\n\n> Deterministic mock response for the current snapshot; not model-generated.",
+  );
 });
 
 test("portfolio-tracker-new shows each generated spinner while its Cell sources are pending", async () => {
@@ -268,67 +248,26 @@ test("portfolio-tracker-new browser controller publishes its pending spinner tre
 
 test("portfolio-tracker-new selects intelligence and board behavior from explicit external context", () => {
   assert.deepEqual(resolveSampleLaunchExternalContext("portfolio-tracker-new"), {
+    ai: "foundry",
     "intelligence-model": "simple",
+    "market-prices": "mock",
     view: "desktop",
   });
 
-  for (const intelligenceModel of ["simple", "mock", "semantic"] as const) {
-    for (const view of ["desktop", "mobile"] as const) {
+  for (const ai of ["foundry", "copilot"] as const) {
+    for (const intelligenceModel of ["simple", "mock", "semantic"] as const) {
+      for (const view of ["desktop", "mobile"] as const) {
       const materialized = materializeBlueprint({
         blueprint: resolveSampleBlueprintSource("portfolio-tracker-new"),
-        externalContext: { "intelligence-model": intelligenceModel, view },
+        externalContext: {
+          ai,
+          "intelligence-model": intelligenceModel,
+          "market-prices": "mock",
+          view,
+        },
       });
       const terminal = materialized.payload.terminalBlueprint.payload;
-
-      assert.equal(
-        terminal.services?.["portfolio-intelligence"]?.kind,
-        intelligenceModel === "mock" ? "deterministic-agent" : "foundry-agent",
-      );
-      const intelligenceService = terminal.services?.["portfolio-intelligence"];
-      const semanticService = terminal.services?.["portfolio-intelligence-2"];
-      assert.equal(
-        serviceHandler(intelligenceService?.config),
-        intelligenceModel === "mock" ? "portfolio-intelligence-mock" : undefined,
-      );
-      assert.equal(
-        intelligenceModel === "mock"
-          ? undefined
-          : (intelligenceService?.config as Record<string, unknown>)?.agent,
-        intelligenceModel === "mock" ? undefined : "Portfolio-Intelligence-Agent",
-      );
-      assert.equal(semanticService?.kind, "foundry-agent");
-      assert.equal(
-        (semanticService?.config as Record<string, unknown>)?.agent,
-        "Portfolio-Intelligence-2-Agent",
-      );
-      assert.equal(
-        Array.isArray(intelligenceService?.operations)
-          ? undefined
-          : intelligenceService?.operations?.requestIntelligence?.contract,
-        "portfolio-intelligence/v1",
-      );
-      assert.equal(
-        Array.isArray(semanticService?.operations)
-          ? undefined
-          : semanticService?.operations?.requestIntelligence2?.contract,
-        "portfolio-intelligence-2/v1",
-      );
       const intelligenceSources = terminal.cells?.["portfolio-intelligence"].sources ?? [];
-      assert.deepEqual(
-        intelligenceSources.map(({ id, service, contract }) => ({ id, service, contract })),
-        [
-          {
-            id: "portfolio-intelligence.source",
-            service: "portfolio-intelligence",
-            contract: "portfolio-intelligence/v1",
-          },
-          {
-            id: "portfolio-intelligence-2.source",
-            service: "portfolio-intelligence-2",
-            contract: "portfolio-intelligence-2/v1",
-          },
-        ],
-      );
       assert.equal(
         intelligenceSources[0]?.when,
         intelligenceModel === "semantic" ? "false" : "inputs.`portfolio-value`.summary.marketValue > 0",
@@ -337,27 +276,52 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
         intelligenceSources[1]?.when,
         intelligenceModel === "semantic" ? "inputs.`portfolio-value`.summary.marketValue > 0" : "false",
       );
-      assert.equal(
-        terminal.cells?.["portfolio-intelligence"].view?.capability,
-        intelligenceModel === "semantic" ? "portfolio:intelligence-projections" : "primitive:markdown",
-      );
-      if (intelligenceModel === "semantic") {
-        const semanticOperation = Array.isArray(semanticService?.operations)
-          ? undefined
-          : semanticService?.operations?.requestIntelligence2;
+      const activeSource = intelligenceSources[intelligenceModel === "semantic" ? 1 : 0];
+      const activeService = terminal.services?.[activeSource?.service ?? ""];
+      if (intelligenceModel === "mock") {
+        assert.equal(activeService?.kind, undefined);
+        assert.deepEqual(activeService?.blueprint, {
+          $ref: "blueprint:portfolio-tracker-mock@1.0.0",
+        });
+        assert.equal(activeService?.config, undefined);
+      } else {
+        assert.equal(activeService?.kind, `${ai}-agent`);
         assert.equal(
-          semanticOperation?.settlement?.transform.expr,
-          "{'ops':[{'op':'set','path':'portfolio.intelligence','value':response}],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Intelligence-2-Agent'}}",
-        );
-        assert.deepEqual(
-          terminal.cells?.["portfolio-intelligence"].view?.bindings?.value,
-          { from: "portfolio.intelligence" },
-        );
-        assert.equal(
-          terminal.cells?.["portfolio-intelligence"].view?.props?.presentationContext,
-          view === "desktop" ? "portfolio-advisor" : "portfolio-overview",
+          (activeService?.config as Record<string, unknown>)?.agent,
+          intelligenceModel === "semantic"
+            ? "Portfolio-Intelligence-2-Agent"
+            : "Portfolio-Intelligence-Agent",
         );
       }
+      assert.equal(
+        terminal.cells?.["portfolio-intelligence"].view?.capability,
+        intelligenceModel === "semantic" ? "gik:blueprint" : "primitive:markdown",
+      );
+      if (intelligenceModel === "semantic") {
+        assert.match(activeSource?.input?.expr ?? "", /componentCatalog/);
+        const semanticOperation = Array.isArray(activeService?.operations)
+          ? undefined
+          : activeService?.operations?.requestIntelligence2;
+        assert.deepEqual(
+          terminal.cells?.["portfolio-intelligence"].view?.bindings?.blueprint,
+          { from: "portfolio.intelligence" },
+        );
+        if (ai === "foundry") {
+          const responseSchema = semanticOperation?.response?.validators?.find(
+            (validator) => validator.code === "provider-structured-output" && "schema" in validator,
+          );
+          assert.equal(responseSchema && "schema" in responseSchema
+            ? (responseSchema.schema as Record<string, unknown>).required?.toString()
+            : undefined, "gik,type,payload");
+        }
+      } else {
+        assert.deepEqual(
+          terminal.cells?.["portfolio-intelligence"].view?.bindings?.value,
+          { from: "portfolio.intelligence.markdown" },
+        );
+      }
+      assert.equal(terminal.cells?.board.inputs, undefined);
+      assert.equal(terminal.cells?.["portfolio-intelligence"].outputs, undefined);
       assert.equal(
         terminal.cells?.board.view?.props?.variant,
         view === "desktop" ? "stack" : "column",
@@ -397,8 +361,69 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
         "portfolio-intelligence",
         "board",
       ]);
+      }
     }
   }
+});
+
+test("portfolio semantic response contract admits a self-contained report Blueprint", () => {
+  const reportBlueprint: BlueprintArtifact = {
+    gik: "0.1",
+    type: "blueprint",
+    payload: {
+      id: "generated-semantic-report",
+      kind: "semantic-report",
+      version: "1.0.0",
+      structureMode: "fixed",
+      tiers: [
+        { id: "report-semantic", kind: "semantic-report-model" },
+        { id: "runtime-document", kind: "runtime-document" },
+      ],
+      recipes: [{
+        id: "semantic-report-to-runtime",
+        from: "report-semantic",
+        to: "runtime-document",
+        representations: [{
+          id: "report",
+          views: { report: { capability: "primitive:markdown", bindings: { value: { from: "report.markdown" } } } },
+          presentation: { roots: ["report"], placements: [] },
+        }],
+        fallback: "report",
+      }],
+      runtime: {
+        expression: "jsonata",
+        namespaces: ["report"],
+        actions: [],
+        capabilities: { "primitive:markdown": { propsSchema: { type: "object", additionalProperties: true } } },
+        externals: { projectionViews: { primitive: { from: "primitive", use: ["markdown"] } } },
+        state: {
+          report: {
+            headline: "Concentration deserves attention",
+            summary: "MSFT is the largest supplied position.",
+            asOf: "supplied portfolio snapshot",
+            sections: [{ heading: "Concentration", body: "MSFT represents the largest position by value.", kind: "fact" }],
+            markdown: "# Concentration deserves attention\n\nMSFT is the largest supplied position.",
+          },
+        },
+      },
+      cells: { report: { id: "report", kind: "semantic-report" } },
+    },
+  };
+  const portfolio = resolveSampleBlueprintSource("portfolio-tracker-new");
+  const operation = portfolio.payload.services?.["portfolio-intelligence-2"]?.operations.requestIntelligence2;
+  for (const code of ["provider-structured-output", "report-blueprint-shape"]) {
+    const validator = operation?.response?.validators?.find(
+      (candidate) => candidate.code === code && "schema" in candidate,
+    );
+    assert.ok(validator && "schema" in validator);
+    const validate = new Ajv({ strict: false }).compile(validator.schema);
+    assert.equal(validate(reportBlueprint), true, `${code}: ${JSON.stringify(validate.errors)}`);
+  }
+
+  const materialized = materializeBlueprint({ blueprint: reportBlueprint });
+  assert.equal(materialized.payload.terminalBlueprint.payload.cells?.report.view?.capability, "primitive:markdown");
+  assert.equal(materialized.payload.terminalBlueprint.payload.runtime.state?.report.markdown,
+    "# Concentration deserves attention\n\nMSFT is the largest supplied position.");
 });
 
 test("portfolio-holdings save settles declaratively before host source execution", async () => {

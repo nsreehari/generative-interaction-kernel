@@ -1,103 +1,191 @@
 import {
-  BLUEPRINT_AUTHOR_SCHEMAS,
+  BLUEPRINT_STATIC_AUTHOR_SCHEMAS,
   BLUEPRINT_USE_SCHEMAS,
+  STATIC_AUTHORING_OPERATIONS,
   authorBlueprint,
+  resolveLifecycleProfileOperations,
   useBlueprint,
   type AgentProposal,
+  type AgentProposalDraft,
   type AgentTargetRef,
+  type AgentToolExecutionContext,
 } from "@gik/agent-lifecycle-exp";
-import { validateBlueprintForAuthoring, type BlueprintArtifact } from "@gik/blueprint";
+import { materializeBlueprint, validateBlueprintForAuthoring, type BlueprintArtifact } from "@gik/blueprint";
 import {
   createBlueprintProposalHost,
   createInMemoryBlueprintProposalStore,
   type BlueprintProposalHost,
-  type BlueprintProposalReceipt,
   type BlueprintProposalStore,
 } from "@gik/blueprint-agent-host";
 import type { BlueprintRuntime } from "@gik/controlface/blueprint";
 import type { Json, OrchestratorResult, PatchOp, StateModel } from "@gik/kernel";
+import {
+  getSampleBlueprintCatalog,
+  installUserBlueprints,
+  readUserBlueprintArtifacts,
+  writeUserBlueprintArtifacts,
+} from "../../../../catalog/blueprint-catalog";
 
-type UseIntent = {
-  kind: string;
-  target: AgentTargetRef;
-  payloadJson: string;
-  rationale: string | null;
-};
+type UseAction = { kind: string; payload: Json };
+type UseProposalDraft = AgentProposalDraft<UseAction>;
+type AuthorAction = { kind: "publish-blueprint"; artifact: BlueprintArtifact };
+type AuthorProposalDraft = AgentProposalDraft<AuthorAction>;
+type AuthorProposal = AgentProposal<AuthorAction>;
 
-type AuthorIntent = {
-  kind: string;
-  target: AgentTargetRef;
-  artifact: BlueprintArtifact;
-  rationale: string | null;
-};
-
-export type UseProposal = AgentProposal<{ kind: string; payload: Json }>;
+export type UseProposal = AgentProposal<UseAction>;
 
 function targetMatches(runtime: BlueprintRuntime, candidate: AgentTargetRef | undefined): boolean {
   return candidate?.id === runtime.blueprintId && candidate?.instanceId === runtime.instanceId;
 }
 
-export interface BlueprintAgentLifecycleOptions {
-  proposalStore?: BlueprintProposalStore<UseProposal>;
+function proposalScope(context: AgentToolExecutionContext | undefined): string {
+  return context?.requestId ?? "direct";
 }
 
-function createBlueprintAuthorTools(runtime: BlueprintRuntime) {
+export interface BlueprintAgentLifecycleOptions {
+  proposalStore?: BlueprintProposalStore<UseProposal>;
+  authorProposalStore?: BlueprintProposalStore<AuthorProposal>;
+}
+
+function createStaticBlueprintAuthorTools(
+  runtime: BlueprintRuntime,
+  store: BlueprintProposalStore<AuthorProposal>,
+) {
   const authored = runtime.definition.payload.agentLifecycle?.profiles?.author;
-  if (!authored) return [];
+  if (!authored) throw new Error("Blueprint does not declare an author lifecycle profile");
   const target: AgentTargetRef = {
     kind: "blueprint-authoring-workspace",
     id: runtime.blueprintId,
     instanceId: runtime.instanceId,
   };
-  const targetMatchesWorkspace = (candidate: AgentTargetRef | undefined) =>
-    candidate?.kind === target.kind
-      && candidate.id === target.id
-      && candidate.instanceId === target.instanceId;
-  const validate = (intent: AuthorIntent) => {
-    const report = validateBlueprintForAuthoring(intent?.artifact);
-    const errors = [...report.errors];
-    if (!authored.intentKinds.includes(intent?.kind)) errors.unshift(`Intent kind '${intent?.kind}' is not declared`);
-    if (!targetMatchesWorkspace(intent?.target)) errors.unshift("Target does not match the active Blueprint authoring workspace");
-    return {
-      ok: errors.length === 0,
-      errors,
-      warnings: report.warnings,
-      execution: report.execution,
-      identity: report.artifact
-        ? { id: report.artifact.payload.id, kind: report.artifact.payload.kind, version: report.artifact.payload.version }
-        : null,
-    };
+  const drafts = new Map<string, AuthorProposalDraft>();
+  const validate = (draft: AuthorProposalDraft) => {
+    const action = draft?.actions?.[0];
+    if (draft?.actions?.length !== 1 || action?.kind !== "publish-blueprint") {
+      return {
+        ...validateBlueprintForAuthoring(undefined),
+        errors: ["Static authoring requires exactly one publish-blueprint action"],
+      };
+    }
+    return validateBlueprintForAuthoring(action.artifact);
   };
-
-  return authorBlueprint({
-    blueprint: runtime.definition,
-    schemas: BLUEPRINT_AUTHOR_SCHEMAS,
-    host: {
-      discover: () => ({ targets: [target] }),
-      inspect: (candidate: AgentTargetRef) => {
-        if (!targetMatchesWorkspace(candidate)) throw new Error("Target does not match the active Blueprint authoring workspace");
-        return { target, revision: runtime.revision };
+  const proposalHost = createBlueprintProposalHost<AuthorProposal>({
+    store,
+    authority: {
+      inspect: () => ({ target, revision: runtime.revision }),
+      validate: (proposal) => {
+        const report = validate({ actions: proposal.actions, rationale: proposal.rationale });
+        return { ok: report.valid, reason: report.errors.join("; ") || undefined, detail: report };
       },
-      validate,
-      simulate: (intent: AuthorIntent) => ({ ...validate(intent), applied: false }),
-      preflight: (intent: AuthorIntent) => {
-        const report = validate(intent);
-        return { ...report, ready: report.ok, revision: runtime.revision };
+      apply: async (receipt) => {
+        const report = validate({ actions: receipt.proposal.actions, rationale: receipt.proposal.rationale });
+        if (!report.valid || !report.artifact) {
+          throw new Error(`Invalid Blueprint candidate: ${report.errors.join("; ")}`);
+        }
+        const id = report.artifact.payload.id;
+        if (getSampleBlueprintCatalog().seedEntries[id]) {
+          throw new Error(`Repository Blueprint '${id}' is read-only`);
+        }
+        const stored = await readUserBlueprintArtifacts();
+        stored.blueprints[id] = report.artifact;
+        await writeUserBlueprintArtifacts(stored.blueprints);
+        installUserBlueprints(stored.blueprints);
+        return { receiptId: receipt.id, blueprintId: id };
       },
-      propose: (intent: AuthorIntent) => {
-        const report = validate(intent);
-        if (!report.ok) throw new Error(`Invalid Blueprint authoring intent: ${report.errors.join("; ")}`);
-        return {
-          id: crypto.randomUUID(),
-          capability: authored.id,
-          target,
-          actions: [{ kind: intent.kind, artifact: intent.artifact }],
-          createdAt: new Date().toISOString(),
-          rationale: intent.rationale ?? undefined,
-        };
+    },
+    policySet: {
+      authorization: {
+        id: "static-blueprint-author",
+        version: "1.0.0",
+        kind: "jsonata",
+        phase: "authorization",
+        expression: "actor.id = 'ai-agent'",
+        denyReason: "Actor is not authorized to author Blueprints",
+      },
+      admission: {
+        id: "valid-static-blueprint",
+        version: "1.0.0",
+        kind: "jsonata",
+        phase: "admission",
+        expression: "validation.ok = true",
+        denyReason: "Blueprint authoring validation failed",
+      },
+      application: {
+        id: "deferred-static-blueprint-settlement",
+        version: "1.0.0",
+        kind: "jsonata",
+        phase: "application",
+        expression: "false",
+        denyReason: "Static Blueprint settlement occurs after agent completion",
       },
     },
   });
+  const tools = authorBlueprint({
+    blueprint: runtime.definition,
+    schemas: BLUEPRINT_STATIC_AUTHOR_SCHEMAS,
+    host: {
+      validate,
+      simulate: (draft: AuthorProposalDraft) => {
+        const report = validate(draft);
+        if (!report.valid || !report.artifact) return report;
+        try {
+          const materialized = materializeBlueprint({ blueprint: report.artifact });
+          return {
+            ...report,
+            initialState: materialized.payload.initialState,
+            presentation: materialized.payload.terminalBlueprint.payload.projections?.presentation ?? null,
+          };
+        } catch (error) {
+          return { ...report, valid: false, errors: [error instanceof Error ? error.message : String(error)] };
+        }
+      },
+      read_in_progress_proposal: (_input: unknown, context?: AgentToolExecutionContext) =>
+        drafts.get(proposalScope(context)),
+      set_in_progress_proposal: (draft: AuthorProposalDraft, context?: AgentToolExecutionContext) => {
+        const report = validate(draft);
+        if (!report.valid || !report.artifact) {
+          throw new Error(`Invalid Blueprint candidate: ${report.errors.join("; ")}`);
+        }
+        const normalized: AuthorProposalDraft = {
+          actions: [{ kind: "publish-blueprint", artifact: report.artifact }],
+          rationale: draft.rationale ?? null,
+        };
+        drafts.set(proposalScope(context), normalized);
+        return normalized;
+      },
+    },
+  });
+  return {
+    tools,
+    hasDraft: (scope: string) => drafts.has(scope),
+    finalize: async (scope: string) => {
+      const draft = drafts.get(scope);
+      if (!draft) throw new Error(`No in-progress Blueprint author proposal for request '${scope}'`);
+      const receipt = await proposalHost.submit({
+        id: crypto.randomUUID(),
+        capability: authored.id,
+        target,
+        actions: draft.actions,
+        createdAt: new Date().toISOString(),
+        rationale: draft.rationale ?? undefined,
+      }, { id: "ai-agent" });
+      const applied = await proposalHost.apply(receipt);
+      if (applied.status !== "applied") throw new Error(applied.failure ?? "Blueprint author proposal application failed");
+      drafts.delete(scope);
+      return applied;
+    },
+  };
+}
+
+function createBlueprintAuthorTools(runtime: BlueprintRuntime, store: BlueprintProposalStore<AuthorProposal>) {
+  const authored = runtime.definition.payload.agentLifecycle?.profiles?.author;
+  if (!authored) return undefined;
+  const operations = resolveLifecycleProfileOperations(authored);
+  if (operations.length !== STATIC_AUTHORING_OPERATIONS.length
+    || STATIC_AUTHORING_OPERATIONS.some((operation) => !operations.includes(operation))) {
+    throw new Error("Blueprint author profiles must select the static authoring operation set");
+  }
+  return createStaticBlueprintAuthorTools(runtime, store);
 }
 
 export function createBlueprintAgentLifecycle(
@@ -106,8 +194,18 @@ export function createBlueprintAgentLifecycle(
   options: BlueprintAgentLifecycleOptions = {},
 ) {
   const authored = runtime.definition.payload.agentLifecycle?.profiles?.use;
-  const authorTools = createBlueprintAuthorTools(runtime);
-  if (!authored) return { tools: authorTools, settle: undefined };
+  const authorStore = options.authorProposalStore ?? createInMemoryBlueprintProposalStore<AuthorProposal>();
+  const authorLifecycle = createBlueprintAuthorTools(runtime, authorStore);
+  const authorTools = authorLifecycle?.tools ?? [];
+  if (!authored) return {
+    tools: authorTools,
+    settle: authorLifecycle
+      ? async (input: { proposalScopeId: string }) => {
+          const applied = await authorLifecycle.finalize(input.proposalScopeId);
+          return { outcome: "applied", detail: { proposalReceiptId: applied.id } } as OrchestratorResult;
+        }
+      : undefined,
+  };
   const store = options.proposalStore ?? createInMemoryBlueprintProposalStore<UseProposal>();
   const proposalHost: BlueprintProposalHost<UseProposal> = createBlueprintProposalHost({
     store,
@@ -164,19 +262,12 @@ export function createBlueprintAgentLifecycle(
     instanceId: runtime.instanceId,
     expectedRevision: runtime.revision,
   };
-  const targetErrors = (candidate: AgentTargetRef | undefined) =>
-    targetMatches(runtime, candidate)
-      ? []
-      : ["Target does not match the active Blueprint instance"];
-  const validate = (intent: UseIntent) => {
+  const drafts = new Map<string, UseProposalDraft>();
+  const validate = (draft: UseProposalDraft) => {
     const errors: string[] = [];
-    if (!authored.intentKinds.includes(intent?.kind)) errors.push(`Intent kind '${intent?.kind}' is not declared`);
-    errors.push(...targetErrors(intent?.target));
-    try {
-      if (typeof intent?.payloadJson !== "string") throw new Error("missing payloadJson");
-      JSON.parse(intent.payloadJson);
-    } catch {
-      errors.push("Intent payloadJson is not valid JSON");
+    if (!Array.isArray(draft?.actions) || draft.actions.length === 0) errors.push("Proposal actions must not be empty");
+    for (const action of draft?.actions ?? []) {
+      if (!authored.intentKinds.includes(action.kind)) errors.push(`Intent kind '${action.kind}' is not declared`);
     }
     return { ok: errors.length === 0, errors };
   };
@@ -186,36 +277,48 @@ export function createBlueprintAgentLifecycle(
     host: {
       discover: () => ({ targets: [target] }),
       inspect: (candidate: AgentTargetRef) => {
-        const errors = targetErrors(candidate);
-        if (errors.length > 0) throw new Error(errors[0]);
+        if (!targetMatches(runtime, candidate)) throw new Error("Target does not match the active Blueprint instance");
         return { target, revision: runtime.revision, state: state.snapshot() };
       },
       validate,
-      simulate: (intent: UseIntent) => ({ ...validate(intent), applied: false, changes: [] }),
-      preflight: (intent: UseIntent) => ({ ...validate(intent), revision: runtime.revision, ready: validate(intent).ok }),
-      propose: async (intent: UseIntent): Promise<BlueprintProposalReceipt<UseProposal>> => {
-        const report = validate(intent);
+      simulate: (draft: UseProposalDraft) => ({ ...validate(draft), applied: false, changes: [] }),
+      preflight: (draft: UseProposalDraft) => ({ ...validate(draft), revision: runtime.revision, ready: validate(draft).ok }),
+      read_in_progress_proposal: (_input: unknown, context?: AgentToolExecutionContext) =>
+        drafts.get(proposalScope(context)),
+      set_in_progress_proposal: (draft: UseProposalDraft, context?: AgentToolExecutionContext) => {
+        const report = validate(draft);
         if (!report.ok) throw new Error(`Invalid Blueprint use intent: ${report.errors.join("; ")}`);
-        const proposal: UseProposal = {
-          id: crypto.randomUUID(),
-          capability: authored.id,
-          target,
-          actions: [{ kind: intent.kind, payload: JSON.parse(intent.payloadJson) as Json }],
-          createdAt: new Date().toISOString(),
-          rationale: intent.rationale ?? undefined,
-        };
-        return proposalHost.submit(proposal, { id: "ai-agent" });
+        drafts.set(proposalScope(context), draft);
+        return draft;
       },
     },
   });
   return {
     tools: [...tools, ...authorTools],
-    settle: async (input: { receiptId: string; settlement: OrchestratorResult }) => {
-      const receipt = await store.get(input.receiptId);
-      if (!receipt) throw new Error(`Unknown Blueprint proposal receipt '${input.receiptId}'`);
-      const applied = await proposalHost.apply(receipt, { settlement: input.settlement });
-      if (applied.status !== "applied") throw new Error(applied.failure ?? "Blueprint proposal application failed");
-      return { outcome: "applied", detail: { proposalReceiptId: applied.id } } as OrchestratorResult;
+    settle: async (input: { proposalScopeId: string; settlement: OrchestratorResult }) => {
+      const hasUseDraft = drafts.has(input.proposalScopeId);
+      const hasAuthorDraft = authorLifecycle?.hasDraft(input.proposalScopeId) === true;
+      if (hasUseDraft && hasAuthorDraft) throw new Error("A request cannot finalize both use and author proposals");
+      if (hasUseDraft) {
+        const draft = drafts.get(input.proposalScopeId)!;
+        const receipt = await proposalHost.submit({
+          id: crypto.randomUUID(),
+          capability: authored.id,
+          target,
+          actions: draft.actions,
+          createdAt: new Date().toISOString(),
+          rationale: draft.rationale ?? undefined,
+        }, { id: "ai-agent" });
+        const applied = await proposalHost.apply(receipt, { settlement: input.settlement });
+        if (applied.status !== "applied") throw new Error(applied.failure ?? "Blueprint proposal application failed");
+        drafts.delete(input.proposalScopeId);
+        return { outcome: "applied", detail: { proposalReceiptId: applied.id } } as OrchestratorResult;
+      }
+      if (hasAuthorDraft) {
+        const applied = await authorLifecycle!.finalize(input.proposalScopeId);
+        return { outcome: "applied", detail: { proposalReceiptId: applied.id } } as OrchestratorResult;
+      }
+      throw new Error(`No in-progress Blueprint proposal for request '${input.proposalScopeId}'`);
     },
   };
 }

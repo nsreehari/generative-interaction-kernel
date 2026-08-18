@@ -9,7 +9,7 @@ import type {
 } from "../../kernel/src/index";
 import { isSystemInputToken, systemInputRuntimeExpression } from "@gik/evaluators";
 import {
-  HOSTED_BLUEPRINT_CAPABILITY,
+  BLUEPRINT_CAPABILITY,
   PRESENTATION_FRAGMENT_CAPABILITY,
 } from "./hosted-blueprint";
 import type { ExecutableCellTopology } from "./cells";
@@ -229,7 +229,7 @@ function toProgramNode(cell: CellDefinition, children: readonly DocNode[]): DocN
     ...(children.length > 0 ? { children: [...children] } : {}),
   };
   const cellNode: DocNode = {
-    capability: cell.blueprint ? HOSTED_BLUEPRINT_CAPABILITY : cell.view!.capability!,
+    capability: cell.blueprint ? BLUEPRINT_CAPABILITY : cell.view!.capability!,
     id: cell.id,
     ...(props ? { props } : {}),
     ...(Object.keys(edges).length > 0 ? { edges } : {}),

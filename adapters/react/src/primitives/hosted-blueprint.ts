@@ -6,8 +6,9 @@ import React from "react";
 
 export const BLUEPRINT_HOST_PROVIDER = "blueprint-host";
 export {
-  HOSTED_BLUEPRINT_CAPABILITY,
+  BLUEPRINT_CAPABILITY,
   PRESENTATION_FRAGMENT_CAPABILITY,
+  readBlueprintNodeDeclaration,
   readHostedBlueprintDeclaration,
   resolveHostedBlueprint,
   resolveHostedBlueprintArtifact,

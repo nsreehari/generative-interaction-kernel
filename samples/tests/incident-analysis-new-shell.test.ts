@@ -1,154 +1,183 @@
+import {
+  analyzeCellComposition,
+  materializeBlueprint,
+  type BlueprintArtifact,
+  type CellDefinition,
+} from "@gik/blueprint";
 import { describe, expect, it } from "vitest";
 
 import shell from "../blueprints/incident-analysis-new-shell/blueprint.json" with { type: "json" };
 
 const payload = shell.payload;
+const cells = Object.values(payload.cells) as CellDefinition[];
 
 describe("incident analysis shell", () => {
-  it("owns source selection, opaque cache transport, drawer layout, and a runtime-bound analyzer", () => {
+  it("selects the analysis model from external context and routes refinement to its agent", () => {
+    expect(payload.recipes).toEqual([
+      expect.objectContaining({
+        id: "incident-analysis-to-runtime",
+        implementationFallback: "semantic",
+        implementationPrograms: [
+          expect.objectContaining({ id: "semantic", when: "externalContext.model = 'semantic'" }),
+          expect.objectContaining({
+            id: "source-faithful",
+            when: "externalContext.model = 'source-faithful'",
+          }),
+          expect.objectContaining({
+            id: "refinement",
+            when: "externalContext.model = 'refinement'",
+          }),
+        ],
+      }),
+    ]);
+    expect(payload.services["incident-report-analysis"].config.agent)
+      .toBe("Incident-Report-Semantic-Agent");
+
+    for (const model of ["semantic", "source-faithful", "refinement"] as const) {
+      const materialized = materializeBlueprint({
+        blueprint: shell as BlueprintArtifact,
+        externalContext: { model },
+      }).payload.terminalBlueprint.payload;
+      const modelCompute = materialized.cells?.["analysis-selection"].compute?.find(
+        ({ id }) => id === "selected-model",
+      );
+
+      expect(modelCompute?.expression).toBe(`'${model}'`);
+      const analysisSource = materialized.cells?.["report-analysis"].sources?.[0];
+      const analysisService = materialized.services?.[analysisSource?.service ?? ""];
+      expect(analysisService?.config).toMatchObject({
+        agent: model === "refinement"
+          ? "Incident-Report-Refinement-Agent"
+          : "Incident-Report-Semantic-Agent",
+      });
+    }
+  });
+
+  it("declares the four-Cell interactive analysis pipeline", () => {
     expect(Object.keys(payload.cells)).toEqual([
-      "analysis-loader",
-      "incident-analyzer",
-      "analyzer-options",
-      "source-options",
-      "selected-report-key",
-      "selected-source",
-      "cache-retriever",
-      "cache-writer",
-      "source-drawer",
+      "analysis-selection",
+      "report-analysis",
+      "analysis-context",
+      "report-resolution",
     ]);
-    expect(payload.projections.presentation.roots).toEqual(["analysis-loader", "incident-analyzer", "source-drawer"]);
-    expect(payload.projections.presentation.placements).toEqual([
-      { cell: "analyzer-options", parent: "source-drawer", slot: "children", order: 0 },
-      { cell: "source-options", parent: "source-drawer", slot: "children", order: 1 },
-      { cell: "selected-source", parent: "source-drawer", slot: "children", order: 2 },
-    ]);
-  });
-
-  it("shows a task-agnostic loader while source and cache readiness are unresolved", () => {
-    expect(payload.cells["analysis-loader"].view).toMatchObject({
-      capability: "fluent:spinner",
-      props: { label: "Loading analysis" },
-      visibility: "$not(incidentShell.cache_lookup_complete) or $length(incidentShell.incident_report) = 0",
+    expect(payload.interface?.inputs).toBeUndefined();
+    expect(analyzeCellComposition(cells)).toMatchObject({
+      externalInputs: ["incident.analysisRequest", "incident.selection"],
+      diagnostics: [],
     });
-    expect(payload.runtime.externals.projectionViews.fluent.use).toEqual(["dropdown", "spinner"]);
   });
 
-  it("selects the analyzer at runtime and passes only analyzer-owned inputs", () => {
-    expect(payload.cells["analyzer-options"]).toMatchObject({
-      inputs: [{ token: "analyzer_blueprint_ref", as: "analyzerBlueprintRef" }],
-      outputs: [{ token: "analysis_key", from: "inputs.analyzerBlueprintRef" }],
-      view: {
-        capability: "fluent:dropdown",
-        props: {
-          label: "Incident analyzer",
-          ariaLabel: "Choose incident analyzer",
-          options: [
-            { value: "blueprint:incident-report-explorer-1a@1.0.0" },
-            { value: "blueprint:incident-report-explorer-2@1.0.0" },
-            { value: "blueprint:incident-report-explorer-3@1.0.0" },
-          ],
-        },
-        bindings: { value: { from: "analyzer_blueprint_ref" } },
-      },
+  it("uses form save as the selection-to-token boundary", () => {
+    expect(payload.cells["analysis-selection"]).toMatchObject({
+      inputs: [
+        { token: "incident.selection", as: "selection" },
+      ],
+      sources: [{ operation: "listSourceReports" }],
+      outputs: [
+        { token: "selected-report", from: "inputs.selection.sourceReport" },
+        { token: "selected-model", from: "computed.model" },
+      ],
       behavior: {
         on: {
-          select: [
-            { do: "assign", target: "analyzer_blueprint_ref", args: { from: "$event.value" } },
-            { do: "assign", target: "incidentShell.cached_analysis_report", args: { value: null } },
-            { do: "assign", target: "incidentShell.analysis_report", args: { value: null } },
-            { do: "assign", target: "incidentShell.analysis_as_on", args: { value: null } },
-            { do: "assign", target: "incidentShell.cache_lookup_complete", args: { value: false } },
-          ],
+          save: [{ do: "assign", target: "incident.selection", args: { from: "$event.values" } }],
         },
       },
+      view: {
+        capability: "primitive:form",
+        before: [expect.objectContaining({ capability: "fluent:spinner" })],
+      },
+      events: { save: { payloadSchema: { type: "object" } } },
     });
-    expect(payload.cells["incident-analyzer"]).toMatchObject({
+    expect(Object.keys(payload.cells["analysis-selection"].behavior.on)).toEqual(["save"]);
+  });
+
+  it("retrieves source and the last saved report from selection tokens", () => {
+    expect(payload.cells["analysis-context"]).toMatchObject({
       inputs: [
-        { token: "incident_report", as: "incident_report", required: true },
-        { token: "cached_analysis_report", as: "cached_analysis_report", required: false },
-        { token: "analysis_as_on", as: "analysis_as_on", required: false },
-        { token: "incidentShell.analysis_report", as: "analysisReport", required: false },
+        { token: "selected-report" },
+        { token: "selected-model" },
+      ],
+      sources: [
+        { operation: "getSourceReport", when: "$length(inputs.selectedReport) > 0" },
+        {
+          operation: "getSavedReport",
+          when: "$length(inputs.selectedReport) > 0 and $length(inputs.selectedModel) > 0",
+        },
       ],
       outputs: [
-        { token: "analysis_report", from: "inputs.analysisReport" },
+        { token: "selected-report-content" },
+        { token: "saved-report-lookup-envelope" },
       ],
-      blueprint: { $ref: { expression: "analyzer_blueprint_ref" } },
+    });
+  });
+
+  it("keeps refresh analysis available regardless of a saved report", () => {
+    expect(payload.cells["report-analysis"]).toMatchObject({
+      systemInputs: ["numSourcesRunning"],
+      inputs: [
+        { token: "selected-report", as: "selectedReport", required: true },
+        { token: "selected-model", as: "selectedModel", required: true },
+        { token: "selected-report-content", as: "reportContent", required: true },
+        { token: "saved-report-lookup-envelope", as: "savedReportEnvelope", required: true },
+        { token: "incident.analysisRequest", as: "analysisRequest" },
+      ],
+      sources: [{
+        operation: "analyzeReportBlueprint",
+        when: "inputs.analysisRequest.selectedReport = inputs.selectedReport and inputs.analysisRequest.selectedModel = inputs.selectedModel",
+      }],
+      outputs: [{ token: "analysis-report-blueprint" }],
+      behavior: { on: { press: [expect.objectContaining({ do: "assign", target: "incident.analysisRequest" })] } },
       view: {
-        props: { hostedAnalysis: true },
-        visibility: "incidentShell.cache_lookup_complete and $length(incidentShell.incident_report) > 0",
+        capability: "fluent:button",
+        props: { label: "Analyze / refresh report" },
+        before: [expect.objectContaining({
+          capability: "fluent:spinner",
+          visibility: "systemInputs.numSourcesRunning > 0",
+        })],
+      },
+      events: { press: { payloadSchema: { type: "object" } } },
+    });
+    expect(payload.cells["report-analysis"].view.visibility).toBeUndefined();
+  });
+
+  it("saves every newly generated report and prefers it over the loaded report", () => {
+    expect(payload.cells["report-resolution"]).toMatchObject({
+      inputs: [
+        { token: "selected-report", as: "selectedReport", required: true },
+        { token: "selected-model", as: "selectedModel", required: true },
+        { token: "saved-report-lookup-envelope", as: "savedReportEnvelope", required: true },
+        { token: "analysis-report-blueprint", as: "analysisReport", required: false },
+      ],
+      sources: [{
+        operation: "putSavedReport",
+        when: "inputs.analysisReport != null",
+      }],
+      view: {
+        capability: "gik:blueprint",
+        visibility: "incident.resolvedSavedReportEnvelope.found and incident.resolvedSavedReportEnvelope.analysisReport != null",
         bindings: {
-          incident_report: { from: "incidentShell.incident_report" },
-          cached_analysis_report: { from: "incidentShell.cached_analysis_report" },
-          analysis_as_on: { from: "incidentShell.analysis_as_on" },
+          blueprint: {
+            expression: "incident.resolvedSavedReportEnvelope.analysisReport",
+          },
         },
       },
     });
-    expect(JSON.stringify(payload.cells["incident-analyzer"])).not.toMatch(/explorer|analyzerId|variant|attention/);
+    expect(payload.cells["report-resolution"].compute).toContainEqual(expect.objectContaining({
+      id: "resolved-saved-report-envelope",
+      expression: expect.stringContaining(": inputs.savedReportEnvelope"),
+    }));
   });
 
-  it("retrieves and writes opaque envelopes through the shared cache token", () => {
-    const retriever = payload.cells["cache-retriever"];
-    const writer = payload.cells["cache-writer"];
-    expect(retriever.inputs.map(({ token }) => token)).toEqual(["selected_report_key", "analysis_key"]);
-    expect(writer.inputs).toEqual([
-      { token: "analysis_report", as: "analysisReport", required: true },
-    ]);
-    expect(writer.compute[0]).toMatchObject({
-      expression: "inputs.analysisReport",
-      assign: "incidentShell.analysis_report",
-    });
-    expect(retriever.outputs.map(({ token }) => token)).toEqual([
-      "cached_analysis_report",
-      "analysis_as_on",
-    ]);
-    expect(writer.outputs.map(({ token }) => token)).toEqual([
-      "cached_analysis_report",
-      "analysis_as_on",
-    ]);
-    expect(payload.services["incident-cache"].operations).toMatchObject({
-      getCachedAnalysis: { operation: "get-asset", contract: "cached-analysis-envelope/v1" },
-      putCachedAnalysis: { operation: "put-asset", contract: "cached-analysis-envelope/v1" },
-    });
-    const operations = payload.services["incident-cache"].operations;
-    expect(operations.putCachedAnalysis.request.transform.expr).toContain(
-      "'cached_analysis_envelope':{'asOn':$now(),'analysisReport':state.incidentShell.analysis_report}",
-    );
-    expect(operations.getCachedAnalysis.settlement.transform.expr).toContain("response.analysisReport");
-    expect(operations.getCachedAnalysis.settlement.transform.expr).toContain("response.asOn");
-    expect(operations.getCachedAnalysis.settlement.transform.expr).toContain("'path':'incidentShell.cache_lookup_complete','value':true");
-    expect(JSON.stringify({ retriever, writer })).not.toMatch(/variant|verdict|summary|model|presentation/);
-  });
+  it("keys saved reports by immutable source id and selected model", () => {
+    const getExpression = payload.services["incident-saved-reports"].operations.getSavedReport
+      .request.transform.expr;
+    const putExpression = payload.services["incident-saved-reports"].operations.putSavedReport
+      .request.transform.expr;
 
-  it("loads source options and the selected report through the asset Blueprint service", () => {
-    expect(payload.services["incident-sources"].blueprint.$ref).toBe("blueprint:incident-analysis-assets@1.0.0");
-    expect(payload.cells["source-options"].sources[0]).toMatchObject({
-      service: "incident-sources",
-      operation: "listSourceReports",
-    });
-    expect(payload.cells["selected-source"].sources[0]).toMatchObject({
-      service: "incident-sources",
-      operation: "getSourceReport",
-    });
-    expect(payload.cells["selected-report-key"]).toMatchObject({
-      inputs: [{ token: "incidentShell.selected_report_key", as: "selectedReportKey" }],
-      outputs: [{ token: "selected_report_key", from: "inputs.selectedReportKey" }],
-    });
-    expect(payload.cells["selected-source"].inputs[0]).toMatchObject({ token: "selected_report_key", required: true });
-    expect(payload.cells["selected-source"].outputs[0].token).toBe("incident_report");
-  });
-
-  it("renders source controls in an 80 percent left floating drawer", () => {
-    expect(payload.cells["source-drawer"].view).toEqual({
-      capability: "primitive:drawer",
-      props: {
-        variant: "panel-vertical",
-        fabPosition: "top-left",
-        title: "Incident source",
-        ariaLabel: "Incident source",
-        panelWidthPercent: 80,
-      },
-      bindings: { open: { from: "incidentShell.drawer_open" } },
-    });
+    expect(getExpression).toContain("'source_report_key':input.source_report_key");
+    expect(getExpression).toContain("'analysis_key':input.model");
+    expect(putExpression).toContain("'source_report_key':input.source_report_key");
+    expect(putExpression).toContain("'analysis_key':input.model");
+    expect(putExpression).not.toContain("source_content");
   });
 });

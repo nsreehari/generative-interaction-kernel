@@ -81,3 +81,18 @@ const wrapOrchestrator = nodeServiceOrchestrator(runtime, serviceHost);
 ```
 
 Ordinary tests are hermetic and use mock executors or placeholder credentials. Live automation is opt-in: provide the applicable protected environment variable to the automation host; do not add it to the Blueprint, scenario, test fixture, command line, or checked-in environment file. The `portfolio-tracker-new` mock intelligence implementation executes without resolving a credential.
+
+## Sample agent provisioning
+
+Sample Blueprints own their provider-neutral agent templates, prompts, lifecycle tools, and response
+schemas in `blueprints/agent-provisioning.mjs`. Provisioning is initiated from this package; provider
+repositories only perform provider-specific upserts from generated temporary plans.
+
+```bash
+npm run agents:provision:foundry --workspace @gik/samples
+npm run agents:provision:copilot --workspace @gik/samples
+```
+
+Use `-- --agents NameA,NameB` for a selective Foundry version update. Foundry provisioning requires
+an active Azure CLI login. Copilot provisioning writes the sample workspace through the generic
+`demo-boards-ns-code/mcp-server` plan consumer.

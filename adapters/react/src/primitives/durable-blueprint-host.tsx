@@ -18,7 +18,7 @@ import type { ProviderResolver } from "../registry";
 import {
   BLUEPRINT_HOST_PROVIDER,
   BlueprintHostRegistryProvider,
-  HOSTED_BLUEPRINT_CAPABILITY,
+  BLUEPRINT_CAPABILITY,
   PRESENTATION_FRAGMENT_CAPABILITY,
 } from "./hosted-blueprint";
 
@@ -125,7 +125,7 @@ export function BlueprintHost({
   const hostResolveProvider = React.useMemo<ProviderResolver>(
     () => (from) => from === BLUEPRINT_HOST_PROVIDER
       ? {
-          [HOSTED_BLUEPRINT_CAPABILITY]: HostedBlueprint,
+          [BLUEPRINT_CAPABILITY]: HostedBlueprint,
           [PRESENTATION_FRAGMENT_CAPABILITY]: PresentationFragment,
         }
       : resolveLeavesProvider?.(from),
@@ -138,7 +138,7 @@ export function BlueprintHost({
       source,
       bridge: primaryBridge,
       structuralViews: {
-        [HOSTED_BLUEPRINT_CAPABILITY]: HostedBlueprint,
+        [BLUEPRINT_CAPABILITY]: HostedBlueprint,
         [PRESENTATION_FRAGMENT_CAPABILITY]: PresentationFragment,
       },
     }),

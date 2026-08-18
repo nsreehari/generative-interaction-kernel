@@ -27,9 +27,9 @@ import type { GenUIFileServices } from "./fileServices";
 import {
   BLUEPRINT_HOST_PROVIDER,
   BlueprintHostRegistryProvider,
-  HOSTED_BLUEPRINT_CAPABILITY,
+  BLUEPRINT_CAPABILITY,
+  readBlueprintNodeDeclaration,
   PRESENTATION_FRAGMENT_CAPABILITY,
-  readHostedBlueprintDeclaration,
   resolveHostedBlueprintArtifact,
   resolveHostedBlueprint,
   type ReactBlueprintHostRegistry,
@@ -144,7 +144,7 @@ export function BlueprintHost({
   const hostResolveProvider = React.useMemo<ProviderResolver>(
     () => (from) => from === BLUEPRINT_HOST_PROVIDER
       ? {
-          [HOSTED_BLUEPRINT_CAPABILITY]: HostedBlueprint,
+          [BLUEPRINT_CAPABILITY]: HostedBlueprint,
           [PRESENTATION_FRAGMENT_CAPABILITY]: PresentationFragment,
         }
       : resolveLeavesProvider?.(from),
@@ -157,7 +157,7 @@ export function BlueprintHost({
       source,
       bridge: primaryBridge,
       structuralViews: {
-        [HOSTED_BLUEPRINT_CAPABILITY]: HostedBlueprint,
+        [BLUEPRINT_CAPABILITY]: HostedBlueprint,
         [PRESENTATION_FRAGMENT_CAPABILITY]: PresentationFragment,
       },
     }),
@@ -202,7 +202,9 @@ export function createHostedBlueprintProjection({
   renderHostedBlueprintLoading?: () => React.ReactNode;
 }): ProjectionView {
   return function HostedBlueprintProjection({ node, emit }) {
-    const declaration = readHostedBlueprintDeclaration(node.props.hostedBlueprint);
+    const declarationInput = node.props.blueprint ?? node.props.hostedBlueprint;
+    const declaration = readBlueprintNodeDeclaration(node.props);
+    const isEmptyDeclaration = declarationInput === undefined || declarationInput === null;
     const [resolution, setResolution] = React.useState<HostedBlueprintDefinition<BundleNative> | null>(null);
     const [error, setError] = React.useState<Error | null>(null);
     const [showLoading, setShowLoading] = React.useState(false);
@@ -214,7 +216,9 @@ export function createHostedBlueprintProjection({
       setError(null);
       setShowLoading(false);
       if (!declaration) {
-        setError(new Error(`Hosted Blueprint cell '${node.id}' has no child declaration`));
+        if (!isEmptyDeclaration) {
+          setError(new Error(`Hosted Blueprint cell '${node.id}' has an invalid child declaration`));
+        }
         return () => { active = false; };
       }
       void resolveHostedBlueprint(declaration, registry, {
@@ -226,17 +230,18 @@ export function createHostedBlueprintProjection({
         (reason: unknown) => { if (active) setError(reason instanceof Error ? reason : new Error(String(reason))); },
       );
       return () => { active = false; };
-    }, [declaration?.$ref, declaration?.inline, node.id]);
+    }, [declaration?.$ref, declaration?.inline, isEmptyDeclaration, node.id]);
 
     React.useEffect(() => {
-      if (resolution || error) {
+      if (isEmptyDeclaration || resolution || error) {
         setShowLoading(false);
         return;
       }
       const timeout = setTimeout(() => setShowLoading(true), 1000);
       return () => clearTimeout(timeout);
-    }, [resolution, error, declaration?.$ref, declaration?.inline, node.id]);
+    }, [resolution, error, declaration?.$ref, declaration?.inline, isEmptyDeclaration, node.id]);
 
+    if (isEmptyDeclaration) return null;
     if (error) {
       return <div role="alert" data-hosted-blueprint-error>{error.message}</div>;
     }
@@ -249,7 +254,7 @@ export function createHostedBlueprintProjection({
       );
     }
 
-    const { hostedBlueprint: _declaration, ...inputs } = node.props;
+    const { blueprint: _blueprint, hostedBlueprint: _hostedBlueprint, ...inputs } = node.props;
     const childProps: BlueprintHostProps = {
       blueprint: resolution.blueprint,
       native: resolution.native,

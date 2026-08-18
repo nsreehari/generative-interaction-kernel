@@ -81,10 +81,15 @@ export function getSampleBlueprintCatalog(): BlueprintCatalogSnapshot {
 
 export function resolveSampleLaunchExternalContext(id: string): ExternalContext | undefined {
   if (id === "incident-analysis-new-shell") {
-    return { analyzer_blueprint_ref: "blueprint:incident-report-explorer-2@1.0.0" };
+    return { model: "semantic", "source-report": "password-spray-mailbox" };
   }
   if (id === "portfolio-tracker-new") {
-    return { "intelligence-model": "simple", view: "desktop" };
+    return {
+      ai: "foundry",
+      "intelligence-model": "simple",
+      "market-prices": "mock",
+      view: "desktop",
+    };
   }
   return undefined;
 }
