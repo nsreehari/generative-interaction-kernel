@@ -8,6 +8,21 @@ export interface ComponentAuthoringGuide {
   rules: readonly string[];
 }
 
+export interface ComponentAgentFacingMetadata {
+  catalog?: {
+    for?: readonly string[];
+    notFor?: readonly string[];
+    interaction?: string;
+  };
+  detail?: {
+    dataProps?: Readonly<Record<string, unknown>>;
+    props?: Readonly<Record<string, unknown>>;
+    constraints?: readonly string[];
+    notes?: readonly string[];
+    example?: Readonly<Record<string, unknown>>;
+  };
+}
+
 export interface ComponentVariantDescription {
   value: string;
   summary: string;
@@ -46,6 +61,7 @@ export interface ComponentDescription {
   defaultVariant?: string;
   variants: readonly ComponentVariantDescription[];
   authoring: ComponentAuthoringGuide;
+  agentFacing?: ComponentAgentFacingMetadata;
 }
 
 export interface ComponentValidationIssue {

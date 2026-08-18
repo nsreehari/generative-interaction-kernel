@@ -1,7 +1,7 @@
 {
   "default": "portfolio-tracker-new",
   "launchProfiles": [
-    { "id": "manage-blueprints", "blueprint": "manage-blueprints" },
+    { "id": "blueprint-studio", "blueprint": "blueprint-studio" },
     { "id": "portfolio-tracker-new", "blueprint": "portfolio-tracker-new" },
     { "id": "incident-analysis-new-shell", "blueprint": "incident-analysis-new-shell" },
     { "id": "ai-agent", "blueprint": "ai-agent" }

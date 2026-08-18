@@ -20,6 +20,7 @@ import {
   type BlueprintStorageConnectionFactory,
 } from "../shared/blueprint-storage";
 import { createNodeBlueprintStorageConnectionFactory } from "./blueprint-storage";
+import { createSampleAgentTools } from "../shared/agent-tools";
 
 export function createNodeHostConfig(
   environment: Readonly<Record<string, string | undefined>>,
@@ -78,6 +79,7 @@ export function createNodeBlueprintServiceHost(
     }),
     state,
     expression: new JsonataExpressionProvider({ safe: true }),
+    agentTools: createSampleAgentTools(),
     dependencyFailurePolicy: "throw",
   });
 }

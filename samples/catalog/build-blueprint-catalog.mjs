@@ -51,6 +51,32 @@ for (const id of artifactIds) {
   }
 }
 
+if (entries["blueprint-studio-crud"]) {
+  const descriptors = Object.entries(entries)
+    .map(([id, artifact]) => ({
+      id,
+      label: id,
+      version: artifact.payload.version,
+      kind: artifact.payload.kind,
+      source: "repo",
+      readonly: true,
+    }))
+    .sort((left, right) => left.id.localeCompare(right.id));
+  bootstrapAssets["blueprint-studio-crud"] = {
+    format: "gik-blueprint-bootstrap-assets/1",
+    records: [
+      { key: "index:blueprints", value: descriptors },
+      ...descriptors.map((descriptor) => ({
+        key: `blueprint:${descriptor.id}`,
+        value: {
+          ...descriptor,
+          artifact: entries[descriptor.id],
+        },
+      })),
+    ],
+  };
+}
+
 const catalog = {
   format: "gik-blueprint-catalog/1",
   bundleId: "gik-samples",

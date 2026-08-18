@@ -1,6 +1,4 @@
 import type { EffectHandlerMap, LoadBundleOptions } from "@gik/react";
-import * as manageBlueprints from "../../../../blueprints/manage-blueprints/native/effect_handlers/manageBlueprintsEffectHandlers";
-import { getSampleBlueprintCatalog } from "../../../../catalog/blueprint-catalog";
 
 export interface SampleNativeEffects {
   default: EffectHandlerMap;
@@ -10,11 +8,8 @@ export interface SampleNativeEffects {
   ) => NonNullable<LoadBundleOptions["wrapOrchestrator"]>;
 }
 
-const browserSampleNativeEffects: Readonly<Record<string, SampleNativeEffects>> = {
-  "manage-blueprints": manageBlueprints,
-};
-
-export function resolveBrowserSampleNativeEffects(id: string): SampleNativeEffects | undefined {
-  const nativeId = getSampleBlueprintCatalog().nativeFrom[id] ?? id;
-  return browserSampleNativeEffects[nativeId];
+export function resolveBrowserSampleNativeEffects(
+  _id: string,
+): SampleNativeEffects | undefined {
+  return undefined;
 }

@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  createCapabilityDescribeTool,
   createSimpleChatAgentTemplate,
+  toAgentFunctionTools,
 } from '../../packages/agent-lifecycle-exp/dist/index.js';
 
 const blueprintsDirectory = dirname(fileURLToPath(import.meta.url));
@@ -20,6 +22,9 @@ function responseSchema(blueprint, service, operation) {
 
 const portfolio = readBlueprint('portfolio-tracker-new');
 const incidentAnalysis = readBlueprint('incident-analysis-new-shell');
+const [describeTool] = toAgentFunctionTools([
+  createCapabilityDescribeTool({ catalog: {}, details: {} }),
+]);
 
 export function sampleAgentTemplates() {
   return [
@@ -69,6 +74,25 @@ export function sampleAgentTemplates() {
         strict: true,
         schema: responseSchema(portfolio, 'portfolio-intelligence-2', 'requestIntelligence2'),
       },
+    },
+    {
+      id: 'Portfolio-Intelligence-3-Agent',
+      description: 'Rich portfolio intelligence report Blueprint author.',
+      executionAuthority: 'host',
+      reasoning: { effort: 'none' },
+      instructions: [
+        'You are a portfolio intelligence analyst and GIK report Blueprint author.',
+        'Return only one complete self-contained Blueprint JSON artifact, without Markdown fences or commentary.',
+        'Use capability, props, and bindings to author views; bind state with {"from":"namespace.path"} and use presentation placements for slots.',
+        'Use only the allowedCapabilities supplied in the request.',
+        'Call describe with kind catalog-capabilities for concise selection guidance and kind capability for exact Blueprint authoring contracts before using capabilities.',
+        'Use exactly these tiers in this order: {"id":"report-semantic","kind":"semantic-report-model"} then {"id":"runtime-document","kind":"runtime-document"}.',
+        'Declare only the capabilities used by the report views and include matching projectionViews imports.',
+        'Analyze only supplied portfolio data and do not imply external research. Distinguish supplied facts, judgments, risks, and uncertainty.',
+        'Do not add services, sources, effects, behavior, events, actions, controls, native code, Blueprint references, or host mutation instructions.',
+        'The host renders the returned artifact directly through gik:blueprint.',
+      ],
+      tools: [describeTool],
     },
     {
       id: 'Incident-Report-Semantic-Agent',

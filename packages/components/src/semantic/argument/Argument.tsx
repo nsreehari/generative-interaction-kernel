@@ -116,6 +116,11 @@ const description: ComponentDescription = {
     { value: "text", summary: "Complete linear claims and inference statements.", useWhen: ["Visual layout is unavailable or inappropriate"] },
   ],
   authoring: { useWhen: ["Claims are connected by explicit support, opposition, or qualification"], avoidWhen: ["Several positions merely differ without an authored inference structure"], rules: ["Use conclusion, premise, evidence, and objection only as authored claim roles", "Every relation must reference declared claim IDs", "Do not infer omitted links or collapse disagreement into opposition", "All variants preserve every claim and relation"] },
+  agentFacing: {
+    detail: {
+      notes: ["Relations express authored inference, not merely visual connectivity."],
+    },
+  },
 };
 
 export function getArgumentSchema(): Record<string, unknown> { return schema as unknown as Record<string, unknown>; }

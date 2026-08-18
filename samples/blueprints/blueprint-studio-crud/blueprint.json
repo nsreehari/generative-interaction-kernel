@@ -1,0 +1,254 @@
+{
+  "gik": "0.1",
+  "type": "blueprint",
+  "payload": {
+    "id": "blueprint-studio-crud",
+    "kind": "runtime-blueprint",
+    "version": "1.0.0",
+    "structureMode": "fixed",
+    "interface": {
+      "events": [
+        "list-blueprints",
+        "fetch-blueprint",
+        "create-blueprint",
+        "update-blueprint",
+        "delete-blueprint"
+      ],
+      "outputs": {
+        "result": {
+          "from": "studioCrud.result",
+          "description": "Result of the most recently completed Blueprint Studio CRUD operation."
+        }
+      }
+    },
+    "tiers": [
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document"
+      }
+    ],
+    "recipes": [],
+    "runtime": {
+      "expression": "jsonata",
+      "namespaces": ["studioCrud"],
+      "actions": ["invoke"],
+      "state": {
+        "studioCrud": {
+          "result": null
+        }
+      }
+    },
+    "cells": {
+      "crud-controller": {
+        "id": "crud-controller",
+        "kind": "blueprint-studio-crud-controller",
+        "behavior": {
+          "on": {
+            "list-blueprints": [
+              {
+                "do": "invoke",
+                "control": { "tool": "readBlueprintIndex" }
+              }
+            ],
+            "fetch-blueprint": [
+              {
+                "do": "invoke",
+                "control": { "tool": "readBlueprint" }
+              }
+            ],
+            "create-blueprint": [
+              {
+                "do": "invoke",
+                "control": { "tool": "readIndexForCreate" }
+              }
+            ],
+            "update-blueprint": [
+              {
+                "do": "invoke",
+                "control": { "tool": "readIndexForUpdate" }
+              }
+            ],
+            "delete-blueprint": [
+              {
+                "do": "invoke",
+                "control": { "tool": "readIndexForDelete" }
+              }
+            ],
+            "write-blueprint-record": [
+              {
+                "do": "invoke",
+                "control": { "tool": "writeBlueprintRecord" }
+              }
+            ],
+            "delete-blueprint-record": [
+              {
+                "do": "invoke",
+                "control": { "tool": "deleteBlueprintRecord" }
+              }
+            ],
+            "write-blueprint-index": [
+              {
+                "do": "invoke",
+                "control": { "tool": "writeBlueprintIndex" }
+              }
+            ]
+          }
+        },
+        "events": {
+          "list-blueprints": { "payloadSchema": { "type": "object" } },
+          "fetch-blueprint": { "payloadSchema": { "type": "object" } },
+          "create-blueprint": { "payloadSchema": { "type": "object" } },
+          "update-blueprint": { "payloadSchema": { "type": "object" } },
+          "delete-blueprint": { "payloadSchema": { "type": "object" } },
+          "write-blueprint-record": { "payloadSchema": { "type": "object" } },
+          "delete-blueprint-record": { "payloadSchema": { "type": "object" } },
+          "write-blueprint-index": { "payloadSchema": { "type": "object" } }
+        }
+      }
+    },
+    "services": {
+      "storage": {
+        "kind": "durable-storage",
+        "version": "1",
+        "operations": {
+          "readBlueprintIndex": {
+            "operation": "read",
+            "contract": "storage-kv/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'key':'index:blueprints'}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'studioCrud.result','value':{'blueprints':response ? response : []}}]}"
+              }
+            }
+          },
+          "readBlueprint": {
+            "operation": "read",
+            "contract": "storage-kv/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'key':'blueprint:' & effect.data.id}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'studioCrud.result','value':response}]}"
+              }
+            }
+          },
+          "readIndexForCreate": {
+            "operation": "read",
+            "contract": "storage-kv/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'key':'index:blueprints'}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($id := $trim(effect.data.id); $artifact := $merge([effect.data.blueprint, {'payload':$merge([effect.data.blueprint.payload, {'id':$id}])}]); $descriptor := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false}; $entry := $merge([$descriptor, {'artifact':$artifact}]); $index := response ? response : []; $count($index[id = $id]) > 0 ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'created':false,'error':'Blueprint already exists','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$entry,'index':$append($index, $descriptor),'result':{'created':true,'blueprint':$entry}}}]})"
+              }
+            }
+          },
+          "readIndexForUpdate": {
+            "operation": "read",
+            "contract": "storage-kv/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'key':'index:blueprints'}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($id := $trim(effect.data.id); $index := response ? response : []; $current := $index[id = $id][0]; $artifact := $merge([effect.data.blueprint, {'payload':$merge([effect.data.blueprint.payload, {'id':$id}])}]); $descriptor := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false}; $entry := $merge([$descriptor, {'artifact':$artifact}]); $not($exists($current)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'updated':false,'error':'Blueprint was not found','id':$id}}]} : $current.readonly ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'updated':false,'error':'Repository Blueprints are read-only','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$entry,'index':$index.($item := $; $item.id = $id ? $descriptor : $item),'result':{'updated':true,'blueprint':$entry}}}]})"
+              }
+            }
+          },
+          "readIndexForDelete": {
+            "operation": "read",
+            "contract": "storage-kv/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'key':'index:blueprints'}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($id := $trim(effect.data.id); $index := response ? response : []; $current := $index[id = $id][0]; $not($exists($current)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'deleted':false,'error':'Blueprint was not found','id':$id}}]} : $current.readonly ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'deleted':false,'error':'Repository Blueprints are read-only','id':$id}}]} : {'events':[{'node':'crud-controller','name':'delete-blueprint-record','payload':{'id':$id,'index':$index[id != $id],'result':{'deleted':true,'id':$id}}}]})"
+              }
+            }
+          },
+          "writeBlueprintRecord": {
+            "operation": "write",
+            "contract": "storage-kv/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'key':'blueprint:' & effect.data.entry.id,'value':effect.data.entry}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'events':[{'node':'crud-controller','name':'write-blueprint-index','payload':{'index':effect.data.index,'result':effect.data.result}}]}"
+              }
+            }
+          },
+          "deleteBlueprintRecord": {
+            "operation": "delete",
+            "contract": "storage-kv/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'key':'blueprint:' & effect.data.id}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'events':[{'node':'crud-controller','name':'write-blueprint-index','payload':{'index':effect.data.index,'result':effect.data.result}}]}"
+              }
+            }
+          },
+          "writeBlueprintIndex": {
+            "operation": "write",
+            "contract": "storage-kv/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'key':'index:blueprints','value':effect.data.index}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'studioCrud.result','value':effect.data.result}]}"
+              }
+            }
+          }
+        },
+        "config": {
+          "connection": "blueprint-state"
+        },
+        "scope": "per-blueprint"
+      }
+    },
+    "metadata": {
+      "scope": "backend",
+      "executionMedium": "headless"
+    }
+  }
+}

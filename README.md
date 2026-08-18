@@ -80,7 +80,7 @@ The endpoint accepts `POST` JSON containing `service`, `version`, `operation`, `
 - `/?b=portfolio-tracker-new` — live portfolio intelligence
 - `/?b=live-workspace-soc` — governed SOC collaboration
 - `/?b=ai-agent` — provider-selected agent conversation (`ai=foundry` or `ai=copilot`)
-- `/?b=manage-blueprints` — Blueprint catalog and authoring
+- `/?b=blueprint-studio` — Blueprint catalog studio
 - `/?b=manage-bundles` — Bundle artifact catalog and preview
 
 ## Status
