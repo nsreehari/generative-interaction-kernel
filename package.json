@@ -37,8 +37,6 @@
     "test:providers": "vitest run --project providers",
     "test:sse": "vitest run --project sse",
     "test:samples": "vitest run --project samples",
-    "test:parity:soc": "playwright test --config playwright.soc.config.ts",
-    "test:parity:soc:update": "playwright test --config playwright.soc.config.ts --update-snapshots",
     "test:portfolio:browser": "playwright test --config playwright.portfolio.config.ts",
     "test:mcp": "vitest run --project mcp",
     "test:vitest": "vitest run",

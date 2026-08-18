@@ -125,7 +125,7 @@ export default defineConfig({
           environment: "node",
           testTimeout: 20_000,
           setupFiles: ["samples/tests/setup-blueprint-catalog.ts"],
-          exclude: ["samples/blueprints/half-baked/**", "samples/half-baked-tests/**"],
+          exclude: ["samples/blueprints/half-baked/**"],
           include: [
             "samples/apps/node-host/**/*.test.ts",
             "samples/examples/**/*.test.ts",

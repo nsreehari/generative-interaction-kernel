@@ -1,8 +1,7 @@
 // The kernel driven as a pure backend service (no UI adapter). This locks in the
 // medium-agnostic claim: a custom Orchestrator whose invoke/request/route are
 // backend services (payment gateway, approval policy, queue router) drives a full
-// lifecycle cascade without inventing a projection tree. Companion to
-// samples/blueprints/half-baked/backend-order-processing/blueprint.json.
+// lifecycle cascade without inventing a projection tree.
 
 import { test } from "vitest";
 import assert from "node:assert/strict";

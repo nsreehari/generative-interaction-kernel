@@ -13,7 +13,7 @@ import {
   type RepresentationLoweringRecipeDefinition,
 } from "../src/index";
 
-const sampleUrl = new URL("../../samples/blueprints/half-baked/vocabulary-lowering/blueprint.json", import.meta.url);
+const sampleUrl = new URL("./fixtures/vocabulary-lowering.blueprint.json", import.meta.url);
 
 test("the package owns one fixed three-Cell lowering meta-graph", () => {
   const metaGraph = fixedLoweringMetaGraphBlueprint();
