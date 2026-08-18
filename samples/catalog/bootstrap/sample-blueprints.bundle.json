@@ -533,13 +533,21 @@
                     "capability": "primitive:container",
                     "props": {
                       "variant": "row",
-                      "gap": "m",
-                      "fill": true,
+                      "gap": "l",
+                      "align": "start",
                       "fullWidth": true,
-                      "ariaLabel": "Blueprint Studio",
+                      "ariaLabel": "Blueprint Studio"
+                    }
+                  },
+                  "blueprint-list-region": {
+                    "capability": "primitive:container",
+                    "props": {
+                      "variant": "column",
+                      "gap": "s",
+                      "ariaLabel": "Blueprint catalog",
                       "style": {
-                        "gridTemplateColumns": "minmax(16rem, 22rem) minmax(0, 1fr)",
-                        "alignItems": "start"
+                        "flex": "0 0 22rem",
+                        "width": "22rem"
                       }
                     }
                   },
@@ -583,7 +591,8 @@
                     "props": {
                       "variant": "column",
                       "gap": "m",
-                      "fill": true,
+                      "grow": true,
+                      "fullWidth": true,
                       "ariaLabel": "Selected Blueprint"
                     }
                   },
@@ -625,8 +634,7 @@
                           }
                         }
                       }
-                    ],
-                    "visibility": "studio.selected != null"
+                    ]
                   },
                   "blueprint-overview-pane": {
                     "capability": "primitive:markdown",
@@ -694,7 +702,7 @@
                   ],
                   "placements": [
                     {
-                      "cell": "blueprint-list",
+                      "cell": "blueprint-list-region",
                       "parent": "studio-root",
                       "slot": "children",
                       "order": 0
@@ -704,6 +712,12 @@
                       "parent": "studio-root",
                       "slot": "children",
                       "order": 1
+                    },
+                    {
+                      "cell": "blueprint-list",
+                      "parent": "blueprint-list-region",
+                      "slot": "children",
+                      "order": 0
                     },
                     {
                       "cell": "individual-blueprint-tabs",
@@ -885,6 +899,10 @@
           "studio-root": {
             "id": "studio-root"
           },
+          "blueprint-list-region": {
+            "id": "blueprint-list-region",
+            "kind": "blueprint-list-region"
+          },
           "blueprint-list": {
             "id": "blueprint-list",
             "kind": "blueprint-list",
@@ -1003,6 +1021,13 @@
           "individual-blueprint-tabs": {
             "id": "individual-blueprint-tabs",
             "kind": "blueprint-tabs",
+            "inputs": [
+              {
+                "token": "selectedBlueprintId",
+                "as": "selectedBlueprintId",
+                "required": true
+              }
+            ],
             "behavior": {
               "on": {
                 "select": [
@@ -4945,9 +4970,9 @@
                     },
                     {
                       "kind": "jsonata",
-                      "expr": "($allowed := $request.allowedCapabilities; $views := data.payload.recipes[0].representations[0].views; $state := data.payload.runtime.state.report; $count($allowed) = 6 and 'primitive:markdown' in $allowed and 'primitive:container' in $allowed and 'primitive:datetime' in $allowed and 'fluent:text' in $allowed and 'fluent:list' in $allowed and 'fluent:table' in $allowed and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document' and data.payload.recipes[0].representations[0].id = 'rich-report' and data.payload.recipes[0].fallback = 'rich-report' and $count($keys($views)) = 9 and $views.`report-root`.capability = 'primitive:container' and $views.headline.capability = 'fluent:text' and $views.`as-of`.capability = 'primitive:datetime' and $views.summary.capability = 'primitive:markdown' and $views.positions.capability = 'fluent:table' and $views.facts.capability = 'fluent:list' and $views.judgments.capability = 'fluent:list' and $views.risks.capability = 'fluent:list' and $views.uncertainties.capability = 'fluent:list' and $count(data.payload.recipes[0].representations[0].presentation.placements) = 8 and $count($keys(data.payload.runtime.capabilities)) = 6 and $count($keys(data.payload.cells)) = 9 and $count($keys($state)) = 8 and $length($state.headline) > 0 and $length($state.asOf) > 0 and $length($state.summaryMarkdown) > 0 and $type($state.positions) = 'array' and $type($state.facts) = 'array' and $type($state.judgments) = 'array' and $type($state.risks) = 'array' and $type($state.uncertainties) = 'array')",
-                      "message": "Rich portfolio report must preserve the authorized report scaffold and fill every report slot",
-                      "code": "rich-report-scaffold"
+                      "expr": "data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document'",
+                      "message": "Rich portfolio report must contain the semantic and runtime-document tiers",
+                      "code": "rich-report-tiers"
                     }
                   ]
                 },
@@ -5327,9 +5352,9 @@
                     },
                     {
                       "kind": "jsonata",
-                      "expr": "($allowed := $request.allowedCapabilities; $views := data.payload.recipes[0].representations[0].views; $state := data.payload.runtime.state.report; $count($allowed) = 6 and 'primitive:markdown' in $allowed and 'primitive:container' in $allowed and 'primitive:datetime' in $allowed and 'fluent:text' in $allowed and 'fluent:list' in $allowed and 'fluent:table' in $allowed and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document' and data.payload.recipes[0].representations[0].id = 'rich-report' and data.payload.recipes[0].fallback = 'rich-report' and $count($keys($views)) = 9 and $views.`report-root`.capability = 'primitive:container' and $views.headline.capability = 'fluent:text' and $views.`as-of`.capability = 'primitive:datetime' and $views.summary.capability = 'primitive:markdown' and $views.positions.capability = 'fluent:table' and $views.facts.capability = 'fluent:list' and $views.judgments.capability = 'fluent:list' and $views.risks.capability = 'fluent:list' and $views.uncertainties.capability = 'fluent:list' and $count(data.payload.recipes[0].representations[0].presentation.placements) = 8 and $count($keys(data.payload.runtime.capabilities)) = 6 and $count($keys(data.payload.cells)) = 9 and $count($keys($state)) = 8 and $length($state.headline) > 0 and $length($state.asOf) > 0 and $length($state.summaryMarkdown) > 0 and $type($state.positions) = 'array' and $type($state.facts) = 'array' and $type($state.judgments) = 'array' and $type($state.risks) = 'array' and $type($state.uncertainties) = 'array')",
-                      "message": "Rich portfolio report must preserve the authorized report scaffold and fill every report slot",
-                      "code": "rich-report-scaffold"
+                      "expr": "data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document'",
+                      "message": "Rich portfolio report must contain the semantic and runtime-document tiers",
+                      "code": "rich-report-tiers"
                     }
                   ]
                 },
@@ -12238,13 +12263,21 @@
                             "capability": "primitive:container",
                             "props": {
                               "variant": "row",
-                              "gap": "m",
-                              "fill": true,
+                              "gap": "l",
+                              "align": "start",
                               "fullWidth": true,
-                              "ariaLabel": "Blueprint Studio",
+                              "ariaLabel": "Blueprint Studio"
+                            }
+                          },
+                          "blueprint-list-region": {
+                            "capability": "primitive:container",
+                            "props": {
+                              "variant": "column",
+                              "gap": "s",
+                              "ariaLabel": "Blueprint catalog",
                               "style": {
-                                "gridTemplateColumns": "minmax(16rem, 22rem) minmax(0, 1fr)",
-                                "alignItems": "start"
+                                "flex": "0 0 22rem",
+                                "width": "22rem"
                               }
                             }
                           },
@@ -12288,7 +12321,8 @@
                             "props": {
                               "variant": "column",
                               "gap": "m",
-                              "fill": true,
+                              "grow": true,
+                              "fullWidth": true,
                               "ariaLabel": "Selected Blueprint"
                             }
                           },
@@ -12330,8 +12364,7 @@
                                   }
                                 }
                               }
-                            ],
-                            "visibility": "studio.selected != null"
+                            ]
                           },
                           "blueprint-overview-pane": {
                             "capability": "primitive:markdown",
@@ -12399,7 +12432,7 @@
                           ],
                           "placements": [
                             {
-                              "cell": "blueprint-list",
+                              "cell": "blueprint-list-region",
                               "parent": "studio-root",
                               "slot": "children",
                               "order": 0
@@ -12409,6 +12442,12 @@
                               "parent": "studio-root",
                               "slot": "children",
                               "order": 1
+                            },
+                            {
+                              "cell": "blueprint-list",
+                              "parent": "blueprint-list-region",
+                              "slot": "children",
+                              "order": 0
                             },
                             {
                               "cell": "individual-blueprint-tabs",
@@ -12590,6 +12629,10 @@
                   "studio-root": {
                     "id": "studio-root"
                   },
+                  "blueprint-list-region": {
+                    "id": "blueprint-list-region",
+                    "kind": "blueprint-list-region"
+                  },
                   "blueprint-list": {
                     "id": "blueprint-list",
                     "kind": "blueprint-list",
@@ -12708,6 +12751,13 @@
                   "individual-blueprint-tabs": {
                     "id": "individual-blueprint-tabs",
                     "kind": "blueprint-tabs",
+                    "inputs": [
+                      {
+                        "token": "selectedBlueprintId",
+                        "as": "selectedBlueprintId",
+                        "required": true
+                      }
+                    ],
                     "behavior": {
                       "on": {
                         "select": [
@@ -16705,9 +16755,9 @@
                             },
                             {
                               "kind": "jsonata",
-                              "expr": "($allowed := $request.allowedCapabilities; $views := data.payload.recipes[0].representations[0].views; $state := data.payload.runtime.state.report; $count($allowed) = 6 and 'primitive:markdown' in $allowed and 'primitive:container' in $allowed and 'primitive:datetime' in $allowed and 'fluent:text' in $allowed and 'fluent:list' in $allowed and 'fluent:table' in $allowed and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document' and data.payload.recipes[0].representations[0].id = 'rich-report' and data.payload.recipes[0].fallback = 'rich-report' and $count($keys($views)) = 9 and $views.`report-root`.capability = 'primitive:container' and $views.headline.capability = 'fluent:text' and $views.`as-of`.capability = 'primitive:datetime' and $views.summary.capability = 'primitive:markdown' and $views.positions.capability = 'fluent:table' and $views.facts.capability = 'fluent:list' and $views.judgments.capability = 'fluent:list' and $views.risks.capability = 'fluent:list' and $views.uncertainties.capability = 'fluent:list' and $count(data.payload.recipes[0].representations[0].presentation.placements) = 8 and $count($keys(data.payload.runtime.capabilities)) = 6 and $count($keys(data.payload.cells)) = 9 and $count($keys($state)) = 8 and $length($state.headline) > 0 and $length($state.asOf) > 0 and $length($state.summaryMarkdown) > 0 and $type($state.positions) = 'array' and $type($state.facts) = 'array' and $type($state.judgments) = 'array' and $type($state.risks) = 'array' and $type($state.uncertainties) = 'array')",
-                              "message": "Rich portfolio report must preserve the authorized report scaffold and fill every report slot",
-                              "code": "rich-report-scaffold"
+                              "expr": "data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document'",
+                              "message": "Rich portfolio report must contain the semantic and runtime-document tiers",
+                              "code": "rich-report-tiers"
                             }
                           ]
                         },
@@ -17087,9 +17137,9 @@
                             },
                             {
                               "kind": "jsonata",
-                              "expr": "($allowed := $request.allowedCapabilities; $views := data.payload.recipes[0].representations[0].views; $state := data.payload.runtime.state.report; $count($allowed) = 6 and 'primitive:markdown' in $allowed and 'primitive:container' in $allowed and 'primitive:datetime' in $allowed and 'fluent:text' in $allowed and 'fluent:list' in $allowed and 'fluent:table' in $allowed and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document' and data.payload.recipes[0].representations[0].id = 'rich-report' and data.payload.recipes[0].fallback = 'rich-report' and $count($keys($views)) = 9 and $views.`report-root`.capability = 'primitive:container' and $views.headline.capability = 'fluent:text' and $views.`as-of`.capability = 'primitive:datetime' and $views.summary.capability = 'primitive:markdown' and $views.positions.capability = 'fluent:table' and $views.facts.capability = 'fluent:list' and $views.judgments.capability = 'fluent:list' and $views.risks.capability = 'fluent:list' and $views.uncertainties.capability = 'fluent:list' and $count(data.payload.recipes[0].representations[0].presentation.placements) = 8 and $count($keys(data.payload.runtime.capabilities)) = 6 and $count($keys(data.payload.cells)) = 9 and $count($keys($state)) = 8 and $length($state.headline) > 0 and $length($state.asOf) > 0 and $length($state.summaryMarkdown) > 0 and $type($state.positions) = 'array' and $type($state.facts) = 'array' and $type($state.judgments) = 'array' and $type($state.risks) = 'array' and $type($state.uncertainties) = 'array')",
-                              "message": "Rich portfolio report must preserve the authorized report scaffold and fill every report slot",
-                              "code": "rich-report-scaffold"
+                              "expr": "data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document'",
+                              "message": "Rich portfolio report must contain the semantic and runtime-document tiers",
+                              "code": "rich-report-tiers"
                             }
                           ]
                         },
@@ -17387,6 +17437,6 @@
       ]
     }
   },
-  "bundleVersion": "1922506c6fba915b",
-  "digest": "sha256:1922506c6fba915bca62886259672299b59aa4e6f1cc604ec24a908a356008cd"
+  "bundleVersion": "75ccd8082c2368fc",
+  "digest": "sha256:75ccd8082c2368fc17344f53e17f5cdbfbbddb474d27fab21f6409a998a0734f"
 }
