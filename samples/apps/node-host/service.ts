@@ -18,7 +18,6 @@ import { createEffectDispatcher } from "@gik/react";
 import { SseTransportServer } from "@gik/transport-http-sse/server";
 import { McpHttpServer } from "@gik/transport-mcp-http";
 import { resolveSampleNativeEffects } from "./native-effects";
-import { resolveSampleNativeServices } from "./native-services";
 import {
   createNodeBlueprintServiceHost,
   createNodeHostConfig,
@@ -26,6 +25,8 @@ import {
 } from "./service-host";
 import { createRuntimeState, openNodeLaunch } from "./runtime";
 import { resolveSampleBlueprintSource } from "../../catalog/blueprint-catalog";
+import { createNodeBlueprintStorageConnectionFactory } from "./blueprint-storage";
+import type { BlueprintStorageConnectionFactory } from "../shared/blueprint-storage";
 
 export interface NodeHostOptions {
   profile?: string;
@@ -56,6 +57,7 @@ export async function createNodeHost(options: NodeHostOptions = {}): Promise<Nod
   const port = options.port ?? Number(environment.GIK_NODE_PORT || 8788);
   const hostName = options.hostName ?? environment.GIK_NODE_HOST ?? "127.0.0.1";
   const registry = createNodeBlueprintRegistry(environment);
+  const blueprintStorage = createNodeBlueprintStorageConnectionFactory();
   const root = await createComposedNodeRuntime(
     profile.blueprint,
     runtime,
@@ -64,6 +66,7 @@ export async function createNodeHost(options: NodeHostOptions = {}): Promise<Nod
     registry,
     externalContext,
     externalContext,
+    blueprintStorage,
   );
   const face = root.controlface;
   const sse = new SseTransportServer(face, { path: "/gik" });
@@ -129,10 +132,19 @@ async function createComposedNodeRuntime(
   registry: BlueprintHostRegistry,
   externalContext: Record<string, Json>,
   initialSeed: Record<string, Json> = {},
+  blueprintStorage: BlueprintStorageConnectionFactory =
+    createNodeBlueprintStorageConnectionFactory(),
 ): Promise<ComposedNodeRuntime> {
   const state = createRuntimeState(runtime, externalContext, initialSeed);
-  const nativeServices = resolveSampleNativeServices(blueprintId);
-  const serviceHost = createNodeBlueprintServiceHost(runtime, state, environment, nativeServices, registry);
+  const serviceHost = createNodeBlueprintServiceHost(
+    runtime,
+    state,
+    environment,
+    {},
+    registry,
+    blueprintStorage,
+    instanceId,
+  );
   const native = resolveSampleNativeEffects(blueprintId);
   const fallback = createEffectDispatcher(state, native?.default ?? {});
   const serviceOrchestrator = nodeServiceOrchestrator(runtime, serviceHost, state);
@@ -161,6 +173,7 @@ async function createComposedNodeRuntime(
           registry,
           hosted.inputs,
           hosted.inputs,
+          blueprintStorage,
         );
         child.controlface.subscribeOutputs((outputs) => {
           if (Object.keys(outputs).length === 0) return;

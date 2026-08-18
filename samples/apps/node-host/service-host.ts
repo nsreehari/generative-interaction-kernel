@@ -15,7 +15,11 @@ import type { HostConfig } from "../../config/host-config";
 import { createSampleServiceRegistryOptions } from "../../service-kinds/registry-options";
 import { createBlueprintServiceResolver } from "../shared/blueprint-service-resolver";
 import { createSampleCatalogBlueprintRegistry } from "../../catalog/blueprint-catalog";
-import { resolveSampleNativeServices } from "./native-services";
+import {
+  bindBlueprintStorage,
+  type BlueprintStorageConnectionFactory,
+} from "../shared/blueprint-storage";
+import { createNodeBlueprintStorageConnectionFactory } from "./blueprint-storage";
 
 export function createNodeHostConfig(
   environment: Readonly<Record<string, string | undefined>>,
@@ -46,20 +50,30 @@ export function createNodeBlueprintServiceHost(
   environment: Readonly<Record<string, string | undefined>>,
   overrides: Pick<SampleServiceRegistryOptions, "deterministicHandlers" | "durableStorageConnections"> = {},
   blueprintRegistry: BlueprintHostRegistry = createSampleCatalogBlueprintRegistry(),
+  blueprintStorage: BlueprintStorageConnectionFactory =
+    createNodeBlueprintStorageConnectionFactory(),
+  instanceId = runtime.blueprintId,
 ): ServiceHost {
   const manifest = unwrap(runtime.vocabulary);
   const declarations = (manifest.externals?.services ?? {}) as Record<string, ServiceDeclaration>;
   const registryOptions = createNodeServiceRegistryOptions(environment, overrides);
+  const rootOptions = bindBlueprintStorage(
+    registryOptions,
+    blueprintStorage,
+    { blueprintId: runtime.blueprintId, instanceId },
+  );
   return new DefaultServiceHost({
     blueprintId: runtime.blueprintId,
     blueprintRevision: runtime.revision,
     declarations,
-    registry: createSampleServiceKindRegistry(registryOptions),
+    registry: createSampleServiceKindRegistry(rootOptions),
     blueprintServices: createBlueprintServiceResolver({
       registry: blueprintRegistry,
-      createNativeRegistry: (blueprintId) => createSampleServiceKindRegistry(createNodeServiceRegistryOptions(
-        environment,
-        { ...registryOptions, ...resolveSampleNativeServices(blueprintId) },
+      instanceId,
+      createServiceRegistry: (context) => createSampleServiceKindRegistry(bindBlueprintStorage(
+        registryOptions,
+        blueprintStorage,
+        context,
       )),
     }),
     state,

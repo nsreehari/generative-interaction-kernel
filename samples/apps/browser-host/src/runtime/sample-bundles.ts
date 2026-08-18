@@ -14,14 +14,16 @@ import {
   resolveSampleLaunchExternalContext,
 } from "../../../../catalog/blueprint-catalog";
 import { resolveBrowserSampleNativeEffects } from "./native-effects";
-import { resolveSampleNativeServices } from "./native-services";
 import { resolveProjectionViews } from "./provider-registry";
 import { browserServiceRegistryOptions, declarativeServiceOrchestrator } from "./service-host";
 import type { BlueprintProposalStore } from "@gik/blueprint-agent-host";
 import type { UseProposal } from "./blueprint-agent-lifecycle";
+import type { BlueprintStorageConnectionFactory } from "../../../shared/blueprint-storage";
 
 export interface ResolveBlueprintNativeOptions {
   proposalStore?: BlueprintProposalStore<UseProposal>;
+  instanceId?: string;
+  blueprintStorage?: BlueprintStorageConnectionFactory;
 }
 
 export function resolveBlueprintNative(id: string, options: ResolveBlueprintNativeOptions = {}): BundleNative {
@@ -50,15 +52,13 @@ function resolveBlueprintNativeFromRuntime(
   const nativeId = catalog.nativeFrom[id] ?? id;
   const projectionId = catalog.projectionFrom[id] ?? nativeId;
   const effectModule = resolveBrowserSampleNativeEffects(id);
-  const nativeServices = resolveSampleNativeServices(id);
   const serviceOrchestrator = declarativeServiceOrchestrator(
     runtime,
-    {
-      ...browserServiceRegistryOptions,
-      ...nativeServices,
-    },
+    browserServiceRegistryOptions,
     options.proposalStore,
     { dependencyFailurePolicy: "throw" },
+    options.instanceId ?? id,
+    options.blueprintStorage,
   );
   return {
     effectHandlers: effectModule?.default,

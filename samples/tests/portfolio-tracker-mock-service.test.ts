@@ -35,7 +35,8 @@ function createHost(): DefaultServiceHost {
     registry: new ServiceKindRegistry(),
     blueprintServices: createBlueprintServiceResolver({
       registry: createSampleCatalogBlueprintRegistry(),
-      createNativeRegistry: () => new ServiceKindRegistry(),
+      instanceId: "portfolio-tracker-mock:test",
+      createServiceRegistry: () => new ServiceKindRegistry(),
     }),
     state: new InMemoryStateModel([]),
     expression: new JsonataExpressionProvider({ safe: true }),

@@ -26,6 +26,8 @@ describe("sample Blueprint catalog", () => {
     expect(loaded?.launchProfiles.every((profile) => profile.requiredCapabilities === undefined)).toBe(true);
     expect(loaded?.entries["incident-analysis-new-shell"].payload.id).toBe("incident-analysis-new-shell");
     expect(loaded?.demoScenarios["portfolio-tracker-new"]).toEqual(bundle.demoScenarios["portfolio-tracker-new"]);
+    expect(loaded?.bootstrapAssets["incident-analysis-assets"])
+      .toEqual(bundle.bootstrapAssets["incident-analysis-assets"]);
     await store.close();
   });
 

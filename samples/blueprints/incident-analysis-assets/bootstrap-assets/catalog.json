@@ -1,6 +1,6 @@
 {
-  "format": "gik-storage-seed/1",
-  "namespace": "samples:incident-analysis:runtime-cache",
+  "format": "gik-blueprint-bootstrap-assets/1",
+  "legacyStorageNamespaces": ["samples:incident-analysis:runtime-cache"],
   "records": [
     {
       "key": "index:sources",
