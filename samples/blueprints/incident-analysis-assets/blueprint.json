@@ -247,7 +247,7 @@
             "settlement": { "transform": { "kind": "jsonata", "expr": "{'outcome':'completed'}" } }
           }
         },
-        "config": { "connection": "incident-assets-store" },
+        "config": { "connection": "blueprint-state" },
         "scope": "per-blueprint"
       }
     },

@@ -14,10 +14,12 @@ import {
   hostConfig,
   type HostConfig,
 } from "../config/host-config";
+import type { BlueprintBootstrapAssets } from "./blueprint-bootstrap-assets";
 
 export const sampleBlueprintCatalogUrl = "bootstrap/sample-blueprints.bundle.json";
 const artifactKind = "blueprint-seed-artifact";
 const demoScenariosKind = "blueprint-seed-demo-scenarios";
+const bootstrapAssetsKind = "blueprint-seed-bootstrap-assets";
 const metadataKind = "blueprint-seed-metadata";
 const userArtifactKind = "blueprint-user-artifact";
 const userNamespace = "gik-user-blueprints";
@@ -41,6 +43,7 @@ export interface BlueprintCatalogBundle {
   projectionFrom: Record<string, string>;
   entries: Record<string, BlueprintArtifact>;
   demoScenarios: Record<string, DemoRunnerDocument>;
+  bootstrapAssets: Record<string, BlueprintBootstrapAssets>;
 }
 
 export interface BlueprintCatalogSnapshot {
@@ -55,6 +58,7 @@ export interface BlueprintCatalogSnapshot {
   readonly seedEntries: Readonly<Record<string, BlueprintArtifact>>;
   readonly entries: Readonly<Record<string, BlueprintArtifact>>;
   readonly demoScenarios: Readonly<Record<string, DemoRunnerDocument>>;
+  readonly bootstrapAssets: Readonly<Record<string, BlueprintBootstrapAssets>>;
 }
 
 export interface BlueprintCatalogStore {
@@ -83,6 +87,7 @@ export function resolveSampleLaunchExternalContext(id: string): ExternalContext 
   if (id === "incident-analysis-new-shell") {
     return { model: "semantic", "source-report": "password-spray-mailbox" };
   }
+
   if (id === "portfolio-tracker-new") {
     return {
       ai: "foundry",
@@ -92,6 +97,12 @@ export function resolveSampleLaunchExternalContext(id: string): ExternalContext 
     };
   }
   return undefined;
+}
+
+export function resolveSampleBlueprintBootstrapAssets(
+  id: string,
+): BlueprintBootstrapAssets | undefined {
+  return getSampleBlueprintCatalog().bootstrapAssets[id];
 }
 
 export function hasSampleBlueprint(id: string): boolean {
@@ -178,6 +189,7 @@ export function parseBlueprintCatalogBundle(value: unknown): BlueprintCatalogBun
     throw new Error("The default Blueprint must have a launch profile.");
   }
   const demoScenarios = demoScenarioRecord(value.demoScenarios, entries);
+  const bootstrapAssets = bootstrapAssetsRecord(value.bootstrapAssets, entries);
   return {
     format: "gik-blueprint-catalog/1",
     bundleId: value.bundleId,
@@ -190,6 +202,7 @@ export function parseBlueprintCatalogBundle(value: unknown): BlueprintCatalogBun
     projectionFrom: stringRecord(value.projectionFrom),
     entries,
     demoScenarios,
+    bootstrapAssets,
   };
 }
 
@@ -211,6 +224,7 @@ export function createBlueprintCatalogSnapshot(bundle: BlueprintCatalogBundle): 
     seedEntries: Object.freeze({ ...bundle.entries }),
     entries: Object.freeze({ ...bundle.entries }),
     demoScenarios: Object.freeze({ ...bundle.demoScenarios }),
+    bootstrapAssets: Object.freeze({ ...bundle.bootstrapAssets }),
   };
 }
 
@@ -235,6 +249,7 @@ export async function verifyBlueprintCatalogBundle(bundle: BlueprintCatalogBundl
     projectionFrom: bundle.projectionFrom,
     entries: bundle.entries,
     demoScenarios: bundle.demoScenarios,
+    bootstrapAssets: bundle.bootstrapAssets,
   };
   const bytes = new TextEncoder().encode(JSON.stringify(catalog));
   const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)))
@@ -291,6 +306,23 @@ export function createIndexedDbBlueprintCatalogStore(options: {
         for (const record of existingDemoScenarios) {
           if (!admittedDemoScenarioIds.has(record.id)) await library.request(store.delete(record.id));
         }
+        const existingBootstrapAssets = await library.records(store, bootstrapAssetsKind, bundle.bundleId);
+        const admittedBootstrapAssetIds = new Set<string>();
+        for (const [id, assets] of Object.entries(bundle.bootstrapAssets)) {
+          const recordId = library.id(bootstrapAssetsKind, bundle.bundleId, id);
+          admittedBootstrapAssetIds.add(recordId);
+          await library.request(store.put({
+            id: recordId,
+            namespace: bundle.bundleId,
+            kind: bootstrapAssetsKind,
+            key: id,
+            blueprintId: id,
+            assets,
+          }));
+        }
+        for (const record of existingBootstrapAssets) {
+          if (!admittedBootstrapAssetIds.has(record.id)) await library.request(store.delete(record.id));
+        }
         await library.request(store.put({
           id: library.id(metadataKind, bundle.bundleId, "active"),
           namespace: bundle.bundleId,
@@ -324,6 +356,11 @@ export function createIndexedDbBlueprintCatalogStore(options: {
           String(record.blueprintId),
           record.document,
         ])) as Record<string, DemoRunnerDocument>;
+        const bootstrapAssetRecords = await library.records(store, bootstrapAssetsKind, bundleId);
+        const bootstrapAssets = Object.fromEntries(bootstrapAssetRecords.map((record) => [
+          String(record.blueprintId),
+          record.assets,
+        ])) as Record<string, BlueprintBootstrapAssets>;
         return createBlueprintCatalogSnapshot({
           format: "gik-blueprint-catalog/1",
           bundleId,
@@ -336,6 +373,7 @@ export function createIndexedDbBlueprintCatalogStore(options: {
           projectionFrom: stringRecord(metadata.projectionFrom),
           entries,
           demoScenarios,
+          bootstrapAssets,
         });
       });
     },
@@ -468,6 +506,45 @@ function demoScenarioRecord(
       throw new Error(`Demo scenarios for Blueprint '${id}' are invalid.`);
     }
     return [id, structuredClone(document) as unknown as DemoRunnerDocument];
+  }));
+}
+
+function bootstrapAssetsRecord(
+  value: unknown,
+  entries: Record<string, BlueprintArtifact>,
+): Record<string, BlueprintBootstrapAssets> {
+  if (value === undefined) return {};
+  if (!isRecord(value)) throw new Error("Blueprint catalog bootstrap assets must be an object.");
+  return Object.fromEntries(Object.entries(value).map(([id, rawAssets]) => {
+    if (!entries[id]) throw new Error(`Bootstrap assets reference unknown Blueprint '${id}'.`);
+    if (!isRecord(rawAssets)
+      || rawAssets.format !== "gik-blueprint-bootstrap-assets/1"
+      || !Array.isArray(rawAssets.records)
+      || (rawAssets.legacyStorageNamespaces !== undefined
+        && (!Array.isArray(rawAssets.legacyStorageNamespaces)
+          || rawAssets.legacyStorageNamespaces.some((namespace) =>
+            typeof namespace !== "string" || namespace.length === 0)))) {
+      throw new Error(`Bootstrap assets for Blueprint '${id}' are invalid.`);
+    }
+    const records = rawAssets.records.map((rawRecord) => {
+      if (!isRecord(rawRecord)
+        || typeof rawRecord.key !== "string"
+        || rawRecord.key.length === 0
+        || !Object.prototype.hasOwnProperty.call(rawRecord, "value")) {
+        throw new Error(`Bootstrap assets for Blueprint '${id}' contain an invalid record.`);
+      }
+      return { key: rawRecord.key, value: structuredClone(rawRecord.value) };
+    });
+    if (new Set(records.map((record) => record.key)).size !== records.length) {
+      throw new Error(`Bootstrap assets for Blueprint '${id}' contain duplicate keys.`);
+    }
+    return [id, {
+      format: "gik-blueprint-bootstrap-assets/1",
+      ...(rawAssets.legacyStorageNamespaces === undefined
+        ? {}
+        : { legacyStorageNamespaces: [...new Set(rawAssets.legacyStorageNamespaces as string[])] }),
+      records,
+    } as BlueprintBootstrapAssets];
   }));
 }
 

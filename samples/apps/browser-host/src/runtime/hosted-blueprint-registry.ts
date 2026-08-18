@@ -5,12 +5,14 @@ import type { UseProposal } from "./blueprint-agent-lifecycle";
 import { applyHostConfig } from "../../../../config/host-config";
 import { resolveBlueprintNative } from "./sample-bundles";
 import { getSampleBlueprintCatalog, sampleBlueprints } from "../../../../catalog/blueprint-catalog";
+import type { BlueprintStorageConnectionFactory } from "../../../shared/blueprint-storage";
 
 export interface SampleBlueprintHostRegistryOptions {
   createProposalStore?: (
     blueprintId: string,
     context: HostedBlueprintResolutionContext,
   ) => BlueprintProposalStore<UseProposal>;
+  blueprintStorage?: BlueprintStorageConnectionFactory;
 }
 
 export function createSampleBlueprintHostRegistry(
@@ -42,7 +44,13 @@ export function createSampleBlueprintHostRegistry(
         },
         blueprint,
         ...(repositoryBlueprint
-          ? { native: resolveBlueprintNative(reference.id, { proposalStore }) }
+          ? {
+              native: resolveBlueprintNative(reference.id, {
+                proposalStore,
+                blueprintStorage: options.blueprintStorage,
+                instanceId: `${context.parentInstanceId}/cells/${context.cellId}`,
+              }),
+            }
           : {}),
       };
     },

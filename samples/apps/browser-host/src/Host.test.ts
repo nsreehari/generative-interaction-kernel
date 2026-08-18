@@ -21,6 +21,7 @@ import type { BlueprintProposalReceipt } from "@gik/blueprint-agent-host";
 import type { UseProposal } from "./runtime/blueprint-agent-lifecycle";
 import { Host, createSampleBlueprintProposalStore } from "./Host";
 import { getSampleBlueprintCatalog } from "../../../catalog/blueprint-catalog";
+import { createBrowserBlueprintStorageConnectionFactory } from "./runtime/blueprint-storage";
 
 const receipt = (id: string): BlueprintProposalReceipt<UseProposal> => ({
   id,
@@ -43,6 +44,7 @@ test("sample host selects isolated memory or persistent IndexedDB proposal store
     durableEnabled: false,
     blueprintId: "incident-analysis-new-shell",
   });
+
   await memory.create(receipt("memory"));
   const freshMemory = createSampleBlueprintProposalStore({
     durableEnabled: false,
@@ -63,6 +65,36 @@ test("sample host selects isolated memory or persistent IndexedDB proposal store
     databaseName,
   });
   assert.deepEqual(await reopened.get("durable"), receipt("durable"));
+});
+
+test("sample host bootstraps isolated memory or persistent IndexedDB Blueprint storage", async () => {
+  const instanceId = `incident-assets:${crypto.randomUUID()}`;
+  const identity = { blueprintId: "incident-analysis-assets", instanceId };
+  const request = {
+    capability: "kv" as const,
+    operation: "write" as const,
+    args: ["asset:test", { persisted: true }],
+  };
+
+  const memory = createBrowserBlueprintStorageConnectionFactory(false)(identity);
+  await memory.api.dispatch({ ...request, ref: memory.ref });
+  const freshMemory = createBrowserBlueprintStorageConnectionFactory(false)(identity);
+  assert.equal(await freshMemory.api.dispatch({
+    ref: freshMemory.ref,
+    capability: "kv",
+    operation: "read",
+    args: ["asset:test"],
+  }), null);
+
+  const durable = createBrowserBlueprintStorageConnectionFactory(true)(identity);
+  await durable.api.dispatch({ ...request, ref: durable.ref });
+  const reopened = createBrowserBlueprintStorageConnectionFactory(true)(identity);
+  assert.deepEqual(await reopened.api.dispatch({
+    ref: reopened.ref,
+    capability: "kv",
+    operation: "read",
+    args: ["asset:test"],
+  }), { persisted: true });
 });
 
 test("samples without demo scenarios do not receive them", () => {

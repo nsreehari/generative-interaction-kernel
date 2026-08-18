@@ -96,7 +96,8 @@ describe("Blueprint-backed services", () => {
     };
     const blueprintServices = createBlueprintServiceResolver({
       registry,
-      createNativeRegistry: () => createSampleServiceKindRegistry({
+      instanceId: "consumer:test",
+      createServiceRegistry: () => createSampleServiceKindRegistry({
         durableStorageConnections: {
           "incident-assets": {
             api: storageApi,
@@ -142,7 +143,7 @@ describe("Blueprint-backed services", () => {
     state.apply(Object.entries(runtime.state).map(([path, value]) => ({ op: "set" as const, path, value })));
     const host = createBlueprintServiceHost(runtime, state, {
       durableStorageConnections: {
-        "incident-assets-store": { api, ref },
+        "blueprint-state": { api, ref },
       },
     });
 

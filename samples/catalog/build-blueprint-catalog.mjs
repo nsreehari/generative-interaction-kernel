@@ -10,6 +10,7 @@ const outputPath = resolve(samplesDirectory, "catalog/bootstrap/sample-blueprint
 const registry = JSON.parse(await readFile(registryPath, "utf8"));
 const entries = {};
 const demoScenarios = {};
+const bootstrapAssets = {};
 const blueprintDirectory = resolve(samplesDirectory, "blueprints");
 const artifactIds = (await readdir(blueprintDirectory, { withFileTypes: true }))
   .filter((entry) => entry.isDirectory() && entry.name !== "half-baked")
@@ -34,6 +35,20 @@ for (const id of artifactIds) {
   } catch (error) {
     if (error?.code !== "ENOENT") throw error;
   }
+  for (const relativePath of [
+    `blueprints/${id}/bootstrap-assets.json`,
+    `blueprints/${id}/bootstrap-assets/catalog.json`,
+  ]) {
+    try {
+      const document = JSON.parse(await readFile(resolve(samplesDirectory, relativePath), "utf8"));
+      if (bootstrapAssets[id]) {
+        throw new Error(`Blueprint '${id}' defines more than one bootstrap-assets catalog.`);
+      }
+      bootstrapAssets[id] = document;
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+  }
 }
 
 const catalog = {
@@ -46,6 +61,7 @@ const catalog = {
   projectionFrom: registry.projectionFrom ?? {},
   entries,
   demoScenarios,
+  bootstrapAssets,
 };
 const digest = createHash("sha256").update(JSON.stringify(catalog)).digest("hex");
 const bundle = { ...catalog, bundleVersion: digest.slice(0, 16), digest: `sha256:${digest}` };

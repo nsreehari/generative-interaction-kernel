@@ -5,17 +5,17 @@ import { describe, expect, it } from "vitest";
 
 import { createSampleCatalogBlueprintRegistry } from "../catalog/blueprint-catalog";
 import {
-  createSeededStorageConnection,
-  storageSeedValue,
-  storageSeedValues,
-  type StorageSeedCatalog,
-} from "../catalog/storage-seed";
+  bootstrapAssetValue,
+  bootstrapAssetValues,
+  createBootstrapStorageConnection,
+  type BlueprintBootstrapAssets,
+} from "../catalog/blueprint-bootstrap-assets";
 import { createBlueprintServiceResolver } from "../apps/shared/blueprint-service-resolver";
 import { createSampleServiceKindRegistry } from "../service-kinds";
-import incidentAssetSeed from "../blueprints/incident-analysis-assets/seed-data/catalog.json" with { type: "json" };
+import incidentAssetSeed from "../blueprints/incident-analysis-assets/bootstrap-assets/catalog.json" with { type: "json" };
 
-const seed = incidentAssetSeed as StorageSeedCatalog;
-const incidentSourceDocuments = storageSeedValues<{
+const seed = incidentAssetSeed as BlueprintBootstrapAssets;
+const incidentSourceDocuments = bootstrapAssetValues<{
   id: string;
   label: string;
   content: string;
@@ -32,12 +32,12 @@ const operationNames = [
 ] as const;
 
 function createHost() {
-  const connection = createSeededStorageConnection(
+  const connection = createBootstrapStorageConnection(
     createMemoryStorageApi(),
-    createMemoryStorageRef(`${seed.namespace}:${crypto.randomUUID()}`),
+    createMemoryStorageRef(`incident-assets-test:${crypto.randomUUID()}`),
     seed,
   );
-  const nativeOptions = { durableStorageConnections: { "incident-assets-store": connection } };
+  const serviceOptions = { durableStorageConnections: { "blueprint-state": connection } };
   const declarations: Record<string, ServiceDeclaration> = {
     assets: {
       blueprint: { $ref: "blueprint:incident-analysis-assets@1.0.0" },
@@ -61,7 +61,8 @@ function createHost() {
     registry: new ServiceKindRegistry(),
     blueprintServices: createBlueprintServiceResolver({
       registry: createSampleCatalogBlueprintRegistry(),
-      createNativeRegistry: () => createSampleServiceKindRegistry(nativeOptions),
+      instanceId: "incident-consumer:test",
+      createServiceRegistry: () => createSampleServiceKindRegistry(serviceOptions),
     }),
     state: new InMemoryStateModel([]),
     expression: new JsonataExpressionProvider({ safe: true }),
@@ -104,7 +105,7 @@ describe("incident asset Blueprint service", () => {
     expect(await invoke(host, "get-asset", {
       source_report_key: "password-spray-mailbox",
       analysis_key: "semantic",
-    })).toEqual(storageSeedValue(seed, "seed-asset:password-spray-mailbox/semantic"));
+    })).toEqual(bootstrapAssetValue(seed, "seed-asset:password-spray-mailbox/semantic"));
   });
 
   it("writes, prefers, deletes, and clears runtime-authored assets", async () => {

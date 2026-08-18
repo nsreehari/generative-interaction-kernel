@@ -10,6 +10,7 @@ import {
   DefaultServiceHost,
   openBlueprint,
   type BlueprintRuntime,
+  type BlueprintServiceIdentity,
   type BlueprintServiceResolver,
   type ServiceAdapter,
   type ServiceKindRegistry,
@@ -25,7 +26,15 @@ import {
 
 export interface BlueprintServiceResolverOptions {
   registry: BlueprintHostRegistry;
-  createNativeRegistry(blueprintId: string): ServiceKindRegistry;
+  instanceId: string;
+  createServiceRegistry(context: BlueprintServiceRegistryContext): ServiceKindRegistry;
+}
+
+export interface BlueprintServiceRegistryContext {
+  blueprintId: string;
+  blueprintRevision: string;
+  instanceId: string;
+  owner: BlueprintServiceIdentity;
 }
 
 export function createBlueprintServiceResolver(
@@ -80,7 +89,12 @@ async function createAdapter(
     blueprintId: runtime.blueprintId,
     blueprintRevision: runtime.revision,
     declarations: services ?? {},
-    registry: options.createNativeRegistry(runtime.blueprintId),
+    registry: options.createServiceRegistry({
+      blueprintId: runtime.blueprintId,
+      blueprintRevision: runtime.revision,
+      instanceId: serviceBlueprintInstanceId(options.instanceId, identity, runtime),
+      owner: identity,
+    }),
     blueprintServices: resolver,
     state,
     expression: new JsonataExpressionProvider({ safe: true }),
@@ -130,6 +144,18 @@ async function createAdapter(
       return { output: readPath(controlface.getState(), output.from) };
     },
   };
+}
+
+function serviceBlueprintInstanceId(
+  rootInstanceId: string,
+  owner: BlueprintServiceIdentity,
+  runtime: BlueprintRuntime,
+): string {
+  return [
+    rootInstanceId,
+    `${owner.blueprintId}@${owner.blueprintRevision}`,
+    `${runtime.blueprintId}@${runtime.revision}`,
+  ].join("/services/");
 }
 
 async function resolveArtifact(

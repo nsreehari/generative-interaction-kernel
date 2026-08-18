@@ -33,6 +33,7 @@ import {
 } from "../../../catalog/blueprint-catalog";
 import { createSampleBlueprintHostRegistry } from "./runtime/hosted-blueprint-registry";
 import { HostServiceDependencyAccess } from "./runtime/service-dependency-access";
+import { createBrowserBlueprintStorageConnectionFactory } from "./runtime/blueprint-storage";
 
 const embeddedHostStyle: React.CSSProperties = { height: "100vh" };
 
@@ -178,6 +179,10 @@ function HostView({
   resolveLeavesProvider: (from: string) => ReturnType<typeof resolveProjectionViews>;
 }): React.ReactElement {
   const id = targetId;
+  const blueprintStorage = React.useMemo(
+    () => createBrowserBlueprintStorageConnectionFactory(durableEnabled),
+    [durableEnabled],
+  );
   const proposalStore = React.useMemo(
     () => createSampleBlueprintProposalStore({ durableEnabled, blueprintId: id }),
     [durableEnabled, id],
@@ -189,13 +194,18 @@ function HostView({
         blueprintId,
         instanceId: `${childContext.parentInstanceId}/cells/${childContext.cellId}`,
       }),
+      blueprintStorage,
     }),
-    [durableEnabled],
+    [blueprintStorage, durableEnabled],
   );
   const { blueprint, native } = React.useMemo(() => ({
     blueprint: resolveSampleBlueprintSource(id),
-    native: resolveBlueprintNative(id, { proposalStore }),
-  }), [id, proposalStore]);
+    native: resolveBlueprintNative(id, {
+      proposalStore,
+      blueprintStorage,
+      instanceId: `${id}:default`,
+    }),
+  }), [blueprintStorage, id, proposalStore]);
   const context = React.useMemo(
     () => resolveBlueprintInitialContext(id, externalContext),
     [externalContext, id],
@@ -211,7 +221,11 @@ function HostView({
         native={native}
         context={context}
         resolveNative={(materializedBlueprint) =>
-          resolveBlueprintNativeFromMaterialized(id, materializedBlueprint, { proposalStore })}
+          resolveBlueprintNativeFromMaterialized(id, materializedBlueprint, {
+            proposalStore,
+            blueprintStorage,
+            instanceId: `${id}:default`,
+          })}
         scenariosJson={demoRunnerDocument}
         resolveLeavesProvider={resolveLeavesProvider}
         blueprintRegistry={hostedBlueprintRegistry}

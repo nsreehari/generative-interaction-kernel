@@ -27,8 +27,12 @@ import { createBlueprintAgentLifecycle, type UseProposal } from "./blueprint-age
 import type { BlueprintProposalStore } from "@gik/blueprint-agent-host";
 import { createBlueprintServiceResolver } from "../../../shared/blueprint-service-resolver";
 import { createSampleCatalogBlueprintRegistry } from "../../../../catalog/blueprint-catalog";
-import { resolveSampleNativeServices } from "./native-services";
 import { runWithBrowserServiceDependencies } from "./service-dependency-access";
+import {
+  bindBlueprintStorage,
+  type BlueprintStorageConnectionFactory,
+} from "../../../shared/blueprint-storage";
+import { createBrowserBlueprintStorageConnectionFactory } from "./blueprint-storage";
 
 export { createSampleServiceRegistryOptions } from "../../../../service-kinds/registry-options";
 
@@ -77,22 +81,32 @@ export function createBlueprintServiceHost(
   registryOptions: SampleServiceRegistryOptions = {},
   proposalStore?: BlueprintProposalStore<UseProposal>,
   hostPolicy: Pick<DefaultServiceHostOptions, "dependencyFailurePolicy"> = {},
+  instanceId = runtime.blueprintId,
+  blueprintStorage: BlueprintStorageConnectionFactory =
+    createBrowserBlueprintStorageConnectionFactory(false),
 ): DefaultServiceHost {
   const manifest = unwrap(runtime.vocabulary);
   const declarations = (manifest.externals?.services ?? {}) as Record<string, ServiceDeclaration>;
   const agentLifecycle = createBlueprintAgentLifecycle(runtime, state, { proposalStore });
   const mergedOptions = mergeRegistryOptions(registryOptions, state);
+  const rootOptions = bindBlueprintStorage(
+    mergedOptions,
+    blueprintStorage,
+    { blueprintId: runtime.blueprintId, instanceId },
+  );
   return new DefaultServiceHost({
     blueprintId: runtime.blueprintId,
     blueprintRevision: runtime.revision,
     declarations,
-    registry: createSampleServiceKindRegistry(mergedOptions),
+    registry: createSampleServiceKindRegistry(rootOptions),
     blueprintServices: createBlueprintServiceResolver({
       registry: createSampleCatalogBlueprintRegistry(),
-      createNativeRegistry: (blueprintId) => createSampleServiceKindRegistry(mergeRegistryOptions({
-        ...mergedOptions,
-        ...resolveSampleNativeServices(blueprintId),
-      }, state)),
+      instanceId,
+      createServiceRegistry: (context) => createSampleServiceKindRegistry(bindBlueprintStorage(
+        mergeRegistryOptions(mergedOptions, state),
+        blueprintStorage,
+        context,
+      )),
     }),
     state,
     expression: new JsonataExpressionProvider({ safe: true }),
@@ -115,6 +129,9 @@ export function declarativeServiceOrchestrator(
   registryOptions: SampleServiceRegistryOptions = {},
   proposalStore?: BlueprintProposalStore<UseProposal>,
   hostPolicy: Pick<DefaultServiceHostOptions, "dependencyFailurePolicy"> = {},
+  instanceId = runtime.blueprintId,
+  blueprintStorage: BlueprintStorageConnectionFactory =
+    createBrowserBlueprintStorageConnectionFactory(false),
 ): NonNullable<LoadBundleOptions["wrapOrchestrator"]> {
   return (fallback, state) => {
     const host = createBlueprintServiceHost(
@@ -123,6 +140,8 @@ export function declarativeServiceOrchestrator(
       registryOptions,
       proposalStore,
       hostPolicy,
+      instanceId,
+      blueprintStorage,
     );
     const declarations = (unwrap(runtime.vocabulary).externals?.services ?? {}) as Record<string, ServiceDeclaration>;
     const serviceInvokes = new Set(Object.values(declarations).flatMap((declaration) => Object.keys(declaration.operations)));
