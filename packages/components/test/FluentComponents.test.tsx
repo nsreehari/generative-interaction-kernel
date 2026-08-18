@@ -175,6 +175,41 @@ test("FluentToolbar exposes native command composition", () => {
   assert.equal(fluentToolbarDefinition.validate({ ariaLabel: "Source controls", direction: "row" }).ok, false);
 });
 
+test("FluentTabBar composes ordered panes and renders the active content", () => {
+  const trial = fluentTabBarDefinition.materializeTrial();
+  const Component = fluentTabBarDefinition.component;
+  const node = {
+    ...trial,
+    props: {
+      active: "form",
+      ariaLabel: "Blueprint views",
+      tabs: [
+        { value: "overview", headerLabel: "Overview" },
+        { value: "form", headerLabel: "Form" },
+      ],
+    },
+  };
+  const markup = renderToStaticMarkup(
+    <Component
+      node={node}
+      emit={() => undefined}
+      children={undefined}
+      slots={{
+        panes: [
+          <p key="overview">Overview pane</p>,
+          <p key="form">Form pane</p>,
+        ],
+      }}
+    />,
+  );
+
+  assert.match(markup, /Form pane/);
+  assert.doesNotMatch(markup, /Overview pane/);
+  assert.match(markup, /role="tabpanel".*Form pane/);
+  assert.deepEqual(fluentTabBarDefinition.slots, ["panes"]);
+  assert.equal(fluentTabBarDefinition.validate(node.props).ok, true);
+});
+
 test("basic Fluent controls render their public trials", () => {
   const definitions = [
     [fluentTextFieldDefinition, /Name/],
