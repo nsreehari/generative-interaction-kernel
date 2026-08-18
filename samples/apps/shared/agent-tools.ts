@@ -3,7 +3,7 @@ import {
   agentFacingComponentCatalog,
   mergeAgentFacingCapabilityCatalogs,
   type AgentFacingCapabilityCatalog,
-} from "@gik/components";
+} from "@gik/components/agent-facing";
 
 export function createSampleAgentTools(
   extensions: readonly AgentFacingCapabilityCatalog[] = [],

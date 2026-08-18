@@ -51,6 +51,10 @@
     "./fluent": {
       "types": "./dist/fluent.d.ts",
       "import": "./dist/fluent.js"
+    },
+    "./agent-facing": {
+      "types": "./dist/agent-facing.d.ts",
+      "import": "./dist/agent-facing.js"
     }
   },
   "main": "./dist/index.js",
@@ -73,7 +77,8 @@
     "mermaid": "^11.16.0"
   },
   "scripts": {
-    "build": "tsup",
+    "generate:agent-facing": "vitest run --root ../.. packages/components/test/generate-agent-facing-catalog.test.tsx",
+    "build": "npm run generate:agent-facing && tsup",
     "prepack": "node ../../scripts/sync-package-license.mjs packages/components"
   }
 }

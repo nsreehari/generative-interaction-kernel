@@ -66,6 +66,19 @@ describe("Blueprint Studio read shell", () => {
         operation: "fetchBlueprint",
       }),
     ]);
+    expect(individual?.outputs).toEqual([
+      expect.objectContaining({
+        token: "selectedBlueprintRef",
+        from: "computed.studio.selectedBlueprintRef",
+      }),
+    ]);
+    expect(runtime.definition.payload.cells?.["blueprint-preview-content"]?.inputs).toEqual([
+      {
+        token: "selectedBlueprintRef",
+        as: "blueprintRef",
+        required: true,
+      },
+    ]);
     expect(tabView).toEqual(expect.objectContaining({
       capability: "fluent:tab-bar",
       props: expect.objectContaining({
@@ -132,6 +145,7 @@ describe("Blueprint Studio read shell", () => {
             "market-prices": "mock",
             view: "desktop",
           },
+          selectedBlueprintRef: "blueprint:portfolio-tracker-new@1.0.0",
         });
         const tree = await host.controlface.getTree();
         expect(findNode(tree, "individual-blueprint-tabs")).toMatchObject({
@@ -167,7 +181,7 @@ describe("Blueprint Studio read shell", () => {
         payload: {
           values: {
             "intelligence-model": "semantic",
-            "market-prices": "live",
+            "market-prices": "mock",
             view: "mobile",
           },
         },
@@ -175,7 +189,7 @@ describe("Blueprint Studio read shell", () => {
       expect(host.controlface.getState().studio).toMatchObject({
         previewExternalContext: {
           "intelligence-model": "semantic",
-          "market-prices": "live",
+          "market-prices": "mock",
           view: "mobile",
         },
       });
@@ -192,11 +206,14 @@ describe("Blueprint Studio read shell", () => {
         expect(children[0]?.getBlueprint()?.payload.id).toBe("portfolio-tracker-new");
         expect(children[0]?.getState().externalContext).toEqual({
           "intelligence-model": "semantic",
-          "market-prices": "live",
+          "market-prices": "mock",
           view: "mobile",
           ai: "foundry",
           semantic: "simple-markdown",
         });
+        expect(Object.keys(
+          (children[0]?.getState().portfolio as { stockQuotes: Record<string, unknown> }).stockQuotes,
+        ).sort()).toEqual(["AAPL", "MSFT"]);
       });
     } finally {
       await host.stop();

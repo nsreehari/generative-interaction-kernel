@@ -113,6 +113,64 @@ test("host returns operation output without service settlement for Cell sources"
   });
 });
 
+test("host resolves a Cell source against its declared service", async () => {
+  const registry = new ServiceKindRegistry();
+  registry.register({
+    manifest: {
+      id: "deterministic-agent",
+      version: "1",
+      configSchema: {
+        type: "object",
+        properties: { name: { type: "string" } },
+        required: ["name"],
+      },
+      executionModes: ["immediate"],
+      subjects: ["cell"],
+      supports: { probe: false, simulate: false, cancel: false },
+    },
+    create: (declaration) => {
+      const config = declaration.config;
+      if (!config || typeof config !== "object" || Array.isArray(config) || typeof config.name !== "string") {
+        throw new Error("Expected a named deterministic test service");
+      }
+      return {
+        provider: { id: "deterministic:test", version: "1" },
+        discover: async () => ({ provider: { id: "deterministic:test", version: "1" }, revision: "1", discoveredAt: "now", capabilities: [] }),
+        validate: async () => ({ ok: true }),
+        execute: async () => ({ output: { selected: config.name } }),
+      };
+    },
+  });
+  const operation = {
+    operation: "analyze",
+    contract: "portfolio-analysis/v1",
+    settlement: { transform: { kind: "jsonata" as const, expr: "response" } },
+  };
+  const host = new DefaultServiceHost({
+      blueprintId: "portfolio",
+      blueprintRevision: "1",
+      declarations: {
+        first: { kind: "deterministic-agent", version: "1", operations: { analyzePortfolio: operation }, config: { name: "first" } },
+        second: { kind: "deterministic-agent", version: "1", operations: { analyzePortfolio: operation }, config: { name: "second" } },
+      },
+      registry,
+      state: new InMemoryStateModel(["work"]),
+      expression: new JsonataExpressionProvider({ safe: true }),
+  });
+
+  assert.deepEqual(await host.invoke({
+  ...effect,
+  control: {
+    tool: "analyzePortfolio",
+    serviceRef: "second",
+    sourceId: "analysis.source",
+    sourceCellId: "analysis",
+  },
+  }), {
+  sourceOutput: { selected: "second" },
+  });
+});
+
 test("host settles service responses directly to graph output ports", async () => {
   const host = createHost(async (request) => ({ output: request.input }), {
     settlement: { transform: { kind: "jsonata", expr: "{'outputs':{'analysis_envelope':response}}" } },

@@ -25,12 +25,11 @@ export interface CapabilityDescribeCatalog {
 export const capabilityDescribeInputSchema: JsonSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["kind"],
+  required: ["kind", "capabilities"],
   properties: {
     kind: { type: "string", enum: ["catalog-capabilities", "capability"] },
     capabilities: {
       type: "array",
-      uniqueItems: true,
       items: { type: "string", minLength: 1 },
     },
   },
