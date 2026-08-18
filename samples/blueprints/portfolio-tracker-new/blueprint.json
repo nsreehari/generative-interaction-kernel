@@ -6,6 +6,54 @@
     "kind": "portfolio-blueprint",
     "version": "1.0.0",
     "structureMode": "fixed",
+    "contextFormSpec": {
+      "fields": {
+        "type": "object",
+        "properties": {
+          "intelligence-model": {
+            "type": "string",
+            "title": "Intelligence model",
+            "enum": ["simple", "mock", "semantic"],
+            "enumNames": ["Simple", "Mock", "Semantic"]
+          },
+          "market-prices": {
+            "type": "string",
+            "title": "Market prices",
+            "enum": ["mock", "live"],
+            "enumNames": ["Mock", "Live"]
+          },
+          "view": {
+            "type": "string",
+            "title": "View",
+            "enum": ["desktop", "mobile"],
+            "enumNames": ["Desktop", "Mobile"]
+          },
+          "ai": {
+            "type": "string",
+            "title": "AI provider",
+            "enum": ["foundry", "copilot"],
+            "enumNames": ["Foundry", "Copilot"]
+          },
+          "semantic": {
+            "type": "string",
+            "title": "Semantic presentation",
+            "enum": ["simple-markdown", "rich-components"],
+            "enumNames": ["Simple markdown", "Rich components"]
+          }
+        },
+        "required": ["intelligence-model", "market-prices", "view", "ai", "semantic"],
+        "additionalProperties": true
+      },
+      "initialValue": {
+        "intelligence-model": "simple",
+        "market-prices": "mock",
+        "view": "desktop",
+        "ai": "foundry",
+        "semantic": "simple-markdown"
+      },
+      "saveLabel": "Apply context",
+      "discardLabel": "Discard"
+    },
     "tiers": [
       { "id": "portfolio-logic", "kind": "portfolio-domain" },
       { "id": "portfolio-market", "kind": "portfolio-domain" },

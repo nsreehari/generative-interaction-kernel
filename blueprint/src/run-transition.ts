@@ -21,6 +21,8 @@ import {
 } from "@gik/kernel";
 import {
   evaluateCell,
+  resolveDeclarativeFormInitialValue,
+  validateDeclarativeFormValues,
   type CellSourceEffect,
   type EvaluatorCellDefinition,
 } from "@gik/evaluators";
@@ -222,9 +224,37 @@ export interface PrepareBlueprintProgramOptions {
 
 export interface PreparedBlueprintProgram {
   blueprint: BlueprintArtifact;
+  externalContext: Record<string, Json>;
   vocabulary: Enveloped<ProjectedVocabularyManifest>;
   program: Enveloped<ExecutableProgramDefinition>;
   initialState: Record<string, Json>;
+}
+
+export class BlueprintExternalContextValidationError extends Error {
+  constructor(
+    readonly blueprintId: string,
+    readonly errors: readonly { detail: string; code?: string; node?: string }[],
+  ) {
+    super(`Invalid external context for Blueprint '${blueprintId}': ${errors.map(({ detail }) => detail).join("; ")}`);
+    this.name = "BlueprintExternalContextValidationError";
+  }
+}
+
+export function resolveBlueprintExternalContext(
+  blueprint: BlueprintArtifact,
+  externalContext: ExternalContext = {},
+): Record<string, Json> {
+  const effective = resolveDeclarativeFormInitialValue(
+    blueprint.payload.contextFormSpec,
+    externalContext,
+  );
+  const fields = blueprint.payload.contextFormSpec?.fields;
+  if (!fields) return effective;
+  const report = validateDeclarativeFormValues(fields, effective);
+  if (!report.ok) {
+    throw new BlueprintExternalContextValidationError(blueprint.payload.id, report.errors);
+  }
+  return effective;
 }
 
 export interface BlueprintTransitionInput {
@@ -300,9 +330,10 @@ export function prepareBlueprintProgram(
   source: BlueprintArtifact,
   options: PrepareBlueprintProgramOptions = {},
 ): PreparedBlueprintProgram {
+  const externalContext = resolveBlueprintExternalContext(source, options.externalContext);
   const assembled = assembleBlueprint(source, options.resolveBlueprint);
   const blueprint = assembled.payload.recipes.length > 0
-    ? lowerWithFixedMetaGraph(assembled, options.externalContext)
+    ? lowerWithFixedMetaGraph(assembled, externalContext)
     : assembled;
   if (!blueprint.payload.cells) throw new Error(`Blueprint '${blueprint.payload.id}' has no executable Cells`);
   const runtime = blueprint.payload.runtime;
@@ -335,6 +366,7 @@ export function prepareBlueprintProgram(
   );
   return {
     blueprint,
+    externalContext,
     vocabulary: { gik: "0.1", type: "vocabulary", payload: vocabulary },
     program: { gik: "0.1", type: "program", payload: program },
     initialState: mergeJsonRecords(
@@ -370,7 +402,7 @@ export function materializeBlueprint({
     type: "materialized-blueprint",
     payload: {
       terminalBlueprint: structuredClone(prepared.blueprint),
-      externalContext: structuredClone(externalContext),
+      externalContext: structuredClone(prepared.externalContext),
       vocabulary: structuredClone(prepared.vocabulary),
       program: structuredClone(prepared.program),
       initialState: structuredClone(prepared.initialState),

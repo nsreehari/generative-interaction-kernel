@@ -1,5 +1,9 @@
 import React from "react";
 import {
+  resolveDeclarativeFormInitialValue,
+  type DeclarativeFormSpec,
+} from "@gik/evaluators";
+import {
   materializeBlueprint,
   parseBlueprintReference,
   type BlueprintArtifact,
@@ -30,7 +34,7 @@ import { GikToolingShell } from "./tooling-shell";
 const EMPTY_CONTEXTS: BundleContextBindings = {};
 
 export interface DemoRunnerDocument {
-  contextFormSpec: Record<string, Json>;
+  contextFormSpec?: DeclarativeFormSpec;
   namedPresetContexts: Record<string, { label: string; context: Record<string, Json> }>;
   scenarios: Array<{
     id: string;
@@ -153,7 +157,10 @@ function ActiveDemoHost({
   resolveNative,
   blueprintRegistry,
 }: GikDemoBlueprintHostProps & { scenariosJson: DemoRunnerDocument }): React.ReactElement {
-  const [externalContextState, setExternalContextState] = React.useState<ExternalContext>(() => structuredClone(externalContext ?? {}));
+  const contextFormSpec = scenariosJson.contextFormSpec ?? blueprint.payload.contextFormSpec;
+  const [externalContextState, setExternalContextState] = React.useState<ExternalContext>(
+    () => resolveDeclarativeFormInitialValue(contextFormSpec, externalContext),
+  );
   const [targetEpoch, setTargetEpoch] = React.useState(0);
   const targetRef = React.useRef<TargetSource | null>(null);
   const targetConnectionWaitersRef = React.useRef<Array<() => void>>([]);
@@ -285,7 +292,7 @@ function ActiveDemoHost({
       id,
       ...structuredClone(preset),
     })) as never;
-    json.state.runner.contextFormSpec = structuredClone(scenariosJson.contextFormSpec) as never;
+    json.state.runner.contextFormSpec = structuredClone(contextFormSpec ?? null) as never;
     json.state.runner.externalContext = structuredClone(externalContextState) as never;
     return bundleFromJson(json, {
       effectHandlers: createDemoRunnerEffectHandlersV1({ runTransition, getExpressionScope, waitUntil, setExternalContext }),

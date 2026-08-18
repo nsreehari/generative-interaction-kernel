@@ -8,6 +8,7 @@ import {
   HOSTED_BLUEPRINT_OUTPUT_EVENT,
   materializeBlueprint,
   parseBlueprintReference,
+  resolveBlueprintExternalContext,
   type BlueprintArtifact,
   type BlueprintHostRegistry,
 } from "@gik/blueprint";
@@ -164,9 +165,13 @@ async function createComposedNodeRuntime(
     registry,
     {
       async mount(hosted) {
-        const childRuntime = openNodeBlueprint(
+        const childExternalContext = resolveBlueprintExternalContext(
           hosted.definition.blueprint,
           hosted.externalContext ?? {},
+        );
+        const childRuntime = openNodeBlueprint(
+          hosted.definition.blueprint,
+          childExternalContext,
           environment,
         );
         const child = await createComposedNodeRuntime(
@@ -175,7 +180,7 @@ async function createComposedNodeRuntime(
           hosted.instanceId,
           environment,
           registry,
-          hosted.externalContext ?? {},
+          childExternalContext,
           hosted.inputs,
           blueprintStorage,
         );

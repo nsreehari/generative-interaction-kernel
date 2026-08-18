@@ -1,31 +1,4 @@
 {
-  "contextFormSpec": {
-    "fields": {
-      "properties": {
-        "intelligence-model": {
-          "type": "string",
-          "title": "Intelligence model",
-          "enum": ["simple", "mock", "semantic"],
-          "enumNames": ["Simple", "Mock", "Semantic"]
-        },
-        "market-prices": {
-          "type": "string",
-          "title": "Market prices",
-          "enum": ["mock", "live"],
-          "enumNames": ["Mock", "Live"]
-        },
-        "view": {
-          "type": "string",
-          "title": "View",
-          "enum": ["desktop", "mobile"],
-          "enumNames": ["Desktop", "Mobile"]
-        }
-      },
-      "required": ["intelligence-model", "market-prices", "view"]
-    },
-    "saveLabel": "Apply context",
-    "discardLabel": "Discard"
-  },
   "namedPresetContexts": {
     "simple-desktop": {
       "label": "Simple intelligence, desktop",

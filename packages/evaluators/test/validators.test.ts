@@ -1,7 +1,75 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { runDeclarativeValidators, validateLoweringRecipe, validateRecipe, validateTier } from "../src";
+import {
+  resolveDeclarativeFormInitialValue,
+  runDeclarativeValidators,
+  validateDeclarativeFormSpec,
+  validateDeclarativeFormValues,
+  validateLoweringRecipe,
+  validateRecipe,
+  validateTier,
+} from "../src";
+
+test("declarative form specs support typed fields, defaults, and validators", () => {
+  const spec = {
+    fields: {
+      type: "object" as const,
+      properties: {
+        name: { type: "string" as const, minLength: 2, default: "Ada" },
+        count: { type: "integer" as const, minimum: 1 },
+        enabled: { type: "boolean" as const },
+        tags: { type: "array" as const, items: { type: "string" as const, enum: ["a", "b"] } },
+        config: { type: "json" as const },
+      },
+      required: ["name", "count", "enabled", "tags", "config"],
+      validators: [{
+        kind: "jsonata" as const,
+        expr: "data.count <= 5",
+        message: "count too large",
+      }],
+    },
+    initialValue: {
+      count: 2,
+      enabled: true,
+      tags: ["a"],
+      config: { mode: "safe" },
+    },
+  };
+
+  assert.equal(validateDeclarativeFormSpec(spec).ok, true);
+  assert.deepEqual(resolveDeclarativeFormInitialValue(spec), {
+    name: "Ada",
+    count: 2,
+    enabled: true,
+    tags: ["a"],
+    config: { mode: "safe" },
+  });
+  assert.equal(validateDeclarativeFormValues(spec.fields, resolveDeclarativeFormInitialValue(spec)).ok, true);
+
+  const invalid = validateDeclarativeFormValues(spec.fields, {
+    name: "A",
+    count: 8,
+    enabled: true,
+    tags: ["c"],
+    config: {},
+  });
+  assert.equal(invalid.ok, false);
+  assert.ok(invalid.errors.some(({ detail }) => detail.includes("fewer than 2 characters")));
+  assert.ok(invalid.errors.some(({ detail }) => detail.includes("equal to one of the allowed values")));
+  assert.ok(invalid.errors.some(({ detail }) => detail.includes("count too large")));
+});
+
+test("declarative form specs reject malformed validators", () => {
+  const report = validateDeclarativeFormSpec({
+    fields: {
+      properties: { name: { type: "string" } },
+      validators: [{ kind: "jsonata" }],
+    },
+  });
+
+  assert.equal(report.ok, false);
+});
 
 test("runDeclarativeValidators accepts legacy jsonata forms and explicit special validators", () => {
   const report = runDeclarativeValidators([

@@ -11,7 +11,7 @@ import type {
   ServiceTransform,
   ServiceUse,
 } from "@gik/kernel";
-import type { SystemInputToken } from "@gik/evaluators";
+import type { DeclarativeFormSpec, SystemInputToken } from "@gik/evaluators";
 
 export interface TierDefinition {
   id: string;
@@ -273,6 +273,7 @@ export interface BlueprintDefinition<TRecipe extends LoweringRecipeDefinition = 
   tiers: TierDefinition[];
   recipes: TRecipe[];
   context?: Record<string, Json>;
+  contextFormSpec?: DeclarativeFormSpec;
   resources?: Record<string, BlueprintResource>;
   cells?: Record<string, CellDefinition>;
   relationships?: Record<string, RelationshipDefinition>;

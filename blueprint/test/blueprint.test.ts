@@ -654,6 +654,7 @@ describe("@gik/blueprint", () => {
       do: "invoke",
       control: {
         tool: "refreshPrices",
+        serviceRef: "market-data",
         sourceId: "quotes.source",
         sourceCellId: "quotes",
       },
@@ -1150,6 +1151,7 @@ describe("@gik/blueprint", () => {
       },
       projections: { presentation: { roots: ["root"] } },
     });
+
     const externalContext = { policy: { nextValue: 2 } };
     const first = materializeBlueprint({ blueprint: artifact, externalContext });
     const second = materializeBlueprint({ blueprint: artifact, externalContext });
@@ -1162,6 +1164,59 @@ describe("@gik/blueprint", () => {
       events: [{ node: "root", name: "increment" }],
     });
     expect(result.state).toEqual({ counter: { value: 2 }, ...runState({ root: [] }) });
+  });
+
+  it("applies Blueprint context defaults and rejects invalid external context", () => {
+    const artifact = createBlueprint({
+      id: "validated-context",
+      kind: "runtime-blueprint",
+      version: "1",
+      contextFormSpec: {
+        fields: {
+          type: "object",
+          properties: {
+            mode: { type: "string", enum: ["safe", "fast"] },
+            label: { type: "string", minLength: 2 },
+          },
+          required: ["mode", "label"],
+          additionalProperties: false,
+          validators: [{
+            kind: "jsonata",
+            expr: "data.mode != 'fast' or data.label = 'go'",
+            message: "fast mode requires the go label",
+          }],
+        },
+        initialValue: { mode: "safe", label: "ok" },
+      },
+      tiers: [{ id: "runtime", kind: "runtime-program" }],
+      recipes: [],
+      runtime: { namespaces: [], capabilities: {}, state: {} },
+      cells: {
+        root: { id: "root", view: { capability: "screen" } },
+      },
+      projections: { presentation: { roots: ["root"] } },
+    });
+
+    expect(materializeBlueprint({ blueprint: artifact }).payload.externalContext).toEqual({
+      mode: "safe",
+      label: "ok",
+    });
+    expect(materializeBlueprint({
+      blueprint: artifact,
+      externalContext: { mode: "fast", label: "go" },
+    }).payload.externalContext).toEqual({ mode: "fast", label: "go" });
+    expect(() => materializeBlueprint({
+      blueprint: artifact,
+      externalContext: { mode: "fast" },
+    })).toThrow("fast mode requires the go label");
+    expect(() => materializeBlueprint({
+      blueprint: artifact,
+      externalContext: { label: "x" },
+    })).toThrow("must NOT have fewer than 2 characters");
+
+    const malformed = structuredClone(artifact);
+    malformed.payload.contextFormSpec!.fields.validators = [{ kind: "jsonata" } as never];
+    expect(() => validateBlueprintArtifact(malformed)).toThrow("Invalid Blueprint artifact");
   });
 
 

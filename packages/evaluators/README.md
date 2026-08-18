@@ -14,6 +14,12 @@ inputs, or validate declarative values before they enter a GIK runtime.
 import { evaluateCell, runDeclarativeValidators } from "@gik/evaluators";
 ```
 
+The package also owns the shared declarative form contract used by
+`primitive:form` and Blueprint `contextFormSpec` declarations. Use
+`validateDeclarativeFormValues` to enforce the field schema and its
+declarative validators, and `resolveDeclarativeFormInitialValue` to combine
+field defaults, form defaults, and caller-provided values.
+
 ## Included schemas
 
 The package publishes its supported JSON schemas through

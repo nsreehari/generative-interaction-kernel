@@ -84,7 +84,7 @@
         "targetBlueprintId": { "$ref": "#/definitions/nonEmptyString" },
         "defaultContext": { "$ref": "#/definitions/nonEmptyString" },
         "requiredTimelineSources": { "$ref": "#/definitions/stringArray" },
-        "contextFormSpec": { "$ref": "https://gik.dev/schemas/ui-form.schema.json" }
+        "contextFormSpec": { "$ref": "https://gik.dev/schemas/ui-form.schema.json#/definitions/formSpec" }
       }
     },
     "catalog": {

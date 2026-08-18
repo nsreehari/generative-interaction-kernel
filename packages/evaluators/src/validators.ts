@@ -5,6 +5,7 @@ import cellSchema from "../schemas/cell.schema.json" with { type: "json" };
 import loweringRecipeSchema from "../schemas/lowering-recipe.schema.json" with { type: "json" };
 import programSchema from "../schemas/program.schema.json" with { type: "json" };
 import tierSchema from "../schemas/tier.schema.json" with { type: "json" };
+import uiFormSchema from "../schemas/ui-form.schema.json" with { type: "json" };
 import { validateCell } from "./cell";
 import { evalSyncJsonata, validateJsonataExpression, type JsonataExpressionValidationMode } from "./evaluators";
 
@@ -18,15 +19,15 @@ type DeclarativeTypeName =
   | "boolean"
   | "null";
 
-type DeclarativeValidatorLevel = "error" | "warning";
+export type DeclarativeValidatorLevel = "error" | "warning";
 
-type DeclarativeValidationIssue = {
+export type DeclarativeValidationIssue = {
   detail: string;
   code?: string;
   node?: string;
 };
 
-type DeclarativeValidationResult = {
+export type DeclarativeValidationResult = {
   ok: boolean;
   errors: DeclarativeValidationIssue[];
   warnings: DeclarativeValidationIssue[];
@@ -111,7 +112,7 @@ type DeclarativeValidator =
   | BlueprintLoweringRecipeDeclarativeValidator
   | BlueprintDeclarativeValidator;
 
-type DeclarativeValidatorInput =
+export type DeclarativeValidatorInput =
   | [string, string?]
   | { kind?: "jsonata"; expr: string; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
   | { kind: "ajv-schema"; schema: Record<string, unknown>; refs?: readonly { schema: Record<string, unknown>; key?: string }[]; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
@@ -124,7 +125,7 @@ type DeclarativeValidatorInput =
 
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 
-type DeclarativeValidatorRunOptions = {
+export type DeclarativeValidatorRunOptions = {
   bindings?: Record<string, JsonValue>;
   jsonataValueMode?: "wrapped-data" | "root";
 };
@@ -332,6 +333,7 @@ export function runDeclarativeValidators(
           { schema: programSchema, key: programSchema.$id },
           { schema: tierSchema, key: tierSchema.$id },
           { schema: loweringRecipeSchema, key: loweringRecipeSchema.$id },
+          { schema: uiFormSchema, key: uiFormSchema.$id },
         ].filter(({ key }) => key !== ("$id" in schema ? schema.$id : undefined)),
         message: validator.message,
         level: validator.level,

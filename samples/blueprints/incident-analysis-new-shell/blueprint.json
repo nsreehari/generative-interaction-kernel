@@ -6,6 +6,24 @@
     "kind": "incident-analysis-shell",
     "version": "1.0.0",
     "structureMode": "fixed",
+    "contextFormSpec": {
+      "fields": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string",
+            "title": "Analysis model",
+            "enum": ["semantic", "source-faithful", "refinement"],
+            "enumNames": ["Semantic", "Source faithful", "Refinement"]
+          }
+        },
+        "required": ["model"],
+        "additionalProperties": true
+      },
+      "initialValue": { "model": "semantic" },
+      "saveLabel": "Apply context",
+      "discardLabel": "Discard"
+    },
     "tiers": [
       { "id": "incident-analysis", "kind": "incident-analysis" },
       { "id": "runtime-document", "kind": "runtime-document" }
